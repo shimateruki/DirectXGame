@@ -1,0 +1,45 @@
+{
+    "name": "bomb_hit_fragment_burst",
+    "modelNames": [
+        "Stages/rock1",
+        "Gimmicks/blob"
+    ],
+    "spawnCount": 22,
+    "spawnOffset": [
+        0.0,
+        0.48,
+        0.0
+    ],
+    "baseDirection": [
+        0.0,
+        0.0,
+        1.0
+    ],
+    "horizontalSpread": 2.25,
+    "verticalMin": 0.62,
+    "verticalMax": 1.65,
+    "speedMin": 9.5,
+    "speedMax": 24.0,
+    "angularSpeedMin": 6.0,
+    "angularSpeedMax": 18.0,
+    "scaleMin": 0.14,
+    "scaleMax": 0.52,
+    "lifetimeMin": 1.05,
+    "lifetimeMax": 1.75,
+    "gravity": 31.0,
+    "airDrag": 0.1,
+    "restitution": 0.26,
+    "friction": 0.76,
+    "groundY": 0.0,
+    "fadeStartRatio": 0.62,
+    "color": [
+        0.055,
+        0.050,
+        0.045,
+        1.0
+    ],
+    "materialType": 0,
+    "emissive": 0.0,
+    "collideGround": true,
+    "shrinkOnFade": true
+}

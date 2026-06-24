@@ -542,7 +542,7 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
     }
 
     std::string command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ";
-    command += QuoteCommandArg("tools/model_lod_builder.ps1");
+    command += QuoteCommandArg("tools/model_lod/model_lod_builder.ps1");
     command += " -Model " + QuoteCommandArg(modelName);
     command += " -Ratio1 " + FormatFloat(lodRatios_[0]);
     command += " -Ratio2 " + FormatFloat(lodRatios_[1]);

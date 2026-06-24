@@ -55,6 +55,23 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+float GoalClamp01(float value) {
+	return std::clamp(value, 0.0f, 1.0f);
+}
+
+float GoalEaseOut(float value) {
+	value = GoalClamp01(value);
+	const float inv = 1.0f - value;
+	return 1.0f - inv * inv * inv;
+}
+
+float GoalEaseInOut(float value) {
+	value = GoalClamp01(value);
+	return value * value * (3.0f - 2.0f * value);
+}
+}
+
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
 
@@ -100,7 +117,8 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	// 1. 背景描画
 	// =======================================================
-	if (skybox_ && camera) {
+	if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
+		skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
 		skybox_->Draw(camera->GetConstantBuffer());
 	}
 
@@ -321,12 +339,99 @@ void GamePlayScene::DrawUI() {
     if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive() && !(settingsOverlay_ && settingsOverlay_->IsActive())) {
         pauseMenuOverlay_->Draw();
     }
-    if (settingsOverlay_ && settingsOverlay_->IsActive()) {
-        settingsOverlay_->Draw();
-    }
+	if (settingsOverlay_ && settingsOverlay_->IsActive()) {
+		settingsOverlay_->Draw();
+	}
     if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive()) {
         saveIndicatorOverlay_->Draw();
     }
+	DrawGoalPresentationOverlay();
+}
+
+void GamePlayScene::InitializeGoalPresentationOverlay() {
+	if (!spriteCommon_) {
+		return;
+	}
+
+	const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+	const uint32_t crownHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/title/crown_progress_icon.png");
+	const uint32_t clearTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/stage_clear_text.png");
+	const uint32_t returnTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
+
+	goalOverlayBackdrop_ = std::make_unique<Sprite>();
+	goalOverlayBackdrop_->Initialize(spriteCommon_.get(), whiteHandle);
+	goalOverlayBackdrop_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	goalOverlayCrown_ = std::make_unique<Sprite>();
+	goalOverlayCrown_->Initialize(spriteCommon_.get(), crownHandle);
+	goalOverlayCrown_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	goalOverlayStageClearText_ = std::make_unique<Sprite>();
+	goalOverlayStageClearText_->Initialize(spriteCommon_.get(), clearTextHandle);
+	goalOverlayStageClearText_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	goalOverlayReturnText_ = std::make_unique<Sprite>();
+	goalOverlayReturnText_->Initialize(spriteCommon_.get(), returnTextHandle);
+	goalOverlayReturnText_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	UpdateGoalPresentationOverlay();
+}
+
+void GamePlayScene::UpdateGoalPresentationOverlay() {
+	const bool visible = isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive;
+	const float screenW = static_cast<float>(WinApp::kClientWidth);
+	const float screenH = static_cast<float>(WinApp::kClientHeight);
+	const float t = goalPresentationTimer_;
+	const float clearIn = GoalEaseOut((t - 1.25f) / 0.45f);
+	const float returnIn = GoalEaseInOut((t - 2.25f) / 0.40f);
+	const float pulse = 1.0f + std::sin(t * 5.8f) * 0.035f * clearIn;
+
+	if (goalOverlayBackdrop_) {
+		goalOverlayBackdrop_->SetPosition({ screenW * 0.5f, screenH * 0.5f });
+		goalOverlayBackdrop_->SetSize({ screenW + 8.0f, screenH + 8.0f });
+		goalOverlayBackdrop_->SetColor({ 0.0f, 0.0f, 0.0f, visible ? 0.22f * clearIn : 0.0f });
+		goalOverlayBackdrop_->Update();
+	}
+	if (goalOverlayCrown_) {
+		goalOverlayCrown_->SetPosition({ screenW * 0.5f, screenH * 0.5f - 158.0f - 18.0f * (1.0f - clearIn) });
+		goalOverlayCrown_->SetSize({ 98.0f * pulse, 98.0f * pulse });
+		goalOverlayCrown_->SetRotation(std::sin(t * 4.4f) * 0.07f * clearIn);
+		goalOverlayCrown_->SetColor({ 1.0f, 0.96f, 0.72f, visible ? clearIn : 0.0f });
+		goalOverlayCrown_->Update();
+	}
+	if (goalOverlayStageClearText_) {
+		goalOverlayStageClearText_->SetPosition({ screenW * 0.5f, screenH * 0.5f - 58.0f - 28.0f * (1.0f - clearIn) });
+		goalOverlayStageClearText_->SetSize({ 760.0f * pulse, 144.0f * pulse });
+		goalOverlayStageClearText_->SetRotation(0.0f);
+		goalOverlayStageClearText_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? clearIn : 0.0f });
+		goalOverlayStageClearText_->Update();
+	}
+	if (goalOverlayReturnText_) {
+		goalOverlayReturnText_->SetPosition({ screenW * 0.5f, screenH * 0.5f + 62.0f + 12.0f * (1.0f - returnIn) });
+		goalOverlayReturnText_->SetSize({ 442.0f, 53.0f });
+		goalOverlayReturnText_->SetRotation(0.0f);
+		goalOverlayReturnText_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? returnIn * 0.88f : 0.0f });
+		goalOverlayReturnText_->Update();
+	}
+}
+
+void GamePlayScene::DrawGoalPresentationOverlay() {
+	if (!isGoal_ || goalPresentationState_ == GoalPresentationState::Inactive) {
+		return;
+	}
+
+	if (goalOverlayBackdrop_) {
+		goalOverlayBackdrop_->Draw();
+	}
+	if (goalOverlayCrown_) {
+		goalOverlayCrown_->Draw();
+	}
+	if (goalOverlayStageClearText_) {
+		goalOverlayStageClearText_->Draw();
+	}
+	if (goalOverlayReturnText_) {
+		goalOverlayReturnText_->Draw();
+	}
 }
 
 
@@ -345,6 +450,38 @@ void GamePlayScene::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_MAP " Stage Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
         const auto& stages = StageManager::GetInstance()->GetStages();
         int currentIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
+        ImGui::Text("ステージJSON切り替え");
+        constexpr int kStageButtonCount = 5;
+        for (int stageIndex = 0; stageIndex < kStageButtonCount; ++stageIndex) {
+            const bool registered = stageIndex < static_cast<int>(stages.size());
+            const bool isCurrent = stageIndex == currentIndex;
+            if (!registered || isCurrent) {
+                ImGui::BeginDisabled();
+            }
+
+            std::string label = std::string(ICON_FA_PLAY) + " Stage " + std::to_string(stageIndex + 1);
+            if (ImGui::Button(label.c_str(), ImVec2(112.0f, 30.0f)) && registered) {
+                StageManager::GetInstance()->SetCurrentStage(stageIndex);
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+
+            if (!registered || isCurrent) {
+                ImGui::EndDisabled();
+            }
+
+            if (stageIndex < kStageButtonCount - 1) {
+                ImGui::SameLine();
+            }
+        }
+
+        if (currentIndex >= 0 && currentIndex < static_cast<int>(stages.size())) {
+            const StageData& currentStage = stages[currentIndex];
+            ImGui::TextDisabled("現在: %s", currentStage.name.c_str());
+            ImGui::TextDisabled("3D: %s", currentStage.levelPath.c_str());
+            ImGui::TextDisabled("Sprite: %s", currentStage.spritePath.c_str());
+        }
+        ImGui::Separator();
 
         std::vector<const char*> stageNames;
         for (const auto& s : stages) stageNames.push_back(s.name.c_str());

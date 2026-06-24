@@ -2,42 +2,44 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-class DirectXCommon; // 前方宣言
+class DirectXCommon;
 
+/// <summary>
+/// スプライト描画で共有するルートシグネチャとパイプラインを管理する。
+/// </summary>
 class SpriteCommon {
 public:
     /// <summary>
-    /// 初期化
+    /// DirectX基盤を受け取り、スプライト描画用パイプラインを初期化する。
     /// </summary>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// 共通描画設定（描画前に呼ぶ）
+    /// スプライト描画前に共通パイプラインをコマンドリストへ設定する。
     /// </summary>
     void SetPipeline(ID3D12GraphicsCommandList* commandList);
+
     /// <summary>
-/// DirectX基盤を取得
-/// </summary>
-/// <returns>DirectX基盤</returns>
+    /// DirectX基盤を取得する。
+    /// </summary>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:
     /// <summary>
-    /// ルートシグネチャの作成
+    /// スプライト描画用のルートシグネチャを生成する。
     /// </summary>
     void CreateRootSignature();
 
     /// <summary>
-    /// グラフィックスパイプラインの生成
+    /// スプライト描画用のグラフィックスパイプラインを生成する。
     /// </summary>
     void CreatePipeline();
 
- 
 private:
-    // DirectX基盤クラスのポインタ
+    // DirectX基盤への参照。SpriteCommonは所有しない。
     DirectXCommon* dxCommon_ = nullptr;
-    // ルートシグネチャ
+
+    // スプライト描画で使うD3D12リソース。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
-    // パイプラインステートオブジェクト
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_ = nullptr;
 };

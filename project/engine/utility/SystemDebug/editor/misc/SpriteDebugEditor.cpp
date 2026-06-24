@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "SpriteDebugEditor.h"
+#include "WinApp.h"
 #include "Sprite.h"
 #include "imgui.h"
 #include "json.hpp"
@@ -12,10 +13,24 @@
 #include <filesystem>
 #include "IconsFontAwesome5.h"
 #include <algorithm>
+#include <cmath>
+#include <cctype>
 #include"winapp.h"
 #include "SrvManager.h"
 #include "TextureManager.h"
 namespace fs = std::filesystem;
+
+namespace {
+constexpr float kSpriteAspectWarningThreshold = 0.02f;
+
+std::string NormalizeSpritePath(std::string path) {
+	std::replace(path.begin(), path.end(), '\\', '/');
+	std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
+		return static_cast<char>(std::tolower(c));
+		});
+	return path;
+}
+}
 
 
 void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
@@ -400,6 +415,114 @@ void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 #endif
 }
 
+bool SpriteDebugEditor::TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize) const {
+	if (!sprite) {
+		return false;
+	}
+
+	const uint32_t textureHandle = sprite->GetTextureHandle();
+	if (textureHandle == 0) {
+		return false;
+	}
+
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle);
+	if (metadata.width == 0 || metadata.height == 0) {
+		return false;
+	}
+
+	outSize = { static_cast<float>(metadata.width), static_cast<float>(metadata.height) };
+	return true;
+}
+
+bool SpriteDebugEditor::IsGeneratedTextSprite(Sprite* sprite) const {
+	if (!sprite) {
+		return false;
+	}
+
+	const std::string textureName = NormalizeSpritePath(sprite->GetTextureName());
+	return textureName.find("generated/text/") != std::string::npos;
+}
+
+float SpriteDebugEditor::CalcAspectError(Sprite* sprite, const Vector2& textureSize) const {
+	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
+		return 0.0f;
+	}
+
+	const Vector2 size = sprite->GetSize();
+	if (size.x <= 0.0f || size.y <= 0.0f) {
+		return 0.0f;
+	}
+
+	const float textureAspect = textureSize.x / textureSize.y;
+	const float spriteAspect = size.x / size.y;
+	if (textureAspect <= 0.0f) {
+		return 0.0f;
+	}
+
+	return std::fabs((spriteAspect / textureAspect) - 1.0f);
+}
+
+Vector2 SpriteDebugEditor::MakeAspectFixedSize(Sprite* sprite, const Vector2& textureSize, bool keepWidth) const {
+	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
+		return { 0.0f, 0.0f };
+	}
+
+	const Vector2 currentSize = sprite->GetSize();
+	const float textureAspect = textureSize.x / textureSize.y;
+	if (keepWidth) {
+		return { currentSize.x, currentSize.x / textureAspect };
+	}
+	return { currentSize.y * textureAspect, currentSize.y };
+}
+
+Vector2 SpriteDebugEditor::MakeNearestIntegerScaleSize(Sprite* sprite, const Vector2& textureSize) const {
+	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
+		return { 0.0f, 0.0f };
+	}
+
+	const Vector2 currentSize = sprite->GetSize();
+	float scale = ((currentSize.x / textureSize.x) + (currentSize.y / textureSize.y)) * 0.5f;
+	scale = std::round(scale * 4.0f) / 4.0f;
+	scale = std::max(0.25f, scale);
+	return { textureSize.x * scale, textureSize.y * scale };
+}
+
+int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWidth) {
+	if (!sceneManager_) {
+		return 0;
+	}
+
+	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+	if (!currentScene) {
+		return 0;
+	}
+
+	int fixedCount = 0;
+	for (const std::unique_ptr<Sprite>& spritePtr : currentScene->GetSprites()) {
+		Sprite* sprite = spritePtr.get();
+		if (!sprite) {
+			continue;
+		}
+		if (textOnly && !IsGeneratedTextSprite(sprite)) {
+			continue;
+		}
+
+		Vector2 textureSize{};
+		if (!TryGetTexturePixelSize(sprite, textureSize)) {
+			continue;
+		}
+		if (CalcAspectError(sprite, textureSize) < kSpriteAspectWarningThreshold) {
+			continue;
+		}
+
+		sprite->SetSize(MakeAspectFixedSize(sprite, textureSize, keepWidth));
+		++fixedCount;
+	}
+
+	spriteQualityStatus_ = "比率補正: " + std::to_string(fixedCount) + "件";
+	return fixedCount;
+}
+
 void SpriteDebugEditor::DrawInspectorWindow() {
 #ifdef USE_IMGUI
 	if (!sceneManager_) return;
@@ -409,6 +532,22 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 	auto& sprites = currentScene->GetSprites();
 
 	ImGui::Begin(ICON_FA_INFO_CIRCLE " Sprite Inspector");
+	if (ImGui::CollapsingHeader("Sprite比率クリーンアップ", ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::TextDisabled("画像本来の縦横比に合わせて、引き伸ばしを補正します。");
+		if (ImGui::Button("文字Spriteを横幅維持で一括補正", ImVec2(-1.0f, 0.0f))) {
+			FixSpriteAspectInCurrentScene(true, true);
+		}
+		if (ImGui::Button("全Spriteを横幅維持で一括補正", ImVec2(-1.0f, 0.0f))) {
+			FixSpriteAspectInCurrentScene(false, true);
+		}
+		if (ImGui::Button("全Spriteを高さ維持で一括補正", ImVec2(-1.0f, 0.0f))) {
+			FixSpriteAspectInCurrentScene(false, false);
+		}
+		if (!spriteQualityStatus_.empty()) {
+			ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.8f, 1.0f), "%s", spriteQualityStatus_.c_str());
+		}
+		ImGui::Separator();
+	}
 	if (selectedSprite_) {
 		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EDIT " 編集: %s", selectedSprite_->GetName().c_str());
 
@@ -451,6 +590,32 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		float emissive = selectedSprite_->GetEmissive();
 		if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f)) selectedSprite_->SetPosition(pos);
 		if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f)) selectedSprite_->SetSize(size);
+		Vector2 texturePixelSize{};
+		if (TryGetTexturePixelSize(selectedSprite_, texturePixelSize)) {
+			const Vector2 currentSize = selectedSprite_->GetSize();
+			const float scaleX = texturePixelSize.x > 0.0f ? currentSize.x / texturePixelSize.x : 0.0f;
+			const float scaleY = texturePixelSize.y > 0.0f ? currentSize.y / texturePixelSize.y : 0.0f;
+			const float aspectError = CalcAspectError(selectedSprite_, texturePixelSize);
+			ImGui::Text("Texture: %.0f x %.0f px", texturePixelSize.x, texturePixelSize.y);
+			ImGui::Text("Display: %.1f x %.1f / Scale %.2f x %.2f", currentSize.x, currentSize.y, scaleX, scaleY);
+			if (aspectError >= kSpriteAspectWarningThreshold) {
+				ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "縦横比が %.1f%% ずれています", aspectError * 100.0f);
+			}
+			if (ImGui::Button("実画像サイズに合わせる")) {
+				selectedSprite_->SetSize(texturePixelSize);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("横幅維持で比率補正")) {
+				selectedSprite_->SetSize(MakeAspectFixedSize(selectedSprite_, texturePixelSize, true));
+			}
+			if (ImGui::Button("高さ維持で比率補正")) {
+				selectedSprite_->SetSize(MakeAspectFixedSize(selectedSprite_, texturePixelSize, false));
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("近い0.25倍率に補正")) {
+				selectedSprite_->SetSize(MakeNearestIntegerScaleSize(selectedSprite_, texturePixelSize));
+			}
+		}
 		if (ImGui::DragFloat2(ICON_FA_ANCHOR " アンカー (Anchor)", &anchor.x, 0.01f)) selectedSprite_->SetAnchorPoint(anchor);
 		if (ImGui::ColorEdit4(ICON_FA_PALETTE " 色 (Color)", &color.x)) selectedSprite_->SetColor(color);
 		if (ImGui::DragFloat(ICON_FA_SUN " Emissive (発光)", &emissive, 0.1f, 1.0f, 50.0f, "%.1f")) {
@@ -703,6 +868,11 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 		spriteData["parentName"] = sprite->GetParent() ? sprite->GetParent()->GetName() : "";
 		spriteArray.push_back(spriteData);
 	}
+	root["designResolution"] = {
+		static_cast<float>(WinApp::kClientWidth),
+		static_cast<float>(WinApp::kClientHeight)
+	};
+	root["scaleToWindow"] = true;
 	root["sprites"] = spriteArray;
 
 	std::ofstream file(filename);

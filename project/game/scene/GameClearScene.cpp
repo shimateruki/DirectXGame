@@ -108,8 +108,8 @@ void GameClearScene::Finalize() {
 void GameClearScene::Update(float deltaTime) {
     // エディタ・マネージャ更新
     LightEditor::GetInstance()->Update();
-    CameraManager::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
+    CameraManager::GetInstance()->Update();
 
     // サブシステムの一括更新
     objectManager_->Update(deltaTime);

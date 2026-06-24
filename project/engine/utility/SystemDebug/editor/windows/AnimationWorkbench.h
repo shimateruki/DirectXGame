@@ -13,6 +13,9 @@ class DirectXCommon;
 class Object3d;
 class SceneManager;
 
+/// <summary>
+/// モデルのポーズキー、イベントマーカー、プレビュー再生を編集する作業用ウィンドウ。
+/// </summary>
 class AnimationWorkbench : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
@@ -84,6 +87,7 @@ private:
     Model* previewModel_ = nullptr;
     Object3d* previewObject_ = nullptr;
 
+    // プレビュー再生と表示オプション。
     bool enabled_ = false;
     bool wasEnabled_ = false;
     bool autoApply_ = true;
@@ -98,6 +102,8 @@ private:
     bool cameraMoveOnEnter_ = true;
     bool recenterCameraRequested_ = false;
     bool hasPlacedCamera_ = false;
+
+    // タイムラインとプレビュー配置。
     float currentTime_ = 0.0f;
     float duration_ = 2.0f;
     float playbackSpeed_ = 1.0f;
@@ -108,6 +114,7 @@ private:
     Vector3 previewOrigin_ = { 12000.0f, 10000.0f, 12000.0f };
     Vector3 previewScale_ = { 1.0f, 1.0f, 1.0f };
 
+    // UI入力。
     char modelNameBuffer_[256] = "";
     char animationNameBuffer_[128] = "";
     char saveFileBuffer_[128] = "enemy_animation.json";

@@ -1,0 +1,101 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 3.2,
+    "DistortionStrength": 0.0,
+    "EasingType": 2,
+    "EdgeFadeStrength": 2.1,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        0.46,
+        1.05,
+        1.55,
+        0.18
+    ],
+    "EndScale": [
+        1.08,
+        1.0,
+        1.08
+    ],
+    "InnerRadius": 0.25,
+    "Intensity": 1.45,
+    "Lifetime": 99999.0,
+    "MeshSegments": 32,
+    "ModelName": "",
+    "NoiseTexturePath": "",
+    "OuterRadius": 2.0,
+    "PlaneSize": [
+        3.6,
+        3.6
+    ],
+    "Position": [
+        0.0,
+        0.64,
+        0.0
+    ],
+    "ProceduralType": 7,
+    "RampTexturePath": "",
+    "RingInnerRadius": 0.0,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.05,
+        0.04
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        1.45,
+        0.95,
+        0.22,
+        0.22
+    ],
+    "StartScale": [
+        0.92,
+        1.0,
+        0.92
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/effect/crown/crown_ray_fan.png",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.8,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.3,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

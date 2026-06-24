@@ -1,30 +1,29 @@
 #pragma once
-#include "BaseScene.h" 
-#include "Object3dCommon.h"
-#include "SpriteCommon.h"
-#include "Object3d.h"
-#include "Sprite.h"
+#include "BaseScene.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
-#include "SpriteDebugEditor.h"
-#include "Player.h"
-#include "Text.h"
-#include "Event.h"
 #include "BulletManager.h"
 #include "Camera.h"
+#include "DebugEditor.h"
+#include "Event.h"
+#include "GameDataManager.h"
 #include "MeshRenderer.h"
-
+#include "Object3d.h"
+#include "Object3dCommon.h"
 #include "ObjectManager.h"
-#include "DebugEditor.h" 
+#include "ParticleCommon.h"
+#include "ParticleSystem.h"
+#include "Player.h"
+#include "Sprite.h"
+#include "SpriteCommon.h"
+#include "SpriteDebugEditor.h"
+#include "Text.h"
 #include <GhostRecorder.h>
-
+#include <Skybox.h>
+#include <array>
 #include <memory>
 #include <vector>
-#include <array>
-#include <Skybox.h>
 
-// --- 前方宣言 ---
+// 前方宣言
 class DirectXCommon;
 class InputManager;
 class SceneManager;
@@ -33,9 +32,8 @@ class LockOnSystem;
 class GameRule;
 class GimmickStageGate;
 
-
 /// <summary>
-/// ゲーム選択シーン
+/// ステージ選択シーン。ステージゲート、解放演出、王冠/スター/コイン HUD を扱う。
 /// </summary>
 class GameSelectScene : public BaseScene {
 public:
@@ -50,32 +48,24 @@ public:
     void DrawUI() override;
     void DrawShadow() override;
 
-
-    // --- BaseScene インターフェース実装 ---
-
-    // オブジェクト管理は ObjectManager に委譲
+    // --- BaseScene インターフェース ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
-    // スプライトはシーンで保持 (ObjectManagerを拡張すれば移動可能)
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-    // 各種コモンクラス
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
-    // プレイヤー連携
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
     void RefreshDebugStageStates();
 
-
-
-
 private:
+    // ステージゲートの選択、解放、遷移処理
     void UpdateStageGateSelection(float deltaTime);
     void ApplyStageGateStates();
     bool IsStageUnlocked(int stageIndex) const;
@@ -85,14 +75,26 @@ private:
     Object3d* FindNearestStageGate(float* outDistance) const;
     int FindPendingUnlockStage() const;
     void UpdateUnlockPresentation(float deltaTime);
+
+    // セレクト画面の装飾と収集状況表示
     void UpdateStageSelectDecorations(float deltaTime);
     void UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse);
     void UpdateStarCoinDisplays(float deltaTime);
     Object3d* EnsureStageClearCrown(int stageIndex);
     void UpdateStageClearCrownDisplays(float deltaTime);
+
+    // ステージクリア後に戻ってきた時の王冠獲得演出
+    void StartStageClearRewardPresentation(const GameDataManager::StageClearRewardPresentation& request);
+    void UpdateStageClearRewardPresentation(float deltaTime);
+    void UpdateStageClearRewardCrown(Object3d* crown, int stageIndex, float deltaTime);
+    void UpdateStageSelectCrownHudReward();
+    int GetDisplayedCrownCount() const;
+
     Vector3 GetStageClearCrownPosition(int stageIndex) const;
     Object3d* FindObjectByName(const std::string& name) const;
     Vector3 GetStageNodePosition(int stageIndex) const;
+
+    // HUD 初期化と数値描画
     void InitializeStageSelectHUD();
     Sprite* FindSpriteByName(const std::string& name) const;
     struct StageSelectHudSprite {
@@ -116,29 +118,29 @@ private:
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
-    // --- サブシステム (機能を委譲するクラスたち) ---
-    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;   // 配置読み込み
-    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr; // ロックオン管理
-    std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理 
+    // --- シーン内部システム ---
+    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
+    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr;
+    std::unique_ptr<ObjectManager> objectManager_ = nullptr;
 
-    // --- ゲームオブジェクト共通基盤 ---
+    // --- 描画共通基盤 ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
 
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
-    std::unique_ptr<Text>  debugText_;
+    std::unique_ptr<Text> debugText_;
     std::unique_ptr<GameRule> gameRule_;
 
     Player* player_ = nullptr;
 
-    // --- BGM・SE ---
+    // --- BGM / SE ---
     uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
-    // ライト
+    // --- ライト ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     MeshRenderer::PointLight* pointLightData_ = nullptr;
 
@@ -146,13 +148,13 @@ private:
     MeshRenderer::SpotLight* spotLightData_ = nullptr;
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
-    bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
+    bool isDrawLockOn_ = false;
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
 
-    // アニメーションモデルのテスト用変数
     std::unique_ptr<Object3d> animatedCube_;
 
+    // --- ステージゲート選択状態 ---
     int selectedStageIndex_ = 0;
     int previousSelectedStageIndex_ = -1;
     float gateSelectRadius_ = 8.0f;
@@ -162,6 +164,17 @@ private:
     float unlockPresentationTimer_ = 0.0f;
     float unlockParticleTimer_ = 0.0f;
     float stageSelectTime_ = 0.0f;
+
+    // --- 王冠獲得数の加算演出 ---
+    bool crownCountPresentationActive_ = false;
+    bool crownCountPresentationImpactDone_ = false;
+    int crownCountPresentationStageIndex_ = -1;
+    int crownCountPresentationFrom_ = 0;
+    int crownCountPresentationTo_ = 0;
+    float crownCountPresentationTimer_ = 0.0f;
+    float crownCountPresentationParticleTimer_ = 0.0f;
+
+    // --- セレクト HUD ---
     StageSelectHudSprite stageSelectCrownIcon_;
     StageSelectHudSprite stageSelectCrownXIcon_;
     std::array<StageSelectHudSprite, 3> stageSelectCrownDigits_;

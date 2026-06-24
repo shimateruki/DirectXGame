@@ -1,0 +1,101 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 4.8,
+    "DistortionStrength": 0.0,
+    "EasingType": 2,
+    "EdgeFadeStrength": 2.8,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        0.42,
+        1.10,
+        1.85,
+        0.36
+    ],
+    "EndScale": [
+        1.18,
+        1.0,
+        1.18
+    ],
+    "InnerRadius": 0.25,
+    "Intensity": 2.05,
+    "Lifetime": 99999.0,
+    "MeshSegments": 72,
+    "ModelName": "",
+    "NoiseTexturePath": "Resources/sprite/effect/noise0.png",
+    "OuterRadius": 2.0,
+    "PlaneSize": [
+        1.0,
+        1.0
+    ],
+    "Position": [
+        0.0,
+        0.22,
+        0.0
+    ],
+    "ProceduralType": 10,
+    "RampTexturePath": "",
+    "RingInnerRadius": 0.0,
+    "RingOuterRadius": 1.22,
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.18,
+        -0.13
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        1.65,
+        1.05,
+        0.26,
+        0.48
+    ],
+    "StartScale": [
+        0.90,
+        1.0,
+        0.90
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/effect/crown/crown_aura.png",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.8,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.3,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

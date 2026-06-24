@@ -6,6 +6,7 @@ ItemFactory* ItemFactory::GetInstance() {
     return &instance;
 }
 
+// アイテムタイプ名から専用アイテムを生成する。未登録なら仮アイテムを返す。
 std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, Object3dCommon* common) {
     std::unique_ptr<BaseItem> newItem = nullptr;
 
@@ -20,6 +21,7 @@ std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, O
         newItem->Initialize(common, "Primitives/sphere");
     }
 
+    // タイプ名を本体とパラメータの両方に保存して、エディタ/イベント側から参照できるようにする
     newItem->SetItemType(itemName);
     if (!newItem->param_.has_value()) {
         newItem->param_.emplace();

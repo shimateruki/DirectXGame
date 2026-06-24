@@ -320,6 +320,7 @@ namespace {
 
         if (ImGui::BeginMenu(ICON_FA_PUZZLE_PIECE " ギミック")) {
             if (ImGui::MenuItem("動く床")) CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
+            if (ImGui::MenuItem("破壊ブロック")) CreateGimmick(editor, scene, "BreakableBlock", useGameViewCursor);
             if (ImGui::MenuItem("ジャンプ台")) CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
             if (ImGui::MenuItem("沈む床")) CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
             if (ImGui::MenuItem("シーソー床")) CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
@@ -344,6 +345,8 @@ namespace {
         }
 
         if (ImGui::BeginMenu(ICON_FA_SKULL " 敵")) {
+            if (ImGui::MenuItem("Fire Slime")) CreateEnemy(editor, scene, "FireSlime", useGameViewCursor);
+            if (ImGui::MenuItem("Thunder Slime")) CreateEnemy(editor, scene, "ThunderSlime", useGameViewCursor);
             if (ImGui::MenuItem("スライム")) CreateEnemy(editor, scene, "Slime", useGameViewCursor);
             if (ImGui::MenuItem("ボム")) CreateEnemy(editor, scene, "Bomb", useGameViewCursor);
             if (ImGui::MenuItem("ボマー")) CreateEnemy(editor, scene, "Bomber", useGameViewCursor);
@@ -487,6 +490,26 @@ void HierarchyWindow::Draw() {
         if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
+        }
+        if (editor_->GetStatusTuningWindow() && ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス調整 (Status Tuning)", currentObj == editor_->GetStatusTuningWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
+        }
+        if (editor_->GetJsonBackupWindow() && ImGui::Selectable("  " ICON_FA_SAVE " JSONバックアップ (Json Backup)", currentObj == editor_->GetJsonBackupWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetJsonBackupWindow());
+        }
+        if (editor_->GetAudioSettingsWindow() && ImGui::Selectable("  " ICON_FA_MUSIC " 音声設定 (Audio Settings)", currentObj == editor_->GetAudioSettingsWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAudioSettingsWindow());
+        }
+        if (editor_->GetExecutablePackageWindow() && ImGui::Selectable("  " ICON_FA_BOX_OPEN " 実行ファイルセット (Executable Package)", currentObj == editor_->GetExecutablePackageWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetExecutablePackageWindow());
+        }
+        if (editor_->GetCaptureToolWindow() && ImGui::Selectable("  " ICON_FA_CAMERA " キャプチャツール (Capture Tool)", currentObj == editor_->GetCaptureToolWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetCaptureToolWindow());
         }
         if (editor_->GetGameDataDebugEditor() && ImGui::Selectable("  " ICON_FA_DATABASE " 内部データ編集 (Game Data)", currentObj == editor_->GetGameDataDebugEditor())) {
             editor_->SetSelectedObject(nullptr);

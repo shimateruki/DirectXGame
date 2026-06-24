@@ -905,6 +905,7 @@ json Object3d::ExportToJson() {
         json jp;
         jp["hp"] = p.hp;
         jp["maxHp"] = p.maxHp;
+        jp["attackPower"] = p.attackPower;
         jp["speed"] = p.speed;
         jp["gravity"] = p.gravity;
         jp["jumpPower"] = p.jumpPower;
@@ -977,6 +978,8 @@ json Object3d::ExportToJson() {
         jw["flowSpeedY"] = water->flowSpeedY;
         jw["effectType"] = water->effectType;
         jw["effectScale"] = water->effectScale;
+        jw["effectScaleX"] = water->effectScaleX;
+        jw["effectScaleY"] = water->effectScaleY;
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;
@@ -1056,8 +1059,11 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("param")) {
         EntityParameter p;
         const auto& jp = j["param"];
-        if (jp.contains("hp")) p.hp = jp["hp"];
-        if (jp.contains("maxHp")) p.maxHp = jp["maxHp"];
+        const bool hasHp = jp.contains("hp");
+        const bool hasMaxHp = jp.contains("maxHp");
+        if (hasHp) p.hp = jp["hp"];
+        if (hasMaxHp) p.maxHp = jp["maxHp"];
+        if (jp.contains("attackPower")) p.attackPower = jp["attackPower"];
         if (jp.contains("speed")) p.speed = jp["speed"];
         if (jp.contains("gravity")) p.gravity = jp["gravity"];
         if (jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
@@ -1079,6 +1085,15 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
         if (jp.contains("startActive")) p.startActive = jp["startActive"];
         if (jp.contains("returnOnOff")) p.returnOnOff = jp["returnOnOff"];
+        p.maxHp = (std::max)(p.maxHp, 1.0f);
+        if (hasMaxHp && !hasHp) {
+            p.hp = p.maxHp;
+        }
+        p.hp = (std::max)(p.hp, 0.0f);
+        if (p.hp > p.maxHp) {
+            p.maxHp = p.hp;
+        }
+        p.attackPower = (std::max)(p.attackPower, 0.0f);
         param_ = p;
     }
 
@@ -1137,6 +1152,8 @@ void Object3d::ImportFromJson(const json& j) {
             if (jw.contains("flowSpeedY")) water->flowSpeedY = jw["flowSpeedY"];
             if (jw.contains("effectType")) water->effectType = jw["effectType"];
             if (jw.contains("effectScale")) water->effectScale = jw["effectScale"];
+            if (jw.contains("effectScaleX")) water->effectScaleX = jw["effectScaleX"];
+            if (jw.contains("effectScaleY")) water->effectScaleY = jw["effectScaleY"];
             if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
             if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
             if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];

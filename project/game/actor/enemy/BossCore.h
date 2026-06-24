@@ -6,7 +6,7 @@
 
 class SceneManager; // 前方宣言
 
-// ボスのコア(中核)となる統合制御クラス
+// ボス本体、装甲ブロック、攻撃フェーズ、バリアHPをまとめて制御する中核クラス
 class BossCore : public BaseEnemy {
 public:
     // ==================================================
@@ -33,7 +33,7 @@ public:
     // ==================================================
     void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
 
-    // パーツ(ブロック)を登録する関数
+    // エディタで配置した装甲ブロックをボスの攻撃パーツとして登録する
     void AddArmorBlock (Object3d *block) { 
         armorBlocks_.push_back (block);
         block->SetCollisionAttribute(kEnemyAttack);
@@ -47,13 +47,13 @@ public:
     float GetBarrierHp() const { return barrierHp_; }
     float GetMaxBarrierHp() const { return maxBarrierHp_; }
 private:
-    // 飛んでいるブロックを管理するための構造体
+    // 射出後の装甲ブロックを、飛翔・地面待機・帰還の状態つきで管理する
     struct FlyingBlock {
         Object3d *block;
         Vector3 velocity;
-        Vector3 currentRot;// 現在の回転角度を記憶する！
+        Vector3 currentRot; // 現在の回転角度。
         int mode; // 0=飛翔中, 1=地面待機, 2=帰還中, 3=回収完了
-        int originalIndex; // 元の配列の番号(居場所)を記憶！
+        int originalIndex; // armorBlocks_ 内での元の位置。
     };
 
     // 射出されたブロックのリスト
@@ -67,15 +67,14 @@ private:
     void UpdateIdle(float deltaTime);
     void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
-    // --- BossAnimationの実装 ---
-    
-    // 新しく追加するアニメーション関数
+    // ボスの攻撃フェーズを animPhase_ と animTimer_ で進める
     void UpdateAnimationSequence (float deltaTime);
 
-    // 飛んでいるブロックを専用で更新する関数
+    // 射出された装甲ブロックの飛翔・地面待機・帰還を更新する
     void UpdateFlyingBlocks (float deltaTime);
     void TakeBarrierDamage(float damage);
-    // static だった変数をメンバ変数に移動
+
+    // 攻撃フェーズ中に使う一時メモ
     int animPhase_ = 0;
     float animTimer_ = 0.0f;
     Vector3 animStartPos_ = { 0,0,0 };
@@ -83,9 +82,9 @@ private:
     Vector3 animStartRot_ = { 0,0,0 };
     bool wasPlaying_ = false;
 
-    int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
-    int shotCount_ = 0;          // 撃った弾の数
-    float shotInterval_ = 0.0f;  // 連射のインターバル(間隔)計測用
+    int attackMode_ = 0;         // 0=待機, 1以降=各攻撃パターン。
+    int shotCount_ = 0;          // 射出済みブロック数。
+    float shotInterval_ = 0.0f;  // 連射インターバル計測用。
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -97,7 +96,7 @@ private:
     State state_ = State::Idle;               // 現在のステート
     bool isFirstFrame_ = true;                // 初回更新フラグ
 
-    std::vector<Object3d *> armorBlocks_;
+    std::vector<Object3d *> armorBlocks_; // ボスの周囲を構成する装甲ブロック。
 
     // 形態変化アニメーション用の座標メモ
     std::vector<Vector3> blockStartPos_;

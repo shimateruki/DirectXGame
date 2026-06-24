@@ -14,6 +14,13 @@ cbuffer CameraData : register(b0)
     float softParticleFade;
     int blendMode; 
     float2 screenSize; 
+    uint spriteSheetColumns;
+    uint spriteSheetRows;
+    uint spriteSheetFrameCount;
+    float spriteSheetFps;
+    uint spriteSheetLoop;
+    uint spriteSheetRandomStart;
+    float2 spriteSheetPadding;
 };
 
 Texture2D tex : register(t1);

@@ -11,6 +11,7 @@
 #include <cmath>
 
 namespace {
+// ボマーの距離維持と投擲速度に関する調整値
 constexpr float kMinThrowDistance = 1.0f;
 constexpr float kBombSpawnHeight = 2.0f;
 constexpr float kFootworkSpeed = 1.25f;
@@ -22,6 +23,7 @@ constexpr const char* kCarryBomberThrowEffect = "Resources/json/effect/effect_ca
 constexpr const char* kCarryBomberSparkPreset = "carry_bomber_throw_sparks";
 }
 
+// ボム生成コールバックを使う投擲敵の初期化
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     common_ = common;
@@ -35,6 +37,7 @@ void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelNam
     SetCollisionMask(kPlayer | kPlayerAttack);
 }
 
+// 距離を保ちながら爆弾を投げるAI
 void EnemyBomber::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
@@ -102,25 +105,20 @@ void EnemyBomber::SetCarried(bool isCarried) {
     SetColor(defaultColor_);
 }
 
+// 持ち運び中にプレイヤー前方へ爆弾を投げる能力
 void EnemyBomber::ExecuteAbility(Player* player) {
-    if (!player || !isCarried_ || carriedThrowCooldown_ > 0.0f) {
-        return;
-    }
-
-    ThrowCarryBomb(player);
-    carriedThrowCooldown_ = kCarryThrowInterval;
+    (void)player;
 }
 
 void EnemyBomber::UpdateCarriedAbility(Player* player, float deltaTime) {
     (void)player;
-    carriedThrowCooldown_ = (std::max)(0.0f, carriedThrowCooldown_ - deltaTime);
-    carriedEffectTimer_ = (std::max)(0.0f, carriedEffectTimer_ - deltaTime);
-
-    const float chargeRate = 1.0f - (std::clamp)(carriedThrowCooldown_ / kCarryThrowInterval, 0.0f, 1.0f);
-    const float warm = 0.65f + chargeRate * 0.35f;
-    SetColor({ 1.0f, warm, 0.55f, 1.0f });
+    (void)deltaTime;
+    carriedThrowCooldown_ = 0.0f;
+    carriedEffectTimer_ = 0.0f;
+    SetColor(defaultColor_);
 }
 
+// 投擲AIの補助処理
 bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
     if (!target_) return false;
 

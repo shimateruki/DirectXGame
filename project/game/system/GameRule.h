@@ -2,15 +2,17 @@
 #pragma once
 #include <memory>
 #include "Object3d.h"
+
 class BaseScene;
-// ゲームのルール（当たり判定の結果どうするか）を一元管理するクラス
+
+// 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
 class GameRule {
 public:
-    // ルールの初期化
+    // 監視対象のシーンを登録し、ルール処理を開始する
     void Initialize(BaseScene* scene);
 
 private:
-    // 汎用的なダメージ処理
+    // DamageEvent から HP 減算や撃破判定を行う
     void ApplyDamage(Object3d* target, float damage);
 
     BaseScene* scene_ = nullptr;

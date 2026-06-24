@@ -5,6 +5,7 @@
 #include "GameDataManager.h"
 #include "LevelLoader.h"
 #include "Sprite.h"
+#include "SpriteLayoutScaler.h"
 #include "StageManager.h"
 #include "WinApp.h"
 
@@ -59,7 +60,8 @@ GamePlayScene::HudSpriteState GamePlayScene::BindGameplayHUDSprite(const std::st
 
     // JSONに存在しない場合だけフォールバック値で配置します。
     if (createdFromFallback) {
-        sprite->SetPosition(position);
+        sprite->SetPosition(SpriteLayoutScaler::ScaleDesignPosition(position));
+        sprite->SetSize(SpriteLayoutScaler::ScaleDesignSize(size));
         sprite->SetAnchorPoint(anchor);
         sprite->SetColor(color);
     }
@@ -92,42 +94,42 @@ void GamePlayScene::InitializeGameplayHUD() {
     hudHpIcon_ = BindGameplayHUDSprite(
         "hud_hp_icon",
         "Resources/sprite/title/slime_save_icon.png",
-        { 1465.0f, 94.0f },
-        { 78.0f, 78.0f },
+        { 98.0f, 988.0f },
+        { 84.0f, 84.0f },
         { 0.5f, 0.5f },
-        { 1.0f, 1.0f, 1.0f, 0.96f }
+        { 1.0f, 1.0f, 1.0f, 1.0f }
     );
     hudHpDamageFill_ = BindGameplayHUDSprite(
         "hud_hp_damage_fill",
         "Resources/sprite/ui/hud/hp_damage_fill.png",
-        { 1594.0f, 94.0f },
-        { 256.0f, 28.0f },
+        { 146.0f, 1002.0f },
+        { 278.0f, 32.0f },
         { 0.0f, 0.5f },
         { 1.0f, 1.0f, 1.0f, 0.92f }
     );
     hudHpFill_ = BindGameplayHUDSprite(
         "hud_hp_fill",
         "Resources/sprite/ui/hud/hp_fill.png",
-        { 1594.0f, 94.0f },
-        { 256.0f, 28.0f },
+        { 146.0f, 1002.0f },
+        { 278.0f, 32.0f },
         { 0.0f, 0.5f },
         { 1.0f, 1.0f, 1.0f, 1.0f }
     );
     hudHpHighlight_ = BindGameplayHUDSprite(
         "hud_hp_highlight",
         "Resources/sprite/ui/hud/hp_highlight.png",
-        { 1594.0f, 94.0f },
-        { 256.0f, 28.0f },
+        { 146.0f, 1002.0f },
+        { 278.0f, 32.0f },
         { 0.0f, 0.5f },
-        { 1.0f, 1.0f, 1.0f, 0.45f }
+        { 1.0f, 1.0f, 1.0f, 0.38f }
     );
     hudHpFrame_ = BindGameplayHUDSprite(
         "hud_hp_frame",
         "Resources/sprite/ui/hud/hp_frame.png",
-        { 1516.0f, 94.0f },
-        { 350.0f, 72.0f },
+        { 44.0f, 988.0f },
+        { 420.0f, 108.0f },
         { 0.0f, 0.5f },
-        { 1.0f, 1.0f, 1.0f, 0.96f }
+        { 1.0f, 1.0f, 1.0f, 0.98f }
     );
     hudMorphGaugeBack_ = BindGameplayHUDSprite(
         "hud_morph_gauge_back",
@@ -285,6 +287,8 @@ void GamePlayScene::InitializeGameplayHUD() {
     hudDamagePulseTimer_ = 0.0f;
     hudHurtIconTimer_ = 0.0f;
     hudHpDamageHoldTimer_ = 0.0f;
+    hudMorphGaugeTimer_ = 0.0f;
+    hudMorphGaugeVisibleTimer_ = 0.0f;
     UpdateGameplayHUD(0.0f);
 }
 
@@ -603,35 +607,83 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         hudHpFrame_.sprite->Update();
     }
 
-    const bool morphVisible = visible && player_ && player_->IsEnemyMorphed();
-    const float morphRate = morphVisible ? player_->GetEnemyMorphRate() : 0.0f;
+    const bool morphActive = visible && player_ && player_->IsEnemyMorphed();
+    if (morphActive) {
+        hudMorphGaugeVisibleTimer_ = 0.20f;
+    } else {
+        hudMorphGaugeVisibleTimer_ = std::max(0.0f, hudMorphGaugeVisibleTimer_ - deltaTime);
+    }
+    const bool morphVisible = morphActive || hudMorphGaugeVisibleTimer_ > 0.0f;
+    const float morphRate = morphActive ? player_->GetEnemyMorphRate() : 0.0f;
+    hudMorphGaugeTimer_ = morphVisible ? hudMorphGaugeTimer_ + deltaTime : 0.0f;
+    Vector2 morphGaugeSize = SpriteLayoutScaler::ScaleDesignSize({ 132.0f, 132.0f });
+    Vector2 morphIconSize = SpriteLayoutScaler::ScaleDesignSize({ 92.0f, 92.0f });
+    Vector2 morphGaugePosition = SpriteLayoutScaler::ScaleDesignPosition({ 530.0f, 988.0f });
+    if (hudHpFrame_.sprite) {
+        morphGaugePosition = {
+            hudHpFrame_.basePosition.x + hudHpFrame_.baseSize.x + SpriteLayoutScaler::ScaleDesignX(66.0f),
+            hudHpFrame_.basePosition.y
+        };
+    }
+    if (player_) {
+        Vector3 headWorld = player_->GetWorldPosition();
+        headWorld.y += 2.55f;
+        Vector3 bodyWorld = player_->GetWorldPosition();
+        bodyWorld.y += 0.65f;
+
+        const Vector2 headScreen = ProjectWorldToScreen(headWorld);
+        const Vector2 bodyScreen = ProjectWorldToScreen(bodyWorld);
+        const float bodyHeightOnScreen = std::abs(bodyScreen.y - headScreen.y);
+        const float perspectiveScale = std::clamp(bodyHeightOnScreen / SpriteLayoutScaler::ScaleDesignY(96.0f), 0.72f, 1.18f);
+        morphGaugeSize = { morphGaugeSize.x * perspectiveScale, morphGaugeSize.y * perspectiveScale };
+        morphIconSize = { morphIconSize.x * perspectiveScale, morphIconSize.y * perspectiveScale };
+        morphGaugePosition = {
+            headScreen.x + morphGaugeSize.x * 0.44f,
+            headScreen.y - morphGaugeSize.y * (0.10f + 0.03f * std::sin(hudMorphGaugeTimer_ * 5.2f))
+        };
+    }
+    const float gaugeHalfX = morphGaugeSize.x * 0.55f;
+    const float gaugeHalfY = morphGaugeSize.y * 0.55f;
+    morphGaugePosition.x = std::clamp(morphGaugePosition.x, gaugeHalfX, static_cast<float>(WinApp::kClientWidth) - gaugeHalfX);
+    morphGaugePosition.y = std::clamp(morphGaugePosition.y, gaugeHalfY, static_cast<float>(WinApp::kClientHeight) - gaugeHalfY);
     const int morphFrame = std::clamp(static_cast<int>(std::round(morphRate * 32.0f)), 0, 32);
-    const auto updateMorphSprite = [&](HudSpriteState& state, float alphaScale, float scale, float rotation) {
+    const float lowRate = morphVisible ? std::clamp((0.34f - morphRate) / 0.34f, 0.0f, 1.0f) : 0.0f;
+    const float lowBlink = lowRate > 0.0f ? 0.5f + 0.5f * std::sin(hudMorphGaugeTimer_ * (18.0f + lowRate * 20.0f)) : 0.0f;
+    const float warningPulse = lowRate * (0.08f + lowBlink * 0.20f);
+    const Vector2 warningOffset = {
+        lowRate * std::sin(hudMorphGaugeTimer_ * 42.0f) * 2.2f,
+        lowRate * std::sin(hudMorphGaugeTimer_ * 31.0f) * 0.9f
+    };
+    int visibleMorphFrame = morphFrame;
+    if (lowRate > 0.0f && lowBlink > 0.68f) {
+        visibleMorphFrame = std::max(0, morphFrame - 1);
+    }
+    const auto updateMorphSprite = [&](HudSpriteState& state, const Vector2& baseSize, float alphaScale, float scale, float rotation, Vector2 offset, float colorBoost) {
         if (!state.sprite) {
             return;
         }
+        const float alpha = morphVisible ? std::clamp(alphaScale, 0.0f, 1.0f) : 0.0f;
         state.sprite->SetVisible(morphVisible);
-        state.sprite->SetPosition(state.basePosition);
-        state.sprite->SetSize({ state.baseSize.x * scale, state.baseSize.y * scale });
+        state.sprite->SetPosition({ morphGaugePosition.x + offset.x, morphGaugePosition.y + offset.y });
+        state.sprite->SetSize({ baseSize.x * scale, baseSize.y * scale });
         state.sprite->SetRotation(rotation);
         state.sprite->SetColor({
-            state.baseColor.x,
-            state.baseColor.y,
-            state.baseColor.z,
-            morphVisible ? std::max(state.baseColor.w, 1.0f) * alphaScale : 0.0f
+            std::clamp(state.baseColor.x + colorBoost, 0.0f, 1.0f),
+            std::clamp(state.baseColor.y + colorBoost, 0.0f, 1.0f),
+            std::clamp(state.baseColor.z + colorBoost, 0.0f, 1.0f),
+            alpha
         });
         state.sprite->Update();
     };
     if (hudMorphGaugeFill_.sprite) {
-        const uint32_t handle = Sprite::LoadTexture("ui/hud/morph_gauge/fill_" + (morphFrame < 10 ? std::string("0") : std::string()) + std::to_string(morphFrame) + ".png");
+        const uint32_t handle = Sprite::LoadTexture("ui/hud/morph_gauge/fill_" + (visibleMorphFrame < 10 ? std::string("0") : std::string()) + std::to_string(visibleMorphFrame) + ".png");
         hudMorphGaugeFill_.sprite->SetTextureHandle(handle);
     }
-    const float warningPulse = morphVisible && morphRate < 0.25f ? (0.25f - morphRate) * 0.18f : 0.0f;
     const float gaugeScale = 1.0f + warningPulse;
-    updateMorphSprite(hudMorphGaugeBack_, 0.82f, gaugeScale, 0.0f);
-    updateMorphSprite(hudMorphGaugeFill_, 1.0f, gaugeScale, 0.0f);
-    updateMorphSprite(hudMorphGaugeIcon_, 0.95f, 1.0f + warningPulse * 0.5f, warningPulse * 0.5f);
-    updateMorphSprite(hudMorphGaugeFrame_, 1.0f, gaugeScale, morphVisible ? (1.0f - morphRate) * 0.18f : 0.0f);
+    updateMorphSprite(hudMorphGaugeBack_, morphGaugeSize, 0.82f, gaugeScale, 0.0f, warningOffset, warningPulse * 0.25f);
+    updateMorphSprite(hudMorphGaugeFill_, morphGaugeSize, 1.0f, gaugeScale, 0.0f, warningOffset, warningPulse * 0.85f);
+    updateMorphSprite(hudMorphGaugeIcon_, morphIconSize, 0.95f + lowBlink * lowRate * 0.05f, 1.0f + warningPulse * 0.7f, std::sin(hudMorphGaugeTimer_ * 18.0f) * warningPulse * 0.9f, warningOffset, warningPulse * 0.45f);
+    updateMorphSprite(hudMorphGaugeFrame_, morphGaugeSize, 1.0f, gaugeScale, morphVisible ? (1.0f - morphRate) * 0.10f + std::sin(hudMorphGaugeTimer_ * 20.0f) * warningPulse * 0.35f : 0.0f, warningOffset, warningPulse * 0.35f);
 
     if (hudLifeIcon_.sprite) {
         hudLifeIcon_.sprite->SetVisible(visible);

@@ -1,6 +1,7 @@
 #pragma once
 #include "BaseEnemy.h"
 
+// 近づくと点火し、持ち運びや投擲でもカウントダウン爆発する爆弾敵
 class EnemyBomb : public BaseEnemy {
 public:
     enum class State {
@@ -21,6 +22,7 @@ public:
     void Ignite(float fuseTime = 3.0f);
 
 private:
+    // 追跡、点火中、爆発後で処理を分ける
     void UpdateChase(float deltaTime);
     void UpdateIgnited(float deltaTime);
     void Explode();

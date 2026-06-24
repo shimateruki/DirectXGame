@@ -57,10 +57,10 @@ public:
     void SetEndScale(const Vector3& s) { endScale_ = s; }
     void SetStartColor(const Vector4& c) { startColor_ = c; }
     void SetEndColor(const Vector4& c) { endColor_ = c; }
-    void SetDistortionStrength(float s) { materialData_->distortionStrength = s; }
+    void SetDistortionStrength(float) { materialData_->distortionStrength = 0.0f; }
     void SetDistortionSpeed(float s) { materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { materialData_->edgeFadeStrength = s; }
-    void SetEnableDistortion(bool enable) { materialData_->enableDistortion = enable ? 1 : 0; }
+    void SetEnableDistortion(bool) { materialData_->enableDistortion = 0; }
     void SetAlphaReference(float ref) { materialData_->alphaReference = ref; }
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }

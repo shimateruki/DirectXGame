@@ -38,6 +38,16 @@ cbuffer ViewProj : register(b0)
     row_major matrix billboardMatrix;
     // ★追加: PSと構造を合わせるため projection も追加しておく
     row_major matrix projection;
+    float softParticleFade;
+    int blendMode;
+    float2 screenSize;
+    uint spriteSheetColumns;
+    uint spriteSheetRows;
+    uint spriteSheetFrameCount;
+    float spriteSheetFps;
+    uint spriteSheetLoop;
+    uint spriteSheetRandomStart;
+    float2 spriteSheetPadding;
 };
 
 struct VSOutput
@@ -64,6 +74,34 @@ static const float2 uvs[4] =
     float2(1.0f, 0.0f)
 };
 
+float2 ApplySpriteSheet(float2 baseUV, Particle particle, uint instanceID)
+{
+    uint columns = max(spriteSheetColumns, uint(1));
+    uint rows = max(spriteSheetRows, uint(1));
+    uint capacity = max(columns * rows, uint(1));
+    uint frameCount = min(max(spriteSheetFrameCount, uint(1)), capacity);
+    uint frame = uint(0);
+
+    if (frameCount > uint(1) && spriteSheetFps > 0.0f)
+    {
+        float age = max(0.0f, particle.maxLife - particle.life);
+        float randomOffset = 0.0f;
+        if (spriteSheetRandomStart != uint(0))
+        {
+            float seed = (float)instanceID * 12.9898f + particle.maxLife * 78.233f;
+            randomOffset = floor(frac(sin(seed) * 43758.5453f) * (float)frameCount);
+        }
+
+        uint rawFrame = (uint)floor(age * spriteSheetFps + randomOffset);
+        frame = (spriteSheetLoop != uint(0)) ? (rawFrame % frameCount) : min(rawFrame, frameCount - uint(1));
+    }
+
+    uint frameX = frame % columns;
+    uint frameY = frame / columns;
+    float2 frameScale = float2(1.0f / (float)columns, 1.0f / (float)rows);
+    return (baseUV + float2((float)frameX, (float)frameY)) * frameScale;
+}
+
 VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
     VSOutput output;
@@ -89,7 +127,7 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     float3 worldPos = p.position + mul(rotatedPos, (float3x3) billboardMatrix);
 
     output.pos = mul(float4(worldPos, 1.0f), viewProj);
-    output.uv = uvs[vertexID];
+    output.uv = ApplySpriteSheet(uvs[vertexID], p, instanceID);
     output.color = p.color;
     
     // =======================================================

@@ -22,12 +22,13 @@ VSOutput main(VSInput input)
     float proxyRadius = max(max(axisXLength, axisYLength), axisZLength);
     proxyRadius *= max(billboardScale, 0.05f);
     proxyRadius = max(proxyRadius, 0.001f);
+    float2 gateScale = max(float2(effectScaleX, effectScaleY), float2(0.001f, 0.001f));
 
     // Keep transparent padding around the portal so the ellipse never reaches the quad edge.
     const float portalPadding = 1.4f;
     float2 quad = input.pos.xy * portalPadding;
-    float3 worldOffset = viewRight * quad.x * proxyRadius;
-    worldOffset += viewUp * quad.y * proxyRadius;
+    float3 worldOffset = viewRight * quad.x * proxyRadius * gateScale.x;
+    worldOffset += viewUp * quad.y * proxyRadius * gateScale.y;
 
     // Move the proxy slightly toward the camera to reduce depth fighting with the gate frame.
     float3 cameraNudge = -viewForward * proxyRadius * 0.02f;

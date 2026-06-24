@@ -93,8 +93,7 @@
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -122,8 +121,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -150,13 +148,14 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\EnemyBomber.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyFireSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyThunderSlime.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyGiantSlime.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyBat.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyBeamDrone.cpp" />
@@ -228,6 +227,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp" />
     <ClCompile Include="game\system\GameRule.cpp" />
+    <ClCompile Include="game\system\GroundEffectLocator.cpp" />
+    <ClCompile Include="game\system\HitEffectDirector.cpp" />
+    <ClCompile Include="game\system\GameAudioSettings.cpp" />
     <ClCompile Include="game\system\GameSettingsManager.cpp" />
     <ClCompile Include="game\actor\Bullet.cpp" />
     <ClCompile Include="game\system\BulletManager.cpp" />
@@ -237,6 +239,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\system\collision\CollisionConfig.cpp" />
     <ClCompile Include="engine\system\collision\CollisionManager.cpp" />
     <ClCompile Include="engine\system\scene\BaseScene.cpp" />
+    <ClCompile Include="engine\system\scene\LoadingScene.cpp" />
     <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp" />
     <ClCompile Include="engine\graphics\3d\camera\Camera.cpp" />
     <ClCompile Include="engine\system\audio\AudioPlayer.cpp" />
@@ -325,6 +328,11 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp" />
@@ -545,6 +553,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\EnemyMushroom.h" />
+    <ClInclude Include="game\actor\enemy\EnemyFireSlime.h" />
+    <ClInclude Include="game\actor\enemy\EnemyThunderSlime.h" />
     <ClInclude Include="game\actor\enemy\EnemyGiantSlime.h" />
     <ClInclude Include="game\actor\enemy\EnemyBat.h" />
     <ClInclude Include="game\actor\enemy\EnemyBeamDrone.h" />
@@ -736,6 +746,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\scene\GameOverScene.h" />
     <ClInclude Include="game\scene\GameClearScene.h" />
     <ClInclude Include="game\system\GameRule.h" />
+    <ClInclude Include="game\system\GroundEffectLocator.h" />
+    <ClInclude Include="game\system\HitEffectDirector.h" />
     <ClInclude Include="game\actor\Bullet.h" />
     <ClInclude Include="game\system\BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />
@@ -745,6 +757,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\CollisionConfig.h" />
     <ClInclude Include="engine\system\collision\CollisionManager.h" />
     <ClInclude Include="engine\system\scene\BaseScene.h" />
+    <ClInclude Include="engine\system\scene\LoadingScene.h" />
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h" />
     <ClInclude Include="engine\graphics\3d\camera\Camera.h" />
     <ClInclude Include="engine\system\audio\AudioPlayer.h" />
@@ -790,7 +803,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.h" />
     <ClInclude Include="engine\graphics\2d\Text.h" />
     <ClInclude Include="game\scene\TitleScene.h" />
+    <ClInclude Include="game\system\GameAudioSettings.h" />
     <ClInclude Include="game\system\GameSettingsManager.h" />
+    <ClInclude Include="game\system\SpriteLayoutScaler.h" />
     <ClInclude Include="engine\utility\SystemDebug\Log.h" />
     <ClInclude Include="game\component\IMoveStrategy.h" />
     <ClInclude Include="game\component\MoveStrategy2D.h" />
@@ -811,6 +826,13 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
     <ClInclude Include="game\actor\player\PlayerMover.h" />
     <ClInclude Include="game\actor\player\PlayerState.h" />
+    <ClInclude Include="game\actor\player\PlayerState.Basic.h" />
+    <ClInclude Include="game\actor\player\PlayerState.Carry.h" />
+    <ClInclude Include="game\actor\player\PlayerState.Damage.h" />
+    <ClInclude Include="game\actor\player\PlayerState.Hook.h" />
+    <ClInclude Include="game\actor\player\PlayerState.Life.h" />
+    <ClInclude Include="game\actor\player\PlayerState.PullEnemy.h" />
+    <ClInclude Include="game\actor\player\PlayerState.PullObject.h" />
     <ClInclude Include="game\actor\player\PlayerClone.h" />
     <ClInclude Include="engine\graphics\postprocess\Fade.h" />
     <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
@@ -829,6 +851,11 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h" />

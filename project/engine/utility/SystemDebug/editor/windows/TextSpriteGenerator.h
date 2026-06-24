@@ -20,6 +20,9 @@ class SceneManager;
 class Sprite;
 class SpriteCommon;
 
+/// <summary>
+/// 入力テキストから透過PNGを生成し、Spriteとしてシーンへ追加できるEditorツール。
+/// </summary>
 class TextSpriteGenerator : public IEditable {
 public:
     TextSpriteGenerator() = default;
@@ -46,6 +49,7 @@ private:
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* editor_ = nullptr;
 
+    // Direct2D/DirectWrite/WICの生成用リソース。
     Microsoft::WRL::ComPtr<IWICImagingFactory> wicFactory_;
     Microsoft::WRL::ComPtr<ID2D1Factory> d2dFactory_;
     Microsoft::WRL::ComPtr<IDWriteFactory> dwriteFactory_;
@@ -58,6 +62,7 @@ private:
     std::vector<std::string> fontNamesUtf8_;
     int selectedFontIndex_ = 0;
 
+    // UI入力とPNG生成パラメータ。
     char textBuffer_[1024] = "Text";
     char outputNameBuffer_[128] = "text.png";
     char fontFilterBuffer_[128] = "";
@@ -78,6 +83,7 @@ private:
     float shadowOffset_[2] = { 4.0f, 4.0f };
     float shadowColor_[4] = { 0.0f, 0.0f, 0.0f, 0.45f };
 
+    // GameView上のプレビュー状態。
     bool previewEnabled_ = true;
     bool previewBoundsEnabled_ = true;
     bool previewAutoUpdate_ = true;
@@ -93,6 +99,7 @@ private:
     Vector2 gameViewOffset_ = { 0.0f, 0.0f };
     Vector2 gameViewSize_ = { 0.0f, 0.0f };
 
+    // 書き出し後にシーンへ追加するSprite情報。
     bool pendingAddSprite_ = false;
     std::string pendingSpriteFullPath_;
     std::string pendingSpriteRelativePath_;

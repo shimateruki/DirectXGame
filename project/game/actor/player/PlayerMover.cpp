@@ -9,6 +9,8 @@
 #include <cmath>
 #include <PlayerState.h>
 #include "EventManager.h"
+#include "GPUParticleManager.h"
+#include "GroundEffectLocator.h"
 
 PlayerMover::PlayerMover() {}
 
@@ -66,6 +68,9 @@ void PlayerMover::Update(float deltaTime)
     }
     if (iceTimer_ > 0.0f) {
         iceTimer_ = (std::max)(0.0f, iceTimer_ - deltaTime);
+    }
+    if (landingDustCooldown_ > 0.0f) {
+        landingDustCooldown_ = (std::max)(0.0f, landingDustCooldown_ - deltaTime);
     }
 
     const bool isDashPanelActive = dashPanelTimer_ > 0.0f;
@@ -148,6 +153,10 @@ void PlayerMover::Update(float deltaTime)
 
     // --- 7. ジャンプ・溜め攻撃処理 ---
     bool isGrounded = player_->IsGrounded();
+    if (hasGroundedHistory_ && isGrounded && !wasGroundedLastFrame_ && landingDustCooldown_ <= 0.0f) {
+        EmitGroundDust("player_land_dust", 0.035f);
+        landingDustCooldown_ = 0.12f;
+    }
     if (isGrounded) {
         hasAirDashed_ = false; // 地面に着いたら空中ダッシュ権をリセット
     }
@@ -227,16 +236,7 @@ void PlayerMover::Update(float deltaTime)
             player_->IncrementJumpCount();
             EventManager::GetInstance()->Dispatch(jumpEvent);
 
-            // ジャンプ時の土煙エフェクト
-            if (particleSystem_) {
-                Vector3 footPos = player_->GetWorldPosition();
-                footPos.y -= 1.0f;
-                particleSystem_->SpawnParticles(
-                    footPos, 15, 1.0f, nullptr, 1.0f,
-                    { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
-                    0.2f, 0.5f, 1.0f, 0.1f
-                );
-            }
+            EmitGroundDust("player_jump_dust", 0.035f);
 
             // 水平方向の速度を現在の向きに合わせる
             if (hasMoveInput) {
@@ -334,6 +334,20 @@ void PlayerMover::Update(float deltaTime)
 
     // --- 10. 最終的な速度をプレイヤーへ適用 ---
     player_->SetVelocity(velocity);
+    wasGroundedLastFrame_ = player_->IsGrounded();
+    hasGroundedHistory_ = true;
+}
+
+void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const
+{
+    if (!player_ || !presetName) return;
+
+    GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
+    if (!particleManager || !particleManager->IsInitialized()) return;
+
+    Vector3 emitPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
+    emitPos.y += yOffset;
+    particleManager->Emit(presetName, emitPos);
 }
 
 void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy)

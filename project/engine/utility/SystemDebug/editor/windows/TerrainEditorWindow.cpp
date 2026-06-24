@@ -490,7 +490,11 @@ uint32_t TerrainEditorWindow::HeightToColor(float normalizedHeight) const {
     const ImVec4 color = normalizedHeight < 0.55f
         ? LerpColor(low, mid, normalizedHeight / 0.55f)
         : LerpColor(mid, high, (normalizedHeight - 0.55f) / 0.45f);
-    return ImGui::ColorConvertFloat4ToU32(color);
+
+    auto toByte = [](float value) -> uint32_t {
+        return static_cast<uint32_t>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+    };
+    return (toByte(color.w) << 24) | (toByte(color.z) << 16) | (toByte(color.y) << 8) | toByte(color.x);
 }
 
 bool TerrainEditorWindow::RunTerrainBuilder() {
@@ -517,7 +521,7 @@ bool TerrainEditorWindow::RunTerrainBuilder() {
     paintPresetIndex_ = std::clamp(paintPresetIndex_, 0, static_cast<int>(kPaintPresetArgs.size()) - 1);
 
     std::string command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ";
-    command += QuoteCommandArg("tools/terrain_mesh_builder.ps1");
+    command += QuoteCommandArg("tools/terrain/terrain_mesh_builder.ps1");
     command += " -Name " + QuoteCommandArg(name);
     command += " -Resolution " + std::to_string(resolution_);
     command += " -SizeX " + FormatFloat(sizeX_);

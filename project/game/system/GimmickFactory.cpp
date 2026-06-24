@@ -31,10 +31,11 @@ GimmickFactory* GimmickFactory::GetInstance() {
     return &instance;
 }
 
+// ギミックタイプ名ごとに専用クラスを作る。新規ギミック追加時はここへ分岐を追加する。
 std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gimmickName, Object3dCommon* common) {
     std::unique_ptr<BaseGimmick> newGimmick = nullptr;
 
-    // 例：動く床の場合
+    // 足場系
     if (gimmickName == "MovingFloor") {
         auto floor = std::make_unique<GimmickMovingFloor>();
         floor->Initialize(common, "Stages/block");
@@ -45,31 +46,27 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         
         newGimmick = std::move(floor);
     }
-    // ジャンプ台の場合
     else if (gimmickName == "Trampoline") {
         auto trampoline = std::make_unique<GimmickTrampoline>();
         trampoline->Initialize(common, "Primitives/cube"); // とりあえず立方体
         newGimmick = std::move(trampoline);
     }
-    // ちくわブロックの場合
     else if (gimmickName == "ChikuwaBlock") {
         auto chikuwa = std::make_unique<GimmickChikuwaBlock>();
         chikuwa->Initialize(common, "Stages/block"); // 足場用のモデル
         newGimmick = std::move(chikuwa);
     }
-    // 点滅ブロックの場合
     else if (gimmickName == "BlinkBlock") {
         auto blink = std::make_unique<GimmickBlinkBlock>();
         blink->Initialize(common, "Stages/block");
         newGimmick = std::move(blink);
     }
-    // 壊せるブロックの場合
     else if (gimmickName == "BreakableBlock") {
         auto breakable = std::make_unique<GimmickBreakableBlock>();
-        breakable->Initialize(common, "Stages/block");
+        breakable->Initialize(common, "Stages/bomb_break_block");
         newGimmick = std::move(breakable);
     }
-    // コインの場合
+    // 収集/フック/スイッチ系
     else if (gimmickName == "Coin") {
         auto coin = std::make_unique<GimmickCoin>();
         coin->Initialize(common, "Primitives/sphere"); // sphereモデルをデフォルトに設定
@@ -190,13 +187,13 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         newGimmick = std::move(gate);
     }
 
-    // 該当するギミックがない場合、またはベースを直接生成する場合
+    // 該当するギミックがない場合でも、配置確認できる仮のキューブを出す
     if (!newGimmick) {
         newGimmick = std::make_unique<BaseGimmick>();
         newGimmick->Initialize(common, "Primitives/cube");
     }
 
-    // 名前や種類を設定
+    // 生成後にタイプ名を保存して、エディタやイベント連携で参照できるようにする
     newGimmick->SetGimmickType(gimmickName);
 
     return newGimmick;

@@ -3,6 +3,7 @@
 
 #include "Sprite.h"
 #include "SpriteCommon.h"
+#include "SpriteLayoutScaler.h"
 #include "TextureManager.h"
 #include "json.hpp"
 
@@ -20,13 +21,6 @@ namespace {
 constexpr float kFadeInDuration = 0.16f;
 constexpr float kFadeOutDuration = 0.30f;
 constexpr float kPi = 3.1415926535f;
-
-Vector2 ReadVector2(const json& value, const Vector2& fallback) {
-    if (!value.is_array() || value.size() < 2) {
-        return fallback;
-    }
-    return { value[0].get<float>(), value[1].get<float>() };
-}
 
 Vector4 ReadColor(const json& value, const Vector4& fallback) {
     if (!value.is_array() || value.size() < 3) {
@@ -162,6 +156,7 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
         return;
     }
 
+    const auto layoutScale = SpriteLayoutScaler::Make(root);
     for (const auto& spriteData : root["sprites"]) {
         const std::string name = spriteData.value("name", "save_indicator_sprite");
         const std::string texture = spriteData.value("texture", "common/white.png");
@@ -171,9 +166,15 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
         sprite->Initialize(spriteCommon_, textureHandle);
         sprite->SetName(name);
         sprite->SetTextureName(texture);
-        sprite->SetPosition(ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()));
-        sprite->SetSize(ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()));
-        sprite->SetAnchorPoint(ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
+        sprite->SetPosition(SpriteLayoutScaler::ScalePosition(
+            SpriteLayoutScaler::ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()),
+            layoutScale
+        ));
+        sprite->SetSize(SpriteLayoutScaler::ScaleSize(
+            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()),
+            layoutScale
+        ));
+        sprite->SetAnchorPoint(SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
         sprite->SetColor(ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
         sprite->SetEmissive(spriteData.value("emissive", 1.0f));
         sprite->SetVisible(false);

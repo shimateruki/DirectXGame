@@ -1,0 +1,51 @@
+{
+    "version": 2,
+    "events": [
+        {
+            "type": 6,
+            "presetName": "enemy_defeat_light_pop",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.2, 0.0],
+            "duration": 0.24,
+            "intensity": 12.0,
+            "lightRadius": 6.5,
+            "lightDecay": 1.55,
+            "lightColor": [1.0, 0.86, 0.35, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "enemy_defeat_pop_smoke",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "enemy_defeat_gold_stars",
+            "triggerTime": 0.015,
+            "offset": [0.0, 0.05, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "enemy_defeat_rainbow_twinkles",
+            "triggerTime": 0.055,
+            "offset": [0.0, 0.16, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "enemy_defeat_smoke_trail",
+            "triggerTime": 0.12,
+            "offset": [0.0, 0.30, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "enemy_defeat_after_twinkle",
+            "triggerTime": 0.28,
+            "offset": [0.0, 0.62, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        }
+    ]
+}

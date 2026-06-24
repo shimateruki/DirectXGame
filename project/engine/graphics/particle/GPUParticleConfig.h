@@ -1,5 +1,6 @@
 #pragma once
 #include "engine/utility/math/Math.h"
+#include <string>
 
 
 struct GPUParticleConfig {
@@ -27,6 +28,12 @@ struct GPUParticleConfig {
     std::string texturePath = "Resources/sprite/Particle.png";
     float rotSpeed = 0.0f;
     int blendModeIndex = 0;
+    int spriteSheetColumns = 1;
+    int spriteSheetRows = 1;
+    int spriteSheetFrameCount = 1;
+    float spriteSheetFps = 0.0f;
+    int spriteSheetLoop = 0;
+    int spriteSheetRandomStart = 0;
 
     // --- 環境パラメータ ---
     Vector3 envGravity = { 0.0f, -9.8f, 0.0f };

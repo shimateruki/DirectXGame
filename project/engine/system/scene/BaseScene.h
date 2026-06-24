@@ -1,10 +1,10 @@
 #pragma once
-#include <vector>
+#include <cstdint>
 #include <memory>
 #include <string>
-#include <cstdint>
+#include <vector>
 
-// 継承先でも頻繁に使うためインクルード
+// 継承先でも頻繁に使うため、基底クラス側で共通 include しておく
 #include "Object3d.h"
 #include "Sprite.h"
 
@@ -17,68 +17,55 @@ class DebugEditor;
 class Camera;
 class DirectXCommon;
 class BulletManager;
-class Player; // ★追加: LevelLoader対応
+class Player;
 
 #include "engine/utility/state/IEditable.h"
 
 /// <summary>
-/// シーンの基底クラス
+/// すべてのシーンが実装する基底クラス。
 /// </summary>
 class BaseScene : public IEditable {
 public:
     virtual ~BaseScene() = default;
 
-    // --- IEditableの実装 ---
+    // --- IEditable ---
     virtual std::string GetName() override { return "Scene Settings"; }
     virtual void DrawImGui() override {}
 
-    // --- 必須オーバーライド関数 ---
+    // --- 必須オーバーライド ---
     virtual void Initialize() = 0;
     virtual void Update(float deltaTime) = 0;
     virtual void Draw() = 0;
     virtual void Finalize() = 0;
 
     // --- マネージャ設定 ---
-    virtual void SetSceneManager(SceneManager* sceneManager) {
-        sceneManager_ = sceneManager;
-    }
-    virtual void SetDebugEditor(DebugEditor* editor) {
-        debugEditor_ = editor;
-    }
+    virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+    virtual void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
 
-    // --- オブジェクト管理 (LevelLoader / Editor用) ---
-
-    // オブジェクトリスト取得 (デフォルト実装: 空リストを返す)
+    // --- オブジェクト管理 (LevelLoader / Editor 用) ---
     virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
         static std::vector<std::unique_ptr<Object3d>> empty;
         return empty;
     }
-    // スプライトリスト取得
+
     virtual std::vector<std::unique_ptr<Sprite>>& GetSprites() {
         static std::vector<std::unique_ptr<Sprite>> empty;
         return empty;
     }
 
-    // オブジェクト追加 (デフォルト実装: 何もしない)
     virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
-
-    // 削除予約
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
-
 
     // --- 共通リソース取得 ---
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
     virtual SpriteCommon* GetSpriteCommon() { return nullptr; }
     virtual ParticleSystem* GetParticleSystem() { return nullptr; }
 
-
-    // --- Player連携 (LevelLoader対応) ---
+    // --- Player 連携 (LevelLoader 用) ---
     virtual Player* GetPlayer() const { return nullptr; }
     virtual void SetPlayer(Player* player) { (void)player; }
 
-
-    // --- イベント関連 ---
-    // 実装はBaseScene.cppで行う想定（GetObjects()を使って検索するため）
+    // --- イベント連携 ---
     void TriggerEvent(int targetID);
     void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
@@ -88,9 +75,9 @@ public:
     std::string GetLoadedFilename() const { return loadedFilename_; }
     virtual void DrawShadow() {}
     Sprite* GetSpriteByName(const std::string& name);
-    // ==================================================
     void SetLoadedSpriteFilename(const std::string& name) { loadedSpriteFilename_ = name; }
     std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
+
 protected:
     bool IsSpecialMaterialType(int materialType) const;
     bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;

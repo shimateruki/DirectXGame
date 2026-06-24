@@ -149,7 +149,8 @@ void PlayerStateHook::Update(Player* player) {
             marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
             marker->GetTransform()->isQuaternionMaster = false;
             // 近づくにつれて太さが戻る
-            float t = std::max(0.0f, std::min(1.0f, 1.0f - (len / Math::Length(targetPos_ - hookTipPos_))));
+            const float initialRopeLength = std::max(0.001f, Math::Length(targetPos_ - hookTipPos_));
+            float t = std::max(0.0f, std::min(1.0f, 1.0f - (len / initialRopeLength)));
             float thickness = Math::Lerp(0.15f, 1.0f, t);
             // テンションによる振動演出
             float wobble = std::sin(wobbleTimer_ * 40.0f) * (1.0f - t) * 0.2f;

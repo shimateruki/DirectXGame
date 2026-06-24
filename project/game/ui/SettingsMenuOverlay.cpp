@@ -5,6 +5,7 @@
 #include "InputManager.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
+#include "SpriteLayoutScaler.h"
 #include "TextureManager.h"
 #include "json.hpp"
 
@@ -27,13 +28,6 @@ Vector4 LerpColor(const Vector4& a, const Vector4& b, float t) {
         a.z + (b.z - a.z) * t,
         a.w + (b.w - a.w) * t
     };
-}
-
-Vector2 ReadVector2(const json& value, const Vector2& fallback) {
-    if (!value.is_array() || value.size() < 2) {
-        return fallback;
-    }
-    return { value[0].get<float>(), value[1].get<float>() };
 }
 
 Vector4 ReadColor(const json& value, const Vector4& fallback) {
@@ -68,7 +62,15 @@ void SettingsMenuOverlay::Finalize() {
     panel_ = nullptr;
     title_ = nullptr;
     hintLine_ = nullptr;
+    slimeCursor_ = nullptr;
+    slimeCursorOffset_ = { 0.0f, 0.0f };
+    slimeCursorBaseSize_ = { 0.0f, 0.0f };
     rows_ = {};
+    categoryTabs_ = {};
+    categoryLabels_ = {};
+    categoryPointer_ = nullptr;
+    footerButtons_ = {};
+    footerTexts_ = {};
     spriteCommon_ = nullptr;
     inputManager_ = nullptr;
     isActive_ = false;
@@ -83,6 +85,9 @@ void SettingsMenuOverlay::SetActive(bool active) {
     suppressCloseInput_ = active;
     repeatTimer_ = 0.0f;
     repeatDirection_ = 0;
+    focusArea_ = FocusArea::Items;
+    selectedIndex_ = 0;
+    footerIndex_ = static_cast<int>(FooterAction::Apply);
 
     if (active) {
         GameSettingsManager::GetInstance()->Load();
@@ -145,6 +150,7 @@ void SettingsMenuOverlay::LoadLayout(const std::string& layoutPath) {
         return;
     }
 
+    const auto layoutScale = SpriteLayoutScaler::Make(root);
     for (const auto& spriteData : root["sprites"]) {
         const std::string name = spriteData.value("name", "settings_sprite");
         const std::string texture = spriteData.value("texture", "common/white.png");
@@ -154,9 +160,15 @@ void SettingsMenuOverlay::LoadLayout(const std::string& layoutPath) {
         sprite->Initialize(spriteCommon_, textureHandle);
         sprite->SetName(name);
         sprite->SetTextureName(texture);
-        sprite->SetPosition(ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()));
-        sprite->SetSize(ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()));
-        sprite->SetAnchorPoint(ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
+        sprite->SetPosition(SpriteLayoutScaler::ScalePosition(
+            SpriteLayoutScaler::ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()),
+            layoutScale
+        ));
+        sprite->SetSize(SpriteLayoutScaler::ScaleSize(
+            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()),
+            layoutScale
+        ));
+        sprite->SetAnchorPoint(SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
         sprite->SetColor(ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
         sprite->SetEmissive(spriteData.value("emissive", 1.0f));
         sprite->SetVisible(false);
@@ -171,12 +183,66 @@ void SettingsMenuOverlay::BindLayoutSprites() {
     panel_ = FindSprite("settings_panel");
     title_ = FindSprite("settings_title");
     hintLine_ = FindSprite("settings_hint_line");
+    slimeCursor_ = FindSprite("settings_slime_cursor");
+    footerButtons_[static_cast<size_t>(FooterAction::Back)] = FindSprite("settings_footer_back_button");
+    footerButtons_[static_cast<size_t>(FooterAction::Reset)] = FindSprite("settings_footer_reset_button");
+    footerButtons_[static_cast<size_t>(FooterAction::Apply)] = FindSprite("settings_footer_apply_button");
+    footerTexts_[static_cast<size_t>(FooterAction::Back)] = FindSprite("settings_footer_back_text");
+    footerTexts_[static_cast<size_t>(FooterAction::Reset)] = FindSprite("settings_footer_reset_text");
+    footerTexts_[static_cast<size_t>(FooterAction::Apply)] = FindSprite("settings_footer_apply_text");
+    categoryTabs_[0] = FindSprite("settings_category_sound_tab");
+    categoryTabs_[1] = FindSprite("settings_category_control_tab");
+    categoryLabels_[0] = FindSprite("settings_category_sound_label");
+    categoryLabels_[1] = FindSprite("settings_category_control_label");
+    categoryPointer_ = FindSprite("settings_category_pointer");
 
-    constexpr std::array<const char*, 3> prefixes = {
+    constexpr std::array<const char*, static_cast<size_t>(Item::Count)> prefixes = {
         "settings_bgm",
         "settings_se",
         "settings_camera"
     };
+
+    const std::array<std::string, 3> hiddenPrefixes = {
+        "settings_brightness",
+        "settings_resolution",
+        "settings_fullscreen"
+    };
+    const std::array<std::string, 9> hiddenParts = {
+        "_row",
+        "_label",
+        "_track",
+        "_fill",
+        "_knob",
+        "_arrow_left",
+        "_arrow_right",
+        "_value_label",
+        "_value0"
+    };
+
+    if (Sprite* screenTab = FindSprite("settings_category_screen_tab")) {
+        if (Sprite* controlTab = categoryTabs_[static_cast<size_t>(Category::Control)]) {
+            controlTab->SetPosition(screenTab->GetPosition());
+        }
+        screenTab->SetVisible(false);
+    }
+    if (Sprite* screenLabel = FindSprite("settings_category_screen_label")) {
+        if (Sprite* controlLabel = categoryLabels_[static_cast<size_t>(Category::Control)]) {
+            controlLabel->SetPosition(screenLabel->GetPosition());
+        }
+        screenLabel->SetVisible(false);
+    }
+    for (const std::string& prefix : hiddenPrefixes) {
+        for (const std::string& part : hiddenParts) {
+            if (Sprite* sprite = FindSprite(prefix + part)) {
+                sprite->SetVisible(false);
+            }
+        }
+        for (int digit = 1; digit < 3; ++digit) {
+            if (Sprite* sprite = FindSprite(prefix + "_value" + std::to_string(digit))) {
+                sprite->SetVisible(false);
+            }
+        }
+    }
 
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {
         const std::string prefix = prefixes[static_cast<size_t>(i)];
@@ -186,12 +252,25 @@ void SettingsMenuOverlay::BindLayoutSprites() {
         row.track = FindSprite(prefix + "_track");
         row.fill = FindSprite(prefix + "_fill");
         row.knob = FindSprite(prefix + "_knob");
+        row.leftArrow = FindSprite(prefix + "_arrow_left");
+        row.rightArrow = FindSprite(prefix + "_arrow_right");
+        row.valueLabel = FindSprite(prefix + "_value_label");
         if (row.fill) {
             row.fill->SetAnchorPoint({ 0.0f, 0.5f });
         }
 
         for (int digit = 0; digit < 3; ++digit) {
             row.digits[static_cast<size_t>(digit)] = FindSprite(prefix + "_value" + std::to_string(digit));
+        }
+    }
+
+    if (slimeCursor_) {
+        slimeCursor_->SetTextureRect({ 115.0f, 218.0f }, { 1024.0f, 827.0f });
+        slimeCursorBaseSize_ = slimeCursor_->GetSize();
+        if (rows_[0].backdrop) {
+            const Vector2 rowPosition = rows_[0].backdrop->GetPosition();
+            const Vector2 cursorPosition = slimeCursor_->GetPosition();
+            slimeCursorOffset_ = { cursorPosition.x - rowPosition.x, cursorPosition.y - rowPosition.y };
         }
     }
 }
@@ -211,6 +290,54 @@ void SettingsMenuOverlay::SetAllVisible(bool visible) {
             sprite->SetVisible(visible);
         }
     }
+
+    // 画面設定は一旦削除したため、古いJSONに残っていても表示しない。
+    if (!visible) {
+        return;
+    }
+
+    if (Sprite* screenTab = FindSprite("settings_category_screen_tab")) {
+        if (Sprite* controlTab = categoryTabs_[static_cast<size_t>(Category::Control)]) {
+            controlTab->SetPosition(screenTab->GetPosition());
+        }
+        screenTab->SetVisible(false);
+    }
+    if (Sprite* screenLabel = FindSprite("settings_category_screen_label")) {
+        if (Sprite* controlLabel = categoryLabels_[static_cast<size_t>(Category::Control)]) {
+            controlLabel->SetPosition(screenLabel->GetPosition());
+        }
+        screenLabel->SetVisible(false);
+    }
+
+    const std::array<std::string, 3> hiddenPrefixes = {
+        "settings_brightness",
+        "settings_resolution",
+        "settings_fullscreen"
+    };
+    const std::array<std::string, 9> hiddenParts = {
+        "_row",
+        "_label",
+        "_track",
+        "_fill",
+        "_knob",
+        "_arrow_left",
+        "_arrow_right",
+        "_value_label",
+        "_value0"
+    };
+
+    for (const std::string& prefix : hiddenPrefixes) {
+        for (const std::string& part : hiddenParts) {
+            if (Sprite* sprite = FindSprite(prefix + part)) {
+                sprite->SetVisible(false);
+            }
+        }
+        for (int digit = 1; digit < 3; ++digit) {
+            if (Sprite* sprite = FindSprite(prefix + "_value" + std::to_string(digit))) {
+                sprite->SetVisible(false);
+            }
+        }
+    }
 }
 
 bool SettingsMenuOverlay::IsDecisionOrBackHeld() const {
@@ -222,6 +349,7 @@ bool SettingsMenuOverlay::IsDecisionOrBackHeld() const {
         inputManager_->IsKeyPressed(DIK_RETURN) ||
         inputManager_->IsKeyPressed(DIK_BACK) ||
         inputManager_->IsKeyPressed(DIK_ESCAPE) ||
+        inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_A) ||
         inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_B);
 }
 
@@ -247,10 +375,21 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::UpdateInput(float deltaTime) {
         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
 
     if (up) {
-        ChangeSelection(-1);
+        if (focusArea_ == FocusArea::Footer) {
+            focusArea_ = FocusArea::Items;
+            selectedIndex_ = static_cast<int>(Item::Count) - 1;
+        } else {
+            ChangeSelection(-1);
+        }
     }
     if (down) {
-        ChangeSelection(1);
+        if (focusArea_ == FocusArea::Items && selectedIndex_ == static_cast<int>(Item::Count) - 1) {
+            focusArea_ = FocusArea::Footer;
+            repeatTimer_ = 0.0f;
+            repeatDirection_ = 0;
+        } else if (focusArea_ == FocusArea::Items) {
+            ChangeSelection(1);
+        }
     }
 
     const bool leftPressed =
@@ -281,12 +420,26 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::UpdateInput(float deltaTime) {
         triggered = rightTriggered;
     }
 
-    if (direction != 0) {
-        repeatTimer_ -= deltaTime;
-        if (triggered || direction != repeatDirection_ || repeatTimer_ <= 0.0f) {
-            AdjustSelectedValue(direction);
-            repeatTimer_ = triggered || direction != repeatDirection_ ? kAdjustRepeatFirst : kAdjustRepeatNext;
-            repeatDirection_ = direction;
+    if (focusArea_ == FocusArea::Footer && (leftTriggered || rightTriggered)) {
+        ChangeFooterSelection(leftTriggered ? -1 : 1);
+        direction = 0;
+    }
+
+    if (focusArea_ == FocusArea::Items && direction != 0) {
+        const Item currentItem = static_cast<Item>(selectedIndex_);
+        if (IsChoiceItem(currentItem)) {
+            if (triggered) {
+                AdjustSelectedValue(direction);
+            }
+            repeatTimer_ = 0.0f;
+            repeatDirection_ = 0;
+        } else {
+            repeatTimer_ -= deltaTime;
+            if (triggered || direction != repeatDirection_ || repeatTimer_ <= 0.0f) {
+                AdjustSelectedValue(direction);
+                repeatTimer_ = triggered || direction != repeatDirection_ ? kAdjustRepeatFirst : kAdjustRepeatNext;
+                repeatDirection_ = direction;
+            }
         }
     } else {
         repeatTimer_ = 0.0f;
@@ -295,27 +448,43 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::UpdateInput(float deltaTime) {
 
     if (inputManager_->IsKeyTriggered(DIK_BACK) ||
         inputManager_->IsKeyTriggered(DIK_ESCAPE) ||
-        inputManager_->IsKeyTriggered(DIK_RETURN) ||
-        inputManager_->IsKeyTriggered(DIK_SPACE) ||
         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
         SetActive(false);
         return Result::Closed;
+    }
+
+    if (focusArea_ == FocusArea::Footer &&
+        (inputManager_->IsKeyTriggered(DIK_RETURN) ||
+            inputManager_->IsKeyTriggered(DIK_SPACE) ||
+            inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A))) {
+        if (ExecuteFooterAction()) {
+            return Result::Closed;
+        }
     }
 
     return Result::None;
 }
 
 void SettingsMenuOverlay::UpdateSprites() {
-    const Vector4 normalText = { 0.78f, 0.92f, 0.96f, 0.78f };
-    const Vector4 selectedText = { 0.30f, 0.86f, 1.0f, 1.0f };
-    const Vector4 fillNormal = { 0.22f, 0.78f, 0.95f, 0.88f };
-    const Vector4 fillSelected = { 0.25f, 0.84f, 1.0f, 0.98f };
+    const Vector4 normalText = { 0.11f, 0.18f, 0.22f, 0.98f };
+    const Vector4 selectedText = { 0.04f, 0.13f, 0.18f, 1.0f };
+    const Vector4 fillNormal = { 0.06f, 0.72f, 0.78f, 0.94f };
+    const Vector4 fillSelected = { 0.03f, 0.82f, 0.88f, 1.0f };
 
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {
         OptionRow& row = rows_[static_cast<size_t>(i)];
-        const bool selected = i == selectedIndex_;
+        const Item item = static_cast<Item>(i);
+        const bool visible = IsItemVisible(item);
+        SetRowVisible(row, visible);
+        if (!visible) {
+            continue;
+        }
+
+        const bool selected = focusArea_ == FocusArea::Items && i == selectedIndex_;
         const float pulse = selected ? (0.5f + 0.5f * std::sin(sceneTime_ * 5.5f)) : 0.0f;
-        const float normalized = GetNormalizedValue(static_cast<Item>(i));
+        const float normalized = GetNormalizedValue(item);
+        const bool sliderItem = IsSliderItem(item);
+        const bool choiceItem = IsChoiceItem(item);
 
         Vector2 trackPosition = row.track ? row.track->GetPosition() : Vector2{ 0.0f, 0.0f };
         Vector2 trackSize = row.track ? row.track->GetSize() : Vector2{ 1.0f, 1.0f };
@@ -328,22 +497,33 @@ void SettingsMenuOverlay::UpdateSprites() {
             row.backdrop->SetTextureHandle(handle);
             const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
             row.backdrop->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
-            row.backdrop->SetColor(selected ? Vector4{ 1.0f, 1.0f, 1.0f, 0.96f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.82f });
+            row.backdrop->SetColor(selected ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.98f });
         }
         if (row.label) {
             row.label->SetColor(selected ? selectedText : normalText);
         }
         if (row.fill) {
+            row.fill->SetVisible(sliderItem);
             row.fill->SetPosition({ sliderLeft, trackPosition.y });
             row.fill->SetSize({ fillWidth, trackSize.y });
             row.fill->SetColor(selected ? LerpColor(fillSelected, { 0.70f, 1.0f, 1.0f, 1.0f }, pulse * 0.45f) : fillNormal);
         }
         if (row.knob) {
+            row.knob->SetVisible(sliderItem);
             const Vector2 knobBaseSize = row.track ? Vector2{ trackSize.y * 1.7f, trackSize.y * 1.7f } : row.knob->GetSize();
             const float knobScale = selected ? kSelectedKnobScale : 1.0f;
             row.knob->SetPosition({ sliderLeft + trackSize.x * normalized, trackPosition.y });
             row.knob->SetSize({ knobBaseSize.x * knobScale, knobBaseSize.y * knobScale });
             row.knob->SetColor(selected ? Vector4{ 0.75f, 1.0f, 1.0f, 1.0f } : Vector4{ 0.84f, 0.96f, 1.0f, 0.9f });
+        }
+        if (row.track) {
+            row.track->SetVisible(sliderItem);
+        }
+        if (row.leftArrow) {
+            row.leftArrow->SetColor(selected ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.88f });
+        }
+        if (row.rightArrow) {
+            row.rightArrow->SetColor(selected ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.88f });
         }
 
         Vector2 valueRightPosition = trackPosition;
@@ -357,14 +537,120 @@ void SettingsMenuOverlay::UpdateSprites() {
             };
         }
 
+        if (row.valueLabel) {
+            const std::string texture = GetDisplayTextTexture(item);
+            if (!texture.empty()) {
+                const uint32_t handle = Sprite::LoadTexture(texture);
+                row.valueLabel->SetTextureHandle(handle);
+                const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
+                row.valueLabel->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
+            }
+            if (choiceItem && row.leftArrow && row.rightArrow) {
+                const Vector2 leftPosition = row.leftArrow->GetPosition();
+                const Vector2 rightPosition = row.rightArrow->GetPosition();
+                row.valueLabel->SetPosition({ (leftPosition.x + rightPosition.x) * 0.5f, trackPosition.y });
+            }
+            row.valueLabel->SetColor(selected ? selectedText : normalText);
+        }
+
+        const bool numeric = IsSliderItem(item);
         const float digitHeight = std::max(34.0f, trackSize.y * (selected ? 1.42f : 1.26f));
-        SetNumberSprites(row, GetDisplayValue(static_cast<Item>(i)), valueRightPosition, digitHeight, selected ? selectedText : normalText);
+        SetNumberSprites(row, GetDisplayValue(item), valueRightPosition, digitHeight, selected ? selectedText : normalText);
+        if (!numeric) {
+            for (Sprite* digit : row.digits) {
+                if (digit) {
+                    digit->SetVisible(false);
+                }
+            }
+        }
+    }
+
+    UpdateCategorySprites();
+    UpdateFooterSprites();
+}
+
+void SettingsMenuOverlay::UpdateCategorySprites() {
+    const uint32_t normalHandle = Sprite::LoadTexture("ui/settings/settings_category_tab.png");
+    const uint32_t selectedHandle = Sprite::LoadTexture("ui/settings/settings_category_tab_selected.png");
+    const int activeCategory = static_cast<int>(GetItemCategory(static_cast<Item>(selectedIndex_)));
+
+    for (int i = 0; i < static_cast<int>(Category::Count); ++i) {
+        const bool active = i == activeCategory && focusArea_ == FocusArea::Items;
+        Sprite* tab = categoryTabs_[static_cast<size_t>(i)];
+        if (tab) {
+            tab->SetTextureHandle(active ? selectedHandle : normalHandle);
+            const auto& metadata = TextureManager::GetInstance()->GetMetadata(active ? selectedHandle : normalHandle);
+            tab->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
+            tab->SetColor({ 1.0f, 1.0f, 1.0f, active ? 1.0f : 0.82f });
+        }
+        Sprite* label = categoryLabels_[static_cast<size_t>(i)];
+        if (label) {
+            label->SetColor(active
+                ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }
+                : Vector4{ 0.11f, 0.18f, 0.22f, 0.98f });
+        }
+    }
+
+    if (categoryPointer_) {
+        Sprite* activeTab = categoryTabs_[static_cast<size_t>(activeCategory)];
+        if (activeTab) {
+            const Vector2 tabPosition = activeTab->GetPosition();
+            const Vector2 tabSize = activeTab->GetSize();
+            categoryPointer_->SetPosition({ tabPosition.x - tabSize.x * 0.72f, tabPosition.y });
+            if (slimeCursor_) {
+                const float bob = std::sin(sceneTime_ * 7.0f) * 4.0f;
+                const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 5.5f);
+                const float squash = 1.0f + pulse * 0.05f;
+                slimeCursor_->SetPosition({ tabPosition.x - tabSize.x * 0.94f, tabPosition.y + bob });
+                slimeCursor_->SetSize({
+                    slimeCursorBaseSize_.x * squash,
+                    slimeCursorBaseSize_.y * (1.04f - pulse * 0.04f)
+                });
+                slimeCursor_->SetColor({
+                    1.0f,
+                    1.0f,
+                    1.0f,
+                    focusArea_ == FocusArea::Items ? 0.96f : 0.55f
+                });
+            }
+        }
+        categoryPointer_->SetColor({
+            1.0f,
+            1.0f,
+            1.0f,
+            focusArea_ == FocusArea::Items ? 1.0f : 0.55f
+        });
+    } else if (slimeCursor_) {
+        slimeCursor_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+}
+
+void SettingsMenuOverlay::SetRowVisible(OptionRow& row, bool visible) {
+    if (row.backdrop) row.backdrop->SetVisible(visible);
+    if (row.label) row.label->SetVisible(visible);
+    if (row.track) row.track->SetVisible(visible);
+    if (row.fill) row.fill->SetVisible(visible);
+    if (row.knob) row.knob->SetVisible(visible);
+    if (row.leftArrow) row.leftArrow->SetVisible(visible);
+    if (row.rightArrow) row.rightArrow->SetVisible(visible);
+    if (row.valueLabel) row.valueLabel->SetVisible(visible);
+    for (Sprite* digit : row.digits) {
+        if (digit) {
+            digit->SetVisible(visible);
+        }
     }
 }
 
 void SettingsMenuOverlay::ChangeSelection(int direction) {
     const int count = static_cast<int>(Item::Count);
     selectedIndex_ = (selectedIndex_ + direction + count) % count;
+    repeatTimer_ = 0.0f;
+    repeatDirection_ = 0;
+}
+
+void SettingsMenuOverlay::ChangeFooterSelection(int direction) {
+    const int count = static_cast<int>(FooterAction::Count);
+    footerIndex_ = (footerIndex_ + direction + count) % count;
     repeatTimer_ = 0.0f;
     repeatDirection_ = 0;
 }
@@ -391,6 +677,79 @@ void SettingsMenuOverlay::AdjustSelectedValue(int direction) {
     settings->Save();
 }
 
+void SettingsMenuOverlay::UpdateFooterSprites() {
+    const uint32_t normalHandle = Sprite::LoadTexture("ui/settings/settings_footer_button.png");
+    const uint32_t selectedHandle = Sprite::LoadTexture("ui/settings/settings_footer_button_selected.png");
+    const Vector4 normalText = { 0.11f, 0.18f, 0.22f, 0.98f };
+    const Vector4 selectedText = { 1.0f, 0.98f, 0.78f, 1.0f };
+
+    for (int i = 0; i < static_cast<int>(FooterAction::Count); ++i) {
+        const bool selected = focusArea_ == FocusArea::Footer && i == footerIndex_;
+        Sprite* button = footerButtons_[static_cast<size_t>(i)];
+        if (button) {
+            button->SetTextureHandle(selected ? selectedHandle : normalHandle);
+            const auto& metadata = TextureManager::GetInstance()->GetMetadata(selected ? selectedHandle : normalHandle);
+            button->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
+            button->SetColor({ 1.0f, 1.0f, 1.0f, selected ? 1.0f : 0.88f });
+        }
+        Sprite* text = footerTexts_[static_cast<size_t>(i)];
+        if (text) {
+            text->SetColor(selected ? selectedText : normalText);
+        }
+    }
+}
+
+bool SettingsMenuOverlay::ExecuteFooterAction() {
+    switch (static_cast<FooterAction>(footerIndex_)) {
+    case FooterAction::Back:
+    case FooterAction::Apply:
+        GameSettingsManager::GetInstance()->Save();
+        SetActive(false);
+        return true;
+    case FooterAction::Reset:
+        ResetSettingsToDefault();
+        focusArea_ = FocusArea::Items;
+        selectedIndex_ = 0;
+        return false;
+    default:
+        return false;
+    }
+}
+
+void SettingsMenuOverlay::ResetSettingsToDefault() {
+    GameSettingsManager* settings = GameSettingsManager::GetInstance();
+    settings->SetBGMVolume(0.8f);
+    settings->SetSEVolume(0.8f);
+    settings->SetCameraSensitivity(1.0f);
+    settings->Save();
+}
+
+SettingsMenuOverlay::Category SettingsMenuOverlay::GetItemCategory(Item item) const {
+    switch (item) {
+    case Item::BGM:
+    case Item::SE:
+        return Category::Sound;
+    case Item::CameraSensitivity:
+    default:
+        return Category::Control;
+    }
+}
+
+bool SettingsMenuOverlay::IsItemVisible(Item item) const {
+    return GetItemCategory(item) == GetItemCategory(static_cast<Item>(selectedIndex_));
+}
+
+bool SettingsMenuOverlay::IsSliderItem(Item item) const {
+    return item == Item::BGM ||
+        item == Item::SE ||
+        item == Item::CameraSensitivity;
+}
+
+bool SettingsMenuOverlay::IsChoiceItem(Item item) const {
+    (void)item;
+    return false;
+}
+
 float SettingsMenuOverlay::GetValue(Item item) const {
     GameSettingsManager* settings = GameSettingsManager::GetInstance();
     switch (item) {
@@ -407,13 +766,18 @@ float SettingsMenuOverlay::GetValue(Item item) const {
 
 float SettingsMenuOverlay::GetNormalizedValue(Item item) const {
     if (item == Item::CameraSensitivity) {
-        return std::clamp((GetValue(item) - 0.5f) / 1.5f, 0.0f, 1.0f);
+        return std::clamp(GetValue(item), 0.0f, 1.0f);
     }
     return std::clamp(GetValue(item), 0.0f, 1.0f);
 }
 
 int SettingsMenuOverlay::GetDisplayValue(Item item) const {
-    return static_cast<int>(std::round(GetValue(item) * 100.0f));
+    return std::clamp(static_cast<int>(std::round(GetNormalizedValue(item) * 100.0f)), 0, 100);
+}
+
+std::string SettingsMenuOverlay::GetDisplayTextTexture(Item item) const {
+    (void)item;
+    return "";
 }
 
 void SettingsMenuOverlay::SetNumberSprites(OptionRow& row, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color) {

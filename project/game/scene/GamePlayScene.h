@@ -1,33 +1,31 @@
 #pragma once
-#include "BaseScene.h" 
-#include "Object3dCommon.h"
-#include "SpriteCommon.h"
-#include "Object3d.h"
-#include "Sprite.h"
+#include "BaseScene.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
-#include "SpriteDebugEditor.h"
-#include "Player.h"
-#include "Text.h"
-#include "Event.h"
 #include "BulletManager.h"
 #include "Camera.h"
+#include "DebugEditor.h"
+#include "Event.h"
 #include "MeshRenderer.h"
+#include "Object3d.h"
+#include "Object3dCommon.h"
+#include "ObjectManager.h"
+#include "ParticleCommon.h"
+#include "ParticleSystem.h"
+#include "Player.h"
+#include "Sprite.h"
+#include "SpriteCommon.h"
+#include "SpriteDebugEditor.h"
+#include "Text.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 #include "game/ui/SettingsMenuOverlay.h"
-
-#include "ObjectManager.h"
-#include "DebugEditor.h" 
 #include <GhostRecorder.h>
-
-#include <memory>
-#include <array>
-#include <vector>
 #include <Skybox.h>
+#include <array>
+#include <memory>
+#include <vector>
 
-// --- 前方宣言 ---
+// 前方宣言
 class DirectXCommon;
 class InputManager;
 class SceneManager;
@@ -37,9 +35,8 @@ class GameRule;
 class BossCore;
 struct StageData;
 
-
 /// <summary>
-/// ゲームプレイシーン
+/// ゲームプレイ本編のシーン。ステージ読み込み、プレイヤー、HUD、ゴール演出を統合する。
 /// </summary>
 class GamePlayScene : public BaseScene {
 public:
@@ -54,37 +51,33 @@ public:
     void DrawUI() override;
     void DrawShadow() override;
 
-    // --- IEditableの実装 ---
+    // --- IEditable ---
     std::string GetName() override { return "Game Play Scene"; }
     void DrawImGui() override;
 
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
 
-    // --- BaseScene インターフェース実装 ---
-
-    // オブジェクト管理は ObjectManager に委譲
+    // --- BaseScene インターフェース ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
-    // スプライトはシーンで保持 (ObjectManagerを拡張すれば移動可能)
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-    // 各種コモンクラス
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
-    // プレイヤー連携
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
-    // ゴール判定
+    // ゴール判定とステージクリア演出
     void SetIsGoal(bool isGoal);
+    void StartGoalPresentation(Object3d* crownObject);
     bool IsGoal() const { return isGoal_; }
 
-    // スターコイン
+    // スターコインとライフ減少演出
     void CollectStarCoin(int coinIndex);
     void CollectStarCoin(int coinIndex, const Vector3& worldPosition);
     void StartLifeLostPresentation(int beforeLives, int afterLives);
@@ -108,29 +101,29 @@ private:
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
-    // --- サブシステム (機能を委譲するクラスたち) ---
-    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;   // 配置読み込み
-    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr; // ロックオン管理
-    std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理 
+    // --- シーン内部システム ---
+    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
+    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr;
+    std::unique_ptr<ObjectManager> objectManager_ = nullptr;
 
-    // --- ゲームオブジェクト共通基盤 ---
+    // --- 描画共通基盤 ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
 
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
-    std::unique_ptr<Text>  debugText_;
+    std::unique_ptr<Text> debugText_;
     std::unique_ptr<GameRule> gameRule_;
 
     Player* player_ = nullptr;
 
-    // --- BGM・SE ---
+    // --- BGM / SE ---
     uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
-    // ライト
+    // --- ライト ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     MeshRenderer::PointLight* pointLightData_ = nullptr;
 
@@ -138,17 +131,37 @@ private:
     MeshRenderer::SpotLight* spotLightData_ = nullptr;
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
-    bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
+    bool isDrawLockOn_ = false;
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
 
-    // アニメーションモデルのテスト用変数
     std::unique_ptr<Object3d> animatedCube_;
 
+    // --- ゴール/クリア演出 ---
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+    enum class GoalPresentationState {
+        Inactive,
+        Celebrating,
+        ReadyToReturn,
+        Returning
+    };
+    GoalPresentationState goalPresentationState_ = GoalPresentationState::Inactive;
+    float goalPresentationTimer_ = 0.0f;
+    float goalStarEmitTimer_ = 0.0f;
+    Vector3 goalCrownPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalPlayerBasePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalPlayerBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 goalPlayerBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    bool goalSavedPlayerControlActive_ = true;
+    bool goalPlayerSnapshotValid_ = false;
+    std::unique_ptr<Sprite> goalOverlayBackdrop_;
+    std::unique_ptr<Sprite> goalOverlayCrown_;
+    std::unique_ptr<Sprite> goalOverlayStageClearText_;
+    std::unique_ptr<Sprite> goalOverlayReturnText_;
 
+    // HUD の基準値。演出で拡縮しても戻せるよう保存する。
     struct HudSpriteState {
         Sprite* sprite = nullptr;
         Vector2 basePosition = { 0.0f, 0.0f };
@@ -156,6 +169,7 @@ private:
         Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
+    // --- プレイ中 HUD ---
     HudSpriteState hudHpIcon_;
     HudSpriteState hudHpFrame_;
     HudSpriteState hudHpDamageFill_;
@@ -174,6 +188,8 @@ private:
     std::array<HudSpriteState, 3> hudStageStarSlots_;
     std::array<float, 3> hudStageStarPulseTimers_ = { 0.0f, 0.0f, 0.0f };
     std::array<bool, 3> hudStageStarVisualCollected_ = { false, false, false };
+
+    // スターコイン取得時、ワールド位置から HUD へ飛んでいく粒子
     struct StageStarUIFlyParticle {
         std::unique_ptr<Sprite> sprite;
         Vector2 start = { 0.0f, 0.0f };
@@ -196,6 +212,10 @@ private:
     float hudHurtIconTimer_ = 0.0f;
     float hudHpDamageHoldTimer_ = 0.0f;
     float hudHpDelayedRate_ = 1.0f;
+    float hudMorphGaugeTimer_ = 0.0f;
+    float hudMorphGaugeVisibleTimer_ = 0.0f;
+
+    // --- ライフ減少演出 ---
     bool lifeLostPresentationActive_ = false;
     bool lifeLostPresentationFinished_ = true;
     bool lifeLostBlackHold_ = false;
@@ -212,11 +232,13 @@ private:
     std::unique_ptr<Object3d> lifeLostSlimeObject_;
     std::unique_ptr<Object3d> lifeLostStunObject_;
     bool lifeLostRevive_ = false;
+
+    // --- オーバーレイ ---
     std::unique_ptr<PauseMenuOverlay> pauseMenuOverlay_;
     std::unique_ptr<SettingsMenuOverlay> settingsOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
 
-    // 初期化・終了処理
+    // 初期化/終了処理
     void InitializeGameplayHUD();
     void InitializeCoreSystems(const StageData& currentStage);
     void InitializeRenderCommons();
@@ -228,8 +250,15 @@ private:
 
     // フレーム更新
     bool HandleGoalClear(float& deltaTime);
+    void InitializeGoalPresentationOverlay();
+    void UpdateGoalPresentation(float deltaTime);
+    void UpdateGoalPlayerCelebration(float deltaTime);
+    void UpdateGoalPresentationOverlay();
+    void DrawGoalPresentationOverlay();
+    void RequestGoalReturnToSelect();
     void UpdatePostEffectState(float deltaTime);
     void UpdateLockOnAndCamera(float deltaTime);
+    void UpdateLockOnSprite(Camera* camera, Object3d* target, float deltaTime);
     void UpdateSceneSystems(float deltaTime);
     void UpdateEffectDebugShortcuts();
     void UpdateGameplayHUD(float deltaTime);
@@ -238,7 +267,7 @@ private:
     bool HandlePauseOverlay(float deltaTime);
     bool IsPauseOpenTriggered() const;
 
-    // UI描画
+    // UI 描画
     void DrawGameplayHUD();
     void DrawStageStarHUD();
     void DrawLifeLostPresentation();
@@ -252,6 +281,6 @@ private:
     void StartStageStarHUDCollectEffect(int starIndex, const Vector3& worldPosition);
     Vector2 ProjectWorldToScreen(const Vector3& worldPosition) const;
 
-    // フラスタムカリング判定
+    // 視錐台カリング判定
     bool IsVisible(Object3d* obj);
 };

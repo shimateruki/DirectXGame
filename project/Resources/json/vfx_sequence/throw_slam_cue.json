@@ -1,0 +1,26 @@
+{
+    "version": 2,
+    "events": [
+        {
+            "type": 2,
+            "presetName": "generated/land.wav",
+            "triggerTime": 0.0
+        },
+        {
+            "type": 0,
+            "presetName": "hit_throw_slam_dust",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 4,
+            "presetName": "throw_slam_shake",
+            "triggerTime": 0.0,
+            "duration": 0.18,
+            "intensity": 0.13,
+            "frequency": 28.0,
+            "scale": [1.0, 0.45, 1.0]
+        }
+    ]
+}

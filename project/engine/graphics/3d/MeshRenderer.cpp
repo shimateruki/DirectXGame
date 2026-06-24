@@ -216,6 +216,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->effectIntensity = 1.0f;
     waterParamData_->cameraWorldPosition = { 0.0f, 0.0f, -1.0f };
     waterParamData_->billboardScale = 0.55f;
+    waterParamData_->effectScaleX = 1.0f;
+    waterParamData_->effectScaleY = 1.0f;
     EnsureBakedShaderTexturesLoaded();
     
 }
@@ -533,11 +535,27 @@ void MeshRenderer::SetModel(Model* model) {
     model_ = model;
     modelName_.clear();
     ClearLodLevels();
+    if (model_ && materialData_) {
+        if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
+            materialData_->color = material->baseColorFactor;
+            materialData_->roughness = material->roughness;
+            materialData_->metallic = material->metallic;
+            materialData_->enableNormalMap = material->hasNormalMap ? 1 : 0;
+        }
+    }
 }
 
 void MeshRenderer::SetModel(const std::string& modelName) {
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
+    if (model_ && materialData_) {
+        if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
+            materialData_->color = material->baseColorFactor;
+            materialData_->roughness = material->roughness;
+            materialData_->metallic = material->metallic;
+            materialData_->enableNormalMap = material->hasNormalMap ? 1 : 0;
+        }
+    }
     LoadLodManifestForModel(modelName);
 }
 

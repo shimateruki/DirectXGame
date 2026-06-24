@@ -5,6 +5,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -56,6 +57,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
@@ -86,13 +88,14 @@
                 "shakeDuration": 1.0,
                 "speed": 25.0,
                 "startActive": false,
-                "switchMode": 0
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
             "particleName": "",
             "position": [
                 0.15655779838562012,
-                -1.0663617849349976,
+                -0.5416557788848877,
                 5.016295433044434
             ],
             "quaternion": [
@@ -120,6 +123,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Player"
         }
     ]

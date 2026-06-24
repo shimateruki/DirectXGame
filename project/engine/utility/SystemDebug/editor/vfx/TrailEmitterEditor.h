@@ -1,23 +1,16 @@
 #pragma once
 #include "IEditable.h"
 #include "TrailEmitter.h"
-#include <vector>
 #include <string>
+#include <vector>
 
 class SceneManager;
 class Object3d;
 class BaseScene;
 
-// ============================================================
-//  TrailEmitterEditor
-//   ImGuiでトレイルエミッターの設定を行うエディタ。
-//   - シーン内オブジェクトリストから追従対象を選択
-//   - メッシュエフェクト / GPUパーティクルプリセットの選択
-//   - Emit距離・スケール・向き自動合わせ の設定
-//   - 設定の保存・読み込み
-//   - 「追従開始/停止」でリアルタイム追跡プレビュー
-//   - サイン波往復ダミープレビュー (対象未選択時)
-// ============================================================
+/// <summary>
+/// TrailEmitterの追従対象、発生エフェクト、保存設定、ダミープレビューを編集する。
+/// </summary>
 class TrailEmitterEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
@@ -32,31 +25,29 @@ private:
     void Load(const std::string& name);
 
     SceneManager* sceneManager_ = nullptr;
-    BaseScene*    lastScene_    = nullptr;  // シーン切り替え検知用
+    BaseScene* lastScene_ = nullptr;
 
-    // エミッター本体
+    // 編集対象のトレイル本体。
     TrailEmitter emitter_;
 
-    // 追従対象 (シーンのオブジェクトリストから選択)
+    // シーン内オブジェクトへの追従状態。
     Object3d* targetObject_ = nullptr;
-    bool      isTracking_   = false;  // 追従中フラグ
+    bool isTracking_ = false;
 
-    // 設定名バッファ
     char configNameBuf_[64] = "myTrail";
 
-    // ダミープレビュー (サイン波)
-    bool    isDummyRunning_  = false;
-    float   previewTime_     = 0.0f;
-    float   previewDuration_ = 2.0f;
-    float   previewRange_    = 5.0f;
-    Vector3 dummyPos_        = { 0.0f, 0.0f, 0.0f };
-    Vector3 lastDummyPos_    = { 0.0f, 0.0f, 0.0f };
-    bool    dummyFirstFrame_ = true;
+    // 対象未選択時に動きを確認するためのダミープレビュー。
+    bool isDummyRunning_ = false;
+    float previewTime_ = 0.0f;
+    float previewDuration_ = 2.0f;
+    float previewRange_ = 5.0f;
+    Vector3 dummyPos_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 lastDummyPos_ = { 0.0f, 0.0f, 0.0f };
+    bool dummyFirstFrame_ = true;
 
-    // プレイ状態監視 (切り替わり検知用)
-    bool    wasPlaying_      = false;
+    bool wasPlaying_ = false;
 
-    // ファイルリスト
+    // 選択肢として表示するファイル一覧。
     std::vector<std::string> meshEffectList_;
     std::vector<std::string> gpuParticleList_;
     std::vector<std::string> savedConfigList_;

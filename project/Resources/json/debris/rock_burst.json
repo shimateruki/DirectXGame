@@ -1,45 +1,45 @@
 {
-    "name": "rock_burst",
-    "modelNames": [
-        "Primitives/cube",
-        "Stages/block"
-    ],
-    "spawnCount": 22,
-    "spawnOffset": [
-        0.0,
-        0.35,
-        0.0
-    ],
+    "airDrag": 0.07999999821186066,
+    "angularSpeedMax": 12.0,
+    "angularSpeedMin": 3.0,
     "baseDirection": [
         0.0,
         0.0,
         1.0
     ],
-    "horizontalSpread": 1.2,
-    "verticalMin": 0.35,
-    "verticalMax": 1.05,
-    "speedMin": 8.0,
-    "speedMax": 18.0,
-    "angularSpeedMin": 3.0,
-    "angularSpeedMax": 12.0,
-    "scaleMin": 0.12,
-    "scaleMax": 0.38,
-    "lifetimeMin": 1.1,
-    "lifetimeMax": 1.9,
-    "gravity": 30.0,
-    "airDrag": 0.08,
-    "restitution": 0.38,
-    "friction": 0.72,
-    "groundY": 0.0,
-    "fadeStartRatio": 0.72,
+    "collideGround": true,
     "color": [
-        0.62,
-        0.56,
-        0.49,
+        0.6200000047683716,
+        0.5600000023841858,
+        0.49000000953674316,
         1.0
     ],
-    "materialType": 0,
     "emissive": 0.0,
-    "collideGround": true,
-    "shrinkOnFade": true
+    "fadeStartRatio": 0.7200000286102295,
+    "friction": 0.7200000286102295,
+    "gravity": 30.0,
+    "groundY": 0.0,
+    "horizontalSpread": 1.2000000476837158,
+    "lifetimeMax": 1.899999976158142,
+    "lifetimeMin": 1.100000023841858,
+    "materialType": 0,
+    "modelNames": [
+        "Stages/rock1",
+        "Stages/rock2"
+    ],
+    "name": "rock_burst",
+    "restitution": 0.3799999952316284,
+    "scaleMax": 0.3799999952316284,
+    "scaleMin": 0.11999999731779099,
+    "shrinkOnFade": true,
+    "spawnCount": 22,
+    "spawnOffset": [
+        0.0,
+        0.3499999940395355,
+        0.0
+    ],
+    "speedMax": 18.0,
+    "speedMin": 8.0,
+    "verticalMax": 1.0499999523162842,
+    "verticalMin": 0.3499999940395355
 }

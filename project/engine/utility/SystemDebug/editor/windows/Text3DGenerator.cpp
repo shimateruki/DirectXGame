@@ -41,6 +41,10 @@ namespace fs = std::filesystem;
 
 constexpr const char* kOutputRoot = "Resources/3DModel/GeneratedText";
 constexpr const char* kResourceRoot = "Resources";
+constexpr const char* kPreviewStem = "_preview_text3d";
+constexpr const char* kPreviewModelName = "GeneratedText/_preview_text3d";
+constexpr const char* kPreviewObjectName = "__Editor_Text3DPreview";
+constexpr float kPreviewRebuildDelay = 0.22f;
 
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
@@ -351,6 +355,7 @@ void AddQuad(
 }
 
 Text3DGenerator::~Text3DGenerator() {
+    RemovePreviewObject();
     if (dwriteFactory_ && resourceFontLoader_) {
         dwriteFactory_->UnregisterFontCollectionLoader(resourceFontLoader_.Get());
     }
@@ -372,6 +377,7 @@ void Text3DGenerator::Initialize(SceneManager* sceneManager, DebugEditor* editor
     EnsureFactories();
     RefreshFonts();
     UpdateOutputNameFromText();
+    MarkPreviewDirty();
 }
 
 void Text3DGenerator::Update() {
@@ -379,6 +385,7 @@ void Text3DGenerator::Update() {
     if (noticeTimer_ > 0.0f) {
         noticeTimer_ = std::max(0.0f, noticeTimer_ - (1.0f / 60.0f));
     }
+    UpdatePreviewModel(1.0f / 60.0f);
 #endif
 }
 
@@ -388,19 +395,27 @@ void Text3DGenerator::DrawImGui() {
     ImGui::TextDisabled("入力した文字を厚み付きのOBJモデルとして生成し、通常のObject3Dとして配置します。");
     ImGui::Separator();
 
+    bool previewModelChanged = false;
+    bool previewTransformChanged = false;
+
     bool autoNameDirty = false;
     if (ImGui::InputTextMultiline("文字", textBuffer_, sizeof(textBuffer_), ImVec2(-1.0f, 96.0f))) {
         autoNameDirty = true;
+        previewModelChanged = true;
     }
 
     if (ImGui::Button(ICON_FA_SYNC_ALT " フォント再読込")) {
         RefreshFonts();
+        previewModelChanged = true;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(180.0f);
     ImGui::InputText("フォント検索", fontFilterBuffer_, sizeof(fontFilterBuffer_));
 
-    const char* selectedFont = fontNamesUtf8_.empty() ? "Meiryo" : fontNamesUtf8_[selectedFontIndex_].c_str();
+    const int selectedFontIndex = fontNamesUtf8_.empty()
+        ? 0
+        : std::clamp(selectedFontIndex_, 0, static_cast<int>(fontNamesUtf8_.size()) - 1);
+    const char* selectedFont = fontNamesUtf8_.empty() ? "Meiryo" : fontNamesUtf8_[selectedFontIndex].c_str();
     if (ImGui::BeginCombo("フォント", selectedFont)) {
         std::string filter = fontFilterBuffer_;
         for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
@@ -408,6 +423,7 @@ void Text3DGenerator::DrawImGui() {
             const bool selected = (i == selectedFontIndex_);
             if (ImGui::Selectable(fontNamesUtf8_[i].c_str(), selected)) {
                 selectedFontIndex_ = i;
+                previewModelChanged = true;
             }
             if (selected) {
                 ImGui::SetItemDefaultFocus();
@@ -416,18 +432,39 @@ void Text3DGenerator::DrawImGui() {
         ImGui::EndCombo();
     }
 
-    ImGui::DragFloat("フォントサイズ", &fontSize_, 1.0f, 12.0f, 512.0f, "%.0f");
-    ImGui::DragFloat("余白", &padding_, 1.0f, 0.0f, 256.0f, "%.0f");
-    ImGui::Checkbox("太字", &bold_);
+    previewModelChanged |= ImGui::DragFloat("フォントサイズ", &fontSize_, 1.0f, 12.0f, 512.0f, "%.0f");
+    previewModelChanged |= ImGui::DragFloat("余白", &padding_, 1.0f, 0.0f, 256.0f, "%.0f");
+    previewModelChanged |= ImGui::Checkbox("太字", &bold_);
 
     ImGui::Separator();
     ImGui::Text("モデル化設定");
-    ImGui::DragInt("サンプル幅", &sampleStep_, 1.0f, 1, 16);
-    ImGui::DragInt("透明しきい値", &alphaThreshold_, 1.0f, 1, 255);
-    ImGui::DragFloat("モデル高さ", &modelHeight_, 0.05f, 0.1f, 20.0f, "%.2f");
-    ImGui::DragFloat("厚み", &thickness_, 0.01f, 0.01f, 5.0f, "%.2f");
-    ImGui::Checkbox("原点を中央へ", &centerOrigin_);
-    ImGui::ColorEdit4("配置時の色", modelColor_);
+    previewModelChanged |= ImGui::DragInt("サンプル幅", &sampleStep_, 1.0f, 1, 16);
+    previewModelChanged |= ImGui::DragInt("透明しきい値", &alphaThreshold_, 1.0f, 1, 255);
+    previewModelChanged |= ImGui::DragFloat("モデル高さ", &modelHeight_, 0.05f, 0.1f, 20.0f, "%.2f");
+    previewModelChanged |= ImGui::DragFloat("厚み", &thickness_, 0.01f, 0.01f, 5.0f, "%.2f");
+    previewModelChanged |= ImGui::Checkbox("原点を中央へ", &centerOrigin_);
+    const bool colorChanged = ImGui::ColorEdit4("配置時の色", modelColor_);
+
+    ImGui::Separator();
+    const bool previewToggleChanged = ImGui::Checkbox("Game Viewに3Dプレビュー", &previewEnabled_);
+    ImGui::SameLine();
+    ImGui::TextDisabled("編集中だけ表示し、保存データには含めません。");
+    previewTransformChanged |= ImGui::DragFloat3("プレビュー位置", &previewPosition_.x, 0.1f, -1000.0f, 1000.0f);
+    previewTransformChanged |= ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 20.0f, "%.2f");
+    if (previewToggleChanged) {
+        if (previewEnabled_) {
+            MarkPreviewDirty();
+        } else {
+            RemovePreviewObject();
+        }
+    }
+    if ((previewTransformChanged || colorChanged) && previewObject_) {
+        previewObject_->SetTranslate(previewPosition_);
+        previewObject_->SetScale({ previewScale_, previewScale_, previewScale_ });
+        previewObject_->SetColor({ modelColor_[0], modelColor_[1], modelColor_[2], modelColor_[3] });
+        previewObject_->UpdateLocalMatrix();
+        previewObject_->UpdateWorldMatrix();
+    }
 
     ImGui::Separator();
     if (ImGui::Checkbox("出力名を文字から自動生成", &autoOutputName_)) {
@@ -489,6 +526,10 @@ void Text3DGenerator::DrawImGui() {
     ImGui::TextDisabled("生成先: %s", kOutputRoot);
     ImGui::TextDisabled("サンプル幅を小さくすると綺麗になりますが、頂点数は増えます。");
     ImGui::TextDisabled("フォント参照先: Resources 内の .ttf / .otf / .ttc");
+
+    if (previewModelChanged) {
+        MarkPreviewDirty();
+    }
 #endif
 }
 
@@ -983,6 +1024,149 @@ void Text3DGenerator::AddGeneratedModelToScene(const GeneratedModelInfo& info) {
 
     editor_->AddEditorObject(std::move(object), "Create 3D Text");
     SetNotice("3D文字モデルを配置しました: " + info.modelName, true);
+}
+
+bool Text3DGenerator::BuildPreviewModelFile(GeneratedModelInfo& outInfo) {
+    TextMask mask;
+    if (!RenderTextMask(mask)) {
+        return false;
+    }
+
+    const fs::path outputDir = fs::path(kOutputRoot) / kPreviewStem;
+    const fs::path objPath = outputDir / (std::string(kPreviewStem) + ".obj");
+    std::error_code ec;
+    fs::create_directories(outputDir, ec);
+    if (ec) {
+        return false;
+    }
+
+    GeneratedModelInfo info;
+    info.modelName = kPreviewModelName;
+    info.objPath = objPath.generic_string();
+    info.width = mask.width;
+    info.height = mask.height;
+
+    if (!WriteObjFromMask(mask, objPath, info)) {
+        return false;
+    }
+
+    outInfo = info;
+    return true;
+}
+
+void Text3DGenerator::UpdatePreviewModel(float deltaTime) {
+#ifdef USE_IMGUI
+    if (!previewEnabled_) {
+        RemovePreviewObject();
+        return;
+    }
+
+    if (EditorManager::GetInstance()->GetSelectedObject() != this) {
+        RemovePreviewObject();
+        return;
+    }
+
+    if (!previewDirty_ && previewObject_) {
+        return;
+    }
+
+    if (previewRequestPending_) {
+        previewDelayTimer_ -= std::max(0.0f, deltaTime);
+        if (previewDelayTimer_ > 0.0f) {
+            return;
+        }
+    }
+
+    GeneratedModelInfo info;
+    if (!BuildPreviewModelFile(info)) {
+        previewDirty_ = false;
+        previewRequestPending_ = false;
+        return;
+    }
+
+    ModelManager::GetInstance()->ReloadModel(info.modelName);
+    EnsurePreviewObject(info);
+    lastPreview_ = info;
+    hasPreviewModel_ = true;
+    previewDirty_ = false;
+    previewRequestPending_ = false;
+#else
+    (void)deltaTime;
+#endif
+}
+
+void Text3DGenerator::EnsurePreviewObject(const GeneratedModelInfo& info) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        previewObject_ = nullptr;
+        return;
+    }
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    if (!scene->GetObject3dCommon()) {
+        previewObject_ = nullptr;
+        return;
+    }
+
+    Object3d* existing = FindPreviewObject();
+    if (existing) {
+        previewObject_ = existing;
+    } else {
+        auto object = std::make_unique<Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+        object->SetName(kPreviewObjectName);
+        object->SetClassName("EditorOnly");
+        object->SetSaveCategory("Object");
+        object->SetIsLocked(true);
+        object->SetCollisionAttribute(0);
+        object->SetCollisionMask(0);
+        previewObject_ = object.get();
+        scene->AddObject(std::move(object));
+    }
+
+    if (!previewObject_) {
+        return;
+    }
+
+    previewObject_->SetModel(info.modelName);
+    previewObject_->SetColor({ modelColor_[0], modelColor_[1], modelColor_[2], modelColor_[3] });
+    previewObject_->SetTranslate(previewPosition_);
+    previewObject_->SetScale({ previewScale_, previewScale_, previewScale_ });
+    previewObject_->SetIsVisible(true);
+    previewObject_->UpdateLocalMatrix();
+    previewObject_->UpdateWorldMatrix();
+}
+
+void Text3DGenerator::RemovePreviewObject() {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        previewObject_ = nullptr;
+        hasPreviewModel_ = false;
+        return;
+    }
+
+    if (Object3d* object = FindPreviewObject()) {
+        sceneManager_->GetCurrentScene()->RequestRemoveObject(object);
+    }
+    previewObject_ = nullptr;
+    hasPreviewModel_ = false;
+}
+
+void Text3DGenerator::MarkPreviewDirty() {
+    previewDirty_ = true;
+    previewRequestPending_ = true;
+    previewDelayTimer_ = kPreviewRebuildDelay;
+}
+
+Object3d* Text3DGenerator::FindPreviewObject() const {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        return nullptr;
+    }
+
+    for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+        if (object && object->GetName() == kPreviewObjectName) {
+            return object.get();
+        }
+    }
+    return nullptr;
 }
 
 void Text3DGenerator::UpdateOutputNameFromText() {

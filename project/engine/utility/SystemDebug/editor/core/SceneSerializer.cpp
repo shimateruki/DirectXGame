@@ -196,6 +196,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         auto& p = obj->param_.value();
         d["param"]["hp"] = p.hp;
         d["param"]["maxHp"] = p.maxHp;
+        d["param"]["attackPower"] = p.attackPower;
         d["param"]["speed"] = p.speed;
         d["param"]["gravity"] = p.gravity;
         d["param"]["jumpPower"] = p.jumpPower;
@@ -270,6 +271,8 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         jw["flowSpeedY"] = water->flowSpeedY;
         jw["effectType"] = water->effectType;
         jw["effectScale"] = water->effectScale;
+        jw["effectScaleX"] = water->effectScaleX;
+        jw["effectScaleY"] = water->effectScaleY;
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;

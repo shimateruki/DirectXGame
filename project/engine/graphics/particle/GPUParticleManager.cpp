@@ -6,8 +6,24 @@
 #include "SRVManager.h"
 #include <TextureManager.h>
 #include <d3d12.h>
+#include <sstream>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+
+namespace {
+std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
+    std::ostringstream key;
+    key << config.texturePath
+        << "_blend" << config.blendModeIndex
+        << "_sheet" << config.spriteSheetColumns
+        << "x" << config.spriteSheetRows
+        << "_frames" << config.spriteSheetFrameCount
+        << "_fps" << config.spriteSheetFps
+        << "_loop" << config.spriteSheetLoop
+        << "_rand" << config.spriteSheetRandomStart;
+    return key.str();
+}
+}
 
 GPUParticleManager* GPUParticleManager::GetInstance() {
     static GPUParticleManager instance;
@@ -36,7 +52,16 @@ void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     LoadAllPresets("Resources/json/gpu_particles/");
 }
 
+void GPUParticleManager::BeginFrame() {
+    updatedThisFrame_ = false;
+}
+
 void GPUParticleManager::Update(float deltaTime) {
+    if (updatedThisFrame_) {
+        return;
+    }
+    updatedThisFrame_ = true;
+
     float scaledDelta = deltaTime * timeScale_;
 
     // オートエミッターの処理
@@ -76,7 +101,7 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
 // ====================================================================
 GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig& config) {
     // キーの作成（例: "Resources/sprite/Fire.png_0"）
-    std::string key = config.texturePath + "_" + std::to_string(config.blendModeIndex);
+    std::string key = MakeParticleSystemKey(config);
 
     if (systems_.find(key) == systems_.end()) {
         auto newSystem = std::make_unique<GPUParticleSystem>();
@@ -85,6 +110,34 @@ GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig
         DebugConsole::GetInstance()->AddLog("Created new Particle System for: " + key);
     }
     return systems_[key].get();
+}
+
+void GPUParticleManager::PreloadPresetSystem(const std::string& presetName) {
+    auto it = presets_.find(presetName);
+    if (it == presets_.end()) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[GPUParticleManager] preload preset not found: " + presetName);
+        return;
+    }
+
+    GPUParticleSystem* targetSystem = GetOrCreateSystem(it->second);
+    targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
+    targetSystem->SetCurrentTexture(it->second.texturePath);
+    targetSystem->RequestWarmup();
+}
+
+void GPUParticleManager::PreloadPresetSystems(const std::vector<std::string>& presetNames) {
+    for (const std::string& presetName : presetNames) {
+        PreloadPresetSystem(presetName);
+    }
+}
+
+bool GPUParticleManager::IsEmpty() const {
+    for (const auto& pair : systems_) {
+        if (pair.second && pair.second->IsActive()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
@@ -132,6 +185,7 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("endSize")) config.endSize = j["endSize"];
                 if (j.contains("rotSpeed")) config.rotSpeed = j["rotSpeed"];
                 if (j.contains("blendModeIndex")) config.blendModeIndex = j["blendModeIndex"];
+                if (config.blendModeIndex >= 2) config.blendModeIndex = 1;
                 if (j.contains("envGravity")) { config.envGravity.x = j["envGravity"][0]; config.envGravity.y = j["envGravity"][1]; config.envGravity.z = j["envGravity"][2]; }
                 if (j.contains("envDrag")) config.envDrag = j["envDrag"];
                 if (j.contains("envWind")) { config.envWind.x = j["envWind"][0]; config.envWind.y = j["envWind"][1]; config.envWind.z = j["envWind"][2]; }
@@ -152,6 +206,29 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("restitution")) config.restitution = j["restitution"];
                 if (j.contains("colorIntensity")) config.colorIntensity = j["colorIntensity"];
                 if (j.contains("texturePath")) config.texturePath = j["texturePath"];
+                if (j.contains("spriteSheetColumns")) config.spriteSheetColumns = j["spriteSheetColumns"];
+                if (j.contains("spriteSheetRows")) config.spriteSheetRows = j["spriteSheetRows"];
+                if (j.contains("spriteSheetFrameCount")) config.spriteSheetFrameCount = j["spriteSheetFrameCount"];
+                if (j.contains("spriteSheetFps")) config.spriteSheetFps = j["spriteSheetFps"];
+                if (j.contains("spriteSheetLoop")) {
+                    config.spriteSheetLoop = j["spriteSheetLoop"].is_boolean() ? (j["spriteSheetLoop"].get<bool>() ? 1 : 0) : j["spriteSheetLoop"].get<int>();
+                }
+                if (j.contains("spriteSheetRandomStart")) {
+                    config.spriteSheetRandomStart = j["spriteSheetRandomStart"].is_boolean() ? (j["spriteSheetRandomStart"].get<bool>() ? 1 : 0) : j["spriteSheetRandomStart"].get<int>();
+                }
+                if (j.contains("spriteAnimation") && j["spriteAnimation"].is_object()) {
+                    const auto& anim = j["spriteAnimation"];
+                    if (anim.contains("columns")) config.spriteSheetColumns = anim["columns"];
+                    if (anim.contains("rows")) config.spriteSheetRows = anim["rows"];
+                    if (anim.contains("frameCount")) config.spriteSheetFrameCount = anim["frameCount"];
+                    if (anim.contains("fps")) config.spriteSheetFps = anim["fps"];
+                    if (anim.contains("loop")) {
+                        config.spriteSheetLoop = anim["loop"].is_boolean() ? (anim["loop"].get<bool>() ? 1 : 0) : anim["loop"].get<int>();
+                    }
+                    if (anim.contains("randomStart")) {
+                        config.spriteSheetRandomStart = anim["randomStart"].is_boolean() ? (anim["randomStart"].get<bool>() ? 1 : 0) : anim["randomStart"].get<int>();
+                    }
+                }
 
                 presets_[filename] = config;
                 DebugConsole::GetInstance()->AddLog("Loaded Particle Preset: " + filename);

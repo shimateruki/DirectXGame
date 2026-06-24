@@ -62,6 +62,24 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             return;
         }
 
+        constexpr uint32_t kTargetAttribute = 2; // kEnemy
+        BaseEnemy* targetEnemy = dynamic_cast<BaseEnemy*>(lockOnTarget_);
+        const bool targetUnavailable =
+            !lockOnTarget_->GetIsVisible() ||
+            lockOnTarget_->isDead ||
+            (!(lockOnTarget_->GetCollisionAttribute() & kTargetAttribute) &&
+                lockOnTarget_->GetName().find("BossCore") == std::string::npos) ||
+            (targetEnemy && (targetEnemy->IsCarried() || targetEnemy->IsDefeatEffectPlaying()));
+        if (targetUnavailable) {
+            isLockingOn_ = false;
+            lockOnTarget_ = nullptr;
+            camera->SyncRotationToCurrentView();
+            camera->SetLockOnTarget(nullptr);
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            lostSightTimer_ = 0.0f;
+            return;
+        }
+
         // 障害物による視認不可のチェック
         // ========================================================
         Vector3 playerPos = player->GetWorldPosition();
@@ -134,6 +152,16 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     const uint32_t kTargetAttribute = 2; // kEnemy (例)
 
     for (const auto& obj : objects) {
+        if (!obj || !obj->GetIsVisible() || obj->isDead) {
+            continue;
+        }
+
+        if (BaseEnemy* enemy = dynamic_cast<BaseEnemy*>(obj.get())) {
+            if (enemy->IsCarried() || enemy->IsDefeatEffectPlaying()) {
+                continue;
+            }
+        }
+
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
             // 名前に "BossCore" が含まれていない場合のみ除外する（ボスはスルーして判定を続ける）
             if (obj->GetName().find("BossCore") == std::string::npos) {

@@ -19,16 +19,16 @@ public:
     // 定数バッファ用構造体 (16バイト境界に準拠)
     struct Params {
         // --- Bloom ---
-        float threshold = 1.5f;             // 高輝度抽出しきい値
-        float bloomIntensity = 2.0f;        // ブルーム合成強度
-        float spread = 2.0f;                // サンプリングの広がり
-        int32_t enableToneMapping = 1;      // 0:Off, 1:ACES, 2:Luminance-ACES
+        float threshold = 1.0f;             // 高輝度抽出しきい値
+        float bloomIntensity = 0.0f;        // ブルーム合成強度
+        float spread = 1.0f;                // サンプリングの広がり
+        int32_t enableToneMapping = 0;      // 0:Off, 1:ACES, 2:Luminance-ACES
 
         // --- Lens ---
-        float vignetteIntensity = 1.0f;     // 周辺減光の強さ
-        float chromaticAberration = 0.02f;  // 色収差のズレ幅
-        float filmGrainIntensity = 0.03f;   // フィルム粒子の強さ
-        float vignettePower = 0.8f;         // 周辺減光の丸み (資料)
+        float vignetteIntensity = 0.0f;     // 周辺減光の強さ
+        float chromaticAberration = 0.0f;   // 色収差のズレ幅
+        float filmGrainIntensity = 0.0f;    // フィルム粒子の強さ
+        float vignettePower = 1.0f;         // 周辺減光の丸み (資料)
         float time = 0.0f;                  // 時間経過（ノイズアニメ用）
 
 
@@ -36,7 +36,7 @@ public:
         float radialCenterX = 0.5f;         // 放射ブラー中心X
         float radialCenterY = 0.5f;         // 放射ブラー中心Y
         float radialIntensity = 0.0f;       // 放射ブラー強度
-        int32_t radialBlurSamples = 8;      // サンプリング数 (資料)
+        int32_t radialBlurSamples = 1;      // サンプリング数 (資料)
 
         // --- Color Grading & Action ---
         float lutIntensity = 0.0f;          // LUT適用強度
@@ -110,6 +110,8 @@ public:
     Params* GetParams() { return paramsData_; }
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
     void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
+    void ResetToNeutral();
+    void ResizeRenderTextures(int width, int height);
 
 private:
     void CreateMesh();

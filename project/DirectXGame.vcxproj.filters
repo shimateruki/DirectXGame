@@ -120,6 +120,9 @@
     <ClCompile Include="engine\system\scene\BaseScene.cpp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="engine\system\scene\LoadingScene.cpp">
+      <Filter>ソース ファイル\engine\scene</Filter>
+    </ClCompile>
     <ClCompile Include="engine\graphics\3d\camera\Camera.cpp">
       <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
@@ -240,7 +243,13 @@
     <ClCompile Include="game\system\GameRule.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\system\HitEffectDirector.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="game\system\GameSettingsManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\system\GameAudioSettings.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp">
@@ -266,6 +275,12 @@
     </ClCompile>
     <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp">
       <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyFireSlime.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyThunderSlime.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\EnemyGiantSlime.cpp">
       <Filter>ソース ファイル</Filter>
@@ -427,6 +442,21 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp">
@@ -715,6 +745,9 @@
       <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\system\scene\BaseScene.h">
+      <Filter>ヘッダー ファイル\engine\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\system\scene\LoadingScene.h">
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\3d\camera\Camera.h">
@@ -1086,6 +1119,9 @@
     <ClInclude Include="game\system\GameRule.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="game\system\HitEffectDirector.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1100,6 +1136,12 @@
     </ClInclude>
     <ClInclude Include="game\actor\enemy\EnemyMushroom.h">
       <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyFireSlime.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyThunderSlime.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\EnemyGiantSlime.h">
       <Filter>ヘッダー ファイル</Filter>
@@ -1449,6 +1491,27 @@
     <ClInclude Include="game\actor\player\PlayerState.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.Basic.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.Carry.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.Damage.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.Hook.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.Life.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.PullEnemy.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerState.PullObject.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\particle\ParticleManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1528,6 +1591,21 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h">
@@ -1678,6 +1756,12 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\system\GameSettingsManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\GameAudioSettings.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\SpriteLayoutScaler.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\ui\PauseMenuOverlay.h">

@@ -1,0 +1,78 @@
+{
+    "AutoLoop": false,
+    "BlendMode": 2,
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "DistortionSpeed": 0.0,
+    "DistortionStrength": 0.0,
+    "EasingType": 23,
+    "EdgeFadeStrength": 3.2,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        1.0,
+        0.62,
+        0.08,
+        0.0
+    ],
+    "EndScale": [
+        1.18,
+        1.18,
+        1.18
+    ],
+    "Intensity": 7.4,
+    "Lifetime": 0.14,
+    "MeshSegments": 1,
+    "ModelName": "",
+    "NoiseTexturePath": "",
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "PlaneSize": [
+        1.0,
+        1.0
+    ],
+    "ProceduralType": 7,
+    "RampTexturePath": "",
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.0,
+        0.0
+    ],
+    "StartColor": [
+        5.2,
+        4.8,
+        2.4,
+        1.0
+    ],
+    "StartScale": [
+        0.28,
+        0.28,
+        0.28
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/particle/glow_core.png",
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

@@ -1,11 +1,15 @@
 #include "VFXSequencerEditor.h"
 #include "BaseScene.h"
+#include "CameraManager.h"
+#include "EditorManager.h"
+#include "EffectPreviewStage.h"
 #include "GPUParticleManager.h"
 #include "IconsFontAwesome5.h"
 #include "MeshEffectManager.h"
 #include "Object3d.h"
 #include "SceneManager.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -26,8 +30,8 @@ namespace {
             return ImVec4(0.32f, 1.0f, 0.45f, 1.0f);
         case VFXEventType::CameraShake:
             return ImVec4(0.92f, 0.92f, 0.30f, 1.0f);
-        case VFXEventType::PostEffectPulse:
-            return ImVec4(0.78f, 0.42f, 1.0f, 1.0f);
+        case VFXEventType::LightPulse:
+            return ImVec4(1.0f, 0.82f, 0.28f, 1.0f);
         default:
             return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
         }
@@ -40,7 +44,7 @@ namespace {
     float GetEventEndTime(const VFXEvent& event) {
         if (event.type == VFXEventType::MovingParticle ||
             event.type == VFXEventType::CameraShake ||
-            event.type == VFXEventType::PostEffectPulse) {
+            event.type == VFXEventType::LightPulse) {
             return event.triggerTime + (std::max)(event.duration, 0.01f);
         }
         return event.triggerTime + 0.08f;
@@ -52,22 +56,83 @@ void VFXSequencerEditor::Initialize() {
     RefreshFileList();
 }
 
+Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    if (previewStage && previewStage->IsEnabled()) {
+        return previewStage->GetPreviewPosition();
+    }
+
+    if (isPreviewMode_) {
+        const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        if (camera) {
+            Vector3 camEye = camera->GetEye();
+            Vector3 camTarget = camera->GetTargetPoint();
+            Vector3 dir = {
+                camTarget.x - camEye.x,
+                camTarget.y - camEye.y,
+                camTarget.z - camEye.z
+            };
+            float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            Vector3 forward = { 0.0f, 0.0f, 1.0f };
+            if (length > 0.0001f) {
+                forward = { dir.x / length, dir.y / length, dir.z / length };
+            }
+            return {
+                camEye.x + forward.x * previewDistance_,
+                camEye.y + forward.y * previewDistance_,
+                camEye.z + forward.z * previewDistance_
+            };
+        }
+    }
+
+    return { 0.0f, 0.0f, 0.0f };
+}
+
+void VFXSequencerEditor::PlayPreview() {
+    previewSequencer_.SetRootPosition(ResolvePreviewPosition());
+    previewSequencer_.SetRootScale({ previewRootScale_, previewRootScale_, previewRootScale_ });
+    previewSequencer_.Play();
+}
+
 void VFXSequencerEditor::Update(float deltaTime) {
     float timeStep = deltaTime;
     if (timeStep <= 0.0001f) {
         timeStep = 1.0f / 60.0f;
     }
 
-    previewSequencer_.Update(timeStep);
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    const bool usePreviewStage = previewStage && previewStage->IsEnabled();
+    const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    float particlePreviewScale = previewPlaybackSpeed_;
+    if (usePreviewStage && isThisEditorSelected) {
+        particlePreviewScale *= previewStage->GetPlaybackSpeed();
+        timeStep *= previewStage->GetPlaybackSpeed();
+        if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+            lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+            PlayPreview();
+        }
+        if (previewStage->IsLoopEnabled() && !previewSequencer_.IsPlaying() && !previewSequencer_.GetEvents().empty()) {
+            PlayPreview();
+        }
+    }
+    timeStep *= previewPlaybackSpeed_;
+    if (isThisEditorSelected) {
+        GPUParticleManager::GetInstance()->SetTimeScale((std::max)(0.0f, particlePreviewScale));
+    }
+
+    const bool previewPaused = isThisEditorSelected && particlePreviewScale <= 0.0001f;
+    if (!previewPaused) {
+        previewSequencer_.Update(timeStep);
+    }
 
     bool isGamePlaying = false;
     if (SceneManager::GetInstance()) {
         isGamePlaying = SceneManager::GetInstance()->IsPlaying();
     }
 
-    if (!isGamePlaying) {
-        MeshEffectManager::GetInstance()->Update(timeStep);
-        GPUParticleManager::GetInstance()->Update(timeStep);
+    if (!isGamePlaying && isThisEditorSelected) {
+        MeshEffectManager::GetInstance()->Update(previewPaused ? 0.0f : timeStep);
+        GPUParticleManager::GetInstance()->Update(deltaTime);
     }
 }
 
@@ -78,6 +143,9 @@ void VFXSequencerEditor::RefreshFileList() {
     seFileList_.clear();
 
     const std::string particleDir = "Resources/json/gpu_particles/";
+    if (GPUParticleManager::GetInstance() && GPUParticleManager::GetInstance()->IsInitialized()) {
+        GPUParticleManager::GetInstance()->LoadAllPresets(particleDir);
+    }
     if (fs::exists(particleDir)) {
         for (const auto& entry : fs::directory_iterator(particleDir)) {
             if (entry.path().extension() == ".json") {
@@ -131,8 +199,35 @@ void VFXSequencerEditor::DrawImGui() {
 
     ImGui::Separator();
 
+    if (ImGui::CollapsingHeader(ICON_FA_EYE " Preview Environment", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (EffectPreviewStage::GetInstance()->IsEnabled()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.7f, 1.0f), "Effect Preview Stage active");
+        }
+        ImGui::Checkbox("Spawn in front of Camera", &isPreviewMode_);
+        if (isPreviewMode_) {
+            ImGui::Indent();
+            ImGui::DragFloat("Distance", &previewDistance_, 0.1f, 1.0f, 50.0f);
+            ImGui::Unindent();
+        }
+        ImGui::DragFloat("Root Scale", &previewRootScale_, 0.05f, 0.1f, 5.0f, "%.2f");
+        ImGui::DragFloat(ICON_FA_CLOCK " Preview Speed", &previewPlaybackSpeed_, 0.05f, 0.0f, 5.0f, "%.2f");
+        if (ImGui::Button("1/4 Speed")) {
+            previewPlaybackSpeed_ = 0.25f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("1/2 Speed")) {
+            previewPlaybackSpeed_ = 0.5f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Normal Speed")) {
+            previewPlaybackSpeed_ = 1.0f;
+        }
+    }
+
+    ImGui::Separator();
+
     if (ImGui::Button(ICON_FA_PLAY " 再生", ImVec2(110, 30))) {
-        previewSequencer_.Play();
+        PlayPreview();
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_STOP " 停止", ImVec2(110, 30))) {
@@ -144,6 +239,14 @@ void VFXSequencerEditor::DrawImGui() {
     }
     else {
         ImGui::TextDisabled(ICON_FA_STOP_CIRCLE " 停止中");
+    }
+    ImGui::TextDisabled("Active Mesh Effects: %d", static_cast<int>(MeshEffectManager::GetInstance()->GetActiveEffects().size()));
+    if (ImGui::Button("メッシュ確認")) {
+        MeshEffectManager::GetInstance()->SpawnEffectAt(
+            "Resources/json/effect/effect_hitfx_kickpunch_center_flash.json",
+            ResolvePreviewPosition(),
+            { 1.5707963f, 0.0f, 0.0f },
+            { previewRootScale_, previewRootScale_, previewRootScale_ });
     }
 
     DrawTimelinePreview();
@@ -171,9 +274,8 @@ void VFXSequencerEditor::DrawImGui() {
     if (ImGui::Button(ICON_FA_CAMERA " カメラ揺れ", ImVec2(buttonWidth, 32))) {
         AddDefaultEvent(VFXEventType::CameraShake);
     }
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_MAGIC " 画面パルス", ImVec2(buttonWidth, 32))) {
-        AddDefaultEvent(VFXEventType::PostEffectPulse);
+    if (ImGui::Button("Light", ImVec2(buttonWidth, 32))) {
+        AddDefaultEvent(VFXEventType::LightPulse);
     }
 
     ImGui::SeparatorText("イベント一覧");
@@ -304,12 +406,13 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
             ImGui::DragFloat3(ICON_FA_SLIDERS_H " 軸ごとの重み", &event.scale.x, 0.02f, 0.0f, 2.0f);
             ImGui::TextDisabled("軸重みは X/Y/Z の揺れやすさです。Zを低めにすると画面酔いしにくくなります。");
         }
-        else if (event.type == VFXEventType::PostEffectPulse) {
-            ImGui::DragFloat(ICON_FA_STOPWATCH " 効果時間", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
-            ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " Radial Blur", &event.radialIntensity, 0.01f, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat(ICON_FA_EXCLAMATION_TRIANGLE " Damage Flash", &event.damageFlash, 0.01f, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat(ICON_FA_EYE " Chromatic", &event.chromaticAberration, 0.001f, 0.0f, 0.2f, "%.3f");
-            ImGui::DragFloat(ICON_FA_WAVE_SQUARE " Wobble", &event.wobbleIntensity, 0.001f, 0.0f, 0.2f, "%.3f");
+        else if (event.type == VFXEventType::LightPulse) {
+            ImGui::DragFloat(ICON_FA_STOPWATCH " Duration", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
+            ImGui::DragFloat3(ICON_FA_ARROWS_ALT " Offset", &event.offset.x, 0.1f);
+            ImGui::DragFloat(ICON_FA_BOLT " Intensity", &event.intensity, 0.1f, 0.0f, 80.0f, "%.1f");
+            ImGui::DragFloat("Radius", &event.lightRadius, 0.1f, 0.1f, 80.0f, "%.1f");
+            ImGui::DragFloat("Decay", &event.lightDecay, 0.05f, 0.1f, 8.0f, "%.2f");
+            ImGui::ColorEdit4("Color", &event.lightColor.x);
         }
 
         ImGui::TreePop();
@@ -364,12 +467,12 @@ void VFXSequencerEditor::AddDefaultEvent(VFXEventType type) {
         event.frequency = 28.0f;
         event.scale = { 1.0f, 1.0f, 0.35f };
     }
-    else if (type == VFXEventType::PostEffectPulse) {
-        event.duration = 0.35f;
-        event.radialIntensity = 0.20f;
-        event.damageFlash = 0.20f;
-        event.chromaticAberration = 0.02f;
-        event.wobbleIntensity = 0.01f;
+    else if (type == VFXEventType::LightPulse) {
+        event.duration = 0.22f;
+        event.intensity = 22.0f;
+        event.lightRadius = 11.0f;
+        event.lightDecay = 1.35f;
+        event.lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
     }
 
     previewSequencer_.GetEvents().push_back(event);
@@ -389,6 +492,8 @@ const char* VFXSequencerEditor::GetEventTypeName(VFXEventType type) const {
         return "Camera Shake";
     case VFXEventType::PostEffectPulse:
         return "Post Effect Pulse";
+    case VFXEventType::LightPulse:
+        return "Light Pulse";
     default:
         return "Unknown";
     }

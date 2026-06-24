@@ -89,7 +89,13 @@ void Camera::Update() {
         // (A) 注視点 (TargetPos) の基本計算
         // -----------------------------------------------------------------
         Vector3 targetPos = playerPos;
-        targetPos.y += aimHeight_; // デフォルトはプレイヤーの頭上
+        if (followMode_ == FollowMode::kOrbit) {
+            targetPos.x += orbitCenterOffset_.x;
+            targetPos.y += orbitCenterHeight_ + orbitCenterOffset_.y;
+            targetPos.z += orbitCenterOffset_.z;
+        } else {
+            targetPos.y += aimHeight_;
+        }
 
         // -----------------------------------------------------------------
         // (B) 目標座標 (Desired Eye) の計算
@@ -313,6 +319,33 @@ void Camera::Update() {
                 Vector4 cColor = child->GetColor();
                 child->SetColor({ cColor.x, cColor.y, cColor.z, alpha });
             }
+        }
+    }
+    else if (followMode_ == FollowMode::kOrbit) {
+        Vector3 orbitTarget = fixedPointPos_;
+        orbitAngle_ += orbitSpeed_;
+
+        Vector3 desiredEye;
+        desiredEye.x = orbitTarget.x + orbitRadius_ * std::cos(orbitAngle_);
+        desiredEye.z = orbitTarget.z + orbitRadius_ * std::sin(orbitAngle_);
+        desiredEye.y = orbitTarget.y + orbitHeight_;
+
+        if (!isCameraInitialized_) {
+            smoothTarget_ = orbitTarget;
+            smoothEye_ = desiredEye;
+            target_ = smoothTarget_;
+            eye_ = smoothEye_;
+            isCameraInitialized_ = true;
+        }
+        else {
+            smoothTarget_ = LerpVec3(smoothTarget_, orbitTarget, 0.2f);
+            target_ = smoothTarget_;
+
+            smoothEye_ = LerpVec3(smoothEye_, desiredEye, 0.15f);
+            if (isEyeFrozen_) {
+                smoothEye_ = eye_;
+            }
+            eye_ = smoothEye_;
         }
     }
 

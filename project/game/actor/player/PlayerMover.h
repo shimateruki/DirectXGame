@@ -39,6 +39,8 @@ public:
 	void ApplyIceSurface(float duration, float friction, float steering);
 
 private:
+	void EmitGroundDust(const char* presetName, float yOffset) const;
+
 	// 参照用ポインタ
 	Player* player_ = nullptr;
 	InputManager* inputManager_ = nullptr;
@@ -82,4 +84,8 @@ private:
 	float iceTimer_ = 0.0f;
 	float iceFriction_ = 1.0f;
 	float iceSteering_ = 1.0f;
+
+	bool hasGroundedHistory_ = false;
+	bool wasGroundedLastFrame_ = false;
+	float landingDustCooldown_ = 0.0f;
 };

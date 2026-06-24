@@ -6,10 +6,12 @@
 #include "CollisionManager.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
+#include "HitEffectDirector.h"
 #include <algorithm>
 #include <cmath>
 
 namespace {
+// 浮遊位置、ビームのチャージ時間、当たり判定幅の調整値
 constexpr float kHoverHeight = 4.0f;
 constexpr float kPreferredDistance = 14.0f;
 constexpr float kBeamChargeTime = 0.85f;
@@ -77,6 +79,7 @@ Quaternion MakeYAxisToDirectionQuaternion(const Vector3& direction) {
 }
 }
 
+// ビーム用の見た目オブジェクトを生成し、敵本体を初期化する
 void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_BeamDrone");
@@ -122,6 +125,7 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
     beamCoreVisual_->SetIsVisible(false);
 }
 
+// 野生時の浮遊、チャージ、ビーム発射ステート
 void EnemyBeamDrone::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         HideBeamVisuals();
@@ -226,6 +230,7 @@ void EnemyBeamDrone::SetCarried(bool isCarried) {
     HideBeamVisuals();
 }
 
+// 持ち運び中にプレイヤー前方へビームを撃つ能力
 void EnemyBeamDrone::ExecuteAbility(Player* player) {
     if (!player || !isCarried_) {
         return;
@@ -301,6 +306,7 @@ void EnemyBeamDrone::UpdateCarriedAbility(Player* player, float deltaTime) {
     }
 }
 
+// 浮遊AIと敵自身のビーム処理
 void EnemyBeamDrone::CaptureHomePosition() {
     if (hasHomePosition_) return;
     homePosition_ = GetTranslate();
@@ -315,12 +321,14 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
     Vector3 desired = GetWanderTargetPosition(deltaTime, 0.55f);
     desired.y += std::sin(hoverTimer_ * 2.1f) * 0.45f;
     bool isCombatPosition = false;
+    Vector3 combatFacingDirection = { 0.0f, 0.0f, 1.0f };
 
     if (target_) {
         Vector3 toTarget = target_->GetTranslate() - GetTranslate();
         Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
         if (distance <= detectionRange_) {
+            combatFacingDirection = direction;
             Vector3 targetPos = target_->GetTranslate();
             const Vector3 sideDirection = { direction.z, 0.0f, -direction.x };
             const float sideOffset = std::sin(hoverTimer_ * 0.85f) * kOrbitSideOffset;
@@ -352,7 +360,10 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
 
     Vector3 facingDirection = smoothedVelocity_;
     facingDirection.y = 0.0f;
-    if (Math::Length(facingDirection) > 0.08f && state_ == BeamState::Idle) {
+    if (isCombatPosition && state_ == BeamState::Idle) {
+        UpdateFacing(combatFacingDirection);
+    }
+    else if (Math::Length(facingDirection) > 0.08f && state_ == BeamState::Idle) {
         UpdateFacing(facingDirection);
     }
 }
@@ -437,6 +448,7 @@ void EnemyBeamDrone::UpdateBeamDamage() {
     damageEvent.damageAmount = kBeamDamage;
     damageEvent.knockbackVelocity = { knockback.x * 14.0f, 7.0f, knockback.z * 14.0f };
     EventManager::GetInstance()->Dispatch(damageEvent);
+    HitEffectDirector::SpawnEnemyAbilityHit(targetPoint);
     beamDamageDone_ = true;
 }
 
@@ -495,6 +507,7 @@ Vector3 EnemyBeamDrone::GetBeamMuzzlePosition(const Vector3& direction) const {
     return position;
 }
 
+// プレイヤーが使うビーム能力の処理
 void EnemyBeamDrone::StartPlayerBeamCharge(Player* player) {
     if (!player) {
         return;
@@ -604,6 +617,7 @@ void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
             beamDirection_.z * 20.0f
         };
         EventManager::GetInstance()->Dispatch(damageEvent);
+        HitEffectDirector::SpawnEnemyAbilityHit(targetPoint);
     }
 
     playerBeamDamageDone_ = true;

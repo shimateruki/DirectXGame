@@ -300,6 +300,7 @@ private:
             changed |= DrawTypeCombo("敵の種類", data, param, "enemyType", GetEnemyOptions(), Category::Enemy);
             changed |= DrawParamFloat(param, "HP", "hp", 100.0f, 1.0f);
             changed |= DrawParamFloat(param, "最大HP", "maxHp", 100.0f, 1.0f);
+            changed |= DrawParamFloat(param, "攻撃力倍率", "attackPower", 1.0f, 0.05f);
             changed |= DrawParamFloat(param, "移動速度", "speed", 1.0f, 0.05f);
             changed |= DrawParamFloat(param, "重力", "gravity", 50.0f, 0.5f);
             changed |= DrawParamFloat(param, "索敵範囲", "detectionRange", 20.0f, 0.25f);
@@ -883,6 +884,8 @@ private:
 
     std::vector<TypeOption> GetEnemyOptions() const {
         return {
+            { "FireSlime", "Fire Slime" },
+            { "ThunderSlime", "Thunder Slime" },
             { "Slime", "スライム" },
             { "BossCore", "ボスコア" },
             { "Bomb", "ボム" },

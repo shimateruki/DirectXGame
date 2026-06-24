@@ -5,32 +5,33 @@
 class InputManager;
 
 /// <summary>
-/// カメラを管理するシングルトンクラス
+/// メインカメラと現在有効なカメラを管理するシングルトン。
 /// </summary>
 class CameraManager {
 public:
     /// <summary>
-    /// シングルトンインスタンスの取得
+    /// シングルトンインスタンスを取得する。
     /// </summary>
     static CameraManager* GetInstance();
 
     /// <summary>
-    /// 初期化
+    /// メインカメラを初期化する。
     /// </summary>
     void Initialize();
 
     /// <summary>
-    /// 更新
+    /// 有効カメラを更新する。
     /// </summary>
     void Update();
 
-    // --- セッター ---
+    // カメラ操作で参照する入力管理を設定する。
     void SetInputManager(InputManager* inputManager);
 
-    // --- ゲッター ---
+    // カメラ参照の取得と切り替え。
     Camera* GetMainCamera() { return mainCamera_.get(); }
     Camera* GetActiveCamera() { return activeCamera_ ? activeCamera_ : mainCamera_.get(); }
     void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
+
 private:
     CameraManager() = default;
     ~CameraManager() = default;

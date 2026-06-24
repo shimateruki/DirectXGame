@@ -17,6 +17,7 @@ public:
         None,
         Resume,
         Retry,
+        StageSelect,
         OpenSettings,
         ReturnTitle
     };
@@ -30,7 +31,9 @@ public:
 
 private:
     enum class Item {
+        Resume,
         Retry,
+        StageSelect,
         Settings,
         Title,
         Count
@@ -58,7 +61,12 @@ private:
 
     Sprite* background_ = nullptr;
     Sprite* panel_ = nullptr;
+    Sprite* titlePlate_ = nullptr;
     Sprite* title_ = nullptr;
+    Sprite* hintBack_ = nullptr;
+    Sprite* hintText_ = nullptr;
+    Sprite* cursorSlime_ = nullptr;
+    Sprite* cursorArrow_ = nullptr;
     std::array<MenuRow, static_cast<size_t>(Item::Count)> rows_{};
 
     bool isActive_ = false;

@@ -11,7 +11,8 @@ enum class VFXEventType {
     SoundEffect = 2,
     MovingParticle = 3,
     CameraShake = 4,
-    PostEffectPulse = 5
+    PostEffectPulse = 5,
+    LightPulse = 6
 };
 
 struct VFXEvent {
@@ -34,12 +35,17 @@ struct VFXEvent {
     float damageFlash = 0.0f;
     float chromaticAberration = 0.0f;
     float wobbleIntensity = 0.0f;
+    float bloomIntensity = 0.0f;
+    float lightRadius = 9.0f;
+    float lightDecay = 1.4f;
+    Vector4 lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
 
     bool hasCapturedPostBase = false;
     float baseRadialIntensity = 0.0f;
     float baseDamageFlash = 0.0f;
     float baseChromaticAberration = 0.0f;
     float baseWobbleIntensity = 0.0f;
+    float baseBloomIntensity = 0.0f;
 };
 
 class VFXSequencer {
@@ -70,11 +76,26 @@ public:
     const std::vector<VFXEvent>& GetEvents() const { return events_; }
     void SetTargetObject(Object3d* targetObject) { targetObject_ = targetObject; }
     Object3d* GetTargetObject() const { return targetObject_; }
+    void SetRootPosition(const Vector3& rootPosition);
+    void SetRootScale(const Vector3& rootScale);
+    void SetRootRotation(const Vector3& rootRotation);
+    void ClearRootPosition();
+
+    static void PlayOneShot(const std::string& sequenceName, const Vector3& position);
+    static void PlayOneShot(const std::string& sequenceName, const Vector3& position, const Vector3& scale);
+    static void PlayOneShot(const std::string& sequenceName, const Vector3& position, const Vector3& scale, const Vector3& rotation);
+    static void PlayOneShotOnTarget(const std::string& sequenceName, Object3d* targetObject);
+    static void PlayOneShotOnTarget(const std::string& sequenceName, Object3d* targetObject, const Vector3& localOffset, const Vector3& scale, const Vector3& rotation);
+    static void UpdateOneShots(float deltaTime);
 
 private:
     std::vector<VFXEvent> events_;
     Object3d* targetObject_ = nullptr;
+    Vector3 rootPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 rootScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 rootRotation_ = { 0.0f, 0.0f, 0.0f };
 
     float currentTime_ = 0.0f;
     bool isPlaying_ = false;
+    bool useRootPosition_ = false;
 };

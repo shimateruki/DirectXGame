@@ -5,6 +5,12 @@
 #include"Player.h"
 #include <DebugConsole.h>
 #include <algorithm>
+namespace {
+// モデル正面と移動方向のズレを合わせるための補正角
+constexpr float kSlimeModelYawOffset = 3.1415926535f;
+}
+
+// 基本スライムの追跡ジャンプと待機徘徊
 void EnemySlime::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
@@ -20,6 +26,15 @@ void EnemySlime::Update(float deltaTime) {
     if (!target_ || !param_.has_value()) {
         BaseEnemy::Update(deltaTime);
         return;
+    }
+    if (!hasBaseScale_) {
+        baseScale_ = GetScale();
+        const float maxScale = (std::max)({ std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z) });
+        if (maxScale < 1.2f) {
+            baseScale_ = { 2.0f, 2.0f, 2.0f };
+            SetScale(baseScale_);
+        }
+        hasBaseScale_ = true;
     }
 
     static Math math;
@@ -41,9 +56,9 @@ void EnemySlime::Update(float deltaTime) {
 
             // 向きだけはプレイヤーの方をじわじわ向く
             Vector3 dir = math.Normalize(toTarget);
-            float targetRotY = std::atan2(dir.x, dir.z);
+            float targetRotY = std::atan2(dir.x, dir.z) + kSlimeModelYawOffset;
             // 簡易的な線形補間で回転（パッと向かないように）
-            transform_.rotate.y = math.LerpShortAngle(transform_.rotate.y, targetRotY, 0.1f);
+            SetRotationY(math.LerpShortAngle(GetRotation().y, targetRotY, 0.1f));
 
             // 一定時間経過したらジャンプ！
             if (jumpTimer_ > 1.0f) {
@@ -66,8 +81,8 @@ void EnemySlime::Update(float deltaTime) {
             const float wanderLength = math.Length(wanderDirection);
             if (wanderLength > 0.001f) {
                 wanderDirection = wanderDirection / wanderLength;
-                float targetRotY = std::atan2(wanderDirection.x, wanderDirection.z);
-                transform_.rotate.y = math.LerpShortAngle(transform_.rotate.y, targetRotY, 0.08f);
+                float targetRotY = std::atan2(wanderDirection.x, wanderDirection.z) + kSlimeModelYawOffset;
+                SetRotationY(math.LerpShortAngle(GetRotation().y, targetRotY, 0.08f));
             }
 
             if (jumpTimer_ > 1.35f && wanderLength > 0.05f) {
@@ -88,7 +103,7 @@ void EnemySlime::Update(float deltaTime) {
 
     // --- 3. 見た目の演出 (スライムらしい伸縮) ---
     // 本来のスケールを基準に変形させる
-    Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+    Vector3 baseScale = baseScale_;
     if (param_.has_value()) {
         // JSONで設定されたスケールがあればそれをベースにする（今は一旦固定値でデモ）
     }
@@ -127,6 +142,7 @@ std::unique_ptr<Object3d> EnemySlime::Clone() const {
     return newSlime;
 }
 
+// 持ち運び中に使う、プレイヤーを大きく跳ね上げる能力
 void EnemySlime::ExecuteAbility(Player* player) {
     if (!player) return;
 

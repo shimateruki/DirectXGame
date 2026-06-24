@@ -1,0 +1,69 @@
+{
+    "baseColor": [
+        3.2,
+        2.75,
+        0.98,
+        0.78
+    ],
+    "baseSize": 0.09,
+    "blendModeIndex": 1,
+    "colorEaseType": 2,
+    "colorIntensity": 2.85,
+    "colorMidTime": 0.08,
+    "emitArea": [
+        0.06,
+        0.04,
+        0.06
+    ],
+    "emitCount": 8,
+    "emitInterval": 0.001,
+    "emitLife": 0.16,
+    "emitPos": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        0.18,
+        0.0
+    ],
+    "enableCollision": 0,
+    "endColor": [
+        1.0,
+        0.58,
+        0.08,
+        0.0
+    ],
+    "endSize": 0.04,
+    "envDrag": 0.72,
+    "envGravity": [
+        0.0,
+        -0.08,
+        0.0
+    ],
+    "envTurbulence": 0.9,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": false,
+    "midColor": [
+        1.0,
+        1.0,
+        1.0,
+        0.72
+    ],
+    "midSize": 0.22,
+    "restitution": 0.0,
+    "rotSpeed": 5.0,
+    "shapeAngle": 82.0,
+    "shapeRadius": 0.16,
+    "shapeType": 1,
+    "sizeEaseType": 1,
+    "sizeMidTime": 0.08,
+    "softParticleFade": 2.5,
+    "texturePath": "Resources/sprite/particle/glow_core.png",
+    "velocityVariance": 0.42
+}

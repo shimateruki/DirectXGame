@@ -9,13 +9,13 @@
 #include "DirectXCommon.h"
 #include "DirectXTex.h"
 
+// テクスチャの読み込み、GPU リソース生成、SRV ハンドル管理をまとめるクラス
 class TextureManager {
 public:
     struct TextureData {
         std::string filePath;
         DirectX::TexMetadata metadata;
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
         uint32_t srvHandle = 0;
     };
 
@@ -40,9 +40,9 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
 
-    // キーをSRVハンドル、値をテクスチャデータとして保持します。
+    // キーを SRV ハンドル、値をテクスチャデータとして保持する。
     std::map<uint32_t, TextureData> textureDatas_;
 
-    // 実際に読み込んだファイルパスからSRVハンドルへ引けるようにします。
+    // ファイルパスから SRV ハンドルを逆引きする。
     std::map<std::string, uint32_t> textureHandleMap_;
 };

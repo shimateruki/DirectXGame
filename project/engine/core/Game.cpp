@@ -5,6 +5,7 @@
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
+#include "GameAudioSettings.h"
 #include "GameDataManager.h"
 #include "GameSettingsManager.h"
 #include "InputManager.h"
@@ -20,6 +21,7 @@
 #include "SrvManager.h"
 #include "StageManager.h"
 #include "TextureManager.h"
+#include "VFXSequencer.h"
 #include "WinApp.h"
 #include "GPUParticleManager.h"
 #include "engine/graphics/postprocess/Fade.h"
@@ -55,6 +57,7 @@ void Game::InitializeEngineServices() {
 	StageManager::GetInstance()->Initialize();
 	GameDataManager::GetInstance()->Initialize();
 	GameSettingsManager::GetInstance()->Initialize();
+	GameAudioSettings::GetInstance()->Initialize();
 
 	sceneFactory_ = std::make_unique<SceneFactory>();
 	sceneManager_ = std::make_unique<SceneManager>();
@@ -69,7 +72,12 @@ void Game::InitializeScene() {
 std::string Game::ResolveStartSceneName() const {
 	std::string startScene = "TITLE";
 
-#ifdef USE_IMGUI
+#ifdef DD
+	StageManager::GetInstance()->SetCurrentStage(2);
+	startScene = "GAMEPLAY";
+#endif
+
+#if defined(USE_IMGUI) && !defined(DD)
 	if (sceneManager_) {
 		std::string lastScene = sceneManager_->LoadLastSceneName();
 		if (!lastScene.empty()) {
@@ -108,6 +116,9 @@ void Game::InitializePostProcess() {
 	PostEffect::GetInstance()->SetLUTTexture(lutHandle);
 
 	Fade::GetInstance()->Initialize();
+#ifndef USE_IMGUI
+	PostEffect::GetInstance()->ResetToNeutral();
+#endif
 	KeyConfig::GetInstance()->Initialize();
 }
 
@@ -150,11 +161,32 @@ void Game::Finalize() {
 void Game::Update() {
 	InputManager::GetInstance()->Update();
 	if (InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
-		PostQuitMessage(0);
-		return;
+		WinApp::RequestClose();
+	}
+
+	if (WinApp::ConsumeCloseRequest()) {
+#ifdef USE_IMGUI
+		if (editorController_) {
+			editorController_->RequestExit();
+		}
+		else {
+			WinApp::CloseNow();
+		}
+#else
+		WinApp::CloseNow();
+#endif
+	}
+
+	if (dxCommon_) {
+		dxCommon_->ProcessPendingResize();
 	}
 
 	float deltaTime = CalculateDeltaTime();
+	GPUParticleManager::GetInstance()->BeginFrame();
+	MeshEffectManager::GetInstance()->BeginFrame();
+	if (isPlaying_) {
+		GPUParticleManager::GetInstance()->SetTimeScale(1.0f);
+	}
 
 #ifdef USE_IMGUI
 	UpdateEditorFrame(deltaTime);
@@ -205,7 +237,8 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	{
 		PROFILE_SCOPE("シーン");
 		if (sceneManager_) {
-			sceneManager_->Update(finalDeltaTime);
+			const float sceneDeltaTime = sceneManager_->IsTransitioning() ? deltaTime : finalDeltaTime;
+			sceneManager_->Update(sceneDeltaTime);
 		}
 	}
 	{
@@ -214,7 +247,12 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	}
 	{
 		PROFILE_SCOPE("パーティクル");
-		GPUParticleManager::GetInstance()->Update(deltaTime);
+		const float effectDeltaTime = isPlaying_ ? finalDeltaTime : 0.0f;
+		VFXSequencer::UpdateOneShots(effectDeltaTime);
+		GPUParticleManager::GetInstance()->Update(effectDeltaTime);
+#ifndef USE_IMGUI
+		MeshEffectManager::GetInstance()->Update(effectDeltaTime);
+#endif
 	}
 	if (sceneManager_) {
 		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
@@ -338,6 +376,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			editorController_->DrawScenePreview(pointLight, spotLight);
 		}
 		DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+		MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
@@ -345,10 +384,6 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			sceneManager_->DrawUI();
 		}
 		dxCommon_->EndGpuProfile("  ゲームUI");
-
-		dxCommon_->StartGpuProfile("  エフェクト");
-		MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
-		dxCommon_->EndGpuProfile("  エフェクト");
 
 		dxCommon_->StartGpuProfile("  デバッグ");
 		if (editorController_) {
@@ -363,6 +398,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
 			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
 			DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 			sceneManager_->DrawUI();
 		}
 	}

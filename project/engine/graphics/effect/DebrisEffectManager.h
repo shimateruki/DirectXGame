@@ -58,8 +58,11 @@ public:
     bool SaveConfig(const std::string& filePath, const DebrisEffectConfig& config) const;
     void RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config);
     const std::map<std::string, DebrisEffectConfig>& GetPresets() const { return presets_; }
+    void PrewarmPreset(const std::string& presetName);
+    void PrewarmPresets(const std::vector<std::string>& presetNames);
 
     void Spawn(const std::string& presetName, const Vector3& position);
+    void SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY);
     void SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position);
 
 private:

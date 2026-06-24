@@ -1,56 +1,59 @@
 #pragma once
-#include "engine/utility/math/Math.h"
 #include "InputManager.h"
-#include "Object3d.h" 
-#include <map>
+#include "Object3d.h"
+#include "engine/utility/math/Math.h"
 #include <d3d12.h>
+#include <map>
 #include <wrl.h>
 
 /// <summary>
-/// 3Dシーンの視点を管理するカメラクラス
+/// 3Dシーンの視点、投影、追従、演出用カメラ制御を扱う。
 /// </summary>
 class Camera {
 public:
-    // ==================================================
-    // 列挙型・構造体
-    // ==================================================
-    // リリースビルド（追従時）のカメラモード
+    /// <summary>
+    /// プレイヤー追従や演出で使うカメラモード。
+    /// </summary>
     enum class FollowMode {
-        kFixed,         // 従来の固定オフセット追従
-        kAimable,       // プレイヤーの後ろからマウスで視点操作・ズーム可能
-        kFirstPerson,   // 一人称視点
-        kLockOn,        // ロックオンモード
-        kOrbit,         // 周回
-        kFixedPoint,    // 定点カメラ
+        kFixed,       // 対象に固定オフセットで追従する。
+        kAimable,     // 三人称視点で、入力により回転できる。
+        kFirstPerson, // 一人称視点。
+        kLockOn,      // ロックオン対象も見る視点。
+        kOrbit,       // 対象の周囲を回る視点。
+        kFixedPoint,  // 固定位置と角度を使う視点。
     };
 
-    // 空間・シネマティック演出用のカメラパラメータ
+    /// <summary>
+    /// シネマティック演出などで一時的に視点を上書きするための設定。
+    /// </summary>
     struct CameraOverrideParams {
-        float duration = 1.0f; // 移行にかかる時間（秒）
+        float duration = 1.0f;
 
-        // --- カメラ位置 (Eye) の設定 ---
-        bool trackEyeX = false; // X軸をプレイヤー(通常カメラ)に追従させるか
-        bool trackEyeY = false; // Y軸を追従させるか
-        bool trackEyeZ = false; // Z軸を追従させるか
-        Vector3 fixedEyePos = { 0.0f, 0.0f, 0.0f }; // 追従しない軸はこの値で固定される
+        // Eye位置を通常カメラに追従させる軸と、固定する場合の値。
+        bool trackEyeX = false;
+        bool trackEyeY = false;
+        bool trackEyeZ = false;
+        Vector3 fixedEyePos = { 0.0f, 0.0f, 0.0f };
 
-        // --- 注視点 (Target) の設定 ---
-        bool trackTargetX = true; // デフォルトは対象を完全追従
+        // 注視点を通常カメラに追従させる軸と、固定する場合の値。
+        bool trackTargetX = true;
         bool trackTargetY = true;
         bool trackTargetZ = true;
         Vector3 fixedTargetPos = { 0.0f, 0.0f, 0.0f };
     };
 
 public:
-    // ==================================================
-    // 初期化・更新
-    // ==================================================
+    /// <summary>
+    /// カメラ行列とGPU用定数バッファを初期化する。
+    /// </summary>
     void Initialize();
+
+    /// <summary>
+    /// 入力、追従対象、演出状態を反映してカメラを更新する。
+    /// </summary>
     void Update();
 
-    // ==================================================
-    // ゲッター・セッター (行列)
-    // ==================================================
+    // 行列取得。
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
     const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix_; }
 
@@ -62,36 +65,29 @@ public:
     void UpdateProjectionMatrix();
     void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
 
-    // ==================================================
-    // ゲッター・セッター (ターゲット・入力)
-    // ==================================================
+    // 入力と追従対象。
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
     void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
     void SetFollowTarget(Object3d* target) { followObject_ = target; }
     void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
     Object3d* GetFollowTarget() const { return followObject_; }
 
-    // ==================================================
-    // ゲッター・セッター (カメラ状態)
-    // ==================================================
+    // 現在のカメラ状態。
     const Vector3& GetEye() const { return eye_; }
     const Vector3& GetTargetPoint() const { return target_; }
-    const Vector3& GetRotation() const { return rotation_; } // kAimable, kFirstPerson用
+    const Vector3& GetRotation() const { return rotation_; }
 
-    // --- 自由カメラ用セッター ---
+    // 任意制御用の設定。
     void SetEye(const Vector3& eye) { eye_ = eye; }
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
     void SetFreezeEye(bool freeze);
     void SetAimCameraSuppressed(bool suppressed) { isAimCameraSuppressed_ = suppressed; }
 
-    // FOV（視野角）の動的変更
     void SetFovY(float fov) { fovY_ = fov; }
     float GetFovY() const { return fovY_; }
 
-    // ==================================================
-    // モード管理・設定
-    // ==================================================
+    // モードとモード別パラメータ。
     void SetFollowMode(FollowMode mode) { followMode_ = mode; }
     FollowMode GetFollowMode() const { return followMode_; }
 
@@ -106,19 +102,21 @@ public:
         orbitHeight_ = height;
         orbitSpeed_ = speed;
     }
+
+    void SetOrbitCenterOffset(const Vector3& offset) { orbitCenterOffset_ = offset; }
+    void SetOrbitCenterHeight(float height) { orbitCenterHeight_ = height; }
+    void SetOrbitAngle(float angle) { orbitAngle_ = angle; }
+    float GetOrbitAngle() const { return orbitAngle_; }
+    void ResetFollowSmoothing() { isCameraInitialized_ = false; }
     void SetLockOnOffset(const Vector3& offset) { lockOnOffset_ = offset; }
 
-    // ==================================================
-    // 操作・同期
-    // ==================================================
+    // 入力操作と現在視点への同期。
     void AddRotation(const Vector2& mouseDelta);
     void SetRotationSensitivity(float sensitivity);
     float GetRotationSensitivity() const { return rotationSensitivity_; }
     void SyncRotationToCurrentView();
 
-    // ==================================================
-    // 動的カメラオーバーライド（シネマティック演出・視点変更用）
-    // ==================================================
+    // 演出用の一時上書きと画面揺れ。
     void StartOverride(const CameraOverrideParams& params);
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
@@ -127,9 +125,6 @@ public:
     void StartShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
     bool IsShaking() const { return shakeTimer_ > 0.0f; }
 
-    // ==================================================
-    // 定数バッファ
-    // ==================================================
     ID3D12Resource* GetConstantBuffer() const { return constBuffer_.Get(); }
 
 private:
@@ -139,47 +134,43 @@ private:
     };
 
 private:
-    // ==================================================
-    // メンバ変数
-    // ==================================================
-
-    // --- カメラの三要素 ---
+    // カメラの基本ベクトル。
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };
     Vector3 target_ = { 0.0f, 0.0f, 0.0f };
     Vector3 up_ = { 0.0f, 1.0f, 0.0f };
 
-    // --- プロジェクション行列のパラメータ ---
+    // 投影行列のパラメータ。
     float fovY_ = 0.45f;
     float aspectRatio_ = 16.0f / 9.0f;
     float nearClip_ = 0.1f;
     float farClip_ = 1000.0f;
 
-    // --- 行列 ---
+    // View/Projection行列。
     Matrix4x4 viewMatrix_ = {};
     Matrix4x4 projectionMatrix_ = {};
 
-    // --- ポインタ ---
+    // 入力と追従対象への参照。Cameraは所有しない。
     InputManager* inputManager_ = nullptr;
     Object3d* followObject_ = nullptr;
     Object3d* targetObject_ = nullptr;
 
-    // --- モード/状態 ---
+    // 現在のモードと入力受付状態。
     FollowMode followMode_ = FollowMode::kAimable;
     bool isInputEnabled_ = true;
 
-    // --- 補間用・スムージング ---
+    // 追従の補間状態。
     Vector3 smoothTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 smoothEye_ = { 0.0f, 0.0f, 0.0f };
     bool isCameraInitialized_ = false;
 
-    // --- 各モード用パラメータ ---
-    Vector3 fixedOffset_ = { 0.0f, 5.0f, -10.0f };       // kFixed 用
-    float distance_ = 10.0f;                             // kAimable 用
+    // 各モードで使うパラメータ。
+    Vector3 fixedOffset_ = { 0.0f, 5.0f, -10.0f };
+    float distance_ = 10.0f;
     float minDistance_ = 3.0f;
     float maxDistance_ = 20.0f;
-    Vector3 firstPersonOffset_ = { 0.0f, 1.5f, 0.0f };   // kFirstPerson 用
-    Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };            // kAimable / kFirstPerson用
-    Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f };       // kLockOn 用
+    Vector3 firstPersonOffset_ = { 0.0f, 1.5f, 0.0f };
+    Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f };
 
     float aimDistance_ = 15.0f;
     float aimHeight_ = 5.0f;
@@ -188,29 +179,33 @@ private:
     bool isAimCameraSuppressed_ = false;
 
     float orbitRadius_ = 15.0f;
+    Vector3 orbitCenterOffset_ = { 0.0f, 0.0f, 0.0f };
+    float orbitCenterHeight_ = 5.0f;
     float orbitHeight_ = 5.0f;
     float orbitSpeed_ = 0.005f;
     float orbitAngle_ = 0.0f;
     Vector3 fixedPointPos_ = { 0.0f, 5.0f, -10.0f };
     float rotationSensitivity_ = 1.0f;
 
-    // --- カメラオーバーライド用 ---
+    // カメラオーバーライドの補間状態。
     bool isOverridden_ = false;
-    CameraOverrideParams overrideParams_; // 構造体で管理
+    CameraOverrideParams overrideParams_;
     float overrideTimer_ = 0.0f;
     float overrideDuration_ = 0.0f;
-    float overrideWeight_ = 0.0f;         // 0.0(通常) ～ 1.0(完全オーバーライド)
+    float overrideWeight_ = 0.0f;
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
     Frustum frustum_;
 
+    // 画面揺れの状態。
     float shakeTimer_ = 0.0f;
     float shakeDuration_ = 0.0f;
     float shakeAmplitude_ = 0.0f;
     float shakeFrequency_ = 24.0f;
     Vector3 shakeAxisWeight_ = { 1.0f, 1.0f, 0.5f };
 
+    // GPUへ送るView/Projection行列。
     Microsoft::WRL::ComPtr<ID3D12Resource> constBuffer_;
     CameraVP* constMap_ = nullptr;
     float aimTransition_ = 0.0f;

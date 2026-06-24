@@ -23,6 +23,8 @@ cbuffer cbWaterParam : register(b1)
     float effectIntensity;
     float3 cameraWorldPosition;
     float billboardScale;
+    float effectScaleX;
+    float effectScaleY;
 };
 
 // [2] Material color from the inspector.

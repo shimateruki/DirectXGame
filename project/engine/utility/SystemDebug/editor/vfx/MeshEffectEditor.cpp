@@ -209,6 +209,8 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->SetScrollSpeed(editScrollSpeed_);
         fx->SetIntensity(editIntensity_);
 
+        editEnableDistortion_ = false;
+        editDistortionStrength_ = 0.0f;
         fx->SetDistortionStrength(editDistortionStrength_);
         fx->SetDistortionSpeed(editDistortionSpeed_);
         fx->SetEdgeFadeStrength(editEdgeFadeStrength_);
@@ -503,17 +505,13 @@ void MeshEffectEditor::DrawImGui() {
         }
 
         // --- ① メインテクスチャ (t0) ---
-        if (editProceduralType_ == 0) {
-            TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
-                if (auto renderer = previewEffect_->GetMeshRenderer()) {
-                    renderer->SetTexture(path);
-                }
-                });
-        }
-        else {
-            // プロシージャル使用時は無効化されていることを明記する
-            ImGui::TextDisabled(ICON_FA_IMAGE " メインテクスチャ (無効)");
-            ImGui::TextDisabled("※シェーダーで形を生成しているため不要です");
+        TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
+            if (auto renderer = previewEffect_->GetMeshRenderer()) {
+                renderer->SetTexture(path);
+            }
+            });
+        if (editProceduralType_ != 0) {
+            ImGui::TextDisabled("プロシージャル形状にも発光テクスチャやストリークを貼れます。");
         }
 
         // --- ② ノイズテクスチャ (t2) ---
@@ -714,11 +712,13 @@ void MeshEffectEditor::SaveToJson() {
     // --- シェーダーパラメータ ---
     j["ScrollSpeed"] = { editScrollSpeed_.x, editScrollSpeed_.y };
     j["Intensity"] = editIntensity_;
+    editEnableDistortion_ = false;
+    editDistortionStrength_ = 0.0f;
     j["DistortionStrength"] = editDistortionStrength_;
     j["DistortionSpeed"] = editDistortionSpeed_;
     j["EdgeFadeStrength"] = editEdgeFadeStrength_;
     j["AlphaReference"] = editAlphaReference_;
-    j["EnableDistortion"] = editEnableDistortion_;
+    j["EnableDistortion"] = false;
     j["BlendMode"] = currentBlendModeIndex_;
     j["EnableReveal"] = editEnableReveal_;
     j["EasingType"] = editEasingType_;
@@ -870,12 +870,12 @@ void MeshEffectEditor::LoadFromJson() {
         editIntensity_ = j["Intensity"];
         previewEffect_->SetIntensity(editIntensity_);
     }
-    if (j.contains("DistortionStrength")) editDistortionStrength_ = j["DistortionStrength"];
+    editDistortionStrength_ = 0.0f;
     if (j.contains("DistortionSpeed")) editDistortionSpeed_ = j["DistortionSpeed"];
     if (j.contains("EdgeFadeStrength")) editEdgeFadeStrength_ = j["EdgeFadeStrength"];
     if (j.contains("AlphaReference")) editAlphaReference_ = j["AlphaReference"];
     else editAlphaReference_ = 0.0f;
-    if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
+    editEnableDistortion_ = false;
     if (j.contains("BlendMode")) currentBlendModeIndex_ = j["BlendMode"];
     if (j.contains("EnableReveal")) editEnableReveal_ = j["EnableReveal"];
     else editEnableReveal_ = true;

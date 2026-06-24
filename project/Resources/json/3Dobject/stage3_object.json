@@ -1,10 +1,11 @@
-﻿{
+{
     "objects": [
         {
             "animation": {
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -21,120 +22,15 @@
                     1.0,
                     1.0,
                     1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 1,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": true,
-            "enableNormalMap": true,
-            "enemyType": "",
-            "envIntensity": 2.6689999103546143,
-            "eventID": 0,
-            "gimmickType": "",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Stages/block",
-            "myEventID": -1,
-            "name": "block_0",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Goblin",
-                "gimmickType": "",
-                "gravity": 50.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 24.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 27.700000762939453
-            },
-            "parentName": "",
-            "position": [
-                -30.02082061767578,
-                -1.102569818496704,
-                2.76423978805542
-            ],
-            "quaternion": [
-                0.0,
-                0.9343880414962769,
-                0.0,
-                -0.3562569320201874
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                3.1415927410125732,
-                -0.7285177707672119,
-                3.1415927410125732
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0000005960464478,
-                1.0,
-                1.0000005960464478
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Player"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    50.0,
-                    0.5,
-                    50.0
                 ],
                 "type": 2
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.6000000238418579,
+                0.6000000238418579,
+                0.6000000238418579,
                 1.0
             ],
             "emissive": 1.0,
@@ -144,6 +40,8 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -158,18 +56,22 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 23,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Primitives/heimen",
+            "modelName": "Stages/block",
             "myEventID": -1,
-            "name": "heimen_1",
+            "name": "Stages/block_0",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
+            "particleName": "",
             "position": [
-                -2.235945463180542,
-                -2.602569818496704,
-                -12.648028373718262
+                -40.49868392944336,
+                45.34912872314453,
+                -50.58097457885742
             ],
             "quaternion": [
                 0.0,
@@ -190,12 +92,16 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                39.54999923706055,
                 1.0,
-                1.0,
-                1.0
+                56.25
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -203,12 +109,13 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
-                    0.0,
-                    0.0,
-                    0.0
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
                 ],
                 "rotation": [
                     0.0,
@@ -216,14 +123,14 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.0
+                    0.4099999964237213,
+                    0.4099999964237213,
+                    0.4099999964237213
                 ],
-                "type": 2
+                "type": 1
             },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
+            "collisionAttribute": 2,
+            "collisionMask": 77,
             "color": [
                 1.0,
                 1.0,
@@ -233,10 +140,12 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
-            "enemyType": "",
+            "enemyType": "ThunderSlime",
             "envIntensity": 1.0,
             "eventID": 0,
-            "gimmickType": "MovingFloor",
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -252,35 +161,52 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Stages/block",
+            "modelName": "Characters/slime_yellow",
             "myEventID": -1,
-            "name": "Gimmick_MovingFloor",
+            "name": "Enemy_ThunderSlime",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
-                "enemyType": "Goblin",
-                "gimmickType": "MovingFloor",
-                "gravity": 50.0,
-                "hp": 100.0,
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 62.0,
+                "healAmount": 1.0,
+                "hp": 45.0,
                 "interval": 3.0,
-                "jumpPower": 100.0,
+                "itemType": "",
+                "jumpPower": 10.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
+                "maxHp": 45.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 3.0,
+                "startActive": false,
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
+            "particleName": "",
             "position": [
-                -21.00454330444336,
-                0.0,
-                5.417048454284668
+                -43.5074577331543,
+                47.02152633666992,
+                -10.8399658203125
             ],
             "quaternion": [
                 0.0,
+                0.7578360438346863,
                 0.0,
-                0.0,
-                1.0
+                0.6524450182914734
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -289,130 +215,30 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                1.719980001449585,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.6000000238418579,
             "saveCategory": "Object",
             "scale": [
-                1.0,
-                1.0,
-                1.0
+                2.0,
+                2.0,
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Gimmick"
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
         },
         {
             "animation": {
                 "animName": "",
                 "isAnimLoop": true
             },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "MovingFloor",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Stages/block",
-            "myEventID": -1,
-            "name": "move_3",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Goblin",
-                "gimmickType": "MovingFloor",
-                "gravity": 50.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 100.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                -1.2122493982315063,
-                0.0,
-                -10.007573127746582
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Gimmick"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -432,8 +258,8 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 6,
-            "collisionMask": 4294967295,
+            "collisionAttribute": 2,
+            "collisionMask": 77,
             "color": [
                 1.0,
                 1.0,
@@ -447,6 +273,8 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -462,29 +290,175 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Characters/slime",
+            "modelName": "Characters/slime_pink",
             "myEventID": -1,
             "name": "Enemy_Slime",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 60.0,
+                "healAmount": 1.0,
+                "hp": 50.0,
+                "interval": 3.0,
+                "itemType": "",
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 50.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0,
+                "targetScene": "SELECT"
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -43.39105224609375,
+                46.363216400146484,
+                -77.12431335449219
+            ],
+            "quaternion": [
+                0.0,
+                0.5167393684387207,
+                0.0,
+                -0.8561427593231201
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                5.197109222412109,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Object",
+            "scale": [
+                1.6357653141021729,
+                2.5463521480560303,
+                1.6357653141021729
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    7.832050323486328e-05,
+                    0.08764949440956116,
+                    -2.5987625122070313e-05
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    0.4275921881198883,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 5,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 1.0,
+            "modelName": "Stages/crown",
+            "myEventID": -1,
+            "name": "Stages/crown_4",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
+                "healAmount": 1.0,
                 "hp": 100.0,
                 "interval": 3.0,
+                "itemType": "",
                 "jumpPower": 10.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
-                "speed": 1.0
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
+            "particleName": "",
             "position": [
-                -4.632585048675537,
-                1.0,
-                -10.865554809570313
+                -51.73954391479492,
+                48.66637420654297,
+                -46.723209381103516
             ],
             "quaternion": [
                 0.0,
@@ -499,18 +473,151 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 1.0,
             "saveCategory": "Object",
             "scale": [
-                0.8000003099441528,
-                1.299999475479126,
-                0.8000003099441528
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.8999999761581421,
+                    0.949999988079071,
+                    0.8999999761581421
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "FireSlime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Characters/slime_red",
+            "myEventID": -1,
+            "name": "Enemy_FireSlime",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 24.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 60.0,
+                "healAmount": 1.0,
+                "hp": 45.0,
+                "interval": 3.0,
+                "itemType": "",
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 45.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 2.3499999046325684,
+                "startActive": false,
+                "switchMode": 0,
+                "targetScene": "SELECT"
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -35.50135040283203,
+                49.58912658691406,
+                -40.434608459472656
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Enemy"
         }
     ]

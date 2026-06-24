@@ -7,6 +7,9 @@
 class SceneManager;
 class Object3d;
 
+/// <summary>
+/// シーン内オブジェクトの参照切れや設定ミスを検査するEditorウィンドウ。
+/// </summary>
 class SceneValidator : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
@@ -36,7 +39,9 @@ private:
     unsigned int GetSeverityColor(Severity severity) const;
 
 private:
+    // SceneManagerへの参照。SceneValidatorは所有しない。
     SceneManager* sceneManager_ = nullptr;
+
     std::vector<Issue> issues_;
     bool autoRefresh_ = false;
     int selectedSeverityFilter_ = 0;

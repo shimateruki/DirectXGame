@@ -1,31 +1,37 @@
 #pragma once
-#include "Object3dCommon.h"
 #include "Model.h"
+#include "Object3dCommon.h"
 #include "Transform.h"
 #include "engine/utility/math/Math.h"
-#include <wrl.h>
 #include <memory>
 #include <string>
 #include <vector>
+#include <wrl.h>
 
-class Object3d; // 前方宣言
+class Object3d;
 
+/// <summary>
+/// Object3dのメッシュ描画、マテリアル、LOD、特殊マテリアル描画を担当する。
+/// </summary>
 class MeshRenderer {
 public:
-    // 定数バッファ用構造体 (Object3dから移植)
+    // GPUへ送る行列情報。
     struct TransformationMatrix {
         Matrix4x4 WVP;
         Matrix4x4 world;
         Matrix4x4 WorldInverseTranspose;
     };
+
     struct DirectionalLight {
         Vector4 color;
         Vector3 direction;
         float intensity;
     };
+
     struct CameraForGPU {
         Vector3 worldPosition;
     };
+
     struct MaterialData {
         Vector4 color;
         int32_t enableLighting;
@@ -34,14 +40,14 @@ public:
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
-        float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
-        float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
+        float roughness;
+        float metallic;
         int32_t enableNormalMap;
-        int32_t enableEnvMap;      // 4 byte (環境マップ有効化)
-        float envIntensity;        // 4 byte (環境マップ強度)
-        float emissive;            // 4 byte (自己発光の強さ。1.0で光らない)
-        float time;                // 4 byte (時間アニメーション用)
-        float padding2[2];         // 8 byte (16バイト境界に合わせるためのダミー)
+        int32_t enableEnvMap;
+        float envIntensity;
+        float emissive;
+        float time;
+        float padding2[2];
     };
 
     struct PointLight {
@@ -64,27 +70,29 @@ public:
         float cosFalloffStart;
         float padding[1];
     };
+
     struct LocalFogData {
-        Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // デフォルトは毒沼のような緑色
+        Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f };
         Vector3 cameraPos;
         float fogDensity = 0.5f;
         Matrix4x4 inverseViewProj;
-        float time = 0.0f;       // 経過時間
-        float edgeFade = 0.1f;   // 箱のフチのボケ具合
-        float noiseSpeed = 0.5f; // 揺らぐスピード
-        float noiseScale = 0.2f; // 模様の細かさ
-        Vector3 lightDirection;                        // 12 byte
-        float scatteringIntensity = 0.4f;              // 4 byte (光の明るさ)
-        Vector3 lightColor;                            // 12 byte
-        float scatteringG = 0.6f;                      // 4 byte (光の芯の強さ: 0.0~0.99)
+        float time = 0.0f;
+        float edgeFade = 0.1f;
+        float noiseSpeed = 0.5f;
+        float noiseScale = 0.2f;
+        Vector3 lightDirection;
+        float scatteringIntensity = 0.4f;
+        Vector3 lightColor;
+        float scatteringG = 0.6f;
     };
+
     struct WaterParamForGPU {
         float time;
         float waveSpeed;
         float waveHeight;
         float waveFrequency;
-        float flowSpeedX;    // X方向への流れる速さ
-        float flowSpeedY;    // Y(Z)方向への流れる速さ
+        float flowSpeedX;
+        float flowSpeedY;
         float uvOffsetX;
         float uvOffsetY;
         float effectType;
@@ -93,6 +101,8 @@ public:
         float effectIntensity;
         Vector3 cameraWorldPosition;
         float billboardScale;
+        float effectScaleX;
+        float effectScaleY;
     };
 
     struct LodLevel {
@@ -101,21 +111,30 @@ public:
         float distance = 0.0f;
         Model* model = nullptr;
     };
+
 public:
-    // コンストラクタ: 描画対象のTransformを受け取る
+    /// <summary>
+    /// 描画対象のTransformを参照してレンダラーを作成する。
+    /// </summary>
     MeshRenderer(Transform* transform);
     ~MeshRenderer() = default;
 
-    // 初期化
+    /// <summary>
+    /// GPUリソースと既定マテリアルを初期化する。
+    /// </summary>
     void Initialize(Object3dCommon* common);
 
-    // 更新 (WVP行列計算など)
+    /// <summary>
+    /// WVP行列、ライト、マテリアル時間などを更新する。
+    /// </summary>
     void Update();
 
-    // 描画
+    /// <summary>
+    /// 通常メッシュを描画する。
+    /// </summary>
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
-    // --- アクセッサ (Setters) ---
+    // モデルとLOD設定。
     void SetModel(Model* model);
     void SetModel(const std::string& modelName);
     Model* GetModel() const { return model_; }
@@ -136,17 +155,17 @@ public:
     std::string GetActiveModelName() const;
     float GetCameraDistanceToObject() const;
 
+    // マテリアル設定。
     void SetColor(const Vector4& color);
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
     void SetMaterialType(int32_t type);
     void SetIntensity(float intensity);
 
-    // ゲッター
     Vector4 GetColor() const;
     int32_t GetMaterialType() const;
     BlendMode GetBlendMode() const { return blendMode_; }
 
-    // マテリアルやライトデータへの直接アクセス（必要に応じて）
+    // 必要に応じてエディタや演出側から直接調整するためのデータアクセス。
     MaterialData* GetMaterialData() { return materialData_; }
     DirectionalLight* GetLightData() { return directionalLightData_; }
     void SetMetallic(float metallic);
@@ -178,20 +197,20 @@ public:
     void SetEnvIntensity(float intensity);
     float GetEnvIntensity() const;
 
+    // 影、フォグ、水面、特殊マテリアル描画。
     void DrawShadow();
-
-    void SetShadowCommonState(); // 共通設定のみ
-    void DrawShadowOnly();      // 描画実行のみ
+    void SetShadowCommonState();
+    void DrawShadowOnly();
     void DrawLocalFog(uint32_t depthSrvHandle);
-    LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
+    LocalFogData* GetLocalFogData() { return localFogData_; }
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
     void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-    void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle); 
-    void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);   
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -205,29 +224,29 @@ public:
     void DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
+
 private:
     void InitializeFireProxyModel();
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
     Model* ResolveDrawModel() const;
     void UpdateUvTransform();
 
-    // 依存オブジェクト
+    // 外部オブジェクトへの参照。MeshRendererは所有しない。
     Object3dCommon* common_ = nullptr;
-    Transform* transform_ = nullptr; // 位置情報元
+    Transform* transform_ = nullptr;
 
-    // モデル
+    // 描画モデルとLOD状態。
     Model* model_ = nullptr;
     std::string modelName_;
     int meshDrawIndex_ = -1;
-
     bool lodEnabled_ = true;
     std::vector<LodLevel> lodLevels_;
     mutable int activeLodLevel_ = 0;
 
-    // 描画設定
+    // 通常描画設定。
     BlendMode blendMode_ = BlendMode::kNormal;
 
-    // --- DirectXリソース (Object3dから移動) ---
+    // 通常描画用GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
     TransformationMatrix* wvpData_ = nullptr;
 
@@ -240,16 +259,17 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
 
+    // テクスチャとPBR補助マップ。
     std::string normalMapPath_ = "";
     uint32_t normalMapHandle_ = 0;
     std::string ormMapPath_ = "";
     uint32_t ormMapHandle_ = 0;
-
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
     Vector2 textureTiling_ = { 1.0f, 1.0f };
     bool autoTextureTiling_ = false;
 
+    // 水面、火、影、ローカルフォグ用リソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;
     std::unique_ptr<Model> fireProxyModel_;

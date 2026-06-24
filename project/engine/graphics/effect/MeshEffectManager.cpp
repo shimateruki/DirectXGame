@@ -7,6 +7,7 @@
 #include <DebugConsole.h>
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include <exception>
 #include <functional>
 #include <CollisionManager.h>
 using json = nlohmann::json;
@@ -20,7 +21,115 @@ void MeshEffectManager::Initialize(Object3dCommon* common) {
     common_ = common;
 }
 
+void MeshEffectManager::BeginFrame() {
+    updatedThisFrame_ = false;
+}
+
+void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
+    if (preloadedEffects_.find(jsonFilePath) != preloadedEffects_.end()) {
+        return;
+    }
+
+    if (!common_) {
+        SceneManager* sm = SceneManager::GetInstance();
+        if (sm && sm->GetCurrentScene()) {
+            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+        }
+    }
+    if (!common_) {
+        return;
+    }
+
+    std::ifstream file(jsonFilePath);
+    if (!file.is_open()) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[MeshEffectManager] PreloadEffect: failed to open " + jsonFilePath);
+        return;
+    }
+
+    json j;
+    try {
+        file >> j;
+    } catch (const std::exception& e) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] PreloadEffect JSON error: " + jsonFilePath + " / " + e.what());
+        return;
+    }
+
+    auto effect = std::make_unique<EffectObject3d>();
+    effect->Initialize(common_);
+    effect->SetProceduralType(0);
+    effect->SetEnableNoiseTexture(false);
+    effect->SetEnableColorRamp(false);
+    effect->SetEnableDistortion(false);
+    effect->SetEnableReveal(true);
+    effect->SetDistortionStrength(0.0f);
+    effect->SetEdgeFadeStrength(1.0f);
+
+    if (j.contains("ModelName")) {
+        const std::string modelName = j["ModelName"].get<std::string>();
+        if (!modelName.empty()) {
+            effect->SetModel(modelName);
+        }
+    }
+    if (j.contains("TexturePath")) {
+        const std::string texturePath = j["TexturePath"].get<std::string>();
+        if (!texturePath.empty() && effect->GetMeshRenderer()) {
+            effect->GetMeshRenderer()->SetTexture(texturePath);
+        }
+    }
+    if (j.contains("NoiseTexturePath")) {
+        const std::string texturePath = j["NoiseTexturePath"].get<std::string>();
+        if (!texturePath.empty()) {
+            effect->SetNoiseTexture(TextureManager::GetInstance()->Load(texturePath));
+            effect->SetEnableNoiseTexture(true);
+        }
+    }
+    if (j.contains("RampTexturePath")) {
+        const std::string texturePath = j["RampTexturePath"].get<std::string>();
+        if (!texturePath.empty()) {
+            effect->SetRampTexture(TextureManager::GetInstance()->Load(texturePath));
+            effect->SetEnableColorRamp(true);
+        }
+    }
+
+    if (j.contains("ProceduralType")) {
+        int procType = j["ProceduralType"];
+        effect->SetProceduralType(procType);
+        if (procType >= 1) {
+            if (j.contains("SlashAngle")) effect->editSlashAngle_ = j["SlashAngle"];
+            if (j.contains("InnerRadius")) effect->editInnerRadius_ = j["InnerRadius"];
+            if (j.contains("OuterRadius")) effect->editOuterRadius_ = j["OuterRadius"];
+            if (j.contains("Thickness")) effect->editThickness_ = j["Thickness"];
+            if (j.contains("SpiralPitch")) effect->editSpiralPitch_ = j["SpiralPitch"];
+            if (j.contains("ThrustLength")) effect->editThrustLength_ = j["ThrustLength"];
+            if (j.contains("ThrustRadius")) effect->editThrustRadius_ = j["ThrustRadius"];
+            if (j.contains("SphereRadius")) effect->editSphereRadius_ = j["SphereRadius"];
+            if (j.contains("SphereRings")) effect->editSphereRings_ = j["SphereRings"];
+            if (j.contains("CylinderRadius")) effect->editCylinderRadius_ = j["CylinderRadius"];
+            if (j.contains("CylinderHeight")) effect->editCylinderHeight_ = j["CylinderHeight"];
+            if (j.contains("BoxSize")) { effect->editBoxSize_.x = j["BoxSize"][0]; effect->editBoxSize_.y = j["BoxSize"][1]; effect->editBoxSize_.z = j["BoxSize"][2]; }
+            if (j.contains("PlaneSize")) { effect->editPlaneSize_.x = j["PlaneSize"][0]; effect->editPlaneSize_.y = j["PlaneSize"][1]; }
+            if (j.contains("TorusMajorRadius")) effect->editTorusMajorRadius_ = j["TorusMajorRadius"];
+            if (j.contains("TorusMinorRadius")) effect->editTorusMinorRadius_ = j["TorusMinorRadius"];
+            if (j.contains("ConeRadius")) effect->editConeRadius_ = j["ConeRadius"];
+            if (j.contains("ConeHeight")) effect->editConeHeight_ = j["ConeHeight"];
+            if (j.contains("RingOuterRadius")) effect->editRingOuterRadius_ = j["RingOuterRadius"];
+            if (j.contains("RingInnerRadius")) effect->editRingInnerRadius_ = j["RingInnerRadius"];
+            if (j.contains("TriangleSize")) effect->editTriangleSize_ = j["TriangleSize"];
+            if (j.contains("MeshSegments")) effect->editMeshSegments_ = j["MeshSegments"];
+            if (j.contains("UvTiling")) { effect->editUvTiling_.x = j["UvTiling"][0]; effect->editUvTiling_.y = j["UvTiling"][1]; }
+            effect->UpdateProceduralMesh();
+        }
+    }
+
+    preloadedEffects_.insert(jsonFilePath);
+}
+
 void MeshEffectManager::Update(float deltaTime) {
+    if (updatedThisFrame_) {
+        return;
+    }
+    updatedThisFrame_ = true;
+
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
         if (!(*it)->IsPlaying()) {
@@ -275,6 +384,10 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
             if (i == 2) { finalPos.x -= localZ.x * gap; finalPos.y -= localZ.y * gap; finalPos.z -= localZ.z * gap; }
         }
 
+        if (posTarget) {
+            effect->SetTargetObject(posTarget);
+            effect->SetOffsets(offsetPos, offsetRot);
+        }
         effect->SetTranslate(finalPos);
         effect->SetRotation(finalRot);
 

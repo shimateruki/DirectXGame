@@ -1,0 +1,69 @@
+{
+    "baseColor": [
+        1.0,
+        0.96,
+        0.78,
+        0.92
+    ],
+    "baseSize": 0.28,
+    "blendModeIndex": 0,
+    "colorEaseType": 2,
+    "colorIntensity": 1.35,
+    "colorMidTime": 0.2,
+    "emitArea": [
+        0.34,
+        0.18,
+        0.34
+    ],
+    "emitCount": 32,
+    "emitInterval": 0.001,
+    "emitLife": 0.82,
+    "emitPos": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        1.08,
+        0.0
+    ],
+    "enableCollision": 0,
+    "endColor": [
+        0.72,
+        0.70,
+        0.58,
+        0.0
+    ],
+    "endSize": 1.08,
+    "envDrag": 0.72,
+    "envGravity": [
+        0.0,
+        -0.08,
+        0.0
+    ],
+    "envTurbulence": 0.85,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": false,
+    "midColor": [
+        1.0,
+        0.99,
+        0.90,
+        0.72
+    ],
+    "midSize": 0.74,
+    "restitution": 0.0,
+    "rotSpeed": 2.4,
+    "shapeAngle": 82.0,
+    "shapeRadius": 0.38,
+    "shapeType": 1,
+    "sizeEaseType": 2,
+    "sizeMidTime": 0.28,
+    "softParticleFade": 2.5,
+    "texturePath": "Resources/sprite/particle/smoke_puff.png",
+    "velocityVariance": 1.15
+}

@@ -1,55 +1,70 @@
 #pragma once
-#include <string>
-#include <map>
-#include <wrl.h>
-#include <d3d12.h>
-#include <memory>
 #include "Camera.h"
-class DebugEditor; // 前方宣言
+#include <d3d12.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <wrl.h>
+
+class DebugEditor;
 class DirectXCommon;
 class Object3d;
 class Object3dCommon;
+
+/// <summary>
+/// Projectウィンドウで表示するモデル/プリセットのサムネイル情報。
+/// </summary>
 struct ThumbnailData {
-    Microsoft::WRL::ComPtr<ID3D12Resource> resource;       // 写真の画用紙（実体）
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;  // 描き込むための筆（RTV）
-    uint32_t srvHandle = 0;                                // ImGuiに渡す画像ハンドル（SRV）
-    bool isCaptured = false;                               // 撮影済みフラグ
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+    uint32_t srvHandle = 0;
+    bool isCaptured = false;
     std::shared_ptr<Object3d> previewObject;
 };
 
+/// <summary>
+/// モデル、プリセット、シーン素材を一覧し、配置やサムネイル生成を行うProjectウィンドウ。
+/// </summary>
 class ProjectWindow {
 public:
     ProjectWindow() = default;
     ~ProjectWindow() = default;
 
-    // DirectXCommonを受け取れるように引数を追加！
+    /// <summary>
+    /// 親EditorとDirectX基盤を登録する。
+    /// </summary>
     void Initialize(DebugEditor* editor, DirectXCommon* dxCommon);
 
-    // 毎フレームの描画処理 (UI)
+    /// <summary>
+    /// ProjectウィンドウのUIを描画する。
+    /// </summary>
     void Draw();
 
-    //  ゲームの描画ループの先頭で呼ばれる「裏撮影」関数
+    /// <summary>
+    /// 未撮影のサムネイルをGameView描画ループの先頭で撮影する。
+    /// </summary>
     void CapturePendingThumbnails();
 
     uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
 
 private:
-    // 画用紙を作る関数
     void CreateThumbnailResource(const std::string& modelName);
-    void CreatePresetThumbnailResource(const std::string& presetName); // 追加
+    void CreatePresetThumbnailResource(const std::string& presetName);
 
+    // EditorとDirectX基盤への参照。ProjectWindowは所有しない。
     DebugEditor* editor_ = nullptr;
-    DirectXCommon* dxCommon_ = nullptr; // 追加
+    DirectXCommon* dxCommon_ = nullptr;
+
     std::unique_ptr<Object3dCommon> previewObject3dCommon_;
-    // モデル名と写真のヒモヅケ辞書（アルバム）
+
+    // モデル/プリセット名からサムネイル情報を引くキャッシュ。
     std::map<std::string, ThumbnailData> thumbnailAlbum_;
-    // プリセット名と写真のヒモヅケ辞書
-    std::map<std::string, ThumbnailData> presetThumbnailAlbum_; // 追加
-    const int kThumbnailSize = 256; // 写真の高解像度サイズ
-    
+    std::map<std::string, ThumbnailData> presetThumbnailAlbum_;
+    const int kThumbnailSize = 256;
+
     std::string currentModelDirectory_ = "Resources/3DModel/";
 
-    // 撮影専用システム
+    // サムネイル撮影用の簡易スタジオカメラ。
     Camera studioCamera_;
     bool isStudioCameraInitialized_ = false;
 };

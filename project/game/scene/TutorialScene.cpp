@@ -316,7 +316,8 @@ void TutorialScene::Draw() {
 
 	auto& objects = objectManager_->GetObjects();
 
-	if (skybox_ && camera) {
+	if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
+		skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
 		skybox_->Draw(camera->GetConstantBuffer());
 	}
 

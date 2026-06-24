@@ -1,0 +1,108 @@
+{
+    "version": 2,
+    "events": [
+        {
+            "type": 2,
+            "presetName": "generated/explosion.wav",
+            "triggerTime": 0.0
+        },
+        {
+            "type": 6,
+            "presetName": "bomb_light_flash",
+            "triggerTime": 0.0,
+            "offset": [0.0, 1.05, 0.0],
+            "duration": 0.26,
+            "intensity": 34.0,
+            "lightRadius": 14.0,
+            "lightDecay": 1.25,
+            "lightColor": [1.0, 0.62, 0.16, 1.0]
+        },
+        {
+            "type": 1,
+            "presetName": "effect_bomb_core_flash",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.48, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 1,
+            "presetName": "effect_bomb_shockwave_ring",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.055, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_flash_core",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.46, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_fire_core",
+            "triggerTime": 0.012,
+            "offset": [0.0, 0.30, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_fire_mushroom",
+            "triggerTime": 0.030,
+            "offset": [0.0, 0.38, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_fire_sparks",
+            "triggerTime": 0.018,
+            "offset": [0.0, 0.34, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_golden_sparks",
+            "triggerTime": 0.036,
+            "offset": [0.0, 0.58, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_orange_smoke",
+            "triggerTime": 0.060,
+            "offset": [0.0, 0.34, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_black_smoke",
+            "triggerTime": 0.080,
+            "offset": [0.0, 0.72, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_gray_smoke",
+            "triggerTime": 0.145,
+            "offset": [0.0, 1.02, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "hit_bomb_black_smoke",
+            "triggerTime": 0.205,
+            "offset": [0.0, 1.20, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 4,
+            "presetName": "bomb_explosion_shake",
+            "triggerTime": 0.0,
+            "duration": 0.42,
+            "intensity": 0.34,
+            "frequency": 38.0,
+            "scale": [1.0, 0.68, 0.82]
+        }
+    ]
+}

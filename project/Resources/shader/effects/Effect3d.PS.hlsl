@@ -176,6 +176,13 @@ float4 main(VertexOutput input) : SV_TARGET
         distMask = baseNoiseValue;
         mainColor.r = 1.0f;
     }
+    else if (proceduralType == 7)
+    {
+        // Plane sprites should keep the authored texture alpha.
+        alphaMask = mainColor.a;
+        distMask = mainColor.a;
+        mainColor.r = max(mainColor.r, mainColor.a);
+    }
 
     // ========================================================
     // 5. 発光カラーの計算 (カラーランプ切り替え)

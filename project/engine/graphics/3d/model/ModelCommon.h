@@ -2,21 +2,22 @@
 
 class DirectXCommon;
 
-// 3Dモデルの共通部分
+/// <summary>
+/// 3Dモデル描画で共有するDirectX基盤参照を保持する。
+/// </summary>
 class ModelCommon {
 public:
     /// <summary>
-    /// 初期化
+    /// DirectX基盤を登録する。
     /// </summary>
-    /// <param name="dxCommon">DirectX基盤</param>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// DirectX基盤を取得
+    /// DirectX基盤を取得する。
     /// </summary>
-    /// <returns>DirectX基盤</returns>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:
+    // DirectX基盤への参照。ModelCommonは所有しない。
     DirectXCommon* dxCommon_ = nullptr;
 };

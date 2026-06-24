@@ -4,6 +4,7 @@
 #include <cmath>
 
 namespace {
+// コウモリの旋回、予兆、急降下に関する調整値
 constexpr float kHoverHeight = 5.2f;
 constexpr float kOrbitRadius = 9.0f;
 constexpr float kOrbitBobHeight = 0.55f;
@@ -29,6 +30,7 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 }
 
+// コウモリ敵の初期化
 void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_Bat");
@@ -47,6 +49,7 @@ void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) 
     SetCollisionRadius(0.85f);
 }
 
+// 旋回から急降下までのステート制御
 void EnemyBat::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
@@ -159,6 +162,7 @@ std::unique_ptr<Object3d> EnemyBat::Clone() const {
     return clone;
 }
 
+// 急降下AIの補助処理
 void EnemyBat::CaptureHomePosition() {
     if (hasHomePosition_) return;
     homePosition_ = GetTranslate();

@@ -1,17 +1,23 @@
 #pragma once
+#include "EditorCommon.h"
+#include "json.hpp"
 #include <string>
 #include <vector>
-#include "json.hpp"
-#include "EditorCommon.h"
 
 class DebugEditor;
 class Object3d;
 
+/// <summary>
+/// Editor上のシーンや単体オブジェクトをJSONへ保存する処理をまとめる。
+/// </summary>
 class SceneSerializer {
 public:
     SceneSerializer() = default;
     ~SceneSerializer() = default;
 
+    /// <summary>
+    /// 保存対象となるJSONデータと出力先パスの組。
+    /// </summary>
     struct SaveTarget {
         std::string label;
         std::string path;
@@ -19,6 +25,9 @@ public:
         bool isMetadata = false;
     };
 
+    /// <summary>
+    /// 親となるDebugEditorを登録する。
+    /// </summary>
     void Initialize(DebugEditor* editor);
 
     std::vector<SaveTarget> BuildSceneSaveTargets(const std::string& currentFilename, SaveMode mode);
@@ -32,5 +41,6 @@ private:
     nlohmann::json SerializeObject(Object3d* obj);
     void SaveToFile(const std::string& path, const nlohmann::json& data);
 
+    // DebugEditor本体への参照。SceneSerializerは所有しない。
     DebugEditor* editor_ = nullptr;
-}; 
+};

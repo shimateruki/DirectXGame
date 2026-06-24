@@ -20,6 +20,7 @@
 
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
 #include <Skybox.h>
 
@@ -71,9 +72,11 @@ private:
 
     void InitializeSaveSlotUI();
     void InitializeTitleLogoUI();
+    void InitializeMainMenuUI();
     void UpdateMainMenu();
     void UpdateSaveSelect();
     void UpdateTitleLogoIntro(float deltaTime);
+    void UpdateTitleHeroAnimation(float deltaTime);
     void UpdateSaveSlotUI();
     void DrawSaveSlotUI();
     void StartSelectedSaveSlot();
@@ -132,8 +135,26 @@ private:
     Sprite* titleTextSprite_ = nullptr;
     Sprite* startTextSprite_ = nullptr;
     Sprite* settingTextSprite_ = nullptr;
+    Sprite* mainMenuStartFrameSprite_ = nullptr;
+    Sprite* mainMenuSettingFrameSprite_ = nullptr;
+    Sprite* mainMenuArrowSprite_ = nullptr;
+    Sprite* mainMenuCursorSprite_ = nullptr;
+    Sprite* mainMenuPromptSprite_ = nullptr;
     Vector2 startTextBaseSize_ = { 0.0f, 0.0f };
     Vector2 settingTextBaseSize_ = { 0.0f, 0.0f };
+    Vector2 startTextBasePosition_ = { 0.0f, 0.0f };
+    Vector2 settingTextBasePosition_ = { 0.0f, 0.0f };
+    Vector2 mainMenuArrowBaseSize_ = { 0.0f, 0.0f };
+    Vector2 mainMenuCursorBaseSize_ = { 0.0f, 0.0f };
+    Vector2 mainMenuPromptBaseSize_ = { 0.0f, 0.0f };
+    Vector2 mainMenuArrowOffset_ = { 0.0f, 0.0f };
+    Vector2 mainMenuCursorOffset_ = { 0.0f, 0.0f };
+    Vector2 mainMenuPromptBasePosition_ = { 0.0f, 0.0f };
+    Object3d* titleHeroSlime_ = nullptr;
+    Vector3 titleHeroBasePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 titleHeroBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 titleHeroBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    bool titleHeroBaseCaptured_ = false;
     struct TitleLogoGlyph {
         Sprite* sprite = nullptr;
         Vector2 basePosition = { 0.0f, 0.0f };

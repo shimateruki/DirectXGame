@@ -13,10 +13,13 @@ public:
     static GPUParticleManager* GetInstance();
 
     void Initialize(DirectXCommon* dxCommon);
+    void BeginFrame();
     void Update(float deltaTime);
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
     void LoadAllPresets(const std::string& directoryPath);
+    void PreloadPresetSystem(const std::string& presetName);
+    void PreloadPresetSystems(const std::vector<std::string>& presetNames);
 
     void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
     void EmitFromConfig(const GPUParticleConfig& config);
@@ -31,7 +34,7 @@ public:
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
     void StopAutoEmitter(uint32_t id);
     void ClearAllAutoEmitters();
-    bool IsEmpty() const { return systems_.empty(); }
+    bool IsEmpty() const;
 
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         meshVb_ = vb; meshVCount_ = vCount; meshVStride_ = vStride; meshBoneSrv_ = boneSrvIndex;
@@ -63,6 +66,7 @@ private:
     std::vector<AutoEmitter> autoEmitters_;
     uint32_t nextAutoEmitterId_ = 0;
     float timeScale_ = 1.0f;
+    bool updatedThisFrame_ = false;
 
     // メッシュデータ保持用
     ID3D12Resource* meshVb_ = nullptr;

@@ -6,6 +6,19 @@
 
 void GimmickBreakableBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
+
+    if (modelName == "Stages/bomb_break_block") {
+        SetTexture("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_albedo.png");
+        SetEnableNormalMap(true);
+        SetNormalMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_normal.png");
+        SetOrmMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.png");
+        SetMaterialType(0);
+        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        SetMetallic(0.0f);
+        SetRoughness(0.72f);
+        SetEnableEnvMap(false);
+        SetEmissive(1.0f);
+    }
     
     // 地形（足場）として振る舞うため、属性を kGround に設定
     SetCollisionAttribute(kGround);

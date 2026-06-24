@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_set>
 
 // エフェクトを動的に発生・管理するシングルトンクラス
 class MeshEffectManager {
@@ -13,6 +14,8 @@ public:
 
     // 初期化（ゲーム開始時・シーン初期化時に1回だけ呼ぶ）
     void Initialize(Object3dCommon* common);
+    void BeginFrame();
+    void PreloadEffect(const std::string& jsonFilePath);
 
     // 毎フレームの更新（寿命が切れたエフェクトの自動削除も行う）
     void Update(float deltaTime);
@@ -34,7 +37,7 @@ public:
 
     // シーン切り替え時などに全てのエフェクトを消す
     // common_ も一緒にリセットし、次のSpawn時に自己修復させる
-    void Clear() { activeEffects_.clear(); common_ = nullptr; }
+    void Clear() { activeEffects_.clear(); preloadedEffects_.clear(); common_ = nullptr; }
     const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
     void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
     EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
@@ -49,5 +52,7 @@ private:
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
     EffectObject3d* previewEffectForDebug_ = nullptr;
+    std::unordered_set<std::string> preloadedEffects_;
+    bool updatedThisFrame_ = false;
 
 };

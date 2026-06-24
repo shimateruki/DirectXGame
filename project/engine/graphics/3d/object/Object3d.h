@@ -33,6 +33,7 @@ public:
     struct EntityParameter {
         float hp = 100.0f;
         float maxHp = 100.0f;
+        float attackPower = 1.0f;
         float speed = 1.0f;
         float gravity = 50.0f;
         float maxFallSpeed = 60.0f;

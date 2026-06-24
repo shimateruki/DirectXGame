@@ -1,27 +1,39 @@
 #pragma once
 
-class DebugEditor; // 前方宣言
+class DebugEditor;
 class BaseScene;
 class Object3d;
 
-// 左パネル（Hierarchy）の描画だけを専門に担当するクラス
+/// <summary>
+/// 左ペインのHierarchy表示と、オブジェクト生成メニューを担当する。
+/// </summary>
 class HierarchyWindow {
 public:
     HierarchyWindow() = default;
     ~HierarchyWindow() = default;
 
-    // 起動時に DebugEditor のポインタを受け取っておく
+    /// <summary>
+    /// 親となるDebugEditorを登録する。
+    /// </summary>
     void Initialize(DebugEditor* editor);
 
-    // 毎フレームの描画処理
+    /// <summary>
+    /// Hierarchyウィンドウを描画する。
+    /// </summary>
     void Draw();
+
+    /// <summary>
+    /// シーンまたはGameView上で使う生成コンテキストメニューを描画する。
+    /// </summary>
     void DrawCreateContextMenu(BaseScene* scene, bool useGameViewCursor);
 
 private:
-    // 階層の再帰描画処理
     void DrawHierarchyNode(Object3d* obj);
     bool HasMatchingCategory(Object3d* obj);
-    DebugEditor* editor_ = nullptr; // 本体へのアクセス権
-    int currentCategoryFilter_ = 0; // 0: All, 1: Player, 2: Enemy, 3: Object
 
+    // DebugEditor本体への参照。HierarchyWindowは所有しない。
+    DebugEditor* editor_ = nullptr;
+
+    // 0: All, 1: Player, 2: Enemy, 3: Object
+    int currentCategoryFilter_ = 0;
 };

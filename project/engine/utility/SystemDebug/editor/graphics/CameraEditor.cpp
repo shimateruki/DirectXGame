@@ -1,7 +1,9 @@
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "InputManager.h" // 入力取得に必要
+#include "PrimitiveDrawer.h"
 #include "imgui.h"
+#include "ImGuizmo.h"
 #include "json.hpp"
 #include <fstream>
 #include <cmath>
@@ -12,6 +14,35 @@ using json = nlohmann::json;
 namespace fs = std::filesystem; // 短縮用
 
 namespace {
+    constexpr float kPi = 3.14159265f;
+
+    float DegToRad(float degrees) {
+        return degrees * kPi / 180.0f;
+    }
+
+    float RadToDeg(float radians) {
+        return radians * 180.0f / kPi;
+    }
+
+    Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) {
+        Math math;
+        Vector3 diff = end - start;
+        float length = math.Length(diff);
+        if (length < 0.001f) {
+            length = 0.001f;
+        }
+
+        Vector3 center = (start + end) * 0.5f;
+        float yaw = std::atan2(diff.x, diff.z);
+        float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
+        float pitch = std::atan2(-diff.y, horizontalLength);
+
+        Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
+        Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
+        Matrix4x4 translate = math.MakeTranslateMatrix(center);
+        return math.Multiply(math.Multiply(scale, rotate), translate);
+    }
+
     // クォータニオンを使わず、オイラー角から前方ベクトルなどを求める簡易計算
     Vector3 CalculateForward(const Vector3& rotation) {
         // rotation.x = Pitch, rotation.y = Yaw
@@ -77,9 +108,18 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     }
 
     if (settings_.currentMode == Mode::Game) {
+        camera->SetFollowMode(settings_.gameFollowMode);
+        camera->SetLockOnOffset(settings_.lockOnOffset);
+        camera->ConfigFixedPoint(settings_.fixedPointPos, settings_.fixedPointAngle);
+
+        if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+            camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
+            camera->SetOrbitCenterOffset(settings_.orbitCenterOffset);
+            camera->SetOrbitCenterHeight(settings_.orbitCenterHeight);
+        }
+
         if (player) {
             camera->SetFollowTarget(player);
-            camera->SetFollowMode(settings_.gameFollowMode);
             InputManager* input = InputManager::GetInstance();
 
             // =========================================================
@@ -119,16 +159,16 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
                 }
             }
             else {
-                // 操作していない時だけ、設定値をカメラに流し込む
-                camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
+                // 操作していない時だけ、モードに必要な設定値をカメラに流し込む
+                if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
+                    settings_.gameFollowMode == Camera::FollowMode::kFixed ||
+                    settings_.gameFollowMode == Camera::FollowMode::kFirstPerson) {
+                    camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
+                }
             }
-            // これらは操作中でも反映してOK
-            camera->SetLockOnOffset(settings_.lockOnOffset);
-            camera->ConfigFixedPoint(settings_.fixedPointPos, settings_.fixedPointAngle);
         }
-
-        if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
-            camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
+        else {
+            camera->SetFollowTarget(nullptr);
         }
 
     }
@@ -353,6 +393,9 @@ void CameraEditor::DrawImGui() {
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
         if (ImGui::Combo(ICON_FA_EYE " View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
+            if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+                ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
+            }
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
@@ -368,6 +411,48 @@ void CameraEditor::DrawImGui() {
             ImGui::DragFloat(" 半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
             ImGui::DragFloat(" 高さ (Height)", &settings_.orbitHeight, 0.1f, -10.0f, 50.0f);
             ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 回転速度 (Speed)", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
+        }
+
+        if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.4f, 0.9f, 1.0f, 1.0f), "周回ガイド");
+            ImGui::Checkbox("ガイドを表示", &settings_.orbitGuideVisible);
+            ImGui::Checkbox("自由カメラ編集ギズモを表示", &settings_.orbitCenterGizmoVisible);
+            const char* editGizmoTargets[] = { "周回中心", "開始カメラ位置" };
+            ImGui::Combo("自由カメラ時のギズモ対象", &orbitEditGizmoTarget_, editGizmoTargets, IM_ARRAYSIZE(editGizmoTargets));
+            ImGui::TextDisabled("自由カメラで外から見ながら、周回カメラの中心や開始位置を調整します。");
+            ImGui::DragFloat("注視点の高さ", &settings_.orbitCenterHeight, 0.1f, -10.0f, 50.0f);
+            if (ImGui::DragFloat3("周回中心オフセット", &settings_.orbitCenterOffset.x, 0.1f, -80.0f, 80.0f)) {
+                ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
+            }
+            if (ImGui::Button("周回中心オフセットをリセット")) {
+                settings_.orbitCenterOffset = { 0.0f, 0.0f, 0.0f };
+                ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
+                SaveSettings();
+            }
+            if (ImGui::DragFloat("開始角度", &settings_.orbitStartAngleDeg, 0.5f, -360.0f, 360.0f, "%.1f deg")) {
+                ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
+            }
+            ImGui::DragFloat("ガイド点の大きさ", &settings_.orbitGuideMarkerSize, 0.01f, 0.1f, 2.0f);
+
+            Vector3 center = GetOrbitCenter();
+            if (ImGui::Button(ICON_FA_REDO " 現在位置を周回開始位置にセット")) {
+                CaptureOrbitStartFromCurrentCamera(CameraManager::GetInstance()->GetMainCamera());
+            }
+            ImGui::TextDisabled("周回中心: %.2f, %.2f, %.2f", center.x, center.y, center.z);
+
+            if (ImGui::Button("現在の角度を開始角度にする")) {
+                Camera* cam = CameraManager::GetInstance()->GetMainCamera();
+                if (cam) {
+                    Vector3 diff = cam->GetEye() - center;
+                    settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
+                    ApplyOrbitStartAngle(cam, true);
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("開始位置をプレビュー")) {
+                ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
+            }
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
@@ -394,12 +479,36 @@ void CameraEditor::DrawImGui() {
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
             Vector3 pos = camera->GetEye();
+            Vector3 rot = camera->GetRotation();
             ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+            ImGui::TextDisabled(ICON_FA_SYNC " 現在角度: %.2f, %.2f, %.2f", rot.x, rot.y, rot.z);
 
             ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.0f, 1.0f), ICON_FA_SAVE " 自由カメラ保存");
+            ImGui::TextDisabled("保存済み座標: %.2f, %.2f, %.2f", settings_.editorCameraPos.x, settings_.editorCameraPos.y, settings_.editorCameraPos.z);
+            ImGui::TextDisabled("保存済み角度: %.2f, %.2f, %.2f", settings_.editorCameraAngle.x, settings_.editorCameraAngle.y, settings_.editorCameraAngle.z);
+
+            if (ImGui::Button(ICON_FA_SAVE " 現在の自由カメラ位置を保存")) {
+                settings_.editorCameraPos = pos;
+                settings_.editorCameraAngle = rot;
+                SaveEditorState();
+                DebugConsole::GetInstance()->AddLog("Editor free camera position saved.");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_UNDO " 保存済み自由カメラへ戻す")) {
+                LoadEditorState();
+                SetEditorCameraTransform(settings_.editorCameraPos, settings_.editorCameraAngle);
+                camera->Update();
+                DebugConsole::GetInstance()->AddLog("Editor free camera position restored.");
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_REDO " 現在位置を「周回カメラ」の開始位置にセット")) {
+                CaptureOrbitStartFromCurrentCamera(camera);
+            }
             if (ImGui::Button(ICON_FA_MAP_MARKER_ALT " 現在位置を「定点カメラ」の座標・角度にセット")) {
                 settings_.fixedPointPos = pos;
-                settings_.fixedPointAngle = camera->GetRotation(); // 角度も記録
+                settings_.fixedPointAngle = rot; // 角度も記録
                 SaveSettings(); // セットしたら自動でセーブ
             }
         }
@@ -521,8 +630,14 @@ void CameraEditor::SaveSettings() {
 
     //  周回(Orbit)モード用パラメータの保存
     j["orbitRadius"] = settings_.orbitRadius;
+    j["orbitCenterOffset"] = { settings_.orbitCenterOffset.x, settings_.orbitCenterOffset.y, settings_.orbitCenterOffset.z };
+    j["orbitCenterHeight"] = settings_.orbitCenterHeight;
     j["orbitHeight"] = settings_.orbitHeight;
     j["orbitSpeed"] = settings_.orbitSpeed;
+    j["orbitStartAngleDeg"] = settings_.orbitStartAngleDeg;
+    j["orbitGuideVisible"] = settings_.orbitGuideVisible;
+    j["orbitCenterGizmoVisible"] = settings_.orbitCenterGizmoVisible;
+    j["orbitGuideMarkerSize"] = settings_.orbitGuideMarkerSize;
     j["cameraSensitivity"] = settings_.cameraSensitivity;
     // エディタ設定
     j["moveSpeed"] = settings_.moveSpeed;
@@ -593,8 +708,18 @@ void CameraEditor::LoadSettings() {
 
         //  周回(Orbit)モード用パラメータの読み込み
         if (j.contains("orbitRadius")) settings_.orbitRadius = j["orbitRadius"];
+        if (j.contains("orbitCenterOffset") && j["orbitCenterOffset"].is_array() && j["orbitCenterOffset"].size() >= 3) {
+            settings_.orbitCenterOffset.x = j["orbitCenterOffset"][0];
+            settings_.orbitCenterOffset.y = j["orbitCenterOffset"][1];
+            settings_.orbitCenterOffset.z = j["orbitCenterOffset"][2];
+        }
+        if (j.contains("orbitCenterHeight")) settings_.orbitCenterHeight = j["orbitCenterHeight"];
         if (j.contains("orbitHeight")) settings_.orbitHeight = j["orbitHeight"];
         if (j.contains("orbitSpeed"))  settings_.orbitSpeed = j["orbitSpeed"];
+        if (j.contains("orbitStartAngleDeg")) settings_.orbitStartAngleDeg = j["orbitStartAngleDeg"];
+        if (j.contains("orbitGuideVisible")) settings_.orbitGuideVisible = j["orbitGuideVisible"];
+        if (j.contains("orbitCenterGizmoVisible")) settings_.orbitCenterGizmoVisible = j["orbitCenterGizmoVisible"];
+        if (j.contains("orbitGuideMarkerSize")) settings_.orbitGuideMarkerSize = j["orbitGuideMarkerSize"];
         if (j.contains("cameraSensitivity")) settings_.cameraSensitivity = j["cameraSensitivity"];
 
         if (j.contains("moveSpeed")) settings_.moveSpeed = j["moveSpeed"];
@@ -684,6 +809,197 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
         // ターゲット追従を切らないと動かない場合があるので念のため
         camera->SetFollowTarget(nullptr);
     }
+}
+
+void CameraEditor::ApplyOrbitStartAngle(Camera* camera, bool resetSmoothing) {
+    if (!camera) return;
+
+    float angle = DegToRad(settings_.orbitStartAngleDeg);
+    camera->SetOrbitCenterOffset(settings_.orbitCenterOffset);
+    camera->SetOrbitCenterHeight(settings_.orbitCenterHeight);
+    camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
+    camera->SetOrbitAngle(angle);
+    if (resetSmoothing) {
+        camera->ResetFollowSmoothing();
+    }
+}
+
+void CameraEditor::CaptureOrbitStartFromCurrentCamera(Camera* camera) {
+    if (!camera) return;
+
+    const Vector3 center = GetOrbitCenter();
+    const Vector3 diff = camera->GetEye() - center;
+    const float horizontalDistance = std::sqrt(diff.x * diff.x + diff.z * diff.z);
+
+    if (horizontalDistance > 0.001f) {
+        settings_.orbitRadius = (horizontalDistance < 1.0f) ? 1.0f : horizontalDistance;
+        settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
+    }
+    else {
+        settings_.orbitRadius = 1.0f;
+    }
+
+    settings_.orbitHeight = diff.y;
+    ApplyOrbitStartAngle(camera, true);
+    SaveSettings();
+    DebugConsole::GetInstance()->AddLog("Orbit camera start position captured from current camera.");
+}
+
+void CameraEditor::SetOrbitCenterFromWorld(const Vector3& center) {
+    if (targetPlayer_) {
+        Vector3 targetPos = targetPlayer_->GetWorldPosition();
+        settings_.orbitCenterOffset = center - targetPos;
+        settings_.orbitCenterOffset.y -= settings_.orbitCenterHeight;
+        return;
+    }
+
+    settings_.fixedPointPos = center - settings_.orbitCenterOffset;
+}
+
+void CameraEditor::SetOrbitStartFromWorld(const Vector3& startEye) {
+    const Vector3 center = GetOrbitCenter();
+    const Vector3 diff = startEye - center;
+    const float horizontalDistance = std::sqrt(diff.x * diff.x + diff.z * diff.z);
+
+    if (horizontalDistance > 0.001f) {
+        settings_.orbitRadius = (horizontalDistance < 1.0f) ? 1.0f : horizontalDistance;
+        settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
+    }
+
+    settings_.orbitHeight = diff.y;
+}
+
+Vector3 CameraEditor::GetOrbitCenter() const {
+    if (targetPlayer_) {
+        Vector3 center = targetPlayer_->GetWorldPosition();
+        center.x += settings_.orbitCenterOffset.x;
+        center.y += settings_.orbitCenterHeight + settings_.orbitCenterOffset.y;
+        center.z += settings_.orbitCenterOffset.z;
+        return center;
+    }
+    return settings_.fixedPointPos + settings_.orbitCenterOffset;
+}
+
+Vector3 CameraEditor::GetOrbitStartEye() const {
+    const Vector3 center = GetOrbitCenter();
+    const float startAngle = DegToRad(settings_.orbitStartAngleDeg);
+    return {
+        center.x + settings_.orbitRadius * std::cos(startAngle),
+        center.y + settings_.orbitHeight,
+        center.z + settings_.orbitRadius * std::sin(startAngle)
+    };
+}
+
+void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue) {
+#ifdef USE_IMGUI
+    if (settings_.currentMode != Mode::Editor) return;
+    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit) return;
+    if (!settings_.orbitGuideVisible || !settings_.orbitCenterGizmoVisible) return;
+    if (gameViewSize.x <= 1.0f || gameViewSize.y <= 1.0f) return;
+    if (!isGameViewHovered_ && !isDraggingOrbitCenterGizmo_) return;
+
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) return;
+
+    Math math;
+    orbitEditGizmoTarget_ = (std::clamp)(orbitEditGizmoTarget_, 0, 1);
+    const bool editStartEye = orbitEditGizmoTarget_ == 1;
+    Vector3 gizmoPosition = editStartEye ? GetOrbitStartEye() : GetOrbitCenter();
+    Matrix4x4 world = math.MakeTranslateMatrix(gizmoPosition);
+    Matrix4x4 view = camera->GetViewMatrix();
+    Matrix4x4 projection = camera->GetProjectionMatrix();
+    float snap[3] = { snapValue, snapValue, snapValue };
+
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(gameViewOffset.x, gameViewOffset.y, gameViewSize.x, gameViewSize.y);
+    ImGuizmo::Manipulate(
+        &view.m[0][0],
+        &projection.m[0][0],
+        ImGuizmo::TRANSLATE,
+        ImGuizmo::WORLD,
+        &world.m[0][0],
+        nullptr,
+        (snapEnabled && snapValue > 0.0f) ? snap : nullptr);
+
+    if (ImGuizmo::IsUsing()) {
+        isDraggingOrbitCenterGizmo_ = true;
+        Vector3 editedCenter = { world.m[3][0], world.m[3][1], world.m[3][2] };
+        if (editStartEye) {
+            SetOrbitStartFromWorld(editedCenter);
+        } else {
+            SetOrbitCenterFromWorld(editedCenter);
+        }
+        camera->SetOrbitCenterOffset(settings_.orbitCenterOffset);
+        camera->SetOrbitCenterHeight(settings_.orbitCenterHeight);
+        camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
+    }
+    else if (isDraggingOrbitCenterGizmo_) {
+        isDraggingOrbitCenterGizmo_ = false;
+        SaveSettings();
+        DebugConsole::GetInstance()->AddLog("Orbit camera center gizmo saved.");
+    }
+#else
+    (void)gameViewOffset;
+    (void)gameViewSize;
+    (void)snapEnabled;
+    (void)snapValue;
+#endif
+}
+
+void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
+#ifdef USE_IMGUI
+    if (settings_.currentMode != Mode::Editor) return;
+    if (!settings_.orbitGuideVisible) return;
+    if (settings_.gameFollowMode != Camera::FollowMode::kOrbit) return;
+    if (instanceCount >= maxDrawLimit) return;
+
+    Math math;
+    const Vector3 center = GetOrbitCenter();
+    const float radius = settings_.orbitRadius;
+    const float markerSize = settings_.orbitGuideMarkerSize;
+    const float startAngle = DegToRad(settings_.orbitStartAngleDeg);
+
+    auto drawSphere = [&](const Vector3& pos, float size, const Vector4& color) {
+        if (instanceCount >= maxDrawLimit) return;
+        Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ size, size, size }), math.MakeTranslateMatrix(pos));
+        primitiveDrawer.DrawWireSphere(commandList, world, color, instanceCount++);
+        };
+
+    auto drawCubeLine = [&](const Vector3& start, const Vector3& end, float thickness, const Vector4& color) {
+        if (instanceCount >= maxDrawLimit) return;
+        primitiveDrawer.DrawWireCube(commandList, MakeLineBoxMatrix(start, end, thickness), color, instanceCount++);
+        };
+
+    if (radius > 0.01f && instanceCount < maxDrawLimit) {
+        Matrix4x4 ringWorld = math.Multiply(
+            math.MakeScaleMatrix({ radius * 2.0f, 0.04f, radius * 2.0f }),
+            math.MakeTranslateMatrix(center));
+        primitiveDrawer.DrawWireCylinder(commandList, ringWorld, { 0.1f, 0.8f, 1.0f, 0.85f }, instanceCount++);
+    }
+
+    Vector3 startGround = {
+        center.x + radius * std::cos(startAngle),
+        center.y,
+        center.z + radius * std::sin(startAngle)
+    };
+    Vector3 startEye = startGround;
+    startEye.y += settings_.orbitHeight;
+
+    drawSphere(center, markerSize, { 1.0f, 0.9f, 0.1f, 1.0f });
+    drawSphere(startEye, markerSize, { 1.0f, 0.15f, 0.15f, 1.0f });
+    drawCubeLine(center, startGround, 0.04f, { 0.1f, 0.9f, 1.0f, 0.9f });
+    drawCubeLine(startGround, startEye, 0.04f, { 0.3f, 1.0f, 0.2f, 0.9f });
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        drawSphere(camera->GetEye(), markerSize * 0.75f, { 0.75f, 0.35f, 1.0f, 1.0f });
+    }
+#else
+    (void)primitiveDrawer;
+    (void)commandList;
+    (void)instanceCount;
+    (void)maxDrawLimit;
+#endif
 }
 
 bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraName) {

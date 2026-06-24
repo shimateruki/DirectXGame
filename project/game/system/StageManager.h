@@ -26,6 +26,7 @@ public:
 
     void Initialize() {
         if (LoadFromJson("Resources/json/stage_select/stages.json")) {
+            LoadDevelopmentStageIndex();
             return;
         }
 
@@ -33,7 +34,10 @@ public:
         stages_.push_back({ "stage1", "Stage 1", "Resources/json/3Dobject/stage1.json", "Resources/json/sprite/stage1_sprite.json", "Resources/bgm/Alarm02.mp3", "", -1, true });
         stages_.push_back({ "stage2", "Stage 2", "Resources/json/3Dobject/stage2.json", "Resources/json/sprite/stage2_sprite.json", "Resources/bgm/Alarm02.mp3", "", 0, false });
         stages_.push_back({ "stage3", "Stage 3", "Resources/json/3Dobject/stage3.json", "Resources/json/sprite/stage3_sprite.json", "Resources/bgm/Alarm02.mp3", "", 1, false });
+        stages_.push_back({ "stage4", "Stage 4", "Resources/json/3Dobject/stage4.json", "Resources/json/sprite/stage4_sprite.json", "Resources/bgm/Alarm02.mp3", "", 2, false });
+        stages_.push_back({ "stage5", "Stage 5", "Resources/json/3Dobject/stage5.json", "Resources/json/sprite/stage5_sprite.json", "Resources/bgm/Alarm02.mp3", "", 3, false });
         currentStageIndex_ = 0;
+        LoadDevelopmentStageIndex();
     }
 
     bool LoadFromJson(const std::string& path) {
@@ -87,6 +91,7 @@ public:
     void SetCurrentStage(int index) {
         if (index >= 0 && index < static_cast<int>(stages_.size())) {
             currentStageIndex_ = index;
+            SaveDevelopmentStageIndex();
         }
     }
     int GetCurrentStageIndex() const { return currentStageIndex_; }
@@ -98,6 +103,62 @@ private:
     StageManager(const StageManager&) = delete;
     StageManager& operator=(const StageManager&) = delete;
 
+    void LoadDevelopmentStageIndex() {
+#if defined(USE_IMGUI) && defined(NDEBUG) && !defined(DD)
+        std::ifstream file(kUserConfigPath);
+        if (!file.is_open()) {
+            return;
+        }
+
+        try {
+            nlohmann::json root;
+            file >> root;
+            if (!root.is_object()) {
+                return;
+            }
+
+            int savedIndex = root.value("lastStageIndex", currentStageIndex_);
+            if (savedIndex >= 0 && savedIndex < static_cast<int>(stages_.size())) {
+                currentStageIndex_ = savedIndex;
+            }
+        }
+        catch (...) {
+        }
+#endif
+    }
+
+    void SaveDevelopmentStageIndex() const {
+#if defined(USE_IMGUI) && defined(NDEBUG) && !defined(DD)
+        nlohmann::json root;
+        {
+            std::ifstream input(kUserConfigPath);
+            if (input.is_open()) {
+                try {
+                    input >> root;
+                }
+                catch (...) {
+                    root = nlohmann::json::object();
+                }
+            }
+        }
+
+        if (!root.is_object()) {
+            root = nlohmann::json::object();
+        }
+
+        root["lastStageIndex"] = currentStageIndex_;
+        if (currentStageIndex_ >= 0 && currentStageIndex_ < static_cast<int>(stages_.size())) {
+            root["lastStageId"] = stages_[currentStageIndex_].id;
+        }
+
+        std::ofstream output(kUserConfigPath);
+        if (output.is_open()) {
+            output << root.dump(4);
+        }
+#endif
+    }
+
+    static constexpr const char* kUserConfigPath = "Resources/json/user_config.json";
     std::vector<StageData> stages_;
     int currentStageIndex_ = 0;
 };

@@ -49,6 +49,12 @@ public:
 private:
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);
+    bool TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize) const;
+    bool IsGeneratedTextSprite(Sprite* sprite) const;
+    float CalcAspectError(Sprite* sprite, const Vector2& textureSize) const;
+    Vector2 MakeAspectFixedSize(Sprite* sprite, const Vector2& textureSize, bool keepWidth) const;
+    Vector2 MakeNearestIntegerScaleSize(Sprite* sprite, const Vector2& textureSize) const;
+    int FixSpriteAspectInCurrentScene(bool textOnly, bool keepWidth);
 
     SceneManager* sceneManager_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -72,4 +78,5 @@ private:
     // 保存用ファイル名
     char currentSpriteFilename_[128] = "sprite_layout.json";
     std::string currentSpriteDirectory_ = "Resources/sprite/";
+    std::string spriteQualityStatus_;
 };

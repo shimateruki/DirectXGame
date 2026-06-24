@@ -64,6 +64,8 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
     const size_t presetCount = PresetManager::GetInstance()->GetPresets().size();
 
     const std::vector<std::pair<std::string, std::string>> enemies = {
+        { "FireSlime", "Fire Slime" },
+        { "ThunderSlime", "Thunder Slime" },
         { "Slime", "スライム" },
         { "Bomb", "ボム" },
         { "Bomber", "ボマー" },
@@ -79,6 +81,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
 
     const std::vector<std::pair<std::string, std::string>> gimmicks = {
         { "FireCannon", "火球砲台" },
+        { "BreakableBlock", "破壊ブロック" },
         { "MovingFloor", "動く床" },
         { "Trampoline", "ジャンプ台" },
         { "SinkingFloor", "沈む床" },

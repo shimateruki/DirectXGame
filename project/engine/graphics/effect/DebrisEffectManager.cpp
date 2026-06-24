@@ -299,6 +299,58 @@ void DebrisEffectManager::RegisterPreset(const std::string& presetName, const De
     presets_[presetName] = config;
 }
 
+void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
+    DebrisEffectConfig config;
+    auto it = presets_.find(presetName);
+    if (it != presets_.end()) {
+        config = it->second;
+    }
+    else if (LoadConfig(ResolvePresetPath(presetName), config)) {
+        presets_[presetName] = config;
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[DebrisEffect] prewarm preset not found: " + presetName);
+        return;
+    }
+
+    Object3dCommon* common = ResolveCommon();
+    if (!common) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[DebrisEffect] prewarm skipped without Object3dCommon: " + presetName);
+        return;
+    }
+
+    std::vector<std::string> modelNames;
+    modelNames.reserve(config.modelNames.size());
+    for (const std::string& modelName : config.modelNames) {
+        if (modelName.empty()) {
+            continue;
+        }
+        if (std::find(modelNames.begin(), modelNames.end(), modelName) != modelNames.end()) {
+            continue;
+        }
+        ModelManager::GetInstance()->LoadModel(modelName);
+        modelNames.push_back(modelName);
+    }
+    if (modelNames.empty()) {
+        ModelManager::GetInstance()->LoadModel("Primitives/cube");
+    }
+
+    int count = std::clamp(config.spawnCount, 1, static_cast<int>(kMaxActiveDebrisPieces));
+    while (pooledPieces_.size() < static_cast<size_t>(count)) {
+        DebrisPiece piece;
+        if (!InitializePieceResources(piece, config)) {
+            break;
+        }
+        pooledPieces_.push_back(std::move(piece));
+    }
+}
+
+void DebrisEffectManager::PrewarmPresets(const std::vector<std::string>& presetNames) {
+    for (const std::string& presetName : presetNames) {
+        PrewarmPreset(presetName);
+    }
+}
+
 void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& position) {
     auto it = presets_.find(presetName);
     if (it != presets_.end()) {
@@ -309,6 +361,26 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& po
     DebrisEffectConfig config;
     if (LoadConfig(ResolvePresetPath(presetName), config)) {
         presets_[presetName] = config;
+        SpawnFromConfig(config, position);
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[DebrisEffect] preset not found: " + presetName);
+    }
+}
+
+void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY) {
+    auto it = presets_.find(presetName);
+    if (it != presets_.end()) {
+        DebrisEffectConfig config = it->second;
+        config.groundY = groundY;
+        SpawnFromConfig(config, position);
+        return;
+    }
+
+    DebrisEffectConfig config;
+    if (LoadConfig(ResolvePresetPath(presetName), config)) {
+        presets_[presetName] = config;
+        config.groundY = groundY;
         SpawnFromConfig(config, position);
     }
     else {

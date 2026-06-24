@@ -139,6 +139,10 @@ private:
     std::unique_ptr<Sprite> hudHpDamageFill_;
     std::unique_ptr<Sprite> hudHpFill_;
     std::unique_ptr<Sprite> hudHpHighlight_;
+    std::unique_ptr<Sprite> hudMorphGaugeBack_;
+    std::unique_ptr<Sprite> hudMorphGaugeFill_;
+    std::unique_ptr<Sprite> hudMorphGaugeIcon_;
+    std::unique_ptr<Sprite> hudMorphGaugeFrame_;
     std::unique_ptr<Sprite> hudLifeIcon_;
     std::unique_ptr<Sprite> hudLifeXIcon_;
     std::array<std::unique_ptr<Sprite>, 2> hudLifeDigits_;
@@ -150,6 +154,8 @@ private:
     float hudHurtIconTimer_ = 0.0f;
     float hudHpDamageHoldTimer_ = 0.0f;
     float hudHpDelayedRate_ = 1.0f;
+    float hudMorphGaugeTimer_ = 0.0f;
+    float hudMorphGaugeVisibleTimer_ = 0.0f;
 
     std::unique_ptr<Sprite> CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
     void InitializePreviewHUD();

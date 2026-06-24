@@ -25,6 +25,7 @@
 #include "GPUParticleManager.h"
 #include "GameDataManager.h"
 #include "WinApp.h"
+#include "Fade.h"
 
 #include <algorithm>
 #include <cmath>
@@ -51,11 +52,22 @@ constexpr const char* kSaveSlotCardSelected = "ui/title/save_slot_card_selected.
 constexpr const char* kSaveSlotCardEmpty = "ui/title/save_slot_card_empty.png";
 constexpr const char* kSaveDeleteButton = "ui/title/save_delete_button.png";
 constexpr const char* kSaveDeleteButtonSelected = "ui/title/save_delete_button_selected.png";
+constexpr const char* kTitleHeroSlimeName = "TitleHeroSlime";
 constexpr float kTitleIntroLastDelay = 0.385f;
 constexpr float kTitleIntroGlyphDuration = 0.45f;
 constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
 constexpr float kTitleIntroMenuFadeDuration = 0.35f;
 constexpr float kTitleIntroPi = 3.1415926535f;
+const Vector2 kMenuStartFramePosition = { 1536.0f, 712.0f };
+const Vector2 kMenuSettingFramePosition = { 1536.0f, 818.0f };
+const Vector2 kMenuStartTextureLeftTop = { 2.0f, 2.0f };
+const Vector2 kMenuStartTextureSize = { 278.0f, 42.0f };
+const Vector2 kMenuSettingTextureLeftTop = { 5.0f, 3.0f };
+const Vector2 kMenuSettingTextureSize = { 75.0f, 37.0f };
+const Vector2 kMenuCursorTextureLeftTop = { 115.0f, 218.0f };
+const Vector2 kMenuCursorTextureSize = { 1024.0f, 827.0f };
+const Vector3 kTitleHeroDefaultPosition = { -2.2f, -1.95f, 4.8f };
+const Vector3 kTitleHeroDefaultScale = { 3.0f, 3.0f, 3.0f };
 
 const std::array<const char*, 3> kFileTextPaths = {
     kTextFile1,
@@ -86,6 +98,25 @@ float SmoothStep(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
+
+bool IsFadePlayingForSceneIntro() {
+    const Fade::Status status = Fade::GetInstance()->GetStatus();
+    return status == Fade::Status::FadeIn ||
+        status == Fade::Status::FadeOut ||
+        status == Fade::Status::IrisIn ||
+        status == Fade::Status::IrisOut;
+}
+
+Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
+    if (!scene) return nullptr;
+    for (auto& object : scene->GetObjects()) {
+        if (object && object->GetName() == name) {
+            return object.get();
+        }
+    }
+    return nullptr;
+}
+
 }
 
 void TitleScene::Initialize() {
@@ -96,6 +127,7 @@ void TitleScene::Initialize() {
 
     // --- 2. モデルのプリロード ---
     ModelManager::GetInstance()->LoadModel("Characters/player");
+    ModelManager::GetInstance()->LoadModel("Characters/slime");
     ModelManager::GetInstance()->LoadModel("Samples/teapot");
     LOG("TitleScene Initialized!");
 
@@ -152,13 +184,40 @@ void TitleScene::Initialize() {
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
+    titleHeroSlime_ = FindObjectByName(this, kTitleHeroSlimeName);
+    if (!titleHeroSlime_) {
+        auto hero = std::make_unique<Object3d>();
+        hero->Initialize(object3dCommon_.get());
+        hero->SetName(kTitleHeroSlimeName);
+        hero->SetClassName("Model");
+        hero->SetSaveCategory("Object");
+        hero->SetModel("Characters/slime");
+        hero->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        hero->SetCollisionAttribute(0);
+        hero->SetCollisionMask(0);
+        hero->SetTranslate(kTitleHeroDefaultPosition);
+        hero->SetScale(kTitleHeroDefaultScale);
+        hero->UpdateLocalMatrix();
+        hero->UpdateWorldMatrix();
+        titleHeroSlime_ = hero.get();
+        objectManager_->AddObject(std::move(hero));
+    }
+    if (titleHeroSlime_) {
+        titleHeroBasePosition_ = titleHeroSlime_->GetTranslate();
+        titleHeroBaseScale_ = titleHeroSlime_->GetScale();
+        titleHeroBaseRotation_ = titleHeroSlime_->GetRotation();
+        titleHeroBaseCaptured_ = true;
+    }
     titleIntroTime_ = 0.0f;
     titleIntroComplete_ = false;
+    InitializeMainMenuUI();
     if (startTextSprite_) {
         startTextBaseSize_ = startTextSprite_->GetSize();
+        startTextBasePosition_ = startTextSprite_->GetPosition();
     }
     if (settingTextSprite_) {
         settingTextBaseSize_ = settingTextSprite_->GetSize();
+        settingTextBasePosition_ = settingTextSprite_->GetPosition();
     }
     InitializeTitleLogoUI();
     settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
@@ -211,6 +270,15 @@ void TitleScene::Finalize() {
     saveConfirmYesText_ = nullptr;
     saveConfirmBackText_ = nullptr;
     titleTextSprite_ = nullptr;
+    startTextSprite_ = nullptr;
+    settingTextSprite_ = nullptr;
+    mainMenuStartFrameSprite_ = nullptr;
+    mainMenuSettingFrameSprite_ = nullptr;
+    mainMenuArrowSprite_ = nullptr;
+    mainMenuCursorSprite_ = nullptr;
+    mainMenuPromptSprite_ = nullptr;
+    titleHeroSlime_ = nullptr;
+    titleHeroBaseCaptured_ = false;
     for (auto& glyph : titleLogoGlyphs_) {
         glyph = {};
     }
@@ -228,7 +296,8 @@ void TitleScene::Finalize() {
 
 void TitleScene::Update(float deltaTime) {
     titleUiTime_ += deltaTime;
-    UpdateTitleLogoIntro(deltaTime);
+    const float introDeltaTime = IsFadePlayingForSceneIntro() ? 0.0f : deltaTime;
+    UpdateTitleLogoIntro(introDeltaTime);
 
     const bool isSettingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     if (isSettingsOpen) {
@@ -237,13 +306,19 @@ void TitleScene::Update(float deltaTime) {
         if (!titleIntroComplete_) {
             UpdateSaveSlotUI();
             LightEditor::GetInstance()->Update();
-            CameraManager::GetInstance()->Update();
             CameraEditor::GetInstance()->Update(player_, false);
+            CameraManager::GetInstance()->Update();
             objectManager_->Update(deltaTime);
             particleSystem_->Update(deltaTime);
+            UpdateTitleHeroAnimation(deltaTime);
             for (auto& sprite : sprites_) {
                 sprite->Update();
             }
+            if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->Update();
+            if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->Update();
+            if (mainMenuArrowSprite_) mainMenuArrowSprite_->Update();
+            if (mainMenuCursorSprite_) mainMenuCursorSprite_->Update();
+            if (mainMenuPromptSprite_) mainMenuPromptSprite_->Update();
             for (auto& sprite : titleUiSprites_) {
                 sprite->Update();
             }
@@ -260,16 +335,22 @@ void TitleScene::Update(float deltaTime) {
 
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
-    CameraManager::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
+    CameraManager::GetInstance()->Update();
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
+    UpdateTitleHeroAnimation(deltaTime);
     objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
+    if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->Update();
+    if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->Update();
+    if (mainMenuArrowSprite_) mainMenuArrowSprite_->Update();
+    if (mainMenuCursorSprite_) mainMenuCursorSprite_->Update();
+    if (mainMenuPromptSprite_) mainMenuPromptSprite_->Update();
     for (auto& sprite : titleUiSprites_) {
         sprite->Update();
     }
@@ -304,12 +385,70 @@ void TitleScene::InitializeTitleLogoUI() {
     }
 }
 
+void TitleScene::InitializeMainMenuUI() {
+    if (startTextSprite_) {
+        startTextSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        startTextSprite_->SetTextureRect(kMenuStartTextureLeftTop, kMenuStartTextureSize);
+        startTextSprite_->SetColor({ 0.41f, 0.91f, 1.0f, 0.0f });
+    }
+    if (settingTextSprite_) {
+        settingTextSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        settingTextSprite_->SetTextureRect(kMenuSettingTextureLeftTop, kMenuSettingTextureSize);
+        settingTextSprite_->SetColor({ 0.62f, 0.74f, 0.82f, 0.0f });
+    }
+
+    mainMenuStartFrameSprite_ = GetSpriteByName("mainMenuStartFrame");
+    mainMenuSettingFrameSprite_ = GetSpriteByName("mainMenuSettingFrame");
+    mainMenuArrowSprite_ = GetSpriteByName("mainMenuArrow");
+    mainMenuCursorSprite_ = GetSpriteByName("mainMenuCursor");
+    mainMenuPromptSprite_ = GetSpriteByName("mainMenuPrompt");
+
+    if (mainMenuStartFrameSprite_) {
+        mainMenuStartFrameSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuStartFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+    if (mainMenuSettingFrameSprite_) {
+        mainMenuSettingFrameSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuSettingFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+    if (mainMenuArrowSprite_) {
+        mainMenuArrowSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuArrowBaseSize_ = mainMenuArrowSprite_->GetSize();
+        mainMenuArrowSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+    if (mainMenuCursorSprite_) {
+        mainMenuCursorSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuCursorBaseSize_ = mainMenuCursorSprite_->GetSize();
+        mainMenuCursorSprite_->SetTextureRect(kMenuCursorTextureLeftTop, kMenuCursorTextureSize);
+        mainMenuCursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+    if (mainMenuPromptSprite_) {
+        mainMenuPromptSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuPromptBasePosition_ = mainMenuPromptSprite_->GetPosition();
+        mainMenuPromptBaseSize_ = mainMenuPromptSprite_->GetSize();
+        mainMenuPromptSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    }
+
+    const Vector2 startFramePosition = mainMenuStartFrameSprite_
+        ? mainMenuStartFrameSprite_->GetPosition()
+        : kMenuStartFramePosition;
+    if (mainMenuArrowSprite_) {
+        const Vector2 arrowPosition = mainMenuArrowSprite_->GetPosition();
+        mainMenuArrowOffset_ = { arrowPosition.x - startFramePosition.x, arrowPosition.y - startFramePosition.y };
+    }
+    if (mainMenuCursorSprite_) {
+        const Vector2 cursorPosition = mainMenuCursorSprite_->GetPosition();
+        mainMenuCursorOffset_ = { cursorPosition.x - startFramePosition.x, cursorPosition.y - startFramePosition.y };
+    }
+}
+
 void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
     if (titleTextSprite_) {
         titleTextSprite_->SetVisible(false);
     }
 
-    const bool showLogo = titleMode_ == TitleMode::MainMenu;
+    const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
+    const bool showLogo = titleMode_ == TitleMode::MainMenu && !settingsOpen;
     if (!showLogo) {
         for (auto& glyph : titleLogoGlyphs_) {
             if (glyph.sprite) {
@@ -351,6 +490,48 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
     }
 }
 
+void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
+    (void)deltaTime;
+
+    if (!titleHeroSlime_) {
+        titleHeroSlime_ = FindObjectByName(this, kTitleHeroSlimeName);
+        if (titleHeroSlime_ && !titleHeroBaseCaptured_) {
+            titleHeroBasePosition_ = titleHeroSlime_->GetTranslate();
+            titleHeroBaseScale_ = titleHeroSlime_->GetScale();
+            titleHeroBaseRotation_ = titleHeroSlime_->GetRotation();
+            titleHeroBaseCaptured_ = true;
+        }
+    }
+    if (!titleHeroSlime_ || !titleHeroBaseCaptured_) {
+        return;
+    }
+
+    const float phase = std::fmod(titleUiTime_ * 0.82f, 1.0f);
+    const float jumpT = phase < 0.56f ? phase / 0.56f : 1.0f;
+    const float jumpHeight = phase < 0.56f ? std::sin(jumpT * kTitleIntroPi) * 0.46f : 0.0f;
+    const float landT = phase >= 0.56f ? std::clamp((phase - 0.56f) / 0.18f, 0.0f, 1.0f) : 0.0f;
+    const float squash = std::sin(landT * kTitleIntroPi) * (1.0f - landT * 0.25f);
+    const float wobble = std::sin(titleUiTime_ * 3.2f);
+
+    Vector3 position = titleHeroBasePosition_;
+    position.y += jumpHeight;
+
+    Vector3 scale = titleHeroBaseScale_;
+    scale.x *= 1.0f + squash * 0.16f + std::sin(titleUiTime_ * 4.4f) * 0.018f;
+    scale.y *= 1.0f - squash * 0.18f + jumpHeight * 0.045f;
+    scale.z *= 1.0f + squash * 0.16f - std::sin(titleUiTime_ * 3.9f) * 0.014f;
+
+    Vector3 rotation = titleHeroBaseRotation_;
+    rotation.y += std::sin(titleUiTime_ * 0.8f) * 0.16f;
+    rotation.z += wobble * 0.045f;
+
+    titleHeroSlime_->SetTranslate(position);
+    titleHeroSlime_->SetScale(scale);
+    titleHeroSlime_->SetRotation(rotation);
+    titleHeroSlime_->UpdateLocalMatrix();
+    titleHeroSlime_->UpdateWorldMatrix();
+}
+
 void TitleScene::UpdateMainMenu() {
     InputManager* input = InputManager::GetInstance();
 
@@ -364,26 +545,83 @@ void TitleScene::UpdateMainMenu() {
     }
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 6.0f);
-    const float selectedScale = 1.10f + pulse * 0.06f;
+    const float selectedScale = 1.0f + pulse * 0.018f;
     const float menuAlpha = std::clamp((titleIntroTime_ - kTitleIntroMenuDelay) / kTitleIntroMenuFadeDuration, 0.0f, 1.0f);
-    Vector4 normalColor = { 0.62f, 0.74f, 0.82f, 0.72f * menuAlpha };
-    Vector4 selectColor = { 0.35f + pulse * 0.12f, 0.86f + pulse * 0.10f, 1.0f, menuAlpha };
+    Vector4 normalColor = { 0.24f, 0.22f, 0.17f, 0.98f * menuAlpha };
+    Vector4 selectColor = { 0.07f, 0.20f, 0.25f, menuAlpha };
 
     if (startTextSprite_) {
         const bool selected = currentMenuIndex_ == (int)MenuIndex::GameStart;
+        startTextSprite_->SetPosition(startTextBasePosition_);
         startTextSprite_->SetColor(selected ? selectColor : normalColor);
         startTextSprite_->SetSize({
-            startTextBaseSize_.x * (selected ? selectedScale : 0.94f),
-            startTextBaseSize_.y * (selected ? selectedScale : 0.94f)
+            startTextBaseSize_.x * (selected ? selectedScale : 0.98f),
+            startTextBaseSize_.y * (selected ? selectedScale : 0.98f)
         });
     }
     if (settingTextSprite_) {
         const bool selected = currentMenuIndex_ == (int)MenuIndex::Setting;
+        settingTextSprite_->SetPosition(settingTextBasePosition_);
         settingTextSprite_->SetColor(selected ? selectColor : normalColor);
         settingTextSprite_->SetSize({
-            settingTextBaseSize_.x * (selected ? selectedScale : 0.94f),
-            settingTextBaseSize_.y * (selected ? selectedScale : 0.94f)
+            settingTextBaseSize_.x * (selected ? selectedScale : 0.98f),
+            settingTextBaseSize_.y * (selected ? selectedScale : 0.98f)
         });
+    }
+    const bool startSelected = currentMenuIndex_ == (int)MenuIndex::GameStart;
+    const Vector2 startFramePosition = mainMenuStartFrameSprite_
+        ? mainMenuStartFrameSprite_->GetPosition()
+        : kMenuStartFramePosition;
+    const Vector2 settingFramePosition = mainMenuSettingFrameSprite_
+        ? mainMenuSettingFrameSprite_->GetPosition()
+        : kMenuSettingFramePosition;
+    const uint32_t selectedFrame = Sprite::LoadTexture("ui/title/title_menu_button_blue.png");
+    const uint32_t normalFrame = Sprite::LoadTexture("ui/title/title_menu_button_beige.png");
+    if (mainMenuStartFrameSprite_) {
+        mainMenuStartFrameSprite_->SetTextureHandle(startSelected ? selectedFrame : normalFrame);
+        mainMenuStartFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, (startSelected ? 1.0f : 0.98f) * menuAlpha });
+        mainMenuStartFrameSprite_->Update();
+    }
+    if (mainMenuSettingFrameSprite_) {
+        mainMenuSettingFrameSprite_->SetTextureHandle(startSelected ? normalFrame : selectedFrame);
+        mainMenuSettingFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, (startSelected ? 0.98f : 1.0f) * menuAlpha });
+        mainMenuSettingFrameSprite_->Update();
+    }
+    const Vector2 selectedFramePosition = startSelected ? startFramePosition : settingFramePosition;
+    if (mainMenuCursorSprite_) {
+        const float bob = std::sin(titleUiTime_ * 7.5f) * 5.0f;
+        const float squash = 1.0f + pulse * 0.06f;
+        mainMenuCursorSprite_->SetPosition({
+            selectedFramePosition.x + mainMenuCursorOffset_.x,
+            selectedFramePosition.y + mainMenuCursorOffset_.y + bob
+        });
+        mainMenuCursorSprite_->SetSize({
+            mainMenuCursorBaseSize_.x * squash,
+            mainMenuCursorBaseSize_.y * (1.05f - pulse * 0.05f)
+        });
+        mainMenuCursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, menuAlpha });
+        mainMenuCursorSprite_->Update();
+    }
+    if (mainMenuArrowSprite_) {
+        const float arrowPulse = 1.0f + pulse * 0.06f;
+        mainMenuArrowSprite_->SetPosition({
+            selectedFramePosition.x + mainMenuArrowOffset_.x + std::sin(titleUiTime_ * 8.0f) * 3.0f,
+            selectedFramePosition.y + mainMenuArrowOffset_.y
+        });
+        mainMenuArrowSprite_->SetSize({
+            mainMenuArrowBaseSize_.x * arrowPulse,
+            mainMenuArrowBaseSize_.y * arrowPulse
+        });
+        mainMenuArrowSprite_->SetColor({ 1.0f, 1.0f, 1.0f, menuAlpha });
+        mainMenuArrowSprite_->Update();
+    }
+    if (mainMenuPromptSprite_) {
+        const float promptPulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 1.45f);
+        const float promptAlpha = (0.38f + promptPulse * 0.55f) * menuAlpha;
+        mainMenuPromptSprite_->SetPosition(mainMenuPromptBasePosition_);
+        mainMenuPromptSprite_->SetSize(mainMenuPromptBaseSize_);
+        mainMenuPromptSprite_->SetColor({ 1.0f, 1.0f, 1.0f, promptAlpha });
+        mainMenuPromptSprite_->Update();
     }
 
     if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
@@ -649,10 +887,16 @@ Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2
 void TitleScene::UpdateSaveSlotUI() {
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
-    const bool showMainMenu = !inSaveSelect && titleIntroComplete_;
+    const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
+    const bool showMainMenu = !settingsOpen && !inSaveSelect && titleIntroComplete_;
     if (titleTextSprite_) titleTextSprite_->SetVisible(false);
     if (startTextSprite_) startTextSprite_->SetVisible(showMainMenu);
     if (settingTextSprite_) settingTextSprite_->SetVisible(showMainMenu);
+    if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->SetVisible(showMainMenu);
+    if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->SetVisible(showMainMenu);
+    if (mainMenuArrowSprite_) mainMenuArrowSprite_->SetVisible(showMainMenu);
+    if (mainMenuCursorSprite_) mainMenuCursorSprite_->SetVisible(showMainMenu);
+    if (mainMenuPromptSprite_) mainMenuPromptSprite_->SetVisible(showMainMenu);
     if (saveSelectHeader_) saveSelectHeader_->SetVisible(false);
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
@@ -875,7 +1119,8 @@ void TitleScene::Draw() {
 
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-    if (skybox_ && camera) {
+    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 

@@ -161,9 +161,7 @@ void BossCore::Update(float deltaTime) {
         deltaTime = 0.0f;
     }
 
-    // ------------------------------------------
-    // ここから下は今までの Update と全く同じです
-    // ------------------------------------------
+    // ここから下はボス本体、装甲ブロック、攻撃フェーズをまとめて更新する
     float preTimer = colorResetTimer_;
 
     // 1. 基本更新（行列計算など）
@@ -436,6 +434,7 @@ void BossCore::UpdateWeak(float deltaTime) {
     }
 }
 
+// 攻撃モードごとの長いフェーズ演出をここで一括管理する
 void BossCore::UpdateAnimationSequence(float deltaTime) {
 
     // ==========================================
@@ -1822,6 +1821,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
 }
 
+// 射出された装甲ブロックの飛翔、着地、帰還を更新する
 void BossCore::UpdateFlyingBlocks(float deltaTime) {
     int landedCount = 0; // 地面に刺さっているブロックの数
     static Math math;
@@ -1996,6 +1996,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
 // ==========================================
 // バリアのダメージ＆スタン(ダウン)処理
 // ==========================================
+// バリアHPへのダメージとダウン遷移
 void BossCore::TakeBarrierDamage(float damage) {
     barrierHp_ -= damage;
 

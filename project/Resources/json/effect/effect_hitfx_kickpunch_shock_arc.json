@@ -1,0 +1,83 @@
+{
+    "AutoLoop": false,
+    "BlendMode": 2,
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "DistortionSpeed": 0.0,
+    "DistortionStrength": 0.0,
+    "EasingType": 2,
+    "EdgeFadeStrength": 2.6,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        1.0,
+        0.42,
+        0.05,
+        0.0
+    ],
+    "EndScale": [
+        1.55,
+        1.55,
+        1.55
+    ],
+    "InnerRadius": 0.82,
+    "Intensity": 2.7,
+    "Lifetime": 0.46,
+    "MeshSegments": 24,
+    "ModelName": "",
+    "NoiseTexturePath": "",
+    "PlaneSize": [
+        2.55,
+        1.65
+    ],
+    "OuterRadius": 1.1,
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ProceduralType": 7,
+    "RampTexturePath": "",
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.0,
+        0.0
+    ],
+    "SlashAngle": 155.0,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        1.9,
+        0.9,
+        0.24,
+        0.55
+    ],
+    "StartScale": [
+        1.02,
+        1.02,
+        1.02
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/effect/hitfx/hit_orange_arc.png",
+    "Thickness": 0.055,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

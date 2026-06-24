@@ -109,11 +109,23 @@ public:
     std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
     std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
     Vector4& GetSceneClearColor() { return sceneClearColor_; }
+    bool IsSkyboxEnabled() const { return skyboxEnabled_; }
+    void SetSkyboxEnabled(bool enabled) { skyboxEnabled_ = enabled; }
+    const std::string& GetSkyboxTexturePath() const { return skyboxTexturePath_; }
+    bool SetSkyboxTexturePath(const std::string& texturePath);
+    uint32_t GetSkyboxTextureHandle() const { return skyboxTextureHandle_; }
 
     // --- ライト追加・削除 ---
     PointLightInstance* AddPointLight();
     SpotLightInstance* AddSpotLight();
     void ClearAllLights();
+    void PlayPointLightPulse(
+        const Vector3& position,
+        const Vector4& color,
+        float intensity,
+        float radius,
+        float duration,
+        float decay = 1.0f);
 
     // --- ファイル保存・読み込み ---
     bool SaveState(const std::string& filename);
@@ -137,6 +149,13 @@ private:
     std::vector<PointLightInstance> pointLights_;
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     PointLightConstData* pointLightConstData_ = nullptr;
+    struct TransientPointLight {
+        MeshRenderer::PointLight data;
+        float baseIntensity = 1.0f;
+        float age = 0.0f;
+        float duration = 0.2f;
+    };
+    std::vector<TransientPointLight> transientPointLights_;
 
     // スポットライトデータ
     std::vector<SpotLightInstance> spotLights_;
@@ -148,6 +167,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     uint32_t environmentMapHandle_ = 0;
     Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
+    bool skyboxEnabled_ = true;
+    std::string skyboxTexturePath_ = "Resources/output_skybox.dds";
+    uint32_t skyboxTextureHandle_ = 0;
     std::string currentStateFile_ = "Resources/json/light/light_layout.json";
     bool lastLoadSucceeded_ = true;
 

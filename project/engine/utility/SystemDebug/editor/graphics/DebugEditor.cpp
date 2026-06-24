@@ -162,6 +162,14 @@ namespace {
             aabb.max.z > aabb.min.z;
     }
 
+    Vector3 GetAabbCenter(const AABB& aabb) {
+        return {
+            (aabb.min.x + aabb.max.x) * 0.5f,
+            (aabb.min.y + aabb.max.y) * 0.5f,
+            (aabb.min.z + aabb.max.z) * 0.5f
+        };
+    }
+
     float Distance(const Vector3& a, const Vector3& b) {
         float dx = a.x - b.x;
         float dy = a.y - b.y;
@@ -280,8 +288,13 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     text3DGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
     assetAuditWindow_.Initialize(this);
+    statusTuningWindow_.Initialize(this, sceneManager_);
     gameDataDebugEditor_.Initialize(sceneManager);
     terrainEditorWindow_.Initialize(this);
+    jsonBackupWindow_.Initialize(this);
+    audioSettingsWindow_.Initialize(this);
+    executablePackageWindow_.Initialize(this);
+    captureToolWindow_.Initialize(this);
 
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
     ddsCacheNotificationReadOffset_ = 0;
@@ -425,8 +438,14 @@ void DebugEditor::Update() {
             }
         }
 
+        CameraEditor* cameraEditor = CameraEditor::GetInstance();
+        const bool isCameraEditorSelected = current == cameraEditor;
+        if (isCameraEditorSelected) {
+            cameraEditor->DrawOrbitCenterGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
+        }
+
         // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---
-        if (!isPathEditMode_ && isGameViewHovered_ && !ImGuizmo::IsOver()) {
+        if (!isPathEditMode_ && isGameViewHovered_ && !isCameraEditorSelected && !ImGuizmo::IsOver()) {
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 Ray ray = ScreenPointToRay(gameViewMousePos_);
                 auto& objects = currentScene->GetObjects();
@@ -478,7 +497,35 @@ void DebugEditor::Update() {
                     float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
                     float snapArr[3] = { snapVal, snapVal, snapVal };
 
-                    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &world.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
+                    Matrix4x4 gizmoWorld = world;
+                    Vector3 gizmoPivotWorld = { world.m[3][0], world.m[3][1], world.m[3][2] };
+                    bool useTranslatedPivot = curOp == ImGuizmo::TRANSLATE && gizmoPivotMode_ != 0;
+
+                    if (useTranslatedPivot) {
+                        AABB pivotAabb{};
+                        bool hasPivotAabb = false;
+
+                        if (gizmoPivotMode_ == 1) {
+                            pivotAabb = selectedObject_->GetModelWorldAABB();
+                            hasPivotAabb = IsValidAabb(pivotAabb);
+                        }
+                        else if (gizmoPivotMode_ == 2) {
+                            pivotAabb = selectedObject_->GetAABB();
+                            hasPivotAabb = IsValidAabb(pivotAabb);
+                        }
+
+                        if (hasPivotAabb) {
+                            gizmoPivotWorld = GetAabbCenter(pivotAabb);
+                            gizmoWorld.m[3][0] = gizmoPivotWorld.x;
+                            gizmoWorld.m[3][1] = gizmoPivotWorld.y;
+                            gizmoWorld.m[3][2] = gizmoPivotWorld.z;
+                        }
+                        else {
+                            useTranslatedPivot = false;
+                        }
+                    }
+
+                    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &gizmoWorld.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
 
                     if (ImGuizmo::IsUsing()) {
                         if (!isDraggingTransform_) {
@@ -487,10 +534,29 @@ void DebugEditor::Update() {
                             tempObjectStateStart_ = CaptureObjectState(selectedObject_);
                         }
 
-                        Matrix4x4 newLocalMat = world;
+                        Matrix4x4 editedWorld = gizmoWorld;
+                        if (useTranslatedPivot) {
+                            Vector3 editedPivotWorld = {
+                                gizmoWorld.m[3][0],
+                                gizmoWorld.m[3][1],
+                                gizmoWorld.m[3][2]
+                            };
+                            Vector3 pivotDelta = {
+                                editedPivotWorld.x - gizmoPivotWorld.x,
+                                editedPivotWorld.y - gizmoPivotWorld.y,
+                                editedPivotWorld.z - gizmoPivotWorld.z
+                            };
+
+                            editedWorld = world;
+                            editedWorld.m[3][0] += pivotDelta.x;
+                            editedWorld.m[3][1] += pivotDelta.y;
+                            editedWorld.m[3][2] += pivotDelta.z;
+                        }
+
+                        Matrix4x4 newLocalMat = editedWorld;
                         if (selectedObject_->GetParent()) {
                             Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
-                            newLocalMat = math.Multiply(world, parentWorldInv);
+                            newLocalMat = math.Multiply(editedWorld, parentWorldInv);
                         }
 
                         Vector3 s, rDeg, t;
@@ -745,6 +811,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     // =========================================================
     // 2. 弾のコライダー描画
     // =========================================================
+    CameraEditor::GetInstance()->DrawOrbitGuide(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
     DrawPreviewWire(commandList, instanceCount, kMaxDrawLimit);
 
     if (drawColliders_) {
@@ -971,6 +1038,17 @@ void DebugEditor::DrawImGui() {
     inspectorWindow_.Draw();
 
 #ifdef USE_IMGUI
+    if (selectedObject_) {
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("ギズモ設定", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const char* pivotModes[] = { "原点", "モデル中心", "コリジョン中心" };
+            ImGui::Combo("ギズモ基準", &gizmoPivotMode_, pivotModes, IM_ARRAYSIZE(pivotModes));
+            if (gizmoPivotMode_ != 0) {
+                ImGui::TextDisabled("移動ギズモの表示位置だけを補正します。回転とスケールは原点基準です。");
+            }
+        }
+    }
+
     TrackInspectorEdit(beforeTarget, beforeState);
 #endif
 }

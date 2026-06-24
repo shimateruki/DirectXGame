@@ -7,6 +7,7 @@
 #include <cmath>
 
 namespace {
+// キノコの近距離胞子と持ち運び射撃で使う調整値
 constexpr float kAttackRange = 3.2f;
 constexpr float kRangedMinRange = 5.0f;
 constexpr float kSporeDamage = 1.0f;
@@ -25,6 +26,7 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 }
 
+// キノコ敵の初期化
 void EnemyMushroom::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_Mushroom");
@@ -38,6 +40,7 @@ void EnemyMushroom::Initialize(Object3dCommon* common, const std::string& modelN
     SetCollisionSize({ 0.8f, 1.1f, 0.8f });
 }
 
+// 中距離を保ちながら胞子攻撃を行うAI
 void EnemyMushroom::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
@@ -112,6 +115,7 @@ std::unique_ptr<Object3d> EnemyMushroom::Clone() const {
     return clone;
 }
 
+// 持ち運び中にプレイヤー前方へ胞子弾を撃つ能力
 void EnemyMushroom::ExecuteAbility(Player* player) {
     if (!player || !isCarried_ || carriedSporeCooldown_ > 0.0f) {
         return;
@@ -161,6 +165,7 @@ void EnemyMushroom::UpdateCarriedAbility(Player* player, float deltaTime) {
     }
 }
 
+// 胞子攻撃と見た目の補助処理
 void EnemyMushroom::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.0001f) return;

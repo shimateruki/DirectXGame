@@ -53,10 +53,17 @@ float EaseOutBack(float t) {
     const float shifted = t - 1.0f;
     return 1.0f + c3 * shifted * shifted * shifted + c1 * shifted * shifted;
 }
+
+bool IsFadePlayingForSceneIntro() {
+    const Fade::Status status = Fade::GetInstance()->GetStatus();
+    return status == Fade::Status::FadeIn ||
+        status == Fade::Status::FadeOut ||
+        status == Fade::Status::IrisIn ||
+        status == Fade::Status::IrisOut;
+}
 }
 
 void GameOverScene::Initialize() {
-    Fade::GetInstance()->Stop();
     PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
     if (postParams) {
         postParams->slimeFadeIntensity = 0.0f;
@@ -142,17 +149,19 @@ void GameOverScene::Finalize() {
 }
 
 void GameOverScene::Update(float deltaTime) {
-    sceneTime_ += deltaTime;
-    titleRevealTimer_ += deltaTime;
+    const bool canAdvanceIntro = !IsFadePlayingForSceneIntro();
+    const float introDeltaTime = canAdvanceIntro ? deltaTime : 0.0f;
+    sceneTime_ += introDeltaTime;
+    titleRevealTimer_ += introDeltaTime;
     if (IsTitleRevealComplete()) {
         UpdateMenuInput();
     }
-    UpdateMenuSprites(deltaTime);
+    UpdateMenuSprites(introDeltaTime);
 
     // マネージャ・エディタ更新
     LightEditor::GetInstance()->Update();
-    CameraManager::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
+    CameraManager::GetInstance()->Update();
 
     // オブジェクト一括更新 (ObjectManager)
     objectManager_->Update(deltaTime);

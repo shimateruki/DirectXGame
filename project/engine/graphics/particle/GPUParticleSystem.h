@@ -113,6 +113,13 @@ public:
         float softParticleFade;
         int blendMode;
         Vector2 screenSize;
+        uint32_t spriteSheetColumns;
+        uint32_t spriteSheetRows;
+        uint32_t spriteSheetFrameCount;
+        float spriteSheetFps;
+        uint32_t spriteSheetLoop;
+        uint32_t spriteSheetRandomStart;
+        Vector2 spriteSheetPadding;
     };
 
     GPUParticleSystem() = default;
@@ -133,6 +140,8 @@ public:
     }
 
     void SetTimeScale(float scale) { timeScale_ = scale; }
+    void RequestWarmup() { warmupRequested_ = true; lastEmitTimer_ = 0.0f; }
+    bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= 2.0f; }
 
     // ★重要: 部隊ごとに作られるので、10万から1万に減らす！
     static const uint32_t kMaxParticles = 10000;
@@ -184,11 +193,18 @@ private:
 
     // 軽量化用: 最後にEmitしてからどれくらい経ったか
     float lastEmitTimer_ = 0.0f;
+    bool warmupRequested_ = false;
     const float kIdleKillTime = 5.0f; // 5秒間何も出なかったら一旦止める
 
     uint32_t emitCountThisFrame_ = 0;
     float softParticleFade_ = 5.0f;
     uint32_t blendModeIndex_ = 0;
+    uint32_t spriteSheetColumns_ = 1;
+    uint32_t spriteSheetRows_ = 1;
+    uint32_t spriteSheetFrameCount_ = 1;
+    float spriteSheetFps_ = 0.0f;
+    uint32_t spriteSheetLoop_ = 0;
+    uint32_t spriteSheetRandomStart_ = 0;
 
     uint32_t currentTextureHandle_ = 0;
 

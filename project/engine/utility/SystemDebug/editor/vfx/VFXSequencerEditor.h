@@ -15,6 +15,8 @@ public:
     void RefreshFileList();
 
 private:
+    Vector3 ResolvePreviewPosition() const;
+    void PlayPreview();
     void DrawTimelinePreview();
     void DrawEventEditor(int index, VFXEvent& event);
     void DrawPresetCombo(const char* label, std::string& value, const std::vector<std::string>& list);
@@ -27,4 +29,9 @@ private:
     std::vector<std::string> sequenceFileList_;
     std::vector<std::string> meshEffectList_;
     std::vector<std::string> seFileList_;
+    bool isPreviewMode_ = true;
+    float previewDistance_ = 5.0f;
+    float previewRootScale_ = 1.0f;
+    float previewPlaybackSpeed_ = 1.0f;
+    int lastStagePlayRequestSerial_ = 0;
 };

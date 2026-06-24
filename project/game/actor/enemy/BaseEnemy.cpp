@@ -8,11 +8,17 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "ParticleSystem.h"
+#include "HitEffectDirector.h"
+#include "MeshEffectManager.h"
+#include "VFXSequencer.h"
+#include "GimmickCoin.h"
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace {
+// 共通の徘徊、投げ物理、叩きつけ、撃破演出で使う調整値
 constexpr float kWanderPi = 3.14159265358979323846f;
 constexpr float kThrownMaxTime = 3.0f;
 constexpr float kThrownSettleTime = 0.22f;
@@ -33,7 +39,13 @@ constexpr float kSlamDamageScale = 0.70f;
 constexpr float kDefeatEffectDuration = 1.05f;
 constexpr float kDefeatRiseHeight = 1.45f;
 constexpr float kDefeatSpinSpeed = 5.4f;
-constexpr float kDefeatParticleInterval = 0.055f;
+constexpr float kDefeatParticleInterval = 0.085f;
+constexpr const char* kEnemyDefeatPopSequence = "enemy_defeat_pop_cue";
+constexpr const char* kEnemyDefeatCoreEffect = "Resources/json/effect/effect_enemy_defeat_core_flash.json";
+constexpr const char* kEnemyDefeatRingEffect = "Resources/json/effect/effect_enemy_defeat_pop_ring.json";
+constexpr const char* kEnemyDropCoinModel = "Gimmicks/koin";
+constexpr float kEnemyDropCoinLifetime = 8.0f;
+constexpr float kEnemyDropCoinBlinkStart = 2.2f;
 
 float PlanarDistance(const Vector3& a, const Vector3& b) {
     const float dx = a.x - b.x;
@@ -63,8 +75,27 @@ float EaseOutCubic(float t) {
 float CalculateSlamDamage(float impactSpeed) {
     return kSlamDamageBase + impactSpeed * kSlamDamageScale;
 }
+
+float NextDropRandom(uint32_t& seed) {
+    seed = seed * 1664525u + 1013904223u;
+    return static_cast<float>((seed >> 8) & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
 }
 
+int GetCoinDropCountByEnemyType(const std::string& enemyType) {
+    if (enemyType == "GiantSlime") {
+        return 8;
+    }
+    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "Bomber" || enemyType == "BeamDrone") {
+        return 4;
+    }
+    if (enemyType == "Bat" || enemyType == "Mushroom") {
+        return 2;
+    }
+    return 3;
+}
+}
+
+// 基本初期化
 void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName) {
     // 1. 親クラス(Character)の初期化
     Character::Initialize(common);
@@ -77,8 +108,10 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack);
     SetClassName("Enemy");
     defaultColor_ = GetColor();
+    hasSpawnedDefeatCoinDrops_ = false;
 }
 
+// 徘徊目標の管理
 void BaseEnemy::CaptureWanderOrigin() {
     if (hasWanderOrigin_) {
         return;
@@ -193,6 +226,7 @@ Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, flo
     return velocity;
 }
 
+// 持ち上げ後に投げられた敵の物理挙動
 void BaseEnemy::BeginThrown(const Vector3& initialVelocity) {
     throwRecoveryTargetRotation_ = GetRotation();
 
@@ -352,6 +386,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
     }
 }
 
+// 投げ衝突の叩きつけダメージと演出
 void BaseEnemy::OnSlamImpact(const Vector3& impactPosition, float impactSpeed) {
     if (GetEnemyType() != "Bomb") {
         DamageEvent selfDamage;
@@ -366,6 +401,9 @@ void BaseEnemy::OnSlamImpact(const Vector3& impactPosition, float impactSpeed) {
 }
 
 void BaseEnemy::SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed) {
+    const Vector3 groundImpactPosition = HitEffectDirector::ResolveGroundEffectPosition(impactPosition);
+    HitEffectDirector::SpawnThrowSlamShockwave(groundImpactPosition, impactSpeed);
+
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return;
@@ -379,7 +417,7 @@ void BaseEnemy::SpawnSlamImpactEffect(const Vector3& impactPosition, float impac
     Vector3 up = { 0.0f, 1.0f, 0.0f };
     const float power = (std::clamp)(impactSpeed / 22.0f, 0.65f, 1.35f);
     particleSystem->SpawnParticles(
-        impactPosition,
+        groundImpactPosition + Vector3{ 0.0f, 0.04f, 0.0f },
         static_cast<int>(28.0f * power),
         5.5f * power,
         &up,
@@ -446,6 +484,7 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
     }
 }
 
+// HPが尽きた時の共通撃破演出
 bool BaseEnemy::ShouldHandleDefeatEffect() const {
     if (isDefeatEffectFinished_) {
         return false;
@@ -467,9 +506,69 @@ ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
     return sceneManager->GetCurrentScene()->GetParticleSystem();
 }
 
+void BaseEnemy::SpawnDefeatCoinDrops() {
+    if (hasSpawnedDefeatCoinDrops_) {
+        return;
+    }
+    hasSpawnedDefeatCoinDrops_ = true;
+
+    SceneManager* sceneManager = SceneManager::GetInstance();
+    BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+    if (!scene || !scene->GetObject3dCommon()) {
+        return;
+    }
+
+    const int dropCount = GetCoinDropCountByEnemyType(GetEnemyType());
+    if (dropCount <= 0) {
+        return;
+    }
+
+    const Vector3 basePosition = GetWorldPosition();
+    const Vector3 baseScale = GetScale();
+    const float bodyScale = (std::max)({ 0.8f, baseScale.x, baseScale.y, baseScale.z });
+    const float groundY = basePosition.y + 0.18f;
+    const float spawnY = basePosition.y + (std::max)(0.65f, bodyScale * 0.32f);
+
+    uint32_t seed = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
+    seed ^= static_cast<uint32_t>((std::abs(basePosition.x) + 13.0f) * 8191.0f);
+    seed ^= static_cast<uint32_t>((std::abs(basePosition.z) + 7.0f) * 131071.0f);
+    if (seed == 0u) {
+        seed = 0xC01A5EEDu;
+    }
+
+    for (int i = 0; i < dropCount; ++i) {
+        auto coin = std::make_unique<GimmickCoin>();
+        coin->Initialize(scene->GetObject3dCommon(), kEnemyDropCoinModel);
+
+        const float angleBase = (kWanderPi * 2.0f / static_cast<float>(dropCount)) * static_cast<float>(i);
+        const float angle = angleBase + (NextDropRandom(seed) - 0.5f) * 0.72f;
+        const float radialOffset = 0.18f + NextDropRandom(seed) * 0.24f;
+        const float speed = 4.2f + NextDropRandom(seed) * 2.8f;
+        const float upSpeed = 6.4f + NextDropRandom(seed) * 2.7f;
+
+        Vector3 spawnPosition = {
+            basePosition.x + std::sin(angle) * radialOffset,
+            spawnY,
+            basePosition.z + std::cos(angle) * radialOffset
+        };
+        Vector3 velocity = {
+            std::sin(angle) * speed,
+            upSpeed,
+            std::cos(angle) * speed
+        };
+
+        coin->SetName("DropCoin_" + GetName() + "_" + std::to_string(i));
+        coin->SetTranslate(spawnPosition);
+        coin->SetScale({ 0.5f, 0.5f, 0.13f });
+        coin->ConfigureTemporaryDrop(velocity, kEnemyDropCoinLifetime, kEnemyDropCoinBlinkStart, groundY);
+        scene->AddObject(std::move(coin));
+    }
+}
+
 void BaseEnemy::BeginDefeatEffect() {
     isDefeatEffectPlaying_ = true;
     isDefeatEffectFinished_ = false;
+    SpawnDefeatCoinDrops();
     defeatEffectTimer_ = 0.0f;
     defeatEffectParticleTimer_ = 0.0f;
     defeatBasePosition_ = GetTranslate();
@@ -491,6 +590,19 @@ void BaseEnemy::BeginDefeatEffect() {
     SetBlendMode(BlendMode::kNormal);
     SetEmissive(2.4f);
     SetColor({ 1.0f, 0.96f, 0.72f, 1.0f });
+
+    Vector3 cuePosition = GetWorldPosition();
+    cuePosition.y += (std::max)(0.42f, defeatBaseScale_.y * 0.48f);
+    VFXSequencer::PlayOneShot(kEnemyDefeatPopSequence, cuePosition);
+
+    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
+    if (auto* meshEffect = MeshEffectManager::GetInstance()) {
+        meshEffect->SpawnEffectAt(kEnemyDefeatCoreEffect, cuePosition, { 0.0f, 0.0f, 0.0f }, { bodyScale, bodyScale, bodyScale });
+
+        Vector3 ringPosition = GetWorldPosition();
+        ringPosition.y += (std::max)(0.12f, defeatBaseScale_.y * 0.12f);
+        meshEffect->SpawnEffectAt(kEnemyDefeatRingEffect, ringPosition, { 0.0f, 0.0f, 0.0f }, { bodyScale, bodyScale, bodyScale });
+    }
 
     SpawnDefeatStartParticles();
 }
@@ -552,31 +664,58 @@ void BaseEnemy::SpawnDefeatStartParticles() {
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.35f, defeatBaseScale_.y * 0.45f);
     Vector3 up = { 0.0f, 1.0f, 0.0f };
+    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
+
+    const Vector3 smokeOffsets[] = {
+        { 0.0f, 0.0f, 0.0f },
+        { 0.42f, 0.08f, 0.10f },
+        { -0.38f, 0.16f, -0.08f },
+        { 0.12f, 0.34f, -0.36f },
+        { -0.18f, 0.52f, 0.30f }
+    };
+
+    for (const Vector3& offset : smokeOffsets) {
+        Vector3 smokePos = center + offset * bodyScale;
+        particleSystem->SpawnParticles(
+            smokePos,
+            8,
+            0.85f + offset.y * 0.28f,
+            &up,
+            0.9f,
+            { 1.0f, 0.96f, 0.82f, 0.90f },
+            { 0.74f, 0.72f, 0.60f, 0.0f },
+            0.46f,
+            0.82f,
+            0.34f * bodyScale,
+            1.05f * bodyScale
+        );
+    }
+
     particleSystem->SpawnParticles(
         center,
-        36,
-        4.6f,
+        30,
+        4.9f,
         nullptr,
         0.0f,
-        { 1.0f, 0.95f, 0.58f, 1.0f },
-        { 0.55f, 0.82f, 1.0f, 0.0f },
-        0.25f,
-        0.72f,
-        0.55f,
-        0.04f
+        { 1.0f, 0.86f, 0.24f, 1.0f },
+        { 0.52f, 1.0f, 1.0f, 0.0f },
+        0.22f,
+        0.62f,
+        0.22f * bodyScale,
+        0.02f
     );
     particleSystem->SpawnParticles(
         center,
-        18,
-        2.2f,
+        16,
+        2.4f,
         &up,
-        1.1f,
-        { 1.0f, 1.0f, 1.0f, 1.0f },
-        { 1.0f, 0.78f, 0.32f, 0.0f },
-        0.22f,
-        0.58f,
-        0.35f,
-        0.02f
+        1.0f,
+        { 1.0f, 1.0f, 0.92f, 0.95f },
+        { 1.0f, 0.72f, 0.20f, 0.0f },
+        0.18f,
+        0.48f,
+        0.20f * bodyScale,
+        0.0f
     );
 }
 
@@ -590,21 +729,36 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.2f, defeatBaseScale_.y * (0.2f + progress * 0.45f));
     Vector3 up = { 0.0f, 1.0f, 0.0f };
+    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
     particleSystem->SpawnParticles(
         center,
-        8,
-        1.8f + progress * 1.4f,
+        7,
+        1.05f + progress * 0.95f,
         &up,
-        0.9f,
-        { 1.0f, 0.92f, 0.48f, 1.0f },
-        { 0.72f, 0.9f, 1.0f, 0.0f },
-        0.18f,
-        0.46f,
+        0.78f,
+        { 1.0f, 0.96f, 0.82f, 0.72f },
+        { 0.72f, 0.72f, 0.62f, 0.0f },
         0.28f,
-        0.02f
+        0.62f,
+        0.24f * bodyScale,
+        0.72f * bodyScale
+    );
+    particleSystem->SpawnParticles(
+        center,
+        5,
+        2.2f + progress * 0.7f,
+        nullptr,
+        0.0f,
+        { 0.75f, 1.0f, 0.98f, 0.86f },
+        { 1.0f, 0.44f, 0.92f, 0.0f },
+        0.14f,
+        0.32f,
+        0.12f * bodyScale,
+        0.0f
     );
 }
 
+// 全敵共通の最終更新。固有AIの後に呼ばれる想定。
 void BaseEnemy::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         if (!isDefeatEffectPlaying_) {
@@ -640,6 +794,16 @@ void BaseEnemy::Update(float deltaTime) {
 }
 
 bool BaseEnemy::OnCollision(Object3d* other) {
+    if (!other) {
+        return false;
+    }
+
+    if (isCarried_) {
+        SetCollisionAttribute(0);
+        SetCollisionMask(0);
+        return false;
+    }
+
     uint32_t attribute = other->GetCollisionAttribute();
     CollisionInfo info = CheckCollision(other);
 

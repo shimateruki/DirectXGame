@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -44,20 +45,94 @@ bool IsSupportedTextureFile(const fs::path& path) {
     return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds";
 }
 
+struct PbrTexturePreset {
+    std::string name;
+    std::string albedoPath;
+    std::string normalPath;
+    std::string ormPath;
+
+    bool IsComplete() const {
+        return !albedoPath.empty() && !normalPath.empty() && !ormPath.empty();
+    }
+};
+
+bool IsDdsTexture(const std::string& path) {
+    return ToLowerAscii(fs::path(path).extension().string()) == ".dds";
+}
+
+void AssignPreferredTexture(std::string& slot, const std::string& candidate) {
+    if (slot.empty() || (!IsDdsTexture(slot) && IsDdsTexture(candidate))) {
+        slot = candidate;
+    }
+}
+
+std::string BuildPbrPresetKey(const fs::path& path) {
+    std::string stem = ToLowerAscii(path.stem().string());
+    for (char& c : stem) {
+        if (c == '-' || c == ' ') {
+            c = '_';
+        }
+    }
+
+    static const std::set<std::string> ignoredTokens = {
+        "1k", "2k", "4k", "8k", "dx", "gl", "directx", "opengl",
+        "diff", "diffuse", "albedo", "basecolor", "base", "color", "colour",
+        "nor", "normal", "arm", "orm", "ao", "roughness", "metallic", "metalness"
+    };
+
+    std::string key;
+    size_t start = 0;
+    while (start <= stem.size()) {
+        const size_t end = stem.find('_', start);
+        const std::string token = stem.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        if (!token.empty() && ignoredTokens.count(token) == 0) {
+            if (!key.empty()) {
+                key += "_";
+            }
+            key += token;
+        }
+        if (end == std::string::npos) {
+            break;
+        }
+        start = end + 1;
+    }
+
+    if (key.empty()) {
+        key = stem;
+    }
+    return key;
+}
+
+std::string BuildPbrPresetName(const std::string& key) {
+    std::string name = key;
+    for (char& c : name) {
+        if (c == '_') {
+            c = ' ';
+        }
+    }
+    if (!name.empty()) {
+        name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
+    }
+    return name;
+}
+
 void RefreshTextureLists(
     std::vector<std::string>& albedoPaths,
     std::vector<std::string>& normalPaths,
     std::vector<std::string>& armPaths,
-    std::vector<std::string>& spritePaths) {
+    std::vector<std::string>& spritePaths,
+    std::vector<PbrTexturePreset>& pbrPresets) {
     albedoPaths.clear();
     normalPaths.clear();
     armPaths.clear();
     spritePaths.clear();
+    pbrPresets.clear();
 
     const std::string pbrDir = "Resources/texture/PBR/";
     if (fs::exists(pbrDir)) {
         std::vector<std::string> allFiles;
         std::set<std::string> ddsBaseNames;
+        std::map<std::string, PbrTexturePreset> presetMap;
 
         for (const auto& entry : fs::recursive_directory_iterator(pbrDir)) {
             if (!entry.is_regular_file()) {
@@ -86,6 +161,38 @@ void RefreshTextureLists(
             if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
             else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
             else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
+
+            const std::string key = BuildPbrPresetKey(p);
+            PbrTexturePreset& preset = presetMap[key];
+            preset.name = BuildPbrPresetName(key);
+
+            if (pathString.find("/Albedo/") != std::string::npos) {
+                AssignPreferredTexture(preset.albedoPath, pathString);
+            }
+            else if (pathString.find("/Normal/") != std::string::npos) {
+                AssignPreferredTexture(preset.normalPath, pathString);
+            }
+            else if (pathString.find("/ARM/") != std::string::npos) {
+                AssignPreferredTexture(preset.ormPath, pathString);
+            }
+            else if (pathString.find("/Default/") != std::string::npos) {
+                const std::string stem = ToLowerAscii(p.stem().string());
+                if (stem.find("albedo") != std::string::npos || stem.find("diff") != std::string::npos) {
+                    AssignPreferredTexture(preset.albedoPath, pathString);
+                }
+                else if (stem.find("normal") != std::string::npos || stem.find("nor") != std::string::npos) {
+                    AssignPreferredTexture(preset.normalPath, pathString);
+                }
+                else if (stem.find("arm") != std::string::npos || stem.find("orm") != std::string::npos) {
+                    AssignPreferredTexture(preset.ormPath, pathString);
+                }
+            }
+        }
+
+        for (const auto& [key, preset] : presetMap) {
+            if (preset.IsComplete()) {
+                pbrPresets.push_back(preset);
+            }
         }
     }
 
@@ -106,6 +213,9 @@ void RefreshTextureLists(
     sortPaths(normalPaths);
     sortPaths(armPaths);
     sortPaths(spritePaths);
+    std::sort(pbrPresets.begin(), pbrPresets.end(), [](const PbrTexturePreset& a, const PbrTexturePreset& b) {
+        return a.name < b.name;
+    });
 }
 
 bool IsSpriteCardObject(const Object3d* object) {
@@ -613,13 +723,15 @@ void InspectorWindow::Draw() {
                                 waterData->effectType = static_cast<float>(gateType);
                                 isGraphicsChanged = true;
                             }
-                            if (ImGui::DragFloat("渦の速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
-                            if (ImGui::DragFloat("奥行きの強さ (Depth)", &waterData->waveHeight, 0.01f, 0.05f, 5.0f)) isGraphicsChanged = true;
-                            if (ImGui::DragFloat("渦の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 36.0f)) isGraphicsChanged = true;
-                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 6.0f)) isGraphicsChanged = true;
-                            if (ImGui::DragFloat("描画サイズ (Portal Size)", &waterData->billboardScale, 0.01f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("渦の速度 (Speed)", &waterData->waveSpeed, 0.01f, 0.05f, 12.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("奥行きの強さ (Depth)", &waterData->waveHeight, 0.005f, 0.05f, 5.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("渦の細かさ (Detail)", &waterData->waveFrequency, 0.01f, 0.1f, 36.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.001f, 0.01f, 8.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("全体サイズ (Portal Size)", &waterData->billboardScale, 0.001f, 0.01f, 8.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("横スケール (Scale X)", &waterData->effectScaleX, 0.001f, 0.05f, 6.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("縦スケール (Scale Y)", &waterData->effectScaleY, 0.001f, 0.05f, 6.0f, "%.3f")) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
-                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 8.0f, "%.3f")) isGraphicsChanged = true;
                         }
                         else if (currentMatType == 9) {
                             ImGui::TextColored(ImVec4(1.0f, 0.28f, 0.04f, 1.0f), ICON_FA_FIRE " --- Magma Settings ---");
@@ -683,15 +795,56 @@ void InspectorWindow::Draw() {
                 static std::vector<std::string> normalPaths;
                 static std::vector<std::string> armPaths;
                 static std::vector<std::string> spriteTexturePaths;
+                static std::vector<PbrTexturePreset> pbrPresets;
                 static bool isTextureListInitialized = false;
 
                 if (!isTextureListInitialized) {
-                    RefreshTextureLists(albedoPaths, normalPaths, armPaths, spriteTexturePaths);
+                    RefreshTextureLists(albedoPaths, normalPaths, armPaths, spriteTexturePaths, pbrPresets);
                     isTextureListInitialized = true;
                 }
 
                 ImGui::Separator();
                 std::string currentTexturePath = selectedObject->GetTexturePath();
+                std::string currentNormalPath = selectedObject->GetNormalMapPath();
+                std::string currentOrmPathForPreset = selectedObject->GetOrmMapPath();
+
+                std::string currentPresetName = "未設定 (3枚セットを選択)";
+                for (const PbrTexturePreset& preset : pbrPresets) {
+                    if (preset.albedoPath == currentTexturePath &&
+                        preset.normalPath == currentNormalPath &&
+                        preset.ormPath == currentOrmPathForPreset) {
+                        currentPresetName = preset.name;
+                        break;
+                    }
+                }
+
+                if (ImGui::BeginCombo(ICON_FA_IMAGE " PBRプリセット (Albedo/Normal/ORM)", currentPresetName.c_str())) {
+                    if (pbrPresets.empty()) {
+                        ImGui::TextDisabled("同名の3枚セットが見つかりません。");
+                    }
+                    for (const PbrTexturePreset& preset : pbrPresets) {
+                        const bool isSelected =
+                            preset.albedoPath == currentTexturePath &&
+                            preset.normalPath == currentNormalPath &&
+                            preset.ormPath == currentOrmPathForPreset;
+                        if (ImGui::Selectable(preset.name.c_str(), isSelected)) {
+                            selectedObject->SetTexture(preset.albedoPath);
+                            selectedObject->SetNormalMap(preset.normalPath);
+                            selectedObject->SetOrmMap(preset.ormPath);
+                            selectedObject->SetEnableNormalMap(true);
+                            DebugConsole::GetInstance()->AddLog("PBR preset applied: " + preset.name);
+                            isGraphicsChanged = true;
+                        }
+                        if (isSelected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                if (!pbrPresets.empty()) {
+                    ImGui::TextDisabled("同じベース名の3枚をまとめて適用します。");
+                }
+
                 const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
 
                 if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse / Sprite)", previewTextureValue)) {
@@ -1100,7 +1253,20 @@ void InspectorWindow::Draw() {
             int currentItemIndex = static_cast<int>(currentType);
             const char* eventNames[] = { "なし", "ダメージ", "ワープ", "映像演出 (橋落ち)", "中間地点 (Checkpoint)", "ゴール", "ステージセレクト", "スターコイン (StarCoin)" };
             if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
-                selectedObject->SetEventType(static_cast<EventType>(currentItemIndex));
+                const EventType selectedEventType = static_cast<EventType>(currentItemIndex);
+                selectedObject->SetEventType(selectedEventType);
+                if (selectedEventType == EventType::Goal) {
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+
+                    if (selectedObject->GetColliderType() == ColliderType::kNone) {
+                        Object3d::ColliderConfig colConfig;
+                        colConfig.type = ColliderType::kSphere;
+                        colConfig.size = { 1.2f, 1.2f, 1.2f };
+                        selectedObject->SetColliderConfig(colConfig);
+                        selectedObject->SetCollisionRadius(1.2f);
+                    }
+                }
             }
 
             ImGui::Separator();
@@ -1161,8 +1327,22 @@ void InspectorWindow::Draw() {
                     auto& p = selectedObject->param_.value();
                     ImGui::Text("キャラクター・ステータス:");
                     ImGui::Indent();
+                    const float oldMaxHp = p.maxHp;
+                    const bool wasFullHp = std::abs(p.hp - p.maxHp) <= 0.001f;
                     ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
-                    ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
+                    if (ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) {
+                        p.maxHp = (std::max)(p.maxHp, 1.0f);
+                        if (wasFullHp || std::abs(p.hp - oldMaxHp) <= 0.001f) {
+                            p.hp = p.maxHp;
+                        }
+                    }
+                    p.maxHp = (std::max)(p.maxHp, 1.0f);
+                    p.hp = (std::max)(p.hp, 0.0f);
+                    if (p.hp > p.maxHp) {
+                        p.maxHp = p.hp;
+                    }
+                    ImGui::DragFloat(ICON_FA_BOLT " 攻撃力倍率", &p.attackPower, 0.05f, 0.0f, 100.0f);
+                    p.attackPower = (std::max)(p.attackPower, 0.0f);
                     ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
                     ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
                     ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
@@ -1404,7 +1584,7 @@ void InspectorWindow::DrawSpawnerSettings() {
         strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
     }
 
-    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "Mushroom", "GiantSlime", "Bat", "BeamDrone" };
+    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "Mushroom", "GiantSlime", "FireSlime", "ThunderSlime", "Bat", "BeamDrone" };
     int currentTypeIndex = -1;
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
         if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;
@@ -1427,7 +1607,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "Bat", "BeamDrone" };
+    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "FireSlime", "ThunderSlime", "Bat", "BeamDrone" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
@@ -1480,6 +1660,30 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(2.2f);
+                }
+                else if (std::string(enemyTypes[i]) == "FireSlime") {
+                    selectedObject->SetModel("Characters/slime_red");
+                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    selectedObject->SetEmissive(1.15f);
+                    selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
+                    selectedObject->animName_.clear();
+                    selectedObject->isAnimLoop_ = false;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(0.95f);
+                }
+                else if (std::string(enemyTypes[i]) == "ThunderSlime") {
+                    selectedObject->SetModel("Characters/slime_yellow");
+                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    selectedObject->SetEmissive(1.2f);
+                    selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
+                    selectedObject->animName_.clear();
+                    selectedObject->isAnimLoop_ = false;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(0.95f);
                 }
             }
             if (isSelected) ImGui::SetItemDefaultFocus();
@@ -1546,8 +1750,17 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         if (selectedGimmickType == "BreakableBlock") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_BreakableBlock");
-            selectedObject->SetModel("Stages/block");
-            selectedObject->SetColor({ 0.8f, 0.4f, 0.1f, 1.0f }); // 壊せそうな土褐色・レンガ色
+            selectedObject->SetModel("Stages/bomb_break_block");
+            selectedObject->SetTexture("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_albedo.png");
+            selectedObject->SetEnableNormalMap(true);
+            selectedObject->SetNormalMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_normal.png");
+            selectedObject->SetOrmMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.png");
+            selectedObject->SetMaterialType(0);
+            selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            selectedObject->SetMetallic(0.0f);
+            selectedObject->SetRoughness(0.72f);
+            selectedObject->SetEnableEnvMap(false);
+            selectedObject->SetEmissive(1.0f);
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
             
             selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);

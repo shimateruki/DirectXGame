@@ -10,6 +10,7 @@
 #include "GimmickHookPullBlock.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
+#include "HitEffectDirector.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -23,6 +24,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     player->SetIsControlActive(false);
     player->SetVelocity({ 0.0f, 0.0f, 0.0f }); // プレイヤー自身はその場で停止
     isHeavyPullTarget_ = dynamic_cast<EnemyGiantSlime*>(targetEnemy_) != nullptr;
+    enemyBaseScale_ = targetEnemy_->GetScale();
 
     phase_ = Phase::kShootHook;
     hookTipPos_ = player->GetWorldPosition();
@@ -54,6 +56,7 @@ void PlayerStatePullEnemy::Update(Player* player) {
             hookTipPos_ = enemyPos;
             phase_ = Phase::kPullEnemy;
             enemyStartPos_ = enemyPos;
+            HitEffectDirector::SpawnPullBindHit(enemyPos);
             pullTimer_ = -0.12f; // ヒットストップ：命中後0.12秒間タメる
             
             if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_)) {
@@ -198,10 +201,13 @@ void PlayerStatePullEnemy::Update(Player* player) {
         targetEnemy_->GetTransform()->rotate = rot;
         targetEnemy_->GetTransform()->isQuaternionMaster = false; // 追加: クォータニオンを無視してオイラー角回転を適用
 
-        // 【演出3】敵の縮小：手元に来るにつれて小さく圧縮される（毛糸玉化）
-        // ※元の大きさが1.0として、手元で0.6くらいまで小さくなる
-        float scale = Math::Lerp(1.0f, 0.6f, easeT);
-        targetEnemy_->GetTransform()->scale = {scale, scale, scale};
+        // 【演出3】敵の縮小：敵本来の大きさを基準に、手元で少しだけ圧縮する
+        const float scaleRate = Math::Lerp(1.0f, 0.82f, easeT);
+        targetEnemy_->GetTransform()->scale = {
+            enemyBaseScale_.x * scaleRate,
+            enemyBaseScale_.y * scaleRate,
+            enemyBaseScale_.z * scaleRate
+        };
 
         // 目標位置（プレイヤーの頭上）
         Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
@@ -220,6 +226,8 @@ void PlayerStatePullEnemy::Update(Player* player) {
         targetEnemy_->GetTransform()->translate = basePos;
 
         if (t >= 1.0f) {
+            HitEffectDirector::SpawnPullCatchHit(headPos);
+
             // 【演出】頭に乗った（キャッチした）瞬間の衝撃エフェクト
             if (player->GetParticleSystem()) {
                 Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
@@ -234,6 +242,7 @@ void PlayerStatePullEnemy::Update(Player* player) {
             // このあと Player::Update の復元処理で自然にプルンと戻ります
             player->GetTransform()->scale = { 2.2f, 0.4f, 2.2f };
 
+            targetEnemy_->GetTransform()->scale = enemyBaseScale_;
             player->SetCarriedEnemy(targetEnemy_);
             player->ChangeState(std::make_unique<PlayerStateIdle>());
             return;

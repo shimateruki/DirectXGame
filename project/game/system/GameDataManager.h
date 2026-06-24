@@ -1,18 +1,20 @@
 #pragma once
-#include <string>
-#include <fstream>
-#include <vector>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <sstream>
-#include <filesystem>
+#include <string>
 #include <utility>
+#include <vector>
 #include "json.hpp"
 
+// セーブデータ、ステージクリア状況、スターコイン、残機/コインを一元管理する
 class GameDataManager {
 public:
     static constexpr int kSaveSlotCount = 3;
 
+    // タイトルや設定画面で表示する、セーブスロットの概要情報
     struct SaveSlotSummary {
         bool exists = false;
         bool tutorialCleared = false;
@@ -21,6 +23,14 @@ public:
         int lives = 3;
         int coins = 0;
         int playTimeSeconds = 0;
+    };
+
+    // ステージクリア後にセレクト画面で王冠数を増やす演出リクエスト
+    struct StageClearRewardPresentation {
+        bool active = false;
+        int stageIndex = -1;
+        int previousCrownCount = 0;
+        int newCrownCount = 0;
     };
 
     static GameDataManager* GetInstance() {
@@ -89,11 +99,11 @@ public:
         return summary;
     }
 
-    // --- セーブ・ロード ---
+    // --- セーブ/ロード ---
     void Save() {
         nlohmann::json data;
-        
-        // 既存のファイルを読み込んで他の値を保持する
+
+        // 既存ファイルを読み込み、未管理の値をできるだけ保持する
         std::ifstream inFile(GetSaveFilePath());
         if (!inFile.is_open() && activeSlot_ == 0) {
             inFile.open(GetLegacySaveFilePath());
@@ -106,10 +116,10 @@ public:
         data["lives"] = lives_;
         data["coins"] = coins_;
         data["playTimeSeconds"] = playTimeSeconds_;
-        data["clearedStages"] = clearedStages_; // クリア済みステージのインデックス
+        data["clearedStages"] = clearedStages_; // クリア済みステージのインデックス。
         data["seenUnlockedStages"] = seenUnlockedStages_;
 
-        // スターコイン情報の保存
+        // スターコイン取得状況を保存する
         nlohmann::json coinData;
         for (auto& [stageIdx, coins] : stageStarCoins_) {
             coinData[std::to_string(stageIdx)] = coins;
@@ -148,7 +158,7 @@ public:
         if (data.contains("playTimeSeconds")) playTimeSeconds_ = data["playTimeSeconds"];
         if (data.contains("clearedStages")) clearedStages_ = data["clearedStages"].get<std::vector<int>>();
         if (data.contains("seenUnlockedStages")) seenUnlockedStages_ = data["seenUnlockedStages"].get<std::vector<int>>();
-        
+
         if (data.contains("starCoins")) {
             for (auto it = data["starCoins"].begin(); it != data["starCoins"].end(); ++it) {
                 int stageIdx = std::stoi(it.key());
@@ -191,7 +201,25 @@ public:
         return requested;
     }
 
-    // --- ステージクリア状況 ---
+    void RequestStageClearRewardPresentation(int stageIndex, int previousCrownCount, int newCrownCount) {
+        if (stageIndex < 0 || newCrownCount <= previousCrownCount) {
+            pendingStageClearReward_ = {};
+            return;
+        }
+
+        pendingStageClearReward_.active = true;
+        pendingStageClearReward_.stageIndex = stageIndex;
+        pendingStageClearReward_.previousCrownCount = std::clamp(previousCrownCount, 0, 999);
+        pendingStageClearReward_.newCrownCount = std::clamp(newCrownCount, 0, 999);
+    }
+
+    StageClearRewardPresentation ConsumeStageClearRewardPresentation() {
+        StageClearRewardPresentation request = pendingStageClearReward_;
+        pendingStageClearReward_ = {};
+        return request;
+    }
+
+    // --- ステージクリア状態 ---
     void MarkStageCleared(int index) {
         if (std::find(clearedStages_.begin(), clearedStages_.end(), index) == clearedStages_.end()) {
             clearedStages_.push_back(index);
@@ -354,6 +382,7 @@ private:
     int playTimeSeconds_ = 0;
     int activeSlot_ = 0;
     bool pendingRespawnIrisIn_ = false;
+    StageClearRewardPresentation pendingStageClearReward_;
     std::vector<int> clearedStages_;
     std::vector<int> seenUnlockedStages_;
     std::map<int, std::vector<bool>> stageStarCoins_; // ステージ番号 -> [コイン0, コイン1, コイン2]

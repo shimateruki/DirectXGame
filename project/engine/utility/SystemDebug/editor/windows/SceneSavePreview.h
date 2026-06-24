@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+/// <summary>
+/// 保存前にJSON差分を確認し、保存するかキャンセルするかを選ばせるプレビューUI。
+/// </summary>
 class SceneSavePreview {
 public:
     enum class Action {
@@ -13,7 +16,11 @@ public:
         Cancel
     };
 
+    /// <summary>
+    /// 保存対象の差分情報を構築する。
+    /// </summary>
     void Build(const std::vector<SceneSerializer::SaveTarget>& targets, const std::string& title);
+
     void Open();
     void Close();
     Action Draw();

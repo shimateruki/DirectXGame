@@ -2,35 +2,62 @@
 #include "EnemySlime.h"
 #include "EnemyBomb.h"
 #include "EnemyMushroom.h"
+#include "EnemyFireSlime.h"
+#include "EnemyThunderSlime.h"
 #include "EnemyGiantSlime.h"
 #include "EnemyBat.h"
 #include "EnemyBeamDrone.h"
 #include <BossCore.h>
 #include "SceneManager.h"
 #include <EnemyBomber.h>
-// 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
+#include <algorithm>
+// 他の敵タイプを追加する場合は include と CreateEnemy の分岐を増やす
+
+namespace {
+// スライム系は共通して大きめのスケールにそろえる
+bool IsSlimeEnemyType(const std::string& enemyType) {
+    return enemyType == "Slime" ||
+        enemyType == "Bomber" ||
+        enemyType == "FireSlime" ||
+        enemyType == "ThunderSlime" ||
+        enemyType == "GiantSlime";
+}
+
+void ApplySlimeDefaults(BaseEnemy* enemy) {
+    if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
+        return;
+    }
+
+    if (enemy->GetEnemyType() == "Slime") {
+        enemy->SetModel("Characters/slime_pink");
+    }
+    enemy->SetScale({ 2.0f, 2.0f, 2.0f });
+}
+}
 
 EnemyFactory* EnemyFactory::GetInstance() {
     static EnemyFactory instance;
     return &instance;
 }
 
+// 敵タイプ名ごとに専用クラスを作り、基本ステータスをここでまとめて設定する
 std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
-    if (enemyName == "Slime") { // ← 例: ゴブリンやスライム
+    if (enemyName == "Slime") {
         auto slime = std::make_unique<EnemySlime>();
 
-        // 1. 初期化 (モデル読み込み)
-        slime->Initialize(common, "Stages/block");
+        // モデル読み込みと共通初期化
+        slime->Initialize(common, "Characters/slime_pink");
 
         if (!slime->param_.has_value()) {
             slime->param_.emplace();
         }
 
-        // ステータス設定
+        // 基本スライムのステータス
         auto& p = slime->param_.value();
         p.hp = 50.0f;          // 体力
         p.maxHp = 50.0f;       // 最大体力
+        p.attackPower = 1.0f;  // 攻撃力倍率
         p.speed = 0.1f;        // 移動速度
         p.gravity = 60.0f;     // 重力 
 
@@ -40,9 +67,8 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     {
         auto boss = std::make_unique<BossCore>();
 
-     
-    boss->SetSceneManager(SceneManager::GetInstance());
-        // 2. 引数を気にせずオーバーライドした Initialize を呼べる！
+        boss->SetSceneManager(SceneManager::GetInstance());
+        // ボスはブロックモデルをコア/パーツ制御の基準として使う
         boss->Initialize(common, "Stages/block");
 
         if (!boss->param_.has_value()) {
@@ -53,8 +79,9 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = boss->param_.value();
         p.hp = 1000.0f;        // ボスなので体力多め
         p.maxHp = 1000.0f;
+        p.attackPower = 1.5f;
         p.speed = 0.05f;       // ゆっくり動く、あるいは浮遊など
-        p.gravity = 0.0f;      // 無相の雷のように常に浮いているなら重力を切るのもあり
+        p.gravity = 0.0f;      // 浮遊ボスなので重力は切る
 
         newEnemy = std::move(boss);
     }
@@ -72,6 +99,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = bomb->param_.value();
         p.hp = 30.0f;          // 体力
         p.maxHp = 30.0f;
+        p.attackPower = 1.0f;
         p.speed = 0.04f;       // スライムよりやや遅くじわじわ追いかける
         p.gravity = 60.0f;     // 通常重力
 
@@ -91,7 +119,8 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = bomber->param_.value();
         p.hp = 60.0f;
         p.maxHp = 60.0f;
-        p.speed = 0.0f;       // 立ち止まって投げる想定なら0、動かすなら数値を設定
+        p.attackPower = 1.15f;
+        p.speed = 0.0f;       // 自分で歩かず、足運び処理側で距離を調整する
         p.gravity = 60.0f;
         p.detectionRange = 32.0f;
         bomber->SetDetectionRange(p.detectionRange);
@@ -110,12 +139,53 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = mushroom->param_.value();
         p.hp = 35.0f;
         p.maxHp = 35.0f;
+        p.attackPower = 1.0f;
         p.speed = 2.1f;
         p.gravity = 60.0f;
         p.detectionRange = 16.0f;
         mushroom->SetDetectionRange(p.detectionRange);
 
         newEnemy = std::move(mushroom);
+    }
+    else if (enemyName == "FireSlime")
+    {
+        auto fireSlime = std::make_unique<EnemyFireSlime>();
+        fireSlime->Initialize(common, "Characters/slime_red");
+
+        if (!fireSlime->param_.has_value()) {
+            fireSlime->param_.emplace();
+        }
+
+        auto& p = fireSlime->param_.value();
+        p.hp = 45.0f;
+        p.maxHp = 45.0f;
+        p.attackPower = 1.0f;
+        p.speed = 2.35f;
+        p.gravity = 60.0f;
+        p.detectionRange = 24.0f;
+        fireSlime->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(fireSlime);
+    }
+    else if (enemyName == "ThunderSlime")
+    {
+        auto thunderSlime = std::make_unique<EnemyThunderSlime>();
+        thunderSlime->Initialize(common, "Characters/slime_yellow");
+
+        if (!thunderSlime->param_.has_value()) {
+            thunderSlime->param_.emplace();
+        }
+
+        auto& p = thunderSlime->param_.value();
+        p.hp = 45.0f;
+        p.maxHp = 45.0f;
+        p.attackPower = 1.0f;
+        p.speed = 3.0f;
+        p.gravity = 62.0f;
+        p.detectionRange = 20.0f;
+        thunderSlime->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(thunderSlime);
     }
     else if (enemyName == "GiantSlime")
     {
@@ -129,6 +199,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = giantSlime->param_.value();
         p.hp = 160.0f;
         p.maxHp = 160.0f;
+        p.attackPower = 1.25f;
         p.speed = 0.0f;
         p.gravity = 70.0f;
         p.jumpPower = 24.0f;
@@ -149,6 +220,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = bat->param_.value();
         p.hp = 25.0f;
         p.maxHp = 25.0f;
+        p.attackPower = 0.8f;
         p.speed = 2.6f;
         p.gravity = 0.0f;
         p.detectionRange = 24.0f;
@@ -168,6 +240,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = beamDrone->param_.value();
         p.hp = 45.0f;
         p.maxHp = 45.0f;
+        p.attackPower = 1.0f;
         p.speed = 4.0f;
         p.gravity = 0.0f;
         p.detectionRange = 30.0f;
@@ -175,14 +248,15 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(beamDrone);
     }
-    //:作った敵に「名札」をつける
+    // 作った敵にタイプ名を保存し、タイプ共通の見た目補正をかける
     if (newEnemy) {
         newEnemy->SetEnemyType(enemyName);
+        ApplySlimeDefaults(newEnemy.get());
     } else {
-        // デフォルト（ただの置物）の場合
+        // 未登録タイプの場合は、落ちずに確認できる仮の敵を置く
         newEnemy = std::make_unique<BaseEnemy>();
         newEnemy->Initialize(common, "Primitives/cube");
-        newEnemy->SetEnemyType(""); // 特になし
+        newEnemy->SetEnemyType("");
     }
 
     return newEnemy;

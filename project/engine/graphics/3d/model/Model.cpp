@@ -12,15 +12,17 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <string_view>
 #include "SRVManager.h"
 #include <DebugConsole.h>
 #include <LightManager.h>
 
 namespace {
 constexpr std::array<char, 8> kModelCacheMagic = { 'G', 'E', '3', 'M', 'C', 'A', 'C', 'H' };
-constexpr uint32_t kModelCacheVersion = 1;
+constexpr uint32_t kModelCacheVersion = 2;
 constexpr uint32_t kMaxCacheStringSize = 1024 * 1024;
 constexpr uint32_t kMaxCacheVectorCount = 10'000'000;
+constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
 
 template <typename T>
 bool WritePod(std::ostream& os, const T& value) {
@@ -80,6 +82,76 @@ bool ReadPodVector(std::istream& is, std::vector<T>& values) {
         is.read(reinterpret_cast<char*>(values.data()), sizeof(T) * values.size());
     }
     return static_cast<bool>(is);
+}
+
+float Clamp01(float value) {
+    return (std::max)(0.0f, (std::min)(1.0f, value));
+}
+
+std::string ToLowerCopy(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return text;
+}
+
+bool ContainsAny(std::string_view text, std::initializer_list<std::string_view> words) {
+    for (std::string_view word : words) {
+        if (text.find(word) != std::string_view::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string ResolveMaterialTexturePath(const std::string& directoryPath, const std::string& rawPath) {
+    if (rawPath.empty()) {
+        return "";
+    }
+
+    std::filesystem::path path(rawPath);
+    if (path.is_absolute() && std::filesystem::exists(path)) {
+        return path.generic_string();
+    }
+
+    const std::filesystem::path relativeCandidate = std::filesystem::path(directoryPath) / path;
+    if (std::filesystem::exists(relativeCandidate)) {
+        return relativeCandidate.generic_string();
+    }
+
+    const std::filesystem::path filenameCandidate = std::filesystem::path(directoryPath) / path.filename();
+    return filenameCandidate.generic_string();
+}
+
+bool TryGetMaterialTexture(aiMaterial* material, const std::vector<aiTextureType>& types, aiString& outPath) {
+    if (!material) {
+        return false;
+    }
+    for (aiTextureType type : types) {
+        if (material->GetTexture(type, 0, &outPath) == AI_SUCCESS) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TryFindUnknownTexture(aiMaterial* material, std::initializer_list<std::string_view> keywords, aiString& outPath) {
+    if (!material) {
+        return false;
+    }
+    const unsigned int count = material->GetTextureCount(aiTextureType_UNKNOWN);
+    for (unsigned int i = 0; i < count; ++i) {
+        aiString candidate;
+        if (material->GetTexture(aiTextureType_UNKNOWN, i, &candidate) != AI_SUCCESS) {
+            continue;
+        }
+        const std::string lower = ToLowerCopy(candidate.C_Str());
+        if (ContainsAny(lower, keywords)) {
+            outPath = candidate;
+            return true;
+        }
+    }
+    return false;
 }
 
 std::filesystem::path MakeModelCachePath(const std::filesystem::path& sourcePath) {
@@ -263,7 +335,18 @@ bool WriteModelCache(const std::filesystem::path& sourcePath, const Model::Model
         return false;
     }
     for (const auto& material : data.materials) {
-        if (!WriteString(os, material.textureFilePath)) {
+        const uint8_t hasNormalMap = material.hasNormalMap ? 1 : 0;
+        const uint8_t hasOrmMap = material.hasOrmMap ? 1 : 0;
+        const uint8_t doubleSided = material.doubleSided ? 1 : 0;
+        if (!WriteString(os, material.textureFilePath) ||
+            !WriteString(os, material.normalMapPath) ||
+            !WriteString(os, material.ormMapPath) ||
+            !WritePod(os, material.baseColorFactor) ||
+            !WritePod(os, material.roughness) ||
+            !WritePod(os, material.metallic) ||
+            !WritePod(os, hasNormalMap) ||
+            !WritePod(os, hasOrmMap) ||
+            !WritePod(os, doubleSided)) {
             return false;
         }
     }
@@ -339,10 +422,26 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
     }
     data.materials.resize(materialCount);
     for (auto& material : data.materials) {
-        if (!ReadString(is, material.textureFilePath)) {
+        uint8_t hasNormalMap = 0;
+        uint8_t hasOrmMap = 0;
+        uint8_t doubleSided = 0;
+        if (!ReadString(is, material.textureFilePath) ||
+            !ReadString(is, material.normalMapPath) ||
+            !ReadString(is, material.ormMapPath) ||
+            !ReadPod(is, material.baseColorFactor) ||
+            !ReadPod(is, material.roughness) ||
+            !ReadPod(is, material.metallic) ||
+            !ReadPod(is, hasNormalMap) ||
+            !ReadPod(is, hasOrmMap) ||
+            !ReadPod(is, doubleSided)) {
             return false;
         }
+        material.hasNormalMap = hasNormalMap != 0;
+        material.hasOrmMap = hasOrmMap != 0;
+        material.doubleSided = doubleSided != 0;
         material.textureHandle = 0;
+        material.normalMapHandle = 0;
+        material.ormMapHandle = 0;
         material.materialResource.Reset();
         material.materialData = nullptr;
     }
@@ -449,7 +548,14 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 
     // 2. マテリアルごとにテクスチャをロード
     for (auto& material : modelData_.materials) {
-        material.textureHandle = TextureManager::GetInstance()->Load(material.textureFilePath);
+        material.textureHandle = TextureManager::GetInstance()->Load(
+            material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath);
+        if (material.hasNormalMap && !material.normalMapPath.empty()) {
+            material.normalMapHandle = TextureManager::GetInstance()->Load(material.normalMapPath, true);
+        }
+        if (material.hasOrmMap && !material.ormMapPath.empty()) {
+            material.ormMapHandle = TextureManager::GetInstance()->Load(material.ormMapPath, true);
+        }
     }
 
     // 3. メッシュごとに頂点バッファ・インデックスバッファを作成
@@ -505,6 +611,13 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->emissive = 1.0f;
     materialData_->time = 0.0f;
     materialData_->uvTransform = math_.MakeIdentity4x4();
+
+    if (const MaterialData* primaryMaterial = GetPrimaryMaterialData()) {
+        materialData_->color = primaryMaterial->baseColorFactor;
+        materialData_->roughness = primaryMaterial->roughness;
+        materialData_->metallic = primaryMaterial->metallic;
+        materialData_->enableNormalMap = primaryMaterial->hasNormalMap ? 1 : 0;
+    }
 
     // 5. ボーン用バッファの作成 
     CreateBoneBuffer();
@@ -632,6 +745,34 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
+
+        const MaterialData* meshMaterial = nullptr;
+        if (mesh.materialIndex < modelData_.materials.size()) {
+            meshMaterial = &modelData_.materials[mesh.materialIndex];
+        }
+
+        uint32_t meshNormalHandle = normalMapHandle;
+        if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) &&
+            meshMaterial && meshMaterial->hasNormalMap &&
+            meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSRVCount) {
+            meshNormalHandle = meshMaterial->normalMapHandle;
+        }
+        if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
+            meshNormalHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+        }
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
+
+        uint32_t meshOrmHandle = ormMapHandle;
+        if ((meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) &&
+            meshMaterial && meshMaterial->hasOrmMap &&
+            meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSRVCount) {
+            meshOrmHandle = meshMaterial->ormMapHandle;
+        }
+        if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
+            meshOrmHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+        }
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
+
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
@@ -694,21 +835,52 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
         aiMaterial* aiMat = scene->mMaterials[i];
         aiString texPath;
-        std::string textureFilePath;
+        MaterialData& material = modelData.materials[i];
 
-        if (aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-            textureFilePath = texPath.C_Str();
-        }
-        else if (aiMat->GetTexture(aiTextureType_BASE_COLOR, 0, &texPath) == AI_SUCCESS) {
-            textureFilePath = texPath.C_Str();
-        }
-
-        if (!textureFilePath.empty()) {
-            std::string texFilename = std::filesystem::path(textureFilePath).filename().string();
-            modelData.materials[i].textureFilePath = directoryPath + sep + texFilename;
+        if (TryGetMaterialTexture(aiMat, { aiTextureType_BASE_COLOR, aiTextureType_DIFFUSE }, texPath)) {
+            material.textureFilePath = ResolveMaterialTexturePath(directoryPath, texPath.C_Str());
         }
         else {
-            modelData.materials[i].textureFilePath = "Resources/sprite/common/white.png";
+            material.textureFilePath = kDefaultWhiteTexture;
+        }
+
+        if (TryGetMaterialTexture(aiMat, { aiTextureType_NORMALS, aiTextureType_NORMAL_CAMERA, aiTextureType_HEIGHT }, texPath) ||
+            TryFindUnknownTexture(aiMat, { "normal", "nrm" }, texPath)) {
+            material.normalMapPath = ResolveMaterialTexturePath(directoryPath, texPath.C_Str());
+            material.hasNormalMap = true;
+        }
+
+        if (TryGetMaterialTexture(aiMat, { aiTextureType_METALNESS, aiTextureType_DIFFUSE_ROUGHNESS }, texPath) ||
+            TryFindUnknownTexture(aiMat, { "metallicroughness", "metallic_roughness", "metallic-roughness", "orm", "arm", "roughness", "metallic" }, texPath)) {
+            material.ormMapPath = ResolveMaterialTexturePath(directoryPath, texPath.C_Str());
+            material.hasOrmMap = true;
+        }
+
+        aiColor4D baseColor{};
+        if (aiMat->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS ||
+            aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, baseColor) == AI_SUCCESS) {
+            material.baseColorFactor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+        }
+
+        float roughness = material.roughness;
+        if (aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness) == AI_SUCCESS) {
+            material.roughness = Clamp01(roughness);
+        }
+        else {
+            float shininess = 0.0f;
+            if (aiMat->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS && shininess > 0.0f) {
+                material.roughness = Clamp01(1.0f - (shininess / 128.0f));
+            }
+        }
+
+        float metallic = material.metallic;
+        if (aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallic) == AI_SUCCESS) {
+            material.metallic = Clamp01(metallic);
+        }
+
+        int twoSided = 0;
+        if (aiMat->Get(AI_MATKEY_TWOSIDED, twoSided) == AI_SUCCESS) {
+            material.doubleSided = twoSided != 0;
         }
     }
 

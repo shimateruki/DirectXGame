@@ -118,7 +118,7 @@ void StartDDSCacheWatcherIfNeeded() {
 
     std::error_code ec;
     const std::filesystem::path scriptPath =
-        (std::filesystem::current_path(ec) / "tools/start_dds_cache_watcher.vbs").lexically_normal();
+        (std::filesystem::current_path(ec) / "tools/dds_cache/start_dds_cache_watcher.vbs").lexically_normal();
     if (ec || !std::filesystem::exists(scriptPath)) {
         return;
     }
@@ -346,7 +346,6 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     newData.filePath = loadPath;
     newData.metadata = metadata;
     newData.resource = resource;
-    newData.intermediateResource = intermediateResource;
     newData.srvHandle = srvHandle;
 
     textureHandleMap_[loadPath] = srvHandle;

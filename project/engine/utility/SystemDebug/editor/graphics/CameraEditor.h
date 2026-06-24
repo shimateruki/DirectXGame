@@ -1,42 +1,56 @@
 #pragma once
-#include "engine/utility/math/Math.h"
 #include "Camera.h"
 #include "IEditable.h"
+#include "engine/utility/math/Math.h"
 #include <cstdint>
-#include <vector>
-#include <string>
 #include <map>
-class Object3d;
+#include <string>
+#include <vector>
 
+class Object3d;
+class PrimitiveDrawer;
+struct ID3D12GraphicsCommandList;
+
+/// <summary>
+/// ゲームカメラとEditor用自由カメラの切り替え、設定保存、演出カメラ再生を行う。
+/// </summary>
 class CameraEditor : public IEditable {
 public:
     enum class Mode {
-        Game,   // ゲーム挙動 (プレイヤー追従など)
-        Editor  // 自由カメラ (WASD移動)
+        Game,  // ゲーム用カメラ。
+        Editor // WASD操作の自由カメラ。
     };
 
     struct Settings {
         Mode currentMode = Mode::Game;
         Camera::FollowMode gameFollowMode = Camera::FollowMode::kAimable;
 
-        // --- Gameモード用パラメータ ---
+        // Gameモード用パラメータ。
         float distance = 15.0f;
         float height = 5.0f;
         Vector3 angle = { 25.0f, 0.0f, 0.0f };
         Vector3 lockOnOffset = { 0.0f, 4.0f, -12.0f };
 
+        // Orbitモード用パラメータ。
         float orbitRadius = 15.0f;
+        Vector3 orbitCenterOffset = { 0.0f, 0.0f, 0.0f };
+        float orbitCenterHeight = 5.0f;
         float orbitHeight = 5.0f;
         float orbitSpeed = 0.005f;
+        float orbitStartAngleDeg = 0.0f;
+        bool orbitGuideVisible = true;
+        bool orbitCenterGizmoVisible = true;
+        float orbitGuideMarkerSize = 0.45f;
         int cameraSensitivity = 0;
-        // --- Editorモード用パラメータ ---
+
+        // Editorモード用パラメータ。
         float moveSpeed = 0.5f;
         float boostSpeed = 2.0f;
         float mouseSensitivity = 0.003f;
         Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
         Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
 
-        // --- Editorモード保存用 ---
+        // Editorカメラの保存用状態。
         Vector3 editorCameraPos = { 0.0f, 5.0f, -15.0f };
         Vector3 editorCameraAngle = { 0.0f, 0.0f, 0.0f };
     };
@@ -46,11 +60,7 @@ public:
 
     void Initialize();
     void Update(Object3d* player, bool isLockingOn);
-
-    // Inspectorに表示するUI描画処理
     void DrawImGui() override;
-
-    // Inspector上部に表示される名前
     std::string GetName() override { return "Camera Editor"; }
 
     void SaveSettings();
@@ -68,19 +78,29 @@ public:
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetEditorStateSaveBlocker(uint32_t blocker, bool enabled);
     bool IsEditorStateSaveBlocked() const { return editorStateSaveBlockers_ != 0; }
+
     /// <summary>
-    /// 保存されている名前を呼び出すだけで、指定カメラを自動でオーバーライドさせる
+    /// 保存済みの名前を指定して、カメラの一時上書き演出を再生する。
     /// </summary>
     bool PlayOverrideCamera(Camera* camera, const std::string& cameraName);
+
     int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
     void SetCameraSensitivity(int val) {
         settings_.cameraSensitivity = val;
-        SaveSettings(); // 変更された瞬間に自動セーブ！
+        SaveSettings();
     }
 
+    void DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
+    void DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue);
 
 private:
     void UpdateFreeCamera(Camera* camera);
+    void ApplyOrbitStartAngle(Camera* camera, bool resetSmoothing);
+    void CaptureOrbitStartFromCurrentCamera(Camera* camera);
+    void SetOrbitCenterFromWorld(const Vector3& center);
+    void SetOrbitStartFromWorld(const Vector3& startEye);
+    Vector3 GetOrbitCenter() const;
+    Vector3 GetOrbitStartEye() const;
 
 private:
     CameraEditor() = default;
@@ -94,9 +114,11 @@ private:
     const std::string kDirectoryPath_ = "Resources/json/camera/";
     std::vector<std::string> fileList_;
     bool isGameViewHovered_ = false;
+    bool isDraggingOrbitCenterGizmo_ = false;
+    int orbitEditGizmoTarget_ = 1;
     std::map<std::string, Camera::CameraOverrideParams> overrideParamsMap_;
     uint32_t editorStateSaveBlockers_ = 0;
-    std::string selectedOverrideName_ = ""; // 現在エディタで選択中のカメラ名
-    char newOverrideNameBuffer_[64] = "";   // 新規作成時の名前入力欄
+    std::string selectedOverrideName_ = "";
+    char newOverrideNameBuffer_[64] = "";
     Object3d* targetPlayer_ = nullptr;
 };

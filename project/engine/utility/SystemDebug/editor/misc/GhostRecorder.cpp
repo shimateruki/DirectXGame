@@ -16,6 +16,26 @@
 #include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 
+namespace {
+
+bool IsObjectInScene(SceneManager* sceneManager, Object3d* object) {
+	if (!object) {
+		return false;
+	}
+	if (!sceneManager || !sceneManager->GetCurrentScene()) {
+		return true;
+	}
+
+	for (const auto& sceneObject : sceneManager->GetCurrentScene()->GetObjects()) {
+		if (sceneObject.get() == object) {
+			return true;
+		}
+	}
+	return false;
+}
+
+}
+
 // ========================================================================
 //  クォータニオンを利用した、安全で完璧な回転計算ヘルパー群！
 // ========================================================================
@@ -82,6 +102,7 @@ float ApplyEasing(int type, float t) {
 void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	sceneManager_ = sceneManager;
 	target_ = nullptr;
+	anchor_ = nullptr;
 	frames_.clear();
 	state_ = State::Idle;
 
@@ -95,7 +116,38 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	isOverrideCamera_ = false;
 }
 
+void GhostRecorder::SetTarget(Object3d* target) {
+	target_ = target;
+	anchor_ = nullptr;
+	DeselectPin();
+	isScrubbing_ = false;
+}
+
+void GhostRecorder::ClearTarget() {
+	Stop(false);
+	target_ = nullptr;
+	anchor_ = nullptr;
+	DeselectPin();
+	isScrubbing_ = false;
+}
+
+bool GhostRecorder::IsTargetInCurrentScene() const {
+	return IsObjectInScene(sceneManager_, target_);
+}
+
+void GhostRecorder::ClearTargetIfMissingFromScene() {
+	if (target_ && !IsTargetInCurrentScene()) {
+		ClearTarget();
+		return;
+	}
+
+	if (anchor_ && !IsObjectInScene(sceneManager_, anchor_)) {
+		anchor_ = nullptr;
+	}
+}
+
 void GhostRecorder::Update() {
+	ClearTargetIfMissingFromScene();
 	if (!target_) return;
 
 	// 録画中
@@ -268,6 +320,211 @@ Vector3 GhostRecorder::GetSplinePoint(const std::vector<Vector3>& points, float 
 }
 
 // 座標変換 (World -> Clip -> Screen)
+bool GhostRecorder::HasPreviewData() const {
+	if (!target_) {
+		return false;
+	}
+	if (!IsTargetInCurrentScene()) {
+		return false;
+	}
+	if (frames_.size() >= 2) {
+		return true;
+	}
+	if (!genParams_.waypoints.empty()) {
+		return true;
+	}
+
+	auto hasDelta = [](const Vector3& a, const Vector3& b) {
+		const float epsilon = 0.0001f;
+		return std::abs(a.x - b.x) > epsilon ||
+			std::abs(a.y - b.y) > epsilon ||
+			std::abs(a.z - b.z) > epsilon;
+		};
+
+	return hasDelta(genParams_.startPos, genParams_.endPos) ||
+		hasDelta(genParams_.startRot, genParams_.endRot) ||
+		hasDelta(genParams_.startScale, genParams_.endScale);
+}
+
+std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
+	std::vector<GhostFrame> samples;
+	ClearTargetIfMissingFromScene();
+	if (!target_) {
+		return samples;
+	}
+
+	int count = std::clamp(sampleCount, 2, 32);
+
+	if (frames_.size() >= 2) {
+		samples.reserve(count);
+
+		Vector3 basePos = target_->GetTranslate();
+		Vector3 baseRot = target_->GetRotation();
+		if (isRelative_ || genParams_.generateRelative) {
+			FindAnchor();
+			if (anchor_) {
+				basePos = {
+					anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
+					anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
+					anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
+				};
+				baseRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
+			}
+		}
+
+		for (int i = 0; i < count; ++i) {
+			float t = (count <= 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(count - 1);
+			float p = t * static_cast<float>(frames_.size() - 1);
+			int index = static_cast<int>(p);
+			float localT = p - static_cast<float>(index);
+			if (index >= static_cast<int>(frames_.size()) - 1) {
+				index = static_cast<int>(frames_.size()) - 2;
+				localT = 1.0f;
+			}
+
+			const GhostFrame& a = frames_[index];
+			const GhostFrame& b = frames_[index + 1];
+			GhostFrame sample;
+			sample.position = Lerp(a.position, b.position, localT);
+			sample.rotation = SlerpEuler(a.rotation, b.rotation, localT);
+			sample.scale = Lerp(a.scale, b.scale, localT);
+
+			if (isRelative_ || genParams_.generateRelative) {
+				sample.position = {
+					basePos.x + sample.position.x,
+					basePos.y + sample.position.y,
+					basePos.z + sample.position.z
+				};
+				sample.rotation = AddEuler(baseRot, sample.rotation);
+			}
+			samples.push_back(sample);
+		}
+		return samples;
+	}
+
+	std::vector<Vector3> positions;
+	std::vector<Vector3> rotations;
+	std::vector<Vector3> scales;
+	positions.reserve(genParams_.waypoints.size() + 2);
+	rotations.reserve(genParams_.waypoints.size() + 2);
+	scales.reserve(genParams_.waypoints.size() + 2);
+
+	Vector3 drawOffset = { 0.0f, 0.0f, 0.0f };
+	Vector3 drawRotOffset = { 0.0f, 0.0f, 0.0f };
+	if (genParams_.generateRelative) {
+		FindAnchor();
+		Vector3 currentBase = target_->GetTranslate();
+		Vector3 currentRot = target_->GetRotation();
+		if (anchor_) {
+			currentBase = {
+				anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
+				anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
+				anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
+			};
+			currentRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
+		}
+		drawOffset = {
+			currentBase.x - genParams_.startPos.x,
+			currentBase.y - genParams_.startPos.y,
+			currentBase.z - genParams_.startPos.z
+		};
+		drawRotOffset = SubEuler(currentRot, genParams_.startRot);
+	}
+
+	auto addPos = [&](const Vector3& p) {
+		positions.push_back({ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z });
+		};
+	auto addRot = [&](const Vector3& r) {
+		rotations.push_back(AddEuler(r, drawRotOffset));
+		};
+
+	addPos(genParams_.startPos);
+	addRot(genParams_.startRot);
+	scales.push_back(genParams_.startScale);
+	for (const auto& wp : genParams_.waypoints) {
+		addPos(wp.pos);
+		addRot(wp.rot);
+		scales.push_back(wp.scale);
+	}
+	addPos(genParams_.endPos);
+	addRot(genParams_.endRot);
+	scales.push_back(genParams_.endScale);
+
+	if (positions.size() < 2) {
+		return samples;
+	}
+
+	samples.reserve(count);
+	for (int i = 0; i < count; ++i) {
+		float t = (count <= 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(count - 1);
+		float p = t * static_cast<float>(positions.size() - 1);
+		int index = static_cast<int>(p);
+		float localT = p - static_cast<float>(index);
+		if (index >= static_cast<int>(positions.size()) - 1) {
+			index = static_cast<int>(positions.size()) - 2;
+			localT = 1.0f;
+		}
+
+		GhostFrame sample;
+		sample.position = genParams_.useSpline ? GetSplinePoint(positions, t, false) : Lerp(positions[index], positions[index + 1], localT);
+		sample.rotation = SlerpEuler(rotations[index], rotations[index + 1], localT);
+		sample.scale = Lerp(scales[index], scales[index + 1], localT);
+		samples.push_back(sample);
+	}
+
+	return samples;
+}
+
+void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+#ifdef USE_IMGUI
+	ClearTargetIfMissingFromScene();
+	if (!isShowPreview_ || !isShowObjectPreview_ || !target_ || state_ == State::Recording) {
+		return;
+	}
+	if (!target_->GetModel() || !HasPreviewData()) {
+		return;
+	}
+
+	std::vector<GhostFrame> samples = BuildPreviewSamples(objectPreviewSampleCount_);
+	if (samples.empty()) {
+		return;
+	}
+
+	Vector3 oldPos = target_->GetTranslate();
+	Vector3 oldRot = target_->GetRotation();
+	Vector3 oldScale = target_->GetScale();
+	Vector4 oldColor = target_->GetColor();
+	BlendMode oldBlendMode = target_->GetBlendMode();
+	bool oldVisible = target_->GetIsVisible();
+
+	Vector4 ghostColor = oldColor;
+	ghostColor.w = std::clamp(objectPreviewAlpha_, 0.02f, 0.75f);
+
+	target_->SetBlendMode(BlendMode::kNormal);
+	target_->SetColor(ghostColor);
+	target_->SetIsVisible(true);
+
+	for (const GhostFrame& sample : samples) {
+		target_->SetTranslate(sample.position);
+		target_->SetRotation(sample.rotation);
+		target_->SetScale(sample.scale);
+		target_->UpdateWorldMatrix();
+		target_->Draw(pointLightResource, spotLightResource);
+	}
+
+	target_->SetTranslate(oldPos);
+	target_->SetRotation(oldRot);
+	target_->SetScale(oldScale);
+	target_->SetColor(oldColor);
+	target_->SetBlendMode(oldBlendMode);
+	target_->SetIsVisible(oldVisible);
+	target_->UpdateWorldMatrix();
+#else
+	(void)pointLightResource;
+	(void)spotLightResource;
+#endif
+}
+
 Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) {
 	Vector3 result;
 	float w = vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + mat.m[3][3];
@@ -288,6 +545,7 @@ Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) 
 // ==========================================================================
 void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size, bool isReadOnly) {
 #ifdef USE_IMGUI
+	ClearTargetIfMissingFromScene();
 	if (!isShowPreview_ || !target_) return;
 
 	ImDrawList* drawList = ImGui::GetForegroundDrawList();
@@ -733,7 +991,7 @@ void GhostRecorder::DrawImGui() {
 			if (ImGui::BeginCombo(ICON_FA_CROSSHAIRS " ターゲット", currentTargetName.c_str())) {
 				for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
 					bool isSelected = (target_ == obj.get());
-					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) target_ = obj.get();
+					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) SetTarget(obj.get());
 				}
 				ImGui::EndCombo();
 			}
@@ -790,6 +1048,13 @@ void GhostRecorder::DrawImGui() {
 	if (ImGui::CollapsingHeader(ICON_FA_MAP_SIGNS " パス生成 (Path Editor)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		if (target_) {
 			ImGui::Checkbox(ICON_FA_EYE " プレビュー線を表示", &isShowPreview_);
+
+			ImGui::SameLine();
+			ImGui::Checkbox("Object Ghost", &isShowObjectPreview_);
+			if (isShowObjectPreview_) {
+				ImGui::DragInt("Ghost Samples", &objectPreviewSampleCount_, 1.0f, 2, 16);
+				ImGui::SliderFloat("Ghost Alpha", &objectPreviewAlpha_, 0.05f, 0.60f);
+			}
 
 			static const char* easingNames[] = {
 				"Linear(等速)", "InSine", "OutSine", "InOutSine", "InQuad", "OutQuad", "InOutQuad",
@@ -1173,6 +1438,7 @@ void GhostRecorder::Load(const std::string& fileName) {
 }
 
 void GhostRecorder::EvaluateAtFrame(int frameIndex) {
+	ClearTargetIfMissingFromScene();
 	if (frames_.empty() || !target_) return;
 
 	if (frameIndex < 0) frameIndex = 0;
@@ -1198,6 +1464,10 @@ void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 	target_->UpdateWorldMatrix();
 }
 void GhostRecorder::CaptureBasePose() {
+	ClearTargetIfMissingFromScene();
+	if (!target_) {
+		return;
+	}
 	FindAnchor();
 	if (anchor_ && genParams_.generateRelative) {
 
@@ -1218,6 +1488,7 @@ void GhostRecorder::CaptureBasePose() {
 }
 
 void GhostRecorder::RestoreBasePose() {
+	ClearTargetIfMissingFromScene();
 	if (target_ && isRelative_) {
 		FindAnchor();
 
@@ -1243,6 +1514,9 @@ void GhostRecorder::RestoreBasePose() {
 }
 
 void GhostRecorder::FindAnchor() {
+	if (anchor_ && !IsObjectInScene(sceneManager_, anchor_)) {
+		anchor_ = nullptr;
+	}
 	if (!anchorName_.empty() && !anchor_ && sceneManager_ && sceneManager_->GetCurrentScene()) {
 		for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
 			if (obj->GetName() == anchorName_) {

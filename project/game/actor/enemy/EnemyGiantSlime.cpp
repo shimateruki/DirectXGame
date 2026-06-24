@@ -10,6 +10,7 @@
 #include <cmath>
 
 namespace {
+// 大型スライムの着地衝撃波とフック分裂の調整値
 constexpr float kShockwaveRadius = 7.0f;
 constexpr float kShockwaveDamage = 2.0f;
 constexpr float kHookSplitDuration = 1.85f;
@@ -26,13 +27,14 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 }
 
+// 大型スライムの初期化
 void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_GiantSlime");
     SetEnemyType("GiantSlime");
     SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     defaultColor_ = GetColor();
-    SetScale({ 2.8f, 2.8f, 2.8f });
+    SetScale({ 2.0f, 2.0f, 2.0f });
 
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
@@ -40,6 +42,7 @@ void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& mode
     SetCollisionRadius(2.2f);
 }
 
+// ジャンプ攻撃、徘徊ジャンプ、着地衝撃波の更新
 void EnemyGiantSlime::Update(float deltaTime) {
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
@@ -131,6 +134,7 @@ std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
     return clone;
 }
 
+// フックで引っ張られて分裂する特殊処理
 void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
     (void)hookOwnerPos;
     if (hasSplit_) return;
@@ -212,6 +216,7 @@ float EnemyGiantSlime::GetHookSplitProgress() const {
     return std::clamp(hookSplitPullTimer_ / kHookSplitDuration, 0.0f, 1.0f);
 }
 
+// ジャンプ攻撃、着地衝撃波、伸縮の補助処理
 void EnemyGiantSlime::LaunchJump(const Vector3& direction, float distance) {
     if (!param_.has_value()) return;
 
@@ -263,6 +268,7 @@ void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
     SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 8.0f)));
 }
 
+// 小型スライムへの分裂生成
 void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
     if (hasSplit_) return;
     hasSplit_ = true;
@@ -297,7 +303,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
             pos.y += 0.45f;
 
             slime->SetTranslate(pos);
-            slime->SetScale({ 0.9f, 0.9f, 0.9f });
+            slime->SetScale({ 2.0f, 2.0f, 2.0f });
             slime->SetTarget(target_);
             slime->SetDetectionRange(18.0f);
             slime->SetVelocity({ dir.x * 12.0f, 12.0f, dir.z * 12.0f });

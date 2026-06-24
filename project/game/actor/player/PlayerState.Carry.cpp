@@ -24,6 +24,7 @@ void PlayerStateCarry::Enter(Player* player) {
 
         Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
+            carriedBaseScale_ = enemy->GetScale();
             // 敵の衝突判定を無効化（kNone等）して無力化する
             // ※ColliderのSetAttribute等があればここで当たり判定を無効化します
             // enemy->GetCollider()->SetAttribute(0); 
@@ -61,13 +62,11 @@ void PlayerStateCarry::Update(Player* player) {
         enemy->GetTransform()->rotate = rot;
 
         // 3. スケールの伸縮（息遣いや力を込めるような Squash & Stretch）
-        // 0.6 を基準サイズとして伸縮
-        float baseScale = 0.6f;
         float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
         enemy->GetTransform()->scale = { 
-            baseScale - stretch, 
-            baseScale + stretch, 
-            baseScale - stretch 
+            carriedBaseScale_.x * (1.0f - stretch),
+            carriedBaseScale_.y * (1.0f + stretch),
+            carriedBaseScale_.z * (1.0f - stretch)
         };
 
         // 追加: クォータニオンを無視させ、手動でマトリックスを更新する
@@ -85,7 +84,7 @@ void PlayerStateCarry::Exit(Player* player) {
         Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
             // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す
-            enemy->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+            enemy->GetTransform()->scale = carriedBaseScale_;
             enemy->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
             enemy->GetTransform()->isQuaternionMaster = true; // クォータニオンモードに戻す
             enemy->UpdateLocalMatrix();

@@ -19,19 +19,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 #endif
 
     switch (msg) {
+    case WM_CLOSE:
+        WinApp::RequestClose();
+        return 0;
+
     case WM_ACTIVATE:
         if (LOWORD(wparam) == WA_INACTIVE) {
             ClipCursor(nullptr); // 解放
         }
         break;
-    case WM_SIZE: // ★ウィンドウサイズが変わった
+    case WM_SIZE:
         if (wparam != SIZE_MINIMIZED) {
-            int32_t width = LOWORD(lparam);
-            int32_t height = HIWORD(lparam);
-            WinApp::kClientWidth = width;
-            WinApp::kClientHeight = height;
+            const int32_t width = LOWORD(lparam);
+            const int32_t height = HIWORD(lparam);
             if (DirectXCommon::GetInstance()->GetDevice()) {
-                DirectXCommon::GetInstance()->ResizeSwapChain(width, height);
+                DirectXCommon::GetInstance()->RequestResize(width, height);
             }
         }
         return 0;
@@ -110,6 +112,23 @@ bool WinApp::Update() {
     }
     // 続ける場合はfalseを返す
     return false;
+}
+
+void WinApp::RequestClose() {
+    closeRequested_ = true;
+}
+
+bool WinApp::ConsumeCloseRequest() {
+    if (!closeRequested_) {
+        return false;
+    }
+    closeRequested_ = false;
+    return true;
+}
+
+void WinApp::CloseNow() {
+    closeRequested_ = false;
+    PostQuitMessage(0);
 }
 
 void WinApp::SetCursorVisibility(bool isVisible) {

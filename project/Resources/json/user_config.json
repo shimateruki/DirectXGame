@@ -1,6 +1,9 @@
 {
-    "bgmVolume": 0.800000011920929,
-    "cameraSensitivity": 1.0499999523162842,
-    "lastScene": "TITLE",
-    "seVolume": 0.800000011920929
+    "bgmVolume": 0.699999988079071,
+    "cameraSensitivity": 1.0,
+    "lastScene": "GAMEPLAY",
+    "lastStageId": "stage3",
+    "lastStageIndex": 2,
+    "seVolume": 0.800000011920929,
+    "stageSelectWeatherMode": 2
 }

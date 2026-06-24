@@ -74,8 +74,13 @@ public:
 
     // 3D空間への軌跡プレビュー描画
     void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size, bool isReadOnly = false);
+    void DrawObjectGhostPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
-    void SetTarget(Object3d* target) { target_ = target; }
+    void SetTarget(Object3d* target);
+    void ClearTarget();
+    Object3d* GetTarget() const { return target_; }
+    void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+    bool HasPreviewData() const;
     State GetState() const { return state_; }
 
     void Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic);
@@ -127,6 +132,9 @@ private:
     Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t);
     Vector3 GetSplinePoint(const std::vector<Vector3>& points, float t, bool isLoop);
     Vector3 TransformCoord(const Vector3& vec, const Matrix4x4& mat);
+    std::vector<GhostFrame> BuildPreviewSamples(int sampleCount);
+    bool IsTargetInCurrentScene() const;
+    void ClearTargetIfMissingFromScene();
 
 private:
     SceneManager* sceneManager_ = nullptr;
@@ -142,6 +150,9 @@ private:
 
     GenerationParams genParams_;
     bool isShowPreview_ = true;
+    bool isShowObjectPreview_ = true;
+    int objectPreviewSampleCount_ = 6;
+    float objectPreviewAlpha_ = 0.24f;
 
     CameraManager* cameraManager_ = nullptr;
     bool isOverrideCamera_ = false;

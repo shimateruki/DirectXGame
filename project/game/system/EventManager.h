@@ -1,65 +1,36 @@
 #pragma once
-#include "Event.h"  
-#include <list>
+#include "Event.h"
 #include <functional>
+#include <list>
 
+// ダメージ、弾ヒット、プレイヤー死亡などのゲーム内イベントを購読/発行する管理クラス
 class EventManager {
 public:
     static EventManager* GetInstance();
 
     // --- PlayerHitEvent 関連 ---
-
-    /// <summary>
-    /// PlayerHitEvent のリスナー（購読者）を登録する
-    /// </summary>
     void Subscribe(std::function<void(const PlayerHitEvent&)> callback);
-
-    /// <summary>
-    /// PlayerHitEvent を発行（ディスパッチ）する
-    /// </summary>
     void Dispatch(const PlayerHitEvent& event);
 
-    /// <summary>
-    /// BulletHitEvent のリスナー（購読者）を登録する
-    /// </summary>
+    // --- BulletHitEvent 関連 ---
     void Subscribe(std::function<void(const BulletHitEvent&)> callback);
-
-    /// <summary>
-    /// BulletHitEvent を発行（ディスパッチ）する
-    /// </summary>
     void Dispatch(const BulletHitEvent& event);
 
-    /// <summary>
-    /// DamageEvent のリスナー（購読者）を登録する
-    /// </summary>
+    // --- DamageEvent 関連 ---
     void Subscribe(std::function<void(const DamageEvent&)> callback);
-
-    /// <summary>
-    /// DamageEvent を発行（ディスパッチ）する
-    /// </summary>
     void Dispatch(const DamageEvent& event);
-    
-    /// <summary>
-    /// PlayerDeathEvent のリスナー（購読者）を登録する
-    /// </summary>
-    void Subscribe(std::function<void(const PlayerDeathEvent&)> callback);
 
-    /// <summary>
-    /// PlayerDeathEvent を発行（ディスパッチ）する
-    /// </summary>
+    // --- PlayerDeathEvent 関連 ---
+    void Subscribe(std::function<void(const PlayerDeathEvent&)> callback);
     void Dispatch(const PlayerDeathEvent& event);
-    
-    /// <summary>
-    /// PlayerJumpEvent のリスナー（購読者）を登録する
-    /// </summary>
+
+    // --- PlayerJumpEvent 関連 ---
     void Subscribe(std::function<void(const PlayerJumpEvent&)> callback);
-    
-    /// <summary>
-    /// PlayerJumpEvent を発行（ディスパッチ）する
-    /// </summary>
     void Dispatch(const PlayerJumpEvent& event);
 
+    // シーン切り替え時に古い購読を残さないため、全リスナーを解除する
     void ClearAllListeners();
+
 private:
     EventManager() = default;
     ~EventManager() = default;
@@ -67,9 +38,7 @@ private:
     EventManager& operator=(const EventManager&) = delete;
 
 private:
-    // PlayerHitEvent のリスナーリスト
     std::list<std::function<void(const PlayerHitEvent&)>> playerHitListeners_;
-
     std::list<std::function<void(const BulletHitEvent&)>> bulletHitListeners_;
     std::list<std::function<void(const DamageEvent&)>> damageListeners_;
     std::list<std::function<void(const PlayerDeathEvent&)>> playerDeathListeners_;

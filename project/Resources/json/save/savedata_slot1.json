@@ -1,18 +1,19 @@
 {
     "clearedStages": [
-        0
+        2
     ],
-    "coins": 40,
-    "lives": 0,
+    "coins": 59,
+    "lives": 95,
     "playTimeSeconds": 0,
     "seenUnlockedStages": [
-        0
+        0,
+        3
     ],
     "starCoins": {
         "0": [
-            true,
-            true,
-            true
+            false,
+            false,
+            false
         ]
     }
 }

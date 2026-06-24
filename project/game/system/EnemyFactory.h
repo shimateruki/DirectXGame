@@ -4,14 +4,14 @@
 #include "BaseEnemy.h"
 #include "Object3dCommon.h"
 
+// 文字列の敵タイプ名から、対応する敵インスタンスを生成するファクトリ
 class EnemyFactory {
 public:
-    // シングルトンインスタンス取得
+    // シングルトンインスタンスを取得する
     static EnemyFactory* GetInstance();
 
-    // 名前から敵を作成する関数
+    // enemyName に対応する敵を生成し、モデル・ステータス・検知範囲を設定する
     std::unique_ptr<BaseEnemy> CreateEnemy(const std::string& enemyName, Object3dCommon* common);
-
 
 private:
     EnemyFactory() = default;

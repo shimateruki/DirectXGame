@@ -5,6 +5,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -56,6 +57,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
@@ -86,7 +88,8 @@
                 "shakeDuration": 1.0,
                 "speed": 1.0,
                 "startActive": false,
-                "switchMode": 0
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
             "particleName": "",
@@ -97,9 +100,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.9740509986877441,
+                -0.07438380271196365,
                 0.0,
-                0.2263287454843521
+                0.9972296953201294
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -108,7 +111,7 @@
             },
             "rotation": [
                 0.0,
-                2.684978723526001,
+                -0.14890512824058533,
                 0.0
             ],
             "roughness": 0.5,
@@ -120,6 +123,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Enemy"
         },
         {
@@ -127,6 +134,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -178,6 +186,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
@@ -208,20 +217,21 @@
                 "shakeDuration": 1.0,
                 "speed": 1.0,
                 "startActive": false,
-                "switchMode": 0
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
             "particleName": "",
             "position": [
                 -30.206436157226563,
-                -0.727569580078125,
+                -0.7275693416595459,
                 -65.30419921875
             ],
             "quaternion": [
-                0.4580048620700836,
-                -0.5387313961982727,
-                0.5387313961982727,
-                0.4580048620700836
+                0.1425940990447998,
+                -0.6925798654556274,
+                0.6925798654556274,
+                0.1425940990447998
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -230,7 +240,7 @@
             },
             "rotation": [
                 1.5707963705062866,
-                -1.7324252128601074,
+                -2.7354907989501953,
                 0.0
             ],
             "roughness": 0.5,
@@ -242,6 +252,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Enemy"
         },
         {
@@ -249,6 +263,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -300,6 +315,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
@@ -330,20 +346,21 @@
                 "shakeDuration": 1.0,
                 "speed": 1.0,
                 "startActive": false,
-                "switchMode": 0
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
             "particleName": "",
             "position": [
-                -7.220317840576172,
+                -7.148060321807861,
                 -0.5494763851165771,
-                -3.345318078994751
+                28.226579666137695
             ],
             "quaternion": [
-                0.36220723390579224,
-                -0.608035147190094,
-                0.6057245135307312,
-                0.36358895897865295
+                -0.6889758706092834,
+                0.15359951555728912,
+                -0.1530175805091858,
+                -0.6915961503982544
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -351,19 +368,23 @@
                 "recordPathName": ""
             },
             "rotation": [
-                1.5669888257980347,
-                -2.0637364387512207,
-                -6.29779464134117e-08
+                1.567000389099121,
+                5.846092224121094,
+                9.033468018060375e-07
             ],
             "roughness": 0.5,
             "saveCategory": "Enemy",
             "scale": [
-                0.9999881982803345,
-                0.9999833703041077,
-                0.9999790787696838
+                0.9999863505363464,
+                0.9999825358390808,
+                0.9999769330024719
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Enemy"
         },
         {
@@ -371,6 +392,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -422,6 +444,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
@@ -452,7 +475,8 @@
                 "shakeDuration": 1.0,
                 "speed": 2.0999999046325684,
                 "startActive": false,
-                "switchMode": 0
+                "switchMode": 0,
+                "targetScene": "SELECT"
             },
             "parentName": "",
             "particleName": "",
@@ -463,9 +487,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.6938982009887695,
+                -0.6979645490646362,
                 0.0,
-                0.7200731039047241
+                0.7161322832107544
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -474,7 +498,7 @@
             },
             "rotation": [
                 0.0,
-                1.5337773561477661,
+                -1.545102596282959,
                 0.0
             ],
             "roughness": 0.5,
@@ -486,202 +510,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Enemy"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": false
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.100000023841858,
-                    1.100000023841858,
-                    1.100000023841858
-                ],
-                "type": 1
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 73,
-            "color": [
-                1.0,
-                1.0,
+            "textureTiling": [
                 1.0,
                 1.0
             ],
-            "emissive": 1.399999976158142,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "BeamDrone",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "itemType": "",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "modelName": "Characters/eye",
-            "myEventID": -1,
-            "name": "Enemy_BeamDrone",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                186.2447509765625,
-                -48.97390365600586,
-                42.29249572753906
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                0.8500000238418579,
-                0.8500000238418579,
-                0.8500000238418579
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Enemy"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": false
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    -0.001757591962814331,
-                    0.3655702769756317,
-                    -0.0006781518459320068
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    2.200000047683716,
-                    2.200000047683716,
-                    2.200000047683716
-                ],
-                "type": 1
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "GiantSlime",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "itemType": "",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "modelName": "Characters/slime",
-            "myEventID": -1,
-            "name": "Enemy_GiantSlime",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                178.00991821289063,
-                -50.18319320678711,
-                41.55611801147461
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                2.799999952316284,
-                2.799999952316284,
-                2.799999952316284
-            ],
-            "targetID": -1,
-            "texturePath": "",
             "type": "Enemy"
         }
     ]

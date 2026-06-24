@@ -1,189 +1,191 @@
 #pragma once
-#include <d3d12.h>
-#include <wrl.h>
+#include "SpriteCommon.h"
 #include "engine/utility/math/Math.h"
 #include <cstdint>
+#include <d3d12.h>
 #include <string>
 #include <vector>
-#include "SpriteCommon.h" 
+#include <wrl.h>
+
 class DirectXCommon;
 
-class Sprite {
-public: // 内部構造体の定義
-	struct Transform
-	{
-		Vector3 scale;
-		Vector3 rotate;
-		Vector3 translate;
-	};
-
-	struct VertexData {
-		Vector4 position;
-		Vector2 texcoord;
-		Vector3 normal;
-	};
-
-
-	struct Material
-	{
-		Vector4 color;            // 16 bytes
-		int32_t enableLighting;   // 4 bytes
-		float padding1[3];        // 12 bytes
-		Matrix4x4 uvTransform;    // 64 bytes
-		float emissive;           // 4 bytes
-		float padding2[3];        // 12 bytes (合計112バイト = 16の倍数で完璧！)
-	};
-	struct TransformationMatrix {
-		Matrix4x4 WVP;
-		Matrix4x4 World;
-	};
-
-public: // メンバ関数
-	/// <summary>
-	/// 初期化
-	/// </summary>
-	~Sprite();
-	void Initialize(SpriteCommon* common, uint32_t textureHandle);
-	void Initialize(SpriteCommon* common, const std::string& textureFilePath);
-	/// <summary>
-	/// 更新処理
-	/// </summary>
-	void Update();
-
-	/// <summary>
-	/// 描画
-	/// </summary>
-
-	void Draw();
-
-	// --- ゲッター/セッター ---
-	const Vector2& GetPosition() const { return position_; }
-	void SetPosition(const Vector2& position) { position_ = position; }
-
-	float GetRotation() const { return rotation_; }
-	void SetRotation(float rotation) { rotation_ = rotation; }
-
-	const Vector2& GetSize() const { return size_; }
-	void SetSize(const Vector2& size) { size_ = size; }
-
-	const Vector4& GetColor() const { return materialData_->color; }
-	void SetColor(const Vector4& color) { materialData_->color = color; }
-
-	void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
-	const Vector2& GetAnchorPoint() const { return anchorPoint_; }
-
-	void SetIsFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
-	bool GetIsFlipX() const { return isFlipX_; }
-
-	void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
-	bool GetIsFlipY() const { return isFlipY_; }
-
-	void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
-		textureLeftTop_ = texLeftTop;
-		textureSize_ = texSize;
-	}
-	void SetEmissive(float emissive) { if (materialData_) materialData_->emissive = emissive; }
-	float GetEmissive() const { return materialData_ ? materialData_->emissive : 1.0f; }
-
-	/// <summary>
-/// 現在設定されているテクスチャハンドルを取得
-/// </summary>
-	uint32_t GetTextureHandle() const { return textureHandle_; }
-	void SetTextureHandle(uint32_t textureHandle) {
-		textureHandle_ = textureHandle;
-		/* AdjustTextureSize(); */
-	}
-	static uint32_t LoadTexture(const std::string& fileName);
-	// <summary>
-	/// アニメーションの設定
-	/// </summary>
-	/// <param name="frameCount">総フレーム数</param>
-	/// <param name="duration">1フレームあたりの再生時間(秒)</param>
-	/// <param name="loop">ループ再生するか</param>
-	void SetAnimation(int frameCount, float duration, bool loop);
-
-
-
-// --- 名前関連 (デバッグエディタ用) ---
 /// <summary>
-/// スプライトの名前を設定
+/// 2Dスプライトの変換、描画、簡易アニメーションを扱う。
 /// </summary>
-	void SetName(const std::string& name) { name_ = name; }
-	/// <summary>
-/// スプライトの名前を取得
-/// </summary>
-	const std::string& GetName() const { return name_; }
-	/// <summary>
-	/// アニメーションの再生を開始
-	/// </summary>
-	void Play();
+class Sprite {
+public:
+    // GPUへ送る基本構造体。
+    struct Transform {
+        Vector3 scale;
+        Vector3 rotate;
+        Vector3 translate;
+    };
 
-	/// <summary>
-	/// アニメーションを停止
-	/// </summary>
-	void Stop();
-	bool IsVisible() const { return isVisible_; }
-	void SetVisible(bool isVisible) { isVisible_ = isVisible; }
-	bool IsLocked() const { return isLocked_; }
-	void SetLocked(bool isLocked) { isLocked_ = isLocked; }
-	const std::string& GetTextureName() const { return textureName_; }
-	void SetTextureName(const std::string& name) { textureName_ = name; }
-	void SetParent(Sprite* parent, bool keepWorldPosition = true);
-	Sprite* GetParent() const { return parent_; }
-	const std::vector<Sprite*>& GetChildren() const { return children_; }
-	Vector2 GetWorldPosition() const;
-private: // メンバ変数
-	SpriteCommon* common_ = nullptr;
-	DirectXCommon* dxCommon_ = nullptr;
-	uint32_t textureHandle_ = 0;
+    struct VertexData {
+        Vector4 position;
+        Vector2 texcoord;
+        Vector3 normal;
+    };
 
-	// 基本的な座標・回転・サイズ
-	Vector2 position_ = { 0.0f, 0.0f };
-	float rotation_ = 0.0f;
-	Vector2 size_ = { 100.0f, 100.0f };
+    struct Material {
+        Vector4 color;
+        int32_t enableLighting;
+        float padding1[3];
+        Matrix4x4 uvTransform;
+        float emissive;
+        float padding2[3];
+    };
 
-	// 内部で使うTransform
-	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
+    struct TransformationMatrix {
+        Matrix4x4 WVP;
+        Matrix4x4 World;
+    };
 
-	std::string name_ = "Sprite"; // デフォルト名
-	// アンカーポイント
-	Vector2 anchorPoint_ = { 0.5f, 0.5f }; // 中央を原点に
-	// 反転フラグ
-	bool isFlipX_ = false;
-	bool isFlipY_ = false;
-	// テクスチャの切り出し範囲
-	Vector2 textureLeftTop_ = { 0.0f, 0.0f };
-	Vector2 textureSize_ = { 100.0f, 100.0f }; // 初期値は後で上書きされる
-	// アニメーション関連
-	bool isPlaying_ = false;         // 再生中か
-	bool isLooping_ = false;         // ループ再生するか
-	float frameDuration_ = 1.0f;     // 1フレームあたりの再生時間 (秒)
-	float animationTimer_ = 0.0f;    // アニメーションの経過時間タイマー
-	int totalFrames_ = 1;            // 総フレーム数
-	int currentFrame_ = 0;           // 現在のフレーム番号
-	int frameWidth_ = 0;             // 1フレームの横幅
-	int frameHeight_ = 0;            // 1フレームの縦幅
+public:
+    ~Sprite();
 
-	void AdjustTextureSize();
+    /// <summary>
+    /// テクスチャハンドルを指定して初期化する。
+    /// </summary>
+    void Initialize(SpriteCommon* common, uint32_t textureHandle);
 
+    /// <summary>
+    /// テクスチャファイルを読み込んで初期化する。
+    /// </summary>
+    void Initialize(SpriteCommon* common, const std::string& textureFilePath);
 
-	// リソース
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-	VertexData* vertexData_ = nullptr;
+    /// <summary>
+    /// 座標、UV、アニメーション状態を更新する。
+    /// </summary>
+    void Update();
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_ = nullptr;
-	D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
-	uint32_t* indexData_ = nullptr;
+    /// <summary>
+    /// 現在のスプライトを描画する。
+    /// </summary>
+    void Draw();
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
-	Material* materialData_ = nullptr;
+    // 基本パラメータの取得と設定。
+    const Vector2& GetPosition() const { return position_; }
+    void SetPosition(const Vector2& position) { position_ = position; }
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
-	TransformationMatrix* wvpData_ = nullptr;
-	bool isVisible_ = true; // デフォルトは表示
-	bool isLocked_ = false; // デフォルトは操作可能（アンロック）
-	std::string textureName_ = "";
-	Sprite* parent_ = nullptr;
-	std::vector<Sprite*> children_;
+    float GetRotation() const { return rotation_; }
+    void SetRotation(float rotation) { rotation_ = rotation; }
+
+    const Vector2& GetSize() const { return size_; }
+    void SetSize(const Vector2& size) { size_ = size; }
+
+    const Vector4& GetColor() const { return materialData_->color; }
+    void SetColor(const Vector4& color) { materialData_->color = color; }
+
+    void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
+    const Vector2& GetAnchorPoint() const { return anchorPoint_; }
+
+    void SetIsFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
+    bool GetIsFlipX() const { return isFlipX_; }
+
+    void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
+    bool GetIsFlipY() const { return isFlipY_; }
+
+    void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
+        textureLeftTop_ = texLeftTop;
+        textureSize_ = texSize;
+    }
+
+    void SetEmissive(float emissive) { if (materialData_) materialData_->emissive = emissive; }
+    float GetEmissive() const { return materialData_ ? materialData_->emissive : 1.0f; }
+
+    /// <summary>
+    /// 現在設定されているテクスチャハンドルを取得する。
+    /// </summary>
+    uint32_t GetTextureHandle() const { return textureHandle_; }
+
+    void SetTextureHandle(uint32_t textureHandle) {
+        textureHandle_ = textureHandle;
+        /* AdjustTextureSize(); */
+    }
+
+    static uint32_t LoadTexture(const std::string& fileName);
+
+    /// <summary>
+    /// 横並びスプライトシートのアニメーション設定を行う。
+    /// </summary>
+    void SetAnimation(int frameCount, float duration, bool loop);
+
+    // エディタ表示や階層管理で使う識別情報。
+    void SetName(const std::string& name) { name_ = name; }
+    const std::string& GetName() const { return name_; }
+
+    /// <summary>
+    /// アニメーション再生を開始する。
+    /// </summary>
+    void Play();
+
+    /// <summary>
+    /// アニメーション再生を停止する。
+    /// </summary>
+    void Stop();
+
+    bool IsVisible() const { return isVisible_; }
+    void SetVisible(bool isVisible) { isVisible_ = isVisible; }
+    bool IsLocked() const { return isLocked_; }
+    void SetLocked(bool isLocked) { isLocked_ = isLocked; }
+    const std::string& GetTextureName() const { return textureName_; }
+    void SetTextureName(const std::string& name) { textureName_ = name; }
+    void SetParent(Sprite* parent, bool keepWorldPosition = true);
+    Sprite* GetParent() const { return parent_; }
+    const std::vector<Sprite*>& GetChildren() const { return children_; }
+    Vector2 GetWorldPosition() const;
+
+private:
+    SpriteCommon* common_ = nullptr;
+    DirectXCommon* dxCommon_ = nullptr;
+    uint32_t textureHandle_ = 0;
+
+    // 画面上の基本変換。
+    Vector2 position_ = { 0.0f, 0.0f };
+    float rotation_ = 0.0f;
+    Vector2 size_ = { 100.0f, 100.0f };
+    Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+
+    // エディタ識別とテクスチャ切り出し設定。
+    std::string name_ = "Sprite";
+    Vector2 anchorPoint_ = { 0.5f, 0.5f };
+    bool isFlipX_ = false;
+    bool isFlipY_ = false;
+    Vector2 textureLeftTop_ = { 0.0f, 0.0f };
+    Vector2 textureSize_ = { 100.0f, 100.0f };
+
+    // スプライトシートの簡易アニメーション状態。
+    bool isPlaying_ = false;
+    bool isLooping_ = false;
+    float frameDuration_ = 1.0f;
+    float animationTimer_ = 0.0f;
+    int totalFrames_ = 1;
+    int currentFrame_ = 0;
+    int frameWidth_ = 0;
+    int frameHeight_ = 0;
+
+    void AdjustTextureSize();
+
+    // GPUリソース。
+    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;
+    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+    VertexData* vertexData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_ = nullptr;
+    D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
+    uint32_t* indexData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
+    Material* materialData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
+    TransformationMatrix* wvpData_ = nullptr;
+
+    // エディタ操作と階層表示用の状態。
+    bool isVisible_ = true;
+    bool isLocked_ = false;
+    std::string textureName_ = "";
+    Sprite* parent_ = nullptr;
+    std::vector<Sprite*> children_;
 };

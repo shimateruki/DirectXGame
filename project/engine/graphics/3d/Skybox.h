@@ -13,6 +13,8 @@ public:
     };
 
     void Initialize(Object3dCommon* common, uint32_t textureHandle);
+    void SetTextureHandle(uint32_t textureHandle) { textureHandle_ = textureHandle; }
+    uint32_t GetTextureHandle() const { return textureHandle_; }
     void Draw(ID3D12Resource* vpResource);
 
 private:

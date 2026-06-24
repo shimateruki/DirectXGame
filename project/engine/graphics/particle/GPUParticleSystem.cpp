@@ -15,7 +15,6 @@ void GPUParticleSystem::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
     CreateBuffer();
     CreateComputePipeline();
-    CreateGraphicsPipeline();
 }
 
 void GPUParticleSystem::CreateBuffer() {
@@ -210,7 +209,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     if (!commandList) return;
 
     // 軽量化: 一定時間(例:2秒)以上何も発生していなければ、GPU側の処理も完全にスキップ！
-    if (lastEmitTimer_ > 2.0f) return;
+    if (lastEmitTimer_ > 2.0f && !warmupRequested_) return;
+    const bool warmupOnly = warmupRequested_ && emitRequests_.empty();
 
     // --- Compute Shader ---
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
@@ -232,6 +232,12 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
         commandList->ResourceBarrier(3, barriers);
 
         isInitialized_ = true;
+    }
+
+    if (warmupOnly) {
+        warmupRequested_ = false;
+        lastEmitTimer_ = 2.001f;
+        return;
     }
 
     static Math math;
@@ -328,6 +334,13 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     cameraData_->softParticleFade = softParticleFade_;
     cameraData_->blendMode = blendModeIndex_;
     cameraData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+    cameraData_->spriteSheetColumns = spriteSheetColumns_;
+    cameraData_->spriteSheetRows = spriteSheetRows_;
+    cameraData_->spriteSheetFrameCount = spriteSheetFrameCount_;
+    cameraData_->spriteSheetFps = spriteSheetFps_;
+    cameraData_->spriteSheetLoop = spriteSheetLoop_;
+    cameraData_->spriteSheetRandomStart = spriteSheetRandomStart_;
+    cameraData_->spriteSheetPadding = { 0.0f, 0.0f };
 
     D3D12_RESOURCE_BARRIER toSRV{};
     toSRV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -434,8 +447,14 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
 
     emitRequests_.push_back(request);
 
-    blendModeIndex_ = config.blendModeIndex;
+    blendModeIndex_ = (config.blendModeIndex >= 2) ? 1 : config.blendModeIndex;
     softParticleFade_ = config.softParticleFade;
+    spriteSheetColumns_ = config.spriteSheetColumns > 0 ? static_cast<uint32_t>(config.spriteSheetColumns) : 1u;
+    spriteSheetRows_ = config.spriteSheetRows > 0 ? static_cast<uint32_t>(config.spriteSheetRows) : 1u;
+    spriteSheetFrameCount_ = config.spriteSheetFrameCount > 0 ? static_cast<uint32_t>(config.spriteSheetFrameCount) : 1u;
+    spriteSheetFps_ = config.spriteSheetFps > 0.0f ? config.spriteSheetFps : 0.0f;
+    spriteSheetLoop_ = config.spriteSheetLoop != 0 ? 1u : 0u;
+    spriteSheetRandomStart_ = config.spriteSheetRandomStart != 0 ? 1u : 0u;
 }
 
 void GPUParticleSystem::SetCurrentTexture(const std::string& path) {

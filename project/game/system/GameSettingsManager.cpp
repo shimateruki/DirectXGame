@@ -13,7 +13,15 @@ float ClampVolume(float value) {
 }
 
 float ClampSensitivity(float value) {
-    return std::clamp(value, 0.5f, 2.0f);
+    return std::clamp(value, 0.2f, 1.0f);
+}
+
+GameSettingsManager::StageSelectWeatherMode ClampStageSelectWeatherMode(int value) {
+    if (value < static_cast<int>(GameSettingsManager::StageSelectWeatherMode::Auto) ||
+        value > static_cast<int>(GameSettingsManager::StageSelectWeatherMode::Rain)) {
+        return GameSettingsManager::StageSelectWeatherMode::Auto;
+    }
+    return static_cast<GameSettingsManager::StageSelectWeatherMode>(value);
 }
 }
 
@@ -46,6 +54,9 @@ void GameSettingsManager::Load() {
     bgmVolume_ = ClampVolume(data.value("bgmVolume", bgmVolume_));
     seVolume_ = ClampVolume(data.value("seVolume", seVolume_));
     cameraSensitivity_ = ClampSensitivity(data.value("cameraSensitivity", cameraSensitivity_));
+    stageSelectWeatherMode_ = ClampStageSelectWeatherMode(data.value(
+        "stageSelectWeatherMode",
+        static_cast<int>(stageSelectWeatherMode_)));
 
     ApplyAudioSettings();
 }
@@ -68,6 +79,10 @@ void GameSettingsManager::Save() const {
     data["bgmVolume"] = bgmVolume_;
     data["seVolume"] = seVolume_;
     data["cameraSensitivity"] = cameraSensitivity_;
+    data["stageSelectWeatherMode"] = static_cast<int>(stageSelectWeatherMode_);
+    data.erase("brightness");
+    data.erase("resolutionIndex");
+    data.erase("fullscreen");
 
     std::filesystem::create_directories(std::filesystem::path(filePath_).parent_path());
     std::ofstream output(filePath_);
@@ -88,6 +103,10 @@ void GameSettingsManager::SetSEVolume(float volume) {
 
 void GameSettingsManager::SetCameraSensitivity(float sensitivity) {
     cameraSensitivity_ = ClampSensitivity(sensitivity);
+}
+
+void GameSettingsManager::SetStageSelectWeatherMode(StageSelectWeatherMode mode) {
+    stageSelectWeatherMode_ = ClampStageSelectWeatherMode(static_cast<int>(mode));
 }
 
 void GameSettingsManager::ApplyAudioSettings() const {

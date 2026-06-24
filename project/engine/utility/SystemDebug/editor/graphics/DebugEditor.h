@@ -1,48 +1,46 @@
 #pragma once
 
-// ========================================================================
-// Includes
-// ========================================================================
-#include <d3d12.h> 
-#include <wrl.h>   
-#include <vector>  
-#include <string> 
+#include <cstdint>
+#include <d3d12.h>
 #include <deque>
 #include <memory>
-#include <cstdint>
+#include <string>
 #include <unordered_map>
+#include <vector>
+#include <wrl.h>
 
-#include "engine/utility/math/Math.h"
 #include "BaseScene.h"
-#include "Transform.h"
-#include "IEditable.h" 
 #include "CollisionConfig.h"
+#include "IEditable.h"
+#include "Transform.h"
+#include "engine/utility/math/Math.h"
 
-// --- サブモジュール群 ---
-#include "HierarchyWindow.h"
-#include "ProjectWindow.h"
-#include "InspectorWindow.h"
-#include "EditorCommon.h"
-#include "SceneSerializer.h"
-#include "PrimitiveDrawer.h"
-#include "GhostDirector.h"
-#include "SceneValidator.h"
-#include "MaterialPreviewBoard.h"
-#include "EffectPreviewStage.h"
+// Editorを構成するサブウィンドウ。
 #include "AnimationWorkbench.h"
-#include "SceneSavePreview.h"
-#include "EventLinkGraph.h"
-#include "TextSpriteGenerator.h"
-#include "Text3DGenerator.h"
-#include "ModelOptimizerWindow.h"
 #include "AssetAuditWindow.h"
+#include "AudioSettingsWindow.h"
+#include "CaptureToolWindow.h"
+#include "EditorCommon.h"
+#include "EffectPreviewStage.h"
+#include "EventLinkGraph.h"
+#include "ExecutablePackageWindow.h"
 #include "GameDataDebugEditor.h"
+#include "GhostDirector.h"
+#include "HierarchyWindow.h"
+#include "InspectorWindow.h"
+#include "JsonBackupWindow.h"
+#include "MaterialPreviewBoard.h"
+#include "ModelOptimizerWindow.h"
+#include "PrimitiveDrawer.h"
+#include "ProjectWindow.h"
+#include "SceneSavePreview.h"
+#include "SceneSerializer.h"
+#include "SceneValidator.h"
+#include "StatusTuningWindow.h"
 #include "TerrainEditorWindow.h"
+#include "Text3DGenerator.h"
+#include "TextSpriteGenerator.h"
 
-
-// ========================================================================
-// 前方宣言 (Forward Declarations)
-// ========================================================================
 class Object3d;
 class DebrisEffectEditor;
 class DirectXCommon;
@@ -58,54 +56,43 @@ class LightEditor;
 class MeshEffectEditor;
 class TrailEmitterEditor;
 
-// ========================================================================
-// DebugEditor クラス
-// 役割: エディタのメイン制御、各種ウィンドウの統括、シーンへの干渉を行う
-// ========================================================================
+/// <summary>
+/// DebugEditor全体の司令塔。各Editorウィンドウ、シーン編集、保存、Undo/Redo、GameView配置を統括する。
+/// </summary>
 class DebugEditor : public IEditable {
-    friend class HierarchyWindow; // ゲッター経由に移行済みですが、互換性のため残置
+    friend class HierarchyWindow; // 既存の直接参照互換のため残す。
 
 public:
-    // --------------------------------------------------------------------
-    // ライフサイクル (Lifecycle)
-    // --------------------------------------------------------------------
+    // ライフサイクル。
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
 
-    // --------------------------------------------------------------------
-    // 描画関連 (Rendering)
-    // --------------------------------------------------------------------
+    // Debug描画と配置プレビュー描画。
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
-    // IEditableの実装: Inspector等に描画されるUI
+    // IEditableとしてInspectorに表示する内容。
     void DrawImGui() override;
     std::string GetName() override {
         return selectedObject_ ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
     }
 
-    // --------------------------------------------------------------------
-    // ウィンドウ個別描画 (Windows)
-    // --------------------------------------------------------------------
+    // 主要ウィンドウ。
     void DrawProjectWindow();
     void DrawHierarchy();
 
-    // --------------------------------------------------------------------
-    // シーン操作・ファイル管理 (File Management)
-    // --------------------------------------------------------------------
+    // シーン保存と保存通知。
     void SaveScene(SaveMode mode = SaveMode::All);
-    void SaveSingleObject();      // 単体保存
+    void SaveSingleObject();
     void TriggerSaveNotification(const std::string& filename);
     void DrawSaveNotification();
 
-    // --------------------------------------------------------------------
-    // オブジェクト編集機能 (Edit Operations)
-    // --------------------------------------------------------------------
-    void DuplicateSelected();     // 複製
-    void DeleteSelected();        // 削除
-    void PerformUndo();           // 元に戻す
-    void PerformRedo();           // やり直し
+    // 選択中オブジェクトへの編集操作。
+    void DuplicateSelected();
+    void DeleteSelected();
+    void PerformUndo();
+    void PerformRedo();
     void SplitSelectedModelIntoMeshChildren();
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
@@ -129,26 +116,48 @@ public:
     bool IsDirty(SaveMode mode) const;
     bool HasAnyDirty() const;
     std::string GetDirtySummaryText() const;
-    // --------------------------------------------------------------------
-    // セッター (Setters)
-    // --------------------------------------------------------------------
+
+    // GameViewの領域と入力状態。
     void SetGameViewRegion(const Vector2& offset, const Vector2& size) {
         gameViewOffset_ = offset;
         gameViewSize_ = size;
         animationWorkbench_.SetGameViewRegion(offset, size);
         textSpriteGenerator_.SetGameViewRegion(offset, size);
     }
+    void SetGameViewScreenRect(float left, float top, float right, float bottom) {
+        gameViewScreenRectLeft_ = static_cast<int>(left);
+        gameViewScreenRectTop_ = static_cast<int>(top);
+        gameViewScreenRectRight_ = static_cast<int>(right);
+        gameViewScreenRectBottom_ = static_cast<int>(bottom);
+        hasGameViewScreenRect_ = gameViewScreenRectRight_ > gameViewScreenRectLeft_ && gameViewScreenRectBottom_ > gameViewScreenRectTop_;
+    }
+    bool GetGameViewScreenRect(int& left, int& top, int& right, int& bottom) const {
+        if (!hasGameViewScreenRect_) {
+            return false;
+        }
+        left = gameViewScreenRectLeft_;
+        top = gameViewScreenRectTop_;
+        right = gameViewScreenRectRight_;
+        bottom = gameViewScreenRectBottom_;
+        return true;
+    }
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; animationWorkbench_.SetGameViewHovered(hovered); }
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; animationWorkbench_.SetGameViewMousePos(pos); }
+
     void SetSceneFilename(const std::string& filepath) {
         std::string name = filepath;
         size_t pos = name.find_last_of("/\\");
         if (pos != std::string::npos) name = name.substr(pos + 1);
         strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
     }
+
     void SetSelectedObject(Object3d* obj) { selectedObject_ = obj; }
     void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
+
+    /// <summary>
+    /// 外部で生成された各種サブエディタへの参照を登録する。
+    /// </summary>
     void SetEditors(
         PostEffectEditor* postEffectEditor,
         SpriteDebugEditor* spriteDebugEditor,
@@ -162,21 +171,20 @@ public:
         DebrisEffectEditor* debrisEffectEditor,
         TrailEmitterEditor* trailEmitterEditor)
     {
-        postEffectEditor_    = postEffectEditor;
-        spriteDebugEditor_   = spriteDebugEditor;
-        particleEditor_      = particleEditor;
-        gpuParticleEditor_   = gpuParticleEditor;
-        vfxSequencerEditor_  = vfxSequencerEditor;
-        ghostRecorder_       = ghostRecorder;
-        ghostDirector_       = ghostDirector;
-        lightEditor_         = lightEditor;
-        meshEffectEditor_    = meshEffectEditor;
-        debrisEffectEditor_  = debrisEffectEditor;
-        trailEmitterEditor_  = trailEmitterEditor;
+        postEffectEditor_ = postEffectEditor;
+        spriteDebugEditor_ = spriteDebugEditor;
+        particleEditor_ = particleEditor;
+        gpuParticleEditor_ = gpuParticleEditor;
+        vfxSequencerEditor_ = vfxSequencerEditor;
+        ghostRecorder_ = ghostRecorder;
+        ghostDirector_ = ghostDirector;
+        lightEditor_ = lightEditor;
+        meshEffectEditor_ = meshEffectEditor;
+        debrisEffectEditor_ = debrisEffectEditor;
+        trailEmitterEditor_ = trailEmitterEditor;
     }
-    // --------------------------------------------------------------------
-    // ゲッター (Getters)
-    // --------------------------------------------------------------------
+
+    // 選択状態とサブエディタ参照。
     Object3d* GetSelectedObject3D() const { return selectedObject_; }
     Object3d* GetSelectedObject() const { return selectedObject_; }
     SceneManager* GetSceneManager() const { return sceneManager_; }
@@ -211,8 +219,13 @@ public:
     Text3DGenerator* GetText3DGenerator() { return &text3DGenerator_; }
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
     AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
+    StatusTuningWindow* GetStatusTuningWindow() { return &statusTuningWindow_; }
     GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
     TerrainEditorWindow* GetTerrainEditorWindow() { return &terrainEditorWindow_; }
+    JsonBackupWindow* GetJsonBackupWindow() { return &jsonBackupWindow_; }
+    AudioSettingsWindow* GetAudioSettingsWindow() { return &audioSettingsWindow_; }
+    ExecutablePackageWindow* GetExecutablePackageWindow() { return &executablePackageWindow_; }
+    CaptureToolWindow* GetCaptureToolWindow() { return &captureToolWindow_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -225,9 +238,7 @@ private:
         bool hasSurface = false;
     };
 
-    // --------------------------------------------------------------------
-    // 内部ヘルパー (Internal Helpers)
-    // --------------------------------------------------------------------
+    // GameView配置、プレビュー、保存、Undo/Redoで使う内部処理。
     Ray ScreenPointToRay(const Vector2& mousePos);
     bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
     PlacementResult CalculateGameViewPlacement(const Object3d* object, const Vector2& mousePos, bool useGridSnap = true);
@@ -256,17 +267,14 @@ private:
     std::unique_ptr<Object3d> RemoveObjectImmediate(Object3d* object);
     void TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::json& beforeState);
     void MarkDirtyForCategory(const std::string& category);
-private:
-    // ====================================================================
-    // メンバ変数
-    // ====================================================================
 
-    // --- コアシステムへの参照 ---
+private:
+    // コアシステムへの参照。
     SceneManager* sceneManager_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
     Math math_;
 
-    // --- エディタの状態・データ ---
+    // 選択、配置プレビュー、プリセットブラシの状態。
     Object3d* selectedObject_ = nullptr;
     std::unique_ptr<Object3d> previewObject_ = nullptr;
     std::vector<std::unique_ptr<Object3d>> previewChildObjects_;
@@ -290,6 +298,7 @@ private:
     Vector3 previewPlacementContactPosition_ = { 0.0f, 0.0f, 0.0f };
     bool hasPreviewPlacementContact_ = false;
     std::string previewCreateCommandLabel_ = "Place Preview Object";
+
     struct PreviewVisualState {
         std::string className;
         Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -306,7 +315,7 @@ private:
     bool drawEventIDs_ = true;
     bool isPathEditMode_ = false;
 
-    // --- ファイル関連 ---
+    // ファイル名、検索、モデル一覧。
     char currentSceneFilename_[128] = "scene_layout.json";
     char searchFilter_[128] = "";
     std::vector<std::string> modelNames_;
@@ -315,28 +324,34 @@ private:
     std::string currentPreviewModelName_ = "";
     char presetNameBuffer_[64] = "";
 
-    // --- GameView領域 (レイキャスト用) ---
+    // GameViewの領域と右クリック生成メニュー。
     Vector2 gameViewMousePos_ = { 0, 0 };
     Vector2 gameViewSize_ = { 1266, 530 };
     Vector2 gameViewOffset_ = { 0, 0 };
+    int gameViewScreenRectLeft_ = 0;
+    int gameViewScreenRectTop_ = 0;
+    int gameViewScreenRectRight_ = 0;
+    int gameViewScreenRectBottom_ = 0;
+    bool hasGameViewScreenRect_ = false;
     bool isGameViewHovered_ = false;
     Vector2 gameViewCreateMenuMousePos_ = { 0, 0 };
     Vector2 gameViewCreateMenuScreenPos_ = { 0, 0 };
     bool requestGameViewCreateMenu_ = false;
 
-    // --- Dirty管理 ---
+    // 保存対象ごとのDirty状態。
     bool dirtyPlayer_ = false;
     bool dirtyEnemy_ = false;
     bool dirtyObject_ = false;
     SaveMode pendingSaveMode_ = SaveMode::All;
     bool pendingSaveIsSingleObject_ = false;
 
-    // --- Undo/Redo システム ---
+    // Undo/Redoコマンド。
     enum class EditorCommandType {
         ObjectCreated,
         ObjectDeleted,
         ObjectEdited
     };
+
     struct EditorCommand {
         EditorCommandType type = EditorCommandType::ObjectEdited;
         std::string label;
@@ -345,6 +360,7 @@ private:
         nlohmann::json beforeState;
         nlohmann::json afterState;
     };
+
     void RegisterCommand(const EditorCommand& command);
     std::deque<EditorCommand> undoStack_;
     std::deque<EditorCommand> redoStack_;
@@ -355,20 +371,19 @@ private:
     nlohmann::json tempObjectStateStart_;
     bool isDraggingTransform_ = false;
 
-    // --- スナップ機能 ---
+    // スナップとプレビュー補助。
     bool isGridSnapEnabled_ = false;
     float snapValue_ = 1.0f;
-
-    // --- カメラ制御・プレビューフラグ ---
+    int gizmoPivotMode_ = 0; // 0: 原点, 1: モデル中心, 2: コリジョン中心
     bool wasPreviewActive_ = false;
     int previousCameraMode_ = 0;
 
-    // --- 通知UI用 ---
+    // 通知UIとDDSキャッシュ通知。
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
     std::uintmax_t ddsCacheNotificationReadOffset_ = 0;
 
-    // --- 各種サブエディタへのポインタ ---
+    // 外部所有のサブエディタ。
     PostEffectEditor* postEffectEditor_ = nullptr;
     SpriteDebugEditor* spriteDebugEditor_ = nullptr;
     ParticleEditor* particleEditor_ = nullptr;
@@ -378,12 +393,12 @@ private:
     GhostDirector* ghostDirector_ = nullptr;
     LightEditor* lightEditor_ = nullptr;
 
-    // --- ウィンドウ・サブモジュール インスタンス ---
+    // DebugEditorが所有するサブウィンドウ。
     HierarchyWindow hierarchyWindow_;
     ProjectWindow projectWindow_;
     InspectorWindow inspectorWindow_;
     SceneSerializer serializer_;
-    PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
+    PrimitiveDrawer primitiveDrawer_;
     SceneValidator sceneValidator_;
     MaterialPreviewBoard materialPreviewBoard_;
     AnimationWorkbench animationWorkbench_;
@@ -393,10 +408,16 @@ private:
     Text3DGenerator text3DGenerator_;
     ModelOptimizerWindow modelOptimizerWindow_;
     AssetAuditWindow assetAuditWindow_;
+    StatusTuningWindow statusTuningWindow_;
     GameDataDebugEditor gameDataDebugEditor_;
     TerrainEditorWindow terrainEditorWindow_;
+    JsonBackupWindow jsonBackupWindow_;
+    AudioSettingsWindow audioSettingsWindow_;
+    ExecutablePackageWindow executablePackageWindow_;
+    CaptureToolWindow captureToolWindow_;
+
+    // 外部所有のVFX系サブエディタ。
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;
-
 };

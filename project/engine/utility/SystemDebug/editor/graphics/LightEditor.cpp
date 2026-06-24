@@ -16,6 +16,7 @@
 #include "DebugConsole.h"
 using json = nlohmann::json;
 
+#ifdef USE_IMGUI
 static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
     float w = worldPos.x * mat.m[0][3] + worldPos.y * mat.m[1][3] + worldPos.z * mat.m[2][3] + mat.m[3][3];
     if (w < 0.001f) return ImVec2(-10000.0f, -10000.0f);
@@ -28,6 +29,7 @@ static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
     float screenY = (1.0f - y) * 0.5f * io.DisplaySize.y;
     return ImVec2(screenX, screenY);
 }
+#endif
 
 LightEditor* LightEditor::GetInstance() {
     static LightEditor instance;
@@ -37,7 +39,11 @@ LightEditor* LightEditor::GetInstance() {
 void LightEditor::SetStatusMessage(const std::string& message, bool success) {
     statusMessage_ = message;
     statusSuccess_ = success;
+#ifdef USE_IMGUI
     statusVisibleUntil_ = ImGui::GetTime() + 3.0;
+#else
+    statusVisibleUntil_ = 0.0;
+#endif
 }
 
 std::string LightEditor::BuildFullPathFromFileName() const {
@@ -104,6 +110,48 @@ void LightEditor::DrawLightFileList() {
         }
     }
     ImGui::EndChild();
+#endif
+}
+
+void LightEditor::DrawSkyboxTextureList() {
+#ifdef USE_IMGUI
+    if (!lightManager_) {
+        return;
+    }
+
+    std::vector<std::string> texturePaths;
+    const std::filesystem::path resourceDir("Resources");
+    if (std::filesystem::exists(resourceDir)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(resourceDir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".dds") {
+                continue;
+            }
+            texturePaths.push_back(entry.path().generic_string());
+        }
+    }
+    std::sort(texturePaths.begin(), texturePaths.end());
+
+    bool enabled = lightManager_->IsSkyboxEnabled();
+    if (ImGui::Checkbox(ICON_FA_CLOUD_SUN " スカイボックスを表示", &enabled)) {
+        lightManager_->SetSkyboxEnabled(enabled);
+    }
+
+    const std::string& currentTexture = lightManager_->GetSkyboxTexturePath();
+    if (ImGui::BeginCombo(ICON_FA_IMAGE " スカイボックスDDS", currentTexture.c_str())) {
+        for (const auto& path : texturePaths) {
+            const bool selected = (path == currentTexture);
+            if (ImGui::Selectable(path.c_str(), selected)) {
+                const bool applied = lightManager_->SetSkyboxTexturePath(path);
+                SetStatusMessage(applied ? "スカイボックスを差し替えました" : "スカイボックスの差し替えに失敗しました", applied);
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::TextDisabled("ライト設定JSONにON/OFFとDDSパスを保存します。");
 #endif
 }
 
@@ -223,6 +271,11 @@ void LightEditor::DrawImGui() {
     Vector4& clearColor = lightManager_->GetSceneClearColor();
     if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
         DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+    }
+    ImGui::Spacing();
+
+    if (ImGui::CollapsingHeader(ICON_FA_CLOUD_SUN " 環境設定 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawSkyboxTextureList();
     }
     ImGui::Spacing();
 

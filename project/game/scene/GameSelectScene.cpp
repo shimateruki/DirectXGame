@@ -48,12 +48,14 @@
 #include <PostEffect.h>
 #include "StageManager.h"
 #include "GameDataManager.h"
+#include "GameAudioSettings.h"
 #include "GameSettingsManager.h"
 #include "GimmickStageGate.h"
 #include "CollisionConfig.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <cstdint>
 #include <sstream>
 
 namespace {
@@ -63,7 +65,46 @@ constexpr const char* kStageClearCrownPrefix = "__Editor_StageClearCrown_";
 constexpr const char* kStageClearCrownModel = "Stages/crown";
 constexpr float kStageClearCrownBaseScale = 0.42f;
 constexpr float kStageClearCrownHeightOffset = 0.85f;
+constexpr const char* kCrownIdleParticlePreset = "crown_idle_sparkle";
+constexpr const char* kCrownUnlockParticlePreset = "crown_get_burst";
+constexpr const char* kCrownUnlockRayParticlePreset = "crown_get_rays";
+constexpr const char* kCrownUnlockFountainParticlePreset = "crown_get_twinkle_fountain";
+constexpr const char* kCrownUnlockAfterglowParticlePreset = "crown_get_afterglow";
+constexpr const char* kCrownAuraEffectPath = "Resources/json/effect/effect_crown_aura_ring.json";
+constexpr const char* kCrownRayEffectPath = "Resources/json/effect/effect_crown_ray_plane.json";
+constexpr const char* kCrownUnlockFlashRingEffectPath = "Resources/json/effect/effect_crown_get_flash_ring.json";
+constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/effect_crown_get_ray_flash.json";
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
+constexpr float kCrownCountPresentationDuration = 2.65f;
+constexpr float kCrownCountImpactTime = 1.05f;
+constexpr float kCrownCountParticleInterval = 0.12f;
+
+float SelectClamp01(float value) {
+	return std::clamp(value, 0.0f, 1.0f);
+}
+
+float SelectEaseOutCubic(float value) {
+	value = SelectClamp01(value);
+	const float inv = 1.0f - value;
+	return 1.0f - inv * inv * inv;
+}
+
+float SelectEaseOutBack(float value) {
+	value = SelectClamp01(value);
+	constexpr float c1 = 1.70158f;
+	constexpr float c3 = c1 + 1.0f;
+	const float x = value - 1.0f;
+	return 1.0f + c3 * x * x * x + c1 * x * x;
+}
+
+Vector3 SelectLerp(const Vector3& a, const Vector3& b, float t) {
+	t = SelectClamp01(t);
+	return {
+		a.x + (b.x - a.x) * t,
+		a.y + (b.y - a.y) * t,
+		a.z + (b.z - a.z) * t
+	};
+}
 
 std::string ToSpriteRelativePath(const std::string& path) {
 	if (path.rfind(kSpriteResourcePrefix, 0) == 0) {
@@ -177,6 +218,13 @@ void GameSelectScene::Initialize() {
 	unlockPresentationTimer_ = 0.0f;
 	unlockParticleTimer_ = 0.0f;
 	stageSelectTime_ = 0.0f;
+	crownCountPresentationActive_ = false;
+	crownCountPresentationImpactDone_ = false;
+	crownCountPresentationStageIndex_ = -1;
+	crownCountPresentationFrom_ = 0;
+	crownCountPresentationTo_ = 0;
+	crownCountPresentationTimer_ = 0.0f;
+	crownCountPresentationParticleTimer_ = 0.0f;
 
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
@@ -190,6 +238,7 @@ void GameSelectScene::Initialize() {
 
 	object3dCommon_ = std::make_unique<Object3dCommon>();
 	object3dCommon_->Initialize(dxCommon_);
+	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 
 	particleCommon_ = std::make_unique<ParticleCommon>();
 	particleCommon_->Initialize(dxCommon_);
@@ -239,7 +288,8 @@ void GameSelectScene::Initialize() {
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
 	GameDataManager::GetInstance()->MarkStageUnlockSeen(0);
-	unlockingStageIndex_ = FindPendingUnlockStage();
+	StartStageClearRewardPresentation(GameDataManager::GetInstance()->ConsumeStageClearRewardPresentation());
+	unlockingStageIndex_ = crownCountPresentationActive_ ? -1 : FindPendingUnlockStage();
 	if (unlockingStageIndex_ >= 0) {
 		selectedStageIndex_ = unlockingStageIndex_;
 		DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
@@ -251,6 +301,7 @@ void GameSelectScene::Initialize() {
 }
 
 void GameSelectScene::Finalize() {
+	MeshEffectManager::GetInstance()->Clear();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
@@ -363,7 +414,8 @@ void GameSelectScene::Draw() {
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 
-	if (skybox_ && camera) {
+	if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
+		skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
 		skybox_->Draw(camera->GetConstantBuffer());
 	}
 
@@ -571,9 +623,10 @@ void GameSelectScene::UpdateUI() {
 		}
 	}
 
-	SetStageSelectHUDNumber(stageSelectCrownDigits_, save->GetClearedStageCount(), crownNumber, visible);
+	SetStageSelectHUDNumber(stageSelectCrownDigits_, GetDisplayedCrownCount(), crownNumber, visible);
 	SetStageSelectHUDNumber(stageSelectStarDigits_, save->GetCollectedStarCoinCount(), starNumber, visible);
 	SetStageSelectHUDNumber(stageSelectCoinDigits_, save->GetCoins(), coinNumber, visible);
+	UpdateStageSelectCrownHudReward();
 }
 
 void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
@@ -584,9 +637,10 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 		if (stageDecisionCooldown_ < 0.0f) stageDecisionCooldown_ = 0.0f;
 	}
 
+	UpdateStageClearRewardPresentation(deltaTime);
 	UpdateUnlockPresentation(deltaTime);
 
-	if (unlockingStageIndex_ >= 0) {
+	if (crownCountPresentationActive_ || unlockingStageIndex_ >= 0) {
 		ApplyStageGateStates();
 		UpdateStageSelectDecorations(deltaTime);
 		return;
@@ -718,6 +772,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
 		return;
 	}
 
+	const bool firstFrame = unlockPresentationTimer_ <= 0.0f;
 	unlockPresentationTimer_ += deltaTime;
 	unlockParticleTimer_ -= deltaTime;
 	selectedStageIndex_ = unlockingStageIndex_;
@@ -729,17 +784,39 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
 		transform->isQuaternionMaster = false;
 		crown->SetColor({ 1.0f, 0.78f, 0.18f, 1.0f });
 		crown->SetEmissive(3.5f + std::sin(stageSelectTime_ * 9.0f) * 0.8f);
+		crown->SetGPUParticleName(kCrownIdleParticlePreset);
+		crown->SetMeshEffect1Name(kCrownAuraEffectPath);
+		crown->SetMeshEffect2Name(kCrownRayEffectPath);
+	}
+
+	if (firstFrame && crown) {
+		const Vector3 crownPos = crown->GetWorldPosition();
+		const Vector3 flashPos = crownPos + Vector3{ 0.0f, 0.75f, 0.0f };
+		const Vector3 burstPos = crownPos + Vector3{ 0.0f, 1.18f, 0.0f };
+		MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, flashPos, { 0.0f, 0.0f, 0.0f });
+		MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockRayFlashEffectPath, burstPos, { 0.0f, 0.0f, 0.0f });
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockRayParticlePreset, burstPos);
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockFountainParticlePreset, burstPos);
 	}
 
 	if (unlockParticleTimer_ <= 0.0f && particleSystem_) {
-		unlockParticleTimer_ = 0.08f;
+		unlockParticleTimer_ = 0.18f;
 		Vector3 up = { 0.0f, 1.0f, 0.0f };
 		Vector3 nodePos = GetStageNodePosition(unlockingStageIndex_);
 		if (crown) {
+			GPUParticleManager::GetInstance()->Emit(
+				kCrownUnlockParticlePreset,
+				crown->GetWorldPosition() + Vector3{ 0.0f, 1.15f, 0.0f }
+			);
+			GPUParticleManager::GetInstance()->Emit(
+				kCrownUnlockFountainParticlePreset,
+				crown->GetWorldPosition() + Vector3{ 0.0f, 1.20f, 0.0f }
+			);
 			particleSystem_->SpawnParticles(
 				crown->GetWorldPosition() + Vector3{ 0.0f, 1.6f, 0.0f },
-				6,
-				5.5f,
+				4,
+				4.7f,
 				&up,
 				1.1f,
 				{ 1.0f, 0.86f, 0.22f, 1.0f },
@@ -785,6 +862,9 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 		transform->isQuaternionMaster = false;
 		crown->SetColor({ 1.0f, 0.72f, 0.18f, 1.0f });
 		crown->SetEmissive(1.5f + pulse * 0.45f);
+		crown->SetGPUParticleName(kCrownIdleParticlePreset);
+		crown->SetMeshEffect1Name(kCrownAuraEffectPath);
+		crown->SetMeshEffect2Name(kCrownRayEffectPath);
 	}
 
 	for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
@@ -925,6 +1005,9 @@ Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
 	crown->SetScale({ kStageClearCrownBaseScale, kStageClearCrownBaseScale, kStageClearCrownBaseScale });
 	crown->SetColor({ 1.0f, 0.86f, 0.20f, 1.0f });
 	crown->SetEmissive(1.85f);
+	crown->SetGPUParticleName(kCrownIdleParticlePreset);
+	crown->SetMeshEffect1Name(kCrownAuraEffectPath);
+	crown->SetMeshEffect2Name(kCrownRayEffectPath);
 	crown->SetTranslate(GetStageClearCrownPosition(stageIndex));
 	crown->UpdateLocalMatrix();
 	crown->UpdateWorldMatrix();
@@ -953,6 +1036,11 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
 			continue;
 		}
 
+		if (crownCountPresentationActive_ && stageIndex == crownCountPresentationStageIndex_) {
+			UpdateStageClearRewardCrown(crown, stageIndex, deltaTime);
+			continue;
+		}
+
 		Transform* transform = crown->GetTransform();
 		const float bob = std::sin(stageSelectTime_ * 2.6f + static_cast<float>(stageIndex) * 0.75f) * 0.10f;
 		Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
@@ -966,9 +1054,199 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
 		transform->scale = { scale, scale, scale };
 		crown->SetColor({ 1.0f, 0.82f + pulse * 0.12f, 0.20f, 1.0f });
 		crown->SetEmissive(1.85f + pulse * 0.55f);
+		crown->SetGPUParticleName(kCrownIdleParticlePreset);
+		crown->SetMeshEffect1Name(kCrownAuraEffectPath);
+		crown->SetMeshEffect2Name(kCrownRayEffectPath);
 		crown->UpdateLocalMatrix();
 		crown->UpdateWorldMatrix();
 	}
+}
+
+void GameSelectScene::StartStageClearRewardPresentation(const GameDataManager::StageClearRewardPresentation& request) {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	if (!request.active ||
+		request.stageIndex < 0 ||
+		request.stageIndex >= static_cast<int>(stages.size())) {
+		return;
+	}
+
+	crownCountPresentationActive_ = true;
+	crownCountPresentationImpactDone_ = false;
+	crownCountPresentationStageIndex_ = request.stageIndex;
+	crownCountPresentationFrom_ = std::clamp(request.previousCrownCount, 0, 999);
+	crownCountPresentationTo_ = std::clamp(request.newCrownCount, 0, 999);
+	crownCountPresentationTimer_ = 0.0f;
+	crownCountPresentationParticleTimer_ = 0.0f;
+	selectedStageIndex_ = crownCountPresentationStageIndex_;
+
+	DebugConsole::GetInstance()->AddLog("Stage Select: crown count presentation start.");
+}
+
+void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
+	if (!crownCountPresentationActive_) {
+		return;
+	}
+
+	crownCountPresentationTimer_ += deltaTime;
+	crownCountPresentationParticleTimer_ -= deltaTime;
+	selectedStageIndex_ = crownCountPresentationStageIndex_;
+
+	Object3d* crown = EnsureStageClearCrown(crownCountPresentationStageIndex_);
+	const Vector3 targetPos = GetStageClearCrownPosition(crownCountPresentationStageIndex_);
+	const Vector3 crownPos = crown ? crown->GetWorldPosition() : targetPos;
+	const Vector3 burstPos = (crownCountPresentationTimer_ < kCrownCountImpactTime ? crownPos : targetPos) + Vector3{ 0.0f, 1.05f, 0.0f };
+
+	if (crownCountPresentationParticleTimer_ <= 0.0f) {
+		crownCountPresentationParticleTimer_ = kCrownCountParticleInterval;
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockFountainParticlePreset, burstPos);
+		if (crownCountPresentationTimer_ >= kCrownCountImpactTime) {
+			GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
+		}
+	}
+
+	if (!crownCountPresentationImpactDone_ &&
+		crownCountPresentationTimer_ >= kCrownCountImpactTime) {
+		crownCountPresentationImpactDone_ = true;
+		MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, targetPos + Vector3{ 0.0f, 0.45f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 1.15f, 1.0f, 1.15f });
+		MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockRayFlashEffectPath, burstPos, { 0.0f, 0.0f, 0.0f }, { 1.05f, 1.05f, 1.05f });
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, burstPos);
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockRayParticlePreset, burstPos);
+		GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
+		GameAudioSettings::GetInstance()->PlaySE("crown_get", 0.95f);
+
+		if (particleSystem_) {
+			Vector3 up = { 0.0f, 1.0f, 0.0f };
+			particleSystem_->SpawnParticles(
+				burstPos,
+				12,
+				6.0f,
+				&up,
+				1.35f,
+				{ 1.0f, 0.88f, 0.24f, 1.0f },
+				{ 1.0f, 0.98f, 0.58f, 0.0f },
+				0.34f,
+				0.82f,
+				0.58f,
+				0.04f
+			);
+		}
+	}
+
+	if (crownCountPresentationTimer_ >= kCrownCountPresentationDuration) {
+		crownCountPresentationActive_ = false;
+		crownCountPresentationStageIndex_ = -1;
+		crownCountPresentationTimer_ = 0.0f;
+		crownCountPresentationParticleTimer_ = 0.0f;
+		crownCountPresentationImpactDone_ = false;
+
+		unlockingStageIndex_ = FindPendingUnlockStage();
+		if (unlockingStageIndex_ >= 0) {
+			selectedStageIndex_ = unlockingStageIndex_;
+			unlockPresentationTimer_ = 0.0f;
+			unlockParticleTimer_ = 0.0f;
+			DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
+		}
+	}
+}
+
+void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageIndex, float deltaTime) {
+	if (!crown) {
+		return;
+	}
+
+	const Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
+	Transform* transform = crown->GetTransform();
+
+	Vector3 position = targetPos;
+	float scale = kStageClearCrownBaseScale;
+	float emissive = 3.1f;
+	const float t = crownCountPresentationTimer_;
+
+	if (t < kCrownCountImpactTime) {
+		const float p = SelectClamp01(t / kCrownCountImpactTime);
+		const float e = SelectEaseOutCubic(p);
+		const Vector3 startPos = targetPos + Vector3{ 0.0f, 4.35f, 0.0f };
+		position = SelectLerp(startPos, targetPos, e);
+		position.y += std::sin(p * std::numbers::pi_v<float>) * 0.62f;
+		scale = kStageClearCrownBaseScale * (0.18f + SelectEaseOutBack(p) * 0.92f);
+		emissive = 2.6f + p * 2.8f;
+		transform->rotate.y += deltaTime * (8.0f + (1.0f - p) * 7.5f);
+		transform->rotate.z = std::sin(p * std::numbers::pi_v<float>) * 0.42f;
+	} else {
+		const float p = t - kCrownCountImpactTime;
+		const float decay = std::max(0.0f, 1.0f - p / 1.35f);
+		const float bounce = std::abs(std::sin(p * 11.0f)) * 0.24f * decay;
+		const float pop = std::sin(SelectClamp01(p / 0.42f) * std::numbers::pi_v<float>);
+		position.y += bounce;
+		scale = kStageClearCrownBaseScale * (1.0f + pop * 0.34f + std::sin(p * 14.0f) * 0.08f * decay);
+		emissive = 2.55f + pop * 2.2f + decay * 0.9f;
+		transform->rotate.y += deltaTime * (2.0f + decay * 4.5f);
+		transform->rotate.z = std::sin(stageSelectTime_ * 5.0f) * 0.12f * std::max(0.25f, decay);
+	}
+
+	transform->translate = position;
+	transform->scale = { scale, scale, scale };
+	transform->isQuaternionMaster = false;
+	crown->SetIsVisible(true);
+	crown->SetColor({ 1.0f, 0.86f, 0.18f, 1.0f });
+	crown->SetEmissive(emissive);
+	crown->SetGPUParticleName(kCrownIdleParticlePreset);
+	crown->SetMeshEffect1Name(kCrownAuraEffectPath);
+	crown->SetMeshEffect2Name(kCrownRayEffectPath);
+	crown->UpdateLocalMatrix();
+	crown->UpdateWorldMatrix();
+}
+
+void GameSelectScene::UpdateStageSelectCrownHudReward() {
+	auto applySprite = [](StageSelectHudSprite& state, float scale, const Vector4& color, float rotation) {
+		if (!state.sprite) {
+			return;
+		}
+
+		state.sprite->SetPosition(state.basePosition);
+		state.sprite->SetSize({ state.baseSize.x * scale, state.baseSize.y * scale });
+		state.sprite->SetColor(color);
+		state.sprite->SetRotation(rotation);
+		state.sprite->Update();
+	};
+
+	if (!crownCountPresentationActive_) {
+		applySprite(stageSelectCrownIcon_, 1.0f, stageSelectCrownIcon_.baseColor, 0.0f);
+		applySprite(stageSelectCrownXIcon_, 1.0f, stageSelectCrownXIcon_.baseColor, 0.0f);
+		for (StageSelectHudSprite& digit : stageSelectCrownDigits_) {
+			applySprite(digit, 1.0f, digit.baseColor, 0.0f);
+		}
+		return;
+	}
+
+	const float t = crownCountPresentationTimer_;
+	const float impactAge = std::max(0.0f, t - kCrownCountImpactTime);
+	const float prePulse = std::sin(stageSelectTime_ * 11.0f) * 0.035f;
+	const float pop = crownCountPresentationImpactDone_
+		? std::sin(SelectClamp01(impactAge / 0.52f) * std::numbers::pi_v<float>) * 0.42f
+		: 0.0f;
+	const float glow = crownCountPresentationImpactDone_
+		? std::max(0.0f, 1.0f - impactAge / 1.15f)
+		: 0.0f;
+	const Vector4 hotCrown = { 1.0f, 0.88f + glow * 0.10f, 0.22f + glow * 0.34f, 1.0f };
+	const Vector4 hotNumber = { 1.0f, 0.92f + glow * 0.08f, 0.36f + glow * 0.32f, 1.0f };
+
+	applySprite(stageSelectCrownIcon_, 1.0f + prePulse + pop * 0.62f, hotCrown, std::sin(stageSelectTime_ * 7.0f) * 0.06f * (1.0f + glow));
+	applySprite(stageSelectCrownXIcon_, 1.0f + pop * 0.24f, hotNumber, 0.0f);
+	for (StageSelectHudSprite& digit : stageSelectCrownDigits_) {
+		applySprite(digit, 1.0f + pop, hotNumber, 0.0f);
+	}
+}
+
+int GameSelectScene::GetDisplayedCrownCount() const {
+	if (crownCountPresentationActive_ &&
+		!crownCountPresentationImpactDone_ &&
+		crownCountPresentationTimer_ < kCrownCountImpactTime) {
+		return crownCountPresentationFrom_;
+	}
+	return crownCountPresentationActive_
+		? crownCountPresentationTo_
+		: GameDataManager::GetInstance()->GetClearedStageCount();
 }
 
 Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) const {

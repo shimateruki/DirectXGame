@@ -1,17 +1,17 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
+#include <memory>
 #include <string>
-#include <memory> 
 
 /// <summary>
-/// シーン工場（抽象クラス）
+/// SceneManager が具体的なシーンクラスを知らずに生成するための抽象ファクトリ。
 /// </summary>
 class AbstractSceneFactory {
 public:
     virtual ~AbstractSceneFactory() = default;
 
     /// <summary>
-    /// シーンを生成する
+    /// sceneName に対応するシーンを生成する。
     /// </summary>
     virtual std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) = 0;
 };

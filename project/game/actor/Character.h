@@ -1,19 +1,17 @@
 #pragma once
-#include "Object3d.h"
 #include "InputManager.h"
+#include "Object3d.h"
 
 /// <summary>
-/// 物理的な振る舞いを持つキャラクターの基底クラス
+/// 速度、重力、接地判定など、物理的に動くキャラクターの基底クラス。
 /// </summary>
 class Character : public Object3d {
 public:
-
-
-    // 衝突応答の基本処理（押し戻し）を実装
+    // 衝突時の基本的な押し戻しを行う
     bool OnCollision(Object3d* other) override;
 
     /// <summary>
-    /// 物理挙動を適用した更新処理
+    /// 速度と重力を反映して座標を更新する。
     /// </summary>
     void Update(float deltaTime) override;
 
@@ -23,11 +21,11 @@ public:
     void SetVelocity(const Vector3& v) { velocity_ = v; }
 
     bool IsGrounded() const { return isGrounded_; }
+
     /// <summary>
-     /// このキャラクターに適用される重力を設定する
-     /// </summary>
+    /// このキャラクターに適用する重力を設定する。
+    /// </summary>
     void SetGravity(float gravity) {
-        //  安全策：もしパラメータがまだ無ければ作る
         if (!this->param_.has_value()) {
             this->param_.emplace();
         }
@@ -35,23 +33,20 @@ public:
     }
 
     /// <summary>
-    /// このキャラクターの最大落下速度を設定する
+    /// 最大落下速度を設定する。
     /// </summary>
     void SetMaxFallSpeed(float maxFallSpeed) {
-        // 安全策
         if (!this->param_.has_value()) {
             this->param_.emplace();
         }
         this->param_->maxFallSpeed = maxFallSpeed;
     }
 
-
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
     std::unique_ptr<Object3d> Clone() const override;
+
 protected:
-    Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
-
-    bool isGrounded_ = false;
-
+    Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 現在速度。
+    bool isGrounded_ = false;                 // 最後の更新で接地しているか。
 };

@@ -109,7 +109,17 @@ public:
     // --- データまとめる用 ---
     struct MaterialData {
         std::string textureFilePath;
+        std::string normalMapPath;
+        std::string ormMapPath;
         uint32_t textureHandle = 0;
+        uint32_t normalMapHandle = 0;
+        uint32_t ormMapHandle = 0;
+        Vector4 baseColorFactor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float roughness = 0.5f;
+        float metallic = 0.0f;
+        bool hasNormalMap = false;
+        bool hasOrmMap = false;
+        bool doubleSided = false;
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
         Material* materialData = nullptr;
     };
@@ -175,6 +185,9 @@ public: // メンバ関数
         return modelData_.materials[0].textureHandle;
     }
     const ModelData& GetModelData() const { return modelData_; }
+    const MaterialData* GetPrimaryMaterialData() const {
+        return modelData_.materials.empty() ? nullptr : &modelData_.materials[0];
+    }
     Vector3 GetSize() const { return size_; }
     Vector3 GetCenter() const { return center_; }
     void ApplyAnimation(const Animation& animation, float time);

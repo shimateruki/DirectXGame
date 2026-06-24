@@ -9,6 +9,21 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
+namespace {
+float ResolveTargetRootYaw(Object3d* targetObject) {
+    if (!targetObject) {
+        return 0.0f;
+    }
+
+    Object3d* rootObject = targetObject;
+    while (rootObject && rootObject->GetParent()) {
+        rootObject = rootObject->GetParent();
+    }
+
+    return rootObject ? rootObject->GetRotation().y : targetObject->GetRotation().y;
+}
+}
+
 float ApplyEasing1(int type, float t) {
     switch (type) {
     case 0: return Easing::Linear(t);
@@ -65,10 +80,11 @@ void EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialData_->scrollSpeed = { 0.0f, -1.0f }; // デフォルトはV方向に流れる
     materialData_->time = 0.0f;
     materialData_->intensity = 2.0f; // 少し光らせる
-    materialData_->distortionStrength = 0.05f; // 少し歪ませる
+    materialData_->distortionStrength = 0.0f; // 少し歪ませる
     materialData_->distortionSpeed = 15.0f;    // 少し速く
     materialData_->edgeFadeStrength = 1.5f;   // 少し削る
     materialData_->alphaReference = 0.0f;     // デフォルト: 完全透明のみdiscard
+    materialData_->enableDistortion = 0;
 }
 
 void EffectObject3d::Update(float deltaTime) {
@@ -114,6 +130,18 @@ void EffectObject3d::Update(float deltaTime) {
     currentColor.z = std::lerp(startColor_.z, endColor_.z, easeProgress);
     currentColor.w = std::lerp(startColor_.w, endColor_.w, easeProgress);
     SetColor(currentColor);
+
+    if (targetObject_) {
+        Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
+        Vector3 followPos = Math::TransformNormal(offsetPos_, worldMat);
+        followPos.x += worldMat.m[3][0];
+        followPos.y += worldMat.m[3][1];
+        followPos.z += worldMat.m[3][2];
+
+        const float targetYaw = ResolveTargetRootYaw(targetObject_);
+        SetTranslate(followPos);
+        SetRotation({ offsetRot_.x, offsetRot_.y + targetYaw, offsetRot_.z });
+    }
 
     // 寿命が来たら再生終了（またはループ）
     if (progress >= 1.0f) {

@@ -39,6 +39,10 @@ void GPUParticleEditor::Update(float deltaTime) {
             emitTimer_ = 0.0f;
         }
     }
+
+    if (isThisEditorSelected) {
+        GPUParticleManager::GetInstance()->Update(deltaTime);
+    }
 }
 void GPUParticleEditor::DrawImGui() {
 #ifdef USE_IMGUI
@@ -391,6 +395,23 @@ void GPUParticleEditor::DrawImGui() {
             Load(presetNameInput_);
         }
     }
+    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Sprite Sheet Animation")) {
+        ImGui::DragInt("Columns", &config_.spriteSheetColumns, 1.0f, 1, 16);
+        ImGui::DragInt("Rows", &config_.spriteSheetRows, 1.0f, 1, 16);
+        ImGui::DragInt("Frame Count", &config_.spriteSheetFrameCount, 1.0f, 1, 256);
+        ImGui::DragFloat("FPS", &config_.spriteSheetFps, 0.5f, 0.0f, 60.0f);
+
+        bool loop = config_.spriteSheetLoop != 0;
+        if (ImGui::Checkbox("Loop", &loop)) {
+            config_.spriteSheetLoop = loop ? 1 : 0;
+        }
+
+        bool randomStart = config_.spriteSheetRandomStart != 0;
+        if (ImGui::Checkbox("Random Start", &randomStart)) {
+            config_.spriteSheetRandomStart = randomStart ? 1 : 0;
+        }
+    }
 #endif
 }
 
@@ -455,6 +476,14 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["restitution"] = config_.restitution;
     j["colorIntensity"] = config_.colorIntensity;
     j["texturePath"] = config_.texturePath;
+    j["spriteAnimation"] = {
+        { "columns", config_.spriteSheetColumns },
+        { "rows", config_.spriteSheetRows },
+        { "frameCount", config_.spriteSheetFrameCount },
+        { "fps", config_.spriteSheetFps },
+        { "loop", config_.spriteSheetLoop != 0 },
+        { "randomStart", config_.spriteSheetRandomStart != 0 }
+    };
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -473,6 +502,13 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         json j;
         file >> j;
         file.close();
+
+        config_.spriteSheetColumns = 1;
+        config_.spriteSheetRows = 1;
+        config_.spriteSheetFrameCount = 1;
+        config_.spriteSheetFps = 0.0f;
+        config_.spriteSheetLoop = 0;
+        config_.spriteSheetRandomStart = 0;
 
         if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
         if (j.contains("emitArea")) { config_.emitArea.x = j["emitArea"][0]; config_.emitArea.y = j["emitArea"][1]; config_.emitArea.z = j["emitArea"][2]; }
@@ -509,6 +545,29 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("colorIntensity")) config_.colorIntensity = j["colorIntensity"];
         if (j.contains("texturePath")) {
             config_.texturePath = j["texturePath"];
+        }
+        if (j.contains("spriteSheetColumns")) config_.spriteSheetColumns = j["spriteSheetColumns"];
+        if (j.contains("spriteSheetRows")) config_.spriteSheetRows = j["spriteSheetRows"];
+        if (j.contains("spriteSheetFrameCount")) config_.spriteSheetFrameCount = j["spriteSheetFrameCount"];
+        if (j.contains("spriteSheetFps")) config_.spriteSheetFps = j["spriteSheetFps"];
+        if (j.contains("spriteSheetLoop")) {
+            config_.spriteSheetLoop = j["spriteSheetLoop"].is_boolean() ? (j["spriteSheetLoop"].get<bool>() ? 1 : 0) : j["spriteSheetLoop"].get<int>();
+        }
+        if (j.contains("spriteSheetRandomStart")) {
+            config_.spriteSheetRandomStart = j["spriteSheetRandomStart"].is_boolean() ? (j["spriteSheetRandomStart"].get<bool>() ? 1 : 0) : j["spriteSheetRandomStart"].get<int>();
+        }
+        if (j.contains("spriteAnimation")) {
+            const auto& anim = j["spriteAnimation"];
+            if (anim.contains("columns")) config_.spriteSheetColumns = anim["columns"];
+            if (anim.contains("rows")) config_.spriteSheetRows = anim["rows"];
+            if (anim.contains("frameCount")) config_.spriteSheetFrameCount = anim["frameCount"];
+            if (anim.contains("fps")) config_.spriteSheetFps = anim["fps"];
+            if (anim.contains("loop")) {
+                config_.spriteSheetLoop = anim["loop"].is_boolean() ? (anim["loop"].get<bool>() ? 1 : 0) : anim["loop"].get<int>();
+            }
+            if (anim.contains("randomStart")) {
+                config_.spriteSheetRandomStart = anim["randomStart"].is_boolean() ? (anim["randomStart"].get<bool>() ? 1 : 0) : anim["randomStart"].get<int>();
+            }
         }
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);

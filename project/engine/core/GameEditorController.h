@@ -63,6 +63,7 @@ public:
 	void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);
 	void ApplyCameraOverrides();
 	void SaveAllEditors();
+	void RequestExit();
 
 	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 
@@ -73,7 +74,9 @@ private:
 	void RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	void DrawUnsavedExitConfirmPopup();
 	bool HasUnsavedEditorChanges() const;
+	void ClearSceneBoundEditorState();
 	void DrawStatusWindow(
 		float& timeScale,
 		float sceneUpdateTimeMs,
@@ -104,6 +107,7 @@ private:
 	bool previousPlayingState_ = false;
 	bool dockspaceInitialized_ = false;
 	bool openUnsavedPlayConfirm_ = false;
+	bool openUnsavedExitConfirm_ = false;
 };
 
 #endif

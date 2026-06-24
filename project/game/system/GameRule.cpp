@@ -9,7 +9,47 @@
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "GPUParticleManager.h"
+#include "MeshEffectManager.h"
+#include "GameAudioSettings.h"
+#include "HitEffectDirector.h"
 #include <PlayerState.h>
+#include <algorithm>
+
+namespace {
+constexpr const char* kCrownGetBurstPreset = "crown_get_burst";
+constexpr const char* kCrownGetRaysPreset = "crown_get_rays";
+constexpr const char* kCrownGetFountainPreset = "crown_get_twinkle_fountain";
+constexpr const char* kCrownGetAfterglowPreset = "crown_get_afterglow";
+constexpr const char* kCrownGetFlashRingEffect = "Resources/json/effect/effect_crown_get_flash_ring.json";
+constexpr const char* kCrownGetRayFlashEffect = "Resources/json/effect/effect_crown_get_ray_flash.json";
+constexpr const char* kCrownIdleParticlePreset = "crown_idle_sparkle";
+constexpr const char* kCrownAuraEffect = "Resources/json/effect/effect_crown_aura_ring.json";
+constexpr const char* kCrownRayEffect = "Resources/json/effect/effect_crown_ray_plane.json";
+
+void PlayCrownGetPresentation(Object3d* crownObject) {
+    if (!crownObject) {
+        return;
+    }
+
+    const Vector3 basePos = crownObject->GetWorldPosition();
+    const Vector3 flashPos = basePos + Vector3{ 0.0f, 0.65f, 0.0f };
+    const Vector3 burstPos = basePos + Vector3{ 0.0f, 1.15f, 0.0f };
+
+    crownObject->SetGPUParticleName(kCrownIdleParticlePreset);
+    crownObject->SetMeshEffect1Name(kCrownAuraEffect);
+    crownObject->SetMeshEffect2Name(kCrownRayEffect);
+
+    MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownGetFlashRingEffect, flashPos, { 0.0f, 0.0f, 0.0f }, { 1.12f, 1.0f, 1.12f });
+    MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownGetRayFlashEffect, burstPos, { 0.0f, 0.0f, 0.0f }, { 1.08f, 1.08f, 1.08f });
+
+    GPUParticleManager::GetInstance()->Emit(kCrownGetAfterglowPreset, burstPos);
+    GPUParticleManager::GetInstance()->Emit(kCrownGetRaysPreset, burstPos);
+    GPUParticleManager::GetInstance()->Emit(kCrownGetFountainPreset, burstPos);
+    GPUParticleManager::GetInstance()->Emit(kCrownGetBurstPreset, burstPos);
+
+    GameAudioSettings::GetInstance()->PlaySE("crown_get");
+}
+}
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -66,8 +106,18 @@ void GameRule::Initialize(BaseScene* scene) {
         case EventType::Goal:
         {
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
-                gps->SetIsGoal(true);
-                DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Press Space to Select.");
+                if (!gps->IsGoal()) {
+                    PlayCrownGetPresentation(objectHit);
+                    gps->StartGoalPresentation(objectHit);
+                }
+                DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
+            }
+            else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
+                if (!preview->IsGoal()) {
+                    PlayCrownGetPresentation(objectHit);
+                    preview->SetIsGoal(true);
+                    DebugConsole::GetInstance()->AddLog("PREVIEW GOAL! Press Space to Select.");
+                }
             }
         }
         break;
@@ -135,14 +185,29 @@ void GameRule::Initialize(BaseScene* scene) {
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
+        Player* playerTarget = dynamic_cast<Player*>(event.target);
+        const bool isThunderSlimePlayerHit =
+            playerTarget && event.attacker && event.attacker->GetEnemyType() == "ThunderSlime";
+
+        HitEffectDirector::SpawnDamageEventHit(event.target, event.attacker, event.knockbackVelocity);
+
+        float finalDamage = event.damageAmount;
+        if (event.attacker && event.attacker->param_.has_value()) {
+            finalDamage *= (std::max)(0.0f, event.attacker->param_->attackPower);
+        }
 
         // 汎用関数 ApplyDamage を呼ぶ！
-        ApplyDamage(event.target, event.damageAmount);
+        ApplyDamage(event.target, finalDamage);
+
+        if (isThunderSlimePlayerHit) {
+            playerTarget->StartElectricShockFeedback(0.78f, 1.0f);
+        }
 
         // ノックバック（吹き飛ばし）があれば適用
-        if (std::abs(event.knockbackVelocity.x) > 0.001f || 
-            std::abs(event.knockbackVelocity.y) > 0.001f || 
-            std::abs(event.knockbackVelocity.z) > 0.001f) 
+        if (!isThunderSlimePlayerHit &&
+            (std::abs(event.knockbackVelocity.x) > 0.001f ||
+            std::abs(event.knockbackVelocity.y) > 0.001f ||
+            std::abs(event.knockbackVelocity.z) > 0.001f))
         {
             if (Character* character = dynamic_cast<Character*>(event.target)) {
                 character->SetVelocity(event.knockbackVelocity);
@@ -179,7 +244,13 @@ void GameRule::ApplyDamage(Object3d* target, float damage) {
         }
     }
     if (target->param_.has_value()) {
+        target->param_->maxHp = (std::max)(target->param_->maxHp, 1.0f);
+        target->param_->hp = (std::max)(target->param_->hp, 0.0f);
+        if (target->param_->hp > target->param_->maxHp) {
+            target->param_->maxHp = target->param_->hp;
+        }
         target->param_->hp -= damage;
+        target->param_->hp = std::clamp(target->param_->hp, 0.0f, target->param_->maxHp);
 
         DebugConsole::GetInstance()->AddLog(target->GetName() + " に " + std::to_string(damage) + " のダメージ！ 残りHP: " + std::to_string(target->param_->hp));
 

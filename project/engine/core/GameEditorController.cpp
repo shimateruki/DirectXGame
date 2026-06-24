@@ -23,6 +23,7 @@
 #include "LightEditor.h"
 #include "MeshEffectEditor.h"
 #include "MeshEffectManager.h"
+#include "Object3d.h"
 #include "ParticleEditor.h"
 #include "PostEffect.h"
 #include "PostEffectEditor.h"
@@ -43,6 +44,25 @@
 #include "imgui_internal.h"
 
 #include <algorithm>
+
+namespace {
+
+bool IsObjectInCurrentScene(SceneManager* sceneManager, Object3d* object) {
+	if (!object) {
+		return false;
+	}
+	BaseScene* currentScene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
+	if (!currentScene) {
+		return false;
+	}
+
+	auto& objects = currentScene->GetObjects();
+	return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<Object3d>& sceneObject) {
+		return sceneObject.get() == object;
+	});
+}
+
+}
 
 GameEditorController::GameEditorController() = default;
 GameEditorController::~GameEditorController() = default;
@@ -185,6 +205,8 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
 			D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
 			ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
+			const ImVec2 imageMin = ImGui::GetItemRectMin();
+			const ImVec2 imageMax = ImGui::GetItemRectMax();
 
 			GameViewArea area{
 				imageScreenPos.x,
@@ -205,6 +227,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
 			if (debugEditor_) {
 				debugEditor_->SetGameViewRegion({ area.screenX, area.screenY }, { area.width, area.height });
+				debugEditor_->SetGameViewScreenRect(imageMin.x, imageMin.y, imageMax.x, imageMax.y);
 				debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 				debugEditor_->SetGameViewHovered(isHovered);
 				debugEditor_->Update();
@@ -320,6 +343,27 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 			Vector2{ area.screenX, area.screenY },
 			Vector2{ area.width, area.height });
 	}
+	else if (debugEditor_) {
+		Object3d* selectedObject = debugEditor_->GetSelectedObject();
+		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();
+		if (selectedObject && !IsObjectInCurrentScene(editorSceneManager, selectedObject)) {
+			debugEditor_->SetSelectedObject(nullptr);
+			if (EditorManager::GetInstance()->GetSelectedObject() == debugEditor_.get()) {
+				EditorManager::GetInstance()->ClearSelection();
+			}
+			selectedObject = nullptr;
+		}
+		if (selectedObject && selectedObject->recorder_) {
+			selectedObject->recorder_->SetSceneManager(editorSceneManager);
+		}
+		if (selectedObject && selectedObject->recorder_ && selectedObject->recorder_->HasPreviewData()) {
+			selectedObject->recorder_->DrawPreview(
+				camera->GetViewProjectionMatrix(),
+				Vector2{ area.screenX, area.screenY },
+				Vector2{ area.width, area.height },
+				true);
+		}
+	}
 
 	if (ghostDirector_ && EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_.get()) {
 		ghostDirector_->DrawPreview(
@@ -349,6 +393,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 	if (previousPlayingState_ != isPlaying && !isPlaying) {
 		MeshEffectManager::GetInstance()->Clear();
 		DebrisEffectManager::GetInstance()->Clear();
+		ClearSceneBoundEditorState();
 		if (sceneManager) {
 			sceneManager->ChangeScene(currentSceneName);
 		}
@@ -371,6 +416,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		const char* sceneNames[] = { "TITLE", "SELECT", "GAMEPLAY", "GAMEOVER", "GAMECLEAR", "PREVIEW", "TUTORIAL" };
 		for (const char* sceneName : sceneNames) {
 			if (ImGui::MenuItem(sceneName) && sceneManager) {
+				ClearSceneBoundEditorState();
 				sceneManager->ChangeScene(sceneName);
 			}
 		}
@@ -389,10 +435,20 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 
 	ImGui::EndMainMenuBar();
 	DrawUnsavedPlayConfirmPopup(sceneManager, isPlaying, currentSceneName);
+	DrawUnsavedExitConfirmPopup();
 }
 
 bool GameEditorController::HasUnsavedEditorChanges() const {
 	return debugEditor_ && debugEditor_->HasAnyDirty();
+}
+
+void GameEditorController::RequestExit() {
+	if (HasUnsavedEditorChanges()) {
+		openUnsavedExitConfirm_ = true;
+		return;
+	}
+
+	WinApp::CloseNow();
 }
 
 void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
@@ -405,6 +461,7 @@ void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlayi
 }
 
 void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	ClearSceneBoundEditorState();
 	if (sceneManager) {
 		sceneManager->ChangeScene(currentSceneName);
 	}
@@ -414,6 +471,16 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 		sceneManager->SetIsPlaying(true);
 	}
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+}
+
+void GameEditorController::ClearSceneBoundEditorState() {
+	if (ghostRecorder_) {
+		ghostRecorder_->ClearTarget();
+	}
+	if (debugEditor_) {
+		debugEditor_->SetSelectedObject(nullptr);
+	}
+	EditorManager::GetInstance()->ClearSelection();
 }
 
 void GameEditorController::DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
@@ -445,6 +512,41 @@ void GameEditorController::DrawUnsavedPlayConfirmPopup(SceneManager* sceneManage
 	ImGui::SameLine();
 	if (ImGui::Button(ICON_FA_TIMES " キャンセル", ImVec2(130.0f, 0.0f))) {
 		DebugConsole::GetInstance()->AddLog("Play Warning: 未保存のため開始をキャンセルしました。");
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
+}
+
+void GameEditorController::DrawUnsavedExitConfirmPopup() {
+	const char* popupName = "未保存の変更があります###UnsavedExitConfirm";
+	if (openUnsavedExitConfirm_) {
+		ImGui::OpenPopup(popupName);
+		openUnsavedExitConfirm_ = false;
+	}
+
+	ImGui::SetNextWindowSize(ImVec2(430.0f, 0.0f), ImGuiCond_Appearing);
+	if (!ImGui::BeginPopupModal(popupName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		return;
+	}
+
+	ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.32f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " この変更はまだ保存されていません。");
+	ImGui::Spacing();
+	ImGui::TextWrapped("保存されていない変更があります。このまま終了すると、未保存の編集内容が失われる可能性があります。");
+	if (debugEditor_) {
+		ImGui::Spacing();
+		ImGui::TextDisabled("未保存: %s", debugEditor_->GetDirtySummaryText().c_str());
+	}
+	ImGui::Separator();
+
+	if (ImGui::Button(ICON_FA_STOP " 保存せず終了", ImVec2(170.0f, 0.0f))) {
+		DebugConsole::GetInstance()->AddLog("Exit Warning: 未保存の変更を破棄して終了しました。");
+		WinApp::CloseNow();
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_TIMES " キャンセル", ImVec2(130.0f, 0.0f))) {
+		DebugConsole::GetInstance()->AddLog("Exit Warning: 未保存のため終了をキャンセルしました。");
 		ImGui::CloseCurrentPopup();
 	}
 
@@ -574,7 +676,32 @@ void GameEditorController::CapturePendingThumbnails() {
 
 void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 	if (debugEditor_) {
-		debugEditor_->DrawPreview(pointLightResource, spotLightResource);
+		SceneManager* editorSceneManager = debugEditor_->GetSceneManager();
+		const bool isPlaying = editorSceneManager && editorSceneManager->IsPlaying();
+		if (!isPlaying) {
+			Object3d* selectedObject = debugEditor_->GetSelectedObject();
+			if (selectedObject && !IsObjectInCurrentScene(editorSceneManager, selectedObject)) {
+				debugEditor_->SetSelectedObject(nullptr);
+				if (EditorManager::GetInstance()->GetSelectedObject() == debugEditor_.get()) {
+					EditorManager::GetInstance()->ClearSelection();
+				}
+				selectedObject = nullptr;
+			}
+			if (selectedObject && selectedObject->recorder_) {
+				selectedObject->recorder_->SetSceneManager(editorSceneManager);
+			}
+			if (selectedObject && selectedObject->recorder_ && selectedObject->recorder_->HasPreviewData()) {
+				selectedObject->recorder_->DrawObjectGhostPreview(pointLightResource, spotLightResource);
+			}
+			debugEditor_->DrawPreview(pointLightResource, spotLightResource);
+		}
+	}
+
+	SceneManager* editorSceneManager = debugEditor_ ? debugEditor_->GetSceneManager() : nullptr;
+	const bool isPlaying = editorSceneManager && editorSceneManager->IsPlaying();
+	if (!isPlaying && ghostRecorder_ && EditorManager::GetInstance()->GetSelectedObject() == ghostRecorder_.get()) {
+		ghostRecorder_->SetSceneManager(editorSceneManager);
+		ghostRecorder_->DrawObjectGhostPreview(pointLightResource, spotLightResource);
 	}
 }
 

@@ -1,15 +1,18 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <memory>
+#include "IEditable.h"
 #include "LightManager.h"
 #include "Object3d.h"
-#include "IEditable.h" 
+#include <memory>
+#include <string>
+#include <vector>
 
 class Model;
-class Object3dCommon; 
+class Object3dCommon;
 
-class LightEditor : public IEditable { 
+/// <summary>
+/// ライト設定ファイル、スカイボックス、ライトギズモを編集する。
+/// </summary>
+class LightEditor : public IEditable {
 public:
     static LightEditor* GetInstance();
 
@@ -17,17 +20,14 @@ public:
     void SetObject3dCommon(Object3dCommon* common);
     void Update();
     void Draw3D();
-
-    // Inspectorに表示するUI描画処理
     void DrawImGui() override;
-
-    // Inspector上部に表示される名前
     std::string GetName() override { return "Light Editor"; }
 
 private:
     void SetStatusMessage(const std::string& message, bool success);
     void SyncCurrentFileNameFromManager();
     void DrawLightFileList();
+    void DrawSkyboxTextureList();
     std::string BuildFullPathFromFileName() const;
 
     LightManager* lightManager_ = nullptr;
@@ -39,7 +39,7 @@ private:
     int selectedPointLightIndex_ = -1;
     int selectedSpotLightIndex_ = -1;
 
-    // ギズモの可視化フラグ
+    // ライト位置を視覚的に調整するためのギズモ。
     bool isVisibleGizmos_ = true;
     float gizmoScale_ = 0.75f;
 

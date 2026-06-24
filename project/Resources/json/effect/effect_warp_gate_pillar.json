@@ -26,10 +26,10 @@
     "CylinderHeight": 5.0,
     "CylinderRadius": 1.600000023841858,
     "DistortionSpeed": 15.0,
-    "DistortionStrength": 0.11999999731779099,
+    "DistortionStrength": 0.0,
     "EasingType": 0,
     "EdgeFadeStrength": 1.5,
-    "EnableDistortion": true,
+    "EnableDistortion": false,
     "EnableReveal": false,
     "EndColor": [
         0.30000001192092896,

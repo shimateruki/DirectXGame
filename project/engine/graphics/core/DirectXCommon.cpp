@@ -1,6 +1,7 @@
 
 #include "DirectXCommon.h"
 #include "WinApp.h"
+#include <algorithm>
 #include <cassert>
 #include <format>
 #include <vector>
@@ -8,6 +9,7 @@
 #include <fstream>
 #include <thread>
 #include "SRVManager.h"
+#include "PostEffect.h"
 #include"ImguiManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
@@ -691,6 +693,22 @@ void DirectXCommon::WaitForGPUAndReset() {
 	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
 	assert(SUCCEEDED(hr));
 }
+
+void DirectXCommon::WaitForGPUIdle() {
+	if (!fence_ || !commandQueue_) {
+		return;
+	}
+
+	fenceValue_++;
+	HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
+	assert(SUCCEEDED(hr));
+
+	if (fence_->GetCompletedValue() < fenceValue_) {
+		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		WaitForSingleObject(fenceEvent_, INFINITE);
+	}
+}
+
 void DirectXCommon::CreateRenderTexture() {
 	// 1. リソース設定
 	D3D12_RESOURCE_DESC resDesc = {};
@@ -1068,14 +1086,20 @@ void DirectXCommon::UpdateGrabTexture() {
 }
 
 void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
-	// 1. GPUの完了を待つ (動いている最中に作り直すとクラッシュするため)
-	WaitForGPUAndReset();
+	width = (std::max)(width, 640);
+	height = (std::max)(height, 360);
 
-	// 2. 今持っているバックバッファ（swapChainResources）を一度リセットする
+	if (width == WinApp::kClientWidth && height == WinApp::kClientHeight && swapChainResources_[0]) {
+		return;
+	}
+
+	// 1. GPUの完了を待つ。ここではコマンドリストをResetしない。
+	WaitForGPUIdle();
+
+	// 2. 今持っているバックバッファと深度バッファを一度リセットする。
 	for (size_t i = 0; i < backBufferCount_; ++i) {
 		swapChainResources_[i].Reset();
 	}
-	// 深度バッファもリセット
 	depthStencilResource_.Reset();
 
 	// 3. スワップチェーン自体のサイズを変更
@@ -1090,7 +1114,9 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	);
 	assert(SUCCEEDED(hr));
 
-	
+	WinApp::kClientWidth = width;
+	WinApp::kClientHeight = height;
+
 	for (UINT i = 0; i < backBufferCount_; ++i) {
 		hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
 		assert(SUCCEEDED(hr));
@@ -1104,19 +1130,48 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 		device_->CreateRenderTargetView(swapChainResources_[i].Get(), &rtvDesc, rtvHandle);
 	}
 
-	// 5. DSV（深度バッファ）を新しいサイズで再作成
+	// 4. DSV（深度バッファ）を新しいサイズで再作成する。
 	depthStencilResource_ = CreateDepthStencilTextureResource(width, height);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
 
-	// 6. ビューポートとシザー矩形も更新
-	viewport_.Width = (float)width;
-	viewport_.Height = (float)height;
+	// 5. ビューポートとシザー矩形も更新する。
+	viewport_.TopLeftX = 0.0f;
+	viewport_.TopLeftY = 0.0f;
+	viewport_.Width = static_cast<float>(width);
+	viewport_.Height = static_cast<float>(height);
+	viewport_.MinDepth = 0.0f;
+	viewport_.MaxDepth = 1.0f;
+	scissorRect_.left = 0;
+	scissorRect_.top = 0;
 	scissorRect_.right = width;
 	scissorRect_.bottom = height;
 
-
+	CreateDepthSrv();
 	CreateRenderTexture();
+	PostEffect::GetInstance()->ResizeRenderTextures(width, height);
+}
+
+void DirectXCommon::RequestResize(int32_t width, int32_t height) {
+	if (width <= 0 || height <= 0) {
+		return;
+	}
+
+	pendingResizeWidth_ = width;
+	pendingResizeHeight_ = height;
+	pendingResize_ = true;
+}
+
+void DirectXCommon::ProcessPendingResize() {
+	if (!pendingResize_) {
+		return;
+	}
+
+	const int32_t width = pendingResizeWidth_;
+	const int32_t height = pendingResizeHeight_;
+	pendingResize_ = false;
+
+	ResizeSwapChain(width, height);
 }

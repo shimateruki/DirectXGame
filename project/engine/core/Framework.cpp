@@ -9,7 +9,7 @@ void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     winApp_ = std::make_unique<WinApp>();
-    winApp_->Initialize(L"GE3", WinApp::kClientWidth, WinApp::kClientHeight);
+    winApp_->Initialize(L"CG4", WinApp::kClientWidth, WinApp::kClientHeight);
 
     dxCommon_ = DirectXCommon::GetInstance();
     dxCommon_->Initialize(winApp_.get());

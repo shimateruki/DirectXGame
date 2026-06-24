@@ -5,16 +5,14 @@
 class ParticleSystem;
 class SceneManager;
 
+/// <summary>
+/// CPUパーティクルの対象システムを選び、発生やパラメータを調整する。
+/// </summary>
 class ParticleEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
-
-    void Update(); // ロジック更新用
-
-    // Inspectorに表示するUI描画処理
+    void Update();
     void DrawImGui() override;
-
-    // Inspector上部に表示される名前
     std::string GetName() override { return "Particle Editor"; }
 
 private:

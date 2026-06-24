@@ -1,6 +1,9 @@
 #pragma once
 #include "IEditable.h"
 
+/// <summary>
+/// エディタ全体で共有する選択状態とInspector描画を管理する。
+/// </summary>
 class EditorManager {
 private:
     EditorManager() = default;
@@ -8,21 +11,25 @@ private:
     EditorManager(const EditorManager&) = delete;
     EditorManager& operator=(const EditorManager&) = delete;
 
-    // 現在選択されているオブジェクトのポインタ
+    // 現在Inspectorで編集対象になっているオブジェクト。
     IEditable* selectedObject_ = nullptr;
 
 public:
-    // どこからでも呼べるようにシングルトン化
+    /// <summary>
+    /// シングルトンインスタンスを取得する。
+    /// </summary>
     static EditorManager* GetInstance() {
         static EditorManager instance;
         return &instance;
     }
 
-    // 選択状態のセット＆取得
+    // 選択状態の設定、取得、解除。
     void SetSelectedObject(IEditable* object) { selectedObject_ = object; }
     IEditable* GetSelectedObject() const { return selectedObject_; }
     void ClearSelection() { selectedObject_ = nullptr; }
 
-    // Inspectorウィンドウを描画する関数
+    /// <summary>
+    /// 選択中オブジェクトのInspectorを描画する。
+    /// </summary>
     void DrawInspector();
 };

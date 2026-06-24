@@ -6,6 +6,7 @@
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
+#include "DebrisEffectManager.h"
 #include "DirectXCommon.h"
 #include "EventManager.h"
 #include "Fade.h"
@@ -17,6 +18,7 @@
 #include "LightManager.h"
 #include "Log.h"
 #include "LockOnSystem.h"
+#include "MeshEffectManager.h"
 #include "Object3d.h"
 #include "Object3dCommon.h"
 #include "ObjectManager.h"
@@ -27,9 +29,105 @@
 #include "SpriteCommon.h"
 #include "StageManager.h"
 #include "TextureManager.h"
+#include "VFXSequencer.h"
 
 #include <algorithm>
 #include <cmath>
+
+namespace {
+constexpr const char* kExplosionSePath = "Resources/audio/se/generated/explosion.wav";
+
+constexpr const char* kGameplayMeshEffectsToPreload[] = {
+    "Resources/json/effect/effect_bakuhatu.json",
+    "Resources/json/effect/effect_bomb_core_flash.json",
+    "Resources/json/effect/effect_bomb_shockwave_ring.json",
+    "Resources/json/effect/effect_damage_puni_flash.json",
+    "Resources/json/effect/effect_damage_puni_ring.json",
+    "Resources/json/effect/effect_damage_galaxy_core_flash.json",
+    "Resources/json/effect/effect_damage_galaxy_star_slash.json",
+    "Resources/json/effect/effect_damage_galaxy_impact_ring.json",
+    "Resources/json/effect/effect_hitfx_kickpunch_center_flash.json",
+    "Resources/json/effect/effect_hitfx_kickpunch_star_burst.json",
+    "Resources/json/effect/effect_hitfx_kickpunch_ground_glow.json",
+    "Resources/json/effect/effect_hitfx_kickpunch_shock_arc.json",
+    "Resources/json/effect/effect_hitfx_kickpunch_thin_streak.json",
+    "Resources/json/effect/effect_thunder_slime_constant_aura.json",
+    "Resources/json/effect/effect_enemy_defeat_core_flash.json",
+    "Resources/json/effect/effect_enemy_defeat_pop_ring.json",
+    "Resources/json/effect/effect_carry_bomber_throw_burst.json",
+    "Resources/json/effect/effect_carry_eye_charge_ring.json",
+    "Resources/json/effect/effect_carry_eye_beam_muzzle.json",
+    "Resources/json/effect/effect_carry_bat_glide_ring.json",
+    "Resources/json/effect/effect_warp_gate_floor.json",
+    "Resources/json/effect/effect_warp_gate_pillar.json"
+};
+
+constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
+    "hit_bomb_fire_core",
+    "hit_bomb_flash_core",
+    "hit_bomb_fire_mushroom",
+    "hit_bomb_fire_sparks",
+    "hit_bomb_golden_sparks",
+    "hit_bomb_black_smoke",
+    "hit_bomb_orange_smoke",
+    "hit_bomb_gray_smoke",
+    "hit_damage_puni_mist",
+    "hit_damage_puni_splash",
+    "hit_damage_pop_stars",
+    "hit_damage_galaxy_streaks",
+    "hit_damage_galaxy_glints",
+    "hitfx_kickpunch_spark_particles",
+    "hitfx_kickpunch_thin_streaks",
+    "enemy_defeat_pop_smoke",
+    "enemy_defeat_smoke_trail",
+    "enemy_defeat_gold_stars",
+    "enemy_defeat_rainbow_twinkles",
+    "enemy_defeat_after_twinkle",
+    "hit_enemy_ability",
+    "hit_pull_bind",
+    "hit_pull_catch",
+    "hit_slime_elastic",
+    "hit_throw_slam_dust",
+    "carry_bomber_throw_sparks",
+    "carry_eye_charge_sparks",
+    "carry_eye_beam_sparks",
+    "carry_bat_glide_wisp",
+    "thunder_slime_aura",
+    "thunder_slime_charge",
+    "thunder_slime_discharge",
+    "thunder_slime_idle_spark",
+    "fire_slime_breath",
+    "fire_slime_cast",
+    "fire_slime_head_flame",
+    "player_jump_dust",
+    "player_land_dust",
+    "crown_get_burst",
+    "crown_get_rays",
+    "crown_get_twinkle_fountain",
+    "crown_get_afterglow",
+    "crown_idle_sparkle"
+};
+
+constexpr const char* kGameplayVfxSequencesToPreload[] = {
+    "bomb_explosion_cue",
+    "damage_puni_burst_cue",
+    "enemy_defeat_pop_cue",
+    "slime_elastic_hit_cue",
+    "pull_bind_cue",
+    "pull_catch_cue",
+    "throw_slam_cue",
+    "enemy_ability_hit_cue",
+    "crown_get_cue"
+};
+
+constexpr const char* kGameplayDebrisPresetsToPreload[] = {
+    "bomb_hit_fragment_burst",
+    "throw_slam_pebble_burst",
+    "rock_burst",
+    "small_pebble_scatter",
+    "wood_splinter_burst"
+};
+}
 
 void GamePlayScene::Initialize() {
     const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
@@ -67,6 +165,7 @@ void GamePlayScene::InitializeRenderCommons() {
 
     object3dCommon_ = std::make_unique<Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
+    MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
@@ -97,8 +196,24 @@ void GamePlayScene::InitializeGameplaySystems() {
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+    for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
+        GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
+    }
+
+    for (const char* path : kGameplayMeshEffectsToPreload) {
+        MeshEffectManager::GetInstance()->PreloadEffect(path);
+    }
+    DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+    DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
+    for (const char* presetName : kGameplayDebrisPresetsToPreload) {
+        DebrisEffectManager::GetInstance()->PrewarmPreset(presetName);
+    }
+    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
+        VFXSequencer sequence;
+        sequence.Load(sequenceName);
+    }
+    audioPlayer_->LoadSoundFile(kExplosionSePath);
 
     skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
     skybox_ = std::make_unique<Skybox>();
@@ -124,6 +239,8 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
 
     saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
     saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+
+    InitializeGoalPresentationOverlay();
 }
 
 void GamePlayScene::StartRespawnIrisInIfNeeded() {
@@ -157,24 +274,23 @@ void GamePlayScene::StartRespawnIrisInIfNeeded() {
 }
 
 void GamePlayScene::InitializeDebugAnimationPreview() {
-    animatedCube_ = std::make_unique<Object3d>();
-    animatedCube_->Initialize(object3dCommon_.get());
-    animatedCube_->SetModel("Samples/walk");
 
-    if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
-        animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
-    }
-
-    animatedCube_->isAnimLoop_ = true;
-    animatedCube_->SetTranslate({ 0.0f, 0.0f, 0.0f });
-    animatedCube_->SetScale({ 2.0f, 2.0f, 2.0f });
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
+    MeshEffectManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     saveIndicatorOverlay_.reset();
+    goalOverlayBackdrop_.reset();
+    goalOverlayCrown_.reset();
+    goalOverlayStageClearText_.reset();
+    goalOverlayReturnText_.reset();
+    goalPresentationState_ = GoalPresentationState::Inactive;
+    goalPresentationTimer_ = 0.0f;
+    goalStarEmitTimer_ = 0.0f;
+    goalPlayerSnapshotValid_ = false;
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
     hudHpIcon_ = {};

@@ -4,7 +4,9 @@
 #include <filesystem>
 #include <fstream>
 #include <cmath>      // sin, cos
+#include <algorithm>
 #include "json.hpp"
+#include "TextureManager.h"
 
 using json = nlohmann::json;
 
@@ -18,6 +20,8 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
     uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
     LightManager::GetInstance()->SetEnvironmentMapHandle(envHandle);
+    skyboxTexturePath_ = "Resources/output_skybox.dds";
+    skyboxTextureHandle_ = envHandle;
 
     // --- バッファ作成 (サイズはConstData構造体に合わせる) ---
     pointLightResource_ = dxCommon_->CreateBufferResource(sizeof(PointLightConstData));
@@ -116,6 +120,28 @@ void LightManager::Update() {
         int index = pointLightConstData_->activeCount;
         pointLightConstData_->lights[index] = instance.data;
         pointLightConstData_->activeCount++;
+    }
+
+    for (size_t index = 0; index < transientPointLights_.size();) {
+        TransientPointLight& pulse = transientPointLights_[index];
+        pulse.age += 1.0f / 60.0f;
+        const float duration = (std::max)(pulse.duration, 0.001f);
+        const float progress = std::clamp(pulse.age / duration, 0.0f, 1.0f);
+        const float envelope = (1.0f - progress) * (1.0f - progress);
+        pulse.data.intensity = pulse.baseIntensity * envelope;
+
+        if (progress >= 1.0f) {
+            transientPointLights_[index] = transientPointLights_.back();
+            transientPointLights_.pop_back();
+            continue;
+        }
+
+        if (pointLightConstData_->activeCount < kMaxPointLights) {
+            int transientIndex = pointLightConstData_->activeCount;
+            pointLightConstData_->lights[transientIndex] = pulse.data;
+            pointLightConstData_->activeCount++;
+        }
+        ++index;
     }
 
     // ---------------------------------------------------
@@ -218,12 +244,50 @@ LightManager::SpotLightInstance* LightManager::AddSpotLight() {
 void LightManager::ClearAllLights() {
     pointLights_.clear();
     spotLights_.clear();
+    transientPointLights_.clear();
+}
+
+void LightManager::PlayPointLightPulse(
+    const Vector3& position,
+    const Vector4& color,
+    float intensity,
+    float radius,
+    float duration,
+    float decay) {
+    TransientPointLight pulse;
+    pulse.data.color = color;
+    pulse.data.position = position;
+    pulse.data.intensity = intensity;
+    pulse.data.radius = radius;
+    pulse.data.decay = decay;
+    pulse.baseIntensity = intensity;
+    pulse.duration = (std::max)(duration, 0.001f);
+    transientPointLights_.push_back(pulse);
+}
+
+bool LightManager::SetSkyboxTexturePath(const std::string& texturePath) {
+    if (texturePath.empty()) {
+        return false;
+    }
+
+    try {
+        if (!std::filesystem::exists(texturePath)) {
+            return false;
+        }
+        skyboxTexturePath_ = texturePath;
+        skyboxTextureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 bool LightManager::SaveState(const std::string& filename) {
     json root;
 
     root["clearColor"] = { sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w };
+    root["skybox"]["enabled"] = skyboxEnabled_;
+    root["skybox"]["texture"] = skyboxTexturePath_;
 
     // --- 平行光源 ---
     root["directionalLight"]["color"] = { directionalLightData_.color.x, directionalLightData_.color.y, directionalLightData_.color.z, directionalLightData_.color.w };
@@ -332,6 +396,22 @@ bool LightManager::LoadState(const std::string& filename) {
     }
     if (dxCommon_) {
         dxCommon_->SetRenderClearColor(sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w);
+    }
+
+    skyboxEnabled_ = true;
+    if (root.contains("skybox") && root["skybox"].is_object()) {
+        const json& skybox = root["skybox"];
+        if (skybox.contains("enabled")) {
+            skyboxEnabled_ = skybox["enabled"].get<bool>();
+        }
+        if (skybox.contains("texture") && skybox["texture"].is_string()) {
+            const std::string texturePath = skybox["texture"].get<std::string>();
+            if (!SetSkyboxTexturePath(texturePath)) {
+                SetSkyboxTexturePath("Resources/output_skybox.dds");
+            }
+        }
+    } else {
+        SetSkyboxTexturePath("Resources/output_skybox.dds");
     }
 
     // --- 平行光源 ---

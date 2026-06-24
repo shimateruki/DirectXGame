@@ -1,5 +1,58 @@
 {
+    "designResolution": [
+        1920.0,
+        1080.0
+    ],
+    "scaleToWindow": true,
     "sprites": [
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuStartFrame",
+            "parentName": "",
+            "position": [
+                1536.0,
+                712.0
+            ],
+            "size": [
+                490.0,
+                92.0
+            ],
+            "texture": "ui/title/title_menu_button_blue.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuSettingFrame",
+            "parentName": "",
+            "position": [
+                1536.0,
+                818.0
+            ],
+            "size": [
+                490.0,
+                92.0
+            ],
+            "texture": "ui/title/title_menu_button_beige.png"
+        },
         {
             "anchor": [
                 0.5,
@@ -15,12 +68,12 @@
             "name": "gameStartText.png",
             "parentName": "",
             "position": [
-                872.5714721679688,
-                592.1266479492188
+                1582.0,
+                712.0
             ],
             "size": [
-                678.0,
-                271.20001220703125
+                330.0,
+                50.0
             ],
             "texture": "title/gameStartText.png"
         },
@@ -39,14 +92,86 @@
             "name": "setting.png",
             "parentName": "",
             "position": [
-                810.857177734375,
-                604.1190795898438
+                1582.0,
+                818.0
             ],
             "size": [
-                282.0,
-                50.7599983215332
+                122.0,
+                60.0
             ],
             "texture": "title/setting.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuCursor",
+            "parentName": "",
+            "position": [
+                1216.0,
+                714.0
+            ],
+            "size": [
+                54.0,
+                44.0
+            ],
+            "texture": "title/slime_save_icon.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuArrow",
+            "parentName": "",
+            "position": [
+                1264.0,
+                712.0
+            ],
+            "size": [
+                32.0,
+                32.0
+            ],
+            "texture": "ui/title/title_menu_arrow.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "mainMenuPrompt",
+            "parentName": "",
+            "position": [
+                960.0,
+                1008.0
+            ],
+            "size": [
+                660.0,
+                75.0
+            ],
+            "texture": "ui/title/title_press_any_key.png"
         },
         {
             "anchor": [
@@ -1960,7 +2085,7 @@
             "parentName": "",
             "position": [
                 363.37200927734375,
-                920.2705688476563
+                920.2705688476562
             ],
             "size": [
                 450.0,
@@ -1984,7 +2109,7 @@
             "parentName": "",
             "position": [
                 382.2123107910156,
-                915.0278930664063
+                915.0278930664062
             ],
             "size": [
                 286.0,
@@ -2056,7 +2181,7 @@
             "parentName": "",
             "position": [
                 1580.124755859375,
-                923.8323364257813
+                923.8323364257812
             ],
             "size": [
                 300.0,

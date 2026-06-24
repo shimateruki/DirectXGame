@@ -6,6 +6,7 @@
 #include "EventManager.h" 
 #include "CollisionConfig.h"
 #include "json.hpp"
+#include "HitEffectDirector.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -13,6 +14,7 @@
 #include <DebugConsole.h>
 
 namespace {
+// 爆発範囲、転がり、停止判定の調整値
 constexpr const char* kExplosionEffectPath = "Resources/json/effect/effect_bakuhatu.json";
 constexpr float kFallbackExplosionRadius = 3.0f;
 constexpr float kGroundFriction = 0.985f;
@@ -48,6 +50,7 @@ float LoadExplosionRadiusFromEffectJson() {
 }
 }
 
+// ボム敵の初期化
 void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     
@@ -66,6 +69,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     SetCollisionMask(kPlayer | kPlayerAttack);
 }
 
+// 追跡、点火、爆発ステートをまとめて更新する
 void EnemyBomb::Update(float deltaTime) {
     if (state_ == State::Exploded) {
         // 爆発完了後は当たり判定を完全に無効化して非表示にする
@@ -149,6 +153,7 @@ void EnemyBomb::Update(float deltaTime) {
     }
 }
 
+// 点火前のプレイヤー追跡
 void EnemyBomb::UpdateChase(float deltaTime) {
     if (!target_) return;
 
@@ -197,6 +202,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
     }
 }
 
+// 点火後のカウントダウンと点滅・鼓動演出
 void EnemyBomb::UpdateIgnited(float deltaTime) {
     // 速度を徐々に減衰（点火したら立ち止まる、または投げられた慣性で滑る）
     // 接地時（isGrounded_ == true）の転がりフリクションは Update() 側でより滑らかに行うため、
@@ -248,6 +254,7 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
     SetScale({ scale, scale, scale });
 }
 
+// 爆風判定、エフェクト、自身の消滅処理
 void EnemyBomb::Explode() {
     state_ = State::Exploded;
     SetScale({ 1.0f, 1.0f, 1.0f });
@@ -267,6 +274,7 @@ void EnemyBomb::Explode() {
 
     // --- 新しい美麗な「爆発用エフェクト」の発生 ---
     Vector3 myPos = GetTranslate();
+    HitEffectDirector::SpawnBombExplosionHit(myPos);
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(
             kExplosionEffectPath,
@@ -305,6 +313,7 @@ void EnemyBomb::Ignite(float fuseTime) {
     flashState_ = false;
 }
 
+// 持ち運び中の自爆能力
 void EnemyBomb::ExecuteAbility(Player* player) {
     if (isAbilityExecuted_) return;
     isAbilityExecuted_ = true;

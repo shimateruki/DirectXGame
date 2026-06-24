@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <utility>
+#include <algorithm>
 #include <Windows.h> // OutputDebugStringA用
 
 // 生成するクラス群のインクルード
@@ -25,6 +26,7 @@
 #include "CollisionManager.h"
 #include "InputManager.h"
 #include "PresetManager.h"
+#include "SpriteLayoutScaler.h"
 
 using json = nlohmann::json;
 
@@ -62,6 +64,35 @@ void ConfigureEnemyRuntimeReferences(BaseScene* scene) {
             ConfigureBomberSpawnCallback(scene, bomber);
         }
     }
+}
+
+bool IsSlimeEnemyType(const std::string& enemyType) {
+    return enemyType == "Slime" ||
+        enemyType == "Bomber" ||
+        enemyType == "FireSlime" ||
+        enemyType == "ThunderSlime" ||
+        enemyType == "GiantSlime";
+}
+
+void ApplySlimeScaleAndModel(Object3d* object) {
+    if (!object) {
+        return;
+    }
+
+    if (object->GetClassName() == "Player") {
+        object->SetScale({ 2.0f, 2.0f, 2.0f });
+        return;
+    }
+
+    const std::string enemyType = object->GetEnemyType();
+    if (!IsSlimeEnemyType(enemyType)) {
+        return;
+    }
+
+    if (enemyType == "Slime") {
+        object->SetModel("Characters/slime_pink");
+    }
+    object->SetScale({ 2.0f, 2.0f, 2.0f });
 }
 }
 
@@ -434,6 +465,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (jw.contains("flowSpeedY"))    water->flowSpeedY = jw["flowSpeedY"];
                         if (jw.contains("effectType"))    water->effectType = jw["effectType"];
                         if (jw.contains("effectScale"))   water->effectScale = jw["effectScale"];
+                        if (jw.contains("effectScaleX"))  water->effectScaleX = jw["effectScaleX"];
+                        if (jw.contains("effectScaleY"))  water->effectScaleY = jw["effectScaleY"];
                         if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
                         if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
                         if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
@@ -468,8 +501,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (!targetObject->param_.has_value()) targetObject->param_.emplace();
                     json p = objData["param"];
                     auto& param = targetObject->param_.value();
-                    if (p.contains("hp")) param.hp = p["hp"];
-                    if (p.contains("maxHp")) param.maxHp = p["maxHp"];
+                    const bool hasHp = p.contains("hp");
+                    const bool hasMaxHp = p.contains("maxHp");
+                    if (hasHp) param.hp = p["hp"];
+                    if (hasMaxHp) param.maxHp = p["maxHp"];
+                    if (p.contains("attackPower")) param.attackPower = p["attackPower"];
                     if (p.contains("speed")) param.speed = p["speed"];
                     if (p.contains("gravity")) param.gravity = p["gravity"];
                     if (p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
@@ -491,7 +527,20 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
                     if (p.contains("startActive")) param.startActive = p["startActive"];
                     if (p.contains("returnOnOff")) param.returnOnOff = p["returnOnOff"];
+                    param.maxHp = (std::max)(param.maxHp, 1.0f);
+                    if (hasMaxHp && !hasHp) {
+                        param.hp = param.maxHp;
+                    }
+                    param.hp = (std::max)(param.hp, 0.0f);
+                    if (param.hp > param.maxHp) {
+                        param.maxHp = param.hp;
+                    }
+                    param.attackPower = (std::max)(param.attackPower, 0.0f);
                 }
+
+                ApplySlimeScaleAndModel(targetObject);
+                targetObject->UpdateLocalMatrix();
+                targetObject->UpdateWorldMatrix();
 
                 // ==========================================
                 // 7. Animation & Recorder
@@ -562,6 +611,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
     json layoutData;
     try {
         layoutData = json::parse(file);
+        const auto layoutScale = SpriteLayoutScaler::Make(layoutData);
         if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
             std::vector<std::pair<Sprite*, std::string>> spriteParentPending;
             for (const auto& spriteData : layoutData["sprites"]) {
@@ -590,8 +640,18 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                 }
 
                 if (targetSprite) {
-                    if (spriteData.contains("position")) targetSprite->SetPosition({ spriteData["position"][0], spriteData["position"][1] });
-                    if (spriteData.contains("size")) targetSprite->SetSize({ spriteData["size"][0], spriteData["size"][1] });
+                    if (spriteData.contains("position")) {
+                        targetSprite->SetPosition(SpriteLayoutScaler::ScalePosition(
+                            SpriteLayoutScaler::ReadVector2(spriteData["position"], targetSprite->GetPosition()),
+                            layoutScale
+                        ));
+                    }
+                    if (spriteData.contains("size")) {
+                        targetSprite->SetSize(SpriteLayoutScaler::ScaleSize(
+                            SpriteLayoutScaler::ReadVector2(spriteData["size"], targetSprite->GetSize()),
+                            layoutScale
+                        ));
+                    }
                     if (spriteData.contains("anchor")) targetSprite->SetAnchorPoint({ spriteData["anchor"][0], spriteData["anchor"][1] });
                     if (spriteData.contains("color")) {
                         Vector4 currentColor = targetSprite->GetColor();

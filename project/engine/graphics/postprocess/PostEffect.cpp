@@ -3,7 +3,59 @@
 #include"WinApp.h"
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
+#include <algorithm>
 #include <cassert>
+
+namespace {
+PostEffect::Params MakeNeutralPostEffectParams(float time) {
+    PostEffect::Params params{};
+    params.time = time;
+    params.threshold = 1.0f;
+    params.bloomIntensity = 0.0f;
+    params.spread = 1.0f;
+    params.enableToneMapping = 0;
+    params.vignetteIntensity = 0.0f;
+    params.chromaticAberration = 0.0f;
+    params.filmGrainIntensity = 0.0f;
+    params.vignettePower = 1.0f;
+    params.radialCenterX = 0.5f;
+    params.radialCenterY = 0.5f;
+    params.radialIntensity = 0.0f;
+    params.radialBlurSamples = 1;
+    params.lutIntensity = 0.0f;
+    params.colorExposure = 0.0f;
+    params.colorContrast = 1.0f;
+    params.colorSaturation = 1.0f;
+    params.colorTemperature = 0.0f;
+    params.colorTint = 0.0f;
+    params.damageFlash = 0.0f;
+    params.cinemaBarHeight = 0.0f;
+    params.wobbleIntensity = 0.0f;
+    params.scanlineIntensity = 0.0f;
+    params.mosaicSize = 0.0f;
+    params.dangerVignette = 0.0f;
+    params.blackout = 0.0f;
+    params.grayscaleIntensity = 0.0f;
+    params.sepiaIntensity = 0.0f;
+    params.boxFilterSize = 0;
+    params.gaussianFilterSize = 0;
+    params.gaussianSigma = 1.0f;
+    params.luminanceOutlineIntensity = 0.0f;
+    params.depthOutlineIntensity = 0.0f;
+    params.dissolveThreshold = 0.0f;
+    params.dissolveEdgeWidth = 0.02f;
+    params.randomIntensity = 0.0f;
+    params.dissolveEdgeColor = { 1.0f, 0.4f, 0.3f };
+    params.projectionInverse = Math::MakeIdentity4x4();
+    params.slimeFadeIntensity = 0.0f;
+    params.slimeDensity = 1.0f;
+    params.slimeColor = { 0.18f, 0.8f, 0.44f };
+    params.irisFadeIntensity = 0.0f;
+    params.irisCenterX = 0.5f;
+    params.irisCenterY = 0.5f;
+    return params;
+}
+}
 
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
@@ -33,6 +85,32 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 void PostEffect::Update(float deltaTime) {
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
+}
+
+void PostEffect::ResetToNeutral() {
+    if (!paramsData_) {
+        return;
+    }
+
+    const float currentTime = paramsData_->time;
+    *paramsData_ = MakeNeutralPostEffectParams(currentTime);
+}
+
+void PostEffect::ResizeRenderTextures(int width, int height) {
+    if (!dxCommon_ || renderTextures_.size() < 6) {
+        return;
+    }
+
+    width = (std::max)(width, 16);
+    height = (std::max)(height, 16);
+
+    // 画面サイズ変更時は、ポストエフェクト用RTも同じタイミングで作り直す。
+    CreateRenderTexture(0, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(1, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(2, (std::max)(width / 2, 1), (std::max)(height / 2, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(3, (std::max)(width / 4, 1), (std::max)(height / 4, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(4, (std::max)(width / 8, 1), (std::max)(height / 8, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(5, (std::max)(width / 16, 1), (std::max)(height / 16, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 
@@ -224,23 +302,7 @@ void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要
     constBuffer_ = dxCommon_->CreateBufferResource((sizeof(Params) + 0xff) & ~0xff);
     constBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&paramsData_));
-    // 初期値セット
-    paramsData_->threshold = 0.8f;
-    paramsData_->bloomIntensity = 2.0f;
-    paramsData_->spread = 2.0f;
-    paramsData_->enableToneMapping = 2;
-    paramsData_->lutIntensity = 0.28f;
-    paramsData_->colorExposure = 0.02f;
-    paramsData_->colorContrast = 1.08f;
-    paramsData_->colorSaturation = 1.14f;
-    paramsData_->colorTemperature = 0.10f;
-    paramsData_->colorTint = 0.0f;
-    paramsData_->slimeFadeIntensity = 0.0f;
-    paramsData_->slimeDensity = 1.5f; // 少し密度を上げてディテールを出す
-    paramsData_->slimeColor = { 0.1f, 0.9f, 0.2f }; // よりスライムらしい色味へ
-    paramsData_->irisFadeIntensity = 0.0f;
-    paramsData_->irisCenterX = 0.5f;
-    paramsData_->irisCenterY = 0.5f;
+    *paramsData_ = MakeNeutralPostEffectParams(0.0f);
 }
 
 void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format) {

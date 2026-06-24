@@ -248,29 +248,31 @@ float4 mainComposite(PSInput input) : SV_TARGET
         uv = (floor(uv * res) + 0.5) / res;
     }
 
-    // Radial Blur & Chromatic Aberration
+    // Radial blur and chromatic aberration.
     float2 center = float2(0.5, 0.5);
     float2 dir = uv - center;
     float2 radialCenter = float2(radialCenterX, radialCenterY);
     float2 radialDir = uv - radialCenter;
 
     float4 baseColor = float4(0, 0, 0, 0);
-    int NUM_SAMPLES = 8;
+    int sampleCount = clamp(radialBlurSamples, 1, 32);
+    float safeRadialIntensity = saturate(radialIntensity);
+    float safeChromaticAberration = clamp(chromaticAberration, 0.0, 0.08);
 
-    if (radialIntensity > 0.0)
+    if (safeRadialIntensity > 0.0)
     {
-        // 放射ブラー (資料に基づいた実装)
-        float step = radialIntensity / (float) radialBlurSamples;
-        for (int i = 0; i < radialBlurSamples; i++)
+        // Sample inward from the pulse center for a short impact blur.
+        float step = safeRadialIntensity / (float)sampleCount;
+        for (int i = 0; i < sampleCount; i++)
         {
-            float2 offsetUv = uv - radialDir * (i * step);
-            // 色収差も含めてサンプリング
-            float r = tex.Sample(smp, offsetUv - dir * chromaticAberration).r;
+            float2 offsetUv = saturate(uv - radialDir * (i * step));
+            // Offset red and blue samples for a controlled chromatic split.
+            float r = tex.Sample(smp, saturate(offsetUv - dir * safeChromaticAberration)).r;
             float g = tex.Sample(smp, offsetUv).g;
-            float b = tex.Sample(smp, offsetUv + dir * chromaticAberration).b;
+            float b = tex.Sample(smp, saturate(offsetUv + dir * safeChromaticAberration)).b;
             baseColor += float4(r, g, b, 1.0);
         }
-        baseColor /= (float) radialBlurSamples;
+        baseColor /= (float)sampleCount;
     }
     else
     {

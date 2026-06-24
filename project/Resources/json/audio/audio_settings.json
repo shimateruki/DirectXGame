@@ -1,0 +1,156 @@
+{
+    "entries": [
+        {
+            "id": "cursor_move",
+            "displayName": "カーソル移動",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/cursor_move.wav",
+            "volume": 0.75,
+            "loop": false
+        },
+        {
+            "id": "decide",
+            "displayName": "決定",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/decide.wav",
+            "volume": 0.8,
+            "loop": false
+        },
+        {
+            "id": "cancel",
+            "displayName": "キャンセル",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/cancel.wav",
+            "volume": 0.7,
+            "loop": false
+        },
+        {
+            "id": "coin_get",
+            "displayName": "コイン取得",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/coin_get.wav",
+            "volume": 0.8,
+            "loop": false
+        },
+        {
+            "id": "crown_get",
+            "displayName": "王冠取得",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/crown_get.wav",
+            "volume": 0.85,
+            "loop": false
+        },
+        {
+            "id": "explosion",
+            "displayName": "爆発",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/explosion.wav",
+            "volume": 0.85,
+            "loop": false
+        },
+        {
+            "id": "hit_damage",
+            "displayName": "被弾",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/hit_damage.wav",
+            "volume": 0.82,
+            "loop": false
+        },
+        {
+            "id": "enemy_bind_loop",
+            "displayName": "敵拘束ループ",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/enemy_bind_loop.wav",
+            "volume": 0.45,
+            "loop": true
+        },
+        {
+            "id": "enemy_transform",
+            "displayName": "敵取り込み変身",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/enemy_transform.wav",
+            "volume": 0.82,
+            "loop": false
+        },
+        {
+            "id": "gate_enter",
+            "displayName": "ゲート進入",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/gate_enter.wav",
+            "volume": 0.78,
+            "loop": false
+        },
+        {
+            "id": "jump",
+            "displayName": "ジャンプ",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/jump.wav",
+            "volume": 0.7,
+            "loop": false
+        },
+        {
+            "id": "land",
+            "displayName": "着地",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/land.wav",
+            "volume": 0.58,
+            "loop": false
+        },
+        {
+            "id": "slime_stretch",
+            "displayName": "スライム伸び",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/slime_stretch.wav",
+            "volume": 0.62,
+            "loop": false
+        },
+        {
+            "id": "throw",
+            "displayName": "投げ",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/throw.wav",
+            "volume": 0.7,
+            "loop": false
+        },
+        {
+            "id": "beam_charge",
+            "displayName": "ビーム溜め",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/beam_charge.wav",
+            "volume": 0.68,
+            "loop": false
+        },
+        {
+            "id": "beam_fire",
+            "displayName": "ビーム発射",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/beam_fire.wav",
+            "volume": 0.75,
+            "loop": false
+        },
+        {
+            "id": "menu_open",
+            "displayName": "メニュー開始",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/menu_open.wav",
+            "volume": 0.65,
+            "loop": false
+        },
+        {
+            "id": "menu_close",
+            "displayName": "メニュー終了",
+            "category": "SE",
+            "path": "Resources/audio/se/generated/menu_close.wav",
+            "volume": 0.6,
+            "loop": false
+        },
+        {
+            "id": "sample_bgm",
+            "displayName": "確認用BGM",
+            "category": "BGM",
+            "path": "Resources/audio/Alarm02.mp3",
+            "volume": 0.6,
+            "loop": true
+        }
+    ]
+}
