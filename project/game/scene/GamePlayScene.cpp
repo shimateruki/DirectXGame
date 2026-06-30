@@ -108,6 +108,7 @@ void GamePlayScene::Draw() {
         DrawLifeLostPresentationWorld(pointLightRes, spotLightRes);
         return;
     }
+
     if (lifeLostBlackHold_) {
         return;
     }

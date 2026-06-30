@@ -20,6 +20,7 @@
 void PlayerStateCarry::Enter(Player* player) {
     if (player) {
         player->SetIsControlActive(true); // 持ち運び中もプレイヤーは動ける！
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Carry);
         struggleTimer_ = 0.0f;
 
         Object3d* enemy = player->GetCarriedEnemy();
@@ -32,10 +33,10 @@ void PlayerStateCarry::Enter(Player* player) {
     }
 }
 
-void PlayerStateCarry::Update(Player* player) {
+void PlayerStateCarry::Update(Player* player, float deltaTime) {
     if (!player) return;
 
-    struggleTimer_ += 1.0f / 60.0f;
+    struggleTimer_ += deltaTime;
 
     Object3d* enemy = player->GetCarriedEnemy();
     if (enemy) {
@@ -90,6 +91,6 @@ void PlayerStateCarry::Exit(Player* player) {
             enemy->UpdateLocalMatrix();
             enemy->UpdateWorldMatrix();
         }
-        player->SetCarriedEnemy(nullptr);
+        player->ReleaseCarriedEnemy(true);
     }
 }

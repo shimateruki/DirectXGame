@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GameEditorController.h"
 
 #ifdef USE_IMGUI
@@ -618,9 +618,9 @@ void GameEditorController::DrawStatusWindow(
 	float* updateTimeHistory,
 	float* drawTimeHistory,
 	int timeHistoryIndex) {
-	ImGui::Begin("ステータス", &showTimeController_);
+	ImGui::Begin("ステータス", &showTimeController_, ImGuiWindowFlags_HorizontalScrollbar);
 
-	float fps = drawTimeMs > 0.001f ? 1000.0f / drawTimeMs : 0.0f;
+	float fps = ImGui::GetIO().Framerate;
 	ImGui::Text("FPS: %.1f", fps);
 	ImGui::SliderFloat("時間倍率", &timeScale, 0.0f, 2.0f);
 

@@ -105,8 +105,8 @@ private:
     bool bold_ = true;
     bool centerOrigin_ = true;
     float modelColor_[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    bool previewEnabled_ = true;
-    bool previewDirty_ = true;
+    bool previewEnabled_ = false;
+    bool previewDirty_ = false;
     bool previewRequestPending_ = false;
     float previewDelayTimer_ = 0.0f;
     Vector3 previewPosition_ = { 0.0f, 2.0f, 0.0f };

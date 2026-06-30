@@ -8,7 +8,7 @@ class PlayerStateHook : public IAnimationState
 public:
     explicit PlayerStateHook(const Vector3& targetPos) : targetPos_(targetPos) {}
     void Enter(Player* player) override;
-    void Update(Player* player) override;
+    void Update(Player* player, float deltaTime) override;
     void Exit(Player* player) override;
 
 private:
@@ -33,7 +33,7 @@ class PlayerStateSwingHook : public IAnimationState
 public:
     explicit PlayerStateSwingHook(const Vector3& anchorPos) : anchorPos_(anchorPos) {}
     void Enter(Player* player) override;
-    void Update(Player* player) override;
+    void Update(Player* player, float deltaTime) override;
     void Exit(Player* player) override;
 
 private:

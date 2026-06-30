@@ -6,6 +6,7 @@
 #include <memory>
 #include <utility>
 #include <algorithm>
+#include <vector>
 #include <Windows.h> // OutputDebugStringA用
 
 // 生成するクラス群のインクルード
@@ -89,10 +90,46 @@ void ApplySlimeScaleAndModel(Object3d* object) {
         return;
     }
 
-    if (enemyType == "Slime") {
-        object->SetModel("Characters/slime_pink");
+    if (enemyType == "GiantSlime") {
+        object->SetScale({ 3.6f, 3.6f, 3.6f });
+        const Vector3 rotation = object->GetRotation();
+        object->SetRotation({ 0.0f, rotation.y, 0.0f });
+        if (object->param_.has_value()) {
+            object->param_->jumpPower = (std::max)(object->param_->jumpPower, 24.0f);
+        }
     }
-    object->SetScale({ 2.0f, 2.0f, 2.0f });
+    else {
+        object->SetScale({ 2.0f, 2.0f, 2.0f });
+    }
+}
+
+void ApplyLodConfig(Object3d* object, const json& objData) {
+    if (!object || !objData.contains("lod") || !objData["lod"].is_object()) {
+        return;
+    }
+
+    const auto& lodJson = objData["lod"];
+    std::vector<Object3d::LodLevel> levels;
+    if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
+        for (const auto& levelJson : lodJson["levels"]) {
+            if (!levelJson.is_object()) {
+                continue;
+            }
+
+            Object3d::LodLevel level;
+            level.level = levelJson.value("level", 0);
+            level.modelName = levelJson.value("modelName", "");
+            level.distance = levelJson.value("distance", 0.0f);
+            if (level.level > 0 && !level.modelName.empty()) {
+                levels.push_back(level);
+            }
+        }
+    }
+
+    if (!levels.empty()) {
+        object->SetLodLevels(levels);
+    }
+    object->SetLodEnabled(lodJson.value("enabled", true));
 }
 }
 
@@ -334,13 +371,13 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                         // 保存カテゴリの復元処理
                         // ==========================================
-                        if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
+                        if (currentClass == "Player" || type == "Player") {
+                            newObj->SetSaveCategory("Player");
+                        } else if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
                             newObj->SetSaveCategory(objData["saveCategory"].get<std::string>());
                         } else {
                             // 過去の互換性用: categoryが無ければクラス名(Type)から推測する
-                            if (currentClass == "Player" || type == "Player") {
-                                newObj->SetSaveCategory("Player");
-                            } else if (currentClass == "Enemy" || currentClass == "Spawner" || type == "Spawner") {
+                            if (currentClass == "Enemy" || currentClass == "Spawner" || type == "Spawner") {
                                 newObj->SetSaveCategory("Enemy");
                             } else {
                                 newObj->SetSaveCategory("Object");
@@ -509,6 +546,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("speed")) param.speed = p["speed"];
                     if (p.contains("gravity")) param.gravity = p["gravity"];
                     if (p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
+                    if (p.contains("morphLimited")) param.morphLimited = p["morphLimited"];
+                    if (p.contains("morphDuration")) param.morphDuration = p["morphDuration"];
                     if (p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
                     if (p.contains("enemyType")) param.enemyType = p["enemyType"];
                     if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
@@ -536,9 +575,13 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         param.maxHp = param.hp;
                     }
                     param.attackPower = (std::max)(param.attackPower, 0.0f);
+                    if (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty()) {
+                        param.morphDuration = (std::max)(param.morphDuration, 0.1f);
+                    }
                 }
 
                 ApplySlimeScaleAndModel(targetObject);
+                ApplyLodConfig(targetObject, objData);
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
 

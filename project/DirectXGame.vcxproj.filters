@@ -267,6 +267,7 @@
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\enemy\AttackTelegraph.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -345,9 +346,13 @@
     <ClCompile Include="game\actor\player\PlayerMover.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\state\IAnimationState.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerDeathAnimation.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -1128,6 +1133,7 @@
     <ClInclude Include="game\actor\enemy\BaseEnemy.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\enemy\AttackTelegraph.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1485,9 +1491,13 @@
     <ClInclude Include="game\actor\player\PlayerMover.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="engine\utility\state\IAnimationState.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerDeathAnimation.h" />
     <ClInclude Include="game\actor\player\PlayerState.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>

@@ -910,6 +910,8 @@ json Object3d::ExportToJson() {
         jp["gravity"] = p.gravity;
         jp["jumpPower"] = p.jumpPower;
         jp["maxFallSpeed"] = p.maxFallSpeed;
+        jp["morphLimited"] = p.morphLimited;
+        jp["morphDuration"] = p.morphDuration;
         jp["enemyType"] = p.enemyType;
         jp["gimmickType"] = p.gimmickType;
         jp["itemType"] = p.itemType;
@@ -1068,6 +1070,8 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("gravity")) p.gravity = jp["gravity"];
         if (jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
         if (jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
+        if (jp.contains("morphLimited")) p.morphLimited = jp["morphLimited"];
+        if (jp.contains("morphDuration")) p.morphDuration = jp["morphDuration"];
         if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
         if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
         if (jp.contains("itemType")) p.itemType = jp["itemType"];

@@ -1,0 +1,78 @@
+{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-25T11:36:31",
+    "sourceModel":  "Characters/bunny",
+    "sourceFile":  "Resources/3DModel/Characters/bunny/bunny.obj",
+    "sourceExtension":  ".obj",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  72027,
+                   "uvs":  72201,
+                   "normals":  72018,
+                   "faces":  144046,
+                   "triangles":  144046,
+                   "materials":  1,
+                   "fileSizeBytes":  13740281
+               },
+    "safety":  null,
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Characters/bunny",
+                     "file":  "Resources/3DModel/Characters/bunny/bunny.obj",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  72027,
+                                   "uvs":  72201,
+                                   "normals":  72018,
+                                   "faces":  144046,
+                                   "triangles":  144046,
+                                   "materials":  1,
+                                   "fileSizeBytes":  13740281
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Characters/bunny/bunny_lod1.obj",
+                     "file":  "Resources/3DModel/Characters/bunny/bunny_lod1.obj",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  11240,
+                                   "faces":  22696,
+                                   "triangles":  22696,
+                                   "skippedFaces":  121350,
+                                   "grid":  55,
+                                   "fileSizeBytes":  5240010
+                               },
+                     "triangleReduction":  0.84243922080446521,
+                     "storageDeltaBytes":  -8500271
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Characters/bunny/bunny_lod2.obj",
+                     "file":  "Resources/3DModel/Characters/bunny/bunny_lod2.obj",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  6700,
+                                   "faces":  13594,
+                                   "triangles":  13594,
+                                   "skippedFaces":  130452,
+                                   "grid":  42,
+                                   "fileSizeBytes":  4623480
+                               },
+                     "triangleReduction":  0.90562736903489161,
+                     "storageDeltaBytes":  -9116801
+                 }
+             ],
+    "warnings":  [
+
+                 ]
+}

@@ -45,6 +45,8 @@ constexpr const char* kPreviewStem = "_preview_text3d";
 constexpr const char* kPreviewModelName = "GeneratedText/_preview_text3d";
 constexpr const char* kPreviewObjectName = "__Editor_Text3DPreview";
 constexpr float kPreviewRebuildDelay = 0.22f;
+constexpr int kPreviewMaxVertices = 240000;
+constexpr int kGeneratedMaxVertices = 480000;
 
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
@@ -377,7 +379,9 @@ void Text3DGenerator::Initialize(SceneManager* sceneManager, DebugEditor* editor
     EnsureFactories();
     RefreshFonts();
     UpdateOutputNameFromText();
-    MarkPreviewDirty();
+    previewDirty_ = false;
+    previewRequestPending_ = false;
+    previewDelayTimer_ = 0.0f;
 }
 
 void Text3DGenerator::Update() {
@@ -794,6 +798,13 @@ bool Text3DGenerator::BuildModelFile(GeneratedModelInfo& outInfo) {
         return false;
     }
 
+    if (info.vertexCount > kGeneratedMaxVertices) {
+        SetNotice("3Dテキストモデルが大きすぎるため生成を中止しました。サンプル幅を大きくしてください。", false);
+        DebugConsole::GetInstance()->AddLog(
+            "Text 3D generation skipped: too many vertices (" + std::to_string(info.vertexCount) + ").");
+        return false;
+    }
+
     if (!WriteReport(info)) {
         DebugConsole::GetInstance()->AddLog("Text 3D: report write failed.");
     }
@@ -1049,6 +1060,12 @@ bool Text3DGenerator::BuildPreviewModelFile(GeneratedModelInfo& outInfo) {
     if (!WriteObjFromMask(mask, objPath, info)) {
         return false;
     }
+    if (info.vertexCount > kPreviewMaxVertices) {
+        SetNotice("3Dテキストプレビューが重すぎるため更新を止めました。サンプル幅を大きくしてください。", false);
+        DebugConsole::GetInstance()->AddLog(
+            "Text 3D preview skipped: too many vertices (" + std::to_string(info.vertexCount) + ").");
+        return false;
+    }
 
     outInfo = info;
     return true;
@@ -1084,7 +1101,12 @@ void Text3DGenerator::UpdatePreviewModel(float deltaTime) {
         return;
     }
 
-    ModelManager::GetInstance()->ReloadModel(info.modelName);
+    if (!ModelManager::GetInstance()->ReloadModel(info.modelName)) {
+        SetNotice("3Dテキストプレビューの読み込みに失敗しました。", false);
+        previewDirty_ = false;
+        previewRequestPending_ = false;
+        return;
+    }
     EnsurePreviewObject(info);
     lastPreview_ = info;
     hasPreviewModel_ = true;

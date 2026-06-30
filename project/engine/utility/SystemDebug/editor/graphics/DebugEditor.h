@@ -75,7 +75,7 @@ public:
     // IEditableとしてInspectorに表示する内容。
     void DrawImGui() override;
     std::string GetName() override {
-        return selectedObject_ ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
+        return (selectedObject_ && IsObjectInCurrentScene(selectedObject_)) ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
     }
 
     // 主要ウィンドウ。
@@ -123,6 +123,7 @@ public:
         gameViewSize_ = size;
         animationWorkbench_.SetGameViewRegion(offset, size);
         textSpriteGenerator_.SetGameViewRegion(offset, size);
+        modelOptimizerWindow_.SetGameViewRegion(offset, size);
     }
     void SetGameViewScreenRect(float left, float top, float right, float bottom) {
         gameViewScreenRectLeft_ = static_cast<int>(left);
@@ -151,7 +152,7 @@ public:
         strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
     }
 
-    void SetSelectedObject(Object3d* obj) { selectedObject_ = obj; }
+    void SetSelectedObject(Object3d* obj) { selectedObject_ = (!obj || IsObjectInCurrentScene(obj)) ? obj : nullptr; }
     void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
 
@@ -185,8 +186,8 @@ public:
     }
 
     // 選択状態とサブエディタ参照。
-    Object3d* GetSelectedObject3D() const { return selectedObject_; }
-    Object3d* GetSelectedObject() const { return selectedObject_; }
+    Object3d* GetSelectedObject3D() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
+    Object3d* GetSelectedObject() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
     SceneManager* GetSceneManager() const { return sceneManager_; }
 
     LightEditor* GetLightEditor() const { return lightEditor_; }
@@ -259,8 +260,19 @@ private:
     void Draw3DIcons();
     void DrawEventIDOverlay();
     void DrawSavePreview();
+    void InitializeCrashRecovery();
+    void UpdateCrashRecovery(float deltaTime);
+    void FinalizeCrashRecovery();
+    void SaveCrashRecoveryDraft();
+    void WriteCrashRecoverySession(bool cleanExit, bool dirty, const nlohmann::json& files = nlohmann::json::array());
+    void LoadCrashRecoveryCandidate();
+    void DrawCrashRecoveryPrompt();
+    bool RestoreCrashRecoveryDraft();
+    void ResolveCrashRecoveryCandidate(const std::string& resolution);
     void PollDDSCacheNotifications();
     std::string MakeSavePreviewTitle(SaveMode mode) const;
+    bool IsObjectInCurrentScene(const Object3d* object) const;
+    void ClearInvalidSelectedObject();
     void ApplyObjectState(Object3d* object, const nlohmann::json& state);
     Object3d* FindObjectByName(const std::string& name) const;
     Object3d* AddObjectFromState(const nlohmann::json& state);
@@ -382,6 +394,18 @@ private:
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
     std::uintmax_t ddsCacheNotificationReadOffset_ = 0;
+    std::string crashRecoverySessionId_;
+    std::string crashRecoverySessionDir_;
+    std::string crashRecoveryDraftDir_;
+    nlohmann::json crashRecoveryPendingManifest_;
+    nlohmann::json crashRecoveryLastFiles_;
+    float crashRecoveryAutosaveTimer_ = 0.0f;
+    float crashRecoveryHeartbeatTimer_ = 0.0f;
+    bool crashRecoverySessionActive_ = false;
+    bool crashRecoveryLastDirty_ = false;
+    bool crashRecoveryPending_ = false;
+    bool crashRecoveryPromptOpened_ = false;
+    std::string crashRecoveryStatus_;
 
     // 外部所有のサブエディタ。
     PostEffectEditor* postEffectEditor_ = nullptr;

@@ -2,7 +2,8 @@
     "name": "bomb_hit_fragment_burst",
     "modelNames": [
         "Stages/rock1",
-        "Gimmicks/blob"
+        "Primitives/cube",
+        "Primitives/sphere"
     ],
     "spawnCount": 22,
     "spawnOffset": [
@@ -22,8 +23,8 @@
     "speedMax": 24.0,
     "angularSpeedMin": 6.0,
     "angularSpeedMax": 18.0,
-    "scaleMin": 0.14,
-    "scaleMax": 0.52,
+    "scaleMin": 0.08,
+    "scaleMax": 0.28,
     "lifetimeMin": 1.05,
     "lifetimeMax": 1.75,
     "gravity": 31.0,

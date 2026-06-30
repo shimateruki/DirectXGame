@@ -8,9 +8,50 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include <exception>
+#include <filesystem>
 #include <functional>
+#include <unordered_map>
 #include <CollisionManager.h>
 using json = nlohmann::json;
+
+namespace {
+struct EffectJsonCacheEntry {
+    json data;
+    std::filesystem::file_time_type writeTime{};
+    bool hasWriteTime = false;
+};
+
+bool LoadEffectJsonCached(const std::string& jsonFilePath, json& outJson) {
+    static std::unordered_map<std::string, EffectJsonCacheEntry> cache;
+
+    std::error_code ec;
+    const auto writeTime = std::filesystem::last_write_time(jsonFilePath, ec);
+    const bool hasWriteTime = !ec;
+
+    auto it = cache.find(jsonFilePath);
+    if (it != cache.end() && hasWriteTime && it->second.hasWriteTime && it->second.writeTime == writeTime) {
+        outJson = it->second.data;
+        return true;
+    }
+
+    std::ifstream file(jsonFilePath);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    json loaded;
+    file >> loaded;
+
+    EffectJsonCacheEntry entry;
+    entry.data = loaded;
+    entry.writeTime = writeTime;
+    entry.hasWriteTime = hasWriteTime;
+    cache[jsonFilePath] = entry;
+
+    outJson = std::move(loaded);
+    return true;
+}
+}
 
 MeshEffectManager* MeshEffectManager::GetInstance() {
     static MeshEffectManager instance;
@@ -171,15 +212,16 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         return;
     }
 
-    std::ifstream file(jsonFilePath);
-    if (!file.is_open()) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] Failed to open effect json: " + jsonFilePath);
+    json j;
+    try {
+        if (!LoadEffectJsonCached(jsonFilePath, j)) {
+            DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] Failed to open effect json: " + jsonFilePath);
+            return;
+        }
+    } catch (const std::exception& e) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] SpawnEffect JSON error: " + jsonFilePath + " / " + e.what());
         return;
     }
-
-    json j;
-    file >> j;
-    file.close();
 
     // ==========================================
     // ★ 1. 基準となるターゲットの取得（位置と向きを分離！）
@@ -416,15 +458,16 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
     }
     if (!common_) return;
 
-    std::ifstream file(jsonFilePath);
-    if (!file.is_open()) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] SpawnEffectAt: failed to open " + jsonFilePath);
+    json j;
+    try {
+        if (!LoadEffectJsonCached(jsonFilePath, j)) {
+            DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] SpawnEffectAt: failed to open " + jsonFilePath);
+            return;
+        }
+    } catch (const std::exception& e) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] SpawnEffectAt JSON error: " + jsonFilePath + " / " + e.what());
         return;
     }
-
-    json j;
-    file >> j;
-    file.close();
 
     int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
     int numSpawns  = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);

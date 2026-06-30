@@ -60,6 +60,7 @@ private:
 
     std::vector<std::wstring> fontNamesWide_;
     std::vector<std::string> fontNamesUtf8_;
+    std::vector<std::string> fontPaths_;
     int selectedFontIndex_ = 0;
 
     // UI入力とPNG生成パラメータ。
@@ -86,7 +87,7 @@ private:
     // GameView上のプレビュー状態。
     bool previewEnabled_ = true;
     bool previewBoundsEnabled_ = true;
-    bool previewAutoUpdate_ = true;
+    bool previewAutoUpdate_ = false;
     Vector2 previewPosition_ = { 640.0f, 360.0f };
     float previewScale_ = 1.0f;
     bool previewDirty_ = false;

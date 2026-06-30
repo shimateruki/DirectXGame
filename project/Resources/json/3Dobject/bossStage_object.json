@@ -1,4 +1,4 @@
-﻿{
+{
     "objects": [
         {
             "animation": {
@@ -55,21 +55,23 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "Stages/block",
+            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "block_0",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "attackPower": 1.0,
+                "detectionRange": 20.0,
                 "enemyType": "Goblin",
                 "gimmickType": "",
                 "gravity": 50.0,
-                "hp": 100.0,
+                "hp": 5.0,
                 "interval": 3.0,
                 "jumpPower": 24.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
+                "maxHp": 5.0,
                 "speed": 27.700000762939453
             },
             "parentName": "",
@@ -95,7 +97,7 @@
                 3.1415927410125732
             ],
             "roughness": 0.5,
-            "saveCategory": "Object",
+            "saveCategory": "Player",
             "scale": [
                 1.0000005960464478,
                 1.0,

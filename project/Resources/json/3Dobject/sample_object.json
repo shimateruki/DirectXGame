@@ -68,6 +68,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "Goblin",
@@ -75,13 +76,13 @@
                 "gimmickType": "",
                 "gravity": 50.0,
                 "healAmount": 1.0,
-                "hp": 99.0,
+                "hp": 5.0,
                 "interval": 3.0,
                 "itemType": "",
                 "jumpPower": 24.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 99.0,
+                "maxHp": 5.0,
                 "moveAmount": 10.0,
                 "moveSpeed": 6.0,
                 "returnOnOff": true,
@@ -115,7 +116,7 @@
                 1.1611852812620782e-07
             ],
             "roughness": 0.16300000250339508,
-            "saveCategory": "Object",
+            "saveCategory": "Player",
             "scale": [
                 1.0000003576278687,
                 1.0000003576278687,

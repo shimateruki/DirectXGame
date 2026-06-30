@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "TextSpriteGenerator.h"
 
 #include "BaseScene.h"
@@ -26,7 +26,10 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 
 #pragma comment(lib, "d2d1.lib")
@@ -36,7 +39,11 @@
 namespace {
 constexpr const char* kOutputDirectory = "Resources/sprite/generated/text";
 constexpr const char* kPreviewDirectory = "Resources/generated/editor/text_preview";
-constexpr const char* kResourceDirectory = "Resources";
+constexpr const char* kFontDirectory = "Resources/font";
+constexpr const char* kLegacyMeiryoFontPath = "Resources/sprite/meiryo.ttc";
+constexpr const char* kToolScriptPath = "tools/TextPngTool/TextPngTool.ps1";
+constexpr const char* kToolRequestPath = "Resources/generated/editor/text_png_request.json";
+constexpr const char* kToolReportPath = "Resources/generated/editor/text_png_result.json";
 
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
@@ -272,13 +279,25 @@ bool IsFontFile(const std::filesystem::path& path) {
 std::vector<std::wstring> CollectResourceFontPaths() {
     std::vector<std::wstring> paths;
     std::error_code ec;
-    if (!std::filesystem::exists(kResourceDirectory, ec)) return paths;
+    if (std::filesystem::exists(kFontDirectory, ec)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(kFontDirectory, ec)) {
+            if (ec) break;
+            if (!entry.is_regular_file(ec)) continue;
+            if (!IsFontFile(entry.path())) continue;
+            const std::wstring path = std::filesystem::absolute(entry.path(), ec).wstring();
+            if (std::find(paths.begin(), paths.end(), path) == paths.end()) {
+                paths.push_back(path);
+            }
+        }
+    }
 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(kResourceDirectory, ec)) {
-        if (ec) break;
-        if (!entry.is_regular_file(ec)) continue;
-        if (!IsFontFile(entry.path())) continue;
-        paths.push_back(std::filesystem::absolute(entry.path(), ec).wstring());
+    ec.clear();
+    std::filesystem::path legacyMeiryoPath(kLegacyMeiryoFontPath);
+    if (std::filesystem::exists(legacyMeiryoPath, ec) && IsFontFile(legacyMeiryoPath)) {
+        const std::wstring path = std::filesystem::absolute(legacyMeiryoPath, ec).wstring();
+        if (std::find(paths.begin(), paths.end(), path) == paths.end()) {
+            paths.push_back(path);
+        }
     }
 
     std::sort(paths.begin(), paths.end());
@@ -306,6 +325,109 @@ std::string MakeRelativeSpritePath(const std::string& fullPath) {
     }
     return relative.generic_string();
 }
+
+std::string EscapeJsonString(const std::string& text) {
+    std::ostringstream stream;
+    for (unsigned char c : text) {
+        switch (c) {
+        case '\\': stream << "\\\\"; break;
+        case '"': stream << "\\\""; break;
+        case '\b': stream << "\\b"; break;
+        case '\f': stream << "\\f"; break;
+        case '\n': stream << "\\n"; break;
+        case '\r': stream << "\\r"; break;
+        case '\t': stream << "\\t"; break;
+        default:
+            if (c < 0x20) {
+                stream << "\\u";
+                const char hex[] = "0123456789abcdef";
+                stream << "00" << hex[(c >> 4) & 0x0f] << hex[c & 0x0f];
+            } else {
+                stream << static_cast<char>(c);
+            }
+            break;
+        }
+    }
+    return stream.str();
+}
+
+std::string ToAbsoluteGenericPath(const std::filesystem::path& path) {
+    std::error_code ec;
+    std::filesystem::path absolute = std::filesystem::absolute(path, ec);
+    return (ec ? path : absolute).generic_string();
+}
+
+std::wstring QuoteCommandArg(const std::wstring& value) {
+    std::wstring result = L"\"";
+    for (wchar_t c : value) {
+        if (c == L'"') {
+            result += L"\\\"";
+        } else {
+            result += c;
+        }
+    }
+    result += L"\"";
+    return result;
+}
+
+bool RunProcessAndWait(const std::wstring& commandLine, DWORD timeoutMs, DWORD& exitCode) {
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    std::wstring mutableCommand = commandLine;
+    if (!CreateProcessW(nullptr, mutableCommand.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
+        exitCode = GetLastError();
+        return false;
+    }
+
+    const DWORD waitResult = WaitForSingleObject(process.hProcess, timeoutMs);
+    if (waitResult == WAIT_TIMEOUT) {
+        TerminateProcess(process.hProcess, 1);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+        exitCode = WAIT_TIMEOUT;
+        return false;
+    }
+
+    DWORD processExitCode = 1;
+    GetExitCodeProcess(process.hProcess, &processExitCode);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    exitCode = processExitCode;
+    return waitResult == WAIT_OBJECT_0 && processExitCode == 0;
+}
+
+bool ReadJsonIntField(const std::string& json, const std::string& fieldName, int& outValue) {
+    const std::string key = "\"" + fieldName + "\"";
+    size_t pos = json.find(key);
+    if (pos == std::string::npos) return false;
+    pos = json.find(':', pos + key.size());
+    if (pos == std::string::npos) return false;
+    ++pos;
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    size_t end = pos;
+    while (end < json.size() && std::isdigit(static_cast<unsigned char>(json[end]))) {
+        ++end;
+    }
+    if (end == pos) return false;
+    outValue = std::max(1, std::atoi(json.substr(pos, end - pos).c_str()));
+    return true;
+}
+
+bool ReadRenderReport(const std::filesystem::path& reportPath, int& outWidth, int& outHeight) {
+    std::ifstream file(reportPath, std::ios::binary);
+    if (!file.is_open()) return false;
+    std::string json((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    int width = 1;
+    int height = 1;
+    if (!ReadJsonIntField(json, "width", width)) return false;
+    if (!ReadJsonIntField(json, "height", height)) return false;
+    outWidth = width;
+    outHeight = height;
+    return true;
+}
 }
 
 TextSpriteGenerator::~TextSpriteGenerator() {
@@ -328,7 +450,6 @@ void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* ed
     editor_ = editor;
     std::filesystem::create_directories(kOutputDirectory);
     std::filesystem::create_directories(kPreviewDirectory);
-    EnsureFactories();
     RefreshFonts();
     UpdateOutputNameFromText();
     previewDirty_ = false;
@@ -362,6 +483,25 @@ void TextSpriteGenerator::DrawPreview() {
         gameViewOffset_.x + previewPosition_.x * scaleX,
         gameViewOffset_.y + previewPosition_.y * scaleY,
     };
+
+    if (previewTextureHandle_ != 0 && !previewDirty_) {
+        ImVec2 canvasSize = {
+            std::max(1.0f, static_cast<float>(previewWidth_)) * drawScale,
+            std::max(1.0f, static_cast<float>(previewHeight_)) * drawScale,
+        };
+        ImVec2 canvasMin = { center.x - canvasSize.x * 0.5f, center.y - canvasSize.y * 0.5f };
+        ImVec2 canvasMax = { canvasMin.x + canvasSize.x, canvasMin.y + canvasSize.y };
+        ImDrawList* drawList = ImGui::GetForegroundDrawList();
+
+        if (previewBoundsEnabled_) {
+            drawList->AddRectFilled(canvasMin, canvasMax, IM_COL32(32, 48, 64, 28));
+            drawList->AddRect(canvasMin, canvasMax, IM_COL32(255, 210, 80, 190), 0.0f, 0, 1.5f);
+        }
+
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(previewTextureHandle_);
+        drawList->AddImage((ImTextureID)(uintptr_t)gpuHandle.ptr, canvasMin, canvasMax);
+        return;
+    }
 
     ImFont* font = ImGui::GetFont();
     ImVec2 sourceTextSize = font->CalcTextSizeA(sourceFontSize, FLT_MAX, 0.0f, textBuffer_);
@@ -432,7 +572,7 @@ void TextSpriteGenerator::DrawImGui() {
 
     ImGui::Checkbox("Game Viewにプレビュー", &previewEnabled_);
     ImGui::SameLine();
-    ImGui::TextDisabled("入力中に即時反映");
+    ImGui::TextDisabled("PNGは手動更新");
     ImGui::Checkbox("透明PNG範囲を表示", &previewBoundsEnabled_);
     ImGui::DragFloat2("プレビュー位置", &previewPosition_.x, 1.0f, -4096.0f, 4096.0f);
     ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 8.0f, "%.2f");
@@ -491,6 +631,22 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::Separator();
+    if (ImGui::Button("PNGプレビュー更新")) {
+        MarkPreviewDirty();
+        UpdatePreviewTexture();
+    }
+    ImGui::SameLine();
+    if (previewTextureHandle_ != 0 && !previewDirty_) {
+        ImGui::TextDisabled("外部ツールPNG: %d x %d", previewWidth_, previewHeight_);
+    }
+    else if (previewTextureHandle_ != 0) {
+        ImGui::TextDisabled("設定変更あり: PNGプレビューを更新してください");
+    }
+    else {
+        ImGui::TextDisabled("外部ツールPNG: 未生成");
+    }
+
+    ImGui::Separator();
     if (ImGui::Checkbox("出力名を文字から自動生成", &autoOutputName_)) {
         if (autoOutputName_) {
             UpdateOutputNameFromText();
@@ -527,8 +683,8 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     ImGui::TextDisabled("生成先: %s", kOutputDirectory);
-    ImGui::TextDisabled("Game ViewプレビューはPNG保存せずに軽量描画します。");
-    ImGui::TextDisabled("フォント参照元: Resources内の .ttf / .otf / .ttc");
+    ImGui::TextDisabled("Game Viewは軽量プレビューを表示し、PNGプレビュー更新時だけ外部ツール画像に切り替えます。");
+    ImGui::TextDisabled("フォント参照元: Resources/font + Resources/sprite/meiryo.ttc");
 
     if (textureChanged) {
         MarkPreviewDirty();
@@ -576,86 +732,52 @@ bool TextSpriteGenerator::EnsureFactories() {
 }
 
 void TextSpriteGenerator::RefreshFonts() {
-    if (!EnsureFactories()) return;
-
-    std::string previousFont = fontNamesUtf8_.empty()
+    std::string previousPath = fontPaths_.empty()
         ? std::string()
-        : fontNamesUtf8_[std::clamp(selectedFontIndex_, 0, static_cast<int>(fontNamesUtf8_.size()) - 1)];
+        : fontPaths_[std::clamp(selectedFontIndex_, 0, static_cast<int>(fontPaths_.size()) - 1)];
 
     fontNamesWide_.clear();
     fontNamesUtf8_.clear();
-    resourceFontCollection_.Reset();
+    fontPaths_.clear();
 
     std::vector<std::wstring> resourceFontPaths = CollectResourceFontPaths();
     if (resourceFontPaths.empty()) {
-        DebugConsole::GetInstance()->AddLog("Text PNG: no font files found in Resources.");
+        DebugConsole::GetInstance()->AddLog("Text PNG: no font files found in Resources/font or Resources/sprite/meiryo.ttc.");
         fontNamesWide_.push_back(L"Meiryo");
         fontNamesUtf8_.push_back("Meiryo");
+        fontPaths_.push_back("");
         selectedFontIndex_ = 0;
         return;
     }
 
-    if (!resourceFontLoader_) {
-        resourceFontLoader_.Attach(new ResourceFontCollectionLoader());
-        HRESULT registerHr = dwriteFactory_->RegisterFontCollectionLoader(resourceFontLoader_.Get());
-        if (FAILED(registerHr)) {
-            DebugConsole::GetInstance()->AddLog("Text PNG: resource font loader registration failed.");
-            resourceFontLoader_.Reset();
-            return;
+    fontNamesWide_.reserve(resourceFontPaths.size());
+    fontNamesUtf8_.reserve(resourceFontPaths.size());
+    fontPaths_.reserve(resourceFontPaths.size());
+
+    for (const std::wstring& widePath : resourceFontPaths) {
+        std::filesystem::path fontPath(widePath);
+        const std::string pathUtf8 = ToAbsoluteGenericPath(fontPath);
+        const std::string displayName = fontPath.stem().generic_string();
+        const std::string lowerDisplayName = ToLowerAscii(displayName);
+        if (lowerDisplayName.find("fa-solid") != std::string::npos ||
+            lowerDisplayName.find("fontawesome") != std::string::npos) {
+            continue;
         }
-    }
-
-    resourceFontCollectionKey_ = MakeFontCollectionKey(resourceFontPaths);
-    HRESULT hr = dwriteFactory_->CreateCustomFontCollection(
-        resourceFontLoader_.Get(),
-        resourceFontCollectionKey_.data(),
-        static_cast<UINT32>(resourceFontCollectionKey_.size() * sizeof(wchar_t)),
-        resourceFontCollection_.GetAddressOf());
-    if (FAILED(hr) || !resourceFontCollection_) {
-        DebugConsole::GetInstance()->AddLog("Text PNG: resource font collection failed.");
-        fontNamesWide_.push_back(L"Meiryo");
-        fontNamesUtf8_.push_back("Meiryo");
-        selectedFontIndex_ = 0;
-        return;
-    }
-
-    IDWriteFontCollection* collection = resourceFontCollection_.Get();
-    UINT32 count = collection->GetFontFamilyCount();
-    fontNamesWide_.reserve(count);
-    fontNamesUtf8_.reserve(count);
-
-    for (UINT32 i = 0; i < count; ++i) {
-        Microsoft::WRL::ComPtr<IDWriteFontFamily> family;
-        if (FAILED(collection->GetFontFamily(i, family.GetAddressOf()))) continue;
-
-        Microsoft::WRL::ComPtr<IDWriteLocalizedStrings> names;
-        if (FAILED(family->GetFamilyNames(names.GetAddressOf()))) continue;
-
-        UINT32 index = 0;
-        BOOL exists = FALSE;
-        names->FindLocaleName(L"ja-jp", &index, &exists);
-        if (!exists) names->FindLocaleName(L"en-us", &index, &exists);
-        if (!exists) index = 0;
-
-        UINT32 length = 0;
-        if (FAILED(names->GetStringLength(index, &length))) continue;
-        std::wstring name(length + 1, L'\0');
-        if (FAILED(names->GetString(index, name.data(), length + 1))) continue;
-        name.resize(length);
-
-        fontNamesWide_.push_back(name);
-        fontNamesUtf8_.push_back(WideToUtf8(name));
+        fontNamesWide_.push_back(Utf8ToWide(displayName));
+        fontNamesUtf8_.push_back(displayName);
+        fontPaths_.push_back(pathUtf8);
     }
 
     if (fontNamesWide_.empty()) {
         fontNamesWide_.push_back(L"Meiryo");
         fontNamesUtf8_.push_back("Meiryo");
+        fontPaths_.push_back("");
     }
 
     selectedFontIndex_ = 0;
-    if (!previousFont.empty()) {
-        for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
-            if (fontNamesUtf8_[i] == previousFont) {
+    if (!previousPath.empty()) {
+        for (int i = 0; i < static_cast<int>(fontPaths_.size()); ++i) {
+            if (fontPaths_[i] == previousPath) {
                 selectedFontIndex_ = i;
                 MarkPreviewDirty();
                 return;
@@ -665,7 +787,7 @@ void TextSpriteGenerator::RefreshFonts() {
 
     for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
         std::string lower = ToLowerAscii(fontNamesUtf8_[i]);
-        if (lower.find("meiryo") != std::string::npos) {
+        if (lower.find("mplus") != std::string::npos || lower.find("meiryo") != std::string::npos) {
             selectedFontIndex_ = i;
             break;
         }
@@ -674,153 +796,75 @@ void TextSpriteGenerator::RefreshFonts() {
 }
 
 bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight) {
-    if (!EnsureFactories()) return false;
-
-    std::filesystem::create_directories(std::filesystem::path(fullPath).parent_path());
-
-    std::wstring text = Utf8ToWide(textBuffer_);
-    if (text.empty()) text = L" ";
-
-    std::wstring fontName = fontNamesWide_.empty()
-        ? std::wstring(L"Meiryo")
-        : fontNamesWide_[std::clamp(selectedFontIndex_, 0, static_cast<int>(fontNamesWide_.size()) - 1)];
-
-    Microsoft::WRL::ComPtr<IDWriteTextFormat> textFormat;
-    HRESULT hr = dwriteFactory_->CreateTextFormat(
-        fontName.c_str(),
-        resourceFontCollection_.Get(),
-        DWRITE_FONT_WEIGHT_BOLD,
-        DWRITE_FONT_STYLE_NORMAL,
-        DWRITE_FONT_STRETCH_NORMAL,
-        std::max(4.0f, fontSize_),
-        L"ja-jp",
-        textFormat.GetAddressOf());
-    if (FAILED(hr)) return false;
-
-    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-    textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-
-    float outlinePad = outlineEnabled_ ? std::max(0.0f, outlineWidth_) : 0.0f;
-    float shadowPadX = shadowEnabled_ ? std::abs(shadowOffset_[0]) : 0.0f;
-    float shadowPadY = shadowEnabled_ ? std::abs(shadowOffset_[1]) : 0.0f;
-    float extraPadX = padding_ * 2.0f + outlinePad * 2.0f + shadowPadX;
-    float extraPadY = padding_ * 2.0f + outlinePad * 2.0f + shadowPadY;
-
-    float layoutWidth = autoCanvas_ ? 4096.0f : std::max(1.0f, static_cast<float>(canvasWidth_) - extraPadX);
-    float layoutHeight = autoCanvas_ ? 2048.0f : std::max(1.0f, static_cast<float>(canvasHeight_) - extraPadY);
-
-    Microsoft::WRL::ComPtr<IDWriteTextLayout> textLayout;
-    hr = dwriteFactory_->CreateTextLayout(
-        text.c_str(),
-        static_cast<UINT32>(text.size()),
-        textFormat.Get(),
-        layoutWidth,
-        layoutHeight,
-        textLayout.GetAddressOf());
-    if (FAILED(hr)) return false;
-
-    DWRITE_TEXT_METRICS metrics{};
-    textLayout->GetMetrics(&metrics);
-
-    int width = autoCanvas_ ? ClampCanvasSize(metrics.left + metrics.widthIncludingTrailingWhitespace + extraPadX) : std::clamp(canvasWidth_, 1, 4096);
-    int height = autoCanvas_ ? ClampCanvasSize(metrics.top + metrics.height + extraPadY) : std::clamp(canvasHeight_, 1, 4096);
-    outWidth = width;
-    outHeight = height;
-
-    Microsoft::WRL::ComPtr<IWICBitmap> bitmap;
-    hr = wicFactory_->CreateBitmap(
-        static_cast<UINT>(width),
-        static_cast<UINT>(height),
-        GUID_WICPixelFormat32bppPBGRA,
-        WICBitmapCacheOnLoad,
-        bitmap.GetAddressOf());
-    if (FAILED(hr)) return false;
-
-    D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
-        D2D1_RENDER_TARGET_TYPE_DEFAULT,
-        D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),
-        96.0f,
-        96.0f);
-
-    Microsoft::WRL::ComPtr<ID2D1RenderTarget> renderTarget;
-    hr = d2dFactory_->CreateWicBitmapRenderTarget(bitmap.Get(), props, renderTarget.GetAddressOf());
-    if (FAILED(hr)) return false;
-
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> textBrush;
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> outlineBrush;
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> shadowBrush;
-    renderTarget->CreateSolidColorBrush(ToD2DColor(textColor_), textBrush.GetAddressOf());
-    renderTarget->CreateSolidColorBrush(ToD2DColor(outlineColor_), outlineBrush.GetAddressOf());
-    renderTarget->CreateSolidColorBrush(ToD2DColor(shadowColor_), shadowBrush.GetAddressOf());
-
-    float originX = padding_ + outlinePad - metrics.left + (shadowEnabled_ ? std::max(0.0f, -shadowOffset_[0]) : 0.0f);
-    float originY = padding_ + outlinePad - metrics.top + (shadowEnabled_ ? std::max(0.0f, -shadowOffset_[1]) : 0.0f);
-
-    renderTarget->BeginDraw();
-    renderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
-
-    if (shadowEnabled_) {
-        D2D1_POINT_2F shadowOrigin = D2D1::Point2F(originX + shadowOffset_[0], originY + shadowOffset_[1]);
-        renderTarget->DrawTextLayout(shadowOrigin, textLayout.Get(), shadowBrush.Get());
+    const std::filesystem::path toolScript = kToolScriptPath;
+    if (!std::filesystem::exists(toolScript)) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: external tool not found: " + toolScript.generic_string());
+        return false;
     }
 
-    if (outlineEnabled_ && outlineWidth_ > 0.0f) {
-        int radius = std::clamp(static_cast<int>(std::ceil(outlineWidth_)), 1, 64);
-        float radiusSq = outlineWidth_ * outlineWidth_;
-        for (int y = -radius; y <= radius; ++y) {
-            for (int x = -radius; x <= radius; ++x) {
-                if (x == 0 && y == 0) continue;
-                float distSq = static_cast<float>(x * x + y * y);
-                if (distSq > radiusSq + 0.5f) continue;
-                D2D1_POINT_2F point = D2D1::Point2F(originX + static_cast<float>(x), originY + static_cast<float>(y));
-                renderTarget->DrawTextLayout(point, textLayout.Get(), outlineBrush.Get());
-            }
-        }
+    std::error_code ec;
+    std::filesystem::create_directories(std::filesystem::path(fullPath).parent_path(), ec);
+    std::filesystem::create_directories(std::filesystem::path(kToolRequestPath).parent_path(), ec);
+
+    const int selectedIndex = fontPaths_.empty()
+        ? 0
+        : std::clamp(selectedFontIndex_, 0, static_cast<int>(fontPaths_.size()) - 1);
+    const std::string selectedFontPath = fontPaths_.empty() ? std::string() : fontPaths_[selectedIndex];
+    const std::filesystem::path requestPath = kToolRequestPath;
+    const std::filesystem::path reportPath = kToolReportPath;
+    const std::string outputPath = ToAbsoluteGenericPath(fullPath);
+    const std::string reportPathUtf8 = ToAbsoluteGenericPath(reportPath);
+
+    std::ofstream request(requestPath, std::ios::binary | std::ios::trunc);
+    if (!request.is_open()) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: request file create failed.");
+        return false;
     }
 
-    renderTarget->DrawTextLayout(D2D1::Point2F(originX, originY), textLayout.Get(), textBrush.Get());
-    hr = renderTarget->EndDraw();
-    if (FAILED(hr)) return false;
+    request
+        << "{\n"
+        << "  \"text\": \"" << EscapeJsonString(textBuffer_) << "\",\n"
+        << "  \"fontPath\": \"" << EscapeJsonString(selectedFontPath) << "\",\n"
+        << "  \"fontSize\": " << std::max(4.0f, fontSize_) << ",\n"
+        << "  \"padding\": " << std::max(0.0f, padding_) << ",\n"
+        << "  \"autoCanvas\": " << (autoCanvas_ ? "true" : "false") << ",\n"
+        << "  \"canvasWidth\": " << std::clamp(canvasWidth_, 1, 4096) << ",\n"
+        << "  \"canvasHeight\": " << std::clamp(canvasHeight_, 1, 4096) << ",\n"
+        << "  \"textColor\": [" << textColor_[0] << ", " << textColor_[1] << ", " << textColor_[2] << ", " << textColor_[3] << "],\n"
+        << "  \"outline\": { \"enabled\": " << (outlineEnabled_ ? "true" : "false")
+        << ", \"width\": " << std::max(0.0f, outlineWidth_)
+        << ", \"color\": [" << outlineColor_[0] << ", " << outlineColor_[1] << ", " << outlineColor_[2] << ", " << outlineColor_[3] << "] },\n"
+        << "  \"shadow\": { \"enabled\": " << (shadowEnabled_ ? "true" : "false")
+        << ", \"offset\": [" << shadowOffset_[0] << ", " << shadowOffset_[1] << "]"
+        << ", \"color\": [" << shadowColor_[0] << ", " << shadowColor_[1] << ", " << shadowColor_[2] << ", " << shadowColor_[3] << "] },\n"
+        << "  \"reportPath\": \"" << EscapeJsonString(reportPathUtf8) << "\"\n"
+        << "}\n";
+    request.close();
 
-    Microsoft::WRL::ComPtr<IWICStream> stream;
-    hr = wicFactory_->CreateStream(stream.GetAddressOf());
-    if (FAILED(hr)) return false;
+    const std::filesystem::path powershellPath = L"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe";
+    const std::wstring commandLine =
+        QuoteCommandArg(powershellPath.wstring()) +
+        L" -NoProfile -ExecutionPolicy Bypass -File " + QuoteCommandArg(std::filesystem::absolute(toolScript, ec).wstring()) +
+        L" render -config " + QuoteCommandArg(std::filesystem::absolute(requestPath, ec).wstring()) +
+        L" -out " + QuoteCommandArg(std::filesystem::absolute(std::filesystem::path(fullPath), ec).wstring());
 
-    std::wstring widePath = Utf8ToWide(std::filesystem::path(fullPath).generic_string());
-    hr = stream->InitializeFromFilename(widePath.c_str(), GENERIC_WRITE);
-    if (FAILED(hr)) return false;
+    DWORD exitCode = 1;
+    if (!RunProcessAndWait(commandLine, 15000, exitCode)) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: external tool failed. exit=" + std::to_string(exitCode));
+        return false;
+    }
 
-    Microsoft::WRL::ComPtr<IWICBitmapEncoder> encoder;
-    hr = wicFactory_->CreateEncoder(GUID_ContainerFormatPng, nullptr, encoder.GetAddressOf());
-    if (FAILED(hr)) return false;
+    if (!std::filesystem::exists(fullPath)) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: output file was not created.");
+        return false;
+    }
 
-    hr = encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache);
-    if (FAILED(hr)) return false;
-
-    Microsoft::WRL::ComPtr<IWICBitmapFrameEncode> frame;
-    hr = encoder->CreateNewFrame(frame.GetAddressOf(), nullptr);
-    if (FAILED(hr)) return false;
-
-    hr = frame->Initialize(nullptr);
-    if (FAILED(hr)) return false;
-
-    hr = frame->SetSize(static_cast<UINT>(width), static_cast<UINT>(height));
-    if (FAILED(hr)) return false;
-
-    WICPixelFormatGUID pixelFormat = GUID_WICPixelFormat32bppPBGRA;
-    hr = frame->SetPixelFormat(&pixelFormat);
-    if (FAILED(hr)) return false;
-
-    hr = frame->WriteSource(bitmap.Get(), nullptr);
-    if (FAILED(hr)) return false;
-
-    hr = frame->Commit();
-    if (FAILED(hr)) return false;
-
-    hr = encoder->Commit();
-    return SUCCEEDED(hr);
+    if (!ReadRenderReport(reportPath, outWidth, outHeight)) {
+        outWidth = autoCanvas_ ? std::max(1, canvasWidth_) : std::clamp(canvasWidth_, 1, 4096);
+        outHeight = autoCanvas_ ? std::max(1, canvasHeight_) : std::clamp(canvasHeight_, 1, 4096);
+    }
+    return true;
 }
-
 void TextSpriteGenerator::UpdatePreviewTexture() {
     if (!previewDirty_) return;
     if (textBuffer_[0] == '\0') {
@@ -911,8 +955,10 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
 
 void TextSpriteGenerator::MarkPreviewDirty() {
     previewDirty_ = true;
+    previewRequestPending_ = false;
 }
 
 void TextSpriteGenerator::UpdateOutputNameFromText() {
     CopyToBuffer(outputNameBuffer_, sizeof(outputNameBuffer_), MakeOutputNameFromText(textBuffer_));
 }
+

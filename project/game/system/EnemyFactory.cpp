@@ -1,4 +1,4 @@
-﻿#include "EnemyFactory.h"
+#include "EnemyFactory.h"
 #include "EnemySlime.h"
 #include "EnemyBomb.h"
 #include "EnemyMushroom.h"
@@ -11,9 +11,13 @@
 #include "SceneManager.h"
 #include <EnemyBomber.h>
 #include <algorithm>
+#include <fstream>
+#include "json.hpp"
 // 他の敵タイプを追加する場合は include と CreateEnemy の分岐を増やす
 
 namespace {
+using json = nlohmann::json;
+
 // スライム系は共通して大きめのスケールにそろえる
 bool IsSlimeEnemyType(const std::string& enemyType) {
     return enemyType == "Slime" ||
@@ -28,10 +32,111 @@ void ApplySlimeDefaults(BaseEnemy* enemy) {
         return;
     }
 
-    if (enemy->GetEnemyType() == "Slime") {
-        enemy->SetModel("Characters/slime_pink");
+    if (enemy->GetEnemyType() == "GiantSlime") {
+        enemy->SetScale({ 3.6f, 3.6f, 3.6f });
     }
-    enemy->SetScale({ 2.0f, 2.0f, 2.0f });
+    else {
+        enemy->SetScale({ 2.0f, 2.0f, 2.0f });
+    }
+}
+
+void ReadFloat(const json& source, const char* key, float& value) {
+    if (source.is_object() && source.contains(key) && source.at(key).is_number()) {
+        value = source.at(key).get<float>();
+    }
+}
+
+void ReadBool(const json& source, const char* key, bool& value) {
+    if (source.is_object() && source.contains(key) && source.at(key).is_boolean()) {
+        value = source.at(key).get<bool>();
+    }
+}
+
+bool ReadVector3(const json& source, const char* key, Vector3& value) {
+    if (!source.is_object() || !source.contains(key) || !source.at(key).is_array()) {
+        return false;
+    }
+    const json& array = source.at(key);
+    if (array.size() < 3 || !array[0].is_number() || !array[1].is_number() || !array[2].is_number()) {
+        return false;
+    }
+    value = { array[0].get<float>(), array[1].get<float>(), array[2].get<float>() };
+    return true;
+}
+
+bool IsStatusScaleEnabled(const Vector3& scale) {
+    return scale.x > 0.0f && scale.y > 0.0f && scale.z > 0.0f;
+}
+
+std::string ReadString(const json& source, const char* key, const std::string& fallback = "") {
+    if (source.is_object() && source.contains(key) && source.at(key).is_string()) {
+        return source.at(key).get<std::string>();
+    }
+    return fallback;
+}
+
+void ApplyGameplayStatusPreset(BaseEnemy* enemy) {
+    if (!enemy || enemy->GetEnemyType().empty()) {
+        return;
+    }
+
+    std::ifstream file("Resources/json/gameplay/status_presets.json");
+    if (!file) {
+        return;
+    }
+
+    try {
+        json root;
+        file >> root;
+        if (!root.contains("enemies") || !root["enemies"].is_object()) {
+            return;
+        }
+
+        const std::string enemyType = enemy->GetEnemyType();
+        const json& enemies = root["enemies"];
+        if (!enemies.contains(enemyType) || !enemies.at(enemyType).is_object()) {
+            return;
+        }
+
+        const json& preset = enemies.at(enemyType);
+        if (!enemy->param_.has_value()) {
+            enemy->param_.emplace();
+        }
+
+        auto& p = enemy->param_.value();
+        ReadFloat(preset, "hp", p.hp);
+        ReadFloat(preset, "maxHp", p.maxHp);
+        ReadFloat(preset, "attackPower", p.attackPower);
+        ReadFloat(preset, "speed", p.speed);
+        ReadFloat(preset, "gravity", p.gravity);
+        ReadFloat(preset, "jumpPower", p.jumpPower);
+        ReadFloat(preset, "detectionRange", p.detectionRange);
+        ReadBool(preset, "morphLimited", p.morphLimited);
+        ReadFloat(preset, "morphDuration", p.morphDuration);
+        p.maxHp = (std::max)(p.maxHp, 1.0f);
+        p.hp = (std::max)(p.hp, 0.0f);
+        if (p.hp > p.maxHp) {
+            p.maxHp = p.hp;
+        }
+        p.attackPower = (std::max)(p.attackPower, 0.0f);
+        p.speed = (std::max)(p.speed, 0.0f);
+        p.jumpPower = (std::max)(p.jumpPower, 0.0f);
+        p.detectionRange = (std::max)(p.detectionRange, 0.0f);
+        p.morphDuration = (std::max)(p.morphDuration, 0.1f);
+        p.enemyType = enemyType;
+        enemy->SetDetectionRange(p.detectionRange);
+
+        const std::string modelName = ReadString(preset, "modelName");
+        if (!modelName.empty()) {
+            enemy->SetModel(modelName);
+        }
+
+        Vector3 scale = { 0.0f, 0.0f, 0.0f };
+        if (ReadVector3(preset, "scale", scale) && IsStatusScaleEnabled(scale)) {
+            enemy->SetScale(scale);
+        }
+    } catch (...) {
+    }
 }
 }
 
@@ -60,6 +165,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.0f;  // 攻撃力倍率
         p.speed = 0.1f;        // 移動速度
         p.gravity = 60.0f;     // 重力 
+        p.jumpPower = 18.0f;
 
         newEnemy = std::move(slime);
     }
@@ -89,7 +195,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     {
         auto bomb = std::make_unique<EnemyBomb>();
         
-        bomb->Initialize(common, "Primitives/sphere");
+        bomb->Initialize(common, "Gimmicks/blob");
 
         if (!bomb->param_.has_value()) {
             bomb->param_.emplace();
@@ -102,6 +208,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.0f;
         p.speed = 0.04f;       // スライムよりやや遅くじわじわ追いかける
         p.gravity = 60.0f;     // 通常重力
+        p.jumpPower = 16.0f;
 
         newEnemy = std::move(bomb);
     }
@@ -110,7 +217,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     {
         auto bomber = std::make_unique<EnemyBomber>();
 
-        bomber->Initialize(common, "Characters/bomb_slime");
+        bomber->Initialize(common, "Characters/slime_black");
 
         if (!bomber->param_.has_value()) {
             bomber->param_.emplace();
@@ -122,6 +229,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.15f;
         p.speed = 0.0f;       // 自分で歩かず、足運び処理側で距離を調整する
         p.gravity = 60.0f;
+        p.jumpPower = 16.0f;
         p.detectionRange = 32.0f;
         bomber->SetDetectionRange(p.detectionRange);
 
@@ -142,6 +250,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.0f;
         p.speed = 2.1f;
         p.gravity = 60.0f;
+        p.jumpPower = 16.0f;
         p.detectionRange = 16.0f;
         mushroom->SetDetectionRange(p.detectionRange);
 
@@ -162,6 +271,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.0f;
         p.speed = 2.35f;
         p.gravity = 60.0f;
+        p.jumpPower = 18.0f;
         p.detectionRange = 24.0f;
         fireSlime->SetDetectionRange(p.detectionRange);
 
@@ -182,6 +292,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.attackPower = 1.0f;
         p.speed = 3.0f;
         p.gravity = 62.0f;
+        p.jumpPower = 18.0f;
         p.detectionRange = 20.0f;
         thunderSlime->SetDetectionRange(p.detectionRange);
 
@@ -252,6 +363,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     if (newEnemy) {
         newEnemy->SetEnemyType(enemyName);
         ApplySlimeDefaults(newEnemy.get());
+        ApplyGameplayStatusPreset(newEnemy.get());
     } else {
         // 未登録タイプの場合は、落ちずに確認できる仮の敵を置く
         newEnemy = std::make_unique<BaseEnemy>();

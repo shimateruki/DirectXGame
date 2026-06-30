@@ -1,6 +1,8 @@
 #pragma once
 #include "Character.h"
+#include "AttackTelegraph.h"
 #include <cstdint>
+#include <memory>
 
 // 全ての敵が共有する移動・被ダメージ・投げ物理・撃破演出をまとめる基底クラス
 class BaseEnemy : public Character {
@@ -12,6 +14,7 @@ public:
 
     // 共通の重力・投げ物理・撃破演出・被ダメージ表示を更新する
     virtual void Update(float deltaTime) override;
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     // プレイヤー攻撃・地形・壁との共通衝突処理
     virtual bool OnCollision(Object3d* other) override;
@@ -41,6 +44,10 @@ protected:
 
     // HPが尽きた敵は共通のポップ演出を再生してから消す
     bool ShouldHandleDefeatEffect() const;
+    void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color);
+    void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
+    void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
+    void HideAttackTelegraph();
     void SpawnDefeatCoinDrops();
     virtual void OnSlamImpact(const Vector3& impactPosition, float impactSpeed);
 
@@ -97,6 +104,7 @@ private:
     bool isDefeatEffectPlaying_ = false;
     bool isDefeatEffectFinished_ = false;
     bool hasSpawnedDefeatCoinDrops_ = false;
+    std::unique_ptr<AttackTelegraph> attackTelegraph_;
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;
     Vector3 defeatBasePosition_ = { 0.0f, 0.0f, 0.0f };

@@ -9,7 +9,9 @@
 #include "Object3d.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include "CameraManager.h"
 #include "imgui.h"
+#include "../../../math/Math.h"
 
 #include <Windows.h>
 
@@ -157,7 +159,44 @@ std::string FormatByteSize(std::int64_t bytes) {
     return buffer;
 }
 
-bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
+ImU32 GetPreviewLabelColor(int level) {
+    switch (level) {
+    case 0:
+        return IM_COL32(255, 255, 255, 255);
+    case 1:
+        return IM_COL32(110, 220, 255, 255);
+    case 2:
+        return IM_COL32(255, 205, 95, 255);
+    default:
+        return IM_COL32(210, 210, 230, 255);
+    }
+}
+
+std::string BuildPreviewLabelText(const nlohmann::json& lod) {
+    const int level = (lod.is_object() && lod.contains("level") && lod["level"].is_number())
+        ? lod["level"].get<int>()
+        : 0;
+    std::ostringstream stream;
+    stream << "LOD" << level;
+    if (level == 0) {
+        stream << " 元モデル";
+    }
+    else {
+        const float distance = (lod.is_object() && lod.contains("distance") && lod["distance"].is_number())
+            ? lod["distance"].get<float>()
+            : 0.0f;
+        stream << " " << FormatFloat(distance) << "m";
+        const float reduction = (lod.is_object() && lod.contains("triangleReduction") && lod["triangleReduction"].is_number())
+            ? lod["triangleReduction"].get<float>()
+            : 0.0f;
+        if (reduction > 0.0f) {
+            stream << " -" << static_cast<int>(std::round(reduction * 100.0f)) << "%";
+        }
+    }
+    return stream.str();
+}
+
+bool StartHiddenProcess(const std::string& commandLine, PROCESS_INFORMATION& processInfo) {
     std::wstring command = Utf8ToWide(commandLine);
     if (command.empty()) {
         return false;
@@ -165,7 +204,7 @@ bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
 
     STARTUPINFOW startupInfo{};
     startupInfo.cb = sizeof(startupInfo);
-    PROCESS_INFORMATION processInfo{};
+    processInfo = {};
 
     std::vector<wchar_t> mutableCommand(command.begin(), command.end());
     mutableCommand.push_back(L'\0');
@@ -186,14 +225,6 @@ bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
         return false;
     }
 
-    WaitForSingleObject(processInfo.hProcess, INFINITE);
-    DWORD code = 1;
-    GetExitCodeProcess(processInfo.hProcess, &code);
-    CloseHandle(processInfo.hThread);
-    CloseHandle(processInfo.hProcess);
-    if (exitCode) {
-        *exitCode = code;
-    }
     return true;
 }
 
@@ -264,6 +295,9 @@ bool IsSupportedOptimizerSource(const fs::path& path) {
     if (ext == ".obj") {
         return true;
     }
+    if (ext == ".glb") {
+        return true;
+    }
     if (ext != ".gltf") {
         return false;
     }
@@ -304,8 +338,19 @@ void ModelOptimizerWindow::Initialize(DebugEditor* editor) {
     RefreshModelList();
 }
 
+void ModelOptimizerWindow::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+    gameViewOffsetX_ = offset.x;
+    gameViewOffsetY_ = offset.y;
+    gameViewWidth_ = size.x;
+    gameViewHeight_ = size.y;
+}
+
 void ModelOptimizerWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    UpdateBuilderProcess();
+    UpdatePreviewCreation();
+    DrawPreviewLabels();
+
     ImGui::Text(ICON_FA_COMPRESS_ARROWS_ALT " モデル最適化 / LOD生成");
     ImGui::Separator();
 
@@ -350,13 +395,37 @@ void ModelOptimizerWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::Text("LOD設定");
-    ImGui::DragFloat("LOD1 削減率", &lodRatios_[0], 0.01f, 0.05f, 0.95f, "%.2f");
+    ImGui::DragFloat("LOD1 保持率（高いほど形を残す）", &lodRatios_[0], 0.01f, 0.05f, 0.95f, "%.2f");
     ImGui::DragFloat("LOD1 距離", &lodDistances_[0], 0.5f, 1.0f, 500.0f, "%.1f");
-    ImGui::DragFloat("LOD2 削減率", &lodRatios_[1], 0.01f, 0.02f, 0.90f, "%.2f");
+    ImGui::DragFloat("LOD2 保持率（高いほど形を残す）", &lodRatios_[1], 0.01f, 0.02f, 0.90f, "%.2f");
     ImGui::DragFloat("LOD2 距離", &lodDistances_[1], 0.5f, 1.0f, 800.0f, "%.1f");
+    ImGui::TextDisabled("保持率はBlender Decimateのratioです。1.00に近いほど元モデルに近く、低いほど強く簡略化します。");
+    const char* backendLabels[] = {
+        "Auto: Blender優先 / なければ内蔵簡易",
+        "Blender CLI: 高品質LOD生成",
+        "内蔵簡易: グリッド簡略化"
+    };
+    ImGui::Combo("生成方式", &selectedBackendIndex_, backendLabels, IM_ARRAYSIZE(backendLabels));
+    ImGui::InputText("Blender.exe パス", blenderPathBuffer_, sizeof(blenderPathBuffer_));
+    ImGui::TextDisabled("未指定なら tools/blender/blender.exe を優先し、無ければPATHから探します。Autoでは見つからない場合だけ内蔵簡易へ戻します。");
     ImGui::Checkbox("既存LODを上書き", &forceOverwrite_);
     ImGui::Checkbox("Effect Preview Stageで比較", &autoUseEffectPreviewStage_);
+    ImGui::Checkbox("Previewラベルを表示", &showPreviewLabels_);
 
+    if (builderRunning_) {
+        ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "外部LODツールをバックグラウンド実行中... PID: %lu", builderProcessId_);
+    }
+    if (previewCreationActive_) {
+        ImGui::TextColored(
+            ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
+            "LOD Previewを分割生成中... %zu / %zu",
+            pendingPreviewIndex_,
+            pendingPreviewItems_.size());
+    }
+
+    if (builderRunning_) {
+        ImGui::BeginDisabled();
+    }
     if (ImGui::Button(ICON_FA_SEARCH " 解析のみ")) {
         RunBuilder(true);
     }
@@ -368,6 +437,9 @@ void ModelOptimizerWindow::DrawImGui() {
     if (ImGui::Button(ICON_FA_FILE_IMPORT " レポート再読込")) {
         LoadLatestReport();
     }
+    if (builderRunning_) {
+        ImGui::EndDisabled();
+    }
 
     ImGui::Spacing();
     ImGui::TextWrapped("%s", lastStatus_.c_str());
@@ -378,6 +450,9 @@ void ModelOptimizerWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::Text("レポート: %s", BuildReportSummary().c_str());
+    if (latestReport_.contains("selectedBackend") && latestReport_["selectedBackend"].is_string()) {
+        ImGui::TextDisabled("使用バックエンド: %s", latestReport_["selectedBackend"].get<std::string>().c_str());
+    }
 
     if (ImGui::Button(ICON_FA_EYE " 生成LODを並べて確認")) {
         CreatePreviewObjects();
@@ -530,6 +605,11 @@ void ModelOptimizerWindow::SetModelName(const std::string& modelName) {
 }
 
 bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
+    if (builderRunning_) {
+        lastStatus_ = "外部LODツールはすでに実行中です。完了を待ってください。";
+        return false;
+    }
+
     const std::string modelName = modelNameBuffer_;
     if (modelName.empty()) {
         lastStatus_ = "モデルが選択されていません。";
@@ -548,37 +628,238 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
     command += " -Ratio2 " + FormatFloat(lodRatios_[1]);
     command += " -Distance1 " + FormatFloat(lodDistances_[0]);
     command += " -Distance2 " + FormatFloat(lodDistances_[1]);
+    if (!analyzeOnly || forceOverwrite_) {
+        command += " -Force";
+    }
+    const char* backendArgs[] = { "auto", "blender", "native" };
+    const int backendIndex = std::clamp(selectedBackendIndex_, 0, 2);
+    command += " -Backend " + QuoteCommandArg(backendArgs[backendIndex]);
+    if (blenderPathBuffer_[0] != '\0') {
+        command += " -BlenderPath " + QuoteCommandArg(blenderPathBuffer_);
+    }
     if (analyzeOnly) {
         command += " -AnalyzeOnly";
     }
-    if (forceOverwrite_) {
-        command += " -Force";
-    }
-
-    lastStatus_ = analyzeOnly ? "モデル解析を実行中..." : "LOD生成を実行中...";
-    DWORD exitCode = 1;
-    if (!RunHiddenProcessAndWait(command, &exitCode) || exitCode != 0) {
-        lastStatus_ = "外部LODツールの実行に失敗しました。";
+    PROCESS_INFORMATION processInfo{};
+    if (!StartHiddenProcess(command, processInfo)) {
+        lastStatus_ = "外部LODツールを開始できませんでした。";
         DebugConsole::GetInstance()->AddLog(lastStatus_);
         return false;
+    }
+
+    builderRunning_ = true;
+    builderAnalyzeOnly_ = analyzeOnly;
+    builderProcessHandle_ = processInfo.hProcess;
+    builderThreadHandle_ = processInfo.hThread;
+    builderProcessId_ = processInfo.dwProcessId;
+
+    lastStatus_ = analyzeOnly
+        ? "モデル解析をバックグラウンド実行中です。Editor操作は継続できます。"
+        : "LOD生成をバックグラウンド実行中です。完了後にプレビュー確認を実行してください。";
+    DebugConsole::GetInstance()->AddLog(lastStatus_);
+    return true;
+}
+
+void ModelOptimizerWindow::UpdateBuilderProcess() {
+    if (!builderRunning_ || !builderProcessHandle_) {
+        return;
+    }
+
+    HANDLE processHandle = static_cast<HANDLE>(builderProcessHandle_);
+    const DWORD waitResult = WaitForSingleObject(processHandle, 0);
+    if (waitResult == WAIT_TIMEOUT) {
+        return;
+    }
+
+    DWORD exitCode = 1;
+    if (waitResult == WAIT_OBJECT_0) {
+        GetExitCodeProcess(processHandle, &exitCode);
+    }
+
+    CloseBuilderProcessHandles();
+    builderRunning_ = false;
+    builderProcessId_ = 0;
+    FinishBuilderProcess(exitCode);
+}
+
+void ModelOptimizerWindow::FinishBuilderProcess(unsigned long exitCode) {
+    if (exitCode != 0) {
+        lastStatus_ = "外部LODツールの実行に失敗しました。";
+        DebugConsole::GetInstance()->AddLog(lastStatus_);
+        return;
     }
 
     if (!LoadLatestReport()) {
         lastStatus_ = "LODツールは完了しましたが、レポートを読み込めませんでした。";
         DebugConsole::GetInstance()->AddLog(lastStatus_);
-        return false;
+        return;
     }
 
-    if (!analyzeOnly) {
-        CreatePreviewObjects();
+    if (!builderAnalyzeOnly_) {
         hasPendingGeneratedReview_ = true;
-        lastStatus_ = "LOD生成が完了しました。プレビューを確認して、採用または破棄を選んでください。";
+        lastStatus_ = "LOD生成が完了しました。必要に応じて「生成LODを並べて確認」を押してから採用または破棄してください。";
     }
     else {
         lastStatus_ = "モデル解析が完了しました。";
     }
     DebugConsole::GetInstance()->AddLog(lastStatus_);
-    return true;
+}
+
+void ModelOptimizerWindow::CloseBuilderProcessHandles() {
+    if (builderThreadHandle_) {
+        CloseHandle(static_cast<HANDLE>(builderThreadHandle_));
+        builderThreadHandle_ = nullptr;
+    }
+    if (builderProcessHandle_) {
+        CloseHandle(static_cast<HANDLE>(builderProcessHandle_));
+        builderProcessHandle_ = nullptr;
+    }
+}
+
+void ModelOptimizerWindow::UpdatePreviewCreation() {
+    if (!previewCreationActive_) {
+        return;
+    }
+    if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
+        pendingPreviewItems_.clear();
+        pendingPreviewIndex_ = 0;
+        firstPendingPreview_ = nullptr;
+        previewCreationActive_ = false;
+        lastStatus_ = "LOD Previewを生成できるシーンがありません。";
+        DebugConsole::GetInstance()->AddLog(lastStatus_);
+        return;
+    }
+
+    BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
+    Object3dCommon* common = scene->GetObject3dCommon();
+    if (!common) {
+        pendingPreviewItems_.clear();
+        pendingPreviewIndex_ = 0;
+        firstPendingPreview_ = nullptr;
+        previewCreationActive_ = false;
+        lastStatus_ = "Object3dCommonが取得できません。";
+        DebugConsole::GetInstance()->AddLog(lastStatus_);
+        return;
+    }
+
+    if (pendingPreviewIndex_ >= pendingPreviewItems_.size()) {
+        previewCreationActive_ = false;
+        pendingPreviewItems_.clear();
+        pendingPreviewIndex_ = 0;
+        if (firstPendingPreview_) {
+            editor_->SetSelectedObject(firstPendingPreview_);
+            EditorManager::GetInstance()->SetSelectedObject(this);
+        }
+        firstPendingPreview_ = nullptr;
+        lastStatus_ = "生成LODのPreviewを配置しました。Hierarchyでは __Editor_LODPreview_ で確認できます。";
+        DebugConsole::GetInstance()->AddLog(lastStatus_);
+        return;
+    }
+
+    const PendingPreviewItem item = pendingPreviewItems_[pendingPreviewIndex_];
+    auto object = std::make_unique<Object3d>();
+    object->Initialize(common);
+    object->SetName(std::string(kLodPreviewPrefix) + "LOD" + std::to_string(item.level));
+    object->SetClassName("EditorOnly_LODPreview");
+    object->SetSaveCategory("Object");
+    object->SetIsLocked(true);
+    object->SetCollisionAttribute(0);
+    object->SetCollisionMask(0);
+    object->SetModel(item.modelName);
+    object->SetTranslate({ item.x, item.y, item.z });
+    object->SetScale({ 1.0f, 1.0f, 1.0f });
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
+
+    Object3d* rawPreview = object.get();
+    scene->GetObjects().push_back(std::move(object));
+    if (!firstPendingPreview_) {
+        firstPendingPreview_ = rawPreview;
+    }
+    ++pendingPreviewIndex_;
+}
+
+void ModelOptimizerWindow::DrawPreviewLabels() {
+#ifdef USE_IMGUI
+    if (!showPreviewLabels_) {
+        return;
+    }
+    if (gameViewWidth_ <= 1.0f || gameViewHeight_ <= 1.0f) {
+        return;
+    }
+    if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
+        return;
+    }
+    if (!hasReport_ || !latestReport_.contains("lods") || !latestReport_["lods"].is_array()) {
+        return;
+    }
+
+    BaseScene* scene = editor_->GetSceneManager()->GetCurrentScene();
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+
+    for (const auto& lod : latestReport_["lods"]) {
+        if (!lod.is_object()) {
+            continue;
+        }
+        const int level = (lod.contains("level") && lod["level"].is_number()) ? lod["level"].get<int>() : 0;
+        const std::string previewName = std::string(kLodPreviewPrefix) + "LOD" + std::to_string(level);
+
+        Object3d* previewObject = nullptr;
+        for (auto& object : scene->GetObjects()) {
+            if (object && object->GetName() == previewName) {
+                previewObject = object.get();
+                break;
+            }
+        }
+        if (!previewObject) {
+            continue;
+        }
+
+        const AABB bounds = previewObject->GetModelWorldAABB();
+        Vector3 labelWorld = previewObject->GetWorldPosition();
+        labelWorld.y = bounds.max.y + 0.75f;
+
+        Vector2 labelScreen;
+        if (!ProjectWorldToGameView(labelWorld, labelScreen)) {
+            continue;
+        }
+
+        const std::string label = BuildPreviewLabelText(lod);
+        const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
+        const ImVec2 textPos = {
+            labelScreen.x - textSize.x * 0.5f,
+            labelScreen.y - textSize.y * 0.5f
+        };
+        const ImVec2 rectMin = { textPos.x - 8.0f, textPos.y - 5.0f };
+        const ImVec2 rectMax = { textPos.x + textSize.x + 8.0f, textPos.y + textSize.y + 5.0f };
+        const ImU32 labelColor = GetPreviewLabelColor(level);
+
+        drawList->AddRectFilled(rectMin, rectMax, IM_COL32(12, 16, 22, 210), 6.0f);
+        drawList->AddRect(rectMin, rectMax, labelColor, 6.0f, 0, 1.6f);
+        drawList->AddText(textPos, IM_COL32(0, 0, 0, 180), label.c_str());
+        drawList->AddText({ textPos.x, textPos.y - 1.0f }, labelColor, label.c_str());
+    }
+#endif
+}
+
+bool ModelOptimizerWindow::ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const {
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) {
+        return false;
+    }
+
+    Matrix4x4 viewProjection = Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    Vector3 ndc = Math::Transform(world, viewProjection);
+    if (ndc.z < 0.0f || ndc.z > 1.0f) {
+        return false;
+    }
+
+    screenOut.x = gameViewOffsetX_ + (ndc.x + 1.0f) * 0.5f * gameViewWidth_;
+    screenOut.y = gameViewOffsetY_ + (1.0f - ndc.y) * 0.5f * gameViewHeight_;
+    return screenOut.x >= gameViewOffsetX_ - 96.0f &&
+           screenOut.x <= gameViewOffsetX_ + gameViewWidth_ + 96.0f &&
+           screenOut.y >= gameViewOffsetY_ - 96.0f &&
+           screenOut.y <= gameViewOffsetY_ + gameViewHeight_ + 96.0f;
 }
 
 bool ModelOptimizerWindow::LoadLatestReport() {
@@ -726,6 +1007,11 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
         selectedBeforeRemove = nullptr;
     }
 
+    previewCreationActive_ = false;
+    pendingPreviewItems_.clear();
+    pendingPreviewIndex_ = 0;
+    firstPendingPreview_ = nullptr;
+
     RemovePreviewObjects();
 
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
@@ -767,48 +1053,44 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
     const float spacing = 4.0f;
     const float startOffset = previewCount > 0 ? -spacing * static_cast<float>(previewCount - 1) * 0.5f : 0.0f;
     int previewIndex = 0;
-    Object3d* firstPreview = nullptr;
     for (const auto& lod : latestReport_["lods"]) {
         if (!lod.is_object()) continue;
         const int level = ReadIntOrZero(lod, "level");
         const std::string modelName = lod.value("modelName", "");
         if (modelName.empty()) continue;
-
-        auto object = std::make_unique<Object3d>();
-        object->Initialize(common);
-        object->SetName(std::string(kLodPreviewPrefix) + "LOD" + std::to_string(level));
-        object->SetClassName("EditorOnly_LODPreview");
-        object->SetSaveCategory("Object");
-        object->SetIsLocked(true);
-        object->SetCollisionAttribute(0);
-        object->SetCollisionMask(0);
-        object->SetModel(modelName);
-        object->SetTranslate({
-            origin.x + startOffset + static_cast<float>(previewIndex) * spacing,
-            origin.y,
-            origin.z
-        });
-        object->SetScale({ 1.0f, 1.0f, 1.0f });
-        object->UpdateLocalMatrix();
-        object->UpdateWorldMatrix();
-        Object3d* rawPreview = object.get();
-        scene->GetObjects().push_back(std::move(object));
-        if (!firstPreview) {
-            firstPreview = rawPreview;
+        const std::string reportFilePath = lod.value("file", std::string{});
+        if (!reportFilePath.empty() && !fs::exists(fs::path(reportFilePath))) {
+            DebugConsole::GetInstance()->AddLog("LOD Preview skipped missing file: " + reportFilePath);
+            continue;
         }
+
+        PendingPreviewItem item;
+        item.level = level;
+        item.modelName = modelName;
+        item.x = origin.x + startOffset + static_cast<float>(previewIndex) * spacing;
+        item.y = origin.y;
+        item.z = origin.z;
+        pendingPreviewItems_.push_back(std::move(item));
         ++previewIndex;
     }
 
-    if (firstPreview) {
-        editor_->SetSelectedObject(firstPreview);
-        EditorManager::GetInstance()->SetSelectedObject(this);
+    if (pendingPreviewItems_.empty()) {
+        lastStatus_ = "LOD Preview対象がありません。";
+        DebugConsole::GetInstance()->AddLog(lastStatus_);
+        return;
     }
 
-    lastStatus_ = "生成LODのPreviewを配置しました。Hierarchyでは __Editor_LODPreview_ で確認できます。";
+    previewCreationActive_ = true;
+    lastStatus_ = "LOD Previewを分割生成中です。Editor操作を止めずに1つずつ配置します。";
     DebugConsole::GetInstance()->AddLog(lastStatus_);
 }
 
 void ModelOptimizerWindow::RemovePreviewObjects() {
+    previewCreationActive_ = false;
+    pendingPreviewItems_.clear();
+    pendingPreviewIndex_ = 0;
+    firstPendingPreview_ = nullptr;
+
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return;
     }

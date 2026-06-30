@@ -40,6 +40,7 @@ private:
     float breathParticleTimer_ = 0.0f;   // ブレス粒子の発生間隔。
     float attackTimer_ = 0.0f;           // 攻撃中の伸縮演出。
     float idleTimer_ = 0.0f;             // 待機呼吸アニメーション用。
+    float groundHopTimer_ = 0.0f;        // 通常移動中の小ホップ周期。
     float carriedFireCooldown_ = 0.0f;   // 持ち運び能力の再使用待ち。
     float carriedEffectTimer_ = 0.0f;    // 発射直後の発光演出。
     float carriedBreathDamageTimer_ = 0.0f; // 吸収中ブレスの連続ヒット間隔。

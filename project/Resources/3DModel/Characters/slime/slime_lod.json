@@ -1,0 +1,34 @@
+{
+    "sourceModel":  "Characters/slime",
+    "sourceFile":  "Resources/3DModel/Characters/slime/slime.gltf",
+    "generatedAt":  "2026-06-29T00:02:33",
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Characters/slime",
+                     "distance":  0,
+                     "ratio":  1,
+                     "backend":  "blender",
+                     "triangles":  770,
+                     "fileSizeBytes":  21829
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Characters/slime/slime_lod1.gltf",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "backend":  "blender",
+                     "triangles":  422,
+                     "fileSizeBytes":  14016
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Characters/slime/slime_lod2.gltf",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "backend":  "blender",
+                     "triangles":  191,
+                     "fileSizeBytes":  7862
+                 }
+             ]
+}

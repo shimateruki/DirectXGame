@@ -21,6 +21,8 @@ void PlayerStateHook::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Hook");
     if (player) {
         player->SetIsControlActive(false);
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+        player->SetSlimeAnimationDirection(targetPos_ - player->GetWorldPosition());
         if (player->param_.has_value()) {
             oldGravity_ = player->param_->gravity;
             player->param_->gravity = 0.0f;
@@ -53,12 +55,12 @@ void PlayerStateHook::Enter(Player* player) {
     }
 }
 
-void PlayerStateHook::Update(Player* player) {
+void PlayerStateHook::Update(Player* player, float deltaTime) {
     if (!player) return;
 
-    float deltaTime = 1.0f / 60.0f; // Updateは固定フレーム想定
-
     if (phase_ == Phase::kShootHook) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+        player->SetSlimeAnimationDirection(targetPos_ - player->GetWorldPosition());
         // フェーズ1：フック（腕）が目標地点へ飛んでいく
         Vector3 toTarget = targetPos_ - hookTipPos_;
         float dist = Math::Length(toTarget);
@@ -122,15 +124,9 @@ void PlayerStateHook::Update(Player* player) {
 
         float targetAngle = std::atan2(dir.x, dir.z);
         player->SetMoveYaw(targetAngle);
-
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Dash);
+        player->SetSlimeAnimationDirection(dir);
         wobbleTimer_ += deltaTime;
-        float wobble = std::sin(wobbleTimer_ * 20.0f) * 0.2f;
-        Vector3 hookScale = { 1.0f + wobble, 1.0f + wobble, 4.5f - wobble * 2.0f };
-        Vector3 currentScale = player->GetTransform()->scale;
-        currentScale.x = Math::Lerp(currentScale.x, hookScale.x, 0.3f);
-        currentScale.y = Math::Lerp(currentScale.y, hookScale.y, 0.3f);
-        currentScale.z = Math::Lerp(currentScale.z, hookScale.z, 0.3f);
-        player->SetScale(currentScale);
 
         // 移動中も腕をターゲット地点に繋いでおく
         Object3d* marker = player->GetHookMarker();
@@ -176,7 +172,7 @@ void PlayerStateHook::Exit(Player* player) {
         // 到達後に少し上に跳ねる
         Vector3 v = player->GetVelocity();
         player->SetVelocity({ v.x, 15.0f, v.z });
-        player->SetScale({ 3.0f, 1.0f, 3.0f });
+        player->TriggerSlimeImpulse({ 3.0f, 1.0f, 3.0f }, 0.18f);
 
         // 使用していたマーカーを非表示にし、形状をリセット
         Object3d* marker = player->GetHookMarker();
@@ -202,6 +198,8 @@ void PlayerStateSwingHook::Enter(Player* player) {
     if (!player) return;
 
     player->SetIsControlActive(false);
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+    player->SetSlimeAnimationDirection(anchorPos_ - player->GetWorldPosition());
     if (player->param_.has_value()) {
         oldGravity_ = player->param_->gravity;
         player->param_->gravity = 0.0f;
@@ -233,10 +231,9 @@ void PlayerStateSwingHook::Enter(Player* player) {
     }
 }
 
-void PlayerStateSwingHook::Update(Player* player) {
+void PlayerStateSwingHook::Update(Player* player, float deltaTime) {
     if (!player) return;
 
-    const float deltaTime = 1.0f / 60.0f;
     timer_ += deltaTime;
 
     if (phase_ == Phase::kShootHook) {
@@ -374,18 +371,8 @@ void PlayerStateSwingHook::Update(Player* player) {
         player->SetMoveYaw(std::atan2(flatVel.x, flatVel.z));
     }
 
-    float stretch = std::min(Math::Length(swingVelocity_) / 56.0f, 1.0f);
-    float flutter = std::sin(timer_ * 14.0f) * stretch;
-    player->SetScale({
-        3.0f + 0.10f * stretch + 0.07f * flutter,
-        1.0f + 0.08f * stretch - 0.04f * flutter,
-        3.0f - 0.06f * stretch + 0.05f * flutter
-    });
-
-    Vector3 rot = player->GetRotation();
-    rot.x = -swingVelocity_.z * 0.006f;
-    rot.z = swingVelocity_.x * 0.006f;
-    player->SetRotation(rot);
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Dash);
+    player->SetSlimeAnimationDirection(swingVelocity_);
 
     UpdateRopeMarker(player, anchorPos_, 0.18f);
 
@@ -405,7 +392,7 @@ void PlayerStateSwingHook::Exit(Player* player) {
             if (releaseVelocity_.y < 8.0f) releaseVelocity_.y = 8.0f;
             player->SetVelocity(releaseVelocity_);
         }
-        player->SetScale({ 3.0f, 1.0f, 3.0f });
+        player->TriggerSlimeImpulse({ 3.0f, 1.0f, 3.0f }, 0.18f);
         Vector3 rot = player->GetRotation();
         rot.x = 0.0f;
         rot.z = 0.0f;

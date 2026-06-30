@@ -174,6 +174,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     }
     else {
         camera->SetFollowTarget(nullptr);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
         if (!camera->IsOverridden()) {
             UpdateFreeCamera(camera);
         }
@@ -806,6 +807,11 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
     if (camera) {
         camera->SetEye(position);
         camera->SetRotation(rotation);
+        Vector3 forward;
+        forward.x = std::sin(rotation.y) * std::cos(rotation.x);
+        forward.y = -std::sin(rotation.x);
+        forward.z = std::cos(rotation.y) * std::cos(rotation.x);
+        camera->SetTarget(position + forward * 10.0f);
         // ターゲット追従を切らないと動かない場合があるので念のため
         camera->SetFollowTarget(nullptr);
     }

@@ -1,0 +1,16 @@
+{
+    "sourceModel":  "uvChecker",
+    "sourceFile":  "Resources/3DModel/uvChecker.png",
+    "generatedAt":  "2026-06-28T16:12:31",
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "uvChecker",
+                     "distance":  0,
+                     "ratio":  1,
+                     "backend":  "blender",
+                     "triangles":  0,
+                     "fileSizeBytes":  106081
+                 }
+             ]
+}

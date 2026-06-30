@@ -58,6 +58,15 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_carry_eye_charge_ring.json",
     "Resources/json/effect/effect_carry_eye_beam_muzzle.json",
     "Resources/json/effect/effect_carry_bat_glide_ring.json",
+    "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+    "Resources/json/effect/effect_pink_slime_charge_core_flash.json",
+    "Resources/json/effect/effect_pink_slime_charge_vortex_streak.json",
+    "Resources/json/effect/effect_pink_slime_launch_kick_ring.json",
+    "Resources/json/effect/effect_pink_slime_apex_focus_flash.json",
+    "Resources/json/effect/effect_pink_slime_dive_streak.json",
+    "Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
+    "Resources/json/effect/effect_pink_slime_landing_core_flash.json",
+    "Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
     "Resources/json/effect/effect_warp_gate_floor.json",
     "Resources/json/effect/effect_warp_gate_pillar.json"
 };
@@ -123,6 +132,8 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {
     "bomb_hit_fragment_burst",
     "throw_slam_pebble_burst",
+    "pink_slime_charge_pebble_pull",
+    "pink_slime_landing_pebble_burst",
     "rock_burst",
     "small_pebble_scatter",
     "wood_splinter_burst"

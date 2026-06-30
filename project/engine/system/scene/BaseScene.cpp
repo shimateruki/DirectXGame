@@ -5,6 +5,68 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "GPUParticleManager.h"
+#include <algorithm>
+
+bool BaseScene::Destroy(Object3d* object) {
+    return DestroyObject(object);
+}
+
+bool BaseScene::Destroy(Sprite* sprite) {
+    return DestroySprite(sprite);
+}
+
+bool BaseScene::DestroyObject(Object3d* object) {
+    if (!IsAlive(object)) {
+        return false;
+    }
+
+    object->SetIsVisible(false);
+    RequestRemoveObject(object);
+    return true;
+}
+
+bool BaseScene::DestroySprite(Sprite* sprite) {
+    auto& sprites = GetSprites();
+    auto it = std::find_if(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
+        return candidate && candidate.get() == sprite;
+    });
+    if (it == sprites.end()) {
+        return false;
+    }
+
+    std::vector<Sprite*> children = sprite->GetChildren();
+    for (Sprite* child : children) {
+        if (child) {
+            child->SetParent(nullptr);
+        }
+    }
+    sprite->SetParent(nullptr);
+    sprite->SetVisible(false);
+    sprites.erase(it);
+    return true;
+}
+
+bool BaseScene::IsAlive(Object3d* object) {
+    if (!object) {
+        return false;
+    }
+
+    auto& objects = GetObjects();
+    return std::any_of(objects.begin(), objects.end(), [object](const std::unique_ptr<Object3d>& candidate) {
+        return candidate && candidate.get() == object;
+    });
+}
+
+bool BaseScene::IsAlive(Sprite* sprite) {
+    if (!sprite) {
+        return false;
+    }
+
+    auto& sprites = GetSprites();
+    return std::any_of(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
+        return candidate && candidate.get() == sprite;
+    });
+}
 
 bool BaseScene::IsSpecialMaterialType(int materialType) const {
     return materialType >= 8 && materialType <= 22;

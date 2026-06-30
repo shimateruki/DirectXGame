@@ -69,6 +69,15 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 		strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), "Please_Select_Or_Set.json");
 		lastUpdatedScene_ = currentScene;
 	}
+	auto& currentSprites = currentScene->GetSprites();
+	if (selectedSprite_ &&
+		std::none_of(currentSprites.begin(), currentSprites.end(), [this](const std::unique_ptr<Sprite>& spritePtr) {
+			return spritePtr && spritePtr.get() == selectedSprite_;
+		})) {
+		selectedSprite_ = nullptr;
+		isMovingX_ = false;
+		isMovingY_ = false;
+	}
 	static std::string s_lastSyncedSpriteFilename = "";
 	std::string currentLoadedName = currentScene->GetLoadedSpriteFilename();
 
@@ -83,12 +92,9 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 
 			// --- 削除 (Delete) ---
 			if (inputManager_->IsKeyTriggered(DIK_DELETE)) {
-				auto& sprites = currentScene->GetSprites();
-				sprites.erase(std::remove_if(sprites.begin(), sprites.end(),
-					[this](const std::unique_ptr<Sprite>& spritePtr) {
-						return spritePtr.get() == selectedSprite_;
-					}), sprites.end());
-				selectedSprite_ = nullptr;
+				if (currentScene->DestroySprite(selectedSprite_)) {
+					selectedSprite_ = nullptr;
+				}
 			}
 			// 削除された場合はここで抜ける
 			if (selectedSprite_ == nullptr) goto SKIP_SHORTCUTS;

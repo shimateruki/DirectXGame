@@ -55,6 +55,12 @@ public:
 
     virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
+    bool Destroy(Object3d* object);
+    bool Destroy(Sprite* sprite);
+    bool DestroyObject(Object3d* object);
+    bool DestroySprite(Sprite* sprite);
+    bool IsAlive(Object3d* object);
+    bool IsAlive(Sprite* sprite);
 
     // --- 共通リソース取得 ---
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }

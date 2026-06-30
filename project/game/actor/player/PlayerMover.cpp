@@ -11,6 +11,7 @@
 #include "EventManager.h"
 #include "GPUParticleManager.h"
 #include "GroundEffectLocator.h"
+#include "MeshEffectManager.h"
 
 PlayerMover::PlayerMover() {}
 
@@ -161,12 +162,50 @@ void PlayerMover::Update(float deltaTime)
         hasAirDashed_ = false; // 地面に着いたら空中ダッシュ権をリセット
     }
 
+    const bool usePinkSlimeJumpAbility = player_->IsPinkSlimeMorphed();
     if (inputManager_->IsActionPressed("Jump")) {
+        if (!usePinkSlimeJumpAbility) {
+            if (inputManager_->IsActionTriggered("Jump") && isGrounded) {
+                velocity.y = player_->GetJumpPower();
+
+                PlayerJumpEvent jumpEvent;
+                jumpEvent.player = player_;
+                player_->IncrementJumpCount();
+                EventManager::GetInstance()->Dispatch(jumpEvent);
+
+                EmitGroundDust("player_jump_dust", 0.035f);
+
+                if (hasMoveInput) {
+                    float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
+                    if (len > 0.001f) {
+                        float s = player_->GetMoveSpeed() / len;
+                        velocity.x = inputMove.x * s;
+                        velocity.z = inputMove.z * s;
+                    }
+                } else {
+                    float yaw = player_->GetMoveYaw();
+                    velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
+                    velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
+                }
+
+                if (player_) player_->ChangeState(std::make_unique<PlayerStateJump>());
+            }
+
+            if (player_) {
+                player_->SetSlimeJumpCharge(0.0f);
+            }
+            isJumpCharging_ = false;
+            jumpChargeTimer_ = 0.0f;
+        }
         // 地上、または空中かつダッシュ未実行ならチャージ可能
-        if (isGrounded || (!isGrounded && !hasAirDashed_)) {
+        else if (isGrounded || (!isGrounded && !hasAirDashed_)) {
             isJumpCharging_ = true;
             jumpChargeTimer_ += deltaTime;
             if (jumpChargeTimer_ > maxChargeTime_) jumpChargeTimer_ = maxChargeTime_;
+            if (player_) {
+                player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
+                player_->SetSlimeJumpCharge(jumpChargeTimer_ / maxChargeTime_);
+            }
 
             if (!isDashing_) {
                 // 移動速度を落とす（空中でも溜め中は少し減速させる）
@@ -180,7 +219,7 @@ void PlayerMover::Update(float deltaTime)
         float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
 
         // 溜めが十分か判定
-        if (jumpChargeTimer_ >= 0.4f) {
+        if (false && jumpChargeTimer_ >= 0.4f && !usePinkSlimeJumpAbility) {
             // 空中なら使用済みフラグをチェック
             if (isGrounded || !hasAirDashed_) {
                 float yaw = player_->GetMoveYaw();
@@ -228,7 +267,7 @@ void PlayerMover::Update(float deltaTime)
         }
         else if (isGrounded) {
             // 地上で溜め不足なら通常ジャンプ
-            velocity.y = player_->GetJumpPower();
+            velocity.y = player_->GetJumpPower() * (usePinkSlimeJumpAbility ? (1.0f + chargeRatio * 0.65f) : 1.0f);
 
             // ジャンプイベントを発行
             PlayerJumpEvent jumpEvent;
@@ -236,7 +275,33 @@ void PlayerMover::Update(float deltaTime)
             player_->IncrementJumpCount();
             EventManager::GetInstance()->Dispatch(jumpEvent);
 
-            EmitGroundDust("player_jump_dust", 0.035f);
+            if (usePinkSlimeJumpAbility) {
+                if (MeshEffectManager::GetInstance()) {
+                    Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
+                    effectPos.y += 0.08f;
+                    MeshEffectManager::GetInstance()->SpawnEffectAt(
+                        "Resources/json/effect/effect_pink_slime_launch_kick_ring.json",
+                        effectPos,
+                        { 0.0f, 0.0f, 0.0f },
+                        { 1.25f, 0.9f, 1.25f }
+                    );
+                }
+            } else {
+            if (usePinkSlimeJumpAbility) {
+                if (MeshEffectManager::GetInstance()) {
+                    Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
+                    effectPos.y += 0.08f;
+                    MeshEffectManager::GetInstance()->SpawnEffectAt(
+                        "Resources/json/effect/effect_pink_slime_launch_kick_ring.json",
+                        effectPos,
+                        { 0.0f, 0.0f, 0.0f },
+                        { 1.25f, 0.9f, 1.25f }
+                    );
+                }
+            } else {
+                EmitGroundDust("player_jump_dust", 0.035f);
+            }
+            }
 
             // 水平方向の速度を現在の向きに合わせる
             if (hasMoveInput) {
@@ -256,12 +321,19 @@ void PlayerMover::Update(float deltaTime)
             if (player_) player_->ChangeState(std::make_unique<PlayerStateJump>());
         }
 
+        if (player_) {
+            player_->SetSlimeJumpCharge(0.0f);
+        }
+
         // チャージリセット
         isJumpCharging_ = false;
         jumpChargeTimer_ = 0.0f;
     }
     else {
         // チャージ中でない場合、空中ではフラグ管理のみ（着地リセットは上記で行っている）
+        if (player_) {
+            player_->SetSlimeJumpCharge(0.0f);
+        }
     }
 
     // --- 8. スライム特有のホッピング移動 ---
@@ -283,56 +355,7 @@ void PlayerMover::Update(float deltaTime)
         hopTimer_ = 0.3f; // 次の移動開始時にすぐ跳ねるように調整
     }
 
-    // --- 9. Squash & Stretch (伸縮アニメーション) ---
-    slimeTimer_ += deltaTime;
-    Vector3 targetScale = baseScale_;
-    
-    // チャージ中の潰れ
-    if (isJumpCharging_) {
-        float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
-        float squash = chargeRatio * 1.2f; // 最大で1.2（基準2.0から1.2引いて0.8になる）
-        targetScale.y -= squash;
-        targetScale.x += squash * 0.4f;
-        targetScale.z += squash * 0.4f;
-    }
-
-    float vy = velocity.y;
-    // 上昇・下降による伸縮
-    if (std::abs(vy) > 0.1f) {
-        float stretch = 0.0f;
-        if (vy > 0.0f) {
-            stretch = vy * 0.08f; // 上昇時は勢いよく伸ばす
-        } else {
-            stretch = std::abs(vy) * 0.02f; // 落下時も少しだけ伸ばして「落下感」を出す（潰さない）
-        }
-        targetScale.y += stretch;
-        targetScale.x -= stretch * 0.5f;
-        targetScale.z -= stretch * 0.5f;
-        
-        // 潰れ・伸びの限界値を設定 (最小1.2, 最大3.5くらい)
-        targetScale.y = std::clamp(targetScale.y, 1.2f, 3.5f);
-        targetScale.x = std::clamp(targetScale.x, 1.0f, 2.5f);
-        targetScale.z = std::clamp(targetScale.z, 1.0f, 2.5f);
-    } 
-    // 接地中の「ぷるぷる」
-    else if (player_->IsGrounded()) {
-        // 着地時の潰れを再現
-        float wobble = std::sin(slimeTimer_ * 15.0f) * 0.15f; // 基準2.0に合わせて少し強化
-        if (hasMoveInput) wobble *= 1.2f; 
-        
-        targetScale.y += wobble;
-        targetScale.x -= wobble * 0.5f;
-        targetScale.z -= wobble * 0.5f;
-    }
-
-    // スケールをなめらかに適用 (Lerp)
-    float scaleLerpSpeed = 15.0f;
-    Vector3 currentScale = player_->GetTransform()->scale;
-    player_->GetTransform()->scale.x += (targetScale.x - currentScale.x) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
-    player_->GetTransform()->scale.y += (targetScale.y - currentScale.y) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
-    player_->GetTransform()->scale.z += (targetScale.z - currentScale.z) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
-
-    // --- 10. 最終的な速度をプレイヤーへ適用 ---
+    // --- 9. 最終的な速度をプレイヤーへ適用 ---
     player_->SetVelocity(velocity);
     wasGroundedLastFrame_ = player_->IsGrounded();
     hasGroundedHistory_ = true;

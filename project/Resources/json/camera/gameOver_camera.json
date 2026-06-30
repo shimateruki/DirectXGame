@@ -9,16 +9,16 @@
     "cameraSensitivity": 0,
     "distance": 15.0,
     "fixedPointAngle": [
-        0.292065292596817,
-        7.904998302459717,
+        0.016066092997789383,
+        -0.17399996519088745,
         0.0
     ],
     "fixedPointPos": [
-        -14.979084968566895,
-        7.900022029876709,
-        -0.8356838226318359
+        4.848393440246582,
+        3.053149700164795,
+        -9.858434677124023
     ],
-    "gameFollowMode": 4,
+    "gameFollowMode": 5,
     "height": 5.0,
     "lockOnOffset": [
         0.0,
@@ -27,7 +27,17 @@
     ],
     "mouseSensitivity": 0.003000000026077032,
     "moveSpeed": 0.5,
+    "orbitCenterGizmoVisible": true,
+    "orbitCenterHeight": 5.0,
+    "orbitCenterOffset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "orbitGuideMarkerSize": 0.44999998807907104,
+    "orbitGuideVisible": true,
     "orbitHeight": 5.0,
     "orbitRadius": 15.0,
-    "orbitSpeed": 0.004999999888241291
+    "orbitSpeed": 0.004999999888241291,
+    "orbitStartAngleDeg": 0.0
 }

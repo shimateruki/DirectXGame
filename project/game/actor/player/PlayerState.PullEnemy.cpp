@@ -15,7 +15,30 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+namespace {
+Vector3 GetStablePullEnemyScale(Object3d* enemy) {
+    if (!enemy) {
+        return { 1.0f, 1.0f, 1.0f };
+    }
 
+    const Vector3 scale = enemy->GetScale();
+    if (!dynamic_cast<BaseEnemy*>(enemy)) {
+        return scale;
+    }
+
+    const float absX = std::abs(scale.x);
+    const float absY = std::abs(scale.y);
+    const float absZ = std::abs(scale.z);
+    const float minScale = (std::min)({ absX, absY, absZ });
+    const float maxScale = (std::max)({ absX, absY, absZ });
+    if (minScale <= 0.0001f || maxScale / minScale < 1.18f) {
+        return scale;
+    }
+
+    const float stableScale = std::cbrt(absX * absY * absZ);
+    return { stableScale, stableScale, stableScale };
+}
+}
 // 敵を引き寄せる状態をまとめています。
 
 void PlayerStatePullEnemy::Enter(Player* player) {
@@ -23,11 +46,21 @@ void PlayerStatePullEnemy::Enter(Player* player) {
 
     player->SetIsControlActive(false);
     player->SetVelocity({ 0.0f, 0.0f, 0.0f }); // プレイヤー自身はその場で停止
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+    player->SetSlimeAnimationDirection(targetEnemy_->GetWorldPosition() - player->GetWorldPosition());
     isHeavyPullTarget_ = dynamic_cast<EnemyGiantSlime*>(targetEnemy_) != nullptr;
-    enemyBaseScale_ = targetEnemy_->GetScale();
+    enemyPullStartScale_ = targetEnemy_->GetScale();
+    enemyBaseScale_ = GetStablePullEnemyScale(targetEnemy_);
+    if (Transform* enemyTransform = targetEnemy_->GetTransform()) {
+        enemyBaseRotation_ = enemyTransform->rotate;
+        enemyBaseQuaternion_ = enemyTransform->quaternion;
+        enemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
+    }
 
     phase_ = Phase::kShootHook;
     hookTipPos_ = player->GetWorldPosition();
+    heavyPullBasePlayerPos_ = hookTipPos_;
+    hasHeavyPullBasePlayerPos_ = false;
 
     Object3d* marker = player->GetHookMarker();
     if (marker) {
@@ -37,16 +70,17 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     }
 }
 
-void PlayerStatePullEnemy::Update(Player* player) {
+void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
     if (!player || !targetEnemy_) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
         return;
     }
 
-    float deltaTime = 1.0f / 60.0f;
     Vector3 playerPos = player->GetWorldPosition();
 
     if (phase_ == Phase::kShootHook) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+        player->SetSlimeAnimationDirection(targetEnemy_->GetWorldPosition() - playerPos);
         // 腕が敵に向かって伸びる
         Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
         Vector3 toTarget = enemyPos - hookTipPos_;
@@ -108,6 +142,9 @@ void PlayerStatePullEnemy::Update(Player* player) {
     else if (phase_ == Phase::kPullEnemy) {
         // --- 敵を自分の手元へ引っ張る（放物線＆巻き取り） ---
         pullTimer_ += deltaTime;
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::PullEnemy);
+        player->SetSlimePullDirection(targetEnemy_->GetWorldPosition() - playerPos);
+        player->SetSlimePullProgress(0.0f);
 
         // 【演出】ヒットストップ：時間がマイナスの間は引き寄せず、お互いに激しくブルブル震える
         if (pullTimer_ < 0.0f) {
@@ -149,12 +186,28 @@ void PlayerStatePullEnemy::Update(Player* player) {
 
             bool hasSplit = giantSlime->UpdateHookSplitPull(deltaTime, playerPos, player->GetParticleSystem());
             float progress = giantSlime->GetHookSplitProgress();
-            float strain = (1.0f - progress * 0.45f) * 0.55f;
-            player->GetTransform()->scale = { 1.0f + strain, 1.0f - strain * 0.7f, 1.0f + strain };
+            if (!hasHeavyPullBasePlayerPos_) {
+                heavyPullBasePlayerPos_ = playerPos;
+                hasHeavyPullBasePlayerPos_ = true;
+            }
+
+            Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+            Vector3 playerToEnemy = enemyCurrentPos - heavyPullBasePlayerPos_;
+            Vector3 pullDir = { playerToEnemy.x, 0.0f, playerToEnemy.z };
+            float pullDirLength = Math::Length(pullDir);
+            pullDir = pullDirLength > 0.001f ? pullDir / pullDirLength : Vector3{ 0.0f, 0.0f, 1.0f };
+            const float bracePulse = std::abs(std::sin(pullTimer_ * 38.0f));
+            const float braceAmount = (0.10f + bracePulse * 0.16f) * (1.0f - progress * 0.25f);
+            Vector3 visualPlayerPos = heavyPullBasePlayerPos_ - pullDir * braceAmount;
+            visualPlayerPos.y += std::sin(pullTimer_ * 52.0f) * 0.035f * (1.0f - progress * 0.25f);
+            player->SetTranslate(visualPlayerPos);
+            playerPos = visualPlayerPos;
+
+            player->SetSlimePullDirection(enemyCurrentPos - playerPos);
+            player->SetSlimePullProgress(progress);
 
             Object3d* marker = player->GetHookMarker();
             if (marker) {
-                Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
                 Vector3 diff = enemyCurrentPos - playerPos;
                 float len = Math::Length(diff);
                 if (len < 0.01f) len = 0.01f;
@@ -167,16 +220,26 @@ void PlayerStatePullEnemy::Update(Player* player) {
                 };
                 marker->GetTransform()->isQuaternionMaster = false;
 
-                float tension = std::sin(pullTimer_ * 56.0f) * (1.0f - progress) * 0.16f;
-                float thickness = Math::Lerp(0.18f, 0.08f, progress);
-                marker->GetTransform()->scale = { thickness + tension, thickness - tension, len };
-                marker->SetColor({ 0.35f + progress * 0.6f, 0.95f, 1.0f, 1.0f });
+                float pulse = std::sin(pullTimer_ * 72.0f);
+                float tension = pulse * (1.0f - progress * 0.35f) * 0.22f;
+                float thickness = Math::Lerp(0.30f, 0.12f, progress);
+                marker->GetTransform()->scale = {
+                    (std::max)(0.06f, thickness + tension),
+                    (std::max)(0.06f, thickness - tension * 0.55f),
+                    len * (1.0f + std::abs(pulse) * 0.018f)
+                };
+                marker->SetColor({ 0.25f + progress * 0.75f, 0.95f - progress * 0.22f, 1.0f, 1.0f });
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
             }
 
             if (hasSplit) {
-                player->GetTransform()->scale = { 2.4f, 0.45f, 2.4f };
+                if (hasHeavyPullBasePlayerPos_) {
+                    player->SetTranslate(heavyPullBasePlayerPos_);
+                    player->UpdateLocalMatrix();
+                    player->UpdateWorldMatrix();
+                }
+                player->TriggerSlimeImpulse({ 2.4f, 0.45f, 2.4f }, 0.24f);
                 player->ChangeState(std::make_unique<PlayerStateIdle>());
             }
             return;
@@ -186,9 +249,8 @@ void PlayerStatePullEnemy::Update(Player* player) {
         float t = pullTimer_ / kPullDuration;
         if (t > 1.0f) t = 1.0f;
 
-        // 【案B：ふんばり演出】引き寄せている間、プレイヤーが力強く踏ん張る（少し潰れて横に広がる）
-        float strain = (1.0f - (t * t)) * 0.5f; 
-        player->GetTransform()->scale = { 1.0f + strain, 1.0f - strain, 1.0f + strain };
+        player->SetSlimePullDirection(enemyStartPos_ - playerPos);
+        player->SetSlimePullProgress(t);
 
         // 【演出1】イージング：最初は重たく、後半一気に飛んでくる（Ease-In）
         float easeT = t * t * t; 
@@ -224,6 +286,7 @@ void PlayerStatePullEnemy::Update(Player* player) {
         basePos.y += std::sin(t * 3.14159265f) * arcHeight;
 
         targetEnemy_->GetTransform()->translate = basePos;
+        player->SetSlimePullDirection(basePos - playerPos);
 
         if (t >= 1.0f) {
             HitEffectDirector::SpawnPullCatchHit(headPos);
@@ -238,9 +301,7 @@ void PlayerStatePullEnemy::Update(Player* player) {
                 );
             }
 
-            // 【案B：着地時の潰れ演出】頭に乗った瞬間にベチャッと大きく潰れる！
-            // このあと Player::Update の復元処理で自然にプルンと戻ります
-            player->GetTransform()->scale = { 2.2f, 0.4f, 2.2f };
+            player->TriggerSlimeImpulse({ 2.2f, 0.4f, 2.2f }, 0.24f);
 
             targetEnemy_->GetTransform()->scale = enemyBaseScale_;
             player->SetCarriedEnemy(targetEnemy_);
@@ -272,9 +333,33 @@ void PlayerStatePullEnemy::Update(Player* player) {
     }
 }
 void PlayerStatePullEnemy::Exit(Player* player) {
+    if (!player) {
+        return;
+    }
     player->SetIsControlActive(true);
-    if (player) {
+    {
+        if (targetEnemy_ && player->GetCarriedEnemy() != targetEnemy_) {
+            if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_)) {
+                if (enemyBase->IsCarried()) {
+                    enemyBase->SetCarried(false);
+                    if (Transform* enemyTransform = targetEnemy_->GetTransform()) {
+                        enemyTransform->scale = enemyBaseScale_;
+                        enemyTransform->rotate = enemyBaseRotation_;
+                        enemyTransform->quaternion = enemyBaseQuaternion_;
+                        enemyTransform->isQuaternionMaster = enemyBaseQuaternionMaster_;
+                        targetEnemy_->UpdateLocalMatrix();
+                        targetEnemy_->UpdateWorldMatrix();
+                    }
+                }
+            }
+        }
+
         if (isHeavyPullTarget_) {
+            if (hasHeavyPullBasePlayerPos_) {
+                player->SetTranslate(heavyPullBasePlayerPos_);
+                player->UpdateLocalMatrix();
+                player->UpdateWorldMatrix();
+            }
             if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_)) {
                 if (!giantSlime->HasSplit()) {
                     giantSlime->CancelHookSplitPull();

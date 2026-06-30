@@ -1,4 +1,5 @@
 #include "EnemyThunderSlime.h"
+#include "SlimeBounceAnimator.h"
 #include "BulletManager.h"
 #include "CameraManager.h"
 #include "CollisionConfig.h"
@@ -21,6 +22,8 @@ constexpr float kCarriedShockCooldown = 0.72f;
 constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kShockSquashDuration = 0.34f;
+constexpr float kMoveHopInterval = 0.25f;
+constexpr float kMoveHopPower = 5.0f;
 constexpr float kThunderSlimeModelYawOffset = 3.1415926535f;
 constexpr const char* kDischargePreset = "thunder_slime_discharge";
 constexpr const char* kIdleSparkPreset = "thunder_slime_idle_spark";
@@ -74,6 +77,7 @@ void EnemyThunderSlime::Initialize(Object3dCommon* common, const std::string& mo
 // 近距離放電、追跡、徘徊、オーラ同期の更新
 void EnemyThunderSlime::Update(float deltaTime) {
     if (isDead || !GetIsVisible()) {
+        HideAttackTelegraph();
         isCharging_ = false;
         chargeTimer_ = 0.0f;
         chargeParticleTimer_ = 0.0f;
@@ -85,6 +89,7 @@ void EnemyThunderSlime::Update(float deltaTime) {
     }
 
     if (ShouldHandleDefeatEffect()) {
+        HideAttackTelegraph();
         HideAuraEffect();
         BaseEnemy::Update(deltaTime);
         return;
@@ -92,6 +97,7 @@ void EnemyThunderSlime::Update(float deltaTime) {
     idleTimer_ += deltaTime;
     UpdateIdleSpark(deltaTime);
     if (isCarried_) {
+        HideAttackTelegraph();
         UpdateAuraEffect(deltaTime);
         return;
     }
@@ -143,11 +149,17 @@ void EnemyThunderSlime::Update(float deltaTime) {
             UpdateFacing({ velocity.x, 0.0f, velocity.z });
         }
     }
+    if (!isCharging_) {
+        HideAttackTelegraph();
+    }
 
     velocity.y = (std::min)(GetVelocity().y, 0.0f);
     if (isCharging_) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
+        groundHopTimer_ = 0.0f;
+    } else if (SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval, 0.10f)) {
+        velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
     SetVelocity(velocity);
     ApplySlimeAnimation(deltaTime);
@@ -186,6 +198,7 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     chargeTimer_ = 0.0f;
     chargeParticleTimer_ = 0.0f;
     shockSquashTimer_ = 0.0f;
+    HideAttackTelegraph();
     SetScale(baseScale_);
     SyncThrownCollisionRadius();
     BaseEnemy::BeginThrown(initialVelocity);
@@ -260,6 +273,12 @@ void EnemyThunderSlime::UpdateCharge(float deltaTime, const Vector3& direction) 
     lastShockDirection_ = direction;
     chargeTimer_ = (std::max)(0.0f, chargeTimer_ - deltaTime);
     chargeParticleTimer_ -= deltaTime;
+    const float progress = 1.0f - (std::clamp)(chargeTimer_ / kChargeDuration, 0.0f, 1.0f);
+    ShowAttackTelegraphCircle(
+        GetTranslate(),
+        kShockRadius,
+        progress,
+        { 1.0f, 0.95f, 0.16f, 0.82f });
 
     if (chargeParticleTimer_ <= 0.0f) {
         EmitOuterThunderEffect(kIdleSparkPreset, 3, 0.55f);
@@ -273,6 +292,8 @@ void EnemyThunderSlime::UpdateCharge(float deltaTime, const Vector3& direction) 
 
 void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
     isCharging_ = false;
+    TriggerAttackTelegraphCue({ 1.0f, 0.12f, 0.04f, 1.0f });
+    HideAttackTelegraph();
     shockSquashTimer_ = kShockSquashDuration;
     SetScale({ baseScale_.x * 5.4f, baseScale_.y * 0.10f, baseScale_.z * 5.4f });
     SyncGroundCollisionRadius();
@@ -452,10 +473,15 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
         SetColor({ 1.0f, 0.98f, 0.62f + p * 0.22f, 1.0f });
     }
     else {
-        const float bounce = std::sin(idleTimer_ * 4.0f) * 0.045f;
-        targetScale.x = baseScale_.x * (1.0f + bounce);
-        targetScale.y = baseScale_.y * (1.0f - bounce * 0.85f);
-        targetScale.z = baseScale_.z * (1.0f + bounce);
+        SlimeBounceAnimator::Params params;
+        params.speedForFullBounce = 2.1f;
+        params.idleAmplitude = 0.085f;
+        params.moveAmplitude = 0.30f;
+        params.hopFrequency = 11.0f;
+        params.horizontalSquash = 0.30f;
+        params.verticalStretch = 0.38f;
+        params.airborneStretch = 0.36f;
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
         SetColor(defaultColor_);
     }
 

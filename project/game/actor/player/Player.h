@@ -5,6 +5,7 @@
 #include "InputManager.h"
 #include "ParticleSystem.h"
 #include "PlayerMover.h"
+#include "PlayerSlimeAnimator.h"
 #include "engine/utility/math/Math.h"
 #include <memory>
 #include <string>
@@ -37,6 +38,12 @@ public:
     // ==================================================
     void ChangeState(std::unique_ptr<IAnimationState> newState);
     void PlayAnimation(const std::string& animName, bool loop = true);
+    void SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode);
+    void SetSlimeAnimationDirection(const Vector3& direction);
+    void SetSlimePullDirection(const Vector3& direction);
+    void SetSlimePullProgress(float progress);
+    void SetSlimeJumpCharge(float chargeRate);
+    void TriggerSlimeImpulse(const Vector3& scale, float duration);
 
     // ==================================================
     // 移動制御 (Strategy Pattern)
@@ -105,12 +112,12 @@ public:
 
     float GetJumpPower() const
     {
-        return param_.has_value() ? param_->jumpPower : 10.0f;
+        return param_.has_value() ? param_->jumpPower : 24.0f;
     }
 
     float GetMoveSpeed() const
     {
-        return param_.has_value() ? param_->speed : 0.5f;
+        return param_.has_value() ? param_->speed : 27.7f;
     }
 
     // ==================================================
@@ -127,14 +134,17 @@ public:
     float GetDeathTimer() const { return deathTimer_; }
 
     void SetCarriedEnemy(Object3d* enemy);
+    void ReleaseCarriedEnemy(bool restorePose = true);
     Object3d* GetCarriedEnemy() const { return carriedEnemy_; }
     bool IsEnemyMorphed() const { return isEnemyMorphed_; }
+    bool IsPinkSlimeMorphed() const;
     float GetEnemyMorphRate() const;
 
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
+    PlayerSlimeAnimator slimeAnimator_;
 
     // --- 外部システム参照 ---
     InputManager* inputManager_ = nullptr;
@@ -190,6 +200,9 @@ private:
     // 現在頭に乗せている敵と、狙い先の情報
     Object3d* carriedEnemy_ = nullptr;
     Vector3 carriedEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 carriedEnemyBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Quaternion carriedEnemyBaseQuaternion_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+    bool carriedEnemyBaseQuaternionMaster_ = true;
     bool hasCarriedEnemyBaseScale_ = false;
     Object3d* aimTargetObject_ = nullptr;
     float carryGlideEffectTimer_ = 0.0f;
@@ -209,9 +222,11 @@ private:
     EnemyMorphType enemyMorphType_ = EnemyMorphType::None;
     BaseEnemy* enemyMorphSource_ = nullptr;
     bool isEnemyMorphed_ = false;
+    bool enemyMorphHasTimeLimit_ = true;
     float enemyMorphTimer_ = 0.0f;
     float enemyMorphDuration_ = 5.0f;
     float enemyMorphEffectTimer_ = 0.0f;
+    float enemyMorphVisualTimer_ = 0.0f;
     float electricShockFeedbackTimer_ = 0.0f;
     float electricShockFeedbackEmitTimer_ = 0.0f;
     float electricShockFeedbackTotalDuration_ = 0.0f;
@@ -233,10 +248,24 @@ private:
     Vector4 enemyMorphTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     std::vector<bool> savedMorphChildVisible_;
     bool savedMorphSourceVisible_ = true;
+    BaseEnemy* pendingAbsorbEnemy_ = nullptr;
+    EnemyMorphType pendingAbsorbType_ = EnemyMorphType::None;
+    Vector3 pendingAbsorbEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 pendingAbsorbEnemyStartPos_ = { 0.0f, 0.0f, 0.0f };
+    Vector4 pendingAbsorbTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 pendingAbsorbPlayerBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float absorbEffectTimer_ = 0.0f;
+    float absorbEffectEmitTimer_ = 0.0f;
+    bool absorbEffectActive_ = false;
 
     void StartEnemyMorph(BaseEnemy* enemy);
     void UpdateEnemyMorph(float deltaTime);
     void CancelEnemyMorph();
+    bool ShouldPlayAbsorbEffect(BaseEnemy* enemy) const;
+    void BeginAbsorbEffect(BaseEnemy* enemy);
+    void UpdateAbsorbEffect(float deltaTime);
+    void FinishAbsorbEffect();
+    void CancelAbsorbEffect(bool restoreEnemy);
     float GetEnemyMorphModelYawOffset() const;
     EnemyMorphType ResolveEnemyMorphType(const std::string& enemyType) const;
     Vector4 GetEnemyMorphTint(EnemyMorphType type) const;

@@ -92,9 +92,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                39.54999923706055,
+                407.74639892578125,
                 1.0,
-                56.25
+                173.1376495361328
             ],
             "targetID": -1,
             "texturePath": "",
@@ -172,6 +172,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -204,9 +205,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.7578360438346863,
+                0.7476454377174377,
                 0.0,
-                0.6524450182914734
+                0.6640980839729309
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -215,7 +216,7 @@
             },
             "rotation": [
                 0.0,
-                1.719980001449585,
+                1.689018964767456,
                 0.0
             ],
             "roughness": 0.6000000238418579,
@@ -301,6 +302,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -333,9 +335,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.5167393684387207,
+                0.9429810643196106,
                 0.0,
-                -0.8561427593231201
+                -0.33284637331962585
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -344,15 +346,15 @@
             },
             "rotation": [
                 0.0,
-                5.197109222412109,
+                3.8202335834503174,
                 0.0
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Object",
             "scale": [
-                1.6357653141021729,
-                2.5463521480560303,
-                1.6357653141021729
+                2.0,
+                2.0,
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -418,6 +420,21 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
+            "lod": {
+                "enabled": true,
+                "levels": [
+                    {
+                        "distance": 35.0,
+                        "level": 1,
+                        "modelName": "Stages/crown/crown_lod1.obj"
+                    },
+                    {
+                        "distance": 70.0,
+                        "level": 2,
+                        "modelName": "Stages/crown/crown_lod2.obj"
+                    }
+                ]
+            },
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "",
@@ -430,6 +447,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -510,9 +528,9 @@
                     0.0
                 ],
                 "size": [
-                    0.8999999761581421,
-                    0.949999988079071,
-                    0.8999999761581421
+                    0.4099999964237213,
+                    0.4099999964237213,
+                    0.4099999964237213
                 ],
                 "type": 1
             },
@@ -559,6 +577,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 24.0,
                 "enemyType": "",
@@ -591,9 +610,9 @@
             ],
             "quaternion": [
                 0.0,
+                0.41004806756973267,
                 0.0,
-                0.0,
-                1.0
+                0.9120638966560364
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -602,7 +621,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.8450134992599487,
                 0.0
             ],
             "roughness": 0.6000000238418579,
@@ -619,6 +638,242 @@
                 1.0
             ],
             "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    3.2782554626464844e-07,
+                    0.0,
+                    3.2782554626464844e-07
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.9999994039535522,
+                    1.0,
+                    0.9999996423721313
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.23999999463558197,
+                0.03999999910593033,
+                0.800000011920929
+            ],
+            "emissive": 2.299999952316284,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 1.0,
+            "modelName": "Primitives/sphere",
+            "myEventID": -1,
+            "name": "Enemy_FireSlime_HeadFlameShader",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -35.4899787902832,
+                50.82912826538086,
+                -40.45310592651367
+            ],
+            "quaternion": [
+                0.0,
+                0.9838465452194214,
+                0.0,
+                0.17901399731636047
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                2.7816243171691895,
+                0.0
+            ],
+            "roughness": 1.0,
+            "saveCategory": "Object",
+            "scale": [
+                2.385380506515503,
+                1.9533804655075073,
+                2.385380506515503
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.6600000262260437,
+                "effectIntensity": 1.1465141773223877,
+                "effectScale": 0.7400000095367432,
+                "effectScaleX": 1.186514139175415,
+                "effectScaleY": 0.8643428087234497,
+                "effectSoftness": 0.6800000071525574,
+                "effectType": 2.0,
+                "flowSpeedX": 0.018758220598101616,
+                "flowSpeedY": 0.054284993559122086,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.7727997303009033
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    3.2782554626464844e-07,
+                    0.0,
+                    3.2782554626464844e-07
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.9999994039535522,
+                    1.0,
+                    0.9999996423721313
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.23999999463558197,
+                0.03999999910593033,
+                0.800000011920929
+            ],
+            "emissive": 2.299999952316284,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 1.0,
+            "modelName": "Primitives/sphere",
+            "myEventID": -1,
+            "name": "Enemy_FireSlime_HeadFlameShader",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -35.49454879760742,
+                50.82912826538086,
+                -40.41398620605469
+            ],
+            "quaternion": [
+                0.0,
+                -0.9901291728019714,
+                0.0,
+                0.1401578038930893
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -2.860351085662842,
+                0.0
+            ],
+            "roughness": 1.0,
+            "saveCategory": "Object",
+            "scale": [
+                2.385380506515503,
+                1.9533804655075073,
+                2.385380506515503
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.6600000262260437,
+                "effectIntensity": 1.1465141773223877,
+                "effectScale": 0.7400000095367432,
+                "effectScaleX": 1.186514139175415,
+                "effectScaleY": 0.8643428087234497,
+                "effectSoftness": 0.6800000071525574,
+                "effectType": 2.0,
+                "flowSpeedX": 0.003689149161800742,
+                "flowSpeedY": 0.054284993559122086,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.7727997303009033
+            }
         }
     ]
 }

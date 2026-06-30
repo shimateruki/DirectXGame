@@ -1,0 +1,41 @@
+{
+    "tool":  "Model LOD Builder",
+    "version":  2,
+    "generatedAt":  "2026-06-28T16:12:31",
+    "sourceModel":  "uvChecker",
+    "sourceFile":  "Resources/3DModel/uvChecker.png",
+    "sourceExtension":  ".png",
+    "requestedBackend":  "auto",
+    "selectedBackend":  "blender",
+    "backendExecutable":  "C:\\二年前期\\CG2\\project\\Resources\\tools\\Blender 4.4\\blender.exe",
+    "analyzeOnly":  true,
+    "supportedForGeneration":  false,
+    "source":  {
+                   "vertices":  0,
+                   "triangles":  0,
+                   "meshes":  0,
+                   "note":  "Binary glb analysis is not supported yet.",
+                   "fileSizeBytes":  106081
+               },
+    "safety":  null,
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "uvChecker",
+                     "file":  "Resources/3DModel/uvChecker.png",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  0,
+                                   "triangles":  0,
+                                   "meshes":  0,
+                                   "note":  "Binary glb analysis is not supported yet.",
+                                   "fileSizeBytes":  106081
+                               }
+                 }
+             ],
+    "warnings":  [
+                     "This model format is not supported for LOD generation."
+                 ]
+}

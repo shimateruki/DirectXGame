@@ -11,6 +11,7 @@
 #include "Text.h"
 #include "BulletManager.h"
 #include "Camera.h"
+#include "GameOverSlimeAnimator.h"
 
 #include "ObjectManager.h"
 #include "LevelLoader.h"
@@ -87,13 +88,45 @@ private:
         Vector2 labelBaseSize = { 0.0f, 0.0f };
     };
 
+    struct FallingCrown {
+        Sprite* sprite = nullptr;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        Vector2 size = { 0.0f, 0.0f };
+        float timeOffset = 0.0f;
+        float cycleDuration = 1.0f;
+        float fallDistance = 0.0f;
+        float driftAmplitude = 0.0f;
+        float driftSpeed = 0.0f;
+        float rotationSpeed = 0.0f;
+        float phase = 0.0f;
+        float alpha = 1.0f;
+    };
+
+    struct DizzyStar {
+        Sprite* sprite = nullptr;
+        float baseAngle = 0.0f;
+        float size = 0.0f;
+        float depthOffset = 0.0f;
+    };
+
     void BindLayoutSprites();
+    void RefreshLayoutSpritePointers();
     Sprite* FindSprite(const std::string& name) const;
+    void InitializeFallingCrowns();
+    void UpdateFallingCrowns(float deltaTime);
+    void InitializeDizzyStars();
+    void UpdateDizzyStars(float deltaTime);
+    void StartRetryExit();
+    void UpdateRetryExit(float deltaTime);
     void UpdateMenuInput();
     void UpdateMenuSprites(float deltaTime);
     void ChangeSelection(int direction);
     void ConfirmSelection();
     bool IsTitleRevealComplete() const;
+    void InitializeGameOverPresentation();
+    void FindGameOverSlimeObject();
+    void UpdateGameOverPresentation(float deltaTime);
+    void DrawBackgroundSprite();
 
     // --- エンジン基盤 ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -112,6 +145,11 @@ private:
 
     // --- オブジェクト・リソース ---
     std::vector<std::unique_ptr<Sprite>> sprites_;
+    Object3d* gameOverSlimeObject_ = nullptr;
+    GameOverSlimeAnimator gameOverSlimeAnimator_;
+    Vector3 gameOverSlimeBasePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 gameOverSlimeBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    float gameOverPresentationTimer_ = 0.0f;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     Player* player_ = nullptr;
 
@@ -130,7 +168,12 @@ private:
     std::array<Vector2, 7> titleLetterBasePositions_ = {};
     std::array<Vector2, 7> titleLetterBaseSizes_ = {};
     std::array<MenuRow, static_cast<size_t>(MenuItem::Count)> menuRows_ = {};
+    std::vector<FallingCrown> fallingCrowns_;
+    std::vector<DizzyStar> dizzyStars_;
     int selectedIndex_ = 0;
     float sceneTime_ = 0.0f;
     float titleRevealTimer_ = 0.0f;
+    bool retryExitActive_ = false;
+    bool retrySceneChangeRequested_ = false;
+    float retryExitTimer_ = 0.0f;
 };

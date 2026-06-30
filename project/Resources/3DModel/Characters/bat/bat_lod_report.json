@@ -1,12 +1,15 @@
-﻿{
+{
     "tool":  "Model LOD Builder",
-    "version":  1,
-    "generatedAt":  "2026-06-12T04:33:17",
+    "version":  2,
+    "generatedAt":  "2026-06-28T16:13:03",
     "sourceModel":  "Characters/bat",
     "sourceFile":  "Resources/3DModel/Characters/bat/bat.gltf",
     "sourceExtension":  ".gltf",
+    "requestedBackend":  "auto",
+    "selectedBackend":  "blender",
+    "backendExecutable":  "C:\\二年前期\\CG2\\project\\Resources\\tools\\Blender 4.4\\blender.exe",
     "analyzeOnly":  true,
-    "supportedForGeneration":  false,
+    "supportedForGeneration":  true,
     "source":  {
                    "vertices":  70063,
                    "indices":  395076,
@@ -51,6 +54,6 @@
                  }
              ],
     "warnings":  [
-                     "glTF was skipped because automatic LOD could break this model: skins, animations, armature node, skinning attributes"
+
                  ]
 }

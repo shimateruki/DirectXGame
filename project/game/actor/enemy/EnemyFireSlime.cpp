@@ -1,4 +1,5 @@
 #include "EnemyFireSlime.h"
+#include "SlimeBounceAnimator.h"
 #include "BulletManager.h"
 #include "Camera.h"
 #include "CameraManager.h"
@@ -22,6 +23,8 @@ constexpr float kCarriedBreathDamageInterval = 0.22f;
 constexpr float kCarriedFireballSpeed = 31.0f;
 constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
+constexpr float kMoveHopInterval = 0.28f;
+constexpr float kMoveHopPower = 4.7f;
 constexpr float kFireSlimeModelYawOffset = 3.1415926535f;
 constexpr float kHeadFlameHeight = 0.62f;
 constexpr float kHeadFlameBaseScale = 1.08f;
@@ -74,11 +77,13 @@ void EnemyFireSlime::Initialize(Object3dCommon* common, const std::string& model
 // 近距離ブレスと中距離火球を切り替えるAI
 void EnemyFireSlime::Update(float deltaTime) {
     if (isCarried_) {
+        HideAttackTelegraph();
         idleTimer_ += deltaTime;
         return;
     }
 
     if (isDead || !GetIsVisible()) {
+        HideAttackTelegraph();
         breathTimer_ = 0.0f;
         attackTimer_ = 0.0f;
         RequestRemoveHeadFlameVisual();
@@ -88,6 +93,7 @@ void EnemyFireSlime::Update(float deltaTime) {
     }
 
     if (ShouldHandleDefeatEffect()) {
+        HideAttackTelegraph();
         RequestRemoveHeadFlameVisual();
         RequestRemoveBreathFlameVisuals();
         BaseEnemy::Update(deltaTime);
@@ -149,6 +155,9 @@ void EnemyFireSlime::Update(float deltaTime) {
     }
 
     velocity.y = (std::min)(GetVelocity().y, 0.0f);
+    if (breathTimer_ <= 0.0f && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval, 0.10f)) {
+        velocity.y = (std::max)(velocity.y, kMoveHopPower);
+    }
     SetVelocity(velocity);
     ApplySlimeAnimation(deltaTime);
     SyncGroundCollisionRadius();
@@ -169,6 +178,7 @@ void EnemyFireSlime::BeginThrown(const Vector3& initialVelocity) {
     breathParticleTimer_ = 0.0f;
     attackTimer_ = 0.0f;
     breathDamageDone_ = false;
+    HideAttackTelegraph();
     HideBreathFlameVisuals();
     SetColor(defaultColor_);
     SetScale(baseScale_);
@@ -245,7 +255,6 @@ void EnemyFireSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
         }
         direction = Math::Normalize(direction);
 
-        SetTranslate(player->GetWorldPosition());
         SetVelocity(player->GetVelocity());
         SetRotationY(std::atan2(direction.x, direction.z) + kFireSlimeModelYawOffset);
         UpdateHeadFlameVisual(deltaTime);
@@ -281,6 +290,7 @@ void EnemyFireSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
 }
 
 void EnemyFireSlime::ReleaseCarriedAbilityVisuals() {
+    HideAttackTelegraph();
     HideBreathFlameVisuals();
     RequestRemoveBreathFlameVisuals();
     RequestRemoveHeadFlameVisual();
@@ -306,9 +316,18 @@ void EnemyFireSlime::StartBreath() {
 void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, float distance) {
     breathTimer_ = (std::max)(0.0f, breathTimer_ - deltaTime);
     breathParticleTimer_ -= deltaTime;
+    const float progress = 1.0f - (std::clamp)(breathTimer_ / kBreathDuration, 0.0f, 1.0f);
+    ShowAttackTelegraphLine(
+        GetTranslate(),
+        direction,
+        kBreathRange + 0.55f,
+        1.65f,
+        progress,
+        { 1.0f, 0.30f, 0.05f, 0.78f });
     UpdateBreathFlameVisuals(direction, deltaTime);
 
     if (!breathDamageDone_ && breathTimer_ <= kBreathDuration * 0.62f) {
+        TriggerAttackTelegraphCue({ 1.0f, 0.12f, 0.02f, 1.0f });
         DispatchBreathDamage(direction, distance);
         breathDamageDone_ = true;
     }
@@ -321,6 +340,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, flo
     }
 
     if (breathTimer_ <= 0.0f) {
+        HideAttackTelegraph();
         SetColor(defaultColor_);
         HideBreathFlameVisuals();
     }
@@ -724,10 +744,15 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.08f + pulse);
     }
     else {
-        const float breathe = std::sin(idleTimer_ * 3.2f) * 0.035f;
-        targetScale.x = baseScale_.x * (1.0f + breathe);
-        targetScale.y = baseScale_.y * (1.0f - breathe);
-        targetScale.z = baseScale_.z * (1.0f + breathe);
+        SlimeBounceAnimator::Params params;
+        params.speedForFullBounce = 1.85f;
+        params.idleAmplitude = 0.075f;
+        params.moveAmplitude = 0.27f;
+        params.hopFrequency = 10.4f;
+        params.horizontalSquash = 0.28f;
+        params.verticalStretch = 0.35f;
+        params.airborneStretch = 0.34f;
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
     }
 
     Vector3 scale = GetScale();

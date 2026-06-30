@@ -58,9 +58,22 @@ void ObjectManager::AddObject(std::unique_ptr<Object3d> object) {
 }
 
 void ObjectManager::RequestRemove(Object3d* object) {
-	if (object) {
-		removalList_.push_back(object);
+	if (!object) return;
+
+	const auto matches = [object](const std::unique_ptr<Object3d>& candidate) {
+		return candidate && candidate.get() == object;
+	};
+	const bool exists =
+		std::any_of(objects_.begin(), objects_.end(), matches) ||
+		std::any_of(pendingObjects_.begin(), pendingObjects_.end(), matches);
+	if (!exists) return;
+
+	if (std::find(removalList_.begin(), removalList_.end(), object) != removalList_.end()) {
+		return;
 	}
+
+	object->SetIsVisible(false);
+	removalList_.push_back(object);
 }
 
 void ObjectManager::ProcessRemovals() {
@@ -68,20 +81,30 @@ void ObjectManager::ProcessRemovals() {
 
 	CollisionManager* colManager = CollisionManager::GetInstance();
 
+	std::sort(removalList_.begin(), removalList_.end());
+	removalList_.erase(std::unique(removalList_.begin(), removalList_.end()), removalList_.end());
+
+	auto isRequestedForRemoval = [this](Object3d* object) {
+		return std::binary_search(removalList_.begin(), removalList_.end(), object);
+	};
+
 	// CollisionManagerから登録解除
 	for (Object3d* obj : removalList_) {
 		colManager->RemoveObject(obj);
 	}
 
 	// リストから削除
+	pendingObjects_.erase(
+		std::remove_if(pendingObjects_.begin(), pendingObjects_.end(),
+			[&](const std::unique_ptr<Object3d>& p) {
+				return p && isRequestedForRemoval(p.get());
+			}),
+		pendingObjects_.end());
+
 	auto it = std::remove_if(objects_.begin(), objects_.end(),
-		[this](const std::unique_ptr<Object3d>& p) {
-			for (Object3d* removalObj : removalList_) {
-				if (p.get() == removalObj) return true;
-			}
-			return false;
-		}
-	);
+		[&](const std::unique_ptr<Object3d>& p) {
+			return p && isRequestedForRemoval(p.get());
+		});
 	objects_.erase(it, objects_.end());
 
 	removalList_.clear();

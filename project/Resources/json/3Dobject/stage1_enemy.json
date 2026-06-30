@@ -59,7 +59,7 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Characters/bomb_slime",
+            "modelName": "Characters/slime_black",
             "myEventID": -1,
             "name": "Enemy_Bomber",
             "normalMapPath": "",

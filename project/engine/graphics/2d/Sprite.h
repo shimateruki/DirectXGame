@@ -74,8 +74,15 @@ public:
     const Vector2& GetSize() const { return size_; }
     void SetSize(const Vector2& size) { size_ = size; }
 
-    const Vector4& GetColor() const { return materialData_->color; }
-    void SetColor(const Vector4& color) { materialData_->color = color; }
+    const Vector4& GetColor() const {
+        static const Vector4 kFallbackColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        return materialData_ ? materialData_->color : kFallbackColor;
+    }
+    void SetColor(const Vector4& color) {
+        if (materialData_) {
+            materialData_->color = color;
+        }
+    }
 
     void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
     const Vector2& GetAnchorPoint() const { return anchorPoint_; }

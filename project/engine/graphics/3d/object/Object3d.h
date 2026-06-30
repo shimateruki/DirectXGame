@@ -38,6 +38,8 @@ public:
         float gravity = 50.0f;
         float maxFallSpeed = 60.0f;
         float jumpPower = 10.0f;
+        bool morphLimited = true;
+        float morphDuration = 5.0f;
         std::string enemyType = "";
         std::string gimmickType = "";
         std::string itemType = "";

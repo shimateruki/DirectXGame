@@ -8,7 +8,7 @@ class PlayerStateDamage : public IAnimationState
 public:
     explicit PlayerStateDamage(const Vector3& knockbackDir) : knockbackDir_(knockbackDir) {}
     void Enter(Player* player) override;
-    void Update(Player* player) override;
+    void Update(Player* player, float deltaTime) override;
     void Exit(Player* player) override;
 
 private:

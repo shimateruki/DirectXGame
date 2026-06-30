@@ -4,6 +4,7 @@
             "animName": "ArmatureAction",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
@@ -18,9 +19,9 @@
                 0.0
             ],
             "size": [
-                0.8500000238418579,
-                0.8500000238418579,
-                0.8500000238418579
+                0.5257473587989807,
+                0.15461960434913635,
+                1.7526438236236572
             ],
             "type": 1
         },
@@ -34,6 +35,7 @@
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "Bat",
         "envIntensity": 1.0,
@@ -57,6 +59,7 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
@@ -67,9 +70,10 @@
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 0.800000011920929,
             "colorType": 0,
             "detectionRange": 24.0,
-            "enemyType": "",
+            "enemyType": "Bat",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 0.0,
@@ -81,13 +85,16 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 25.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 2.5999999046325684,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -105,7 +112,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 1.0,
         "saveCategory": "Object",
         "scale": [
             0.6000000238418579,
@@ -114,6 +121,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -126,6 +137,7 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
@@ -140,9 +152,9 @@
                 0.0
             ],
             "size": [
-                1.100000023841858,
-                1.100000023841858,
-                1.100000023841858
+                1.0217939615249634,
+                1.0217939615249634,
+                1.0217939615249634
             ],
             "type": 1
         },
@@ -156,6 +168,7 @@
         ],
         "emissive": 1.399999976158142,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "BeamDrone",
         "envIntensity": 1.0,
@@ -179,19 +192,21 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.0,
+        "metallic": 1.0,
         "modelName": "Characters/eye",
         "myEventID": -1,
-        "name": "目玉ビーム",
+        "name": "ビームドローン",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 30.0,
-            "enemyType": "",
+            "enemyType": "BeamDrone",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 0.0,
@@ -203,13 +218,16 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 45.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 4.0,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -227,7 +245,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.0,
         "saveCategory": "Object",
         "scale": [
             0.8500000238418579,
@@ -236,6 +254,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -248,13 +270,14 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                3.2782554626464844e-07,
                 0.0,
-                3.2782554626464844e-07
+                1.1920928955078125e-07,
+                -0.2644650936126709
             ],
             "rotation": [
                 0.0,
@@ -262,14 +285,14 @@
                 0.0
             ],
             "size": [
-                1.0,
-                1.0,
-                1.0
+                2.75,
+                2.75,
+                3.01446533203125
             ],
             "type": 1
         },
         "collisionAttribute": 2,
-        "collisionMask": 65,
+        "collisionMask": 77,
         "color": [
             1.0,
             1.0,
@@ -278,7 +301,8 @@
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
-        "enableNormalMap": false,
+        "enableLighting": true,
+        "enableNormalMap": true,
         "enemyType": "Bomb",
         "envIntensity": 1.0,
         "eventType": 0,
@@ -301,19 +325,21 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.0,
-        "modelName": "Primitives/sphere",
+        "metallic": 1.0,
+        "modelName": "Gimmicks/blob",
         "myEventID": -1,
         "name": "ボム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 20.0,
-            "enemyType": "",
+            "enemyType": "Bomb",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 60.0,
@@ -321,17 +347,20 @@
             "hp": 30.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 16.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 30.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 0.03999999910593033,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -349,15 +378,19 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 1.0,
         "saveCategory": "Object",
         "scale": [
-            1.0,
-            1.0,
-            1.0
+            0.1599999964237213,
+            0.1599999964237213,
+            0.1599999964237213
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -370,13 +403,14 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                0.0,
-                0.0,
-                0.0
+                -0.001757591962814331,
+                0.3655702769756317,
+                -0.0006781518459320068
             ],
             "rotation": [
                 0.0,
@@ -384,9 +418,9 @@
                 0.0
             ],
             "size": [
-                1.0,
-                1.0,
-                1.0
+                0.5137262344360352,
+                0.3710375130176544,
+                0.5139153003692627
             ],
             "type": 2
         },
@@ -400,6 +434,7 @@
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "Bomber",
         "envIntensity": 1.0,
@@ -423,19 +458,21 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
-        "modelName": "Characters/bomb_slime",
+        "modelName": "Characters/slime_black",
         "myEventID": -1,
-        "name": "爆弾スライム",
+        "name": "ボムスライム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.149999976158142,
             "colorType": 0,
             "detectionRange": 32.0,
-            "enemyType": "",
+            "enemyType": "Bomber",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 60.0,
@@ -443,17 +480,20 @@
             "hp": 60.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 16.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 60.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 0.0,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -471,7 +511,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.6000000238418579,
         "saveCategory": "Object",
         "scale": [
             2.0,
@@ -480,6 +520,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -492,6 +536,7 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
@@ -515,13 +560,14 @@
         "collisionAttribute": 2,
         "collisionMask": 77,
         "color": [
-            1.0,
-            1.0,
-            1.0,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
             1.0
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "BossCore",
         "envIntensity": 1.0,
@@ -545,6 +591,7 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
@@ -555,9 +602,10 @@
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.5,
             "colorType": 0,
             "detectionRange": 20.0,
-            "enemyType": "",
+            "enemyType": "BossCore",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 0.0,
@@ -569,13 +617,16 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 1000.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 0.05000000074505806,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -602,6 +653,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -619,9 +674,9 @@
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                0.0,
-                0.0,
-                0.0
+                -0.001757591962814331,
+                0.3655702769756317,
+                -0.0006781518459320068
             ],
             "rotation": [
                 0.0,
@@ -629,9 +684,9 @@
                 0.0
             ],
             "size": [
-                0.8999999761581421,
-                0.949999988079071,
-                0.8999999761581421
+                0.5137262344360352,
+                0.3710375130176544,
+                0.5139153003692627
             ],
             "type": 1
         },
@@ -639,8 +694,8 @@
         "collisionMask": 77,
         "color": [
             1.0,
-            0.2800000011920929,
-            0.18000000715255737,
+            1.0,
+            1.0,
             1.0
         ],
         "emissive": 1.0,
@@ -675,14 +730,15 @@
         "metallic": 0.0,
         "modelName": "Characters/slime_red",
         "myEventID": -1,
-        "name": "Fire Slime",
+        "name": "ファイアスライム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 24.0,
-            "enemyType": "",
+            "enemyType": "FireSlime",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 60.0,
@@ -690,10 +746,12 @@
             "hp": 45.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 18.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 45.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
@@ -719,7 +777,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.6000000238418579,
         "saveCategory": "Object",
         "scale": [
             2.0,
@@ -744,6 +802,7 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
@@ -758,9 +817,9 @@
                 0.0
             ],
             "size": [
-                2.200000047683716,
-                2.200000047683716,
-                2.200000047683716
+                0.5137262344360352,
+                0.3710375130176544,
+                0.5139153003692627
             ],
             "type": 1
         },
@@ -774,6 +833,7 @@
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "GiantSlime",
         "envIntensity": 1.0,
@@ -797,19 +857,21 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
-        "modelName": "Characters/slime",
+        "modelName": "Characters/slime_pink",
         "myEventID": -1,
         "name": "巨大スライム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.25,
             "colorType": 0,
             "detectionRange": 26.0,
-            "enemyType": "",
+            "enemyType": "GiantSlime",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 70.0,
@@ -821,19 +883,22 @@
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 160.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 0.0,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
+            1.0,
             0.0,
-            0.0,
-            1.0
+            -4.371138828673793e-08
         ],
         "recorder": {
             "isRecordLoop": false,
@@ -842,18 +907,22 @@
         },
         "rotate": [
             0.0,
-            0.0,
+            3.1415927410125732,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.6000000238418579,
         "saveCategory": "Object",
         "scale": [
-            2.0,
-            2.0,
-            2.0
+            3.5999999046325684,
+            3.5999999046325684,
+            3.5999999046325684
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -866,6 +935,7 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
@@ -880,22 +950,23 @@
                 0.0
             ],
             "size": [
-                0.800000011920929,
-                1.100000023841858,
-                0.800000011920929
+                1.0,
+                1.0,
+                1.0
             ],
             "type": 4
         },
         "collisionAttribute": 2,
         "collisionMask": 77,
         "color": [
-            0.8600000143051147,
-            0.18000000715255737,
-            0.23999999463558197,
+            0.6000000238418579,
+            0.6000000238418579,
+            0.6000000238418579,
             1.0
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "Mushroom",
         "envIntensity": 1.0,
@@ -919,6 +990,7 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
@@ -929,9 +1001,10 @@
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 16.0,
-            "enemyType": "",
+            "enemyType": "Mushroom",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 60.0,
@@ -939,17 +1012,20 @@
             "hp": 35.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 16.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 35.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 2.0999999046325684,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -976,6 +1052,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -988,13 +1068,14 @@
             "animName": "",
             "isAnimLoop": true
         },
+        "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                0.0,
-                0.0,
-                0.0
+                -0.001757591962814331,
+                0.3655702769756317,
+                -0.0006781518459320068
             ],
             "rotation": [
                 0.0,
@@ -1002,9 +1083,9 @@
                 0.0
             ],
             "size": [
-                1.0,
-                1.0,
-                1.0
+                0.5137262344360352,
+                0.3710375130176544,
+                0.5139153003692627
             ],
             "type": 2
         },
@@ -1018,6 +1099,7 @@
         ],
         "emissive": 1.0,
         "enableEnvMap": false,
+        "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "Slime",
         "envIntensity": 1.0,
@@ -1041,19 +1123,21 @@
             "scatteringIntensity": 0.0
         },
         "materialType": 0,
+        "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
         "modelName": "Characters/slime_pink",
         "myEventID": -1,
-        "name": "スライム",
+        "name": "ピンクスライム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 20.0,
-            "enemyType": "",
+            "enemyType": "Slime",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 60.0,
@@ -1061,17 +1145,20 @@
             "hp": 50.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 18.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 50.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
             "shakeDuration": 1.0,
             "speed": 0.10000000149011612,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT"
         },
         "quaternion": [
             0.0,
@@ -1089,7 +1176,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.6000000238418579,
         "saveCategory": "Object",
         "scale": [
             2.0,
@@ -1098,6 +1185,10 @@
         ],
         "targetID": -1,
         "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
         "translate": [
             0.0,
             0.0,
@@ -1115,9 +1206,9 @@
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                0.0,
-                0.0,
-                0.0
+                -0.001757591962814331,
+                0.3655702769756317,
+                -0.0006781518459320068
             ],
             "rotation": [
                 0.0,
@@ -1125,9 +1216,9 @@
                 0.0
             ],
             "size": [
-                0.8999999761581421,
-                0.8999999761581421,
-                0.8999999761581421
+                0.5137262344360352,
+                0.3710375130176544,
+                0.5139153003692627
             ],
             "type": 1
         },
@@ -1135,8 +1226,8 @@
         "collisionMask": 77,
         "color": [
             1.0,
-            0.949999988079071,
-            0.2199999988079071,
+            1.0,
+            1.0,
             1.0
         ],
         "emissive": 1.0,
@@ -1171,14 +1262,15 @@
         "metallic": 0.0,
         "modelName": "Characters/slime_yellow",
         "myEventID": -1,
-        "name": "Thunder Slime",
+        "name": "サンダースライム",
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 20.0,
-            "enemyType": "",
+            "enemyType": "ThunderSlime",
             "fallDuration": 2.0,
             "gimmickType": "",
             "gravity": 62.0,
@@ -1186,10 +1278,12 @@
             "hp": 45.0,
             "interval": 3.0,
             "itemType": "",
-            "jumpPower": 10.0,
+            "jumpPower": 18.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 45.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
@@ -1215,7 +1309,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.5,
+        "roughness": 0.6000000238418579,
         "saveCategory": "Object",
         "scale": [
             2.0,

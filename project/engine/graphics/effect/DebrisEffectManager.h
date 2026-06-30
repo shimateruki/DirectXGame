@@ -91,6 +91,7 @@ private:
         bool collideGround = true;
         bool shrinkOnFade = true;
         bool sleeping = false;
+        bool matrixDirty = true;
     };
 
     DebrisEffectManager();
@@ -99,7 +100,7 @@ private:
     DebrisPiece AcquirePiece();
     void RecyclePiece(size_t index);
     bool InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config);
-    void UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4& lightViewProjection);
+    void UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection);
     float RandomRange(float minValue, float maxValue);
     int RandomIndex(int maxExclusive);
     Vector3 RandomDirection(const DebrisEffectConfig& config);

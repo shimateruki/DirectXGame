@@ -59,15 +59,15 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\EnemyBomber.cpp" />
+    <ClCompile Include="game\actor\enemy\AttackTelegraph.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyFireSlime.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyThunderSlime.cpp" />
@@ -304,6 +305,8 @@
     <ClCompile Include="game\system\ObjectManager.cpp" />
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
     <ClCompile Include="game\actor\player\PlayerMover.cpp" />
+    <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp" />
+    <ClCompile Include="game\actor\player\PlayerDeathAnimation.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.Basic.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.Damage.cpp" />
@@ -511,6 +514,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\EnemyBomber.h" />
+    <ClInclude Include="game\actor\enemy\AttackTelegraph.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
@@ -825,6 +829,8 @@
     <ClInclude Include="game\system\ItemFactory.h" />
     <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
     <ClInclude Include="game\actor\player\PlayerMover.h" />
+    <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h" />
+    <ClInclude Include="game\actor\player\PlayerDeathAnimation.h" />
     <ClInclude Include="game\actor\player\PlayerState.h" />
     <ClInclude Include="game\actor\player\PlayerState.Basic.h" />
     <ClInclude Include="game\actor\player\PlayerState.Carry.h" />

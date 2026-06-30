@@ -242,6 +242,19 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["gpuParticleName"] = obj->GetGPUParticleName();
     d["meshEffect1"] = obj->GetMeshEffect1Name();
     d["meshEffect2"] = obj->GetMeshEffect2Name();
+    if (obj->HasLodLevels()) {
+        json lodJson;
+        lodJson["enabled"] = obj->IsLodEnabled();
+        lodJson["levels"] = json::array();
+        for (const auto& lod : obj->GetLodLevels()) {
+            json levelJson;
+            levelJson["level"] = lod.level;
+            levelJson["modelName"] = lod.modelName;
+            levelJson["distance"] = lod.distance;
+            lodJson["levels"].push_back(levelJson);
+        }
+        d["lod"] = lodJson;
+    }
     // 9. アニメーション
     d["animation"]["animName"] = obj->animName_;
     d["animation"]["isAnimLoop"] = obj->isAnimLoop_;

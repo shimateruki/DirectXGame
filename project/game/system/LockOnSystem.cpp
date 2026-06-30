@@ -10,6 +10,20 @@
 #include "BaseEnemy.h" // もし属性チェックで必要なら
 #include <DebugConsole.h>
 
+namespace {
+bool ContainsObject(const std::vector<std::unique_ptr<Object3d>>& objects, const Object3d* target) {
+    if (!target) {
+        return false;
+    }
+    for (const auto& object : objects) {
+        if (object.get() == target) {
+            return true;
+        }
+    }
+    return false;
+}
+}
+
 LockOnSystem::LockOnSystem() {
     inputManager_ = nullptr;
     lockOnTarget_ = nullptr;
@@ -25,6 +39,14 @@ void LockOnSystem::Initialize(InputManager* inputManager) {
 }
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
+
+    if (lockOnTarget_ && !ContainsObject(objects, lockOnTarget_)) {
+        isLockingOn_ = false;
+        lockOnTarget_ = nullptr;
+        camera->SetLockOnTarget(nullptr);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        lostSightTimer_ = 0.0f;
+    }
 
     // (1) 0キー(Zキー等)入力処理
     if (inputManager_->IsKeyTriggered(DIK_R)) {

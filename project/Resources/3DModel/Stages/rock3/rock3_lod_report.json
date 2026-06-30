@@ -1,0 +1,102 @@
+{
+    "tool":  "Model LOD Builder",
+    "version":  2,
+    "generatedAt":  "2026-06-28T16:45:16",
+    "sourceModel":  "Stages/rock3",
+    "sourceFile":  "Resources/3DModel/Stages/rock3/rock3.gltf",
+    "sourceExtension":  ".gltf",
+    "requestedBackend":  "auto",
+    "selectedBackend":  "blender",
+    "backendExecutable":  "C:\\二年前期\\CG2\\project\\Resources\\tools\\Blender 4.4\\blender.exe",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  240,
+                   "indices":  948,
+                   "triangles":  316,
+                   "meshes":  1,
+                   "primitives":  1,
+                   "skins":  0,
+                   "animations":  0,
+                   "morphTargets":  0,
+                   "skinnedPrimitives":  0,
+                   "fileSizeBytes":  15173
+               },
+    "safety":  {
+                   "supported":  true,
+                   "reasons":  [
+
+                               ]
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Stages/rock3",
+                     "file":  "Resources/3DModel/Stages/rock3/rock3.gltf",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  240,
+                                   "indices":  948,
+                                   "triangles":  316,
+                                   "meshes":  1,
+                                   "primitives":  1,
+                                   "skins":  0,
+                                   "animations":  0,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  0,
+                                   "fileSizeBytes":  15173
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Stages/rock3/rock3_lod1.gltf",
+                     "file":  "Resources/3DModel/Stages/rock3/rock3_lod1.gltf",
+                     "distance":  58.5,
+                     "ratio":  0.26,
+                     "generated":  true,
+                     "backend":  "blender",
+                     "stats":  {
+                                   "vertices":  87,
+                                   "indices":  246,
+                                   "triangles":  82,
+                                   "meshes":  1,
+                                   "primitives":  1,
+                                   "skins":  0,
+                                   "animations":  0,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  0,
+                                   "fileSizeBytes":  7645
+                               },
+                     "triangleReduction":  0.740506329113924,
+                     "storageDeltaBytes":  -7528
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Stages/rock3/rock3_lod2.gltf",
+                     "file":  "Resources/3DModel/Stages/rock3/rock3_lod2.gltf",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "backend":  "blender",
+                     "stats":  {
+                                   "vertices":  84,
+                                   "indices":  234,
+                                   "triangles":  78,
+                                   "meshes":  1,
+                                   "primitives":  1,
+                                   "skins":  0,
+                                   "animations":  0,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  0,
+                                   "fileSizeBytes":  7501
+                               },
+                     "triangleReduction":  0.75316455696202533,
+                     "storageDeltaBytes":  -7672
+                 }
+             ],
+    "warnings":  [
+                     "Blender Decimate backend was used. It preserves more source attributes than the native fallback, but generated LODs still need visual review."
+                 ]
+}

@@ -1,9 +1,12 @@
 #include "EnemyGiantSlime.h"
+#include "SlimeBounceAnimator.h"
 #include "BaseScene.h"
 #include "CollisionConfig.h"
 #include "DebugConsole.h"
 #include "EnemyFactory.h"
 #include "EventManager.h"
+#include "HitEffectDirector.h"
+#include "MeshEffectManager.h"
 #include "ParticleSystem.h"
 #include "SceneManager.h"
 #include <algorithm>
@@ -14,8 +17,24 @@ namespace {
 constexpr float kShockwaveRadius = 7.0f;
 constexpr float kShockwaveDamage = 2.0f;
 constexpr float kHookSplitDuration = 1.85f;
+constexpr float kHookSplitWeakDuration = 1.05f;
+constexpr float kJumpChargeDuration = 0.78f;
+constexpr float kLandingRecoveryDuration = 1.15f;
+constexpr float kTelegraphInterval = 0.18f;
+constexpr float kMinJumpDistance = 4.0f;
+constexpr float kMaxJumpDistance = 18.0f;
+constexpr float kHeavyHopDefaultJumpPower = 18.5f;
+constexpr float kHeavyHopMinJumpPower = 14.0f;
+constexpr float kHeavyHopMaxJumpPower = 21.0f;
+constexpr float kHeavyHopMinSpeed = 10.0f;
+constexpr float kHeavyHopMaxSpeed = 34.0f;
+constexpr float kGroundCollisionWorldRadius = 1.15f;
+constexpr float kThrownCollisionWorldRadius = 1.45f;
+constexpr float kGroundCollisionWorldCenterY = 0.58f;
+constexpr float kThrownCollisionWorldCenterY = 0.35f;
 constexpr int kSplitSlimeCount = 4;
 constexpr float kSplitSlimeRadius = 3.1f;
+constexpr float kGiantSlimeModelYawOffset = 3.1415926535f;
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -35,11 +54,12 @@ void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& mode
     SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     defaultColor_ = GetColor();
     SetScale({ 2.0f, 2.0f, 2.0f });
+    SetRotationY(kGiantSlimeModelYawOffset);
 
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(2.2f);
+    SyncGroundCollisionRadius();
 }
 
 // ジャンプ攻撃、徘徊ジャンプ、着地衝撃波の更新
@@ -60,9 +80,16 @@ void EnemyGiantSlime::Update(float deltaTime) {
     if (isHookSplitPulled_) {
         idleTimer_ += deltaTime;
         SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SyncGroundCollisionRadius();
         return;
     }
     if (IsThrowRecovering()) {
+        if (IsThrownPhysics()) {
+            SyncThrownCollisionRadius();
+        }
+        else {
+            SyncGroundCollisionRadius();
+        }
         BaseEnemy::Update(deltaTime);
         return;
     }
@@ -72,23 +99,41 @@ void EnemyGiantSlime::Update(float deltaTime) {
         landingPulseTimer_ = (std::max)(0.0f, landingPulseTimer_ - deltaTime);
     }
 
-    if (isJumpingAttack_ && isGrounded_) {
-        isJumpingAttack_ = false;
-        landingPulseTimer_ = 0.35f;
-        DispatchLandingShockwave();
+    if (state_ == State::Airborne && isGrounded_ && GetVelocity().y <= 0.5f) {
+        BeginLandingRecovery();
     }
 
-    if (target_ && param_.has_value()) {
-        Vector3 toTarget = target_->GetTranslate() - GetTranslate();
-        Vector3 direction = NormalizePlanar(toTarget);
-        const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+    Vector3 direction = { 0.0f, 0.0f, 1.0f };
+    float distance = 9999.0f;
+    if (target_) {
+        Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+        direction = NormalizePlanar(toTarget);
+        distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
         if (distance <= detectionRange_) {
-            const float targetYaw = std::atan2(direction.x, direction.z);
-            SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f));
+            const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
+            SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f), 0.0f });
         }
+    }
 
-        if (isGrounded_ && !isJumpingAttack_) {
+    switch (state_) {
+    case State::ChargeJump:
+        UpdateJumpCharge(deltaTime);
+        break;
+    case State::Recovery:
+        UpdateLandingRecovery(deltaTime);
+        break;
+    case State::Airborne:
+        ShowAttackTelegraphCircle(
+            HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_),
+            kShockwaveRadius,
+            1.0f,
+            { 1.0f, 0.36f, 0.82f, 0.82f });
+        ApplySlimeAnimation(deltaTime);
+        break;
+    case State::Idle:
+    default:
+        if (isGrounded_) {
             Vector3 velocity = GetVelocity();
             velocity.x *= 0.65f;
             velocity.z *= 0.65f;
@@ -96,32 +141,52 @@ void EnemyGiantSlime::Update(float deltaTime) {
 
             if (distance <= detectionRange_) {
                 jumpTimer_ += deltaTime;
-                if (jumpTimer_ >= 1.35f) {
-                    LaunchJump(direction, distance);
-                    jumpTimer_ = 0.0f;
+                if (jumpTimer_ >= 1.15f) {
+                    BeginJumpCharge(direction, distance);
                 }
-            } else {
+            }
+            else {
                 jumpTimer_ += deltaTime * 0.65f;
                 Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
                 Vector3 wanderDirection = { wanderVelocity.x, 0.0f, wanderVelocity.z };
                 const float wanderLength = Math::Length(wanderDirection);
                 if (wanderLength > 0.001f) {
                     wanderDirection = wanderDirection / wanderLength;
-                    const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z);
-                    SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.05f));
+                    const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z) + kGiantSlimeModelYawOffset;
+                    SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.05f), 0.0f });
                 }
 
                 if (jumpTimer_ >= 1.75f && wanderLength > 0.05f) {
-                    const float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower * 0.5f : 11.0f;
-                    SetVelocity({ wanderDirection.x * 5.2f, jumpPower, wanderDirection.z * 5.2f });
+                    SetVelocity({ wanderDirection.x * 4.6f, kHeavyHopDefaultJumpPower * 0.55f, wanderDirection.z * 4.6f });
                     jumpTimer_ = 0.0f;
+                    isGrounded_ = false;
                 }
             }
         }
+        ApplySlimeAnimation(deltaTime);
+        break;
     }
 
-    ApplySlimeAnimation(deltaTime);
+    SyncGroundCollisionRadius();
     BaseEnemy::Update(deltaTime);
+}
+
+void EnemyGiantSlime::BeginThrown(const Vector3& initialVelocity) {
+    if (!hasBaseScale_) {
+        baseScale_ = GetScale();
+        hasBaseScale_ = true;
+    }
+
+    state_ = State::Idle;
+    stateTimer_ = 0.0f;
+    telegraphTimer_ = 0.0f;
+    landingPulseTimer_ = 0.0f;
+    isJumpingAttack_ = false;
+    HideAttackTelegraph();
+    SetColor(defaultColor_);
+    SetScale(baseScale_);
+    SyncThrownCollisionRadius();
+    BaseEnemy::BeginThrown(initialVelocity);
 }
 
 std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
@@ -132,6 +197,137 @@ std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
     clone->SetTarget(target_);
     clone->SetDetectionRange(detectionRange_);
     return clone;
+}
+
+void EnemyGiantSlime::BeginJumpCharge(const Vector3& direction, float distance) {
+    state_ = State::ChargeJump;
+    stateTimer_ = 0.0f;
+    telegraphTimer_ = kTelegraphInterval;
+    jumpTimer_ = 0.0f;
+    isJumpingAttack_ = false;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    SetRotation({ 0.0f, GetRotation().y, 0.0f });
+
+    const float jumpDistance = std::clamp(distance * 0.95f, kMinJumpDistance, kMaxJumpDistance);
+    landingTelegraphPosition_ = GetTranslate() + direction * jumpDistance;
+    landingTelegraphPosition_.y = GetTranslate().y;
+    SpawnLandingTelegraph();
+    SetColor({ 1.0f, 0.62f, 0.86f, 1.0f });
+}
+
+void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
+    stateTimer_ += deltaTime;
+    telegraphTimer_ += deltaTime;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    if (target_) {
+        Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
+        toTarget.y = 0.0f;
+        const float targetDistance = Math::Length(toTarget);
+        if (targetDistance > 0.001f) {
+            Vector3 direction = toTarget / targetDistance;
+            const float jumpDistance = std::clamp(targetDistance * 0.95f, kMinJumpDistance, kMaxJumpDistance);
+            landingTelegraphPosition_ = GetTranslate() + direction * jumpDistance;
+            landingTelegraphPosition_.y = GetTranslate().y;
+            const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
+            SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.12f), 0.0f });
+        }
+    }
+
+    if (telegraphTimer_ >= kTelegraphInterval) {
+        SpawnLandingTelegraph();
+        telegraphTimer_ = 0.0f;
+    }
+
+    const float t = std::clamp(stateTimer_ / kJumpChargeDuration, 0.0f, 1.0f);
+    ShowAttackTelegraphCircle(
+        HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_),
+        kShockwaveRadius,
+        t,
+        { 1.0f, 0.36f, 0.82f, 0.82f });
+    const float pulse = std::sin(t * 3.14159265f * 5.0f) * 0.05f;
+    SetScale({
+        baseScale_.x * (1.0f + t * 0.34f + pulse),
+        baseScale_.y * (1.0f - t * 0.34f),
+        baseScale_.z * (1.0f + t * 0.34f - pulse)
+    });
+
+    if (stateTimer_ >= kJumpChargeDuration) {
+        Vector3 toLanding = landingTelegraphPosition_ - GetTranslate();
+        toLanding.y = 0.0f;
+        const float landingDistance = Math::Length(toLanding);
+        Vector3 jumpDirection = landingDistance > 0.001f ? toLanding / landingDistance : Vector3{ 0.0f, 0.0f, 1.0f };
+        LaunchJump(jumpDirection, landingDistance);
+    }
+}
+
+void EnemyGiantSlime::BeginLandingRecovery() {
+    state_ = State::Recovery;
+    stateTimer_ = 0.0f;
+    isJumpingAttack_ = false;
+    landingPulseTimer_ = 0.35f;
+    TriggerAttackTelegraphCue({ 1.0f, 0.08f, 0.05f, 1.0f });
+    HideAttackTelegraph();
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetColor({ 1.0f, 0.44f, 0.78f, 1.0f });
+    DispatchLandingShockwave();
+    SpawnLandingEffects();
+}
+
+void EnemyGiantSlime::UpdateLandingRecovery(float deltaTime) {
+    stateTimer_ += deltaTime;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    const float t = std::clamp(stateTimer_ / kLandingRecoveryDuration, 0.0f, 1.0f);
+    const float wobble = std::sin(stateTimer_ * 28.0f) * (1.0f - t) * 0.06f;
+    SetScale({
+        baseScale_.x * (1.24f - t * 0.24f + wobble),
+        baseScale_.y * (0.58f + t * 0.42f),
+        baseScale_.z * (1.24f - t * 0.24f - wobble)
+    });
+
+    if (stateTimer_ >= kLandingRecoveryDuration) {
+        state_ = State::Idle;
+        stateTimer_ = 0.0f;
+        jumpTimer_ = 0.0f;
+        SetColor(defaultColor_);
+        SetScale(baseScale_);
+    }
+}
+
+void EnemyGiantSlime::SpawnLandingTelegraph() {
+    Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_);
+    effectPos.y += 0.04f;
+    if (auto* meshEffect = MeshEffectManager::GetInstance()) {
+        meshEffect->SpawnRingWaveEffect(effectPos);
+    }
+}
+
+void EnemyGiantSlime::SpawnLandingEffects() {
+    Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(GetTranslate());
+    effectPos.y += 0.04f;
+    HitEffectDirector::SpawnThrowSlamShockwave(effectPos, 24.0f);
+
+    ParticleSystem* particleSystem = nullptr;
+    if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
+        particleSystem = scene->GetParticleSystem();
+    }
+    if (particleSystem) {
+        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        particleSystem->SpawnParticles(
+            effectPos,
+            42,
+            4.5f,
+            &up,
+            42.0f,
+            { 1.0f, 0.55f, 0.84f, 1.0f },
+            { 1.0f, 0.86f, 0.95f, 0.0f },
+            0.18f,
+            0.48f,
+            0.65f,
+            0.08f);
+    }
 }
 
 // フックで引っ張られて分裂する特殊処理
@@ -145,13 +341,17 @@ void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
     }
 
     isHookSplitPulled_ = true;
+    HideAttackTelegraph();
+    hookSplitWeakPoint_ = state_ == State::Recovery;
     hookSplitPullTimer_ = 0.0f;
     hookSplitBasePosition_ = GetTranslate();
     hookSplitBaseScale_ = GetScale();
+    state_ = State::Idle;
+    stateTimer_ = 0.0f;
     isJumpingAttack_ = false;
     jumpTimer_ = 0.0f;
     SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetColor({ 0.42f, 0.88f, 1.0f, 1.0f });
+    SetColor(hookSplitWeakPoint_ ? Vector4{ 1.0f, 0.48f, 0.86f, 1.0f } : Vector4{ 0.42f, 0.88f, 1.0f, 1.0f });
 }
 
 bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos, ParticleSystem* particleSystem) {
@@ -170,26 +370,38 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOw
     float distance = Math::Length(toOwner);
     Vector3 dir = distance > 0.001f ? toOwner / distance : Vector3{ 0.0f, 0.0f, 1.0f };
 
-    const float tugDistance = std::min(distance * 0.22f, 4.2f);
-    const float shakePower = (1.0f - progress * 0.4f) * 0.22f;
-    const float shakeX = std::sin(hookSplitPullTimer_ * 48.0f) * shakePower;
-    const float shakeZ = std::cos(hookSplitPullTimer_ * 41.0f) * shakePower;
-    Vector3 pulledPos = hookSplitBasePosition_ + dir * tugDistance * (0.45f + progress * 0.55f);
-    pulledPos.x += shakeX;
-    pulledPos.z += shakeZ;
+    const float pullEase = progress * progress * (3.0f - 2.0f * progress);
+    const float tugDistance = std::min(distance * 0.42f, 7.2f);
+    const float tugPulse = std::sin(hookSplitPullTimer_ * 34.0f) * (1.0f - progress) * 0.48f;
+    const Vector3 side = { -dir.z, 0.0f, dir.x };
+    const float shakePower = (1.0f - progress * 0.25f) * 0.42f;
+    const float shakeSide = std::sin(hookSplitPullTimer_ * 46.0f) * shakePower;
+    const float shakeY = std::sin(hookSplitPullTimer_ * 31.0f) * shakePower * 0.38f;
+    Vector3 pulledPos = hookSplitBasePosition_ + dir * (tugDistance * (0.28f + pullEase * 0.95f) + tugPulse);
+    pulledPos += side * shakeSide;
+    pulledPos.y += shakeY;
     SetTranslate(pulledPos);
 
-    const float stretch = std::sin(hookSplitPullTimer_ * 24.0f) * 0.08f;
+    const float pulse = std::abs(std::sin(hookSplitPullTimer_ * 22.0f));
+    const float strain = 0.28f + progress * 0.72f + pulse * (1.0f - progress) * 0.16f;
+    const float stretch = std::sin(hookSplitPullTimer_ * 28.0f) * (0.10f + progress * 0.08f);
     SetScale({
-        hookSplitBaseScale_.x * (1.0f + progress * 0.34f + stretch),
-        hookSplitBaseScale_.y * (1.0f - progress * 0.38f - stretch * 0.6f),
-        hookSplitBaseScale_.z * (1.0f + progress * 0.34f - stretch)
+        hookSplitBaseScale_.x * (1.0f + strain * 0.75f + stretch),
+        hookSplitBaseScale_.y * (std::max)(0.42f, 1.0f - strain * 0.58f),
+        hookSplitBaseScale_.z * (1.0f + strain * 0.48f - stretch)
     });
 
     Vector3 rot = GetRotation();
-    rot.x = std::sin(hookSplitPullTimer_ * 18.0f) * progress * 0.28f;
-    rot.z = std::cos(hookSplitPullTimer_ * 16.0f) * progress * 0.28f;
+    rot.x = std::sin(hookSplitPullTimer_ * 22.0f) * (0.18f + progress * 0.38f);
+    rot.z = std::cos(hookSplitPullTimer_ * 19.0f) * (0.18f + progress * 0.38f);
+    rot.y += std::sin(hookSplitPullTimer_ * 16.0f) * deltaTime * (1.0f + progress * 3.0f);
     SetRotation(rot);
+    SetColor({
+        0.42f + progress * 0.58f,
+        0.88f - progress * 0.32f + pulse * 0.12f,
+        1.0f - progress * 0.12f,
+        1.0f
+    });
     UpdateLocalMatrix();
     UpdateWorldMatrix();
 
@@ -203,7 +415,11 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOw
 void EnemyGiantSlime::CancelHookSplitPull() {
     if (hasSplit_) return;
     isHookSplitPulled_ = false;
+    HideAttackTelegraph();
+    hookSplitWeakPoint_ = false;
     hookSplitPullTimer_ = 0.0f;
+    state_ = State::Idle;
+    stateTimer_ = 0.0f;
     SetColor(defaultColor_);
     SetScale(hookSplitBaseScale_);
     Vector3 rot = GetRotation();
@@ -213,17 +429,23 @@ void EnemyGiantSlime::CancelHookSplitPull() {
 }
 
 float EnemyGiantSlime::GetHookSplitProgress() const {
-    return std::clamp(hookSplitPullTimer_ / kHookSplitDuration, 0.0f, 1.0f);
+    const float duration = hookSplitWeakPoint_ ? kHookSplitWeakDuration : kHookSplitDuration;
+    return std::clamp(hookSplitPullTimer_ / duration, 0.0f, 1.0f);
 }
 
 // ジャンプ攻撃、着地衝撃波、伸縮の補助処理
 void EnemyGiantSlime::LaunchJump(const Vector3& direction, float distance) {
-    if (!param_.has_value()) return;
-
-    const float horizontalSpeed = std::clamp(distance * 0.55f, 8.0f, 18.0f);
-    const float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower : 22.0f;
+    const float gravity = param_.has_value() ? (std::max)(1.0f, param_->gravity) : 70.0f;
+    const float configuredJumpPower = param_.has_value() && param_->jumpPower > 0.0f ? param_->jumpPower : kHeavyHopDefaultJumpPower;
+    const float jumpPower = std::clamp(configuredJumpPower, kHeavyHopMinJumpPower, kHeavyHopMaxJumpPower);
+    const float flightTime = std::clamp((jumpPower * 2.0f) / gravity, 0.42f, 0.68f);
+    const float horizontalSpeed = std::clamp(distance / flightTime, kHeavyHopMinSpeed, kHeavyHopMaxSpeed);
     SetVelocity({ direction.x * horizontalSpeed, jumpPower, direction.z * horizontalSpeed });
+    state_ = State::Airborne;
+    stateTimer_ = 0.0f;
     isJumpingAttack_ = true;
+    isGrounded_ = false;
+    SetColor(defaultColor_);
 }
 
 void EnemyGiantSlime::DispatchLandingShockwave() {
@@ -251,21 +473,49 @@ void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.y = baseScale_.y * (0.62f + t * 0.25f);
         targetScale.z = baseScale_.z * (1.35f - t * 0.25f);
     } else if (!isGrounded_) {
-        targetScale.x = baseScale_.x * 0.86f;
-        targetScale.y = baseScale_.y * 1.24f;
-        targetScale.z = baseScale_.z * 0.86f;
+        SlimeBounceAnimator::Params params;
+        params.speedForFullBounce = 6.0f;
+        params.idleAmplitude = 0.045f;
+        params.moveAmplitude = 0.18f;
+        params.hopFrequency = 6.8f;
+        params.horizontalSquash = 0.20f;
+        params.verticalStretch = 0.26f;
+        params.airborneStretch = 0.30f;
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, false, params);
     } else if (jumpTimer_ > 0.95f) {
-        targetScale.x = baseScale_.x * 1.22f;
-        targetScale.y = baseScale_.y * 0.72f;
-        targetScale.z = baseScale_.z * 1.22f;
+        const float chargeRate = std::clamp((jumpTimer_ - 0.95f) / 0.32f, 0.0f, 1.0f);
+        targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 1.08f);
     } else {
-        const float breathe = std::sin(idleTimer_ * 2.0f) * 0.035f;
-        targetScale.x = baseScale_.x * (1.0f + breathe);
-        targetScale.y = baseScale_.y * (1.0f - breathe);
-        targetScale.z = baseScale_.z * (1.0f + breathe);
+        SlimeBounceAnimator::Params params;
+        params.speedForFullBounce = 3.8f;
+        params.idleAmplitude = 0.060f;
+        params.moveAmplitude = 0.21f;
+        params.hopFrequency = 6.6f;
+        params.horizontalSquash = 0.22f;
+        params.verticalStretch = 0.27f;
+        params.airborneStretch = 0.28f;
+        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, true, params);
     }
 
     SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 8.0f)));
+}
+
+void EnemyGiantSlime::SyncWorldCollisionRadius(float worldRadius, float worldCenterY) {
+    const Vector3 scale = GetScale();
+    const float maxScale = (std::max)({ 0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float yScale = (std::max)(0.001f, std::abs(scale.y));
+    ColliderConfig config = GetColliderConfig();
+    config.center.y = worldCenterY / yScale;
+    SetColliderConfig(config);
+    SetCollisionRadius(worldRadius / maxScale);
+}
+
+void EnemyGiantSlime::SyncGroundCollisionRadius() {
+    SyncWorldCollisionRadius(kGroundCollisionWorldRadius, kGroundCollisionWorldCenterY);
+}
+
+void EnemyGiantSlime::SyncThrownCollisionRadius() {
+    SyncWorldCollisionRadius(kThrownCollisionWorldRadius, kThrownCollisionWorldCenterY);
 }
 
 // 小型スライムへの分裂生成
@@ -273,6 +523,9 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
     if (hasSplit_) return;
     hasSplit_ = true;
     isHookSplitPulled_ = false;
+    HideAttackTelegraph();
+    hookSplitWeakPoint_ = false;
+    state_ = State::Idle;
 
     Vector3 splitCenter = GetTranslate();
     if (particleSystem) {
@@ -302,15 +555,19 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
             Vector3 pos = splitCenter + dir * kSplitSlimeRadius;
             pos.y += 0.45f;
 
+            const float yaw = std::atan2(dir.x, dir.z) + kGiantSlimeModelYawOffset;
             slime->SetTranslate(pos);
-            slime->SetScale({ 2.0f, 2.0f, 2.0f });
+            slime->SetRotation({ 0.0f, yaw, 0.0f });
+            slime->SetScale({ 1.35f, 1.35f, 1.35f });
+            slime->SetName("Enemy_GiantSplitSlime_" + std::to_string(i));
             slime->SetTarget(target_);
             slime->SetDetectionRange(18.0f);
-            slime->SetVelocity({ dir.x * 12.0f, 12.0f, dir.z * 12.0f });
+            slime->SetVelocity({ dir.x * 4.0f, 4.0f, dir.z * 4.0f });
             if (slime->param_.has_value()) {
                 slime->param_->hp = 25.0f;
                 slime->param_->maxHp = 25.0f;
-                slime->param_->speed = 0.35f;
+                slime->param_->speed = 0.22f;
+                slime->param_->jumpPower = 5.0f;
                 slime->param_->detectionRange = 18.0f;
             }
             scene->AddObject(std::move(slime));

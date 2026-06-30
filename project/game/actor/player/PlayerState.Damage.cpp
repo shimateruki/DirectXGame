@@ -15,6 +15,7 @@
 void PlayerStateDamage::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Damage (Knockback)");
     if (player) {
+        player->ReleaseCarriedEnemy(true);
         player->SetIsControlActive(false); // 操作不能にする
         
         // 初速をノックバック方向に与える
@@ -38,10 +39,9 @@ void PlayerStateDamage::Enter(Player* player) {
     }
 }
 
-void PlayerStateDamage::Update(Player* player) {
+void PlayerStateDamage::Update(Player* player, float deltaTime) {
     if (!player) return;
 
-    const float deltaTime = 1.0f / 60.0f;
     timer_ += deltaTime;
 
     float t = timer_ / duration_;

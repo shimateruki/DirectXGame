@@ -68,26 +68,33 @@ void PlayerStateDead::Enter(Player* player) {
     timer_ = 0.0f;
     sceneChangeRequested_ = false;
     lifePresentationStarted_ = false;
+    finalDeath_ = GameDataManager::GetInstance()->GetLives() <= 1;
     Fade::GetInstance()->Stop();
     if (player) {
-        player->SetVelocity({ 0.0f, 7.0f, 0.0f });
+        player->SetDamageInvincible(false);
+        deathAnimation_.Start(player, finalDeath_);
+        if (Object3d* hookMarker = player->GetHookMarker()) {
+            hookMarker->SetIsVisible(false);
+        }
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
         if (cam) {
             cam->SetFreezeEye(true);
         }
         irisCenter_ = CalculatePlayerIrisCenter(player);
     }
-    if (player) player->SetIsControlActive(false); // 操作不能にする
+    if (player) player->SetIsControlActive(false);
 }
 
-void PlayerStateDead::Update(Player* player) {
+void PlayerStateDead::Update(Player* player, float deltaTime) {
     if (!player || sceneChangeRequested_) return;
 
-    constexpr float kDeltaTime = 1.0f / 60.0f;
-    timer_ += kDeltaTime;
+    timer_ += deltaTime;
+    finalDeath_ = finalDeath_ || GameDataManager::GetInstance()->GetLives() <= 0;
+    deathAnimation_.Update(player, deltaTime);
 
-    if (timer_ >= 1.15f && !lifePresentationStarted_ && Fade::GetInstance()->GetStatus() == Fade::Status::None) {
-        Fade::GetInstance()->StartIrisOut(1.35f, irisCenter_);
+    const float irisDuration = finalDeath_ ? 1.45f : 1.25f;
+    if (deathAnimation_.IsReadyForFade() && !lifePresentationStarted_ && Fade::GetInstance()->GetStatus() == Fade::Status::None) {
+        Fade::GetInstance()->StartIrisOut(irisDuration, irisCenter_);
     }
 
     if (!lifePresentationStarted_ && Fade::GetInstance()->IsFinished()) {
@@ -119,12 +126,10 @@ void PlayerStateDead::Update(Player* player) {
         GameDataManager::GetInstance()->RequestRespawnIrisIn();
         SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
     }
-
-    // 死亡中は特に何もしない
 }
-
 void PlayerStateDead::Exit(Player* player) {
     if (player) {
+        deathAnimation_.RestoreVisual(player);
         player->SetIsControlActive(true);
     }
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
@@ -151,7 +156,7 @@ void PlayerStateFallingOut::Enter(Player* player) {
     waitTimer_ = 0.0f;
 }
 
-void PlayerStateFallingOut::Update(Player* player) {
+void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
     if (!player) return;
 
     // 共通処理: アイリスの中心をプレイヤーに合わせ続ける (IrisOut/IrisIn中)
@@ -163,7 +168,7 @@ void PlayerStateFallingOut::Update(Player* player) {
     // フェーズごとの処理
     switch (phase_) {
     case Phase::Waiting:
-        waitTimer_ += 1.0f / 60.0f;
+        waitTimer_ += deltaTime;
         if (waitTimer_ >= 1.55f) {
             // アイリスアウト開始
             Fade::GetInstance()->StartIrisOut(1.35f, irisCenter_);
@@ -174,31 +179,10 @@ void PlayerStateFallingOut::Update(Player* player) {
     case Phase::IrisOut:
         if (Fade::GetInstance()->IsFinished()) {
             Fade::GetInstance()->Stop();
-            if (GameDataManager::GetInstance()->GetLives() <= 0) {
-                CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
-                SceneManager::GetInstance()->ChangeScene("GAMEOVER");
-                return;
-            }
+            StartLifeLostPresentationOnScene();
+            phase_ = Phase::LifeLost;
+            break;
 
-            // 画面が閉じきった -> ワープ
-            player->SetTranslate(player->GetRespawnPosition());
-            player->SetVelocity({ 0,0,0 });
-
-            // カメラの座標追従を一時的に戻して位置を同期
-            CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
-            CameraManager::GetInstance()->GetActiveCamera()->Update();
-            CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(true); // 再び固定(演出用)
-
-            // アイリスイン開始
-            Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-            Matrix4x4 vp = cam->GetViewProjectionMatrix();
-            Vector3 worldPos = player->GetWorldPosition();
-            worldPos.y += 1.0f;
-            Vector3 ndc = Math::Transform(worldPos, vp);
-            Vector2 irisCenter = { (ndc.x + 1.0f) * 0.5f, (1.0f - ndc.y) * 0.5f };
-
-            Fade::GetInstance()->StartIrisIn(0.5f, irisCenter);
-            phase_ = Phase::IrisIn;
         }
         break;
 

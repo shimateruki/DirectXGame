@@ -328,25 +328,30 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
 
     // リソース生成
     D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
+    Microsoft::WRL::ComPtr<ID3D12Resource> newResource;
     HRESULT hr = device->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
-        IID_PPV_ARGS(&rt.resource)
+        IID_PPV_ARGS(&newResource)
     );
-    assert(SUCCEEDED(hr));
-    rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    if (FAILED(hr) || !newResource) {
+        return;
+    }
 
     // 2. RTV (描画先としての設定)
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
     rtvHeapDesc.NumDescriptors = 1;
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rt.rtvHeap));
-    assert(SUCCEEDED(hr));
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newRtvHeap;
+    hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&newRtvHeap));
+    if (FAILED(hr) || !newRtvHeap) {
+        return;
+    }
 
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
     rtvDesc.Format = format;
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    device->CreateRenderTargetView(rt.resource.Get(), &rtvDesc, rt.rtvHeap->GetCPUDescriptorHandleForHeapStart());
+    device->CreateRenderTargetView(newResource.Get(), &rtvDesc, newRtvHeap->GetCPUDescriptorHandleForHeapStart());
 
     // 3. SRV (画像としての設定)
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -356,5 +361,13 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     // SRVManagerを使ってインデックスを取得
-    rt.srvHandle = SRVManager::GetInstance()->CreateSRV(rt.resource.Get(), srvDesc);
+    if (rt.srvHandle != 0) {
+        SRVManager::GetInstance()->CreateSRVforResource(rt.srvHandle, newResource.Get(), srvDesc);
+    } else {
+        rt.srvHandle = SRVManager::GetInstance()->CreateSRV(newResource.Get(), srvDesc);
+    }
+
+    rt.resource = newResource;
+    rt.rtvHeap = newRtvHeap;
+    rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 }

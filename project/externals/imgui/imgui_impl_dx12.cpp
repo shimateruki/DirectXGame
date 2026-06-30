@@ -476,8 +476,15 @@ void ImGui_ImplDX12_UpdateTexture(ImTextureData* tex)
         desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
         ID3D12Resource* pTexture = nullptr;
-        bd->pd3dDevice->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
+        HRESULT hr = bd->pd3dDevice->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
             D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&pTexture));
+        IM_ASSERT(SUCCEEDED(hr));
+        if (FAILED(hr) || pTexture == nullptr)
+        {
+            bd->InitInfo.SrvDescriptorFreeFn(&bd->InitInfo, backend_tex->hFontSrvCpuDescHandle, backend_tex->hFontSrvGpuDescHandle);
+            IM_DELETE(backend_tex);
+            return;
+        }
 
         // Create SRV
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -551,10 +558,43 @@ void ImGui_ImplDX12_UpdateTexture(ImTextureData* tex)
             HRESULT hr = bd->pd3dDevice->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc,
                 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&bd->pTexUploadBuffer));
             IM_ASSERT(SUCCEEDED(hr));
+            if (FAILED(hr) || bd->pTexUploadBuffer == nullptr)
+            {
+                bd->pTexUploadBufferSize = 0;
+                bd->pTexUploadBufferMapped = nullptr;
+                if (tex->Status == ImTextureStatus_WantCreate)
+                {
+                    bd->InitInfo.SrvDescriptorFreeFn(&bd->InitInfo, backend_tex->hFontSrvCpuDescHandle, backend_tex->hFontSrvGpuDescHandle);
+                    SafeRelease(backend_tex->pTextureResource);
+                    backend_tex->hFontSrvCpuDescHandle.ptr = 0;
+                    backend_tex->hFontSrvGpuDescHandle.ptr = 0;
+                    IM_DELETE(backend_tex);
+                    tex->SetTexID(ImTextureID_Invalid);
+                    tex->BackendUserData = nullptr;
+                }
+                return;
+            }
 
             D3D12_RANGE range = {0, upload_size};
             hr = bd->pTexUploadBuffer->Map(0, &range, &bd->pTexUploadBufferMapped);
             IM_ASSERT(SUCCEEDED(hr));
+            if (FAILED(hr) || bd->pTexUploadBufferMapped == nullptr)
+            {
+                SafeRelease(bd->pTexUploadBuffer);
+                bd->pTexUploadBufferSize = 0;
+                bd->pTexUploadBufferMapped = nullptr;
+                if (tex->Status == ImTextureStatus_WantCreate)
+                {
+                    bd->InitInfo.SrvDescriptorFreeFn(&bd->InitInfo, backend_tex->hFontSrvCpuDescHandle, backend_tex->hFontSrvGpuDescHandle);
+                    SafeRelease(backend_tex->pTextureResource);
+                    backend_tex->hFontSrvCpuDescHandle.ptr = 0;
+                    backend_tex->hFontSrvGpuDescHandle.ptr = 0;
+                    IM_DELETE(backend_tex);
+                    tex->SetTexID(ImTextureID_Invalid);
+                    tex->BackendUserData = nullptr;
+                }
+                return;
+            }
             bd->pTexUploadBufferSize = upload_size;
         }
 

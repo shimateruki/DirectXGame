@@ -5,6 +5,9 @@ param(
     [double]$Ratio2 = 0.25,
     [double]$Distance1 = 35.0,
     [double]$Distance2 = 70.0,
+    [ValidateSet("auto", "blender", "native")]
+    [string]$Backend = "auto",
+    [string]$BlenderPath = "",
     [switch]$AnalyzeOnly,
     [switch]$Force
 )
@@ -38,6 +41,147 @@ function Parse-Double([string]$Text) {
 
 function Format-Double([double]$Value) {
     return $Value.ToString("0.######", $culture)
+}
+
+function Find-ToolExecutable {
+    param([string[]]$Names)
+
+    foreach ($name in $Names) {
+        $command = Get-Command $name -ErrorAction SilentlyContinue
+        if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
+            return $command.Source
+        }
+    }
+    return ""
+}
+
+function Find-BundledBlenderExecutable {
+    param([string]$RootPath)
+
+    $candidatePaths = @(
+        (Join-Path $RootPath "tools/blender/blender.exe"),
+        (Join-Path $RootPath "tools/Blender/blender.exe"),
+        (Join-Path $RootPath "tools/third_party/blender/blender.exe"),
+        (Join-Path $RootPath "ExternalTools/Blender/blender.exe"),
+        (Join-Path $RootPath "Resources/tools/blender/blender.exe"),
+        (Join-Path $RootPath "Resources/tools/Blender/blender.exe"),
+        (Join-Path $RootPath "Resources/tools/Blender 4.4/blender.exe")
+    )
+
+    foreach ($candidate in $candidatePaths) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($candidate)
+        }
+    }
+
+    $searchRoots = @(
+        (Join-Path $RootPath "Resources/tools/blender"),
+        (Join-Path $RootPath "Resources/tools/Blender")
+    )
+    foreach ($searchRoot in $searchRoots) {
+        if (-not (Test-Path -LiteralPath $searchRoot -PathType Container)) {
+            continue
+        }
+        $found = Get-ChildItem -LiteralPath $searchRoot -Recurse -Filter "blender.exe" -File -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -ne $found) {
+            return [System.IO.Path]::GetFullPath($found.FullName)
+        }
+    }
+
+    $resourcesToolRoot = Join-Path $RootPath "Resources/tools"
+    if (Test-Path -LiteralPath $resourcesToolRoot -PathType Container) {
+        $blenderFolders = Get-ChildItem -LiteralPath $resourcesToolRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like "Blender*" }
+        foreach ($folder in $blenderFolders) {
+            $found = Get-ChildItem -LiteralPath $folder.FullName -Recurse -Filter "blender.exe" -File -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($null -ne $found) {
+                return [System.IO.Path]::GetFullPath($found.FullName)
+            }
+        }
+    }
+    return ""
+}
+
+function Resolve-LodBackend {
+    param(
+        [string]$RequestedBackend,
+        [bool]$IsAnalyzeOnly,
+        [string]$RootPath,
+        [string]$ExplicitBlenderPath
+    )
+
+    $requested = $RequestedBackend.ToLowerInvariant()
+    if ($requested -eq "native") {
+        return [ordered]@{
+            name = "native"
+            executable = ""
+            warnings = @("Native grid simplification is selected. It is fast, but visual quality is weaker than Blender Decimate.")
+        }
+    }
+
+    $configuredPath = ""
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitBlenderPath)) {
+        $candidate = $ExplicitBlenderPath.Trim().Trim('"')
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $configuredPath = [System.IO.Path]::GetFullPath($candidate)
+        }
+        elseif ($requested -eq "blender") {
+            if ($IsAnalyzeOnly) {
+                return [ordered]@{
+                    name = "blender"
+                    executable = $candidate
+                    warnings = @("The configured Blender path was not found. Analysis can continue, but generation will fail until the path is fixed.")
+                }
+            }
+            throw "Configured Blender path was not found: $candidate"
+        }
+        else {
+            return [ordered]@{
+                name = "native"
+                executable = ""
+                warnings = @("Configured Blender path was not found. Auto backend fell back to native grid simplification: $candidate")
+            }
+        }
+    }
+
+    $blenderPath = if ([string]::IsNullOrWhiteSpace($configuredPath)) {
+        $bundledPath = Find-BundledBlenderExecutable $RootPath
+        if (-not [string]::IsNullOrWhiteSpace($bundledPath)) {
+            $bundledPath
+        }
+        else {
+            Find-ToolExecutable @("blender", "blender.exe")
+        }
+    }
+    else {
+        $configuredPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($blenderPath)) {
+        return [ordered]@{
+            name = "blender"
+            executable = $blenderPath
+            warnings = @()
+        }
+    }
+
+    if ($requested -eq "blender") {
+        if ($IsAnalyzeOnly) {
+            return [ordered]@{
+                name = "blender"
+                executable = ""
+                warnings = @("Blender backend is selected, but blender.exe was not found in PATH. Analysis can continue, but generation will fail until Blender is installed or PATH is fixed.")
+            }
+        }
+        throw "Blender backend was selected, but blender.exe was not found in PATH."
+    }
+
+    return [ordered]@{
+        name = "native"
+        executable = ""
+        warnings = @("Blender CLI was not found in PATH. Auto backend fell back to native grid simplification.")
+    }
 }
 
 function Resolve-ModelFile {
@@ -308,6 +452,35 @@ function Remove-ModelMeshCacheForFile {
 
     if (Test-Path -LiteralPath $cachePath -PathType Leaf) {
         Remove-Item -LiteralPath $cachePath -Force
+    }
+}
+
+function Invoke-BlenderLod {
+    param(
+        [string]$RootPath,
+        [string]$BlenderPath,
+        [string]$InputPath,
+        [string]$OutputPath,
+        [double]$Ratio
+    )
+
+    if ([string]::IsNullOrWhiteSpace($BlenderPath) -or -not (Test-Path -LiteralPath $BlenderPath -PathType Leaf)) {
+        throw "Blender executable was not found."
+    }
+
+    $scriptPath = Join-Path $RootPath "tools/model_lod/blender_lod.py"
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        throw "Blender LOD script was not found: $scriptPath"
+    }
+
+    $outputDirectory = Split-Path -Parent $OutputPath
+    if (-not [string]::IsNullOrWhiteSpace($outputDirectory)) {
+        New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+    }
+
+    & $BlenderPath --background --python $scriptPath -- --input $InputPath --output $OutputPath --ratio (Format-Double $Ratio)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Blender LOD generation failed with exit code $LASTEXITCODE."
     }
 }
 
@@ -1236,9 +1409,14 @@ function Convert-ObjToStaticGltf {
 $rootFull = [System.IO.Path]::GetFullPath($Root)
 $sourcePath = Resolve-ModelFile $rootFull $Model
 $sourceExtension = [System.IO.Path]::GetExtension($sourcePath).ToLowerInvariant()
+if ($sourceExtension -notin @(".obj", ".gltf", ".glb")) {
+    throw "Unsupported model file extension for LOD: $sourceExtension"
+}
 $sourceDirectory = Split-Path -Parent $sourcePath
 $sourceStem = [System.IO.Path]::GetFileNameWithoutExtension($sourcePath)
 $sourceModelName = ConvertTo-ModelName $rootFull $sourcePath $false
+$backendInfo = Resolve-LodBackend $Backend ([bool]$AnalyzeOnly) $rootFull $BlenderPath
+$selectedBackend = [string]$backendInfo.name
 $reportPath = Join-Path $sourceDirectory ($sourceStem + "_lod_report.json")
 $lodConfigPath = Join-Path $sourceDirectory ($sourceStem + "_lod.json")
 $cacheReportDirectory = Join-Path $rootFull "Resources/.cache/model_lod"
@@ -1260,24 +1438,36 @@ else {
 }
 $sourceStats["fileSizeBytes"] = Get-ModelStorageBytes $sourcePath
 
-$supportedForGeneration = (
+$supportedForGeneration = if ($selectedBackend -eq "blender") {
+    $sourceExtension -in @(".obj", ".gltf", ".glb")
+}
+else {
     ($sourceExtension -eq ".obj") -or
     (($sourceExtension -eq ".gltf") -and ($null -ne $gltfSafety) -and [bool]$gltfSafety.supported)
-)
+}
 
 $report = [ordered]@{
     tool = "Model LOD Builder"
-    version = 1
+    version = 2
     generatedAt = (Get-Date).ToString("s")
     sourceModel = $sourceModelName
     sourceFile = (To-ForwardSlash (Get-RelativePathCompat $rootFull $sourcePath))
     sourceExtension = $sourceExtension
+    requestedBackend = $Backend
+    selectedBackend = $selectedBackend
+    backendExecutable = [string]$backendInfo.executable
     analyzeOnly = [bool]$AnalyzeOnly
     supportedForGeneration = $supportedForGeneration
     source = $sourceStats
     safety = $gltfSafety
     lods = @()
     warnings = @()
+}
+
+foreach ($backendWarning in @($backendInfo.warnings)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$backendWarning)) {
+        $report["warnings"] = @($report["warnings"]) + [string]$backendWarning
+    }
 }
 
 $lods = New-Object 'System.Collections.Generic.List[object]'
@@ -1303,8 +1493,9 @@ if (-not $supportedForGeneration) {
     }
 }
 elseif (-not $AnalyzeOnly) {
+    $useBlenderBackend = ($selectedBackend -eq "blender")
     $lodSourcePath = $sourcePath
-    if ($sourceExtension -eq ".gltf") {
+    if (-not $useBlenderBackend -and $sourceExtension -eq ".gltf") {
         $extractRoot = Join-Path $cacheReportDirectory "gltf_extract"
         $relativeSource = Get-RelativePathCompat (Join-Path $rootFull "Resources/3DModel") $sourcePath
         $extractPath = Join-Path $extractRoot ([System.IO.Path]::ChangeExtension($relativeSource, ".obj"))
@@ -1312,13 +1503,16 @@ elseif (-not $AnalyzeOnly) {
         $lodSourcePath = $extractPath
         $report["warnings"] = @($report["warnings"]) + "Static glTF LOD is generated as glTF+bin for far-distance rendering. Skin, animation, morph and PBR material data are intentionally not copied."
     }
+    elseif ($useBlenderBackend) {
+        $report["warnings"] = @($report["warnings"]) + "Blender Decimate backend was used. It preserves more source attributes than the native fallback, but generated LODs still need visual review."
+    }
 
     $ratios = @($Ratio1, $Ratio2)
     $distances = @($Distance1, $Distance2)
     for ($i = 0; $i -lt $ratios.Count; ++$i) {
         $level = $i + 1
         $ratio = [Math]::Max(0.02, [Math]::Min(0.98, [double]$ratios[$i]))
-        $isGltfOutput = ($sourceExtension -eq ".gltf")
+        $isGltfOutput = ($sourceExtension -eq ".gltf" -or $sourceExtension -eq ".glb")
         $outputExtension = if ($isGltfOutput) { ".gltf" } else { ".obj" }
         $outputPath = Join-Path $sourceDirectory ("{0}_lod{1}{2}" -f $sourceStem, $level, $outputExtension)
 
@@ -1327,7 +1521,13 @@ elseif (-not $AnalyzeOnly) {
             $stats["fileSizeBytes"] = Get-ModelStorageBytes $outputPath
         }
         else {
-            if ($isGltfOutput) {
+            if ($useBlenderBackend) {
+                Invoke-BlenderLod $rootFull ([string]$backendInfo.executable) $sourcePath $outputPath $ratio
+                $stats = if ($isGltfOutput) { Analyze-Gltf $outputPath } else { Analyze-Obj $outputPath }
+                $stats["fileSizeBytes"] = Get-ModelStorageBytes $outputPath
+                Remove-ModelMeshCacheForFile $rootFull $outputPath
+            }
+            elseif ($isGltfOutput) {
                 $tempLodObjDirectory = Join-Path $cacheReportDirectory "generated_obj"
                 $relativeSource = Get-RelativePathCompat (Join-Path $rootFull "Resources/3DModel") $sourcePath
                 $relativeNoExt = [System.IO.Path]::ChangeExtension($relativeSource, $null)
@@ -1371,6 +1571,7 @@ elseif (-not $AnalyzeOnly) {
             distance = [double]$distances[$i]
             ratio = $ratio
             generated = $true
+            backend = $selectedBackend
             stats = $stats
             triangleReduction = $triReduction
             storageDeltaBytes = $storageDelta
@@ -1390,6 +1591,7 @@ $lodConfig = [ordered]@{
             modelName = $_.modelName
             distance = $_.distance
             ratio = $_.ratio
+            backend = $selectedBackend
             triangles = $_.stats.triangles
             fileSizeBytes = $_.stats.fileSizeBytes
         }

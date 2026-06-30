@@ -56,6 +56,21 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
+            "lod": {
+                "enabled": true,
+                "levels": [
+                    {
+                        "distance": 35.0,
+                        "level": 1,
+                        "modelName": "Characters/slime/slime_lod1.gltf"
+                    },
+                    {
+                        "distance": 70.0,
+                        "level": 2,
+                        "modelName": "Characters/slime/slime_lod2.gltf"
+                    }
+                ]
+            },
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "",
@@ -68,6 +83,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -75,18 +91,18 @@
                 "gimmickType": "",
                 "gravity": 50.0,
                 "healAmount": 1.0,
-                "hp": 100.0,
+                "hp": 2.0,
                 "interval": 3.0,
                 "itemType": "",
-                "jumpPower": 10.0,
+                "jumpPower": 24.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
+                "maxHp": 2.0,
                 "moveAmount": 10.0,
                 "moveSpeed": 6.0,
                 "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 49.5,
+                "speed": 27.700000762939453,
                 "startActive": false,
                 "switchMode": 0,
                 "targetScene": "SELECT"
@@ -94,8 +110,8 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -43.064964294433594,
-                49.575164794921875,
+                -69.05058288574219,
+                49.57403564453125,
                 -43.77138900756836
             ],
             "quaternion": [
@@ -110,9 +126,9 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -0.0,
                 3.1415927410125732,
-                0.0
+                -8.74227694680485e-08,
+                3.1415927410125732
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Player",

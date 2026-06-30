@@ -63,6 +63,7 @@ public:
 
 private:
     bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+    Vector3 GetSphereCenter() const;
     CollisionInfo CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const;
     CollisionInfo CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const;
 

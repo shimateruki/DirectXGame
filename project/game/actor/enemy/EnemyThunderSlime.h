@@ -39,6 +39,7 @@ private:
     float chargeParticleTimer_ = 0.0f;   // タメ中の火花発生間隔。
     float shockSquashTimer_ = 0.0f;      // 放電後の横広がり演出。
     float idleTimer_ = 0.0f;             // 待機アニメーション用。
+    float groundHopTimer_ = 0.0f;        // 通常移動中の小ホップ周期。
     float idleSparkTimer_ = 0.0f;        // 常時火花の発生間隔。
     float carriedShockCooldown_ = 0.0f;  // 持ち運び能力の再使用待ち。
     float carriedEffectTimer_ = 0.0f;    // 持ち運び発動後の発光演出。

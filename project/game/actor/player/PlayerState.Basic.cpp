@@ -13,10 +13,14 @@
 // ========================================================
 void PlayerStateIdle::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Idle");
-    // TODO: アニメーション基盤ができたら player->PlayAnimation("Idle") を呼ぶ
+    if (player) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
+        player->SetSlimeJumpCharge(0.0f);
+    }
 }
 
-void PlayerStateIdle::Update(Player* player) {
+void PlayerStateIdle::Update(Player* player, float deltaTime) {
+    (void)deltaTime;
     if (!player) return;
 
     // 速度があれば Run へ遷移
@@ -34,9 +38,13 @@ void PlayerStateIdle::Exit(Player* player) {}
 // ========================================================
 void PlayerStateRun::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Run");
+    if (player) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Run);
+    }
 }
 
-void PlayerStateRun::Update(Player* player) {
+void PlayerStateRun::Update(Player* player, float deltaTime) {
+    (void)deltaTime;
     if (!player) return;
 
     // 速度が落ちたら Idle へ遷移
@@ -54,10 +62,16 @@ void PlayerStateRun::Exit(Player* player) {}
 // ========================================================
 void PlayerStateJump::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Jump");
+    if (player) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
+    }
 }
 
-void PlayerStateJump::Update(Player* player) {
+void PlayerStateJump::Update(Player* player, float deltaTime) {
+    (void)deltaTime;
     if (!player) return;
+
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
 
     // 地面に着地したら Idle へ遷移
     if (player->IsGrounded()) {
@@ -73,16 +87,24 @@ void PlayerStateJump::Exit(Player* player) {}
 void PlayerStateDash::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: Dash");
     timer_ = 0.0f;
+    if (player) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Dash);
+        player->SetSlimeAnimationDirection(player->GetVelocity());
+    }
 }
 
-void PlayerStateDash::Update(Player* player) {
+void PlayerStateDash::Update(Player* player, float deltaTime) {
     if (!player) return;
 
     // 約0.2秒(ダッシュ時間)経過で Idle へ戻す
-    timer_ += 1.0f / 60.0f;
+    timer_ += deltaTime;
     if (timer_ >= 0.2f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
 }
 
-void PlayerStateDash::Exit(Player* player) {}
+void PlayerStateDash::Exit(Player* player) {
+    if (player) {
+        player->TriggerSlimeImpulse({ 2.55f, 1.25f, 2.55f }, 0.16f);
+    }
+}

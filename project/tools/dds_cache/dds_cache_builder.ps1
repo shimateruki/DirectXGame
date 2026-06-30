@@ -381,7 +381,7 @@ function Start-DDSCacheWatch {
     }
 }
 
-Set-Location (Resolve-Path (Join-Path $PSScriptRoot ".."))
+Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\.."))
 
 if ($Watch) {
     Start-DDSCacheWatch

@@ -1,4 +1,9 @@
-#pragma once
+﻿#pragma once
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 #include "IEditable.h"
 
@@ -7,6 +12,7 @@
 #include <string>
 
 class DebugEditor;
+struct IMFSinkWriter;
 
 class CaptureToolWindow : public IEditable {
 public:
@@ -26,18 +32,27 @@ private:
     void StopRecording();
     void UpdateRecording();
     bool CaptureToFile(const std::filesystem::path& path);
-    bool EncodeRecordingToMp4();
+    bool StartMediaFoundationRecording(const std::filesystem::path& outputPath, const RECT& captureRect);
+    bool WriteRecordingFrame();
+    void CloseRecordingResources();
 
     DebugEditor* editor_ = nullptr;
     CaptureArea captureArea_ = CaptureArea::GameView;
     bool recording_ = false;
-    bool encodeMp4OnStop_ = true;
+    bool mediaFoundationStarted_ = false;
+    bool recordingComInitialized_ = false;
     float recordFps_ = 30.0f;
     float recordingFps_ = 30.0f;
-    int frameIndex_ = 0;
-    std::filesystem::path recordingDir_;
-    std::filesystem::path lastOutputPath_;
+    IMFSinkWriter* sinkWriter_ = nullptr;
+    DWORD videoStreamIndex_ = 0;
+    int recordingWidth_ = 0;
+    int recordingHeight_ = 0;
+    RECT recordingRect_{};
+    LONGLONG recordingFrameDuration100ns_ = 0;
+    LONGLONG recordingNextSampleTime100ns_ = 0;
     std::chrono::steady_clock::time_point nextFrameTime_{};
+    std::filesystem::path recordingOutputPath_;
+    std::filesystem::path lastOutputPath_;
     std::string recordingTimestamp_;
     std::string statusText_ = "撮影範囲を選んで、スクリーンショットまたは録画を開始してください。";
 };

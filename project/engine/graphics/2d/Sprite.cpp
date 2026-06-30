@@ -35,6 +35,19 @@ bool HasParentInChain(Sprite* sprite, const Sprite* parent) {
 	}
 	return false;
 }
+
+uint32_t ResolveSpriteTextureHandle(uint32_t textureHandle) {
+	if (textureHandle != 0) {
+		return textureHandle;
+	}
+
+	TextureManager* textureManager = TextureManager::GetInstance();
+	uint32_t fallback = textureManager->Load("Resources/sprite/common/white.dds", false, false);
+	if (fallback == 0) {
+		fallback = textureManager->Load("Resources/sprite/common/white.png", false, false);
+	}
+	return fallback;
+}
 }
 
 Sprite::~Sprite() {
@@ -63,8 +76,16 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 	common_ = common;
 	dxCommon_ = common_->GetDxCommon();
 
-	textureHandle_ = textureHandle;
-	AdjustTextureSize(); // テクスチャサイズに合わせてスプライトのサイズも調整
+	textureHandle_ = ResolveSpriteTextureHandle(textureHandle);
+	if (textureHandle_ != 0) {
+		AdjustTextureSize(); // テクスチャサイズに合わせてスプライトのサイズも調整
+	}
+	else {
+		// フォールバックも取得できない場合は描画だけ止め、初期化処理自体は継続する。
+		size_ = { 1.0f, 1.0f };
+		textureSize_ = { 1.0f, 1.0f };
+		isVisible_ = false;
+	}
 
 	// 各種リソース作成
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
@@ -147,6 +168,9 @@ void Sprite::Update() {
 
 	// --- UV座標計算 ---
 	{
+		if (textureHandle_ == 0) {
+			return;
+		}
 		const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
 		float texWidth = (float)metadata.width;
 		float texHeight = (float)metadata.height;
@@ -177,8 +201,11 @@ void Sprite::Update() {
 /// 描画
 /// </summary>
 void Sprite::Draw() {
+	if (!common_ || !dxCommon_) return;
 	assert(common_);
-	if (!isVisible_) return;
+	if (!isVisible_ || textureHandle_ == 0) return;
+	if (!vertexResource_ || !indexResource_ || !wvpResource_ || !materialResource_) return;
+	if (!vertexData_ || !materialData_) return;
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
 	common_->SetPipeline(commandList);
@@ -194,6 +221,11 @@ void Sprite::Draw() {
 /// テクスチャサイズに合わせてスプライトのサイズを調整する
 /// </summary>
 void Sprite::AdjustTextureSize() {
+	if (textureHandle_ == 0) {
+		size_ = { 1.0f, 1.0f };
+		textureSize_ = { 1.0f, 1.0f };
+		return;
+	}
 	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
 	size_ = { (float)metadata.width, (float)metadata.height };
 	textureSize_ = { (float)metadata.width, (float)metadata.height };
@@ -213,6 +245,8 @@ uint32_t Sprite::LoadTexture(const std::string& fileName) {
 /// アニメーションの設定
 /// </summary>
 void Sprite::SetAnimation(int frameCount, float duration, bool loop) {
+	if (textureHandle_ == 0) return;
+
 	totalFrames_ = (frameCount > 0) ? frameCount : 1;
 	frameDuration_ = duration;
 	isLooping_ = loop;

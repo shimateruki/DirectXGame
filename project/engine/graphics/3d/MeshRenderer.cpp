@@ -4,6 +4,7 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include "TextureManager.h"
+#include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
 #include "json.hpp"
@@ -150,6 +151,31 @@ Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
 
     return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
+
+template <typename T>
+bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
+    data = nullptr;
+    resource.Reset();
+    if (!dxCommon) {
+        return false;
+    }
+
+    resource = dxCommon->CreateBufferResource(size);
+    if (!resource) {
+        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer creation failed: ") + label);
+        return false;
+    }
+
+    HRESULT hr = resource->Map(0, nullptr, reinterpret_cast<void**>(&data));
+    if (FAILED(hr) || !data) {
+        DebugConsole::GetInstance()->AddLog(std::string("MeshRenderer buffer map failed: ") + label);
+        resource.Reset();
+        data = nullptr;
+        return false;
+    }
+
+    return true;
+}
 }
 
 MeshRenderer::MeshRenderer(Transform* transform) {
@@ -163,21 +189,27 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // 1. WVPバッファ
-    wvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-    wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(TransformationMatrix), wvpResource_, wvpData_, "WVP")) {
+        common_ = nullptr;
+        return;
+    }
     wvpData_->WVP = Math::MakeIdentity4x4();
     wvpData_->world = Math::MakeIdentity4x4();
 
 
 
     // 3. Cameraバッファ
-    cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
-    cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), cameraResource_, cameraData_, "Camera")) {
+        common_ = nullptr;
+        return;
+    }
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
 
     // 4. Materialバッファ
-    materialResource_ = dxCommon->CreateBufferResource(sizeof(MaterialData));
-    materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(MaterialData), materialResource_, materialData_, "Material")) {
+        common_ = nullptr;
+        return;
+    }
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = 1;
     materialData_->uvTransform = Math::MakeIdentity4x4();
@@ -191,18 +223,24 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->envIntensity = 1.0f;  // デフォルト1.0倍
     materialData_->emissive = 1.0f;
     materialData_->time = 0.0f;
-    shadowWvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-    shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(TransformationMatrix), shadowWvpResource_, shadowWvpData_, "ShadowWVP")) {
+        common_ = nullptr;
+        return;
+    }
     shadowWvpData_->WVP = Math::MakeIdentity4x4();
     shadowWvpData_->world = Math::MakeIdentity4x4();
 
-    localFogResource_ = dxCommon->CreateBufferResource(sizeof(LocalFogData));
-    localFogResource_->Map(0, nullptr, reinterpret_cast<void**>(&localFogData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(LocalFogData), localFogResource_, localFogData_, "LocalFog")) {
+        common_ = nullptr;
+        return;
+    }
     localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
     localFogData_->fogDensity = 0.5f;
 
-    waterParamResource_ = dxCommon->CreateBufferResource(sizeof(WaterParamForGPU));
-    waterParamResource_->Map(0, nullptr, reinterpret_cast<void**>(&waterParamData_));
+    if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGPU), waterParamResource_, waterParamData_, "WaterParam")) {
+        common_ = nullptr;
+        return;
+    }
     // デフォルト値のセット
     waterParamData_->time = 0.0f;
     waterParamData_->waveSpeed = 2.0f;
@@ -222,7 +260,16 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     
 }
 
+bool MeshRenderer::HasRequiredBuffers() const {
+    return wvpResource_ && wvpData_ &&
+        cameraResource_ && cameraData_ &&
+        materialResource_ && materialData_;
+}
+
 void MeshRenderer::Update() {
+    if (!common_ || !HasRequiredBuffers() || !shadowWvpData_ || !localFogData_ || !waterParamData_) {
+        return;
+    }
 	// 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
     if (materialData_) {
@@ -344,7 +391,7 @@ void MeshRenderer::Update() {
 
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers()) return;
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -370,7 +417,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
 }
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
 
     common_->SetWaterGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -388,7 +435,7 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 }
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
 
     common_->SetMagmaGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -405,7 +452,7 @@ void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
 
     common_->SetIceGraphicsCommand(); 
     // (以下、DrawMagmaと全く同じ)
@@ -420,7 +467,7 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 }
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
 
     if (!fireProxyModel_) {
         InitializeFireProxyModel();
@@ -440,7 +487,7 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !waterParamResource_ || !setGraphicsCommand) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand) return;
 
     if (useProxyModel && !fireProxyModel_) {
         InitializeFireProxyModel();
@@ -824,7 +871,7 @@ void MeshRenderer::DrawShadowOnly() {
 
 void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !localFogResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !localFogResource_) return;
 
     common_->SetLocalFogGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();

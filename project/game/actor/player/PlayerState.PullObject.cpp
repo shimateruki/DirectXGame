@@ -23,6 +23,8 @@ void PlayerStatePullObject::Enter(Player* player) {
 
     player->SetIsControlActive(false);
     player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+    player->SetSlimeAnimationDirection(targetPos_ - player->GetWorldPosition());
     hookTipPos_ = player->GetWorldPosition();
     timer_ = 0.0f;
     pullStarted_ = false;
@@ -35,13 +37,12 @@ void PlayerStatePullObject::Enter(Player* player) {
     }
 }
 
-void PlayerStatePullObject::Update(Player* player) {
+void PlayerStatePullObject::Update(Player* player, float deltaTime) {
     if (!player || !targetObject_) {
         if (player) player->ChangeState(std::make_unique<PlayerStateIdle>());
         return;
     }
 
-    const float deltaTime = 1.0f / 60.0f;
     timer_ += deltaTime;
 
     Vector3 targetPos = targetObject_->GetWorldPosition();
@@ -49,6 +50,8 @@ void PlayerStatePullObject::Update(Player* player) {
     float dist = Math::Length(toTarget);
 
     if (!pullStarted_) {
+        player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
+        player->SetSlimeAnimationDirection(targetPos - player->GetWorldPosition());
         if (dist < 3.0f) {
             hookTipPos_ = targetPos;
             if (auto* block = dynamic_cast<GimmickHookPullBlock*>(targetObject_)) {
@@ -65,6 +68,9 @@ void PlayerStatePullObject::Update(Player* player) {
     }
 
     UpdateRopeMarker(player, targetObject_->GetWorldPosition(), 0.18f);
+    player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::PullEnemy);
+    player->SetSlimePullDirection(targetObject_->GetWorldPosition() - player->GetWorldPosition());
+    player->SetSlimePullProgress(std::clamp(timer_ / 0.35f, 0.0f, 1.0f));
 
     if (timer_ > 0.35f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());

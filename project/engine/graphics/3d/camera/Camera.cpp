@@ -321,6 +321,21 @@ void Camera::Update() {
             }
         }
     }
+    else if (followMode_ == FollowMode::kFixedPoint) {
+        Vector3 desiredEye = fixedPointPos_;
+        float pitch = fixedPointAngle_.x;
+        float yaw = fixedPointAngle_.y;
+        Vector3 forward;
+        forward.x = std::sin(yaw) * std::cos(pitch);
+        forward.y = -std::sin(pitch);
+        forward.z = std::cos(yaw) * std::cos(pitch);
+
+        eye_ = desiredEye;
+        target_ = desiredEye + forward * 10.0f;
+        smoothEye_ = eye_;
+        smoothTarget_ = target_;
+        isCameraInitialized_ = true;
+    }
     else if (followMode_ == FollowMode::kOrbit) {
         Vector3 orbitTarget = fixedPointPos_;
         orbitAngle_ += orbitSpeed_;

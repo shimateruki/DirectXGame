@@ -158,7 +158,10 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
 	HRESULT hr = device_->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 		&vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&resource));
-	assert(SUCCEEDED(hr));
+	if (FAILED(hr)) {
+		Log(std::format("CreateBufferResource failed. size={}, hr=0x{:08X}\n", sizeInBytes, static_cast<unsigned int>(hr)));
+		return nullptr;
+	}
 	return resource;
 }
 
@@ -171,13 +174,6 @@ void DirectXCommon::InitalaizeFixFPS()
 
 void DirectXCommon::UpdateFixFPS()
 {
-	// VSync ON (Present(1,0)) の場合、GPU側が既に60FPSを保証しているので
-	// CPU側のsleep待ちは不要（二重同期によるジッターを防止）
-	if (useVSync_) {
-		reference_ = std::chrono::steady_clock::now();
-		return;
-	}
-
 	//1/60秒びったりの時間
 	const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
 	//1/60秒よりわずかに短い時間
@@ -199,7 +195,6 @@ void DirectXCommon::UpdateFixFPS()
 	// 現在の時刻を再取得
 	reference_ = std::chrono::steady_clock::now();
 }
-
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
 {
@@ -734,24 +729,32 @@ void DirectXCommon::CreateRenderTexture() {
 
 	// 3. 生成 
 	D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
+	Microsoft::WRL::ComPtr<ID3D12Resource> newRenderTexture;
 	HRESULT hr = device_->CreateCommittedResource(
 		&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
-		IID_PPV_ARGS(&renderTexture_)
+		IID_PPV_ARGS(&newRenderTexture)
 	);
-	assert(SUCCEEDED(hr));
+	if (FAILED(hr) || !newRenderTexture) {
+		Log("CreateRenderTexture failed: render texture resource could not be created.\n");
+		return;
+	}
 
 	// 4. RTV (Render Target View) の作成
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = 1;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtRtvHeap_));
-	assert(SUCCEEDED(hr));
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newRtRtvHeap;
+	hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&newRtRtvHeap));
+	if (FAILED(hr) || !newRtRtvHeap) {
+		Log("CreateRenderTexture failed: RTV heap could not be created.\n");
+		return;
+	}
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-	device_->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtRtvHeap_->GetCPUDescriptorHandleForHeapStart());
+	device_->CreateRenderTargetView(newRenderTexture.Get(), &rtvDesc, newRtRtvHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// 5. SRV (Shader Resource View) の作成
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -760,24 +763,48 @@ void DirectXCommon::CreateRenderTexture() {
 	srvDesc.Texture2D.MipLevels = 1;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-	renderTextureSrvHandle_ = SRVManager::GetInstance()->CreateSRV(renderTexture_.Get(), srvDesc);
+	uint32_t newRenderTextureSrvHandle = renderTextureSrvHandle_;
+	if (newRenderTextureSrvHandle != 0) {
+		SRVManager::GetInstance()->CreateSRVforResource(newRenderTextureSrvHandle, newRenderTexture.Get(), srvDesc);
+	} else {
+		newRenderTextureSrvHandle = SRVManager::GetInstance()->CreateSRV(newRenderTexture.Get(), srvDesc);
+	}
 
 	// =======================================================
 	// ★追加: ディストーション用の背景コピーテクスチャ (GrabTexture) の生成
 	// =======================================================
 	// 6. GrabTexture本体の生成 (設定は renderTexture_ と全く同じ)
+	Microsoft::WRL::ComPtr<ID3D12Resource> newGrabTexture;
 	HRESULT hrGrab = device_->CreateCommittedResource(
 		&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
-		IID_PPV_ARGS(&grabTexture_)
+		IID_PPV_ARGS(&newGrabTexture)
 	);
-	assert(SUCCEEDED(hrGrab));
+	if (FAILED(hrGrab) || !newGrabTexture) {
+		Log("CreateRenderTexture failed: grab texture resource could not be created.\n");
+		return;
+	}
 
 	// 7. GrabTexture をシェーダーで読むための SRV 作成
-	grabSrvHandle_ = SRVManager::GetInstance()->CreateSRV(grabTexture_.Get(), srvDesc);
+	uint32_t newGrabSrvHandle = grabSrvHandle_;
+	if (newGrabSrvHandle != 0) {
+		SRVManager::GetInstance()->CreateSRVforResource(newGrabSrvHandle, newGrabTexture.Get(), srvDesc);
+	} else {
+		newGrabSrvHandle = SRVManager::GetInstance()->CreateSRV(newGrabTexture.Get(), srvDesc);
+	}
+
+	renderTexture_ = newRenderTexture;
+	rtRtvHeap_ = newRtRtvHeap;
+	renderTextureSrvHandle_ = newRenderTextureSrvHandle;
+	grabTexture_ = newGrabTexture;
+	grabSrvHandle_ = newGrabSrvHandle;
 }
 
 void DirectXCommon::PreDrawRenderTexture() {
+	if (!renderTexture_ || !rtRtvHeap_ || !depthStencilResource_) {
+		return;
+	}
+
 	HRESULT hr = commandAllocator_->Reset();
 	assert(SUCCEEDED(hr));
 	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
@@ -811,6 +838,10 @@ void DirectXCommon::PreDrawRenderTexture() {
 }
 // 描画終了：ImGuiが読めるように戻します
 void DirectXCommon::PostDrawRenderTexture() {
+	if (!renderTexture_) {
+		return;
+	}
+
 	// バリア：描くモード -> 読むモード
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -819,6 +850,7 @@ void DirectXCommon::PostDrawRenderTexture() {
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier);
 }
+
 void DirectXCommon::PreDrawBackBuffer() {
 	//  バックバッファのインデックスを取得 (これが必要)
 	backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
@@ -856,6 +888,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
+
 
 void DirectXCommon::CreateShadowMap() {
 	// 1. デスクリプタヒープの作成 (DSV用)
@@ -1026,7 +1059,11 @@ void DirectXCommon::CreateDepthSrv() {
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	// ここでSRVを作る！
-	depthSrvHandle_ = SRVManager::GetInstance()->CreateSRV(depthStencilResource_.Get(), srvDesc);
+	if (depthSrvHandle_ != 0) {
+		SRVManager::GetInstance()->CreateSRVforResource(depthSrvHandle_, depthStencilResource_.Get(), srvDesc);
+	} else {
+		depthSrvHandle_ = SRVManager::GetInstance()->CreateSRV(depthStencilResource_.Get(), srvDesc);
+	}
 }
 
 void DirectXCommon::PreDrawLocalFog() {
@@ -1056,6 +1093,10 @@ void DirectXCommon::PostDrawLocalFog() {
 }
 
 void DirectXCommon::UpdateGrabTexture() {
+	if (!renderTexture_ || !grabTexture_) {
+		return;
+	}
+
 	// バリア: RTV(描画先) -> COPY_SOURCE(コピー元) へ
 	D3D12_RESOURCE_BARRIER barrier1{};
 	barrier1.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

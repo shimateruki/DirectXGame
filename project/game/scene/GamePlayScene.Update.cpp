@@ -124,6 +124,11 @@ void GamePlayScene::Update(float deltaTime) {
     }
 
     UpdatePostEffectState(deltaTime);
+    if (lifeLostPresentationActive_) {
+        UpdateUI(deltaTime);
+        return;
+    }
+
     UpdateLockOnAndCamera(deltaTime);
     UpdateSceneSystems(deltaTime);
     UpdateUI(deltaTime);

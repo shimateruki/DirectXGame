@@ -1,0 +1,78 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "DistortionSpeed": 0.0,
+    "DistortionStrength": 0.0,
+    "EasingType": 0,
+    "EdgeFadeStrength": 3.2,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        4.6,
+        0.62,
+        3.75,
+        0.26
+    ],
+    "EndScale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Intensity": 8.8,
+    "Lifetime": 99999.0,
+    "MeshSegments": 24,
+    "ModelName": "",
+    "NoiseTexturePath": "",
+    "PlaneSize": [
+        1.0,
+        1.0
+    ],
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ProceduralType": 7,
+    "RampTexturePath": "",
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.0,
+        0.0
+    ],
+    "StartColor": [
+        8.4,
+        1.45,
+        6.95,
+        0.34
+    ],
+    "StartScale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/effect/hitfx/hit_ground_glow.png",
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

@@ -12,7 +12,7 @@ public:
         : targetObject_(targetObject), targetPos_(targetPos) {
     }
     void Enter(Player* player) override;
-    void Update(Player* player) override;
+    void Update(Player* player, float deltaTime) override;
     void Exit(Player* player) override;
 
 private:

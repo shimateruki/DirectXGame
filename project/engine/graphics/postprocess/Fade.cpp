@@ -29,10 +29,6 @@ float EaseInOut(float t) {
     return t * t * (3.0f - 2.0f * t);
 }
 
-PostEffect::Params* GetPostEffectParams() {
-    return PostEffect::GetInstance()->GetParams();
-}
-
 std::string MakeFramePath(const std::string& directory, int index) {
     char buffer[256] = {};
     std::snprintf(buffer, sizeof(buffer), "%s/frame_%02d.png", directory.c_str(), index);
@@ -192,7 +188,7 @@ bool Fade::IsClosing() const {
 }
 
 void Fade::ResetPostEffectFade() {
-    if (PostEffect::Params* params = GetPostEffectParams()) {
+    if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
         params->slimeFadeIntensity = 0.0f;
         params->irisFadeIntensity = 0.0f;
     }

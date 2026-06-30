@@ -20,6 +20,17 @@ float Collider::GetRadius() const {
     return config_.size.x * maxScale;
 }
 
+Vector3 Collider::GetSphereCenter() const {
+    if (!transform_) {
+        return config_.center;
+    }
+
+    Math math;
+    Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
+    Matrix4x4 matFinal = math.Multiply(matTrans, transform_->matWorld);
+    return { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
+}
+
 OBB Collider::GetOBB() const {
     OBB obb;
     if (!transform_) return obb;
@@ -285,9 +296,8 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
     }
 
     // 自身のワールド座標 
-    Vector3 myPos = transform_->translate; 
-
-    Vector3 otherPos = other->transform_->translate;
+    Vector3 myPos = myType == ColliderType::kSphere ? GetSphereCenter() : transform_->translate;
+    Vector3 otherPos = otherType == ColliderType::kSphere ? other->GetSphereCenter() : other->transform_->translate;
 
     if (myType == ColliderType::kSphere && otherType == ColliderType::kTerrain) {
         collision = CheckSphereTerrainCollision(myPos, this->GetRadius(), other);

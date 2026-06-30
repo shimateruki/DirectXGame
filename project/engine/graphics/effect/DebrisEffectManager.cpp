@@ -21,6 +21,7 @@ using json = nlohmann::json;
 namespace {
 constexpr const char* kDebrisPresetDirectory = "Resources/json/debris/";
 constexpr size_t kMaxActiveDebrisPieces = 96;
+constexpr bool kEnableDebrisShadowWvp = true;
 
 Vector3 ReadVector3(const json& j, const char* key, const Vector3& fallback) {
     if (!j.contains(key) || !j[key].is_array() || j[key].size() < 3) {
@@ -101,6 +102,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         }
     }
     Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+    const Matrix4x4* lightViewProjectionPtr = kEnableDebrisShadowWvp ? &lightViewProjection : nullptr;
 
     for (size_t index = 0; index < activePieces_.size();) {
         DebrisPiece& piece = activePieces_[index];
@@ -111,6 +113,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         }
 
         float lifeRatio = SafeRatio(piece.age, piece.lifetime);
+        bool transformDirty = false;
         if (!piece.sleeping) {
             piece.velocity.y -= piece.gravity * deltaTime;
             float drag = (std::max)(0.0f, 1.0f - piece.airDrag * deltaTime);
@@ -134,6 +137,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 
             piece.position = position;
             piece.rotation = rotation;
+            transformDirty = true;
         }
 
         float scale = piece.baseScale;
@@ -141,8 +145,13 @@ void DebrisEffectManager::Update(float deltaTime) {
             float fadeT = (lifeRatio - piece.fadeStartRatio) / (std::max)(0.001f, 1.0f - piece.fadeStartRatio);
             scale *= (std::max)(0.001f, 1.0f - fadeT);
         }
+        if (std::abs(scale - piece.currentScale) > 0.0001f) {
+            transformDirty = true;
+        }
         piece.currentScale = scale;
-        UpdatePieceMatrix(piece, viewProjection, lightViewProjection);
+        piece.matrixDirty = piece.matrixDirty || transformDirty;
+        UpdatePieceMatrix(piece, viewProjection, lightViewProjectionPtr);
+        piece.matrixDirty = false;
         ++index;
     }
 }
@@ -434,6 +443,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         piece.model = model;
         piece.age = 0.0f;
         piece.sleeping = false;
+        piece.matrixDirty = true;
         piece.position = position + config.spawnOffset;
         piece.rotation = {
             RandomRange(-3.141592f, 3.141592f),
@@ -468,7 +478,9 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         if (camera) {
             viewProjection = Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         }
-        UpdatePieceMatrix(piece, viewProjection, LightManager::GetInstance()->GetDirectionalLight().lightViewProj);
+        Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+        UpdatePieceMatrix(piece, viewProjection, kEnableDebrisShadowWvp ? &lightViewProjection : nullptr);
+        piece.matrixDirty = false;
         activePieces_.push_back(std::move(piece));
     }
 }
@@ -509,7 +521,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         piece.wvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
         piece.wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.wvpData));
     }
-    if (!piece.shadowWvpResource) {
+    if (kEnableDebrisShadowWvp && !piece.shadowWvpResource) {
         piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
         piece.shadowWvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.shadowWvpData));
     }
@@ -517,19 +529,21 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         piece.materialResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::MaterialData));
         piece.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.materialData));
     }
-    if (!piece.wvpResource || !piece.shadowWvpResource || !piece.materialResource) {
+    if (!piece.wvpResource || !piece.materialResource) {
         return false;
     }
-    if (!piece.wvpData || !piece.shadowWvpData || !piece.materialData) {
+    if (!piece.wvpData || !piece.materialData) {
         return false;
     }
 
     piece.wvpData->WVP = Math::MakeIdentity4x4();
     piece.wvpData->world = Math::MakeIdentity4x4();
     piece.wvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
-    piece.shadowWvpData->WVP = Math::MakeIdentity4x4();
-    piece.shadowWvpData->world = Math::MakeIdentity4x4();
-    piece.shadowWvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
+    if (piece.shadowWvpData) {
+        piece.shadowWvpData->WVP = Math::MakeIdentity4x4();
+        piece.shadowWvpData->world = Math::MakeIdentity4x4();
+        piece.shadowWvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
+    }
 
     std::memset(piece.materialData, 0, sizeof(MeshRenderer::MaterialData));
     piece.materialData->color = config.color;
@@ -547,8 +561,8 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     return true;
 }
 
-void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4& lightViewProjection) {
-    if (!piece.wvpData || !piece.shadowWvpData) {
+void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection) {
+    if (!piece.wvpData) {
         return;
     }
 
@@ -558,9 +572,11 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4&
     piece.wvpData->world = world;
     piece.wvpData->WorldInverseTranspose = Math::Transpose(Math::Inverse(world));
 
-    piece.shadowWvpData->WVP = Math::Multiply(world, lightViewProjection);
-    piece.shadowWvpData->world = world;
-    piece.shadowWvpData->WorldInverseTranspose = piece.wvpData->WorldInverseTranspose;
+    if (piece.shadowWvpData && lightViewProjection) {
+        piece.shadowWvpData->WVP = Math::Multiply(world, *lightViewProjection);
+        piece.shadowWvpData->world = world;
+        piece.shadowWvpData->WorldInverseTranspose = piece.wvpData->WorldInverseTranspose;
+    }
 }
 
 float DebrisEffectManager::RandomRange(float minValue, float maxValue) {

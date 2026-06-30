@@ -16,9 +16,38 @@
 using json = nlohmann::json;
 
 namespace {
-void RegisterBuiltInPreset(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
+bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
+    if (!object) {
+        return false;
+    }
+
+    PresetManager* manager = PresetManager::GetInstance();
+    if (manager->HasPreset(presetName)) {
+        const json& current = manager->GetPreset(presetName);
+        if (!current.value("builtinCreateTemplate", false)) {
+            return false;
+        }
+    }
+
+    object->SetName(displayName);
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
+
+    json data = object->ExportToJson();
+    data["name"] = displayName;
+    data["builtinCreateTemplate"] = true;
+
+    if (manager->HasPreset(presetName) && manager->GetPreset(presetName) == data) {
+        return false;
+    }
+
+    manager->GetPreset(presetName) = data;
+    return true;
+}
+
+bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
     if (!object || PresetManager::GetInstance()->HasPreset(presetName)) {
-        return;
+        return false;
     }
 
     object->SetName(displayName);
@@ -29,6 +58,7 @@ void RegisterBuiltInPreset(const std::string& presetName, std::unique_ptr<Object
     data["name"] = displayName;
     data["builtinCreateTemplate"] = true;
     PresetManager::GetInstance()->GetPreset(presetName) = data;
+    return true;
 }
 
 std::unique_ptr<Object3d> CreateSpriteCardPreset(Object3dCommon* common) {
@@ -61,34 +91,34 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         return;
     }
 
-    const size_t presetCount = PresetManager::GetInstance()->GetPresets().size();
+    bool changed = false;
 
     const std::vector<std::pair<std::string, std::string>> enemies = {
-        { "FireSlime", "Fire Slime" },
-        { "ThunderSlime", "Thunder Slime" },
-        { "Slime", "スライム" },
+        { "FireSlime", "ファイアスライム" },
+        { "ThunderSlime", "サンダースライム" },
+        { "Slime", "ピンクスライム" },
         { "Bomb", "ボム" },
-        { "Bomber", "ボマー" },
+        { "Bomber", "ボムスライム" },
         { "Mushroom", "キノコ" },
         { "GiantSlime", "巨大スライム" },
         { "Bat", "コウモリ" },
-        { "BeamDrone", "目玉ビーム" },
+        { "BeamDrone", "ビームドローン" },
         { "BossCore", "ボスコア" },
     };
     for (const auto& [type, label] : enemies) {
-        RegisterBuiltInPreset("Builtin/Enemy/" + type, EnemyFactory::GetInstance()->CreateEnemy(type, common), label);
+        changed |= RegisterOrRefreshEnemyPreset("Builtin/Enemy/" + type, EnemyFactory::GetInstance()->CreateEnemy(type, common), label);
     }
 
     const std::vector<std::pair<std::string, std::string>> gimmicks = {
-        { "FireCannon", "火球砲台" },
+        { "FireCannon", "火炎砲台" },
         { "BreakableBlock", "破壊ブロック" },
         { "MovingFloor", "動く床" },
-        { "Trampoline", "ジャンプ台" },
+        { "Trampoline", "ジャンプ床" },
         { "SinkingFloor", "沈む床" },
         { "SeesawFloor", "シーソー床" },
         { "DashPanel", "ダッシュパネル" },
         { "IceFloor", "氷の床" },
-        { "TimedSwitch", "時限スイッチ" },
+        { "TimedSwitch", "時間スイッチ" },
         { "AppearingFloor", "出現床" },
         { "Switch", "汎用スイッチ" },
         { "EventReceiver", "イベント受信" },
@@ -105,13 +135,13 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "StageGate", "ステージゲート" },
     };
     for (const auto& [type, label] : gimmicks) {
-        RegisterBuiltInPreset("Builtin/Gimmick/" + type, GimmickFactory::GetInstance()->CreateGimmick(type, common), label);
+        changed |= RegisterPresetOnce("Builtin/Gimmick/" + type, GimmickFactory::GetInstance()->CreateGimmick(type, common), label);
     }
 
-    RegisterBuiltInPreset("Builtin/Item/Heal", ItemFactory::GetInstance()->CreateItem("Heal", common), "体力回復");
-    RegisterBuiltInPreset("Builtin/Utility/SpriteCard2_5D", CreateSpriteCardPreset(common), "2.5Dスプライト板");
+    changed |= RegisterPresetOnce("Builtin/Item/Heal", ItemFactory::GetInstance()->CreateItem("Heal", common), "体力回復");
+    changed |= RegisterPresetOnce("Builtin/Utility/SpriteCard2_5D", CreateSpriteCardPreset(common), "2.5Dスプライト板");
 
-    if (PresetManager::GetInstance()->GetPresets().size() != presetCount) {
+    if (changed) {
         PresetManager::GetInstance()->SaveAll();
     }
 }

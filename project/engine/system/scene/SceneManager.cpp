@@ -91,8 +91,6 @@ void SceneManager::Update(float deltaTime) {
         if (loadingElapsed_ >= minLoadingDisplayTime_ &&
             IsAsyncSceneReady() &&
             Fade::GetInstance()->GetStatus() != Fade::Status::FadeIn) {
-            SetLoadingProgress(0.92f);
-            PrepareLoadedSceneOnMainThread();
             SetLoadingProgress(1.0f);
             Fade::GetInstance()->StartFadeOut(0.35f);
             transitionPhase_ = TransitionPhase::FadingOutLoading;
@@ -108,6 +106,7 @@ void SceneManager::Update(float deltaTime) {
         if (Fade::GetInstance()->GetStatus() == Fade::Status::FadeOut && !Fade::GetInstance()->IsFinished()) {
             return;
         }
+        PrepareLoadedSceneOnMainThread();
         SwapToPreparedScene();
         return;
 

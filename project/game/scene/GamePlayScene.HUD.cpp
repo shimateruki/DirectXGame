@@ -750,10 +750,10 @@ void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
     lifeLostAfterLives_ = std::clamp(afterLives, 0, 99);
     lifeLostIrisCenter_ = { 0.5f, 0.5f };
     if (lifeLostSlimeObject_) {
-        lifeLostSlimeObject_->SetIsVisible(true);
+        lifeLostSlimeObject_->SetIsVisible(false);
     }
     if (lifeLostStunObject_) {
-        lifeLostStunObject_->SetIsVisible(true);
+        lifeLostStunObject_->SetIsVisible(false);
     }
     if (player_) {
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
@@ -1015,47 +1015,12 @@ void GamePlayScene::UpdateLifeLostPresentationWorld(float deltaTime) {
         lifeLostCamera_->Update();
     }
 
-    const float fadeIn = SmoothStep(t / 0.38f);
-    const float standT = lifeLostRevive_ ? SmoothStep((t - 1.72f) / 0.62f) : 0.0f;
-    const float jumpT = lifeLostRevive_ ? std::clamp((t - 2.36f) / 0.58f, 0.0f, 1.0f) : 0.0f;
-    const float jumpArc = std::sin(jumpT * kPi) * (1.0f - jumpT * 0.15f);
-    const float wobble = std::sin(t * 18.0f) * (1.0f - standT) * 0.08f;
-    const float reviveSquash = lifeLostRevive_ ? std::sin(jumpT * kPi * 2.0f) * (1.0f - jumpT) * 0.14f : 0.0f;
-
     if (lifeLostSlimeObject_) {
-        const Vector3 scale = {
-            (1.70f + wobble + reviveSquash) * fadeIn,
-            (0.58f + standT * 0.52f - reviveSquash * 0.8f) * fadeIn,
-            (1.70f - wobble + reviveSquash) * fadeIn
-        };
-        const Vector3 rotate = {
-            (1.0f - standT) * kPi,
-            std::sin(t * 1.6f) * 0.10f * (1.0f - standT),
-            std::sin(t * 4.0f) * 0.22f * (1.0f - standT)
-        };
-        lifeLostSlimeObject_->SetIsVisible(fadeIn > 0.01f);
-        lifeLostSlimeObject_->SetTranslate({ 0.0f, 0.44f + jumpArc * 1.28f + standT * 0.08f, 0.0f });
-        lifeLostSlimeObject_->SetRotation(rotate);
-        lifeLostSlimeObject_->SetScale(scale);
-        lifeLostSlimeObject_->Update(1.0f / 60.0f);
+        lifeLostSlimeObject_->SetIsVisible(false);
     }
 
     if (lifeLostStunObject_) {
-        const float stunFade = lifeLostRevive_
-            ? (1.0f - SmoothStep((t - 1.45f) / 0.48f))
-            : 1.0f;
-        lifeLostStunObject_->SetIsVisible(stunFade > 0.04f && fadeIn > 0.05f);
-        lifeLostStunObject_->SetTranslate({ 0.0f, 1.58f + std::sin(t * 5.8f) * 0.06f, 0.0f });
-        lifeLostStunObject_->SetRotation({ std::sin(t * 2.1f) * 0.18f, t * 3.5f, t * 1.4f });
-        const float stunScale = (2.05f + std::sin(t * 6.0f) * 0.07f) * fadeIn;
-        lifeLostStunObject_->SetScale({ stunScale, stunScale, stunScale });
-        lifeLostStunObject_->SetColor({ 1.0f, 0.94f, 0.28f, 0.70f * stunFade * fadeIn });
-        if (lifeLostStunObject_->GetMeshRenderer() && lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData()) {
-            auto* stun = lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData();
-            stun->effectIntensity = 0.42f * stunFade + 0.10f;
-            stun->billboardScale = 1.02f + std::sin(t * 4.0f) * 0.05f;
-        }
-        lifeLostStunObject_->Update(1.0f / 60.0f);
+        lifeLostStunObject_->SetIsVisible(false);
     }
 }
 

@@ -1,13 +1,14 @@
-﻿{
+{
     "sourceModel":  "Characters/bat",
     "sourceFile":  "Resources/3DModel/Characters/bat/bat.gltf",
-    "generatedAt":  "2026-06-12T04:33:17",
+    "generatedAt":  "2026-06-28T16:13:03",
     "lods":  [
                  {
                      "level":  0,
                      "modelName":  "Characters/bat",
                      "distance":  0,
                      "ratio":  1,
+                     "backend":  "blender",
                      "triangles":  131692,
                      "fileSizeBytes":  4486997
                  }

@@ -226,6 +226,7 @@ public:
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 
 private:
+    bool HasRequiredBuffers() const;
     void InitializeFireProxyModel();
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
     Model* ResolveDrawModel() const;

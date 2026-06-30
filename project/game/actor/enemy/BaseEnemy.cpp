@@ -1,4 +1,5 @@
 #include "BaseEnemy.h"
+#include "AttackTelegraph.h"
 #include "CollisionConfig.h" // kEnemyなどの定義を使うため
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
@@ -44,6 +45,8 @@ constexpr const char* kEnemyDefeatPopSequence = "enemy_defeat_pop_cue";
 constexpr const char* kEnemyDefeatCoreEffect = "Resources/json/effect/effect_enemy_defeat_core_flash.json";
 constexpr const char* kEnemyDefeatRingEffect = "Resources/json/effect/effect_enemy_defeat_pop_ring.json";
 constexpr const char* kEnemyDropCoinModel = "Gimmicks/koin";
+constexpr Vector3 kEnemyDropCoinScale = { 0.055f, 0.055f, 0.014f };
+constexpr float kEnemyDropCoinWorldCollectRadius = 0.50f;
 constexpr float kEnemyDropCoinLifetime = 8.0f;
 constexpr float kEnemyDropCoinBlinkStart = 2.2f;
 
@@ -109,6 +112,8 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetClassName("Enemy");
     defaultColor_ = GetColor();
     hasSpawnedDefeatCoinDrops_ = false;
+    attackTelegraph_ = std::make_unique<AttackTelegraph>();
+    attackTelegraph_->Initialize(common);
 }
 
 // 徘徊目標の管理
@@ -525,7 +530,8 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
 
     const Vector3 basePosition = GetWorldPosition();
     const Vector3 baseScale = GetScale();
-    const float bodyScale = (std::max)({ 0.8f, baseScale.x, baseScale.y, baseScale.z });
+    const float rawBodyScale = (std::max)({ 0.8f, std::abs(baseScale.x), std::abs(baseScale.y), std::abs(baseScale.z) });
+    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
     const float groundY = basePosition.y + 0.18f;
     const float spawnY = basePosition.y + (std::max)(0.65f, bodyScale * 0.32f);
 
@@ -557,9 +563,10 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
             std::cos(angle) * speed
         };
 
-        coin->SetName("DropCoin_" + GetName() + "_" + std::to_string(i));
+        coin->SetName("DropCoin_" + GetEnemyType() + "_" + std::to_string(i));
         coin->SetTranslate(spawnPosition);
-        coin->SetScale({ 0.5f, 0.5f, 0.13f });
+        coin->SetScale(kEnemyDropCoinScale);
+        coin->SetCollisionRadius(kEnemyDropCoinWorldCollectRadius / kEnemyDropCoinScale.x);
         coin->ConfigureTemporaryDrop(velocity, kEnemyDropCoinLifetime, kEnemyDropCoinBlinkStart, groundY);
         scene->AddObject(std::move(coin));
     }
@@ -595,7 +602,8 @@ void BaseEnemy::BeginDefeatEffect() {
     cuePosition.y += (std::max)(0.42f, defeatBaseScale_.y * 0.48f);
     VFXSequencer::PlayOneShot(kEnemyDefeatPopSequence, cuePosition);
 
-    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
+    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
+    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
         meshEffect->SpawnEffectAt(kEnemyDefeatCoreEffect, cuePosition, { 0.0f, 0.0f, 0.0f }, { bodyScale, bodyScale, bodyScale });
 
@@ -664,7 +672,8 @@ void BaseEnemy::SpawnDefeatStartParticles() {
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.35f, defeatBaseScale_.y * 0.45f);
     Vector3 up = { 0.0f, 1.0f, 0.0f };
-    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
+    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
+    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
 
     const Vector3 smokeOffsets[] = {
         { 0.0f, 0.0f, 0.0f },
@@ -729,7 +738,8 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.2f, defeatBaseScale_.y * (0.2f + progress * 0.45f));
     Vector3 up = { 0.0f, 1.0f, 0.0f };
-    const float bodyScale = (std::max)({ 0.9f, defeatBaseScale_.x, defeatBaseScale_.y, defeatBaseScale_.z });
+    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
+    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
     particleSystem->SpawnParticles(
         center,
         7,
@@ -760,7 +770,12 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
 
 // 全敵共通の最終更新。固有AIの後に呼ばれる想定。
 void BaseEnemy::Update(float deltaTime) {
+    if (attackTelegraph_) {
+        attackTelegraph_->Update(deltaTime);
+    }
+
     if (ShouldHandleDefeatEffect()) {
+        HideAttackTelegraph();
         if (!isDefeatEffectPlaying_) {
             BeginDefeatEffect();
         }
@@ -770,6 +785,7 @@ void BaseEnemy::Update(float deltaTime) {
     }
 
     if (isCarried_) {
+        HideAttackTelegraph();
         return; // 重力も、タイマーの減少も全てストップ
     }
     // 0. パラメータ(JSON)との同期
@@ -791,6 +807,54 @@ void BaseEnemy::Update(float deltaTime) {
 
     Character::Update(deltaTime);
     UpdateDamageFeedbackTimers(deltaTime);
+}
+
+void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (attackTelegraph_) {
+        attackTelegraph_->Draw(pointLightResource, spotLightResource);
+    }
+    Character::Draw(pointLightResource, spotLightResource);
+}
+
+void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowCircle(center, radius, progress, color);
+    }
+}
+
+void BaseEnemy::ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowLine(center, direction, length, width, progress, color);
+    }
+}
+
+void BaseEnemy::TriggerAttackTelegraphCue(const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        const Vector3 scale = GetScale();
+        const float bodyScale = (std::max)({ 0.75f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+        const float radius = (std::clamp)(bodyScale * 0.92f, 0.75f, 3.8f);
+        Vector3 center = GetTranslate();
+        center.y += 0.02f;
+        attackTelegraph_->TriggerCueAt(center, radius, color);
+    }
+}
+
+void BaseEnemy::HideAttackTelegraph() {
+    if (attackTelegraph_) {
+        attackTelegraph_->Hide();
+    }
 }
 
 bool BaseEnemy::OnCollision(Object3d* other) {

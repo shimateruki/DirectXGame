@@ -430,7 +430,7 @@ void ExecutablePackageWindow::DrawImGui() {
     ImGui::Combo("構成", &configurationIndex_, kConfigurations.data(), static_cast<int>(kConfigurations.size()));
 
     const std::string sanitizedName = SanitizePackageName(packageNameBuffer_);
-    const fs::path previewRoot = FindProjectRoot();
+    const fs::path previewRoot = FindProjectRoot().parent_path();
     if (!previewRoot.empty()) {
         ImGui::TextWrapped("出力先: %s", PathToUtf8(previewRoot / "ExecutableSets" / PathFromUtf8(sanitizedName)).c_str());
     } else {
@@ -494,7 +494,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "実行ファイルが見つかりません: " + PathToUtf8(sourceExe));
         }
 
-        const fs::path packageRoot = projectRoot / "ExecutableSets";
+        const fs::path packageRoot = projectRoot.parent_path() / "ExecutableSets";
         const fs::path destination = packageRoot / PathFromUtf8(packageName);
         if (!IsInsideDirectory(packageRoot, destination) || fs::weakly_canonical(packageRoot, ec) == fs::weakly_canonical(destination, ec)) {
             return makeResult(false, "安全のため出力先を削除できません: " + PathToUtf8(destination));

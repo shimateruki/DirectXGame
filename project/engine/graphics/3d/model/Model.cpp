@@ -574,7 +574,12 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
 
         VertexData* vertexData = nullptr;
-        mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+        HRESULT vertexMapResult = mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+        if (FAILED(vertexMapResult) || !vertexData) {
+            DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + filename);
+            mesh.vertexResource.Reset();
+            continue;
+        }
         std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexResource->Unmap(0, nullptr);
 
@@ -590,14 +595,32 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 
         uint32_t* indexData = nullptr;
-        mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+        HRESULT indexMapResult = mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+        if (FAILED(indexMapResult) || !indexData) {
+            DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + filename);
+            mesh.vertexResource.Reset();
+            mesh.indexResource.Reset();
+            continue;
+        }
         std::memcpy(indexData, mesh.indices.data(), sizeof(uint32_t) * mesh.indices.size());
         mesh.indexResource->Unmap(0, nullptr);
     }
 
     // 4. 定数バッファ(Material)の作成と初期設定
+    materialData_ = nullptr;
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
-    materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    if (!materialResource_) {
+        DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + filename);
+        return;
+    }
+
+    HRESULT materialMapResult = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    if (FAILED(materialMapResult) || !materialData_) {
+        DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + filename);
+        materialResource_.Reset();
+        materialData_ = nullptr;
+        return;
+    }
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
     materialData_->selectedLighting = 2; // 隊長の設定値を維持
@@ -638,9 +661,22 @@ void Model::CreateBoneBuffer() {
     // 1. リソース作成
     UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
     boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
+    if (!boneResource_) {
+        DebugConsole::GetInstance()->AddLog("Model bone buffer creation failed.");
+        boneMappedData_ = nullptr;
+        boneSrvIndex_ = 0;
+        return;
+    }
 
     // 2. マッピング
-    boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
+    HRESULT boneMapResult = boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
+    if (FAILED(boneMapResult) || !boneMappedData_) {
+        DebugConsole::GetInstance()->AddLog("Model bone buffer map failed.");
+        boneResource_.Reset();
+        boneMappedData_ = nullptr;
+        boneSrvIndex_ = 0;
+        return;
+    }
 
     // ★重要: 初期値を「単位行列」で埋めておく
     // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
@@ -668,6 +704,10 @@ void Model::CreateBoneBuffer() {
 // ボーン行列の更新 
 // ==========================================
 void Model::UpdateBoneBuffer() {
+    if (!boneMappedData_) {
+        return;
+    }
+
     if (!modelData_.hasSkinning && !modelData_.usesNodeAnimationProxy) {
         for (size_t i = 0; i < modelData_.bones.size(); ++i) {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
@@ -713,7 +753,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
 
 
-    if (!modelData_.bones.empty()) {
+    if (!modelData_.bones.empty() && boneResource_ && boneSrvIndex_ != 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
     }
 
