@@ -1,5 +1,6 @@
 # Editor State
 Resources/json/camera/editor_camera_state.json
+Resources/json/user_config.json
 
 # Local/temporary output
 output/
