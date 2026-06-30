@@ -1,2 +1,11 @@
 # Editor State
 Resources/json/camera/editor_camera_state.json
+
+# Local/temporary output
+output/
+docs/
+Resources/.backup/
+.git.vs-invalid-backup_*/
+
+# Bundled local tools that are too large for normal Git pushes
+Resources/tools/Blender 4.4/
