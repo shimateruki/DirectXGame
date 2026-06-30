@@ -1801,4 +1801,76 @@
       <Filter>リソース ファイル</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="imgui-node-editor">
+      <UniqueIdentifier>{2c3e60bf-4654-4da5-8e6b-9b623987db8f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="externals\imgui-node-editor\crude_json.cpp">
+      <Filter>imgui-node-editor</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\imgui-node-editor\imgui_canvas.cpp">
+      <Filter>imgui-node-editor</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor.cpp">
+      <Filter>imgui-node-editor</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor_api.cpp">
+      <Filter>imgui-node-editor</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="externals\imgui-node-editor\crude_json.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.inl">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_canvas.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.inl">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.h">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.inl">
+      <Filter>imgui-node-editor</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ソース ファイル\engine\nodegraph">
+      <UniqueIdentifier>{91a4df94-a649-4b3f-8567-36f76d822e3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\engine\nodegraph">
+      <UniqueIdentifier>{6374c075-8740-43a7-9385-1b2f61acdb72}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.cpp">
+      <Filter>ソース ファイル\engine\nodegraph</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.cpp">
+      <Filter>ソース ファイル\engine\nodegraph</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.h">
+      <Filter>ヘッダー ファイル\engine\nodegraph</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.h">
+      <Filter>ヘッダー ファイル\engine\nodegraph</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

@@ -471,6 +471,10 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
         }
+        if (editor_->GetNodeGraphEditorWindow() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " ノードグラフ (Node Graph)", currentObj == editor_->GetNodeGraphEditorWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetNodeGraphEditorWindow());
+        }
         if (editor_->GetTextSpriteGenerator() && ImGui::Selectable("  " ICON_FA_FONT " テキストPNG生成 (Text PNG)", currentObj == editor_->GetTextSpriteGenerator())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTextSpriteGenerator());

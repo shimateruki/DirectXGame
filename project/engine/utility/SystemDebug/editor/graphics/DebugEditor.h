@@ -31,6 +31,7 @@
 #include "JsonBackupWindow.h"
 #include "MaterialPreviewBoard.h"
 #include "ModelOptimizerWindow.h"
+#include "NodeGraphEditorWindow.h"
 #include "PrimitiveDrawer.h"
 #include "ProjectWindow.h"
 #include "SceneSavePreview.h"
@@ -216,6 +217,7 @@ public:
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
+    NodeGraphEditorWindow* GetNodeGraphEditorWindow() { return &nodeGraphEditorWindow_; }
     TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
     Text3DGenerator* GetText3DGenerator() { return &text3DGenerator_; }
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
@@ -428,6 +430,7 @@ private:
     AnimationWorkbench animationWorkbench_;
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
+    NodeGraphEditorWindow nodeGraphEditorWindow_;
     TextSpriteGenerator textSpriteGenerator_;
     Text3DGenerator text3DGenerator_;
     ModelOptimizerWindow modelOptimizerWindow_;

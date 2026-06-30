@@ -447,6 +447,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     eventLinkGraph_.Initialize(sceneManager, this);
+    nodeGraphEditorWindow_.Initialize(this);
     textSpriteGenerator_.Initialize(sceneManager, this);
     text3DGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
