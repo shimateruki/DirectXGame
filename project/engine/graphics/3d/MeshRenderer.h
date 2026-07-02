@@ -47,7 +47,13 @@ public:
         float envIntensity;
         float emissive;
         float time;
-        float padding2[2];
+        float portalClipEnabled;
+        float portalClipProgress;
+        Vector3 portalClipCenter;
+        float portalClipEdgeWidth;
+        Vector3 portalClipNormal;
+        float portalClipDissolve;
+        Vector4 portalClipColor;
     };
 
     struct PointLight {

@@ -18,29 +18,21 @@ VSOutput main(VSInput input)
     float axisXLength = max(length(axisX), 0.0001f);
     float axisYLength = max(length(axisY), 0.0001f);
     float axisZLength = max(length(axisZ), 0.0001f);
-
     float proxyRadius = max(max(axisXLength, axisYLength), axisZLength);
-    proxyRadius *= max(billboardScale, 0.05f);
-    proxyRadius = max(proxyRadius, 0.001f);
-    float2 gateScale = max(float2(effectScaleX, effectScaleY), float2(0.001f, 0.001f));
+    proxyRadius *= max(billboardScale, 0.05f) * max(effectScale, 0.05f);
 
-    // Keep transparent padding around the portal so the ellipse never reaches the quad edge.
-    const float portalPadding = 1.4f;
-    float2 quad = input.pos.xy * portalPadding;
-    float3 worldOffset = viewRight * quad.x * proxyRadius * gateScale.x;
-    worldOffset += viewUp * quad.y * proxyRadius * gateScale.y;
-
-    // Move the proxy slightly toward the camera to reduce depth fighting with the gate frame.
-    float3 cameraNudge = -viewForward * proxyRadius * 0.02f;
-    float3 billboardWorldPos = centerWorld + worldOffset + cameraNudge;
+    float2 quad = input.pos.xy;
+    float2 portalScale = float2(max(effectScaleX, 0.05f), max(effectScaleY, 0.05f));
+    float3 worldOffset = viewRight * quad.x * proxyRadius * portalScale.x + viewUp * quad.y * proxyRadius * portalScale.y;
+    float3 billboardWorldPos = centerWorld + worldOffset;
 
     float3 axisXNormal = axisX / axisXLength;
     float3 axisYNormal = axisY / axisYLength;
     float3 axisZNormal = axisZ / axisZLength;
     float3 billboardLocalPos = float3(
-        dot(worldOffset + cameraNudge, axisXNormal) / axisXLength,
-        dot(worldOffset + cameraNudge, axisYNormal) / axisYLength,
-        dot(worldOffset + cameraNudge, axisZNormal) / axisZLength
+        dot(worldOffset, axisXNormal) / axisXLength,
+        dot(worldOffset, axisYNormal) / axisYLength,
+        dot(worldOffset, axisZNormal) / axisZLength
     );
 
     output.pos = mul(float4(billboardLocalPos, 1.0f), WVP);

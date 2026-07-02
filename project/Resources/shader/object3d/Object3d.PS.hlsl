@@ -25,7 +25,13 @@ struct Material
     float envIntensity;
     float emissive;
     float time;
-    float32_t2 padding2;
+    float portalClipEnabled;
+    float portalClipProgress;
+    float32_t3 portalClipCenter;
+    float portalClipEdgeWidth;
+    float32_t3 portalClipNormal;
+    float portalClipDissolve;
+    float32_t4 portalClipColor;
 };
 
 struct DirectionalLight
@@ -325,6 +331,27 @@ PixelShaderOutput main(VertexShaderOutput input)
     PixelShaderOutput output;
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
+
+    if (gMaterial.portalClipEnabled > 0.5f && gMaterial.materialType != 4)
+    {
+        float clipProgress = saturate(gMaterial.portalClipProgress);
+        float normalLength = max(length(gMaterial.portalClipNormal), 0.0001f);
+        float3 clipNormal = gMaterial.portalClipNormal / normalLength;
+        float signedDistance = dot(input.worldPosition - gMaterial.portalClipCenter, clipNormal);
+        float clipLine = lerp(0.52f, -0.58f, clipProgress);
+        float noise = (ValueNoise2D(input.worldPosition.xz * 8.0f + gMaterial.time * float2(1.65f, -1.10f)) - 0.5f) * max(gMaterial.portalClipDissolve, 0.0f);
+        float edgeWidth = max(gMaterial.portalClipEdgeWidth, 0.02f);
+        float clipDistance = signedDistance - (clipLine + noise);
+
+        if (clipDistance > edgeWidth)
+        {
+            discard;
+        }
+
+        float portalEdge = 1.0f - smoothstep(0.0f, edgeWidth, abs(clipDistance));
+        textureColor.rgb = lerp(textureColor.rgb, gMaterial.portalClipColor.rgb, portalEdge * saturate(gMaterial.portalClipColor.a));
+        textureColor.a *= 1.0f - portalEdge * 0.22f;
+    }
     
     if (gMaterial.materialType == 0 && textureColor.a <= 0.5)
     {
@@ -495,37 +522,83 @@ PixelShaderOutput main(VertexShaderOutput input)
                 else if (gMaterial.materialType == 4)
                 {
                     float progress = saturate(1.0f - gMaterial.color.a);
-                    float2 flowUv = input.worldPosition.xz * 2.35f;
-                    flowUv += float2(gMaterial.time * 0.55f, -gMaterial.time * 0.37f);
-                    float largeNoise = ValueNoise2D(flowUv);
-                    float fineNoise = Hash21(flowUv * 5.7f + input.texcoord * 11.0f);
-                    float dissolveNoise = saturate(largeNoise * 0.70f + fineNoise * 0.30f);
-                    float threshold = saturate(gMaterial.color.a);
-
-                    if (dissolveNoise > threshold)
-                    {
-                        discard;
-                    }
-                
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
                     float3 L = normalize(-gDirectionalLight.direction);
                     float direct = saturate(dot(N, L));
                     float3 litBase = baseColor * (gDirectionalLight.ambientColor + gDirectionalLight.color.rgb * direct * gDirectionalLight.intenssity);
 
-                    float edgeWidth = lerp(0.055f, 0.16f, progress);
-                    float edge = 1.0f - smoothstep(0.0f, edgeWidth, threshold - dissolveNoise);
-                    float flash = smoothstep(0.02f, 0.18f, progress) * (1.0f - smoothstep(0.58f, 0.92f, progress));
-                    float ring = pow(saturate(0.5f + 0.5f * sin((input.worldPosition.y * 7.0f) + gMaterial.time * 18.0f)), 5.0f) * (1.0f - progress);
-                    float3 hotWhite = float3(1.95f, 1.95f, 1.72f);
-                    float3 goldEdge = float3(2.5f, 1.12f, 0.22f);
-                    float3 glow = lerp(hotWhite, goldEdge, saturate(progress * 1.25f));
+                    if (gMaterial.portalClipEnabled > 0.5f)
+                    {
+                        float portalProgress = saturate(max(progress, gMaterial.portalClipProgress));
+                        float normalLength = max(length(gMaterial.portalClipNormal), 0.0001f);
+                        float3 clipNormal = gMaterial.portalClipNormal / normalLength;
+                        float signedDistance = dot(input.worldPosition - gMaterial.portalClipCenter, clipNormal);
+                        float3 portalTangentOffset = input.worldPosition - gMaterial.portalClipCenter - clipNormal * signedDistance;
+                        float radialDistance = length(portalTangentOffset);
 
-                    output.color.rgb = litBase;
-                    output.color.rgb = lerp(output.color.rgb, hotWhite, flash * 0.55f);
-                    output.color.rgb += glow * edge * 2.8f;
-                    output.color.rgb += goldEdge * ring * edge * 0.85f;
-                    output.color.rgb *= max(1.0f, gMaterial.emissive * 0.72f);
-                    output.color.a = 1.0f;
+                        float2 flowUvA = input.worldPosition.xz * 3.8f + gMaterial.time * float2(1.35f, -0.92f);
+                        float2 flowUvB = input.worldPosition.xy * 5.4f - gMaterial.time * float2(0.74f, 1.18f);
+                        float largeNoise = ValueNoise2D(flowUvA);
+                        float fineNoise = Hash21(flowUvB * 4.9f + input.texcoord * 17.0f);
+                        float strandNoise = saturate(0.5f + 0.5f * sin(radialDistance * 18.0f - signedDistance * 7.0f + gMaterial.time * 15.0f));
+                        float dissolveNoise = saturate(largeNoise * 0.48f + fineNoise * 0.22f + strandNoise * 0.30f);
+
+                        float planePull = smoothstep(-0.55f, 0.95f, signedDistance + portalProgress * 1.15f);
+                        float radialPull = pow(saturate(1.0f - radialDistance * 0.58f), 1.7f);
+                        float dissolveAmount = saturate(portalProgress * 1.08f + planePull * 0.25f + radialPull * portalProgress * 0.18f - 0.08f);
+
+                        if (dissolveAmount >= 0.985f || dissolveNoise < dissolveAmount)
+                        {
+                            discard;
+                        }
+
+                        float edgeWidth = max(gMaterial.portalClipEdgeWidth, 0.045f);
+                        float dissolveEdge = 1.0f - smoothstep(0.0f, edgeWidth, abs(dissolveNoise - dissolveAmount));
+                        float planeEdge = 1.0f - smoothstep(0.0f, edgeWidth * 1.8f, abs(signedDistance + portalProgress * 0.38f));
+                        float suctionLine = pow(strandNoise, 4.0f) * saturate(portalProgress * 1.25f);
+                        float warmFlash = smoothstep(0.04f, 0.24f, portalProgress) * (1.0f - smoothstep(0.72f, 1.0f, portalProgress));
+
+                        float3 coreWhite = float3(2.15f, 1.95f, 1.42f);
+                        float3 portalGold = max(gMaterial.portalClipColor.rgb, float3(1.0f, 0.68f, 0.25f));
+                        float3 edgeColor = lerp(coreWhite, portalGold * 2.15f, saturate(portalProgress * 1.15f));
+
+                        output.color.rgb = litBase * lerp(1.0f, 0.42f, portalProgress);
+                        output.color.rgb = lerp(output.color.rgb, coreWhite, warmFlash * 0.34f);
+                        output.color.rgb += edgeColor * dissolveEdge * 3.8f;
+                        output.color.rgb += portalGold * planeEdge * 1.6f;
+                        output.color.rgb += portalGold * suctionLine * 0.85f;
+                        output.color.rgb *= max(1.0f, gMaterial.emissive * 0.66f);
+                        output.color.a = 1.0f;
+                    }
+                    else
+                    {
+                        float2 flowUv = input.worldPosition.xz * 2.35f;
+                        flowUv += float2(gMaterial.time * 0.55f, -gMaterial.time * 0.37f);
+                        float largeNoise = ValueNoise2D(flowUv);
+                        float fineNoise = Hash21(flowUv * 5.7f + input.texcoord * 11.0f);
+                        float dissolveNoise = saturate(largeNoise * 0.70f + fineNoise * 0.30f);
+                        float threshold = saturate(gMaterial.color.a);
+
+                        if (dissolveNoise > threshold)
+                        {
+                            discard;
+                        }
+
+                        float edgeWidth = lerp(0.055f, 0.16f, progress);
+                        float edge = 1.0f - smoothstep(0.0f, edgeWidth, threshold - dissolveNoise);
+                        float flash = smoothstep(0.02f, 0.18f, progress) * (1.0f - smoothstep(0.58f, 0.92f, progress));
+                        float ring = pow(saturate(0.5f + 0.5f * sin((input.worldPosition.y * 7.0f) + gMaterial.time * 18.0f)), 5.0f) * (1.0f - progress);
+                        float3 hotWhite = float3(1.95f, 1.95f, 1.72f);
+                        float3 goldEdge = float3(2.5f, 1.12f, 0.22f);
+                        float3 glow = lerp(hotWhite, goldEdge, saturate(progress * 1.25f));
+
+                        output.color.rgb = litBase;
+                        output.color.rgb = lerp(output.color.rgb, hotWhite, flash * 0.55f);
+                        output.color.rgb += glow * edge * 2.8f;
+                        output.color.rgb += goldEdge * ring * edge * 0.85f;
+                        output.color.rgb *= max(1.0f, gMaterial.emissive * 0.72f);
+                        output.color.a = 1.0f;
+                    }
                 }
             // ===========================================================
             // マグマ・覚醒 (Emissive)

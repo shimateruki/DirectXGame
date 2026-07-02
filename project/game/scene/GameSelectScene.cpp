@@ -74,10 +74,26 @@ constexpr const char* kCrownAuraEffectPath = "Resources/json/effect/effect_crown
 constexpr const char* kCrownRayEffectPath = "Resources/json/effect/effect_crown_ray_plane.json";
 constexpr const char* kCrownUnlockFlashRingEffectPath = "Resources/json/effect/effect_crown_get_flash_ring.json";
 constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/effect_crown_get_ray_flash.json";
+constexpr const char* kGateEntryPullSparkPreset = "gate_entry_pull_sparks";
+constexpr const char* kGateEntryCoreMistPreset = "gate_entry_core_mist";
+constexpr const char* kGateEntryDissolveGlintPreset = "gate_entry_dissolve_glints";
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
 constexpr float kCrownCountPresentationDuration = 2.65f;
 constexpr float kCrownCountImpactTime = 1.05f;
 constexpr float kCrownCountParticleInterval = 0.12f;
+constexpr float kGateEntryCinematicDuration = 1.55f;
+constexpr float kGateEntryMinPlaneThickness = 0.16f;
+constexpr float kGateEntryMaxPlaneThickness = 0.42f;
+constexpr float kGateEntryMinHalfWidth = 0.85f;
+constexpr float kGateEntryMaxHalfWidth = 2.45f;
+constexpr float kGateEntryPlayerTouchRadius = 0.48f;
+constexpr float kGateEntrySurfaceOffset = 0.10f;
+constexpr float kGateEntryInsideDepth = 1.65f;
+constexpr float kGateEntryLiftHeight = 0.0f;
+constexpr float kGateEntryCameraBackDistance = 7.20f;
+constexpr float kGateEntryCameraSideOffset = 1.25f;
+constexpr float kGateEntryCameraHeight = 2.85f;
+constexpr float kGateEntryCameraFocusHeight = 1.05f;
 
 float SelectClamp01(float value) {
 	return std::clamp(value, 0.0f, 1.0f);
@@ -87,6 +103,47 @@ float SelectEaseOutCubic(float value) {
 	value = SelectClamp01(value);
 	const float inv = 1.0f - value;
 	return 1.0f - inv * inv * inv;
+}
+
+float SelectEaseInOutCubic(float value) {
+	value = SelectClamp01(value);
+	if (value < 0.5f) {
+		return 4.0f * value * value * value;
+	}
+	const float f = -2.0f * value + 2.0f;
+	return 1.0f - (f * f * f) * 0.5f;
+}
+
+Vector3 SelectLerpVector3(const Vector3& a, const Vector3& b, float t) {
+	t = SelectClamp01(t);
+	return {
+		a.x + (b.x - a.x) * t,
+		a.y + (b.y - a.y) * t,
+		a.z + (b.z - a.z) * t
+	};
+}
+
+Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
+	t = SelectClamp01(t);
+	const float inv = 1.0f - t;
+	const float b0 = inv * inv * inv;
+	const float b1 = 3.0f * inv * inv * t;
+	const float b2 = 3.0f * inv * t * t;
+	const float b3 = t * t * t;
+	return {
+		p0.x * b0 + p1.x * b1 + p2.x * b2 + p3.x * b3,
+		p0.y * b0 + p1.y * b1 + p2.y * b2 + p3.y * b3,
+		p0.z * b0 + p1.z * b1 + p2.z * b2 + p3.z * b3
+	};
+}
+
+Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback) {
+	const float lengthSq = value.x * value.x + value.z * value.z;
+	if (lengthSq <= 0.0001f) {
+		return fallback;
+	}
+	const float invLength = 1.0f / std::sqrt(lengthSq);
+	return { value.x * invLength, 0.0f, value.z * invLength };
 }
 
 float SelectEaseOutBack(float value) {
@@ -263,6 +320,12 @@ void GameSelectScene::Initialize() {
 	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
 	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
 	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
+
+	gatePromptSprite_ = std::make_unique<Sprite>();
+	gatePromptSprite_->Initialize(spriteCommon_.get(), "Resources/sprite/ui/gate/gate_prompt_player_e.png");
+	gatePromptSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+	gatePromptSprite_->SetSize({ 192.0f, 64.0f });
+	gatePromptSprite_->SetVisible(false);
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
@@ -393,6 +456,9 @@ void GameSelectScene::Update(float deltaTime) {
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
+	if (gateEntryCinematicActive_) {
+		UpdateGateEntryCinematic(deltaTime);
+	}
 
 	if (animatedCube_) animatedCube_->Update(deltaTime);
 }
@@ -435,7 +501,7 @@ void GameSelectScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -474,11 +540,73 @@ void GameSelectScene::Draw() {
 void GameSelectScene::DrawUI() {
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) sprite->Draw();
+	if (gatePromptSprite_) gatePromptSprite_->Draw();
 	if (isDrawLockOn_ && lockOnSprite_) lockOnSprite_->Draw();
 }
 
 void GameSelectScene::DrawShadow() {
 	if (objectManager_) objectManager_->DrawShadow();
+}
+
+void GameSelectScene::DrawImGui() {
+#ifdef USE_IMGUI
+	ImGui::Text("ステージセレクト設定");
+	ImGui::Separator();
+
+	if (ImGui::CollapsingHeader("ゲート演出デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
+		float nearestDistance = std::numeric_limits<float>::max();
+		Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
+		const int nearestGateStageIndex = GetStageGateIndex(nearestGate);
+		const auto& stages = StageManager::GetInstance()->GetStages();
+		const bool hasValidGate =
+			player_ &&
+			nearestGate &&
+			nearestGateStageIndex >= 0 &&
+			nearestGateStageIndex < static_cast<int>(stages.size());
+		const bool canPlayDebug = hasValidGate && !gateEntryCinematicActive_;
+
+		if (hasValidGate) {
+			ImGui::Text("対象ゲート: Stage %d", nearestGateStageIndex);
+			ImGui::Text("プレイヤーからの距離: %.2f", nearestDistance);
+			ImGui::TextDisabled("通常の接触判定を使わず、同じゲート突入演出を強制再生します。");
+		} else {
+			ImGui::TextDisabled("対象ゲート: なし");
+			ImGui::TextDisabled("プレイヤーまたはステージゲートが見つからないため再生できません。");
+		}
+
+		ImGui::TextDisabled("ショートカット: G キー");
+
+		const auto playDebugGateEntry = [&]() {
+			selectedStageIndex_ = nearestGateStageIndex;
+			StageManager::GetInstance()->SetCurrentStage(selectedStageIndex_);
+			DebugConsole::GetInstance()->AddLog("Stage Select: debug gate entry cinematic.");
+			StartGateEntryCinematic(selectedStageIndex_);
+		};
+
+		const bool shortcutPressed =
+			canPlayDebug &&
+			!ImGui::GetIO().WantTextInput &&
+			ImGui::IsKeyPressed(ImGuiKey_G, false);
+
+		if (shortcutPressed) {
+			playDebugGateEntry();
+		}
+
+		if (!canPlayDebug) {
+			ImGui::BeginDisabled();
+		}
+		if (ImGui::Button("最寄りゲートで突入演出を強制再生", ImVec2(-1.0f, 34.0f))) {
+			playDebugGateEntry();
+		}
+		if (!canPlayDebug) {
+			ImGui::EndDisabled();
+		}
+
+		if (gateEntryCinematicActive_) {
+			ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.25f, 1.0f), "ゲート突入演出を再生中です。");
+		}
+	}
+#endif
 }
 
 Sprite* GameSelectScene::FindSpriteByName(const std::string& name) const {
@@ -640,23 +768,34 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 	UpdateStageClearRewardPresentation(deltaTime);
 	UpdateUnlockPresentation(deltaTime);
 
+	if (gateEntryCinematicActive_) {
+		ApplyStageGateStates();
+		UpdateStageSelectDecorations(deltaTime);
+		UpdateGatePrompt(nullptr, false, deltaTime);
+		return;
+	}
+
 	if (crownCountPresentationActive_ || unlockingStageIndex_ >= 0) {
 		ApplyStageGateStates();
 		UpdateStageSelectDecorations(deltaTime);
+		UpdateGatePrompt(nullptr, false, deltaTime);
 		return;
 	}
 
 	float nearestDistance = std::numeric_limits<float>::max();
 	Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
+	bool canEnterGate = false;
 	if (nearestGate && nearestDistance <= gateSelectRadius_) {
 		int gateStageIndex = GetStageGateIndex(nearestGate);
 		if (gateStageIndex >= 0 && gateStageIndex < static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
 			selectedStageIndex_ = gateStageIndex;
+			canEnterGate = IsStageUnlocked(gateStageIndex);
 		}
 	}
 
 	ApplyStageGateStates();
 	UpdateStageSelectDecorations(deltaTime);
+	UpdateGatePrompt(nullptr, false, deltaTime);
 
 	if (selectedStageIndex_ != previousSelectedStageIndex_) {
 		const auto& stages = StageManager::GetInstance()->GetStages();
@@ -667,14 +806,66 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 		previousSelectedStageIndex_ = selectedStageIndex_;
 	}
 
-	bool decide =
-		inputManager_->IsKeyTriggered(DIK_SPACE) ||
-		inputManager_->IsKeyTriggered(DIK_RETURN) ||
-		inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
+	const bool decide = canEnterGate && IsPlayerTouchingStageGate(nearestGate);
 
 	if (decide) {
 		EnterSelectedStage();
 	}
+}
+
+void GameSelectScene::UpdateGatePrompt(Object3d* nearestGate, bool canEnterGate, float deltaTime) {
+	if (!gatePromptSprite_) {
+		return;
+	}
+
+	if (!nearestGate || !canEnterGate || isChangingStage_ || !player_) {
+		gatePromptSprite_->SetVisible(false);
+		gatePromptSprite_->Update();
+		return;
+	}
+
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+	if (!camera) {
+		gatePromptSprite_->SetVisible(false);
+		gatePromptSprite_->Update();
+		return;
+	}
+
+	Vector3 promptWorld = player_->GetWorldPosition();
+	promptWorld.y += 1.35f;
+
+	Math math;
+	const Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+	const Vector3 ndc = Math::Transform(promptWorld, viewProj);
+	if (ndc.z < 0.0f || ndc.z > 1.0f) {
+		gatePromptSprite_->SetVisible(false);
+		gatePromptSprite_->Update();
+		return;
+	}
+
+	const float screenWidth = static_cast<float>(WinApp::kClientWidth);
+	const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+	const float playerScreenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
+	const float playerScreenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+	const float baseWidth = 192.0f;
+	const float baseHeight = 64.0f;
+	float screenX = playerScreenX + 104.0f;
+	float screenY = playerScreenY - 28.0f;
+
+	gatePromptTimer_ += deltaTime;
+	screenY += std::sin(gatePromptTimer_ * 4.0f) * 3.0f;
+	if (screenX > screenWidth - baseWidth * 0.5f - 16.0f) {
+		screenX = playerScreenX - 104.0f;
+	}
+	screenX = Math::Clamp(screenX, baseWidth * 0.5f + 12.0f, screenWidth - baseWidth * 0.5f - 12.0f);
+	screenY = Math::Clamp(screenY, baseHeight * 0.5f + 12.0f, screenHeight - baseHeight * 0.5f - 18.0f);
+
+	const float pulse = 1.0f + std::sin(gatePromptTimer_ * 5.5f) * 0.025f;
+	gatePromptSprite_->SetVisible(true);
+	gatePromptSprite_->SetPosition({ screenX, screenY });
+	gatePromptSprite_->SetSize({ baseWidth * pulse, baseHeight * pulse });
+	gatePromptSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.98f });
+	gatePromptSprite_->Update();
 }
 
 void GameSelectScene::ApplyStageGateStates() {
@@ -698,9 +889,25 @@ void GameSelectScene::ApplyStageGateStates() {
 		bool cleared = GameDataManager::GetInstance()->IsStageCleared(stageIndex);
 		bool unlocking = stageIndex == unlockingStageIndex_;
 		bool selected = stageIndex == selectedStageIndex_;
+		float gateActivation = unlocking ? 1.0f : 0.0f;
+		if (player_) {
+			const Vector3 playerPos = player_->GetWorldPosition();
+			const Vector3 gatePos = object->GetWorldPosition();
+			const float dx = gatePos.x - playerPos.x;
+			const float dz = gatePos.z - playerPos.z;
+			const float distance = std::sqrt(dx * dx + dz * dz);
+			const float nearRadius = gateSelectRadius_ * 0.55f;
+			const float wakeRadius = gateSelectRadius_ * 1.55f;
+			gateActivation = 1.0f - Math::Clamp((distance - nearRadius) / std::max(wakeRadius - nearRadius, 0.001f), 0.0f, 1.0f);
+			gateActivation = gateActivation * gateActivation * (3.0f - 2.0f * gateActivation);
+			if (!unlocked) {
+				gateActivation *= 0.18f;
+			}
+		}
 
 		if (gate) {
 			gate->SetGateState(selected, unlocked, cleared, unlocking);
+			gate->SetGateActivation(gateActivation);
 			continue;
 		}
 
@@ -1332,8 +1539,328 @@ void GameSelectScene::EnterSelectedStage() {
 
 	StageManager::GetInstance()->SetCurrentStage(selectedStageIndex_);
 	DebugConsole::GetInstance()->AddLog("Stage Select: enter " + stage.name);
+	StartGateEntryCinematic(selectedStageIndex_);
+}
+
+void GameSelectScene::CaptureGateEntryMaterialState(Object3d* rootObject) {
+	gateEntryMaterialSnapshots_.clear();
+	if (!rootObject) {
+		return;
+	}
+
+	std::vector<Object3d*> stack;
+	stack.push_back(rootObject);
+	while (!stack.empty()) {
+		Object3d* object = stack.back();
+		stack.pop_back();
+		if (!object) {
+			continue;
+		}
+
+		GateEntryMaterialSnapshot snapshot;
+		snapshot.object = object;
+		snapshot.color = object->GetColor();
+		snapshot.materialType = object->GetMaterialType();
+		snapshot.emissive = object->GetEmissive();
+		if (auto* material = object->GetMaterialData()) {
+			snapshot.portalClipEnabled = material->portalClipEnabled;
+			snapshot.portalClipProgress = material->portalClipProgress;
+			snapshot.portalClipCenter = material->portalClipCenter;
+			snapshot.portalClipEdgeWidth = material->portalClipEdgeWidth;
+			snapshot.portalClipNormal = material->portalClipNormal;
+			snapshot.portalClipDissolve = material->portalClipDissolve;
+			snapshot.portalClipColor = material->portalClipColor;
+		}
+		gateEntryMaterialSnapshots_.push_back(snapshot);
+
+		for (Object3d* child : object->GetChildren()) {
+			if (child) {
+				stack.push_back(child);
+			}
+		}
+	}
+}
+
+void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const Vector3& gatePosition, const Vector3& direction) {
+	const float dissolveProgress = SelectClamp01(progress);
+	Vector3 dissolveDirection = direction;
+	const float directionLength = std::sqrt(
+		direction.x * direction.x +
+		direction.y * direction.y +
+		direction.z * direction.z);
+	if (directionLength > 0.0001f) {
+		dissolveDirection.x /= directionLength;
+		dissolveDirection.y /= directionLength;
+		dissolveDirection.z /= directionLength;
+	} else {
+		dissolveDirection = { 0.0f, 0.0f, 1.0f };
+	}
+	const float heat = SelectClamp01(0.06f + dissolveProgress * 0.62f);
+	const float edgeWidth = 0.20f - 0.08f * dissolveProgress;
+	const float emissive = 1.45f + dissolveProgress * 2.45f;
+	const Vector4 portalColor = { 1.0f, 0.66f, 0.26f, 0.94f };
+
+	for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
+		Object3d* object = snapshot.object;
+		if (!object) {
+			continue;
+		}
+
+		const Vector4 baseColor = snapshot.color;
+		const Vector4 dissolveColor = {
+			baseColor.x * (1.0f - heat) + 1.0f * heat,
+			baseColor.y * (1.0f - heat) + 0.76f * heat,
+			baseColor.z * (1.0f - heat) + 0.34f * heat,
+			1.0f - dissolveProgress
+		};
+
+		object->SetMaterialType(4);
+		object->SetBlendMode(BlendMode::kNormal);
+		object->SetEmissive(std::max(snapshot.emissive, emissive));
+		object->SetColor(dissolveColor);
+
+		if (auto* material = object->GetMaterialData()) {
+			material->portalClipEnabled = 1.0f;
+			material->portalClipProgress = dissolveProgress;
+			material->portalClipCenter = gatePosition;
+			material->portalClipNormal = dissolveDirection;
+			material->portalClipEdgeWidth = edgeWidth;
+			material->portalClipDissolve = 0.50f;
+			material->portalClipColor = portalColor;
+		}
+	}
+}
+
+void GameSelectScene::RestoreGateEntryMaterialState() {
+	for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
+		Object3d* object = snapshot.object;
+		if (!object) {
+			continue;
+		}
+
+		object->SetMaterialType(snapshot.materialType);
+		object->SetEmissive(snapshot.emissive);
+		object->SetColor(snapshot.color);
+
+		if (auto* material = object->GetMaterialData()) {
+			material->portalClipEnabled = snapshot.portalClipEnabled;
+			material->portalClipProgress = snapshot.portalClipProgress;
+			material->portalClipCenter = snapshot.portalClipCenter;
+			material->portalClipEdgeWidth = snapshot.portalClipEdgeWidth;
+			material->portalClipNormal = snapshot.portalClipNormal;
+			material->portalClipDissolve = snapshot.portalClipDissolve;
+			material->portalClipColor = snapshot.portalClipColor;
+		}
+	}
+	gateEntryMaterialSnapshots_.clear();
+}
+
+void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
+	if (gateEntryCinematicActive_) {
+		return;
+	}
+
+	gateEntryTargetGate_ = FindNearestStageGate(nullptr);
+	gateEntryStartPlayerPosition_ = player_ ? player_->GetWorldPosition() : Vector3{};
+	gateEntryStartPlayerScale_ = player_ ? player_->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
+	gateEntryTargetPlayerPosition_ = gateEntryStartPlayerPosition_;
+	gateEntrySurfacePlayerPosition_ = gateEntryStartPlayerPosition_;
+	gateEntryInsidePlayerPosition_ = gateEntryStartPlayerPosition_;
+	gateEntryDirection_ = { 0.0f, 0.0f, 1.0f };
+	gateEntryCameraStartEye_ = {};
+	gateEntryCameraStartTarget_ = {};
+	gateEntryCameraEndEye_ = {};
+	gateEntryCameraEndTarget_ = {};
+	gateEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
+	gateEntrySparkTimer_ = 0.0f;
+	gateEntryMistTimer_ = 0.0f;
+	gateEntryGlintTimer_ = 0.0f;
+
+	if (gateEntryTargetGate_ && player_) {
+		const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
+		const Vector3 toGateRaw = {
+			gatePos.x - gateEntryStartPlayerPosition_.x,
+			0.0f,
+			gatePos.z - gateEntryStartPlayerPosition_.z
+		};
+		const Vector3 toGate = SelectNormalizeXZ(toGateRaw, { 0.0f, 0.0f, 1.0f });
+		gateEntryDirection_ = toGate;
+		gateEntrySurfacePlayerPosition_ = {
+			gatePos.x - toGate.x * kGateEntrySurfaceOffset,
+			gateEntryStartPlayerPosition_.y,
+			gatePos.z - toGate.z * kGateEntrySurfaceOffset
+		};
+		gateEntryTargetPlayerPosition_ = {
+			gatePos.x,
+			gateEntryStartPlayerPosition_.y,
+			gatePos.z
+		};
+		gateEntryInsidePlayerPosition_ = {
+			gatePos.x + toGate.x * kGateEntryInsideDepth,
+			gateEntryStartPlayerPosition_.y,
+			gatePos.z + toGate.z * kGateEntryInsideDepth
+		};
+		player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
+		player_->SetIsControlActive(false);
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+		player_->SetSlimeAnimationDirection(toGate);
+		player_->TriggerSlimeImpulse({ 1.08f, 0.92f, 1.10f }, 0.20f);
+		if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+			const Vector3 gateCore = {
+				gatePos.x,
+				gateEntryStartPlayerPosition_.y + 0.62f,
+				gatePos.z
+			};
+			const Vector3 playerCore = {
+				gateEntryStartPlayerPosition_.x,
+				gateEntryStartPlayerPosition_.y + 0.45f,
+				gateEntryStartPlayerPosition_.z
+			};
+			gpuParticleManager->Emit(kGateEntryCoreMistPreset, gateCore);
+			gpuParticleManager->Emit(kGateEntryPullSparkPreset, SelectLerpVector3(playerCore, gateCore, 0.45f));
+		}
+		CaptureGateEntryMaterialState(player_);
+		ApplyGateEntryDissolveMaterial(0.0f, gatePos, toGate);
+
+		if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+			const Vector3 side = { toGate.z, 0.0f, -toGate.x };
+			const Vector3 focus = {
+				gatePos.x - toGate.x * 0.85f,
+				gateEntryStartPlayerPosition_.y + kGateEntryCameraFocusHeight,
+				gatePos.z - toGate.z * 0.85f
+			};
+			gateEntryCameraStartEye_ = camera->GetEye();
+			gateEntryCameraStartTarget_ = camera->GetTargetPoint();
+			gateEntryCameraEndTarget_ = focus;
+			gateEntryCameraEndEye_ = {
+				focus.x - toGate.x * kGateEntryCameraBackDistance + side.x * kGateEntryCameraSideOffset,
+				focus.y + kGateEntryCameraHeight,
+				focus.z - toGate.z * kGateEntryCameraBackDistance + side.z * kGateEntryCameraSideOffset
+			};
+			camera->SetInputEnabled(false);
+			camera->SetEye(gateEntryCameraEndEye_);
+			camera->SetTarget(gateEntryCameraEndTarget_);
+		}
+	}
+
+	gateEntryCinematicActive_ = true;
+	gateEntryCinematicTimer_ = 0.0f;
+	gateEntryPendingStageIndex_ = stageIndex;
 	isChangingStage_ = true;
-	SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+	stageDecisionCooldown_ = 0.35f;
+	if (gatePromptSprite_) {
+		gatePromptSprite_->SetVisible(false);
+		gatePromptSprite_->Update();
+	}
+	DebugConsole::GetInstance()->AddLog("Stage Select: gate entry cinematic start.");
+}
+
+void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
+	if (!gateEntryCinematicActive_) {
+		return;
+	}
+
+	gateEntryCinematicTimer_ += deltaTime;
+	const float t = SelectClamp01(gateEntryCinematicTimer_ / kGateEntryCinematicDuration);
+	const float moveT = SelectEaseInOutCubic(SelectClamp01(t / 0.94f));
+	const float clipT = SelectEaseInOutCubic(SelectClamp01((t - 0.20f) / 0.68f));
+
+	if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+		camera->SetInputEnabled(false);
+		camera->SetEye(gateEntryCameraEndEye_);
+		camera->SetTarget(gateEntryCameraEndTarget_);
+	}
+
+	if (player_) {
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+		player_->SetIsControlActive(false);
+
+		if (gateEntryTargetGate_) {
+			const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
+			const Vector3 toGate = gateEntryDirection_;
+			gateEntrySurfacePlayerPosition_ = {
+				gatePos.x - toGate.x * kGateEntrySurfaceOffset,
+				gateEntryStartPlayerPosition_.y,
+				gatePos.z - toGate.z * kGateEntrySurfaceOffset
+			};
+			gateEntryTargetPlayerPosition_ = {
+				gatePos.x,
+				gateEntryStartPlayerPosition_.y,
+				gatePos.z
+			};
+			gateEntryInsidePlayerPosition_ = {
+				gatePos.x + toGate.x * kGateEntryInsideDepth,
+				gateEntryStartPlayerPosition_.y,
+				gatePos.z + toGate.z * kGateEntryInsideDepth
+			};
+			player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
+			player_->SetSlimeAnimationDirection(toGate);
+			ApplyGateEntryDissolveMaterial(clipT, gatePos, toGate);
+		}
+
+		const Vector3 controlA = SelectLerpVector3(gateEntryStartPlayerPosition_, gateEntrySurfacePlayerPosition_, 0.54f);
+		const Vector3 controlB = SelectLerpVector3(gateEntryTargetPlayerPosition_, gateEntryInsidePlayerPosition_, 0.54f);
+		Vector3 playerPos = SelectBezierVector3(
+			gateEntryStartPlayerPosition_,
+			{ controlA.x, controlA.y + kGateEntryLiftHeight, controlA.z },
+			{ controlB.x, controlB.y + kGateEntryLiftHeight * 0.35f, controlB.z },
+			gateEntryInsidePlayerPosition_,
+			moveT
+		);
+
+		if (gateEntryTargetGate_) {
+			if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+				const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
+				const Vector3 gateCore = {
+					gatePos.x,
+					gateEntryStartPlayerPosition_.y + 0.62f,
+					gatePos.z
+				};
+				const Vector3 playerCore = {
+					playerPos.x,
+					playerPos.y + 0.45f,
+					playerPos.z
+				};
+				const Vector3 pullPos = SelectLerpVector3(playerCore, gateCore, 0.48f + clipT * 0.32f);
+
+				gateEntrySparkTimer_ -= deltaTime;
+				if (gateEntrySparkTimer_ <= 0.0f && t < 0.96f) {
+					gpuParticleManager->Emit(kGateEntryPullSparkPreset, pullPos);
+					gateEntrySparkTimer_ = 0.065f - clipT * 0.025f;
+				}
+
+				gateEntryMistTimer_ -= deltaTime;
+				if (gateEntryMistTimer_ <= 0.0f && t < 0.98f) {
+					gpuParticleManager->Emit(kGateEntryCoreMistPreset, gateCore);
+					gateEntryMistTimer_ = 0.16f;
+				}
+
+				gateEntryGlintTimer_ -= deltaTime;
+				if (gateEntryGlintTimer_ <= 0.0f && clipT > 0.08f && clipT < 0.96f) {
+					gpuParticleManager->Emit(kGateEntryDissolveGlintPreset, SelectLerpVector3(playerCore, gateCore, 0.24f + clipT * 0.38f));
+					gateEntryGlintTimer_ = 0.075f;
+				}
+			}
+		}
+
+		if (Transform* transform = player_->GetTransform()) {
+			transform->translate = playerPos;
+			transform->scale = gateEntryStartPlayerScale_;
+		}
+	}
+
+	if (gateEntryCinematicTimer_ >= kGateEntryCinematicDuration) {
+		if (player_) {
+			const Vector3 gatePos = gateEntryTargetGate_ ? gateEntryTargetGate_->GetWorldPosition() : gateEntryInsidePlayerPosition_;
+			ApplyGateEntryDissolveMaterial(1.0f, gatePos, gateEntryDirection_);
+			gateEntryMaterialSnapshots_.clear();
+		}
+		gateEntryCinematicActive_ = false;
+		gateEntryCinematicTimer_ = 0.0f;
+		gateEntryPendingStageIndex_ = -1;
+		gateEntryTargetGate_ = nullptr;
+		SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+	}
 }
 
 bool GameSelectScene::IsStageGateObject(const Object3d* object) const {
@@ -1403,4 +1930,39 @@ Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) const {
 		*outDistance = std::sqrt(nearestDistanceSq);
 	}
 	return nearestGate;
+}
+
+bool GameSelectScene::IsPlayerTouchingStageGate(Object3d* gate) const {
+	if (!gate || !player_) {
+		return false;
+	}
+
+	const Vector3 gatePos = gate->GetWorldPosition();
+	const Vector3 playerPos = player_->GetWorldPosition();
+	const Vector3 rel = {
+		playerPos.x - gatePos.x,
+		0.0f,
+		playerPos.z - gatePos.z
+	};
+	const float distanceSq = rel.x * rel.x + rel.z * rel.z;
+
+	const Vector3 gateScale = gate->GetScale();
+	const float gateSize = std::max(1.0f, std::max(std::fabs(gateScale.x), std::fabs(gateScale.z)));
+	const float halfWidth = std::clamp(gateSize * 0.36f, kGateEntryMinHalfWidth, kGateEntryMaxHalfWidth);
+	const float planeThickness = std::clamp(gateSize * 0.045f, kGateEntryMinPlaneThickness, kGateEntryMaxPlaneThickness) + kGateEntryPlayerTouchRadius;
+
+	float yaw = 0.0f;
+	if (Transform* transform = gate->GetTransform()) {
+		yaw = transform->rotate.y;
+	}
+
+	const Vector3 forward = { std::sin(yaw), 0.0f, std::cos(yaw) };
+	const Vector3 right = { std::cos(yaw), 0.0f, -std::sin(yaw) };
+	const float planeDistance = rel.x * forward.x + rel.z * forward.z;
+	const float sideDistance = rel.x * right.x + rel.z * right.z;
+	const bool yawPlaneTouch = std::fabs(planeDistance) <= planeThickness && std::fabs(sideDistance) <= halfWidth;
+
+	const bool xPlaneTouch = std::fabs(rel.x) <= planeThickness && std::fabs(rel.z) <= halfWidth;
+	const bool zPlaneTouch = std::fabs(rel.z) <= planeThickness && std::fabs(rel.x) <= halfWidth;
+	return yawPlaneTouch || xPlaneTouch || zPlaneTouch;
 }

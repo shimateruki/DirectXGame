@@ -2,7 +2,17 @@
 #include "CollisionManager.h"
 #include "CameraManager.h"
 #include "engine/utility/math/Math.h"
+#include <string>
 #include <algorithm> // remove_if用
+
+namespace {
+bool ShouldDrawStageGateFrame(const std::unique_ptr<Object3d>& obj) {
+	if (!obj || obj->GetMaterialType() != 22) return false;
+	if (obj->GetGimmickType() != "StageGate") return false;
+	const std::string modelName = obj->GetModelName();
+	return !modelName.empty() && modelName.find("portal_surface") == std::string::npos;
+}
+}
 
 void ObjectManager::Update(float deltaTime) {
 	// 1. 各オブジェクトの更新
@@ -36,7 +46,8 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
 	for (auto& obj : objects_) {
 		if (!obj->GetIsVisible()) continue;
 		const int materialType = obj->GetMaterialType();
-		if (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24)) {
+		const bool drawStageGateFrame = ShouldDrawStageGateFrame(obj);
+		if (drawStageGateFrame || (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24))) {
 			obj->Draw(pointLight, spotLight);
 		}
 	}

@@ -7,13 +7,22 @@ VSOutput main(VSInput input)
     float detail = max(waveFrequency, 0.1f);
     float speed = max(waveSpeed, 0.02f);
     float height = max(abs(waveHeight), 0.08f);
-    float2 waveCoord = input.pos.xz * detail * 0.055f + float2(flowSpeedX, flowSpeedY) * time * 0.22f;
-    float slowSwell =
-        sin(waveCoord.x * 1.25f + waveCoord.y * 0.55f + time * speed * 0.65f) * 0.55f +
-        sin(waveCoord.x * -0.42f + waveCoord.y * 1.10f - time * speed * 0.48f) * 0.45f;
+    float oceanScale = max(effectScale, 0.25f);
+    float2 flow = float2(flowSpeedX, flowSpeedY);
+    float2 broadCoord = input.pos.xz * detail * 0.035f + flow * time * 0.14f;
+    float2 midCoord = input.pos.xz * detail * 0.075f - flow.yx * time * 0.20f;
 
-    // Rebuild the source mesh as one continuous water sheet, then add a subtle analytic swell.
-    float4 localPos = float4(input.pos.x, slowSwell * height * 0.055f, input.pos.z, 1.0f);
+    float broadSwell =
+        sin(dot(broadCoord, float2(1.14f, 0.38f)) + time * speed * 0.46f) * 0.46f +
+        sin(dot(broadCoord, float2(-0.52f, 1.06f)) - time * speed * 0.36f) * 0.34f +
+        sin(dot(broadCoord, float2(0.28f, 0.74f)) + time * speed * 0.22f) * 0.20f;
+    float crossRipple =
+        sin(dot(midCoord, float2(1.90f, -0.45f)) + time * speed * 0.86f) * 0.42f +
+        sin(dot(midCoord, float2(-1.12f, 1.55f)) - time * speed * 0.72f) * 0.34f;
+
+    // Rebuild the source mesh as one continuous water sheet, then add layered ocean swell.
+    float displacement = (broadSwell * 0.18f + crossRipple * 0.038f) * height * oceanScale;
+    float4 localPos = float4(input.pos.x, displacement, input.pos.z, 1.0f);
 
     output.pos = mul(localPos, WVP);
     output.worldPos = mul(localPos, world).xyz;

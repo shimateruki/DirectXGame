@@ -633,6 +633,13 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->envIntensity = 1.0f;
     materialData_->emissive = 1.0f;
     materialData_->time = 0.0f;
+    materialData_->portalClipEnabled = 0.0f;
+    materialData_->portalClipProgress = 0.0f;
+    materialData_->portalClipCenter = { 0.0f, 0.0f, 0.0f };
+    materialData_->portalClipEdgeWidth = 0.12f;
+    materialData_->portalClipNormal = { 0.0f, 0.0f, 1.0f };
+    materialData_->portalClipDissolve = 0.18f;
+    materialData_->portalClipColor = { 1.0f, 0.82f, 0.36f, 0.80f };
     materialData_->uvTransform = math_.MakeIdentity4x4();
 
     if (const MaterialData* primaryMaterial = GetPrimaryMaterialData()) {

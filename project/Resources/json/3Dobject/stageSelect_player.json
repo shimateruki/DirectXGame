@@ -56,6 +56,21 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
+            "lod": {
+                "enabled": true,
+                "levels": [
+                    {
+                        "distance": 35.0,
+                        "level": 1,
+                        "modelName": "Characters/slime/slime_lod1.gltf"
+                    },
+                    {
+                        "distance": 70.0,
+                        "level": 2,
+                        "modelName": "Characters/slime/slime_lod2.gltf"
+                    }
+                ]
+            },
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "",
@@ -68,6 +83,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -100,9 +116,9 @@
             ],
             "quaternion": [
                 0.0,
+                1.0,
                 0.0,
-                0.0,
-                1.0
+                -4.371138828673793e-08
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -111,15 +127,15 @@
             },
             "rotation": [
                 -0.0,
-                0.0,
+                3.1415927410125732,
                 0.0
             ],
             "roughness": 0.18000000715255737,
             "saveCategory": "Player",
             "scale": [
-                1.0,
-                0.9999998211860657,
-                1.0
+                2.0,
+                2.0,
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",

@@ -8,527 +8,247 @@
 		{
 			"name":"Scene",
 			"nodes":[
-				12
+				7
 			]
 		}
 	],
 	"nodes":[
 		{
-			"mesh":0,
-			"name":"Object_6"
+			"name":"Object_11"
 		},
 		{
 			"children":[
 				0
 			],
-			"name":"Cube.001_1",
+			"name":"Camera.001",
 			"rotation":[
-				0,
-				1,
-				0,
-				0
+				-0.09194794297218323,
+				0.6336881518363953,
+				-0.11029665917158127,
+				0.7601444125175476
 			],
 			"scale":[
-				-1,
-				-1,
-				-1
+				99.99998474121094,
+				99.99999237060547,
+				100.00000762939453
 			],
 			"translation":[
-				0,
-				0.2585482597351074,
-				0
+				-252.152587890625,
+				1525.8663330078125,
+				3677.82421875
 			]
 		},
 		{
-			"mesh":1,
-			"name":"Object_8"
+			"mesh":0,
+			"name":"SM_RiftGate_Portal_A_LOD0.mo.002_MI_RiftGate_Portal_A.002_0",
+			"translation":[
+				-1.8466235399246216,
+				0,
+				0
+			]
 		},
 		{
 			"children":[
 				2
 			],
-			"name":"Cube.002_2",
-			"scale":[
-				1.5974655151367188,
-				1.5974655151367188,
-				1.5974655151367188
+			"name":"SM_RiftGate_Portal_A_LOD0.mo.002",
+			"rotation":[
+				0,
+				-0.7071066498756409,
+				0,
+				0.70710688829422
 			],
 			"translation":[
 				0,
-				0.10095348954200745,
-				0
+				1.4060941934585571,
+				4.378343105316162
 			]
 		},
 		{
-			"mesh":2,
-			"name":"Object_10"
-		},
-		{
 			"children":[
-				4
+				3
 			],
-			"name":"Cube.003_3",
+			"name":"Rift Gate Blue/PinkEmpty",
+			"rotation":[
+				-0.70710688829422,
+				0,
+				0,
+				0.7071066498756409
+			],
 			"scale":[
-				1.5974655151367188,
-				1.5974655151367188,
-				1.5974655151367188
+				100,
+				99.99999237060547,
+				99.99999237060547
 			],
 			"translation":[
+				-10.150575637817383,
 				0,
-				4.291529655456543,
-				0
-			]
-		},
-		{
-			"mesh":3,
-			"name":"Object_4"
-		},
-		{
-			"children":[
-				6
-			],
-			"name":"Cube_0"
-		},
-		{
-			"mesh":4,
-			"name":"Object_12"
-		},
-		{
-			"children":[
-				8
-			],
-			"name":"Plane_4",
-			"scale":[
-				0.7152761220932007,
-				0.7152761220932007,
-				0.7152761220932007
-			],
-			"translation":[
-				0,
-				5.682121753692627,
 				0
 			]
 		},
 		{
 			"children":[
 				1,
-				3,
-				5,
-				7,
-				9
+				4
 			],
-			"name":"GLTF_SceneRootNode",
+			"name":"RootNode"
+		},
+		{
+			"children":[
+				5
+			],
+			"name":"cd0df6d8e98d492cbf8d96e50b62056d.fbx",
 			"rotation":[
 				0.70710688829422,
 				0,
 				0,
 				0.7071066498756409
+			],
+			"scale":[
+				0.009999999776482582,
+				0.010000000707805157,
+				0.010000000707805157
 			]
 		},
 		{
 			"children":[
-				10
-			],
-			"name":"root"
-		},
-		{
-			"children":[
-				11
+				6
 			],
 			"name":"Sketchfab_model",
 			"rotation":[
-				-0.5,
-				0.5,
-				0.5,
-				0.5
+				-0.70710688829422,
+				0,
+				0,
+				0.7071066498756409
 			]
 		}
 	],
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"Material.001",
+			"name":"MI_RiftGate_Portal_A.002",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.10464300215244293,
-					0.10464300215244293,
-					0.10464300215244293,
-					1
-				],
+				"baseColorTexture":{
+					"index":0
+				},
 				"metallicFactor":0,
-				"roughnessFactor":0.5
+				"roughnessFactor":0.8040408492088318
 			}
 		}
 	],
 	"meshes":[
 		{
-			"name":"Object_1",
+			"name":"SM_RiftGate_Portal_A_LOD0.mo.002_MI_RiftGate_Portal_A.002_0",
 			"primitives":[
 				{
 					"attributes":{
 						"POSITION":0,
 						"NORMAL":1,
-						"TEXCOORD_0":2
+						"TEXCOORD_0":2,
+						"TEXCOORD_1":3
 					},
-					"indices":3,
+					"indices":4,
 					"material":0
 				}
 			]
-		},
+		}
+	],
+	"textures":[
 		{
-			"name":"Object_2",
-			"primitives":[
-				{
-					"attributes":{
-						"POSITION":4,
-						"NORMAL":5,
-						"TEXCOORD_0":6
-					},
-					"indices":7,
-					"material":0
-				}
-			]
-		},
+			"sampler":0,
+			"source":0
+		}
+	],
+	"images":[
 		{
-			"name":"Object_3",
-			"primitives":[
-				{
-					"attributes":{
-						"POSITION":8,
-						"NORMAL":9,
-						"TEXCOORD_0":10
-					},
-					"indices":11,
-					"material":0
-				}
-			]
-		},
-		{
-			"name":"Object_0",
-			"primitives":[
-				{
-					"attributes":{
-						"POSITION":12,
-						"NORMAL":13,
-						"TEXCOORD_0":14
-					},
-					"indices":15,
-					"material":0
-				}
-			]
-		},
-		{
-			"name":"Object_4",
-			"primitives":[
-				{
-					"attributes":{
-						"POSITION":16,
-						"NORMAL":17,
-						"TEXCOORD_0":18
-					},
-					"indices":19,
-					"material":0
-				}
-			]
+			"mimeType":"image/png",
+			"name":"MI_RiftGate_Portal_A.002_baseColor",
+			"uri":"MI_RiftGate_Portal_A_002_baseColor.png"
 		}
 	],
 	"accessors":[
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":815,
+			"count":19200,
 			"max":[
-				1.095224142074585,
-				-0.009246736764907837,
-				3.4905054569244385
+				3.1156623363494873,
+				0.39994046092033386,
+				3.1156623363494873
 			],
 			"min":[
-				-1.0487865209579468,
-				-0.33196163177490234,
-				-3.3730273246765137
+				-3.1156623363494873,
+				-0.39922431111335754,
+				-3.1156623363494873
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":815,
+			"count":19200,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":815,
+			"count":19200,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
-			"componentType":5123,
-			"count":3648,
-			"type":"SCALAR"
+			"componentType":5126,
+			"count":19200,
+			"type":"VEC2"
 		},
 		{
 			"bufferView":4,
-			"componentType":5126,
-			"count":1060,
-			"max":[
-				0.35711586475372314,
-				3.0336086750030518,
-				1.90706467628479
-			],
-			"min":[
-				-0.35711586475372314,
-				0.29393836855888367,
-				-1.90706467628479
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":5,
-			"componentType":5126,
-			"count":1060,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":6,
-			"componentType":5126,
-			"count":1060,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":7,
 			"componentType":5123,
-			"count":3720,
-			"type":"SCALAR"
-		},
-		{
-			"bufferView":8,
-			"componentType":5126,
-			"count":423,
-			"max":[
-				0.47548165917396545,
-				0.8851426243782043,
-				2.02543044090271
-			],
-			"min":[
-				-0.47548165917396545,
-				0.36440926790237427,
-				-2.02543044090271
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":9,
-			"componentType":5126,
-			"count":423,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":10,
-			"componentType":5126,
-			"count":423,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":11,
-			"componentType":5123,
-			"count":1500,
-			"type":"SCALAR"
-		},
-		{
-			"bufferView":12,
-			"componentType":5126,
-			"count":592,
-			"max":[
-				1.2817257642745972,
-				0.26779496669769287,
-				4.103135585784912
-			],
-			"min":[
-				-1.2817257642745972,
-				-0.26779496669769287,
-				-4.103135585784912
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":13,
-			"componentType":5126,
-			"count":592,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":14,
-			"componentType":5126,
-			"count":592,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":15,
-			"componentType":5123,
-			"count":2544,
-			"type":"SCALAR"
-		},
-		{
-			"bufferView":16,
-			"componentType":5126,
-			"count":4174,
-			"max":[
-				1,
-				4.065850734710693,
-				4.0684661865234375
-			],
-			"min":[
-				-1,
-				-1.5497207641601562e-06,
-				-4.0684661865234375
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":17,
-			"componentType":5126,
-			"count":4174,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":18,
-			"componentType":5126,
-			"count":4174,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":19,
-			"componentType":5123,
-			"count":24549,
+			"count":91884,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":9780,
+			"byteLength":230400,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":9780,
-			"byteOffset":9780,
+			"byteLength":230400,
+			"byteOffset":230400,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":6520,
-			"byteOffset":19560,
+			"byteLength":153600,
+			"byteOffset":460800,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":7296,
-			"byteOffset":26080,
+			"byteLength":153600,
+			"byteOffset":614400,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":183768,
+			"byteOffset":768000,
 			"target":34963
-		},
+		}
+	],
+	"samplers":[
 		{
-			"buffer":0,
-			"byteLength":12720,
-			"byteOffset":33376,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":12720,
-			"byteOffset":46096,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":8480,
-			"byteOffset":58816,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":7440,
-			"byteOffset":67296,
-			"target":34963
-		},
-		{
-			"buffer":0,
-			"byteLength":5076,
-			"byteOffset":74736,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":5076,
-			"byteOffset":79812,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":3384,
-			"byteOffset":84888,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":3000,
-			"byteOffset":88272,
-			"target":34963
-		},
-		{
-			"buffer":0,
-			"byteLength":7104,
-			"byteOffset":91272,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":7104,
-			"byteOffset":98376,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":4736,
-			"byteOffset":105480,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":5088,
-			"byteOffset":110216,
-			"target":34963
-		},
-		{
-			"buffer":0,
-			"byteLength":50088,
-			"byteOffset":115304,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":50088,
-			"byteOffset":165392,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":33392,
-			"byteOffset":215480,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":49098,
-			"byteOffset":248872,
-			"target":34963
+			"magFilter":9729,
+			"minFilter":9987
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":297972,
+			"byteLength":951768,
 			"uri":"gate.bin"
 		}
 	]

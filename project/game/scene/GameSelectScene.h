@@ -47,6 +47,7 @@ public:
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
+    void DrawImGui() override;
 
     // --- BaseScene インターフェース ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
@@ -70,9 +71,16 @@ private:
     void ApplyStageGateStates();
     bool IsStageUnlocked(int stageIndex) const;
     void EnterSelectedStage();
+    void StartGateEntryCinematic(int stageIndex);
+    void UpdateGateEntryCinematic(float deltaTime);
+    void CaptureGateEntryMaterialState(Object3d* rootObject);
+    void ApplyGateEntryDissolveMaterial(float progress, const Vector3& gatePosition, const Vector3& direction);
+    void RestoreGateEntryMaterialState();
+    void UpdateGatePrompt(Object3d* nearestGate, bool canEnterGate, float deltaTime);
     bool IsStageGateObject(const Object3d* object) const;
     int GetStageGateIndex(const Object3d* object) const;
     Object3d* FindNearestStageGate(float* outDistance) const;
+    bool IsPlayerTouchingStageGate(Object3d* gate) const;
     int FindPendingUnlockStage() const;
     void UpdateUnlockPresentation(float deltaTime);
 
@@ -148,7 +156,9 @@ private:
     MeshRenderer::SpotLight* spotLightData_ = nullptr;
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
+    std::unique_ptr<Sprite> gatePromptSprite_;
     bool isDrawLockOn_ = false;
+    float gatePromptTimer_ = 0.0f;
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
 
@@ -160,6 +170,38 @@ private:
     float gateSelectRadius_ = 8.0f;
     float stageDecisionCooldown_ = 0.0f;
     bool isChangingStage_ = false;
+    struct GateEntryMaterialSnapshot {
+        Object3d* object = nullptr;
+        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        int32_t materialType = 0;
+        float emissive = 1.0f;
+        float portalClipEnabled = 0.0f;
+        float portalClipProgress = 0.0f;
+        Vector3 portalClipCenter = { 0.0f, 0.0f, 0.0f };
+        float portalClipEdgeWidth = 0.0f;
+        Vector3 portalClipNormal = { 0.0f, 0.0f, 1.0f };
+        float portalClipDissolve = 0.0f;
+        Vector4 portalClipColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+    bool gateEntryCinematicActive_ = false;
+    float gateEntryCinematicTimer_ = 0.0f;
+    int gateEntryPendingStageIndex_ = -1;
+    Object3d* gateEntryTargetGate_ = nullptr;
+    Vector3 gateEntryStartPlayerPosition_{};
+    Vector3 gateEntryTargetPlayerPosition_{};
+    Vector3 gateEntrySurfacePlayerPosition_{};
+    Vector3 gateEntryInsidePlayerPosition_{};
+    Vector3 gateEntryDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 gateEntryCameraStartEye_{};
+    Vector3 gateEntryCameraStartTarget_{};
+    Vector3 gateEntryCameraEndEye_{};
+    Vector3 gateEntryCameraEndTarget_{};
+    Vector3 gateEntryStartPlayerScale_{ 1.0f, 1.0f, 1.0f };
+    bool gateEntryHadPlayerControl_ = true;
+    float gateEntrySparkTimer_ = 0.0f;
+    float gateEntryMistTimer_ = 0.0f;
+    float gateEntryGlintTimer_ = 0.0f;
+    std::vector<GateEntryMaterialSnapshot> gateEntryMaterialSnapshots_;
     int unlockingStageIndex_ = -1;
     float unlockPresentationTimer_ = 0.0f;
     float unlockParticleTimer_ = 0.0f;
