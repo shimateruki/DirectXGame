@@ -42,6 +42,11 @@ public:
         bool orbitCenterGizmoVisible = true;
         float orbitGuideMarkerSize = 0.45f;
         int cameraSensitivity = 0;
+        bool cameraGuideVisible = true;
+        bool cameraPreviewVisible = true;
+        float cameraGuideSize = 0.65f;
+        float cameraFrustumLength = 6.0f;
+        float cameraPreviewHeight = 180.0f;
 
         // Editorモード用パラメータ。
         float moveSpeed = 0.5f;
@@ -91,7 +96,10 @@ public:
     }
 
     void DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
+    void DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
     void DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue);
+    bool ShouldRenderCameraPreview() const { return settings_.cameraPreviewVisible; }
+    Camera* PreparePreviewCamera(float aspectRatio);
 
 private:
     void UpdateFreeCamera(Camera* camera);
@@ -101,6 +109,16 @@ private:
     void SetOrbitStartFromWorld(const Vector3& startEye);
     Vector3 GetOrbitCenter() const;
     Vector3 GetOrbitStartEye() const;
+    Vector3 GetConfiguredCameraEye() const;
+    Vector3 GetConfiguredCameraForward() const;
+    Vector3 GetPreviewCameraEye() const;
+    Vector3 GetPreviewCameraForward() const;
+    const char* GetPreviewCameraLabel() const;
+    Vector3 GetConfiguredCameraRight(const Vector3& forward) const;
+    Vector3 GetConfiguredCameraUp(const Vector3& forward, const Vector3& right) const;
+    Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) const;
+    void DrawCameraPreviewPanel();
+    void ApplyConfiguredCameraPreview(Camera* camera) const;
 
 private:
     CameraEditor() = default;
@@ -121,4 +139,6 @@ private:
     std::string selectedOverrideName_ = "";
     char newOverrideNameBuffer_[64] = "";
     Object3d* targetPlayer_ = nullptr;
+    Camera previewCamera_;
+    bool previewCameraInitialized_ = false;
 };

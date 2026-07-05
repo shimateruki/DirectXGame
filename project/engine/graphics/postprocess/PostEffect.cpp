@@ -60,7 +60,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    renderTextures_.resize(6);
+    renderTextures_.resize(7);
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
@@ -80,6 +80,7 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 
     // [5] 縮小ブラー用3 (HDR / 1/16サイズ)
     CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(kCameraPreviewTextureIndex, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void PostEffect::Update(float deltaTime) {
@@ -97,7 +98,7 @@ void PostEffect::ResetToNeutral() {
 }
 
 void PostEffect::ResizeRenderTextures(int width, int height) {
-    if (!dxCommon_ || renderTextures_.size() < 6) {
+    if (!dxCommon_ || renderTextures_.size() < 7) {
         return;
     }
 
@@ -111,6 +112,7 @@ void PostEffect::ResizeRenderTextures(int width, int height) {
     CreateRenderTexture(3, (std::max)(width / 4, 1), (std::max)(height / 4, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(4, (std::max)(width / 8, 1), (std::max)(height / 8, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(5, (std::max)(width / 16, 1), (std::max)(height / 16, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(kCameraPreviewTextureIndex, (std::max)(width / 2, 16), (std::max)(height / 2, 16), DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 
@@ -275,6 +277,30 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
     commandList->RSSetScissorRects(1, &scissorRect);
 }
 
+void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex, bool clear) {
+    TransitionToRTV(commandList, targetTexIndex);
+
+    RenderTexture& rt = renderTextures_[targetTexIndex];
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = rt.dsvHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+    if (clear) {
+        float clearColor[] = { 0.08f, 0.10f, 0.14f, 1.0f };
+        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+    }
+
+    D3D12_RESOURCE_DESC resDesc = rt.resource->GetDesc();
+    D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)resDesc.Width, (float)resDesc.Height, 0.0f, 1.0f };
+    D3D12_RECT scissorRect = { 0, 0, (LONG)resDesc.Width, (LONG)resDesc.Height };
+    commandList->RSSetViewports(1, &viewport);
+    commandList->RSSetScissorRects(1, &scissorRect);
+
+    ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+    commandList->SetDescriptorHeaps(1, descriptorHeaps);
+}
+
 void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex) {
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
@@ -353,6 +379,45 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
     device->CreateRenderTargetView(newResource.Get(), &rtvDesc, newRtvHeap->GetCPUDescriptorHandleForHeapStart());
 
+    D3D12_RESOURCE_DESC depthDesc = {};
+    depthDesc.Width = width;
+    depthDesc.Height = height;
+    depthDesc.MipLevels = 1;
+    depthDesc.DepthOrArraySize = 1;
+    depthDesc.Format = dxCommon_->GetDSVFormat();
+    depthDesc.SampleDesc.Count = 1;
+    depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE depthClearValue = {};
+    depthClearValue.Format = dxCommon_->GetDSVFormat();
+    depthClearValue.DepthStencil.Depth = 1.0f;
+    depthClearValue.DepthStencil.Stencil = 0;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> newDepthResource;
+    hr = device->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &depthDesc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthClearValue,
+        IID_PPV_ARGS(&newDepthResource)
+    );
+    if (FAILED(hr) || !newDepthResource) {
+        return;
+    }
+
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> newDsvHeap;
+    hr = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&newDsvHeap));
+    if (FAILED(hr) || !newDsvHeap) {
+        return;
+    }
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = dxCommon_->GetDSVFormat();
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    device->CreateDepthStencilView(newDepthResource.Get(), &dsvDesc, newDsvHeap->GetCPUDescriptorHandleForHeapStart());
+
     // 3. SRV (画像としての設定)
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = format;
@@ -369,5 +434,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
 
     rt.resource = newResource;
     rt.rtvHeap = newRtvHeap;
+    rt.depthResource = newDepthResource;
+    rt.dsvHeap = newDsvHeap;
     rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 }

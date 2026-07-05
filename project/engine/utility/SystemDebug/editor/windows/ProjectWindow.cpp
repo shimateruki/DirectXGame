@@ -784,7 +784,50 @@ void ProjectWindow::Draw() {
     // =================================================================================
     // 3. パーティクル一覧 (GPU Particles)
     // =================================================================================
-    if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) {
+    
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("Prefabs (v1)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            static char prefabNameBuf[64] = "NewPrefab";
+            ImGui::InputText("Prefab名", prefabNameBuf, IM_ARRAYSIZE(prefabNameBuf));
+
+            Object3d* selectedObject = editor_ ? editor_->GetSelectedObject() : nullptr;
+            if (!selectedObject) {
+                ImGui::TextDisabled("保存するObjectをHierarchyまたはGame Viewで選択してください。");
+            }
+
+            if (ImGui::Button("選択ObjectをPrefab保存") && selectedObject && prefabNameBuf[0] != '\0') {
+                PresetManager::GetInstance()->AddPrefabFromObject(prefabNameBuf, selectedObject);
+            }
+
+            ImGui::TextDisabled("Prefab v1は階層を複製保存します。元Prefabとのリンク/Overrideは未対応です。");
+
+            const auto& prefabs = PresetManager::GetInstance()->GetPrefabs();
+            if (prefabs.empty()) {
+                ImGui::TextDisabled("Prefabはまだありません。");
+            }
+
+            int prefabIndex = 0;
+            for (const auto& [prefabName, prefabJson] : prefabs) {
+                (void)prefabJson;
+                ImGui::PushID(prefabName.c_str());
+                ImGui::BeginGroup();
+                ImGui::Button("Prefab", ImVec2(86.0f, 46.0f));
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload("PREFAB_ASSET", prefabName.c_str(), prefabName.size() + 1);
+                    ImGui::Text("Prefab: %s", prefabName.c_str());
+                    ImGui::EndDragDropSource();
+                }
+                ImGui::TextWrapped("%s", prefabName.c_str());
+                ImGui::EndGroup();
+                ImGui::PopID();
+
+                ++prefabIndex;
+                if (prefabIndex % 4 != 0) {
+                    ImGui::SameLine();
+                }
+            }
+        }
+if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string particleDir = "Resources/json/gpu_particles/";
         if (fs::exists(particleDir)) {
             float thumbnailSize = 64.0f;

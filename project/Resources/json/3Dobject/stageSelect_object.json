@@ -7,6 +7,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -70,14 +71,14 @@
             "particleName": "",
             "position": [
                 0.06746947765350342,
-                -7.671290874481201,
+                -7.8404035568237305,
                 9.442131042480469
             ],
             "quaternion": [
                 0.0,
+                -0.7071067690849304,
                 0.0,
-                0.0,
-                1.0
+                0.7071067690849304
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -86,7 +87,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                -1.5707963705062866,
                 0.0
             ],
             "roughness": 0.5,
@@ -109,6 +110,7 @@
                 "effectScale": 1.0,
                 "effectScaleX": 1.0,
                 "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
                 "effectSoftness": 0.08500000089406967,
                 "effectType": 0.0,
                 "flowSpeedX": 0.05000000074505806,
@@ -125,6 +127,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -229,6 +232,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -318,7 +322,7 @@
             "particleName": "",
             "position": [
                 42.16230010986328,
-                -3.602492094039917,
+                -6.0032958984375,
                 5.411304950714111
             ],
             "quaternion": [
@@ -359,6 +363,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -463,6 +468,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -526,8 +532,8 @@
             "particleName": "",
             "position": [
                 1.8585580587387085,
-                -4.292596817016602,
-                -45.72467041015625
+                -6.869376182556152,
+                -32.8125114440918
             ],
             "quaternion": [
                 0.0,
@@ -567,6 +573,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": false,
             "collider": {
                 "center": [
                     0.0,
@@ -652,18 +659,18 @@
                 "switchMode": 0,
                 "targetScene": "SELECT"
             },
-            "parentName": "",
+            "parentName": "Stages/gate_20",
             "particleName": "",
             "position": [
-                43.630958557128906,
-                3.148959159851074,
-                9.386497497558594
+                -0.04386138916015625,
+                0.00020599365234375,
+                -0.012343406677246094
             ],
             "quaternion": [
-                0.5134313106536865,
-                -0.48619750142097473,
-                0.48619237542152405,
-                0.5134367346763611
+                0.0,
+                0.0,
+                1.0,
+                9.099629210140847e-07
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -671,16 +678,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                1.5707857608795166,
-                -1.5163114070892334,
-                0.0
+                0.0,
+                0.0,
+                3.1415908336639404
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                3.4999825954437256,
-                6.049994945526123,
-                1.3999961614608765
+                8.326696395874023,
+                6.26246452331543,
+                1.400010585784912
             ],
             "targetID": 0,
             "texturePath": "",
@@ -693,8 +700,9 @@
                 "billboardScale": 0.38499999046325684,
                 "effectIntensity": 2.0199999809265137,
                 "effectScale": 1.1799999475479126,
-                "effectScaleX": 0.8450000286102295,
-                "effectScaleY": 1.0570000410079956,
+                "effectScaleX": 0.949999988079071,
+                "effectScaleY": 0.9760000109672546,
+                "effectScaleZ": 0.5690000057220459,
                 "effectSoftness": 0.6600000262260437,
                 "effectType": 1.0,
                 "flowSpeedX": 0.0,
@@ -711,6 +719,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -815,6 +824,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -919,6 +929,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -1023,6 +1034,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.10103130340576172,
@@ -1127,6 +1139,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -1231,6 +1244,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -1335,6 +1349,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -1454,6 +1469,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     -8.701906204223633,
@@ -1558,6 +1574,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -1620,9 +1637,9 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                43.24982452392578,
-                3.3447654247283936,
-                9.454524993896484
+                43.698951721191406,
+                1.0977051258087158,
+                8.911176681518555
             ],
             "quaternion": [
                 0.0,
@@ -1643,8 +1660,8 @@
             "roughness": 0.8040408492088318,
             "saveCategory": "Object",
             "scale": [
-                0.9999969601631165,
-                0.9999969601631165,
+                0.9999819397926331,
+                0.9999819397926331,
                 1.0
             ],
             "targetID": -1,
@@ -1662,6 +1679,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,

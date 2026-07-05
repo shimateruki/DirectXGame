@@ -11,39 +11,39 @@ using json = nlohmann::json;
 class Object3dCommon;
 
 /// <summary>
-/// Object3dの設定をプリセットとして保存、読み込み、生成に使う管理クラス。
+/// Object3dの設定をPreset/Prefabとして保存し、再生成するための管理クラス。
 /// </summary>
 class PresetManager {
 public:
     static PresetManager* GetInstance();
 
     /// <summary>
-    /// プリセットファイルを読み込んで初期化する。
+    /// PresetとPrefabの定義ファイルを読み込んで初期化する。
     /// </summary>
     void Initialize();
 
     /// <summary>
-    /// 指定ファイルからプリセット一覧を読み込む。
+    /// 指定ファイルからPreset一覧を読み込む。
     /// </summary>
     void LoadPresets(const std::string& filename = "Resources/json/preset/presets.json");
 
     /// <summary>
-    /// プリセット一覧を指定ファイルへ保存する。
+    /// Preset一覧を指定ファイルへ保存する。
     /// </summary>
     void SavePresets(const std::string& filename = "Resources/json/preset/presets.json");
 
     /// <summary>
-    /// 指定オブジェクトの設定を新しいプリセットとして登録する。
+    /// 指定Objectの設定を新しいPresetとして登録する。
     /// </summary>
     void AddPresetFromObject(const std::string& presetName, Object3d* obj);
 
     /// <summary>
-    /// 指定オブジェクトへプリセット設定を適用する。
+    /// 指定ObjectへPreset設定を適用する。
     /// </summary>
     void ApplyPresetToObject(const std::string& presetName, Object3d* obj);
 
     /// <summary>
-    /// プリセットからオブジェクト群を生成する。
+    /// PresetからObject群を生成する。
     /// </summary>
     std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPreset(const std::string& presetName, Object3dCommon* common) const;
 
@@ -55,10 +55,37 @@ public:
     bool HasPreset(const std::string& name) const { return presets_.find(name) != presets_.end(); }
 
     /// <summary>
-    /// 種別ごとの適切なプリセットファイルへまとめて保存する。
+    /// Prefab v1定義を読み込む。Presetとは別ファイルで管理する。
+    /// </summary>
+    void LoadPrefabs(const std::string& filename = "Resources/json/prefab/prefabs.json");
+
+    /// <summary>
+    /// Prefab v1定義を保存する。
+    /// </summary>
+    void SavePrefabs(const std::string& filename = "Resources/json/prefab/prefabs.json");
+
+    /// <summary>
+    /// 選択Object階層をPrefabとして登録する。
+    /// </summary>
+    void AddPrefabFromObject(const std::string& prefabName, Object3d* obj);
+
+    /// <summary>
+    /// PrefabからObject群を生成する。
+    /// </summary>
+    std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const;
+
+    void RemovePrefab(const std::string& prefabName);
+    void RenamePrefab(const std::string& oldName, const std::string& newName);
+
+    const std::map<std::string, json>& GetPrefabs() const { return prefabs_; }
+    bool HasPrefab(const std::string& name) const { return prefabs_.find(name) != prefabs_.end(); }
+
+    /// <summary>
+    /// Preset/Prefabをまとめて保存する。
     /// </summary>
     void SaveAll();
 
 private:
     std::map<std::string, json> presets_;
+    std::map<std::string, json> prefabs_;
 };

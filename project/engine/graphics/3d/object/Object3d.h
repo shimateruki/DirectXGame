@@ -80,11 +80,18 @@ public:
     // トランスフォーム
     void UpdateLocalMatrix();
     void UpdateWorldMatrix();
+    void RefreshRenderCameraData();
 
     Transform* GetTransform() { return &transform_; }
     const Transform& GetTransform() const { return transform_; }
 
-    const Vector3& GetWorldPosition() const { return transform_.translate; }
+    Vector3 GetWorldPosition() const {
+        return {
+            transform_.matWorld.m[3][0],
+            transform_.matWorld.m[3][1],
+            transform_.matWorld.m[3][2],
+        };
+    }
     const Matrix4x4& GetWorldMatrix() const { return transform_.matWorld; }
     const Vector3& GetScale() const { return transform_.scale; }
     const Vector3& GetRotation() const { return transform_.rotate; }
@@ -97,7 +104,7 @@ public:
     void SetRotationY(float y) { transform_.rotate.y = y; transform_.isQuaternionMaster = false;
     }
 
-    void SetParent(Object3d* parent);
+    void SetParent(Object3d* parent, bool keepWorldTransform = false);
     Object3d* GetParent() const { return parent_; }
 
     // グラフィックス (MeshRendererへ委譲)
@@ -190,8 +197,16 @@ public:
 
     void SetClassName(const std::string& name) { className_ = name; }
     std::string GetClassName() const { return className_; }
+    void SetTag(const std::string& tag) { tag_ = tag; }
+    const std::string& GetTag() const { return tag_; }
+    bool HasTag(const std::string& tag) const { return tag_ == tag; }
+    void SetLayer(const std::string& layer) { layer_ = layer.empty() ? "Default" : layer; }
+    const std::string& GetLayer() const { return layer_; }
+    bool IsLayer(const std::string& layer) const { return layer_ == layer; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
+    void SetCastShadow(bool enabled) { castShadow_ = enabled; }
+    bool GetCastShadow() const { return castShadow_; }
 
     void SetEventID(int id) { eventID_ = id; }
     int GetEventID() const { return eventID_; }
@@ -302,7 +317,10 @@ protected:
     bool isStatic_ = false;
     std::vector<Object3d*> children_;
     std::string className_ = "Model";
+    std::string tag_;
+    std::string layer_ = "Default";
     bool isVisible_ = true;
+    bool castShadow_ = true;
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";

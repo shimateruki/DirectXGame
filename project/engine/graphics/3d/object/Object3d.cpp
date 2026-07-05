@@ -34,6 +34,45 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
     return filePath;
 }
 
+bool HasParentInChain(Object3d* parent, const Object3d* child) {
+    for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
+        if (current == child) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
+    const float epsilon = 0.0001f;
+
+    Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
+    Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
+    Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
+
+    transform.scale = {
+        std::max(Math::Length(rowX), epsilon),
+        std::max(Math::Length(rowY), epsilon),
+        std::max(Math::Length(rowZ), epsilon),
+    };
+    transform.translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
+
+    Matrix4x4 rotateMatrix = Math::MakeIdentity4x4();
+    rotateMatrix.m[0][0] = matrix.m[0][0] / transform.scale.x;
+    rotateMatrix.m[0][1] = matrix.m[0][1] / transform.scale.x;
+    rotateMatrix.m[0][2] = matrix.m[0][2] / transform.scale.x;
+    rotateMatrix.m[1][0] = matrix.m[1][0] / transform.scale.y;
+    rotateMatrix.m[1][1] = matrix.m[1][1] / transform.scale.y;
+    rotateMatrix.m[1][2] = matrix.m[1][2] / transform.scale.y;
+    rotateMatrix.m[2][0] = matrix.m[2][0] / transform.scale.z;
+    rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
+    rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
+
+    transform.quaternion = Math::MatrixToQuaternion(rotateMatrix);
+    transform.rotate = Math::MatrixToEuler(rotateMatrix);
+    transform.isQuaternionMaster = true;
+}
+
 }
 
 Object3d::~Object3d() {
@@ -249,7 +288,37 @@ void Object3d::UpdateWorldMatrix() {
     }
 }
 
-void Object3d::SetParent(Object3d* parent) {
+void Object3d::RefreshRenderCameraData() {
+    transform_.UpdateMatrix();
+
+    if (meshRenderer_) {
+        meshRenderer_->RefreshCameraDependentData();
+    }
+    for (Object3d* child : children_) {
+        if (child) {
+            child->RefreshRenderCameraData();
+        }
+    }
+}
+
+void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
+    if (parent == this || HasParentInChain(parent, this)) {
+        return;
+    }
+
+    if (parent == parent_ && !keepWorldTransform) {
+        return;
+    }
+
+    UpdateWorldMatrix();
+    if (parent) {
+        parent->UpdateWorldMatrix();
+    }
+
+    Math math;
+    Matrix4x4 worldBefore = transform_.matWorld;
+    Matrix4x4 parentWorld = parent ? parent->GetWorldMatrix() : Math::MakeIdentity4x4();
+
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;
         kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
@@ -258,10 +327,20 @@ void Object3d::SetParent(Object3d* parent) {
     parent_ = parent;
 
     if (parent_) {
-        parent_->children_.push_back(this);
+        if (std::find(parent_->children_.begin(), parent_->children_.end(), this) == parent_->children_.end()) {
+            parent_->children_.push_back(this);
+        }
         transform_.parent = parent_->GetTransform();
     } else {
         transform_.parent = nullptr;
+    }
+
+    if (keepWorldTransform) {
+        Matrix4x4 localMatrix = worldBefore;
+        if (parent_) {
+            localMatrix = math.Multiply(worldBefore, math.Inverse(parentWorld));
+        }
+        ApplyMatrixToTransform(transform_, localMatrix);
     }
 
     UpdateWorldMatrix();
@@ -766,12 +845,15 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 1. 基本設定・識別子
     this->name_ = other->name_;
     this->className_ = other->className_;
+    this->tag_ = other->tag_;
+    this->layer_ = other->layer_;
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
     this->gimmickType_ = other->gimmickType_;
     this->itemType_ = other->itemType_;
     this->isVisible_ = other->isVisible_;
     this->isLocked_ = other->isLocked_;
+    this->castShadow_ = other->castShadow_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
     }
@@ -864,12 +946,15 @@ json Object3d::ExportToJson() {
     d["name"] = name_;
     d["modelName"] = GetModelName();
     d["type"] = className_;
+    d["tag"] = tag_;
+    d["layer"] = layer_.empty() ? "Default" : layer_;
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
     d["gimmickType"] = gimmickType_;
     d["itemType"] = itemType_;
     d["isVisible"] = isVisible_;
     d["isLocked"] = isLocked_;
+    d["castShadow"] = castShadow_;
 
     // 2. Transform
     d["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
@@ -982,6 +1067,7 @@ json Object3d::ExportToJson() {
         jw["effectScale"] = water->effectScale;
         jw["effectScaleX"] = water->effectScaleX;
         jw["effectScaleY"] = water->effectScaleY;
+        jw["effectScaleZ"] = water->effectScaleZ;
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;
@@ -1014,12 +1100,21 @@ void Object3d::ImportFromJson(const json& j) {
     // 1. 基本設定
     if (j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
     if (j.contains("type")) className_ = j["type"];
+    if (j.contains("tag") && j["tag"].is_string()) {
+        tag_ = j["tag"].get<std::string>();
+    }
+    if (j.contains("layer") && j["layer"].is_string()) {
+        SetLayer(j["layer"].get<std::string>());
+    } else if (layer_.empty()) {
+        layer_ = "Default";
+    }
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
     if (j.contains("gimmickType")) gimmickType_ = j["gimmickType"];
     if (j.contains("itemType")) itemType_ = j["itemType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
+    if (j.contains("castShadow")) castShadow_ = j["castShadow"].get<bool>();
 
     // 2. Transform
     if (j.contains("translate")) transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
@@ -1158,6 +1253,7 @@ void Object3d::ImportFromJson(const json& j) {
             if (jw.contains("effectScale")) water->effectScale = jw["effectScale"];
             if (jw.contains("effectScaleX")) water->effectScaleX = jw["effectScaleX"];
             if (jw.contains("effectScaleY")) water->effectScaleY = jw["effectScaleY"];
+            if (jw.contains("effectScaleZ")) water->effectScaleZ = jw["effectScaleZ"];
             if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
             if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
             if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <d3d12.h>
 #include <deque>
@@ -98,6 +99,7 @@ public:
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
     void InstantiatePresetAtCursor(const std::string& presetName);
+    void InstantiatePrefabAtCursor(const std::string& prefabName);
     void InstantiateParticleAtCursor(const std::string& particleName);
     void StartPresetBrush(const std::string& presetName);
     void StopPresetBrush();
@@ -153,7 +155,7 @@ public:
         strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
     }
 
-    void SetSelectedObject(Object3d* obj) { selectedObject_ = (!obj || IsObjectInCurrentScene(obj)) ? obj : nullptr; }
+    void SetSelectedObject(Object3d* obj);
     void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
 
@@ -189,6 +191,12 @@ public:
     // 選択状態とサブエディタ参照。
     Object3d* GetSelectedObject3D() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
     Object3d* GetSelectedObject() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
+    const std::vector<Object3d*>& GetSelectedObjects() const { return selectedObjects_; }
+    bool IsObjectSelected(const Object3d* object) const;
+    std::size_t GetSelectedObjectCount() const { return selectedObjects_.size(); }
+    void ClearObjectSelection();
+    void AddSelectedObject(Object3d* object);
+    void ToggleSelectedObject(Object3d* object);
     SceneManager* GetSceneManager() const { return sceneManager_; }
 
     LightEditor* GetLightEditor() const { return lightEditor_; }
@@ -275,6 +283,12 @@ private:
     std::string MakeSavePreviewTitle(SaveMode mode) const;
     bool IsObjectInCurrentScene(const Object3d* object) const;
     void ClearInvalidSelectedObject();
+    void PruneInvalidSelectedObjects();
+    Object3d* PickObjectAtGameViewPos(const Vector2& mousePos);
+    void SelectObjectsInGameViewRect(const Vector2& start, const Vector2& end, bool additive);
+    void DrawSelectionRectangleOverlay();
+    void DrawSelectedObjectBoundsOverlay();
+    Vector3 GetObjectWorldPositionForSelection(Object3d* object);
     void ApplyObjectState(Object3d* object, const nlohmann::json& state);
     Object3d* FindObjectByName(const std::string& name) const;
     Object3d* AddObjectFromState(const nlohmann::json& state);
@@ -288,8 +302,19 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     Math math_;
 
+    struct ObjectEditSnapshot {
+        Object3d* object = nullptr;
+        nlohmann::json beforeState;
+    };
+
     // 選択、配置プレビュー、プリセットブラシの状態。
     Object3d* selectedObject_ = nullptr;
+    std::vector<Object3d*> selectedObjects_;
+    std::vector<ObjectEditSnapshot> groupTransformStartStates_;
+    bool isSelectionRectDragging_ = false;
+    bool isSelectionRectReady_ = false;
+    Vector2 selectionRectStart_ = { 0.0f, 0.0f };
+    Vector2 selectionRectEnd_ = { 0.0f, 0.0f };
     std::unique_ptr<Object3d> previewObject_ = nullptr;
     std::vector<std::unique_ptr<Object3d>> previewChildObjects_;
     std::vector<std::unique_ptr<Object3d>> brushPreviewObjects_;

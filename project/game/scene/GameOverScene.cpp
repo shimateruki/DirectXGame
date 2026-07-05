@@ -188,7 +188,7 @@ void GameOverScene::Draw() {
     DrawBackgroundSprite();
 
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
     if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
         isFirstPerson = true;

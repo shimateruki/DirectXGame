@@ -146,6 +146,11 @@ public:
     uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
     void UpdateGrabTexture();
 
+    // Camera Preview小窓の描画中かどうか。
+    // Preview中は通常GameView用のGrabTexture更新を避ける。
+    void SetCameraPreviewRendering(bool isRendering) { cameraPreviewRendering_ = isRendering; }
+    bool IsCameraPreviewRendering() const { return cameraPreviewRendering_; }
+
     void ResizeSwapChain(int32_t width, int32_t height);
     void RequestResize(int32_t width, int32_t height);
     void ProcessPendingResize();
@@ -199,6 +204,7 @@ private:
     // 描画領域。
     D3D12_VIEWPORT viewport_{};
     D3D12_RECT scissorRect_{};
+    bool cameraPreviewRendering_ = false;
 
     DXGI_FORMAT rtvFormat_ = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     UINT backBufferIndex_ = 0;

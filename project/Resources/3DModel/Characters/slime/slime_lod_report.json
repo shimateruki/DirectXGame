@@ -1,7 +1,7 @@
 {
     "tool":  "Model LOD Builder",
     "version":  2,
-    "generatedAt":  "2026-06-29T00:02:33",
+    "generatedAt":  "2026-07-02T12:09:08",
     "sourceModel":  "Characters/slime",
     "sourceFile":  "Resources/3DModel/Characters/slime/slime.gltf",
     "sourceExtension":  ".gltf",

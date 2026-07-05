@@ -472,6 +472,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
+                if (objData.contains("castShadow")) targetObject->SetCastShadow(objData["castShadow"].get<bool>());
                 if (objData.contains("particleName")) targetObject->SetParticleName(objData["particleName"].get<std::string>());
                 if (objData.contains("gpuParticleName")) targetObject->SetGPUParticleName(objData["gpuParticleName"].get<std::string>());
                 if (objData.contains("meshEffect1")) targetObject->SetMeshEffect1Name(objData["meshEffect1"].get<std::string>());
@@ -504,6 +505,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (jw.contains("effectScale"))   water->effectScale = jw["effectScale"];
                         if (jw.contains("effectScaleX"))  water->effectScaleX = jw["effectScaleX"];
                         if (jw.contains("effectScaleY"))  water->effectScaleY = jw["effectScaleY"];
+                        if (jw.contains("effectScaleZ"))  water->effectScaleZ = jw["effectScaleZ"];
                         if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
                         if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
                         if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];

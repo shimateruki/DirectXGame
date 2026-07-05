@@ -25,6 +25,8 @@ cbuffer cbWaterParam : register(b1)
     float billboardScale;
     float effectScaleX;
     float effectScaleY;
+    float effectScaleZ;
+    float waterParamPadding0;
 };
 
 // [2] Material color from the inspector.

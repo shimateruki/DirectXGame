@@ -60,13 +60,15 @@ public:
 	void DrawSceneDebug(ID3D12GraphicsCommandList* commandList);
 	void DrawBackBufferUi();
 	void EndFrame();
-	void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);
-	void ApplyCameraOverrides();
+	void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	void ApplyCameraOverrides();
 	void SaveAllEditors();
 	void RequestExit();
 
-	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
+	// ポートフォリオ用に、エディタUIを隠してゲーム画面だけを表示する撮影モードを切り替える。
+	void SetPortfolioCaptureMode(bool enabled);
+	bool IsPortfolioCaptureMode() const { return portfolioCaptureMode_; }
 
+	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 private:
 	void SetupDefaultDockspace();
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
@@ -98,16 +100,14 @@ private:
 	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
 	std::unique_ptr<DebrisEffectEditor> debrisEffectEditor_;
 	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
-	std::unique_ptr<EngineManualWindow> engineManualWindow_;
-
-	bool showDebugWindows_ = true;
+	std::unique_ptr<EngineManualWindow> engineManualWindow_;	bool showDebugWindows_ = true;
 	bool showDebugConsole_ = true;
 	bool showTimeController_ = true;
 	bool showBossDebug_ = false;
+	bool portfolioCaptureMode_ = false;
 	bool previousPlayingState_ = false;
 	bool dockspaceInitialized_ = false;
-	bool openUnsavedPlayConfirm_ = false;
-	bool openUnsavedExitConfirm_ = false;
+	bool openUnsavedPlayConfirm_ = false;	bool openUnsavedExitConfirm_ = false;
 };
 
 #endif

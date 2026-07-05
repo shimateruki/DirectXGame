@@ -134,6 +134,7 @@ void ObjectManager::DrawShadow() {
 	// 管理している全オブジェクトの影を描画する
 	for (auto& obj : objects_) {
 		if (!obj->GetIsVisible()) continue;
+		if (!obj->GetCastShadow()) continue;
 		if (obj->GetMaterialType() == 7) continue;
 
 		// 視錐台カリング（影についてもカメラから見えないものは描画スキップ）

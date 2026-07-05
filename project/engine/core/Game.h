@@ -41,6 +41,7 @@ private:
 	void DrawEditorFrame(PostEffect* postEffect);
 	void DrawRuntimeFrame(PostEffect* postEffect);
 	void DrawSceneToRenderTexture(bool editorMode);
+	void DrawCameraEditorPreview(PostEffect* postEffect);
 	void ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView);
 	void RecordDrawProfile(const std::chrono::high_resolution_clock::time_point& startDraw);
 	void RecordFixedFpsProfile();

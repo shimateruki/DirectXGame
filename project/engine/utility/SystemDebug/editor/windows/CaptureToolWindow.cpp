@@ -1,9 +1,10 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "CaptureToolWindow.h"
 
 #include "DebugEditor.h"
 #include "DirectXCommon.h"
 #include "IconsFontAwesome5.h"
+#include "InputManager.h"
 #include "WinApp.h"
 #include "imgui.h"
 
@@ -78,9 +79,10 @@ fs::path GetCaptureRoot() {
     fs::path root = fs::current_path(ec);
     if (ec || root.empty()) {
         root = fs::path(L".");
+    }    if (root.filename() == L"project" && root.has_parent_path()) {
+        return root.parent_path() / "captures";
     }
-    return root / "output" / "captures";
-}
+    return root / "captures";}
 
 RECT ClampRectToVirtualScreen(const RECT& source) {
     RECT screen{
@@ -130,22 +132,43 @@ HWND GetMainWindowHandle() {
     return GetForegroundWindow();
 }
 
-bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, RECT& outRect, std::string& errorMessage) {
-    switch (area) {
-    case CaptureToolWindow::CaptureArea::GameView: {
+bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
+    HWND hwnd = GetMainWindowHandle();
+    if (!hwnd || !::IsWindow(hwnd)) {
+        errorMessage = "メインウィンドウを取得できませんでした。";
+        return false;
+    }
+
+    RECT client{};
+    if (!::GetClientRect(hwnd, &client)) {
+        errorMessage = "クライアント領域を取得できませんでした。";
+        return false;
+    }
+
+    POINT topLeft{ client.left, client.top };
+    POINT bottomRight{ client.right, client.bottom };
+    ::ClientToScreen(hwnd, &topLeft);
+    ::ClientToScreen(hwnd, &bottomRight);
+    outRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
+    return true;
+}
+bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, bool forceGameViewClientCapture, RECT& outRect, std::string& errorMessage) {
+    switch (area) {    case CaptureToolWindow::CaptureArea::GameView: {
+        if (forceGameViewClientCapture) {
+            return ResolveClientRect(outRect, errorMessage);
+        }
+
         int left = 0;
         int top = 0;
         int right = 0;
         int bottom = 0;
         if (!editor || !editor->GetGameViewScreenRect(left, top, right, bottom)) {
-            errorMessage = "Game Viewの位置を取得できませんでした。Game Viewを表示してから撮影してください。";
-            return false;
+            return ResolveClientRect(outRect, errorMessage);
         }
         outRect = { left, top, right, bottom };
         outRect = ClampRectToVirtualScreen(outRect);
-        break;
-    }
-    case CaptureToolWindow::CaptureArea::Window: {
+        return true;
+    }    case CaptureToolWindow::CaptureArea::Window: {
         HWND hwnd = GetMainWindowHandle();
         if (!hwnd || !GetWindowRect(hwnd, &outRect)) {
             errorMessage = "ウィンドウ全体の撮影範囲を取得できませんでした。";
@@ -359,9 +382,8 @@ void CaptureToolWindow::DrawImGui() {
     }
 
     ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_CAMERA " キャプチャツール");
-    ImGui::TextWrapped("スクリーンショットはPNG、録画はWindows Media Foundationで直接MP4として保存します。ffmpegは不要です。");
-    ImGui::TextDisabled("ショートカット: F = スクリーンショット / G = 録画開始・停止");
-    ImGui::Separator();
+    ImGui::TextWrapped("スクリーンショットはPNG、録画はWindows Media Foundationで直接MP4として保存します。ffmpegは不要です。");    ImGui::TextDisabled("ショートカット: F = スクリーンショット / G = 録画開始・停止 / F10 = 撮影モード切替");
+    ImGui::TextDisabled("保存先: %s", PathToUtf8(GetCaptureRoot()).c_str());    ImGui::Separator();
 
     int areaIndex = static_cast<int>(captureArea_);
     constexpr std::array<const char*, 3> kCaptureAreas = {
@@ -403,6 +425,36 @@ void CaptureToolWindow::DrawImGui() {
 #endif
 }
 
+void CaptureToolWindow::UpdateHotkeys() {
+    UpdateRecording();
+
+#ifdef USE_IMGUI
+    bool canUseShortcut = true;
+    if (ImGui::GetCurrentContext()) {
+        const ImGuiIO& io = ImGui::GetIO();
+        canUseShortcut = !io.WantTextInput && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
+    }
+    if (!canUseShortcut) {
+        return;
+    }
+#endif
+
+    InputManager* input = InputManager::GetInstance();
+    if (!input) {
+        return;
+    }
+
+    if (!recording_ && input->IsKeyTriggered(DIK_F)) {
+        CaptureScreenshot();
+    }
+    if (input->IsKeyTriggered(DIK_G)) {
+        if (recording_) {
+            StopRecording();
+        } else {
+            StartRecording();
+        }
+    }
+}
 void CaptureToolWindow::CaptureScreenshot() {
     const fs::path output = GetCaptureRoot() / ("screenshot_" + MakeTimestamp() + ".png");
     if (CaptureToFile(output)) {
@@ -418,7 +470,7 @@ void CaptureToolWindow::StartRecording() {
 
     RECT captureRect{};
     std::string errorMessage;
-    if (!ResolveCaptureRect(editor_, captureArea_, captureRect, errorMessage)) {
+    if (!ResolveCaptureRect(editor_, captureArea_, forceGameViewClientCapture_, captureRect, errorMessage)) {
         statusText_ = errorMessage;
         return;
     }
@@ -502,7 +554,7 @@ void CaptureToolWindow::UpdateRecording() {
 bool CaptureToolWindow::CaptureToFile(const fs::path& path) {
     RECT rect{};
     std::string errorMessage;
-    if (!ResolveCaptureRect(editor_, captureArea_, rect, errorMessage)) {
+    if (!ResolveCaptureRect(editor_, captureArea_, forceGameViewClientCapture_, rect, errorMessage)) {
         statusText_ = errorMessage;
         return false;
     }

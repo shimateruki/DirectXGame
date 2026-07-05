@@ -15,6 +15,19 @@ bool BaseScene::Destroy(Sprite* sprite) {
     return DestroySprite(sprite);
 }
 
+void BaseScene::RefreshRenderCameraData() {
+    auto& objects = GetObjects();
+    for (auto& object : objects) {
+        if (object) {
+            object->RefreshRenderCameraData();
+        }
+    }
+
+    if (Player* player = GetPlayer()) {
+        player->RefreshRenderCameraData();
+    }
+}
+
 bool BaseScene::DestroyObject(Object3d* object) {
     if (!IsAlive(object)) {
         return false;
@@ -91,6 +104,9 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
     if (!dxCommon) {
         return false;
     }
+    if (dxCommon->IsCameraPreviewRendering()) {
+        return false;
+    }
 
     bool hasFog = false;
     for (auto& obj : objects) {
@@ -115,6 +131,9 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
 
 bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
     if (!dxCommon) {
+        return false;
+    }
+    if (dxCommon->IsCameraPreviewRendering()) {
         return false;
     }
 
@@ -199,6 +218,9 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
 
 bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
     if (!dxCommon || !camera || GPUParticleManager::GetInstance()->IsEmpty()) {
+        return grabAlreadyUpdated;
+    }
+    if (dxCommon->IsCameraPreviewRendering()) {
         return grabAlreadyUpdated;
     }
 

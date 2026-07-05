@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -20,12 +20,14 @@ public:
         GameView,
         Window,
         Desktop
-    };
-
-    void Initialize(DebugEditor* editor);
+    };    void Initialize(DebugEditor* editor);
     void DrawImGui() override;
-    std::string GetName() override { return "キャプチャツール (Capture Tool)"; }
 
+    // ImGuiを非表示にしている撮影モードでも、ショートカットと録画更新を動かす。
+    void UpdateHotkeys();
+    void SetForceGameViewClientCapture(bool enabled) { forceGameViewClientCapture_ = enabled; }
+
+    std::string GetName() override { return "キャプチャツール (Capture Tool)"; }
 private:
     void CaptureScreenshot();
     void StartRecording();
@@ -37,9 +39,8 @@ private:
     void CloseRecordingResources();
 
     DebugEditor* editor_ = nullptr;
-    CaptureArea captureArea_ = CaptureArea::GameView;
-    bool recording_ = false;
-    bool mediaFoundationStarted_ = false;
+    CaptureArea captureArea_ = CaptureArea::GameView;    bool recording_ = false;
+    bool forceGameViewClientCapture_ = false;    bool mediaFoundationStarted_ = false;
     bool recordingComInitialized_ = false;
     float recordFps_ = 30.0f;
     float recordingFps_ = 30.0f;

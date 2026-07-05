@@ -1,4 +1,4 @@
-﻿#include "InspectorWindow.h"
+#include "InspectorWindow.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <map>
 #include <set>
 #include <vector>
@@ -218,6 +219,126 @@ void RefreshTextureLists(
     });
 }
 
+std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary) {
+    std::vector<Object3d*> targets;
+    if (!primary) {
+        return targets;
+    }
+
+    const std::vector<Object3d*>& selectedObjects = editor->GetSelectedObjects();
+    if (selectedObjects.empty()) {
+        targets.push_back(primary);
+        return targets;
+    }
+
+    targets.reserve(selectedObjects.size());
+    for (Object3d* object : selectedObjects) {
+        if (!object) {
+            continue;
+        }
+        if (std::find(targets.begin(), targets.end(), object) != targets.end()) {
+            continue;
+        }
+        targets.push_back(object);
+    }
+
+    if (std::find(targets.begin(), targets.end(), primary) == targets.end()) {
+        targets.push_back(primary);
+    }
+    return targets;
+}
+
+void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<Object3d*>& targets) {
+    if (!editor) {
+        return;
+    }
+    for (Object3d* object : targets) {
+        if (!object) {
+            continue;
+        }
+        editor->MarkDirtyForObject(object);
+    }
+}
+
+void RefreshInspectorTargetMatrices(const std::vector<Object3d*>& targets) {
+    for (Object3d* object : targets) {
+        if (!object) {
+            continue;
+        }
+        object->UpdateLocalMatrix();
+        object->UpdateWorldMatrix();
+    }
+}
+
+float SafeScaleRatio(float after, float before) {
+    if (std::fabs(before) < 0.0001f) {
+        return 1.0f;
+    }
+    return after / before;
+}
+
+void ApplyPrimaryTransformDeltaToTargets(
+    const std::vector<Object3d*>& targets,
+    Object3d* primary,
+    const Vector3& beforePosition,
+    const Vector3& afterPosition,
+    const Vector3& beforeRotation,
+    const Vector3& afterRotation,
+    const Vector3& beforeScale,
+    const Vector3& afterScale,
+    bool applyPosition,
+    bool applyRotation,
+    bool applyScale) {
+
+    if (!primary) {
+        return;
+    }
+
+    const Vector3 positionDelta = {
+        afterPosition.x - beforePosition.x,
+        afterPosition.y - beforePosition.y,
+        afterPosition.z - beforePosition.z,
+    };
+    const Vector3 rotationDelta = {
+        afterRotation.x - beforeRotation.x,
+        afterRotation.y - beforeRotation.y,
+        afterRotation.z - beforeRotation.z,
+    };
+    const Vector3 scaleRatio = {
+        SafeScaleRatio(afterScale.x, beforeScale.x),
+        SafeScaleRatio(afterScale.y, beforeScale.y),
+        SafeScaleRatio(afterScale.z, beforeScale.z),
+    };
+
+    for (Object3d* object : targets) {
+        if (!object || object == primary) {
+            continue;
+        }
+
+        Transform* transform = object->GetTransform();
+        if (!transform) {
+            continue;
+        }
+
+        if (applyPosition) {
+            transform->translate.x += positionDelta.x;
+            transform->translate.y += positionDelta.y;
+            transform->translate.z += positionDelta.z;
+        }
+        if (applyRotation) {
+            transform->rotate.x += rotationDelta.x;
+            transform->rotate.y += rotationDelta.y;
+            transform->rotate.z += rotationDelta.z;
+            transform->isQuaternionMaster = false;
+        }
+        if (applyScale) {
+            transform->scale.x *= scaleRatio.x;
+            transform->scale.y *= scaleRatio.y;
+            transform->scale.z *= scaleRatio.z;
+        }
+    }
+}
+
 bool IsSpriteCardObject(const Object3d* object) {
     if (!object) {
         return false;
@@ -262,7 +383,351 @@ void ConfigureSpriteCardObject(Object3d* object) {
     colliderConfig.type = ColliderType::kNone;
     object->SetColliderConfig(colliderConfig);
 }
+
+enum class PseudoComponentKind {
+    Collision,
+    Particle,
+    Lod,
+    MeshEffect,
+    BoneAnimation,
+    PathMove,
+    LinkIds,
+};
+
+bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
+    if (!object) {
+        return false;
+    }
+
+    switch (kind) {
+    case PseudoComponentKind::Collision: {
+        const Object3d::ColliderConfig& config = object->GetColliderConfig();
+        return config.type != ColliderType::kNone || object->GetCollisionAttribute() != 0 || object->GetCollisionMask() != 0;
+    }
+    case PseudoComponentKind::Particle:
+        return !object->GetParticleName().empty() || !object->GetGPUParticleName().empty();
+    case PseudoComponentKind::Lod:
+        return object->IsLodEnabled() || object->HasLodLevels();
+    case PseudoComponentKind::MeshEffect:
+        return !object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty();
+    case PseudoComponentKind::BoneAnimation:
+        return !object->animName_.empty();
+    case PseudoComponentKind::PathMove:
+        return !object->recordPathName_.empty();
+    case PseudoComponentKind::LinkIds:
+        return object->GetEventID() != 0 || object->GetTargetID() != 0;
+    }
+    return false;
 }
+
+const char* GetPseudoComponentName(PseudoComponentKind kind) {
+    switch (kind) {
+    case PseudoComponentKind::Collision: return "Collision";
+    case PseudoComponentKind::Particle: return "Particle";
+    case PseudoComponentKind::Lod: return "LOD";
+    case PseudoComponentKind::MeshEffect: return "Mesh Effect";
+    case PseudoComponentKind::BoneAnimation: return "Bone Animation";
+    case PseudoComponentKind::PathMove: return "Path Move";
+    case PseudoComponentKind::LinkIds: return "Link IDs";
+    }
+    return "Unknown";
+}
+
+const char* GetPseudoComponentDescription(PseudoComponentKind kind) {
+    switch (kind) {
+    case PseudoComponentKind::Collision: return "当たり判定、Trigger、Collision Maskを管理します。";
+    case PseudoComponentKind::Particle: return "Objectに追従するCPU/GPU Particleを管理します。";
+    case PseudoComponentKind::Lod: return "距離で軽量モデルへ切り替える設定です。";
+    case PseudoComponentKind::MeshEffect: return "メッシュに重ねる演出エフェクトを管理します。";
+    case PseudoComponentKind::BoneAnimation: return "モデルのボーンアニメーション名とループ設定です。";
+    case PseudoComponentKind::PathMove: return "GhostRecorderの移動パス再生設定です。";
+    case PseudoComponentKind::LinkIds: return "ギミック連携用のEvent/Target IDです。";
+    }
+    return "";
+}
+
+std::string FindFirstMeshEffectPath() {
+    const std::string effectDir = "Resources/json/effect";
+    if (!fs::exists(effectDir) || !fs::is_directory(effectDir)) {
+        return "";
+    }
+
+    std::vector<std::string> candidates;
+    for (const auto& entry : fs::directory_iterator(effectDir)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            candidates.push_back(entry.path().generic_string());
+        }
+    }
+
+    std::sort(candidates.begin(), candidates.end());
+    return candidates.empty() ? "" : candidates.front();
+}
+
+void AddDefaultParticleComponent(Object3d* object) {
+    if (!object) {
+        return;
+    }
+
+    const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
+    if (!gpuPresets.empty()) {
+        object->SetGPUParticleName(gpuPresets.begin()->first);
+        object->SetParticleName("");
+        return;
+    }
+
+    const auto& cpuParams = ParticleManager::GetInstance()->GetParamsMap();
+    if (!cpuParams.empty()) {
+        object->SetParticleName(cpuParams.begin()->first);
+        object->SetGPUParticleName("");
+        return;
+    }
+
+    DebugConsole::GetInstance()->AddLog("Particle component add skipped: particle preset was not found.");
+}
+
+void AddPseudoComponentToObject(Object3d* object, PseudoComponentKind kind, bool triggerCollision = false) {
+    if (!object) {
+        return;
+    }
+
+    switch (kind) {
+    case PseudoComponentKind::Collision: {
+        Object3d::ColliderConfig config = object->GetColliderConfig();
+        config.type = ColliderType::kAABB;
+        if (std::fabs(config.size.x) < 0.001f || std::fabs(config.size.y) < 0.001f || std::fabs(config.size.z) < 0.001f) {
+            config.size = { 1.0f, 1.0f, 1.0f };
+        }
+        object->SetColliderConfig(config);
+        if (triggerCollision) {
+            object->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            object->SetCollisionMask(CollisionAttribute::kPlayer);
+            object->SetStatic(false);
+        }
+        else {
+            object->SetCollisionAttribute(CollisionAttribute::kGround);
+            object->SetCollisionMask(0xFFFFFFFFu);
+            object->SetStatic(true);
+        }
+        break;
+    }
+    case PseudoComponentKind::Particle:
+        AddDefaultParticleComponent(object);
+        break;
+    case PseudoComponentKind::Lod:
+        object->SetLodEnabled(true);
+        if (!object->HasLodLevels()) {
+            object->ReloadLodManifest();
+        }
+        break;
+    case PseudoComponentKind::MeshEffect: {
+        if (object->GetMeshEffect1Name().empty()) {
+            const std::string effectPath = FindFirstMeshEffectPath();
+            if (!effectPath.empty()) {
+                object->SetMeshEffect1Name(effectPath);
+            }
+            else {
+                DebugConsole::GetInstance()->AddLog("Mesh Effect component add skipped: effect json was not found.");
+            }
+        }
+        break;
+    }
+    case PseudoComponentKind::BoneAnimation:
+        if (object->animName_.empty()) {
+            object->animName_ = "Idle";
+        }
+        object->isAnimLoop_ = true;
+        break;
+    case PseudoComponentKind::PathMove:
+        DebugConsole::GetInstance()->AddLog("Path Move component is enabled by selecting a path in the Path Move section.");
+        break;
+    case PseudoComponentKind::LinkIds:
+        DebugConsole::GetInstance()->AddLog("Link IDs component is enabled by setting Event ID or Target ID.");
+        break;
+    }
+}
+
+void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind) {
+    if (!object) {
+        return;
+    }
+
+    switch (kind) {
+    case PseudoComponentKind::Collision: {
+        Object3d::ColliderConfig config = object->GetColliderConfig();
+        config.type = ColliderType::kNone;
+        object->SetColliderConfig(config);
+        object->SetCollisionAttribute(0);
+        object->SetCollisionMask(0);
+        object->SetStatic(false);
+        break;
+    }
+    case PseudoComponentKind::Particle:
+        object->SetParticleName("");
+        object->SetGPUParticleName("");
+        break;
+    case PseudoComponentKind::Lod:
+        object->SetLodEnabled(false);
+        object->ClearLodLevels();
+        break;
+    case PseudoComponentKind::MeshEffect:
+        object->SetMeshEffect1Name("");
+        object->SetMeshEffect2Name("");
+        break;
+    case PseudoComponentKind::BoneAnimation:
+        object->animName_.clear();
+        object->isAnimLoop_ = false;
+        break;
+    case PseudoComponentKind::PathMove:
+        object->recordPathName_.clear();
+        if (object->recorder_) {
+            object->recorder_->Stop();
+        }
+        break;
+    case PseudoComponentKind::LinkIds:
+        object->SetEventID(0);
+        object->SetTargetID(0);
+        break;
+    }
+}
+
+void ApplyPseudoComponentToTargets(
+    DebugEditor* editor,
+    const std::vector<Object3d*>& targets,
+    PseudoComponentKind kind,
+    bool add,
+    bool triggerCollision = false) {
+    for (Object3d* target : targets) {
+        if (!target) {
+            continue;
+        }
+        if (add) {
+            AddPseudoComponentToObject(target, kind, triggerCollision);
+        }
+        else {
+            RemovePseudoComponentFromObject(target, kind);
+        }
+    }
+
+    MarkInspectorTargetsDirty(editor, targets);
+    RefreshInspectorTargetMatrices(targets);
+}
+
+void DrawPseudoComponentRow(
+    DebugEditor* editor,
+    const std::vector<Object3d*>& targets,
+    const char* name,
+    const char* description,
+    bool removable,
+    PseudoComponentKind kind) {
+    ImGui::PushID(name);
+    ImGui::BeginGroup();
+    ImGui::TextUnformatted(name);
+    ImGui::TextDisabled("%s", description);
+    ImGui::EndGroup();
+
+    if (removable) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Remove")) {
+            ApplyPseudoComponentToTargets(editor, targets, kind, false);
+        }
+    }
+    else {
+        ImGui::SameLine();
+        ImGui::TextDisabled("固定");
+    }
+
+    ImGui::Separator();
+    ImGui::PopID();
+}
+
+void DrawAddComponentMenu(DebugEditor* editor, const std::vector<Object3d*>& targets, Object3d* primary) {
+    if (!ImGui::BeginPopup("AddPseudoComponentMenu")) {
+        return;
+    }
+
+    ImGui::TextDisabled("追加するComponent");
+    ImGui::Separator();
+
+    const bool hasCollision = HasPseudoComponent(primary, PseudoComponentKind::Collision);
+    if (ImGui::MenuItem("Box Collider (Ground)", nullptr, false, !hasCollision)) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Collision, true, false);
+    }
+    if (ImGui::MenuItem("Trigger Collider", nullptr, false, true)) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Collision, true, true);
+    }
+    if (ImGui::MenuItem("Particle", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::Particle))) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Particle, true);
+    }
+    if (ImGui::MenuItem("LOD", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::Lod))) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Lod, true);
+    }
+    if (ImGui::MenuItem("Mesh Effect", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::MeshEffect))) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::MeshEffect, true);
+    }
+    if (ImGui::MenuItem("Bone Animation", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::BoneAnimation))) {
+        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::BoneAnimation, true);
+    }
+
+    ImGui::Separator();
+    ImGui::TextWrapped("Path MoveとLink IDsは下の専用セクションで値を入れるとComponentとして有効になります。");
+    ImGui::EndPopup();
+}
+
+void DrawPseudoComponentPanel(DebugEditor* editor, Object3d* primary, const std::vector<Object3d*>& targets) {
+    if (!primary) {
+        return;
+    }
+
+    ImGui::SeparatorText("Components");
+    ImGui::TextDisabled("Object3Dの既存機能をUnity風のComponentとして追加/削除します。");
+    ImGui::TextDisabled("v1はPrefab化しやすいコピー型Componentです。元Prefabとのリンク管理はまだ行いません。");
+
+    if (ImGui::Button("Add Component", ImVec2(-1.0f, 30.0f))) {
+        ImGui::OpenPopup("AddPseudoComponentMenu");
+    }
+    DrawAddComponentMenu(editor, targets, primary);
+
+    ImGui::Spacing();
+    DrawPseudoComponentRow(editor, targets, "Transform", "位置・回転・スケール。Object3Dの必須Componentです。", false, PseudoComponentKind::Collision);
+
+    const bool hasRenderer = primary->GetClassName() != "InvisibleBox" && !primary->GetModelName().empty();
+    if (hasRenderer) {
+        DrawPseudoComponentRow(editor, targets, "Renderer / Material", "モデル、マテリアル、影、PBRテクスチャを管理します。", false, PseudoComponentKind::Collision);
+    }
+    else {
+        ImGui::TextDisabled("Renderer / Material: モデル未設定またはInvisibleBoxのため非表示扱いです。");
+        ImGui::Separator();
+    }
+
+    const PseudoComponentKind optionalKinds[] = {
+        PseudoComponentKind::Collision,
+        PseudoComponentKind::Particle,
+        PseudoComponentKind::Lod,
+        PseudoComponentKind::MeshEffect,
+        PseudoComponentKind::BoneAnimation,
+        PseudoComponentKind::PathMove,
+        PseudoComponentKind::LinkIds,
+    };
+
+    bool hasOptionalComponent = false;
+    for (PseudoComponentKind kind : optionalKinds) {
+        if (!HasPseudoComponent(primary, kind)) {
+            continue;
+        }
+        hasOptionalComponent = true;
+        DrawPseudoComponentRow(
+            editor,
+            targets,
+            GetPseudoComponentName(kind),
+            GetPseudoComponentDescription(kind),
+            true,
+            kind);
+    }
+
+    if (!hasOptionalComponent) {
+        ImGui::TextDisabled("追加済みの任意Componentはありません。Add Componentから追加できます。");
+    }
+}}
 
 void InspectorWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
@@ -276,6 +741,7 @@ void InspectorWindow::Draw() {
 
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(editor_->GetCurrentSceneFilenameBuffer());
     Object3d* selectedObject = editor_->GetSelectedObject();
+    const std::size_t selectedCount = editor_->GetSelectedObjectCount();
 
     // ---------------------------------------------------------
     // 2. オブジェクト詳細 (Inspector本体)
@@ -289,6 +755,16 @@ void InspectorWindow::Draw() {
         ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
     }
     else {
+        std::vector<Object3d*> inspectorTargets = CollectInspectorTargets(editor_, selectedObject);
+        const bool isMultiSelection = inspectorTargets.size() > 1;
+
+        if (isMultiSelection) {
+            ImGui::TextColored(ImVec4(0.45f, 0.85f, 1.0f, 1.0f),
+                ICON_FA_CUBES " %zu個選択中 / 共通項目は一括編集されます", inspectorTargets.size());
+            ImGui::TextDisabled("名前・親子・モデル分割など、代表Object専用の項目は代表Objectだけを編集します。");
+            ImGui::Separator();
+        }
+
         // --- 名前表示 ---
         char nameBuffer[256];
         std::string currentName = selectedObject->GetName();
@@ -336,6 +812,72 @@ void InspectorWindow::Draw() {
 
         // --- クラス名表示 ---
         ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject->GetClassName().c_str());
+
+        static Object3d* tagLayerBufferOwner = nullptr;
+        static char tagBuffer[128] = {};
+        static char layerBuffer[128] = {};
+        if (tagLayerBufferOwner != selectedObject) {
+            tagLayerBufferOwner = selectedObject;
+            strcpy_s(tagBuffer, selectedObject->GetTag().c_str());
+            const std::string currentLayer = selectedObject->GetLayer().empty() ? "Default" : selectedObject->GetLayer();
+            strcpy_s(layerBuffer, currentLayer.c_str());
+        }
+
+        ImGui::SeparatorText("Tag / Layer");
+        ImGui::TextDisabled("Tagは役割名、Layerは処理対象の分類として使います。");
+        if (ImGui::InputText("Tag", tagBuffer, sizeof(tagBuffer))) {
+            const std::string newTag = tagBuffer;
+            for (Object3d* target : inspectorTargets) {
+                if (target) {
+                    target->SetTag(newTag);
+                }
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
+
+        const char* layerPresets[] = {
+            "Default",
+            "Player",
+            "Enemy",
+            "Stage",
+            "Trigger",
+            "Effect",
+            "EditorOnly"
+        };
+        int layerPresetIndex = 0;
+        const std::string selectedLayer = selectedObject->GetLayer().empty() ? "Default" : selectedObject->GetLayer();
+        for (int i = 0; i < IM_ARRAYSIZE(layerPresets); ++i) {
+            if (selectedLayer == layerPresets[i]) {
+                layerPresetIndex = i;
+                break;
+            }
+        }
+        if (ImGui::Combo("Layer Preset", &layerPresetIndex, layerPresets, IM_ARRAYSIZE(layerPresets))) {
+            strcpy_s(layerBuffer, layerPresets[layerPresetIndex]);
+            const std::string newLayer = layerBuffer;
+            for (Object3d* target : inspectorTargets) {
+                if (target) {
+                    target->SetLayer(newLayer);
+                }
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
+        if (ImGui::InputText("Layer", layerBuffer, sizeof(layerBuffer))) {
+            const std::string newLayer = layerBuffer[0] == '\0' ? "Default" : std::string(layerBuffer);
+            if (layerBuffer[0] == '\0') {
+                strcpy_s(layerBuffer, "Default");
+            }
+            for (Object3d* target : inspectorTargets) {
+                if (target) {
+                    target->SetLayer(newLayer);
+                }
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
+
+
+        DrawPseudoComponentPanel(editor_, selectedObject, inspectorTargets);
+
         const char* saveCategories[] = { "Object", "Player", "Enemy" };
         std::string currentCat = selectedObject->GetSaveCategory();
         int catIndex = 0;
@@ -343,14 +885,18 @@ void InspectorWindow::Draw() {
         else if (currentCat == "Enemy") catIndex = 2;
 
         if (ImGui::Combo(ICON_FA_FOLDER " 保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
-            selectedObject->SetSaveCategory(saveCategories[catIndex]);
+            for (Object3d* object : inspectorTargets) {
+                if (!object) continue;
+                object->SetSaveCategory(saveCategories[catIndex]);
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
 
         // --- 親の名前表示 ---
         if (selectedObject->GetParent()) {
             ImGui::TextDisabled(ICON_FA_SITEMAP " 親: %s", selectedObject->GetParent()->GetName().c_str());
             if (ImGui::Button(ICON_FA_UNLINK " 親を解除 (Unparent)")) {
-                selectedObject->SetParent(nullptr);
+                selectedObject->SetParent(nullptr, true);
             }
         }
         else {
@@ -399,7 +945,27 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
         bool isVisible = selectedObject->GetIsVisible();
         if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
-            selectedObject->SetIsVisible(isVisible);
+            for (Object3d* object : inspectorTargets) {
+                if (!object) continue;
+                object->SetIsVisible(isVisible);
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
+        bool isLocked = selectedObject->GetIsLocked();
+        if (ImGui::Checkbox(ICON_FA_LOCK " ロック (編集保護)", &isLocked)) {
+            for (Object3d* object : inspectorTargets) {
+                if (!object) continue;
+                object->SetIsLocked(isLocked);
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
+        bool castShadow = selectedObject->GetCastShadow();
+        if (ImGui::Checkbox(ICON_FA_LIGHTBULB " 影を落とす", &castShadow)) {
+            for (Object3d* object : inspectorTargets) {
+                if (!object) continue;
+                object->SetCastShadow(castShadow);
+            }
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
 
         // --- Transform編集 ---
@@ -408,15 +974,63 @@ void InspectorWindow::Draw() {
         Transform* transform = selectedObject->GetTransform();
         bool isTransformChanged = false;
 
-        if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) isTransformChanged = true;
+        const Vector3 beforePos = transform->translate;
+        if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) {
+            ApplyPrimaryTransformDeltaToTargets(
+                inspectorTargets,
+                selectedObject,
+                beforePos,
+                transform->translate,
+                transform->rotate,
+                transform->rotate,
+                transform->scale,
+                transform->scale,
+                true,
+                false,
+                false);
+            isTransformChanged = true;
+        }
 
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
+        const Vector3 beforeRot = transform->rotate;
         if (ImGui::DragFloat3(ICON_FA_SYNC " 回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
             transform->isQuaternionMaster = false;
+            ApplyPrimaryTransformDeltaToTargets(
+                inspectorTargets,
+                selectedObject,
+                transform->translate,
+                transform->translate,
+                beforeRot,
+                transform->rotate,
+                transform->scale,
+                transform->scale,
+                false,
+                true,
+                false);
             isTransformChanged = true;
         }
-        if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) isTransformChanged = true;
+        const Vector3 beforeScale = transform->scale;
+        if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) {
+            ApplyPrimaryTransformDeltaToTargets(
+                inspectorTargets,
+                selectedObject,
+                transform->translate,
+                transform->translate,
+                transform->rotate,
+                transform->rotate,
+                beforeScale,
+                transform->scale,
+                false,
+                false,
+                true);
+            isTransformChanged = true;
+        }
+
+        if (isTransformChanged) {
+            RefreshInspectorTargetMatrices(inspectorTargets);
+            MarkInspectorTargetsDirty(editor_, inspectorTargets);
+        }
 
 
         // --- コライダー設定 ---
@@ -462,12 +1076,22 @@ void InspectorWindow::Draw() {
                     }
                 }
                 if (isColChanged) {
-                    selectedObject->SetColliderConfig(colConfig);
+                    for (Object3d* object : inspectorTargets) {
+                        if (!object) continue;
+                        object->SetColliderConfig(colConfig);
+                    }
+                    MarkInspectorTargetsDirty(editor_, inspectorTargets);
                 }
             }
             else {
                 // なしの時も一応反映
-                if (isColChanged) selectedObject->SetColliderConfig(colConfig);
+                if (isColChanged) {
+                    for (Object3d* object : inspectorTargets) {
+                        if (!object) continue;
+                        object->SetColliderConfig(colConfig);
+                    }
+                    MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                }
             }
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -490,18 +1114,32 @@ void InspectorWindow::Draw() {
                 if (currentMatType < 0) currentMatType = 0;
                 if (currentMatType > 24) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
-                    selectedObject->SetMaterialType(currentMatType);
+                    for (Object3d* object : inspectorTargets) {
+                        if (!object) continue;
+                        object->SetMaterialType(currentMatType);
+                    }
+                    MarkInspectorTargetsDirty(editor_, inspectorTargets);
                     isGraphicsChanged = true;
                 }
 
                 if (currentMatType == 0) {
                     float metallic = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {
-                        selectedObject->SetMetallic(metallic); isGraphicsChanged = true;
+                        for (Object3d* object : inspectorTargets) {
+                            if (!object) continue;
+                            object->SetMetallic(metallic);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
                     }
                     float roughness = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("粗さ (Roughness)", &roughness, 0.0f, 1.0f)) {
-                        selectedObject->SetRoughness(roughness); isGraphicsChanged = true;
+                        for (Object3d* object : inspectorTargets) {
+                            if (!object) continue;
+                            object->SetRoughness(roughness);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
                     }
                 }
                 else if (currentMatType == 23) {
@@ -509,7 +1147,12 @@ void InspectorWindow::Draw() {
                     ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.45f, 1.0f), ICON_FA_TREE " --- Stylized Terrain Settings ---");
                     Vector4 terrainColor = selectedObject->GetColor();
                     if (ImGui::ColorEdit4("差し色 (Accent Color)", &terrainColor.x)) {
-                        selectedObject->SetColor(terrainColor); isGraphicsChanged = true;
+                        for (Object3d* object : inspectorTargets) {
+                            if (!object) continue;
+                            object->SetColor(terrainColor);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
                     }
                     float textureBlend = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
@@ -730,6 +1373,7 @@ void InspectorWindow::Draw() {
                             if (ImGui::DragFloat("全体サイズ (Portal Size)", &waterData->billboardScale, 0.001f, 0.01f, 8.0f, "%.3f")) isGraphicsChanged = true;
                             if (ImGui::DragFloat("横スケール (Scale X)", &waterData->effectScaleX, 0.001f, 0.05f, 6.0f, "%.3f")) isGraphicsChanged = true;
                             if (ImGui::DragFloat("縦スケール (Scale Y)", &waterData->effectScaleY, 0.001f, 0.05f, 6.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("厚みスケール (Scale Z)", &waterData->effectScaleZ, 0.001f, 0.0f, 3.0f, "%.3f")) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 8.0f, "%.3f")) isGraphicsChanged = true;
                         }
@@ -789,6 +1433,15 @@ void InspectorWindow::Draw() {
                 if (ImGui::Checkbox(ICON_FA_LIGHTBULB " ライト影響を受ける", &enableLighting)) {
                     selectedObject->SetEnableLighting(enableLighting);
                     isGraphicsChanged = true;
+                }
+
+                bool castShadow = selectedObject->GetCastShadow();
+                if (ImGui::Checkbox("影を落とす (Cast Shadow)", &castShadow)) {
+                    selectedObject->SetCastShadow(castShadow);
+                    isGraphicsChanged = true;
+                }
+                if (!castShadow) {
+                    ImGui::TextDisabled("影マップ描画だけを無効化します。ライト影響は別設定です。");
                 }
 
                 static std::vector<std::string> albedoPaths;

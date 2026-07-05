@@ -109,6 +109,8 @@ public:
         float billboardScale;
         float effectScaleX;
         float effectScaleY;
+        float effectScaleZ;
+        float waterParamPadding0;
     };
 
     struct LodLevel {
@@ -134,6 +136,12 @@ public:
     /// WVP行列、ライト、マテリアル時間などを更新する。
     /// </summary>
     void Update();
+
+    /// <summary>
+    /// 現在の有効カメラに合わせて、描画用の行列とカメラ定数だけを更新する。
+    /// Camera Previewなど、ゲームロジックやシェーダー時間を進めたくない描画パスで使う。
+    /// </summary>
+    void RefreshCameraDependentData();
 
     /// <summary>
     /// 通常メッシュを描画する。
@@ -234,6 +242,7 @@ public:
 private:
     bool HasRequiredBuffers() const;
     void InitializeFireProxyModel();
+    void InitializeGatePortalProxyModel();
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
     Model* ResolveDrawModel() const;
     void UpdateUvTransform();
@@ -280,6 +289,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;
     std::unique_ptr<Model> fireProxyModel_;
+    std::unique_ptr<Model> gatePortalProxyModel_;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;

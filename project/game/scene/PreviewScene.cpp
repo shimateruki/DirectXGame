@@ -312,7 +312,7 @@ void PreviewScene::Update(float deltaTime) {
 
 void PreviewScene::Draw() {
 	bool isFirstPerson = false;
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
 	if (!isFirstPerson && player_ && camera) {
 		Vector3 pPos = player_->GetWorldPosition();
@@ -405,7 +405,7 @@ void PreviewScene::Draw() {
 				break;
 			}
 		}
-		if (hasMeshEffects) {
+		if (!dxCommon_->IsCameraPreviewRendering() && hasMeshEffects) {
 			if (!grabUpdated) {
 				dxCommon_->UpdateGrabTexture();
 			}

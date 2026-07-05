@@ -61,6 +61,7 @@ public:
     bool DestroySprite(Sprite* sprite);
     bool IsAlive(Object3d* object);
     bool IsAlive(Sprite* sprite);
+    virtual void RefreshRenderCameraData();
 
     // --- 共通リソース取得 ---
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }

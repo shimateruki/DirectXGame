@@ -1,71 +1,147 @@
-#define NOMINMAX
-#include "NodeGraphEditorWindow.h"
+﻿#include "NodeGraphEditorWindow.h"
 
 #include "DebugEditor.h"
-#include "IconsFontAwesome5.h"
+#include "NodeGraphTemplateRegistry.h"
+
+#ifdef USE_IMGUI
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include "imgui.h"
 #include "imgui_node_editor.h"
+#endif
 
 #include <algorithm>
-#include <cstring>
+#include <array>
+#include <cstdio>
+#include <filesystem>
 #include <string>
+#include <vector>
 
+#ifdef USE_IMGUI
 namespace ed = ax::NodeEditor;
+#endif
+
 using cg2::editor::NodeData;
+using cg2::editor::NodeDryRunBehavior;
 using cg2::editor::NodeGraphIssue;
+using cg2::editor::NodeGraphTemplateRegistry;
 using cg2::editor::NodeIssueSeverity;
 using cg2::editor::NodePin;
 using cg2::editor::NodePinKind;
 using cg2::editor::NodeProperty;
 using cg2::editor::NodePropertyType;
+using cg2::editor::NodeTemplateCategory;
+using cg2::editor::NodeTemplateDefinition;
 using cg2::editor::NodeValueType;
 
 namespace {
-ImVec4 GetPinColor(NodeValueType type) {
-    switch (type) {
-    case NodeValueType::Flow: return ImVec4(1.0f, 0.78f, 0.22f, 1.0f);
-    case NodeValueType::Bool: return ImVec4(0.95f, 0.35f, 0.35f, 1.0f);
-    case NodeValueType::Int: return ImVec4(0.35f, 0.72f, 1.0f, 1.0f);
-    case NodeValueType::Float: return ImVec4(0.35f, 0.95f, 0.62f, 1.0f);
-    case NodeValueType::String: return ImVec4(0.95f, 0.52f, 1.0f, 1.0f);
-    case NodeValueType::Object: return ImVec4(0.65f, 0.58f, 1.0f, 1.0f);
-    case NodeValueType::Effect: return ImVec4(0.45f, 1.0f, 0.92f, 1.0f);
-    case NodeValueType::Scene: return ImVec4(1.0f, 0.62f, 0.35f, 1.0f);
-    case NodeValueType::Any: return ImVec4(0.82f, 0.86f, 0.92f, 1.0f);
-    default: return ImVec4(0.82f, 0.86f, 0.92f, 1.0f);
+
+#ifdef USE_IMGUI
+
+int ToInt(ed::NodeId id) {
+    return static_cast<int>(id.Get());
+}
+
+int ToInt(ed::PinId id) {
+    return static_cast<int>(id.Get());
+}
+
+int ToInt(ed::LinkId id) {
+    return static_cast<int>(id.Get());
+}
+
+void CopyStringToBuffer(const std::string& text, char* buffer, size_t bufferSize) {
+    if (!buffer || bufferSize == 0) {
+        return;
     }
+    std::snprintf(buffer, bufferSize, "%s", text.c_str());
 }
 
-ImU32 ToU32(const ImVec4& color) {
-    return ImGui::ColorConvertFloat4ToU32(color);
+bool EditString(const char* label, std::string& value, size_t bufferSize = 256) {
+    std::vector<char> buffer(bufferSize, '\0');
+    CopyStringToBuffer(value, buffer.data(), buffer.size());
+    if (ImGui::InputText(label, buffer.data(), buffer.size())) {
+        value = buffer.data();
+        return true;
+    }
+    return false;
 }
 
-const char* GetTemplateDescription(const std::string& type) {
-    if (type == "Event.Start") return "グラフの開始地点。";
-    if (type == "Event.OnHit") return "対象オブジェクトが接触した時に開始。";
-    if (type == "Flow.Branch") return "条件でTrue/Falseに分岐。";
-    if (type == "Flow.Wait") return "指定秒数だけ処理を待つ。";
-    if (type == "Action.SetVisible") return "対象オブジェクトの表示を切り替える。";
-    if (type == "Action.PlayEffect") return "対象位置にエフェクトを出す。";
-    if (type == "Action.ChangeScene") return "指定シーンへ遷移する。";
-    if (type == "Debug.Log") return "デバッグログを出す。";
-    return "仕様メモを書く。";
+bool EditMultilineString(const char* label, std::string& value, const ImVec2& size, size_t bufferSize = 1024) {
+    std::vector<char> buffer(bufferSize, '\0');
+    CopyStringToBuffer(value, buffer.data(), buffer.size());
+    if (ImGui::InputTextMultiline(label, buffer.data(), buffer.size(), size)) {
+        value = buffer.data();
+        return true;
+    }
+    return false;
+}
+
+ImVec4 GetPinColor(const NodePin& pin) {
+    if (pin.kind == NodePinKind::Flow) {
+        return ImVec4(0.42f, 0.78f, 1.00f, 1.0f);
+    }
+
+    switch (pin.valueType) {
+    case NodeValueType::Bool:
+        return ImVec4(0.95f, 0.62f, 0.25f, 1.0f);
+    case NodeValueType::Float:
+    case NodeValueType::Int:
+        return ImVec4(0.62f, 0.95f, 0.36f, 1.0f);
+    case NodeValueType::String:
+        return ImVec4(0.92f, 0.70f, 1.00f, 1.0f);
+    case NodeValueType::Object:
+        return ImVec4(1.00f, 0.86f, 0.35f, 1.0f);
+    case NodeValueType::Effect:
+        return ImVec4(1.00f, 0.46f, 0.30f, 1.0f);
+    case NodeValueType::Scene:
+        return ImVec4(0.55f, 0.78f, 1.00f, 1.0f);
+    default:
+        return ImVec4(0.80f, 0.80f, 0.80f, 1.0f);
+    }
 }
 
 ImVec4 GetIssueColor(NodeIssueSeverity severity) {
     switch (severity) {
-    case NodeIssueSeverity::Error: return ImVec4(1.0f, 0.32f, 0.32f, 1.0f);
-    case NodeIssueSeverity::Warning: return ImVec4(1.0f, 0.78f, 0.25f, 1.0f);
-    case NodeIssueSeverity::Info: return ImVec4(0.45f, 1.0f, 0.62f, 1.0f);
-    default: return ImVec4(0.82f, 0.86f, 0.92f, 1.0f);
+    case NodeIssueSeverity::Error:
+        return ImVec4(1.00f, 0.32f, 0.28f, 1.0f);
+    case NodeIssueSeverity::Warning:
+        return ImVec4(1.00f, 0.78f, 0.28f, 1.0f);
+    case NodeIssueSeverity::Info:
+    default:
+        return ImVec4(0.55f, 0.82f, 1.00f, 1.0f);
     }
 }
 
-void CopyStringToBuffer(const std::string& value, char* buffer, size_t bufferSize) {
-    if (!buffer || bufferSize == 0) return;
-    buffer[0] = '\0';
-    strncpy_s(buffer, bufferSize, value.c_str(), bufferSize - 1);
+const char* GetIssueLabel(NodeIssueSeverity severity) {
+    switch (severity) {
+    case NodeIssueSeverity::Error:
+        return "Error";
+    case NodeIssueSeverity::Warning:
+        return "Warning";
+    case NodeIssueSeverity::Info:
+    default:
+        return "Info";
+    }
 }
+
+const char* GetTemplateDescription(const std::string& type) {
+    const NodeTemplateDefinition* definition = NodeGraphTemplateRegistry::Instance().Find(type);
+    return definition ? definition->description.c_str() : "未登録のノードです。";
+}
+
+#endif // USE_IMGUI
+
+float ReadDurationProperty(const NodeData& node, float fallback) {
+    for (const NodeProperty& property : node.properties) {
+        if ((property.name == "duration" || property.name == "seconds") && property.type == NodePropertyType::Float) {
+            return property.floatValue < 0.01f ? 0.01f : property.floatValue;
+        }
+    }
+    return fallback;
+}
+
 } // namespace
 
 NodeGraphEditorWindow::~NodeGraphEditorWindow() {
@@ -74,12 +150,17 @@ NodeGraphEditorWindow::~NodeGraphEditorWindow() {
 
 void NodeGraphEditorWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
-    EnsureInitialized();
+#ifdef USE_IMGUI
+    if (!context_) {
+        context_ = ed::CreateEditor();
+    }
+#endif
 }
 
 void NodeGraphEditorWindow::Finalize() {
 #ifdef USE_IMGUI
     if (context_) {
+        ed::SetCurrentEditor(nullptr);
         ed::DestroyEditor(context_);
         context_ = nullptr;
     }
@@ -88,129 +169,185 @@ void NodeGraphEditorWindow::Finalize() {
 }
 
 void NodeGraphEditorWindow::EnsureInitialized() {
-#ifdef USE_IMGUI
     if (initialized_) {
         return;
     }
 
-    ed::Config config;
-    config.SettingsFile = nullptr;
-    context_ = ed::CreateEditor(&config);
-    graph_.ResetToSample();
-    statusMessage_ = "サンプルグラフを作成しました。";
+    std::string errorMessage;
+    if (!graph_.LoadFromFile(graphPath_, &errorMessage)) {
+        graph_.ResetToSample();
+        statusMessage_ = "サンプルのゲート突入グラフを作成しました。";
+    } else {
+        statusMessage_ = "ノードグラフを読み込みました。";
+    }
+
     initialized_ = true;
     firstFrame_ = true;
-#else
-    initialized_ = true;
-#endif
 }
 
 void NodeGraphEditorWindow::DrawImGui() {
-#ifdef USE_IMGUI
     EnsureInitialized();
+#ifdef USE_IMGUI
+    UpdateDryRun(ImGui::GetIO().DeltaTime);
+    DrawCompactInspectorPanel();
+    if (largeWindowOpen_) {
+        DrawLargeWindow();
+    }
+#endif
+}
 
-    ImGui::TextColored(ImVec4(0.45f, 0.82f, 1.0f, 1.0f), ICON_FA_PROJECT_DIAGRAM " Node Graph Core");
-    ImGui::TextWrapped("ノードの表示は外部ライブラリ、意味・保存・検証・将来の実行はCG2側のNodeGraphCoreで管理します。");
-    ImGui::Separator();
+void NodeGraphEditorWindow::DrawCompactInspectorPanel() {
+#ifdef USE_IMGUI
+    if (ImGui::CollapsingHeader("演出ノード (Effect Sequence Graph)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextWrapped("ゲート突入、フェード、エフェクトなどを順番で組み立てるためのノード編集ツールです。");
+        ImGui::Spacing();
+        ImGui::Text("ノード数: %d", static_cast<int>(graph_.GetNodes().size()));
+        ImGui::Text("リンク数: %d", static_cast<int>(graph_.GetLinks().size()));
+        if (!statusMessage_.empty()) {
+            ImGui::TextWrapped("状態: %s", statusMessage_.c_str());
+        }
+        if (dryRunActive_) {
+            ImGui::TextColored(ImVec4(0.40f, 0.85f, 1.00f, 1.0f), "ドライラン中: %s", dryRunExecutor_.GetStateText().c_str());
+        }
+        if (ImGui::Button("大きなノード編集画面を開く")) {
+            largeWindowOpen_ = true;
+        }
+    }
+#endif
+}
+
+void NodeGraphEditorWindow::DrawLargeWindow() {
+#ifdef USE_IMGUI
+    ImGui::SetNextWindowSize(ImVec2(1380.0f, 780.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("演出ノード - Effect Sequence Graph", &largeWindowOpen_)) {
+        ImGui::End();
+        return;
+    }
 
     DrawToolbar();
-    ImGui::Spacing();
+    ImGui::Separator();
 
-    ImGui::Columns(2, "NodeGraphMainColumns", true);
-    ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.66f);
+    const ImVec2 available = ImGui::GetContentRegionAvail();
+    const float sidePanelWidth = 360.0f;
+    const float requestedCanvasWidth = available.x - sidePanelWidth - 12.0f;
+    const float canvasWidth = requestedCanvasWidth < 520.0f ? 520.0f : requestedCanvasWidth;
+
+    ImGui::BeginChild("TemplateAndCanvas", ImVec2(canvasWidth, 0.0f), true);
+    DrawTemplateButtons();
+    ImGui::Separator();
     DrawCanvas();
-    ImGui::NextColumn();
-    DrawSidePanel();
-    ImGui::Columns(1);
+    ImGui::EndChild();
 
-    if (!statusMessage_.empty()) {
-        ImGui::Separator();
-        ImGui::TextWrapped("%s", statusMessage_.c_str());
-    }
-#else
-    ImGui::TextDisabled("Node Graph は USE_IMGUI 有効時のみ使用できます。");
+    ImGui::SameLine();
+    ImGui::BeginChild("NodeGraphSidePanel", ImVec2(0.0f, 0.0f), true);
+    DrawSidePanel();
+    ImGui::EndChild();
+
+    ImGui::End();
 #endif
 }
 
 void NodeGraphEditorWindow::DrawToolbar() {
 #ifdef USE_IMGUI
-    ImGui::PushItemWidth(360.0f);
-    char pathBuffer[256] = {};
-    CopyStringToBuffer(graphPath_, pathBuffer, sizeof(pathBuffer));
-    if (ImGui::InputText("保存先", pathBuffer, sizeof(pathBuffer))) {
-        graphPath_ = pathBuffer;
-    }
-    ImGui::PopItemWidth();
-
-    if (ImGui::Button(ICON_FA_SAVE " 保存")) {
+    EditString("保存先", graphPath_, 512);
+    ImGui::SameLine();
+    if (ImGui::Button("保存")) {
         SaveGraph();
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_FOLDER_OPEN " 読込")) {
+    if (ImGui::Button("読込")) {
         LoadGraph();
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_SYNC_ALT " サンプル再生成")) {
+    if (ImGui::Button("ゲート突入サンプル")) {
         graph_.ResetToSample();
         selectedNodeId_ = 0;
         firstFrame_ = true;
-        statusMessage_ = "サンプルグラフを再生成しました。";
+        statusMessage_ = "ゲート突入サンプルを再生成しました。";
     }
+    ImGui::SameLine();
+    if (ImGui::Button("ドライラン")) {
+        StartDryRun();
+    }
+    if (!statusMessage_.empty()) {
+        ImGui::TextWrapped("状態: %s", statusMessage_.c_str());
+    }
+#endif
+}
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("ノード追加:");
-    ImGui::SameLine();
-    if (ImGui::Button("開始")) AddNodeFromTemplate("Event.Start");
-    ImGui::SameLine();
-    if (ImGui::Button("接触イベント")) AddNodeFromTemplate("Event.OnHit");
-    ImGui::SameLine();
-    if (ImGui::Button("分岐")) AddNodeFromTemplate("Flow.Branch");
-    ImGui::SameLine();
-    if (ImGui::Button("待機")) AddNodeFromTemplate("Flow.Wait");
-    ImGui::SameLine();
-    if (ImGui::Button("表示切替")) AddNodeFromTemplate("Action.SetVisible");
-    ImGui::SameLine();
-    if (ImGui::Button("エフェクト")) AddNodeFromTemplate("Action.PlayEffect");
-    ImGui::SameLine();
-    if (ImGui::Button("シーン遷移")) AddNodeFromTemplate("Action.ChangeScene");
-    ImGui::SameLine();
-    if (ImGui::Button("ログ")) AddNodeFromTemplate("Debug.Log");
-    ImGui::SameLine();
-    if (ImGui::Button("コメント")) AddNodeFromTemplate("Comment");
+void NodeGraphEditorWindow::DrawTemplateButtons() {
+#ifdef USE_IMGUI
+    const NodeGraphTemplateRegistry& registry = NodeGraphTemplateRegistry::Instance();
+    ImGui::TextUnformatted("ノード追加");
+    ImGui::TextDisabled("用途別に整理したテンプレートから追加します。Data ノードは値ピン接続の基礎です。");
+
+    for (NodeTemplateCategory category : registry.GetDisplayCategories()) {
+        if (!ImGui::TreeNodeEx(NodeGraphTemplateRegistry::ToDisplayName(category), ImGuiTreeNodeFlags_DefaultOpen)) {
+            continue;
+        }
+
+        const std::vector<const NodeTemplateDefinition*> templates = registry.GetTemplatesByCategory(category);
+        for (const NodeTemplateDefinition* definition : templates) {
+            if (!definition) {
+                continue;
+            }
+            ImGui::PushID(definition->type.c_str());
+            if (ImGui::Button(definition->title.c_str(), ImVec2(170.0f, 0.0f))) {
+                AddNodeFromTemplate(definition->type);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s\n%s", definition->type.c_str(), definition->description.c_str());
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", definition->type.c_str());
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
 #endif
 }
 
 void NodeGraphEditorWindow::DrawCanvas() {
 #ifdef USE_IMGUI
-    if (!context_) return;
+    if (!context_) {
+        return;
+    }
 
     ed::SetCurrentEditor(context_);
-    ed::Begin("CG2NodeGraphCanvas", ImVec2(0.0f, 620.0f));
+
+    ImGui::TextUnformatted("グラフキャンバス");
+    ImGui::TextDisabled("制御フローは水色、値ピンは型ごとに色を分けています。右クリック追加はまだ未実装です。");
+
+    ed::Begin("EffectSequenceCanvas", ImVec2(0.0f, 430.0f));
+
+    if (firstFrame_) {
+        for (const NodeData& node : graph_.GetNodes()) {
+            ed::SetNodePosition(ed::NodeId(node.id), ImVec2(node.editorX, node.editorY));
+        }
+        ed::NavigateToContent(0.0f);
+        firstFrame_ = false;
+    }
 
     for (NodeData& node : graph_.GetNodes()) {
         DrawNode(node);
-        if (firstFrame_) {
-            ed::SetNodePosition(ed::NodeId(node.id), ImVec2(node.editorX, node.editorY));
-        }
-        else {
-            ImVec2 position = ed::GetNodePosition(ed::NodeId(node.id));
-            node.editorX = position.x;
-            node.editorY = position.y;
-        }
     }
 
-    for (const auto& link : graph_.GetLinks()) {
-        const NodePin* startPin = graph_.FindPin(link.startPinId);
-        const ImVec4 color = startPin ? GetPinColor(startPin->valueType) : ImVec4(0.8f, 0.9f, 1.0f, 1.0f);
-        ed::Link(ed::LinkId(link.id), ed::PinId(link.startPinId), ed::PinId(link.endPinId), color, 2.5f);
+    for (const cg2::editor::NodeLink& link : graph_.GetLinks()) {
+        ed::Link(ed::LinkId(link.id), ed::PinId(link.startPinId), ed::PinId(link.endPinId), ImColor(150, 210, 255), 2.0f);
     }
 
     HandleCreateLink();
     HandleDeleteLink();
 
     ed::End();
+
+    for (NodeData& node : graph_.GetNodes()) {
+        const ImVec2 position = ed::GetNodePosition(ed::NodeId(node.id));
+        node.editorX = position.x;
+        node.editorY = position.y;
+    }
+
     ed::SetCurrentEditor(nullptr);
-    firstFrame_ = false;
 #endif
 }
 
@@ -228,124 +365,116 @@ void NodeGraphEditorWindow::DrawNode(NodeData& node) {
 #ifdef USE_IMGUI
     ed::BeginNode(ed::NodeId(node.id));
 
-    ImGui::PushID(node.id);
-    const bool selected = selectedNodeId_ == node.id;
-    ImGui::TextColored(selected ? ImVec4(0.45f, 1.0f, 0.75f, 1.0f) : ImVec4(1.0f, 0.86f, 0.42f, 1.0f), "%s", node.title.c_str());
+    ImGui::TextColored(ImVec4(1.0f, 0.92f, 0.55f, 1.0f), "%s", node.title.c_str());
     ImGui::SameLine();
+    ImGui::PushID(node.id);
     if (ImGui::SmallButton("編集")) {
         SelectNode(node.id);
     }
+    ImGui::PopID();
+
     ImGui::TextDisabled("%s", node.type.c_str());
-    ImGui::TextColored(ImVec4(0.62f, 0.78f, 1.0f, 1.0f), "%s", GetTemplateDescription(node.type));
+    const char* description = GetTemplateDescription(node.type);
+    if (description && description[0] != '\0') {
+        ImGui::TextWrapped("%s", description);
+    }
+
     if (!node.note.empty()) {
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 240.0f);
-        ImGui::TextWrapped("%s", node.note.c_str());
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 260.0f);
+        ImGui::TextColored(ImVec4(0.75f, 0.88f, 1.0f, 1.0f), "%s", node.note.c_str());
         ImGui::PopTextWrapPos();
     }
-    ImGui::Separator();
 
-    const size_t rowCount = (std::max)(node.inputs.size(), node.outputs.size());
-    for (size_t row = 0; row < rowCount; ++row) {
-        if (row < node.inputs.size()) {
-            DrawPinLabel(node.inputs[row]);
-        }
-        else {
-            ImGui::Dummy(ImVec2(92.0f, ImGui::GetTextLineHeightWithSpacing()));
-        }
-
-        ImGui::SameLine(170.0f);
-        if (row < node.outputs.size()) {
-            DrawPinLabel(node.outputs[row]);
-        }
-    }
-
-    if (!node.properties.empty()) {
+    if (!node.inputs.empty()) {
         ImGui::Separator();
-        for (const NodeProperty& property : node.properties) {
-            ImGui::TextDisabled("%s: %s", property.label.c_str(), property.value.c_str());
+        for (const NodePin& pin : node.inputs) {
+            ed::BeginPin(ed::PinId(pin.id), ed::PinKind::Input);
+            DrawPinLabel(pin);
+            ed::EndPin();
         }
     }
 
-    ImGui::PopID();
+    if (!node.outputs.empty()) {
+        ImGui::Separator();
+        for (const NodePin& pin : node.outputs) {
+            ed::BeginPin(ed::PinId(pin.id), ed::PinKind::Output);
+            DrawPinLabel(pin);
+            ed::EndPin();
+        }
+    }
+
     ed::EndNode();
 #endif
 }
 
 void NodeGraphEditorWindow::DrawPinLabel(const NodePin& pin) {
 #ifdef USE_IMGUI
-    const ImVec4 color = GetPinColor(pin.valueType);
-    const char* arrow = pin.kind == NodePinKind::Input ? "<" : ">";
-
-    ed::BeginPin(ed::PinId(pin.id), pin.kind == NodePinKind::Input ? ed::PinKind::Input : ed::PinKind::Output);
-    ImGui::TextColored(color, "%s %s", arrow, pin.name.c_str());
+    const ImVec4 color = GetPinColor(pin);
+    ImGui::TextColored(color, "●");
+    ImGui::SameLine();
+    ImGui::Text("%s", pin.name.c_str());
     if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::Text("型: %s", cg2::editor::NodeGraphCore::ToString(pin.valueType));
-        ImGui::Text("ID: %d", pin.id);
-        ImGui::EndTooltip();
+        ImGui::SetTooltip("%s / %s", cg2::editor::ToString(pin.kind).c_str(), cg2::editor::ToString(pin.valueType).c_str());
     }
-    ed::EndPin();
-#else
-    (void)pin;
 #endif
 }
 
 void NodeGraphEditorWindow::DrawSelectedNodeInspector() {
 #ifdef USE_IMGUI
-    ImGui::TextColored(ImVec4(0.45f, 0.82f, 1.0f, 1.0f), ICON_FA_SLIDERS_H " ノード設定");
+    ImGui::TextUnformatted("選択ノード");
     NodeData* node = GetSelectedNode();
     if (!node) {
-        ImGui::TextDisabled("ノード内の『編集』を押すと、ここで意味やパラメータを調整できます。");
+        ImGui::TextDisabled("ノードを選択すると、ここで名前やプロパティを編集できます。");
         return;
     }
 
-    char titleBuffer[128] = {};
-    CopyStringToBuffer(node->title, titleBuffer, sizeof(titleBuffer));
-    if (ImGui::InputText("表示名", titleBuffer, sizeof(titleBuffer))) {
-        node->title = titleBuffer;
-    }
+    ImGui::Text("ID: %d", node->id);
+    ImGui::TextDisabled("%s", node->type.c_str());
+    EditString("表示名", node->title, 256);
+    EditMultilineString("説明メモ", node->note, ImVec2(-1.0f, 72.0f), 1024);
 
-    char noteBuffer[512] = {};
-    CopyStringToBuffer(node->note, noteBuffer, sizeof(noteBuffer));
-    if (ImGui::InputTextMultiline("説明", noteBuffer, sizeof(noteBuffer), ImVec2(-1.0f, 80.0f))) {
-        node->note = noteBuffer;
+    const NodeTemplateDefinition* definition = NodeGraphTemplateRegistry::Instance().Find(node->type);
+    if (definition) {
+        ImGui::Text("分類: %s", NodeGraphTemplateRegistry::ToString(definition->executionKind));
+        ImGui::TextWrapped("用途: %s", definition->description.c_str());
     }
-
-    ImGui::TextDisabled("種類: %s", node->type.c_str());
-    ImGui::TextWrapped("意味: %s", GetTemplateDescription(node->type));
 
     if (!node->properties.empty()) {
-        ImGui::Separator();
+        ImGui::Spacing();
         ImGui::TextUnformatted("プロパティ");
         for (NodeProperty& property : node->properties) {
+            ImGui::PushID(property.name.c_str());
             DrawPropertyEditor(property);
+            ImGui::PopID();
         }
     }
 
-    ImGui::Separator();
-    if (ImGui::Button(ICON_FA_TRASH " ノード削除")) {
-        const int removedId = node->id;
-        if (graph_.RemoveNode(removedId)) {
-            selectedNodeId_ = 0;
-            statusMessage_ = "ノードを削除しました。";
-        }
+    ImGui::Spacing();
+    if (ImGui::Button("ノード削除")) {
+        const int deleteId = node->id;
+        graph_.RemoveNode(deleteId);
+        selectedNodeId_ = 0;
+        statusMessage_ = "ノードを削除しました。";
     }
 #endif
 }
 
 void NodeGraphEditorWindow::DrawValidationPanel() {
 #ifdef USE_IMGUI
-    ImGui::TextColored(ImVec4(0.45f, 0.82f, 1.0f, 1.0f), ICON_FA_CHECK_CIRCLE " 検証");
-    const auto issues = graph_.Validate();
+    ImGui::TextUnformatted("検証");
+    const std::vector<NodeGraphIssue> issues = graph_.Validate();
+    if (issues.empty()) {
+        ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.50f, 1.0f), "問題は見つかりませんでした。");
+        return;
+    }
+
     for (const NodeGraphIssue& issue : issues) {
-        ImGui::TextColored(GetIssueColor(issue.severity), "[%s] %s", cg2::editor::NodeGraphCore::ToString(issue.severity), issue.message.c_str());
+        ImGui::TextColored(GetIssueColor(issue.severity), "[%s] %s", GetIssueLabel(issue.severity), issue.message.c_str());
         if (issue.nodeId != 0) {
             ImGui::SameLine();
-            ImGui::PushID(issue.nodeId + issue.pinId);
-            if (ImGui::SmallButton("選択")) {
+            if (ImGui::SmallButton(("選択##issue" + std::to_string(issue.nodeId)).c_str())) {
                 SelectNode(issue.nodeId);
             }
-            ImGui::PopID();
         }
     }
 #endif
@@ -353,95 +482,88 @@ void NodeGraphEditorWindow::DrawValidationPanel() {
 
 void NodeGraphEditorWindow::DrawExecutionPreviewPanel() {
 #ifdef USE_IMGUI
-    ImGui::TextColored(ImVec4(0.45f, 0.82f, 1.0f, 1.0f), ICON_FA_PLAY " 実行順プレビュー");
-    const auto steps = graph_.BuildExecutionPreview();
+    ImGui::TextUnformatted("実行順プレビュー");
+    const std::vector<cg2::editor::NodeExecutionStep> steps = graph_.BuildExecutionPreview();
     if (steps.empty()) {
-        ImGui::TextDisabled("開始ノードから辿れる実行フローがありません。実行ピン同士を接続してください。");
+        ImGui::TextDisabled("Event から辿れる実行順がありません。");
         return;
     }
 
-    for (const auto& step : steps) {
-        ImGui::Text("%02d. %s", step.order, step.title.c_str());
-        ImGui::SameLine();
-        ImGui::TextDisabled("%s", step.type.c_str());
+    for (const cg2::editor::NodeExecutionStep& step : steps) {
+        ImGui::Text("%02d. %s", step.index, step.title.c_str());
+        ImGui::TextDisabled("    %s", step.type.c_str());
     }
 #endif
 }
 
 void NodeGraphEditorWindow::DrawPropertyEditor(NodeProperty& property) {
 #ifdef USE_IMGUI
-    ImGui::PushID(property.key.c_str());
-    if (property.type == NodePropertyType::Bool) {
-        bool value = property.value == "true" || property.value == "1";
-        if (ImGui::Checkbox(property.label.c_str(), &value)) {
-            property.value = value ? "true" : "false";
-        }
+    const std::string label = property.displayName.empty() ? property.name : property.displayName;
+    switch (property.type) {
+    case NodePropertyType::Bool:
+        ImGui::Checkbox(label.c_str(), &property.boolValue);
+        break;
+    case NodePropertyType::Int:
+        ImGui::InputInt(label.c_str(), &property.intValue);
+        break;
+    case NodePropertyType::Float:
+        ImGui::InputFloat(label.c_str(), &property.floatValue, 0.05f, 0.2f, "%.3f");
+        break;
+    case NodePropertyType::String:
+    default:
+        EditString(label.c_str(), property.stringValue, 512);
+        break;
     }
-    else if (property.type == NodePropertyType::Int) {
-        int value = 0;
-        try { value = std::stoi(property.value); } catch (...) { value = 0; }
-        if (ImGui::InputInt(property.label.c_str(), &value)) {
-            property.value = std::to_string(value);
-        }
-    }
-    else if (property.type == NodePropertyType::Float) {
-        float value = 0.0f;
-        try { value = std::stof(property.value); } catch (...) { value = 0.0f; }
-        if (ImGui::InputFloat(property.label.c_str(), &value, 0.1f, 1.0f, "%.3f")) {
-            property.value = std::to_string(value);
-        }
-    }
-    else {
-        char buffer[256] = {};
-        CopyStringToBuffer(property.value, buffer, sizeof(buffer));
-        if (ImGui::InputText(property.label.c_str(), buffer, sizeof(buffer))) {
-            property.value = buffer;
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("%s", cg2::editor::NodeGraphCore::ToString(property.type));
-    }
-    ImGui::PopID();
-#else
-    (void)property;
 #endif
 }
 
 void NodeGraphEditorWindow::HandleCreateLink() {
 #ifdef USE_IMGUI
+    ed::BeginCreate(ImColor(120, 210, 255), 2.0f);
+
     ed::PinId startPinId;
     ed::PinId endPinId;
-    if (ed::BeginCreate(ImVec4(0.45f, 0.85f, 1.0f, 1.0f), 2.0f)) {
-        if (ed::QueryNewLink(&startPinId, &endPinId)) {
-            const int startId = static_cast<int>(startPinId.Get());
-            const int endId = static_cast<int>(endPinId.Get());
-            std::string reason;
-            if (graph_.CanCreateLink(startId, endId, &reason)) {
-                if (ed::AcceptNewItem(ImVec4(0.45f, 1.0f, 0.65f, 1.0f), 3.0f)) {
-                    graph_.AddLink(startId, endId);
+    if (ed::QueryNewLink(&startPinId, &endPinId)) {
+        int startId = ToInt(startPinId);
+        int endId = ToInt(endPinId);
+        NodePin* startPin = graph_.FindPin(startId);
+        NodePin* endPin = graph_.FindPin(endId);
+
+        if (startPin && endPin && startPin->isInput && !endPin->isInput) {
+            std::swap(startId, endId);
+            std::swap(startPin, endPin);
+        }
+
+        bool canConnect = startPin && endPin && !startPin->isInput && endPin->isInput;
+        canConnect = canConnect && startPin->kind == endPin->kind;
+        canConnect = canConnect && cg2::editor::IsCompatibleValueType(startPin->valueType, endPin->valueType);
+        canConnect = canConnect && graph_.CountIncomingLinks(endId) == 0;
+
+        if (canConnect) {
+            if (ed::AcceptNewItem(ImColor(100, 255, 140), 2.5f)) {
+                if (graph_.AddLink(startId, endId)) {
                     statusMessage_ = "リンクを作成しました。";
+                } else {
+                    statusMessage_ = "リンク作成に失敗しました。";
                 }
             }
-            else {
-                ed::RejectNewItem(ImVec4(1.0f, 0.28f, 0.28f, 1.0f), 2.0f);
-                if (!reason.empty()) {
-                    statusMessage_ = reason;
-                }
-            }
+        } else {
+            ed::RejectNewItem(ImColor(255, 80, 80), 2.0f);
         }
     }
+
     ed::EndCreate();
 #endif
 }
 
 void NodeGraphEditorWindow::HandleDeleteLink() {
 #ifdef USE_IMGUI
+    ed::BeginDelete();
     ed::LinkId deletedLinkId;
-    if (ed::BeginDelete()) {
-        while (ed::QueryDeletedLink(&deletedLinkId)) {
-            if (ed::AcceptDeletedItem()) {
-                graph_.RemoveLink(static_cast<int>(deletedLinkId.Get()));
-                statusMessage_ = "リンクを削除しました。";
-            }
+    while (ed::QueryDeletedLink(&deletedLinkId)) {
+        if (ed::AcceptDeletedItem()) {
+            graph_.RemoveLink(ToInt(deletedLinkId));
+            statusMessage_ = "リンクを削除しました。";
         }
     }
     ed::EndDelete();
@@ -449,112 +571,89 @@ void NodeGraphEditorWindow::HandleDeleteLink() {
 }
 
 void NodeGraphEditorWindow::AddNodeFromTemplate(const std::string& templateType) {
-    const float baseX = 80.0f + static_cast<float>(graph_.GetNodes().size() % 4) * 290.0f;
-    const float baseY = 180.0f + static_cast<float>(graph_.GetNodes().size() / 4) * 220.0f;
-    NodeData* created = nullptr;
+    const float baseX = 80.0f + static_cast<float>(graph_.GetNodes().size() % 4) * 280.0f;
+    const float baseY = 120.0f + static_cast<float>(graph_.GetNodes().size() / 4) * 180.0f;
 
-    if (templateType == "Event.Start") {
-        NodeData& node = graph_.AddNode("Event.Start", "開始", baseX, baseY);
-        graph_.AddOutputPin(node, "実行", NodeValueType::Flow);
-        node.note = "シーン開始や任意イベントの入口です。";
-        created = &node;
-    }
-    else if (templateType == "Event.OnHit") {
-        NodeData& node = graph_.AddNode("Event.OnHit", "接触イベント", baseX, baseY);
-        graph_.AddOutputPin(node, "実行", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "相手", NodeValueType::Object);
-        graph_.AddProperty(node, "selfObject", "対象オブジェクト", NodePropertyType::ObjectName, "Player");
-        graph_.AddProperty(node, "otherTag", "相手タグ", NodePropertyType::String, "Enemy");
-        node.note = "対象が指定タグの相手に触れた時に発火する想定です。";
-        created = &node;
-    }
-    else if (templateType == "Flow.Branch") {
-        NodeData& node = graph_.AddNode("Flow.Branch", "分岐", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddInputPin(node, "条件", NodeValueType::Bool);
-        graph_.AddOutputPin(node, "True", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "False", NodeValueType::Flow);
-        graph_.AddProperty(node, "defaultCondition", "仮条件", NodePropertyType::Bool, "true");
-        node.note = "条件で実行先を分けるノードです。";
-        created = &node;
-    }
-    else if (templateType == "Flow.Wait") {
-        NodeData& node = graph_.AddNode("Flow.Wait", "待機", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "出", NodeValueType::Flow);
-        graph_.AddProperty(node, "seconds", "待機秒数", NodePropertyType::Float, "0.5");
-        node.note = "演出の間を作るために処理を待たせます。";
-        created = &node;
-    }
-    else if (templateType == "Action.SetVisible") {
-        NodeData& node = graph_.AddNode("Action.SetVisible", "表示切替", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "出", NodeValueType::Flow);
-        graph_.AddInputPin(node, "対象", NodeValueType::Object);
-        graph_.AddProperty(node, "targetObject", "対象オブジェクト", NodePropertyType::ObjectName, "ObjectName");
-        graph_.AddProperty(node, "visible", "表示する", NodePropertyType::Bool, "true");
-        node.note = "ステージギミックや演出用オブジェクトの表示状態を切り替えます。";
-        created = &node;
-    }
-    else if (templateType == "Action.PlayEffect") {
-        NodeData& node = graph_.AddNode("Action.PlayEffect", "エフェクト再生", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "出", NodeValueType::Flow);
-        graph_.AddInputPin(node, "対象", NodeValueType::Object);
-        graph_.AddProperty(node, "effectName", "エフェクト名", NodePropertyType::EffectName, "HitSpark");
-        graph_.AddProperty(node, "targetObject", "対象オブジェクト", NodePropertyType::ObjectName, "Player");
-        node.note = "対象位置にエフェクトを発生させるアクションです。";
-        created = &node;
-    }
-    else if (templateType == "Action.ChangeScene") {
-        NodeData& node = graph_.AddNode("Action.ChangeScene", "シーン遷移", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddProperty(node, "sceneName", "遷移先", NodePropertyType::SceneName, "TITLE");
-        graph_.AddProperty(node, "fadeSeconds", "フェード秒数", NodePropertyType::Float, "0.5");
-        node.note = "フェードつきでシーンを切り替える想定です。";
-        created = &node;
-    }
-    else if (templateType == "Debug.Log") {
-        NodeData& node = graph_.AddNode("Debug.Log", "ログ表示", baseX, baseY);
-        graph_.AddInputPin(node, "入", NodeValueType::Flow);
-        graph_.AddOutputPin(node, "出", NodeValueType::Flow);
-        graph_.AddProperty(node, "message", "表示文字", NodePropertyType::String, "Debug log");
-        node.note = "ランタイム接続の確認用にログを出します。";
-        created = &node;
-    }
-    else {
-        NodeData& node = graph_.AddNode("Comment", "コメント", baseX, baseY);
-        graph_.AddProperty(node, "text", "メモ", NodePropertyType::String, "ここに仕様メモを書く");
-        node.note = "仕様や意図を書いて、あとから見返しやすくします。";
-        created = &node;
+    NodeData* node = NodeGraphTemplateRegistry::Instance().CreateNode(graph_, templateType, baseX, baseY);
+    if (!node) {
+        statusMessage_ = "未登録のノードテンプレートです: " + templateType;
+        return;
     }
 
-    if (created) {
-        SelectNode(created->id);
+    SelectNode(node->id);
+#ifdef USE_IMGUI
+    if (context_) {
+        ed::SetCurrentEditor(context_);
+        ed::SetNodePosition(ed::NodeId(node->id), ImVec2(node->editorX, node->editorY));
+        ed::SetCurrentEditor(nullptr);
     }
-    firstFrame_ = true;
-    statusMessage_ = "ノードを追加しました: " + templateType;
+#endif
+    statusMessage_ = "ノードを追加しました: " + node->title;
+}
+
+void NodeGraphEditorWindow::StartDryRun() {
+    dryRunExecutor_.ClearActionHandlers();
+    dryRunExecutor_.SetLogHandler([this](const std::string& message) {
+        statusMessage_ = "ログ: " + message;
+    });
+
+    const NodeGraphTemplateRegistry& registry = NodeGraphTemplateRegistry::Instance();
+    for (const NodeTemplateDefinition& definition : registry.GetTemplates()) {
+        if (definition.dryRunBehavior == NodeDryRunBehavior::Immediate) {
+            dryRunExecutor_.RegisterActionHandler(definition.type, [title = definition.title](cg2::editor::NodeActionContext& context) {
+                context.Log("実行: " + title);
+                return true;
+            });
+        } else if (definition.dryRunBehavior == NodeDryRunBehavior::Timed) {
+            dryRunExecutor_.RegisterActionHandler(definition.type, [title = definition.title](cg2::editor::NodeActionContext& context) {
+                const float seconds = context.node ? ReadDurationProperty(*context.node, 0.35f) : 0.35f;
+                context.Log("演出待機: " + title);
+                context.RequestWait(seconds);
+                return true;
+            });
+        }
+    }
+
+    std::string errorMessage;
+    if (!dryRunExecutor_.Start(graph_, "Event.OnEnterGate", &errorMessage)) {
+        statusMessage_ = "ドライラン開始失敗: " + errorMessage;
+        dryRunActive_ = false;
+        return;
+    }
+
+    dryRunActive_ = true;
+    statusMessage_ = "ドライランを開始しました。";
+}
+
+void NodeGraphEditorWindow::UpdateDryRun(float deltaTime) {
+    if (!dryRunActive_) {
+        return;
+    }
+
+    dryRunExecutor_.Update(deltaTime);
+    if (dryRunExecutor_.IsFinished()) {
+        dryRunActive_ = false;
+        statusMessage_ = dryRunExecutor_.GetStatusMessage();
+    }
 }
 
 void NodeGraphEditorWindow::SaveGraph() {
-    std::string error;
-    if (graph_.SaveToFile(graphPath_, &error)) {
-        statusMessage_ = "保存しました: " + graphPath_;
-    }
-    else {
-        statusMessage_ = "保存に失敗しました: " + error;
+    std::string errorMessage;
+    if (graph_.SaveToFile(graphPath_, &errorMessage)) {
+        statusMessage_ = "ノードグラフを保存しました。";
+    } else {
+        statusMessage_ = "保存に失敗しました: " + errorMessage;
     }
 }
 
 void NodeGraphEditorWindow::LoadGraph() {
-    std::string error;
-    if (graph_.LoadFromFile(graphPath_, &error)) {
+    std::string errorMessage;
+    if (graph_.LoadFromFile(graphPath_, &errorMessage)) {
         selectedNodeId_ = 0;
         firstFrame_ = true;
-        statusMessage_ = "読み込みました: " + graphPath_;
-    }
-    else {
-        statusMessage_ = "読み込みに失敗しました: " + error;
+        statusMessage_ = "ノードグラフを読み込みました。";
+    } else {
+        statusMessage_ = "読み込みに失敗しました: " + errorMessage;
     }
 }
 
@@ -563,16 +662,15 @@ void NodeGraphEditorWindow::SelectNode(int nodeId) {
 #ifdef USE_IMGUI
     if (context_) {
         ed::SetCurrentEditor(context_);
-        ed::SelectNode(ed::NodeId(nodeId), false);
-        ed::NavigateToSelection(false, 0.25f);
+        ed::SelectNode(ed::NodeId(nodeId));
         ed::SetCurrentEditor(nullptr);
     }
 #endif
 }
 
 NodeData* NodeGraphEditorWindow::GetSelectedNode() {
-    if (selectedNodeId_ == 0) {
-        return nullptr;
-    }
     return graph_.FindNode(selectedNodeId_);
 }
+
+
+

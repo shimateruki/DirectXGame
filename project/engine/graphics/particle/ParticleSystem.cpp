@@ -248,7 +248,7 @@ void ParticleSystem::Update(float deltaTime) {
     // --- 2. 行列などの事前計算 ---
 
     // カメラ情報取得
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     // カメラが無い場合の安全対策 (必要に応じて)
     if (!camera) return;
 

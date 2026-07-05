@@ -297,7 +297,7 @@ void TutorialScene::Update(float deltaTime) {
 
 void TutorialScene::Draw() {
 	bool isFirstPerson = false;
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
 	if (player_ && camera) {
 		Vector3 pPos = player_->GetWorldPosition();

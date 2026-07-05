@@ -12,6 +12,8 @@ class DirectXCommon;
 /// </summary>
 class PostEffect {
 public:
+    static constexpr int kCameraPreviewTextureIndex = 6;
+
     static PostEffect* GetInstance() {
         static PostEffect instance;
         return &instance;
@@ -99,6 +101,7 @@ public:
 
     // 描画前準備: 指定したレンダーターゲットをセット
     void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
+    void PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex = kCameraPreviewTextureIndex, bool clear = true);
 
     // リソースバリア管理
     void TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex);
@@ -125,6 +128,8 @@ private:
     struct RenderTexture {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
+        Microsoft::WRL::ComPtr<ID3D12Resource> depthResource;
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
         uint32_t srvHandle = 0;
         D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };

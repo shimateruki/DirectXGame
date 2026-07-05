@@ -7,6 +7,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.14091990888118744,
@@ -44,6 +45,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -119,6 +121,7 @@
             0.6000000238418579,
             0.6000000238418579
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -140,6 +143,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 0.0,
@@ -177,6 +181,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -252,6 +257,7 @@
             0.8500000238418579,
             0.8500000238418579
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -273,6 +279,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 0.0,
@@ -310,6 +317,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -385,6 +393,7 @@
             0.1599999964237213,
             0.1599999964237213
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -406,6 +415,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.001757591962814331,
@@ -443,6 +453,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -518,6 +529,7 @@
             2.0,
             2.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -539,6 +551,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 0.0,
@@ -576,6 +589,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -651,6 +665,7 @@
             1.0,
             1.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -672,6 +687,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.001757591962814331,
@@ -709,6 +725,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -784,6 +801,7 @@
             2.0,
             2.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -805,6 +823,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.001757591962814331,
@@ -842,6 +861,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -917,6 +937,7 @@
             3.5999999046325684,
             3.5999999046325684
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -938,6 +959,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 0.0,
@@ -975,6 +997,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -1050,6 +1073,7 @@
             1.0,
             1.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -1071,6 +1095,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.001757591962814331,
@@ -1108,6 +1133,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -1183,6 +1209,7 @@
             2.0,
             2.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [
@@ -1204,6 +1231,7 @@
         "autoTextureTiling": false,
         "blendMode": 1,
         "builtinCreateTemplate": true,
+        "castShadow": true,
         "collider": {
             "center": [
                 -0.001757591962814331,
@@ -1241,6 +1269,7 @@
         "isLocked": false,
         "isVisible": true,
         "itemType": "",
+        "layer": "Default",
         "localFog": {
             "color": [
                 0.20000000298023224,
@@ -1316,6 +1345,7 @@
             2.0,
             2.0
         ],
+        "tag": "",
         "targetID": -1,
         "texturePath": "",
         "textureTiling": [

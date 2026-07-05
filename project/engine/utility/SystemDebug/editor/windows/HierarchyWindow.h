@@ -36,4 +36,5 @@ private:
 
     // 0: All, 1: Player, 2: Enemy, 3: Object
     int currentCategoryFilter_ = 0;
+    int currentLayerFilter_ = 0;
 };

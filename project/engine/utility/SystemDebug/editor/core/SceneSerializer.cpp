@@ -153,6 +153,8 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     std::string className = obj->GetClassName();
     if (className.empty()) className = "Model";
     d["type"] = className;
+    d["tag"] = obj->GetTag();
+    d["layer"] = obj->GetLayer().empty() ? "Default" : obj->GetLayer();
     d["saveCategory"] = obj->GetSaveCategory();
     d["enemyType"] = obj->GetEnemyType();
     d["gimmickType"] = obj->GetGimmickType();
@@ -238,6 +240,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["enableEnvMap"] = obj->GetEnableEnvMap();
     d["envIntensity"] = obj->GetEnvIntensity();
     d["emissive"] = obj->GetEmissive();
+    d["castShadow"] = obj->GetCastShadow();
     d["particleName"] = obj->GetParticleName();
     d["gpuParticleName"] = obj->GetGPUParticleName();
     d["meshEffect1"] = obj->GetMeshEffect1Name();
@@ -286,6 +289,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         jw["effectScale"] = water->effectScale;
         jw["effectScaleX"] = water->effectScaleX;
         jw["effectScaleY"] = water->effectScaleY;
+        jw["effectScaleZ"] = water->effectScaleZ;
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;

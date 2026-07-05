@@ -1,19 +1,19 @@
-#pragma once
-
-#include <cstdint>
-#include <optional>
-#include <string>
-#include <vector>
+﻿#pragma once
 
 #include "json.hpp"
 
+#include <string>
+#include <vector>
+
 namespace cg2::editor {
 
+// ノードのピンが制御フローを流すのか、値を受け渡すのかを表します。
 enum class NodePinKind {
-    Input,
-    Output
+    Flow,
+    Value,
 };
 
+// 値ピンが扱うデータ型です。Flow は制御ピン用の特別な型として扱います。
 enum class NodeValueType {
     Flow,
     Bool,
@@ -23,37 +23,40 @@ enum class NodeValueType {
     Object,
     Effect,
     Scene,
-    Any
+    Unknown,
 };
 
+// Inspector に表示するノードプロパティの編集型です。
 enum class NodePropertyType {
     Bool,
     Int,
     Float,
     String,
-    ObjectName,
-    EffectName,
-    SceneName
 };
 
+// 検証結果の重要度です。
 enum class NodeIssueSeverity {
     Info,
     Warning,
-    Error
+    Error,
 };
 
 struct NodePin {
     int id = 0;
     std::string name;
-    NodePinKind kind = NodePinKind::Input;
-    NodeValueType valueType = NodeValueType::Any;
+    NodePinKind kind = NodePinKind::Flow;
+    NodeValueType valueType = NodeValueType::Flow;
+    bool isInput = false;
 };
 
 struct NodeProperty {
-    std::string key;
-    std::string label;
+    std::string name;
+    std::string displayName;
     NodePropertyType type = NodePropertyType::String;
-    std::string value;
+    bool boolValue = false;
+    int intValue = 0;
+    float floatValue = 0.0f;
+    std::string stringValue;
 };
 
 struct NodeData {
@@ -77,76 +80,63 @@ struct NodeLink {
 struct NodeGraphIssue {
     NodeIssueSeverity severity = NodeIssueSeverity::Info;
     int nodeId = 0;
-    int pinId = 0;
+    int linkId = 0;
     std::string message;
 };
 
 struct NodeExecutionStep {
-    int order = 0;
+    int index = 0;
     int nodeId = 0;
-    std::string title;
     std::string type;
+    std::string title;
+    std::string note;
 };
 
+// Effect Sequence Graph の実体です。
+// UI 表示だけでなく、保存、検証、ドライラン用の実行順作成まで担当します。
 class NodeGraphCore {
 public:
     void Clear();
     void ResetToSample();
 
     NodeData& AddNode(const std::string& type, const std::string& title, float editorX, float editorY);
-    NodePin& AddInputPin(NodeData& node, const std::string& name, NodeValueType valueType);
-    NodePin& AddOutputPin(NodeData& node, const std::string& name, NodeValueType valueType);
-    NodeProperty& AddProperty(NodeData& node, const std::string& key, const std::string& label, NodePropertyType type, const std::string& defaultValue);
-
-    bool CanCreateLink(int startPinId, int endPinId, std::string* reason = nullptr) const;
+    NodePin& AddInputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
+    NodePin& AddOutputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
+    NodeProperty& AddProperty(NodeData& node, const std::string& name, const std::string& displayName, NodePropertyType type);
     NodeLink* AddLink(int startPinId, int endPinId);
-    bool RemoveLink(int linkId);
-    void RemoveLinksForPin(int pinId);
+
     bool RemoveNode(int nodeId);
+    bool RemoveLink(int linkId);
 
     NodeData* FindNode(int nodeId);
     const NodeData* FindNode(int nodeId) const;
     NodePin* FindPin(int pinId);
     const NodePin* FindPin(int pinId) const;
-    NodeProperty* FindProperty(NodeData& node, const std::string& key);
-    const NodeProperty* FindProperty(const NodeData& node, const std::string& key) const;
     NodeData* FindNodeByPin(int pinId);
     const NodeData* FindNodeByPin(int pinId) const;
     NodeLink* FindLink(int linkId);
     const NodeLink* FindLink(int linkId) const;
+    const NodeLink* FindIncomingLink(int inputPinId) const;
+    const NodeData* FindOutputNodeConnectedTo(int inputPinId) const;
+
+    int CountIncomingLinks(int inputPinId) const;
+    int CountOutgoingLinks(int outputPinId) const;
+
+    bool SaveToFile(const std::string& path, std::string* errorMessage = nullptr) const;
+    bool LoadFromFile(const std::string& path, std::string* errorMessage = nullptr);
 
     std::vector<NodeGraphIssue> Validate() const;
     std::vector<NodeExecutionStep> BuildExecutionPreview() const;
 
-    const std::vector<NodeData>& GetNodes() const { return nodes_; }
     std::vector<NodeData>& GetNodes() { return nodes_; }
-    const std::vector<NodeLink>& GetLinks() const { return links_; }
+    const std::vector<NodeData>& GetNodes() const { return nodes_; }
     std::vector<NodeLink>& GetLinks() { return links_; }
-
-    nlohmann::json ToJson() const;
-    bool FromJson(const nlohmann::json& json, std::string* errorMessage = nullptr);
-    bool SaveToFile(const std::string& path, std::string* errorMessage = nullptr) const;
-    bool LoadFromFile(const std::string& path, std::string* errorMessage = nullptr);
-
-    static const char* ToString(NodePinKind kind);
-    static const char* ToString(NodeValueType type);
-    static const char* ToString(NodePropertyType type);
-    static const char* ToString(NodeIssueSeverity severity);
+    const std::vector<NodeLink>& GetLinks() const { return links_; }
 
 private:
     int AllocateNodeId();
     int AllocatePinId();
     int AllocateLinkId();
-    void RebuildNextIds();
-    bool IsPinLinkedTo(int startPinId, int endPinId) const;
-    int CountIncomingLinks(int pinId) const;
-    int CountOutgoingLinks(int pinId) const;
-    std::vector<int> GetFlowInputPinIds(const NodeData& node) const;
-    std::vector<int> GetFlowOutputPinIds(const NodeData& node) const;
-    static std::optional<NodePinKind> ParsePinKind(const std::string& value);
-    static std::optional<NodeValueType> ParseValueType(const std::string& value);
-    static std::optional<NodePropertyType> ParsePropertyType(const std::string& value);
-    static bool IsCompatibleValueType(NodeValueType outputType, NodeValueType inputType);
 
     std::vector<NodeData> nodes_;
     std::vector<NodeLink> links_;
@@ -154,5 +144,14 @@ private:
     int nextPinId_ = 1001;
     int nextLinkId_ = 2001;
 };
+
+std::string ToString(NodePinKind value);
+std::string ToString(NodeValueType value);
+std::string ToString(NodePropertyType value);
+std::string ToString(NodeIssueSeverity value);
+NodePinKind ParseNodePinKind(const std::string& value);
+NodeValueType ParseNodeValueType(const std::string& value);
+NodePropertyType ParseNodePropertyType(const std::string& value);
+bool IsCompatibleValueType(NodeValueType outputType, NodeValueType inputType);
 
 } // namespace cg2::editor

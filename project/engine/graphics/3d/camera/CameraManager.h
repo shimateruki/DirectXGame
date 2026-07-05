@@ -30,6 +30,7 @@ public:
     // カメラ参照の取得と切り替え。
     Camera* GetMainCamera() { return mainCamera_.get(); }
     Camera* GetActiveCamera() { return activeCamera_ ? activeCamera_ : mainCamera_.get(); }
+    Camera* GetActiveCameraOverride() const { return activeCamera_; }
     void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
 
 private:

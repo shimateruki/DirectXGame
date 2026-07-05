@@ -1110,7 +1110,7 @@ void TitleScene::DrawSaveSlotUI() {
 void TitleScene::Draw() {
     // --- 一人称視点判定 ---
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
     if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
         isFirstPerson = true;

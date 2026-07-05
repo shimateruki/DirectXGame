@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -926,9 +926,18 @@
   <ItemGroup>
     <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h" />
   </ItemGroup>
 </Project>
+
+
+
+
+

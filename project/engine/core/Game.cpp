@@ -2,6 +2,7 @@
 #include "Game.h"
 
 #include "CameraEditor.h"
+#include "CameraManager.h"
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
@@ -33,6 +34,21 @@ namespace {
 constexpr float kDeltaTimeClamp = 0.1f;
 constexpr float kFixedDeltaTime = 1.0f / 60.0f;
 constexpr int kHistorySampleCount = 120;
+
+#ifdef USE_IMGUI
+void RefreshSceneRenderCameraData(SceneManager* sceneManager) {
+	if (!sceneManager) {
+		return;
+	}
+
+	BaseScene* currentScene = sceneManager->GetCurrentScene();
+	if (!currentScene) {
+		return;
+	}
+
+	currentScene->RefreshRenderCameraData();
+}
+#endif
 }
 
 void Game::Initialize() {
@@ -210,8 +226,18 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		return;
 	}
 
-	editorController_->BeginFrame();
-	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
+	if (InputManager::GetInstance()->IsKeyTriggered(DIK_F10)) {
+		editorController_->SetPortfolioCaptureMode(!editorController_->IsPortfolioCaptureMode());
+	}
+
+	if (editorController_->IsPortfolioCaptureMode()) {
+		editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
+		editorFrameState_ = {};
+		editorController_->ApplyCameraInputState(editorFrameState_, isPlaying_);
+		return;
+	}
+
+	editorController_->BeginFrame();	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
 	if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty()) {
 		currentSceneName_ = sceneManager_->GetCurrentSceneName();
 	}
@@ -309,8 +335,13 @@ void Game::Draw() {
 
 void Game::DrawEditorFrame(PostEffect* postEffect) {
 #ifdef USE_IMGUI
+	if (editorController_ && editorController_->IsPortfolioCaptureMode()) {
+		DrawRuntimeFrame(postEffect);
+		return;
+	}
 	DrawSceneToRenderTexture(true);
 	ApplyPostEffectPipeline(postEffect, true);
+	DrawCameraEditorPreview(postEffect);
 
 	dxCommon_->StartGpuProfile("エディタUI");
 	dxCommon_->PreDrawBackBuffer();
@@ -409,6 +440,46 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 
 	dxCommon_->EndGpuProfile("メイン描画");
 	dxCommon_->PostDrawRenderTexture();
+}
+
+void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
+#ifdef USE_IMGUI
+	if (!postEffect || !sceneManager_) {
+		return;
+	}
+
+	CameraEditor* cameraEditor = CameraEditor::GetInstance();
+	if (!cameraEditor || !cameraEditor->ShouldRenderCameraPreview()) {
+		return;
+	}
+
+	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+	CameraManager* cameraManager = CameraManager::GetInstance();
+	Camera* previousCameraOverride = cameraManager->GetActiveCameraOverride();
+	Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f);
+	if (!previewCamera) {
+		return;
+	}
+
+	dxCommon_->SetCameraPreviewRendering(true);
+	cameraManager->SetActiveCamera(previewCamera);
+	RefreshSceneRenderCameraData(sceneManager_.get());
+	postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
+
+	ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+	ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+	// Camera Previewは通常GameViewとは別のRenderTextureへ描画する。
+	// GrabTexture依存のエフェクトは各Scene側でPreview中だけ抑制する。
+	sceneManager_->Draw();
+	DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+
+	postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
+	cameraManager->SetActiveCamera(previousCameraOverride);
+	RefreshSceneRenderCameraData(sceneManager_.get());
+	dxCommon_->SetCameraPreviewRendering(false);
+#else
+	(void)postEffect;
+#endif
 }
 
 void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView) {

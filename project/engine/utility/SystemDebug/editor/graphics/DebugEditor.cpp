@@ -409,6 +409,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
     selectedObject_ = nullptr;
+    selectedObjects_.clear();
     lastUpdatedScene_ = nullptr;
     PresetManager::GetInstance()->Initialize();
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
@@ -505,7 +506,9 @@ void DebugEditor::Update() {
     // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
     // =========================================================
     if (lastUpdatedScene_ != currentScene) {
-        selectedObject_ = nullptr;
+        ClearObjectSelection();
+        isSelectionRectDragging_ = false;
+        isSelectionRectReady_ = false;
         previewObject_ = nullptr;
         previewChildObjects_.clear();
         brushPreviewObjects_.clear();
@@ -544,7 +547,7 @@ void DebugEditor::Update() {
     if (current != nullptr && current != this) {
         Object3d* obj = dynamic_cast<Object3d*>(current);
         if (obj) {
-            selectedObject_ = obj;
+            SetSelectedObject(obj);
         }
     }
 
@@ -622,30 +625,49 @@ void DebugEditor::Update() {
         }
 
         // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---
-        if (!isPathEditMode_ && isGameViewHovered_ && !isCameraEditorSelected && !ImGuizmo::IsOver()) {
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                Ray ray = ScreenPointToRay(gameViewMousePos_);
-                auto& objects = currentScene->GetObjects();
-                RayResult best; best.isHit = false; best.distance = 1e5f; Object3d* hit = nullptr;
+        const bool canSelectInGameView = !isPathEditMode_ && !isCameraEditorSelected && !ImGuizmo::IsOver();
+        if (canSelectInGameView && (isGameViewHovered_ || isSelectionRectDragging_)) {
+            const bool isShiftPressed = ImGui::GetIO().KeyShift;
+            constexpr float kSelectionDragThreshold = 6.0f;
 
-                for (auto& obj : objects) {
-                    if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-                    if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
+            if (isGameViewHovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                selectionRectStart_ = gameViewMousePos_;
+                selectionRectEnd_ = gameViewMousePos_;
+                isSelectionRectDragging_ = true;
+                isSelectionRectReady_ = false;
+            }
 
-                    Matrix4x4 wm = obj->GetWorldMatrix();
-                    Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
-                    Vector3 ws = obj->GetTransform()->scale;
-                    RayResult tmp;
+            if (isSelectionRectDragging_ && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                selectionRectEnd_ = gameViewMousePos_;
+                const float diffX = selectionRectEnd_.x - selectionRectStart_.x;
+                const float diffY = selectionRectEnd_.y - selectionRectStart_.y;
+                const float absX = diffX < 0.0f ? -diffX : diffX;
+                const float absY = diffY < 0.0f ? -diffY : diffY;
+                isSelectionRectReady_ = absX >= kSelectionDragThreshold || absY >= kSelectionDragThreshold;
+            }
 
-                    if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
-                        if (tmp.distance < best.distance) { best = tmp; hit = obj.get(); }
+            if (isSelectionRectDragging_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                if (isSelectionRectReady_) {
+                    SelectObjectsInGameViewRect(selectionRectStart_, selectionRectEnd_, isShiftPressed);
+                } else {
+                    Object3d* hit = PickObjectAtGameViewPos(gameViewMousePos_);
+                    if (hit) {
+                        if (isShiftPressed) {
+                            ToggleSelectedObject(hit);
+                        } else {
+                            SetSelectedObject(hit);
+                        }
+                        if (selectedObject_) {
+                            EditorManager::GetInstance()->SetSelectedObject(this);
+                        }
+                    } else if (!isShiftPressed) {
+                        ClearObjectSelection();
+                        EditorManager::GetInstance()->ClearSelection();
                     }
                 }
 
-                if (hit) {
-                    selectedObject_ = hit;
-                    EditorManager::GetInstance()->SetSelectedObject(this);
-                }
+                isSelectionRectDragging_ = false;
+                isSelectionRectReady_ = false;
             }
         }
 
@@ -709,8 +731,17 @@ void DebugEditor::Update() {
                             isDraggingTransform_ = true;
                             tempTransformStart_ = *tr;
                             tempObjectStateStart_ = CaptureObjectState(selectedObject_);
+                            groupTransformStartStates_.clear();
+                            for (Object3d* object : selectedObjects_) {
+                                if (!object || !IsObjectInCurrentScene(object)) continue;
+                                ObjectEditSnapshot snapshot;
+                                snapshot.object = object;
+                                snapshot.beforeState = CaptureObjectState(object);
+                                groupTransformStartStates_.push_back(snapshot);
+                            }
                         }
 
+                        Matrix4x4 primaryWorldBefore = world;
                         Matrix4x4 editedWorld = gizmoWorld;
                         if (useTranslatedPivot) {
                             Vector3 editedPivotWorld = {
@@ -748,14 +779,63 @@ void DebugEditor::Update() {
                         selectedObject_->UpdateLocalMatrix();
                         selectedObject_->UpdateWorldMatrix();
 
+                        Matrix4x4 primaryWorldAfter = selectedObject_->GetWorldMatrix();
+                        Matrix4x4 groupDelta = math.Multiply(math.Inverse(primaryWorldBefore), primaryWorldAfter);
+
+                        for (Object3d* object : selectedObjects_) {
+                            if (!object || object == selectedObject_ || !IsObjectInCurrentScene(object) || object->GetIsLocked()) continue;
+
+                            bool hasSelectedAncestor = false;
+                            for (Object3d* parent = object->GetParent(); parent != nullptr; parent = parent->GetParent()) {
+                                if (IsObjectSelected(parent)) {
+                                    hasSelectedAncestor = true;
+                                    break;
+                                }
+                            }
+                            if (hasSelectedAncestor) {
+                                continue;
+                            }
+
+                            object->UpdateWorldMatrix();
+                            Matrix4x4 objectWorldBefore = object->GetWorldMatrix();
+                            Matrix4x4 objectWorldAfter = math.Multiply(objectWorldBefore, groupDelta);
+                            Matrix4x4 objectLocalAfter = objectWorldAfter;
+                            if (object->GetParent()) {
+                                Matrix4x4 parentWorldInv = math.Inverse(object->GetParent()->GetWorldMatrix());
+                                objectLocalAfter = math.Multiply(objectWorldAfter, parentWorldInv);
+                            }
+
+                            Vector3 otherScale, otherRotDeg, otherTranslate;
+                            ImGuizmo::DecomposeMatrixToComponents(&objectLocalAfter.m[0][0], &otherTranslate.x, &otherRotDeg.x, &otherScale.x);
+
+                            Transform* otherTransform = object->GetTransform();
+                            otherTransform->translate = otherTranslate;
+                            otherTransform->scale = otherScale;
+                            otherTransform->quaternion = math_.MatrixToQuaternion(objectLocalAfter);
+                            otherTransform->isQuaternionMaster = true;
+                            otherTransform->rotate = { ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) };
+                            object->UpdateLocalMatrix();
+                            object->UpdateWorldMatrix();
+                        }
+
                     }
                     else if (isDraggingTransform_) {
                         isDraggingTransform_ = false;
-                        RegisterObjectEdited(selectedObject_, tempObjectStateStart_, "Gizmo Transform");
+                        if (!groupTransformStartStates_.empty()) {
+                            for (const ObjectEditSnapshot& snapshot : groupTransformStartStates_) {
+                                if (!snapshot.object || !IsObjectInCurrentScene(snapshot.object)) continue;
+                                RegisterObjectEdited(snapshot.object, snapshot.beforeState, snapshot.object == selectedObject_ ? "Gizmo Transform" : "Gizmo Group Transform");
+                            }
+                            groupTransformStartStates_.clear();
+                        } else {
+                            RegisterObjectEdited(selectedObject_, tempObjectStateStart_, "Gizmo Transform");
+                        }
                     }
                 }
             }
         }
+        DrawSelectionRectangleOverlay();
+        DrawSelectedObjectBoundsOverlay();
     }
 
     // =========================================================
@@ -2221,6 +2301,272 @@ std::string DebugEditor::MakeSavePreviewTitle(SaveMode mode) const {
     }
 }
 
+void DebugEditor::SetSelectedObject(Object3d* obj) {
+    selectedObjects_.clear();
+    if (obj && IsObjectInCurrentScene(obj)) {
+        selectedObject_ = obj;
+        selectedObjects_.push_back(obj);
+    } else {
+        selectedObject_ = nullptr;
+    }
+}
+
+bool DebugEditor::IsObjectSelected(const Object3d* object) const {
+    if (!object || !IsObjectInCurrentScene(object)) return false;
+
+    for (Object3d* selected : selectedObjects_) {
+        if (selected == object) return true;
+    }
+    return false;
+}
+
+void DebugEditor::ClearObjectSelection() {
+    selectedObject_ = nullptr;
+    selectedObjects_.clear();
+    groupTransformStartStates_.clear();
+}
+
+void DebugEditor::AddSelectedObject(Object3d* object) {
+    if (!object || !IsObjectInCurrentScene(object)) return;
+
+    for (Object3d* selected : selectedObjects_) {
+        if (selected == object) {
+            selectedObject_ = object;
+            return;
+        }
+    }
+
+    selectedObjects_.push_back(object);
+    selectedObject_ = object;
+}
+
+void DebugEditor::ToggleSelectedObject(Object3d* object) {
+    if (!object || !IsObjectInCurrentScene(object)) return;
+
+    for (auto it = selectedObjects_.begin(); it != selectedObjects_.end(); ++it) {
+        if (*it == object) {
+            selectedObjects_.erase(it);
+            selectedObject_ = selectedObjects_.empty() ? nullptr : selectedObjects_.back();
+            return;
+        }
+    }
+
+    AddSelectedObject(object);
+}
+
+void DebugEditor::PruneInvalidSelectedObjects() {
+    std::vector<Object3d*> validObjects;
+    validObjects.reserve(selectedObjects_.size());
+
+    for (Object3d* object : selectedObjects_) {
+        if (!object || !IsObjectInCurrentScene(object)) continue;
+
+        bool alreadyAdded = false;
+        for (Object3d* added : validObjects) {
+            if (added == object) {
+                alreadyAdded = true;
+                break;
+            }
+        }
+        if (!alreadyAdded) {
+            validObjects.push_back(object);
+        }
+    }
+
+    selectedObjects_ = validObjects;
+    if (!selectedObject_ || !IsObjectInCurrentScene(selectedObject_)) {
+        selectedObject_ = selectedObjects_.empty() ? nullptr : selectedObjects_.back();
+    }
+}
+
+Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
+
+    Math math;
+    Ray ray = ScreenPointToRay(mousePos);
+    RayResult best;
+    best.isHit = false;
+    best.distance = 1e5f;
+    Object3d* hit = nullptr;
+
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+    for (auto& obj : objects) {
+        if (!obj) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
+        if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
+
+        Matrix4x4 worldMatrix = obj->GetWorldMatrix();
+        Vector3 worldPosition = { worldMatrix.m[3][0], worldMatrix.m[3][1], worldMatrix.m[3][2] };
+        Vector3 worldScale = obj->GetTransform()->scale;
+        RayResult tmp;
+
+        if (math.IntersectRayAABB(ray, worldPosition - worldScale, worldPosition + worldScale, &tmp)) {
+            if (tmp.distance < best.distance) {
+                best = tmp;
+                hit = obj.get();
+            }
+        }
+    }
+
+    return hit;
+}
+
+Vector3 DebugEditor::GetObjectWorldPositionForSelection(Object3d* object) {
+    if (!object) return { 0.0f, 0.0f, 0.0f };
+
+    AABB modelAabb = object->GetModelWorldAABB();
+    if (IsValidAabb(modelAabb)) {
+        return {
+            (modelAabb.min.x + modelAabb.max.x) * 0.5f,
+            (modelAabb.min.y + modelAabb.max.y) * 0.5f,
+            (modelAabb.min.z + modelAabb.max.z) * 0.5f
+        };
+    }
+
+    Matrix4x4 worldMatrix = object->GetWorldMatrix();
+    return { worldMatrix.m[3][0], worldMatrix.m[3][1], worldMatrix.m[3][2] };
+}
+
+void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector2& end, bool additive) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+
+    const float localLeft = start.x < end.x ? start.x : end.x;
+    const float localRight = start.x < end.x ? end.x : start.x;
+    const float localTop = start.y < end.y ? start.y : end.y;
+    const float localBottom = start.y < end.y ? end.y : start.y;
+
+    const float screenLeft = gameViewOffset_.x + localLeft;
+    const float screenRight = gameViewOffset_.x + localRight;
+    const float screenTop = gameViewOffset_.y + localTop;
+    const float screenBottom = gameViewOffset_.y + localBottom;
+
+    if (!additive) {
+        ClearObjectSelection();
+    }
+
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+    for (auto& obj : objects) {
+        if (!obj) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
+        if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
+
+        Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
+        if (screenPosition.z < 0.0f) continue;
+
+        if (screenPosition.x >= screenLeft && screenPosition.x <= screenRight &&
+            screenPosition.y >= screenTop && screenPosition.y <= screenBottom) {
+            AddSelectedObject(obj.get());
+        }
+    }
+
+    if (selectedObject_) {
+        EditorManager::GetInstance()->SetSelectedObject(this);
+    } else if (!additive) {
+        EditorManager::GetInstance()->ClearSelection();
+    }
+}
+
+void DebugEditor::DrawSelectionRectangleOverlay() {
+#ifdef USE_IMGUI
+    if (!isSelectionRectDragging_ || !isSelectionRectReady_) return;
+
+    const float minX = selectionRectStart_.x < selectionRectEnd_.x ? selectionRectStart_.x : selectionRectEnd_.x;
+    const float maxX = selectionRectStart_.x < selectionRectEnd_.x ? selectionRectEnd_.x : selectionRectStart_.x;
+    const float minY = selectionRectStart_.y < selectionRectEnd_.y ? selectionRectStart_.y : selectionRectEnd_.y;
+    const float maxY = selectionRectStart_.y < selectionRectEnd_.y ? selectionRectEnd_.y : selectionRectStart_.y;
+
+    ImVec2 rectMin = ImVec2(gameViewOffset_.x + minX, gameViewOffset_.y + minY);
+    ImVec2 rectMax = ImVec2(gameViewOffset_.x + maxX, gameViewOffset_.y + maxY);
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    drawList->AddRectFilled(rectMin, rectMax, IM_COL32(80, 160, 255, 45));
+    drawList->AddRect(rectMin, rectMax, IM_COL32(80, 190, 255, 230), 0.0f, 0, 2.0f);
+#endif
+}
+
+void DebugEditor::DrawSelectedObjectBoundsOverlay() {
+#ifdef USE_IMGUI
+    PruneInvalidSelectedObjects();
+    if (selectedObjects_.empty()) return;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    const std::size_t selectedCount = selectedObjects_.size();
+
+    if (selectedCount > 1) {
+        char countText[64];
+        sprintf_s(countText, "選択中: %zu個", selectedCount);
+        ImVec2 textPos = ImVec2(gameViewOffset_.x + 12.0f, gameViewOffset_.y + 12.0f);
+        drawList->AddRectFilled(ImVec2(textPos.x - 8.0f, textPos.y - 6.0f), ImVec2(textPos.x + 120.0f, textPos.y + 24.0f), IM_COL32(20, 35, 55, 180), 6.0f);
+        drawList->AddText(textPos, IM_COL32(180, 230, 255, 255), countText);
+    }
+
+    for (Object3d* object : selectedObjects_) {
+        if (!object || !IsObjectInCurrentScene(object)) continue;
+
+        AABB aabb = object->GetModelWorldAABB();
+        Vector3 minPos;
+        Vector3 maxPos;
+        if (IsValidAabb(aabb)) {
+            minPos = aabb.min;
+            maxPos = aabb.max;
+        } else {
+            Vector3 center = GetObjectWorldPositionForSelection(object);
+            Vector3 scale = object->GetTransform()->scale;
+            minPos = center - scale;
+            maxPos = center + scale;
+        }
+
+        Vector3 corners[8] = {
+            { minPos.x, minPos.y, minPos.z },
+            { maxPos.x, minPos.y, minPos.z },
+            { minPos.x, maxPos.y, minPos.z },
+            { maxPos.x, maxPos.y, minPos.z },
+            { minPos.x, minPos.y, maxPos.z },
+            { maxPos.x, minPos.y, maxPos.z },
+            { minPos.x, maxPos.y, maxPos.z },
+            { maxPos.x, maxPos.y, maxPos.z },
+        };
+
+        bool hasScreenPoint = false;
+        ImVec2 rectMin = ImVec2(0.0f, 0.0f);
+        ImVec2 rectMax = ImVec2(0.0f, 0.0f);
+
+        for (const Vector3& corner : corners) {
+            Vector3 screen = WorldToScreen(corner);
+            if (screen.z < 0.0f) continue;
+
+            if (!hasScreenPoint) {
+                rectMin = ImVec2(screen.x, screen.y);
+                rectMax = rectMin;
+                hasScreenPoint = true;
+            } else {
+                if (screen.x < rectMin.x) rectMin.x = screen.x;
+                if (screen.y < rectMin.y) rectMin.y = screen.y;
+                if (screen.x > rectMax.x) rectMax.x = screen.x;
+                if (screen.y > rectMax.y) rectMax.y = screen.y;
+            }
+        }
+
+        if (!hasScreenPoint) continue;
+
+        const bool isPrimary = object == selectedObject_;
+        ImU32 frameColor = isPrimary ? IM_COL32(255, 235, 80, 255) : IM_COL32(80, 210, 255, 235);
+        ImU32 fillColor = isPrimary ? IM_COL32(255, 235, 80, 22) : IM_COL32(80, 210, 255, 18);
+        const float thickness = isPrimary ? 2.4f : 1.7f;
+
+        drawList->AddRectFilled(rectMin, rectMax, fillColor, 3.0f);
+        drawList->AddRect(rectMin, rectMax, frameColor, 3.0f, 0, thickness);
+
+        if (isPrimary) {
+            const std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+            ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - ImGui::GetFontSize() - 4.0f);
+            drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), IM_COL32(0, 0, 0, 220), label.c_str());
+            drawList->AddText(labelPos, IM_COL32(255, 245, 150, 255), label.c_str());
+        }
+    }
+#endif
+}
+
 bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return false;
@@ -2236,12 +2582,13 @@ bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
 }
 
 void DebugEditor::ClearInvalidSelectedObject() {
-    if (!selectedObject_ || IsObjectInCurrentScene(selectedObject_)) {
+    const bool editorWasSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    PruneInvalidSelectedObjects();
+    if (selectedObject_) {
         return;
     }
 
-    const bool editorWasSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
-    selectedObject_ = nullptr;
+    ClearObjectSelection();
     isDraggingTransform_ = false;
     hasInspectorEditStart_ = false;
     inspectorEditTarget_ = nullptr;
@@ -2373,7 +2720,7 @@ void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::s
 
     CollisionManager::GetInstance()->AddObject(raw);
     sceneManager_->GetCurrentScene()->GetObjects().push_back(std::move(object));
-    selectedObject_ = raw;
+    SetSelectedObject(raw);
     EditorManager::GetInstance()->SetSelectedObject(this);
 
     EditorCommand command;
@@ -2396,7 +2743,7 @@ void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> object
     }
 
     if (root) {
-        selectedObject_ = root;
+        SetSelectedObject(root);
         EditorManager::GetInstance()->SetSelectedObject(this);
     }
 }
@@ -2520,7 +2867,58 @@ std::string DebugEditor::GetDirtySummaryText() const {
 
 // 複製 (スマート・コピペ版)
 void DebugEditor::DuplicateSelected() {
+    PruneInvalidSelectedObjects();
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
+
+    if (selectedObjects_.size() > 1) {
+        std::vector<Object3d*> sourceObjects = selectedObjects_;
+        std::vector<Object3d*> createdObjects;
+        createdObjects.reserve(sourceObjects.size());
+
+        const Vector3 duplicateOffset = { 1.5f, 0.0f, 1.5f };
+        for (Object3d* source : sourceObjects) {
+            if (!source || !IsObjectInCurrentScene(source)) continue;
+
+            nlohmann::json duplicatedState = CaptureObjectState(source);
+            std::string baseName = source->GetName().empty() ? "Object" : source->GetName();
+            std::string newName = baseName + "_copy";
+            int suffix = 1;
+            while (FindObjectByName(newName)) {
+                newName = baseName + "_copy" + std::to_string(suffix++);
+            }
+            duplicatedState["name"] = newName;
+
+            Object3d* created = AddObjectFromState(duplicatedState);
+            if (!created) continue;
+
+            Transform* createdTransform = created->GetTransform();
+            Transform* sourceTransform = source->GetTransform();
+            createdTransform->translate = sourceTransform->translate + duplicateOffset;
+            created->UpdateLocalMatrix();
+            created->UpdateWorldMatrix();
+
+            nlohmann::json afterState = CaptureObjectState(created);
+            EditorCommand command;
+            command.type = EditorCommandType::ObjectCreated;
+            command.label = "Duplicate Selected Objects";
+            command.afterState = afterState;
+            command.afterName = afterState.value("name", created->GetName());
+            RegisterCommand(command);
+            MarkDirtyForObject(created);
+            createdObjects.push_back(created);
+        }
+
+        ClearObjectSelection();
+        for (Object3d* created : createdObjects) {
+            AddSelectedObject(created);
+        }
+        if (selectedObject_) {
+            EditorManager::GetInstance()->SetSelectedObject(this);
+        }
+
+        DebugConsole::GetInstance()->AddLog("Duplicated Objects: " + std::to_string(createdObjects.size()));
+        return;
+    }
 
     // 1. 完全なクローンを作成
     std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
@@ -2603,25 +3001,43 @@ void DebugEditor::DuplicateSelected() {
 }
 // 削除
 void DebugEditor::DeleteSelected() {
-    if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
-    Object3d* target = selectedObject_;
-    nlohmann::json beforeState = CaptureObjectState(target);
-    std::string name = target->GetName();
-    MarkDirtyForObject(target);
-    sceneManager_->GetCurrentScene()->DestroyObject(target);
+    PruneInvalidSelectedObjects();
+    if (selectedObjects_.empty()) return;
 
-    EditorCommand command;
-    command.type = EditorCommandType::ObjectDeleted;
-    command.label = "Delete Object";
-    command.beforeState = beforeState;
-    command.beforeName = beforeState.value("name", name);
-    RegisterCommand(command);
+    std::vector<Object3d*> targets = selectedObjects_;
+    const bool isGroupDelete = targets.size() > 1;
+    int deletedCount = 0;
+    std::string deletedName;
+
+    for (Object3d* target : targets) {
+        if (!target || !IsObjectInCurrentScene(target)) continue;
+
+        nlohmann::json beforeState = CaptureObjectState(target);
+        deletedName = target->GetName();
+        MarkDirtyForObject(target);
+
+        EditorCommand command;
+        command.type = EditorCommandType::ObjectDeleted;
+        command.label = isGroupDelete ? "Delete Selected Objects" : "Delete Object";
+        command.beforeState = beforeState;
+        command.beforeName = beforeState.value("name", deletedName);
+        RegisterCommand(command);
+
+        sceneManager_->GetCurrentScene()->DestroyObject(target);
+        ++deletedCount;
+    }
 
     // 重要：削除したポインタを持ち続けないようにする
-    selectedObject_ = nullptr;
+    ClearObjectSelection();
     EditorManager::GetInstance()->ClearSelection();
-    DebugConsole::GetInstance()->AddLog("Deleted Object: " + name);
+
+    if (isGroupDelete) {
+        DebugConsole::GetInstance()->AddLog("Deleted Objects: " + std::to_string(deletedCount));
+    } else {
+        DebugConsole::GetInstance()->AddLog("Deleted Object: " + deletedName);
+    }
 }
 // ==========================================
 //  Undo処理 
@@ -2639,7 +3055,7 @@ void DebugEditor::PerformUndo() {
         if (object) {
             MarkDirtyForObject(object);
             RemoveObjectImmediate(object);
-            selectedObject_ = nullptr;
+            ClearObjectSelection();
             EditorManager::GetInstance()->ClearSelection();
         }
         break;
@@ -2647,7 +3063,7 @@ void DebugEditor::PerformUndo() {
     case EditorCommandType::ObjectDeleted: {
         Object3d* restored = AddObjectFromState(cmd.beforeState);
         if (restored) {
-            selectedObject_ = restored;
+            SetSelectedObject(restored);
             EditorManager::GetInstance()->SetSelectedObject(this);
             MarkDirtyForObject(restored);
         }
@@ -2659,7 +3075,7 @@ void DebugEditor::PerformUndo() {
         if (!object) object = FindObjectByName(cmd.beforeName);
         if (object) {
             ApplyObjectState(object, cmd.beforeState);
-            selectedObject_ = object;
+            SetSelectedObject(object);
             EditorManager::GetInstance()->SetSelectedObject(this);
             MarkDirtyForObject(object);
         }
@@ -2683,7 +3099,7 @@ void DebugEditor::PerformRedo() {
     case EditorCommandType::ObjectCreated: {
         Object3d* created = AddObjectFromState(cmd.afterState);
         if (created) {
-            selectedObject_ = created;
+            SetSelectedObject(created);
             EditorManager::GetInstance()->SetSelectedObject(this);
             MarkDirtyForObject(created);
         }
@@ -2694,7 +3110,7 @@ void DebugEditor::PerformRedo() {
         if (object) {
             MarkDirtyForObject(object);
             RemoveObjectImmediate(object);
-            selectedObject_ = nullptr;
+            ClearObjectSelection();
             EditorManager::GetInstance()->ClearSelection();
         }
         break;
@@ -2705,7 +3121,7 @@ void DebugEditor::PerformRedo() {
         if (!object) object = FindObjectByName(cmd.afterName);
         if (object) {
             ApplyObjectState(object, cmd.afterState);
-            selectedObject_ = object;
+            SetSelectedObject(object);
             EditorManager::GetInstance()->SetSelectedObject(this);
             MarkDirtyForObject(object);
         }
@@ -3022,8 +3438,9 @@ void DebugEditor::Draw3DIcons() {
             // Zが0以上の時だけ（カメラの前にいる時だけ）描画
             if (screenPos.z >= 0.0f) {
                 // 選択中のオブジェクトはアイコンを少し大きく、不透明にする
-                float fontSize = (selectedObject_ == obj.get()) ? ImGui::GetFontSize() * 1.5f : ImGui::GetFontSize() * 1.2f;
-                if (selectedObject_ == obj.get()) iconColor = IM_COL32(255, 255, 0, 255); // 選択中は黄色
+                const bool isSelected = IsObjectSelected(obj.get());
+                float fontSize = isSelected ? ImGui::GetFontSize() * 1.5f : ImGui::GetFontSize() * 1.2f;
+                if (isSelected) iconColor = IM_COL32(255, 255, 0, 255); // 選択中は黄色
 
                 // 影（アウトライン）を黒で描画して見やすくする
                 ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
@@ -3102,7 +3519,7 @@ void DebugEditor::DrawEventIDOverlay() {
         if (screenPos.z >= 0.0f) {
             ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
             ImU32 color = (myID != -1) ? IM_COL32(255, 255, 0, 255) : IM_COL32(100, 200, 255, 255);
-            if (selectedObject_ == obj.get()) color = IM_COL32(255, 255, 255, 255); // 選択中は白
+            if (IsObjectSelected(obj.get())) color = IM_COL32(255, 255, 255, 255); // 選択中は白
 
             // アウトライン
             drawList->AddText(NULL, 0.0f, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), label.c_str());
@@ -3304,7 +3721,7 @@ void DebugEditor::SplitSelectedModelIntoMeshChildren() {
     RegisterObjectEdited(rootObject, beforeState, "Split Model Root");
 
     AddEditorObjects(std::move(meshChildren), "Split Model Mesh Parts");
-    selectedObject_ = rootObject;
+    SetSelectedObject(rootObject);
     EditorManager::GetInstance()->SetSelectedObject(this);
     MarkDirtyForObject(rootObject);
 
@@ -3465,6 +3882,77 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
 
     DebugConsole::GetInstance()->AddLog("Dropped Preset: " + presetName);
 }
+
+void DebugEditor::InstantiatePrefabAtCursor(const std::string& prefabName) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
+    Object3dCommon* common = currentScene->GetObject3dCommon();
+    if (!common) return;
+
+    auto prefabObjects = PresetManager::GetInstance()->CreateObjectsFromPrefab(prefabName, common);
+    if (prefabObjects.empty()) return;
+
+    AssignPresetInstanceNames(currentScene, prefabName, prefabObjects);
+    Object3d* rootObject = prefabObjects.front().get();
+
+    Math math;
+    Ray ray = ScreenPointToRay(gameViewMousePos_);
+    Vector3 finalPos = { 0, 0, 0 };
+    bool found = false;
+
+    auto& objects = currentScene->GetObjects();
+    RayResult best; best.isHit = false; best.distance = 1e5f;
+    for (auto& obj : objects) {
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        Matrix4x4 wm = obj->GetWorldMatrix();
+        Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+        Vector3 ws = obj->GetTransform()->scale;
+        RayResult tmp;
+        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
+            if (tmp.distance < best.distance) best = tmp;
+        }
+    }
+
+    float yOffset = rootObject->GetColliderConfig().size.y;
+    if (yOffset == 0.0f) yOffset = rootObject->GetTransform()->scale.y;
+
+    if (best.isHit) {
+        finalPos = best.point;
+        finalPos.y += yOffset;
+        found = true;
+    }
+    else {
+        if (IntersectRayPlane(ray, finalPos)) {
+            float dx = finalPos.x - ray.origin.x;
+            float dy = finalPos.y - ray.origin.y;
+            float dz = finalPos.z - ray.origin.z;
+            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (distance > 20.0f) {
+                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            } else {
+                finalPos.y = yOffset;
+            }
+            found = true;
+        } else {
+            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            found = true;
+        }
+    }
+
+    if (found && isGridSnapEnabled_) {
+        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
+        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
+    }
+    rootObject->GetTransform()->translate = finalPos;
+    rootObject->UpdateWorldMatrix();
+
+    AddEditorObjects(std::move(prefabObjects), "Drop Prefab");
+
+    DebugConsole::GetInstance()->AddLog("Dropped Prefab: " + prefabName);
+}
+
 
 void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;

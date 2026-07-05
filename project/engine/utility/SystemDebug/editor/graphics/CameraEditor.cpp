@@ -2,9 +2,12 @@
 #include "CameraManager.h"
 #include "InputManager.h" // 入力取得に必要
 #include "PrimitiveDrawer.h"
+#include "PostEffect.h"
+#include "SRVManager.h"
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include "json.hpp"
+#include <algorithm>
 #include <fstream>
 #include <cmath>
 #include <filesystem> 
@@ -50,6 +53,40 @@ namespace {
         float y = std::sin(rotation.x); // Y-Upの場合、Pitch上がプラスならsin(x)ではなく-sin(x)の場合も
         float z = std::cos(rotation.y) * std::cos(rotation.x);
         return { x, y, z };
+    }
+
+    Vector3 CalculateEditorForward(const Vector3& rotation) {
+        float x = std::sin(rotation.y) * std::cos(rotation.x);
+        float y = -std::sin(rotation.x);
+        float z = std::cos(rotation.y) * std::cos(rotation.x);
+        return { x, y, z };
+    }
+
+    Vector3 Cross(const Vector3& a, const Vector3& b) {
+        return {
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x
+        };
+    }
+
+    float Length(const Vector3& v) {
+        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+
+    Vector3 NormalizeSafe(const Vector3& v, const Vector3& fallback) {
+        float length = Length(v);
+        if (length < 0.0001f) {
+            return fallback;
+        }
+        return { v.x / length, v.y / length, v.z / length };
+    }
+
+    Vector3 MakeRotationFromForward(const Vector3& forward) {
+        Vector3 normalized = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+        float pitch = std::asin(std::clamp(-normalized.y, -1.0f, 1.0f));
+        float yaw = std::atan2(normalized.x, normalized.z);
+        return { pitch, yaw, 0.0f };
     }
 }
 
@@ -375,6 +412,8 @@ void CameraEditor::DrawImGui() {
     }
 
     ImGui::Separator();
+    DrawCameraPreviewPanel();
+    ImGui::Separator();
 
     // =========================================================
     // 3. 各モードごとの詳細設定
@@ -617,6 +656,101 @@ void CameraEditor::DrawImGui() {
     }
 #endif
 }
+
+void CameraEditor::DrawCameraPreviewPanel() {
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader(ICON_FA_CAMERA " カメラ可視化 / プレビュー", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+
+    ImGui::Checkbox("編集時にカメラガイドを表示", &settings_.cameraGuideVisible);
+    ImGui::SameLine();
+    ImGui::Checkbox("プレビュー枠を表示", &settings_.cameraPreviewVisible);
+    ImGui::DragFloat("ガイド本体の大きさ", &settings_.cameraGuideSize, 0.01f, 0.1f, 3.0f, "%.2f");
+    ImGui::DragFloat("視錐台の長さ", &settings_.cameraFrustumLength, 0.1f, 1.0f, 50.0f, "%.1f");
+    ImGui::DragFloat("プレビュー高さ", &settings_.cameraPreviewHeight, 1.0f, 80.0f, 480.0f, "%.0f");
+
+    const Vector3 eye = GetPreviewCameraEye();
+    const Vector3 forward = GetPreviewCameraForward();
+    ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "プレビュー対象: %s", GetPreviewCameraLabel());
+    ImGui::TextDisabled("カメラ位置: %.2f, %.2f, %.2f", eye.x, eye.y, eye.z);
+    ImGui::TextDisabled("視線方向: %.2f, %.2f, %.2f", forward.x, forward.y, forward.z);
+
+    if (ImGui::Button(ICON_FA_SAVE " 可視化設定を保存")) {
+        SaveSettings();
+    }
+
+    if (!settings_.cameraPreviewVisible) {
+        return;
+    }
+
+    ImGui::Spacing();
+    if (settings_.currentMode == Mode::Game) {
+        ImGui::TextDisabled("下の画像は自由カメラ視点です。ゲームカメラ調整中に、外側から構図を確認できます。");
+    } else {
+        ImGui::TextDisabled("下の画像はゲームカメラ視点です。自由カメラ中に、3人称などの実際の見え方を確認できます。");
+    }
+
+    const float availableWidth = (std::max)(120.0f, ImGui::GetContentRegionAvail().x);
+    const float aspect = 16.0f / 9.0f;
+    float height = std::clamp(settings_.cameraPreviewHeight, 80.0f, 480.0f);
+    float width = height * aspect;
+    if (width > availableWidth) {
+        width = availableWidth;
+        height = width / aspect;
+    }
+    const float indent = (std::max)(0.0f, (availableWidth - width) * 0.5f);
+    uint32_t textureHandle = PostEffect::GetInstance()->GetSRVHandle(PostEffect::kCameraPreviewTextureIndex);
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
+    if (indent > 0.0f) {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indent);
+    }
+    ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(width, height));
+#endif
+}
+
+Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
+    if (!previewCameraInitialized_) {
+        previewCamera_.Initialize();
+        previewCamera_.SetInputEnabled(false);
+        previewCameraInitialized_ = true;
+    }
+
+    const Vector3 eye = GetPreviewCameraEye();
+    const Vector3 forward = GetPreviewCameraForward();
+    const Vector3 rotation = MakeRotationFromForward(forward);
+
+    previewCamera_.SetInputEnabled(false);
+    previewCamera_.SetFollowTarget(nullptr);
+    previewCamera_.SetFollowMode(Camera::FollowMode::kFixedPoint);
+    previewCamera_.SetAspectRatio(aspectRatio);
+    previewCamera_.UpdateProjectionMatrix();
+    previewCamera_.ConfigFixedPoint(eye, rotation);
+    previewCamera_.SetEye(eye);
+    previewCamera_.SetTarget(eye + forward * 10.0f);
+    previewCamera_.SetRotation(rotation);
+    previewCamera_.Update();
+    return &previewCamera_;
+}
+
+void CameraEditor::ApplyConfiguredCameraPreview(Camera* camera) const {
+    if (!camera) {
+        return;
+    }
+
+    const Vector3 eye = GetConfiguredCameraEye();
+    const Vector3 forward = GetConfiguredCameraForward();
+    const Vector3 rotation = MakeRotationFromForward(forward);
+
+    camera->SetFollowTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->ConfigFixedPoint(eye, rotation);
+    camera->SetEye(eye);
+    camera->SetTarget(eye + forward * 10.0f);
+    camera->SetRotation(rotation);
+    camera->Update();
+}
+
 void CameraEditor::SaveSettings() {
     // ディレクトリパス + 入力されたファイル名 を結合
     std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
@@ -640,6 +774,11 @@ void CameraEditor::SaveSettings() {
     j["orbitCenterGizmoVisible"] = settings_.orbitCenterGizmoVisible;
     j["orbitGuideMarkerSize"] = settings_.orbitGuideMarkerSize;
     j["cameraSensitivity"] = settings_.cameraSensitivity;
+    j["cameraGuideVisible"] = settings_.cameraGuideVisible;
+    j["cameraPreviewVisible"] = settings_.cameraPreviewVisible;
+    j["cameraGuideSize"] = settings_.cameraGuideSize;
+    j["cameraFrustumLength"] = settings_.cameraFrustumLength;
+    j["cameraPreviewHeight"] = settings_.cameraPreviewHeight;
     // エディタ設定
     j["moveSpeed"] = settings_.moveSpeed;
     j["boostSpeed"] = settings_.boostSpeed;
@@ -722,6 +861,11 @@ void CameraEditor::LoadSettings() {
         if (j.contains("orbitCenterGizmoVisible")) settings_.orbitCenterGizmoVisible = j["orbitCenterGizmoVisible"];
         if (j.contains("orbitGuideMarkerSize")) settings_.orbitGuideMarkerSize = j["orbitGuideMarkerSize"];
         if (j.contains("cameraSensitivity")) settings_.cameraSensitivity = j["cameraSensitivity"];
+        if (j.contains("cameraGuideVisible")) settings_.cameraGuideVisible = j["cameraGuideVisible"];
+        if (j.contains("cameraPreviewVisible")) settings_.cameraPreviewVisible = j["cameraPreviewVisible"];
+        if (j.contains("cameraGuideSize")) settings_.cameraGuideSize = j["cameraGuideSize"];
+        if (j.contains("cameraFrustumLength")) settings_.cameraFrustumLength = j["cameraFrustumLength"];
+        if (j.contains("cameraPreviewHeight")) settings_.cameraPreviewHeight = j["cameraPreviewHeight"];
 
         if (j.contains("moveSpeed")) settings_.moveSpeed = j["moveSpeed"];
         if (j.contains("boostSpeed")) settings_.boostSpeed = j["boostSpeed"];
@@ -896,6 +1040,94 @@ Vector3 CameraEditor::GetOrbitStartEye() const {
     };
 }
 
+Vector3 CameraEditor::GetConfiguredCameraEye() const {
+    if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
+        return settings_.fixedPointPos;
+    }
+
+    if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+        return GetOrbitStartEye();
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    const Vector3 fallback = camera ? camera->GetEye() : settings_.fixedPointPos;
+    if (!targetPlayer_) {
+        return fallback;
+    }
+
+    Vector3 target = targetPlayer_->GetWorldPosition();
+    target.y += settings_.height;
+    Vector3 forward = GetConfiguredCameraForward();
+    return target - forward * settings_.distance;
+}
+
+Vector3 CameraEditor::GetConfiguredCameraForward() const {
+    if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
+        return NormalizeSafe(CalculateEditorForward(settings_.fixedPointAngle), { 0.0f, 0.0f, 1.0f });
+    }
+
+    if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+        return NormalizeSafe(GetOrbitCenter() - GetOrbitStartEye(), { 0.0f, 0.0f, 1.0f });
+    }
+
+    Vector3 rotation = {
+        DegToRad(settings_.angle.x),
+        DegToRad(settings_.angle.y),
+        DegToRad(settings_.angle.z)
+    };
+    return NormalizeSafe(CalculateEditorForward(rotation), { 0.0f, 0.0f, 1.0f });
+}
+
+Vector3 CameraEditor::GetPreviewCameraEye() const {
+    if (settings_.currentMode == Mode::Game) {
+        return settings_.editorCameraPos;
+    }
+    return GetConfiguredCameraEye();
+}
+
+Vector3 CameraEditor::GetPreviewCameraForward() const {
+    if (settings_.currentMode == Mode::Game) {
+        return NormalizeSafe(CalculateEditorForward(settings_.editorCameraAngle), { 0.0f, 0.0f, 1.0f });
+    }
+    return GetConfiguredCameraForward();
+}
+
+const char* CameraEditor::GetPreviewCameraLabel() const {
+    return settings_.currentMode == Mode::Game ? "自由カメラ" : "ゲームカメラ";
+}
+
+Vector3 CameraEditor::GetConfiguredCameraRight(const Vector3& forward) const {
+    const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
+    Vector3 right = Cross(worldUp, forward);
+    if (Length(right) < 0.0001f) {
+        right = { 1.0f, 0.0f, 0.0f };
+    }
+    return NormalizeSafe(right, { 1.0f, 0.0f, 0.0f });
+}
+
+Vector3 CameraEditor::GetConfiguredCameraUp(const Vector3& forward, const Vector3& right) const {
+    return NormalizeSafe(Cross(forward, right), { 0.0f, 1.0f, 0.0f });
+}
+
+Matrix4x4 CameraEditor::MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) const {
+    Math math;
+    Vector3 diff = end - start;
+    float length = Length(diff);
+    if (length < 0.001f) {
+        length = 0.001f;
+    }
+
+    Vector3 center = (start + end) * 0.5f;
+    float yaw = std::atan2(diff.x, diff.z);
+    float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
+    float pitch = std::atan2(-diff.y, horizontalLength);
+
+    Matrix4x4 scale = math.MakeScaleMatrix({ thickness, thickness, length });
+    Matrix4x4 rotate = math.Multiply(math.MakeRotateXMatrix(pitch), math.MakeRotateYMatrix(yaw));
+    Matrix4x4 translate = math.MakeTranslateMatrix(center);
+    return math.Multiply(math.Multiply(scale, rotate), translate);
+}
+
 void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue) {
 #ifdef USE_IMGUI
     if (settings_.currentMode != Mode::Editor) return;
@@ -952,8 +1184,61 @@ void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vec
 #endif
 }
 
+void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
+#ifdef USE_IMGUI
+    if (settings_.currentMode != Mode::Editor) return;
+    if (!settings_.cameraGuideVisible) return;
+    if (instanceCount >= maxDrawLimit) return;
+
+    Math math;
+    const Vector3 eye = GetConfiguredCameraEye();
+    const Vector3 forward = GetConfiguredCameraForward();
+    const Vector3 right = GetConfiguredCameraRight(forward);
+    const Vector3 up = GetConfiguredCameraUp(forward, right);
+    const float markerSize = (std::max)(0.05f, settings_.cameraGuideSize);
+    const float frustumLength = (std::max)(0.5f, settings_.cameraFrustumLength);
+    const float halfHeight = frustumLength * std::tan(0.45f * 0.5f);
+    const float halfWidth = halfHeight * (16.0f / 9.0f);
+    const Vector3 target = eye + forward * frustumLength;
+
+    auto drawSphere = [&](const Vector3& pos, float size, const Vector4& color) {
+        if (instanceCount >= maxDrawLimit) return;
+        Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ size, size, size }), math.MakeTranslateMatrix(pos));
+        primitiveDrawer.DrawWireSphere(commandList, world, color, instanceCount++);
+    };
+
+    auto drawCubeLine = [&](const Vector3& start, const Vector3& end, float thickness, const Vector4& color) {
+        if (instanceCount >= maxDrawLimit) return;
+        primitiveDrawer.DrawWireCube(commandList, MakeLineBoxMatrix(start, end, thickness), color, instanceCount++);
+    };
+
+    const Vector3 topLeft = target + up * halfHeight - right * halfWidth;
+    const Vector3 topRight = target + up * halfHeight + right * halfWidth;
+    const Vector3 bottomLeft = target - up * halfHeight - right * halfWidth;
+    const Vector3 bottomRight = target - up * halfHeight + right * halfWidth;
+
+    drawSphere(eye, markerSize, { 0.1f, 0.9f, 1.0f, 1.0f });
+    drawSphere(target, markerSize * 0.45f, { 1.0f, 0.9f, 0.1f, 1.0f });
+    drawCubeLine(eye, target, 0.035f, { 0.1f, 0.9f, 1.0f, 0.95f });
+    drawCubeLine(eye, topLeft, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
+    drawCubeLine(eye, topRight, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
+    drawCubeLine(eye, bottomLeft, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
+    drawCubeLine(eye, bottomRight, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
+    drawCubeLine(topLeft, topRight, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
+    drawCubeLine(topRight, bottomRight, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
+    drawCubeLine(bottomRight, bottomLeft, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
+    drawCubeLine(bottomLeft, topLeft, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
+#else
+    (void)primitiveDrawer;
+    (void)commandList;
+    (void)instanceCount;
+    (void)maxDrawLimit;
+#endif
+}
+
 void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
 #ifdef USE_IMGUI
+    DrawCameraGuide(primitiveDrawer, commandList, instanceCount, maxDrawLimit);
     if (settings_.currentMode != Mode::Editor) return;
     if (!settings_.orbitGuideVisible) return;
     if (settings_.gameFollowMode != Camera::FollowMode::kOrbit) return;

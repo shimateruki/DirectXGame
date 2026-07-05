@@ -263,6 +263,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->billboardScale = 0.55f;
     waterParamData_->effectScaleX = 1.0f;
     waterParamData_->effectScaleY = 1.0f;
+    waterParamData_->effectScaleZ = 1.0f;
+    waterParamData_->waterParamPadding0 = 0.0f;
     EnsureBakedShaderTexturesLoaded();
     
 }
@@ -271,6 +273,81 @@ bool MeshRenderer::HasRequiredBuffers() const {
     return wvpResource_ && wvpData_ &&
         cameraResource_ && cameraData_ &&
         materialResource_ && materialData_;
+}
+
+void MeshRenderer::RefreshCameraDependentData() {
+    if (!common_ || !HasRequiredBuffers() || !shadowWvpData_ || !localFogData_ || !waterParamData_ || !transform_) {
+        return;
+    }
+
+    Math math;
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+
+    if (camera) {
+        const Matrix4x4& view = camera->GetViewMatrix();
+        const Matrix4x4& proj = camera->GetProjectionMatrix();
+        Matrix4x4 viewProj = math.Multiply(view, proj);
+        const Matrix4x4& worldMatrix = transform_->matWorld;
+
+        wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
+        wvpData_->world = worldMatrix;
+        wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
+        cameraData_->worldPosition = camera->GetEye();
+        waterParamData_->cameraWorldPosition = camera->GetEye();
+        localFogData_->cameraPos = camera->GetEye();
+
+        static Matrix4x4 lastVP;
+        static Matrix4x4 cachedInvVP;
+        if (std::memcmp(&lastVP, &viewProj, sizeof(Matrix4x4)) != 0) {
+            lastVP = viewProj;
+            cachedInvVP = math.Inverse(viewProj);
+        }
+        localFogData_->inverseViewProj = cachedInvVP;
+    } else {
+        wvpData_->WVP = Math::MakeIdentity4x4();
+        wvpData_->world = Math::MakeIdentity4x4();
+    }
+
+    if (isUIPreview_) {
+        shadowWvpData_->WVP = Math::MakeIdentity4x4();
+        shadowWvpData_->world = Math::MakeIdentity4x4();
+        return;
+    }
+
+    if (directionalLightData_) {
+        directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
+    }
+
+    Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
+    if (math.Length(lightDir) > 0.0001f) {
+        lightDir = math.Normalize(lightDir);
+    } else {
+        lightDir = { 0.0f, -1.0f, 0.0f };
+    }
+
+    Vector3 target = { 0.0f, 0.0f, 0.0f };
+    if (camera) {
+        target = camera->GetEye();
+    }
+
+    Vector3 lightPos = {
+        target.x - lightDir.x * 200.0f,
+        target.y - lightDir.y * 200.0f,
+        target.z - lightDir.z * 200.0f
+    };
+
+    Vector3 up = { 0.0f, 1.0f, 0.0f };
+    if (std::abs(lightDir.x) < 0.001f && std::abs(lightDir.z) < 0.001f) {
+        up = { 0.0f, 0.0f, 1.0f };
+    }
+
+    Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
+    Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
+    Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
+    LightManager::GetInstance()->GetDirectionalLight().lightViewProj = lightVP;
+
+    shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
+    shadowWvpData_->world = transform_->matWorld;
 }
 
 void MeshRenderer::Update() {
@@ -496,8 +573,19 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand) return;
 
-    if (useProxyModel && !fireProxyModel_) {
-        InitializeFireProxyModel();
+    Model* proxyModel = nullptr;
+    if (useProxyModel) {
+        if (bakedTextureMode == 1) {
+            if (!gatePortalProxyModel_) {
+                InitializeGatePortalProxyModel();
+            }
+            proxyModel = gatePortalProxyModel_.get();
+        } else {
+            if (!fireProxyModel_) {
+                InitializeFireProxyModel();
+            }
+            proxyModel = fireProxyModel_.get();
+        }
     }
 
     (common_->*setGraphicsCommand)();
@@ -510,8 +598,8 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
     const BakedShaderTextureSet& bakedTextures =
         (bakedTextureMode == 1) ? GetGatePortalBakedShaderTextures() : GetDefaultBakedShaderTextures();
     BindBakedShaderTextures(commandList, bakedTextures);
-    drawModel = (useProxyModel && fireProxyModel_) ? fireProxyModel_.get() : drawModel;
-    drawModel->DrawMeshOnly((useProxyModel && fireProxyModel_) ? -1 : meshDrawIndex_);
+    drawModel = (useProxyModel && proxyModel) ? proxyModel : drawModel;
+    drawModel->DrawMeshOnly((useProxyModel && proxyModel) ? -1 : meshDrawIndex_);
 }
 
 void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -583,6 +671,67 @@ void MeshRenderer::InitializeFireProxyModel() {
 
     const std::vector<uint32_t> indices = { 0, 1, 2, 0, 2, 3 };
     fireProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
+}
+
+void MeshRenderer::InitializeGatePortalProxyModel() {
+    ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
+    if (!modelCommon) {
+        return;
+    }
+
+    gatePortalProxyModel_ = std::make_unique<Model>();
+
+    constexpr int kSegments = 24;
+    constexpr float kHalfDepth = 1.0f;
+    const int row = kSegments + 1;
+
+    std::vector<Model::VertexData> vertices;
+    vertices.reserve(row * row * 2);
+
+    auto addVertex = [&vertices](float x, float y, float z, float u, float v) {
+        Model::VertexData vertex{};
+        vertex.position = { x, y, z, 1.0f };
+        vertex.texcoord = { u, v };
+        vertex.normal = { 0.0f, 0.0f, z >= 0.0f ? 1.0f : -1.0f };
+        vertex.tangent = { 1.0f, 0.0f, 0.0f };
+        vertex.boneWeights = { 0.0f, 0.0f, 0.0f, 0.0f };
+        vertex.boneIndices = { 0.0f, 0.0f, 0.0f, 0.0f };
+        vertices.push_back(vertex);
+    };
+
+    for (int layer = 0; layer < 2; ++layer) {
+        const float z = (layer == 0) ? -kHalfDepth : kHalfDepth;
+        for (int iy = 0; iy <= kSegments; ++iy) {
+            const float v = static_cast<float>(iy) / static_cast<float>(kSegments);
+            const float y = -1.0f + v * 2.0f;
+            for (int ix = 0; ix <= kSegments; ++ix) {
+                const float u = static_cast<float>(ix) / static_cast<float>(kSegments);
+                const float x = -1.0f + u * 2.0f;
+                addVertex(x, y, z, u, v);
+            }
+        }
+    }
+
+    std::vector<uint32_t> indices;
+    indices.reserve(kSegments * kSegments * 6 * 2);
+    for (int layer = 0; layer < 2; ++layer) {
+        const uint32_t base = static_cast<uint32_t>(layer * row * row);
+        for (int iy = 0; iy < kSegments; ++iy) {
+            for (int ix = 0; ix < kSegments; ++ix) {
+                const uint32_t i0 = base + static_cast<uint32_t>(iy * row + ix);
+                const uint32_t i1 = i0 + 1;
+                const uint32_t i2 = i0 + static_cast<uint32_t>(row);
+                const uint32_t i3 = i2 + 1;
+                if (layer == 0) {
+                    indices.insert(indices.end(), { i0, i3, i1, i0, i2, i3 });
+                } else {
+                    indices.insert(indices.end(), { i0, i1, i3, i0, i3, i2 });
+                }
+            }
+        }
+    }
+
+    gatePortalProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 
 void MeshRenderer::SetModel(Model* model) {

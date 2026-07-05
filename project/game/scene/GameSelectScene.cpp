@@ -1,5 +1,8 @@
 #define NOMINMAX
 #include "GameSelectScene.h"
+
+#include <algorithm>
+#include <cmath>
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -74,26 +77,34 @@ constexpr const char* kCrownAuraEffectPath = "Resources/json/effect/effect_crown
 constexpr const char* kCrownRayEffectPath = "Resources/json/effect/effect_crown_ray_plane.json";
 constexpr const char* kCrownUnlockFlashRingEffectPath = "Resources/json/effect/effect_crown_get_flash_ring.json";
 constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/effect_crown_get_ray_flash.json";
-constexpr const char* kGateEntryPullSparkPreset = "gate_entry_pull_sparks";
-constexpr const char* kGateEntryCoreMistPreset = "gate_entry_core_mist";
-constexpr const char* kGateEntryDissolveGlintPreset = "gate_entry_dissolve_glints";
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
 constexpr float kCrownCountPresentationDuration = 2.65f;
 constexpr float kCrownCountImpactTime = 1.05f;
 constexpr float kCrownCountParticleInterval = 0.12f;
+
+// ゲート突入演出は、CameraEditorの保存位置ではなくゲートのTransformから自動生成する。
+// ゲートを移動してもカメラ演出を再調整しなくて済むように、距離・高さ・補間時間だけをここで管理する。
 constexpr float kGateEntryCinematicDuration = 1.55f;
 constexpr float kGateEntryMinPlaneThickness = 0.16f;
 constexpr float kGateEntryMaxPlaneThickness = 0.42f;
 constexpr float kGateEntryMinHalfWidth = 0.85f;
 constexpr float kGateEntryMaxHalfWidth = 2.45f;
-constexpr float kGateEntryPlayerTouchRadius = 0.48f;
-constexpr float kGateEntrySurfaceOffset = 0.10f;
-constexpr float kGateEntryInsideDepth = 1.65f;
-constexpr float kGateEntryLiftHeight = 0.0f;
-constexpr float kGateEntryCameraBackDistance = 7.20f;
-constexpr float kGateEntryCameraSideOffset = 1.25f;
-constexpr float kGateEntryCameraHeight = 2.85f;
-constexpr float kGateEntryCameraFocusHeight = 1.05f;
+constexpr float kGateEntryPlayerTouchRadius = 0.24f;
+constexpr float kGateEntrySurfaceOffset = 1.18f;
+constexpr float kGateEntryInsideDepth = 1.38f;
+constexpr float kGateEntryLiftHeight = 0.18f;
+constexpr float kGateEntryCenteringDelay = 0.06f;
+constexpr float kGateEntryCenteringDuration = 0.36f;
+constexpr float kGateEntryCameraBackDistance = 14.25f;
+constexpr float kGateEntryCameraSideOffset = 0.0f;
+constexpr float kGateEntryCameraHeight = 0.58f;
+constexpr float kGateEntryCameraFocusHeight = 0.92f;
+constexpr float kGateEntryCameraBlendTime = 0.34f;
+constexpr float kGateEntryAlignEndTime = 0.28f;
+constexpr float kGateEntryDiveStartTime = 0.18f;
+constexpr float kGateEntryDiveEndTime = 0.88f;
+constexpr float kGateEntryDissolveStartTime = 0.44f;
+constexpr float kGateEntryDissolveEndTime = 0.92f;
 
 float SelectClamp01(float value) {
 	return std::clamp(value, 0.0f, 1.0f);
@@ -103,6 +114,107 @@ float SelectEaseOutCubic(float value) {
 	value = SelectClamp01(value);
 	const float inv = 1.0f - value;
 	return 1.0f - inv * inv * inv;
+}
+
+Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target) {
+	Vector3 direction{
+		target.x - eye.x,
+		target.y - eye.y,
+		target.z - eye.z
+	};
+	const float lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+	if (lengthSq <= 0.000001f) {
+		return { 0.0f, 0.0f, 0.0f };
+	}
+
+	const float invLength = 1.0f / std::sqrt(lengthSq);
+	direction.x *= invLength;
+	direction.y *= invLength;
+	direction.z *= invLength;
+
+	const float pitch = -std::asin(std::clamp(direction.y, -0.98f, 0.98f));
+	const float yaw = std::atan2(direction.x, direction.z);
+	return { pitch, yaw, 0.0f };
+}
+
+Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fallback) {
+	Vector3 direction{ value.x, 0.0f, value.z };
+	float lengthSq = direction.x * direction.x + direction.z * direction.z;
+	if (lengthSq <= 0.000001f) {
+		direction = { fallback.x, 0.0f, fallback.z };
+		lengthSq = direction.x * direction.x + direction.z * direction.z;
+		if (lengthSq <= 0.000001f) {
+			return { 0.0f, 0.0f, 1.0f };
+		}
+	}
+
+	const float invLength = 1.0f / std::sqrt(lengthSq);
+	direction.x *= invLength;
+	direction.z *= invLength;
+	return direction;
+}
+
+Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDirection) {
+	const Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, { 0.0f, 0.0f, 1.0f });
+	if (!gateObject) {
+		return fallback;
+	}
+
+	Transform* transform = gateObject->GetTransform();
+	if (!transform) {
+		return fallback;
+	}
+
+	const Matrix4x4& world = transform->matWorld;
+	Vector3 candidates[] = {
+		SelectNormalizeGateDirectionXZ({ world.m[0][0], world.m[0][1], world.m[0][2] }, fallback),
+		SelectNormalizeGateDirectionXZ({ world.m[1][0], world.m[1][1], world.m[1][2] }, fallback),
+		SelectNormalizeGateDirectionXZ({ world.m[2][0], world.m[2][1], world.m[2][2] }, fallback)
+	};
+
+	Vector3 gateAxis = fallback;
+	float bestDot = -1.0f;
+	for (const Vector3& candidate : candidates) {
+		const float dot = std::fabs(candidate.x * fallback.x + candidate.z * fallback.z);
+		if (dot > bestDot) {
+			bestDot = dot;
+			gateAxis = candidate;
+		}
+	}
+
+	const float dot = gateAxis.x * fallback.x + gateAxis.z * fallback.z;
+	if (dot < 0.0f) {
+		gateAxis.x *= -1.0f;
+		gateAxis.z *= -1.0f;
+	}
+	return gateAxis;
+}
+
+struct SelectGateEntryRoute {
+	Vector3 surface;
+	Vector3 center;
+	Vector3 inside;
+};
+
+SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vector3& direction, float entryY) {
+	const Vector3 entryDirection = SelectNormalizeGateDirectionXZ(direction, { 0.0f, 0.0f, 1.0f });
+	return {
+		{
+			gatePos.x - entryDirection.x * kGateEntrySurfaceOffset,
+			entryY,
+			gatePos.z - entryDirection.z * kGateEntrySurfaceOffset
+		},
+		{
+			gatePos.x,
+			entryY,
+			gatePos.z
+		},
+		{
+			gatePos.x + entryDirection.x * kGateEntryInsideDepth,
+			entryY,
+			gatePos.z + entryDirection.z * kGateEntryInsideDepth
+		}
+	};
 }
 
 float SelectEaseInOutCubic(float value) {
@@ -447,6 +559,10 @@ void GameSelectScene::Update(float deltaTime) {
 	}
 
 	// --- 全体更新 ---
+	if (gateEntryCinematicActive_) {
+		UpdateGateEntryCinematic(deltaTime);
+	}
+
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	UpdateStageGateSelection(deltaTime);
@@ -456,16 +572,13 @@ void GameSelectScene::Update(float deltaTime) {
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
-	if (gateEntryCinematicActive_) {
-		UpdateGateEntryCinematic(deltaTime);
-	}
 
 	if (animatedCube_) animatedCube_->Update(deltaTime);
 }
 
 void GameSelectScene::Draw() {
 	bool isFirstPerson = false;
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
 	// 一人称判定
 	if (player_ && camera) {
@@ -903,6 +1016,10 @@ void GameSelectScene::ApplyStageGateStates() {
 			if (!unlocked) {
 				gateActivation *= 0.18f;
 			}
+		}
+		if (gateEntryCinematicActive_ && object.get() == gateEntryTargetGate_) {
+			gateActivation = 1.0f;
+			selected = true;
 		}
 
 		if (gate) {
@@ -1672,9 +1789,6 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
 	gateEntryCameraEndEye_ = {};
 	gateEntryCameraEndTarget_ = {};
 	gateEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
-	gateEntrySparkTimer_ = 0.0f;
-	gateEntryMistTimer_ = 0.0f;
-	gateEntryGlintTimer_ = 0.0f;
 
 	if (gateEntryTargetGate_ && player_) {
 		const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
@@ -1683,51 +1797,31 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
 			0.0f,
 			gatePos.z - gateEntryStartPlayerPosition_.z
 		};
-		const Vector3 toGate = SelectNormalizeXZ(toGateRaw, { 0.0f, 0.0f, 1.0f });
+		// 接触位置そのものではなく、ゲート面の向きから突入方向を決める。
+		// これにより、ゲートの端から触れてもカメラ構図と突入方向が大きく暴れない。
+		const Vector3 toGate = SelectGateEntryDirection(gateEntryTargetGate_, toGateRaw);
 		gateEntryDirection_ = toGate;
-		gateEntrySurfacePlayerPosition_ = {
-			gatePos.x - toGate.x * kGateEntrySurfaceOffset,
-			gateEntryStartPlayerPosition_.y,
-			gatePos.z - toGate.z * kGateEntrySurfaceOffset
-		};
-		gateEntryTargetPlayerPosition_ = {
-			gatePos.x,
-			gateEntryStartPlayerPosition_.y,
-			gatePos.z
-		};
-		gateEntryInsidePlayerPosition_ = {
-			gatePos.x + toGate.x * kGateEntryInsideDepth,
-			gateEntryStartPlayerPosition_.y,
-			gatePos.z + toGate.z * kGateEntryInsideDepth
-		};
+		const float entryY = gatePos.y;
+		const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
+		gateEntrySurfacePlayerPosition_ = entryRoute.surface;
+		gateEntryTargetPlayerPosition_ = entryRoute.center;
+		gateEntryInsidePlayerPosition_ = entryRoute.inside;
 		player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
 		player_->SetIsControlActive(false);
 		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
 		player_->SetSlimeAnimationDirection(toGate);
 		player_->TriggerSlimeImpulse({ 1.08f, 0.92f, 1.10f }, 0.20f);
-		if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-			const Vector3 gateCore = {
-				gatePos.x,
-				gateEntryStartPlayerPosition_.y + 0.62f,
-				gatePos.z
-			};
-			const Vector3 playerCore = {
-				gateEntryStartPlayerPosition_.x,
-				gateEntryStartPlayerPosition_.y + 0.45f,
-				gateEntryStartPlayerPosition_.z
-			};
-			gpuParticleManager->Emit(kGateEntryCoreMistPreset, gateCore);
-			gpuParticleManager->Emit(kGateEntryPullSparkPreset, SelectLerpVector3(playerCore, gateCore, 0.45f));
-		}
 		CaptureGateEntryMaterialState(player_);
 		ApplyGateEntryDissolveMaterial(0.0f, gatePos, toGate);
 
 		if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
 			const Vector3 side = { toGate.z, 0.0f, -toGate.x };
+			// カメラはプレイヤーの接触位置ではなくゲート中心を基準にする。
+			// 表裏の差はtoGateの向きだけで反転させ、どちら側から入っても同じ構図に近づける。
 			const Vector3 focus = {
-				gatePos.x - toGate.x * 0.85f,
-				gateEntryStartPlayerPosition_.y + kGateEntryCameraFocusHeight,
-				gatePos.z - toGate.z * 0.85f
+				gatePos.x,
+				gatePos.y + kGateEntryCameraFocusHeight,
+				gatePos.z
 			};
 			gateEntryCameraStartEye_ = camera->GetEye();
 			gateEntryCameraStartTarget_ = camera->GetTargetPoint();
@@ -1738,8 +1832,12 @@ void GameSelectScene::StartGateEntryCinematic(int stageIndex) {
 				focus.z - toGate.z * kGateEntryCameraBackDistance + side.z * kGateEntryCameraSideOffset
 			};
 			camera->SetInputEnabled(false);
-			camera->SetEye(gateEntryCameraEndEye_);
-			camera->SetTarget(gateEntryCameraEndTarget_);
+			camera->SetFollowTarget(nullptr);
+			camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+			camera->ConfigFixedPoint(
+				gateEntryCameraStartEye_,
+				SelectLookAtRotation(gateEntryCameraStartEye_, gateEntryCameraStartTarget_)
+			);
 		}
 	}
 
@@ -1762,90 +1860,63 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
 
 	gateEntryCinematicTimer_ += deltaTime;
 	const float t = SelectClamp01(gateEntryCinematicTimer_ / kGateEntryCinematicDuration);
-	const float moveT = SelectEaseInOutCubic(SelectClamp01(t / 0.94f));
-	const float clipT = SelectEaseInOutCubic(SelectClamp01((t - 0.20f) / 0.68f));
+	const float cameraT = SelectEaseInOutCubic(SelectClamp01(gateEntryCinematicTimer_ / kGateEntryCameraBlendTime));
+	const float alignT = SelectEaseOutCubic(SelectClamp01(gateEntryCinematicTimer_ / kGateEntryAlignEndTime));
+	const float centeringT = SelectEaseInOutCubic(SelectClamp01((t - kGateEntryCenteringDelay) / kGateEntryCenteringDuration));
+	const float diveT = SelectEaseInOutCubic(SelectClamp01((t - kGateEntryDiveStartTime) / std::max(kGateEntryDiveEndTime - kGateEntryDiveStartTime, 0.001f)));
+	const float clipT = SelectEaseInOutCubic(SelectClamp01((t - kGateEntryDissolveStartTime) / std::max(kGateEntryDissolveEndTime - kGateEntryDissolveStartTime, 0.001f)));
 
 	if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
 		camera->SetInputEnabled(false);
-		camera->SetEye(gateEntryCameraEndEye_);
-		camera->SetTarget(gateEntryCameraEndTarget_);
+		camera->SetFollowTarget(nullptr);
+		camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+		const Vector3 currentEye = SelectLerpVector3(gateEntryCameraStartEye_, gateEntryCameraEndEye_, cameraT);
+		const Vector3 currentTarget = SelectLerpVector3(gateEntryCameraStartTarget_, gateEntryCameraEndTarget_, cameraT);
+		camera->ConfigFixedPoint(currentEye, SelectLookAtRotation(currentEye, currentTarget));
 	}
 
 	if (player_) {
+		player_->SetIsVisible(true);
 		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
 		player_->SetIsControlActive(false);
 
 		if (gateEntryTargetGate_) {
 			const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
 			const Vector3 toGate = gateEntryDirection_;
-			gateEntrySurfacePlayerPosition_ = {
-				gatePos.x - toGate.x * kGateEntrySurfaceOffset,
-				gateEntryStartPlayerPosition_.y,
-				gatePos.z - toGate.z * kGateEntrySurfaceOffset
-			};
-			gateEntryTargetPlayerPosition_ = {
-				gatePos.x,
-				gateEntryStartPlayerPosition_.y,
-				gatePos.z
-			};
-			gateEntryInsidePlayerPosition_ = {
-				gatePos.x + toGate.x * kGateEntryInsideDepth,
-				gateEntryStartPlayerPosition_.y,
-				gatePos.z + toGate.z * kGateEntryInsideDepth
-			};
+			const float entryY = gatePos.y;
+			// 演出中にゲートが親子関係やEditor操作で動いても、入口・中心・奥位置を最新Transformから作り直す。
+			const SelectGateEntryRoute entryRoute = SelectBuildGateEntryRoute(gatePos, toGate, entryY);
+			gateEntrySurfacePlayerPosition_ = entryRoute.surface;
+			gateEntryTargetPlayerPosition_ = entryRoute.center;
+			gateEntryInsidePlayerPosition_ = entryRoute.inside;
 			player_->SetMoveYaw(std::atan2(toGate.x, toGate.z));
 			player_->SetSlimeAnimationDirection(toGate);
 			ApplyGateEntryDissolveMaterial(clipT, gatePos, toGate);
 		}
 
-		const Vector3 controlA = SelectLerpVector3(gateEntryStartPlayerPosition_, gateEntrySurfacePlayerPosition_, 0.54f);
-		const Vector3 controlB = SelectLerpVector3(gateEntryTargetPlayerPosition_, gateEntryInsidePlayerPosition_, 0.54f);
-		Vector3 playerPos = SelectBezierVector3(
-			gateEntryStartPlayerPosition_,
+		// 接触した瞬間の位置から直接ゲート中心へ飛ばすとワープ感が強いので、
+		// まずゲート正面の入口ラインへ短く補間し、その後ゲート奥へ吸い込む。
+		Vector3 centeredStart = gateEntryStartPlayerPosition_;
+		centeredStart.y = gateEntryStartPlayerPosition_.y +
+			(gateEntrySurfacePlayerPosition_.y - gateEntryStartPlayerPosition_.y) * centeringT;
+		const Vector3 alignedStart = SelectLerpVector3(centeredStart, gateEntrySurfacePlayerPosition_, alignT);
+		const Vector3 controlA = SelectLerpVector3(gateEntrySurfacePlayerPosition_, gateEntryTargetPlayerPosition_, 0.42f);
+		const Vector3 controlB = SelectLerpVector3(gateEntryTargetPlayerPosition_, gateEntryInsidePlayerPosition_, 0.58f);
+		const Vector3 divePos = SelectBezierVector3(
+			gateEntrySurfacePlayerPosition_,
 			{ controlA.x, controlA.y + kGateEntryLiftHeight, controlA.z },
 			{ controlB.x, controlB.y + kGateEntryLiftHeight * 0.35f, controlB.z },
 			gateEntryInsidePlayerPosition_,
-			moveT
+			diveT
 		);
-
-		if (gateEntryTargetGate_) {
-			if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-				const Vector3 gatePos = gateEntryTargetGate_->GetWorldPosition();
-				const Vector3 gateCore = {
-					gatePos.x,
-					gateEntryStartPlayerPosition_.y + 0.62f,
-					gatePos.z
-				};
-				const Vector3 playerCore = {
-					playerPos.x,
-					playerPos.y + 0.45f,
-					playerPos.z
-				};
-				const Vector3 pullPos = SelectLerpVector3(playerCore, gateCore, 0.48f + clipT * 0.32f);
-
-				gateEntrySparkTimer_ -= deltaTime;
-				if (gateEntrySparkTimer_ <= 0.0f && t < 0.96f) {
-					gpuParticleManager->Emit(kGateEntryPullSparkPreset, pullPos);
-					gateEntrySparkTimer_ = 0.065f - clipT * 0.025f;
-				}
-
-				gateEntryMistTimer_ -= deltaTime;
-				if (gateEntryMistTimer_ <= 0.0f && t < 0.98f) {
-					gpuParticleManager->Emit(kGateEntryCoreMistPreset, gateCore);
-					gateEntryMistTimer_ = 0.16f;
-				}
-
-				gateEntryGlintTimer_ -= deltaTime;
-				if (gateEntryGlintTimer_ <= 0.0f && clipT > 0.08f && clipT < 0.96f) {
-					gpuParticleManager->Emit(kGateEntryDissolveGlintPreset, SelectLerpVector3(playerCore, gateCore, 0.24f + clipT * 0.38f));
-					gateEntryGlintTimer_ = 0.075f;
-				}
-			}
-		}
+		Vector3 playerPos = SelectLerpVector3(alignedStart, divePos, SelectClamp01((t - 0.08f) / 0.28f));
 
 		if (Transform* transform = player_->GetTransform()) {
 			transform->translate = playerPos;
 			transform->scale = gateEntryStartPlayerScale_;
+		}
+		if (clipT >= 0.995f || t >= 0.94f) {
+			player_->SetIsVisible(false);
 		}
 	}
 

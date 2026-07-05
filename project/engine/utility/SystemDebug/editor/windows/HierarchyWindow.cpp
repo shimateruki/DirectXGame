@@ -30,6 +30,7 @@
 #include "ItemFactory.h"
 #include "json.hpp"
 #include <filesystem>
+#include <cctype>
 #include <algorithm> // std::transform用
 #include <cmath>
 #include <vector>
@@ -39,6 +40,32 @@
 static const float PI = (float)M_PI;
 static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
 static float ToDegrees(float radians) { return radians * (180.0f / PI); }
+
+static std::string ToLowerAscii(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return text;
+}
+
+static bool ContainsLower(const std::string& text, const std::string& lowerNeedle) {
+    return ToLowerAscii(text).find(lowerNeedle) != std::string::npos;
+}
+
+static bool MatchesHierarchySearch(Object3d* object, const std::string& lowerFilter) {
+    if (!object) {
+        return false;
+    }
+    if (lowerFilter.empty()) {
+        return true;
+    }
+
+    return ContainsLower(object->GetName(), lowerFilter) ||
+        ContainsLower(object->GetClassName(), lowerFilter) ||
+        ContainsLower(object->GetSaveCategory(), lowerFilter) ||
+        ContainsLower(object->GetTag(), lowerFilter) ||
+        ContainsLower(object->GetLayer(), lowerFilter);
+}
 
 namespace fs = std::filesystem;
 
@@ -471,7 +498,7 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
         }
-        if (editor_->GetNodeGraphEditorWindow() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " ノードグラフ (Node Graph)", currentObj == editor_->GetNodeGraphEditorWindow())) {
+        if (editor_->GetNodeGraphEditorWindow() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " 演出ノード (Effect Sequence Graph)", currentObj == editor_->GetNodeGraphEditorWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetNodeGraphEditorWindow());
         }
@@ -586,10 +613,27 @@ void HierarchyWindow::Draw() {
     const char* filterNames[] = { "All", "Player", "Enemy", "Object" };
     ImGui::Combo("##CategoryFilter", &currentCategoryFilter_, filterNames, IM_ARRAYSIZE(filterNames));
     ImGui::PopItemWidth();
+
+    ImGui::SameLine();
+    ImGui::Text("Layer:");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(100.0f);
+    const char* layerFilterNames[] = {
+        "All",
+        "Default",
+        "Player",
+        "Enemy",
+        "Stage",
+        "Trigger",
+        "Effect",
+        "EditorOnly"
+    };
+    ImGui::Combo("##LayerFilter", &currentLayerFilter_, layerFilterNames, IM_ARRAYSIZE(layerFilterNames));
+    ImGui::PopItemWidth();
     ImGui::Separator();
 
     std::string filterStr = editor_->GetSearchFilterBuffer();
-    std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+    filterStr = ToLowerAscii(filterStr);
 
 
     if (!filterStr.empty()) {
@@ -598,19 +642,16 @@ void HierarchyWindow::Draw() {
         for (auto& obj : objects) {
             std::string name = obj->GetName();
             if (name.empty()) continue;
-            std::string nameLower = name;
-            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-            if (currentCategoryFilter_ != 0) {
-                std::string cat = obj->GetSaveCategory();
-                if (currentCategoryFilter_ == 1 && cat != "Player") continue;
-                if (currentCategoryFilter_ == 2 && cat != "Enemy") continue;
-                if (currentCategoryFilter_ == 3 && cat != "Object") continue;
-            }
-            if (nameLower.find(filterStr) != std::string::npos) {
-                bool isSelected = (editor_->GetSelectedObject() == obj.get());
+            if (!HasMatchingCategory(obj.get())) continue;
+            if (MatchesHierarchySearch(obj.get(), filterStr)) {
+                bool isSelected = editor_->IsObjectSelected(obj.get());
                 ImGui::PushID(obj.get());
                 if (ImGui::Selectable(name.c_str(), isSelected)) {
-                    editor_->SetSelectedObject(obj.get());
+                    if (ImGui::GetIO().KeyShift) {
+                        editor_->ToggleSelectedObject(obj.get());
+                    } else {
+                        editor_->SetSelectedObject(obj.get());
+                    }
                     EditorManager::GetInstance()->SetSelectedObject(editor_);
                 }
                 ImGui::PopID();
@@ -735,7 +776,7 @@ void HierarchyWindow::Draw() {
             if (sourceObj->GetParent() != nullptr) {
                 nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
                 Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
-                sourceObj->SetParent(nullptr);
+                sourceObj->SetParent(nullptr, true);
                 Vector3 t, rDeg, s;
                 ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
                 sourceObj->GetTransform()->translate = t;
@@ -769,18 +810,29 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 
     //  AllowItemOverlapを追加して、ツリーと同じ行にボタンを押せるようにする
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-    if (editor_->GetSelectedObject() == obj) node_flags |= ImGuiTreeNodeFlags_Selected;
+    if (editor_->IsObjectSelected(obj)) node_flags |= ImGuiTreeNodeFlags_Selected;
 
     std::string name = obj->GetName();
     if (name.empty()) name = "NoName";
     if (obj->GetClassName() == "InvisibleBox") name = "[Trigger] " + name;
+    if (!obj->GetTag().empty()) {
+        name += " #" + obj->GetTag();
+    }
+    const std::string& layerName = obj->GetLayer();
+    if (!layerName.empty() && layerName != "Default") {
+        name += " [" + layerName + "]";
+    }
 
     // 左側にツリーノードを描画
     bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
 
     // アイテムがクリックされたら選択状態にする
-    if (ImGui::IsItemClicked()) {
-        editor_->SetSelectedObject(obj);
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        if (ImGui::GetIO().KeyShift) {
+            editor_->ToggleSelectedObject(obj);
+        } else {
+            editor_->SetSelectedObject(obj);
+        }
         EditorManager::GetInstance()->SetSelectedObject(editor_);
     }
 
@@ -795,7 +847,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
             if (sourceObj != obj && sourceObj->GetParent() != obj) {
                 nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
-                sourceObj->SetParent(obj);
+                sourceObj->SetParent(obj, true);
                 editor_->RegisterObjectEdited(sourceObj, beforeState, "Parent Object");
             }
         }
@@ -846,15 +898,31 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 }
 
 bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
-    if (currentCategoryFilter_ == 0) return true; // Allなら無条件でパス
     if (!obj) return false;
 
-    std::string cat = obj->GetSaveCategory();
-    if (currentCategoryFilter_ == 1 && cat == "Player") return true;
-    if (currentCategoryFilter_ == 2 && cat == "Enemy") return true;
-    if (currentCategoryFilter_ == 3 && cat == "Object") return true;
+    const std::string cat = obj->GetSaveCategory();
+    bool categoryMatches = currentCategoryFilter_ == 0;
+    if (currentCategoryFilter_ == 1 && cat == "Player") categoryMatches = true;
+    if (currentCategoryFilter_ == 2 && cat == "Enemy") categoryMatches = true;
+    if (currentCategoryFilter_ == 3 && cat == "Object") categoryMatches = true;
 
-    // 子要素も再帰的にチェック（親がObjectでも子がEnemyなら表示を許可する！）
+    const char* layerFilterNames[] = {
+        "All",
+        "Default",
+        "Player",
+        "Enemy",
+        "Stage",
+        "Trigger",
+        "Effect",
+        "EditorOnly"
+    };
+    bool layerMatches = currentLayerFilter_ == 0;
+    if (currentLayerFilter_ > 0 && currentLayerFilter_ < IM_ARRAYSIZE(layerFilterNames)) {
+        layerMatches = obj->GetLayer() == layerFilterNames[currentLayerFilter_];
+    }
+
+    if (categoryMatches && layerMatches) return true;
+
     for (Object3d* child : obj->GetChildren()) {
         if (HasMatchingCategory(child)) return true;
     }

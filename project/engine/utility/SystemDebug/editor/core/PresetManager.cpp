@@ -275,20 +275,24 @@ PresetManager* PresetManager::GetInstance() {
 
 void PresetManager::Initialize() {
     presets_.clear();
+    prefabs_.clear();
 
     // 1. まずメインの統合ファイルを読み込む
     LoadPresets("Resources/json/preset/presets.json");
 
-    bool needsMigration = false; // お引越しが必要かどうかのフラグ
+        LoadPrefabs();
+bool needsMigration = false; // お引越しが必要かどうかのフラグ
 
     // 2. 古いファイルが残っていたら読み込む
     if (std::filesystem::exists("Resources/json/preset/EnemyPresets.json")) {
         LoadPresets("Resources/json/preset/EnemyPresets.json");
-        needsMigration = true;
+            LoadPrefabs();
+needsMigration = true;
     }
     if (std::filesystem::exists("Resources/json/preset/GimmickPresets.json")) {
         LoadPresets("Resources/json/preset/GimmickPresets.json");
-        needsMigration = true;
+            LoadPrefabs();
+needsMigration = true;
     }
 
     // 3. 統合セーブを実行し、移行元の旧ファイルを削除
@@ -302,7 +306,8 @@ void PresetManager::Initialize() {
 }
 void PresetManager::LoadPresets(const std::string& filename) {
     std::ifstream file(filename);
-    if (!file.is_open()) return;
+        LoadPrefabs();
+if (!file.is_open()) return;
 
     json root;
     try {
@@ -317,6 +322,103 @@ void PresetManager::LoadPresets(const std::string& filename) {
     }
 }
 
+
+void PresetManager::LoadPrefabs(const std::string& filename) {
+    prefabs_.clear();
+
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return;
+    }
+
+    json data;
+    try {
+        file >> data;
+    } catch (...) {
+        return;
+    }
+
+    const json* source = &data;
+    if (data.is_object() && data.contains("prefabs") && data["prefabs"].is_object()) {
+        source = &data["prefabs"];
+    }
+
+    if (!source->is_object()) {
+        return;
+    }
+
+    for (auto it = source->begin(); it != source->end(); ++it) {
+        prefabs_[it.key()] = it.value();
+    }
+}
+
+void PresetManager::SavePrefabs(const std::string& filename) {
+    std::filesystem::path path(filename);
+    if (path.has_parent_path()) {
+        std::filesystem::create_directories(path.parent_path());
+    }
+
+    json data;
+    data["version"] = 1;
+    data["prefabs"] = json::object();
+
+    for (const auto& [name, prefab] : prefabs_) {
+        data["prefabs"][name] = prefab;
+    }
+
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        return;
+    }
+
+    file << data.dump(4);
+}
+
+void PresetManager::AddPrefabFromObject(const std::string& prefabName, Object3d* obj) {
+    if (!obj || prefabName.empty()) {
+        return;
+    }
+
+    std::unordered_set<const Object3d*> visited;
+    prefabs_[prefabName] = BuildPresetNode(obj, visited);
+    SavePrefabs();
+}
+
+std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const {
+    std::vector<std::unique_ptr<Object3d>> result;
+    if (!common) {
+        return result;
+    }
+
+    auto it = prefabs_.find(prefabName);
+    if (it == prefabs_.end()) {
+        return result;
+    }
+
+    CreateObjectFromPresetNode(it->second, common, nullptr, result);
+    return result;
+}
+
+void PresetManager::RemovePrefab(const std::string& prefabName) {
+    if (prefabs_.erase(prefabName) > 0) {
+        SavePrefabs();
+    }
+}
+
+void PresetManager::RenamePrefab(const std::string& oldName, const std::string& newName) {
+    if (oldName.empty() || newName.empty() || oldName == newName) {
+        return;
+    }
+
+    auto it = prefabs_.find(oldName);
+    if (it == prefabs_.end() || prefabs_.find(newName) != prefabs_.end()) {
+        return;
+    }
+
+    prefabs_[newName] = it->second;
+    prefabs_.erase(it);
+    SavePrefabs();
+}
 void PresetManager::SaveAll() {
 
     SavePresets("Resources/json/preset/presets.json");

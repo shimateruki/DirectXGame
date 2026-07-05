@@ -78,7 +78,7 @@ GamePlayScene::~GamePlayScene() {}
 void GamePlayScene::Draw() {
 	// --- 一人称視点（カメラのめり込み）判定 ---
 	bool isFirstPerson = false;
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
@@ -209,7 +209,8 @@ void GamePlayScene::Draw() {
 
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
 	bool grabUpdated = false;
-	if (hasFluid || hasGPUParticles) {
+	const bool isCameraPreview = dxCommon_ && dxCommon_->IsCameraPreviewRendering();
+	if (!isCameraPreview && (hasFluid || hasGPUParticles)) {
 		// 画面をキャプチャして背景テクスチャにする (必要な時だけ1回呼ぶ)
 		dxCommon_->UpdateGrabTexture();
 		grabUpdated = true;
@@ -300,7 +301,7 @@ void GamePlayScene::Draw() {
 				break;
 			}
 		}
-		if (hasMeshEffects) {
+		if (!isCameraPreview && hasMeshEffects) {
 			// GrabTextureがまだ更新されていなければ、ここで更新する
 			if (!grabUpdated) {
 				dxCommon_->UpdateGrabTexture();
