@@ -368,3 +368,8 @@ FodyWeavers.xsd
 !externals/assimp/lib/**
 /project/GameLog.txt
 /project/GameLog.txt
+# Portfolio screenshots / local editor state
+captures/
+project/output/captures/
+project/NodeEditor.json
+NodeEditor.json
