@@ -373,3 +373,9 @@ captures/
 project/output/captures/
 project/NodeEditor.json
 NodeEditor.json
+
+# Local generated documents / Codex working files
+project/tmp/
+project/output/pdf/
+portfolio_outputs/
+project_submit_removed_*/
