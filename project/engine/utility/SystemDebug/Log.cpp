@@ -1,4 +1,5 @@
 #include "Log.h"
+#include "../PathUtility.h"
 #include <fstream>
 #include <iostream>
 #include <Windows.h>
@@ -12,8 +13,7 @@ bool Log::isFileEnabled_ = false;
 void Log::WriteInternal(LogLevel level, const std::string& file, int line, const std::string& message) {
 
     // ファイルパスからファイル名を取得
-    std::filesystem::path p(file);
-    std::string filename = p.filename().string();
+    std::string filename = cg2::path::ToUtf8String(std::filesystem::path(file).filename());
 
     // ログの整形
     std::string levelTag = (level == LogLevel::Error) ? "[ERROR]" : (level == LogLevel::Warning) ? "[WARN] " : "[INFO] ";

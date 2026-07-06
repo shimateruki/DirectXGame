@@ -9,6 +9,7 @@
 #include "Object3d.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
+#include "../../../PathUtility.h"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -358,10 +359,11 @@ void TrailEmitterEditor::RefreshFileLists() {
     savedConfigList_.clear();
 
     auto scanDir = [](const std::string& dir, std::vector<std::string>& out) {
-        if (!fs::exists(dir)) return;
-        for (auto& entry : fs::directory_iterator(dir)) {
-            if (entry.path().extension() == ".json")
-                out.push_back(entry.path().stem().string());
+        const auto directoryPath = cg2::path::FromUtf8(dir);
+        if (!cg2::path::Exists(directoryPath)) return;
+        for (auto& entry : fs::directory_iterator(directoryPath, cg2::path::SafeDirectoryOptions())) {
+            if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json")
+                out.push_back(cg2::path::ToUtf8String(entry.path().stem()));
         }
         };
 
@@ -375,7 +377,7 @@ void TrailEmitterEditor::RefreshFileLists() {
 // ============================================================
 void TrailEmitterEditor::Save(const std::string& name) {
     if (name.empty()) return;
-    fs::create_directories("Resources/json/trail_emitter/");
+    cg2::path::CreateDirectories(cg2::path::FromUtf8("Resources/json/trail_emitter/"));
 
     TrailEmitterConfig& cfg = emitter_.GetConfig();
     json j;

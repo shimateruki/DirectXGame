@@ -56,8 +56,8 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     // ==========================================
 
     // モニターの画面解像度（縦横のピクセル数）を取得
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    int screenWidth = width;
+    int screenHeight = height;
 
     // ゲーム内の基準解像度は固定し、ウィンドウだけ実画面サイズに合わせる
     kWindowWidth = screenWidth;

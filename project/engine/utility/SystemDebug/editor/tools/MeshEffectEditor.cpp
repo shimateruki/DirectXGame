@@ -10,6 +10,7 @@
 #include "IconsFontAwesome5.h"
 #include <filesystem>
 #include <MeshEffectManager.h>
+#include "../../../PathUtility.h"
 
 using json = nlohmann::json;
 static const char* kEasingNames[] = {
@@ -36,10 +37,14 @@ void MeshEffectEditor::RefreshTextureList() {
     std::string path = "Resources/sprite/"; // テクスチャフォルダのパス
 
     // 指定フォルダ内のファイルを走査
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_regular_file()) {
+    const auto textureDirectoryPath = cg2::path::FromUtf8(path);
+    if (cg2::path::Exists(textureDirectoryPath)) {
+        for (const auto& entry : std::filesystem::directory_iterator(textureDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+            if (!cg2::path::IsRegularFile(entry)) {
+                continue;
+            }
             // ファイル名だけをリストに追加
-            textureFileList_.push_back(entry.path().filename().string());
+            textureFileList_.push_back(cg2::path::ToUtf8String(entry.path().filename()));
         }
     }
 
@@ -50,7 +55,7 @@ void MeshEffectEditor::RefreshTextureList() {
     else {
         // 現在の editTexturePath_ に一致するものを探してインデックスを合わせる
         currentTextureIndex_ = 0; // デフォルト
-        std::string currentFileName = std::filesystem::path(editTexturePath_).filename().string();
+        std::string currentFileName = cg2::path::ToUtf8String(cg2::path::FromUtf8(editTexturePath_).filename());
         for (int i = 0; i < textureFileList_.size(); ++i) {
             if (textureFileList_[i] == currentFileName) {
                 currentTextureIndex_ = i;
@@ -65,12 +70,15 @@ void MeshEffectEditor::RefreshJsonFileList() {
     std::string path = "Resources/json/effect/";
 
     // フォルダが無ければ自動で作る（クラッシュ防止）
-    std::filesystem::create_directories(path);
+    const auto jsonDirectoryPath = cg2::path::FromUtf8(path);
+    cg2::path::CreateDirectories(jsonDirectoryPath);
 
     // フォルダ内の .json ファイルだけをリストアップする
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            jsonFileList_.push_back(entry.path().filename().string());
+    if (cg2::path::Exists(jsonDirectoryPath)) {
+        for (const auto& entry : std::filesystem::directory_iterator(jsonDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+            if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                jsonFileList_.push_back(cg2::path::ToUtf8String(entry.path().filename()));
+            }
         }
     }
 
@@ -425,7 +433,7 @@ void MeshEffectEditor::DrawImGui() {
         static char objName[128] = "my_custom_primitive";
         ImGui::InputText("OBJファイル名", objName, sizeof(objName));
         if (ImGui::Button(ICON_FA_DOWNLOAD " この形状をOBJとして保存 (Export)", ImVec2(availWidth, 30))) {
-            std::filesystem::create_directories("Resources/model");
+            cg2::path::CreateDirectories(cg2::path::FromUtf8("Resources/model"));
             std::string path = "Resources/model/" + std::string(objName) + ".obj";
             previewEffect_->ExportToObj(path);
             DebugConsole::GetInstance()->AddLog("Exported OBJ to " + path);
@@ -657,7 +665,7 @@ void MeshEffectEditor::SaveToJson() {
     std::string directoryPath = "Resources/json/effect/";
 
     // フォルダが無ければ自動で作ってくれる魔法の1行！
-    std::filesystem::create_directories(directoryPath);
+    cg2::path::CreateDirectories(cg2::path::FromUtf8(directoryPath));
 
     // ファイル名と合体させてフルパスを作る
     std::string fullPath = directoryPath + saveFileName_;
@@ -957,7 +965,7 @@ void MeshEffectEditor::LoadFromJson() {
 void MeshEffectEditor::SyncTextureIndices() {
     auto findIndex = [&](const std::string& path) -> int {
         if (path.empty()) return -1;
-        std::string fileName = std::filesystem::path(path).filename().string();
+        std::string fileName = cg2::path::ToUtf8String(cg2::path::FromUtf8(path).filename());
         for (int i = 0; i < (int)textureFileList_.size(); ++i) {
             if (textureFileList_[i] == fileName) return i;
         }

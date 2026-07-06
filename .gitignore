@@ -372,3 +372,19 @@ FodyWeavers.xsd
 /project/Resources/json/save/savedata.json
 /project/Resources/json/user_config.json
 /project/Resources/json/user_config.json
+
+# Portfolio screenshots / local editor state
+captures/
+project/output/captures/
+project/NodeEditor.json
+NodeEditor.json
+
+# Local generated documents / Codex working files
+project/tmp/
+project/output/pdf/
+portfolio_outputs/
+project_submit_removed_*/
+work/project_tmp_*/
+
+# Local runtime save data
+project/Resources/json/save/

@@ -1,4 +1,5 @@
 #include "GPUParticleEditor.h"
+#include "../../../PathUtility.h"
 #include <imgui.h>
 #include <fstream>
 #include <json.hpp> // nlohmann/json
@@ -121,7 +122,7 @@ void GPUParticleEditor::DrawImGui() {
         std::vector<const char*> texNames;
         int currentIndex = 0;
         for (int i = 0; i < filteredPaths.size(); ++i) {
-            std::string fileName = std::filesystem::path(filteredPaths[i]).filename().string();
+            std::string fileName = cg2::path::ToUtf8String(cg2::path::FromUtf8(filteredPaths[i]).filename());
             texNames.push_back(filteredPaths[i].c_str());
             if (config_.texturePath == filteredPaths[i]) {
                 currentIndex = i;
@@ -170,10 +171,11 @@ void GPUParticleEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string dirPath = "Resources/json/gpu_particles/";
         std::vector<std::string> presetList;
-        if (std::filesystem::exists(dirPath)) {
-            for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-                if (entry.path().extension() == ".json") {
-                    presetList.push_back(entry.path().stem().string());
+        const auto presetDirPath = cg2::path::FromUtf8(dirPath);
+        if (cg2::path::Exists(presetDirPath)) {
+            for (const auto& entry : std::filesystem::directory_iterator(presetDirPath, cg2::path::SafeDirectoryOptions())) {
+                if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                    presetList.push_back(cg2::path::ToUtf8String(entry.path().stem()));
                 }
             }
         }

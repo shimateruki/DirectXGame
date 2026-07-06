@@ -7,6 +7,7 @@
 #include "Object3d.h"
 #include <MeshEffectManager.h>
 #include "GPUParticleManager.h"
+#include "../../../PathUtility.h"
 namespace fs = std::filesystem;
 
 void VFXSequencerEditor::Initialize() {
@@ -42,37 +43,44 @@ void VFXSequencerEditor::RefreshFileList() {
     meshEffectList_.clear();
     // 1. パーティクル素材 (.json) を探す
     std::string particleDir = "Resources/json/gpu_particles/";
-    if (fs::exists(particleDir)) {
-        for (const auto& entry : fs::directory_iterator(particleDir)) {
-            if (entry.path().extension() == ".json") {
-                particlePresetList_.push_back(entry.path().stem().string());
+    const auto particleDirPath = cg2::path::FromUtf8(particleDir);
+    if (cg2::path::Exists(particleDirPath)) {
+        for (const auto& entry : fs::directory_iterator(particleDirPath, cg2::path::SafeDirectoryOptions())) {
+            if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                particlePresetList_.push_back(cg2::path::ToUtf8String(entry.path().stem()));
             }
         }
     }
 
     std::string meshDir = "Resources/json/effect/";
-    if (fs::exists(meshDir)) {
-        for (const auto& entry : fs::directory_iterator(meshDir)) {
-            if (entry.path().extension() == ".json") {
-                meshEffectList_.push_back(entry.path().stem().string());
+    const auto meshDirPath = cg2::path::FromUtf8(meshDir);
+    if (cg2::path::Exists(meshDirPath)) {
+        for (const auto& entry : fs::directory_iterator(meshDirPath, cg2::path::SafeDirectoryOptions())) {
+            if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                meshEffectList_.push_back(cg2::path::ToUtf8String(entry.path().stem()));
             }
         }
     }
     // 2. 作成済みの必殺技シーケンス (.json) を探す
     std::string sequenceDir = "Resources/json/vfx_sequence/";
-    if (fs::exists(sequenceDir)) {
-        for (const auto& entry : fs::directory_iterator(sequenceDir)) {
-            if (entry.path().extension() == ".json") {
-                sequenceFileList_.push_back(entry.path().stem().string());
+    const auto sequenceDirPath = cg2::path::FromUtf8(sequenceDir);
+    if (cg2::path::Exists(sequenceDirPath)) {
+        for (const auto& entry : fs::directory_iterator(sequenceDirPath, cg2::path::SafeDirectoryOptions())) {
+            if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                sequenceFileList_.push_back(cg2::path::ToUtf8String(entry.path().stem()));
             }
         }
     }
     std::string seDir = "Resources/audio/se/";
-    if (fs::exists(seDir)) {
-        for (const auto& entry : fs::directory_iterator(seDir)) {
-            auto ext = entry.path().extension();
+    const auto seDirPath = cg2::path::FromUtf8(seDir);
+    if (cg2::path::Exists(seDirPath)) {
+        for (const auto& entry : fs::directory_iterator(seDirPath, cg2::path::SafeDirectoryOptions())) {
+            if (!cg2::path::IsRegularFile(entry)) {
+                continue;
+            }
+            auto ext = cg2::path::ExtensionLower(entry.path());
             if (ext == ".wav" || ext == ".mp3") {
-                seFileList_.push_back(entry.path().filename().string());
+                seFileList_.push_back(cg2::path::ToUtf8String(entry.path().filename()));
             }
         }
     }

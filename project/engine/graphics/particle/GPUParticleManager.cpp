@@ -1,4 +1,5 @@
 #include "GPUParticleManager.h"
+#include "../../utility/PathUtility.h"
 #include <filesystem>
 #include <fstream>
 #include "json.hpp"
@@ -86,10 +87,11 @@ void GPUParticleManager::Emit(const std::string& presetName, const Vector3& posi
 // 以下、旧コードからの移植（JSON読み込みとオートエミッター）
 // ====================================================================
 void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
-    if (!fs::exists(directoryPath)) { fs::create_directories(directoryPath); return; }
-    for (const auto& entry : fs::directory_iterator(directoryPath)) {
-        if (entry.path().extension() == ".json") {
-            std::string filename = entry.path().stem().string();
+    const auto gpuParticleDirectoryPath = cg2::path::FromUtf8(directoryPath);
+    if (!cg2::path::Exists(gpuParticleDirectoryPath)) { cg2::path::CreateDirectories(gpuParticleDirectoryPath); return; }
+    for (const auto& entry : fs::directory_iterator(gpuParticleDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+        if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+            std::string filename = cg2::path::ToUtf8String(entry.path().stem());
             std::ifstream file(entry.path());
             if (file.is_open()) {
                 json j; file >> j;

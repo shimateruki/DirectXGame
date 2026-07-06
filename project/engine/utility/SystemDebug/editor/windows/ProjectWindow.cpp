@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "ProjectWindow.h"
+#include "../../../PathUtility.h"
 #include "DebugEditor.h"
 #include "imgui.h"
 #include "ModelManager.h"
@@ -264,8 +265,9 @@ void ProjectWindow::Draw() {
     // =================================================================================
     if (ImGui::CollapsingHeader("Models (Source)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string baseDirectory = "Resources/3DModel";
+        std::filesystem::path basePath = cg2::path::FromUtf8(baseDirectory);
 
-        if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
+        if (cg2::path::Exists(basePath) && cg2::path::IsDirectory(basePath)) {
             ImGui::TextDisabled("Drag & Drop to Scene to Place");
             ImGui::Separator();
 
@@ -278,27 +280,26 @@ void ProjectWindow::Draw() {
 
             // ★ テーブルを使った自動折り返しのグリッドレイアウト
             if (ImGui::BeginTable("ModelAssetTable", columnCount)) {
-                for (const auto& entry : fs::directory_iterator(baseDirectory)) {
+                for (const auto& entry : fs::directory_iterator(basePath, cg2::path::SafeDirectoryOptions())) {
                     std::string displayModelName = ""; // ボタン表示名
                     std::string payloadName = "";      // ロード用パス/名前
 
                     // 隊長の拡張子解析ロジック（そのまま活かします！）
-                    if (entry.is_directory()) {
-                        std::string folderName = entry.path().filename().string();
-                        for (const auto& subEntry : fs::directory_iterator(entry.path())) {
-                            std::string subExt = subEntry.path().extension().string();
-                            std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
+                    if (cg2::path::IsDirectory(entry)) {
+						std::string folderName = cg2::path::ToUtf8String(entry.path().filename());
+						for (const auto& subEntry : fs::directory_iterator(entry.path(), cg2::path::SafeDirectoryOptions())) {
+							std::string subExt = cg2::path::ExtensionLower(subEntry.path());
 
                             if (subExt == ".obj") {
                                 displayModelName = folderName;
                                 payloadName = folderName;
                                 break;
-                            }
-                            else if (subExt == ".gltf" || subExt == ".glb") {
-                                displayModelName = subEntry.path().filename().string();
-                                payloadName = subEntry.path().filename().string();
-                                break;
-                            }
+							}
+							else if (subExt == ".gltf" || subExt == ".glb") {
+								displayModelName = cg2::path::ToUtf8String(subEntry.path().filename());
+								payloadName = displayModelName;
+								break;
+							}
                         }
                     }
 

@@ -1,4 +1,5 @@
-﻿#include "TextureManager.h"
+#include "TextureManager.h"
+#include "../../utility/PathUtility.h"
 #include <cassert>
 #include "SRVManager.h"
 #include "d3dx12.h"
@@ -76,17 +77,19 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     // 優先的に読み込むパスを決定（DDSがあればそっちを使う）
     std::string pathToLoad = filePath;
 
-    std::filesystem::path p(filePath);
-    if (p.extension() == ".png" || p.extension() == ".jpg") {
+    std::filesystem::path p = cg2::path::FromUtf8(filePath);
+    pathToLoad = cg2::path::ToGamePath(p);
+    std::string extension = cg2::path::ExtensionLower(p);
+    if (extension == ".png" || extension == ".jpg") {
         std::filesystem::path ddsPath = p;
         ddsPath.replace_extension(".dds");
-        if (std::filesystem::exists(ddsPath)) {
-            pathToLoad = ddsPath.string();
+        if (cg2::path::Exists(ddsPath)) {
+            pathToLoad = cg2::path::ToGamePath(ddsPath);
         }
     }
 
     // 1. すでに読み込み済みのテクスチャか検索（変換後のパスでチェック）
-    std::replace(pathToLoad.begin(), pathToLoad.end(), '\\', '/');
+    pathToLoad = cg2::path::NormalizeSlash(pathToLoad);
     auto it = textureHandleMap_.find(pathToLoad);
     if (it != textureHandleMap_.end()) {
         return it->second;
@@ -166,18 +169,18 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 }
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
-    if (std::filesystem::exists(directoryPath)) {
+    const std::filesystem::path basePath = cg2::path::FromUtf8(directoryPath);
+    if (cg2::path::Exists(basePath)) {
         // --- 全体計測開始 ---
         auto totalStart = std::chrono::high_resolution_clock::now();
         int count = 0;
 
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(basePath, cg2::path::SafeDirectoryOptions())) {
             // フォルダではなく「ファイル」だった場合のみ処理
             if (entry.is_regular_file()) {
-                std::string ext = entry.path().extension().string();
+                std::string ext = cg2::path::ExtensionLower(entry.path());
                 if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
-                    std::string path = entry.path().string();
-                    std::replace(path.begin(), path.end(), '\\', '/');
+                    std::string path = cg2::path::ToGamePath(entry.path());
                     Load(path);
                     count++;
                 }

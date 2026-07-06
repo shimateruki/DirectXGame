@@ -19,6 +19,14 @@
 #include <IconsFontAwesome5.h>
 #include <MeshEffectManager.h>
 
+namespace {
+bool IsKnownSceneName(const std::string& sceneName) {
+    return sceneName == "TITLE" ||
+        sceneName == "GAMEPLAY" ||
+        sceneName == "GAMEOVER" ||
+        sceneName == "GAMECLEAR";
+}
+}
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -37,8 +45,10 @@ void Game::Initialize() {
 
 #ifdef USE_IMGUI
     std::string lastScene = sceneManager_->LoadLastSceneName();
-    if (!lastScene.empty()) {
+    if (!lastScene.empty() && IsKnownSceneName(lastScene)) {
         startScene = lastScene;
+    } else if (!lastScene.empty()) {
+        sceneManager_->SaveLastSceneName(startScene);
     }
 #endif
     currentSceneName_ = startScene;
@@ -417,9 +427,12 @@ void Game::Update() {
         }
 
         if (ImGui::BeginMenu("シーン切り替え")) {
-            const char* sceneNames[] = { "TITLE", "SELECT", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+            const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
             for (int i = 0; i < _countof(sceneNames); i++) {
-                if (ImGui::MenuItem(sceneNames[i])) sceneManager_->ChangeScene(sceneNames[i]);
+                if (ImGui::MenuItem(sceneNames[i])) {
+                    currentSceneName_ = sceneNames[i];
+                    sceneManager_->ChangeScene(currentSceneName_);
+                }
             }
             ImGui::EndMenu();
         }

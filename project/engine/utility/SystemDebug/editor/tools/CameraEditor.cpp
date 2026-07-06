@@ -8,6 +8,7 @@
 #include <filesystem> 
 #include <DebugConsole.h>
 #include "IconsFontAwesome5.h"
+#include "../../../PathUtility.h"
 using json = nlohmann::json;
 namespace fs = std::filesystem; // 短縮用
 
@@ -40,15 +41,16 @@ void CameraEditor::RefreshFileList() {
     fileList_.clear();
 
     // ディレクトリが存在しなければ作成しておく（親切設計）
-    if (!fs::exists(kDirectoryPath_)) {
-        fs::create_directories(kDirectoryPath_);
+    const auto directoryPath = cg2::path::FromUtf8(kDirectoryPath_);
+    if (!cg2::path::Exists(directoryPath)) {
+        cg2::path::CreateDirectories(directoryPath);
         return;
     }
 
     // ディレクトリ内を走査して .json だけリストに追加
-    for (const auto& entry : fs::directory_iterator(kDirectoryPath_)) {
-        if (entry.path().extension() == ".json") {
-            fileList_.push_back(entry.path().filename().string());
+    for (const auto& entry : fs::directory_iterator(directoryPath, cg2::path::SafeDirectoryOptions())) {
+        if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+            fileList_.push_back(cg2::path::ToUtf8String(entry.path().filename()));
         }
     }
 }
@@ -665,7 +667,7 @@ void CameraEditor::LoadFile(const std::string& fileName) {
     std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
 
     // 3. ファイルが存在するかチェック
-    if (!fs::exists(filePath)) {
+    if (!cg2::path::Exists(cg2::path::FromUtf8(filePath))) {
         settings_ = Settings(); // デフォルトコンストラクタで初期化
         settings_.currentMode = Mode::Game; // 基本はゲームモード
 

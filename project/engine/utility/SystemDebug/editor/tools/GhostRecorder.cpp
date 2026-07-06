@@ -14,6 +14,7 @@
 #include"Easing.h"
 #include "ImGuizmo.h"
 #include "IconsFontAwesome5.h"
+#include "../../../PathUtility.h"
 using json = nlohmann::json;
 
 // ========================================================================
@@ -707,11 +708,12 @@ void GhostRecorder::DrawImGui() {
 	// -------------------------------------------------------------
 	if (ImGui::CollapsingHeader(ICON_FA_FOLDER_OPEN " ファイル管理 (File IO)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		std::string dirPath = "Resources/json/animation/";
-		if (std::filesystem::exists(dirPath) && std::filesystem::is_directory(dirPath)) {
+		const auto animationDirPath = cg2::path::FromUtf8(dirPath);
+		if (cg2::path::Exists(animationDirPath) && cg2::path::IsDirectory(animationDirPath)) {
 			if (ImGui::BeginCombo(ICON_FA_HISTORY " 既存データからロード", fName)) {
-				for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-					if (entry.path().extension() == ".json") {
-						std::string fileName = entry.path().stem().string();
+				for (const auto& entry : std::filesystem::directory_iterator(animationDirPath, cg2::path::SafeDirectoryOptions())) {
+					if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+						std::string fileName = cg2::path::ToUtf8String(entry.path().stem());
 						bool isSelected = (std::string(fName) == fileName);
 						if (ImGui::Selectable(fileName.c_str(), isSelected)) {
 							strncpy_s(fName, sizeof(fName), fileName.c_str(), _TRUNCATE);

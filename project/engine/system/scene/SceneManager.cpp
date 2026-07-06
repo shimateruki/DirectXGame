@@ -41,6 +41,15 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     currentScene_ = sceneFactory_->CreateScene(firstSceneName); //ファクトリー経由で生成
 
     // SceneManagerのポインタを渡す
+    if (currentScene_ == nullptr && firstSceneName != "TITLE") {
+        SaveLastSceneName("TITLE");
+        currentScene_ = sceneFactory_->CreateScene("TITLE");
+    }
+    if (currentScene_ == nullptr) {
+        assert(false && "Failed to create first scene.");
+        return;
+    }
+
     currentScene_->SetSceneManager(this);
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
@@ -174,6 +183,10 @@ void SceneManager::ChangeScene(const std::string& sceneName, bool skipFade) {
 
     // ファクトリーを使ってシーンを生成
     std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(sceneName);
+    if (newScene == nullptr) {
+        assert(false && "Failed to create next scene.");
+        return;
+    }
     if (debugEditor_) {
         newScene->SetDebugEditor(debugEditor_);
     }
@@ -191,7 +204,22 @@ void SceneManager::ChangeScene(const std::string& sceneName, bool skipFade) {
     }
 }
 void SceneManager::SaveLastSceneName(const std::string& sceneName) {
-    json root;
+    json root = json::object();
+    {
+        std::ifstream inputFile(kUserConfigPath);
+        if (inputFile.is_open()) {
+            try {
+                inputFile >> root;
+                if (!root.is_object()) {
+                    root = json::object();
+                }
+            }
+            catch (...) {
+                root = json::object();
+            }
+        }
+    }
+
     root["lastScene"] = sceneName;
 
     std::ofstream file(kUserConfigPath);
@@ -211,8 +239,8 @@ std::string SceneManager::LoadLastSceneName() {
     try {
         json root;
         file >> root;
-        if (root.contains("lastScene")) {
-            return root["lastScene"];
+        if (root.contains("lastScene") && root["lastScene"].is_string()) {
+            return root["lastScene"].get<std::string>();
         }
     }
     catch (...) {

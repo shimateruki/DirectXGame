@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include <fstream>
 #include "Model.h"
+#include "../../../utility/PathUtility.h"
 #include "DirectXCommon.h"
 #include "engine/utility/math/Math.h"
 #include <sstream>
@@ -272,7 +273,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         }
 
         if (!textureFilePath.empty()) {
-            std::string texFilename = std::filesystem::path(textureFilePath).filename().string();
+            std::string texFilename = cg2::path::ToGamePath(cg2::path::FromUtf8(textureFilePath).filename());
             modelData.materials[i].textureFilePath = directoryPath + sep + texFilename;
         } else {
             modelData.materials[i].textureFilePath = "Resources/sprite/white.png";

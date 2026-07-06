@@ -8,6 +8,7 @@
 #include <DebugConsole.h>
 #include "GhostRecorder.h"
 #include "IconsFontAwesome5.h"
+#include "../../engine/utility/PathUtility.h"
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -44,12 +45,13 @@ void GhostDirector::DrawImGui() {
     // =======================================================
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string dirPath = "Resources/json/scenario/";
-        if (!fs::exists(dirPath)) fs::create_directories(dirPath);
+        const auto scenarioDirPath = cg2::path::FromUtf8(dirPath);
+        if (!cg2::path::Exists(scenarioDirPath)) cg2::path::CreateDirectories(scenarioDirPath);
 
         if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存シナリオをロード", scenarioNameBuf_)) {
-            for (const auto& entry : fs::directory_iterator(dirPath)) {
-                if (entry.path().extension() == ".json") {
-                    std::string fileName = entry.path().stem().string();
+            for (const auto& entry : fs::directory_iterator(scenarioDirPath, cg2::path::SafeDirectoryOptions())) {
+                if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                    std::string fileName = cg2::path::ToUtf8String(entry.path().stem());
                     bool isSelected = (std::string(scenarioNameBuf_) == fileName);
                     if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                         strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
@@ -111,10 +113,11 @@ void GhostDirector::DrawImGui() {
             std::string currentPath = track.pathFileName.empty() ? "(未選択)" : track.pathFileName;
             if (ImGui::BeginCombo(ICON_FA_MAP_SIGNS " Path Data (演技)", currentPath.c_str())) {
                 std::string animDirPath = "Resources/json/animation/";
-                if (fs::exists(animDirPath)) {
-                    for (const auto& entry : fs::directory_iterator(animDirPath)) {
-                        if (entry.path().extension() == ".json") {
-                            std::string fileName = entry.path().stem().string();
+                const auto animationDirPath = cg2::path::FromUtf8(animDirPath);
+                if (cg2::path::Exists(animationDirPath)) {
+                    for (const auto& entry : fs::directory_iterator(animationDirPath, cg2::path::SafeDirectoryOptions())) {
+                        if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                            std::string fileName = cg2::path::ToUtf8String(entry.path().stem());
                             bool isSelected = (track.pathFileName == fileName);
                             if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                                 track.pathFileName = fileName;

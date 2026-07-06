@@ -5,6 +5,7 @@
 #include "ParticleSystem.h" 
 #include "ParticleManager.h"
 #include "IconsFontAwesome5.h"
+#include "../../../PathUtility.h"
 namespace fs = std::filesystem;
 void ParticleEditor::Initialize(SceneManager* sceneManager) {
     sceneManager_ = sceneManager;
@@ -146,10 +147,11 @@ void ParticleEditor::DrawImGui() {
         int currentItem = 0;
         int index = 0;
 
-        if (fs::exists(directoryPath)) {
-            for (const auto& entry : fs::directory_iterator(directoryPath)) {
-                if (entry.path().extension() == ".png") {
-                    std::string fileName = entry.path().filename().string();
+        const auto spriteDirectoryPath = cg2::path::FromUtf8(directoryPath);
+        if (cg2::path::Exists(spriteDirectoryPath)) {
+            for (const auto& entry : fs::directory_iterator(spriteDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+                if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".png") {
+                    std::string fileName = cg2::path::ToUtf8String(entry.path().filename());
                     files.push_back(fileName);
                     if (params.textureName.find(fileName) != std::string::npos) {
                         currentItem = index;

@@ -24,6 +24,7 @@
 #include "json.hpp"
 #include "TrailEmitterEditor.h"
 #include <filesystem>
+#include "../../../PathUtility.h"
 #include <algorithm> // std::transform用
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -103,13 +104,14 @@ void HierarchyWindow::Draw() {
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(editor_->GetCurrentSceneFilenameBuffer());
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string directoryPath = "Resources/json/3Dobject/";
-        if (!fs::exists(directoryPath)) fs::create_directories(directoryPath);
+        const auto sceneDirectoryPath = cg2::path::FromUtf8(directoryPath);
+        if (!cg2::path::Exists(sceneDirectoryPath)) cg2::path::CreateDirectories(sceneDirectoryPath);
 
         if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存ファイル", editor_->GetCurrentSceneFilenameBuffer())) {
-            if (fs::exists(directoryPath)) {
-                for (const auto& entry : fs::directory_iterator(directoryPath)) {
-                    if (entry.path().extension() == ".json") {
-                        std::string filename = entry.path().filename().string();
+            if (cg2::path::Exists(sceneDirectoryPath)) {
+                for (const auto& entry : fs::directory_iterator(sceneDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+                    if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                        std::string filename = cg2::path::ToUtf8String(entry.path().filename());
                         if (filename.find("_player.json") != std::string::npos || filename.find("_enemy.json") != std::string::npos || filename.find("_object.json") != std::string::npos) continue;
                         bool isSelected = (std::string(editor_->GetCurrentSceneFilenameBuffer()) == filename);
                         if (ImGui::Selectable(filename.c_str(), isSelected)) {

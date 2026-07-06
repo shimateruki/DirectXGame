@@ -15,6 +15,7 @@
 #include"winapp.h"
 #include "SrvManager.h"
 #include "TextureManager.h"
+#include "../../../PathUtility.h"
 namespace fs = std::filesystem;
 
 
@@ -216,15 +217,16 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	// --- ファイル管理 ---
 	if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
 		std::string directoryPath = "Resources/json/sprite/";
-		if (!std::filesystem::exists(directoryPath)) {
-			std::filesystem::create_directories(directoryPath);
+		const auto spriteJsonDirectoryPath = cg2::path::FromUtf8(directoryPath);
+		if (!cg2::path::Exists(spriteJsonDirectoryPath)) {
+			cg2::path::CreateDirectories(spriteJsonDirectoryPath);
 		}
 
 		if (ImGui::BeginCombo(ICON_FA_HISTORY " 既存ファイル", currentSpriteFilename_)) {
-			if (std::filesystem::exists(directoryPath)) {
-				for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-					if (entry.path().extension() == ".json") {
-						std::string fname = entry.path().filename().string();
+			if (cg2::path::Exists(spriteJsonDirectoryPath)) {
+				for (const auto& entry : std::filesystem::directory_iterator(spriteJsonDirectoryPath, cg2::path::SafeDirectoryOptions())) {
+					if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+						std::string fname = cg2::path::ToUtf8String(entry.path().filename());
 						bool isSelected = (std::string(currentSpriteFilename_) == fname);
 						if (ImGui::Selectable(fname.c_str(), isSelected)) {
 							strcpy_s(currentSpriteFilename_, fname.c_str());
@@ -437,8 +439,8 @@ void SpriteDebugEditor::DrawProjectWindow() {
 	if (currentSpriteDirectory_ != baseDirPath) {
 		if (ImGui::Button(ICON_FA_ARROW_UP " Back")) {
 
-			fs::path p(currentSpriteDirectory_);
-			currentSpriteDirectory_ = p.parent_path().parent_path().generic_string() + "/";
+			fs::path p = cg2::path::FromUtf8(currentSpriteDirectory_);
+			currentSpriteDirectory_ = cg2::path::ToGamePath(p.parent_path().parent_path()) + "/";
 
 			// ルート（baseDirPath）より上に戻りすぎないように最終ガード
 			if (currentSpriteDirectory_.length() < baseDirPath.length() ||
@@ -451,7 +453,8 @@ void SpriteDebugEditor::DrawProjectWindow() {
 	ImGui::TextDisabled("%s", currentSpriteDirectory_.c_str());
 	ImGui::Separator();
 	
-	if (fs::exists(currentSpriteDirectory_)) {
+	const auto currentSpriteDirectoryPath = cg2::path::FromUtf8(currentSpriteDirectory_);
+	if (cg2::path::Exists(currentSpriteDirectoryPath)) {
 
 		float thumbnailSize = 64.0f;
 		float padding = 16.0f;
@@ -462,14 +465,14 @@ void SpriteDebugEditor::DrawProjectWindow() {
 
 		if (ImGui::BeginTable("SpriteAssetTable", columnCount)) {
 
-			for (const auto& entry : fs::directory_iterator(currentSpriteDirectory_)) {
+			for (const auto& entry : fs::directory_iterator(currentSpriteDirectoryPath, cg2::path::SafeDirectoryOptions())) {
 
 				// ==========================================================
 					// パターンA: フォルダ（ディレクトリ）の場合
 					// ==========================================================
-				if (entry.is_directory()) {
+				if (cg2::path::IsDirectory(entry)) {
 					ImGui::TableNextColumn();
-					std::string folderName = entry.path().filename().string();
+					std::string folderName = cg2::path::ToUtf8String(entry.path().filename());
 
 					ImGui::PushID(folderName.c_str());
 					ImGui::BeginGroup();
@@ -483,7 +486,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 					ImGui::SetWindowFontScale(3.0f);
 
 					if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
-						currentSpriteDirectory_ = entry.path().generic_string() + "/";
+						currentSpriteDirectory_ = cg2::path::ToGamePath(entry.path()) + "/";
 					}
 
 					ImGui::SetWindowFontScale(1.0f); // 忘れずに元に戻す
@@ -501,18 +504,19 @@ void SpriteDebugEditor::DrawProjectWindow() {
 				// ==========================================================
 				// パターンB: ファイル（.png 画像）の場合
 				// ==========================================================
-				else if (entry.is_regular_file() && entry.path().extension() == ".png") {
+				else if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".png") {
 					std::error_code ec;
 					if (fs::file_size(entry.path(), ec) == 0 || ec) {
 						continue;
 					}
 
 					ImGui::TableNextColumn();
-					std::string filename = entry.path().filename().string();
+					std::string filename = cg2::path::ToUtf8String(entry.path().filename());
 
 					// ドラッグ＆ドロップ（エンジンへの送信）用の相対パス
-					std::string relativePath = fs::relative(entry.path(), baseDirPath).generic_string();
-					std::string fullPath = entry.path().generic_string();
+					const auto baseDirFsPath = cg2::path::FromUtf8(baseDirPath);
+					std::string relativePath = cg2::path::ToGamePath(cg2::path::RelativePath(entry.path(), baseDirFsPath));
+					std::string fullPath = cg2::path::ToGamePath(entry.path());
 
 					ImGui::PushID(filename.c_str());
 

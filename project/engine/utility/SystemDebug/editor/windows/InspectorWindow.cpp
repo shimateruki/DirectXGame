@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <set>
+#include "../../../PathUtility.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -299,20 +300,19 @@ void InspectorWindow::Draw() {
                         normalPaths.clear();
                         armPaths.clear();
                         std::string targetDir = "Resources/texture/PBR/";
-                        if (std::filesystem::exists(targetDir)) {
+                        const auto targetDirPath = cg2::path::FromUtf8(targetDir);
+                        if (cg2::path::Exists(targetDirPath)) {
                             // まず全ファイルを走査して、DDSが存在するパスを特定する
                             std::vector<std::string> allFiles;
                             std::set<std::string> ddsBaseNames; // 拡張子を除いたパスの集合
 
-                            for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
-                                if (entry.is_regular_file()) {
-                                    std::string pathString = entry.path().string();
-                                    std::replace(pathString.begin(), pathString.end(), '\\', '/');
+                            for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDirPath, cg2::path::SafeDirectoryOptions())) {
+                                if (cg2::path::IsRegularFile(entry)) {
+                                    std::string pathString = cg2::path::ToGamePath(entry.path());
                                     allFiles.push_back(pathString);
 
-                                    if (entry.path().extension() == ".dds") {
-                                        std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
-                                        std::replace(base.begin(), base.end(), '\\', '/');
+                                    if (cg2::path::ExtensionLower(entry.path()) == ".dds") {
+                                        std::string base = cg2::path::ToGamePath(entry.path().parent_path() / entry.path().stem());
                                         ddsBaseNames.insert(base);
                                     }
                                 }
@@ -320,10 +320,9 @@ void InspectorWindow::Draw() {
 
                             // フィルタリングしながらリストに追加
                             for (const std::string& pathString : allFiles) {
-                                std::filesystem::path p(pathString);
-                                std::string ext = p.extension().string();
-                                std::string base = p.parent_path().string() + "/" + p.stem().string();
-                                std::replace(base.begin(), base.end(), '\\', '/');
+                                std::filesystem::path p = cg2::path::FromUtf8(pathString);
+                                std::string ext = cg2::path::ExtensionLower(p);
+                                std::string base = cg2::path::ToGamePath(p.parent_path() / p.stem());
 
                                 // もし拡張子が .dds でない（png/jpg等）かつ、同じ名前の .dds が既に存在するならスキップ
                                 if (ext != ".dds" && ddsBaseNames.count(base)) {
@@ -496,10 +495,11 @@ void InspectorWindow::Draw() {
             if (isNoneSelected) ImGui::SetItemDefaultFocus();
 
             std::string dirPath = "Resources/json/animation/";
-            if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
-                for (const auto& entry : fs::directory_iterator(dirPath)) {
-                    if (entry.path().extension() == ".json") {
-                        std::string fileName = entry.path().stem().string();
+            const auto animationDirPath = cg2::path::FromUtf8(dirPath);
+            if (cg2::path::Exists(animationDirPath) && cg2::path::IsDirectory(animationDirPath)) {
+                for (const auto& entry : fs::directory_iterator(animationDirPath, cg2::path::SafeDirectoryOptions())) {
+                    if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
+                        std::string fileName = cg2::path::ToUtf8String(entry.path().stem());
                         bool isSelected = (selectedObject->recordPathName_ == fileName);
 
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include "../../utility/PathUtility.h"
 // プロジェクト内のパスに合わせて調整してください
 #include "externals/nlohmann/json.hpp"
 
@@ -84,8 +85,9 @@ void ParticleManager::SaveParam(const std::string& name, const ParticleSystem::E
     paramsMap_[name] = param; // メモリ上の辞書更新
 
     // ディレクトリ確認
-    if (!std::filesystem::exists(kDirectoryPath)) {
-        std::filesystem::create_directories(kDirectoryPath);
+    const auto directoryPath = cg2::path::FromUtf8(kDirectoryPath);
+    if (!cg2::path::Exists(directoryPath)) {
+        cg2::path::CreateDirectories(directoryPath);
     }
 
     // ファイル書き出し
@@ -98,12 +100,13 @@ void ParticleManager::SaveParam(const std::string& name, const ParticleSystem::E
 }
 
 void ParticleManager::LoadAllParams() {
-    if (!std::filesystem::exists(kDirectoryPath)) return;
+    const auto directoryPath = cg2::path::FromUtf8(kDirectoryPath);
+    if (!cg2::path::Exists(directoryPath)) return;
 
-    for (const auto& entry : std::filesystem::directory_iterator(kDirectoryPath)) {
-        if (entry.path().extension() == ".json") {
+    for (const auto& entry : std::filesystem::directory_iterator(directoryPath, cg2::path::SafeDirectoryOptions())) {
+        if (cg2::path::IsRegularFile(entry) && cg2::path::ExtensionLower(entry.path()) == ".json") {
             // ファイル名(拡張子なし)をキーにする
-            std::string name = entry.path().stem().string();
+            std::string name = cg2::path::ToUtf8String(entry.path().stem());
             LoadParam(name);
         }
     }

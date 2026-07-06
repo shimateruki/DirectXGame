@@ -59,15 +59,15 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configration)\</IntDir>
+    <IntDir>$(SolutionDir)..\generated\obj\$(ProjectName)\$(ProjectName)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -93,8 +93,7 @@
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -122,8 +121,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -150,8 +148,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll" "$(OutDir)dxcompiler.dll" /Y
-xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

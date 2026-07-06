@@ -1,4 +1,5 @@
 #include "ModelManager.h"
+#include "../../../utility/PathUtility.h"
 #include "ModelCommon.h"
 #include <cassert>
 #include <filesystem> 
@@ -35,10 +36,10 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         return models_[modelName].get();
     }
 
-    std::filesystem::path path(modelName);
-    std::string parentPath = path.parent_path().string(); // "enemy_core_shards"
-    std::string stem = path.stem().string();              // "enemy_core1"
-    std::string ext = path.extension().string();
+    std::filesystem::path path = cg2::path::FromUtf8(modelName);
+    std::string parentPath = cg2::path::ToGamePath(path.parent_path()); // "enemy_core_shards"
+    std::string stem = cg2::path::ToGamePath(path.stem());
+    std::string ext = cg2::path::ExtensionLower(path);
 
     std::string directoryPath;
     std::string fileName;
@@ -55,7 +56,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     }
 
     if (!ext.empty()) {
-        fileName = path.filename().string();
+        fileName = cg2::path::ToGamePath(path.filename());
     }
     else {
         fileName = stem + ".obj";
@@ -83,24 +84,25 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 // ★修正版：フォルダ内を自動スキャンして一括ロード（ログ出力付き）
 // ---------------------------------------------------------
 void ModelManager::LoadAllModels() {
-    if (!std::filesystem::exists(kDefaultBaseDirectory)) return;
+    const std::filesystem::path basePath = cg2::path::FromUtf8(kDefaultBaseDirectory);
+    if (!cg2::path::Exists(basePath)) return;
 
     OutputDebugStringA("=== 【ModelManager】事前ロード開始 ===\n");
 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(kDefaultBaseDirectory)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(basePath, cg2::path::SafeDirectoryOptions())) {
         if (entry.is_regular_file()) {
-            std::string ext = entry.path().extension().string();
+            std::string ext = cg2::path::ExtensionLower(entry.path());
             if (ext == ".obj" || ext == ".gltf" || ext == ".glb") {
 
                 // ファイルの本当の場所をそのまま使う！
-                std::string dirPath = entry.path().parent_path().string() + "/";
-                std::string fileName = entry.path().filename().string();
+                std::string dirPath = cg2::path::ToGamePath(entry.path().parent_path()) + "/";
+                std::string fileName = cg2::path::ToGamePath(entry.path().filename());
 
                 // ==========================================
                 // ★ 修正：LoadModelを使わず、相対パスから完璧な「登録キー」を自動生成する
                 // ==========================================
-                std::filesystem::path relPath = std::filesystem::relative(entry.path(), kDefaultBaseDirectory);
-                std::string keyName = relPath.parent_path().string(); // フォルダまでのパスを取得
+                std::filesystem::path relPath = cg2::path::RelativePath(entry.path(), basePath);
+                std::string keyName = cg2::path::ToGamePath(relPath.parent_path());
                 std::replace(keyName.begin(), keyName.end(), '\\', '/'); // Windowsの「\」を「/」に統一
 
                 // 登録キー例: "enemy_core_shards/enemy_core1"
