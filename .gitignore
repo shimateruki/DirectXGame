@@ -379,3 +379,6 @@ project/tmp/
 project/output/pdf/
 portfolio_outputs/
 project_submit_removed_*/
+
+# Local runtime save data
+project/Resources/json/save/
