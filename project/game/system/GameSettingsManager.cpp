@@ -41,7 +41,7 @@ void GameSettingsManager::Initialize() {
 }
 
 void GameSettingsManager::Load() {
-    nlohmann::json data;
+    nlohmann::json data = nlohmann::json::object();
     std::ifstream file(filePath_);
     if (file.is_open()) {
         try {
@@ -49,6 +49,10 @@ void GameSettingsManager::Load() {
         } catch (...) {
             data = nlohmann::json::object();
         }
+    }
+
+    if (!data.is_object()) {
+        data = nlohmann::json::object();
     }
 
     bgmVolume_ = ClampVolume(data.value("bgmVolume", bgmVolume_));
