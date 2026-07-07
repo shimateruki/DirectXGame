@@ -9,26 +9,33 @@ class SpriteCommon;
 /// <summary>
 /// スプライトフォントを使用してテキストを描画するクラス
 /// </summary>
+// Textは、フォントテクスチャを複数Spriteへ分割して文字列として描画する簡易テキストクラスです。
 class Text {
 public:
-    void Initialize(SpriteCommon* common, const std::string& fontTextureName);
-    void Update();
-    void Draw();
+        // フォント画像を読み込み、文字Spriteを生成できる状態にします。
+void Initialize(SpriteCommon* common, const std::string& fontTextureName);
+        // 文字列、座標、スケールの変更を各文字Spriteへ反映します。
+void Update();
+        // 生成済みの文字Spriteを順番に描画します。
+void Draw();
 
     /// <summary>
     /// 表示する文字列を設定
     /// </summary>
-    void SetString(const std::string& str);
+        // 表示する文字列を変更し、必要な文字Sprite数へ調整します。
+void SetString(const std::string& str);
 
     /// <summary>
     /// 座標を設定
     /// </summary>
-    void SetPosition(const Vector2& position);
+        // テキスト全体の左上基準位置を設定します。
+void SetPosition(const Vector2& position);
 
     /// <summary>
     /// 文字のサイズ（スケール）を設定
     /// </summary>
-    void SetScale(const Vector2& scale);
+        // 各文字Spriteへ適用する表示倍率を設定します。
+void SetScale(const Vector2& scale);
 
 
 private:

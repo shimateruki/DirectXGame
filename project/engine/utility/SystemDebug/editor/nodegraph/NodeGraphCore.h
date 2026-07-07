@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "json.hpp"
 
@@ -8,12 +8,14 @@
 namespace cg2::editor {
 
 // ノードのピンが制御フローを流すのか、値を受け渡すのかを表します。
+// NodePinKindは、ピンが入力側か出力側かを表します。
 enum class NodePinKind {
     Flow,
     Value,
 };
 
 // 値ピンが扱うデータ型です。Flow は制御ピン用の特別な型として扱います。
+// NodeValueTypeは、ノード間で受け渡す値の種類を表します。
 enum class NodeValueType {
     Flow,
     Bool,
@@ -59,6 +61,7 @@ struct NodeProperty {
     std::string stringValue;
 };
 
+// NodeDataは、1つのノードの表示情報、ピン、プロパティをまとめたデータです。
 struct NodeData {
     int id = 0;
     std::string type;
@@ -71,6 +74,7 @@ struct NodeData {
     std::vector<NodeProperty> properties;
 };
 
+// NodeLinkは、出力ピンと入力ピンの接続関係を保持します。
 struct NodeLink {
     int id = 0;
     int startPinId = 0;
@@ -94,12 +98,15 @@ struct NodeExecutionStep {
 
 // Effect Sequence Graph の実体です。
 // UI 表示だけでなく、保存、検証、ドライラン用の実行順作成まで担当します。
+// NodeGraphCoreは、ノード、リンク、検証、保存読み込みを扱うノードグラフのデータ本体です。
 class NodeGraphCore {
 public:
-    void Clear();
+        // すべてのノードとリンクを破棄して空のグラフに戻します。
+void Clear();
     void ResetToSample();
 
-    NodeData& AddNode(const std::string& type, const std::string& title, float editorX, float editorY);
+        // 新しいノードを追加し、編集対象として参照できるデータを返します。
+NodeData& AddNode(const std::string& type, const std::string& title, float editorX, float editorY);
     NodePin& AddInputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
     NodePin& AddOutputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
     NodeProperty& AddProperty(NodeData& node, const std::string& name, const std::string& displayName, NodePropertyType type);
@@ -125,8 +132,10 @@ public:
     bool SaveToFile(const std::string& path, std::string* errorMessage = nullptr) const;
     bool LoadFromFile(const std::string& path, std::string* errorMessage = nullptr);
 
-    std::vector<NodeGraphIssue> Validate() const;
-    std::vector<NodeExecutionStep> BuildExecutionPreview() const;
+        // 未接続ピンや型不一致など、実行前に確認すべき問題を収集します。
+std::vector<NodeGraphIssue> Validate() const;
+        // 現在のグラフから、実行順のプレビュー情報を作成します。
+std::vector<NodeExecutionStep> BuildExecutionPreview() const;
 
     std::vector<NodeData>& GetNodes() { return nodes_; }
     const std::vector<NodeData>& GetNodes() const { return nodes_; }

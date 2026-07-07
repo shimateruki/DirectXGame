@@ -7,6 +7,7 @@ class Object3d;
 // ===================================================
 // トレイルエミッターの設定データ
 // ===================================================
+// TrailEmitterConfigは、移動軌跡に沿って発生させるVFXのプリセットと発生条件をまとめます。
 struct TrailEmitterConfig {
     std::string meshEffectPreset;             // エフェクトJSONファイル名 (拡張子なし, 空=無効)
     std::string gpuParticlePreset;            // GPUパーティクルプリセット名 (空=無効)
@@ -27,16 +28,20 @@ struct TrailEmitterConfig {
 //     emitter.Update(dt);             // 毎フレーム
 //     emitter.Stop();                 // 攻撃終了時
 // ===================================================
+// TrailEmitterは、対象Object3dの移動距離に応じて軌跡エフェクトを連続発生させます。
 class TrailEmitter {
 public:
     // 追跡開始 (攻撃モーション開始時などに呼ぶ)
-    void Start(Object3d* target);
+        // 追跡対象を設定し、軌跡エフェクトの発生を開始します。
+void Start(Object3d* target);
 
     // 追跡停止
-    void Stop();
+        // 軌跡エフェクトの発生を停止します。
+void Stop();
 
     // 毎フレーム呼ぶ
-    void Update(float deltaTime);
+        // 対象の移動距離を測り、条件を満たしたらVFXを発生させます。
+void Update(float deltaTime);
 
     bool IsActive() const { return isActive_; }
 

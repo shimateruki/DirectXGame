@@ -24,6 +24,7 @@ class Player;
 /// <summary>
 /// すべてのシーンが実装する基底クラス。
 /// </summary>
+// BaseSceneは、各ゲームシーンが共通して持つ初期化、更新、描画、保存対象アクセスの土台です。
 class BaseScene : public IEditable {
 public:
     virtual ~BaseScene() = default;
@@ -33,10 +34,14 @@ public:
     virtual void DrawImGui() override {}
 
     // --- 必須オーバーライド ---
-    virtual void Initialize() = 0;
-    virtual void Update(float deltaTime) = 0;
-    virtual void Draw() = 0;
-    virtual void Finalize() = 0;
+        // シーン固有のオブジェクト、カメラ、UI、管理クラスを初期化します。
+virtual void Initialize() = 0;
+        // シーン内のゲームロジックをフレーム時間に合わせて更新します。
+virtual void Update(float deltaTime) = 0;
+        // シーン内の3D/2D要素を描画します。
+virtual void Draw() = 0;
+        // シーン終了時にリソースや登録状態を片付けます。
+virtual void Finalize() = 0;
 
     // --- マネージャ設定 ---
     virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
@@ -53,9 +58,11 @@ public:
         return empty;
     }
 
-    virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
+        // エディタやロード処理からObject3dを追加するための入口です。
+virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
-    bool Destroy(Object3d* object);
+        // Object3dを安全に削除予約または削除します。
+bool Destroy(Object3d* object);
     bool Destroy(Sprite* sprite);
     bool DestroyObject(Object3d* object);
     bool DestroySprite(Sprite* sprite);
@@ -73,7 +80,8 @@ public:
     virtual void SetPlayer(Player* player) { (void)player; }
 
     // --- イベント連携 ---
-    void TriggerEvent(int targetID);
+        // targetIDに紐づくイベント受信オブジェクトへ通知します。
+void TriggerEvent(int targetID);
     void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
     virtual void DrawUI() {}
@@ -89,8 +97,10 @@ protected:
     bool IsSpecialMaterialType(int materialType) const;
     bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
     bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
-    bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
-    bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
+        // 水、炎、ポータルなど通常描画と分けたい特殊マテリアルをまとめて描画します。
+bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
+        // シーンのカメラ情報を使ってGPUパーティクルを描画します。
+bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;

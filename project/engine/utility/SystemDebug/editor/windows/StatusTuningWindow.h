@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "IEditable.h"
 #include "Object3d.h"
@@ -10,12 +10,14 @@
 class DebugEditor;
 class SceneManager;
 
+/// プレイヤーや敵のステータスプリセットを編集し、シーンやステージJSONへ一括反映するウィンドウ。
 class StatusTuningWindow : public IEditable {
 public:
     void Initialize(DebugEditor* editor, SceneManager* sceneManager);
     void DrawImGui() override;
     std::string GetName() override { return "ステータス調整"; }
 
+    /// HP、攻撃力、移動速度、モデル名など、1種類のキャラクター設定をまとめたプリセット。
     struct StatusPreset {
         float hp = 100.0f;
         float maxHp = 100.0f;
@@ -30,6 +32,7 @@ public:
         float morphDuration = 5.0f;
     };
 
+    /// 敵タイプ名と対応プリセットをひとまとめにした編集用レコード。
     struct EnemyTypeEntry {
         const char* type;
         const char* label;
@@ -37,7 +40,9 @@ public:
     };
 
 private:
+    /// 保存済みのステータスプリセットJSONを読み込み、UIへ反映する。
     void LoadPresets();
+    /// 現在のプリセット設定をJSONへ保存し、次回起動後も使えるようにする。
     void SavePresets();
     void ResetPresetsToDefaults();
     bool DrawPresetEditor(StatusPreset& preset, const char* id);
@@ -50,6 +55,7 @@ private:
     int ApplyPlayerPreset();
     int ApplyPlayerPresetToStageFiles();
     int ApplyEnemyPreset(const std::string& enemyType, const StatusPreset& preset);
+    /// 指定敵タイプのプリセットをステージJSON内の該当Enemyへまとめて書き込む。
     int ApplyEnemyPresetToStageFiles(const std::string& enemyType, const StatusPreset& preset);
     void ApplyPresetToObject(Object3d* object, const StatusPreset& preset);
     Object3d::EntityParameter MakeParameter(const StatusPreset& preset, const Object3d::EntityParameter* baseParam) const;

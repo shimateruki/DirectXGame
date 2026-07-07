@@ -11,16 +11,20 @@ class Object3d;
 struct Vector2;
 struct Vector3;
 
+/// モデルの解析、LOD生成、生成結果レビュー、シーンへのLOD設定反映を行うエディタウィンドウ。
 class ModelOptimizerWindow : public IEditable {
 public:
+    /// 選択ObjectやシーンへLOD設定を反映するため、DebugEditor参照を保持する。
     void Initialize(DebugEditor* editor);
     void DrawImGui() override;
     void SetGameViewRegion(const Vector2& offset, const Vector2& size);
     std::string GetName() override { return "モデル最適化 (Model Optimizer)"; }
 
 private:
+    /// Resources/3DModel配下から最適化対象にできるモデル候補を収集する。
     void RefreshModelList();
     void SetModelName(const std::string& modelName);
+    /// 外部LODビルダーを起動し、解析のみまたはLOD生成を非同期で実行する。
     bool RunBuilder(bool analyzeOnly);
     void UpdateBuilderProcess();
     void FinishBuilderProcess(unsigned long exitCode);
@@ -29,8 +33,10 @@ private:
     void DrawPreviewLabels();
     bool ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const;
     bool LoadLatestReport();
+    /// 生成レポートのLOD設定を現在選択中のObjectへ適用する。
     bool ApplyLodConfigToSelected();
     bool ApplyLodConfigToObject(Object3d* object);
+    /// 生成したLODファイルを採用し、対象モデルのLOD manifestとして使える状態にする。
     bool AcceptGeneratedLods();
     bool RejectGeneratedLods();
     int DeleteGeneratedLodFilesFromReport();

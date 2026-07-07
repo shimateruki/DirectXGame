@@ -14,6 +14,7 @@ struct ID3D12GraphicsCommandList;
 /// <summary>
 /// ゲームカメラとEditor用自由カメラの切り替え、設定保存、演出カメラ再生を行う。
 /// </summary>
+// CameraEditorは、編集用カメラ、プレビューカメラ、演出用カメラの設定をまとめて扱います。
 class CameraEditor : public IEditable {
 public:
     enum class Mode {
@@ -117,7 +118,8 @@ private:
     Vector3 GetConfiguredCameraRight(const Vector3& forward) const;
     Vector3 GetConfiguredCameraUp(const Vector3& forward, const Vector3& right) const;
     Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) const;
-    void DrawCameraPreviewPanel();
+        // 選択中カメラのプレビュー表示と操作パネルを描画します。
+void DrawCameraPreviewPanel();
     void ApplyConfiguredCameraPreview(Camera* camera) const;
 
 private:

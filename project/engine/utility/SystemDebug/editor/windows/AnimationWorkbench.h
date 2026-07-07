@@ -16,6 +16,7 @@ class SceneManager;
 /// <summary>
 /// モデルのポーズキー、イベントマーカー、プレビュー再生を編集する作業用ウィンドウ。
 /// </summary>
+/// モデルのボーン姿勢、キーフレーム、イベントを編集・プレビューするアニメーション作業台。
 class AnimationWorkbench : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
@@ -31,6 +32,7 @@ public:
     bool IsEnabled() const { return enabled_; }
 
 private:
+    /// 指定時刻の1ジョイント姿勢を保持し、タイムライン補間の素材にする。
     struct PoseKey {
         float time = 0.0f;
         int jointIndex = -1;
@@ -40,6 +42,7 @@ private:
         Vector3 scale = { 1.0f, 1.0f, 1.0f };
     };
 
+    /// 指定時刻で鳴らす効果音や演出確認などのイベント情報を保持する。
     struct EventMarker {
         float time = 0.0f;
         int type = 0;
@@ -57,14 +60,17 @@ private:
     void CreatePreviewObject();
     void RemovePreviewObject();
     Object3d* FindPreviewObject() const;
+    /// 現在時刻に対応する補間姿勢をプレビューObjectへ適用する。
     void ApplyTimelinePose();
     void ApplyPoseKey(const PoseKey& key);
     PoseKey BuildPoseKeyFromUi() const;
     void AddOrUpdateKey();
     void DeleteSelectedJointKeyAtCurrentTime();
+    /// 指定ジョイントの前後キーを探し、現在時刻の補間結果を取得する。
     bool TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const;
     void SyncUiFromJoint(int jointIndex);
     void SortKeys();
+    /// 編集中のキーやイベントをAuthoring用JSONへ保存する。
     void SaveAuthoringJson();
     void LoadAuthoringJson();
     std::string GetSavePath() const;

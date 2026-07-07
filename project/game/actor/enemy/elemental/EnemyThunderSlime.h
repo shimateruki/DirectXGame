@@ -4,12 +4,16 @@
 #include <memory>
 
 // 地面に広がる放電と常時オーラで攻撃範囲を見せる雷スライム
+// EnemyThunderSlimeは、チャージ放電、雷オーラ、待機火花を使う属性スライム敵です。
 class EnemyThunderSlime : public BaseEnemy {
 public:
     ~EnemyThunderSlime() override;
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
-    void Update(float deltaTime) override;
-    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+        // 雷スライム用モデル、Collider、雷演出の初期状態を準備します。
+void Initialize(Object3dCommon* common, const std::string& modelName) override;
+        // 徘徊、追跡、チャージ、放電、雷オーラを更新します。
+void Update(float deltaTime) override;
+        // 本体と雷オーラをライト情報付きで描画します。
+void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
@@ -26,13 +30,16 @@ private:
     void UpdateWanderBehavior(float deltaTime, Vector3& velocity);
     void ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity);
     void UpdateFacing(const Vector3& direction);
-    void StartCharge();
+        // 放電攻撃前のチャージ状態へ移行します。
+void StartCharge();
     void UpdateCharge(float deltaTime, const Vector3& direction);
-    void ReleaseShock(const Vector3& direction);
+        // チャージ完了後に雷範囲攻撃を発生させます。
+void ReleaseShock(const Vector3& direction);
     void DispatchShockDamage(const Vector3& center, const Vector3& direction, float radius, float damage);
     void UpdateIdleSpark(float deltaTime);
     void InitializeAuraEffect();
-    void UpdateAuraEffect(float deltaTime);
+        // 雷オーラの形状、色、表示状態を本体に同期します。
+void UpdateAuraEffect(float deltaTime);
     void HideAuraEffect();
     void CalculateAuraShape(Vector3& center, float& horizontalDiameter, float& verticalDiameter) const;
     void EmitOuterThunderEffect(const char* presetName, int count, float phaseOffset = 0.0f);

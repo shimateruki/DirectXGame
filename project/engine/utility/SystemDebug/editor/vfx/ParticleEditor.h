@@ -8,11 +8,14 @@ class SceneManager;
 /// <summary>
 /// CPUパーティクルの対象システムを選び、発生やパラメータを調整する。
 /// </summary>
+// ParticleEditorは、CPU側の通常パーティクル設定を編集するためのシンプルなツールです。
 class ParticleEditor : public IEditable {
 public:
-    void Initialize(SceneManager* sceneManager);
+        // パーティクル編集に必要なシーン参照を保持します。
+void Initialize(SceneManager* sceneManager);
     void Update();
-    void DrawImGui() override;
+        // パーティクル設定を調整するUIを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "Particle Editor"; }
 
 private:

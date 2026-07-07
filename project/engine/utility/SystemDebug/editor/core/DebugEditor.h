@@ -61,21 +61,26 @@ class TrailEmitterEditor;
 /// <summary>
 /// DebugEditor全体の司令塔。各Editorウィンドウ、シーン編集、保存、Undo/Redo、GameView配置を統括する。
 /// </summary>
+// DebugEditorは、エディタ全体の入力、選択、保存、プレビュー描画を束ねる中核クラスです。
 class DebugEditor : public IEditable {
     friend class HierarchyWindow; // 既存の直接参照互換のため残す。
 
 public:
     // ライフサイクル。
-    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
-    void Update();
+        // シーン管理やDirectX関連の参照を受け取り、各エディタ機能を利用できる状態にします。
+void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+        // 毎フレームの編集入力、選択状態、プレビュー生成、通知表示などを更新します。
+void Update();
     void Finalize();
 
     // Debug描画と配置プレビュー描画。
-    void DrawDebug(ID3D12GraphicsCommandList* commandList);
+        // エディタ用の補助表示やギズモなど、ゲーム本編とは別のデバッグ描画を行います。
+void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     // IEditableとしてInspectorに表示する内容。
-    void DrawImGui() override;
+        // Hierarchy、Inspector、ProjectなどのエディタUIを描画します。
+void DrawImGui() override;
     std::string GetName() override {
         return (selectedObject_ && IsObjectInCurrentScene(selectedObject_)) ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
     }
@@ -91,10 +96,14 @@ public:
     void DrawSaveNotification();
 
     // 選択中オブジェクトへの編集操作。
-    void DuplicateSelected();
-    void DeleteSelected();
-    void PerformUndo();
-    void PerformRedo();
+        // 選択中オブジェクトを複製し、編集対象として扱えるように登録します。
+void DuplicateSelected();
+        // 選択中オブジェクトを削除し、必要なエディタ状態も同時に整理します。
+void DeleteSelected();
+        // 直前の編集コマンドを取り消して、オブジェクト状態を復元します。
+void PerformUndo();
+        // Undoで戻した編集コマンドを再適用します。
+void PerformRedo();
     void SplitSelectedModelIntoMeshChildren();
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
@@ -241,7 +250,8 @@ public:
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
 private:
-    struct PlacementResult {
+        // モデルやプリセット生成時の配置結果をまとめ、生成後の選択やUndo登録に使います。
+struct PlacementResult {
         Vector3 position = { 0.0f, 0.0f, 0.0f };
         Vector3 contactPosition = { 0.0f, 0.0f, 0.0f };
         Vector3 normal = { 0.0f, 1.0f, 0.0f };
@@ -302,7 +312,8 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     Math math_;
 
-    struct ObjectEditSnapshot {
+        // Undo/Redo用に、編集前後のオブジェクト状態を保持します。
+struct ObjectEditSnapshot {
         Object3d* object = nullptr;
         nlohmann::json beforeState;
     };
@@ -338,7 +349,8 @@ private:
     bool hasPreviewPlacementContact_ = false;
     std::string previewCreateCommandLabel_ = "Place Preview Object";
 
-    struct PreviewVisualState {
+        // 生成プレビュー中だけ一時的に差し替える表示状態を保持します。
+struct PreviewVisualState {
         std::string className;
         Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
         BlendMode blendMode = BlendMode::kNormal;
@@ -385,7 +397,8 @@ private:
     bool pendingSaveIsSingleObject_ = false;
 
     // Undo/Redoコマンド。
-    enum class EditorCommandType {
+        // Undo/Redoで扱う編集操作の種類を表します。
+enum class EditorCommandType {
         ObjectCreated,
         ObjectDeleted,
         ObjectEdited

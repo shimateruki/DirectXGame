@@ -8,10 +8,13 @@ class DirectXCommon;
 class Object3d;
 class SceneManager;
 
+/// パーティクルやメッシュエフェクトを安全に確認するための隔離プレビュー空間を管理する。
 class EffectPreviewStage : public IEditable {
 public:
+    /// 各エフェクトツールから共有して使うプレビューStageのシングルトンを返す。
     static EffectPreviewStage* GetInstance();
 
+    /// プレビュー用Object生成に必要なシーンと描画共通参照を保持する。
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void DrawImGui() override;
@@ -22,6 +25,7 @@ public:
     float GetPlaybackSpeed() const { return playbackSpeed_; }
     Vector3 GetPreviewPosition() const;
     int GetPlayRequestSerial() const { return playRequestSerial_; }
+    /// プレビュー中だけカメラを見やすい位置へ移動し、終了時に戻せるようにする。
     void ApplyCameraOverride();
     void RequestCameraRecenter() { recenterCameraRequested_ = true; }
     void EnableForToolPreview();
@@ -33,6 +37,7 @@ private:
     EffectPreviewStage& operator=(const EffectPreviewStage&) = delete;
 
 private:
+    /// エフェクトの接地感や大きさを確認するための床Objectを作成する。
     void CreateFloor();
     void RemoveFloor();
     Object3d* FindFloor() const;
@@ -41,6 +46,7 @@ private:
     void UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color);
     void ApplyBackgroundColor();
     void CaptureCameraState();
+    /// プレビュー開始前に保存したカメラ状態へ戻す。
     void RestoreCameraState();
     void PlaceCameraAtPreview();
 

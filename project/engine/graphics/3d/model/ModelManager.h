@@ -11,9 +11,11 @@ class ModelCommon;
 /// <summary>
 /// モデルの読み込み、再読み込み、共有管理を行うシングルトン。
 /// </summary>
+// ModelManagerは、モデルの読み込み、キャッシュ、名前解決を一元管理します。
 class ModelManager {
 public:
-    static ModelManager* GetInstance();
+        // 共通利用するモデル管理インスタンスを取得します。
+static ModelManager* GetInstance();
 
     /// <summary>
     /// モデル共通情報を初期化する。

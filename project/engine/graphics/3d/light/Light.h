@@ -5,6 +5,7 @@
 /// <summary>
 /// 平行光源
 /// </summary>
+// DirectionalLightは、太陽光のように方向だけを持つライト情報です。
 struct DirectionalLight {
     Vector4 color;         // 16 byte
     Vector3 direction;     // 12 byte
@@ -27,6 +28,7 @@ struct DirectionalLight {
 /// <summary>
 /// 点光源
 /// </summary>
+// PointLightは、位置から周囲へ減衰しながら照らすライト情報です。
 struct PointLight {
     Vector4 color;      // ライトの色
     Vector3 position;   // 位置

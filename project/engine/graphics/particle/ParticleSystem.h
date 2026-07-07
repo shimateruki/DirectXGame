@@ -16,10 +16,12 @@ enum class EmitterType {
 /// <summary>
 /// パーティクルシステム (GPUインスタンシング対応)
 /// </summary>
+// ParticleSystemは、CPUパーティクルの発生、シミュレーション、頂点転送を担当します。
 class ParticleSystem {
 private:
 
-    struct Particle {
+    // Particleは、CPU側で更新するパーティクル1粒分の位置、速度、寿命、色を保持します。
+struct Particle {
         Vector3 position;
         Vector3 velocity;
         float lifeTime;       // 生存期間
@@ -81,13 +83,15 @@ public:
         std::string textureName = "Resources/sprite/particle.png";
     };
 
-    void Initialize(ParticleCommon* common, const std::string& texturePath);
+        // パーティクル用リソースと初期設定を作成します。
+void Initialize(ParticleCommon* common, const std::string& texturePath);
 
 
     void Update(float deltaTime);
 
 
-    void Draw();
+        // 更新済みパーティクルを描画します。
+void Draw();
 
     // 【使い方A】手動で（単発で）発生させる関数
     void SpawnParticles(const Vector3& position, int count,

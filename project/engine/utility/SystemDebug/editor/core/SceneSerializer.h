@@ -10,6 +10,7 @@ class Object3d;
 /// <summary>
 /// Editor上のシーンや単体オブジェクトをJSONへ保存する処理をまとめる。
 /// </summary>
+// SceneSerializerは、エディタ上のObject3dをシーンJSONへ保存、更新するための変換処理を担当します。
 class SceneSerializer {
 public:
     SceneSerializer() = default;
@@ -18,7 +19,8 @@ public:
     /// <summary>
     /// 保存対象となるJSONデータと出力先パスの組。
     /// </summary>
-    struct SaveTarget {
+        // 保存先ファイルと保存対象オブジェクトをひとまとまりにした情報です。
+struct SaveTarget {
         std::string label;
         std::string path;
         nlohmann::json data;

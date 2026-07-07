@@ -15,10 +15,12 @@ enum class ParticleBlendMode {
 /// <summary>
 /// パーティクル描画の共通処理
 /// </summary>
+// ParticleCommonは、CPUパーティクル描画で共通利用するRootSignatureとPipelineStateを管理します。
 class ParticleCommon {
 public:
 
-    void Initialize(DirectXCommon* dxCommon);
+        // DirectXCommonを保持し、パーティクル描画パイプラインを準備します。
+void Initialize(DirectXCommon* dxCommon);
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
     void SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode = ParticleBlendMode::kAlpha);
 private:

@@ -11,14 +11,18 @@ class BaseScene;
 /// <summary>
 /// TrailEmitterの追従対象、発生エフェクト、保存設定、ダミープレビューを編集する。
 /// </summary>
+// TrailEmitterEditorは、軌跡エフェクトの発生設定と保存読み込みを行う編集ツールです。
 class TrailEmitterEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
-    void Update(float deltaTime);
-    void DrawImGui() override;
+        // プレビュー中のトレイル発生や寿命を更新します。
+void Update(float deltaTime);
+        // トレイルの幅、色、寿命、保存読み込みUIを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "Trail Emitter Editor"; }
 
-    void RefreshFileLists();
+        // 保存済み設定や利用可能リソースの一覧を更新します。
+void RefreshFileLists();
 
 private:
     void Save(const std::string& name);

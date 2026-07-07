@@ -7,10 +7,12 @@
 // ========================================================
 // 斬撃・魔法陣などのメッシュエフェクト専用クラス
 // ========================================================
+// EffectObject3dは、メッシュベースのVFXをObject3dとして扱い、寿命、色、拡大、ディゾルブを制御します。
 class EffectObject3d : public Object3d {
 public:
     // シェーダーの cbuffer EffectMaterial と一致させる構造体
-    struct EffectMaterial {
+        // エフェクトシェーダーへ渡す色、時間、歪み、リビールなどのパラメータです。
+struct EffectMaterial {
         Vector4 color;
         Vector2 scrollSpeed;
         float time;
@@ -31,11 +33,14 @@ public:
     };
 
     // 初期化・更新・描画
-    void Initialize(Object3dCommon* common);
-    void Update(float deltaTime) override;
+        // 通常Object3dの初期化に加えて、エフェクト専用マテリアルバッファを作成します。
+void Initialize(Object3dCommon* common);
+        // 再生時間に合わせてスケール、色、ディゾルブなどを補間します。
+void Update(float deltaTime) override;
 
     // 通常のDrawをオーバーライドし、エフェクト専用のパイプラインで描画する
-    void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
+        // エフェクト用パイプラインでメッシュを描画します。
+void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
 
     // --- エディタから操作するためのアクセッサ ---
     void SetColor(const Vector4& color) { materialData_->color = color; }
@@ -45,7 +50,8 @@ public:
 
     EffectMaterial* GetMaterialData() const { return materialData_; }
     // --- アニメーション用セッター ---
-    void Play(float lifetime) {
+        // 寿命を指定してエフェクト再生を開始します。
+void Play(float lifetime) {
         currentTime_ = 0.0f;
         lifetime_ = lifetime;
         isPlaying_ = true;
@@ -74,13 +80,15 @@ public:
 
     void SetAutoLoop(bool loop) { isAutoLoop_ = loop; }
     bool GetAutoLoop() const { return isAutoLoop_; }
-    bool LoadFromJson(const std::string& jsonFilePath);
+        // JSONプリセットからエフェクト形状やマテリアル設定を読み込みます。
+bool LoadFromJson(const std::string& jsonFilePath);
 
     void SetTargetObject(Object3d* target) { targetObject_ = target; }
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { materialData_->proceduralType = type; }
-    void UpdateProceduralMesh();
+        // 編集パラメータから手続き生成メッシュを再構築します。
+void UpdateProceduralMesh();
     void ExportToObj(const std::string& filePath) const;
 
     // --- プロシージャルメッシュ用パラメータ ---
@@ -121,7 +129,8 @@ private:
     Object3d* targetObject_ = nullptr;
     Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
     Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
-    void CreateMaterialBuffer(ID3D12Device* device);
+        // エフェクト専用マテリアルをGPUへ渡すための定数バッファを作成します。
+void CreateMaterialBuffer(ID3D12Device* device);
     BlendMode blendMode_ = BlendMode::kAdd;
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;
@@ -140,7 +149,8 @@ private:
     std::vector<uint32_t> proceduralIndices_;
 
     // 形状別の生成ロジック
-    void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
+        // 斬撃や三日月形エフェクト用の頂点とインデックスを生成します。
+void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
     void GenerateThrustVertices(float length, float radius, int segments);
     void GenerateSphereVertices(float radius, int segments, int rings);
     void GenerateCylinderVertices(float radius, float height, int segments);

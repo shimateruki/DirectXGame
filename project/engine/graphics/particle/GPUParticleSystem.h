@@ -10,6 +10,7 @@
 /// <summary>
 /// 個別のエフェクト（炎、魔法など）を担当する独立した部隊
 /// </summary>
+// GPUParticleSystemは、1種類のGPUパーティクルをComputeで更新し、Spriteとして描画する実体です。
 class GPUParticleSystem {
 public:
     // HLSLと完全に一致させた構造体
@@ -125,9 +126,12 @@ public:
     GPUParticleSystem() = default;
     ~GPUParticleSystem() = default;
 
-    void Initialize(DirectXCommon* dxCommon);
-    void Update(float deltaTime);
-    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
+        // パーティクル用バッファ、RootSignature、PipelineStateを作成します。
+void Initialize(DirectXCommon* dxCommon);
+        // ComputeShaderでパーティクル寿命、速度、色、サイズを更新します。
+void Update(float deltaTime);
+        // 生存しているパーティクルをビルボードとして描画します。
+void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
 
     void EmitFromConfig(const GPUParticleConfig& config);
     void SetCurrentTexture(const std::string& path);

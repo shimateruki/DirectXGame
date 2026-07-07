@@ -3,6 +3,7 @@
 #include <array>
 #include <wrl.h>
 
+// BlendModeは、3D描画で使う合成方式を表します。
 enum class BlendMode {
     kNone,             // ブレンドなし
     kNormal,           // 通常ブレンド
@@ -16,24 +17,29 @@ enum class BlendMode {
 /// <summary>
 /// 3Dオブジェクト描画で共有するルートシグネチャとパイプラインを管理する。
 /// </summary>
+// Object3dCommonは、3Dモデル、影、特殊マテリアル、スカイボックスの共通パイプラインを管理します。
 class Object3dCommon {
 public:
     /// <summary>
     /// DirectX基盤を受け取り、各種描画パイプラインを初期化する。
     /// </summary>
-    void Initialize(DirectXCommon* dxCommon);
+        // DirectX共通機能を受け取り、3D描画用パイプラインをまとめて作成します。
+void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
     /// 通常3D描画用の共通コマンドを設定する。
     /// </summary>
-    void SetGraphicsCommand();
+        // 通常3Dモデル描画用のRootSignatureとPipelineStateを設定します。
+void SetGraphicsCommand();
 
-    void CreateRootSignature();
+        // 通常3Dモデル描画に必要なRootSignatureを作成します。
+void CreateRootSignature();
 
     /// <summary>
     /// 指定したブレンドモードのパイプラインをコマンドリストへ設定する。
     /// </summary>
-    void SetPipelineState(BlendMode blendMode);
+        // 指定ブレンドモードに対応した通常描画PipelineStateを設定します。
+void SetPipelineState(BlendMode blendMode);
 
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
@@ -43,7 +49,8 @@ public:
     void CreateShadowRootSignature();
     void CreateLocalFogPipeline();
     void SetLocalFogGraphicsCommand();
-    void CreateEffectRootSignature();
+        // エフェクト、特殊マテリアル系で共有するRootSignatureを作成します。
+void CreateEffectRootSignature();
     void CreateEffectPipeline();
     void SetEffectGraphicsCommand(BlendMode blendMode);
     void CreateWaterRootSignature();
@@ -96,7 +103,8 @@ private:
     /// <summary>
     /// シェーダーとブレンド設定を指定して特殊マテリアルのパイプラインを生成する。
     /// </summary>
-    void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
+        // 特殊マテリアル用PipelineStateの共通作成処理です。
+void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
 
 private:
     // DirectX基盤への参照。Object3dCommonは所有しない。

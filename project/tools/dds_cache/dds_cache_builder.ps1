@@ -1,3 +1,4 @@
+# 元画像からDDSキャッシュを作成し、起動後の重いテクスチャ読み込みを次回以降軽くするツール。
 param(
     [string[]]$Root = @("Resources"),
     [string]$Texconv = "Resources\tools\Texconv.exe",
@@ -8,7 +9,8 @@ param(
     [int]$Interval = 5,
     [switch]$Force,
     [switch]$DryRun,
-    [switch]$RequestOnly
+    [switch]$RequestOnly,
+    [double]$MinRequestDurationMs = 2.0
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +33,7 @@ $LinearMarkers = @(
     "ao"
 )
 
+# 絶対パスをプロジェクト相対へ戻し、manifestやログがPC固有パスに依存しないようにする。
 function Convert-ToProjectPath([string]$Path) {
     $fullPath = [System.IO.Path]::GetFullPath($Path)
     $rootPath = [System.IO.Path]::GetFullPath((Get-Location).Path)
@@ -40,6 +43,7 @@ function Convert-ToProjectPath([string]$Path) {
     return ($fullPath -replace "\\", "/")
 }
 
+# エディタの一時プレビュー画像はDDS化しても無駄なので、キャッシュ対象から除外する。
 function Test-PreviewTexture([string]$Path) {
     $lower = "/" + (Convert-ToProjectPath $Path).ToLowerInvariant()
     foreach ($marker in $PreviewMarkers) {
@@ -50,6 +54,7 @@ function Test-PreviewTexture([string]$Path) {
     return $false
 }
 
+# 法線・マスク・ORM系をリニア扱いにし、sRGB圧縮で値が変わる事故を避ける。
 function Test-LinearTexture([string]$Path) {
     $lower = (Convert-ToProjectPath $Path).ToLowerInvariant()
     foreach ($marker in $LinearMarkers) {
@@ -60,6 +65,17 @@ function Test-LinearTexture([string]$Path) {
     return $false
 }
 
+# ブランチ切り替えで更新日時だけ変わった画像を再変換しないよう、内容ハッシュを取る。
+function Get-SourceHash([System.IO.FileInfo]$File) {
+    try {
+        return (Get-FileHash -LiteralPath $File.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    catch {
+        return ""
+    }
+}
+
+# 画像用途に合わせてBC7/BC6HなどのDDS圧縮形式を決める。
 function Get-DDSFormat([System.IO.FileInfo]$File, [object]$Request = $null) {
     if ($Request -and $Request.format) {
         return [string]$Request.format
@@ -73,6 +89,7 @@ function Get-DDSFormat([System.IO.FileInfo]$File, [object]$Request = $null) {
     return "BC7_UNORM_SRGB"
 }
 
+# ランタイム側が重いと判断したテクスチャ変換要求をJSONLから読み込む。
 function Read-RequestMap {
     $map = @{}
     if (-not (Test-Path -LiteralPath $RequestQueue)) {
@@ -100,11 +117,35 @@ function Read-RequestMap {
     return $map
 }
 
-function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null) {
+# 前回生成時のハッシュや形式を読み、タイムスタンプだけで再変換しないための基準にする。
+function Read-ManifestMap {
+    $map = @{}
+    if (-not (Test-Path -LiteralPath $Manifest)) {
+        return $map
+    }
+
+    try {
+        $manifestData = Get-Content -LiteralPath $Manifest -Raw -Encoding UTF8 | ConvertFrom-Json
+        foreach ($entry in @($manifestData.entries)) {
+            if ($entry.source) {
+                $map[[string]$entry.source] = $entry
+            }
+        }
+    }
+    catch {
+    }
+
+    return $map
+}
+
+# 1枚の元画像についてDDSの有無・鮮度・形式・ハッシュをまとめた判定レコードを作る。
+function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null, [object]$ManifestEntry = $null) {
     $sourcePath = Convert-ToProjectPath $File.FullName
     $ddsPath = [System.IO.Path]::ChangeExtension($File.FullName, ".dds")
     $ddsExists = Test-Path -LiteralPath $ddsPath
     $ddsInfo = if ($ddsExists) { Get-Item -LiteralPath $ddsPath } else { $null }
+    $format = Get-DDSFormat $File $Request
+    $sourceHash = Get-SourceHash $File
     $status = "latest"
     $message = "DDS is up to date."
 
@@ -113,8 +154,21 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null) {
         $message = "DDS is missing."
     }
     elseif ($File.LastWriteTimeUtc -gt $ddsInfo.LastWriteTimeUtc) {
-        $status = "outdated"
-        $message = "Source is newer than DDS."
+        $manifestHash = if ($ManifestEntry -and $ManifestEntry.sourceHash) { ([string]$ManifestEntry.sourceHash).ToLowerInvariant() } else { "" }
+        $manifestFormat = if ($ManifestEntry -and $ManifestEntry.format) { [string]$ManifestEntry.format } else { "" }
+        $manifestDdsSize = if ($ManifestEntry -and $ManifestEntry.ddsSize) { [int64]$ManifestEntry.ddsSize } else { [int64]-1 }
+        $sameSourceAsLastBuild = -not [string]::IsNullOrWhiteSpace($sourceHash) -and $sourceHash -eq $manifestHash
+        $sameFormatAsLastBuild = $manifestFormat -eq $format
+        $sameDdsFileAsLastBuild = $manifestDdsSize -lt 0 -or $manifestDdsSize -eq [int64]$ddsInfo.Length
+
+        if ($sameSourceAsLastBuild -and $sameFormatAsLastBuild -and $sameDdsFileAsLastBuild) {
+            $status = "latest"
+            $message = "DDS is up to date by source hash."
+        }
+        else {
+            $status = "outdated"
+            $message = "Source is newer than DDS."
+        }
     }
 
     $requestedDuration = 0.0
@@ -125,10 +179,12 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null) {
     [pscustomobject]@{
         source = $sourcePath
         dds = Convert-ToProjectPath $ddsPath
-        format = Get-DDSFormat $File $Request
+        format = $format
+        sourceHash = $sourceHash
         sourceSize = [int64]$File.Length
         ddsSize = if ($ddsInfo) { [int64]$ddsInfo.Length } else { [int64]0 }
         sourceWriteTimeUtc = $File.LastWriteTimeUtc.ToString("o")
+        ddsWriteTimeUtc = if ($ddsInfo) { $ddsInfo.LastWriteTimeUtc.ToString("o") } else { "" }
         status = $status
         durationMs = 0.0
         requested = [bool]$Request
@@ -137,7 +193,8 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null) {
     }
 }
 
-function Add-TextureEntry([System.Collections.Generic.Dictionary[string, object]]$EntryMap, [System.IO.FileInfo]$File, [object]$Request = $null) {
+# 変換候補を重複なく登録し、軽すぎる要求や一時プレビューをここで落とす。
+function Add-TextureEntry([System.Collections.Generic.Dictionary[string, object]]$EntryMap, [System.IO.FileInfo]$File, [object]$Request = $null, [object]$ManifestEntry = $null) {
     if (-not $File.Exists) {
         return
     }
@@ -147,8 +204,14 @@ function Add-TextureEntry([System.Collections.Generic.Dictionary[string, object]
     if (Test-PreviewTexture $File.FullName) {
         return
     }
+    if ($RequestOnly -and $Request) {
+        $requestDuration = if ($Request.durationMs) { [double]$Request.durationMs } else { 0.0 }
+        if ($requestDuration -lt $MinRequestDurationMs) {
+            return
+        }
+    }
 
-    $entry = New-TextureEntry $File $Request
+    $entry = New-TextureEntry $File $Request $ManifestEntry
     if ($EntryMap.ContainsKey($entry.source)) {
         if ($Request) {
             $EntryMap[$entry.source].requested = $true
@@ -160,8 +223,10 @@ function Add-TextureEntry([System.Collections.Generic.Dictionary[string, object]
     $EntryMap.Add($entry.source, $entry)
 }
 
+# 通常スキャンとランタイム要求を統合し、missing/outdated/latestの順で処理しやすく並べる。
 function Get-TextureEntries {
     $requests = Read-RequestMap
+    $manifest = Read-ManifestMap
     $entryMap = [System.Collections.Generic.Dictionary[string, object]]::new()
 
     if (-not $RequestOnly) {
@@ -174,7 +239,8 @@ function Get-TextureEntries {
             Get-ChildItem -LiteralPath $rootPath -Recurse -File | ForEach-Object {
                 $source = Convert-ToProjectPath $_.FullName
                 $request = if ($requests.ContainsKey($source)) { $requests[$source] } else { $null }
-                Add-TextureEntry $entryMap $_ $request
+                $manifestEntry = if ($manifest.ContainsKey($source)) { $manifest[$source] } else { $null }
+                Add-TextureEntry $entryMap $_ $request $manifestEntry
             }
         }
     }
@@ -186,7 +252,8 @@ function Get-TextureEntries {
         if (-not (Test-Path -LiteralPath $source)) {
             continue
         }
-        Add-TextureEntry $entryMap (Get-Item -LiteralPath $source) $requests[$source]
+        $manifestEntry = if ($manifest.ContainsKey($source)) { $manifest[$source] } else { $null }
+        Add-TextureEntry $entryMap (Get-Item -LiteralPath $source) $requests[$source] $manifestEntry
     }
 
     return $entryMap.Values | Sort-Object @{ Expression = {
@@ -199,6 +266,7 @@ function Get-TextureEntries {
     } }, @{ Expression = { if ($_.requested) { 0 } else { 1 } } }, source
 }
 
+# 次回の差分判定に使うため、各テクスチャのハッシュ・形式・DDSサイズを保存する。
 function Save-Manifest($Entries) {
     $manifestPath = Split-Path -Parent $Manifest
     if ($manifestPath -and -not (Test-Path -LiteralPath $manifestPath)) {
@@ -211,6 +279,7 @@ function Save-Manifest($Entries) {
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Manifest -Encoding UTF8
 }
 
+# DDS生成完了をエディタやログから拾えるよう、軽量なJSONL通知として追記する。
 function Write-Notification($Entry) {
     if ($DryRun) {
         return
@@ -232,10 +301,12 @@ function Write-Notification($Entry) {
     } | ConvertTo-Json -Compress | Add-Content -LiteralPath $NotificationLog -Encoding UTF8
 }
 
+# texconvへ渡す引数を引用符で囲み、日本語パスや空白入りパスでも壊れにくくする。
 function Quote-ProcessArgument([string]$Value) {
     return '"' + ($Value -replace '"', '\"') + '"'
 }
 
+# texconvを非表示で実行し、標準出力とエラーをまとめて呼び出し元へ返す。
 function Invoke-TexconvHidden([string]$SourcePath, [string]$OutputDir, [string]$Format) {
     $resolvedTexconv = (Resolve-Path -LiteralPath $Texconv).Path
     $arguments = @(
@@ -265,6 +336,7 @@ function Invoke-TexconvHidden([string]$SourcePath, [string]$OutputDir, [string]$
     }
 }
 
+# 1件の変換を実行し、成功時はDDSサイズや所要時間をレコードへ反映する。
 function Convert-Texture($Entry) {
     if ($DryRun) {
         $Entry.status = "dry-run"
@@ -305,6 +377,7 @@ function Convert-Texture($Entry) {
     return $Entry
 }
 
+# スキャン結果の件数と容量をコンソールへ出し、処理前に状態を把握できるようにする。
 function Write-Summary($Entries) {
     $latest = @($Entries | Where-Object { $_.status -eq "latest" }).Count
     $missing = @($Entries | Where-Object { $_.status -eq "missing" }).Count
@@ -315,6 +388,7 @@ function Write-Summary($Entries) {
     Write-Host ("scan={0} requested={1} latest={2} missing={3} outdated={4} source={5:N1}MB dds={6:N1}MB" -f @($Entries).Count, $requested, $latest, $missing, $outdated, $sourceMb, $ddsMb)
 }
 
+# DDSが無い/古い/強制指定された対象だけをtexconvへ流し、最新のものはスキップする。
 function Invoke-DDSCacheBuild {
     $entries = @(Get-TextureEntries)
     Write-Summary $entries
@@ -348,6 +422,7 @@ function Invoke-DDSCacheBuild {
     return $entries
 }
 
+# 監視モードでは多重起動をMutexで防ぎ、要求キューや元画像の変化に応じてビルドする。
 function Start-DDSCacheWatch {
     $createdNew = $false
     $mutex = [System.Threading.Mutex]::new($true, "Global\GE3_DDSCacheBuilder_Watcher", [ref]$createdNew)
@@ -381,6 +456,7 @@ function Start-DDSCacheWatch {
     }
 }
 
+# どこから起動されてもプロジェクトルート基準でResourcesやtoolsを解決する。
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\.."))
 
 if ($Watch) {

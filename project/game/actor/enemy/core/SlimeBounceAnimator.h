@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "engine/utility/math/Math.h"
 
@@ -8,6 +8,7 @@
 // スライム系の通常移動に使う、共通のぷにぷに伸縮。
 namespace SlimeBounceAnimator {
 
+// Paramsは、スライムの待機、移動、空中、チャージ時の伸縮量を調整する設定です。
 struct Params {
     float speedForFullBounce = 2.5f;
     float idleAmplitude = 0.05f;
@@ -18,6 +19,7 @@ struct Params {
     float airborneStretch = 0.24f;
 };
 
+// PlanarSpeedは、Y軸を除いた水平移動速度を返します。
 inline float PlanarSpeed(const Vector3& velocity) {
     return std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 }

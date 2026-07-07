@@ -23,12 +23,14 @@
 #pragma comment(lib, "uuid.lib")
 
 // --- (SoundData, ChunkHeader等の構造体は変更なし) ---
+// SoundDataは、WAVを一括読み込みする旧形式の音声データです。
 struct SoundData { WAVEFORMATEX wfex; BYTE* pBuffer; unsigned int bufferSize; };
 struct ChunkHeader { char id[4]; int32_t size; };
 struct RiffHeader { ChunkHeader chunk; char type[4]; };
 struct FormatChunk { ChunkHeader chunk; WAVEFORMATEX format; };
 
 // --- (AudioVoiceCallback, SoundDataStreaming 構造体も変更なし) ---
+// AudioVoiceCallbackは、XAudio2のバッファ再生完了を通知するためのコールバックです。
 class AudioVoiceCallback : public IXAudio2VoiceCallback {
 public:
 	void OnBufferEnd(void* pBufferContext) override {
@@ -42,6 +44,7 @@ public:
 	void OnLoopEnd(void* pBufferContext) override {}
 	void OnVoiceError(void* pBufferContext, HRESULT Error) override {}
 };
+// SoundDataStreamingは、MediaFoundationでデコードしながら再生するストリーミング音声の状態です。
 struct SoundDataStreaming {
 	Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader;
 	WAVEFORMATEX* waveFormat = nullptr;
@@ -68,6 +71,7 @@ struct SoundDataStreaming {
 /// <summary>
 /// オーディオの再生を管理するクラス
 /// </summary>
+// AudioPlayerは、SEとBGMの読み込み、再生、停止、音量管理をまとめて行います。
 class AudioPlayer
 {
 public:
@@ -76,9 +80,12 @@ public:
 	static const AudioHandle kInvalidAudioHandle = (std::numeric_limits<uint32_t>::max)();
 
 public:
-	static AudioPlayer* GetInstance();
-	void Initialize();
-	void Finalize();
+		// エンジン全体で共有する音声管理インスタンスを取得します。
+static AudioPlayer* GetInstance();
+		// XAudio2とMediaFoundationを初期化し、音声再生の準備をします。
+void Initialize();
+		// 再生中の音声を停止し、音声関連リソースを解放します。
+void Finalize();
 
 	// WAV再生機能 
 	SoundData SoundLoadWave(const char* filename);
@@ -87,7 +94,8 @@ public:
 
 	// 新しいストリーミング再生機能
 	AudioHandle LoadSoundFile(const std::string& filename);
-	void PlaySE(AudioHandle handle, bool loop, float volume);
+		// 指定ハンドルのSEを指定音量で再生します。
+void PlaySE(AudioHandle handle, bool loop, float volume);
 	void StopSe(AudioHandle handle);
 	void SetSEMasterVolume(float volume);
 	void SetBGMMasterVolume(float volume);
@@ -100,7 +108,8 @@ public:
 	/// <param name="handle">再生するBGMのハンドル</param>
 	/// <param name="loop">ループ再生するか</param>
 	/// <param name="volume">音量</param>
-	void PlayBGM(AudioHandle handle, bool loop, float volume = 1.0f);
+		// 指定ハンドルのBGMを再生し、BGM音量設定を反映します。
+void PlayBGM(AudioHandle handle, bool loop, float volume = 1.0f);
 
 	/// <summary>
 	/// 現在再生中のBGMを停止します。
@@ -119,7 +128,8 @@ private:
 	AudioPlayer(const AudioPlayer&) = delete;
 	AudioPlayer& operator=(const AudioPlayer&) = delete;
 
-	void DecodeThread(SoundDataStreaming* data);
+		// ストリーミング音声を別スレッドでデコードし、XAudio2へ供給します。
+void DecodeThread(SoundDataStreaming* data);
 	void PlayStreaming(AudioHandle handle, bool loop, float volume);
 	void ApplyCurrentBGMVolume();
 

@@ -8,8 +8,10 @@ class DebugCamera
 
 public:
 
-	void Initialize();
-	void Update();
+	    // デバッグカメラの初期位置、回転、行列を準備します。
+void Initialize();
+	    // マウスやキーボード入力からデバッグカメラを移動、回転させます。
+void Update();
 	const Matrix4x4& GetViewMatrix() const { return viewMatrix; }
 	const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix; }
 

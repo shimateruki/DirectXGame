@@ -12,15 +12,18 @@ class Object3dCommon;
 /// <summary>
 /// ライト設定ファイル、スカイボックス、ライトギズモを編集する。
 /// </summary>
+// LightEditorは、シーン全体のライト設定を確認、調整、保存するためのエディタです。
 class LightEditor : public IEditable {
 public:
     static LightEditor* GetInstance();
 
-    void Initialize();
+        // ライト編集に必要な参照を受け取り、UI操作できる状態にします。
+void Initialize();
     void SetObject3dCommon(Object3dCommon* common);
     void Update();
     void Draw3D();
-    void DrawImGui() override;
+        // ライト種別ごとのパラメータ編集UIを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "Light Editor"; }
 
 private:

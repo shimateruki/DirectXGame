@@ -12,6 +12,7 @@ class BaseScene;
 /// <summary>
 /// メッシュエフェクトのモデル、テクスチャ、色、歪み、再生パラメータを編集する。
 /// </summary>
+// MeshEffectEditorは、メッシュを使った斬撃や衝撃波などのエフェクトを編集、プレビューします。
 class MeshEffectEditor : public IEditable {
 public:
     MeshEffectEditor() = default;
@@ -19,15 +20,18 @@ public:
 
     void Initialize(SceneManager* sceneManager);
 
-    void Update(float deltaTime);
+        // プレビュー中のメッシュエフェクトを時間経過で更新します。
+void Update(float deltaTime);
     void Draw();
-    void DrawImGui() override;
+        // 色、サイズ、寿命、テクスチャなどの編集UIを描画します。
+void DrawImGui() override;
 
     std::string GetName() override { return "Mesh Effect Editor"; }
     EffectObject3d* GetPreviewEffect() const { return previewEffect_.get(); }
 
 private:
-    void RefreshTextureList();
+        // 選択可能なテクスチャ一覧を最新のアセット状態に更新します。
+void RefreshTextureList();
     void SyncTextureIndices();
     void RefreshJsonFileList();
     void SaveToJson();

@@ -2,10 +2,13 @@
 #include "BaseEnemy.h"
 
 // 空中を旋回し、予兆後に急降下して接触ダメージを狙う敵
+// EnemyBatは、浮遊旋回しながらプレイヤーへ急降下する飛行敵です。
 class EnemyBat : public BaseEnemy {
 public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
-    void Update(float deltaTime) override;
+        // コウモリ用モデル、Collider、ホーム位置、飛行状態を初期化します。
+void Initialize(Object3dCommon* common, const std::string& modelName) override;
+        // 旋回、追跡、急降下、復帰、接触判定を更新します。
+void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
 
 private:
@@ -17,15 +20,18 @@ private:
         Recover
     };
 
-    bool UpdateInactiveState(float deltaTime);
+        // 非アクティブ時の共通待機処理を行い、更新継続の可否を返します。
+bool UpdateInactiveState(float deltaTime);
     void UpdateTimers(float deltaTime);
-    void UpdateTargetBehavior(float deltaTime, Vector3& desired, float& moveSpeed);
+        // プレイヤー検知中の移動方向と速度を決定します。
+void UpdateTargetBehavior(float deltaTime, Vector3& desired, float& moveSpeed);
     void UpdateWanderBehavior(float deltaTime, Vector3& desired, float& moveSpeed);
     void ApplyMovement(float deltaTime, const Vector3& desired, float moveSpeed);
     void CaptureHomePosition();
     void EnsureAnimation();
     void UpdateFacing(const Vector3& direction);
-    Vector3 CalcOrbitPosition() const;
+        // ホーム位置を中心にした旋回目標位置を計算します。
+Vector3 CalcOrbitPosition() const;
     void SetPlayerContactEnabled(bool enabled);
 
     Vector3 homePosition_ = { 0.0f, 0.0f, 0.0f }; // 旋回の中心になる初期位置。

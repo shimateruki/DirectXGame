@@ -14,17 +14,22 @@
 
 class PostEffect;
 
+// Gameは、Framework上でシーン管理、エディタ、ポストエフェクト、プロファイル計測を統合します。
 class Game : public Framework {
 public:
-	void Initialize() override;
+	    // エンジン基盤、シーン、ポストエフェクト、エディタ機能を初期化します。
+void Initialize() override;
 	void Finalize() override;
 
 protected:
-	void Update() override;
-	void Draw() override;
+	    // エディタ入力、ゲームシステム、シーン更新、プロファイル計測を進めます。
+void Update() override;
+	    // 実行モードに応じてゲーム画面またはエディタ用画面を描画します。
+void Draw() override;
 
 private:
-	void InitializeEngineServices();
+	    // DirectX、オーディオ、入力などエンジンサービスを準備します。
+void InitializeEngineServices();
 	void InitializeScene();
 	void InitializePostProcess();
 	void InitializeEditorTools();
@@ -35,14 +40,16 @@ private:
 	float CalculateDeltaTime();
 
 	void UpdateEditorFrame(float deltaTime);
-	void UpdateGameSystems(float deltaTime, float finalDeltaTime);
+	    // シーン、パーティクル、VFXなどゲーム中に動くシステムを更新します。
+void UpdateGameSystems(float deltaTime, float finalDeltaTime);
 	void RecordUpdateProfile(const std::chrono::high_resolution_clock::time_point& startUpdate);
 
 	void DrawEditorFrame(PostEffect* postEffect);
 	void DrawRuntimeFrame(PostEffect* postEffect);
 	void DrawSceneToRenderTexture(bool editorMode);
 	void DrawCameraEditorPreview(PostEffect* postEffect);
-	void ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView);
+	    // シーン描画結果へポストエフェクトを適用し、表示先へ出力します。
+void ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView);
 	void RecordDrawProfile(const std::chrono::high_resolution_clock::time_point& startDraw);
 	void RecordFixedFpsProfile();
 

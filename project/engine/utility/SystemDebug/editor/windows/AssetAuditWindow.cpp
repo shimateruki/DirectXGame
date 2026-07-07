@@ -46,6 +46,7 @@ constexpr const char* kReportDirectoryPath = "Resources/.cache/asset_audit";
 constexpr std::int64_t kMaxInlinePreviewBytes = 2LL * 1024LL * 1024LL;
 constexpr int kMaxInlinePreviewDimension = 2048;
 
+// ASCII範囲だけを小文字化し、カテゴリ名や拡張子比較を安定させる。
 std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
@@ -60,11 +61,13 @@ std::wstring ToLowerWide(std::wstring text) {
     return text;
 }
 
+// Windowsの区切り文字をスラッシュへ揃え、JSON上のパスと比較しやすくする。
 std::string NormalizeSlash(std::string text) {
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
 }
 
+// ShellExecuteやCreateProcessに渡すため、UTF-8文字列をWindowsのワイド文字へ変換する。
 std::wstring Utf8ToWide(const std::string& text) {
     if (text.empty()) return L"";
     const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
@@ -74,6 +77,7 @@ std::wstring Utf8ToWide(const std::string& text) {
     return result;
 }
 
+// PowerShell実行コマンドへ安全に渡せるよう、引数を引用符で囲んでエスケープする。
 std::string QuoteCommandArg(const std::string& value) {
     std::string escaped;
     escaped.reserve(value.size() + 2);
@@ -89,6 +93,7 @@ std::string QuoteCommandArg(const std::string& value) {
     return escaped;
 }
 
+// エクスプローラーや関連付けアプリで、対象ファイルを外部から確認できるように開く。
 bool OpenShellPath(const fs::path& path) {
     const fs::path normalized = fs::absolute(path).lexically_normal();
     const std::wstring widePath = normalized.wstring();
@@ -96,6 +101,7 @@ bool OpenShellPath(const fs::path& path) {
     return reinterpret_cast<std::intptr_t>(result) > 32;
 }
 
+// 監査スクリプトを裏で実行し、UIを固めないために終了コードだけ受け取る。
 bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
     std::wstring command = Utf8ToWide(commandLine);
     if (command.empty()) {
@@ -135,6 +141,7 @@ bool RunHiddenProcessAndWait(const std::string& commandLine, DWORD* exitCode) {
     return true;
 }
 
+// 監査レポートJSONを読み込み、壊れている場合はfalseで呼び出し側へ返す。
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     std::ifstream file(path);
     if (!file) {
@@ -149,6 +156,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     }
 }
 
+// JSON値を文字列として安全に取り出し、数値でも表示できるように吸収する。
 std::string JsonString(const nlohmann::json& item, const char* key, const std::string& fallback = "") {
     if (!item.is_object() || !item.contains(key)) {
         return fallback;
@@ -169,6 +177,7 @@ std::string JsonString(const nlohmann::json& item, const char* key, const std::s
     return fallback;
 }
 
+// JSON値を64bit整数として取り出し、容量集計で型違いに引っかからないようにする。
 std::int64_t JsonInt64(const nlohmann::json& item, const char* key) {
     if (!item.is_object() || !item.contains(key)) {
         return 0;
@@ -184,6 +193,7 @@ std::int64_t JsonInt64(const nlohmann::json& item, const char* key) {
     return 0;
 }
 
+// バイト数をKB/MB表記へ変換し、テーブル上で読みやすくする。
 std::string FormatSizeText(std::int64_t bytes) {
     static constexpr const char* kUnits[] = { "B", "KB", "MB", "GB" };
     double value = static_cast<double>(std::max<std::int64_t>(0, bytes));
@@ -206,6 +216,7 @@ int JsonInt(const nlohmann::json& item, const char* key) {
     return static_cast<int>(JsonInt64(item, key));
 }
 
+// JSON配列の文字列を1行表示へまとめ、pairedFilesなどを簡単に表示できる形にする。
 std::string JoinStringArray(const nlohmann::json& arrayValue, const char* fallback = "-") {
     if (!arrayValue.is_array() || arrayValue.empty()) {
         return fallback;
@@ -231,6 +242,7 @@ const nlohmann::json& ArrayOrEmpty(const nlohmann::json& root, const char* key) 
     return root.at(key);
 }
 
+// プレビュー用オブジェクト名や一時名に使える現在時刻文字列を作る。
 std::string TimestampText() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t time = std::chrono::system_clock::to_time_t(now);
@@ -242,6 +254,7 @@ std::string TimestampText() {
     return stream.str();
 }
 
+// 削除対象がResources配下から外れていないか確認し、誤削除を防ぐ。
 bool IsPathInside(const fs::path& child, const fs::path& parent) {
     const fs::path childAbs = fs::absolute(child).lexically_normal();
     const fs::path parentAbs = fs::absolute(parent).lexically_normal();
@@ -257,6 +270,7 @@ bool IsPathInside(const fs::path& child, const fs::path& parent) {
     return childText.rfind(parentText, 0) == 0;
 }
 
+// キャッシュ・ゴミ箱・toolsなど、エディタから削除してはいけないパスを保護する。
 bool IsProtectedAssetPath(const std::string& relativePath) {
     const std::string lower = ToLowerAscii(NormalizeSlash(relativePath));
     if (lower.empty()) return true;
@@ -267,6 +281,7 @@ bool IsProtectedAssetPath(const std::string& relativePath) {
     return false;
 }
 
+// 実ファイルパスをプロジェクト相対へ戻し、レポートやステータス表示に使う。
 std::string RelativeToProjectSlash(const fs::path& fullPath) {
     std::error_code ec;
     fs::path relative = fs::relative(fullPath, fs::current_path(), ec);
@@ -276,6 +291,7 @@ std::string RelativeToProjectSlash(const fs::path& fullPath) {
     return NormalizeSlash(relative.generic_string());
 }
 
+// 同名ファイル退避時に衝突しない名前を作るための補助関数。
 fs::path UniqueTrashPath(const fs::path& targetPath) {
     if (!fs::exists(targetPath)) {
         return targetPath;
@@ -293,6 +309,7 @@ fs::path UniqueTrashPath(const fs::path& targetPath) {
     return parent / (stem + "_overflow" + extension);
 }
 
+// 実在・Resources配下・保護対象外を満たすファイルだけ削除対象リストへ追加する。
 void AddIfDeletable(std::vector<fs::path>& targets, const fs::path& path, const fs::path& resourcesRoot) {
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
         return;
@@ -315,15 +332,28 @@ void AddIfDeletable(std::vector<fs::path>& targets, const fs::path& path, const 
     }
 }
 
+// DDSの元画像として扱う拡張子かを判定し、ペア削除の入口にする。
+bool IsTextureSourceExtensionForDDS(const std::string& extension) {
+    return extension == ".png" ||
+           extension == ".jpg" ||
+           extension == ".jpeg" ||
+           extension == ".bmp" ||
+           extension == ".tga" ||
+           extension == ".hdr";
+}
+
+// 選択したアセット本体に加えて、同名DDSやbin/mtlなど相方ファイルも削除対象へまとめる。
 std::vector<fs::path> BuildDeleteTargets(const fs::path& mainPath, const fs::path& resourcesRoot) {
     std::vector<fs::path> targets;
     AddIfDeletable(targets, mainPath, resourcesRoot);
 
     const std::string extension = ToLowerAscii(mainPath.extension().generic_string());
-    if (extension == ".png") {
+    if (IsTextureSourceExtensionForDDS(extension)) {
         AddIfDeletable(targets, fs::path(mainPath).replace_extension(".dds"), resourcesRoot);
     } else if (extension == ".dds") {
-        AddIfDeletable(targets, fs::path(mainPath).replace_extension(".png"), resourcesRoot);
+        for (const char* sourceExtension : { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr" }) {
+            AddIfDeletable(targets, fs::path(mainPath).replace_extension(sourceExtension), resourcesRoot);
+        }
     } else if (extension == ".gltf") {
         AddIfDeletable(targets, fs::path(mainPath).replace_extension(".bin"), resourcesRoot);
     } else if (extension == ".obj") {
@@ -333,6 +363,7 @@ std::vector<fs::path> BuildDeleteTargets(const fs::path& mainPath, const fs::pat
     return targets;
 }
 
+// パスの拡張子が指定セットに含まれるかを調べ、プレビュー種別判定に使う。
 bool HasExtension(const std::string& path, std::initializer_list<const char*> extensions) {
     const std::string ext = ToLowerAscii(fs::path(path).extension().generic_string());
     for (const char* candidate : extensions) {
@@ -343,18 +374,22 @@ bool HasExtension(const std::string& path, std::initializer_list<const char*> ex
     return false;
 }
 
+// 画像としてプレビューできるアセットかを判定する。
 bool IsTextureAssetPath(const std::string& path) {
     return HasExtension(path, { ".png", ".dds", ".jpg", ".jpeg", ".bmp", ".tga" });
 }
 
+// 音声プレビューの対象になる拡張子かを判定する。
 bool IsAudioAssetPath(const std::string& path) {
     return HasExtension(path, { ".wav", ".mp3", ".ogg" });
 }
 
+// モデルプレビューの対象になる拡張子かを判定する。
 bool IsModelAssetPath(const std::string& path) {
     return HasExtension(path, { ".gltf", ".glb", ".obj", ".fbx" });
 }
 
+// Sprite配置フォルダや生成テキストを判定し、画像でもSpriteとして扱う。
 bool IsSpriteAssetPath(const std::string& path) {
     if (!IsTextureAssetPath(path)) {
         return false;
@@ -406,6 +441,7 @@ int GetAssetFilterIndex(const nlohmann::json& item) {
     return kAssetFilterAll;
 }
 
+// UIのカテゴリフィルタに合わせて、表示する監査項目を絞り込む。
 bool PassesAssetFilter(const nlohmann::json& item, int filter) {
     return filter == kAssetFilterAll || GetAssetFilterIndex(item) == filter;
 }
@@ -427,6 +463,7 @@ ImVec4 GetAssetFilterColor(int filter) {
 
 std::string GetCategoryLabel(const std::string& category);
 
+// アセット分類を色付きラベルとして描画し、一覧の視認性を上げる。
 void DrawAssetCategoryBadge(const nlohmann::json& item) {
     const int filter = GetAssetFilterIndex(item);
     ImGui::TextColored(GetAssetFilterColor(filter), "%s", GetAssetFilterLabel(filter));
@@ -436,6 +473,7 @@ void DrawAssetCategoryBadge(const nlohmann::json& item) {
     }
 }
 
+// Audioカテゴリの中からBGMらしいものを判定し、再生方式を切り替える。
 bool IsBgmCategory(const std::string& category, const std::string& path) {
     const std::string lowerCategory = ToLowerAscii(category);
     const std::string lowerPath = ToLowerAscii(NormalizeSlash(path));
@@ -444,6 +482,7 @@ bool IsBgmCategory(const std::string& category, const std::string& path) {
         lowerPath.find("bgm") != std::string::npos;
 }
 
+// 大きすぎる画像を一覧内で直接読み込まないよう、軽いものだけインライン表示する。
 bool IsSafeInlineTexturePreview(const nlohmann::json& item) {
     const std::int64_t sizeBytes = JsonInt64(item, "sizeBytes");
     const int width = JsonInt(item, "width");
@@ -458,6 +497,7 @@ bool IsSafeInlineTexturePreview(const nlohmann::json& item) {
     return true;
 }
 
+// 重いアセット一覧に、解像度や頂点数など原因を短く表示する。
 std::string BuildHeavyAssetDetailText(const nlohmann::json& item) {
     const int width = JsonInt(item, "width");
     const int height = JsonInt(item, "height");
@@ -473,6 +513,7 @@ std::string BuildHeavyAssetDetailText(const nlohmann::json& item) {
     return "-";
 }
 
+// テーブルセル内で長文が崩れないよう、単一行の省スペース表示にする。
 void DrawSingleLineCellText(const std::string& text) {
     const std::string displayText = text.empty() ? "-" : text;
     ImGui::TextUnformatted(displayText.c_str());
@@ -485,6 +526,7 @@ void DrawSingleLineCellText(const std::string& text) {
     }
 }
 
+// 内部カテゴリ名をUIに出しやすい表示名へ変換する。
 std::string GetCategoryLabel(const std::string& category) {
     if (category == "Texture") return "画像";
     if (category == "Sprite") return "Sprite";
@@ -496,6 +538,7 @@ std::string GetCategoryLabel(const std::string& category) {
     return category;
 }
 
+// Resources/3DModel配下のパスから、エンジンがロードするモデル名を組み立てる。
 std::string GetModelNameFromAssetPath(const std::string& relativePath) {
     std::string path = NormalizeSlash(relativePath);
     const std::string prefix = "Resources/3DModel/";
@@ -516,6 +559,7 @@ std::string GetModelNameFromAssetPath(const std::string& relativePath) {
 
 constexpr const char* kAssetAuditPreviewPrefix = "__Editor_AssetAuditPreview_";
 
+// アセット監査が作った一時プレビューObjectだけを識別し、まとめて消せるようにする。
 bool IsAssetAuditPreviewObject(const Object3d* object) {
     if (!object) return false;
     return object->GetName().rfind(kAssetAuditPreviewPrefix, 0) == 0 ||
@@ -524,12 +568,14 @@ bool IsAssetAuditPreviewObject(const Object3d* object) {
 
 } // namespace
 
+// エディタ参照を保持し、監査ウィンドウからプレビューや削除を操作できるようにする。
 void AssetAuditWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
     hasReport_ = false;
     lastStatus_ = "アセット監査を開きました。前回レポートを確認する場合は、レポート再読み込みを押してください。";
 }
 
+// アセット監査ウィンドウ全体を描画し、実行・読み込み・検索・削除をまとめて扱う。
 void AssetAuditWindow::DrawImGui() {
 #ifdef USE_IMGUI
     (void)editor_;
@@ -611,6 +657,7 @@ void AssetAuditWindow::DrawImGui() {
 #endif
 }
 
+// 非同期実行中の監査ツールが終わったかを確認し、完了時に最新レポートを読み込む。
 void AssetAuditWindow::UpdateAuditProcess() {
     if (!auditRunning_) {
         return;
@@ -640,6 +687,7 @@ void AssetAuditWindow::UpdateAuditProcess() {
     lastStatus_ = "アセット監査が完了しました。最新レポートを読み込みました。";
 }
 
+// PowerShell監査ツールをバックグラウンドで起動し、UI操作を止めずに解析を開始する。
 bool AssetAuditWindow::RunAuditTool() {
     if (auditRunning_) {
         lastStatus_ = "アセット監査を実行中です。完了まで少し待ってください。";
@@ -662,6 +710,7 @@ bool AssetAuditWindow::RunAuditTool() {
     return true;
 }
 
+// latest_report.jsonを読み込み、画面表示に使う最新の監査結果へ差し替える。
 bool AssetAuditWindow::LoadLatestReport() {
     nlohmann::json report;
     if (!ReadJsonFile(kReportPath, report)) {
@@ -677,6 +726,7 @@ bool AssetAuditWindow::LoadLatestReport() {
     return true;
 }
 
+// 総ファイル数・未使用容量・警告数など、監査結果の概要を表示する。
 void AssetAuditWindow::DrawSummary() {
 #ifdef USE_IMGUI
     const nlohmann::json summary = latestReport_.value("summary", nlohmann::json::object());
@@ -707,6 +757,7 @@ void AssetAuditWindow::DrawSummary() {
 #endif
 }
 
+// カテゴリ別の重い素材数と未使用候補数を集計して表示する。
 void AssetAuditWindow::DrawCategorySummary() {
 #ifdef USE_IMGUI
     std::array<int, kAssetFilterCount> heavyCounts{};
@@ -757,6 +808,7 @@ void AssetAuditWindow::DrawCategorySummary() {
 #endif
 }
 
+// 容量や解像度が大きいアセットを一覧表示し、最適化候補を探しやすくする。
 void AssetAuditWindow::DrawHeavyAssets() {
 #ifdef USE_IMGUI
     const auto& heavyAssets = ArrayOrEmpty(latestReport_, "heavyAssets");
@@ -813,6 +865,7 @@ void AssetAuditWindow::DrawHeavyAssets() {
 #endif
 }
 
+// JSON/コードから参照が見つからない候補を表示し、必要なら削除確認へ進ませる。
 void AssetAuditWindow::DrawUnusedAssets() {
 #ifdef USE_IMGUI
     const auto& unusedAssets = ArrayOrEmpty(latestReport_, "unusedAssets");
@@ -862,6 +915,7 @@ void AssetAuditWindow::DrawUnusedAssets() {
 #endif
 }
 
+// JSONやコードに書かれているのに実ファイルが無い参照を表示し、破損箇所を探す。
 void AssetAuditWindow::DrawMissingReferences() {
 #ifdef USE_IMGUI
     const auto& missingReferences = ArrayOrEmpty(latestReport_, "missingReferences");
@@ -897,6 +951,7 @@ void AssetAuditWindow::DrawMissingReferences() {
 #endif
 }
 
+// 完全削除前に対象パスを確認させ、相方ファイルも消えることを明示する。
 void AssetAuditWindow::DrawDeleteConfirmPopup() {
 #ifdef USE_IMGUI
     if (ImGui::BeginPopupModal("AssetAuditDeleteConfirm", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -932,6 +987,7 @@ void AssetAuditWindow::DrawDeleteConfirmPopup() {
 #endif
 }
 
+// 画像プレビュー用にTextureManagerへ読み込ませ、SRVハンドルを取得する。
 uint32_t AssetAuditWindow::GetPreviewTextureHandle(const std::string& relativePath) {
     const std::string normalizedPath = NormalizeSlash(relativePath);
     auto it = previewTextureHandles_.find(normalizedPath);
@@ -949,6 +1005,7 @@ uint32_t AssetAuditWindow::GetPreviewTextureHandle(const std::string& relativePa
     return handle;
 }
 
+// 選択アセットをエクスプローラーや関連付けアプリで開けるようにする。
 bool AssetAuditWindow::OpenExternalPath(const std::string& relativePath) {
     const std::string normalizedPath = NormalizeSlash(relativePath);
     const fs::path fullPath = (fs::current_path() / fs::path(normalizedPath)).lexically_normal();
@@ -966,6 +1023,7 @@ bool AssetAuditWindow::OpenExternalPath(const std::string& relativePath) {
     return true;
 }
 
+// 音声アセットをBGM/SEの扱いに合わせて再生し、不要素材か確認できるようにする。
 bool AssetAuditWindow::PlayAudioPreview(const std::string& relativePath, bool isBgm) {
     const std::string normalizedPath = NormalizeSlash(relativePath);
     const fs::path path = (fs::current_path() / fs::path(normalizedPath)).lexically_normal();
@@ -1013,6 +1071,7 @@ int AssetAuditWindow::CountModelPreviews() const {
     return count;
 }
 
+// モデルアセットを現在シーンへ一時配置し、見た目を確認できるようにする。
 void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         lastStatus_ = "モデルを確認できるシーンがありません。";
@@ -1070,6 +1129,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     DebugConsole::GetInstance()->AddLog(lastStatus_);
 }
 
+// アセット監査で作成した一時モデルプレビューをまとめてシーンから取り除く。
 void AssetAuditWindow::RemoveModelPreviews() {
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return;
@@ -1092,6 +1152,7 @@ void AssetAuditWindow::RemoveModelPreviews() {
     }
 }
 
+// アセット種別ごとに画像・音声・モデルの確認UIを出し分ける。
 void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) {
 #ifdef USE_IMGUI
     const std::string path = JsonString(item, "path");
@@ -1162,6 +1223,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
 #endif
 }
 
+// 保護パスとResources配下を確認したうえで、本体と相方ファイルを完全削除する。
 bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage) {
     deletedPaths.clear();
     errorMessage.clear();
@@ -1205,6 +1267,7 @@ bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::ve
     return true;
 }
 
+// 削除済みファイルを画面上のレポートからも取り除き、再監査前でも表示を更新する。
 void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::string>& deletedPaths) {
     if (!hasReport_ || !latestReport_.is_object() || deletedPaths.empty()) {
         return;
@@ -1242,6 +1305,7 @@ void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::stri
     }
 }
 
+// 検索文字列をカテゴリ・パス・理由へ当て、表示する行を絞り込む。
 bool AssetAuditWindow::MatchesSearch(const nlohmann::json& item) const {
     if (searchBuffer_[0] == '\0') {
         return true;

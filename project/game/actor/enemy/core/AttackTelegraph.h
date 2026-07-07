@@ -6,19 +6,26 @@
 #include <memory>
 
 // 敵の攻撃前に出す共通予告表示。敵側は位置・範囲・進行度だけを渡す。
+// AttackTelegraphは、敵の攻撃予兆を円形や線形のメッシュエフェクトとして表示します。
 class AttackTelegraph {
 public:
-    enum class Shape {
+        // 予兆として表示する形状の種類です。
+enum class Shape {
         Circle,
         Line
     };
 
-    void Initialize(Object3dCommon* common);
-    void ShowCircle(const Vector3& center, float radius, float progress, const Vector4& color);
-    void ShowLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
-    void TriggerCue(const Vector4& color);
+        // 予兆表示用エフェクトを生成できるように共通描画機能を保持します。
+void Initialize(Object3dCommon* common);
+        // 円形範囲攻撃の予兆を表示します。
+void ShowCircle(const Vector3& center, float radius, float progress, const Vector4& color);
+        // 直線範囲攻撃の予兆を表示します。
+void ShowLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
+        // 攻撃直前の強調表示を直近の予兆位置で再生します。
+void TriggerCue(const Vector4& color);
     void TriggerCueAt(const Vector3& center, float radius, const Vector4& color);
-    void Hide();
+        // 表示中の予兆を非表示にします。
+void Hide();
     void Update(float deltaTime);
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     bool IsVisible() const { return isVisible_; }
@@ -28,7 +35,8 @@ private:
     void EnsureCueEffect(Object3dCommon* common);
     void ConfigureShape(Shape shape);
     void ConfigureCueShape(Shape shape);
-    void ConfigureEffectShape(EffectObject3d* effect, Shape shape);
+        // EffectObject3dの手続き生成形状を予兆用に設定します。
+void ConfigureEffectShape(EffectObject3d* effect, Shape shape);
     void ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress, const Vector4& color, float scaleMultiplier) const;
     void ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color, float scaleMultiplier) const;
     Vector4 MakeDisplayColor(const Vector4& color, float progress) const;

@@ -10,6 +10,7 @@ class DirectXCommon;
 /// <summary>
 /// ブルーム、トーンマップ、各種レンズエフェクトを管理するポストプロセス制御クラス
 /// </summary>
+// PostEffectは、レンダー済み画面へブルーム、色調補正、アウトラインなどの画面効果を適用します。
 class PostEffect {
 public:
     static constexpr int kCameraPreviewTextureIndex = 6;
@@ -19,7 +20,8 @@ public:
         return &instance;
     }
     // 定数バッファ用構造体 (16バイト境界に準拠)
-    struct Params {
+        // ポストエフェクトシェーダーへ渡す全画面効果のパラメータ群です。
+struct Params {
         // --- Bloom ---
         float threshold = 1.0f;             // 高輝度抽出しきい値
         float bloomIntensity = 0.0f;        // ブルーム合成強度
@@ -91,16 +93,20 @@ public:
     };
 
     // 初期化: 各パス用のリソースとPSOを生成
-    void Initialize(DirectXCommon* dxCommon);
+        // 画面効果用のメッシュ、RenderTexture、RootSignature、PipelineStateを作成します。
+void Initialize(DirectXCommon* dxCommon);
 
     // 更新: 時間の進行などを処理
-    void Update(float deltaTime);
+        // 時間依存の画面効果パラメータを更新します。
+void Update(float deltaTime);
 
     // 描画実行: 指定したPSOとSRVを用いてパスを実行
-    void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex = 0);
+        // 入力SRVを指定して、ポストエフェクトをフルスクリーン描画します。
+void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex = 0);
 
     // 描画前準備: 指定したレンダーターゲットをセット
-    void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
+        // シーン描画先をポストエフェクト用RenderTextureへ切り替えます。
+void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
     void PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex = kCameraPreviewTextureIndex, bool clear = true);
 
     // リソースバリア管理
@@ -113,7 +119,8 @@ public:
     Params* GetParams() { return paramsData_; }
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
     void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
-    void ResetToNeutral();
+        // 画面効果をニュートラルな初期状態へ戻します。
+void ResetToNeutral();
     void ResizeRenderTextures(int width, int height);
 
 private:
@@ -125,7 +132,8 @@ private:
 
 private:
     // レンダーターゲット管理用
-    struct RenderTexture {
+        // ポストエフェクトで使うRenderTexture、RTV、DSV、SRV、現在状態をまとめます。
+struct RenderTexture {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
         Microsoft::WRL::ComPtr<ID3D12Resource> depthResource;

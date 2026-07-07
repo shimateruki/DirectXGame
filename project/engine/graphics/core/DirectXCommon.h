@@ -14,32 +14,38 @@ class WinApp;
 /// <summary>
 /// DirectX 12の初期化、コマンド実行、描画ターゲット、GPU同期をまとめて管理する。
 /// </summary>
+// DirectXCommonは、D3D12デバイス、SwapChain、コマンド、各種レンダーターゲットを管理する基盤クラスです。
 class DirectXCommon {
 public:
     /// <summary>
     /// シングルトンインスタンスを取得する。
     /// </summary>
-    static DirectXCommon* GetInstance();
+        // エンジン全体で共有するDirectX管理インスタンスを取得します。
+static DirectXCommon* GetInstance();
 
     /// <summary>
     /// DirectX関連リソースを初期化する。
     /// </summary>
-    void Initialize(WinApp* winApp);
+        // ウィンドウ情報を受け取り、DirectX12の主要リソースを初期化します。
+void Initialize(WinApp* winApp);
 
     /// <summary>
     /// DirectX関連リソースを終了処理する。
     /// </summary>
-    void Finalize();
+        // GPU完了待ちを行い、DirectX関連リソースを安全に終了します。
+void Finalize();
 
     /// <summary>
     /// バックバッファへの描画開始処理を行う。
     /// </summary>
-    void PreDraw();
+        // 1フレームの描画開始前にコマンドリストやバックバッファ状態を準備します。
+void PreDraw();
 
     /// <summary>
     /// バックバッファへの描画終了処理を行う。
     /// </summary>
-    void PostDraw();
+        // 描画コマンドを実行し、Presentとフェンス更新を行います。
+void PostDraw();
 
     // DirectXの主要オブジェクト取得。
     ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -58,12 +64,14 @@ public:
     /// <summary>
     /// HLSLシェーダーをコンパイルする。
     /// </summary>
-    Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
+        // HLSLファイルを指定プロファイルでコンパイルし、パイプライン作成に使えるBlobを返します。
+Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
 
     /// <summary>
     /// アップロードヒープ上にバッファリソースを作成する。
     /// </summary>
-    Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
+        // 定数バッファや頂点バッファ用のアップロードリソースを作成します。
+Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
 
     /// <summary>
     /// テクスチャ用リソースを作成する。
@@ -78,14 +86,16 @@ public:
     /// <summary>
     /// テクスチャファイルを読み込む。
     /// </summary>
-    static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
+        // 画像ファイルを読み込み、必要に応じてDDSキャッシュやsRGB変換を扱います。
+static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
 
     /// <summary>
     /// UTF-8文字列をワイド文字列に変換する。
     /// </summary>
     static std::wstring ConvertString(const std::string& str);
 
-    void FlushCommandQueue(bool reset = true);
+        // 送信済みコマンドの完了を待ち、必要ならコマンドリストを再利用可能にします。
+void FlushCommandQueue(bool reset = true);
 
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 
@@ -151,7 +161,8 @@ public:
     void SetCameraPreviewRendering(bool isRendering) { cameraPreviewRendering_ = isRendering; }
     bool IsCameraPreviewRendering() const { return cameraPreviewRendering_; }
 
-    void ResizeSwapChain(int32_t width, int32_t height);
+        // ウィンドウサイズ変更に合わせてSwapChainと関連RTV/DSVを作り直します。
+void ResizeSwapChain(int32_t width, int32_t height);
     void RequestResize(int32_t width, int32_t height);
     void ProcessPendingResize();
 
@@ -162,7 +173,8 @@ private:
     const DirectXCommon& operator=(const DirectXCommon&) = delete;
 
     // DirectX初期化の内部手順。
-    void InitializeDXGIDevice();
+        // DXGI Factory、D3D12 Device、DXCなどの低レベルオブジェクトを初期化します。
+void InitializeDXGIDevice();
     void CreateCommand();
     void CreateSwapChain();
     void CreateRTV();

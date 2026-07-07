@@ -53,10 +53,13 @@ public:
     VFXSequencer() = default;
     ~VFXSequencer() = default;
 
-    void Initialize(Object3d* targetObject = nullptr);
-    void Update(float deltaTime);
+        // シーケンス再生に必要な各VFX管理クラスを設定します。
+void Initialize(Object3d* targetObject = nullptr);
+        // 再生時間を進め、発火時刻に達したイベントを実行します。
+void Update(float deltaTime);
 
-    void Play();
+        // 指定したVFXシーケンスの再生を開始します。
+void Play();
     void Stop();
     void Reset();
 

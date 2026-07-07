@@ -8,20 +8,25 @@ class Object3d;
 // ==========================================================
 // キャラクターや武器に取り付ける「パーティクル発生器」コンポーネント
 // ==========================================================
+// GPUParticleEmitterは、Object3dに紐づけてGPUパーティクルを定期発生させる軽量エミッターです。
 class GPUParticleEmitter {
 public:
     GPUParticleEmitter() = default;
     ~GPUParticleEmitter() = default;
 
 
-    void Initialize(const std::string& presetName, Object3d* targetObject = nullptr);
+        // 使用するプリセット名と追従対象を設定します。
+void Initialize(const std::string& presetName, Object3d* targetObject = nullptr);
 
     // 毎フレーム呼ぶ（自動で間隔を計って発生させる）
-    void Update(float deltaTime);
+        // 再生中なら発生間隔を管理し、対象位置からパーティクルを出します。
+void Update(float deltaTime);
 
     // 再生・停止コントロール
-    void Play();
-    void Stop();
+        // 定期発生を開始します。
+void Play();
+        // 定期発生を停止します。
+void Stop();
     void EmitOnce(); // 1回だけ強制発生
 
     // パラメータ調整

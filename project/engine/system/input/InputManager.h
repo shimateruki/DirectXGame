@@ -26,39 +26,47 @@
 /// <summary>
 /// キーボード、マウス、ゲームパッド、SDLセンサー入力をまとめて管理する。
 /// </summary>
+// InputManagerは、キーボード、マウス、ゲームパッド、アクション入力をまとめて管理します。
 class InputManager {
 public:
     /// <summary>
     /// シングルトンインスタンスを取得する。
     /// </summary>
-    static InputManager* GetInstance();
+        // エンジン全体で共有する入力管理インスタンスを取得します。
+static InputManager* GetInstance();
 
     /// <summary>
     /// 入力デバイスを初期化する。
     /// </summary>
-    void Initialize(HWND hwnd);
+        // DirectInputとSDLゲームパッドを初期化し、入力取得を開始します。
+void Initialize(HWND hwnd);
 
     /// <summary>
     /// 毎フレームの入力状態を更新する。
     /// </summary>
-    void Update();
+        // 現在フレームの入力状態を取得し、前フレーム状態との差分を更新します。
+void Update();
 
     // キーボード入力。
-    bool IsKeyPressed(BYTE keyCode) const;
-    bool IsKeyTriggered(BYTE keyCode) const;
+        // 指定キーが押され続けているかを返します。
+bool IsKeyPressed(BYTE keyCode) const;
+        // 指定キーがこのフレームで押された瞬間かを返します。
+bool IsKeyTriggered(BYTE keyCode) const;
     std::vector<uint8_t> GetPressedKeys() const;
 
     // マウス入力。
     bool IsMouseButtonPressed(int button) const;
     bool IsMouseButtonTriggered(int button) const;
     bool IsMouseButtonReleased(int button) const;
-    Vector2 GetMouseMoveDelta() const;
+        // 前フレームからのマウス移動量を取得します。
+Vector2 GetMouseMoveDelta() const;
     Vector2 GetMousePosition() const;
     float GetMouseWheelDelta() const;
     int GetPressedMouseButton() const;
 
     // ゲームパッド入力。
-    Vector2 GetGamepadLeftStick() const;
+        // ゲームパッド左スティックの入力値を取得します。
+Vector2 GetGamepadLeftStick() const;
     Vector2 GetGamepadRightStick() const;
     bool IsGamepadButtonPressed(WORD button) const;
     bool IsGamepadButtonTriggered(WORD button) const;
@@ -75,7 +83,8 @@ public:
     Vector3 GetBaseAccelerometer() const { return baseAccel_; }
 
     // アクション名ベースの入力判定。
-    bool IsActionPressed(const std::string& actionName) const;
+        // KeyConfigに登録されたアクションが押されているかを返します。
+bool IsActionPressed(const std::string& actionName) const;
     bool IsActionTriggered(const std::string& actionName) const;
     bool IsActionReleased(const std::string& actionName) const;
 

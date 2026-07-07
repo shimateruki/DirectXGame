@@ -12,10 +12,12 @@ class DirectXCommon;
 /// <summary>
 /// 2Dスプライトの変換、描画、簡易アニメーションを扱う。
 /// </summary>
+// Spriteは、2D画像の位置、サイズ、UV、親子関係、簡易アニメーションを管理して描画するクラスです。
 class Sprite {
 public:
     // GPUへ送る基本構造体。
-    struct Transform {
+        // Spriteを画面上へ配置するための基本Transformです。
+struct Transform {
         Vector3 scale;
         Vector3 rotate;
         Vector3 translate;
@@ -27,7 +29,8 @@ public:
         Vector3 normal;
     };
 
-    struct Material {
+        // Sprite描画時にGPUへ渡す色、UV変換、発光などのマテリアル情報です。
+struct Material {
         Vector4 color;
         int32_t enableLighting;
         float padding1[3];
@@ -47,22 +50,26 @@ public:
     /// <summary>
     /// テクスチャハンドルを指定して初期化する。
     /// </summary>
-    void Initialize(SpriteCommon* common, uint32_t textureHandle);
+        // 既に読み込まれたテクスチャハンドルを使ってSpriteを初期化します。
+void Initialize(SpriteCommon* common, uint32_t textureHandle);
 
     /// <summary>
     /// テクスチャファイルを読み込んで初期化する。
     /// </summary>
-    void Initialize(SpriteCommon* common, const std::string& textureFilePath);
+        // テクスチャファイル名から読み込みを行い、Spriteを初期化します。
+void Initialize(SpriteCommon* common, const std::string& textureFilePath);
 
     /// <summary>
     /// 座標、UV、アニメーション状態を更新する。
     /// </summary>
-    void Update();
+        // 座標、UV、アニメーション状態をもとにGPU用行列を更新します。
+void Update();
 
     /// <summary>
     /// 現在のスプライトを描画する。
     /// </summary>
-    void Draw();
+        // 現在のSprite設定で2D描画コマンドを発行します。
+void Draw();
 
     // 基本パラメータの取得と設定。
     const Vector2& GetPosition() const { return position_; }
@@ -93,7 +100,8 @@ public:
     void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
     bool GetIsFlipY() const { return isFlipY_; }
 
-    void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
+        // テクスチャ内の一部だけを表示するためのUV範囲を設定します。
+void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
         textureLeftTop_ = texLeftTop;
         textureSize_ = texSize;
     }
@@ -116,7 +124,8 @@ public:
     /// <summary>
     /// 横並びスプライトシートのアニメーション設定を行う。
     /// </summary>
-    void SetAnimation(int frameCount, float duration, bool loop);
+        // 横並びフレームを使った簡易Spriteアニメーションを設定します。
+void SetAnimation(int frameCount, float duration, bool loop);
 
     // エディタ表示や階層管理で使う識別情報。
     void SetName(const std::string& name) { name_ = name; }
@@ -138,7 +147,8 @@ public:
     void SetLocked(bool isLocked) { isLocked_ = isLocked; }
     const std::string& GetTextureName() const { return textureName_; }
     void SetTextureName(const std::string& name) { textureName_ = name; }
-    void SetParent(Sprite* parent, bool keepWorldPosition = true);
+        // 親Spriteを設定し、UI部品を階層的に移動できるようにします。
+void SetParent(Sprite* parent, bool keepWorldPosition = true);
     Sprite* GetParent() const { return parent_; }
     const std::vector<Sprite*>& GetChildren() const { return children_; }
     Vector2 GetWorldPosition() const;
@@ -172,7 +182,8 @@ private:
     int frameWidth_ = 0;
     int frameHeight_ = 0;
 
-    void AdjustTextureSize();
+        // テクスチャのピクセルサイズに合わせてSpriteサイズやUVを調整します。
+void AdjustTextureSize();
 
     // GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;

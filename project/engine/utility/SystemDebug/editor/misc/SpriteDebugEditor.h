@@ -11,6 +11,7 @@ class SceneManager;
 class SpriteCommon;
 class BaseScene;
 
+// SpriteDebugEditorは、2D Spriteの配置、選択、保存、Inspector編集を行うための専用エディタです。
 class SpriteDebugEditor : public IEditable {
 public:
     // 依存マネージャーの注入と初期化
@@ -18,13 +19,15 @@ public:
     void Finalize();
 
     // 毎フレームのロジック更新（選択判定・ギズモ操作）
-    void Update(const Vector2& localMousePos, bool isHovered);
+        // マウス入力からSpriteの選択やドラッグ操作を更新します。
+void Update(const Vector2& localMousePos, bool isHovered);
 
     // GameView内でのデバッグ描画（選択枠やギズモ）
     void Draw();
 
     // Inspectorに表示するUI描画処理
-    void DrawImGui() override;
+        // Sprite Hierarchy、Inspector、Projectパネルを描画します。
+void DrawImGui() override;
 
     // Inspector上部のタイトルバーに表示される名前
     std::string GetName() override { return "Sprite Editor"; }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "engine/utility/math/Math.h"
 #include "TextureManager.h"
@@ -15,6 +15,7 @@
 
 class Object3d;
 
+// Modelは、OBJ/GLTFなどから読み込んだメッシュ、マテリアル、テクスチャ情報をGPU描画用に保持します。
 class Model {
 public:
 
@@ -102,7 +103,8 @@ public:
         std::vector<Node> children;
     };
 
-    struct VertexData {
+        // モデルメッシュ1頂点分の位置、UV、法線などを表します。
+struct VertexData {
         Vector4 position;
         Vector2 texcoord;
         Vector3 normal;
@@ -113,7 +115,8 @@ public:
     };
 
     // --- 繝・・繧ｿ縺ｾ縺ｨ繧√ｋ逕ｨ ---
-    struct MaterialData {
+        // モデルファイルから読み取ったマテリアルとテクスチャ参照情報です。
+struct MaterialData {
         std::string textureFilePath;
         std::string normalMapPath;
         std::string ormMapPath;

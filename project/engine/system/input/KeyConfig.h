@@ -11,20 +11,27 @@
 // ==================================================
 // ：1つのアクションにつき「キー」と「パッド」両方を保持する構造体
 // ==================================================
+// BindDataは、1つのアクションに割り当てるキーボード、マウス、パッド入力をまとめます。
 struct BindData {
     int keyCode = 0;   // キーボードのキー (DIK_***)
     int mouseButton = -1;
     WORD padCode = 0;  // コントローラーのボタン (XINPUT_GAMEPAD_***)
 };
 
+// KeyConfigは、ゲーム内アクションと入力デバイスの割り当てを保存、読み込み、編集します。
 class KeyConfig : public IEditable {
 public:
-    static KeyConfig* GetInstance();
-    void Initialize();
-    void Load(const std::string& filepath = "Resources/json/key/keyconfig.json");
-    void Save(const std::string& filepath = "Resources/json/key/keyconfig.json");
+        // 共通利用するキー設定インスタンスを取得します。
+static KeyConfig* GetInstance();
+        // デフォルトのアクション割り当てを準備します。
+void Initialize();
+        // JSONからキー設定を読み込みます。
+void Load(const std::string& filepath = "Resources/json/key/keyconfig.json");
+        // 現在のキー設定をJSONへ保存します。
+void Save(const std::string& filepath = "Resources/json/key/keyconfig.json");
 
-    void DrawImGui() override;
+        // エディタ上でキー、マウス、パッド割り当てを編集するUIを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "Key Configuration"; }
 
     // アクション名からデータを取得する関数群
@@ -34,7 +41,8 @@ public:
     // パッドの数値を「A」や「RB」などの文字列に変換する
     std::string GetKeyName(int keyCode) const;
     std::string GetPadName(WORD padCode) const;
-    const BindData* GetBindData(const std::string& actionName) const;
+        // アクション名に対応する入力割り当てを取得します。
+const BindData* GetBindData(const std::string& actionName) const;
 private:
     KeyConfig() = default;
     ~KeyConfig() = default;

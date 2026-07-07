@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "IEditable.h"
 #include "NodeGraphCore.h"
@@ -12,6 +12,7 @@ struct EditorContext;
 
 class DebugEditor;
 
+// NodeGraphEditorWindowは、ノードグラフの編集、検証、ドライラン再生を行うImGuiウィンドウです。
 class NodeGraphEditorWindow : public IEditable {
 public:
     NodeGraphEditorWindow() = default;
@@ -19,7 +20,8 @@ public:
 
     void Initialize(DebugEditor* editor);
     void Finalize();
-    void DrawImGui() override;
+        // ノードキャンバス、Inspector、検証結果、実行プレビューを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "演出ノード (Effect Sequence Graph)"; }
 
 private:
@@ -27,11 +29,13 @@ private:
     void EnsureInitialized();
     void DrawCompactInspectorPanel();
     void DrawLargeWindow();
-    void DrawToolbar();
+        // 保存、読み込み、検証、ドライラン開始などの主要操作ボタンを描画します。
+void DrawToolbar();
     void DrawTemplateButtons();
 
     // ノードキャンバス本体。
-    void DrawCanvas();
+        // ノード配置とリンク編集を行うメインキャンバスを描画します。
+void DrawCanvas();
     void DrawSidePanel();
     void DrawNode(cg2::editor::NodeData& node);
     void DrawPinLabel(const cg2::editor::NodePin& pin);
@@ -48,7 +52,8 @@ private:
 
     // ノード生成とドライラン。
     void AddNodeFromTemplate(const std::string& templateType);
-    void StartDryRun();
+        // 現在のグラフを検証し、実行プレビュー用のドライランを開始します。
+void StartDryRun();
     void UpdateDryRun(float deltaTime);
 
     // 保存、読み込み、選択状態。

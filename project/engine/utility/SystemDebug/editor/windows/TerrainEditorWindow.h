@@ -10,20 +10,26 @@
 
 class DebugEditor;
 
+/// ノイズ地形のパラメータ調整、OBJ生成、簡易プレビュー、コライダー設定を扱うウィンドウ。
 class TerrainEditorWindow : public IEditable {
 public:
+    /// エディタ参照を保持し、生成結果をシーンへ配置できるようにする。
     void Initialize(DebugEditor* editor);
     void DrawImGui() override;
     std::string GetName() override { return "地形生成 (Terrain Builder)"; }
 
 private:
+    /// 外部地形生成スクリプトを起動し、現在のパラメータから地形アセットを作る。
     bool RunTerrainBuilder();
+    /// 非同期生成の完了を監視し、必要なら生成後プレビューを作成する。
     void PollTerrainBuilder();
     bool LoadLatestReport();
     void CreateTerrainPreview();
     void DrawRealtimePreview();
+    /// UI上の軽量プレビュー用に、現在パラメータから簡易高さ配列を作る。
     std::vector<float> BuildPreviewHeightField(int previewResolution) const;
     float SamplePreviewHeight(int x, int z, int previewResolution) const;
+    /// 高さ値をプレビュー表示用の色へ変換し、地形の凹凸を見やすくする。
     uint32_t HeightToColor(float normalizedHeight) const;
     void SetNotice(const std::string& message, bool success);
 

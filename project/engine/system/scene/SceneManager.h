@@ -10,9 +10,11 @@ class DebugEditor;
 /// <summary>
 /// 現在シーン、次シーン予約、ロード画面、フェードを伴うシーン切り替えを管理する。
 /// </summary>
+// SceneManagerは、現在シーンの更新描画、非同期ロード、ローディング表示、シーン切り替えを管理します。
 class SceneManager {
 public:
-    static SceneManager* GetInstance();
+        // エンジン全体で共有するシーン管理インスタンスを取得します。
+static SceneManager* GetInstance();
 
     SceneManager();
     ~SceneManager();
@@ -20,19 +22,23 @@ public:
     /// <summary>
     /// シーン生成ファクトリと最初に表示するシーン名を登録する。
     /// </summary>
-    void Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName);
+        // シーン生成ファクトリーを受け取り、最初のシーンを作成して初期化します。
+void Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName);
 
     /// <summary>
     /// 現在シーンと非同期ロード中のタスクを終了する。
     /// </summary>
-    void Finalize();
+        // 現在シーンを終了し、ロード中リソースを片付けます。
+void Finalize();
 
     /// <summary>
     /// 現在シーンの更新と、フェード付きシーン切り替えを進める。
     /// </summary>
-    void Update(float deltaTime);
+        // 現在シーンまたはローディング遷移の状態を更新します。
+void Update(float deltaTime);
 
-    void Draw();
+        // 現在シーンまたはローディングシーンの描画を行います。
+void Draw();
     void DrawUI();
     void DrawShadow();
 
@@ -44,7 +50,8 @@ public:
     /// <summary>
     /// シーン名を指定してロード画面経由の切り替えを開始する。
     /// </summary>
-    void ChangeScene(const std::string& sceneName);
+        // シーン名を指定して次のシーンへの遷移を開始します。
+void ChangeScene(const std::string& sceneName);
 
     std::string LoadLastSceneName();
     void SaveLastSceneName(const std::string& sceneName);
@@ -57,18 +64,22 @@ public:
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
 
 private:
-    enum class TransitionPhase {
+        // 非同期ロード中のシーン切り替えフェーズを表します。
+enum class TransitionPhase {
         Idle,
         FadingOutCurrent,
         Loading,
         FadingOutLoading
     };
 
-    void BeginLoadingTransition();
-    void StartAsyncSceneCreate();
+        // ローディング画面を表示し、次シーン読み込みへの準備を始めます。
+void BeginLoadingTransition();
+        // 別スレッドで次シーン生成を開始します。
+void StartAsyncSceneCreate();
     bool IsAsyncSceneReady() const;
     void PrepareLoadedSceneOnMainThread();
-    void SwapToPreparedScene();
+        // 準備完了した次シーンを現在シーンとして差し替えます。
+void SwapToPreparedScene();
     void SwapToDirectNextScene();
     void SetLoadingProgress(float progress);
     bool IsTransitionBusy() const;

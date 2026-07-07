@@ -8,10 +8,12 @@
 /// <summary>
 /// パーティクルパラメータの保存・読み込み・発生を管理するクラス
 /// </summary>
+// ParticleManagerは、CPUパーティクルグループの生成、更新、描画、テクスチャ設定を管理します。
 class ParticleManager {
 public:
     // シングルトンインスタンス取得
-    static ParticleManager* GetInstance();
+        // エンジン全体で共有するCPUパーティクル管理インスタンスを取得します。
+static ParticleManager* GetInstance();
 
     // 初期化（ParticleSystemへの参照をもらう）
     void Initialize(ParticleSystem* particleSystem);
@@ -31,7 +33,8 @@ public:
     // -------------------------------------------------------------
     // 名前指定でパーティクルを発生させる（Object3dなどから毎フレーム呼ばれる想定）
     // name: エフェクト名, position: 発生位置, timer: 呼び出し元のタイマー(参照渡しで更新)
-    void Emit(const std::string& name, const Vector3& position, float& timer);
+        // 指定設定でCPUパーティクルを発生させます。
+void Emit(const std::string& name, const Vector3& position, float& timer);
 
     // 編集用：現在のパラメータリストを取得
     const std::map<std::string, ParticleSystem::EmitterParams>& GetParamsMap() const { return paramsMap_; }

@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 
+// RootSignatureBuilderは、CBV/SRV/UAVやSamplerを追加しながらRootSignatureを作る補助クラスです。
 class RootSignatureBuilder {
 public:
     RootSignatureBuilder() = default;
@@ -12,9 +13,12 @@ public:
     // =======================================================
     // 1. 直接指定系 (RegisterSpace も指定可能に！)
     // =======================================================
-    void AddCBV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
-    void AddSRV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
-    void AddUAV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+        // 指定レジスタの定数バッファビューをRootParameterへ追加します。
+void AddCBV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+        // 指定レジスタのシェーダーリソースビューをRootParameterへ追加します。
+void AddSRV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+        // 指定レジスタの書き込み可能リソースビューをRootParameterへ追加します。
+void AddUAV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     // =======================================================
     // 2. テーブル系 (汎用性と簡略化の両立)
@@ -23,7 +27,8 @@ public:
     static D3D12_DESCRIPTOR_RANGE MakeRange(D3D12_DESCRIPTOR_RANGE_TYPE type, uint32_t shaderRegister, uint32_t numDescriptors = 1, uint32_t registerSpace = 0);
 
     // [汎用版] 複数のRangeを持つ複雑なテーブルを追加する
-    void AddDescriptorTable(const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+        // 複数RangeをまとめたDescriptorTableを追加します。
+void AddDescriptorTable(const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     // [簡易版] 「SRV1個だけ」などの簡単なテーブルを一発で追加する
     void AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE rangeType, uint32_t shaderRegister, uint32_t numDescriptors = 1, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
@@ -31,7 +36,8 @@ public:
     // =======================================================
     // 3. サンプラー系
     // =======================================================
-    void AddStaticSampler(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL,
+        // 標準的な静的SamplerをRootSignatureへ追加します。
+void AddStaticSampler(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL,
         D3D12_FILTER filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
         D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 
@@ -40,7 +46,8 @@ public:
     // =======================================================
     // 4. ビルド実行
     // =======================================================
-    void Build(ID3D12Device* device, ID3D12RootSignature** outRootSignature, D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        // 追加済みパラメータからD3D12 RootSignatureを生成します。
+void Build(ID3D12Device* device, ID3D12RootSignature** outRootSignature, D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
     void Clear();
 
 private:

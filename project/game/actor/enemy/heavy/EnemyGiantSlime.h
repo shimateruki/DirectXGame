@@ -1,20 +1,26 @@
 #pragma once
 #include "BaseEnemy.h"
 
+// EnemyGiantSlimeは、大型ジャンプ攻撃、着地衝撃波、フック分裂を持つ重量級スライム敵です。
 class EnemyGiantSlime : public BaseEnemy {
 public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
-    void Update(float deltaTime) override;
+        // 巨大スライム用モデル、Collider、基準スケール、ステートを初期化します。
+void Initialize(Object3dCommon* common, const std::string& modelName) override;
+        // ステートマシン、ジャンプ攻撃、着地回復、分裂処理を更新します。
+void Update(float deltaTime) override;
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
-    void BeginHookSplitPull(const Vector3& hookOwnerPos);
-    bool UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos, class ParticleSystem* particleSystem);
+        // フックで分裂させるための引っ張り状態を開始します。
+void BeginHookSplitPull(const Vector3& hookOwnerPos);
+        // フック引っ張り進行を更新し、完了時に小スライムへ分裂します。
+bool UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos, class ParticleSystem* particleSystem);
     void CancelHookSplitPull();
     float GetHookSplitProgress() const;
     bool HasSplit() const { return hasSplit_; }
 
 private:
-    enum class State {
+        // 巨大スライムの待機、チャージ、ジャンプ、着地回復などの状態です。
+enum class State {
         Idle,
         ChargeJump,
         Airborne,
@@ -29,19 +35,22 @@ private:
     void UpdateTargetFacing(Vector3& direction, float& distance);
     void UpdateStateMachine(float deltaTime, const Vector3& direction, float distance);
     void UpdateIdleState(float deltaTime, const Vector3& direction, float distance);
-    void LaunchJump(const Vector3& direction, float distance);
+        // 目標方向と距離に応じてジャンプ攻撃を開始します。
+void LaunchJump(const Vector3& direction, float distance);
     void BeginJumpCharge(const Vector3& direction, float distance);
     void UpdateJumpCharge(float deltaTime);
     void BeginLandingRecovery();
     void UpdateLandingRecovery(float deltaTime);
     void SpawnLandingTelegraph();
-    void SpawnLandingEffects();
+        // 着地時のパーティクルや画面演出を発生させます。
+void SpawnLandingEffects();
     void DispatchLandingShockwave();
     void ApplySlimeAnimation(float deltaTime);
     void SyncWorldCollisionRadius(float worldRadius, float worldCenterY);
     void SyncGroundCollisionRadius();
     void SyncThrownCollisionRadius();
-    void SplitIntoSmallSlimes(class ParticleSystem* particleSystem);
+        // フック分裂完了時に小型スライムを生成します。
+void SplitIntoSmallSlimes(class ParticleSystem* particleSystem);
 
     float jumpTimer_ = 0.0f;
     float landingPulseTimer_ = 0.0f;

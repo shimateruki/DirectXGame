@@ -7,15 +7,20 @@
 #include <unordered_set>
 
 // エフェクトを動的に発生・管理するシングルトンクラス
+// MeshEffectManagerは、EffectObject3dの生成、再生、更新、描画、プリロードを管理します。
 class MeshEffectManager {
 public:
     // シングルトンインスタンスの取得
-    static MeshEffectManager* GetInstance();
+        // エンジン全体で共有するメッシュエフェクト管理インスタンスを取得します。
+static MeshEffectManager* GetInstance();
 
     // 初期化（ゲーム開始時・シーン初期化時に1回だけ呼ぶ）
-    void Initialize(Object3dCommon* common);
-    void BeginFrame();
-    void PreloadEffect(const std::string& jsonFilePath);
+        // メッシュエフェクト生成に必要なObject3dCommonを保持します。
+void Initialize(Object3dCommon* common);
+        // 1フレーム内の更新済み判定など、フレーム単位の状態を初期化します。
+void BeginFrame();
+        // 再生前にエフェクトプリセットを読み込み、初回生成の負荷を抑えます。
+void PreloadEffect(const std::string& jsonFilePath);
 
     // 毎フレームの更新（寿命が切れたエフェクトの自動削除も行う）
     void Update(float deltaTime);
@@ -23,11 +28,13 @@ public:
     // 描画
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
 
-    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
+        // 対象Object3dに追従するメッシュエフェクトを生成します。
+void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
 
     // ワールド座標を直接指定してエフェクトを配置する（TrailEmitter用）
     // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
-    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+        // ワールド座標を直接指定してメッシュエフェクトを生成します。
+void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
 
     // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
     void SpawnRingWaveEffect(const Vector3& position);

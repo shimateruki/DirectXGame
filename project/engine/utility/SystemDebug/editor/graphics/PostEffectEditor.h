@@ -3,13 +3,16 @@
 #include "IEditable.h"
 #include <string>
 
+// PostEffectEditorは、画面全体にかかるポストエフェクトのパラメータを編集、保存します。
 class PostEffectEditor : public IEditable {
 public:
     // エフェクト本体のポインタを受け取って初期化する
-    void Initialize(PostEffect* postEffect);
+        // 編集対象のPostEffectを受け取り、UIから調整できる状態にします。
+void Initialize(PostEffect* postEffect);
 
     // Inspectorに表示するUIの描画処理
-    void DrawImGui() override;
+        // ブルーム、色調補正などのポストエフェクト設定UIを描画します。
+void DrawImGui() override;
 
     // Inspector上部のタイトルバーに表示される名前
     std::string GetName() override { return "Post Effect Settings"; }

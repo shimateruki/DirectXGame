@@ -24,13 +24,17 @@ class SceneManager;
 /// <summary>
 /// 入力テキストから3Dモデル用OBJを生成し、シーンへ追加するEditorツール。
 /// </summary>
+/// 入力テキストから押し出しOBJモデルを生成し、3D文字としてプレビュー・配置するエディタツール。
 class Text3DGenerator : public IEditable {
 public:
     Text3DGenerator() = default;
     ~Text3DGenerator() override;
 
+    /// モデル生成に必要なシーン参照とエディタ参照を受け取り、フォント情報を準備する。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
+    /// 3Dプレビューの自動更新とカメラ前追従位置を毎フレーム更新する。
     void Update();
+    /// 編集中だけ一時Objectを描画し、保存データへ混ぜずに見た目を確認する。
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawImGui() override;
     std::string GetName() override { return "Text 3D Generator"; }
@@ -39,6 +43,7 @@ private:
     /// <summary>
     /// DirectWriteで描いた文字のアルファマスク。
     /// </summary>
+    /// DirectWriteで描いた文字をOBJ化するためのアルファマスク情報。
     struct TextMask {
         int width = 0;
         int height = 0;
@@ -48,6 +53,7 @@ private:
     /// <summary>
     /// 生成したモデルファイルと統計情報。
     /// </summary>
+    /// 生成された3D文字モデルのパス、サイズ、頂点数などの結果情報。
     struct GeneratedModelInfo {
         std::string modelName;
         std::string objPath;
@@ -61,8 +67,10 @@ private:
 
     bool EnsureFactories();
     void RefreshFonts();
+    /// 現在の文字設定をビットマップへ描画し、メッシュ化の元になるマスクを作る。
     bool RenderTextMask(TextMask& outMask);
     bool BuildModelFile(GeneratedModelInfo& outInfo);
+    /// アルファマスクを小さな押し出し面の集合へ変換し、OBJファイルとして保存する。
     bool WriteObjFromMask(const TextMask& mask, const std::filesystem::path& objPath, GeneratedModelInfo& outInfo);
     bool WriteReport(const GeneratedModelInfo& info);
     void AddGeneratedModelToScene(const GeneratedModelInfo& info);
@@ -71,6 +79,7 @@ private:
     void EnsurePreviewObject(const GeneratedModelInfo& info);
     void RemovePreviewObject();
     void MarkPreviewDirty();
+    /// 固定位置またはカメラ前方距離から、現在のプレビュー配置座標を計算する。
     Vector3 ResolvePreviewPosition() const;
     void ApplyPreviewTransform();
     Object3d* FindPreviewObject() const;

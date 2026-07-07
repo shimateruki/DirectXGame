@@ -4,6 +4,7 @@
 /// <summary>
 /// エディタ全体で共有する選択状態とInspector描画を管理する。
 /// </summary>
+// EditorManagerは、選択中オブジェクトとInspector描画をシンプルに仲介する管理クラスです。
 class EditorManager {
 private:
     EditorManager() = default;
@@ -31,5 +32,6 @@ public:
     /// <summary>
     /// 選択中オブジェクトのInspectorを描画する。
     /// </summary>
-    void DrawInspector();
+        // 選択中オブジェクトの編集UIを描画します。
+void DrawInspector();
 };

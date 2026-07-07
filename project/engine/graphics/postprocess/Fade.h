@@ -10,6 +10,7 @@
 class Sprite;
 class SpriteCommon;
 
+// Fadeは、画面全体を覆うSpriteでフェードイン、フェードアウト演出を行います。
 class Fade {
 public:
     enum class Status {
@@ -25,7 +26,8 @@ public:
 
     void Initialize();
     void Update(float deltaTime);
-    void Draw();
+        // フェード中の画面覆いSpriteを描画します。
+void Draw();
 
     void StartFadeIn(float duration);
     void StartFadeOut(float duration);

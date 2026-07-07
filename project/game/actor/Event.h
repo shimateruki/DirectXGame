@@ -5,12 +5,14 @@ class Bullet;
 /// <summary>
 /// プレイヤーが何かに衝突したときに発行されるイベント
 /// </summary>
+// PlayerHitEventは、プレイヤーが何かに接触したときの通知データです。
 struct PlayerHitEvent {
     Object3d* me = nullptr;        
     Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
     Vector3 normal = { 0,0,0 };
 };
 
+// BulletHitEventは、弾がObject3dへ当たったときの通知データです。
 struct BulletHitEvent {
     Object3d* hitObject; // 衝突した相手
     Bullet* bullet;      // 衝突した弾
@@ -19,6 +21,7 @@ struct BulletHitEvent {
 // =========================================================
 // ダメージイベント (Enemyへの攻撃時などに発行する)
 // =========================================================
+// DamageEventは、ダメージ対象、攻撃者、ダメージ量、ノックバックをまとめます。
 struct DamageEvent {
     Object3d* target = nullptr;   // ダメージを受ける人
     Object3d* attacker = nullptr; // 攻撃した人
@@ -34,6 +37,7 @@ struct PlayerJumpEvent {
     class Player* player = nullptr;
 };
 
+// EventTypeは、ゲーム内イベント通知の種類を表します。
 enum class EventType {
     None = 0,       // なし
     Damage,         // ダメージ

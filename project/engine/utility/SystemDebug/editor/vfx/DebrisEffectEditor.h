@@ -9,20 +9,26 @@
 
 class SceneManager;
 
+// DebrisEffectEditorは、破片エフェクトのモデル、飛散量、速度、プリセットを編集するツールです。
 class DebrisEffectEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager);
-    void Update(float deltaTime);
-    void DrawImGui() override;
+        // プレビュー中の破片エフェクトを更新します。
+void Update(float deltaTime);
+        // 破片モデル、発生数、速度、プリセット関連のUIを描画します。
+void DrawImGui() override;
     std::string GetName() override { return "Debris Effect Editor"; }
 
 private:
-    void RefreshLists();
+        // 利用可能なモデルや保存済み設定の一覧を更新します。
+void RefreshLists();
     void Save(const std::string& presetName);
     void Load(const std::string& presetName);
-    void Preview();
+        // 現在の設定で破片エフェクトを発生させ、見た目を確認します。
+void Preview();
     Vector3 GetPreviewPosition() const;
-    void SyncModelBuffersFromConfig();
+        // 設定データからUI編集用のモデルバッファへ内容を反映します。
+void SyncModelBuffersFromConfig();
     void SyncConfigFromModelBuffers();
     void ApplyQuickPresetRock();
     void ApplyQuickPresetWood();

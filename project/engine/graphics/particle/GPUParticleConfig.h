@@ -3,6 +3,7 @@
 #include <string>
 
 
+// GPUParticleConfigは、GPUパーティクルの発生形状、色、サイズ、環境影響、衝突をまとめた設定です。
 struct GPUParticleConfig {
     int shapeType = 0;         // 0: Box(四角), 1: Sphere(球), 2: Cone(円錐)
     float shapeRadius = 2.0f;  // 球や円錐の時の半径

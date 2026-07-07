@@ -20,6 +20,7 @@ class SceneManager;
 #include "GPUParticleEmitter.h"
 class EffectObject3d;
 
+// Object3dは、Transform、階層、描画、衝突、エフェクト連携を持つ3Dオブジェクトの基本クラスです。
 class Object3d {
 public:
     // 互換性維持のためエイリアスを作成
@@ -108,7 +109,8 @@ public:
     Object3d* GetParent() const { return parent_; }
 
     // グラフィックス (MeshRendererへ委譲)
-    MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
+        // 描画マテリアルやLODを編集するためのMeshRendererを取得します。
+MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     void SetModel(Model* model);
     void SetModel(const std::string& modelName);

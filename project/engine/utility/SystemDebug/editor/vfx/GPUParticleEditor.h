@@ -8,11 +8,14 @@
 /// <summary>
 /// GPUパーティクルのプリセット保存、読み込み、プレビュー発生を行う。
 /// </summary>
+// GPUParticleEditorは、GPUパーティクルの発生形状、色、寿命、テクスチャを編集してプレビューします。
 class GPUParticleEditor : public IEditable {
 public:
     void Initialize();
-    void Update(float deltaTime);
-    void DrawImGui() override;
+        // プレビュー再生やパラメータ変更をフレーム時間に合わせて更新します。
+void Update(float deltaTime);
+        // 発生、速度、色、テクスチャなどの編集UIを描画します。
+void DrawImGui() override;
 
     void Save(const std::string& presetName);
     void Load(const std::string& presetName);
@@ -28,5 +31,6 @@ private:
     float previewDistance_ = 5.0f;
     int lastStagePlayRequestSerial_ = 0;
 
-    void EmitWithPreview();
+        // 現在の設定で一度発生させ、見た目を即確認できるようにします。
+void EmitWithPreview();
 };

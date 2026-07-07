@@ -14,6 +14,7 @@
 class Object3dCommon;
 struct ID3D12Resource;
 
+// DebrisEffectConfigは、破片エフェクトの発生数、速度、重力、色などをまとめた設定です。
 struct DebrisEffectConfig {
     std::string name = "rock_burst";
     std::vector<std::string> modelNames = { "Primitives/cube" };
@@ -44,16 +45,22 @@ struct DebrisEffectConfig {
     bool shrinkOnFade = true;
 };
 
+// DebrisEffectManagerは、破片エフェクトのプリセット管理、生成、更新、描画、再利用プールを担当します。
 class DebrisEffectManager {
 public:
-    static DebrisEffectManager* GetInstance();
+        // エンジン全体で共有する破片エフェクト管理インスタンスを取得します。
+static DebrisEffectManager* GetInstance();
 
-    void Initialize(Object3dCommon* common);
-    void Update(float deltaTime);
-    void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
+        // 破片描画に必要な共通3D描画機能とGPUリソースを準備します。
+void Initialize(Object3dCommon* common);
+        // 生存中の破片の移動、回転、重力、地面衝突、フェードを更新します。
+void Update(float deltaTime);
+        // 現在表示中の破片をライト情報つきで描画します。
+void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
     void Clear();
 
-    void LoadAllPresets(const std::string& directoryPath);
+        // 指定フォルダ内の破片プリセットJSONをまとめて読み込みます。
+void LoadAllPresets(const std::string& directoryPath);
     bool LoadConfig(const std::string& filePath, DebrisEffectConfig& outConfig) const;
     bool SaveConfig(const std::string& filePath, const DebrisEffectConfig& config) const;
     void RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config);
@@ -63,10 +70,12 @@ public:
 
     void Spawn(const std::string& presetName, const Vector3& position);
     void SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY);
-    void SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position);
+        // 設定値を直接指定して破片エフェクトを発生させます。
+void SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position);
 
 private:
-    struct DebrisPiece {
+        // 実際に飛散している破片1個分の状態とGPUリソースです。
+struct DebrisPiece {
         Model* model = nullptr;
         Vector3 position = { 0.0f, 0.0f, 0.0f };
         Vector3 rotation = { 0.0f, 0.0f, 0.0f };
@@ -98,7 +107,8 @@ private:
 
     Object3dCommon* ResolveCommon();
     DebrisPiece AcquirePiece();
-    void RecyclePiece(size_t index);
+        // 寿命が切れた破片をアクティブ一覧からプールへ戻します。
+void RecyclePiece(size_t index);
     bool InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config);
     void UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection);
     float RandomRange(float minValue, float maxValue);

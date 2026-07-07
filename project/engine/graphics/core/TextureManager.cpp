@@ -20,6 +20,8 @@
 
 namespace {
 const std::filesystem::path kDDSCacheRequestPath = "Resources/.cache/dds_cache_requests.jsonl";
+// この時間未満の読み込みはDDS化しても効果が薄いため、変換要求を出さない。
+constexpr float kDDSCacheRequestMinDurationMs = 2.0f;
 // 文字列を小文字化し、拡張子やパスの比較を大文字小文字に左右されない形へ揃える。
 
 std::string ToLower(std::string text) {
@@ -159,6 +161,10 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
     const std::filesystem::path sourcePath(filePath);
     const std::string ext = ToLower(sourcePath.extension().string());
     if (!IsSourceTextureExtension(ext) || IsEditorPreviewTexture(filePath)) {
+        return;
+    }
+    // 読み込みが軽い画像はDDS化しても効果が薄いため、変換キューへ積まない。
+    if (durationMs < kDDSCacheRequestMinDurationMs) {
         return;
     }
 
@@ -339,6 +345,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     std::filesystem::path path(filePath);
+    // DDSを直接指定された場合でも、元画像が新しければ元画像を読み直して再生成要求につなげる。
     const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
     if (requestedDDS) {
         const std::filesystem::path sourcePath = FindSourceTextureForDDS(path);
@@ -389,6 +396,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
 
     const auto start = std::chrono::high_resolution_clock::now();
 
+    // 法線・マスク系以外は見た目の色を保つためsRGBとして読み込む。
     const bool forceSRGB = !isNormalMap && ToLower(std::filesystem::path(loadPath).extension().string()) != ".hdr";
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath, forceSRGB);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
@@ -416,6 +424,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     uint32_t srvHandle = 0;
+    // forceReload時は既存SRV番号を再利用し、参照しているSpriteやMaterialを壊さない。
     auto existingIt = textureHandleMap_.find(loadPath);
     if (forceReload && existingIt != textureHandleMap_.end()) {
         srvHandle = existingIt->second;

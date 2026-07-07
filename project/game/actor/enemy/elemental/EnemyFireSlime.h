@@ -2,13 +2,17 @@
 #include "BaseEnemy.h"
 
 // 近距離では炎ブレス、距離がある時は火球で攻撃する属性スライム
+// EnemyFireSlimeは、炎ブレス、火球、頭上炎エフェクトを使う属性スライム敵です。
 class EnemyFireSlime : public BaseEnemy {
 public:
-    void Initialize(Object3dCommon* common, const std::string& modelName) override;
-    void Update(float deltaTime) override;
+        // 炎スライム用モデル、Collider、初期能力値、炎エフェクトを準備します。
+void Initialize(Object3dCommon* common, const std::string& modelName) override;
+        // 徘徊、追跡、炎攻撃、投げ復帰、炎見た目を更新します。
+void Update(float deltaTime) override;
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
-    void ExecuteAbility(class Player* player) override;
+        // プレイヤーが利用する炎スライム固有能力を発動します。
+void ExecuteAbility(class Player* player) override;
     void ExecuteBreathAbility(class Player* player);
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     void ReleaseCarriedAbilityVisuals();
@@ -24,14 +28,17 @@ private:
     void UpdateWanderBehavior(float deltaTime, Vector3& velocity);
     void ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity);
     void UpdateFacing(const Vector3& direction);
-    void StartBreath();
+        // 炎ブレス攻撃の予兆と再生状態を開始します。
+void StartBreath();
     void UpdateBreath(float deltaTime, const Vector3& direction, float distance);
-    void DispatchBreathDamage(const Vector3& direction, float distance);
+        // ブレス範囲内の対象へダメージを通知します。
+void DispatchBreathDamage(const Vector3& direction, float distance);
     void DispatchCarriedBreathDamage(class Player* player, const Vector3& direction);
     void FireFireball(const Vector3& direction, float distance);
     void UpdateHeadFlame(float deltaTime);
     void EnsureHeadFlameVisual();
-    void UpdateHeadFlameVisual(float deltaTime);
+        // 頭上の炎エフェクトを本体位置と状態へ同期します。
+void UpdateHeadFlameVisual(float deltaTime);
     void RequestRemoveHeadFlameVisual();
     void EnsureBreathFlameVisuals();
     void UpdateBreathFlameVisuals(const Vector3& direction, float deltaTime);

@@ -7,6 +7,7 @@
 
 class DebugEditor;
 
+/// ビルド済み実行ファイルと必要リソースを配布用フォルダへまとめるパッケージ作成ウィンドウ。
 class ExecutablePackageWindow : public IEditable {
 public:
     void Initialize(DebugEditor* editor);
@@ -14,19 +15,23 @@ public:
     std::string GetName() override { return "実行ファイルセット (Executable Package)"; }
 
 private:
+    /// パッケージ名、構成、事前ビルド有無など、非同期タスクへ渡す入力情報。
     struct PackageRequest {
         std::string packageName;
         std::string configuration;
         bool buildBeforePackage = false;
     };
 
+    /// パッケージ作成タスクの成功可否と表示メッセージを返す結果情報。
     struct PackageResult {
         bool success = false;
         std::string message;
     };
 
+    /// 非同期パッケージ作成タスクがまだ実行中か確認する。
     bool IsTaskRunning();
     void PollTask();
+    /// 必要ならビルドを行ってから、配布用ファイルの収集を非同期で開始する。
     void StartPackageTask(bool buildBeforePackage);
 
     static PackageResult RunPackageTask(const PackageRequest& request);

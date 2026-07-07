@@ -3,6 +3,7 @@
 #include "engine/utility/math/Math.h"
 
 // 衝突判定属性 (ビットフラグで管理)
+// CollisionAttributeは、オブジェクトの衝突カテゴリをビットで表します。
 enum CollisionAttribute : uint32_t {
     kPlayer = 1 << 0,  // プレイヤー
     kEnemy = 1 << 1,  // 敵
@@ -26,6 +27,7 @@ const uint32_t kAllSolid = kGround;
 /// <summary>
 /// コライダー（あたり判定）の形状タイプ
 /// </summary>
+// ColliderTypeは、Colliderが使う形状の種類を表します。
 enum class ColliderType {
     kNone,   // 当たり判定なし
     kSphere, // 球
@@ -37,12 +39,14 @@ enum class ColliderType {
 };
 
 // AABB構造体
+// AABBは、回転しない箱型の衝突形状です。
 struct AABB {
     Vector3 min; // 箱の最小座標
     Vector3 max; // 箱の最大座標
 };
 
 // OBB構造体 (中心、各軸の向き、サイズ)
+// OBBは、回転を持つ箱型の衝突形状です。
 struct OBB {
     Vector3 center;          // 中心点
     Vector3 orientations[3]; // 座標軸 (正規化された X, Y, Z 軸)
@@ -67,6 +71,7 @@ struct Cylinder {
 };
 
 // 衝突情報（結果）を格納する構造体
+// CollisionInfoは、衝突有無、法線、めり込み量など判定結果をまとめます。
 struct CollisionInfo {
     bool isColliding = false;      // 衝突しているか
     Vector3 normal = { 0,0,0 };   // 衝突法線 (押し戻す方向)

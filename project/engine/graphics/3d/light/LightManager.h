@@ -12,6 +12,7 @@ class Object3d;
 /// <summary>
 /// ライト（点光源・スポットライト・平行光源）を一括管理するクラス
 /// </summary>
+// LightManagerは、ライト情報のGPUバッファ生成と描画側への共有を担当します。
 class LightManager {
 public:
     // シェーダーで定義されている最大数と合わせる定数
@@ -87,17 +88,20 @@ public:
     /// <summary>
     /// シングルトンインスタンスの取得
     /// </summary>
-    static LightManager* GetInstance();
+        // シーン全体で共有するライト管理インスタンスを取得します。
+static LightManager* GetInstance();
 
     /// <summary>
     /// 初期化処理（バッファの生成など）
     /// </summary>
-    void Initialize(DirectXCommon* dxCommon);
+        // DirectXリソースを使ってライト用バッファを作成します。
+void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
     /// 毎フレーム更新（追従処理やGPUへのデータ転送を行う）
     /// </summary>
-    void Update();
+        // CPU側ライト設定をGPUバッファへ反映します。
+void Update();
 
     // --- ゲッター（リソース） ---
     ID3D12Resource* GetPointLightResource() { return pointLightResource_.Get(); }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "NodeGraphCore.h"
 
@@ -8,6 +8,7 @@
 namespace cg2::editor {
 
 // テンプレート一覧の表示カテゴリです。
+// NodeTemplateCategoryは、UI上でテンプレートを分類表示するためのカテゴリです。
 enum class NodeTemplateCategory {
     Event,
     Flow,
@@ -53,6 +54,7 @@ struct NodePropertyDefinition {
     std::string stringValue;
 };
 
+// NodeTemplateDefinitionは、ノードテンプレートの名前、ピン、プロパティ、実行種別をまとめます。
 struct NodeTemplateDefinition {
     std::string type;
     std::string title;
@@ -68,6 +70,7 @@ struct NodeTemplateDefinition {
 
 // ノード定義を一か所に集約する registry です。
 // UI、サンプル生成、検証、ドライランが同じ定義を参照することで、ハードコードの分散を防ぎます。
+// NodeGraphTemplateRegistryは、エディタで追加できるノードテンプレート一覧を管理します。
 class NodeGraphTemplateRegistry {
 public:
     static const NodeGraphTemplateRegistry& Instance();

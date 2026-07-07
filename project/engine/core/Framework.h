@@ -7,6 +7,7 @@
 #include <memory>
 
 // ゲームエンジンの基本ライフサイクルを提供する基底クラス
+// Frameworkは、アプリ起動から終了までの共通ループと基盤サービスの生存期間を管理します。
 class Framework {
 public:
     /// <summary>
@@ -27,7 +28,8 @@ public:
     /// <summary>
     /// メインループを実行する。
     /// </summary>
-    void Run();
+        // 初期化、毎フレーム更新、描画、終了処理を順番に実行するメインループです。
+void Run();
 
 protected:
     /// <summary>

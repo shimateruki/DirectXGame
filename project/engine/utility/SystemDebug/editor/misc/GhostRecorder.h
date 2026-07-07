@@ -10,6 +10,7 @@ class SceneManager;
 class CameraManager;
 
 // 1フレーム分の動きデータ
+// GhostFrameは、ゴースト再生用に1フレーム分の位置や回転などを保持する記録データです。
 struct GhostFrame {
     Vector3 position;
     Vector3 rotation;
@@ -19,6 +20,7 @@ struct GhostFrame {
 };
 
 
+// GhostRecorderは、プレイ中の動きやカメラ軌跡を記録し、エディタ上で再生確認するためのツールです。
 class GhostRecorder : public IEditable {
 public:
     // 状態管理用
@@ -63,11 +65,14 @@ public:
     };
 
 public:
-    void Initialize(SceneManager* sceneManager);
-    void Update();
+        // 記録対象と保存先を準備し、ゴースト機能を利用できる状態にします。
+void Initialize(SceneManager* sceneManager);
+        // 記録、再生、プレビュー状態を毎フレーム進めます。
+void Update();
 
     // Inspectorに表示するUI描画処理
-    void DrawImGui() override;
+        // 録画、保存、読み込み、再生操作用のUIを描画します。
+void DrawImGui() override;
 
     // Inspector上部に表示される名前
     std::string GetName() override { return "Ghost Recorder (Cinematic/Path)"; }

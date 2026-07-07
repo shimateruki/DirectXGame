@@ -8,15 +8,19 @@
 /// <summary>
 /// シーン切り替え中に表示するロード画面。
 /// </summary>
+// LoadingSceneは、シーン切り替え中の進捗、アニメーション、ヒント表示を担当する専用シーンです。
 class LoadingScene : public BaseScene {
 public:
     LoadingScene() = default;
     ~LoadingScene() override = default;
 
-    void Initialize() override;
-    void Update(float deltaTime) override;
+        // ローディング画面用Spriteとテクスチャを準備します。
+void Initialize() override;
+        // スライム走り、ドット点滅、表示進捗の追従を更新します。
+void Update(float deltaTime) override;
     void Draw() override;
-    void DrawUI() override;
+        // ローディング画面の2D UIを描画します。
+void DrawUI() override;
     void Finalize() override;
 
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
@@ -25,13 +29,16 @@ public:
     /// <summary>
     /// ロード進捗を0.0から1.0で設定する。
     /// </summary>
-    void SetProgress(float progress);
+        // 外部から読み込み進捗を受け取り、表示用の目標値へ反映します。
+void SetProgress(float progress);
 
 private:
-    Sprite* CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color);
+        // ローディング画面用Spriteを生成し、内部リストへ登録します。
+Sprite* CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color);
     void UpdateSlimeRunAnimation();
     void UpdateDotAnimation();
-    void UpdateProgressSprites();
+        // 数字Spriteを現在の表示進捗に合わせて並べ直します。
+void UpdateProgressSprites();
     void LayoutProgressSprites(int percent);
 
 private:

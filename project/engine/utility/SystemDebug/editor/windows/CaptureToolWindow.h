@@ -14,6 +14,7 @@
 class DebugEditor;
 struct IMFSinkWriter;
 
+/// Game Viewやウィンドウ領域のスクリーンショット、録画、保存先管理を行うキャプチャツール。
 class CaptureToolWindow : public IEditable {
 public:
     enum class CaptureArea {
@@ -21,20 +22,25 @@ public:
         Window,
         Desktop
     };    void Initialize(DebugEditor* editor);
+    /// キャプチャ範囲、保存先、録画状態、ショートカット案内を描画する。
     void DrawImGui() override;
 
     // ImGuiを非表示にしている撮影モードでも、ショートカットと録画更新を動かす。
+    /// キャプチャ用ショートカット入力を監視し、撮影や録画開始を呼び出す。
     void UpdateHotkeys();
     void SetForceGameViewClientCapture(bool enabled) { forceGameViewClientCapture_ = enabled; }
 
     std::string GetName() override { return "キャプチャツール (Capture Tool)"; }
 private:
+    /// 現在の設定に従って静止画を保存する。
     void CaptureScreenshot();
     void StartRecording();
     void StopRecording();
     void UpdateRecording();
     bool CaptureToFile(const std::filesystem::path& path);
+    /// Media FoundationのSinkWriterを準備し、指定範囲の録画を開始する。
     bool StartMediaFoundationRecording(const std::filesystem::path& outputPath, const RECT& captureRect);
+    /// 現在フレームをキャプチャして動画ストリームへ1枚分書き込む。
     bool WriteRecordingFrame();
     void CloseRecordingResources();
 

@@ -8,20 +8,27 @@
 #include <vector>
 #include <DirectXCommon.h>
 
+// GPUParticleManagerは、GPUパーティクルシステムのプリセット、発生、更新、描画を一元管理します。
 class GPUParticleManager {
 public:
-    static GPUParticleManager* GetInstance();
+        // エンジン全体で共有するGPUパーティクル管理インスタンスを取得します。
+static GPUParticleManager* GetInstance();
 
-    void Initialize(DirectXCommon* dxCommon);
-    void BeginFrame();
-    void Update(float deltaTime);
-    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
+        // GPUパーティクル描画とCompute処理に必要なDirectXリソースを準備します。
+void Initialize(DirectXCommon* dxCommon);
+        // 1フレーム内の発生や更新状態を初期化します。
+void BeginFrame();
+        // 各GPUパーティクルシステムのシミュレーション時間を進めます。
+void Update(float deltaTime);
+        // 全GPUパーティクルをカメラ行列と深度情報に合わせて描画します。
+void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
     void LoadAllPresets(const std::string& directoryPath);
     void PreloadPresetSystem(const std::string& presetName);
     void PreloadPresetSystems(const std::vector<std::string>& presetNames);
 
-    void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+        // プリセット名を指定して指定位置へGPUパーティクルを発生させます。
+void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
     void EmitFromConfig(const GPUParticleConfig& config);
 
     float GetTimeScale() const { return timeScale_; }
@@ -30,7 +37,8 @@ public:
 
     const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
 
-    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
+        // 自動発生するGPUパーティクルエミッターを開始し、管理IDを返します。
+uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
     void StopAutoEmitter(uint32_t id);
     void ClearAllAutoEmitters();

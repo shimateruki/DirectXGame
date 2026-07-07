@@ -7,22 +7,26 @@ class InputManager;
 /// <summary>
 /// メインカメラと現在有効なカメラを管理するシングルトン。
 /// </summary>
+// CameraManagerは、ゲームやエディタで使う複数カメラの登録、選択、更新を管理します。
 class CameraManager {
 public:
     /// <summary>
     /// シングルトンインスタンスを取得する。
     /// </summary>
-    static CameraManager* GetInstance();
+        // 共通利用するカメラ管理インスタンスを取得します。
+static CameraManager* GetInstance();
 
     /// <summary>
     /// メインカメラを初期化する。
     /// </summary>
-    void Initialize();
+        // デフォルトカメラを準備し、管理状態を初期化します。
+void Initialize();
 
     /// <summary>
     /// 有効カメラを更新する。
     /// </summary>
-    void Update();
+        // 現在アクティブなカメラを更新します。
+void Update();
 
     // カメラ操作で参照する入力管理を設定する。
     void SetInputManager(InputManager* inputManager);

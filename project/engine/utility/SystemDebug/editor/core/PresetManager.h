@@ -13,6 +13,7 @@ class Object3dCommon;
 /// <summary>
 /// Object3dの設定をPreset/Prefabとして保存し、再生成するための管理クラス。
 /// </summary>
+// PresetManagerは、単体プリセットと複数オブジェクトPrefabの読み書き、生成を管理します。
 class PresetManager {
 public:
     static PresetManager* GetInstance();

@@ -6,6 +6,7 @@
 #include <vector>
 
 
+// ColliderConfigは、Colliderの形状、中心、サイズ、回転をまとめた設定です。
 struct ColliderConfig {
     ColliderType type = ColliderType::kAABB;
     Vector3 center = { 0.0f, 0.0f, 0.0f };
@@ -13,6 +14,7 @@ struct ColliderConfig {
     Vector3 rotation = { 0.0f, 0.0f, 0.0f };
 };
 
+// TerrainCollisionDataは、高さマップ地形との衝突判定に使うサンプル情報です。
 struct TerrainCollisionData {
     bool enabled = false;
     int resolution = 0;
@@ -24,14 +26,17 @@ struct TerrainCollisionData {
 };
 
 // 新しい Collider クラス
+// Colliderは、Object3dに紐づく衝突形状と属性マスクを保持し、形状間判定を行います。
 class Collider {
 public:
     // コンストラクタ：誰（どのTransform）にくっつくかを指定して作る
-    Collider(Transform* ownerTransform);
+        // 所有Object3dのTransformを参照し、ワールド座標で判定できるようにします。
+Collider(Transform* ownerTransform);
     ~Collider() = default;
 
     // --- 設定 (Setters) ---
-    void SetConfig(const ColliderConfig& config) { config_ = config; }
+        // Colliderの形状設定をまとめて差し替えます。
+void SetConfig(const ColliderConfig& config) { config_ = config; }
     void SetAttribute(uint32_t attribute) { attribute_ = attribute; }
     void SetMask(uint32_t mask) { mask_ = mask; }
     void SetTerrainData(const TerrainCollisionData& data) { terrainData_ = data; }
@@ -49,7 +54,8 @@ public:
     Vector3 GetCenter() const { return config_.center; }
 
     // 半径の取得 (スケールを加味)
-    float GetRadius() const;
+        // 球判定や近似判定に使う半径を取得します。
+float GetRadius() const;
 
     // --- 形状計算 (Object3dから移動) ---
     AABB GetAABB() const;
@@ -62,7 +68,8 @@ public:
     CollisionInfo CheckCollision(const Collider* other) const;
 
 private:
-    bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+        // 地形Colliderから指定座標の高さと法線をサンプリングします。
+bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
     Vector3 GetSphereCenter() const;
     CollisionInfo CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const;
     CollisionInfo CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const;

@@ -22,11 +22,13 @@ class SpriteDebugEditor;
 class TrailEmitterEditor;
 class VFXSequencerEditor;
 
+// EditorFrameStateは、Sprite操作やギズモ操作などカメラ入力へ影響するUI状態をまとめます。
 struct EditorFrameState {
 	bool spriteEditorBusy = false;
 	bool gizmoBusy = false;
 };
 
+// GameViewAreaは、エディタ内ゲームビューの画面上の位置とサイズを表します。
 struct GameViewArea {
 	float screenX = 0.0f;
 	float screenY = 0.0f;
@@ -34,19 +36,25 @@ struct GameViewArea {
 	float height = 0.0f;
 };
 
+// GameEditorControllerは、DebugEditorや各種ツールウィンドウをまとめてゲーム本体と接続します。
 class GameEditorController {
 public:
 	GameEditorController();
 	~GameEditorController();
 
-	void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+	    // 各エディタツールを生成し、シーン管理とDirectX基盤へ接続します。
+void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
 	void Finalize();
 
-	void BeginFrame();
+	    // ImGuiフレームやエディタ内部状態のフレーム開始処理を行います。
+void BeginFrame();
 	EditorFrameState DrawGameView(SceneManager* sceneManager, bool isPlaying);
-	void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
-	void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
-	void DrawToolWindows(
+	    // 再生停止やシーン切り替えなどのメインメニューを描画します。
+void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	    // 各エディタツールの更新処理をまとめて呼び出します。
+void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
+	    // Inspector、Project、VFX、ステータスなどのツールウィンドウを描画します。
+void DrawToolWindows(
 		float& timeScale,
 		float sceneUpdateTimeMs,
 		float cpuCmdTimeMs,
@@ -60,7 +68,8 @@ public:
 	void DrawSceneDebug(ID3D12GraphicsCommandList* commandList);
 	void DrawBackBufferUi();
 	void EndFrame();
-	void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	void ApplyCameraOverrides();
+	    // UI操作中や再生中の状態に合わせてカメラ入力を抑制します。
+void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	void ApplyCameraOverrides();
 	void SaveAllEditors();
 	void RequestExit();
 
@@ -77,7 +86,8 @@ private:
 	void StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void DrawUnsavedExitConfirmPopup();
-	bool HasUnsavedEditorChanges() const;
+	    // 再生や終了前に確認すべき未保存変更があるか調べます。
+bool HasUnsavedEditorChanges() const;
 	void ClearSceneBoundEditorState();
 	void DrawStatusWindow(
 		float& timeScale,

@@ -9,12 +9,14 @@
 /// <summary>
 /// 3Dシーンの視点、投影、追従、演出用カメラ制御を扱う。
 /// </summary>
+// Cameraは、ビュー行列、射影行列、追従、ロックオン、演出用オーバーライドを管理します。
 class Camera {
 public:
     /// <summary>
     /// プレイヤー追従や演出で使うカメラモード。
     /// </summary>
-    enum class FollowMode {
+        // 追従対象に対してカメラがどの動き方をするかを表します。
+enum class FollowMode {
         kFixed,       // 対象に固定オフセットで追従する。
         kAimable,     // 三人称視点で、入力により回転できる。
         kFirstPerson, // 一人称視点。
@@ -26,7 +28,8 @@ public:
     /// <summary>
     /// シネマティック演出などで一時的に視点を上書きするための設定。
     /// </summary>
-    struct CameraOverrideParams {
+        // カットシーンや演出中に一時的にカメラ制御を差し替えるための設定です。
+struct CameraOverrideParams {
         float duration = 1.0f;
 
         // Eye位置を通常カメラに追従させる軸と、固定する場合の値。
@@ -46,12 +49,14 @@ public:
     /// <summary>
     /// カメラ行列とGPU用定数バッファを初期化する。
     /// </summary>
-    void Initialize();
+        // カメラの初期座標、行列、追従関連パラメータを設定します。
+void Initialize();
 
     /// <summary>
     /// 入力、追従対象、演出状態を反映してカメラを更新する。
     /// </summary>
-    void Update();
+        // 入力、追従、ロックオン、演出補間を反映して行列を更新します。
+void Update();
 
     // 行列取得。
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
@@ -62,14 +67,18 @@ public:
         return math.Multiply(viewMatrix_, projectionMatrix_);
     }
 
-    void UpdateProjectionMatrix();
+        // FOVやアスペクト比から射影行列を再計算します。
+void UpdateProjectionMatrix();
     void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
 
     // 入力と追従対象。
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
-    void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
-    void SetFollowTarget(Object3d* target) { followObject_ = target; }
-    void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
+        // プレイ状態や演出に応じてカメラ入力の有効無効を切り替えます。
+void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
+        // 追従するObject3dを設定します。
+void SetFollowTarget(Object3d* target) { followObject_ = target; }
+        // 注視やロックオンに使う対象Object3dを設定します。
+void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
     Object3d* GetFollowTarget() const { return followObject_; }
 
     // 現在のカメラ状態。
@@ -81,7 +90,8 @@ public:
     void SetEye(const Vector3& eye) { eye_ = eye; }
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
-    void SetFreezeEye(bool freeze);
+        // カメラ位置だけを固定し、ターゲット計算と切り離します。
+void SetFreezeEye(bool freeze);
     void SetAimCameraSuppressed(bool suppressed) { isAimCameraSuppressed_ = suppressed; }
 
     void SetFovY(float fov) { fovY_ = fov; }

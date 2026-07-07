@@ -1,3 +1,4 @@
+# Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
 param(
     [string]$Root = "Resources",
     [int]$Top = 120,
@@ -10,6 +11,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $script:ProjectRoot = [System.IO.Path]::GetFullPath((Get-Location).Path)
+$script:TextureSourceExtensions = @(".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr")
 if ([System.IO.Path]::IsPathRooted($Root)) {
     $script:ResourceRoot = [System.IO.Path]::GetFullPath($Root)
 } else {
@@ -28,12 +30,15 @@ try {
 } catch {
 }
 
+# 参照済みファイルを重複なく保持するため、大文字小文字を区別しないHashSetを作る。
 function New-StringSet {
     return New-Object "System.Collections.Generic.HashSet[string]" ([System.StringComparer]::OrdinalIgnoreCase)
 }
 
+# 絶対パスをプロジェクト相対のスラッシュ区切りへ変換し、JSONや表示で扱いやすくする。
 function ConvertTo-RelativeSlash {
-    param([string]$Path)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) {
         return ""
     }
@@ -47,8 +52,10 @@ function ConvertTo-RelativeSlash {
     return $full.Replace('\', '/')
 }
 
+# 相対パスやResources始まりの文字列を、実際に存在確認できる絶対パスへ戻す。
 function ConvertTo-FullPath {
-    param([string]$Path)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) {
         return $null
     }
@@ -58,8 +65,10 @@ function ConvertTo-FullPath {
     return [System.IO.Path]::GetFullPath((Join-Path $script:ProjectRoot $Path))
 }
 
+# JSONやコードから拾った参照文字列を、検索しやすいパス表現へ正規化する。
 function Normalize-ReferenceText {
-    param([string]$Text)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Text)
     if ($null -eq $Text) {
         return ""
     }
@@ -73,6 +82,7 @@ function Normalize-ReferenceText {
 
 $script:AudioKindByRelativePath = @{}
 
+# audio_settings.jsonを読み込み、BGM/SEなどの音声カテゴリ判定に使う対応表を作る。
 function Register-AudioSettingKinds {
     $settingsPath = Join-Path $script:ProjectRoot "Resources/json/audio/audio_settings.json"
     if (-not (Test-Path -LiteralPath $settingsPath -PathType Leaf)) {
@@ -126,8 +136,10 @@ function Register-AudioSettingKinds {
     }
 }
 
+# 音声ファイルのパスや設定情報から、BGM/SE/Audioのどれとして扱うかを決める。
 function Get-AudioCategory {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $relative = (ConvertTo-RelativeSlash $File.FullName).ToLowerInvariant()
     if ($script:AudioKindByRelativePath.ContainsKey($relative)) {
@@ -144,8 +156,10 @@ function Get-AudioCategory {
     return "Audio"
 }
 
+# 引用符や余計な空白を取り除き、実ファイル候補として解釈できる形へ整える。
 function Get-CleanReferencePath {
-    param([string]$Text)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Text)
 
     $value = Normalize-ReferenceText $Text
     if ([string]::IsNullOrWhiteSpace($value)) {
@@ -173,8 +187,10 @@ function Get-CleanReferencePath {
     return ""
 }
 
+# バイト数をKB/MBなどの読みやすい単位へ変換し、レポート表示を揃える。
 function Get-SizeText {
-    param([Int64]$Bytes)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([Int64]$Bytes)
 
     $units = @("B", "KB", "MB", "GB")
     $value = [double][Math]::Max(0, $Bytes)
@@ -190,8 +206,10 @@ function Get-SizeText {
     return ("{0:N1} {1}" -f $value, $units[$unitIndex])
 }
 
+# 拡張子と配置フォルダから、Sprite/Texture/Model/Audioなどの大分類を決める。
 function Get-AssetCategory {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $ext = $File.Extension.ToLowerInvariant()
     $relative = (ConvertTo-RelativeSlash $File.FullName).Replace('\', '/').ToLowerInvariant()
@@ -202,6 +220,7 @@ function Get-AssetCategory {
         ".jpeg" { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
         ".bmp"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
         ".tga"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".hdr"  { return "Texture" }
         ".gltf" { return "Model" }
         ".glb"  { return "Model" }
         ".obj"  { return "Model" }
@@ -215,15 +234,48 @@ function Get-AssetCategory {
     }
 }
 
+# GeneratedTextやPBRTextureなど、削除判断に使いやすい細かい分類を付ける。
+function Get-AssetSubCategory {
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
+        [System.IO.FileInfo]$File,
+        [string]$Category
+    )
+
+    $relative = (ConvertTo-RelativeSlash $File.FullName).Replace('\', '/').ToLowerInvariant()
+    $fileName = $File.Name.ToLowerInvariant()
+
+    if ($relative.Contains("/generated/text/") -or $relative.Contains("/generated/editor/text_preview/")) {
+        return "GeneratedText"
+    }
+    if ($relative.Contains("/3dmodel/generatedtext/")) {
+        return "GeneratedText3D"
+    }
+    if ($Category -eq "Texture") {
+        if ($relative.Contains("/texture/pbr/")) {
+            return "PBRTexture"
+        }
+        if ($fileName -match "(diff|diffuse|albedo|basecolor|normal|nor|_n|arm|orm|ao|occlusion|rough|metal|metallicroughness|specularglossiness)") {
+            return "MaterialTexture"
+        }
+    }
+
+    return $Category
+}
+
+# 監査対象に含める拡張子かどうかを判定し、ログや中間ファイルを混ぜないようにする。
 function Test-IsAssetFile {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $category = Get-AssetCategory $File
     return $category -ne "Other"
 }
 
+# キャッシュ・ゴミ箱・LOD生成物など、未使用候補に出すと危ない内部生成物を除外する。
 function Test-IsGeneratedOrCache {
-    param([string]$RelativePath)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$RelativePath)
 
     $path = $RelativePath.Replace('\', '/')
     $lower = $path.ToLowerInvariant()
@@ -236,8 +288,10 @@ function Test-IsGeneratedOrCache {
     return $false
 }
 
+# 画像の解像度や形式を読み取り、巨大テクスチャ警告やプレビュー情報に使う。
 function Get-TextureInfo {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $result = [ordered]@{
         width = 0
@@ -274,8 +328,10 @@ function Get-TextureInfo {
     return [pscustomobject]$result
 }
 
+# OBJの頂点数と面数を軽く数え、モデルの重さを概算する。
 function Get-ObjInfo {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $vertices = 0
     $triangles = 0
@@ -301,8 +357,10 @@ function Get-ObjInfo {
     }
 }
 
+# glTFの頂点数・三角形数・スキン/アニメーション有無を読み、重いモデル判定に使う。
 function Get-GltfInfo {
-    param([System.IO.FileInfo]$File)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([System.IO.FileInfo]$File)
 
     $vertices = 0
     $triangles = 0
@@ -359,8 +417,10 @@ function Get-GltfInfo {
     }
 }
 
+# 参照済みファイルを登録し、元画像と同名DDSのペアも同時に使用中扱いへ寄せる。
 function Add-UsedFile {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [string]$FullPath
     )
@@ -377,21 +437,25 @@ function Add-UsedFile {
     [void]$UsedFiles.Add($relative)
 
     $ext = [System.IO.Path]::GetExtension($FullPath).ToLowerInvariant()
-    if ($ext -eq ".png") {
+    if ($script:TextureSourceExtensions -contains $ext) {
         $dds = [System.IO.Path]::ChangeExtension($FullPath, ".dds")
         if (Test-Path -LiteralPath $dds -PathType Leaf) {
             [void]$UsedFiles.Add((ConvertTo-RelativeSlash $dds))
         }
     } elseif ($ext -eq ".dds") {
-        $png = [System.IO.Path]::ChangeExtension($FullPath, ".png")
-        if (Test-Path -LiteralPath $png -PathType Leaf) {
-            [void]$UsedFiles.Add((ConvertTo-RelativeSlash $png))
+        foreach ($sourceExt in $script:TextureSourceExtensions) {
+            $source = [System.IO.Path]::ChangeExtension($FullPath, $sourceExt)
+            if (Test-Path -LiteralPath $source -PathType Leaf) {
+                [void]$UsedFiles.Add((ConvertTo-RelativeSlash $source))
+            }
         }
     }
 }
 
+# glTFからbuffer/image参照をたどり、モデルに必要なbinやテクスチャを使用中として登録する。
 function Add-GltfDependencies {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [string]$GltfPath
     )
@@ -422,8 +486,95 @@ function Add-GltfDependencies {
     }
 }
 
+# MTL内のmap_Kdやnormal系参照を読み、OBJモデルが使うテクスチャを使用中として登録する。
+function Add-MtlDependencies {
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
+        [System.Collections.Generic.HashSet[string]]$UsedFiles,
+        [string]$MtlPath
+    )
+
+    if (-not (Test-Path -LiteralPath $MtlPath -PathType Leaf)) {
+        return
+    }
+
+    $baseDir = Split-Path -Parent $MtlPath
+    try {
+        foreach ($line in Get-Content -LiteralPath $MtlPath -Encoding UTF8) {
+            $trimmed = $line.Trim()
+            if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+                continue
+            }
+
+            if ($trimmed -match "^(map_[A-Za-z0-9_]+|bump|disp|decal|norm|refl)\s+(.+)$") {
+                $value = $Matches[2].Trim()
+                $tokens = @($value -split "\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if ($tokens.Count -eq 0) {
+                    continue
+                }
+
+                $textureName = $tokens[$tokens.Count - 1].Trim('"')
+                if ([string]::IsNullOrWhiteSpace($textureName) -or $textureName.StartsWith("-")) {
+                    continue
+                }
+
+                $texturePath = [System.IO.Path]::GetFullPath((Join-Path $baseDir $textureName))
+                Add-UsedFile $UsedFiles $texturePath
+            }
+        }
+    } catch {
+    }
+}
+
+# OBJのmtllibをたどり、対応MTLとそこから参照されるテクスチャを使用中として登録する。
+function Add-ObjDependencies {
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
+        [System.Collections.Generic.HashSet[string]]$UsedFiles,
+        [string]$ObjPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ObjPath -PathType Leaf)) {
+        return
+    }
+
+    $baseDir = Split-Path -Parent $ObjPath
+    try {
+        foreach ($line in Get-Content -LiteralPath $ObjPath -Encoding UTF8) {
+            $trimmed = $line.Trim()
+            if ($trimmed -match "^mtllib\s+(.+)$") {
+                $mtlName = $Matches[1].Trim().Trim('"')
+                if (-not [string]::IsNullOrWhiteSpace($mtlName)) {
+                    $mtlPath = [System.IO.Path]::GetFullPath((Join-Path $baseDir $mtlName))
+                    Add-UsedFile $UsedFiles $mtlPath
+                    Add-MtlDependencies $UsedFiles $mtlPath
+                }
+            }
+        }
+    } catch {
+    }
+}
+
+# モデル拡張子ごとの依存関係解析へ振り分け、モデル周辺ファイルの誤削除を避ける。
+function Add-ModelDependencies {
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
+        [System.Collections.Generic.HashSet[string]]$UsedFiles,
+        [string]$ModelPath
+    )
+
+    $ext = [System.IO.Path]::GetExtension($ModelPath).ToLowerInvariant()
+    switch ($ext) {
+        ".gltf" { Add-GltfDependencies $UsedFiles $ModelPath }
+        ".obj"  { Add-ObjDependencies $UsedFiles $ModelPath }
+        ".mtl"  { Add-MtlDependencies $UsedFiles $ModelPath }
+    }
+}
+
+# ディレクトリ名だけが参照された場合に、中のモデルや同梱ファイルも使用中として扱う。
 function Add-DirectoryReference {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [string]$DirectoryPath
     )
@@ -438,9 +589,7 @@ function Add-DirectoryReference {
     if (@($sourceFiles).Count -gt 0) {
         foreach ($file in $sourceFiles) {
             Add-UsedFile $UsedFiles $file.FullName
-            if ($file.Extension.ToLowerInvariant() -eq ".gltf") {
-                Add-GltfDependencies $UsedFiles $file.FullName
-            }
+            Add-ModelDependencies $UsedFiles $file.FullName
         }
     } else {
         foreach ($file in Get-ChildItem -LiteralPath $DirectoryPath -File -ErrorAction SilentlyContinue) {
@@ -451,8 +600,10 @@ function Add-DirectoryReference {
     return $true
 }
 
+# 任意の文字列がパス参照らしいかを先に判定し、普通の文章を誤検出しないようにする。
 function Test-ReferenceLooksLikePath {
-    param([string]$Text)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Text)
 
     $value = Get-CleanReferencePath $Text
     if ([string]::IsNullOrWhiteSpace($value)) { return $false }
@@ -463,8 +614,10 @@ function Test-ReferenceLooksLikePath {
     return $false
 }
 
+# JSONやコードに書かれた短いパスから、Resources配下の実在候補を複数組み立てる。
 function Resolve-Reference {
-    param([string]$Value)
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param([string]$Value)
 
     $value = Get-CleanReferencePath $Value
     $candidates = New-Object "System.Collections.Generic.List[string]"
@@ -502,8 +655,10 @@ function Resolve-Reference {
     return $candidates
 }
 
+# 参照文字列を実ファイルに解決し、見つかったファイルと依存ファイルを使用中として登録する。
 function Add-Reference {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [System.Collections.Generic.List[object]]$MissingReferences,
         [string]$Source,
@@ -523,9 +678,7 @@ function Add-Reference {
 
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
             Add-UsedFile $UsedFiles $candidate
-            if ([System.IO.Path]::GetExtension($candidate).ToLowerInvariant() -eq ".gltf") {
-                Add-GltfDependencies $UsedFiles $candidate
-            }
+            Add-ModelDependencies $UsedFiles $candidate
             $matched = $true
         } elseif (Test-Path -LiteralPath $candidate -PathType Container) {
             if (Add-DirectoryReference $UsedFiles $candidate) {
@@ -544,8 +697,10 @@ function Add-Reference {
     }
 }
 
+# JSONツリーを再帰的に巡回し、文字列として入っているアセット参照を拾う。
 function Add-JsonStringReferences {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [object]$Node,
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [System.Collections.Generic.List[object]]$MissingReferences,
@@ -582,8 +737,10 @@ function Add-JsonStringReferences {
     }
 }
 
+# C++やJSONなどのテキストファイルを走査し、コード側から参照されるアセットを集める。
 function Add-CodeReferences {
-    param(
+    # Resources配下のアセットを走査し、重い素材・未使用候補・欠落参照をまとめる監査ツール。
+param(
         [System.Collections.Generic.HashSet[string]]$UsedFiles,
         [System.Collections.Generic.List[object]]$MissingReferences
     )
@@ -632,6 +789,7 @@ $usedFiles = New-StringSet
 $missingReferences = New-Object "System.Collections.Generic.List[object]"
 Add-CodeReferences $usedFiles $missingReferences
 
+# 重いアセット一覧は警告用なので、容量や解像度などの診断情報を優先して集める。
 $heavyAssets = New-Object "System.Collections.Generic.List[object]"
 foreach ($file in $allFiles) {
     if (-not (Test-IsAssetFile $file)) {
@@ -654,6 +812,7 @@ foreach ($file in $allFiles) {
 
     $info = [ordered]@{
         category = $category
+        subCategory = Get-AssetSubCategory $file $category
         path = $relative
         sizeBytes = [int64]$file.Length
         sizeText = Get-SizeText $file.Length
@@ -700,6 +859,7 @@ foreach ($file in $allFiles) {
 
 $heavyAssetsSorted = @($heavyAssets | Sort-Object -Property @{ Expression = { $_.severity -eq "warning" }; Descending = $true }, @{ Expression = { $_.sizeBytes }; Descending = $true } | Select-Object -First $Top)
 
+# 未使用候補は削除判断の入口なので、DDS単体ではなく元画像を親にしてペア情報をまとめる。
 $unusedAssets = New-Object "System.Collections.Generic.List[object]"
 foreach ($file in $allFiles) {
     if (-not (Test-IsAssetFile $file)) {
@@ -711,20 +871,56 @@ foreach ($file in $allFiles) {
         continue
     }
 
+    $extension = $file.Extension.ToLowerInvariant()
+    if ($extension -eq ".dds") {
+        $hasSourceTexture = $false
+        foreach ($sourceExt in $script:TextureSourceExtensions) {
+            $sourcePath = [System.IO.Path]::ChangeExtension($file.FullName, $sourceExt)
+            if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+                $hasSourceTexture = $true
+                break
+            }
+        }
+        if ($hasSourceTexture) {
+            continue
+        }
+    }
+
     if (-not $usedFiles.Contains($relative)) {
+        $category = Get-AssetCategory $file
+        $pairedFiles = @()
+        $pairedSizeBytes = [int64]0
+        if ($script:TextureSourceExtensions -contains $extension) {
+            $ddsPath = [System.IO.Path]::ChangeExtension($file.FullName, ".dds")
+            if (Test-Path -LiteralPath $ddsPath -PathType Leaf) {
+                $pairedFiles += (ConvertTo-RelativeSlash $ddsPath)
+                $pairedSizeBytes += [int64](Get-Item -LiteralPath $ddsPath).Length
+            }
+        }
+
+        $deleteSizeBytes = [int64]$file.Length + $pairedSizeBytes
+        $reason = "No direct reference was found in JSON/code scan"
+        if ($pairedFiles.Count -gt 0) {
+            $reason += ". Paired DDS will be deleted together."
+        }
+
         $unusedAssets.Add([pscustomobject]@{
-            category = Get-AssetCategory $file
+            category = $category
+            subCategory = Get-AssetSubCategory $file $category
             path = $relative
-            sizeBytes = [int64]$file.Length
-            sizeText = Get-SizeText $file.Length
-            reason = "No direct reference was found in JSON/code scan"
+            mainSizeBytes = [int64]$file.Length
+            pairedSizeBytes = $pairedSizeBytes
+            sizeBytes = $deleteSizeBytes
+            sizeText = Get-SizeText $deleteSizeBytes
+            pairedFiles = @($pairedFiles)
+            reason = $reason
         })
     }
 }
 
-$unusedAssetsSorted = @($unusedAssets | Sort-Object -Property @{ Expression = { $_.sizeBytes }; Descending = $true } | Select-Object -First $Top)
+$unusedAssetsSorted = @($unusedAssets | Sort-Object -Property @{ Expression = { $_.sizeBytes }; Descending = $true })
 $totalBytes = [int64](($allFiles | Measure-Object -Property Length -Sum).Sum)
-$unusedBytes = [int64](($unusedAssetsSorted | Measure-Object -Property sizeBytes -Sum).Sum)
+$unusedBytes = [int64](($unusedAssets | Measure-Object -Property sizeBytes -Sum).Sum)
 $warningCount = @($heavyAssetsSorted | Where-Object { $_.severity -eq "warning" }).Count
 $totalSizeText = Get-SizeText ([int64]$totalBytes)
 $unusedSizeText = Get-SizeText ([int64]$unusedBytes)
@@ -732,6 +928,7 @@ $heavyAssetsArray = @($heavyAssetsSorted)
 $unusedAssetsArray = @($unusedAssetsSorted)
 $missingReferencesArray = @($missingReferences.ToArray())
 
+# エディタ側と人間向けレポートの両方で使うため、集計結果を1つのJSONにまとめる。
 $report = [ordered]@{
     schemaVersion = 1
     generatedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -763,6 +960,7 @@ $mdPath = Join-Path $script:OutputDir "asset_audit_report.md"
 $jsonText = $report | ConvertTo-Json -Depth 16
 [System.IO.File]::WriteAllText($jsonPath, $jsonText, [System.Text.UTF8Encoding]::new($false))
 
+# 簡易Markdownは人間がざっと見る用途なので、上位候補だけを短く出す。
 $markdown = New-Object "System.Collections.Generic.List[string]"
 $markdown.Add("# Asset Audit Report")
 $markdown.Add("")

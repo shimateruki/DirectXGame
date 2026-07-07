@@ -13,10 +13,12 @@ class Object3d;
 /// <summary>
 /// Object3dのメッシュ描画、マテリアル、LOD、特殊マテリアル描画を担当する。
 /// </summary>
+// MeshRendererは、Object3dに紐づくモデル描画、マテリアル、LOD、特殊表現をまとめて扱います。
 class MeshRenderer {
 public:
     // GPUへ送る行列情報。
-    struct TransformationMatrix {
+        // モデル描画時にGPUへ渡す座標変換行列です。
+struct TransformationMatrix {
         Matrix4x4 WVP;
         Matrix4x4 world;
         Matrix4x4 WorldInverseTranspose;
@@ -32,7 +34,8 @@ public:
         Vector3 worldPosition;
     };
 
-    struct MaterialData {
+        // 色、PBR、特殊マテリアル、ポータル演出などをGPUへ渡すマテリアル情報です。
+struct MaterialData {
         Vector4 color;
         int32_t enableLighting;
         float padding1[3];
@@ -113,7 +116,8 @@ public:
         float waterParamPadding0;
     };
 
-    struct LodLevel {
+        // カメラ距離に応じて切り替えるLODモデルの1段階分の設定です。
+struct LodLevel {
         int level = 0;
         std::string modelName;
         float distance = 0.0f;
@@ -124,32 +128,38 @@ public:
     /// <summary>
     /// 描画対象のTransformを参照してレンダラーを作成する。
     /// </summary>
-    MeshRenderer(Transform* transform);
+        // 親Object3dのTransformを参照して描画できるようにします。
+MeshRenderer(Transform* transform);
     ~MeshRenderer() = default;
 
     /// <summary>
     /// GPUリソースと既定マテリアルを初期化する。
     /// </summary>
-    void Initialize(Object3dCommon* common);
+        // 描画に必要な共通パイプラインとGPUバッファを準備します。
+void Initialize(Object3dCommon* common);
 
     /// <summary>
     /// WVP行列、ライト、マテリアル時間などを更新する。
     /// </summary>
-    void Update();
+        // Transform、マテリアル、LOD、時間依存パラメータを更新します。
+void Update();
 
     /// <summary>
     /// 現在の有効カメラに合わせて、描画用の行列とカメラ定数だけを更新する。
     /// Camera Previewなど、ゲームロジックやシェーダー時間を進めたくない描画パスで使う。
     /// </summary>
-    void RefreshCameraDependentData();
+        // カメラ位置に依存するLOD距離やシェーダー用情報を更新します。
+void RefreshCameraDependentData();
 
     /// <summary>
     /// 通常メッシュを描画する。
     /// </summary>
-    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+        // 通常の3Dモデル描画コマンドを発行します。
+void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     // モデルとLOD設定。
-    void SetModel(Model* model);
+        // 直接指定されたModelを描画対象として設定します。
+void SetModel(Model* model);
     void SetModel(const std::string& modelName);
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
@@ -161,10 +171,12 @@ public:
     bool IsLodEnabled() const { return lodEnabled_; }
     bool HasLodLevels() const { return !lodLevels_.empty(); }
     const std::vector<LodLevel>& GetLodLevels() const { return lodLevels_; }
-    void SetLodLevels(const std::vector<LodLevel>& levels);
+        // 距離別LODモデル一覧を設定します。
+void SetLodLevels(const std::vector<LodLevel>& levels);
     void ClearLodLevels();
     bool SetLodLevelDistance(int level, float distance);
-    bool LoadLodManifestForModel(const std::string& modelName);
+        // モデル名に対応するLOD定義ファイルを読み込みます。
+bool LoadLodManifestForModel(const std::string& modelName);
     int GetActiveLodLevel() const;
     std::string GetActiveModelName() const;
     float GetCameraDistanceToObject() const;
@@ -188,7 +200,8 @@ public:
     float GetRoughness() const;
     void SetEnableNormalMap(bool enable);
     bool GetEnableNormalMap() const;
-    void SetNormalMap(const std::string& texturePath);
+        // 法線マップを読み込み、マテリアルへ適用します。
+void SetNormalMap(const std::string& texturePath);
     std::string GetNormalMapPath() const { return normalMapPath_; }
     uint32_t GetNormalMapHandle() const { return normalMapHandle_; }
     void SetOrmMap(const std::string& texturePath);
@@ -212,7 +225,8 @@ public:
     float GetEnvIntensity() const;
 
     // 影、フォグ、水面、特殊マテリアル描画。
-    void DrawShadow();
+        // シャドウマップ生成用の深度描画を行います。
+void DrawShadow();
     void SetShadowCommonState();
     void DrawShadowOnly();
     void DrawLocalFog(uint32_t depthSrvHandle);
@@ -222,7 +236,8 @@ public:
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
-    void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+        // 水面系特殊マテリアルとして描画します。
+void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -243,8 +258,10 @@ private:
     bool HasRequiredBuffers() const;
     void InitializeFireProxyModel();
     void InitializeGatePortalProxyModel();
-    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
-    Model* ResolveDrawModel() const;
+        // 特殊マテリアル描画の共通処理をまとめます。
+void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
+        // LODや代理モデルを考慮して、実際に描画するModelを決定します。
+Model* ResolveDrawModel() const;
     void UpdateUvTransform();
 
     // 外部オブジェクトへの参照。MeshRendererは所有しない。

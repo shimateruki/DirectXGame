@@ -5,28 +5,34 @@
 #include <memory>
 
 // 全ての敵が共有する移動・被ダメージ・投げ物理・撃破演出をまとめる基底クラス
+// BaseEnemyは、敵共通の追跡対象、徘徊、被弾、投げ物理、撃破演出を持つ基底クラスです。
 class BaseEnemy : public Character {
 public:
     virtual ~BaseEnemy() = default;
 
     // モデルと敵用の基本当たり判定を初期化する
-    virtual void Initialize(Object3dCommon* common, const std::string& modelName);
+        // 敵共通のモデル、Collider、色、攻撃予兆などを初期化します。
+virtual void Initialize(Object3dCommon* common, const std::string& modelName);
 
     // 共通の重力・投げ物理・撃破演出・被ダメージ表示を更新する
-    virtual void Update(float deltaTime) override;
+        // 被弾タイマー、投げ物理、撃破演出など敵共通の更新を行います。
+virtual void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     // プレイヤー攻撃・地形・壁との共通衝突処理
-    virtual bool OnCollision(Object3d* other) override;
+        // 弾、地形、プレイヤーなどとの衝突に応じた共通処理を行います。
+virtual bool OnCollision(Object3d* other) override;
 
     // 追跡や攻撃の基準になるターゲットを登録する
     void SetTarget(Object3d* target) { target_ = target; }
 
     void SetDetectionRange(float range) { detectionRange_ = range; }
     float GetDetectionRange() const { return detectionRange_; }
-    virtual void SetCarried(bool isCarried);
+        // プレイヤーに持たれている状態を切り替えます。
+virtual void SetCarried(bool isCarried);
     bool IsCarried() const { return isCarried_; }
-    virtual void BeginThrown(const Vector3& initialVelocity);
+        // 投げられたときの初速度を受け取り、投げ物理状態へ移行します。
+virtual void BeginThrown(const Vector3& initialVelocity);
     bool IsThrownPhysics() const { return isThrownPhysics_; }
     bool IsDefeatEffectPlaying() const { return isDefeatEffectPlaying_; }
     virtual void ExecuteAbility(class Player* player);
@@ -35,7 +41,8 @@ public:
 
 protected:
     // ターゲットが遠い時に使う、スポーン位置基準のランダム徘徊
-    Vector3 CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale = 0.65f, float verticalOffset = 0.0f, bool includeVertical = false);
+        // 徘徊目標へ向かう速度を計算します。
+Vector3 CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale = 0.65f, float verticalOffset = 0.0f, bool includeVertical = false);
     Vector3 GetWanderTargetPosition(float deltaTime, float radiusScale = 0.65f, float verticalOffset = 0.0f);
     void ResetWanderOrigin();
 
@@ -44,7 +51,8 @@ protected:
 
     // HPが尽きた敵は共通のポップ演出を再生してから消す
     bool ShouldHandleDefeatEffect() const;
-    void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color);
+        // 円形攻撃予兆を敵共通のAttackTelegraphへ表示します。
+void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color);
     void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
     void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
     void HideAttackTelegraph();
@@ -80,7 +88,8 @@ private:
     void UpdateDamageFeedbackTimers(float deltaTime);
 
     // 撃破時の消滅アニメーションとパーティクル
-    void BeginDefeatEffect();
+        // 撃破時の縮小、色変化、パーティクル演出を開始します。
+void BeginDefeatEffect();
     void UpdateDefeatEffect(float deltaTime);
     void SpawnDefeatStartParticles();
     void SpawnDefeatLoopParticles();

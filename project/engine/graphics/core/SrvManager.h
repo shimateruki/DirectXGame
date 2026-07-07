@@ -6,30 +6,37 @@
 class DirectXCommon;
 
 // SRV デスクリプタヒープの確保、作成、バインドをまとめる管理クラス
+// SRVManagerは、シェーダーから参照するテクスチャやバッファ用DescriptorHeapを管理します。
 class SRVManager {
 public:
     // ImGui が先頭の一部を使うため、ゲーム側で使える十分な数を用意する。
     static const size_t kMaxSRVCount = 2018;
 
 public:
-    static SRVManager* GetInstance();
+        // エンジン全体で共有するSRV管理インスタンスを取得します。
+static SRVManager* GetInstance();
 
-    void Initialize(DirectXCommon* dxCommon);
+        // SRV用DescriptorHeapを作成し、割り当てを開始できる状態にします。
+void Initialize(DirectXCommon* dxCommon);
 
     // 空きインデックスを確保して SRV を作成する
-    uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+        // 新しいSRV番号を確保し、指定リソース用Descriptorを作成します。
+uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
     ID3D12DescriptorHeap* GetDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
     // Graphics 用のルートパラメータへ SRV をセットする
-    void SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
+        // グラフィックスパイプラインへ指定SRVをバインドします。
+void SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
 
     void SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList);
 
     // 確保済みのインデックスを指定して SRV を作成する
     void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
-    uint32_t Allocate();
-    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
+        // 未使用のSRVインデックスを1つ払い出します。
+uint32_t Allocate();
+        // SRVインデックスに対応するGPU Descriptor Handleを取得します。
+D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
 
     // Compute Shader 用のルートパラメータへ SRV をセットする
     void SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
