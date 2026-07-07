@@ -3,11 +3,26 @@ Resources/json/camera/editor_camera_state.json
 Resources/json/user_config.json
 
 # Local/temporary output
-output/
-docs/
+/output/
+/docs/
 Resources/.backup/
 .git.vs-invalid-backup_*
 .git.vs-invalid-backup_*/
+
+# Vendored external dependencies required for local Visual Studio builds.
+!externals/
+!externals/SDL2/
+!externals/SDL2/include/
+!externals/SDL2/include/**
+!externals/SDL2/lib/
+!externals/SDL2/lib/**
+!externals/assimp/
+!externals/assimp/include/
+!externals/assimp/include/**
+!externals/assimp/lib/
+!externals/assimp/lib/**
+!externals/nlohmann/
+!externals/nlohmann/**
 
 # Bundled local tools that are too large for normal Git pushes
 Resources/tools/Blender 4.4/
