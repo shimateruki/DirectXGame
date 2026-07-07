@@ -1,4 +1,4 @@
-# Editor State
+﻿# Editor State
 Resources/json/camera/editor_camera_state.json
 Resources/json/user_config.json
 
@@ -24,6 +24,8 @@ Resources/.backup/
 !externals/nlohmann/
 !externals/nlohmann/**
 
+externals/.cache/
+
 # Exclude unused vendored binary variants.
 externals/SDL2/lib/x86/
 externals/SDL2/lib/x64/SDL2.dll
@@ -36,3 +38,4 @@ externals/assimp/lib/Release/assimp-vc143-md.lib
 
 # Bundled local tools that are too large for normal Git pushes
 Resources/tools/Blender 4.4/
+

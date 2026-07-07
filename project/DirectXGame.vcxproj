@@ -92,6 +92,9 @@
       <AdditionalDependencies>assimp-vc143-mtd.lib;%(AdditionalDependencies);SDL2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\deps\restore_sdl2.ps1"</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
@@ -120,6 +123,9 @@
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies);SDL2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\deps\restore_sdl2.ps1"</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
@@ -147,6 +153,9 @@
       <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies);SDL2.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;%(AdditionalLibraryDirectories);$(ProjectDir)externals/SDL2\lib/x64</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\deps\restore_sdl2.ps1"</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
     </PostBuildEvent>
@@ -936,6 +945,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h" />
   </ItemGroup>
 </Project>
+
+
 
 
 
