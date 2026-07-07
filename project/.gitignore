@@ -26,6 +26,8 @@ Resources/.backup/
 
 # Exclude unused vendored binary variants.
 externals/SDL2/lib/x86/
+externals/SDL2/lib/x64/SDL2.dll
+externals/SDL2/lib/x64/SDL2.lib
 externals/SDL2/lib/x64/SDL2main.lib
 externals/SDL2/lib/x64/SDL2test.lib
 externals/assimp/lib/Debug/*.pdb
