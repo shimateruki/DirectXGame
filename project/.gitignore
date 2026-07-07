@@ -24,5 +24,13 @@ Resources/.backup/
 !externals/nlohmann/
 !externals/nlohmann/**
 
+# Exclude unused vendored binary variants.
+externals/SDL2/lib/x86/
+externals/SDL2/lib/x64/SDL2main.lib
+externals/SDL2/lib/x64/SDL2test.lib
+externals/assimp/lib/Debug/*.pdb
+externals/assimp/lib/Debug/assimp-vc143-mdd.lib
+externals/assimp/lib/Release/assimp-vc143-md.lib
+
 # Bundled local tools that are too large for normal Git pushes
 Resources/tools/Blender 4.4/
