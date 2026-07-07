@@ -17,6 +17,7 @@
 #include <wincodec.h>
 
 class DebugEditor;
+struct ID3D12Resource;
 class Object3d;
 class SceneManager;
 
@@ -30,6 +31,7 @@ public:
 
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
     void Update();
+    void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawImGui() override;
     std::string GetName() override { return "Text 3D Generator"; }
 
@@ -69,6 +71,8 @@ private:
     void EnsurePreviewObject(const GeneratedModelInfo& info);
     void RemovePreviewObject();
     void MarkPreviewDirty();
+    Vector3 ResolvePreviewPosition() const;
+    void ApplyPreviewTransform();
     Object3d* FindPreviewObject() const;
     void UpdateOutputNameFromText();
     void SetNotice(const std::string& message, bool success);
@@ -105,11 +109,14 @@ private:
     bool bold_ = true;
     bool centerOrigin_ = true;
     float modelColor_[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    bool previewEnabled_ = false;
+    bool previewEnabled_ = true;
+    bool previewAutoUpdate_ = true;
+    bool previewAttachToCamera_ = true;
     bool previewDirty_ = false;
     bool previewRequestPending_ = false;
     float previewDelayTimer_ = 0.0f;
     Vector3 previewPosition_ = { 0.0f, 2.0f, 0.0f };
+    float previewCameraDistance_ = 5.0f;
     float previewScale_ = 1.0f;
     Object3d* previewObject_ = nullptr;
     GeneratedModelInfo lastPreview_;

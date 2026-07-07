@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "TextSpriteGenerator.h"
 
 #include "BaseScene.h"
@@ -41,7 +41,7 @@ constexpr const char* kOutputDirectory = "Resources/sprite/generated/text";
 constexpr const char* kPreviewDirectory = "Resources/generated/editor/text_preview";
 constexpr const char* kFontDirectory = "Resources/font";
 constexpr const char* kLegacyMeiryoFontPath = "Resources/sprite/meiryo.ttc";
-constexpr const char* kToolScriptPath = "tools/TextPngTool/TextPngTool.ps1";
+constexpr const char* kToolExeName = "TextPngTool.exe";
 constexpr const char* kToolRequestPath = "Resources/generated/editor/text_png_request.json";
 constexpr const char* kToolReportPath = "Resources/generated/editor/text_png_result.json";
 
@@ -315,6 +315,96 @@ std::wstring MakeFontCollectionKey(const std::vector<std::wstring>& paths) {
     return key;
 }
 
+std::wstring GetLocalizedString(IDWriteLocalizedStrings* strings, const wchar_t* fallback) {
+    if (!strings) {
+        return fallback ? fallback : L"";
+    }
+
+    UINT32 index = 0;
+    BOOL exists = FALSE;
+    strings->FindLocaleName(L"ja-jp", &index, &exists);
+    if (!exists) {
+        strings->FindLocaleName(L"en-us", &index, &exists);
+    }
+    if (!exists) {
+        index = 0;
+    }
+
+    UINT32 length = 0;
+    if (FAILED(strings->GetStringLength(index, &length))) {
+        return fallback ? fallback : L"";
+    }
+
+    std::wstring value(length + 1, L'\0');
+    if (FAILED(strings->GetString(index, value.data(), length + 1))) {
+        return fallback ? fallback : L"";
+    }
+    value.resize(length);
+    return value;
+}
+
+std::string GetFontFilePathFromFont(IDWriteFont* font) {
+    if (!font) {
+        return {};
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteFontFace> fontFace;
+    if (FAILED(font->CreateFontFace(&fontFace)) || !fontFace) {
+        return {};
+    }
+
+    UINT32 fileCount = 0;
+    if (FAILED(fontFace->GetFiles(&fileCount, nullptr)) || fileCount == 0) {
+        return {};
+    }
+
+    std::vector<IDWriteFontFile*> files(fileCount, nullptr);
+    if (FAILED(fontFace->GetFiles(&fileCount, files.data())) || !files[0]) {
+        for (IDWriteFontFile* file : files) {
+            if (file) {
+                file->Release();
+            }
+        }
+        return {};
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteFontFile> fontFile;
+    fontFile.Attach(files[0]);
+    for (UINT32 i = 1; i < fileCount; ++i) {
+        if (files[i]) {
+            files[i]->Release();
+        }
+    }
+
+    const void* referenceKey = nullptr;
+    UINT32 referenceKeySize = 0;
+    if (FAILED(fontFile->GetReferenceKey(&referenceKey, &referenceKeySize))) {
+        return {};
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteFontFileLoader> loader;
+    if (FAILED(fontFile->GetLoader(&loader)) || !loader) {
+        return {};
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteLocalFontFileLoader> localLoader;
+    if (FAILED(loader.As(&localLoader)) || !localLoader) {
+        return {};
+    }
+
+    UINT32 pathLength = 0;
+    if (FAILED(localLoader->GetFilePathLengthFromKey(referenceKey, referenceKeySize, &pathLength))) {
+        return {};
+    }
+
+    std::wstring path(pathLength + 1, L'\0');
+    if (FAILED(localLoader->GetFilePathFromKey(referenceKey, referenceKeySize, path.data(), pathLength + 1))) {
+        return {};
+    }
+    path.resize(pathLength);
+    return WideToUtf8(path);
+}
+
 std::string MakeRelativeSpritePath(const std::string& fullPath) {
     std::filesystem::path base = "Resources/sprite";
     std::filesystem::path path = fullPath;
@@ -354,7 +444,39 @@ std::string EscapeJsonString(const std::string& text) {
 std::string ToAbsoluteGenericPath(const std::filesystem::path& path) {
     std::error_code ec;
     std::filesystem::path absolute = std::filesystem::absolute(path, ec);
-    return (ec ? path : absolute).generic_string();
+    // 日本語を含むプロジェクトパスでもJSONを壊さないよう、必ずUTF-8へ変換して渡す。
+    return WideToUtf8((ec ? path : absolute).generic_wstring());
+}
+
+std::filesystem::path GetModuleDirectory() {
+    wchar_t buffer[MAX_PATH]{};
+    const DWORD length = GetModuleFileNameW(nullptr, buffer, static_cast<DWORD>(std::size(buffer)));
+    if (length == 0 || length >= std::size(buffer)) {
+        return std::filesystem::current_path();
+    }
+    return std::filesystem::path(buffer).parent_path();
+}
+
+std::filesystem::path FindTextPngToolExecutable() {
+    std::vector<std::filesystem::path> candidates;
+    const std::filesystem::path moduleDir = GetModuleDirectory();
+    const std::filesystem::path currentDir = std::filesystem::current_path();
+
+    candidates.push_back(moduleDir / kToolExeName);
+    candidates.push_back(currentDir / kToolExeName);
+    candidates.push_back(currentDir / ".." / "generated" / "outputs" / "Development" / kToolExeName);
+    candidates.push_back(currentDir / ".." / "generated" / "outputs" / "Debug" / kToolExeName);
+    candidates.push_back(currentDir / ".." / "generated" / "outputs" / "Release" / kToolExeName);
+
+    std::error_code ec;
+    for (const std::filesystem::path& candidate : candidates) {
+        if (std::filesystem::exists(candidate, ec)) {
+            return std::filesystem::absolute(candidate, ec);
+        }
+        ec.clear();
+    }
+
+    return {};
 }
 
 std::wstring QuoteCommandArg(const std::wstring& value) {
@@ -452,7 +574,7 @@ void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* ed
     std::filesystem::create_directories(kPreviewDirectory);
     RefreshFonts();
     UpdateOutputNameFromText();
-    previewDirty_ = false;
+    previewDirty_ = true;
     previewRequestPending_ = false;
     previewDelayTimer_ = 0.0f;
 }
@@ -462,6 +584,8 @@ void TextSpriteGenerator::Update() {
     if (exportNoticeTimer_ > 0.0f) {
         exportNoticeTimer_ = std::max(0.0f, exportNoticeTimer_ - (1.0f / 60.0f));
     }
+
+    TickPreviewAutoUpdate();
 #endif
 }
 
@@ -484,7 +608,7 @@ void TextSpriteGenerator::DrawPreview() {
         gameViewOffset_.y + previewPosition_.y * scaleY,
     };
 
-    if (previewTextureHandle_ != 0 && !previewDirty_) {
+    if (previewTextureHandle_ != 0) {
         ImVec2 canvasSize = {
             std::max(1.0f, static_cast<float>(previewWidth_)) * drawScale,
             std::max(1.0f, static_cast<float>(previewHeight_)) * drawScale,
@@ -572,7 +696,7 @@ void TextSpriteGenerator::DrawImGui() {
 
     ImGui::Checkbox("Game Viewにプレビュー", &previewEnabled_);
     ImGui::SameLine();
-    ImGui::TextDisabled("PNGは手動更新");
+    if (ImGui::Checkbox("PNG自動更新", &previewAutoUpdate_) && previewAutoUpdate_) { MarkPreviewDirty(); }
     ImGui::Checkbox("透明PNG範囲を表示", &previewBoundsEnabled_);
     ImGui::DragFloat2("プレビュー位置", &previewPosition_.x, 1.0f, -4096.0f, 4096.0f);
     ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 8.0f, "%.2f");
@@ -609,6 +733,7 @@ void TextSpriteGenerator::DrawImGui() {
     }
 
     textureChanged |= ImGui::DragFloat("フォントサイズ", &fontSize_, 1.0f, 4.0f, 320.0f, "%.0f");
+    textureChanged |= ImGui::Checkbox("太字", &bold_);
     textureChanged |= ImGui::DragFloat("余白", &padding_, 1.0f, 0.0f, 256.0f, "%.0f");
     textureChanged |= ImGui::ColorEdit4("文字色", textColor_);
     textureChanged |= ImGui::Checkbox("自動キャンバス", &autoCanvas_);
@@ -633,7 +758,8 @@ void TextSpriteGenerator::DrawImGui() {
     ImGui::Separator();
     if (ImGui::Button("PNGプレビュー更新")) {
         MarkPreviewDirty();
-        UpdatePreviewTexture();
+        previewRequestPending_ = true;
+        previewDelayTimer_ = 0.0f;
     }
     ImGui::SameLine();
     if (previewTextureHandle_ != 0 && !previewDirty_) {
@@ -685,6 +811,7 @@ void TextSpriteGenerator::DrawImGui() {
     ImGui::TextDisabled("生成先: %s", kOutputDirectory);
     ImGui::TextDisabled("Game Viewは軽量プレビューを表示し、PNGプレビュー更新時だけ外部ツール画像に切り替えます。");
     ImGui::TextDisabled("フォント参照元: Resources/font + Resources/sprite/meiryo.ttc");
+    ImGui::TextDisabled("PNG生成: 外部CLI TextPngTool.exe / DirectWrite");
 
     if (textureChanged) {
         MarkPreviewDirty();
@@ -732,52 +859,117 @@ bool TextSpriteGenerator::EnsureFactories() {
 }
 
 void TextSpriteGenerator::RefreshFonts() {
-    std::string previousPath = fontPaths_.empty()
-        ? std::string()
-        : fontPaths_[std::clamp(selectedFontIndex_, 0, static_cast<int>(fontPaths_.size()) - 1)];
+    std::string previousPath;
+    std::string previousFamily;
+    if (!fontPaths_.empty() && selectedFontIndex_ >= 0 && selectedFontIndex_ < static_cast<int>(fontPaths_.size())) {
+        previousPath = fontPaths_[selectedFontIndex_];
+        previousFamily = fontNamesUtf8_[selectedFontIndex_];
+    }
 
     fontNamesWide_.clear();
     fontNamesUtf8_.clear();
     fontPaths_.clear();
 
-    std::vector<std::wstring> resourceFontPaths = CollectResourceFontPaths();
-    if (resourceFontPaths.empty()) {
-        DebugConsole::GetInstance()->AddLog("Text PNG: no font files found in Resources/font or Resources/sprite/meiryo.ttc.");
-        fontNamesWide_.push_back(L"Meiryo");
-        fontNamesUtf8_.push_back("Meiryo");
+    if (!EnsureFactories()) {
+        fontNamesWide_.push_back(L"Meiryo UI");
+        fontNamesUtf8_.push_back("Meiryo UI");
         fontPaths_.push_back("");
         selectedFontIndex_ = 0;
         return;
     }
 
-    fontNamesWide_.reserve(resourceFontPaths.size());
-    fontNamesUtf8_.reserve(resourceFontPaths.size());
-    fontPaths_.reserve(resourceFontPaths.size());
+    if (dwriteFactory_ && resourceFontLoader_) {
+        dwriteFactory_->UnregisterFontCollectionLoader(resourceFontLoader_.Get());
+    }
+    resourceFontCollection_.Reset();
+    resourceFontLoader_.Reset();
+    resourceFontCollectionKey_.clear();
 
-    for (const std::wstring& widePath : resourceFontPaths) {
-        std::filesystem::path fontPath(widePath);
-        const std::string pathUtf8 = ToAbsoluteGenericPath(fontPath);
-        const std::string displayName = fontPath.stem().generic_string();
-        const std::string lowerDisplayName = ToLowerAscii(displayName);
-        if (lowerDisplayName.find("fa-solid") != std::string::npos ||
-            lowerDisplayName.find("fontawesome") != std::string::npos) {
+    std::vector<std::wstring> resourceFontPaths = CollectResourceFontPaths();
+    if (resourceFontPaths.empty()) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: no font files found in Resources/font or Resources/sprite/meiryo.ttc.");
+        fontNamesWide_.push_back(L"Meiryo UI");
+        fontNamesUtf8_.push_back("Meiryo UI");
+        fontPaths_.push_back("");
+        selectedFontIndex_ = 0;
+        return;
+    }
+
+    resourceFontCollectionKey_ = MakeFontCollectionKey(resourceFontPaths);
+    resourceFontLoader_.Reset();
+    resourceFontLoader_.Attach(new ResourceFontCollectionLoader());
+    HRESULT hr = dwriteFactory_->RegisterFontCollectionLoader(resourceFontLoader_.Get());
+    if (SUCCEEDED(hr)) {
+        hr = dwriteFactory_->CreateCustomFontCollection(
+            resourceFontLoader_.Get(),
+            resourceFontCollectionKey_.data(),
+            static_cast<UINT32>(resourceFontCollectionKey_.size() * sizeof(wchar_t)),
+            resourceFontCollection_.GetAddressOf());
+    }
+
+    if (FAILED(hr) || !resourceFontCollection_) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: resource font collection create failed.");
+        fontNamesWide_.push_back(L"Meiryo UI");
+        fontNamesUtf8_.push_back("Meiryo UI");
+        fontPaths_.push_back("");
+        selectedFontIndex_ = 0;
+        return;
+    }
+
+    const UINT32 familyCount = resourceFontCollection_->GetFontFamilyCount();
+    for (UINT32 familyIndex = 0; familyIndex < familyCount; ++familyIndex) {
+        Microsoft::WRL::ComPtr<IDWriteFontFamily> family;
+        if (FAILED(resourceFontCollection_->GetFontFamily(familyIndex, family.GetAddressOf())) || !family) {
             continue;
         }
-        fontNamesWide_.push_back(Utf8ToWide(displayName));
-        fontNamesUtf8_.push_back(displayName);
-        fontPaths_.push_back(pathUtf8);
+
+        Microsoft::WRL::ComPtr<IDWriteLocalizedStrings> names;
+        if (FAILED(family->GetFamilyNames(names.GetAddressOf())) || !names) {
+            continue;
+        }
+
+        const std::wstring familyNameWide = GetLocalizedString(names.Get(), L"");
+        const std::string familyNameUtf8 = WideToUtf8(familyNameWide);
+        if (familyNameUtf8.empty()) {
+            continue;
+        }
+
+        Microsoft::WRL::ComPtr<IDWriteFont> font;
+        if (FAILED(family->GetFirstMatchingFont(
+            DWRITE_FONT_WEIGHT_REGULAR,
+            DWRITE_FONT_STRETCH_NORMAL,
+            DWRITE_FONT_STYLE_NORMAL,
+            font.GetAddressOf())) || !font) {
+            continue;
+        }
+
+        std::string fontPath = GetFontFilePathFromFont(font.Get());
+        bool duplicate = false;
+        for (size_t i = 0; i < fontNamesUtf8_.size(); ++i) {
+            if (fontNamesUtf8_[i] == familyNameUtf8 && i < fontPaths_.size() && fontPaths_[i] == fontPath) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (duplicate) {
+            continue;
+        }
+
+        fontNamesWide_.push_back(familyNameWide);
+        fontNamesUtf8_.push_back(familyNameUtf8);
+        fontPaths_.push_back(fontPath);
     }
 
     if (fontNamesWide_.empty()) {
-        fontNamesWide_.push_back(L"Meiryo");
-        fontNamesUtf8_.push_back("Meiryo");
+        fontNamesWide_.push_back(L"Meiryo UI");
+        fontNamesUtf8_.push_back("Meiryo UI");
         fontPaths_.push_back("");
     }
 
     selectedFontIndex_ = 0;
-    if (!previousPath.empty()) {
-        for (int i = 0; i < static_cast<int>(fontPaths_.size()); ++i) {
-            if (fontPaths_[i] == previousPath) {
+    if (!previousFamily.empty()) {
+        for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
+            if (fontNamesUtf8_[i] == previousFamily && (previousPath.empty() || fontPaths_[i] == previousPath)) {
                 selectedFontIndex_ = i;
                 MarkPreviewDirty();
                 return;
@@ -787,7 +979,7 @@ void TextSpriteGenerator::RefreshFonts() {
 
     for (int i = 0; i < static_cast<int>(fontNamesUtf8_.size()); ++i) {
         std::string lower = ToLowerAscii(fontNamesUtf8_[i]);
-        if (lower.find("mplus") != std::string::npos || lower.find("meiryo") != std::string::npos) {
+        if (lower.find("mplus") != std::string::npos || lower.find("m plus") != std::string::npos || lower.find("meiryo") != std::string::npos) {
             selectedFontIndex_ = i;
             break;
         }
@@ -796,9 +988,9 @@ void TextSpriteGenerator::RefreshFonts() {
 }
 
 bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight) {
-    const std::filesystem::path toolScript = kToolScriptPath;
-    if (!std::filesystem::exists(toolScript)) {
-        DebugConsole::GetInstance()->AddLog("Text PNG: external tool not found: " + toolScript.generic_string());
+    const std::filesystem::path toolExe = FindTextPngToolExecutable();
+    if (toolExe.empty()) {
+        DebugConsole::GetInstance()->AddLog("Text PNG: TextPngTool.exe not found. Build the solution first.");
         return false;
     }
 
@@ -810,6 +1002,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         ? 0
         : std::clamp(selectedFontIndex_, 0, static_cast<int>(fontPaths_.size()) - 1);
     const std::string selectedFontPath = fontPaths_.empty() ? std::string() : fontPaths_[selectedIndex];
+    const std::string selectedFontFamily = fontNamesUtf8_.empty() ? std::string("Meiryo UI") : fontNamesUtf8_[selectedIndex];
     const std::filesystem::path requestPath = kToolRequestPath;
     const std::filesystem::path reportPath = kToolReportPath;
     const std::string outputPath = ToAbsoluteGenericPath(fullPath);
@@ -825,6 +1018,8 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         << "{\n"
         << "  \"text\": \"" << EscapeJsonString(textBuffer_) << "\",\n"
         << "  \"fontPath\": \"" << EscapeJsonString(selectedFontPath) << "\",\n"
+        << "  \"fontFamilyName\": \"" << EscapeJsonString(selectedFontFamily) << "\",\n"
+        << "  \"bold\": " << (bold_ ? "true" : "false") << ",\n"
         << "  \"fontSize\": " << std::max(4.0f, fontSize_) << ",\n"
         << "  \"padding\": " << std::max(0.0f, padding_) << ",\n"
         << "  \"autoCanvas\": " << (autoCanvas_ ? "true" : "false") << ",\n"
@@ -841,10 +1036,8 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         << "}\n";
     request.close();
 
-    const std::filesystem::path powershellPath = L"C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe";
     const std::wstring commandLine =
-        QuoteCommandArg(powershellPath.wstring()) +
-        L" -NoProfile -ExecutionPolicy Bypass -File " + QuoteCommandArg(std::filesystem::absolute(toolScript, ec).wstring()) +
+        QuoteCommandArg(toolExe.wstring()) +
         L" render -config " + QuoteCommandArg(std::filesystem::absolute(requestPath, ec).wstring()) +
         L" -out " + QuoteCommandArg(std::filesystem::absolute(std::filesystem::path(fullPath), ec).wstring());
 
@@ -865,6 +1058,30 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
     }
     return true;
 }
+
+void TextSpriteGenerator::TickPreviewAutoUpdate() {
+#ifdef USE_IMGUI
+    if (!previewAutoUpdate_ || !previewEnabled_ || !previewDirty_) {
+        return;
+    }
+    if (textBuffer_[0] == '\0') {
+        UpdatePreviewTexture();
+        return;
+    }
+
+    // 入力中やドラッグ中に毎フレーム外部CLIを起動しないよう、短い待ち時間を挟む。
+    if (!previewRequestPending_) {
+        previewRequestPending_ = true;
+        previewDelayTimer_ = 0.12f;
+    }
+
+    previewDelayTimer_ = std::max(0.0f, previewDelayTimer_ - (1.0f / 60.0f));
+    if (previewDelayTimer_ <= 0.0f) {
+        previewRequestPending_ = false;
+        UpdatePreviewTexture();
+    }
+#endif
+}
 void TextSpriteGenerator::UpdatePreviewTexture() {
     if (!previewDirty_) return;
     if (textBuffer_[0] == '\0') {
@@ -883,16 +1100,24 @@ void TextSpriteGenerator::UpdatePreviewTexture() {
     int height = 1;
     if (!RenderToFile(path.generic_string(), width, height)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: preview render failed.");
+        previewRequestPending_ = true;
+        previewDelayTimer_ = 1.0f;
         return;
     }
 
     uint32_t handle = TextureManager::GetInstance()->Load(path.generic_string(), false, false, true);
-    if (handle == 0) return;
+    if (handle == 0) {
+        previewRequestPending_ = true;
+        previewDelayTimer_ = 1.0f;
+        return;
+    }
 
     previewWidth_ = width;
     previewHeight_ = height;
     previewTextureHandle_ = handle;
     previewDirty_ = false;
+    previewRequestPending_ = false;
+    previewDelayTimer_ = 0.0f;
 }
 
 bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* outRelativePath) {

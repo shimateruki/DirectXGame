@@ -6,6 +6,7 @@
 #include "DebugEditor.h"
 #include "EditorManager.h"
 #include "IconsFontAwesome5.h"
+#include "CameraManager.h"
 #include "ModelManager.h"
 #include "Object3d.h"
 #include "SceneManager.h"
@@ -379,8 +380,8 @@ void Text3DGenerator::Initialize(SceneManager* sceneManager, DebugEditor* editor
     EnsureFactories();
     RefreshFonts();
     UpdateOutputNameFromText();
-    previewDirty_ = false;
-    previewRequestPending_ = false;
+    previewDirty_ = true;
+    previewRequestPending_ = true;
     previewDelayTimer_ = 0.0f;
 }
 
@@ -390,6 +391,29 @@ void Text3DGenerator::Update() {
         noticeTimer_ = std::max(0.0f, noticeTimer_ - (1.0f / 60.0f));
     }
     UpdatePreviewModel(1.0f / 60.0f);
+
+    // カメラ追従プレビューは、カメラ操作に合わせて毎フレーム位置だけ更新します。
+    if (previewAttachToCamera_ && previewObject_ &&
+        EditorManager::GetInstance()->GetSelectedObject() == this) {
+        ApplyPreviewTransform();
+    }
+#endif
+}
+
+void Text3DGenerator::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+#ifdef USE_IMGUI
+    if (!previewEnabled_) return;
+    if (EditorManager::GetInstance()->GetSelectedObject() != this) return;
+    if (!previewObject_ || !previewObject_->GetIsVisible()) return;
+
+    // シーン側の描画対象に入らない場合でも、エディタプレビューとして確実に描画する。
+    const std::string originalClassName = previewObject_->GetClassName();
+    previewObject_->SetClassName("Model");
+    previewObject_->Draw(pointLightResource, spotLightResource);
+    previewObject_->SetClassName(originalClassName);
+#else
+    (void)pointLightResource;
+    (void)spotLightResource;
 #endif
 }
 
@@ -452,9 +476,22 @@ void Text3DGenerator::DrawImGui() {
     ImGui::Separator();
     const bool previewToggleChanged = ImGui::Checkbox("Game Viewに3Dプレビュー", &previewEnabled_);
     ImGui::SameLine();
+    if (ImGui::Checkbox("リアルタイム更新", &previewAutoUpdate_) && previewAutoUpdate_) {
+        MarkPreviewDirty();
+    }
     ImGui::TextDisabled("編集中だけ表示し、保存データには含めません。");
-    previewTransformChanged |= ImGui::DragFloat3("プレビュー位置", &previewPosition_.x, 0.1f, -1000.0f, 1000.0f);
-    previewTransformChanged |= ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 20.0f, "%.2f");
+    ImGui::SameLine();
+    if (ImGui::Button("3Dプレビュー更新")) {
+        previewDirty_ = true;
+        previewRequestPending_ = true;
+        previewDelayTimer_ = 0.0f;
+    }
+    previewTransformChanged |= ImGui::Checkbox("カメラの前に貼り付け", &previewAttachToCamera_);
+    if (previewAttachToCamera_) {
+        previewTransformChanged |= ImGui::DragFloat("カメラからの距離", &previewCameraDistance_, 0.1f, 1.0f, 50.0f, "%.1f");
+    } else {
+        previewTransformChanged |= ImGui::DragFloat3("プレビュー位置", &previewPosition_.x, 0.1f, -1000.0f, 1000.0f);
+    }    previewTransformChanged |= ImGui::DragFloat("プレビュー倍率", &previewScale_, 0.01f, 0.05f, 20.0f, "%.2f");
     if (previewToggleChanged) {
         if (previewEnabled_) {
             MarkPreviewDirty();
@@ -463,11 +500,18 @@ void Text3DGenerator::DrawImGui() {
         }
     }
     if ((previewTransformChanged || colorChanged) && previewObject_) {
-        previewObject_->SetTranslate(previewPosition_);
-        previewObject_->SetScale({ previewScale_, previewScale_, previewScale_ });
-        previewObject_->SetColor({ modelColor_[0], modelColor_[1], modelColor_[2], modelColor_[3] });
-        previewObject_->UpdateLocalMatrix();
-        previewObject_->UpdateWorldMatrix();
+        ApplyPreviewTransform();
+    }
+    if (previewEnabled_) {
+        if (previewRequestPending_) {
+            ImGui::TextDisabled("3Dプレビュー: 更新待ち");
+        } else if (previewDirty_) {
+            ImGui::TextColored(ImVec4(1.0f, 0.78f, 0.28f, 1.0f), "3Dプレビュー: 設定変更あり");
+        } else if (hasPreviewModel_) {
+            ImGui::TextDisabled("3Dプレビュー: 頂点 %d / 面 %d", lastPreview_.vertexCount, lastPreview_.faceCount);
+        } else {
+            ImGui::TextDisabled("3Dプレビュー: 未生成");
+        }
     }
 
     ImGui::Separator();
@@ -1083,7 +1127,13 @@ void Text3DGenerator::UpdatePreviewModel(float deltaTime) {
         return;
     }
 
-    if (!previewDirty_ && previewObject_) {
+    const bool needsRebuild = previewDirty_ || !previewObject_;
+    if (!needsRebuild) {
+        return;
+    }
+
+    // リアルタイム更新OFF時は、手動更新ボタンで予約された時だけ再生成する。
+    if (!previewAutoUpdate_ && !previewRequestPending_) {
         return;
     }
 
@@ -1150,14 +1200,59 @@ void Text3DGenerator::EnsurePreviewObject(const GeneratedModelInfo& info) {
     }
 
     previewObject_->SetModel(info.modelName);
-    previewObject_->SetColor({ modelColor_[0], modelColor_[1], modelColor_[2], modelColor_[3] });
-    previewObject_->SetTranslate(previewPosition_);
-    previewObject_->SetScale({ previewScale_, previewScale_, previewScale_ });
+    ApplyPreviewTransform();
     previewObject_->SetIsVisible(true);
+}
+
+Vector3 Text3DGenerator::ResolvePreviewPosition() const {
+    if (!previewAttachToCamera_) {
+        return previewPosition_;
+    }
+
+    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) {
+        return previewPosition_;
+    }
+
+    const Vector3 eye = camera->GetEye();
+    const Vector3 target = camera->GetTargetPoint();
+    Vector3 forward{
+        target.x - eye.x,
+        target.y - eye.y,
+        target.z - eye.z
+    };
+
+    const float length = std::sqrt(
+        forward.x * forward.x +
+        forward.y * forward.y +
+        forward.z * forward.z);
+
+    if (length > 0.0001f) {
+        forward.x /= length;
+        forward.y /= length;
+        forward.z /= length;
+    } else {
+        forward = { 0.0f, 0.0f, 1.0f };
+    }
+
+    return {
+        eye.x + forward.x * previewCameraDistance_,
+        eye.y + forward.y * previewCameraDistance_,
+        eye.z + forward.z * previewCameraDistance_
+    };
+}
+
+void Text3DGenerator::ApplyPreviewTransform() {
+    if (!previewObject_) {
+        return;
+    }
+
+    previewObject_->SetColor({ modelColor_[0], modelColor_[1], modelColor_[2], modelColor_[3] });
+    previewObject_->SetTranslate(ResolvePreviewPosition());
+    previewObject_->SetScale({ previewScale_, previewScale_, previewScale_ });
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
 }
-
 void Text3DGenerator::RemovePreviewObject() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         previewObject_ = nullptr;
@@ -1174,8 +1269,13 @@ void Text3DGenerator::RemovePreviewObject() {
 
 void Text3DGenerator::MarkPreviewDirty() {
     previewDirty_ = true;
-    previewRequestPending_ = true;
-    previewDelayTimer_ = kPreviewRebuildDelay;
+    if (previewAutoUpdate_) {
+        previewRequestPending_ = true;
+        previewDelayTimer_ = kPreviewRebuildDelay;
+    } else {
+        previewRequestPending_ = false;
+        previewDelayTimer_ = 0.0f;
+    }
 }
 
 Object3d* Text3DGenerator::FindPreviewObject() const {

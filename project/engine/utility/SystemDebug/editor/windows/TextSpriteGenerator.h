@@ -21,7 +21,7 @@ class Sprite;
 class SpriteCommon;
 
 /// <summary>
-/// 入力テキストから透過PNGを生成し、Spriteとしてシーンへ追加できるEditorツール。
+/// 入力テキストから透明PNGを生成し、必要に応じてSpriteとしてシーンへ追加するエディタツール。
 /// </summary>
 class TextSpriteGenerator : public IEditable {
 public:
@@ -39,6 +39,7 @@ private:
     bool EnsureFactories();
     void RefreshFonts();
     bool RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight);
+    void TickPreviewAutoUpdate();
     void UpdatePreviewTexture();
     bool ExportToFile(std::string* outFullPath = nullptr, std::string* outRelativePath = nullptr);
     void AddPendingSpriteToScene();
@@ -70,6 +71,7 @@ private:
     bool autoOutputName_ = true;
 
     float fontSize_ = 72.0f;
+    bool bold_ = true;
     float padding_ = 20.0f;
     bool autoCanvas_ = true;
     int canvasWidth_ = 512;
@@ -87,7 +89,7 @@ private:
     // GameView上のプレビュー状態。
     bool previewEnabled_ = true;
     bool previewBoundsEnabled_ = true;
-    bool previewAutoUpdate_ = false;
+    bool previewAutoUpdate_ = true;
     Vector2 previewPosition_ = { 640.0f, 360.0f };
     float previewScale_ = 1.0f;
     bool previewDirty_ = false;

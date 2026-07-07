@@ -521,6 +521,8 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
     for (auto& object : brushPreviewObjects_) {
         drawPreviewObject(object.get());
     }
+
+    text3DGenerator_.DrawPreview(pointLightResource, spotLightResource);
 }
 
 // ========================================================================

@@ -245,6 +245,78 @@ void UploadTextureData(
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
     commandList->ResourceBarrier(1, &barrier);
 }
+
+// 実行中の描画コマンドリストを触らず、テクスチャ転送専用の一時コマンドリストでGPUへ送る。
+bool UploadTextureDataWithDedicatedCommandList(
+    ID3D12Resource* texture,
+    const DirectX::ScratchImage& mipImages,
+    ID3D12Device* device,
+    ID3D12CommandQueue* commandQueue)
+{
+    if (!texture || !device || !commandQueue) {
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> uploadAllocator;
+    HRESULT hr = device->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        IID_PPV_ARGS(uploadAllocator.GetAddressOf()));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
+    hr = device->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        uploadAllocator.Get(),
+        nullptr,
+        IID_PPV_ARGS(uploadCommandList.GetAddressOf()));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
+    UploadTextureData(texture, mipImages, intermediateResource.GetAddressOf(), device, uploadCommandList.Get());
+
+    hr = uploadCommandList->Close();
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    ID3D12CommandList* commandLists[] = { uploadCommandList.Get() };
+    commandQueue->ExecuteCommandLists(1, commandLists);
+
+    Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+    hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf()));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    constexpr UINT64 fenceValue = 1;
+    hr = commandQueue->Signal(fence.Get(), fenceValue);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    if (fence->GetCompletedValue() < fenceValue) {
+        HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        if (!fenceEvent) {
+            return false;
+        }
+
+        hr = fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        if (FAILED(hr)) {
+            CloseHandle(fenceEvent);
+            return false;
+        }
+
+        WaitForSingleObject(fenceEvent, INFINITE);
+        CloseHandle(fenceEvent);
+    }
+
+    return true;
+}
 // TextureManagerのシングルトンインスタンスを返す。
 
 TextureManager* TextureManager::GetInstance() {
@@ -325,9 +397,9 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         return 0;
     }
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
-    UploadTextureData(resource.Get(), mipImages, &intermediateResource, device_.Get(), dxCommon_->GetCommandList());
-    dxCommon_->FlushCommandQueue(true);
+    if (!UploadTextureDataWithDedicatedCommandList(resource.Get(), mipImages, device_.Get(), dxCommon_->GetCommandQueue())) {
+        return 0;
+    }
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
