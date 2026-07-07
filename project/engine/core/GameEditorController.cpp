@@ -48,6 +48,7 @@
 #include <cmath>
 
 namespace {
+// 選択中オブジェクトが現在シーンにまだ存在しているか確認する。
 
 bool IsObjectInCurrentScene(SceneManager* sceneManager, Object3d* object) {
 	if (!object) {
@@ -63,10 +64,12 @@ bool IsObjectInCurrentScene(SceneManager* sceneManager, Object3d* object) {
 		return sceneObject.get() == object;
 	});
 }
+// 2Dベクトルの長さを計算する。
 
 float Length2D(const ImVec2& value) {
 	return std::sqrt(value.x * value.x + value.y * value.y);
 }
+// 2Dベクトルを正規化し、長さがほぼ0ならゼロベクトルを返す。
 
 ImVec2 Normalize2D(const ImVec2& value) {
 	const float length = Length2D(value);
@@ -75,6 +78,7 @@ ImVec2 Normalize2D(const ImVec2& value) {
 	}
 	return ImVec2(value.x / length, value.y / length);
 }
+// 原点から方向ベクトルへ指定距離だけ進めた3D座標を返す。
 
 Vector3 AddScaled(const Vector3& origin, const Vector3& direction, float scale) {
 	return {
@@ -83,10 +87,12 @@ Vector3 AddScaled(const Vector3& origin, const Vector3& direction, float scale) 
 		origin.z + direction.z * scale,
 	};
 }
+// 3軸スケールの中で最も大きい絶対値を返し、ギズモ表示サイズの基準にする。
 
 float GetLargestAbsScale(const Vector3& scale) {
 	return std::max(std::max(std::abs(scale.x), std::abs(scale.y)), std::abs(scale.z));
 }
+// 3Dワールド座標をゲームビュー上の2D座標へ投影する。
 
 bool ProjectWorldToGameView(const Vector3& worldPos, const Matrix4x4& viewProjection, const GameViewArea& area, ImVec2& outScreen) {
 	Math math;
@@ -100,6 +106,7 @@ bool ProjectWorldToGameView(const Vector3& worldPos, const Matrix4x4& viewProjec
 	return outScreen.x >= area.screenX - 32.0f && outScreen.x <= area.screenX + area.width + 32.0f &&
 		   outScreen.y >= area.screenY - 32.0f && outScreen.y <= area.screenY + area.height + 32.0f;
 }
+// 2D線分の先端に矢印を付けて描画する。
 
 void DrawArrow2D(ImDrawList* drawList, const ImVec2& start, const ImVec2& end, ImU32 color, float thickness) {
 	drawList->AddLine(start, end, color, thickness);
@@ -117,6 +124,7 @@ void DrawArrow2D(ImDrawList* drawList, const ImVec2& start, const ImVec2& end, I
 	const ImVec2 p2(end.x - direction.x * arrowLength - normal.x * arrowWidth, end.y - direction.y * arrowLength - normal.y * arrowWidth);
 	drawList->AddTriangleFilled(end, p1, p2, color);
 }
+// 文字の視認性を上げるため、薄い縁取り付きでテキストを描画する。
 
 void DrawTextWithOutline(ImDrawList* drawList, const ImVec2& pos, ImU32 color, const char* text) {
 	const ImU32 outline = IM_COL32(20, 24, 32, 220);
@@ -124,6 +132,7 @@ void DrawTextWithOutline(ImDrawList* drawList, const ImVec2& pos, ImU32 color, c
 	drawList->AddText(ImVec2(pos.x - 1.0f, pos.y + 1.0f), outline, text);
 	drawList->AddText(pos, color, text);
 }
+// エディタ画面右上に、現在カメラ基準のワールド軸ギズモを描画する。
 
 void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 	if (!camera || area.width <= 1.0f || area.height <= 1.0f) {
@@ -169,6 +178,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 		DrawTextWithOutline(drawList, ImVec2(end.x + 5.0f, end.y - 7.0f), axis.color, axis.label);
 	}
 }
+// 選択オブジェクトのローカル軸をゲームビュー上に重ねて描画する。
 
 void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Object3d* selectedObject) {
 	if (!camera || !selectedObject || area.width <= 1.0f || area.height <= 1.0f) {
@@ -220,9 +230,12 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Obj
 }
 
 }
+// GameEditorControllerの既定コンストラクタ。メンバ生成はInitializeで行う。
 
 GameEditorController::GameEditorController() = default;
+// GameEditorControllerの既定デストラクタ。明示的な解放はFinalizeで行う。
 GameEditorController::~GameEditorController() = default;
+// ゲームエディタで使う各種ツールとウィンドウを生成し、SceneManagerへ接続する。
 
 void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
 	postEffectEditor_ = std::make_unique<PostEffectEditor>();
@@ -287,6 +300,7 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 			trailEmitterEditor_.get());
 	}
 }
+// 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
 
 void GameEditorController::Finalize() {
 	trailEmitterEditor_.reset();
@@ -303,12 +317,14 @@ void GameEditorController::Finalize() {
 	engineManualWindow_.reset();
 	DebugConsole::GetInstance()->Finalize();
 }
+// ImGuiとImGuizmoのフレームを開始し、既定ドックスペースを準備する。
 
 void GameEditorController::BeginFrame() {
 	ImGuiManager::GetInstance()->BeginFrame();
 	ImGuizmo::BeginFrame();
 	SetupDefaultDockspace();
 }
+// ポートフォリオ撮影用に、エディタUIを隠すモードのON/OFFを切り替える。
 
 void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 	if (portfolioCaptureMode_ == enabled) {
@@ -321,6 +337,7 @@ void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 			? "ポートフォリオ撮影モード: ON (F10でエディタ表示に戻ります)"
 			: "ポートフォリオ撮影モード: OFF (エディタ表示を再開しました)");
 }
+// 初回起動時にHierarchy、Inspector、Project、GameViewなどの既定ドック配置を作る。
 void GameEditorController::SetupDefaultDockspace() {
 	ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
 		0,
@@ -354,6 +371,7 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGui::DockBuilderDockWindow("Game View", dockMainId);
 	ImGui::DockBuilderFinish(dockspaceId);
 }
+// エディタ中央のゲームビューを描画し、マウス入力やギズモ状態を収集する。
 
 EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, bool isPlaying) {
 	EditorFrameState frameState;
@@ -437,6 +455,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
 	return frameState;
 }
+// ゲームビューへのドラッグ&ドロップを受け取り、SpriteやModelなどを配置する。
 
 void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area) {
 	if (!ImGui::BeginDragDropTarget()) {
@@ -510,6 +529,7 @@ if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")
 
 	ImGui::EndDragDropTarget();
 }
+// ゴーストレコーダーや選択オブジェクトの録画プレビューをゲームビュー上に描画する。
 
 void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& area) {
 	if (isPlaying) {
@@ -556,6 +576,7 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 			Vector2{ area.width, area.height });
 	}
 }
+// 再生/停止、表示切替、シーン切替、ヘルプなどのメインメニューを描画する。
 
 void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
 	if (!ImGui::BeginMainMenuBar()) {
@@ -628,10 +649,12 @@ ImGui::MenuItem("Hierarchy / Inspector 表示", nullptr, &showDebugWindows_);
 	DrawUnsavedPlayConfirmPopup(sceneManager, isPlaying, currentSceneName);
 	DrawUnsavedExitConfirmPopup();
 }
+// エディタ上に未保存変更が残っているかを確認する。
 
 bool GameEditorController::HasUnsavedEditorChanges() const {
 	return debugEditor_ && debugEditor_->HasAnyDirty();
 }
+// 終了要求時に未保存変更があれば確認ポップアップを開く。
 
 void GameEditorController::RequestExit() {
 	if (HasUnsavedEditorChanges()) {
@@ -641,6 +664,7 @@ void GameEditorController::RequestExit() {
 
 	WinApp::CloseNow();
 }
+// 再生開始要求時に未保存変更があれば確認し、問題なければ再生を開始する。
 
 void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
 	if (HasUnsavedEditorChanges()) {
@@ -650,6 +674,7 @@ void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlayi
 
 	StartPlay(sceneManager, isPlaying, currentSceneName);
 }
+// シーンを再読み込みしてエディタ状態を片付け、ゲーム再生状態へ切り替える。
 
 void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
 	ClearSceneBoundEditorState();
@@ -663,6 +688,7 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 	}
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 }
+// シーンに紐づく選択状態やゴースト対象をクリアし、再読み込み後の不整合を防ぐ。
 
 void GameEditorController::ClearSceneBoundEditorState() {
 	if (ghostRecorder_) {
@@ -673,6 +699,7 @@ void GameEditorController::ClearSceneBoundEditorState() {
 	}
 	EditorManager::GetInstance()->ClearSelection();
 }
+// 未保存変更がある状態で再生しようとした時の確認ポップアップを描画する。
 
 void GameEditorController::DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
 	const char* popupName = "未保存の変更があります###UnsavedPlayConfirm";
@@ -708,6 +735,7 @@ void GameEditorController::DrawUnsavedPlayConfirmPopup(SceneManager* sceneManage
 
 	ImGui::EndPopup();
 }
+// 未保存変更がある状態で終了しようとした時の確認ポップアップを描画する。
 
 void GameEditorController::DrawUnsavedExitConfirmPopup() {
 	const char* popupName = "未保存の変更があります###UnsavedExitConfirm";
@@ -743,6 +771,7 @@ void GameEditorController::DrawUnsavedExitConfirmPopup() {
 
 	ImGui::EndPopup();
 }
+// パーティクル、VFX、メッシュ、デブリ、トレイルなどのエディタツールを更新する。
 
 void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float timeScale) {
 	if (gpuParticleEditor_) {
@@ -770,6 +799,7 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 		GPUParticleManager::GetInstance()->Update(deltaTime * timeScale);
 	}
 }
+// Hierarchy、Inspector、Project、Console、Statusなどの補助ウィンドウを描画する。
 
 void GameEditorController::DrawToolWindows(
 	float& timeScale,
@@ -804,6 +834,7 @@ void GameEditorController::DrawToolWindows(
 	}
 	ProfilerManager::GetInstance()->DrawImGui();
 }
+// FPS、CPU/GPU負荷、時間倍率などを確認するステータスウィンドウを描画する。
 
 void GameEditorController::DrawStatusWindow(
 	float& timeScale,
@@ -862,12 +893,14 @@ void GameEditorController::DrawStatusWindow(
 
 	ImGui::End();
 }
+// ProjectWindowから要求されたサムネイル撮影を処理する。
 
 void GameEditorController::CapturePendingThumbnails() {
 	if (debugEditor_ && debugEditor_->GetProjectWindow()) {
 		debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
 	}
 }
+// エディタ選択中のプレビューやゴースト表示を3Dシーン上に描画する。
 
 void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 	if (debugEditor_) {
@@ -899,6 +932,7 @@ void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, 
 		ghostRecorder_->DrawObjectGhostPreview(pointLightResource, spotLightResource);
 	}
 }
+// DebugEditorやMeshEffectEditorのデバッグ描画を実行する。
 
 void GameEditorController::DrawSceneDebug(ID3D12GraphicsCommandList* commandList) {
 	if (debugEditor_) {
@@ -908,6 +942,7 @@ void GameEditorController::DrawSceneDebug(ID3D12GraphicsCommandList* commandList
 		meshEffectEditor_->Draw();
 	}
 }
+// Sprite編集UIとImGui全体を最終バックバッファへ描画する。
 
 void GameEditorController::DrawBackBufferUi() {
 	if (spriteDebugEditor_) {
@@ -915,16 +950,19 @@ void GameEditorController::DrawBackBufferUi() {
 	}
 	ImGuiManager::GetInstance()->Draw();
 }
+// ImGuiのフレームを終了し、描画コマンドを発行できる状態にする。
 
 void GameEditorController::EndFrame() {
 	ImGuiManager::GetInstance()->EndFrame();
 }
+// ギズモやSprite編集中はカメラ入力を止め、操作の競合を防ぐ。
 
 void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying) {
 	if (Camera* mainCamera = CameraManager::GetInstance()->GetActiveCamera()) {
 		mainCamera->SetInputEnabled(isPlaying || !(frameState.spriteEditorBusy || frameState.gizmoBusy));
 	}
 }
+// エフェクトプレビューやアニメーション作業台のカメラ上書きを現在フレームへ反映する。
 
 void GameEditorController::ApplyCameraOverrides() {
 	if (debugEditor_ && debugEditor_->GetEffectPreviewStage()) {
@@ -934,6 +972,7 @@ void GameEditorController::ApplyCameraOverrides() {
 		debugEditor_->GetAnimationWorkbench()->ApplyCameraOverride();
 	}
 }
+// すべてのエディタデータ保存処理の入口。現在はログ出力のみを行う。
 
 void GameEditorController::SaveAllEditors() {
 	DebugConsole::GetInstance()->AddLog("--- Auto Saving All Editor Data... ---");

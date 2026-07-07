@@ -11,6 +11,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #endif
 
 // --- WinApp.cpp ---
+// Windowsメッセージを受け取り、ImGui入力、終了要求、リサイズ、カーソル解除を処理する。
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 #ifdef USE_IMGUI
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
@@ -44,6 +45,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     }
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
+// Win32ウィンドウを作成し、実際のクライアントサイズをエンジン側へ反映する。
 
 void WinApp::Initialize(const wchar_t* title, int width, int height) {
     hInstance_ = GetModuleHandle(nullptr);
@@ -79,6 +81,7 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
 
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 }
+// Windowsメッセージを処理し、終了要求が来ていればtrueを返す。
 bool WinApp::Update() {
     MSG msg{};
 
@@ -113,10 +116,12 @@ bool WinApp::Update() {
     // 続ける場合はfalseを返す
     return false;
 }
+// 即終了せず、ゲーム側で未保存確認などを挟めるよう終了要求だけを立てる。
 
 void WinApp::RequestClose() {
     closeRequested_ = true;
 }
+// 保留中の終了要求を一度だけ取り出し、処理済みに戻す。
 
 bool WinApp::ConsumeCloseRequest() {
     if (!closeRequested_) {
@@ -125,11 +130,13 @@ bool WinApp::ConsumeCloseRequest() {
     closeRequested_ = false;
     return true;
 }
+// 確認なしでWM_QUITを発行し、アプリケーション終了へ進める。
 
 void WinApp::CloseNow() {
     closeRequested_ = false;
     PostQuitMessage(0);
 }
+// ShowCursorの内部カウンタを調整し、カーソル表示状態を確実に切り替える。
 
 void WinApp::SetCursorVisibility(bool isVisible) {
     if (isVisible) {
@@ -141,6 +148,7 @@ void WinApp::SetCursorVisibility(bool isVisible) {
         while (ShowCursor(FALSE) >= 0);
     }
 }
+// カーソルをウィンドウのクライアント領域内へ制限するか解除する。
 
 
 void WinApp::SetCursorClipping(bool isClipping) {
@@ -169,6 +177,7 @@ void WinApp::SetCursorClipping(bool isClipping) {
         ClipCursor(nullptr);
     }
 }
+// 毎フレームカーソルを画面中央へ戻すロック状態を切り替える。
 
 void WinApp::SetCursorLocked(bool isLocked) {
     isCursorLocked_ = isLocked;

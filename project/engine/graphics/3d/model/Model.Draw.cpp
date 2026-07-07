@@ -523,300 +523,44 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
 // ==========================================
 
 // ========================================================================
-// Model 基本初期化とGPUバッファ管理
+// Model 描画補助と動的メッシュ生成
 // ------------------------------------------------------------------------
-// モデルデータの読み込み結果をGPUへ渡すための初期化、ボーン行列用の
-// バッファ更新、頂点数などの軽量な問い合わせを担当する。
+// 影用描画、メッシュのみの描画、プリミティブ生成など、読み込み以外の
+// メッシュ利用処理を担当する。
 // ========================================================================
 
-// モデル共通情報とファイル名を受け取り、モデルデータ・GPUリソース・スケルトンを初期化する。
-void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
-    assert(common);
-    common_ = common;
-    DirectXCommon* dxCommon = common_->GetDxCommon();
-
-    // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
-    modelData_ = LoadFile(directoryPath, filename);
-    modelData_.meshes.erase(
-        std::remove_if(modelData_.meshes.begin(), modelData_.meshes.end(),
-            [](const Mesh& mesh) {
-                return mesh.vertices.empty() || mesh.indices.empty();
-            }),
-        modelData_.meshes.end());
-
-    // --- AABB（モデルのサイズ）計算 ---
-    Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
-    Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
-    bool hasVertices = false;
-
-    for (const auto& mesh : modelData_.meshes) {
-        for (const auto& vertex : mesh.vertices) {
-            // 全メッシュの全頂点から最小・最大を割り出す
-            min.x = (std::min)(min.x, vertex.position.x);
-            min.y = (std::min)(min.y, vertex.position.y);
-            min.z = (std::min)(min.z, vertex.position.z);
-            max.x = (std::max)(max.x, vertex.position.x);
-            max.y = (std::max)(max.y, vertex.position.y);
-            max.z = (std::max)(max.z, vertex.position.z);
-            hasVertices = true;
-        }
-    }
-
-    if (hasVertices) {
-        // カリング用のローカルAABBを保存
-        localAabbMin_ = min;
-        localAabbMax_ = max;
-        // 中心座標とサイズも一応計算して保持
-        center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
-        size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
-    }
-    else {
-        localAabbMin_ = { -0.5f, -0.5f, -0.5f };
-        localAabbMax_ = { 0.5f, 0.5f, 0.5f };
-        center_ = { 0.0f, 0.0f, 0.0f };
-        size_ = { 1.0f, 1.0f, 1.0f };
-    }
-
-    // 2. マテリアルごとにテクスチャをロード
-    for (auto& material : modelData_.materials) {
-        material.textureHandle = TextureManager::GetInstance()->Load(
-            material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath);
-        if (material.hasNormalMap && !material.normalMapPath.empty()) {
-            material.normalMapHandle = TextureManager::GetInstance()->Load(material.normalMapPath, true);
-        }
-        if (material.hasOrmMap && !material.ormMapPath.empty()) {
-            material.ormMapHandle = TextureManager::GetInstance()->Load(material.ormMapPath, true);
-        }
-    }
-
-    // 3. メッシュごとに頂点バッファ・インデックスバッファを作成
-    for (auto& mesh : modelData_.meshes) {
-        if (mesh.vertices.empty() || mesh.indices.empty()) {
-            continue;
-        }
-        // 頂点バッファ
-        mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
-        if (!mesh.vertexResource) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + filename);
-            continue;
-        }
-        mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
-        mesh.vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * mesh.vertices.size());
-        mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
-
-        VertexData* vertexData = nullptr;
-        HRESULT vertexMapResult = mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-        if (FAILED(vertexMapResult) || !vertexData) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + filename);
-            mesh.vertexResource.Reset();
-            continue;
-        }
-        std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
-        mesh.vertexResource->Unmap(0, nullptr);
-
-        // インデックスバッファ
-        mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
-        if (!mesh.indexResource) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + filename);
-            mesh.vertexResource.Reset();
-            continue;
-        }
-        mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
-        mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
-        mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-
-        uint32_t* indexData = nullptr;
-        HRESULT indexMapResult = mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-        if (FAILED(indexMapResult) || !indexData) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + filename);
-            mesh.vertexResource.Reset();
-            mesh.indexResource.Reset();
-            continue;
-        }
-        std::memcpy(indexData, mesh.indices.data(), sizeof(uint32_t) * mesh.indices.size());
-        mesh.indexResource->Unmap(0, nullptr);
-    }
-
-    // 4. 定数バッファ(Material)の作成と初期設定
-    materialData_ = nullptr;
-    materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
-    if (!materialResource_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + filename);
-        return;
-    }
-
-    HRESULT materialMapResult = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-    if (FAILED(materialMapResult) || !materialData_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + filename);
-        materialResource_.Reset();
-        materialData_ = nullptr;
-        return;
-    }
-    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    materialData_->enableLighting = true;
-    materialData_->selectedLighting = 2; // 隊長の設定値を維持
-    materialData_->shininess = 50;
-    materialData_->materialType = 0;
-    materialData_->roughness = 0.5f;
-    materialData_->metallic = 0.0f;
-    materialData_->enableNormalMap = 1;
-    materialData_->enableEnvMap = 0;
-    materialData_->envIntensity = 1.0f;
-    materialData_->emissive = 1.0f;
-    materialData_->time = 0.0f;
-    materialData_->portalClipEnabled = 0.0f;
-    materialData_->portalClipProgress = 0.0f;
-    materialData_->portalClipCenter = { 0.0f, 0.0f, 0.0f };
-    materialData_->portalClipEdgeWidth = 0.12f;
-    materialData_->portalClipNormal = { 0.0f, 0.0f, 1.0f };
-    materialData_->portalClipDissolve = 0.18f;
-    materialData_->portalClipColor = { 1.0f, 0.82f, 0.36f, 0.80f };
-    materialData_->uvTransform = math_.MakeIdentity4x4();
-
-    if (const MaterialData* primaryMaterial = GetPrimaryMaterialData()) {
-        materialData_->color = primaryMaterial->baseColorFactor;
-        materialData_->roughness = primaryMaterial->roughness;
-        materialData_->metallic = primaryMaterial->metallic;
-        materialData_->enableNormalMap = primaryMaterial->hasNormalMap ? 1 : 0;
-    }
-
-    // 5. ボーン用バッファの作成 
-    CreateBoneBuffer();
-}
-// ==========================================
-// ボーンバッファの作成とSRV登録 
-// ==========================================
-// スキニング用のボーン行列バッファを作成し、SRVとしてシェーダーから参照できる状態にする。
-void Model::CreateBoneBuffer() {
-    DirectXCommon* dxCommon = common_->GetDxCommon();
-
-    if (modelData_.bones.empty()) {
-        boneResource_.Reset();
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // 1. リソース作成
-    UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
-    boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
-    if (!boneResource_) {
-        DebugConsole::GetInstance()->AddLog("Model bone buffer creation failed.");
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // 2. マッピング
-    HRESULT boneMapResult = boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
-    if (FAILED(boneMapResult) || !boneMappedData_) {
-        DebugConsole::GetInstance()->AddLog("Model bone buffer map failed.");
-        boneResource_.Reset();
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // ★重要: 初期値を「単位行列」で埋めておく
-    // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
-    Math math;
-    for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        boneMappedData_[i].finalMatrix = math.MakeIdentity4x4();
-    }
-
-    // 3. SRVを作成 (StructuredBuffer)
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = UINT(modelData_.bones.size());
-    srvDesc.Buffer.StructureByteStride = sizeof(BoneForGPU);
-    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-    // SRVManagerでディスクリプタを確保して作成
-    boneSrvIndex_ = SRVManager::GetInstance()->Allocate();
-    SRVManager::GetInstance()->CreateSRVforResource(boneSrvIndex_, boneResource_.Get(), srvDesc);
-}
-
-// ==========================================
-// ボーン行列の更新 
-// ==========================================
-// 現在のスケルトン行列をGPU側のボーンバッファへ転送する。
-void Model::UpdateBoneBuffer() {
-    if (!boneMappedData_) {
-        return;
-    }
-
-    if (!modelData_.hasSkinning && !modelData_.usesNodeAnimationProxy) {
-        for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
-        }
-        return;
-    }
-    // ボーンごとに計算
-    for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        // ボーン名に対応するJointを探す
-        auto it = modelData_.skeleton.jointMap.find(modelData_.bones[i].name);
-
-        // FinalMatrix = InverseBindPose * SkeletonSpaceMatrix
-        if (it != modelData_.skeleton.jointMap.end()) {
-            const Joint& joint = modelData_.skeleton.joints[it->second];
-            boneMappedData_[i].finalMatrix =
-                math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, joint.skeletonSpaceMatrix);
-        }
-        else {
-            // ノードが見つからない場合は単位行列を入れる
-            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
-        }
-    }
-}
-
-// モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
-{
+// シャドウマップ生成用に、マテリアル描画を省いた深度向けメッシュ描画を行う。
+void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    // 1. マテリアル設定
-    if (overrideMaterialResource) {
-        commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
-    }
-    else if (materialResource_) {
-        commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-    }
 
-    // 2. 定数バッファ設定
-    if (wvpResource) commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-    // (RootParam[2] はテクスチャ)
-    if (directionalLightResource) commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-    if (cameraResource) commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
-    if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
-    if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
+    // [0] WVP
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
 
-
-    if (!modelData_.bones.empty() && boneResource_ && boneSrvIndex_ != 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
+    // [1] ボーン情報
+    if (!modelData_.bones.empty()) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, boneSrvIndex_);
     }
 
-    uint32_t envMapHandle = LightManager::GetInstance()->GetEnvironmentMapHandle();
-    if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
+    // 各メッシュの頂点を描画
+    for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
+        if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
+            continue;
+        }
+        auto& mesh = modelData_.meshes[meshIndex];
+        if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
+            continue;
+        }
+        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        commandList->IASetIndexBuffer(&mesh.indexBufferView);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
     }
-    uint32_t handleToBind = normalMapHandle;
-    if (handleToBind == 0) {
-        // 画像が設定されていない場合はダミーの白画像を使う
-        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
-    uint32_t ormHandleToBind = ormMapHandle;
+}
 
-    // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
-    if (ormHandleToBind <= 0 || ormHandleToBind >= DirectXCommon::kMaxSRVCount) {
-        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
+// 既に外側で必要な描画状態を設定している前提で、メッシュ本体だけを描画する。
+void Model::DrawMeshOnly(int meshDrawIndex) {
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    // 次のインデックス(例: 10番)にORMマップをセット！
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
-    // 3. メッシュごとの描画ループ
+    // メッシュごとに頂点バッファだけをセットして描画
     for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
         if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
             continue;
@@ -825,64 +569,137 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
-
-        const MaterialData* meshMaterial = nullptr;
-        if (mesh.materialIndex < modelData_.materials.size()) {
-            meshMaterial = &modelData_.materials[mesh.materialIndex];
-        }
-
-        uint32_t meshNormalHandle = normalMapHandle;
-        if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) &&
-            meshMaterial && meshMaterial->hasNormalMap &&
-            meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSRVCount) {
-            meshNormalHandle = meshMaterial->normalMapHandle;
-        }
-        if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
-            meshNormalHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
-        }
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
-
-        uint32_t meshOrmHandle = ormMapHandle;
-        if ((meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) &&
-            meshMaterial && meshMaterial->hasOrmMap &&
-            meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSRVCount) {
-            meshOrmHandle = meshMaterial->ormMapHandle;
-        }
-        if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
-            meshOrmHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
-        }
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
-
+        // 頂点バッファをセット
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
-
-        if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
-            // エディタで画像が選ばれていたら、そっちを優先して貼る！
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
-        }
-        else if (mesh.materialIndex < modelData_.materials.size()) {
-            // 選ばれていない場合は、モデル本来のテクスチャを貼る
-            uint32_t handle = modelData_.materials[mesh.materialIndex].textureHandle;
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
-        }
-
-        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
     }
 }
 
-// モデル全体の頂点数を返し、統計表示や軽量化確認で使えるようにする。
-uint32_t Model::GetVertexCount() const {
-    uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.vertices.size());
-    return count;
+
+
+// 頂点配列から一時的なモデルデータを構築し、プリミティブやデバッグ表示に使える形へ変換する。
+void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices) {
+    if (!common || vertices.empty() || indices.empty()) {
+        modelData_.meshes.clear();
+        return;
+    }
+    assert(common);
+
+    common_ = common;
+    DirectXCommon* dxCommon = common_->GetDxCommon();
+    if (!dxCommon) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: DirectX device is null.");
+        modelData_.meshes.clear();
+        return;
+    }
+    ID3D12Device* device = dxCommon->GetDevice();
+    if (!device) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: DirectX device is null.");
+        modelData_.meshes.clear();
+        return;
+    }
+
+    // 既存のメッシュデータがあればクリアする（エディタでのリアルタイム更新用）
+    modelData_.meshes.clear();
+
+    // 動的生成用のメッシュを1つ追加
+    modelData_.meshes.emplace_back();
+    auto& mesh = modelData_.meshes.back();
+
+    // 頂点とインデックスのデータを保持
+    mesh.vertices = vertices;
+    mesh.indices = indices;
+    mesh.materialIndex = 0; // ★マテリアルインデックスを初期化
+
+    // ==========================================
+    // 1. 頂点バッファ (Vertex Buffer) の作成
+    // ==========================================
+    UINT vbSize = static_cast<UINT>(sizeof(VertexData) * vertices.size());
+
+    D3D12_HEAP_PROPERTIES uploadHeap{};
+    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC vbDesc{};
+    vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    vbDesc.Width = vbSize;
+    vbDesc.Height = 1;
+    vbDesc.DepthOrArraySize = 1;
+    vbDesc.MipLevels = 1;
+    vbDesc.SampleDesc.Count = 1;
+    vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    // ★ 修正: vertexResource に生成
+    HRESULT hr = device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &vbDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&mesh.vertexResource)
+    );
+    if (FAILED(hr) || !mesh.vertexResource) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to create vertex buffer.");
+        modelData_.meshes.clear();
+        return;
+    }
+
+    // ★ 修正: vertexResource に対してマップしてデータを流し込む
+    void* mappedVerts = nullptr;
+    hr = mesh.vertexResource->Map(0, nullptr, &mappedVerts);
+    if (FAILED(hr) || !mappedVerts) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to map vertex buffer.");
+        modelData_.meshes.clear();
+        return;
+    }
+    memcpy(mappedVerts, vertices.data(), vbSize);
+    mesh.vertexResource->Unmap(0, nullptr);
+
+    // ★ 修正: vertexResource からGPUアドレスを取得
+    mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
+    mesh.vertexBufferView.SizeInBytes = vbSize;
+    mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
+
+    // ==========================================
+    // 2. インデックスバッファ (Index Buffer) の作成
+    // ==========================================
+    UINT ibSize = static_cast<UINT>(sizeof(uint32_t) * indices.size());
+
+    D3D12_RESOURCE_DESC ibDesc = vbDesc;
+    ibDesc.Width = ibSize;
+
+    // ★ 修正: indexResource に生成
+    hr = device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &ibDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&mesh.indexResource)
+    );
+    if (FAILED(hr) || !mesh.indexResource) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to create index buffer.");
+        modelData_.meshes.clear();
+        return;
+    }
+
+    // ★ 修正: indexResource に対してマップしてデータを流し込む
+    void* mappedIndices = nullptr;
+    hr = mesh.indexResource->Map(0, nullptr, &mappedIndices);
+    if (FAILED(hr) || !mappedIndices) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[Model] CreateFromVertices: failed to map index buffer.");
+        modelData_.meshes.clear();
+        return;
+    }
+    memcpy(mappedIndices, indices.data(), ibSize);
+    mesh.indexResource->Unmap(0, nullptr);
+
+    // ★ 修正: indexResource からGPUアドレスを取得
+    mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
+    mesh.indexBufferView.SizeInBytes = ibSize;
+    mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 }
 
-// インデックス数から概算ポリゴン数を返し、描画負荷の目安にする。
-uint32_t Model::GetPolygonCount() const {
-    uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.indices.size() / 3);
-    return count;
-}
 // ==========================================
-// 読み込み: Assimpのメッシュごとにデータを分ける
+// Skeleton & Joint の実装 (深さ優先探索)
 // ==========================================

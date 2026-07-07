@@ -8,9 +8,11 @@
 
 
 // 静的メンバ変数の実体定義
+// シングルトンインスタンスと既定のモデル検索設定を保持する。
 ModelManager* ModelManager::instance = nullptr;
 const std::string ModelManager::kDefaultBaseDirectory = "Resources/3DModel/";
 const std::string ModelManager::kDefaultModelExtension = ".obj";
+// ModelManagerのシングルトンインスタンスを生成または取得する。
 
 ModelManager* ModelManager::GetInstance() {
     if (instance == nullptr) {
@@ -18,22 +20,26 @@ ModelManager* ModelManager::GetInstance() {
     }
     return instance;
 }
+// モデル共通描画基盤を初期化し、各Modelが共有するDirectXリソースを準備する。
 
 void ModelManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     modelCommon_ = std::make_unique<ModelCommon>();
     modelCommon_->Initialize(dxCommon);
 }
+// 読み込み済みモデルと共通リソースを解放し、シングルトンを破棄する。
 
 void ModelManager::Finalize() {
-    models_.clear(); // モデルを全て解放
-    modelCommon_.reset(); // ModelCommonを解放
+    models_.clear(); // 読み込み済みモデルをすべて解放する。
+    modelCommon_.reset(); // ModelCommonを先に破棄し、GPU関連の参照を残さない。
     delete instance;
     instance = nullptr;
 }
+// モデル名から実ファイルを解決して読み込み、同じキーのモデルは再利用する。
 
 
 Model* ModelManager::LoadModel(const std::string& modelName) {
+    // すでに同じキーで読み込まれている場合は、GPUリソースを作り直さず再利用する。
     if (models_.contains(modelName)) {
         return models_[modelName].get();
     }
@@ -45,6 +51,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     std::string ext = path.extension().string();
 
     // 事前ロードは拡張子なしのキーで登録されるため、gltf指定でも同じモデルを再利用する
+    // 拡張子付きで指定された場合でも、拡張子なしキーやフォルダキーの既存登録を優先して探す。
     if (!ext.empty()) {
         std::string extensionlessKey = parentPath.empty() ? stem : parentPath + "/" + stem;
         std::replace(extensionlessKey.begin(), extensionlessKey.end(), '\\', '/');
@@ -64,6 +71,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     // ==========================================
     // ★ 修正：モデル自身のフォルダ名(stem)もしっかりパスに含める！
     // ==========================================
+    // サブフォルダ指定がある場合は、モデル自身と同名のフォルダ配下をまず候補にする。
     if (!parentPath.empty()) {
         // "enemy_core_shards" + "/" + "enemy_core1" + "/"
         directoryPath = kDefaultBaseDirectory + parentPath + "/" + stem + "/";
@@ -72,10 +80,12 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         directoryPath = kDefaultBaseDirectory + stem + "/";
     }
 
+    // 拡張子付きで指定された場合でも、拡張子なしキーやフォルダキーの既存登録を優先して探す。
     if (!ext.empty()) {
         fileName = path.filename().string();
         std::string legacyDirectory = directoryPath;
         std::string directDirectory = kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
+        // 旧配置と直下配置の両方を見て、既存アセットの読み込み互換性を保つ。
         if (std::filesystem::exists(legacyDirectory + fileName)) {
             directoryPath = legacyDirectory;
         }
@@ -88,6 +98,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         const std::string gltfName = stem + ".gltf";
         const std::string glbName = stem + ".glb";
 
+        // 拡張子なし指定では、OBJ/GLTF/GLBの順に実在する代表ファイルを探す。
         if (std::filesystem::exists(directoryPath + objName)) {
             fileName = objName;
         }
@@ -131,11 +142,13 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
     return models_[modelName].get();
 }
+// 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
 
 bool ModelManager::ReloadModel(const std::string& modelName) {
     models_.erase(modelName);
     return LoadModel(modelName) != nullptr;
 }
+// 現在読み込み済みのモデルキー一覧を返し、エディタやデバッグ表示で使えるようにする。
 
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::vector<std::string> names;
@@ -145,11 +158,12 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     return names;
 }
 
-#include <Windows.h> // ★ OutputDebugStringA を使うために追加
+#include <Windows.h> // OutputDebugStringAで読み込みログを出力するために使用。
 
 // ---------------------------------------------------------
 // ★修正版：フォルダ内を自動スキャンして一括ロード（ログ出力付き）
 // ---------------------------------------------------------
+// Resources/3DModel配下を走査し、見つかったモデルファイルを事前にまとめて読み込む。
 void ModelManager::LoadAllModels() {
     if (!std::filesystem::exists(kDefaultBaseDirectory)) return;
 
@@ -167,11 +181,13 @@ void ModelManager::LoadAllModels() {
                 // ==========================================
                 // ★ 修正：LoadModelを使わず、相対パスから完璧な「登録キー」を自動生成する
                 // ==========================================
+                // 事前ロード時はモデルファイル名ではなく、モデルフォルダまでの相対パスを登録キーにする。
                 std::filesystem::path relPath = std::filesystem::relative(entry.path(), kDefaultBaseDirectory);
                 std::string keyName = relPath.parent_path().string(); // フォルダまでのパスを取得
                 std::replace(keyName.begin(), keyName.end(), '\\', '/'); // Windowsの「\」を「/」に統一
 
                 // 登録キー例: "enemy_core_shards/enemy_core1"
+                // 同じフォルダキーを二重登録しないようにし、最初に見つかった代表モデルだけを読み込む。
                 if (!models_.contains(keyName)) {
                     auto start = std::chrono::high_resolution_clock::now();
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ">
@@ -102,6 +102,18 @@
     <ClCompile Include="engine\graphics\3d\object\Object3d.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClCompile>
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Collision.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Runtime.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Serialization.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Effects.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
+    </ClCompile>
     <ClCompile Include="engine\graphics\3d\object\Object3dCommon.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClCompile>
@@ -174,7 +186,28 @@
     <ClCompile Include="engine\system\collision\CollisionConfig.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\DebugEditor.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Placement.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.CrashRecovery.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Save.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Selection.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Creation.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp">
@@ -264,32 +297,32 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\BaseEnemy.cpp">
+    <ClCompile Include="game\actor\enemy\core\BaseEnemy.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\AttackTelegraph.cpp" />
-    <ClCompile Include="game\actor\enemy\EnemySlime.cpp">
+    <ClCompile Include="game\actor\enemy\core\AttackTelegraph.cpp" />
+    <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyBomb.cpp">
+    <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp">
+    <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyFireSlime.cpp">
+    <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyThunderSlime.cpp">
+    <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyGiantSlime.cpp">
+    <ClCompile Include="game\actor\enemy\heavy\EnemyGiantSlime.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyBat.cpp">
+    <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyBeamDrone.cpp">
+    <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\system\EnemyFactory.cpp">
@@ -332,6 +365,18 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\3d\MeshRenderer.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.SpecialMaterial.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.Lod.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.Material.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.Shadow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\system\LevelLoader.cpp">
@@ -398,7 +443,7 @@
     <ClCompile Include="game\system\GhostDirector.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossCore.cpp">
+    <ClCompile Include="game\actor\enemy\boss\BossCore.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.cpp">
@@ -435,6 +480,18 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Spawner.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Enemy.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Gimmick.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Item.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp">
@@ -518,82 +575,82 @@
     <ClCompile Include="engine\graphics\particle\GPUParticleSystem.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\BaseGimmick.cpp">
+    <ClCompile Include="game\actor\gimmick\core\BaseGimmick.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickMovingFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickMovingFloor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickTrampoline.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickChikuwaBlock.cpp">
+    <ClCompile Include="game\actor\gimmick\block\GimmickChikuwaBlock.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickBlinkBlock.cpp">
+    <ClCompile Include="game\actor\gimmick\block\GimmickBlinkBlock.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickBreakableBlock.cpp">
+    <ClCompile Include="game\actor\gimmick\block\GimmickBreakableBlock.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickCoin.cpp">
+    <ClCompile Include="game\actor\gimmick\stage\GimmickCoin.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickHookAnchor.cpp">
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickHookAnchor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickSinkingFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickSinkingFloor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickSeesawFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickSeesawFloor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickDashPanel.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickDashPanel.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickIceFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickIceFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickTimedSwitch.cpp">
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickTimedSwitch.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickAppearingFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickAppearingFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickSwitch.cpp">
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickSwitch.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickEventReceiver.cpp">
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickEventReceiver.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickHookPullBlock.cpp">
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickHookPullBlock.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickOneWayFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickOneWayFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickLiquidLevel.cpp">
+    <ClCompile Include="game\actor\gimmick\stage\GimmickLiquidLevel.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickChainCollapseFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\block\GimmickChainCollapseFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickRotatingObject.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickRotatingObject.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickPhaseFlipFloor.cpp">
+    <ClCompile Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickLaserEmitter.cpp">
+    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserEmitter.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickLaserNode.cpp">
+    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserNode.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickFireCannon.cpp">
+    <ClCompile Include="game\actor\gimmick\combat\GimmickFireCannon.cpp">
       <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\GimmickStageGate.cpp">
+    <ClCompile Include="game\actor\gimmick\stage\GimmickStageGate.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\item\BaseItem.cpp">
@@ -614,7 +671,7 @@
     <ClCompile Include="game\system\ItemFactory.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemyBomber.cpp">
+    <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
   </ItemGroup>
@@ -797,7 +854,7 @@
     <ClInclude Include="game\actor\Character.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\DebugEditor.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\DebugEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="externals\ImGuizmo\ImGuizmo.h">
@@ -1130,32 +1187,32 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\BaseEnemy.h">
+    <ClInclude Include="game\actor\enemy\core\BaseEnemy.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\AttackTelegraph.h" />
-    <ClInclude Include="game\actor\enemy\EnemySlime.h">
+    <ClInclude Include="game\actor\enemy\core\AttackTelegraph.h" />
+    <ClInclude Include="game\actor\enemy\normal\EnemySlime.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyBomb.h">
+    <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyMushroom.h">
+    <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyFireSlime.h">
+    <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyThunderSlime.h">
+    <ClInclude Include="game\actor\enemy\elemental\EnemyThunderSlime.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyGiantSlime.h">
+    <ClInclude Include="game\actor\enemy\heavy\EnemyGiantSlime.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyBat.h">
+    <ClInclude Include="game\actor\enemy\flying\EnemyBat.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyBeamDrone.h">
+    <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\system\EnemyFactory.h">
@@ -1546,7 +1603,7 @@
     <ClInclude Include="game\system\GhostDirector.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossCore.h">
+    <ClInclude Include="game\actor\enemy\boss\BossCore.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.h">
@@ -1678,82 +1735,82 @@
     <ClInclude Include="engine\graphics\particle\GPUParticleSystem.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\BaseGimmick.h">
+    <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickMovingFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickTrampoline.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickChikuwaBlock.h">
+    <ClInclude Include="game\actor\gimmick\block\GimmickChikuwaBlock.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickBlinkBlock.h">
+    <ClInclude Include="game\actor\gimmick\block\GimmickBlinkBlock.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickBreakableBlock.h">
+    <ClInclude Include="game\actor\gimmick\block\GimmickBreakableBlock.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickCoin.h">
+    <ClInclude Include="game\actor\gimmick\stage\GimmickCoin.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickHookAnchor.h">
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickHookAnchor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickSinkingFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickSinkingFloor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickSeesawFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickSeesawFloor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickDashPanel.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickDashPanel.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickIceFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickIceFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickTimedSwitch.h">
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickTimedSwitch.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickAppearingFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickAppearingFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickSwitch.h">
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickSwitch.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickEventReceiver.h">
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickEventReceiver.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickHookPullBlock.h">
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickHookPullBlock.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickOneWayFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickOneWayFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickLiquidLevel.h">
+    <ClInclude Include="game\actor\gimmick\stage\GimmickLiquidLevel.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickChainCollapseFloor.h">
+    <ClInclude Include="game\actor\gimmick\block\GimmickChainCollapseFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickRotatingObject.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickRotatingObject.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickPhaseFlipFloor.h">
+    <ClInclude Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickLaserEmitter.h">
+    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserEmitter.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickLaserNode.h">
+    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserNode.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickFireCannon.h">
+    <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h">
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\GimmickStageGate.h">
+    <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\item\BaseItem.h">
@@ -1786,7 +1843,7 @@
     <ClInclude Include="game\actor\player\PlayerClone.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemyBomber.h">
+    <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\system\ItemFactory.h">

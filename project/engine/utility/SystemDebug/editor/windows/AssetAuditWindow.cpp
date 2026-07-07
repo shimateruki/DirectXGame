@@ -18,6 +18,7 @@
 #include <shellapi.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cctype>
 #include <cstdint>
@@ -354,6 +355,87 @@ bool IsModelAssetPath(const std::string& path) {
     return HasExtension(path, { ".gltf", ".glb", ".obj", ".fbx" });
 }
 
+bool IsSpriteAssetPath(const std::string& path) {
+    if (!IsTextureAssetPath(path)) {
+        return false;
+    }
+
+    const std::string lowerPath = ToLowerAscii(NormalizeSlash(path));
+    return lowerPath.find("/sprite/") != std::string::npos ||
+        lowerPath.find("/ui/") != std::string::npos ||
+        lowerPath.find("/generated/text/") != std::string::npos;
+}
+
+constexpr int kAssetFilterAll = 0;
+constexpr int kAssetFilterModel = 1;
+constexpr int kAssetFilterSprite = 2;
+constexpr int kAssetFilterSE = 3;
+constexpr int kAssetFilterAudio = 4;
+constexpr int kAssetFilterCount = 5;
+
+const char* GetAssetFilterLabel(int filter) {
+    switch (filter) {
+    case kAssetFilterModel:
+        return "モデル";
+    case kAssetFilterSprite:
+        return "Sprite";
+    case kAssetFilterSE:
+        return "SE";
+    case kAssetFilterAudio:
+        return "オーディオ";
+    default:
+        return "すべて";
+    }
+}
+
+int GetAssetFilterIndex(const nlohmann::json& item) {
+    const std::string category = JsonString(item, "category");
+    const std::string path = JsonString(item, "path");
+    if (category == "Model" || category == "ModelData" || IsModelAssetPath(path)) {
+        return kAssetFilterModel;
+    }
+    if (category == "Sprite" || IsSpriteAssetPath(path)) {
+        return kAssetFilterSprite;
+    }
+    if (category == "Audio-SE") {
+        return kAssetFilterSE;
+    }
+    if (category == "Audio-BGM" || category == "Audio" || IsAudioAssetPath(path)) {
+        return kAssetFilterAudio;
+    }
+    return kAssetFilterAll;
+}
+
+bool PassesAssetFilter(const nlohmann::json& item, int filter) {
+    return filter == kAssetFilterAll || GetAssetFilterIndex(item) == filter;
+}
+
+ImVec4 GetAssetFilterColor(int filter) {
+    switch (filter) {
+    case kAssetFilterModel:
+        return ImVec4(0.52f, 0.82f, 1.0f, 1.0f);
+    case kAssetFilterSprite:
+        return ImVec4(0.65f, 1.0f, 0.62f, 1.0f);
+    case kAssetFilterSE:
+        return ImVec4(1.0f, 0.77f, 0.43f, 1.0f);
+    case kAssetFilterAudio:
+        return ImVec4(1.0f, 0.62f, 0.82f, 1.0f);
+    default:
+        return ImVec4(0.80f, 0.80f, 0.80f, 1.0f);
+    }
+}
+
+std::string GetCategoryLabel(const std::string& category);
+
+void DrawAssetCategoryBadge(const nlohmann::json& item) {
+    const int filter = GetAssetFilterIndex(item);
+    ImGui::TextColored(GetAssetFilterColor(filter), "%s", GetAssetFilterLabel(filter));
+    const std::string category = JsonString(item, "category");
+    if (!category.empty() && category != GetAssetFilterLabel(filter) && ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("元カテゴリ: %s", GetCategoryLabel(category).c_str());
+    }
+}
+
 bool IsBgmCategory(const std::string& category, const std::string& path) {
     const std::string lowerCategory = ToLowerAscii(category);
     const std::string lowerPath = ToLowerAscii(NormalizeSlash(path));
@@ -405,9 +487,10 @@ void DrawSingleLineCellText(const std::string& text) {
 
 std::string GetCategoryLabel(const std::string& category) {
     if (category == "Texture") return "画像";
+    if (category == "Sprite") return "Sprite";
     if (category == "Model") return "モデル";
     if (category == "ModelData") return "モデルデータ";
-    if (category == "Audio-BGM") return "BGM";
+    if (category == "Audio-BGM") return "オーディオ(BGM)";
     if (category == "Audio-SE") return "SE";
     if (category == "Audio") return "音声";
     return category;
@@ -490,9 +573,19 @@ void AssetAuditWindow::DrawImGui() {
     }
 
     DrawSummary();
+    DrawCategorySummary();
     ImGui::Separator();
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("検索", searchBuffer_, sizeof(searchBuffer_));
+    static const char* kCategoryFilterLabels[] = { "すべて", "モデル", "Sprite", "SE", "オーディオ" };
+    ImGui::SetNextItemWidth(180.0f);
+    ImGui::Combo("分類フィルター", &categoryFilter_, kCategoryFilterLabels, IM_ARRAYSIZE(kCategoryFilterLabels));
+    if (categoryFilter_ != kAssetFilterAll) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("分類解除")) {
+            categoryFilter_ = kAssetFilterAll;
+        }
+    }
 
     if (ImGui::BeginTabBar("AssetAuditTabs")) {
         if (ImGui::BeginTabItem("重い素材")) {
@@ -510,6 +603,10 @@ void AssetAuditWindow::DrawImGui() {
         ImGui::EndTabBar();
     }
 
+    if (pendingDeletePopupRequested_) {
+        pendingDeletePopupRequested_ = false;
+        ImGui::OpenPopup("AssetAuditDeleteConfirm");
+    }
     DrawDeleteConfirmPopup();
 #endif
 }
@@ -610,6 +707,56 @@ void AssetAuditWindow::DrawSummary() {
 #endif
 }
 
+void AssetAuditWindow::DrawCategorySummary() {
+#ifdef USE_IMGUI
+    std::array<int, kAssetFilterCount> heavyCounts{};
+    std::array<int, kAssetFilterCount> unusedCounts{};
+
+    for (const auto& item : ArrayOrEmpty(latestReport_, "heavyAssets")) {
+        if (!item.is_object()) continue;
+        const int index = GetAssetFilterIndex(item);
+        if (index > kAssetFilterAll && index < kAssetFilterCount) {
+            ++heavyCounts[static_cast<size_t>(index)];
+        }
+    }
+
+    for (const auto& item : ArrayOrEmpty(latestReport_, "unusedAssets")) {
+        if (!item.is_object()) continue;
+        const int index = GetAssetFilterIndex(item);
+        if (index > kAssetFilterAll && index < kAssetFilterCount) {
+            ++unusedCounts[static_cast<size_t>(index)];
+        }
+    }
+
+    ImGui::TextDisabled("分類別に確認できます。ボタンを押すと一覧がその分類だけになります。");
+    if (ImGui::BeginTable("AssetAuditCategorySummary", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("分類");
+        ImGui::TableSetupColumn("重い素材");
+        ImGui::TableSetupColumn("未使用候補");
+        ImGui::TableSetupColumn("表示");
+        ImGui::TableHeadersRow();
+
+        for (int filter = kAssetFilterModel; filter < kAssetFilterCount; ++filter) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(GetAssetFilterColor(filter), "%s", GetAssetFilterLabel(filter));
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%d 件", heavyCounts[static_cast<size_t>(filter)]);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%d 件", unusedCounts[static_cast<size_t>(filter)]);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::PushID(filter);
+            if (ImGui::SmallButton(categoryFilter_ == filter ? "表示中" : "表示")) {
+                categoryFilter_ = filter;
+            }
+            ImGui::PopID();
+        }
+
+        ImGui::EndTable();
+    }
+#endif
+}
+
 void AssetAuditWindow::DrawHeavyAssets() {
 #ifdef USE_IMGUI
     const auto& heavyAssets = ArrayOrEmpty(latestReport_, "heavyAssets");
@@ -636,7 +783,7 @@ void AssetAuditWindow::DrawHeavyAssets() {
         ImGui::TableHeadersRow();
 
         for (const auto& item : heavyAssets) {
-            if (!item.is_object() || !MatchesSearch(item)) continue;
+            if (!item.is_object() || !MatchesSearch(item) || !PassesAssetFilter(item, categoryFilter_)) continue;
             if (drawnCount >= maxRowsToDraw_) {
                 truncated = true;
                 break;
@@ -683,7 +830,7 @@ void AssetAuditWindow::DrawUnusedAssets() {
         ImGui::TableHeadersRow();
 
         for (const auto& item : unusedAssets) {
-            if (!item.is_object() || !MatchesSearch(item)) continue;
+            if (!item.is_object() || !MatchesSearch(item) || !PassesAssetFilter(item, categoryFilter_)) continue;
             if (drawnCount >= maxRowsToDraw_) {
                 truncated = true;
                 break;
@@ -693,7 +840,7 @@ void AssetAuditWindow::DrawUnusedAssets() {
             const std::string path = JsonString(item, "path");
 
             ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(GetCategoryLabel(JsonString(item, "category")).c_str());
+            ImGui::TableSetColumnIndex(0); DrawAssetCategoryBadge(item);
             ImGui::TableSetColumnIndex(1); ImGui::TextWrapped("%s", path.c_str());
             ImGui::TableSetColumnIndex(2); ImGui::TextUnformatted(JsonString(item, "sizeText").c_str());
             ImGui::TableSetColumnIndex(3); ImGui::TextWrapped("%s", JsonString(item, "reason").c_str());
@@ -701,7 +848,7 @@ void AssetAuditWindow::DrawUnusedAssets() {
             ImGui::PushID(path.c_str());
             if (ImGui::Button(ICON_FA_TRASH_ALT " 削除", ImVec2(-1.0f, 0.0f))) {
                 pendingDeletePath_ = path;
-                ImGui::OpenPopup("AssetAuditDeleteConfirm");
+                pendingDeletePopupRequested_ = true;
             }
             ImGui::PopID();
             ImGui::TableSetColumnIndex(5); DrawAssetPreview(item, 54.0f);
@@ -757,15 +904,16 @@ void AssetAuditWindow::DrawDeleteConfirmPopup() {
         ImGui::Separator();
         ImGui::TextWrapped("%s", pendingDeletePath_.c_str());
         ImGui::Spacing();
-        ImGui::TextWrapped("完全削除ではなく Resources/.trash/asset_audit/ へ退避します。PNG/DDSやGLTF/BINなどの相方ファイルがある場合は一緒に退避します。");
+        ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.35f, 1.0f), "この操作は完全削除です。元に戻せません。");
+        ImGui::TextWrapped("PNG/DDSやGLTF/BINなどの相方ファイルがある場合は一緒に削除します。必要な素材ではないか確認してから実行してください。");
         ImGui::Spacing();
 
-        if (ImGui::Button(ICON_FA_TRASH_ALT " 削除する", ImVec2(150.0f, 0.0f))) {
-            std::vector<std::string> movedPaths;
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 完全削除する", ImVec2(150.0f, 0.0f))) {
+            std::vector<std::string> deletedPaths;
             std::string errorMessage;
-            if (MoveAssetToTrash(pendingDeletePath_, movedPaths, errorMessage)) {
-                RemoveMovedAssetsFromReport(movedPaths);
-                lastStatus_ = "アセットを退避しました: " + std::to_string(movedPaths.size()) + " 件。必要なら Resources/.trash/asset_audit/ から戻せます。";
+            if (DeleteAssetFiles(pendingDeletePath_, deletedPaths, errorMessage)) {
+                RemoveDeletedAssetsFromReport(deletedPaths);
+                lastStatus_ = "アセットを完全削除しました: " + std::to_string(deletedPaths.size()) + " 件。";
             } else {
                 lastStatus_ = "アセット削除に失敗しました: " + errorMessage;
             }
@@ -1014,8 +1162,8 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
 #endif
 }
 
-bool AssetAuditWindow::MoveAssetToTrash(const std::string& relativePath, std::vector<std::string>& movedPaths, std::string& errorMessage) {
-    movedPaths.clear();
+bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage) {
+    deletedPaths.clear();
     errorMessage.clear();
 
     const std::string normalizedPath = NormalizeSlash(relativePath);
@@ -1042,15 +1190,12 @@ bool AssetAuditWindow::MoveAssetToTrash(const std::string& relativePath, std::ve
         return false;
     }
 
-    const fs::path trashRoot = projectRoot / "Resources" / ".trash" / "asset_audit" / TimestampText();
-
     try {
         for (const fs::path& target : targets) {
-            const fs::path relativeFromResources = fs::relative(target, resourcesRoot);
-            fs::path trashPath = UniqueTrashPath(trashRoot / relativeFromResources);
-            fs::create_directories(trashPath.parent_path());
-            fs::rename(target, trashPath);
-            movedPaths.push_back(RelativeToProjectSlash(target));
+            const std::string deletedPath = RelativeToProjectSlash(target);
+            if (fs::remove(target)) {
+                deletedPaths.push_back(deletedPath);
+            }
         }
     } catch (const std::exception& e) {
         errorMessage = e.what();
@@ -1060,14 +1205,14 @@ bool AssetAuditWindow::MoveAssetToTrash(const std::string& relativePath, std::ve
     return true;
 }
 
-void AssetAuditWindow::RemoveMovedAssetsFromReport(const std::vector<std::string>& movedPaths) {
-    if (!hasReport_ || !latestReport_.is_object() || movedPaths.empty()) {
+void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::string>& deletedPaths) {
+    if (!hasReport_ || !latestReport_.is_object() || deletedPaths.empty()) {
         return;
     }
 
-    std::set<std::string> movedSet;
-    for (std::string path : movedPaths) {
-        movedSet.insert(ToLowerAscii(NormalizeSlash(std::move(path))));
+    std::set<std::string> deletedSet;
+    for (std::string path : deletedPaths) {
+        deletedSet.insert(ToLowerAscii(NormalizeSlash(std::move(path))));
     }
 
     auto removeFromArray = [&](const char* key) {
@@ -1078,7 +1223,7 @@ void AssetAuditWindow::RemoveMovedAssetsFromReport(const std::vector<std::string
         auto& array = latestReport_[key];
         array.erase(std::remove_if(array.begin(), array.end(), [&](const nlohmann::json& item) {
             const std::string itemPath = ToLowerAscii(NormalizeSlash(JsonString(item, "path")));
-            return movedSet.find(itemPath) != movedSet.end();
+            return deletedSet.find(itemPath) != deletedSet.end();
         }), array.end());
     };
 

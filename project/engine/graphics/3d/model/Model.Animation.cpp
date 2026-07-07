@@ -523,366 +523,113 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
 // ==========================================
 
 // ========================================================================
-// Model 基本初期化とGPUバッファ管理
+// Model アニメーション制御
 // ------------------------------------------------------------------------
-// モデルデータの読み込み結果をGPUへ渡すための初期化、ボーン行列用の
-// バッファ更新、頂点数などの軽量な問い合わせを担当する。
+// ノードアニメーションの補間、ノード検索、スケルトンへの適用入口を
+// まとめて管理する。
 // ========================================================================
 
-// モデル共通情報とファイル名を受け取り、モデルデータ・GPUリソース・スケルトンを初期化する。
-void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
-    assert(common);
-    common_ = common;
-    DirectXCommon* dxCommon = common_->GetDxCommon();
-
-    // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
-    modelData_ = LoadFile(directoryPath, filename);
-    modelData_.meshes.erase(
-        std::remove_if(modelData_.meshes.begin(), modelData_.meshes.end(),
-            [](const Mesh& mesh) {
-                return mesh.vertices.empty() || mesh.indices.empty();
-            }),
-        modelData_.meshes.end());
-
-    // --- AABB（モデルのサイズ）計算 ---
-    Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
-    Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
-    bool hasVertices = false;
-
-    for (const auto& mesh : modelData_.meshes) {
-        for (const auto& vertex : mesh.vertices) {
-            // 全メッシュの全頂点から最小・最大を割り出す
-            min.x = (std::min)(min.x, vertex.position.x);
-            min.y = (std::min)(min.y, vertex.position.y);
-            min.z = (std::min)(min.z, vertex.position.z);
-            max.x = (std::max)(max.x, vertex.position.x);
-            max.y = (std::max)(max.y, vertex.position.y);
-            max.z = (std::max)(max.z, vertex.position.z);
-            hasVertices = true;
-        }
-    }
-
-    if (hasVertices) {
-        // カリング用のローカルAABBを保存
-        localAabbMin_ = min;
-        localAabbMax_ = max;
-        // 中心座標とサイズも一応計算して保持
-        center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
-        size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
-    }
-    else {
-        localAabbMin_ = { -0.5f, -0.5f, -0.5f };
-        localAabbMax_ = { 0.5f, 0.5f, 0.5f };
-        center_ = { 0.0f, 0.0f, 0.0f };
-        size_ = { 1.0f, 1.0f, 1.0f };
-    }
-
-    // 2. マテリアルごとにテクスチャをロード
-    for (auto& material : modelData_.materials) {
-        material.textureHandle = TextureManager::GetInstance()->Load(
-            material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath);
-        if (material.hasNormalMap && !material.normalMapPath.empty()) {
-            material.normalMapHandle = TextureManager::GetInstance()->Load(material.normalMapPath, true);
-        }
-        if (material.hasOrmMap && !material.ormMapPath.empty()) {
-            material.ormMapHandle = TextureManager::GetInstance()->Load(material.ormMapPath, true);
-        }
-    }
-
-    // 3. メッシュごとに頂点バッファ・インデックスバッファを作成
-    for (auto& mesh : modelData_.meshes) {
-        if (mesh.vertices.empty() || mesh.indices.empty()) {
-            continue;
-        }
-        // 頂点バッファ
-        mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
-        if (!mesh.vertexResource) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + filename);
-            continue;
-        }
-        mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
-        mesh.vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * mesh.vertices.size());
-        mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
-
-        VertexData* vertexData = nullptr;
-        HRESULT vertexMapResult = mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-        if (FAILED(vertexMapResult) || !vertexData) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + filename);
-            mesh.vertexResource.Reset();
-            continue;
-        }
-        std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
-        mesh.vertexResource->Unmap(0, nullptr);
-
-        // インデックスバッファ
-        mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
-        if (!mesh.indexResource) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + filename);
-            mesh.vertexResource.Reset();
-            continue;
-        }
-        mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
-        mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
-        mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-
-        uint32_t* indexData = nullptr;
-        HRESULT indexMapResult = mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-        if (FAILED(indexMapResult) || !indexData) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + filename);
-            mesh.vertexResource.Reset();
-            mesh.indexResource.Reset();
-            continue;
-        }
-        std::memcpy(indexData, mesh.indices.data(), sizeof(uint32_t) * mesh.indices.size());
-        mesh.indexResource->Unmap(0, nullptr);
-    }
-
-    // 4. 定数バッファ(Material)の作成と初期設定
-    materialData_ = nullptr;
-    materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
-    if (!materialResource_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + filename);
-        return;
-    }
-
-    HRESULT materialMapResult = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-    if (FAILED(materialMapResult) || !materialData_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + filename);
-        materialResource_.Reset();
-        materialData_ = nullptr;
-        return;
-    }
-    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    materialData_->enableLighting = true;
-    materialData_->selectedLighting = 2; // 隊長の設定値を維持
-    materialData_->shininess = 50;
-    materialData_->materialType = 0;
-    materialData_->roughness = 0.5f;
-    materialData_->metallic = 0.0f;
-    materialData_->enableNormalMap = 1;
-    materialData_->enableEnvMap = 0;
-    materialData_->envIntensity = 1.0f;
-    materialData_->emissive = 1.0f;
-    materialData_->time = 0.0f;
-    materialData_->portalClipEnabled = 0.0f;
-    materialData_->portalClipProgress = 0.0f;
-    materialData_->portalClipCenter = { 0.0f, 0.0f, 0.0f };
-    materialData_->portalClipEdgeWidth = 0.12f;
-    materialData_->portalClipNormal = { 0.0f, 0.0f, 1.0f };
-    materialData_->portalClipDissolve = 0.18f;
-    materialData_->portalClipColor = { 1.0f, 0.82f, 0.36f, 0.80f };
-    materialData_->uvTransform = math_.MakeIdentity4x4();
-
-    if (const MaterialData* primaryMaterial = GetPrimaryMaterialData()) {
-        materialData_->color = primaryMaterial->baseColorFactor;
-        materialData_->roughness = primaryMaterial->roughness;
-        materialData_->metallic = primaryMaterial->metallic;
-        materialData_->enableNormalMap = primaryMaterial->hasNormalMap ? 1 : 0;
-    }
-
-    // 5. ボーン用バッファの作成 
-    CreateBoneBuffer();
-}
-// ==========================================
-// ボーンバッファの作成とSRV登録 
-// ==========================================
-// スキニング用のボーン行列バッファを作成し、SRVとしてシェーダーから参照できる状態にする。
-void Model::CreateBoneBuffer() {
-    DirectXCommon* dxCommon = common_->GetDxCommon();
-
-    if (modelData_.bones.empty()) {
-        boneResource_.Reset();
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // 1. リソース作成
-    UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
-    boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
-    if (!boneResource_) {
-        DebugConsole::GetInstance()->AddLog("Model bone buffer creation failed.");
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // 2. マッピング
-    HRESULT boneMapResult = boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
-    if (FAILED(boneMapResult) || !boneMappedData_) {
-        DebugConsole::GetInstance()->AddLog("Model bone buffer map failed.");
-        boneResource_.Reset();
-        boneMappedData_ = nullptr;
-        boneSrvIndex_ = 0;
-        return;
-    }
-
-    // ★重要: 初期値を「単位行列」で埋めておく
-    // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
-    Math math;
-    for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        boneMappedData_[i].finalMatrix = math.MakeIdentity4x4();
-    }
-
-    // 3. SRVを作成 (StructuredBuffer)
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.NumElements = UINT(modelData_.bones.size());
-    srvDesc.Buffer.StructureByteStride = sizeof(BoneForGPU);
-    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-    // SRVManagerでディスクリプタを確保して作成
-    boneSrvIndex_ = SRVManager::GetInstance()->Allocate();
-    SRVManager::GetInstance()->CreateSRVforResource(boneSrvIndex_, boneResource_.Get(), srvDesc);
+// 通常更新用の入口として、強制更新なしでモデルのアニメーションとボーン情報を更新する。
+void Model::Update() {
+    Update(false);
 }
 
-// ==========================================
-// ボーン行列の更新 
-// ==========================================
-// 現在のスケルトン行列をGPU側のボーンバッファへ転送する。
-void Model::UpdateBoneBuffer() {
-    if (!boneMappedData_) {
-        return;
+// 再生状態や強制更新フラグに応じて、アニメーション時間・スケルトン・GPUバッファを更新する。
+void Model::Update(bool force) {
+    uint32_t currentFrame = DirectXCommon::GetInstance()->GetFrameCount();
+    if (!force && lastUpdateFrame_ == currentFrame) {
+        return; // すでにこのフレームで更新済み
     }
+    lastUpdateFrame_ = currentFrame;
 
-    if (!modelData_.hasSkinning && !modelData_.usesNodeAnimationProxy) {
-        for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
-        }
-        return;
-    }
-    // ボーンごとに計算
-    for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        // ボーン名に対応するJointを探す
-        auto it = modelData_.skeleton.jointMap.find(modelData_.bones[i].name);
+    UpdateSkeleton(modelData_.skeleton);
 
-        // FinalMatrix = InverseBindPose * SkeletonSpaceMatrix
-        if (it != modelData_.skeleton.jointMap.end()) {
-            const Joint& joint = modelData_.skeleton.joints[it->second];
-            boneMappedData_[i].finalMatrix =
-                math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, joint.skeletonSpaceMatrix);
-        }
-        else {
-            // ノードが見つからない場合は単位行列を入れる
-            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
-        }
-    }
+    //  ボーン情報の更新
+    UpdateBoneBuffer();
 }
 
-// モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
-{
-    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    // 1. マテリアル設定
-    if (overrideMaterialResource) {
-        commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
+// --- アニメーション計算用ヘルパー ---
+// =========================================================
+// 座標・スケール用 (Vector3) の補間
+// =========================================================
+// Vector3キーを現在時刻に合わせて線形補間し、位置やスケールの値を求める。
+Vector3 Model::CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time) {
+    // キーがない場合
+    if (keyframes.empty()) {
+        return { 0.0f, 0.0f, 0.0f };
     }
-    else if (materialResource_) {
-        commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-    }
-
-    // 2. 定数バッファ設定
-    if (wvpResource) commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-    // (RootParam[2] はテクスチャ)
-    if (directionalLightResource) commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-    if (cameraResource) commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
-    if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
-    if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
-
-
-    if (!modelData_.bones.empty() && boneResource_ && boneSrvIndex_ != 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
+    // キーが1つだけ、または時間が最初のキーより前の場合
+    if (keyframes.size() == 1 || time <= keyframes[0].time) {
+        return keyframes[0].value;
     }
 
-    uint32_t envMapHandle = LightManager::GetInstance()->GetEnvironmentMapHandle();
-    if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
+    // 時間の範囲を探す (線形探索)
+    for (size_t i = 0; i < keyframes.size() - 1; ++i) {
+        // 現在の時間が、このキーと次のキーの間にあるか？
+        if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
+            // 0.0～1.0 の割合(t)を計算
+            float t = (time - keyframes[i].time) / (keyframes[i + 1].time - keyframes[i].time);
+
+            // 線形補間 (Lerp)
+            Vector3 result;
+            result.x = std::lerp(keyframes[i].value.x, keyframes[i + 1].value.x, t);
+            result.y = std::lerp(keyframes[i].value.y, keyframes[i + 1].value.y, t);
+            result.z = std::lerp(keyframes[i].value.z, keyframes[i + 1].value.z, t);
+            return result;
+        }
     }
-    uint32_t handleToBind = normalMapHandle;
-    if (handleToBind == 0) {
-        // 画像が設定されていない場合はダミーの白画像を使う
-        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
-    uint32_t ormHandleToBind = ormMapHandle;
 
-    // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
-    if (ormHandleToBind <= 0 || ormHandleToBind >= DirectXCommon::kMaxSRVCount) {
-        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
-
-    // 次のインデックス(例: 10番)にORMマップをセット！
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
-    // 3. メッシュごとの描画ループ
-    for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
-        if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
-            continue;
-        }
-        const auto& mesh = modelData_.meshes[meshIndex];
-        if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
-            continue;
-        }
-
-        const MaterialData* meshMaterial = nullptr;
-        if (mesh.materialIndex < modelData_.materials.size()) {
-            meshMaterial = &modelData_.materials[mesh.materialIndex];
-        }
-
-        uint32_t meshNormalHandle = normalMapHandle;
-        if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) &&
-            meshMaterial && meshMaterial->hasNormalMap &&
-            meshMaterial->normalMapHandle > 0 && meshMaterial->normalMapHandle < DirectXCommon::kMaxSRVCount) {
-            meshNormalHandle = meshMaterial->normalMapHandle;
-        }
-        if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
-            meshNormalHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
-        }
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
-
-        uint32_t meshOrmHandle = ormMapHandle;
-        if ((meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) &&
-            meshMaterial && meshMaterial->hasOrmMap &&
-            meshMaterial->ormMapHandle > 0 && meshMaterial->ormMapHandle < DirectXCommon::kMaxSRVCount) {
-            meshOrmHandle = meshMaterial->ormMapHandle;
-        }
-        if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
-            meshOrmHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
-        }
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
-
-        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
-        commandList->IASetIndexBuffer(&mesh.indexBufferView);
-
-        if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
-            // エディタで画像が選ばれていたら、そっちを優先して貼る！
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
-        }
-        else if (mesh.materialIndex < modelData_.materials.size()) {
-            // 選ばれていない場合は、モデル本来のテクスチャを貼る
-            uint32_t handle = modelData_.materials[mesh.materialIndex].textureHandle;
-            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
-        }
-
-        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);
-    }
+    // 時間が最後のキーを超えている場合は、最後の値を返す
+    return keyframes.back().value;
 }
 
-// モデル全体の頂点数を返し、統計表示や軽量化確認で使えるようにする。
-uint32_t Model::GetVertexCount() const {
-    uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.vertices.size());
-    return count;
+// =========================================================
+// 回転用 (Quaternion) の補間
+// =========================================================
+// Quaternionキーを現在時刻に合わせて球面線形補間し、回転値を求める。
+Quaternion Model::CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time) {
+    // キーがない場合
+    if (keyframes.empty()) {
+        return { 0.0f, 0.0f, 0.0f, 1.0f }; // 単位クォータニオン
+    }
+    // キーが1つ、または時間が最初より前
+    if (keyframes.size() == 1 || time <= keyframes[0].time) {
+        return keyframes[0].value;
+    }
+
+    // 時間の範囲を探す
+    for (size_t i = 0; i < keyframes.size() - 1; ++i) {
+        if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
+            float t = (time - keyframes[i].time) / (keyframes[i + 1].time - keyframes[i].time);
+
+            // 球面線形補間 (Slerp)
+            return Math::Slerp(keyframes[i].value, keyframes[i + 1].value, t);
+        }
+    }
+
+    return keyframes.back().value;
+}
+// ノード階層から指定名のノードを再帰的に探し、アニメーション適用先を見つける。
+Model::Node* Model::FindNode(Node& node, const std::string& name) {
+    if (node.name == name) return &node;
+    for (auto& child : node.children) {
+        Node* result = FindNode(child, name);
+        if (result) return result;
+    }
+    return nullptr;
 }
 
-// インデックス数から概算ポリゴン数を返し、描画負荷の目安にする。
-uint32_t Model::GetPolygonCount() const {
-    uint32_t count = 0;
-    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.indices.size() / 3);
-    return count;
+// 指定アニメーション名に対応するアニメーションをスケルトンへ適用する。
+void Model::ApplyAnimation(const Animation& animation, float time) {
+    ApplyAnimationToSkeleton(modelData_.skeleton, animation, time);
 }
-// ==========================================
-// 読み込み: Assimpのメッシュごとにデータを分ける
-// ==========================================
+// アニメーション名からAnimationデータを探し、見つからない場合はnullptrを返す。
+const Model::Animation* Model::GetAnimation(const std::string& name) const {
+    for (const auto& animation : modelData_.animations) {
+        if (animation.name == name) {
+            return &animation;
+        }
+    }
+    // 見つからなければ nullptr
+    return nullptr;
+}

@@ -4,6 +4,7 @@
 #include "SRVManager.h" 
 #include"ImguiManager.h"
 #include"LightManager.h"
+// ウィンドウ、DirectX、入力、音声、ImGui、各種マネージャを起動順に初期化する。
 
 void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -29,6 +30,7 @@ void Framework::Initialize() {
     LightManager::GetInstance()->Initialize(dxCommon_);
 
 }
+// GPU処理の完了を待ってから、音声・ImGui・モデル・DirectXなどを終了する。
 
 void Framework::Finalize() {
     if (dxCommon_) {
@@ -42,6 +44,7 @@ void Framework::Finalize() {
     dxCommon_->Finalize();
     CoUninitialize();
 }
+// ウィンドウが閉じられるまで、更新と描画を毎フレーム実行する。
 
 
 

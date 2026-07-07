@@ -1,11 +1,13 @@
 #include "SRVManager.h"
 #include "DirectXCommon.h"
 #include <cassert>
+// SRVManagerのシングルトンインスタンスを返す。
 
 SRVManager* SRVManager::GetInstance() {
     static SRVManager instance;
     return &instance;
 }
+// CBV/SRV/UAV用のシェーダー可視ディスクリプタヒープを作成する。
 
 void SRVManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
@@ -27,6 +29,7 @@ void SRVManager::Initialize(DirectXCommon* dxCommon) {
 
     nextIndex_ = 2;
 }
+// 次に空いているSRVスロットへリソースを登録し、使用したハンドル番号を返す。
 
 uint32_t SRVManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
     // 範囲外チェック
@@ -44,6 +47,7 @@ uint32_t SRVManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESO
     // インデックスを返して、カウンタを進める
     return nextIndex_++;
 }
+// グラフィックスパイプライン用に、指定SRVをルートディスクリプタテーブルへ設定する。
 
 void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
     // 指定されたハンドルのGPUアドレスを計算してセット
@@ -51,6 +55,7 @@ void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* comma
     gpuHandle.ptr += (descriptorSize_ * srvHandle);
     commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
+// コマンドリストへSRVディスクリプタヒープを設定し、シェーダーから参照可能にする。
 
 void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     assert(srvDescriptorHeap_);
@@ -59,6 +64,7 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
     commandList->SetDescriptorHeaps(1, pHeaps);
 }
+// SRVスロットだけを先に確保し、後からリソースを差し替えられるようにする。
 
 uint32_t SRVManager::Allocate() {
     // 上限チェック
@@ -71,6 +77,7 @@ uint32_t SRVManager::Allocate() {
 }
 
 //  CreateSRVforResource
+// 既に確保済みのSRVスロットへ、指定リソースのSRVを作成し直す。
 void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
     // ヒープの先頭ハンドルを取得
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
@@ -81,6 +88,7 @@ void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource,
     // そこで SRV を作成する
     device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
 }
+// SRVハンドル番号からGPU側ディスクリプタハンドルを計算して返す。
 
 D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
     // 範囲外チェック (任意ですがあると安全)
@@ -96,12 +104,14 @@ D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
 
     return handle;
 }
+// コンピュートパイプライン用に、指定SRVをルートディスクリプタテーブルへ設定する。
 
 void SRVManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
     // 指定されたハンドルのGPUアドレスを計算して、Compute用のルートパラメータにセット
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = GetGPUDescriptorHandle(srvHandle);
     commandList->SetComputeRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
+// SRVハンドル番号からCPU側ディスクリプタハンドルを計算して返す。
 
 D3D12_CPU_DESCRIPTOR_HANDLE SRVManager::GetCPUDescriptorHandle(uint32_t index) {
     // 範囲外チェック

@@ -194,13 +194,14 @@ function Get-AssetCategory {
     param([System.IO.FileInfo]$File)
 
     $ext = $File.Extension.ToLowerInvariant()
+    $relative = (ConvertTo-RelativeSlash $File.FullName).Replace('\', '/').ToLowerInvariant()
     switch ($ext) {
-        ".png"  { return "Texture" }
-        ".dds"  { return "Texture" }
-        ".jpg"  { return "Texture" }
-        ".jpeg" { return "Texture" }
-        ".bmp"  { return "Texture" }
-        ".tga"  { return "Texture" }
+        ".png"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".dds"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".jpg"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".jpeg" { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".bmp"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
+        ".tga"  { if ($relative.Contains("/sprite/") -or $relative.Contains("/ui/") -or $relative.Contains("/generated/text/")) { return "Sprite" }; return "Texture" }
         ".gltf" { return "Model" }
         ".glb"  { return "Model" }
         ".obj"  { return "Model" }
@@ -642,6 +643,7 @@ foreach ($file in $allFiles) {
     $thresholdBytes = 0
     switch ($category) {
         "Texture" { $thresholdBytes = [int64]($HeavyTextureMB * 1024 * 1024) }
+        "Sprite" { $thresholdBytes = [int64]($HeavyTextureMB * 1024 * 1024) }
         "Model" { $thresholdBytes = [int64]($HeavyModelMB * 1024 * 1024) }
         "ModelData" { $thresholdBytes = [int64]($HeavyModelMB * 1024 * 1024) }
         "Audio" { $thresholdBytes = [int64]($HeavyAudioMB * 1024 * 1024) }
@@ -663,7 +665,7 @@ foreach ($file in $allFiles) {
         severity = "info"
     }
 
-    if ($category -eq "Texture") {
+    if ($category -eq "Texture" -or $category -eq "Sprite") {
         $texture = Get-TextureInfo $file
         $info.width = [int]$texture.width
         $info.height = [int]$texture.height

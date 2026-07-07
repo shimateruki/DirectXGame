@@ -22,6 +22,7 @@ private:
     void UpdateAuditProcess();
     bool LoadLatestReport();
     void DrawSummary();
+    void DrawCategorySummary();
     void DrawHeavyAssets();
     void DrawUnusedAssets();
     void DrawMissingReferences();
@@ -34,8 +35,8 @@ private:
     void RemoveModelPreviews();
     int CountModelPreviews() const;
     bool MatchesSearch(const nlohmann::json& item) const;
-    bool MoveAssetToTrash(const std::string& relativePath, std::vector<std::string>& movedPaths, std::string& errorMessage);
-    void RemoveMovedAssetsFromReport(const std::vector<std::string>& movedPaths);
+    bool DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage);
+    void RemoveDeletedAssetsFromReport(const std::vector<std::string>& deletedPaths);
 
 private:
     DebugEditor* editor_ = nullptr;
@@ -43,9 +44,11 @@ private:
     bool hasReport_ = false;
     char searchBuffer_[256] = "";
     std::string pendingDeletePath_;
+    bool pendingDeletePopupRequested_ = false;
     std::string lastStatus_ = "必要なタイミングで監査ツールを実行、または前回レポートを読み込んでください。";
     bool showPreviewThumbnails_ = false;
     bool auditRunning_ = false;
+    int categoryFilter_ = 0;
     int maxRowsToDraw_ = 200;
     std::future<std::uint32_t> auditFuture_;
     std::map<std::string, uint32_t> previewTextureHandles_;

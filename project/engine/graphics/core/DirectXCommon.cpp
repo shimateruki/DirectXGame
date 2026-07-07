@@ -13,17 +13,20 @@
 #include"ImguiManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
+// デバッグ出力へ文字列を流し、DirectX初期化やリソース生成の状態を追えるようにする。
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
 std::string ConvertString(const std::wstring& str);
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "dxcompiler.lib")
+// DirectXCommonのシングルトンインスタンスを返す。
 
 DirectXCommon* DirectXCommon::GetInstance() {
 	static DirectXCommon instance;
 	return &instance;
 }
+// DirectX12のデバイス、描画先、同期、シェーダーコンパイラ、GPU計測をまとめて初期化する。
 
 void DirectXCommon::Initialize(WinApp* winApp) {
 	assert(winApp);
@@ -85,6 +88,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	// 3. GPUのタイマーの周波数（1秒間に何回カウントするか）を取得
 	commandQueue_->GetTimestampFrequency(&gpuFrequency_);
 }
+// バックバッファへ直接描画する前に、コマンドリストと描画ターゲット状態を準備する。
 
 void DirectXCommon::PreDraw() {
 	frameCount_++;
@@ -133,6 +137,7 @@ void DirectXCommon::PreDraw() {
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
+// CPUから書き込めるUploadヒープのバッファリソースを作成する。
 
 
 
@@ -164,6 +169,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 	}
 	return resource;
 }
+// 固定FPS制御の基準時刻を初期化する。
 
 
 void DirectXCommon::InitalaizeFixFPS()
@@ -171,6 +177,7 @@ void DirectXCommon::InitalaizeFixFPS()
 	// 現在の時刻を取得して記録
 	reference_ = std::chrono::steady_clock::now();
 }
+// 1フレームが短すぎる場合に待機し、60FPS基準のフレーム間隔へ寄せる。
 
 void DirectXCommon::UpdateFixFPS()
 {
@@ -195,6 +202,7 @@ void DirectXCommon::UpdateFixFPS()
 	// 現在の時刻を再取得
 	reference_ = std::chrono::steady_clock::now();
 }
+// HLSLファイルをDXCでコンパイルし、生成されたシェーダーバイナリを返す。
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
 {
@@ -236,6 +244,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 
 	return shaderBlob;
 }
+// GPU処理の完了を待ってから、DirectX関連リソースを安全に解放する。
 
 void DirectXCommon::Finalize() {
 	if (!commandQueue_ || !fence_) return;
@@ -266,6 +275,7 @@ void DirectXCommon::Finalize() {
 
 	Log("[DirectXCommon] Finalized successfully.\n");
 }
+// 描画後のバリア、クエリ解決、コマンド実行、Present、GPU同期をまとめて行う。
 
 
 void DirectXCommon::PostDraw() {
@@ -318,6 +328,7 @@ void DirectXCommon::PostDraw() {
 		WaitForSingleObject(fenceEvent_, INFINITE);
 	}
 }
+// DXGIファクトリと高性能GPUアダプタを選び、D3D12デバイスを作成する。
 void DirectXCommon::InitializeDXGIDevice() {
 
 #ifdef _DEBUG
@@ -369,6 +380,7 @@ void DirectXCommon::InitializeDXGIDevice() {
 	}
 #endif
 }
+// コマンドキュー、アロケータ、コマンドリストを作成する。
 
 void DirectXCommon::CreateCommand() {
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
@@ -379,6 +391,7 @@ void DirectXCommon::CreateCommand() {
 	hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator_.Get(), nullptr, IID_PPV_ARGS(&commandList_));
 	assert(SUCCEEDED(hr));
 }
+// ウィンドウへ表示するためのスワップチェーンを作成する。
 
 void DirectXCommon::CreateSwapChain() {
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
@@ -392,6 +405,7 @@ void DirectXCommon::CreateSwapChain() {
 	HRESULT hr = dxgiFactory_->CreateSwapChainForHwnd(commandQueue_.Get(), winApp_->GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain_.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 }
+// スワップチェーンの各バックバッファに対応するRTVを作成する。
 
 void DirectXCommon::CreateRTV() {
 	rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, (UINT)backBufferCount_, false);
@@ -407,6 +421,7 @@ void DirectXCommon::CreateRTV() {
 		device_->CreateRenderTargetView(swapChainResources_[i].Get(), &rtvDesc, rtvHandle);
 	}
 }
+// 深度ステンシル用のヒープと深度バッファを作成し、DSVへ登録する。
 
 void DirectXCommon::CreateDSV() {
 	dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
@@ -419,6 +434,7 @@ void DirectXCommon::CreateDSV() {
 
 
 }
+// GPU同期に使うフェンスとイベントを作成する。
 void DirectXCommon::CreateFence() {
 	HRESULT hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
 	assert(SUCCEEDED(hr));
@@ -426,6 +442,7 @@ void DirectXCommon::CreateFence() {
 	assert(fenceEvent_ != nullptr);
 	fenceValue_ = 0;
 }
+// 指定サイズの深度ステンシルテクスチャを作成する。
 
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureResource(int32_t width, int32_t height) {
@@ -458,6 +475,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 
 	return resource;
 }
+// 読み込んだ画像メタデータに合わせてGPUテクスチャリソースを作成する。
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata& metadata)
 {
@@ -507,6 +525,7 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 		assert(SUCCEEDED(hr));
 	}
 }
+// 画像ファイルをDirectXTexで読み込み、必要なミップマップや色空間変換を行う。
 
 
 DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bool forceSRGB)
@@ -574,6 +593,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bo
 	return mipImages;
 }
 
+// UTF-8文字列をワイド文字列へ変換し、Win32やDXCなどのWCHAR APIへ渡せる形にする。
 std::wstring DirectXCommon::ConvertString(const std::string& str) {
 	if (str.empty()) {
 
@@ -587,6 +607,7 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
 	MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
 	return result;
 }
+// コマンドキューへフェンスを打ち、必要に応じてGPU完了まで待つ。
 void DirectXCommon::FlushCommandQueue(bool reset) {
 	// --- 安全にコマンドリストを閉じる ---
 	HRESULT hr = S_OK;
@@ -620,6 +641,7 @@ void DirectXCommon::FlushCommandQueue(bool reset) {
 		assert(SUCCEEDED(hr) && "CommandList reset failed");
 	}
 }
+// 指定種類と数のディスクリプタヒープを作成する。
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DirectXCommon::CreateDescriptorHeap(
 	D3D12_DESCRIPTOR_HEAP_TYPE heapType,
@@ -663,6 +685,7 @@ DXGI_FORMAT DirectXCommon::GetDSVFormat() const {
 
 
 
+// GPU完了待ち後にコマンドアロケータとコマンドリストを再利用できる状態へ戻す。
 void DirectXCommon::WaitForGPUAndReset() {
 	// --- フェンス未生成または破棄済みならスキップ ---
 	if (!fence_ || !commandQueue_ || !commandAllocator_ || !commandList_) {
@@ -688,6 +711,7 @@ void DirectXCommon::WaitForGPUAndReset() {
 	hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
 	assert(SUCCEEDED(hr));
 }
+// 現在キューに積まれているGPU処理が完了するまでCPU側で待機する。
 
 void DirectXCommon::WaitForGPUIdle() {
 	if (!fence_ || !commandQueue_) {
@@ -703,6 +727,7 @@ void DirectXCommon::WaitForGPUIdle() {
 		WaitForSingleObject(fenceEvent_, INFINITE);
 	}
 }
+// ゲーム画面やポストエフェクト用のオフスクリーン描画テクスチャを作成する。
 
 void DirectXCommon::CreateRenderTexture() {
 	// 1. リソース設定
@@ -799,6 +824,7 @@ void DirectXCommon::CreateRenderTexture() {
 	grabTexture_ = newGrabTexture;
 	grabSrvHandle_ = newGrabSrvHandle;
 }
+// シーンをレンダーテクスチャへ描画する前に、RTV状態と描画先を準備する。
 
 void DirectXCommon::PreDrawRenderTexture() {
 	if (!renderTexture_ || !rtRtvHeap_ || !depthStencilResource_) {
@@ -837,6 +863,7 @@ void DirectXCommon::PreDrawRenderTexture() {
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 // 描画終了：ImGuiが読めるように戻します
+// レンダーテクスチャをシェーダーから読めるSRV状態へ戻す。
 void DirectXCommon::PostDrawRenderTexture() {
 	if (!renderTexture_) {
 		return;
@@ -850,6 +877,7 @@ void DirectXCommon::PostDrawRenderTexture() {
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier);
 }
+// ImGuiなどを最終表示するため、バックバッファを描画可能な状態へ切り替える。
 
 void DirectXCommon::PreDrawBackBuffer() {
 	//  バックバッファのインデックスを取得 (これが必要)
@@ -888,6 +916,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
+// シャドウマップ用の深度テクスチャ、DSV、SRVを作成する。
 
 
 void DirectXCommon::CreateShadowMap() {
@@ -944,6 +973,7 @@ void DirectXCommon::CreateShadowMap() {
 
 	Log("Created Shadow Map successfully.\n");
 }
+// シャドウマップへ深度を書き込むため、描画先とビューポートを影用に切り替える。
 
 void DirectXCommon::PreDrawShadow() {
 	// 1. バリア：画像として読むモード -> 深度を書き込むモードへ
@@ -973,6 +1003,7 @@ void DirectXCommon::PreDrawShadow() {
 	scissorRect.bottom = kShadowMapHeight;
 	commandList_->RSSetScissorRects(1, &scissorRect);
 }
+// シャドウマップをSRV状態へ戻し、通常描画用の描画先とビューポートを復帰する。
 
 void DirectXCommon::PostDrawShadow() {
 	// 1. バリア：深度を書き込むモード -> 画像として読むモードに戻す
@@ -991,6 +1022,7 @@ void DirectXCommon::PostDrawShadow() {
 	commandList_->RSSetViewports(1, &viewport_);
 	commandList_->RSSetScissorRects(1, &scissorRect_);
 }
+// GPU計測区間の開始タイムスタンプを書き込む。
 
 void DirectXCommon::StartGpuProfile(const std::string& name) {
     // まだ登録されていない名前なら、新しいインデックス（開始・終了ペア）を割り当てる
@@ -1003,6 +1035,7 @@ void DirectXCommon::StartGpuProfile(const std::string& name) {
     uint32_t startIndex = gpuProfileMap_[name];
     commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, startIndex);
 }
+// GPU計測区間の終了タイムスタンプを書き込む。
 
 void DirectXCommon::EndGpuProfile(const std::string& name) {
     if (!gpuProfileMap_.contains(name)) return;
@@ -1013,6 +1046,7 @@ void DirectXCommon::EndGpuProfile(const std::string& name) {
 
     // ※ 個別に Resolve せず、フレームの最後で一括で行うように変更
 }
+// 登録済みGPU計測区間をクリアし、次フレームの計測に備える。
 
 void DirectXCommon::ResetGpuProfiles() {
     gpuProfileMap_.clear();
@@ -1020,6 +1054,7 @@ void DirectXCommon::ResetGpuProfiles() {
 }
 
 #include "ProfilerManager.h"
+// GPUタイムスタンプ結果を読み戻し、ProfilerManagerへミリ秒単位で記録する。
 
 void DirectXCommon::ReadAllGpuProfiles() {
     // 前フレームの結果を読み取る
@@ -1051,6 +1086,7 @@ void DirectXCommon::ReadAllGpuProfiles() {
         queryResultBuffer_->Unmap(0, &writtenRange);
     }
 }
+// 深度バッファをシェーダーから参照するためのSRVを作成または更新する。
 void DirectXCommon::CreateDepthSrv() {
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -1065,6 +1101,7 @@ void DirectXCommon::CreateDepthSrv() {
 		depthSrvHandle_ = SRVManager::GetInstance()->CreateSRV(depthStencilResource_.Get(), srvDesc);
 	}
 }
+// ローカルフォグ描画用に深度バッファを読み取り可能状態へ切り替える。
 
 void DirectXCommon::PreDrawLocalFog() {
 	// バリア：深度「書き込みモード」 -> 「読み込みモード (画像)」に変換！
@@ -1078,6 +1115,7 @@ void DirectXCommon::PreDrawLocalFog() {
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // ← DSVを nullptr にする！
 }
+// ローカルフォグ後に深度バッファを通常の深度書き込み状態へ戻す。
 
 void DirectXCommon::PostDrawLocalFog() {
 	// バリア：「読み込みモード」 -> 元の「書き込みモード」に戻す！
@@ -1091,6 +1129,7 @@ void DirectXCommon::PostDrawLocalFog() {
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // ← DSVを復活！
 }
+// 現在のレンダーテクスチャ内容をGrab用テクスチャへコピーする。
 
 void DirectXCommon::UpdateGrabTexture() {
 	if (!renderTexture_ || !grabTexture_) {
@@ -1125,6 +1164,7 @@ void DirectXCommon::UpdateGrabTexture() {
 	barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier2);
 }
+// ウィンドウサイズ変更に合わせてバックバッファ、深度、レンダーテクスチャを再作成する。
 
 void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	width = (std::max)(width, 640);
@@ -1194,6 +1234,7 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	CreateRenderTexture();
 	PostEffect::GetInstance()->ResizeRenderTextures(width, height);
 }
+// WM_SIZEなどから受け取ったサイズ変更要求を、次の安全なタイミングまで保留する。
 
 void DirectXCommon::RequestResize(int32_t width, int32_t height) {
 	if (width <= 0 || height <= 0) {
@@ -1204,6 +1245,7 @@ void DirectXCommon::RequestResize(int32_t width, int32_t height) {
 	pendingResizeHeight_ = height;
 	pendingResize_ = true;
 }
+// 保留中のサイズ変更要求があれば、描画ループ側の安全なタイミングで反映する。
 
 void DirectXCommon::ProcessPendingResize() {
 	if (!pendingResize_) {
