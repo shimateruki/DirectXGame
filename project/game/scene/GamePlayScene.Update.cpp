@@ -215,6 +215,13 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         auto* gameData = GameDataManager::GetInstance();
         const bool wasStageCleared = gameData->IsStageCleared(currentStage);
         const int previousCrownCount = gameData->GetClearedStageCount();
+        std::vector<int> newStarCoinIndices;
+        for (int i = 0; i < 3; i++) {
+            if (sessionStarCoins_[i] && !gameData->IsStarCoinCollected(currentStage, i)) {
+                newStarCoinIndices.push_back(i);
+            }
+        }
+
         gameData->MarkStageCleared(currentStage);
         const int newCrownCount = gameData->GetClearedStageCount();
         if (!wasStageCleared && newCrownCount > previousCrownCount) {
@@ -226,6 +233,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
                 gameData->MarkStarCoinCollected(currentStage, i);
             }
         }
+        gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount, newStarCoinIndices);
 
         if (saveIndicatorOverlay_) {
             saveIndicatorOverlay_->Play(1.35f);

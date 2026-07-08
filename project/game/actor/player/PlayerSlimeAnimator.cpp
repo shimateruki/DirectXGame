@@ -7,6 +7,7 @@
 namespace {
 constexpr float kPi = 3.1415926535f;
 constexpr float kLandingSquashDuration = 0.16f;
+constexpr float kGateReturnSlimeDuration = 1.12f;
 
 float EaseOut(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
@@ -214,6 +215,17 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
         scale.z = baseScale_.z * (1.05f + strain - wobble * 0.45f);
         break;
     }
+    case Mode::GateReturn: {
+        const float t = std::clamp(modeTimer_ / kGateReturnSlimeDuration, 0.0f, 1.0f);
+        const float squeeze = 1.0f - std::clamp(t / 0.36f, 0.0f, 1.0f);
+        const float stretch = std::sin(std::clamp((t - 0.18f) / 0.48f, 0.0f, 1.0f) * kPi);
+        const float settle = std::sin(std::clamp((t - 0.55f) / 0.45f, 0.0f, 1.0f) * kPi * 2.0f) * (1.0f - t);
+
+        scale.x = baseScale_.x * (1.0f + squeeze * 0.24f + stretch * 0.08f + settle * 0.045f);
+        scale.y = baseScale_.y * (1.0f - squeeze * 0.30f + stretch * 0.18f - settle * 0.060f);
+        scale.z = baseScale_.z * (1.0f + squeeze * 0.32f + stretch * 0.10f - settle * 0.035f);
+        break;
+    }
     case Mode::Disabled:
         break;
     }
@@ -273,6 +285,13 @@ Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const
         rotation.x = std::sin(modeTimer_ * 7.0f) * 0.025f;
         rotation.z = std::cos(modeTimer_ * 6.0f) * 0.025f;
         break;
+    case Mode::GateReturn: {
+        const float t = std::clamp(modeTimer_ / kGateReturnSlimeDuration, 0.0f, 1.0f);
+        const float lean = std::sin(std::clamp(t / 0.70f, 0.0f, 1.0f) * kPi) * (1.0f - t * 0.55f) * 0.16f;
+        rotation.x = -motionDirection_.z * lean;
+        rotation.z = motionDirection_.x * lean;
+        break;
+    }
     default:
         break;
     }

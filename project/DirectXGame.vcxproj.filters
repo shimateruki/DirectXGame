@@ -394,6 +394,9 @@
     <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerGateReturnAnimation.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\state\IAnimationState.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -1549,6 +1552,9 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerGateReturnAnimation.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\state\IAnimationState.h">

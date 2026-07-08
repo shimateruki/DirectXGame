@@ -4,6 +4,7 @@
 #include "PrimitiveDrawer.h"
 #include "PostEffect.h"
 #include "SRVManager.h"
+#include "SceneManager.h"
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include "json.hpp"
@@ -19,6 +20,12 @@ namespace fs = std::filesystem; // 短縮用
 namespace {
     constexpr float kPi = 3.14159265f;
     constexpr const char* kCameraModelGizmoName = "Editor/camera_gizmo";
+
+    // 再生中は通常の3人称カメラ表示だけを隠し、演出用カメラの確認を邪魔しないようにします。
+    bool ShouldHideGameCameraGuideDuringPlay() {
+        SceneManager* sceneManager = SceneManager::GetInstance();
+        return sceneManager && sceneManager->IsPlaying();
+    }
 
     float DegToRad(float degrees) {
         return degrees * kPi / 180.0f;
@@ -169,12 +176,16 @@ void CameraEditor::DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3
         return;
     }
 
-    const Vector3 gameEye = GetConfiguredCameraEye();
-    const Vector3 gameForward = GetConfiguredCameraForward();
-    EnsureCameraModelGizmo(gameCameraModelGizmo_, "CameraEditor_GameCameraGizmo");
-    ApplyCameraModelGizmo(gameCameraModelGizmo_.get(), gameEye, gameForward, 0.85f, { 1.0f, 0.82f, 0.18f, 1.0f });
-    if (gameCameraModelGizmo_) {
-        gameCameraModelGizmo_->Draw(pointLightResource, spotLightResource);
+    if (!ShouldHideGameCameraGuideDuringPlay()) {
+        const Vector3 gameEye = GetConfiguredCameraEye();
+        const Vector3 gameForward = GetConfiguredCameraForward();
+        EnsureCameraModelGizmo(gameCameraModelGizmo_, "CameraEditor_GameCameraGizmo");
+        ApplyCameraModelGizmo(gameCameraModelGizmo_.get(), gameEye, gameForward, 0.85f, { 1.0f, 0.82f, 0.18f, 1.0f });
+        if (gameCameraModelGizmo_) {
+            gameCameraModelGizmo_->Draw(pointLightResource, spotLightResource);
+        }
+    } else if (gameCameraModelGizmo_) {
+        gameCameraModelGizmo_->SetIsVisible(false);
     }
 
     if (!settings_.savedOverrideGuideVisible || overrideParamsMap_.empty()) {
@@ -1586,19 +1597,21 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         drawCubeLine(bottomLeft, topLeft, 0.03f * sizeScale, frameColor);
     };
 
-    // ゲーム/3人称カメラの位置をScene上に表示します。
-    const Vector3 gameEye = GetConfiguredCameraEye();
-    const Vector3 gameForward = GetConfiguredCameraForward();
-    const Vector4 gameEyeColor = { 1.0f, 0.82f, 0.18f, 1.0f };
-    const Vector4 gameRayColor = { 1.0f, 0.72f, 0.18f, 0.95f };
-    const Vector4 gameFrameColor = { 1.0f, 0.92f, 0.35f, 0.88f };
-    drawFrustum(gameEye, gameForward, 0.85f, gameEyeColor, gameRayColor, gameFrameColor);
-    drawCameraBadge(gameEye, gameForward, 0, 0.85f, gameFrameColor, true);
-    if (targetPlayer_) {
-        Vector3 lookTarget = targetPlayer_->GetWorldPosition();
-        lookTarget.y += settings_.height;
-        drawSphere(lookTarget, markerSize * 0.38f, gameFrameColor);
-        drawCubeLine(gameEye, lookTarget, 0.024f, gameRayColor);
+    if (!ShouldHideGameCameraGuideDuringPlay()) {
+        // ゲーム/3人称カメラの位置をScene上に表示します。
+        const Vector3 gameEye = GetConfiguredCameraEye();
+        const Vector3 gameForward = GetConfiguredCameraForward();
+        const Vector4 gameEyeColor = { 1.0f, 0.82f, 0.18f, 1.0f };
+        const Vector4 gameRayColor = { 1.0f, 0.72f, 0.18f, 0.95f };
+        const Vector4 gameFrameColor = { 1.0f, 0.92f, 0.35f, 0.88f };
+        drawFrustum(gameEye, gameForward, 0.85f, gameEyeColor, gameRayColor, gameFrameColor);
+        drawCameraBadge(gameEye, gameForward, 0, 0.85f, gameFrameColor, true);
+        if (targetPlayer_) {
+            Vector3 lookTarget = targetPlayer_->GetWorldPosition();
+            lookTarget.y += settings_.height;
+            drawSphere(lookTarget, markerSize * 0.38f, gameFrameColor);
+            drawCubeLine(gameEye, lookTarget, 0.024f, gameRayColor);
+        }
     }
 
     if (!settings_.savedOverrideGuideVisible || overrideParamsMap_.empty()) return;

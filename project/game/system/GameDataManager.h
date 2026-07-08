@@ -33,6 +33,15 @@ public:
         int newCrownCount = 0;
     };
 
+    // クリア後にセレクトへ戻った直後、対応するゲートからプレイヤーを出す演出の予約情報。
+    struct StageSelectReturnPresentation {
+        bool active = false;
+        int stageIndex = -1;
+        int previousCrownCount = 0;
+        int newCrownCount = 0;
+        std::vector<int> newStarCoinIndices;
+    };
+
     static GameDataManager* GetInstance() {
         static GameDataManager instance;
         return &instance;
@@ -219,6 +228,20 @@ public:
         return request;
     }
 
+    void RequestStageSelectReturnPresentation(int stageIndex, int previousCrownCount, int newCrownCount, const std::vector<int>& newStarCoinIndices) {
+        pendingStageSelectReturn_.active = true;
+        pendingStageSelectReturn_.stageIndex = stageIndex;
+        pendingStageSelectReturn_.previousCrownCount = std::clamp(previousCrownCount, 0, 999);
+        pendingStageSelectReturn_.newCrownCount = std::clamp(newCrownCount, 0, 999);
+        pendingStageSelectReturn_.newStarCoinIndices = newStarCoinIndices;
+    }
+
+    StageSelectReturnPresentation ConsumeStageSelectReturnPresentation() {
+        StageSelectReturnPresentation request = pendingStageSelectReturn_;
+        pendingStageSelectReturn_ = {};
+        return request;
+    }
+
     // --- ステージクリア状態 ---
     void MarkStageCleared(int index) {
         if (std::find(clearedStages_.begin(), clearedStages_.end(), index) == clearedStages_.end()) {
@@ -383,6 +406,7 @@ private:
     int activeSlot_ = 0;
     bool pendingRespawnIrisIn_ = false;
     StageClearRewardPresentation pendingStageClearReward_;
+    StageSelectReturnPresentation pendingStageSelectReturn_;
     std::vector<int> clearedStages_;
     std::vector<int> seenUnlockedStages_;
     std::map<int, std::vector<bool>> stageStarCoins_; // ステージ番号 -> [コイン0, コイン1, コイン2]

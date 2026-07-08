@@ -16,6 +16,7 @@ public:
         ShootHook,
         PullEnemy,
         Carry,
+        GateReturn,
         Disabled
     };
 

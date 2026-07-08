@@ -192,6 +192,12 @@ void Player::Update(float deltaTime)
         isFirstUpdate_ = false;
     }
 
+    if (gateReturnAnimation_.IsActive()) {
+        gateReturnAnimation_.Update(this, deltaTime);
+        UpdateEnemyMorph(deltaTime);
+        return;
+    }
+
     // 時間が進んでいる（ポーズ中ではない）時だけ、操作や状態を更新
     if (deltaTime > 0.0f)
     {
@@ -616,6 +622,12 @@ void Player::Update(float deltaTime)
         activeMorphSource->SetCollisionAttribute(0);
         activeMorphSource->SetCollisionMask(0);
         activeMorphSource->UpdateCarriedAbility(this, deltaTime);
+    }
+
+    if (forcedSlimeAnimationModeActive_) {
+        slimeAnimator_.SetMode(forcedSlimeAnimationMode_);
+        slimeAnimator_.SetMotionDirection(forcedSlimeAnimationDirection_);
+        forcedSlimeAnimationModeActive_ = false;
     }
 
     if (!dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead) {
@@ -1677,6 +1689,33 @@ void Player::SetSlimeJumpCharge(float chargeRate)
 void Player::TriggerSlimeImpulse(const Vector3& scale, float duration)
 {
     slimeAnimator_.TriggerImpulse(scale, duration);
+}
+
+void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction)
+{
+    forcedSlimeAnimationModeActive_ = true;
+    forcedSlimeAnimationMode_ = mode;
+    forcedSlimeAnimationDirection_ = direction;
+}
+
+void Player::StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route)
+{
+    gateReturnAnimation_.Start(this, route);
+}
+
+bool Player::IsGateReturnAnimationActive() const
+{
+    return gateReturnAnimation_.IsActive();
+}
+
+bool Player::IsGateReturnAnimationFinished() const
+{
+    return gateReturnAnimation_.IsFinished();
+}
+
+void Player::StopGateReturnAnimation(bool restoreControl)
+{
+    gateReturnAnimation_.Stop(this, restoreControl);
 }
 
 // =======================================================

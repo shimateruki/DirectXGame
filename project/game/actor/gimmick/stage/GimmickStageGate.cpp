@@ -68,11 +68,23 @@ void GimmickStageGate::Update(float deltaTime) {
     const float visibleActivation = isUnlocked_ ? activation_ : 0.06f;
 
     lastAppliedPulse_ = 1.0f;
-    SetColor(GetTargetColor());
+    Vector4 gateColor = GetTargetColor();
+    if (activationBurst_ > 0.0f && isUnlocked_) {
+        const float burstTint = Clamp01(activationBurst_ * 0.82f);
+        const Vector4 burstColor = isCleared_ ? Vector4{ 0.58f, 1.0f, 1.0f, 1.0f } : Vector4{ 1.0f, 0.88f, 0.40f, 1.0f };
+        gateColor.x = Lerp(gateColor.x, burstColor.x, burstTint);
+        gateColor.y = Lerp(gateColor.y, burstColor.y, burstTint);
+        gateColor.z = Lerp(gateColor.z, burstColor.z, burstTint);
+        gateColor.w = Lerp(gateColor.w, 1.0f, burstTint);
+    }
+    SetColor(gateColor);
     float emissive = isUnlocked_ ? Lerp(0.25f, 1.55f, visibleActivation) : 0.18f;
     if (isSelected_ && isUnlocked_) emissive = Lerp(emissive, 2.7f, visibleActivation);
     if (isCleared_) emissive = Lerp(emissive, 1.9f, visibleActivation);
     if (isUnlocking_) emissive = 4.0f + std::sin(pulseTimer_ * 10.0f) * 0.9f;
+    if (isUnlocked_) {
+        emissive += activationBurst_ * 2.8f;
+    }
     SetEmissive(emissive);
     UpdatePortalMaterial();
 
@@ -137,6 +149,12 @@ void GimmickStageGate::SetGateActivation(float activation) {
     targetActivation_ = Clamp01(activation);
 }
 
+void GimmickStageGate::TriggerEntryReaction() {
+    // プレイヤーが触れた瞬間に、ゲートを強く反応させます。
+    targetActivation_ = 1.0f;
+    activation_ = (std::max)(activation_, 0.92f);
+    activationBurst_ = 1.0f;
+}
 void GimmickStageGate::UpdatePortalMaterial() {
     auto* renderer = GetMeshRenderer();
     if (!renderer || !renderer->GetWaterParamData()) {
@@ -146,13 +164,14 @@ void GimmickStageGate::UpdatePortalMaterial() {
     auto* portal = renderer->GetWaterParamData();
     const float active = isUnlocking_ ? 1.0f : (isUnlocked_ ? activation_ : 0.0f);
     const float selectedBoost = (isSelected_ && isUnlocked_) ? 1.0f : 0.0f;
+    const float entryBurst = isUnlocked_ ? activationBurst_ : 0.0f;
 
-    portal->waveSpeed = Lerp(0.28f, 2.25f, active);
-    portal->waveHeight = Lerp(0.18f, 1.35f, active);
-    portal->waveFrequency = Lerp(4.0f, 22.0f, active);
-    portal->effectSoftness = Lerp(0.28f, 0.66f, active);
-    portal->effectIntensity = Lerp(0.07f, 1.58f + selectedBoost * 0.44f, active);
-    portal->effectScale = Lerp(0.78f, 1.18f, active);
+    portal->waveSpeed = Lerp(0.28f, 2.25f, active) + entryBurst * 2.30f;
+    portal->waveHeight = Lerp(0.18f, 1.35f, active) + entryBurst * 0.72f;
+    portal->waveFrequency = Lerp(4.0f, 22.0f, active) + entryBurst * 9.0f;
+    portal->effectSoftness = Lerp(0.28f, 0.66f, active) + entryBurst * 0.10f;
+    portal->effectIntensity = Lerp(0.07f, 1.58f + selectedBoost * 0.44f, active) + entryBurst * 1.85f;
+    portal->effectScale = Lerp(0.78f, 1.18f, active) + entryBurst * 0.18f;
     portal->effectType = isCleared_ ? 2.0f : 1.0f;
     portal->flowSpeedX = 0.0f;
     portal->flowSpeedY = 0.0f;
@@ -199,11 +218,15 @@ Vector4 GimmickStageGate::GetTargetColor() const {
     if (isUnlocking_) {
         return { 1.0f, 0.72f, 0.28f, 1.0f };
     }
+    if (isCleared_) {
+        const float alpha = Lerp(0.32f, 0.96f, active);
+        if (isSelected_) {
+            return { 0.48f, 0.96f, 1.0f, alpha };
+        }
+        return { 0.28f, 0.82f, 1.0f, alpha };
+    }
     if (isSelected_) {
         return { 1.0f, 0.62f, 0.24f, Lerp(0.36f, 1.0f, active) };
-    }
-    if (isCleared_) {
-        return { 1.0f, 0.74f, 0.36f, Lerp(0.28f, 0.92f, active) };
     }
     return { 1.0f, 0.52f, 0.20f, Lerp(0.24f, 0.86f, active) };
 }

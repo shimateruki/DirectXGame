@@ -4,6 +4,7 @@
 #include "IAnimationState.h"
 #include "InputManager.h"
 #include "ParticleSystem.h"
+#include "PlayerGateReturnAnimation.h"
 #include "PlayerMover.h"
 #include "PlayerSlimeAnimator.h"
 #include "engine/utility/math/Math.h"
@@ -44,6 +45,11 @@ public:
     void SetSlimePullProgress(float progress);
     void SetSlimeJumpCharge(float chargeRate);
     void TriggerSlimeImpulse(const Vector3& scale, float duration);
+    void ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction);
+    void StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route);
+    bool IsGateReturnAnimationActive() const;
+    bool IsGateReturnAnimationFinished() const;
+    void StopGateReturnAnimation(bool restoreControl);
 
     // ==================================================
     // 移動制御 (Strategy Pattern)
@@ -145,6 +151,7 @@ private:
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
+    PlayerGateReturnAnimation gateReturnAnimation_;
 
     // --- 外部システム参照 ---
     InputManager* inputManager_ = nullptr;
@@ -153,6 +160,9 @@ private:
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか。
     bool isControlActive_ = true;    // 入力を受け付ける状態か。
+    bool forcedSlimeAnimationModeActive_ = false;
+    PlayerSlimeAnimator::Mode forcedSlimeAnimationMode_ = PlayerSlimeAnimator::Mode::Idle;
+    Vector3 forcedSlimeAnimationDirection_{ 0.0f, 0.0f, 1.0f };
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;

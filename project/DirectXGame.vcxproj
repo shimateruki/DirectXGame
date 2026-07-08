@@ -334,6 +334,7 @@
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
     <ClCompile Include="game\actor\player\PlayerMover.cpp" />
     <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp" />
+    <ClCompile Include="game\actor\player\PlayerGateReturnAnimation.cpp" />
     <ClCompile Include="game\actor\player\PlayerDeathAnimation.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.Basic.cpp" />
@@ -862,6 +863,7 @@
     <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
     <ClInclude Include="game\actor\player\PlayerMover.h" />
     <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h" />
+    <ClInclude Include="game\actor\player\PlayerGateReturnAnimation.h" />
     <ClInclude Include="game\actor\player\PlayerDeathAnimation.h" />
     <ClInclude Include="game\actor\player\PlayerState.h" />
     <ClInclude Include="game\actor\player\PlayerState.Basic.h" />
