@@ -17,6 +17,7 @@ using json = nlohmann::json;
 
 class GhostRecorder;
 class SceneManager;
+class Camera;
 #include "GPUParticleEmitter.h"
 class EffectObject3d;
 
@@ -70,6 +71,7 @@ public:
     virtual void Update(float deltaTime);
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    virtual void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
     void DrawShadow();
     void SetShadowCommonState(); // 共通の状態を設定
     void DrawShadowOnly();       // 設定済みの状態で描画だけ行う

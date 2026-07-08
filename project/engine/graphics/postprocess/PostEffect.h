@@ -14,6 +14,7 @@ class DirectXCommon;
 class PostEffect {
 public:
     static constexpr int kCameraPreviewTextureIndex = 6;
+    static constexpr int kCinematicCameraPreviewTextureIndex = 7;
 
     static PostEffect* GetInstance() {
         static PostEffect instance;

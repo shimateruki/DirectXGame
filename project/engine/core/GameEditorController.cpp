@@ -373,6 +373,8 @@ void GameEditorController::SetupDefaultDockspace() {
 }
 // エディタ中央のゲームビューを描画し、マウス入力やギズモ状態を収集する。
 
+void DrawCinematicCameraPreviewOverlay(const GameViewArea& area);
+
 EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, bool isPlaying) {
 	EditorFrameState frameState;
 
@@ -447,6 +449,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 
 				DrawSelectedObjectOrientation(area, activeCamera, selectedObject);
 				DrawSceneDirectionGizmo(area, activeCamera);
+				DrawCinematicCameraPreviewOverlay(area);
 			}
 		}
 	}
@@ -457,6 +460,55 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 }
 // ゲームビューへのドラッグ&ドロップを受け取り、SpriteやModelなどを配置する。
 
+// Game View上に、UnityのCamera Previewのような演出用カメラ視点を重ねて表示します。
+void DrawCinematicCameraPreviewOverlay(const GameViewArea& area) {
+	CameraEditor* cameraEditor = CameraEditor::GetInstance();
+	if (!cameraEditor || !cameraEditor->ShouldShowSceneCameraPreviewOverlay()) {
+		return;
+	}
+	if (area.width <= 160.0f || area.height <= 120.0f) {
+		return;
+	}
+
+	const float padding = 14.0f;
+	float previewHeight = std::clamp(area.height * 0.28f, 120.0f, 260.0f);
+	float previewWidth = previewHeight * (16.0f / 9.0f);
+	const float maxPreviewWidth = (std::max)(120.0f, area.width - padding * 2.0f);
+	if (previewWidth > maxPreviewWidth) {
+		previewWidth = maxPreviewWidth;
+		previewHeight = previewWidth * (9.0f / 16.0f);
+	}
+
+	const ImVec2 previewPos(
+		area.screenX + area.width - previewWidth - padding,
+		area.screenY + padding);
+	const ImVec2 previewSize(previewWidth, previewHeight);
+
+	ImGui::SetNextWindowPos(previewPos, ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(previewWidth, previewHeight + 48.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowBgAlpha(0.86f);
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoCollapse;
+
+	bool previewOpen = true;
+	if (ImGui::Begin("演出用カメラプレビュー###CinematicCameraPreviewOverlay", &previewOpen, flags)) {
+		ImGui::TextColored(ImVec4(0.35f, 1.0f, 0.45f, 1.0f), ICON_FA_VIDEO " 演出用カメラ Preview");
+		uint32_t textureHandle = PostEffect::GetInstance()->GetSRVHandle(PostEffect::kCinematicCameraPreviewTextureIndex);
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
+		ImGui::Image((ImTextureID)gpuHandle.ptr, previewSize);
+	}
+	ImGui::End();
+
+	if (!previewOpen) {
+		cameraEditor->SetCameraPreviewVisible(false);
+	}
+}
 void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area) {
 	if (!ImGui::BeginDragDropTarget()) {
 		return;
@@ -922,6 +974,11 @@ void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, 
 				selectedObject->recorder_->DrawObjectGhostPreview(pointLightResource, spotLightResource);
 			}
 			debugEditor_->DrawPreview(pointLightResource, spotLightResource);
+			if (BaseScene* currentScene = editorSceneManager ? editorSceneManager->GetCurrentScene() : nullptr) {
+				CameraEditor* cameraEditor = CameraEditor::GetInstance();
+				cameraEditor->SetObject3dCommon(currentScene->GetObject3dCommon());
+				cameraEditor->DrawCameraModelGizmos(pointLightResource, spotLightResource);
+			}
 		}
 	}
 

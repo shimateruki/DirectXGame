@@ -474,28 +474,33 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	}
 
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-	CameraManager* cameraManager = CameraManager::GetInstance();
-	Camera* previousCameraOverride = cameraManager->GetActiveCameraOverride();
 	Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f);
 	if (!previewCamera) {
 		return;
 	}
 
 	dxCommon_->SetCameraPreviewRendering(true);
-	cameraManager->SetActiveCamera(previewCamera);
-	RefreshSceneRenderCameraData(sceneManager_.get());
 	postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
 
-	ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-	ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
 	// Camera Previewは通常GameViewとは別のRenderTextureへ描画する。
 	// GrabTexture依存のエフェクトは各Scene側でPreview中だけ抑制する。
-	sceneManager_->Draw();
-	DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+	if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
+		currentScene->DrawCameraPreview(previewCamera, 0);
+	}
 
 	postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
-	cameraManager->SetActiveCamera(previousCameraOverride);
-	RefreshSceneRenderCameraData(sceneManager_.get());
+
+	if (cameraEditor->ShouldShowSceneCameraPreviewOverlay()) {
+		Camera* cinematicPreviewCamera = cameraEditor->PrepareCinematicPreviewCamera(16.0f / 9.0f);
+		if (cinematicPreviewCamera) {
+			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCinematicCameraPreviewTextureIndex, true);
+			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
+				currentScene->DrawCameraPreview(cinematicPreviewCamera, 1);
+			}
+			postEffect->TransitionToSRV(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
+		}
+	}
+
 	dxCommon_->SetCameraPreviewRendering(false);
 #else
 	(void)postEffect;

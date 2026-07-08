@@ -70,6 +70,8 @@ void Update();
         // FOVやアスペクト比から射影行列を再計算します。
 void UpdateProjectionMatrix();
     void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
+    // 演出用カメラPreviewなど、通常Updateを通さず指定Eye/Targetで即時に描画用行列を作ります。
+    void SetLookAtPreviewView(const Vector3& eye, const Vector3& target, float aspectRatio);
 
     // 入力と追従対象。
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }

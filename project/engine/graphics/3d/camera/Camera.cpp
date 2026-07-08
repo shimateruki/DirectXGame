@@ -33,6 +33,38 @@ void Camera::UpdateProjectionMatrix() {
     }
 }
 
+void Camera::SetLookAtPreviewView(const Vector3& eye, const Vector3& target, float aspectRatio) {
+    Math math;
+
+    Vector3 safeTarget = target;
+    Vector3 forward = safeTarget - eye;
+    if (math.Length(forward) < 0.0001f) {
+        safeTarget = eye + Vector3{ 0.0f, 0.0f, 1.0f };
+        forward = safeTarget - eye;
+    }
+
+    eye_ = eye;
+    target_ = safeTarget;
+    up_ = { 0.0f, 1.0f, 0.0f };
+    aspectRatio_ = aspectRatio;
+    followObject_ = nullptr;
+    targetObject_ = nullptr;
+    followMode_ = FollowMode::kFixedPoint;
+    smoothEye_ = eye_;
+    smoothTarget_ = target_;
+    fixedPointPos_ = eye_;
+
+    viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
+    projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
+    frustum_ = math.ExtractFrustumPlanes(vp);
+
+    if (constMap_) {
+        constMap_->view = viewMatrix_;
+        constMap_->projection = projectionMatrix_;
+    }
+}
+
 void Camera::SetFreezeEye(bool freeze) {
     isEyeFrozen_ = freeze;
     if (freeze) {

@@ -60,7 +60,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    renderTextures_.resize(7);
+    renderTextures_.resize(8);
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
@@ -81,6 +81,7 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
     // [5] 縮小ブラー用3 (HDR / 1/16サイズ)
     CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(kCameraPreviewTextureIndex, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(kCinematicCameraPreviewTextureIndex, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void PostEffect::Update(float deltaTime) {
@@ -98,7 +99,7 @@ void PostEffect::ResetToNeutral() {
 }
 
 void PostEffect::ResizeRenderTextures(int width, int height) {
-    if (!dxCommon_ || renderTextures_.size() < 7) {
+    if (!dxCommon_ || renderTextures_.size() < 8) {
         return;
     }
 
@@ -113,6 +114,7 @@ void PostEffect::ResizeRenderTextures(int width, int height) {
     CreateRenderTexture(4, (std::max)(width / 8, 1), (std::max)(height / 8, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(5, (std::max)(width / 16, 1), (std::max)(height / 16, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(kCameraPreviewTextureIndex, (std::max)(width / 2, 16), (std::max)(height / 2, 16), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(kCinematicCameraPreviewTextureIndex, (std::max)(width / 2, 16), (std::max)(height / 2, 16), DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 

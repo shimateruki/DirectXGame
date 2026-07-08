@@ -1,0 +1,17 @@
+newmtl camera_body
+Ka 0.10 0.14 0.16
+Kd 0.18 0.45 0.78
+Ks 0.20 0.35 0.50
+Ns 32.0
+
+newmtl camera_lens
+Ka 0.02 0.03 0.04
+Kd 0.04 0.08 0.12
+Ks 0.45 0.65 0.80
+Ns 64.0
+
+newmtl camera_accent
+Ka 0.12 0.20 0.08
+Kd 0.45 0.95 0.30
+Ks 0.20 0.40 0.15
+Ns 24.0

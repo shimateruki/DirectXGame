@@ -85,6 +85,7 @@ void TriggerEvent(int targetID);
     void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
     virtual void DrawUI() {}
+    virtual void DrawCameraPreview(Camera* camera, int previewBufferIndex = 0);
 
     void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
     std::string GetLoadedFilename() const { return loadedFilename_; }

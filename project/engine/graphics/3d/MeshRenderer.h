@@ -3,12 +3,14 @@
 #include "Object3dCommon.h"
 #include "Transform.h"
 #include "engine/utility/math/Math.h"
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
 #include <wrl.h>
 
 class Object3d;
+class Camera;
 
 /// <summary>
 /// Object3dのメッシュ描画、マテリアル、LOD、特殊マテリアル描画を担当する。
@@ -156,6 +158,8 @@ void RefreshCameraDependentData();
     /// </summary>
         // 通常の3Dモデル描画コマンドを発行します。
 void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    // 演出用カメラPreview専用。通常描画のWVP/Camera定数を汚さず、別バッファで描画します。
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
 
     // モデルとLOD設定。
         // 直接指定されたModelを描画対象として設定します。
@@ -288,6 +292,13 @@ Model* ResolveDrawModel() const;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
     CameraForGPU* cameraData_ = nullptr;
+
+    // Camera Preview用の一時描画定数です。右パネルPreviewと演出用Previewを分けて、GPU実行時の上書きを防ぎます。
+    static constexpr int kPreviewBufferCount = 2;
+    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewWvpResources_;
+    std::array<TransformationMatrix*, kPreviewBufferCount> previewWvpData_{};
+    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPreviewBufferCount> previewCameraResources_;
+    std::array<CameraForGPU*, kPreviewBufferCount> previewCameraData_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;

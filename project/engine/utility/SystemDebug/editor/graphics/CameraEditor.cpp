@@ -1,4 +1,4 @@
-#include "CameraEditor.h"
+﻿#include "CameraEditor.h"
 #include "CameraManager.h"
 #include "InputManager.h" // 入力取得に必要
 #include "PrimitiveDrawer.h"
@@ -18,6 +18,7 @@ namespace fs = std::filesystem; // 短縮用
 
 namespace {
     constexpr float kPi = 3.14159265f;
+    constexpr const char* kCameraModelGizmoName = "Editor/camera_gizmo";
 
     float DegToRad(float degrees) {
         return degrees * kPi / 180.0f;
@@ -110,6 +111,98 @@ void CameraEditor::Initialize() {
         camera->SetEye(settings_.editorCameraPos);
         camera->SetRotation(settings_.editorCameraAngle);
         camera->Update();
+    }
+}
+
+void CameraEditor::SetObject3dCommon(Object3dCommon* common) {
+    if (object3dCommon_ == common) {
+        return;
+    }
+
+    object3dCommon_ = common;
+    gameCameraModelGizmo_.reset();
+    overrideCameraModelGizmos_.clear();
+}
+
+void CameraEditor::EnsureCameraModelGizmo(std::unique_ptr<Object3d>& gizmo, const std::string& name) {
+    if (!object3dCommon_) {
+        return;
+    }
+
+    if (gizmo) {
+        return;
+    }
+
+    gizmo = std::make_unique<Object3d>();
+    gizmo->Initialize(object3dCommon_);
+    gizmo->SetModel(kCameraModelGizmoName);
+    gizmo->SetName(name);
+    gizmo->SetClassName("Model");
+    gizmo->SetMaterialType(0);
+    gizmo->SetBlendMode(BlendMode::kNormal);
+    gizmo->SetIsVisible(true);
+}
+
+void CameraEditor::ApplyCameraModelGizmo(Object3d* gizmo, const Vector3& eye, const Vector3& forward, float sizeScale, const Vector4& color) {
+    if (!gizmo) {
+        return;
+    }
+
+    const float baseSize = (std::max)(0.05f, settings_.cameraGuideSize);
+    const Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+    const Vector3 rotation = MakeRotationFromForward(safeForward);
+    const float modelScale = baseSize * sizeScale;
+
+    // CameraEditorの可視化も、演出用カメラObjectと同じモデルを使って位置と向きを表示します。
+    gizmo->SetTranslate(eye);
+    gizmo->SetRotation(rotation);
+    gizmo->SetScale({ modelScale, modelScale, modelScale });
+    gizmo->SetColor(color);
+    gizmo->SetEmissive(1.8f);
+    gizmo->SetIsVisible(true);
+    gizmo->UpdateLocalMatrix();
+    gizmo->UpdateWorldMatrix();
+}
+
+void CameraEditor::DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (!settings_.cameraGuideVisible || !settings_.cameraBodyVisible || !object3dCommon_) {
+        return;
+    }
+
+    const Vector3 gameEye = GetConfiguredCameraEye();
+    const Vector3 gameForward = GetConfiguredCameraForward();
+    EnsureCameraModelGizmo(gameCameraModelGizmo_, "CameraEditor_GameCameraGizmo");
+    ApplyCameraModelGizmo(gameCameraModelGizmo_.get(), gameEye, gameForward, 0.85f, { 1.0f, 0.82f, 0.18f, 1.0f });
+    if (gameCameraModelGizmo_) {
+        gameCameraModelGizmo_->Draw(pointLightResource, spotLightResource);
+    }
+
+    if (!settings_.savedOverrideGuideVisible || overrideParamsMap_.empty()) {
+        return;
+    }
+
+    if (overrideCameraModelGizmos_.size() < overrideParamsMap_.size()) {
+        overrideCameraModelGizmos_.resize(overrideParamsMap_.size());
+    }
+
+    size_t index = 0;
+    for (const auto& [name, params] : overrideParamsMap_) {
+        const bool selected = (name == selectedOverrideName_);
+        const Vector3 eye = ResolveOverrideEye(params);
+        const Vector3 forward = ResolveOverrideForward(params);
+        const float sizeScale = selected ? 0.95f : 0.65f;
+        const Vector4 color = selected ? Vector4{ 0.2f, 1.0f, 0.35f, 1.0f } : Vector4{ 0.25f, 0.55f, 1.0f, 0.85f };
+
+        EnsureCameraModelGizmo(overrideCameraModelGizmos_[index], "CameraEditor_OverrideCameraGizmo_" + std::to_string(index + 1));
+        ApplyCameraModelGizmo(overrideCameraModelGizmos_[index].get(), eye, forward, sizeScale, color);
+        if (overrideCameraModelGizmos_[index]) {
+            overrideCameraModelGizmos_[index]->Draw(pointLightResource, spotLightResource);
+        }
+        ++index;
+    }
+
+    if (overrideCameraModelGizmos_.size() > overrideParamsMap_.size()) {
+        overrideCameraModelGizmos_.resize(overrideParamsMap_.size());
     }
 }
 
@@ -576,14 +669,51 @@ void CameraEditor::DrawImGui() {
 
         // --- 登録済みカメラのリスト ---
         ImGui::Text(ICON_FA_LIST " 保存済みカメラ一覧:");
+        ImGui::TextDisabled("Scene上の番号タグと同じ順番です。緑が選択中、青が未選択です。");
+        std::string deleteOverrideName;
         if (ImGui::BeginListBox("##CameraList", ImVec2(-FLT_MIN, 100))) {
+            int cameraIndex = 1;
             for (auto& [name, param] : overrideParamsMap_) {
                 bool isSelected = (selectedOverrideName_ == name);
-                if (ImGui::Selectable(name.c_str(), isSelected)) {
+                ImGui::PushID(name.c_str());
+                ImGui::PushStyleColor(ImGuiCol_Text, isSelected ? ImVec4(0.2f, 1.0f, 0.35f, 1.0f) : ImVec4(0.45f, 0.70f, 1.0f, 1.0f));
+                const std::string listLabel = "#" + std::to_string(cameraIndex) + "  " + name + (isSelected ? "  [選択中]" : "");
+                const float deleteButtonWidth = 28.0f;
+                const float selectableWidth = (std::max)(80.0f, ImGui::GetContentRegionAvail().x - deleteButtonWidth - ImGui::GetStyle().ItemSpacing.x);
+                if (ImGui::Selectable(listLabel.c_str(), isSelected, 0, ImVec2(selectableWidth, 0.0f))) {
                     selectedOverrideName_ = name;
                 }
+                const bool rowHovered = ImGui::IsItemHovered();
+                ImGui::PopStyleColor();
+
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.35f, 0.35f, 1.0f));
+                if (ImGui::SmallButton("X")) {
+                    deleteOverrideName = name;
+                }
+                ImGui::PopStyleColor();
+
+                if (rowHovered) {
+                    const Vector3 eye = ResolveOverrideEye(param);
+                    const Vector3 target = ResolveOverrideTarget(param);
+                    ImGui::BeginTooltip();
+                    ImGui::Text("%s", name.c_str());
+                    ImGui::Text("Eye: %.2f, %.2f, %.2f", eye.x, eye.y, eye.z);
+                    ImGui::Text("Target: %.2f, %.2f, %.2f", target.x, target.y, target.z);
+                    ImGui::Text("移行時間: %.2f 秒", param.duration);
+                    ImGui::EndTooltip();
+                }
+                ImGui::PopID();
+                ++cameraIndex;
             }
             ImGui::EndListBox();
+        }
+        if (!deleteOverrideName.empty()) {
+            overrideParamsMap_.erase(deleteOverrideName);
+            if (selectedOverrideName_ == deleteOverrideName) {
+                selectedOverrideName_.clear();
+            }
+            SaveSettings();
         }
 
         // --- 選択中のカメラの詳細設定 ---
@@ -626,6 +756,12 @@ void CameraEditor::DrawImGui() {
             if (ImGui::Checkbox("Z軸追従##Tgt", &p.trackTargetZ)) changed = true;
             if (ImGui::DragFloat3("固定座標##Tgt", &p.fixedTargetPos.x, 0.1f)) changed = true;
 
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.0f, 1.0f), ICON_FA_ARROWS_ALT " Scene上のImGuizmo編集");
+            const char* overrideGizmoModes[] = { "カメラ位置のみ (Eye)", "注視点のみ (Target)", "構図ごと移動 (Eye + Target)" };
+            ImGui::Combo("ギズモ対象##OverrideCameraGizmoMode", &overrideCameraGizmoMode_, overrideGizmoModes, IM_ARRAYSIZE(overrideGizmoModes));
+            ImGui::TextDisabled("CameraEditor選択中にScene上のギズモをドラッグすると、選択中の演出カメラ設定へ反映します。");
+
             ImGui::Unindent();
 
             // エディタ上で動作を確認可能
@@ -665,6 +801,8 @@ void CameraEditor::DrawCameraPreviewPanel() {
 
     ImGui::Checkbox("編集時にカメラガイドを表示", &settings_.cameraGuideVisible);
     ImGui::SameLine();
+    ImGui::Checkbox("カメラ本体モデルを表示", &settings_.cameraBodyVisible);
+    ImGui::SameLine();
     ImGui::Checkbox("プレビュー枠を表示", &settings_.cameraPreviewVisible);
     ImGui::DragFloat("ガイド本体の大きさ", &settings_.cameraGuideSize, 0.01f, 0.1f, 3.0f, "%.2f");
     ImGui::DragFloat("視錐台の長さ", &settings_.cameraFrustumLength, 0.1f, 1.0f, 50.0f, "%.1f");
@@ -675,6 +813,22 @@ void CameraEditor::DrawCameraPreviewPanel() {
     ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "プレビュー対象: %s", GetPreviewCameraLabel());
     ImGui::TextDisabled("カメラ位置: %.2f, %.2f, %.2f", eye.x, eye.y, eye.z);
     ImGui::TextDisabled("視線方向: %.2f, %.2f, %.2f", forward.x, forward.y, forward.z);
+
+    ImGui::Spacing();
+    ImGui::TextDisabled("Scene表示の見方:");
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.18f, 1.0f), "  黄色: ゲーム/3人称カメラ");
+    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.35f, 1.0f), "  緑色: 選択中の演出カメラ");
+    ImGui::TextColored(ImVec4(0.35f, 0.65f, 1.0f, 1.0f), "  青色: 保存済みの演出カメラ");
+    ImGui::TextDisabled("保存済み演出カメラ: %zu 件 / 選択中: %s",
+        overrideParamsMap_.size(),
+        selectedOverrideName_.empty() ? "なし" : selectedOverrideName_.c_str());
+
+    if (const Camera::CameraOverrideParams* selectedParams = GetSelectedOverrideParams()) {
+        const Vector3 selectedEye = ResolveOverrideEye(*selectedParams);
+        const Vector3 selectedTarget = ResolveOverrideTarget(*selectedParams);
+        ImGui::TextDisabled("選択中Eye: %.2f, %.2f, %.2f", selectedEye.x, selectedEye.y, selectedEye.z);
+        ImGui::TextDisabled("選択中Target: %.2f, %.2f, %.2f", selectedTarget.x, selectedTarget.y, selectedTarget.z);
+    }
 
     if (ImGui::Button(ICON_FA_SAVE " 可視化設定を保存")) {
         SaveSettings();
@@ -709,6 +863,21 @@ void CameraEditor::DrawCameraPreviewPanel() {
 #endif
 }
 
+bool CameraEditor::ShouldShowSceneCameraPreviewOverlay() const {
+    return settings_.cameraPreviewVisible && GetSelectedOverrideParams() != nullptr;
+}
+
+void CameraEditor::SetCameraPreviewVisible(bool visible, bool save) {
+    if (settings_.cameraPreviewVisible == visible) {
+        return;
+    }
+
+    // 右上の演出カメラプレビューを閉じたときは、設定側の表示フラグも同期して再表示ループを防ぐ。
+    settings_.cameraPreviewVisible = visible;
+    if (save) {
+        SaveSettings();
+    }
+}
 Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
     if (!previewCameraInitialized_) {
         previewCamera_.Initialize();
@@ -717,19 +886,46 @@ Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
     }
 
     const Vector3 eye = GetPreviewCameraEye();
-    const Vector3 forward = GetPreviewCameraForward();
+    const Vector3 target = eye + GetPreviewCameraForward() * 10.0f;
+    const Vector3 forward = NormalizeSafe(target - eye, GetPreviewCameraForward());
     const Vector3 rotation = MakeRotationFromForward(forward);
 
     previewCamera_.SetInputEnabled(false);
     previewCamera_.SetFollowTarget(nullptr);
     previewCamera_.SetFollowMode(Camera::FollowMode::kFixedPoint);
-    previewCamera_.SetAspectRatio(aspectRatio);
-    previewCamera_.UpdateProjectionMatrix();
     previewCamera_.ConfigFixedPoint(eye, rotation);
     previewCamera_.SetEye(eye);
-    previewCamera_.SetTarget(eye + forward * 10.0f);
+    previewCamera_.SetTarget(target);
     previewCamera_.SetRotation(rotation);
-    previewCamera_.Update();
+    previewCamera_.SetLookAtPreviewView(eye, target, aspectRatio);
+    return &previewCamera_;
+}
+
+Camera* CameraEditor::PrepareCinematicPreviewCamera(float aspectRatio) {
+    const Camera::CameraOverrideParams* overrideParams = GetSelectedOverrideParams();
+    if (!overrideParams) {
+        return nullptr;
+    }
+
+    if (!previewCameraInitialized_) {
+        previewCamera_.Initialize();
+        previewCamera_.SetInputEnabled(false);
+        previewCameraInitialized_ = true;
+    }
+
+    const Vector3 eye = ResolveOverrideEye(*overrideParams);
+    const Vector3 target = ResolveOverrideTarget(*overrideParams);
+    const Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
+    const Vector3 rotation = MakeRotationFromForward(forward);
+
+    previewCamera_.SetInputEnabled(false);
+    previewCamera_.SetFollowTarget(nullptr);
+    previewCamera_.SetFollowMode(Camera::FollowMode::kFixedPoint);
+    previewCamera_.ConfigFixedPoint(eye, rotation);
+    previewCamera_.SetEye(eye);
+    previewCamera_.SetTarget(target);
+    previewCamera_.SetRotation(rotation);
+    previewCamera_.SetLookAtPreviewView(eye, target, aspectRatio);
     return &previewCamera_;
 }
 
@@ -775,6 +971,7 @@ void CameraEditor::SaveSettings() {
     j["orbitGuideMarkerSize"] = settings_.orbitGuideMarkerSize;
     j["cameraSensitivity"] = settings_.cameraSensitivity;
     j["cameraGuideVisible"] = settings_.cameraGuideVisible;
+    j["cameraBodyVisible"] = settings_.cameraBodyVisible;
     j["cameraPreviewVisible"] = settings_.cameraPreviewVisible;
     j["cameraGuideSize"] = settings_.cameraGuideSize;
     j["cameraFrustumLength"] = settings_.cameraFrustumLength;
@@ -862,6 +1059,7 @@ void CameraEditor::LoadSettings() {
         if (j.contains("orbitGuideMarkerSize")) settings_.orbitGuideMarkerSize = j["orbitGuideMarkerSize"];
         if (j.contains("cameraSensitivity")) settings_.cameraSensitivity = j["cameraSensitivity"];
         if (j.contains("cameraGuideVisible")) settings_.cameraGuideVisible = j["cameraGuideVisible"];
+        if (j.contains("cameraBodyVisible")) settings_.cameraBodyVisible = j["cameraBodyVisible"];
         if (j.contains("cameraPreviewVisible")) settings_.cameraPreviewVisible = j["cameraPreviewVisible"];
         if (j.contains("cameraGuideSize")) settings_.cameraGuideSize = j["cameraGuideSize"];
         if (j.contains("cameraFrustumLength")) settings_.cameraFrustumLength = j["cameraFrustumLength"];
@@ -959,6 +1157,39 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
         // ターゲット追従を切らないと動かない場合があるので念のため
         camera->SetFollowTarget(nullptr);
     }
+}
+
+bool CameraEditor::FocusSelectedOverrideCamera() {
+    const Camera::CameraOverrideParams* params = GetSelectedOverrideParams();
+    if (!params) {
+        return false;
+    }
+
+    const Vector3 eye = ResolveOverrideEye(*params);
+    const Vector3 target = ResolveOverrideTarget(*params);
+    const Vector3 forward = NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
+    const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
+    const float focusDistance = (std::max)(4.0f, settings_.cameraGuideSize * 8.0f);
+    const float focusHeight = (std::max)(2.0f, settings_.cameraGuideSize * 4.0f);
+    const Vector3 focusTarget = eye + worldUp * (settings_.cameraGuideSize * 0.6f);
+    const Vector3 focusEye = eye - forward * focusDistance + worldUp * focusHeight;
+    const Vector3 focusForward = NormalizeSafe(focusTarget - focusEye, forward);
+    const Vector3 rotation = MakeRotationFromForward(focusForward);
+
+    // 選択中の演出カメラと完全に同じ座標へ入るとモデルに埋まるため、少し後ろ上から本体を見られる位置へ寄せる。
+    settings_.editorCameraPos = focusEye;
+    settings_.editorCameraAngle = rotation;
+    SetMode(Mode::Editor);
+    SetEditorCameraTransform(focusEye, rotation);
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        camera->SetTarget(focusTarget);
+        camera->Update();
+    }
+
+    DebugConsole::GetInstance()->AddLog("Focused cinematic camera: " + selectedOverrideName_);
+    return true;
 }
 
 void CameraEditor::ApplyOrbitStartAngle(Camera* camera, bool resetSmoothing) {
@@ -1096,6 +1327,33 @@ const char* CameraEditor::GetPreviewCameraLabel() const {
     return settings_.currentMode == Mode::Game ? "自由カメラ" : "ゲームカメラ";
 }
 
+const Camera::CameraOverrideParams* CameraEditor::GetSelectedOverrideParams() const {
+    if (!settings_.selectedOverridePreview || selectedOverrideName_.empty()) {
+        return nullptr;
+    }
+
+    auto it = overrideParamsMap_.find(selectedOverrideName_);
+    if (it == overrideParamsMap_.end()) {
+        return nullptr;
+    }
+    return &it->second;
+}
+
+Vector3 CameraEditor::ResolveOverrideEye(const Camera::CameraOverrideParams& params) const {
+    // 演出用カメラの可視化では、再生時の追従設定よりも保存済みのEye位置を優先します。
+    return params.fixedEyePos;
+}
+
+Vector3 CameraEditor::ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const {
+    // 演出用カメラのプレビューでは、保存済みの注視点そのものを表示します。
+    return params.fixedTargetPos;
+}
+
+Vector3 CameraEditor::ResolveOverrideForward(const Camera::CameraOverrideParams& params) const {
+    const Vector3 eye = ResolveOverrideEye(params);
+    const Vector3 target = ResolveOverrideTarget(params);
+    return NormalizeSafe(target - eye, { 0.0f, 0.0f, 1.0f });
+}
 Vector3 CameraEditor::GetConfiguredCameraRight(const Vector3& forward) const {
     const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
     Vector3 right = Cross(worldUp, forward);
@@ -1186,20 +1444,14 @@ void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vec
 
 void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
 #ifdef USE_IMGUI
-    if (settings_.currentMode != Mode::Editor) return;
     if (!settings_.cameraGuideVisible) return;
     if (instanceCount >= maxDrawLimit) return;
 
     Math math;
-    const Vector3 eye = GetConfiguredCameraEye();
-    const Vector3 forward = GetConfiguredCameraForward();
-    const Vector3 right = GetConfiguredCameraRight(forward);
-    const Vector3 up = GetConfiguredCameraUp(forward, right);
     const float markerSize = (std::max)(0.05f, settings_.cameraGuideSize);
     const float frustumLength = (std::max)(0.5f, settings_.cameraFrustumLength);
     const float halfHeight = frustumLength * std::tan(0.45f * 0.5f);
     const float halfWidth = halfHeight * (16.0f / 9.0f);
-    const Vector3 target = eye + forward * frustumLength;
 
     auto drawSphere = [&](const Vector3& pos, float size, const Vector4& color) {
         if (instanceCount >= maxDrawLimit) return;
@@ -1212,22 +1464,166 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         primitiveDrawer.DrawWireCube(commandList, MakeLineBoxMatrix(start, end, thickness), color, instanceCount++);
     };
 
-    const Vector3 topLeft = target + up * halfHeight - right * halfWidth;
-    const Vector3 topRight = target + up * halfHeight + right * halfWidth;
-    const Vector3 bottomLeft = target - up * halfHeight - right * halfWidth;
-    const Vector3 bottomRight = target - up * halfHeight + right * halfWidth;
+    auto drawWireBox = [&](const Vector3& center, const Vector3& right, const Vector3& up, const Vector3& forward,
+        float halfRight, float halfUp, float halfForward, float thickness, const Vector4& color) {
+        if (instanceCount >= maxDrawLimit) return;
 
-    drawSphere(eye, markerSize, { 0.1f, 0.9f, 1.0f, 1.0f });
-    drawSphere(target, markerSize * 0.45f, { 1.0f, 0.9f, 0.1f, 1.0f });
-    drawCubeLine(eye, target, 0.035f, { 0.1f, 0.9f, 1.0f, 0.95f });
-    drawCubeLine(eye, topLeft, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
-    drawCubeLine(eye, topRight, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
-    drawCubeLine(eye, bottomLeft, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
-    drawCubeLine(eye, bottomRight, 0.025f, { 1.0f, 0.68f, 0.18f, 0.9f });
-    drawCubeLine(topLeft, topRight, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
-    drawCubeLine(topRight, bottomRight, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
-    drawCubeLine(bottomRight, bottomLeft, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
-    drawCubeLine(bottomLeft, topLeft, 0.03f, { 1.0f, 0.9f, 0.25f, 0.95f });
+        auto corner = [&](float sx, float sy, float sz) {
+            return center + right * (halfRight * sx) + up * (halfUp * sy) + forward * (halfForward * sz);
+        };
+
+        const Vector3 lbf = corner(-1.0f, -1.0f, 1.0f);
+        const Vector3 rbf = corner(1.0f, -1.0f, 1.0f);
+        const Vector3 ltf = corner(-1.0f, 1.0f, 1.0f);
+        const Vector3 rtf = corner(1.0f, 1.0f, 1.0f);
+        const Vector3 lbb = corner(-1.0f, -1.0f, -1.0f);
+        const Vector3 rbb = corner(1.0f, -1.0f, -1.0f);
+        const Vector3 ltb = corner(-1.0f, 1.0f, -1.0f);
+        const Vector3 rtb = corner(1.0f, 1.0f, -1.0f);
+
+        drawCubeLine(lbf, rbf, thickness, color);
+        drawCubeLine(rbf, rtf, thickness, color);
+        drawCubeLine(rtf, ltf, thickness, color);
+        drawCubeLine(ltf, lbf, thickness, color);
+
+        drawCubeLine(lbb, rbb, thickness, color);
+        drawCubeLine(rbb, rtb, thickness, color);
+        drawCubeLine(rtb, ltb, thickness, color);
+        drawCubeLine(ltb, lbb, thickness, color);
+
+        drawCubeLine(lbf, lbb, thickness, color);
+        drawCubeLine(rbf, rbb, thickness, color);
+        drawCubeLine(ltf, ltb, thickness, color);
+        drawCubeLine(rtf, rtb, thickness, color);
+    };
+
+    auto drawCameraBody = [&](const Vector3& eye, const Vector3& forward, float sizeScale, const Vector4& bodyColor, const Vector4& accentColor) {
+        if (!settings_.cameraBodyVisible || instanceCount >= maxDrawLimit) return;
+        if (object3dCommon_) return;
+
+        const Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+        const Vector3 right = GetConfiguredCameraRight(safeForward);
+        const Vector3 up = GetConfiguredCameraUp(safeForward, right);
+        const float size = markerSize * sizeScale;
+        const float line = (std::max)(0.018f, size * 0.045f);
+
+        // UnityのScene Viewに近い「カメラ筐体 + レンズ + 取っ手」を、Editor専用ワイヤーモデルとして生成します。
+        const Vector3 bodyCenter = eye - safeForward * (size * 0.16f);
+        drawWireBox(bodyCenter, right, up, safeForward, size * 0.82f, size * 0.48f, size * 0.42f, line, bodyColor);
+
+        const Vector3 lensCenter = eye + safeForward * (size * 0.45f);
+        drawWireBox(lensCenter, right, up, safeForward, size * 0.36f, size * 0.28f, size * 0.24f, line * 0.9f, accentColor);
+
+        const Vector3 hoodCenter = eye + safeForward * (size * 0.78f);
+        drawWireBox(hoodCenter, right, up, safeForward, size * 0.52f, size * 0.38f, size * 0.11f, line * 0.8f, accentColor);
+
+        const Vector3 handleCenter = bodyCenter + up * (size * 0.66f) - safeForward * (size * 0.05f);
+        drawWireBox(handleCenter, right, up, safeForward, size * 0.42f, size * 0.13f, size * 0.22f, line * 0.75f, bodyColor);
+
+        const Vector3 tripodRoot = bodyCenter - up * (size * 0.52f);
+        const Vector3 tripodCenter = tripodRoot - up * (size * 0.55f);
+        drawCubeLine(tripodRoot, tripodCenter, line * 0.75f, bodyColor);
+        drawCubeLine(tripodCenter, tripodCenter + right * (size * 0.58f) - up * (size * 0.22f), line * 0.65f, bodyColor);
+        drawCubeLine(tripodCenter, tripodCenter - right * (size * 0.58f) - up * (size * 0.22f), line * 0.65f, bodyColor);
+        drawCubeLine(tripodCenter, tripodCenter - safeForward * (size * 0.50f) - up * (size * 0.18f), line * 0.65f, bodyColor);
+    };
+
+    auto drawCameraBadge = [&](const Vector3& eye, const Vector3& forward, int badgeNumber, float sizeScale, const Vector4& color, bool selected) {
+        if (instanceCount >= maxDrawLimit) return;
+
+        const Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+        const Vector3 right = GetConfiguredCameraRight(safeForward);
+        const Vector3 up = GetConfiguredCameraUp(safeForward, right);
+        const float size = markerSize * sizeScale;
+        const float line = (std::max)(0.014f, size * 0.035f);
+        const Vector3 tagCenter = eye + up * (selected ? size * 1.45f : size * 1.12f) - safeForward * (size * 0.28f);
+
+        // リスト上の番号とScene上のカメラ位置を対応させるため、小さなタグを描きます。
+        drawWireBox(tagCenter, right, up, safeForward, size * 0.44f, size * 0.20f, size * 0.06f, line, color);
+
+        if (badgeNumber <= 0) {
+            drawCubeLine(tagCenter - right * (size * 0.22f), tagCenter + right * (size * 0.22f), line * 1.2f, color);
+            drawCubeLine(tagCenter, tagCenter + up * (size * 0.28f), line * 0.9f, color);
+            return;
+        }
+
+        const int dotCount = (std::min)(badgeNumber, 5);
+        const float start = -0.24f;
+        const float step = dotCount > 1 ? 0.12f : 0.0f;
+        for (int i = 0; i < dotCount; ++i) {
+            const Vector3 dotPos = tagCenter + right * (size * (start + step * i));
+            drawSphere(dotPos, size * (selected ? 0.075f : 0.060f), color);
+        }
+        if (badgeNumber > 5) {
+            drawCubeLine(tagCenter + right * (size * 0.28f) - up * (size * 0.08f), tagCenter + right * (size * 0.34f) + up * (size * 0.08f), line * 0.75f, color);
+        }
+    };
+
+    auto drawFrustum = [&](const Vector3& eye, const Vector3& forward, float sizeScale, const Vector4& eyeColor, const Vector4& rayColor, const Vector4& frameColor) {
+        if (instanceCount >= maxDrawLimit) return;
+
+        const Vector3 safeForward = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+        const Vector3 right = GetConfiguredCameraRight(safeForward);
+        const Vector3 up = GetConfiguredCameraUp(safeForward, right);
+        const Vector3 target = eye + safeForward * frustumLength;
+        const float localMarkerSize = markerSize * sizeScale;
+        const Vector3 topLeft = target + up * halfHeight - right * halfWidth;
+        const Vector3 topRight = target + up * halfHeight + right * halfWidth;
+        const Vector3 bottomLeft = target - up * halfHeight - right * halfWidth;
+        const Vector3 bottomRight = target - up * halfHeight + right * halfWidth;
+
+        drawCameraBody(eye, safeForward, sizeScale, eyeColor, frameColor);
+        drawSphere(eye, settings_.cameraBodyVisible ? localMarkerSize * 0.24f : localMarkerSize, eyeColor);
+        drawSphere(target, localMarkerSize * 0.45f, frameColor);
+        drawCubeLine(eye, target, 0.035f * sizeScale, rayColor);
+        drawCubeLine(eye, topLeft, 0.025f * sizeScale, frameColor);
+        drawCubeLine(eye, topRight, 0.025f * sizeScale, frameColor);
+        drawCubeLine(eye, bottomLeft, 0.025f * sizeScale, frameColor);
+        drawCubeLine(eye, bottomRight, 0.025f * sizeScale, frameColor);
+        drawCubeLine(topLeft, topRight, 0.03f * sizeScale, frameColor);
+        drawCubeLine(topRight, bottomRight, 0.03f * sizeScale, frameColor);
+        drawCubeLine(bottomRight, bottomLeft, 0.03f * sizeScale, frameColor);
+        drawCubeLine(bottomLeft, topLeft, 0.03f * sizeScale, frameColor);
+    };
+
+    // ゲーム/3人称カメラの位置をScene上に表示します。
+    const Vector3 gameEye = GetConfiguredCameraEye();
+    const Vector3 gameForward = GetConfiguredCameraForward();
+    const Vector4 gameEyeColor = { 1.0f, 0.82f, 0.18f, 1.0f };
+    const Vector4 gameRayColor = { 1.0f, 0.72f, 0.18f, 0.95f };
+    const Vector4 gameFrameColor = { 1.0f, 0.92f, 0.35f, 0.88f };
+    drawFrustum(gameEye, gameForward, 0.85f, gameEyeColor, gameRayColor, gameFrameColor);
+    drawCameraBadge(gameEye, gameForward, 0, 0.85f, gameFrameColor, true);
+    if (targetPlayer_) {
+        Vector3 lookTarget = targetPlayer_->GetWorldPosition();
+        lookTarget.y += settings_.height;
+        drawSphere(lookTarget, markerSize * 0.38f, gameFrameColor);
+        drawCubeLine(gameEye, lookTarget, 0.024f, gameRayColor);
+    }
+
+    if (!settings_.savedOverrideGuideVisible || overrideParamsMap_.empty()) return;
+
+    // 演出用カメラをScene上に表示します。選択中は緑、未選択は青です。
+    int cameraIndex = 1;
+    for (const auto& [name, params] : overrideParamsMap_) {
+        (void)name;
+        if (instanceCount >= maxDrawLimit) break;
+
+        const bool selected = (name == selectedOverrideName_);
+        const Vector3 eye = ResolveOverrideEye(params);
+        const Vector3 target = ResolveOverrideTarget(params);
+        const Vector3 forward = ResolveOverrideForward(params);
+        const float sizeScale = selected ? 0.95f : 0.65f;
+        const Vector4 eyeColor = selected ? Vector4{ 0.2f, 1.0f, 0.35f, 1.0f } : Vector4{ 0.25f, 0.55f, 1.0f, 0.85f };
+        const Vector4 rayColor = selected ? Vector4{ 0.2f, 1.0f, 0.35f, 0.95f } : Vector4{ 0.25f, 0.55f, 1.0f, 0.65f };
+        const Vector4 frameColor = selected ? Vector4{ 0.75f, 1.0f, 0.35f, 0.95f } : Vector4{ 0.55f, 0.75f, 1.0f, 0.62f };
+
+        drawFrustum(eye, forward, sizeScale, eyeColor, rayColor, frameColor);
+        drawCameraBadge(eye, forward, cameraIndex, sizeScale, frameColor, selected);
+        drawSphere(target, markerSize * 0.32f * sizeScale, frameColor);
+        drawCubeLine(eye, target, selected ? 0.032f : 0.018f, rayColor);
+        ++cameraIndex;
+    }
 #else
     (void)primitiveDrawer;
     (void)commandList;
@@ -1290,6 +1686,84 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
     (void)commandList;
     (void)instanceCount;
     (void)maxDrawLimit;
+#endif
+}
+
+void CameraEditor::DrawSelectedOverrideCameraGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue) {
+#ifdef USE_IMGUI
+    if (!settings_.cameraGuideVisible || selectedOverrideName_.empty()) return;
+    auto it = overrideParamsMap_.find(selectedOverrideName_);
+    if (it == overrideParamsMap_.end()) return;
+    if (!isGameViewHovered_ && !isDraggingOverrideCameraGizmo_) return;
+
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) return;
+
+    Camera::CameraOverrideParams& params = it->second;
+    overrideCameraGizmoMode_ = (std::clamp)(overrideCameraGizmoMode_, 0, 2);
+    const bool editTargetOnly = overrideCameraGizmoMode_ == 1;
+    const bool moveComposition = overrideCameraGizmoMode_ == 2;
+
+    const Vector3 currentEye = ResolveOverrideEye(params);
+    const Vector3 currentTarget = ResolveOverrideTarget(params);
+    const Vector3 gizmoPosition = editTargetOnly ? currentTarget : currentEye;
+
+    Math math;
+    Matrix4x4 world = math.MakeTranslateMatrix(gizmoPosition);
+    Matrix4x4 view = camera->GetViewMatrix();
+    Matrix4x4 proj = camera->GetProjectionMatrix();
+
+    float snapArr[3] = { snapValue, snapValue, snapValue };
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(gameViewOffset.x, gameViewOffset.y, gameViewSize.x, gameViewSize.y);
+    ImGuizmo::Manipulate(
+        &view.m[0][0],
+        &proj.m[0][0],
+        ImGuizmo::TRANSLATE,
+        ImGuizmo::WORLD,
+        &world.m[0][0],
+        nullptr,
+        snapEnabled ? snapArr : nullptr
+    );
+
+    if (ImGuizmo::IsUsing()) {
+        isDraggingOverrideCameraGizmo_ = true;
+        const Vector3 editedPosition = {
+            world.m[3][0],
+            world.m[3][1],
+            world.m[3][2]
+        };
+
+        if (editTargetOnly) {
+            params.fixedTargetPos = editedPosition;
+            params.trackTargetX = false;
+            params.trackTargetY = false;
+            params.trackTargetZ = false;
+        } else {
+            const Vector3 delta = editedPosition - currentEye;
+            params.fixedEyePos = editedPosition;
+            params.trackEyeX = false;
+            params.trackEyeY = false;
+            params.trackEyeZ = false;
+
+            if (moveComposition) {
+                params.fixedTargetPos = currentTarget + delta;
+                params.trackTargetX = false;
+                params.trackTargetY = false;
+                params.trackTargetZ = false;
+            }
+        }
+    }
+    else if (isDraggingOverrideCameraGizmo_) {
+        isDraggingOverrideCameraGizmo_ = false;
+        SaveSettings();
+        DebugConsole::GetInstance()->AddLog("Cinematic camera gizmo saved: " + selectedOverrideName_);
+    }
+#else
+    (void)gameViewOffset;
+    (void)gameViewSize;
+    (void)snapEnabled;
+    (void)snapValue;
 #endif
 }
 

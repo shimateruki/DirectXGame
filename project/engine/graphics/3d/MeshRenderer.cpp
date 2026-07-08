@@ -212,6 +212,24 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     }
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
 
+    // Camera Previewでは通常描画用のWVP/Camera定数を上書きしないよう、専用バッファを使います。
+    // 右パネルPreviewと演出用Previewを同じフレームで描くため、GPU実行前の上書きを避ける目的で2面分確保します。
+    for (int i = 0; i < kPreviewBufferCount; ++i) {
+        if (!CreateMappedBuffer(dxCommon, sizeof(TransformationMatrix), previewWvpResources_[i], previewWvpData_[i], "PreviewWVP")) {
+            common_ = nullptr;
+            return;
+        }
+        previewWvpData_[i]->WVP = Math::MakeIdentity4x4();
+        previewWvpData_[i]->world = Math::MakeIdentity4x4();
+        previewWvpData_[i]->WorldInverseTranspose = Math::MakeIdentity4x4();
+
+        if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), previewCameraResources_[i], previewCameraData_[i], "PreviewCamera")) {
+            common_ = nullptr;
+            return;
+        }
+        previewCameraData_[i]->worldPosition = { 0.0f, 0.0f, 0.0f };
+    }
+
     // 4. Materialバッファ
     if (!CreateMappedBuffer(dxCommon, sizeof(MaterialData), materialResource_, materialData_, "Material")) {
         common_ = nullptr;

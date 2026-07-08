@@ -606,7 +606,10 @@ void DebugEditor::Update() {
             if (input->IsKeyTriggered(DIK_END)) DropToFloor();
 
             // カメラフォーカス機能
-            if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
+            if (input->IsKeyTriggered(DIK_F) && current == CameraEditor::GetInstance()) {
+                CameraEditor::GetInstance()->FocusSelectedOverrideCamera();
+            }
+            else if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
                 Vector3 targetPos = { selectedObject_->GetWorldMatrix().m[3][0],
                                       selectedObject_->GetWorldMatrix().m[3][1],
                                       selectedObject_->GetWorldMatrix().m[3][2] };
@@ -622,6 +625,7 @@ void DebugEditor::Update() {
         const bool isCameraEditorSelected = current == cameraEditor;
         if (isCameraEditorSelected) {
             cameraEditor->DrawOrbitCenterGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
+            cameraEditor->DrawSelectedOverrideCameraGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
         }
 
         // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---

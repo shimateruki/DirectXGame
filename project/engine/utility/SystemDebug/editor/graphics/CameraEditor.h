@@ -2,12 +2,15 @@
 #include "Camera.h"
 #include "IEditable.h"
 #include "engine/utility/math/Math.h"
+#include "Object3d.h"
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 class Object3d;
+class Object3dCommon;
 class PrimitiveDrawer;
 struct ID3D12GraphicsCommandList;
 
@@ -44,7 +47,10 @@ public:
         float orbitGuideMarkerSize = 0.45f;
         int cameraSensitivity = 0;
         bool cameraGuideVisible = true;
-        bool cameraPreviewVisible = true;
+        bool cameraBodyVisible = true;
+        bool cameraPreviewVisible = false;
+        bool savedOverrideGuideVisible = true;
+        bool selectedOverridePreview = true;
         float cameraGuideSize = 0.65f;
         float cameraFrustumLength = 6.0f;
         float cameraPreviewHeight = 180.0f;
@@ -81,6 +87,7 @@ public:
     void SetMode(Mode mode);
     Mode GetMode() const { return settings_.currentMode; }
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+    bool FocusSelectedOverrideCamera();
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetEditorStateSaveBlocker(uint32_t blocker, bool enabled);
     bool IsEditorStateSaveBlocked() const { return editorStateSaveBlockers_ != 0; }
@@ -98,9 +105,15 @@ public:
 
     void DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
     void DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
+    void SetObject3dCommon(Object3dCommon* common);
+    void DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue);
+    void DrawSelectedOverrideCameraGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue);
     bool ShouldRenderCameraPreview() const { return settings_.cameraPreviewVisible; }
+    void SetCameraPreviewVisible(bool visible, bool save = true);
+    bool ShouldShowSceneCameraPreviewOverlay() const;
     Camera* PreparePreviewCamera(float aspectRatio);
+    Camera* PrepareCinematicPreviewCamera(float aspectRatio);
 
 private:
     void UpdateFreeCamera(Camera* camera);
@@ -115,9 +128,15 @@ private:
     Vector3 GetPreviewCameraEye() const;
     Vector3 GetPreviewCameraForward() const;
     const char* GetPreviewCameraLabel() const;
+    const Camera::CameraOverrideParams* GetSelectedOverrideParams() const;
+    Vector3 ResolveOverrideEye(const Camera::CameraOverrideParams& params) const;
+    Vector3 ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const;
+    Vector3 ResolveOverrideForward(const Camera::CameraOverrideParams& params) const;
     Vector3 GetConfiguredCameraRight(const Vector3& forward) const;
     Vector3 GetConfiguredCameraUp(const Vector3& forward, const Vector3& right) const;
     Matrix4x4 MakeLineBoxMatrix(const Vector3& start, const Vector3& end, float thickness) const;
+    void EnsureCameraModelGizmo(std::unique_ptr<Object3d>& gizmo, const std::string& name);
+    void ApplyCameraModelGizmo(Object3d* gizmo, const Vector3& eye, const Vector3& forward, float sizeScale, const Vector4& color);
         // 選択中カメラのプレビュー表示と操作パネルを描画します。
 void DrawCameraPreviewPanel();
     void ApplyConfiguredCameraPreview(Camera* camera) const;
@@ -135,7 +154,9 @@ private:
     std::vector<std::string> fileList_;
     bool isGameViewHovered_ = false;
     bool isDraggingOrbitCenterGizmo_ = false;
+    bool isDraggingOverrideCameraGizmo_ = false;
     int orbitEditGizmoTarget_ = 1;
+    int overrideCameraGizmoMode_ = 2;
     std::map<std::string, Camera::CameraOverrideParams> overrideParamsMap_;
     uint32_t editorStateSaveBlockers_ = 0;
     std::string selectedOverrideName_ = "";
@@ -143,4 +164,7 @@ private:
     Object3d* targetPlayer_ = nullptr;
     Camera previewCamera_;
     bool previewCameraInitialized_ = false;
+    Object3dCommon* object3dCommon_ = nullptr;
+    std::unique_ptr<Object3d> gameCameraModelGizmo_;
+    std::vector<std::unique_ptr<Object3d>> overrideCameraModelGizmos_;
 };

@@ -277,6 +277,18 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 // トランスフォーム操作 (Transformへの委譲)
 // ========================================================================
 
+void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    if (!isVisible_) return;
+#ifdef DD
+    if (className_ == "CinematicCamera" || className_ == "GPUParticle" || className_ == "InvisibleBox") {
+        return;
+    }
+#endif
+    if (meshRenderer_) {
+        meshRenderer_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    }
+}
+
 void Object3d::UpdateLocalMatrix() {
     transform_.UpdateMatrix();
 }

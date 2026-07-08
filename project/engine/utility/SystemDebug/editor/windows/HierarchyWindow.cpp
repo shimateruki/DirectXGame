@@ -70,6 +70,8 @@ static bool MatchesHierarchySearch(Object3d* object, const std::string& lowerFil
 namespace fs = std::filesystem;
 
 namespace {
+    constexpr const char* kCinematicCameraModel = "Editor/camera_gizmo";
+
     std::string MakeUniqueName(BaseScene* scene, const std::string& baseName) {
         if (!scene) return baseName;
 
@@ -286,8 +288,8 @@ namespace {
 
         auto object = std::make_unique<Object3d>();
         object->Initialize(scene->GetObject3dCommon());
-        object->SetModel("Stages/block");
-        object->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f });
+        object->SetModel(kCinematicCameraModel);
+        object->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
         object->SetIsVisible(true);
         object->SetClassName("CinematicCamera");
         Object3d::ColliderConfig colConfig;
@@ -694,7 +696,7 @@ void HierarchyWindow::Draw() {
                 Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
+                    newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
                     newObj->SetTranslate({ 0.0f, 5.0f, -10.0f }); newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
                 }
@@ -760,7 +762,7 @@ void HierarchyWindow::Draw() {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
+            newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
             editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");

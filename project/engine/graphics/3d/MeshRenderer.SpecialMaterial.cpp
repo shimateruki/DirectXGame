@@ -211,6 +211,50 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         1, 0, meshDrawIndex_
     );
 }
+
+void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    Model* drawModel = ResolveDrawModel();
+    const int safePreviewIndex = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
+    ID3D12Resource* previewWvpResource = previewWvpResources_[safePreviewIndex].Get();
+    TransformationMatrix* previewWvpData = previewWvpData_[safePreviewIndex];
+    ID3D12Resource* previewCameraResource = previewCameraResources_[safePreviewIndex].Get();
+    CameraForGPU* previewCameraData = previewCameraData_[safePreviewIndex];
+
+    if (!camera || !drawModel || !common_ || !HasRequiredBuffers() ||
+        !previewWvpResource || !previewWvpData || !previewCameraResource || !previewCameraData) {
+        return;
+    }
+
+    Math math;
+    const Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    const Matrix4x4& worldMatrix = transform_->matWorld;
+    previewWvpData->WVP = math.Multiply(worldMatrix, viewProj);
+    previewWvpData->world = worldMatrix;
+    previewWvpData->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
+    previewCameraData->worldPosition = camera->GetEye();
+
+    common_->SetGraphicsCommand();
+    common_->SetPipelineState(blendMode_);
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    if (shadowWvpResource_) {
+        commandList->SetGraphicsRootConstantBufferView(11, shadowWvpResource_->GetGPUVirtualAddress());
+    }
+
+    const uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
+
+    drawModel->Draw(
+        previewWvpResource,
+        LightManager::GetInstance()->GetDirectionalLightResource(),
+        previewCameraResource,
+        pointLightResource,
+        spotLightResource,
+        materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_,
+        1, 0, meshDrawIndex_
+    );
+}
+
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;

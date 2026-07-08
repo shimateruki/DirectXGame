@@ -5,6 +5,7 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "GPUParticleManager.h"
+#include "LightManager.h"
 #include <algorithm>
 
 bool BaseScene::Destroy(Object3d* object) {
@@ -25,6 +26,40 @@ void BaseScene::RefreshRenderCameraData() {
 
     if (Player* player = GetPlayer()) {
         player->RefreshRenderCameraData();
+    }
+}
+
+void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
+    if (!camera) {
+        return;
+    }
+
+    ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+    auto& objects = GetObjects();
+
+    auto drawObject = [&](Object3d* object, bool transparentPass) {
+        if (!object || !object->GetIsVisible()) {
+            return;
+        }
+
+        const int materialType = object->GetMaterialType();
+        const bool isTransparent = (materialType == 1);
+        const bool isSpecialMaterial = (materialType == 7 || (materialType >= 8 && materialType <= 22));
+        if (isSpecialMaterial || isTransparent != transparentPass) {
+            return;
+        }
+
+        object->DrawForCamera(camera, pointLight, spotLight, previewBufferIndex);
+    };
+
+    // 演出用カメラPreviewでは通常描画用のScene::Draw()を再利用せず、
+    // 共有WVPを汚さない専用描画だけを通します。
+    for (auto& object : objects) {
+        drawObject(object.get(), false);
+    }
+    for (auto& object : objects) {
+        drawObject(object.get(), true);
     }
 }
 
