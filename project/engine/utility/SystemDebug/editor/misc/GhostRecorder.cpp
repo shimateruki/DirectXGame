@@ -1,17 +1,18 @@
 #define NOMINMAX
 #include "GhostRecorder.h"
-#include "imgui.h" 
-#include "SceneManager.h" 
+#include "AnimationInterpolation.h"
+#include "imgui.h"
+#include "SceneManager.h"
 #include "BaseScene.h"
 #include "CameraManager.h"
 #include "Camera.h"
 #include <fstream>
 #include "json.hpp"
-#include <cmath> 
-#include <algorithm> 
-#include <CameraEditor.h>
-#include <DebugConsole.h>
-#include"Easing.h"
+#include <cmath>
+#include <algorithm>
+#include "CameraEditor.h"
+#include "DebugConsole.h"
+#include "Easing.h"
 #include "ImGuizmo.h"
 #include "IconsFontAwesome5.h"
 using json = nlohmann::json;
@@ -36,33 +37,18 @@ bool IsObjectInScene(SceneManager* sceneManager, Object3d* object) {
 
 }
 
-// ========================================================================
-//  クォータニオンを利用した、安全で完璧な回転計算ヘルパー群！
-// ========================================================================
-
-// 1. 最短経路で回転を補間する (Slerp)
-Vector3 SlerpEuler(const Vector3& eulerStart, const Vector3& eulerEnd, float t) {
-	Quaternion qStart = Math::EulerToQuaternion(eulerStart);
-	Quaternion qEnd = Math::EulerToQuaternion(eulerEnd);
-	Quaternion qSlerp = Math::Slerp(qStart, qEnd, t);
-	return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(qSlerp));
-}
-
-// 2. 回転を「足す」 (親の回転に子の回転を合成する)
+// 親回転へローカル回転を合成する。
 Vector3 AddEuler(const Vector3& eulerBase, const Vector3& eulerAdd) {
 	Quaternion qBase = Math::EulerToQuaternion(eulerBase);
 	Quaternion qAdd = Math::EulerToQuaternion(eulerAdd);
-	// DirectX(Row-major)の回転合成: qAdd * qBase
 	Quaternion qResult = qAdd * qBase;
 	return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(qResult));
 }
 
-// 3. 回転を「引く」 (現在の回転から基準の回転を引いて、差分[ローカル回転]を求める)
+// ワールド回転から基準回転を除き、ローカル回転を求める。
 Vector3 SubEuler(const Vector3& eulerCurrent, const Vector3& eulerBase) {
 	Quaternion qBase = Math::EulerToQuaternion(eulerBase);
 	Quaternion qCurrent = Math::EulerToQuaternion(eulerCurrent);
-	// qCurrent = qOffset * qBase  =>  qOffset = qCurrent * Inverse(qBase)
-	// 逆クォータニオン(共役)
 	Quaternion qBaseInv = { -qBase.x, -qBase.y, -qBase.z, qBase.w };
 	Quaternion qOffset = qCurrent * qBaseInv;
 	return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(qOffset));
@@ -103,7 +89,10 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	sceneManager_ = sceneManager;
 	target_ = nullptr;
 	anchor_ = nullptr;
+	anchorName_.clear();
 	frames_.clear();
+	undoStack_.clear();
+	redoStack_.clear();
 	state_ = State::Idle;
 
 	isLoop_ = false;
@@ -112,8 +101,10 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 
 	genParams_ = GenerationParams();
 	isShowPreview_ = true; // デフォルトで表示
-	cameraManager_ = nullptr; // 初期化忘れずに
 	isOverrideCamera_ = false;
+	isScrubbing_ = false;
+	isDraggingGizmo_ = false;
+	DeselectPin();
 }
 
 void GhostRecorder::SetTarget(Object3d* target) {
@@ -129,6 +120,30 @@ void GhostRecorder::ClearTarget() {
 	anchor_ = nullptr;
 	DeselectPin();
 	isScrubbing_ = false;
+}
+
+int GhostRecorder::GetCurrentEventID() const {
+	if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
+		return frames_[currentFrameIndex_].eventID;
+	}
+	return 0;
+}
+
+void GhostRecorder::DeselectPin() {
+	selectedPinType_ = SelectedPinType::None;
+	selectedWaypointIndex_ = -1;
+}
+
+void GhostRecorder::PlayFromMemory(bool loop, bool isCinematic) {
+	if (frames_.empty()) {
+		return;
+	}
+	isLoop_ = loop;
+	isOverrideCamera_ = isCinematic;
+	if (target_) {
+		target_->SetIsVisible(!isCinematic);
+	}
+	StartPlayingInternal();
 }
 
 bool GhostRecorder::IsTargetInCurrentScene() const {
@@ -162,40 +177,19 @@ void GhostRecorder::Update() {
 	else if (state_ == State::Playing) {
 
 		if (frames_.empty()) {
-			state_ = State::Idle;
+			Stop(false);
 			return;
 		}
 
 		if (currentFrameIndex_ < frames_.size()) {
 			const auto& frame = frames_[currentFrameIndex_];
-
-			if (isRelative_) {
-				target_->SetTranslate({
-					basePosition_.x + frame.position.x,
-					basePosition_.y + frame.position.y,
-					basePosition_.z + frame.position.z
-					});
-				// 角度の加算をクォータニオン合成で実行
-				target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
-			}
-			else {
-				target_->SetTranslate(frame.position);
-				target_->SetRotation(frame.rotation);
-			}
-			target_->SetScale(frame.scale);
-			// 座標を動かしたら即座に行列を更新して画面に反映させる！
-			target_->UpdateLocalMatrix();
-			target_->UpdateWorldMatrix();
+			ApplyFrameTransform(frame);
 			if (frame.eventID != 0) {
 				target_->OnRecordEvent(frame.eventID);
 			}
 			if (isOverrideCamera_) {
-				CameraEditor* camEditor = CameraEditor::GetInstance();
-				if (camEditor) {
-					Vector3 camPos = target_->GetTranslate();
-					Vector3 camRot = target_->GetRotation();
-					camEditor->SetEditorCameraTransform(camPos, camRot);
-				}
+				// Object更新後に時間を進めず行列だけ再計算し、完全追従時の1フレーム遅れをなくします。
+				CameraManager::GetInstance()->Update(0.0f);
 			}
 			currentFrameIndex_++;
 		}
@@ -237,13 +231,7 @@ void GhostRecorder::Stop(bool autoReset) {
 	state_ = State::Idle;
 	currentFrameIndex_ = 0;
 
-	if (isOverrideCamera_) {
-		CameraEditor* camEditor = CameraEditor::GetInstance();
-		if (camEditor) {
-			camEditor->SetMode(CameraEditor::Mode::Game);
-			DebugConsole::GetInstance()->AddLog("Camera returned to Game Mode.");
-		}
-	}
+	StopCinematicPlayback();
 }
 
 void GhostRecorder::StartRecording() {
@@ -261,27 +249,49 @@ void GhostRecorder::StartPlayingInternal() {
 	state_ = State::Playing;
 	currentFrameIndex_ = 0;
 
-	if (isOverrideCamera_) {
-		CameraEditor* camEditor = CameraEditor::GetInstance();
-		if (camEditor) camEditor->SetMode(CameraEditor::Mode::Editor);
+	StartCinematicPlayback();
+}
+
+void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
+	if (!target_) {
+		return;
+	}
+
+	if (isRelative_) {
+		target_->SetTranslate(basePosition_ + frame.position);
+		target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
+	}
+	else {
+		target_->SetTranslate(frame.position);
+		target_->SetRotation(frame.rotation);
+	}
+	target_->SetScale(frame.scale);
+	target_->UpdateLocalMatrix();
+	target_->UpdateWorldMatrix();
+}
+
+void GhostRecorder::StartCinematicPlayback() {
+	if (!isOverrideCamera_) {
+		return;
+	}
+	if (CameraEditor* cameraEditor = CameraEditor::GetInstance()) {
+		cameraEditor->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(), target_);
+	}
+}
+
+void GhostRecorder::StopCinematicPlayback() {
+	if (!isOverrideCamera_) {
+		return;
+	}
+	if (CameraEditor* cameraEditor = CameraEditor::GetInstance()) {
+		cameraEditor->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
+		DebugConsole::GetInstance()->AddLog("Cinematic camera returned to the previous view.");
 	}
 }
 
 // ==========================================================================
 // 計算用ヘルパー
 // ==========================================================================
-
-Vector3 GhostRecorder::Lerp(const Vector3& start, const Vector3& end, float t) {
-	return {
-		start.x + (end.x - start.x) * t,
-		start.y + (end.y - start.y) * t,
-		start.z + (end.z - start.z) * t
-	};
-}
-
-float GhostRecorder::SmoothStep(float t) {
-	return t * t * (3.0f - 2.0f * t);
-}
 
 Vector3 GhostRecorder::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
 	Vector3 result;
@@ -293,7 +303,7 @@ Vector3 GhostRecorder::CatmullRom(const Vector3& p0, const Vector3& p1, const Ve
 	return result;
 }
 
-Vector3 GhostRecorder::GetSplinePoint(const std::vector<Vector3>& points, float t, bool isLoop) {
+Vector3 GhostRecorder::GetSplinePoint(const std::vector<Vector3>& points, float t) {
 	if (points.empty()) return { 0,0,0 };
 	if (points.size() == 1) return points[0];
 
@@ -385,9 +395,9 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 			const GhostFrame& a = frames_[index];
 			const GhostFrame& b = frames_[index + 1];
 			GhostFrame sample;
-			sample.position = Lerp(a.position, b.position, localT);
-			sample.rotation = SlerpEuler(a.rotation, b.rotation, localT);
-			sample.scale = Lerp(a.scale, b.scale, localT);
+			sample.position = Math::Lerp(a.position, b.position, localT);
+			sample.rotation = AnimationInterpolation::SlerpEuler(a.rotation, b.rotation, localT);
+			sample.scale = Math::Lerp(a.scale, b.scale, localT);
 
 			if (isRelative_ || genParams_.generateRelative) {
 				sample.position = {
@@ -466,9 +476,9 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 		}
 
 		GhostFrame sample;
-		sample.position = genParams_.useSpline ? GetSplinePoint(positions, t, false) : Lerp(positions[index], positions[index + 1], localT);
-		sample.rotation = SlerpEuler(rotations[index], rotations[index + 1], localT);
-		sample.scale = Lerp(scales[index], scales[index + 1], localT);
+		sample.position = genParams_.useSpline ? GetSplinePoint(positions, t) : Math::Lerp(positions[index], positions[index + 1], localT);
+		sample.rotation = AnimationInterpolation::SlerpEuler(rotations[index], rotations[index + 1], localT);
+		sample.scale = Math::Lerp(scales[index], scales[index + 1], localT);
 		samples.push_back(sample);
 	}
 
@@ -733,7 +743,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 	for (int i = 1; i <= samples; ++i) {
 		float t = (float)i / (float)samples;
-		Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
+		Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
 		ImVec2 screenPos = WorldToScreen(LocalToWorld(currentPos));
 		if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) {
 			drawList->AddLine(prevScreenPos, screenPos, IM_COL32(255, 255, 255, 100), 1.5f);
@@ -744,7 +754,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 					minLineDist = dist;
 					float midT = (t + (float)(i - 1) / samples) * 0.5f;
 					hitSegmentIndex = (int)(midT * (allPos.size() - 1));
-					bestHitT = midT; //  ここで割合を保存！
+					bestHitT = midT;
 				}
 			}
 		}
@@ -756,9 +766,9 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 	for (int i = 0; i <= arrowSteps; ++i) {
 		float t = (float)i / (float)arrowSteps;
 		float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
-		Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : Lerp(allPos[idx], allPos[idx + 1], lt);
+		Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t) : Math::Lerp(allPos[idx], allPos[idx + 1], lt);
 		// プレビュー矢印の向きをSlerpで補間
-		Vector3 rot = SlerpEuler(allRot[idx], allRot[idx + 1], lt);
+		Vector3 rot = AnimationInterpolation::SlerpEuler(allRot[idx], allRot[idx + 1], lt);
 
 		ImVec2 baseScr = WorldToScreen(LocalToWorld(pos));
 		if (baseScr.x < -5000.0f) continue;
@@ -772,7 +782,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 	// --- 6. アニメーションして流れる光点の描画 ---
 	for (int i = 0; i < 5; ++i) {
 		float t = fmodf(time * 0.4f + (float)i / 5.0f, 1.0f);
-		Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
+		Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
 		ImVec2 pScr = WorldToScreen(LocalToWorld(pPos));
 		if (pScr.x > -5000.0f) drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
 	}
@@ -883,7 +893,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			float diffZ = refPos.z - rayOrigin.z;
 			float distToRef = std::sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
 
-			// 3. マウスクリックしたレイの方向に、その距離だけ進んだ場所を新しい点とする！
+			// マウスレイ上でパスに最も近い位置へ新しい点を追加する。
 			Vector3 hitPos = { rayOrigin.x + rayDir.x * distToRef, rayOrigin.y + rayDir.y * distToRef, rayOrigin.z + rayDir.z * distToRef };
 			Vector3 localPos = { hitPos.x - drawOffset.x, hitPos.y - drawOffset.y, hitPos.z - drawOffset.z };
 
@@ -898,8 +908,8 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 			if (hitSegmentIndex != -1) {
 				// 線の上をクリックした場合は、軌道上の3D座標を直接使う
-				Vector3 onPathPos = genParams_.useSpline ? GetSplinePoint(allPos, bestHitT, false) :
-					[&]() { float p = bestHitT * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
+				Vector3 onPathPos = genParams_.useSpline ? GetSplinePoint(allPos, bestHitT) :
+					[&]() { float p = bestHitT * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Math::Lerp(allPos[idx], allPos[idx + 1], lt); }();
 
 				wp.pos = { onPathPos.x - drawOffset.x, onPathPos.y - drawOffset.y, onPathPos.z - drawOffset.z };
 				wp.rot = (hitSegmentIndex == 0) ? genParams_.startRot : genParams_.waypoints[hitSegmentIndex - 1].rot;
@@ -1214,12 +1224,12 @@ void GhostRecorder::DrawImGui() {
 							currentPos = CatmullRom(p0, p1, p2, p3, t);
 						}
 						else {
-							currentPos = Lerp(pts[i].pos, pts[i + 1].pos, t);
+							currentPos = Math::Lerp(pts[i].pos, pts[i + 1].pos, t);
 						}
 
 						// クォータニオンによる最短経路補間（Slerp）
-						Vector3 currentRot = SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
-						Vector3 currentScale = Lerp(pts[i].scale, pts[i + 1].scale, t);
+						Vector3 currentRot = AnimationInterpolation::SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
+						Vector3 currentScale = Math::Lerp(pts[i].scale, pts[i + 1].scale, t);
 
 						GhostFrame frame;
 						frame.position = { currentPos.x - offset.x, currentPos.y - offset.y, currentPos.z - offset.z };
@@ -1272,7 +1282,7 @@ void GhostRecorder::DrawImGui() {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button(ICON_FA_FILM " ファイルからPlay")) {
-			bool isCinematic = (target_->GetClassName() == "CinematicCamera");
+			bool isCinematic = target_->IsCameraObject();
 			Play(fName, isLoop_, isRelative_, isCinematic);
 		}
 	}
@@ -1441,27 +1451,9 @@ void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 	ClearTargetIfMissingFromScene();
 	if (frames_.empty() || !target_) return;
 
-	if (frameIndex < 0) frameIndex = 0;
-	if (frameIndex >= frames_.size()) frameIndex = static_cast<int>(frames_.size()) - 1;
-
-	const auto& frame = frames_[frameIndex];
-
-	if (isRelative_) {
-		target_->SetTranslate({
-			basePosition_.x + frame.position.x,
-			basePosition_.y + frame.position.y,
-			basePosition_.z + frame.position.z
-			});
-		// 角度の加算をクォータニオン合成で実行
-		target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
-	}
-	else {
-		target_->SetTranslate(frame.position);
-		target_->SetRotation(frame.rotation);
-	}
-	target_->SetScale(frame.scale);
-	target_->UpdateLocalMatrix();
-	target_->UpdateWorldMatrix();
+	const int lastFrameIndex = static_cast<int>(frames_.size()) - 1;
+	frameIndex = std::clamp(frameIndex, 0, lastFrameIndex);
+	ApplyFrameTransform(frames_[frameIndex]);
 }
 void GhostRecorder::CaptureBasePose() {
 	ClearTargetIfMissingFromScene();
@@ -1478,7 +1470,7 @@ void GhostRecorder::CaptureBasePose() {
 		};
 		// アンカーの回転にオフセットをクォータニオン合成
 		baseRotation_ = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
-		baseScale_ = target_ ? target_->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
+		baseScale_ = target_->GetScale();
 	}
 	else if (target_) {
 		basePosition_ = target_->GetTranslate();
@@ -1532,8 +1524,8 @@ void GhostRecorder::FindAnchor() {
 // ==========================================================================
 void GhostRecorder::SaveHistory() {
 	undoStack_.push_back(genParams_);
-	// 履歴が50件を超えたら古いものから消す（メモリ節約）
-	if (undoStack_.size() > 50) {
+	constexpr size_t kMaxHistoryEntries = 50;
+	if (undoStack_.size() > kMaxHistoryEntries) {
 		undoStack_.pop_front();
 	}
 	redoStack_.clear(); // 新しい操作をしたらRedoの履歴は消える
@@ -1546,9 +1538,7 @@ void GhostRecorder::PerformUndo() {
 	genParams_ = undoStack_.back();   // 1個前の状態を取り出す
 	undoStack_.pop_back();
 
-	// 選択状態がズレてクラッシュするのを防ぐためにリセット
-	selectedPinType_ = SelectedPinType::None;
-	selectedWaypointIndex_ = -1;
+	DeselectPin();
 
 	DebugConsole::GetInstance()->AddLog("GhostRecorder: Undo!");
 }
@@ -1560,21 +1550,20 @@ void GhostRecorder::PerformRedo() {
 	genParams_ = redoStack_.back();   // 未来の状態を取り出す
 	redoStack_.pop_back();
 
-	selectedPinType_ = SelectedPinType::None;
-	selectedWaypointIndex_ = -1;
+	DeselectPin();
 
 	DebugConsole::GetInstance()->AddLog("GhostRecorder: Redo!");
 }
 
 void GhostRecorder::DeleteSelectedPin() {
 	// StartとEndは消せないので、Waypoint(途中の点)だけ消せるようにする
-	if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ >= 0 && selectedWaypointIndex_ < genParams_.waypoints.size()) {
+	if (selectedPinType_ == SelectedPinType::Waypoint &&
+		selectedWaypointIndex_ >= 0 &&
+		selectedWaypointIndex_ < static_cast<int>(genParams_.waypoints.size())) {
 		SaveHistory(); // Ctrl+Zで戻せるように履歴を保存
 		genParams_.waypoints.erase(genParams_.waypoints.begin() + selectedWaypointIndex_);
 
-		// 選択状態を解除
-		selectedPinType_ = SelectedPinType::None;
-		selectedWaypointIndex_ = -1;
+		DeselectPin();
 		DebugConsole::GetInstance()->AddLog("Waypoint Deleted!");
 	}
 }

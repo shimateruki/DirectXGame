@@ -818,6 +818,9 @@
     <ClInclude Include="engine\graphics\3d\camera\Camera.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>
+    <ClInclude Include="engine\graphics\3d\camera\SceneCameraSettings.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>

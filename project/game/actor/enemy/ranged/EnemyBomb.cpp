@@ -261,6 +261,15 @@ void EnemyBomb::UpdateChase(float deltaTime) {
 
     float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
 
+    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, toPlayer)) {
+        velocity_.x = 0.0f;
+        velocity_.z = 0.0f;
+        if (distance > 0.001f) {
+            SetRotationY(std::atan2(toPlayer.x, toPlayer.z));
+        }
+        return;
+    }
+
     if (distance > detectionRange_) {
         const float wanderSpeed = param_.has_value() ? (std::max)(0.35f, param_.value().speed * 4.0f) : 0.55f;
         Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);

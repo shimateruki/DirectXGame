@@ -49,6 +49,9 @@ constexpr Vector3 kEnemyDropCoinScale = { 0.055f, 0.055f, 0.014f };
 constexpr float kEnemyDropCoinWorldCollectRadius = 0.50f;
 constexpr float kEnemyDropCoinLifetime = 8.0f;
 constexpr float kEnemyDropCoinBlinkStart = 2.2f;
+constexpr const char* kEnemyNoticeMarkModel = "GeneratedText/text3d_240c8dec";
+constexpr float kEnemyNoticeDuration = 0.36f;
+constexpr float kEnemyNoticeCooldown = 1.25f;
 
 float PlanarDistance(const Vector3& a, const Vector3& b) {
     const float dx = a.x - b.x;
@@ -58,6 +61,10 @@ float PlanarDistance(const Vector3& a, const Vector3& b) {
 
 float PlanarLength(const Vector3& value) {
     return std::sqrt(value.x * value.x + value.z * value.z);
+}
+
+float MaxAbsScaleComponent(const Vector3& value) {
+    return (std::max)({ std::abs(value.x), std::abs(value.y), std::abs(value.z), 0.001f });
 }
 
 Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
@@ -112,6 +119,11 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetClassName("Enemy");
     defaultColor_ = GetColor();
     hasSpawnedDefeatCoinDrops_ = false;
+    wasTargetDetected_ = false;
+    isNoticeReactionActive_ = false;
+    noticeReactionTimer_ = 0.0f;
+    noticeReactionCooldown_ = 0.0f;
+    noticeMarkYaw_ = 0.0f;
     attackTelegraph_ = std::make_unique<AttackTelegraph>();
     attackTelegraph_->Initialize(common);
 }
@@ -233,6 +245,7 @@ Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, flo
 
 // 持ち上げ後に投げられた敵の物理挙動
 void BaseEnemy::BeginThrown(const Vector3& initialVelocity) {
+    CancelNoticeReaction();
     throwRecoveryTargetRotation_ = GetRotation();
 
     if (isCarried_) {
@@ -489,6 +502,126 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
     }
 }
 
+void BaseEnemy::EnsureNoticeMarkObject() {
+    if (noticeMarkObject_ || !common_) {
+        return;
+    }
+
+    noticeMarkObject_ = std::make_unique<Object3d>();
+    noticeMarkObject_->Initialize(common_);
+    noticeMarkObject_->SetName("__EnemyNoticeMark");
+    noticeMarkObject_->SetClassName("Effect");
+    noticeMarkObject_->SetModel(kEnemyNoticeMarkModel);
+    noticeMarkObject_->SetTexture("Resources/sprite/common/white.png");
+    noticeMarkObject_->SetMaterialType(0);
+    noticeMarkObject_->SetBlendMode(BlendMode::kNormal);
+    noticeMarkObject_->SetColor({ 1.0f, 0.88f, 0.16f, 1.0f });
+    noticeMarkObject_->SetEmissive(4.0f);
+    noticeMarkObject_->SetCollisionAttribute(0);
+    noticeMarkObject_->SetCollisionMask(0);
+    noticeMarkObject_->SetIsVisible(false);
+}
+
+void BaseEnemy::BeginNoticeReaction() {
+    noticeBaseScale_ = GetScale();
+    noticeBaseColor_ = GetColor();
+    isNoticeReactionActive_ = true;
+    noticeReactionTimer_ = kEnemyNoticeDuration;
+    noticeReactionCooldown_ = kEnemyNoticeCooldown;
+    noticeMarkYaw_ = 0.0f;
+
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    TriggerAttackTelegraphCue({ 1.0f, 0.82f, 0.12f, 0.9f });
+    EnsureNoticeMarkObject();
+    if (noticeMarkObject_) {
+        noticeMarkObject_->SetIsVisible(true);
+    }
+}
+
+void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
+    if (restoreVisual && isNoticeReactionActive_) {
+        SetScale(noticeBaseScale_);
+    }
+
+    isNoticeReactionActive_ = false;
+    noticeReactionTimer_ = 0.0f;
+    if (noticeMarkObject_) {
+        noticeMarkObject_->SetIsVisible(false);
+    }
+}
+
+void BaseEnemy::CancelNoticeReaction() {
+    EndNoticeReaction(true);
+    wasTargetDetected_ = false;
+    noticeReactionCooldown_ = 0.0f;
+}
+
+void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
+    EnsureNoticeMarkObject();
+    if (!noticeMarkObject_) {
+        return;
+    }
+
+    const float bodyScale = MaxAbsScaleComponent(GetScale());
+    const float pop = 1.0f + std::sin((std::clamp)(progress / 0.55f, 0.0f, 1.0f) * kWanderPi) * 0.34f;
+    const float hover = std::sin(progress * kWanderPi * 2.0f) * 0.18f;
+    const float markScale = (std::clamp)(bodyScale * 0.34f, 0.32f, 1.15f) * pop;
+
+    Vector3 position = GetWorldPosition();
+    position.y += (std::clamp)(bodyScale * 1.45f, 1.10f, 4.80f) + hover;
+    noticeMarkYaw_ += deltaTime * 1.6f;
+
+    noticeMarkObject_->SetTranslate(position);
+    noticeMarkObject_->SetScale({ markScale, markScale, markScale });
+    noticeMarkObject_->SetRotation({ 0.0f, noticeMarkYaw_, 0.0f });
+    noticeMarkObject_->SetColor({ 1.0f, 0.82f + std::sin(progress * kWanderPi) * 0.14f, 0.12f, 1.0f });
+    noticeMarkObject_->SetIsVisible(true);
+    noticeMarkObject_->UpdateLocalMatrix();
+    noticeMarkObject_->UpdateWorldMatrix();
+}
+
+bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection) {
+    (void)targetDirection;
+
+    noticeReactionCooldown_ = (std::max)(0.0f, noticeReactionCooldown_ - deltaTime);
+    const bool detected = target_ && targetDistance <= (std::max)(0.0f, detectRange);
+    if (!detected) {
+        wasTargetDetected_ = false;
+        if (!isNoticeReactionActive_ && noticeMarkObject_) {
+            noticeMarkObject_->SetIsVisible(false);
+        }
+        return isNoticeReactionActive_;
+    }
+
+    if (!wasTargetDetected_ && !isNoticeReactionActive_ && noticeReactionCooldown_ <= 0.0f) {
+        BeginNoticeReaction();
+    }
+    wasTargetDetected_ = true;
+
+    if (!isNoticeReactionActive_) {
+        return false;
+    }
+
+    noticeReactionTimer_ = (std::max)(0.0f, noticeReactionTimer_ - deltaTime);
+    const float progress = 1.0f - (noticeReactionTimer_ / kEnemyNoticeDuration);
+    const float clampedProgress = (std::clamp)(progress, 0.0f, 1.0f);
+    const float squash = std::sin(clampedProgress * kWanderPi);
+    const float hopPop = std::sin(clampedProgress * kWanderPi * 2.0f) * 0.035f;
+
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetScale({
+        noticeBaseScale_.x * (1.0f + squash * 0.10f - hopPop),
+        noticeBaseScale_.y * (1.0f + squash * 0.12f + hopPop),
+        noticeBaseScale_.z * (1.0f + squash * 0.10f - hopPop)
+    });
+    UpdateNoticeMark(deltaTime, clampedProgress);
+
+    if (noticeReactionTimer_ <= 0.0f) {
+        EndNoticeReaction(true);
+    }
+    return true;
+}
+
 // HPが尽きた時の共通撃破演出
 bool BaseEnemy::ShouldHandleDefeatEffect() const {
     if (isDefeatEffectFinished_) {
@@ -573,6 +706,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
 }
 
 void BaseEnemy::BeginDefeatEffect() {
+    CancelNoticeReaction();
     isDefeatEffectPlaying_ = true;
     isDefeatEffectFinished_ = false;
     SpawnDefeatCoinDrops();
@@ -814,6 +948,9 @@ void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLig
         attackTelegraph_->Draw(pointLightResource, spotLightResource);
     }
     Character::Draw(pointLightResource, spotLightResource);
+    if (noticeMarkObject_ && noticeMarkObject_->GetIsVisible()) {
+        noticeMarkObject_->Draw(pointLightResource, spotLightResource);
+    }
 }
 
 void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
@@ -924,6 +1061,7 @@ void BaseEnemy::SetCarried(bool isCarried) {
     isCarried_ = isCarried;
 
     if (isCarried_) {
+        CancelNoticeReaction();
         isThrownPhysics_ = false;
         isThrowRotationRecovering_ = false;
         slamImpactCount_ = 0;

@@ -32,6 +32,8 @@ void SRVManager::Initialize(DirectXCommon* dxCommon) {
 // 次に空いているSRVスロットへリソースを登録し、使用したハンドル番号を返す。
 
 uint32_t SRVManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     // 範囲外チェック
     assert(nextIndex_ < kMaxSRVCount);
 
@@ -67,6 +69,8 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
 // SRVスロットだけを先に確保し、後からリソースを差し替えられるようにする。
 
 uint32_t SRVManager::Allocate() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     // 上限チェック
     assert(nextIndex_ < kMaxSRVCount);
 
@@ -79,6 +83,8 @@ uint32_t SRVManager::Allocate() {
 //  CreateSRVforResource
 // 既に確保済みのSRVスロットへ、指定リソースのSRVを作成し直す。
 void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     // ヒープの先頭ハンドルを取得
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
 

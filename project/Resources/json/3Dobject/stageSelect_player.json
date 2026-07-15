@@ -35,10 +35,10 @@
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.3499999940395355,
+            "envIntensity": 0.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -131,7 +131,7 @@
                 3.1415927410125732,
                 0.0
             ],
-            "roughness": 0.18000000715255737,
+            "roughness": 0.6000000238418579,
             "saveCategory": "Player",
             "scale": [
                 2.0,

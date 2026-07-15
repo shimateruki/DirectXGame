@@ -169,7 +169,7 @@ void GameOverScene::Update(float deltaTime) {
 
     LightEditor::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
-    CameraManager::GetInstance()->Update();
+    CameraManager::GetInstance()->Update(deltaTime);
 
     objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);

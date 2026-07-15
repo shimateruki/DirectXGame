@@ -50,6 +50,9 @@ public:
     bool IsGateReturnAnimationActive() const;
     bool IsGateReturnAnimationFinished() const;
     void StopGateReturnAnimation(bool restoreControl);
+    void BeginCinematicLock();
+    void EndCinematicLock(bool restoreControl);
+    bool IsCinematicLocked() const { return isCinematicLocked_; }
 
     // ==================================================
     // 移動制御 (Strategy Pattern)
@@ -143,6 +146,7 @@ public:
     void ReleaseCarriedEnemy(bool restorePose = true);
     Object3d* GetCarriedEnemy() const { return carriedEnemy_; }
     bool IsEnemyMorphed() const { return isEnemyMorphed_; }
+    bool HasEnemyMorphTimeLimit() const { return isEnemyMorphed_ && enemyMorphHasTimeLimit_; }
     bool IsPinkSlimeMorphed() const;
     float GetEnemyMorphRate() const;
 
@@ -163,6 +167,10 @@ private:
     bool forcedSlimeAnimationModeActive_ = false;
     PlayerSlimeAnimator::Mode forcedSlimeAnimationMode_ = PlayerSlimeAnimator::Mode::Idle;
     Vector3 forcedSlimeAnimationDirection_{ 0.0f, 0.0f, 1.0f };
+    bool isCinematicLocked_ = false;
+    bool cinematicSavedControlActive_ = true;
+    uint32_t cinematicSavedCollisionAttribute_ = 0;
+    uint32_t cinematicSavedCollisionMask_ = 0;
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;

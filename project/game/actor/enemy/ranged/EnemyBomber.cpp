@@ -86,6 +86,14 @@ void EnemyBomber::Update(float deltaTime) {
         UpdateFacing(direction);
     }
 
+    if (throwState_ == ThrowState::Idle && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        UpdateFacing(direction);
+        SetVelocity({ 0.0f, GetVelocity().y, 0.0f });
+        ApplySlimeAnimation(deltaTime);
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
+
     UpdateCombatMovement(deltaTime, direction, distance, inRange);
     UpdateThrowState(deltaTime, inRange);
     ApplySlimeAnimation(deltaTime);

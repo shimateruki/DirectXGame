@@ -46,6 +46,7 @@ void SceneManager::Finalize() {
     if (loadingFuture_.valid()) {
         loadingFuture_.wait();
         preparedScene_ = loadingFuture_.get();
+        preparedSceneInitialized_ = false;
     }
 
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
@@ -76,26 +77,31 @@ void SceneManager::Update(float deltaTime) {
         BeginLoadingTransition();
         return;
 
-    case TransitionPhase::Loading:
+    case TransitionPhase::Loading: {
         loadingElapsed_ += effectiveDeltaTime;
         if (currentScene_) {
             currentScene_->Update(effectiveDeltaTime);
         }
 
-        {
-            const bool asyncReady = IsAsyncSceneReady();
-            const float waitingProgress = std::min(0.78f, 0.12f + loadingElapsed_ * 0.24f);
-            SetLoadingProgress(asyncReady ? 0.86f : waitingProgress);
+        const bool asyncReady = preparedSceneInitialized_ || IsAsyncSceneReady();
+        const float waitingProgress = std::min(0.95f, 0.12f + loadingElapsed_ * 0.18f);
+
+        if (asyncReady && !preparedSceneInitialized_) {
+            SetLoadingProgress(0.98f);
+            PrepareLoadedSceneOnMainThread();
         }
 
+        SetLoadingProgress(preparedSceneInitialized_ ? 1.0f : waitingProgress);
+
         if (loadingElapsed_ >= minLoadingDisplayTime_ &&
-            IsAsyncSceneReady() &&
+            preparedSceneInitialized_ &&
             Fade::GetInstance()->GetStatus() != Fade::Status::FadeIn) {
             SetLoadingProgress(1.0f);
             Fade::GetInstance()->StartFadeOut(0.35f);
             transitionPhase_ = TransitionPhase::FadingOutLoading;
         }
         return;
+    }
 
     case TransitionPhase::FadingOutLoading:
         if (currentScene_) {
@@ -178,6 +184,9 @@ void SceneManager::BeginLoadingTransition() {
         currentScene_.reset();
     }
 
+    preparedScene_.reset();
+    preparedSceneInitialized_ = false;
+
     loadingTargetSceneName_ = nextSceneName_;
     nextSceneName_.clear();
     loadingElapsed_ = 0.0f;
@@ -214,6 +223,10 @@ bool SceneManager::IsAsyncSceneReady() const {
 }
 
 void SceneManager::PrepareLoadedSceneOnMainThread() {
+    if (preparedSceneInitialized_) {
+        return;
+    }
+
     if (!preparedScene_ && loadingFuture_.valid()) {
         preparedScene_ = loadingFuture_.get();
     }
@@ -229,7 +242,6 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
         preparedScene_->SetDebugEditor(debugEditor_);
     }
 
-    // DirectXリソース生成は共通コマンドリストを使うため、メインスレッドで初期化する。
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
     preparedScene_->Initialize();
     preparedSceneInitialized_ = true;

@@ -393,6 +393,7 @@ struct PreviewVisualState {
     bool dirtyPlayer_ = false;
     bool dirtyEnemy_ = false;
     bool dirtyObject_ = false;
+    bool dirtyCamera_ = false;
     SaveMode pendingSaveMode_ = SaveMode::All;
     bool pendingSaveIsSingleObject_ = false;
 

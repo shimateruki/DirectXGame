@@ -6,7 +6,9 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include "Object3d.h"
+#include "engine/utility/math/AnimationInterpolation.h"
 #include <cmath>
+#include <utility>
 #include <CollisionManager.h>
 
 #ifndef M_PI
@@ -16,6 +18,37 @@
 // 明示的に float にキャスト
 const float PI = (float)M_PI;
 static Math math;
+
+namespace {
+AnimationInterpolation::EasingType ToEasingType(Camera::OverrideEasing easing) {
+    switch (easing) {
+    case Camera::OverrideEasing::kEaseIn:
+        return AnimationInterpolation::EasingType::EaseIn;
+    case Camera::OverrideEasing::kEaseOut:
+        return AnimationInterpolation::EasingType::EaseOut;
+    case Camera::OverrideEasing::kEaseInOut:
+        return AnimationInterpolation::EasingType::EaseInOut;
+    case Camera::OverrideEasing::kSmootherStep:
+        return AnimationInterpolation::EasingType::SmootherStep;
+    case Camera::OverrideEasing::kLinear:
+    default:
+        return AnimationInterpolation::EasingType::Linear;
+    }
+}
+
+Vector3 GetObjectForward(Object3d* object) {
+    if (!object) {
+        return { 0.0f, 0.0f, 1.0f };
+    }
+
+    Vector3 forward = Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, object->GetWorldMatrix());
+    const float length = std::sqrt(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+    if (length <= 0.0001f) {
+        return { 0.0f, 0.0f, 1.0f };
+    }
+    return { forward.x / length, forward.y / length, forward.z / length };
+}
+}
 
 void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
     fixedPointPos_ = position;
@@ -106,7 +139,8 @@ void Camera::Initialize() {
 }
 
 
-void Camera::Update() {
+void Camera::Update(float deltaTime) {
+    const float frameDelta = std::clamp(deltaTime, 0.0f, 0.1f);
     auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
         return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
         };
@@ -405,39 +439,78 @@ void Camera::Update() {
         normalEye = overrideStartEye_;
         normalTarget = overrideStartTarget_;
     }
-    if (overrideDuration_ > 0.0f) {
-        float deltaTime = 1.0f / 60.0f;
 
-        if (isOverridden_) {
-            overrideTimer_ += deltaTime;
+    auto resolveOverridePose = [&]() {
+        Vector3 desiredEye = overrideParams_.fixedEyePos;
+        if (overrideParams_.eyeSource == OverrideEyeSource::kSceneObject && overrideParams_.eyeObject) {
+            desiredEye = overrideParams_.eyeObject->GetWorldPosition() + overrideParams_.eyeObjectOffset;
         }
         else {
-            overrideTimer_ -= deltaTime;
+            if (overrideParams_.trackEyeX) {
+                desiredEye.x = normalTarget.x + (overrideParams_.fixedEyePos.x - overrideParams_.fixedTargetPos.x);
+            }
+            if (overrideParams_.trackEyeY) {
+                desiredEye.y = normalTarget.y + (overrideParams_.fixedEyePos.y - overrideParams_.fixedTargetPos.y);
+            }
+            if (overrideParams_.trackEyeZ) {
+                desiredEye.z = normalTarget.z + (overrideParams_.fixedEyePos.z - overrideParams_.fixedTargetPos.z);
+            }
+        }
+
+        Vector3 desiredTarget = overrideParams_.fixedTargetPos;
+        if (overrideParams_.targetSource == OverrideTargetSource::kSceneObject && overrideParams_.targetFollowObject) {
+            desiredTarget = overrideParams_.targetFollowObject->GetWorldPosition() + overrideParams_.targetObjectOffset;
+        }
+        else if (overrideParams_.targetSource == OverrideTargetSource::kEyeObjectForward && overrideParams_.eyeObject) {
+            desiredTarget = desiredEye
+                + GetObjectForward(overrideParams_.eyeObject) * (std::max)(overrideParams_.eyeForwardDistance, 0.01f)
+                + overrideParams_.targetObjectOffset;
+        }
+        else {
+            if (overrideParams_.trackTargetX) desiredTarget.x = normalTarget.x;
+            if (overrideParams_.trackTargetY) desiredTarget.y = normalTarget.y;
+            if (overrideParams_.trackTargetZ) desiredTarget.z = normalTarget.z;
+        }
+
+        if (!overrideFollowInitialized_) {
+            overrideFollowEye_ = desiredEye;
+            overrideFollowTarget_ = desiredTarget;
+            overrideFollowInitialized_ = true;
+        }
+
+        if (overrideParams_.eyeFollowMode == OverrideFollowMode::kSmooth) {
+            overrideFollowEye_ = AnimationInterpolation::Damp(
+                overrideFollowEye_, desiredEye, (std::max)(overrideParams_.eyeFollowResponse, 0.01f), frameDelta);
+        }
+        else {
+            overrideFollowEye_ = desiredEye;
+        }
+
+        if (overrideParams_.targetFollowMode == OverrideFollowMode::kSmooth) {
+            overrideFollowTarget_ = AnimationInterpolation::Damp(
+                overrideFollowTarget_, desiredTarget, (std::max)(overrideParams_.targetFollowResponse, 0.01f), frameDelta);
+        }
+        else {
+            overrideFollowTarget_ = desiredTarget;
+        }
+
+        return std::pair<Vector3, Vector3>{ overrideFollowEye_, overrideFollowTarget_ };
+    };
+
+    if (overrideDuration_ > 0.0f) {
+        if (isOverridden_) {
+            overrideTimer_ += frameDelta;
+        }
+        else {
+            overrideTimer_ -= frameDelta;
         }
 
         overrideTimer_ = std::max(0.0f, std::min(overrideTimer_, overrideDuration_));
         float t = overrideTimer_ / overrideDuration_;
-        overrideWeight_ = t * t * (3.0f - 2.0f * t);
+        overrideWeight_ = AnimationInterpolation::ApplyEasing(t, ToEasingType(overrideParams_.easing));
 
         if (overrideWeight_ > 0.0f) {
-            Vector3 finalEndTarget = overrideParams_.fixedTargetPos;
-            if (overrideParams_.trackTargetX) finalEndTarget.x = normalTarget.x;
-            if (overrideParams_.trackTargetY) finalEndTarget.y = normalTarget.y;
-            if (overrideParams_.trackTargetZ) finalEndTarget.z = normalTarget.z;
-
-            Vector3 finalEndEye = overrideParams_.fixedEyePos;
-            if (overrideParams_.trackEyeX) {
-                float offsetX = overrideParams_.fixedEyePos.x - overrideParams_.fixedTargetPos.x;
-                finalEndEye.x = normalTarget.x + offsetX;
-            }
-            if (overrideParams_.trackEyeY) {
-                float offsetY = overrideParams_.fixedEyePos.y - overrideParams_.fixedTargetPos.y;
-                finalEndEye.y = normalTarget.y + offsetY;
-            }
-            if (overrideParams_.trackEyeZ) {
-                float offsetZ = overrideParams_.fixedEyePos.z - overrideParams_.fixedTargetPos.z;
-                finalEndEye.z = normalTarget.z + offsetZ;
-            }
+            const auto [finalEndEye, finalEndTarget] = resolveOverridePose();
 
             if (isOverridden_) {
                 eye_ = LerpVec3(overrideStartEye_, finalEndEye, overrideWeight_);
@@ -452,24 +525,7 @@ void Camera::Update() {
     }
     else {
         if (isOverridden_) {
-            Vector3 finalEndTarget = overrideParams_.fixedTargetPos;
-            if (overrideParams_.trackTargetX) finalEndTarget.x = normalTarget.x;
-            if (overrideParams_.trackTargetY) finalEndTarget.y = normalTarget.y;
-            if (overrideParams_.trackTargetZ) finalEndTarget.z = normalTarget.z;
-
-            Vector3 finalEndEye = overrideParams_.fixedEyePos;
-            if (overrideParams_.trackEyeX) {
-                float offsetX = overrideParams_.fixedEyePos.x - overrideParams_.fixedTargetPos.x;
-                finalEndEye.x = normalTarget.x + offsetX;
-            }
-            if (overrideParams_.trackEyeY) {
-                float offsetY = overrideParams_.fixedEyePos.y - overrideParams_.fixedTargetPos.y;
-                finalEndEye.y = normalTarget.y + offsetY;
-            }
-            if (overrideParams_.trackEyeZ) {
-                float offsetZ = overrideParams_.fixedEyePos.z - overrideParams_.fixedTargetPos.z;
-                finalEndEye.z = normalTarget.z + offsetZ;
-            }
+            const auto [finalEndEye, finalEndTarget] = resolveOverridePose();
 
             eye_ = finalEndEye;
             target_ = finalEndTarget;
@@ -487,7 +543,6 @@ void Camera::Update() {
     Vector3 viewEye = eye_;
     Vector3 viewTarget = target_;
     if (shakeTimer_ > 0.0f && shakeDuration_ > 0.0f && shakeAmplitude_ > 0.0f) {
-        constexpr float kFrameDelta = 1.0f / 60.0f;
         float elapsed = shakeDuration_ - shakeTimer_;
         float progress = std::clamp(elapsed / shakeDuration_, 0.0f, 1.0f);
         float envelope = (1.0f - progress) * (1.0f - progress);
@@ -501,7 +556,7 @@ void Camera::Update() {
         };
         viewEye = viewEye + offset;
         viewTarget = viewTarget + offset * 0.25f;
-        shakeTimer_ = std::max(0.0f, shakeTimer_ - kFrameDelta);
+        shakeTimer_ = std::max(0.0f, shakeTimer_ - frameDelta);
     }
 
     Vector3 forward = { viewTarget.x - viewEye.x, viewTarget.y - viewEye.y, viewTarget.z - viewEye.z };
@@ -626,23 +681,39 @@ void Camera::StartShake(float duration, float amplitude, float frequency, const 
 void Camera::StartOverride(const CameraOverrideParams& params) {
     isOverridden_ = true;
     overrideParams_ = params;
-    overrideDuration_ = params.duration;
+    overrideDuration_ = (std::max)(params.duration, 0.0f);
     overrideStartEye_ = eye_;
     overrideStartTarget_ = target_;
+    overrideFollowInitialized_ = false;
 
     if (overrideWeight_ <= 0.0f) {
         overrideTimer_ = 0.0f;
     }
     else {
-        overrideTimer_ = overrideWeight_ * params.duration;
+        overrideTimer_ = overrideWeight_ * overrideDuration_;
     }
 }
 
 void Camera::EndOverride(float duration) {
     isOverridden_ = false;
-    overrideDuration_ = duration;
+    overrideDuration_ = (std::max)(duration, 0.0f);
     overrideStartEye_ = eye_;
     overrideStartTarget_ = target_;
 
-    overrideTimer_ = overrideWeight_ * duration;
+    // 終了中に追従Objectが元の場所へ戻っても画面が引っ張られないよう、最後の構図を固定します。
+    overrideParams_.eyeSource = OverrideEyeSource::kFixed;
+    overrideParams_.targetSource = OverrideTargetSource::kFixed;
+    overrideParams_.eyeObject = nullptr;
+    overrideParams_.targetFollowObject = nullptr;
+    overrideParams_.fixedEyePos = eye_;
+    overrideParams_.fixedTargetPos = target_;
+    overrideParams_.trackEyeX = false;
+    overrideParams_.trackEyeY = false;
+    overrideParams_.trackEyeZ = false;
+    overrideParams_.trackTargetX = false;
+    overrideParams_.trackTargetY = false;
+    overrideParams_.trackTargetZ = false;
+    overrideFollowInitialized_ = false;
+
+    overrideTimer_ = overrideWeight_ * overrideDuration_;
 }

@@ -73,6 +73,8 @@ private:
     void EnterSelectedStage();
     void StartGateEntryCinematic(int stageIndex);
     void UpdateGateEntryCinematic(float deltaTime);
+    void UpdateGateCinematicBars(float deltaTime);
+    void ResetGateCinematicBars();
     void CaptureGateEntryMaterialState(Object3d* rootObject);
     void ApplyGateEntryDissolveMaterial(float progress, const Vector3& gatePosition, const Vector3& direction);
     void RestoreGateEntryMaterialState();
@@ -225,6 +227,9 @@ private:
     bool gateReturnHadPlayerControl_ = true;
     bool gateReturnLandingImpulsePlayed_ = false;
     bool gateReturnRecoveryImpulsePlayed_ = false;
+    bool gateCinematicBarOverrideActive_ = false;
+    float gateCinematicBarBlend_ = 0.0f;
+    float gateCinematicBarBaseHeight_ = 0.0f;
     GameDataManager::StageClearRewardPresentation pendingStageClearRewardPresentation_;
     int unlockingStageIndex_ = -1;
     float unlockPresentationTimer_ = 0.0f;

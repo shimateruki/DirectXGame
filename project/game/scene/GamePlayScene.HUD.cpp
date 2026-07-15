@@ -607,9 +607,12 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         hudHpFrame_.sprite->Update();
     }
 
-    const bool morphActive = visible && player_ && player_->IsEnemyMorphed();
+    const bool morphActive = visible && player_ && player_->HasEnemyMorphTimeLimit();
+    const bool suppressMorphGauge = visible && player_ && player_->IsEnemyMorphed() && !player_->HasEnemyMorphTimeLimit();
     if (morphActive) {
         hudMorphGaugeVisibleTimer_ = 0.20f;
+    } else if (suppressMorphGauge) {
+        hudMorphGaugeVisibleTimer_ = 0.0f;
     } else {
         hudMorphGaugeVisibleTimer_ = std::max(0.0f, hudMorphGaugeVisibleTimer_ - deltaTime);
     }

@@ -2,6 +2,18 @@
     "Overrides": {
         "a": {
             "duration": 1.0,
+            "easing": 4,
+            "exitDuration": 0.3499999940395355,
+            "eyeFollowMode": 0,
+            "eyeFollowResponse": 12.0,
+            "eyeForwardDistance": 10.0,
+            "eyeObjectName": "",
+            "eyeObjectOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "eyeSource": 0,
             "fixedEyePos": [
                 -24.627628326416016,
                 13.358030319213867,
@@ -12,6 +24,15 @@
                 9.171148300170898,
                 -36.56403350830078
             ],
+            "targetFollowMode": 0,
+            "targetFollowResponse": 14.0,
+            "targetObjectName": "",
+            "targetObjectOffset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetSource": 0,
             "trackEyeX": false,
             "trackEyeY": false,
             "trackEyeZ": false,
@@ -33,6 +54,7 @@
     "cameraPreviewHeight": 180.0,
     "cameraPreviewVisible": false,
     "cameraSensitivity": 0,
+    "cinematicPreviewSource": 1,
     "distance": 21.100000381469727,
     "fixedPointAngle": [
         0.0,
@@ -62,8 +84,9 @@
     ],
     "orbitGuideMarkerSize": 0.44999998807907104,
     "orbitGuideVisible": true,
-    "orbitHeight": 5.0,
-    "orbitRadius": 15.0,
+    "orbitHeight": 8.269170761108398,
+    "orbitRadius": 18.39358139038086,
     "orbitSpeed": 0.004999999888241291,
-    "orbitStartAngleDeg": 0.0
+    "orbitStartAngleDeg": -107.30278015136719,
+    "selectedSceneCameraName": "Cinematic_Camera_01"
 }

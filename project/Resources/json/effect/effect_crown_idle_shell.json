@@ -1,0 +1,87 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 0.0,
+    "DistortionStrength": 0.0,
+    "EasingType": 3,
+    "EdgeFadeStrength": 1.0,
+    "EnableDistortion": false,
+    "EnableReveal": false,
+    "EndColor": [
+        1.0,
+        0.72,
+        0.22,
+        0.04
+    ],
+    "EndScale": [
+        1.12,
+        1.10,
+        1.12
+    ],
+    "InnerRadius": 0.25,
+    "Intensity": 1.35,
+    "Lifetime": 1.20,
+    "MeshSegments": 32,
+    "ModelName": "Stages/crown",
+    "NoiseTexturePath": "Resources/sprite/common/white.png",
+    "OuterRadius": 1.0,
+    "PlaneSize": [
+        1.0,
+        1.0
+    ],
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ProceduralType": 0,
+    "RampTexturePath": "",
+    "RingInnerRadius": 0.0,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.0,
+        0.0
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        1.0,
+        0.52,
+        0.10,
+        0.18
+    ],
+    "StartScale": [
+        1.035,
+        1.030,
+        1.035
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/common/white.png",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.8,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.3,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

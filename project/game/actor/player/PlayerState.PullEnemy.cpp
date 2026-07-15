@@ -61,11 +61,13 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     hookTipPos_ = player->GetWorldPosition();
     heavyPullBasePlayerPos_ = hookTipPos_;
     hasHeavyPullBasePlayerPos_ = false;
+    normalPullBasePlayerPos_ = hookTipPos_;
+    hasNormalPullBasePlayerPos_ = false;
 
     Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(true);
-        marker->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // フックとして使用する際は白色に設定
+        marker->SetColor({ 0.10f, 0.82f, 1.0f, 1.0f });
         marker->GetTransform()->translate = hookTipPos_;
     }
 }
@@ -112,7 +114,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 Vector3 toPlayer = Math::Normalize(playerPos - enemyPos);
                 player->GetParticleSystem()->SpawnParticles(
                     enemyPos, 30, 2.0f, &toPlayer, 30.0f,
-                    {1.0f, 1.0f, 0.8f, 1.0f}, {1.0f, 0.8f, 0.2f, 0.0f},
+                    {0.55f, 0.95f, 1.0f, 1.0f}, {0.25f, 0.75f, 1.0f, 0.0f},
                     0.2f, 0.4f, 0.8f, 0.1f
                 );
             }
@@ -133,6 +135,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
             marker->GetTransform()->isQuaternionMaster = false;
             marker->GetTransform()->scale = { 0.5f, 0.5f, Math::Length(diff) };
+            marker->SetColor({ 0.10f, 0.82f, 1.0f, 1.0f });
 
             // フェーズ1のフック描画更新を行う
             marker->UpdateLocalMatrix();
@@ -169,7 +172,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 };
                 // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
                 float len = Math::Length(diff);
-                marker->GetTransform()->scale = { 0.15f, 0.15f, len };
+                marker->GetTransform()->scale = { 0.13f, 0.10f, len };
+                marker->SetColor({ 0.10f, 0.82f, 1.0f, 1.0f });
 
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
@@ -228,7 +232,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                     (std::max)(0.06f, thickness - tension * 0.55f),
                     len * (1.0f + std::abs(pulse) * 0.018f)
                 };
-                marker->SetColor({ 0.25f + progress * 0.75f, 0.95f - progress * 0.22f, 1.0f, 1.0f });
+                marker->SetColor({ 0.10f, 0.82f + progress * 0.06f, 1.0f, 1.0f });
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
             }
@@ -245,12 +249,31 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             return;
         }
 
-        const float kPullDuration = 0.45f; // 少しだけ時間を長くしてタメを作る
+        const float kPullDuration = 0.62f; // 少しだけ時間を長くしてタメを作る
         float t = pullTimer_ / kPullDuration;
         if (t > 1.0f) t = 1.0f;
 
         player->SetSlimePullDirection(enemyStartPos_ - playerPos);
         player->SetSlimePullProgress(t);
+
+        if (!hasNormalPullBasePlayerPos_) {
+            normalPullBasePlayerPos_ = playerPos;
+            hasNormalPullBasePlayerPos_ = true;
+        }
+        Vector3 flatPullDir = enemyStartPos_ - normalPullBasePlayerPos_;
+        flatPullDir.y = 0.0f;
+        float flatPullLength = Math::Length(flatPullDir);
+        flatPullDir = flatPullLength > 0.001f ? flatPullDir / flatPullLength : Vector3{ 0.0f, 0.0f, 1.0f };
+        const float bracePulse = std::abs(std::sin(pullTimer_ * 36.0f));
+        const float yankWave = (std::max)(0.0f, std::sin(pullTimer_ * 22.0f));
+        const float yankPulse = yankWave * yankWave * (1.0f - t * 0.35f);
+        const float braceAmount = (0.20f + bracePulse * 0.24f + yankPulse * 0.28f) * (1.0f - t * 0.45f);
+        Vector3 bracedPlayerPos = normalPullBasePlayerPos_ - flatPullDir * braceAmount;
+        bracedPlayerPos.y = normalPullBasePlayerPos_.y;
+        player->SetTranslate(bracedPlayerPos);
+        player->UpdateLocalMatrix();
+        player->UpdateWorldMatrix();
+        playerPos = bracedPlayerPos;
 
         // 【演出1】イージング：最初は重たく、後半一気に飛んでくる（Ease-In）
         float easeT = t * t * t; 
@@ -272,7 +295,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         };
 
         // 目標位置（プレイヤーの頭上）
-        Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+        Vector3 headPos = { playerPos.x, playerPos.y + 1.55f, playerPos.z };
 
         // easeTを使って開始位置から目標位置への線形補間
         Vector3 basePos = {
@@ -282,7 +305,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         };
         
         // サイン波でY軸に放物線のアーチを加える（easeTではなく純粋なtで綺麗なアーチにする）
-        float arcHeight = 6.0f; 
+        float arcHeight = 7.8f;
         basePos.y += std::sin(t * 3.14159265f) * arcHeight;
 
         targetEnemy_->GetTransform()->translate = basePos;
@@ -293,15 +316,20 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
             // 【演出】頭に乗った（キャッチした）瞬間の衝撃エフェクト
             if (player->GetParticleSystem()) {
-                Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+                Vector3 headPos = { playerPos.x, playerPos.y + 1.55f, playerPos.z };
                 player->GetParticleSystem()->SpawnParticles(
                     headPos, 20, 1.5f, nullptr, 20.0f,
-                    {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.0f},
+                    {0.55f, 0.95f, 1.0f, 1.0f}, {0.25f, 0.75f, 1.0f, 0.0f},
                     0.2f, 0.4f, 0.6f, 0.05f
                 );
             }
 
             player->TriggerSlimeImpulse({ 2.2f, 0.4f, 2.2f }, 0.24f);
+            if (hasNormalPullBasePlayerPos_) {
+                player->SetTranslate(normalPullBasePlayerPos_);
+                player->UpdateLocalMatrix();
+                player->UpdateWorldMatrix();
+            }
 
             targetEnemy_->GetTransform()->scale = enemyBaseScale_;
             player->SetCarriedEnemy(targetEnemy_);
@@ -322,10 +350,16 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             marker->GetTransform()->isQuaternionMaster = false;
             // 手元に近づくにつれて太く戻る（イージングを利用）
             float len = Math::Length(diff);
-            float thickness = Math::Lerp(0.15f, 1.0f, easeT);
+            float thickness = Math::Lerp(0.12f, 0.22f, easeT);
             // 引っ張る反動でブルンブルン震える（近づくと収まる）
-            float wobble = std::sin(pullTimer_ * 50.0f) * (1.0f - easeT) * 0.2f;
-            marker->GetTransform()->scale = { thickness + wobble, thickness - wobble, len };
+            float wobble = std::sin(pullTimer_ * 58.0f) * (1.0f - easeT) * 0.050f;
+            float tensionPulse = std::abs(std::sin(pullTimer_ * 44.0f)) * (1.0f - easeT) * 0.040f;
+            marker->GetTransform()->scale = {
+                (std::max)(0.09f, thickness + wobble + tensionPulse),
+                (std::max)(0.09f, thickness - wobble * 0.55f),
+                len * (1.0f + tensionPulse * 0.35f)
+            };
+            marker->SetColor({ 0.10f, 0.82f, 1.0f, 1.0f });
 
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
@@ -365,6 +399,11 @@ void PlayerStatePullEnemy::Exit(Player* player) {
                     giantSlime->CancelHookSplitPull();
                 }
             }
+        }
+        else if (hasNormalPullBasePlayerPos_) {
+            player->SetTranslate(normalPullBasePlayerPos_);
+            player->UpdateLocalMatrix();
+            player->UpdateWorldMatrix();
         }
 
         Object3d* marker = player->GetHookMarker();

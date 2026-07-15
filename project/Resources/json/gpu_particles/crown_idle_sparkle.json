@@ -1,48 +1,48 @@
 {
     "baseColor": [
-        0.55,
-        0.95,
         1.0,
+        0.96,
+        0.48,
         0.0
     ],
-    "baseSize": 0.04,
-    "blendModeIndex": 0,
-    "colorEaseType": 0,
-    "colorIntensity": 4.8,
-    "colorMidTime": 0.38,
+    "baseSize": 0.035,
+    "blendModeIndex": 1,
+    "colorEaseType": 3,
+    "colorIntensity": 6.2,
+    "colorMidTime": 0.22,
     "emitArea": [
         0.0,
         0.0,
         0.0
     ],
-    "emitCount": 5,
-    "emitInterval": 0.16,
-    "emitLife": 1.55,
+    "emitCount": 3,
+    "emitInterval": 0.14,
+    "emitLife": 0.72,
     "emitPos": [
         0.0,
-        0.0,
+        0.18,
         0.0
     ],
     "emitVelocity": [
         0.0,
-        0.34,
+        0.08,
         0.0
     ],
     "enableCollision": 0,
     "endColor": [
-        0.55,
-        0.98,
         1.0,
+        0.68,
+        0.18,
         0.0
     ],
     "endSize": 0.0,
-    "envDrag": 0.74,
+    "envDrag": 0.86,
     "envGravity": [
         0.0,
-        0.10,
+        0.02,
         0.0
     ],
-    "envTurbulence": 0.22,
+    "envTurbulence": 0.10,
     "envWind": [
         0.0,
         0.0,
@@ -51,19 +51,19 @@
     "isLooping": true,
     "midColor": [
         1.0,
-        0.92,
-        0.28,
+        1.0,
+        0.88,
         1.0
     ],
-    "midSize": 0.18,
+    "midSize": 0.22,
     "restitution": 0.5,
-    "rotSpeed": 3.2,
-    "shapeAngle": 30.0,
-    "shapeRadius": 1.18,
+    "rotSpeed": 1.8,
+    "shapeAngle": 15.0,
+    "shapeRadius": 0.82,
     "shapeType": 1,
-    "sizeEaseType": 0,
-    "sizeMidTime": 0.44,
-    "softParticleFade": 5.0,
-    "texturePath": "Resources/sprite/effect/crown/crown_twinkle.png",
-    "velocityVariance": 0.58
+    "sizeEaseType": 3,
+    "sizeMidTime": 0.24,
+    "softParticleFade": 3.0,
+    "texturePath": "Resources/sprite/effect/crown/crown_sparkle.png",
+    "velocityVariance": 0.08
 }

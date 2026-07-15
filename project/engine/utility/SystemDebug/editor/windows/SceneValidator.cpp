@@ -14,7 +14,7 @@
 #include <set>
 
 namespace {
-constexpr int kMaxKnownMaterialType = 24;
+constexpr int kMaxKnownMaterialType = 25;
 
 bool IsEditorOnlyObject(const Object3d* object) {
     if (!object) return false;
@@ -156,7 +156,7 @@ void SceneValidator::Refresh() {
             AddIssue(Severity::Error, object, "Target ID", "Target ID " + std::to_string(object->GetTargetID()) + " の接続先が見つかりません");
         }
 
-        if (className != "InvisibleBox" && className != "MeshRoot") {
+        if (className != "InvisibleBox" && className != "MeshRoot" && !object->IsCameraObject()) {
             if (modelName.empty()) {
                 AddIssue(Severity::Error, object, "Model", "modelName が空です");
             }
@@ -165,7 +165,7 @@ void SceneValidator::Refresh() {
             }
         }
 
-        if (saveCategory != "Object" && saveCategory != "Player" && saveCategory != "Enemy") {
+        if (saveCategory != "Object" && saveCategory != "Player" && saveCategory != "Enemy" && saveCategory != "Camera") {
             AddIssue(Severity::Warning, object, "SaveCategory", "保存カテゴリが不明です: " + saveCategory);
         }
 

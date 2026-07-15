@@ -2,6 +2,7 @@
 #include "Model.h"
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,7 @@ private:
     // モデル描画共通情報と読み込み済みモデルのキャッシュ。
     std::unique_ptr<ModelCommon> modelCommon_;
     std::map<std::string, std::unique_ptr<Model>> models_;
+    mutable std::recursive_mutex mutex_;
 
     // 既定のモデル検索パスと拡張子。
     static const std::string kDefaultBaseDirectory;

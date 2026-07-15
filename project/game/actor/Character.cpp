@@ -135,7 +135,7 @@ std::unique_ptr<Object3d> Character::Clone() const {
 
     // パス名が設定されていれば自動再生を開始
     if (!newObj->recordPathName_.empty() && newObj->recorder_) {
-        bool isCinematic = (newObj->GetClassName() == "CinematicCamera");
+        bool isCinematic = newObj->IsCameraObject();
         newObj->recorder_->Play(
             newObj->recordPathName_,
             newObj->isRecordLoop_,

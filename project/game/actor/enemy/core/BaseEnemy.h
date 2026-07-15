@@ -56,6 +56,8 @@ void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progre
     void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
     void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
     void HideAttackTelegraph();
+    bool UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection);
+    void CancelNoticeReaction();
     void SpawnDefeatCoinDrops();
     virtual void OnSlamImpact(const Vector3& impactPosition, float impactSpeed);
 
@@ -86,6 +88,10 @@ private:
     void SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed);
     void DamageSlamTargets(const Vector3& impactPosition, float impactSpeed);
     void UpdateDamageFeedbackTimers(float deltaTime);
+    void BeginNoticeReaction();
+    void EndNoticeReaction(bool restoreVisual = true);
+    void EnsureNoticeMarkObject();
+    void UpdateNoticeMark(float deltaTime, float progress);
 
     // 撃破時の消滅アニメーションとパーティクル
         // 撃破時の縮小、色変化、パーティクル演出を開始します。
@@ -114,6 +120,14 @@ void BeginDefeatEffect();
     bool isDefeatEffectFinished_ = false;
     bool hasSpawnedDefeatCoinDrops_ = false;
     std::unique_ptr<AttackTelegraph> attackTelegraph_;
+    std::unique_ptr<Object3d> noticeMarkObject_;
+    bool wasTargetDetected_ = false;
+    bool isNoticeReactionActive_ = false;
+    float noticeReactionTimer_ = 0.0f;
+    float noticeReactionCooldown_ = 0.0f;
+    float noticeMarkYaw_ = 0.0f;
+    Vector3 noticeBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector4 noticeBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;
     Vector3 defeatBasePosition_ = { 0.0f, 0.0f, 0.0f };

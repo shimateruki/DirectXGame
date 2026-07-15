@@ -314,7 +314,7 @@ namespace {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
-        return className == "CinematicCamera" ||
+        return object->IsCameraObject() ||
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }

@@ -31,6 +31,8 @@ namespace {
     constexpr float kAbsorbEffectDuration = 0.24f;
     constexpr float kAbsorbEffectParticleInterval = 0.035f;
     constexpr float kPlayerModelYawOffset = kPi;
+    constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
+    constexpr float kPinkSlimeMorphParticleInterval = 0.18f;
     const Vector3 kPlayerBaseScale = { 2.0f, 2.0f, 2.0f };
     constexpr float kPlayerDefaultHp = 100.0f;
     constexpr float kPlayerDefaultAttackPower = 1.0f;
@@ -190,6 +192,12 @@ void Player::Update(float deltaTime)
         baseRotation_.y = kPlayerModelYawOffset;
         SetRotation(baseRotation_);
         isFirstUpdate_ = false;
+    }
+
+    if (isCinematicLocked_) {
+        SetIsControlActive(false);
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        return;
     }
 
     if (gateReturnAnimation_.IsActive()) {
@@ -575,7 +583,7 @@ void Player::Update(float deltaTime)
         float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
 
         carriedEnemy_->GetTransform()->translate = { 
-            playerPos.x + offsetX, playerPos.y + 2.5f + offsetY, playerPos.z + offsetZ 
+            playerPos.x + offsetX, playerPos.y + 1.55f + offsetY, playerPos.z + offsetZ
         };
 
         Vector3 rot;
@@ -1039,6 +1047,13 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
         EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f });
     }
+    else if (enemyMorphType_ == EnemyMorphType::Slime) {
+        auto* gpuParticleManager = GPUParticleManager::GetInstance();
+        if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
+            gpuParticleManager->Emit(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
+        }
+        enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
+    }
     else if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime && enemyMorphType_ != EnemyMorphType::GiantSlime) {
         Vector3 up = { 0.0f, 1.0f, 0.0f };
         particleSystem_->SpawnParticles(
@@ -1102,6 +1117,14 @@ void Player::UpdateEnemyMorph(float deltaTime)
             const float morphElapsed = (std::max)(0.0f, enemyMorphDuration_ - enemyMorphTimer_);
             EmitOuterThunderParticles(GetWorldPosition(), GetScale(), morphElapsed * 3.4f, 3);
             enemyMorphEffectTimer_ = 0.32f;
+            return;
+        }
+        else if (enemyMorphType_ == EnemyMorphType::Slime) {
+            auto* gpuParticleManager = GPUParticleManager::GetInstance();
+            if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
+                gpuParticleManager->Emit(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
+            }
+            enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
             return;
         }
         else if (particleSystem_) {
@@ -1446,7 +1469,7 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
 
 bool Player::OnCollision(Object3d* other)
 {
-    if (isDead) {
+    if (isDead || isCinematicLocked_) {
         return false;
     }
 
@@ -1716,6 +1739,68 @@ bool Player::IsGateReturnAnimationFinished() const
 void Player::StopGateReturnAnimation(bool restoreControl)
 {
     gateReturnAnimation_.Stop(this, restoreControl);
+}
+
+void Player::BeginCinematicLock()
+{
+    if (isCinematicLocked_ || isDead) {
+        return;
+    }
+
+    // 同じ衝突フレームで後続の被弾イベントが来ても、先に演出専用状態へ切り替えます。
+    isCinematicLocked_ = true;
+    cinematicSavedControlActive_ = isControlActive_;
+    cinematicSavedCollisionAttribute_ = GetCollisionAttribute();
+    cinematicSavedCollisionMask_ = GetCollisionMask();
+
+    ReleaseCarriedEnemy(true);
+    if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {
+        electricShockPendingInvincibleDuration_ = 0.0f;
+        EndElectricShockFeedback();
+    }
+
+    RestoreDamageBlinkVisibility();
+    damageCooldownTimer_ = 0.0f;
+    invincibleBlinkTimer_ = 0.0f;
+    SetDamageInvincible(false);
+    SetDashInvincible(false);
+    pendingAttack2_ = false;
+    comboWindowTimer_ = 0.0f;
+    attackInputBuffered_ = false;
+    attackInputBufferTimer_ = 0.0f;
+
+    // Damage Stateなどの終了処理で基準姿勢へ戻してから、演出側が姿勢を取得します。
+    ChangeState(std::make_unique<PlayerStateIdle>());
+    slimeAnimator_.Reset(kPlayerBaseScale);
+    slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
+
+    Vector3 stableRotation = GetRotation();
+    stableRotation.x = baseRotation_.x;
+    stableRotation.z = baseRotation_.z;
+    SetScale(kPlayerBaseScale);
+    SetRotation(stableRotation);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetIsControlActive(false);
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetIsVisible(true);
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+}
+
+void Player::EndCinematicLock(bool restoreControl)
+{
+    if (!isCinematicLocked_) {
+        return;
+    }
+
+    isCinematicLocked_ = false;
+    SetCollisionAttribute(cinematicSavedCollisionAttribute_);
+    SetCollisionMask(cinematicSavedCollisionMask_);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    slimeAnimator_.Reset(kPlayerBaseScale);
+    ChangeState(std::make_unique<PlayerStateIdle>());
+    SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !isDead);
 }
 
 // =======================================================

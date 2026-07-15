@@ -184,6 +184,44 @@ float ValueNoise2D(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
+float3 BuildSlimeSoftTexture(float2 uv, float3 textureBase)
+{
+    float2 offsetA = float2(0.018f, 0.018f);
+    float2 offsetB = float2(0.045f, 0.045f);
+    float2 offsetC = float2(0.082f, 0.082f);
+
+    float3 blurredColor = textureBase * 2.0f;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetA.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(offsetA.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(0.0f, offsetA.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(0.0f, offsetA.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + offsetB)).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - offsetB)).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetB.x, -offsetB.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(-offsetB.x, offsetB.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetC.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(offsetC.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(0.0f, offsetC.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(0.0f, offsetC.y))).rgb;
+    blurredColor /= 14.0f;
+
+    float maxChannel = max(max(textureBase.r, textureBase.g), textureBase.b);
+    float minChannel = min(min(textureBase.r, textureBase.g), textureBase.b);
+    float luminance = dot(textureBase, float3(0.299f, 0.587f, 0.114f));
+
+    float preserveDark = 1.0f - smoothstep(0.035f, 0.17f, luminance);
+    float preserveBright = smoothstep(0.92f, 0.985f, luminance) * smoothstep(0.78f, 0.94f, minChannel);
+    float preserveDetail = saturate(max(preserveDark, preserveBright));
+
+    float bodyMask = 1.0f - preserveDetail;
+
+    float blurredLuminance = dot(blurredColor, float3(0.299f, 0.587f, 0.114f));
+    float3 softHue = blurredColor / max(blurredLuminance, 0.08f);
+    float3 bodyColor = saturate(softHue * blurredLuminance);
+
+    return lerp(textureBase, bodyColor, bodyMask);
+}
+
 float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 N, float3 V, float3 worldPosition, float shadowFactor)
 {
     float textureBlend = lerp(0.02f, 0.30f, saturate(gMaterial.roughness));
@@ -332,6 +370,11 @@ PixelShaderOutput main(VertexShaderOutput input)
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
+    if (gMaterial.materialType == 25)
+    {
+        textureColor.rgb = BuildSlimeSoftTexture(transformedUV.xy, textureColor.rgb);
+    }
+
     if (gMaterial.portalClipEnabled > 0.5f && gMaterial.materialType != 4)
     {
         float clipProgress = saturate(gMaterial.portalClipProgress);
@@ -353,7 +396,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         textureColor.a *= 1.0f - portalEdge * 0.22f;
     }
     
-    if (gMaterial.materialType == 0 && textureColor.a <= 0.5)
+    if ((gMaterial.materialType == 0 || gMaterial.materialType == 25) && textureColor.a <= 0.5)
     {
         discard;
     }
@@ -636,6 +679,37 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float3 finalColor = baseColor * gDirectionalLight.color.rgb * celFactor;
                 
                     output.color.rgb = finalColor * outline;
+                    output.color.a = gMaterial.color.a * textureColor.a;
+                }
+            // ===========================================================
+            // Slime Soft
+            // ===========================================================
+                else if (gMaterial.materialType == 25)
+                {
+                    float3 N = normalize(input.normal);
+                    float3 L = normalize(-gDirectionalLight.direction);
+                    float3 V = normalize(gCamera.worldPosition - input.worldPosition);
+                    float3 H = normalize(L + V);
+
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float NdotL = saturate(dot(N, L));
+                    float NdotV = saturate(dot(N, V));
+                    float NdotH = saturate(dot(N, H));
+
+                    float ambientStrength = 0.58f + saturate(max(max(gDirectionalLight.ambientColor.r, gDirectionalLight.ambientColor.g), gDirectionalLight.ambientColor.b)) * 0.22f;
+                    float directStrength = lerp(0.34f, 0.78f, NdotL) * saturate(gDirectionalLight.intenssity);
+                    directStrength *= lerp(0.72f, 1.0f, shadowFactor);
+
+                    float rim = pow(1.0f - NdotV, 2.4f) * 0.14f;
+                    float softSpecPower = lerp(42.0f, 96.0f, saturate(1.0f - gMaterial.roughness));
+                    float softSpec = pow(NdotH, softSpecPower) * 0.20f;
+
+                    float3 slimeLight = baseColor * (ambientStrength + directStrength);
+                    slimeLight *= lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.18f);
+                    slimeLight += float3(0.28f, 0.74f, 1.0f) * rim;
+                    slimeLight += float3(0.82f, 0.96f, 1.0f) * softSpec;
+
+                    output.color.rgb = saturate(slimeLight);
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
             // ===========================================================

@@ -1,0 +1,45 @@
+{
+    "version": 1,
+    "timeline": {
+        "crownFocusEndTime": 0.22,
+        "crownLandTime": 0.95,
+        "anticipationStartTime": 1.04,
+        "jumpStartTime": 1.24,
+        "apexTime": 1.92,
+        "resultUiTime": 2.0,
+        "readyTime": 2.75
+    },
+    "player": {
+        "jumpHeight": 3.25,
+        "forwardDistance": 0.45,
+        "anticipationDepth": 0.22,
+        "landingSquash": 0.16,
+        "anticipationSquash": 0.28,
+        "takeoffStretch": 0.34,
+        "resultStretch": 0.12,
+        "resultYawBias": 0.1
+    },
+    "crown": {
+        "dropHeight": 1.35,
+        "seatDepth": 0.1
+    },
+    "camera": {
+        "crownFocusDistance": 3.55,
+        "crownFocusSide": 0.62,
+        "crownFocusHeight": 0.72,
+        "landingDistance": 5.15,
+        "landingSide": 0.72,
+        "landingHeight": 1.18,
+        "jumpDistance": 6.1,
+        "jumpSide": 0.58,
+        "jumpHeight": 1.05,
+        "resultDistance": 7.1,
+        "resultSide": 0.48,
+        "resultHeight": 0.92,
+        "resultTargetSide": 1.35,
+        "crownFocusFov": 0.46,
+        "landingFov": 0.54,
+        "jumpFov": 0.6,
+        "resultFov": 0.62
+    }
+}

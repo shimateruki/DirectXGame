@@ -88,6 +88,14 @@ void MeshEffectEditor::RefreshJsonFileList() {
 void MeshEffectEditor::Update(float deltaTime) {
     if (!sceneManager_) return;
 
+    if (sceneManager_->IsTransitioning()) {
+        previewEffect_.reset();
+        extraPreviewEffects_.clear();
+        targetObject_ = nullptr;
+        lastScene_ = nullptr;
+        return;
+    }
+
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
 
     if (lastScene_ != currentScene) {
@@ -97,9 +105,15 @@ void MeshEffectEditor::Update(float deltaTime) {
         targetObject_ = nullptr;
     }
 
-    if (!previewEffect_ && currentScene && currentScene->GetObject3dCommon()) {
-        previewEffect_ = std::make_unique<EffectObject3d>();
-        previewEffect_->Initialize(currentScene->GetObject3dCommon());
+    Object3dCommon* objectCommon = currentScene ? currentScene->GetObject3dCommon() : nullptr;
+
+    if (!previewEffect_ && objectCommon) {
+        auto previewEffect = std::make_unique<EffectObject3d>();
+        previewEffect->Initialize(objectCommon);
+        if (!previewEffect->GetMaterialData()) {
+            return;
+        }
+        previewEffect_ = std::move(previewEffect);
         previewEffect_->SetModel(editModelName_);
         if (auto renderer = previewEffect_->GetMeshRenderer()) {
             if (strlen(editTexturePath_) > 0) renderer->SetTexture(editTexturePath_);
@@ -117,8 +131,12 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     while (extraPreviewEffects_.size() < neededExtras) {
         auto extra = std::make_unique<EffectObject3d>();
-        if (currentScene && currentScene->GetObject3dCommon()) {
-            extra->Initialize(currentScene->GetObject3dCommon());
+        if (!objectCommon) {
+            break;
+        }
+        extra->Initialize(objectCommon);
+        if (!extra->GetMaterialData()) {
+            break;
         }
         extraPreviewEffects_.push_back(std::move(extra));
     }
@@ -128,7 +146,11 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     std::vector<EffectObject3d*> activePreviews;
     activePreviews.push_back(previewEffect_.get());
-    for (auto& ex : extraPreviewEffects_) activePreviews.push_back(ex.get());
+    for (auto& ex : extraPreviewEffects_) {
+        if (ex && ex->GetMaterialData()) {
+            activePreviews.push_back(ex.get());
+        }
+    }
 
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     bool usePreviewStage = previewStage && previewStage->IsEnabled();
@@ -194,6 +216,9 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     for (size_t i = 0; i < activePreviews.size(); ++i) {
         auto* fx = activePreviews[i];
+        if (!fx || !fx->GetMaterialData()) {
+            continue;
+        }
 
         if (editProceduralType_ == 0) {
             fx->SetModel(editModelName_);
@@ -248,15 +273,23 @@ void MeshEffectEditor::Update(float deltaTime) {
     }
 }
 void MeshEffectEditor::Draw() {
+    if (!sceneManager_ || sceneManager_->IsTransitioning()) {
+        return;
+    }
+
     // シーン遷移やNULLチェック
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (lastScene_ != currentScene || !currentScene) {
         return;
     }
     if (previewEffect_) {
-        previewEffect_->Draw();
+        if (previewEffect_->GetMaterialData()) {
+            previewEffect_->Draw();
+        }
         for (auto& ex : extraPreviewEffects_) {
-            ex->Draw();
+            if (ex && ex->GetMaterialData()) {
+                ex->Draw();
+            }
         }
     }
     else {

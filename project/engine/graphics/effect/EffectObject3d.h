@@ -43,10 +43,10 @@ void Update(float deltaTime) override;
 void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
 
     // --- エディタから操作するためのアクセッサ ---
-    void SetColor(const Vector4& color) { materialData_->color = color; }
-    void SetScrollSpeed(const Vector2& speed) { materialData_->scrollSpeed = speed; }
-    void SetIntensity(float intensity) { materialData_->intensity = intensity; }
-    void ResetTime() { materialData_->time = 0.0f; }
+    void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
+    void SetScrollSpeed(const Vector2& speed) { if (materialData_) materialData_->scrollSpeed = speed; }
+    void SetIntensity(float intensity) { if (materialData_) materialData_->intensity = intensity; }
+    void ResetTime() { if (materialData_) materialData_->time = 0.0f; }
 
     EffectMaterial* GetMaterialData() const { return materialData_; }
     // --- アニメーション用セッター ---
@@ -63,18 +63,18 @@ void Play(float lifetime) {
     void SetEndScale(const Vector3& s) { endScale_ = s; }
     void SetStartColor(const Vector4& c) { startColor_ = c; }
     void SetEndColor(const Vector4& c) { endColor_ = c; }
-    void SetDistortionStrength(float) { materialData_->distortionStrength = 0.0f; }
-    void SetDistortionSpeed(float s) { materialData_->distortionSpeed = s; }
-    void SetEdgeFadeStrength(float s) { materialData_->edgeFadeStrength = s; }
-    void SetEnableDistortion(bool) { materialData_->enableDistortion = 0; }
-    void SetAlphaReference(float ref) { materialData_->alphaReference = ref; }
+    void SetDistortionStrength(float) { if (materialData_) materialData_->distortionStrength = 0.0f; }
+    void SetDistortionSpeed(float s) { if (materialData_) materialData_->distortionSpeed = s; }
+    void SetEdgeFadeStrength(float s) { if (materialData_) materialData_->edgeFadeStrength = s; }
+    void SetEnableDistortion(bool) { if (materialData_) materialData_->enableDistortion = 0; }
+    void SetAlphaReference(float ref) { if (materialData_) materialData_->alphaReference = ref; }
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }
-    void SetEnableColorRamp(bool enable) { materialData_->enableColorRamp = enable ? 1 : 0; }
-    void SetEnableNoiseTexture(bool enable) { materialData_->enableNoiseTexture = enable ? 1 : 0; }
+    void SetEnableColorRamp(bool enable) { if (materialData_) materialData_->enableColorRamp = enable ? 1 : 0; }
+    void SetEnableNoiseTexture(bool enable) { if (materialData_) materialData_->enableNoiseTexture = enable ? 1 : 0; }
     void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
     BlendMode GetBlendMode() const { return blendMode_; }
-    void SetEnableReveal(bool enable) { materialData_->enableReveal = enable ? 1 : 0; }
+    void SetEnableReveal(bool enable) { if (materialData_) materialData_->enableReveal = enable ? 1 : 0; }
     void SetEasingType(int type) { easingType_ = type; }
     int GetEasingType() const { return easingType_; }
 
@@ -86,7 +86,7 @@ bool LoadFromJson(const std::string& jsonFilePath);
     void SetTargetObject(Object3d* target) { targetObject_ = target; }
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
-    void SetProceduralType(int type) { materialData_->proceduralType = type; }
+    void SetProceduralType(int type) { if (materialData_) materialData_->proceduralType = type; }
         // 編集パラメータから手続き生成メッシュを再構築します。
 void UpdateProceduralMesh();
     void ExportToObj(const std::string& filePath) const;
@@ -130,7 +130,7 @@ private:
     Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
     Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
         // エフェクト専用マテリアルをGPUへ渡すための定数バッファを作成します。
-void CreateMaterialBuffer(ID3D12Device* device);
+bool CreateMaterialBuffer(ID3D12Device* device);
     BlendMode blendMode_ = BlendMode::kAdd;
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;

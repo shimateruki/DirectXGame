@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "DebugEditor.h"
 #include "Event.h"
+#include "GoalClearPlayerAnimator.h"
 #include "MeshRenderer.h"
 #include "Object3d.h"
 #include "Object3dCommon.h"
@@ -23,6 +24,7 @@
 #include <Skybox.h>
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
 
 // 前方宣言
@@ -138,6 +140,29 @@ private:
     std::unique_ptr<Object3d> animatedCube_;
 
     // --- ゴール/クリア演出 ---
+    struct GoalPresentationTuning {
+        float crownFocusEndTime = 0.22f;
+        float crownDropHeight = 1.35f;
+        float crownSeatDepth = 0.10f;
+        float crownFocusDistance = 3.55f;
+        float crownFocusSide = 0.62f;
+        float crownFocusHeight = 0.72f;
+        float landingCameraDistance = 5.15f;
+        float landingCameraSide = 0.72f;
+        float landingCameraHeight = 1.18f;
+        float jumpCameraDistance = 6.10f;
+        float jumpCameraSide = 0.58f;
+        float jumpCameraHeight = 1.05f;
+        float resultCameraDistance = 7.10f;
+        float resultCameraSide = 0.48f;
+        float resultCameraHeight = 0.92f;
+        float resultTargetSide = 1.35f;
+        float crownFocusFov = 0.46f;
+        float landingFov = 0.54f;
+        float jumpFov = 0.60f;
+        float resultFov = 0.62f;
+    };
+
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
@@ -150,13 +175,53 @@ private:
     GoalPresentationState goalPresentationState_ = GoalPresentationState::Inactive;
     float goalPresentationTimer_ = 0.0f;
     float goalStarEmitTimer_ = 0.0f;
+    float goalBurstEmitTimer_ = 0.0f;
+    float goalCrownIdleTime_ = 0.0f;
+    float goalCrownSparkleTimer_ = 0.0f;
+    size_t goalCrownSparklePatternIndex_ = 0;
     Vector3 goalCrownPosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 goalPlayerBasePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 goalPlayerBaseScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 goalPlayerBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalPlayerPosePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalMoveForward_ = { 0.0f, 0.0f, 1.0f };
+    Vector3 goalMoveRight_ = { 1.0f, 0.0f, 0.0f };
+    Vector3 goalCrownBasePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCrownBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 goalCrownBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCrownSpringPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCrownSpringVelocity_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCrownSpringRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCrownSpringRotationVelocity_ = { 0.0f, 0.0f, 0.0f };
+    bool goalCrownSpringInitialized_ = false;
+    Vector3 goalCameraGameplayEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraGameplayTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraFocusEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraFocusTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraLandingEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraLandingTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraJumpEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraJumpTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraResultEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 goalCameraResultTarget_ = { 0.0f, 0.0f, 0.0f };
+    float goalCameraGameplayFov_ = 0.45f;
     bool goalSavedPlayerControlActive_ = true;
     bool goalPlayerSnapshotValid_ = false;
+    bool goalCrownSnapshotValid_ = false;
+    bool goalCameraSnapshotValid_ = false;
+    bool goalReturnFadeStarted_ = false;
+    bool goalLandingCuePlayed_ = false;
+    bool goalResultCuePlayed_ = false;
+    bool goalEditorPreviewMode_ = false;
+    Object3d* goalCrownObject_ = nullptr;
+    Camera* goalLockedPrimaryCamera_ = nullptr;
+    Camera* goalLockedSecondaryCamera_ = nullptr;
+    GoalClearPlayerAnimator goalClearPlayerAnimator_;
+    GoalPresentationTuning goalPresentationTuning_;
+    std::unique_ptr<Camera> goalPresentationCamera_;
     std::unique_ptr<Sprite> goalOverlayBackdrop_;
+    std::unique_ptr<Sprite> goalOverlayFlash_;
+    std::unique_ptr<Sprite> goalOverlayPanel_;
     std::unique_ptr<Sprite> goalOverlayCrown_;
     std::unique_ptr<Sprite> goalOverlayStageClearText_;
     std::unique_ptr<Sprite> goalOverlayReturnText_;
@@ -244,6 +309,8 @@ private:
     void InitializeRenderCommons();
     void InitializeGameplaySystems();
     void LoadCurrentStageContent(const StageData& currentStage);
+    void ApplyGoalCrownState();
+    void UpdateGoalCrownIdleAnimation(float deltaTime);
     void StartRespawnIrisInIfNeeded();
     void InitializeDebugAnimationPreview();
     void FinalizeGameplayResources();
@@ -251,8 +318,21 @@ private:
     // フレーム更新
     bool HandleGoalClear(float& deltaTime);
     void InitializeGoalPresentationOverlay();
+    void LoadGoalPresentationTuning();
+    void SaveGoalPresentationTuning() const;
+    void SanitizeGoalPresentationTuning();
+    void DrawGoalPresentationEditor();
+    Object3d* FindGoalCrownObject() const;
+    void StartGoalPresentationPreview();
+    void StopGoalPresentationPreview();
     void UpdateGoalPresentation(float deltaTime);
     void UpdateGoalPlayerCelebration(float deltaTime);
+    void UpdateGoalCrownMotion(float deltaTime);
+    void EmitGoalPresentationEffects(float deltaTime);
+    void SetupGoalPresentationCamera();
+    void UpdateGoalPresentationCamera();
+    void LockGoalPresentationCameraInput();
+    void RestoreGoalPresentationCameraInput();
     void UpdateGoalPresentationOverlay();
     void DrawGoalPresentationOverlay();
     void RequestGoalReturnToSelect();

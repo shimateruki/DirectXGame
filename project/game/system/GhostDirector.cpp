@@ -487,7 +487,7 @@ void GhostDirector::AdvanceTime(float deltaTime) {
     for (auto& track : tracks_) {
         if (!track.hasStarted && playTimer_ >= track.delayTime) {
             if (track.target && track.target->recorder_) {
-                const bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
+                const bool isCinematic = track.target->IsCameraObject();
                 track.target->recorder_->PlayFromMemory(false, isCinematic);
             }
             track.hasStarted = true;

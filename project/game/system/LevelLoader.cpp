@@ -32,6 +32,8 @@
 using json = nlohmann::json;
 
 namespace {
+constexpr int kSlimeSoftMaterialType = 25;
+
 void ConfigureBomberSpawnCallback(BaseScene* scene, EnemyBomber* bomber) {
     if (!scene || !bomber) {
         return;
@@ -75,6 +77,17 @@ bool IsSlimeEnemyType(const std::string& enemyType) {
         enemyType == "GiantSlime";
 }
 
+bool IsSlimeModelName(std::string modelName) {
+    std::replace(modelName.begin(), modelName.end(), '\\', '/');
+    return modelName.find("Characters/slime") != std::string::npos;
+}
+
+void ApplySlimeSoftMaterialIfStandard(Object3d* object) {
+    if (object && object->GetMaterialType() == 0) {
+        object->SetMaterialType(kSlimeSoftMaterialType);
+    }
+}
+
 void ApplySlimeScaleAndModel(Object3d* object) {
     if (!object) {
         return;
@@ -82,6 +95,7 @@ void ApplySlimeScaleAndModel(Object3d* object) {
 
     if (object->GetClassName() == "Player") {
         object->SetScale({ 2.0f, 2.0f, 2.0f });
+        ApplySlimeSoftMaterialIfStandard(object);
         return;
     }
 
@@ -101,6 +115,7 @@ void ApplySlimeScaleAndModel(Object3d* object) {
     else {
         object->SetScale({ 2.0f, 2.0f, 2.0f });
     }
+    ApplySlimeSoftMaterialIfStandard(object);
 }
 
 void ApplyLodConfig(Object3d* object, const json& objData) {
@@ -163,14 +178,16 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     std::string playerFile = baseFilename + "_player.json";
     std::string enemyFile = baseFilename + "_enemy.json";
     std::string objectFile = baseFilename + "_object.json";
+    std::string cameraFile = baseFilename + "_camera.json";
 
     // 分割ファイルの存在チェック
     bool useSplitFiles = false;
     std::ifstream pFile(playerFile);
     std::ifstream eFile(enemyFile);
     std::ifstream oFile(objectFile);
+    std::ifstream cFile(cameraFile);
 
-    if (pFile.is_open() || eFile.is_open() || oFile.is_open()) {
+    if (pFile.is_open() || eFile.is_open() || oFile.is_open() || cFile.is_open()) {
         useSplitFiles = true;
     }
 
@@ -178,6 +195,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     if (pFile.is_open()) pFile.close();
     if (eFile.is_open()) eFile.close();
     if (oFile.is_open()) oFile.close();
+    if (cFile.is_open()) cFile.close();
 
     // 分岐処理：分割ファイルがあればそれを、無ければ単一ファイルを読み込む
     // ========================================================
@@ -186,6 +204,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
         LoadSingleJson(scene, playerFile);
         LoadSingleJson(scene, enemyFile);
         LoadSingleJson(scene, objectFile);
+        LoadSingleJson(scene, cameraFile);
     } else {
         // 旧仕様：過去の単一ファイル (scene_layout.json など) をそのまま読み込む
         LoadSingleJson(scene, filename);
@@ -371,7 +390,10 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                         // 保存カテゴリの復元処理
                         // ==========================================
-                        if (currentClass == "Player" || type == "Player") {
+                        if (type == "Camera" || type == "CinematicCamera") {
+                            newObj->SetClassName("Camera");
+                            newObj->SetSaveCategory("Camera");
+                        } else if (currentClass == "Player" || type == "Player") {
                             newObj->SetSaveCategory("Player");
                         } else if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
                             newObj->SetSaveCategory(objData["saveCategory"].get<std::string>());
@@ -395,8 +417,25 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 if (!targetObject) continue;
 
+                if (targetObject->IsCameraObject()) {
+                    targetObject->SetClassName("Camera");
+                    targetObject->SetSaveCategory("Camera");
+                    targetObject->SetModel("Editor/camera_gizmo");
+                    targetObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
+                    targetObject->SetCastShadow(false);
+                    Object3d::ColliderConfig cameraCollider;
+                    cameraCollider.type = ColliderType::kNone;
+                    targetObject->SetColliderConfig(cameraCollider);
+                    if (objData.contains("camera")) {
+                        SceneCameraSettings settings = targetObject->GetSceneCameraSettings();
+                        DeserializeSceneCameraSettings(objData["camera"], settings);
+                        targetObject->SetSceneCameraSettings(settings);
+                    }
+                }
+
                 // 3. モデル・表示設定
                 std::string type = targetObject->GetClassName();
+                std::string loadedModelName;
                 if (type == "InvisibleBox" || type == "Spawner") {
                     targetObject->SetModel(nullptr);
                     targetObject->SetIsVisible(true);
@@ -404,6 +443,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetIsVisible(true);
                     if (objData.contains("modelName") && objData["modelName"].is_string()) {
                         std::string modelName = objData["modelName"].get<std::string>();
+                        loadedModelName = modelName;
                         // モデルロードはManagerに任せる
                         if (!modelName.empty()) {
                             ModelManager::GetInstance()->LoadModel(modelName);
@@ -462,6 +502,10 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("normalMapPath")) targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
                 if (objData.contains("ormMapPath")) targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
                 if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
+                if (targetObject->GetMaterialType() == 0 &&
+                    (IsSlimeEnemyType(targetObject->GetEnemyType()) || IsSlimeModelName(loadedModelName))) {
+                    targetObject->SetMaterialType(kSlimeSoftMaterialType);
+                }
                 if (objData.contains("textureTiling") && objData["textureTiling"].is_array() && objData["textureTiling"].size() >= 2) {
                     targetObject->SetTextureTiling({
                         objData["textureTiling"][0].get<float>(),
@@ -512,7 +556,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     }
                 }
                 // 5. Collider
-                if (objData.contains("collider")) {
+                if (!targetObject->IsCameraObject() && objData.contains("collider")) {
                     json colData = objData["collider"];
                     Object3d::ColliderConfig config = targetObject->GetColliderConfig();
                     if (colData.contains("type")) config.type = (ColliderType)colData["type"].get<int>();
@@ -522,9 +566,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetColliderConfig(config);
                 }
 
-                if (objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
-                if (objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
-                if (objData.contains("terrainCollisionPath") && objData["terrainCollisionPath"].is_string()) {
+                if (!targetObject->IsCameraObject() && objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
+                if (!targetObject->IsCameraObject() && objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
+                if (!targetObject->IsCameraObject() && objData.contains("terrainCollisionPath") && objData["terrainCollisionPath"].is_string()) {
                     targetObject->LoadTerrainCollisionFromFile(objData["terrainCollisionPath"].get<std::string>());
                 }
 
@@ -610,7 +654,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 }
 
                 targetObject->InitializeRecorder(nullptr);
-                bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
+                bool isCinematic = targetObject->IsCameraObject();
 
                 // パスデータが存在する場合に再生を開始
                 if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {

@@ -3,7 +3,9 @@
 #include "Object3d.h"
 #include "engine/utility/math/Math.h"
 #include <d3d12.h>
+#include <algorithm>
 #include <map>
+#include <string>
 #include <wrl.h>
 
 /// <summary>
@@ -25,18 +27,62 @@ enum class FollowMode {
         kFixedPoint,  // 固定位置と角度を使う視点。
     };
 
+    // 演出カメラへ切り替える際の時間補間です。
+    enum class OverrideEasing {
+        kLinear,
+        kEaseIn,
+        kEaseOut,
+        kEaseInOut,
+        kSmootherStep,
+    };
+
+    // EyeとTargetを固定値またはシーンObjectから取得します。
+    enum class OverrideEyeSource {
+        kFixed,
+        kSceneObject,
+    };
+
+    enum class OverrideTargetSource {
+        kFixed,
+        kSceneObject,
+        kEyeObjectForward,
+    };
+
+    // 完全追従と、少し遅れて追従するモードを分けます。
+    enum class OverrideFollowMode {
+        kSnap,
+        kSmooth,
+    };
+
     /// <summary>
     /// シネマティック演出などで一時的に視点を上書きするための設定。
     /// </summary>
         // カットシーンや演出中に一時的にカメラ制御を差し替えるための設定です。
 struct CameraOverrideParams {
         float duration = 1.0f;
+        float exitDuration = 0.35f;
+        OverrideEasing easing = OverrideEasing::kSmootherStep;
+
+        OverrideEyeSource eyeSource = OverrideEyeSource::kFixed;
+        std::string eyeObjectName;
+        Object3d* eyeObject = nullptr; // CameraEditorが再生開始時に解決する非所有ポインタ。
+        Vector3 eyeObjectOffset = { 0.0f, 0.0f, 0.0f };
+        OverrideFollowMode eyeFollowMode = OverrideFollowMode::kSnap;
+        float eyeFollowResponse = 12.0f;
 
         // Eye位置を通常カメラに追従させる軸と、固定する場合の値。
         bool trackEyeX = false;
         bool trackEyeY = false;
         bool trackEyeZ = false;
         Vector3 fixedEyePos = { 0.0f, 0.0f, 0.0f };
+
+        OverrideTargetSource targetSource = OverrideTargetSource::kFixed;
+        std::string targetObjectName;
+        Object3d* targetFollowObject = nullptr; // CameraEditorが再生開始時に解決する非所有ポインタ。
+        Vector3 targetObjectOffset = { 0.0f, 0.0f, 0.0f };
+        float eyeForwardDistance = 10.0f;
+        OverrideFollowMode targetFollowMode = OverrideFollowMode::kSnap;
+        float targetFollowResponse = 14.0f;
 
         // 注視点を通常カメラに追従させる軸と、固定する場合の値。
         bool trackTargetX = true;
@@ -56,7 +102,7 @@ void Initialize();
     /// 入力、追従対象、演出状態を反映してカメラを更新する。
     /// </summary>
         // 入力、追従、ロックオン、演出補間を反映して行列を更新します。
-void Update();
+void Update(float deltaTime = 1.0f / 60.0f);
 
     // 行列取得。
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
@@ -98,6 +144,12 @@ void SetFreezeEye(bool freeze);
 
     void SetFovY(float fov) { fovY_ = fov; }
     float GetFovY() const { return fovY_; }
+    void SetClipRange(float nearClip, float farClip) {
+        nearClip_ = (std::max)(nearClip, 0.001f);
+        farClip_ = (std::max)(farClip, nearClip_ + 0.01f);
+    }
+    float GetNearClip() const { return nearClip_; }
+    float GetFarClip() const { return farClip_; }
 
     // モードとモード別パラメータ。
     void SetFollowMode(FollowMode mode) { followMode_ = mode; }
@@ -207,6 +259,9 @@ private:
     float overrideWeight_ = 0.0f;
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 overrideFollowEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 overrideFollowTarget_ = { 0.0f, 0.0f, 0.0f };
+    bool overrideFollowInitialized_ = false;
     Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
     Frustum frustum_;
 

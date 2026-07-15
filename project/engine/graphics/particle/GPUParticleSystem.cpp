@@ -7,6 +7,7 @@
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
 #include <TextureManager.h>
+#include <filesystem>
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -461,6 +462,10 @@ void GPUParticleSystem::SetCurrentTexture(const std::string& path) {
     if (!path.empty()) {
         // 描画ループ中のLoadはGPUクラッシュを引き起こすため、GetSrvHandleを使用
         uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
+        if (handle == 0 && std::filesystem::exists(path)) {
+            TextureManager::GetInstance()->Load(path);
+            handle = TextureManager::GetInstance()->GetSrvHandle(path);
+        }
         if (handle > 0) {
             currentTextureHandle_ = handle;
         } else {

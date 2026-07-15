@@ -5,19 +5,19 @@
         0.82,
         1.0
     ],
-    "baseSize": 0.12,
+    "baseSize": 0.075,
     "blendModeIndex": 0,
     "colorEaseType": 0,
-    "colorIntensity": 8.5,
-    "colorMidTime": 0.20,
+    "colorIntensity": 7.2,
+    "colorMidTime": 0.16,
     "emitArea": [
         0.0,
         0.0,
         0.0
     ],
-    "emitCount": 54,
-    "emitInterval": 0.7,
-    "emitLife": 0.92,
+    "emitCount": 18,
+    "emitInterval": 0.58,
+    "emitLife": 0.86,
     "emitPos": [
         0.0,
         0.0,
@@ -25,7 +25,7 @@
     ],
     "emitVelocity": [
         0.0,
-        1.05,
+        1.28,
         0.0
     ],
     "enableCollision": 0,
@@ -39,10 +39,10 @@
     "envDrag": 0.66,
     "envGravity": [
         0.0,
-        -0.95,
+        -1.18,
         0.0
     ],
-    "envTurbulence": 0.30,
+    "envTurbulence": 0.46,
     "envWind": [
         0.0,
         0.0,
@@ -51,19 +51,19 @@
     "isLooping": false,
     "midColor": [
         1.0,
-        0.78,
-        0.12,
+        0.90,
+        0.34,
         1.0
     ],
-    "midSize": 0.34,
+    "midSize": 0.28,
     "restitution": 0.5,
-    "rotSpeed": 8.0,
-    "shapeAngle": 30.0,
+    "rotSpeed": 10.5,
+    "shapeAngle": 16.0,
     "shapeRadius": 0.34,
     "shapeType": 1,
     "sizeEaseType": 0,
     "sizeMidTime": 0.26,
     "softParticleFade": 4.0,
     "texturePath": "Resources/sprite/effect/crown/crown_star_glint.png",
-    "velocityVariance": 4.7
+    "velocityVariance": 4.1
 }

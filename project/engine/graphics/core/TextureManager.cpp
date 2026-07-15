@@ -20,6 +20,7 @@
 
 namespace {
 const std::filesystem::path kDDSCacheRequestPath = "Resources/.cache/dds_cache_requests.jsonl";
+const std::filesystem::path kDDSCacheDisableFlagPath = "Resources/.cache/disable_dds_cache.flag";
 // この時間未満の読み込みはDDS化しても効果が薄いため、変換要求を出さない。
 constexpr float kDDSCacheRequestMinDurationMs = 2.0f;
 // 文字列を小文字化し、拡張子やパスの比較を大文字小文字に左右されない形へ揃える。
@@ -70,6 +71,12 @@ bool IsSourceTextureExtension(const std::string& ext) {
            lowerExt == ".jpeg" ||
            lowerExt == ".tga" ||
            lowerExt == ".hdr";
+}
+// 原因調査用に、フラグファイルだけでDDSキャッシュの使用を一時停止できるようにする。
+
+bool IsDDSCacheDisabled() {
+    std::error_code ec;
+    return std::filesystem::exists(kDDSCacheDisableFlagPath, ec) && !ec;
 }
 // DDS指定時に元画像が存在するか探し、古いDDSを元画像から再生成できるようにする。
 
@@ -345,6 +352,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     std::filesystem::path path(filePath);
+    const bool useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
     // DDSを直接指定された場合でも、元画像が新しければ元画像を読み直して再生成要求につなげる。
     const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
     if (requestedDDS) {
@@ -352,7 +360,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         if (!sourcePath.empty()) {
             const bool ddsMissing = !std::filesystem::exists(path);
             const bool ddsOutdated = !ddsMissing && std::filesystem::last_write_time(sourcePath) > std::filesystem::last_write_time(path);
-            if (ddsMissing || ddsOutdated) {
+            if (!useDDSCache || ddsMissing || ddsOutdated) {
                 path = sourcePath;
             }
         }
@@ -373,7 +381,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     bool ddsIsUpToDate = false;
 
     // 元画像より新しいDDSがある場合は、重い変換を避けてDDSを優先する。
-    if (allowDDSCache && isSourceTexture && std::filesystem::exists(ddsPath)) {
+    if (useDDSCache && isSourceTexture && std::filesystem::exists(ddsPath)) {
         if (!std::filesystem::exists(path)) {
             loadPath = NormalizeTexturePath(ddsPath.string());
             ddsIsUpToDate = true;
@@ -388,6 +396,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     if (!forceReload) {
+        std::lock_guard<std::mutex> lock(mutex_);
         auto it = textureHandleMap_.find(loadPath);
         if (it != textureHandleMap_.end()) {
             return it->second;
@@ -424,13 +433,30 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     uint32_t srvHandle = 0;
-    // forceReload時は既存SRV番号を再利用し、参照しているSpriteやMaterialを壊さない。
-    auto existingIt = textureHandleMap_.find(loadPath);
-    if (forceReload && existingIt != textureHandleMap_.end()) {
-        srvHandle = existingIt->second;
-        SRVManager::GetInstance()->CreateSRVforResource(srvHandle, resource.Get(), srvDesc);
-    } else {
-        srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        // 他スレッドが読み込み中に同じテクスチャを先に登録していた場合は、そのハンドルを使う。
+        auto existingIt = textureHandleMap_.find(loadPath);
+        if (!forceReload && existingIt != textureHandleMap_.end()) {
+            return existingIt->second;
+        }
+
+        // forceReload時は既存SRV番号を再利用し、参照しているSpriteやMaterialを壊さない。
+        if (forceReload && existingIt != textureHandleMap_.end()) {
+            srvHandle = existingIt->second;
+            SRVManager::GetInstance()->CreateSRVforResource(srvHandle, resource.Get(), srvDesc);
+        } else {
+            srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
+        }
+
+        TextureData& newData = textureDatas_[srvHandle];
+        newData.filePath = loadPath;
+        newData.metadata = metadata;
+        newData.resource = resource;
+        newData.srvHandle = srvHandle;
+
+        textureHandleMap_[loadPath] = srvHandle;
     }
 
     const auto end = std::chrono::high_resolution_clock::now();
@@ -438,22 +464,16 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
     // まだ有効なDDSがない元画像は、裏側でDDS生成できるよう要求を積む。
-    if (allowDDSCache && isSourceTexture && !ddsIsUpToDate) {
+    if (useDDSCache && isSourceTexture && !ddsIsUpToDate) {
         AppendDDSCacheRequest(effectiveFilePath, isNormalMap, duration);
     }
-
-    TextureData& newData = textureDatas_[srvHandle];
-    newData.filePath = loadPath;
-    newData.metadata = metadata;
-    newData.resource = resource;
-    newData.srvHandle = srvHandle;
-
-    textureHandleMap_[loadPath] = srvHandle;
     return srvHandle;
 }
 // 読み込み済みテクスチャのメタデータを取得し、サイズやミップ情報を参照できるようにする。
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     auto it = textureDatas_.find(textureHandle);
     assert(it != textureDatas_.end());
     return it->second.metadata;
@@ -509,6 +529,8 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
 // 現在読み込み済みのテクスチャパス一覧を返し、エディタやデバッグ表示で利用する。
 
 std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     std::vector<std::string> paths;
     for (const auto& pair : textureHandleMap_) {
         paths.push_back(pair.first);
@@ -518,6 +540,8 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
 // 指定パスに対応するSRVハンドルを返し、元画像名で問い合わせた場合はDDS登録も補助的に探す。
 
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
     auto it = textureHandleMap_.find(filePath);
     if (it != textureHandleMap_.end()) {
         return it->second;

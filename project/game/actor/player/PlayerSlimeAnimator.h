@@ -41,7 +41,16 @@ private:
     float pullProgress_ = 0.0f;
     float impulseTimer_ = 0.0f;
     float impulseDuration_ = 0.0f;
+    float modeTransitionTimer_ = 0.0f;
+    bool modeTransitionCapturePending_ = false;
+    Vector3 modeTransitionStartScale_ = { 2.0f, 2.0f, 2.0f };
+    Vector3 modeTransitionStartRotation_ = { 0.0f, 0.0f, 0.0f };
+    float jumpTakeoffStretchTimer_ = 0.0f;
+    float landingHoldTimer_ = 0.0f;
     float landingSquashTimer_ = 0.0f;
+    float landingReboundTimer_ = 0.0f;
+    float landingImpactRate_ = 1.0f;
+    float previousVelocityY_ = 0.0f;
     bool wasGrounded_ = true;
     Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f };
     Vector3 motionDirection_ = { 0.0f, 0.0f, 1.0f };

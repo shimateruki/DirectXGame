@@ -80,7 +80,7 @@ constexpr const char* kCrownUnlockRayFlashEffectPath = "Resources/json/effect/ef
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
 constexpr float kCrownCountPresentationDuration = 2.65f;
 constexpr float kCrownCountImpactTime = 1.05f;
-constexpr float kCrownCountParticleInterval = 0.12f;
+constexpr float kCrownCountParticleInterval = 0.08f;
 
 // ゲート突入演出は、CameraEditorの保存位置ではなくゲートのTransformから自動生成する。
 // ゲートを移動してもカメラ演出を再調整しなくて済むように、距離・高さ・補間時間だけをここで管理する。
@@ -124,6 +124,9 @@ constexpr float kGateReturnThirdPersonDistance = 16.0f;
 constexpr float kGateReturnThirdPersonHeight = 3.20f;
 constexpr float kGateReturnThirdPersonTargetHeight = 1.45f;
 constexpr float kGateReturnThirdPersonPitch = 0.32f;
+constexpr float kGateCinematicBarHeight = 0.105f;
+constexpr float kGateCinematicBarOpenSpeed = 5.8f;
+constexpr float kGateCinematicBarCloseSpeed = 4.2f;
 
 float SelectClamp01(float value) {
 	return std::clamp(value, 0.0f, 1.0f);
@@ -632,19 +635,20 @@ void GameSelectScene::Update(float deltaTime) {
 		UpdateStageReturnPresentation(deltaTime);
 	}
 
-	CameraManager::GetInstance()->Update();
+	CameraManager::GetInstance()->Update(deltaTime);
 	particleSystem_->Update(deltaTime);
 	UpdateStageGateSelection(deltaTime);
 	objectManager_->Update(deltaTime);
 	if (gateReturnPresentationActive_) {
 		UpdateStageReturnPresentation(0.0f);
-		CameraManager::GetInstance()->Update();
+		CameraManager::GetInstance()->Update(0.0f);
 	}
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) sprite->Update();
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
+	UpdateGateCinematicBars(deltaTime);
 
 	if (animatedCube_) animatedCube_->Update(deltaTime);
 }
@@ -1408,11 +1412,11 @@ Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
 	crown->SetCollisionAttribute(0);
 	crown->SetCollisionMask(0);
 	crown->SetScale({ kStageClearCrownBaseScale, kStageClearCrownBaseScale, kStageClearCrownBaseScale });
-	crown->SetColor({ 1.0f, 0.86f, 0.20f, 1.0f });
-	crown->SetEmissive(1.85f);
+	crown->SetColor({ 0.58f, 0.62f, 0.70f, 1.0f });
+	crown->SetEmissive(0.45f);
 	crown->SetGPUParticleName(kCrownIdleParticlePreset);
-	crown->SetMeshEffect1Name(kCrownAuraEffectPath);
-	crown->SetMeshEffect2Name(kCrownRayEffectPath);
+	crown->SetMeshEffect1Name("");
+	crown->SetMeshEffect2Name("");
 	crown->SetTranslate(GetStageClearCrownPosition(stageIndex));
 	crown->UpdateLocalMatrix();
 	crown->UpdateWorldMatrix();
@@ -1457,11 +1461,11 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
 
 		const float scale = kStageClearCrownBaseScale * (1.0f + pulse * 0.08f);
 		transform->scale = { scale, scale, scale };
-		crown->SetColor({ 1.0f, 0.82f + pulse * 0.12f, 0.20f, 1.0f });
-		crown->SetEmissive(1.85f + pulse * 0.55f);
+		crown->SetColor({ 0.58f + pulse * 0.06f, 0.62f + pulse * 0.06f, 0.70f + pulse * 0.07f, 1.0f });
+		crown->SetEmissive(0.38f + pulse * 0.16f);
 		crown->SetGPUParticleName(kCrownIdleParticlePreset);
-		crown->SetMeshEffect1Name(kCrownAuraEffectPath);
-		crown->SetMeshEffect2Name(kCrownRayEffectPath);
+		crown->SetMeshEffect1Name("");
+		crown->SetMeshEffect2Name("");
 		crown->UpdateLocalMatrix();
 		crown->UpdateWorldMatrix();
 	}
@@ -1565,6 +1569,7 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
 	Vector3 position = targetPos;
 	float scale = kStageClearCrownBaseScale;
 	float emissive = 3.1f;
+	float silverFlash = 0.0f;
 	const float t = crownCountPresentationTimer_;
 
 	if (t < kCrownCountImpactTime) {
@@ -1575,6 +1580,7 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
 		position.y += std::sin(p * std::numbers::pi_v<float>) * 0.62f;
 		scale = kStageClearCrownBaseScale * (0.18f + SelectEaseOutBack(p) * 0.92f);
 		emissive = 2.6f + p * 2.8f;
+		silverFlash = p;
 		transform->rotate.y += deltaTime * (8.0f + (1.0f - p) * 7.5f);
 		transform->rotate.z = std::sin(p * std::numbers::pi_v<float>) * 0.42f;
 	} else {
@@ -1585,6 +1591,7 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
 		position.y += bounce;
 		scale = kStageClearCrownBaseScale * (1.0f + pop * 0.34f + std::sin(p * 14.0f) * 0.08f * decay);
 		emissive = 2.55f + pop * 2.2f + decay * 0.9f;
+		silverFlash = std::max(pop, decay * 0.45f);
 		transform->rotate.y += deltaTime * (2.0f + decay * 4.5f);
 		transform->rotate.z = std::sin(stageSelectTime_ * 5.0f) * 0.12f * std::max(0.25f, decay);
 	}
@@ -1593,11 +1600,12 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
 	transform->scale = { scale, scale, scale };
 	transform->isQuaternionMaster = false;
 	crown->SetIsVisible(true);
-	crown->SetColor({ 1.0f, 0.86f, 0.18f, 1.0f });
+	silverFlash = SelectClamp01(silverFlash);
+	crown->SetColor({ 0.58f + silverFlash * 0.30f, 0.62f + silverFlash * 0.28f, 0.70f + silverFlash * 0.24f, 1.0f });
 	crown->SetEmissive(emissive);
 	crown->SetGPUParticleName(kCrownIdleParticlePreset);
-	crown->SetMeshEffect1Name(kCrownAuraEffectPath);
-	crown->SetMeshEffect2Name(kCrownRayEffectPath);
+	crown->SetMeshEffect1Name("");
+	crown->SetMeshEffect2Name("");
 	crown->UpdateLocalMatrix();
 	crown->UpdateWorldMatrix();
 }
@@ -1856,6 +1864,51 @@ void GameSelectScene::RestoreGateEntryMaterialState() {
 		}
 	}
 	gateEntryMaterialSnapshots_.clear();
+}
+
+void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
+	PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+	if (!params) {
+		return;
+	}
+
+	const bool isCinematicActive = gateEntryCinematicActive_ || gateReturnPresentationActive_;
+	if (isCinematicActive && !gateCinematicBarOverrideActive_) {
+		gateCinematicBarBaseHeight_ = params->cinemaBarHeight;
+		gateCinematicBarOverrideActive_ = true;
+	}
+
+	if (!gateCinematicBarOverrideActive_) {
+		return;
+	}
+
+	const float targetBlend = isCinematicActive ? 1.0f : 0.0f;
+	const float speed = isCinematicActive ? kGateCinematicBarOpenSpeed : kGateCinematicBarCloseSpeed;
+	const float step = speed * std::max(deltaTime, 0.0f);
+	if (gateCinematicBarBlend_ < targetBlend) {
+		gateCinematicBarBlend_ = std::min(targetBlend, gateCinematicBarBlend_ + step);
+	} else if (gateCinematicBarBlend_ > targetBlend) {
+		gateCinematicBarBlend_ = std::max(targetBlend, gateCinematicBarBlend_ - step);
+	}
+
+	const float targetHeight = std::max(gateCinematicBarBaseHeight_, kGateCinematicBarHeight);
+	params->cinemaBarHeight = gateCinematicBarBaseHeight_ + (targetHeight - gateCinematicBarBaseHeight_) * gateCinematicBarBlend_;
+
+	if (!isCinematicActive && gateCinematicBarBlend_ <= 0.0f) {
+		params->cinemaBarHeight = gateCinematicBarBaseHeight_;
+		gateCinematicBarBaseHeight_ = 0.0f;
+		gateCinematicBarOverrideActive_ = false;
+	}
+}
+
+void GameSelectScene::ResetGateCinematicBars() {
+	PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+	if (params && gateCinematicBarOverrideActive_) {
+		params->cinemaBarHeight = gateCinematicBarBaseHeight_;
+	}
+	gateCinematicBarOverrideActive_ = false;
+	gateCinematicBarBlend_ = 0.0f;
+	gateCinematicBarBaseHeight_ = 0.0f;
 }
 
 bool GameSelectScene::StartStageReturnPresentation(const GameDataManager::StageSelectReturnPresentation& request) {
@@ -2243,6 +2296,7 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
 		gateEntryCinematicTimer_ = 0.0f;
 		gateEntryPendingStageIndex_ = -1;
 		gateEntryTargetGate_ = nullptr;
+		ResetGateCinematicBars();
 		SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
 	}
 }

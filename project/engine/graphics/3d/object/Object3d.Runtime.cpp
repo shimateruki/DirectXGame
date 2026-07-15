@@ -101,6 +101,7 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
 
 
 void Object3d::DrawShadow() {
+    if (IsCameraObject()) return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadow();
     }
@@ -111,6 +112,7 @@ void Object3d::SetShadowCommonState() {
     }
 }
 void Object3d::DrawShadowOnly() {
+    if (IsCameraObject()) return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadowOnly();
     }
@@ -133,6 +135,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 1. 基本設定・識別子
     this->name_ = other->name_;
     this->className_ = other->className_;
+    this->sceneCameraSettings_ = other->sceneCameraSettings_;
     this->tag_ = other->tag_;
     this->layer_ = other->layer_;
     this->saveCategory_ = other->saveCategory_;
@@ -216,7 +219,7 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     this->InitializeRecorder(nullptr);
     if (!this->recordPathName_.empty() && this->recorder_) {
-        bool isCinematic = (this->className_ == "CinematicCamera");
+        bool isCinematic = this->IsCameraObject();
         this->recorder_->Play(this->recordPathName_, this->isRecordLoop_, this->isRecordRelative_, isCinematic);
     }
 

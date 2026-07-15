@@ -251,8 +251,14 @@ void Object3d::UpdateParticle() {
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!isVisible_) return;
+    if (IsCameraObject()) {
+        SceneManager* sceneManager = SceneManager::GetInstance();
+        if ((sceneManager && sceneManager->IsPlaying()) || DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
+            return;
+        }
+    }
 #ifdef DD // "Release" ビルドの時だけ有効になるマクロ
-    if (className_ == "CinematicCamera" || className_ == "GPUParticle" || className_ == "InvisibleBox") {
+    if (IsCameraObject() || className_ == "GPUParticle" || className_ == "InvisibleBox") {
         return; // 何も描画せずに帰る（門前払い）
     }
 #endif
@@ -279,8 +285,11 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 
 void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!isVisible_) return;
+    if (IsCameraObject() && DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
+        return;
+    }
 #ifdef DD
-    if (className_ == "CinematicCamera" || className_ == "GPUParticle" || className_ == "InvisibleBox") {
+    if (IsCameraObject() || className_ == "GPUParticle" || className_ == "InvisibleBox") {
         return;
     }
 #endif

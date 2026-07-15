@@ -26,7 +26,7 @@ void Initialize();
     /// 有効カメラを更新する。
     /// </summary>
         // 現在アクティブなカメラを更新します。
-void Update();
+void Update(float deltaTime = 1.0f / 60.0f);
 
     // カメラ操作で参照する入力管理を設定する。
     void SetInputManager(InputManager* inputManager);

@@ -5,19 +5,19 @@
         1.0,
         0.0
     ],
-    "baseSize": 0.45,
+    "baseSize": 0.18,
     "blendModeIndex": 0,
     "colorEaseType": 0,
-    "colorIntensity": 5.2,
-    "colorMidTime": 0.18,
+    "colorIntensity": 4.5,
+    "colorMidTime": 0.15,
     "emitArea": [
         0.0,
         0.0,
         0.0
     ],
-    "emitCount": 5,
-    "emitInterval": 0.8,
-    "emitLife": 0.95,
+    "emitCount": 2,
+    "emitInterval": 0.62,
+    "emitLife": 1.05,
     "emitPos": [
         0.0,
         0.0,
@@ -35,7 +35,7 @@
         1.0,
         0.0
     ],
-    "endSize": 2.4,
+    "endSize": 1.8,
     "envDrag": 0.35,
     "envGravity": [
         0.0,
@@ -55,15 +55,15 @@
         0.24,
         0.72
     ],
-    "midSize": 1.6,
+    "midSize": 1.1,
     "restitution": 0.5,
     "rotSpeed": 0.35,
     "shapeAngle": 30.0,
-    "shapeRadius": 0.04,
+    "shapeRadius": 0.08,
     "shapeType": 1,
     "sizeEaseType": 0,
     "sizeMidTime": 0.20,
     "softParticleFade": 5.0,
     "texturePath": "Resources/sprite/effect/crown/crown_core_glow.png",
-    "velocityVariance": 0.25
+    "velocityVariance": 0.42
 }

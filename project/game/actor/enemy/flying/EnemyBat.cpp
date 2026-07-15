@@ -103,6 +103,14 @@ void EnemyBat::UpdateTargetBehavior(float deltaTime, Vector3& desired, float& mo
     direction = NormalizePlanar(toTarget);
     const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
+    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        desired = GetTranslate();
+        desired.y += 0.25f;
+        moveSpeed = 0.0f;
+        UpdateFacing(direction);
+        return;
+    }
+
     if (distance > detectionRange_) {
         state_ = BatState::Orbit;
         UpdateWanderBehavior(deltaTime, desired, moveSpeed);

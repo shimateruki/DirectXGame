@@ -63,6 +63,8 @@ DebrisEffectManager::DebrisEffectManager()
 }
 
 void DebrisEffectManager::Initialize(Object3dCommon* common) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (common_ != common) {
         activePieces_.clear();
         pooledPieces_.clear();
@@ -71,13 +73,26 @@ void DebrisEffectManager::Initialize(Object3dCommon* common) {
         cameraData_ = nullptr;
         if (common_ && common_->GetDxCommon()) {
             cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(MeshRenderer::CameraForGPU));
-            cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+            if (!cameraResource_) {
+                DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer creation failed.");
+                return;
+            }
+
+            HRESULT hr = cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+            if (FAILED(hr) || !cameraData_) {
+                DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer map failed.");
+                cameraResource_.Reset();
+                cameraData_ = nullptr;
+                return;
+            }
             cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
         }
     }
 }
 
 Object3dCommon* DebrisEffectManager::ResolveCommon() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     SceneManager* sceneManager = SceneManager::GetInstance();
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
     Object3dCommon* sceneCommon = scene ? scene->GetObject3dCommon() : nullptr;
@@ -88,6 +103,8 @@ Object3dCommon* DebrisEffectManager::ResolveCommon() {
 }
 
 void DebrisEffectManager::Update(float deltaTime) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (activePieces_.empty()) {
         return;
     }
@@ -157,6 +174,8 @@ void DebrisEffectManager::Update(float deltaTime) {
 }
 
 void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (activePieces_.empty() || !common_ || !cameraResource_) {
         return;
     }
@@ -189,12 +208,16 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
 }
 
 void DebrisEffectManager::Clear() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     while (!activePieces_.empty()) {
         RecyclePiece(activePieces_.size() - 1);
     }
 }
 
 void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     namespace fs = std::filesystem;
     if (!fs::exists(directoryPath)) {
         return;
@@ -305,10 +328,14 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
 }
 
 void DebrisEffectManager::RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     presets_[presetName] = config;
 }
 
 void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     DebrisEffectConfig config;
     auto it = presets_.find(presetName);
     if (it != presets_.end()) {
@@ -355,12 +382,16 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
 }
 
 void DebrisEffectManager::PrewarmPresets(const std::vector<std::string>& presetNames) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     for (const std::string& presetName : presetNames) {
         PrewarmPreset(presetName);
     }
 }
 
 void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& position) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     auto it = presets_.find(presetName);
     if (it != presets_.end()) {
         SpawnFromConfig(it->second, position);
@@ -378,6 +409,8 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& po
 }
 
 void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     auto it = presets_.find(presetName);
     if (it != presets_.end()) {
         DebrisEffectConfig config = it->second;
@@ -398,6 +431,8 @@ void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vec
 }
 
 void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, const Vector3& position) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     Object3dCommon* common = ResolveCommon();
     if (!common) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] Object3dCommon is null.");
@@ -519,15 +554,39 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     DirectXCommon* dxCommon = common_->GetDxCommon();
     if (!piece.wvpResource) {
         piece.wvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
-        piece.wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.wvpData));
+        if (!piece.wvpResource) {
+            return false;
+        }
+        HRESULT hr = piece.wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.wvpData));
+        if (FAILED(hr) || !piece.wvpData) {
+            piece.wvpResource.Reset();
+            piece.wvpData = nullptr;
+            return false;
+        }
     }
     if (kEnableDebrisShadowWvp && !piece.shadowWvpResource) {
         piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
-        piece.shadowWvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.shadowWvpData));
+        if (!piece.shadowWvpResource) {
+            return false;
+        }
+        HRESULT hr = piece.shadowWvpResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.shadowWvpData));
+        if (FAILED(hr) || !piece.shadowWvpData) {
+            piece.shadowWvpResource.Reset();
+            piece.shadowWvpData = nullptr;
+            return false;
+        }
     }
     if (!piece.materialResource) {
         piece.materialResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::MaterialData));
-        piece.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.materialData));
+        if (!piece.materialResource) {
+            return false;
+        }
+        HRESULT hr = piece.materialResource->Map(0, nullptr, reinterpret_cast<void**>(&piece.materialData));
+        if (FAILED(hr) || !piece.materialData) {
+            piece.materialResource.Reset();
+            piece.materialData = nullptr;
+            return false;
+        }
     }
     if (!piece.wvpResource || !piece.materialResource) {
         return false;

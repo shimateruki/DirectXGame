@@ -1,21 +1,21 @@
 {
     "baseColor": [
-        3.2,
-        0.72,
-        2.65,
-        0.95
+        1.0,
+        0.22,
+        0.82,
+        0.92
     ],
-    "baseSize": 0.045,
-    "blendModeIndex": 1,
+    "baseSize": 0.22,
+    "blendModeIndex": 0,
     "colorEaseType": 2,
-    "colorIntensity": 3.6,
-    "colorMidTime": 0.12,
+    "colorIntensity": 1.35,
+    "colorMidTime": 0.18,
     "emitArea": [
-        0.16,
-        0.18,
-        0.16
+        0.38,
+        0.34,
+        0.38
     ],
-    "emitCount": 30,
+    "emitCount": 7,
     "emitInterval": 0.001,
     "emitLife": 0.34,
     "emitPos": [
@@ -25,24 +25,24 @@
     ],
     "emitVelocity": [
         0.0,
-        0.72,
+        0.18,
         0.0
     ],
     "enableCollision": 0,
     "endColor": [
-        1.35,
-        0.18,
-        1.15,
+        0.92,
+        0.06,
+        0.62,
         0.0
     ],
     "endSize": 0.0,
-    "envDrag": 0.48,
+    "envDrag": 0.32,
     "envGravity": [
         0.0,
-        -0.46,
+        -0.18,
         0.0
     ],
-    "envTurbulence": 3.4,
+    "envTurbulence": 0.75,
     "envWind": [
         0.0,
         0.0,
@@ -51,19 +51,25 @@
     "isLooping": false,
     "midColor": [
         1.0,
-        0.92,
-        1.0,
-        1.0
+        0.62,
+        0.96,
+        0.82
     ],
-    "midSize": 0.16,
+    "midSize": 0.56,
     "restitution": 0.0,
-    "rotSpeed": 18.0,
-    "shapeAngle": 118.0,
-    "shapeRadius": 0.42,
+    "rotSpeed": 10.0,
+    "shapeAngle": 88.0,
+    "shapeRadius": 0.46,
     "shapeType": 1,
     "sizeEaseType": 1,
     "sizeMidTime": 0.10,
     "softParticleFade": 2.4,
-    "texturePath": "Resources/sprite/particle/soft_dot.png",
-    "velocityVariance": 2.7
+    "spriteSheetColumns": 4,
+    "spriteSheetFps": 22.0,
+    "spriteSheetFrameCount": 4,
+    "spriteSheetLoop": false,
+    "spriteSheetRandomStart": false,
+    "spriteSheetRows": 1,
+    "texturePath": "Resources/sprite/particle/jelly_blob.png",
+    "velocityVariance": 0.72
 }

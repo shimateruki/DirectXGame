@@ -7,6 +7,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     3.2782554626464844e-07,
@@ -42,6 +43,7 @@
             "gimmickType": "",
             "gpuParticleName": "",
             "itemType": "",
+            "layer": "Default",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -56,7 +58,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 25,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
@@ -83,8 +85,6 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 30.0,
-                "morphDuration": 5.0,
-                "morphLimited": true,
                 "moveAmount": 10.0,
                 "moveSpeed": 6.0,
                 "returnOnOff": true,
@@ -103,9 +103,9 @@
             ],
             "quaternion": [
                 0.0,
-                -0.07438380271196365,
+                -0.7313422560691833,
                 0.0,
-                0.9972296953201294
+                0.6820105910301208
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -114,7 +114,7 @@
             },
             "rotation": [
                 0.0,
-                -0.14890512824058533,
+                -1.6405760049819946,
                 0.0
             ],
             "roughness": 0.5,
@@ -124,6 +124,7 @@
                 1.0,
                 0.9999999403953552
             ],
+            "tag": "",
             "targetID": -1,
             "texturePath": "",
             "textureTiling": [
@@ -139,6 +140,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -174,6 +176,7 @@
             "gimmickType": "",
             "gpuParticleName": "",
             "itemType": "",
+            "layer": "Default",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -188,7 +191,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 25,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
@@ -215,8 +218,6 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 30.0,
-                "morphDuration": 5.0,
-                "morphLimited": true,
                 "moveAmount": 10.0,
                 "moveSpeed": 6.0,
                 "returnOnOff": true,
@@ -234,10 +235,10 @@
                 -65.30419921875
             ],
             "quaternion": [
-                0.1425940990447998,
-                -0.6925798654556274,
-                0.6925798654556274,
-                0.1425940990447998
+                0.34588485956192017,
+                0.6167362928390503,
+                -0.6167362928390503,
+                0.34588485956192017
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -246,7 +247,7 @@
             },
             "rotation": [
                 1.5707963705062866,
-                -2.7354907989501953,
+                2.1193511486053467,
                 0.0
             ],
             "roughness": 0.5,
@@ -256,6 +257,7 @@
                 0.5,
                 0.5
             ],
+            "tag": "",
             "targetID": -1,
             "texturePath": "",
             "textureTiling": [
@@ -271,6 +273,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -306,6 +309,7 @@
             "gimmickType": "",
             "gpuParticleName": "",
             "itemType": "",
+            "layer": "Default",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -320,7 +324,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 25,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
@@ -347,8 +351,6 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 60.0,
-                "morphDuration": 5.0,
-                "morphLimited": true,
                 "moveAmount": 10.0,
                 "moveSpeed": 6.0,
                 "returnOnOff": true,
@@ -362,14 +364,14 @@
             "particleName": "",
             "position": [
                 -7.148060321807861,
-                -0.5494763851165771,
+                -0.1025698184967041,
                 28.226579666137695
             ],
             "quaternion": [
-                -0.6889758706092834,
-                0.15359951555728912,
-                -0.1530175805091858,
-                -0.6915961503982544
+                0.0,
+                0.8248016834259033,
+                0.0,
+                -0.5654221177101135
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -377,17 +379,18 @@
                 "recordPathName": ""
             },
             "rotation": [
-                1.567000389099121,
-                5.846092224121094,
-                9.033468018060375e-07
+                0.0,
+                4.343482494354248,
+                0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Enemy",
             "scale": [
-                0.9999863505363464,
-                0.9999825358390808,
-                0.9999769330024719
+                2.0,
+                2.0,
+                2.0
             ],
+            "tag": "",
             "targetID": -1,
             "texturePath": "",
             "textureTiling": [
@@ -403,6 +406,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
+            "castShadow": true,
             "collider": {
                 "center": [
                     0.0,
@@ -438,6 +442,7 @@
             "gimmickType": "",
             "gpuParticleName": "",
             "itemType": "",
+            "layer": "Default",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -464,6 +469,7 @@
             "ormMapPath": "",
             "param": {
                 "actionMode": 0,
+                "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 16.0,
                 "enemyType": "",
@@ -496,9 +502,9 @@
             ],
             "quaternion": [
                 0.0,
-                -0.6979645490646362,
+                0.6322523951530457,
                 0.0,
-                0.7161322832107544
+                0.7747625112533569
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -507,7 +513,7 @@
             },
             "rotation": [
                 0.0,
-                -1.545102596282959,
+                1.3689138889312744,
                 0.0
             ],
             "roughness": 0.5,
@@ -517,6 +523,7 @@
                 1.0,
                 1.0
             ],
+            "tag": "",
             "targetID": -1,
             "texturePath": "",
             "textureTiling": [

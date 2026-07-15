@@ -202,7 +202,7 @@ void PreviewScene::Finalize() {
 void PreviewScene::Update(float deltaTime) {
 	if (isGoal_) {
 		PostEffect::GetInstance()->Update(deltaTime);
-		CameraManager::GetInstance()->Update();
+		CameraManager::GetInstance()->Update(deltaTime);
 		particleSystem_->Update(deltaTime);
 		GPUParticleManager::GetInstance()->Update(deltaTime);
 		for (auto& sprite : sprites_) {
@@ -291,7 +291,7 @@ void PreviewScene::Update(float deltaTime) {
 
 	// --- 全体更新 ---
 	ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
-	CameraManager::GetInstance()->Update();
+	CameraManager::GetInstance()->Update(deltaTime);
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); 
 	GPUParticleManager::GetInstance()->Update(deltaTime);
@@ -684,9 +684,12 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
 		hudHpFrame_->Update();
 	}
 
-	const bool morphActive = visible && player_ && player_->IsEnemyMorphed();
+	const bool morphActive = visible && player_ && player_->HasEnemyMorphTimeLimit();
+	const bool suppressMorphGauge = visible && player_ && player_->IsEnemyMorphed() && !player_->HasEnemyMorphTimeLimit();
 	if (morphActive) {
 		hudMorphGaugeVisibleTimer_ = 0.20f;
+	} else if (suppressMorphGauge) {
+		hudMorphGaugeVisibleTimer_ = 0.0f;
 	} else {
 		hudMorphGaugeVisibleTimer_ = std::max(0.0f, hudMorphGaugeVisibleTimer_ - deltaTime);
 	}

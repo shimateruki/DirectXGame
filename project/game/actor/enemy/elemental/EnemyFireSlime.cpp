@@ -162,6 +162,13 @@ void EnemyFireSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
 }
 
 void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+    if (breathTimer_ <= 0.0f && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        velocity.x = 0.0f;
+        velocity.z = 0.0f;
+        UpdateFacing(direction);
+        return;
+    }
+
     if (breathTimer_ > 0.0f) {
         UpdateBreath(deltaTime, direction, distance);
     }

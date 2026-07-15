@@ -5,19 +5,19 @@
         1.0,
         0.0
     ],
-    "baseSize": 0.40,
+    "baseSize": 0.30,
     "blendModeIndex": 0,
     "colorEaseType": 0,
-    "colorIntensity": 6.5,
-    "colorMidTime": 0.16,
+    "colorIntensity": 8.4,
+    "colorMidTime": 0.13,
     "emitArea": [
         0.0,
         0.0,
         0.0
     ],
-    "emitCount": 18,
-    "emitInterval": 0.8,
-    "emitLife": 0.62,
+    "emitCount": 28,
+    "emitInterval": 0.65,
+    "emitLife": 0.70,
     "emitPos": [
         0.0,
         0.0,
@@ -36,7 +36,7 @@
         0.0
     ],
     "endSize": 1.25,
-    "envDrag": 0.18,
+    "envDrag": 0.12,
     "envGravity": [
         0.0,
         0.0,
@@ -51,19 +51,19 @@
     "isLooping": false,
     "midColor": [
         1.0,
-        0.88,
-        0.24,
-        0.84
+        0.94,
+        0.46,
+        0.90
     ],
-    "midSize": 1.85,
+    "midSize": 2.15,
     "restitution": 0.5,
-    "rotSpeed": 1.4,
-    "shapeAngle": 30.0,
-    "shapeRadius": 0.16,
+    "rotSpeed": 2.2,
+    "shapeAngle": 12.0,
+    "shapeRadius": 0.24,
     "shapeType": 1,
     "sizeEaseType": 0,
     "sizeMidTime": 0.24,
     "softParticleFade": 5.0,
     "texturePath": "Resources/sprite/effect/crown/crown_ray_fan.png",
-    "velocityVariance": 0.75
+    "velocityVariance": 1.05
 }

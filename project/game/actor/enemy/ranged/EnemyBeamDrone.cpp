@@ -180,6 +180,13 @@ void EnemyBeamDrone::UpdateEnemyBeamState(float deltaTime) {
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
     }
 
+    if (state_ == BeamState::Idle && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        if (target_) {
+            UpdateFacing(direction);
+        }
+        return;
+    }
+
     switch (state_) {
     case BeamState::Idle:
         if (target_ && distance <= detectionRange_ && cooldownTimer_ <= 0.0f) {

@@ -17,6 +17,7 @@
 
 namespace {
 using json = nlohmann::json;
+constexpr int kSlimeSoftMaterialType = 25;
 
 // スライム系は共通して大きめのスケールにそろえる
 bool IsSlimeEnemyType(const std::string& enemyType) {
@@ -38,6 +39,7 @@ void ApplySlimeDefaults(BaseEnemy* enemy) {
     else {
         enemy->SetScale({ 2.0f, 2.0f, 2.0f });
     }
+    enemy->SetMaterialType(kSlimeSoftMaterialType);
 }
 
 void ReadFloat(const json& source, const char* key, float& value) {

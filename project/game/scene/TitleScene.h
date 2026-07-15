@@ -165,6 +165,7 @@ private:
     float titleIntroTime_ = 0.0f;
     bool titleIntroComplete_ = false;
     std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
+    Sprite* saveSelectBackdrop_ = nullptr;
     std::array<Sprite*, 3> saveSlotCards_ = { nullptr, nullptr, nullptr };
     std::array<std::array<Sprite*, 4>, 3> saveSlotFrames_{};
     std::array<Sprite*, 3> saveSlotIcons_ = { nullptr, nullptr, nullptr };

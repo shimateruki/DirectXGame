@@ -100,6 +100,13 @@ void EnemyMushroom::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
 }
 
 void EnemyMushroom::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+    if (UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        velocity.x = 0.0f;
+        velocity.z = 0.0f;
+        UpdateFacing(direction);
+        return;
+    }
+
     if (attackTimer_ > 0.0f) {
         attackTimer_ -= deltaTime;
         SetColor({ 0.72f, 0.12f, 0.62f, 1.0f });

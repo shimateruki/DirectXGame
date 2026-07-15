@@ -368,12 +368,13 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomLeftId);
 	ImGui::DockBuilderDockWindow("Debug Console", dockBottomRightId);
 	ImGui::DockBuilderDockWindow("ステータス", dockBottomRightId);
+	ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomRightId);
 	ImGui::DockBuilderDockWindow("Game View", dockMainId);
 	ImGui::DockBuilderFinish(dockspaceId);
 }
 // エディタ中央のゲームビューを描画し、マウス入力やギズモ状態を収集する。
 
-void DrawCinematicCameraPreviewOverlay(const GameViewArea& area);
+void DrawCameraObjectPreviewWindow();
 
 EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, bool isPlaying) {
 	EditorFrameState frameState;
@@ -446,68 +447,87 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				if (!IsObjectInCurrentScene(sceneManager, selectedObject)) {
 					selectedObject = nullptr;
 				}
+				CameraEditor* cameraEditor = CameraEditor::GetInstance();
+				if (selectedObject && selectedObject->IsCameraObject()) {
+					cameraEditor->SetSelectedCameraObject(selectedObject);
+				}
+				else if (EditorManager::GetInstance()->GetSelectedObject() != cameraEditor) {
+					cameraEditor->SetSelectedCameraObject(nullptr);
+				}
 
 				DrawSelectedObjectOrientation(area, activeCamera, selectedObject);
 				DrawSceneDirectionGizmo(area, activeCamera);
-				DrawCinematicCameraPreviewOverlay(area);
 			}
 		}
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
+	if (!isPlaying) {
+		DrawCameraObjectPreviewWindow();
+	}
 
 	return frameState;
 }
 // ゲームビューへのドラッグ&ドロップを受け取り、SpriteやModelなどを配置する。
 
-// Game View上に、UnityのCamera Previewのような演出用カメラ視点を重ねて表示します。
-void DrawCinematicCameraPreviewOverlay(const GameViewArea& area) {
+// 選択中のCamera Objectが実際に描画する画面を、通常のEditorウィンドウとして表示する。
+void DrawCameraObjectPreviewWindow() {
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
-	if (!cameraEditor || !cameraEditor->ShouldShowSceneCameraPreviewOverlay()) {
+	Object3d* cameraObject = cameraEditor ? cameraEditor->GetSelectedCameraObject() : nullptr;
+	if (!cameraObject || !cameraEditor->ShouldRenderSceneCameraPreview()) {
 		return;
 	}
-	if (area.width <= 160.0f || area.height <= 120.0f) {
-		return;
-	}
 
-	const float padding = 14.0f;
-	float previewHeight = std::clamp(area.height * 0.28f, 120.0f, 260.0f);
-	float previewWidth = previewHeight * (16.0f / 9.0f);
-	const float maxPreviewWidth = (std::max)(120.0f, area.width - padding * 2.0f);
-	if (previewWidth > maxPreviewWidth) {
-		previewWidth = maxPreviewWidth;
-		previewHeight = previewWidth * (9.0f / 16.0f);
-	}
+	ImGui::SetNextWindowSize(ImVec2(560.0f, 390.0f), ImGuiCond_FirstUseEver);
+	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+	if (ImGui::Begin("Camera Object Preview", nullptr, flags)) {
+		const SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
+		const char* roleLabel = settings.role == SceneCameraRole::kMain ? "Main" : "Cinematic";
+		constexpr float kRadToDeg = 180.0f / 3.14159265f;
 
-	const ImVec2 previewPos(
-		area.screenX + area.width - previewWidth - padding,
-		area.screenY + padding);
-	const ImVec2 previewSize(previewWidth, previewHeight);
+		ImGui::TextColored(
+			ImVec4(0.35f, 0.85f, 1.0f, 1.0f),
+			ICON_FA_VIDEO " %s",
+			cameraObject->GetName().c_str());
+		ImGui::SameLine();
+		ImGui::TextDisabled("[%s]  FOV %.1f°", roleLabel, settings.fovY * kRadToDeg);
+		ImGui::Separator();
 
-	ImGui::SetNextWindowPos(previewPos, ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(previewWidth, previewHeight + 48.0f), ImGuiCond_Always);
-	ImGui::SetNextWindowBgAlpha(0.86f);
+		if (ImGui::BeginChild(
+			"CameraObjectPreviewCanvas",
+			ImVec2(0.0f, 0.0f),
+			true,
+			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+			const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+			if (canvasSize.x > 1.0f && canvasSize.y > 1.0f) {
+				constexpr float kAspect = 16.0f / 9.0f;
+				float previewWidth = canvasSize.x;
+				float previewHeight = previewWidth / kAspect;
+				if (previewHeight > canvasSize.y) {
+					previewHeight = canvasSize.y;
+					previewWidth = previewHeight * kAspect;
+				}
 
-	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoNavFocus |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoCollapse;
+				const ImVec2 canvasCursor = ImGui::GetCursorPos();
+				const ImVec2 canvasScreenPos = ImGui::GetCursorScreenPos();
+				ImGui::GetWindowDrawList()->AddRectFilled(
+					canvasScreenPos,
+					ImVec2(canvasScreenPos.x + canvasSize.x, canvasScreenPos.y + canvasSize.y),
+					IM_COL32(18, 20, 25, 255));
+				ImGui::SetCursorPos(ImVec2(
+					canvasCursor.x + (canvasSize.x - previewWidth) * 0.5f,
+					canvasCursor.y + (canvasSize.y - previewHeight) * 0.5f));
 
-	bool previewOpen = true;
-	if (ImGui::Begin("演出用カメラプレビュー###CinematicCameraPreviewOverlay", &previewOpen, flags)) {
-		ImGui::TextColored(ImVec4(0.35f, 1.0f, 0.45f, 1.0f), ICON_FA_VIDEO " 演出用カメラ Preview");
-		uint32_t textureHandle = PostEffect::GetInstance()->GetSRVHandle(PostEffect::kCinematicCameraPreviewTextureIndex);
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
-		ImGui::Image((ImTextureID)gpuHandle.ptr, previewSize);
+				const uint32_t textureHandle = PostEffect::GetInstance()->GetSRVHandle(
+					PostEffect::kCinematicCameraPreviewTextureIndex);
+				const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
+					SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
+				ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(previewWidth, previewHeight));
+			}
+		}
+		ImGui::EndChild();
 	}
 	ImGui::End();
-
-	if (!previewOpen) {
-		cameraEditor->SetCameraPreviewVisible(false);
-	}
 }
 void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area) {
 	if (!ImGui::BeginDragDropTarget()) {
@@ -826,27 +846,32 @@ void GameEditorController::DrawUnsavedExitConfirmPopup() {
 // パーティクル、VFX、メッシュ、デブリ、トレイルなどのエディタツールを更新する。
 
 void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float timeScale) {
-	if (gpuParticleEditor_) {
-		gpuParticleEditor_->Update(deltaTime);
-	}
-	if (vfxSequencerEditor_) {
-		vfxSequencerEditor_->Update(deltaTime);
-	}
-	if (meshEffectEditor_) {
-		meshEffectEditor_->Update(deltaTime);
-	}
-	if (debrisEffectEditor_) {
-		debrisEffectEditor_->Update(deltaTime);
-	}
-	if (trailEmitterEditor_) {
-		trailEmitterEditor_->Update(deltaTime);
+	SceneManager* sceneManager = SceneManager::GetInstance();
+	const bool sceneTransitioning = sceneManager && sceneManager->IsTransitioning();
+
+	if (!sceneTransitioning) {
+		if (gpuParticleEditor_) {
+			gpuParticleEditor_->Update(deltaTime);
+		}
+		if (vfxSequencerEditor_) {
+			vfxSequencerEditor_->Update(deltaTime);
+		}
+		if (meshEffectEditor_) {
+			meshEffectEditor_->Update(deltaTime);
+		}
+		if (debrisEffectEditor_) {
+			debrisEffectEditor_->Update(deltaTime);
+		}
+		if (trailEmitterEditor_) {
+			trailEmitterEditor_->Update(deltaTime);
+		}
 	}
 	if (debugEditor_ && debugEditor_->GetCaptureToolWindow()) {
 		debugEditor_->GetCaptureToolWindow()->SetForceGameViewClientCapture(portfolioCaptureMode_);
 		debugEditor_->GetCaptureToolWindow()->UpdateHotkeys();
 	}
 
-	if (isPlaying) {
+	if (isPlaying && !sceneTransitioning) {
 		MeshEffectManager::GetInstance()->Update(deltaTime * timeScale);
 		GPUParticleManager::GetInstance()->Update(deltaTime * timeScale);
 	}

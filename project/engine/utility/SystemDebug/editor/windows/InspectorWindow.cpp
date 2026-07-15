@@ -10,6 +10,8 @@
 #include "GPUParticleManager.h"
 #include "ModelManager.h"
 #include "GhostRecorder.h"
+#include "CameraEditor.h"
+#include "CameraManager.h"
 #include "DebugConsole.h"
 #include "ImGuizmo.h"
 #include <filesystem>
@@ -729,6 +731,201 @@ void DrawPseudoComponentPanel(DebugEditor* editor, Object3d* primary, const std:
     }
 }}
 
+namespace {
+
+bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cameraObject, std::string& objectName) {
+    bool changed = false;
+    const char* preview = objectName.empty() ? "(未選択)" : objectName.c_str();
+    if (!ImGui::BeginCombo(label, preview)) {
+        return false;
+    }
+
+    if (ImGui::Selectable("(未選択)", objectName.empty())) {
+        objectName.clear();
+        changed = true;
+    }
+    if (scene) {
+        for (const auto& object : scene->GetObjects()) {
+            if (!object || object.get() == cameraObject || object->GetName().empty()) {
+                continue;
+            }
+            const bool selected = objectName == object->GetName();
+            if (ImGui::Selectable(object->GetName().c_str(), selected)) {
+                objectName = object->GetName();
+                changed = true;
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+    }
+    ImGui::EndCombo();
+    return changed;
+}
+
+void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* cameraObject) {
+    if (!editor || !cameraObject) {
+        return;
+    }
+
+    // 旧CinematicCameraを選択した時点で、新しい保存形式へ安全に移行します。
+    cameraObject->SetClassName("Camera");
+    cameraObject->SetSaveCategory("Camera");
+    SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
+    bool changed = false;
+
+    ImGui::SeparatorText("Camera Object");
+    ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), ICON_FA_VIDEO " Camera専用Inspector");
+    ImGui::TextDisabled("このObject自身が編集・保存・プレビュー・Ghost Recorder再生の元データです。");
+    if (ImGui::Checkbox("有効", &settings.enabled)) changed = true;
+
+    const char* roleNames[] = { "Main", "Cinematic" };
+    int role = static_cast<int>(settings.role);
+    if (ImGui::Combo("役割", &role, roleNames, IM_ARRAYSIZE(roleNames))) {
+        settings.role = static_cast<SceneCameraRole>(role);
+        changed = true;
+    }
+
+    ImGui::SeparatorText("Transform");
+    Transform* transform = cameraObject->GetTransform();
+    if (ImGui::DragFloat3("位置", &transform->translate.x, 0.1f)) changed = true;
+    Vector3 rotationDegrees = {
+        ToDegrees(transform->rotate.x),
+        ToDegrees(transform->rotate.y),
+        ToDegrees(transform->rotate.z),
+    };
+    if (ImGui::DragFloat3("回転 (度)", &rotationDegrees.x, 0.5f)) {
+        transform->rotate = {
+            ToRadians(rotationDegrees.x),
+            ToRadians(rotationDegrees.y),
+            ToRadians(rotationDegrees.z),
+        };
+        transform->isQuaternionMaster = false;
+        changed = true;
+    }
+    if (changed) {
+        cameraObject->UpdateLocalMatrix();
+        cameraObject->UpdateWorldMatrix();
+    }
+
+    ImGui::SeparatorText("Lens / Blend");
+    float fovDegrees = ToDegrees(settings.fovY);
+    if (ImGui::SliderFloat("FOV (度)", &fovDegrees, 10.0f, 120.0f, "%.1f")) {
+        settings.fovY = ToRadians(fovDegrees);
+        changed = true;
+    }
+    if (ImGui::DragFloat("Near Clip", &settings.nearClip, 0.01f, 0.001f, 100.0f, "%.3f")) changed = true;
+    if (ImGui::DragFloat("Far Clip", &settings.farClip, 1.0f, 1.0f, 100000.0f, "%.1f")) changed = true;
+    settings.nearClip = (std::max)(settings.nearClip, 0.001f);
+    settings.farClip = (std::max)(settings.farClip, settings.nearClip + 0.01f);
+    if (ImGui::DragFloat("Blend In (秒)", &settings.blendInDuration, 0.02f, 0.0f, 10.0f, "%.2f")) changed = true;
+    if (ImGui::DragFloat("Blend Out (秒)", &settings.blendOutDuration, 0.02f, 0.0f, 10.0f, "%.2f")) changed = true;
+    const char* easingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
+    int easing = static_cast<int>(settings.easing);
+    if (ImGui::Combo("切替Easing", &easing, easingNames, IM_ARRAYSIZE(easingNames))) {
+        settings.easing = static_cast<SceneCameraEasing>(easing);
+        changed = true;
+    }
+
+    ImGui::SeparatorText("Eye / Follow");
+    const char* eyeSourceNames[] = { "Camera ObjectのTransform", "Scene Objectを追従" };
+    int eyeSource = static_cast<int>(settings.eyeSource);
+    if (ImGui::Combo("Eye取得元", &eyeSource, eyeSourceNames, IM_ARRAYSIZE(eyeSourceNames))) {
+        settings.eyeSource = static_cast<SceneCameraEyeSource>(eyeSource);
+        changed = true;
+    }
+    if (settings.eyeSource == SceneCameraEyeSource::kSceneObject) {
+        if (DrawSceneObjectNameCombo("追従Object##CameraEye", scene, cameraObject, settings.eyeObjectName)) changed = true;
+    }
+    if (ImGui::DragFloat3("Eyeオフセット", &settings.eyeOffset.x, 0.05f)) changed = true;
+    const char* followModeNames[] = { "完全追従", "遅延追従" };
+    int eyeFollow = static_cast<int>(settings.eyeFollowMode);
+    if (ImGui::Combo("Eye追従方式", &eyeFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
+        settings.eyeFollowMode = static_cast<SceneCameraFollowMode>(eyeFollow);
+        changed = true;
+    }
+    if (settings.eyeFollowMode == SceneCameraFollowMode::kSmooth &&
+        ImGui::DragFloat("Eye追従レスポンス", &settings.eyeFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
+        changed = true;
+    }
+
+    ImGui::SeparatorText("Target / Follow");
+    const char* targetModeNames[] = { "固定座標", "Scene Objectを注視", "Cameraの前方" };
+    int targetMode = static_cast<int>(settings.targetMode);
+    if (ImGui::Combo("注視方法", &targetMode, targetModeNames, IM_ARRAYSIZE(targetModeNames))) {
+        settings.targetMode = static_cast<SceneCameraTargetMode>(targetMode);
+        changed = true;
+    }
+    if (settings.targetMode == SceneCameraTargetMode::kFixedPoint) {
+        if (ImGui::DragFloat3("固定注視点", &settings.fixedTarget.x, 0.1f)) changed = true;
+    }
+    else if (settings.targetMode == SceneCameraTargetMode::kSceneObject) {
+        if (DrawSceneObjectNameCombo("注視Object##CameraTarget", scene, cameraObject, settings.targetObjectName)) changed = true;
+    }
+    else {
+        if (ImGui::DragFloat("前方距離", &settings.forwardDistance, 0.1f, 0.1f, 1000.0f, "%.1f")) changed = true;
+    }
+    if (settings.targetMode != SceneCameraTargetMode::kFixedPoint) {
+        if (ImGui::DragFloat3("注視オフセット", &settings.targetOffset.x, 0.05f)) changed = true;
+        int targetFollow = static_cast<int>(settings.targetFollowMode);
+        if (ImGui::Combo("Target追従方式", &targetFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
+            settings.targetFollowMode = static_cast<SceneCameraFollowMode>(targetFollow);
+            changed = true;
+        }
+        if (settings.targetFollowMode == SceneCameraFollowMode::kSmooth &&
+            ImGui::DragFloat("Target追従レスポンス", &settings.targetFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
+            changed = true;
+        }
+    }
+
+    ImGui::SeparatorText("Ghost Recorder");
+    const std::string recordPreview = cameraObject->recordPathName_.empty() ? "(なし)" : cameraObject->recordPathName_;
+    if (ImGui::BeginCombo("パスデータ", recordPreview.c_str())) {
+        if (ImGui::Selectable("(なし)", cameraObject->recordPathName_.empty())) {
+            cameraObject->recordPathName_.clear();
+            if (cameraObject->recorder_) cameraObject->recorder_->Stop();
+            changed = true;
+        }
+        const fs::path directory = "Resources/json/animation";
+        if (fs::exists(directory) && fs::is_directory(directory)) {
+            for (const auto& entry : fs::directory_iterator(directory)) {
+                if (entry.path().extension() != ".json") continue;
+                const std::string pathName = entry.path().stem().string();
+                const bool selected = cameraObject->recordPathName_ == pathName;
+                if (ImGui::Selectable(pathName.c_str(), selected)) {
+                    cameraObject->recordPathName_ = pathName;
+                    changed = true;
+                }
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::Checkbox("ループ再生##CameraRecord", &cameraObject->isRecordLoop_)) changed = true;
+    if (ImGui::Checkbox("相対座標##CameraRecord", &cameraObject->isRecordRelative_)) changed = true;
+
+    if (ImGui::Button(ICON_FA_PLAY " Cameraをテスト再生")) {
+        CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(), cameraObject);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_STOP " 停止##CameraObject")) {
+        if (cameraObject->recorder_) cameraObject->recorder_->Stop();
+        CameraEditor::GetInstance()->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
+    }
+    if (!cameraObject->recordPathName_.empty() && ImGui::Button(ICON_FA_GHOST " Ghost Recorder再生")) {
+        if (!cameraObject->recorder_) cameraObject->InitializeRecorder(nullptr);
+        if (cameraObject->recorder_) {
+            cameraObject->recorder_->Play(cameraObject->recordPathName_, cameraObject->isRecordLoop_, cameraObject->isRecordRelative_, true);
+        }
+    }
+
+    if (changed) {
+        editor->MarkDirtyForObject(cameraObject);
+    }
+}
+
+}
+
 void InspectorWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
 }
@@ -812,6 +1009,12 @@ void InspectorWindow::Draw() {
 
         // --- クラス名表示 ---
         ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject->GetClassName().c_str());
+
+        if (selectedObject->IsCameraObject()) {
+            DrawCameraObjectInspector(editor_, currentScene, selectedObject);
+            ImGui::EndDisabled();
+            return;
+        }
 
         static Object3d* tagLayerBufferOwner = nullptr;
         static char tagBuffer[128] = {};
@@ -1108,11 +1311,12 @@ void InspectorWindow::Draw() {
                                          "毒胞子 (Poison Spore)", "雲 (Cloud)",
                                          "ゲートポータル (Gate Portal)",
                                          "アニメ調地形 (Stylized Terrain)",
-                                         "ダッシュパネル (Dash Panel)"
+                                         "ダッシュパネル (Dash Panel)",
+                                         "スライム補正 (Slime Soft)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 24) currentMatType = 0;
+                if (currentMatType > 25) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     for (Object3d* object : inspectorTargets) {
                         if (!object) continue;
@@ -1869,7 +2073,7 @@ void InspectorWindow::Draw() {
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                             selectedObject->recordPathName_ = fileName;
                             if (selectedObject->recorder_) {
-                                bool isCinematic = (selectedObject->GetClassName() == "CinematicCamera");
+                                bool isCinematic = selectedObject->IsCameraObject();
                                 selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
                             }
                         }
@@ -1882,19 +2086,19 @@ void InspectorWindow::Draw() {
 
         if (ImGui::Checkbox("ループ再生##Record", &selectedObject->isRecordLoop_)) {
             if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
-                bool isCinematic = (selectedObject->GetClassName() == "CinematicCamera");
+                bool isCinematic = selectedObject->IsCameraObject();
                 selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
             }
         }
         if (ImGui::Checkbox("相対座標モード##Record", &selectedObject->isRecordRelative_)) {
             if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
-                bool isCinematic = (selectedObject->GetClassName() == "CinematicCamera");
+                bool isCinematic = selectedObject->IsCameraObject();
                 selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
             }
         }
         if (ImGui::Button("テスト再生##Record")) {
             if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
-                bool isCinematic = (selectedObject->GetClassName() == "CinematicCamera");
+                bool isCinematic = selectedObject->IsCameraObject();
                 selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
             }
         }

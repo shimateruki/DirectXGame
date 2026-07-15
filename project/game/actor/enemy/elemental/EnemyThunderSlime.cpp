@@ -163,6 +163,13 @@ void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
 }
 
 void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+    if (!isCharging_ && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        velocity.x = 0.0f;
+        velocity.z = 0.0f;
+        UpdateFacing(direction);
+        return;
+    }
+
     if (isCharging_) {
         UpdateCharge(deltaTime, direction);
     }

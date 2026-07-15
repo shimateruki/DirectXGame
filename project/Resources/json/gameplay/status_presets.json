@@ -145,7 +145,7 @@
             "maxHp": 50.0,
             "modelName": "Characters/slime_pink",
             "morphDuration": 5.0,
-            "morphLimited": true,
+            "morphLimited": false,
             "scale": [
                 0.0,
                 0.0,
@@ -180,7 +180,7 @@
         "maxHp": 5.0,
         "modelName": "Characters/slime",
         "morphDuration": 5.0,
-        "morphLimited": true,
+        "morphLimited": false,
         "scale": [
             0.0,
             0.0,

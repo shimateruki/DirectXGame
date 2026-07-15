@@ -291,11 +291,9 @@ namespace {
         object->SetModel(kCinematicCameraModel);
         object->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
         object->SetIsVisible(true);
-        object->SetClassName("CinematicCamera");
-        Object3d::ColliderConfig colConfig;
-        colConfig.type = ColliderType::kAABB;
-        colConfig.size = { 1.0f, 1.0f, 1.0f };
-        object->SetColliderConfig(colConfig);
+        object->SetCastShadow(false);
+        object->SetClassName("Camera");
+        object->SetSaveCategory("Camera");
         object->SetTranslate({ 0.0f, 5.0f, -10.0f });
         AddCreatedObject(editor, scene, std::move(object), "Cinematic_Camera", "Create Cinematic Camera", useGameViewCursor);
     }
@@ -566,7 +564,7 @@ void HierarchyWindow::Draw() {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string filename = entry.path().filename().string();
-                        if (filename.find("_player.json") != std::string::npos || filename.find("_enemy.json") != std::string::npos || filename.find("_object.json") != std::string::npos) continue;
+                        if (filename.find("_player.json") != std::string::npos || filename.find("_enemy.json") != std::string::npos || filename.find("_object.json") != std::string::npos || filename.find("_camera.json") != std::string::npos) continue;
                         bool isSelected = (std::string(editor_->GetCurrentSceneFilenameBuffer()) == filename);
                         if (ImGui::Selectable(filename.c_str(), isSelected)) {
                             strcpy_s(editor_->GetCurrentSceneFilenameBuffer(), editor_->GetSceneFilenameBufferSize(), filename.c_str());
@@ -591,6 +589,7 @@ void HierarchyWindow::Draw() {
         if (ImGui::Button(ICON_FA_SKULL " Enemyのみ保存")) editor_->SaveScene(SaveMode::Enemy);
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_CUBE " Objectのみ保存")) editor_->SaveScene(SaveMode::Object);
+        if (ImGui::Button(ICON_FA_VIDEO " Cameraのみ保存", ImVec2(-1, 0))) editor_->SaveScene(SaveMode::Camera);
         ImGui::Separator();
         if (ImGui::Button(ICON_FA_DOWNLOAD " シーン全体保存 (All)", ImVec2(-1, 0))) editor_->SaveScene(SaveMode::All);
         ImGui::TextDisabled("保存先: %s", currentJsonPath.c_str());
@@ -612,7 +611,7 @@ void HierarchyWindow::Draw() {
     ImGui::Text(ICON_FA_FILTER " 分類:");
     ImGui::SameLine();
     ImGui::PushItemWidth(100.0f); // フィルタの幅
-    const char* filterNames[] = { "All", "Player", "Enemy", "Object" };
+    const char* filterNames[] = { "All", "Player", "Enemy", "Object", "Camera" };
     ImGui::Combo("##CategoryFilter", &currentCategoryFilter_, filterNames, IM_ARRAYSIZE(filterNames));
     ImGui::PopItemWidth();
 
@@ -696,7 +695,7 @@ void HierarchyWindow::Draw() {
                 Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
+                    newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("Camera"); newObj->SetSaveCategory("Camera"); newObj->SetCastShadow(false);
                     newObj->SetTranslate({ 0.0f, 5.0f, -10.0f }); newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
                 }
@@ -762,9 +761,8 @@ void HierarchyWindow::Draw() {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
-            Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig); newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
+            newObj->Initialize(common); newObj->SetModel(kCinematicCameraModel); newObj->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("Camera"); newObj->SetSaveCategory("Camera"); newObj->SetCastShadow(false); newObj->SetName("Cinematic_Camera_01");
+            newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
             editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
         }
     }
@@ -907,6 +905,7 @@ bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
     if (currentCategoryFilter_ == 1 && cat == "Player") categoryMatches = true;
     if (currentCategoryFilter_ == 2 && cat == "Enemy") categoryMatches = true;
     if (currentCategoryFilter_ == 3 && cat == "Object") categoryMatches = true;
+    if (currentCategoryFilter_ == 4 && (cat == "Camera" || obj->IsCameraObject())) categoryMatches = true;
 
     const char* layerFilterNames[] = {
         "All",

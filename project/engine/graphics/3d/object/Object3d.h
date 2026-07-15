@@ -12,6 +12,7 @@
 #include "json.hpp"
 #include "Collider.h"
 #include "MeshRenderer.h" 
+#include "engine/graphics/3d/camera/SceneCameraSettings.h"
 
 using json = nlohmann::json;
 
@@ -201,6 +202,10 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     void SetClassName(const std::string& name) { className_ = name; }
     std::string GetClassName() const { return className_; }
+    bool IsCameraObject() const { return className_ == "Camera" || className_ == "CinematicCamera"; }
+    SceneCameraSettings& GetSceneCameraSettings() { return sceneCameraSettings_; }
+    const SceneCameraSettings& GetSceneCameraSettings() const { return sceneCameraSettings_; }
+    void SetSceneCameraSettings(const SceneCameraSettings& settings) { sceneCameraSettings_ = settings; }
     void SetTag(const std::string& tag) { tag_ = tag; }
     const std::string& GetTag() const { return tag_; }
     bool HasTag(const std::string& tag) const { return tag_ == tag; }
@@ -321,6 +326,7 @@ protected:
     bool isStatic_ = false;
     std::vector<Object3d*> children_;
     std::string className_ = "Model";
+    SceneCameraSettings sceneCameraSettings_;
     std::string tag_;
     std::string layer_ = "Default";
     bool isVisible_ = true;

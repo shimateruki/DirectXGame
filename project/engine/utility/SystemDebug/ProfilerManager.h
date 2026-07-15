@@ -5,6 +5,7 @@
 #include <chrono>
 #include <array>
 #include <memory>
+#include <mutex>
 
 class Object3d;
 
@@ -61,6 +62,7 @@ private:
     std::map<std::string, std::vector<LoadData>> loadDataMap_;
     std::map<std::string, TimelineData> gpuDataMap_;
     std::map<std::string, TimelineData> cpuDataMap_;
+    mutable std::recursive_mutex mutex_;
     const std::vector<std::unique_ptr<Object3d>>* currentObjects_ = nullptr;
     bool isOpen_ = false;
     int selectedIndex_ = 0;
@@ -77,6 +79,8 @@ public:
     void SetObjectList(const std::vector<std::unique_ptr<Object3d>>* objects) { currentObjects_ = objects; }
     bool IsGpuSampling() const { return isGpuSampling_; }
     void StartGpuSampling() {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+
         isGpuSampling_ = true;
         remainingSamplingFrames_ = kMaxSamplingFrames;
         gpuSampleAccum_.clear();

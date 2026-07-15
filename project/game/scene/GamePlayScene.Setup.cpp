@@ -68,7 +68,9 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_pink_slime_landing_core_flash.json",
     "Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
     "Resources/json/effect/effect_warp_gate_floor.json",
-    "Resources/json/effect/effect_warp_gate_pillar.json"
+    "Resources/json/effect/effect_warp_gate_pillar.json",
+    "Resources/json/effect/effect_crown_idle_shell.json",
+    "Resources/json/effect/effect_crown_get_flash_ring.json"
 };
 
 constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
@@ -114,7 +116,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "crown_get_rays",
     "crown_get_twinkle_fountain",
     "crown_get_afterglow",
-    "crown_idle_sparkle"
+    "crown_idle_sparkle",
+    "crown_goal_idle_sparkle"
 };
 
 constexpr const char* kGameplayVfxSequencesToPreload[] = {
@@ -126,7 +129,8 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
     "pull_catch_cue",
     "throw_slam_cue",
     "enemy_ability_hit_cue",
-    "crown_get_cue"
+    "crown_get_cue",
+    "crown_result_cue"
 };
 
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {
@@ -143,6 +147,7 @@ constexpr const char* kGameplayDebrisPresetsToPreload[] = {
 void GamePlayScene::Initialize() {
     const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
 
+    LoadGoalPresentationTuning();
     InitializeCoreSystems(currentStage);
     InitializeRenderCommons();
     InitializeGameplaySystems();
@@ -207,6 +212,7 @@ void GamePlayScene::InitializeGameplaySystems() {
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
         GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
@@ -234,6 +240,7 @@ void GamePlayScene::InitializeGameplaySystems() {
 void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
     levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, currentStage.levelPath);
+    ApplyGoalCrownState();
     levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
 
     LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
@@ -252,6 +259,36 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
     saveIndicatorOverlay_->Initialize(spriteCommon_.get());
 
     InitializeGoalPresentationOverlay();
+}
+
+void GamePlayScene::ApplyGoalCrownState() {
+    if (!objectManager_) {
+        return;
+    }
+
+    const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+    const bool isCleared = GameDataManager::GetInstance()->IsStageCleared(stageIndex);
+
+    for (auto& object : objectManager_->GetObjects()) {
+        if (!object || object->GetEventType() != EventType::Goal) {
+            continue;
+        }
+
+        object->SetLodEnabled(false);
+        object->SetGPUParticleName("");
+
+        if (isCleared) {
+            object->SetTexture("Resources/sprite/common/white.png");
+            object->SetColor({ 0.48f, 0.52f, 0.58f, 1.0f });
+            object->SetMetallic(0.38f);
+            object->SetRoughness(0.72f);
+            object->SetEnableEnvMap(false);
+            object->SetEmissive(0.42f);
+        } else {
+            object->SetColor({ 1.0f, 0.78f, 0.22f, 1.0f });
+            object->SetEmissive(1.65f);
+        }
+    }
 }
 
 void GamePlayScene::StartRespawnIrisInIfNeeded() {
@@ -289,19 +326,29 @@ void GamePlayScene::InitializeDebugAnimationPreview() {
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
+    RestoreGoalPresentationCameraInput();
+    goalPresentationCamera_.reset();
+    goalCameraSnapshotValid_ = false;
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
     MeshEffectManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     saveIndicatorOverlay_.reset();
     goalOverlayBackdrop_.reset();
+    goalOverlayFlash_.reset();
+    goalOverlayPanel_.reset();
     goalOverlayCrown_.reset();
     goalOverlayStageClearText_.reset();
     goalOverlayReturnText_.reset();
     goalPresentationState_ = GoalPresentationState::Inactive;
     goalPresentationTimer_ = 0.0f;
     goalStarEmitTimer_ = 0.0f;
+    goalBurstEmitTimer_ = 0.0f;
     goalPlayerSnapshotValid_ = false;
+    goalCrownSnapshotValid_ = false;
+    goalReturnFadeStarted_ = false;
+    goalCrownObject_ = nullptr;
+    goalClearPlayerAnimator_.Reset();
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
     hudHpIcon_ = {};

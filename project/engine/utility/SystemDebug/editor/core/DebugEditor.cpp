@@ -314,7 +314,7 @@ namespace {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
-        return className == "CinematicCamera" ||
+        return object->IsCameraObject() ||
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }
@@ -607,7 +607,7 @@ void DebugEditor::Update() {
 
             // カメラフォーカス機能
             if (input->IsKeyTriggered(DIK_F) && current == CameraEditor::GetInstance()) {
-                CameraEditor::GetInstance()->FocusSelectedOverrideCamera();
+                CameraEditor::GetInstance()->FocusSelectedCameraObject();
             }
             else if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
                 Vector3 targetPos = { selectedObject_->GetWorldMatrix().m[3][0],
@@ -625,7 +625,6 @@ void DebugEditor::Update() {
         const bool isCameraEditorSelected = current == cameraEditor;
         if (isCameraEditorSelected) {
             cameraEditor->DrawOrbitCenterGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
-            cameraEditor->DrawSelectedOverrideCameraGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
         }
 
         // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---

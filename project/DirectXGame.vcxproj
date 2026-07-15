@@ -797,6 +797,7 @@
     <ClInclude Include="engine\system\scene\LoadingScene.h" />
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h" />
     <ClInclude Include="engine\graphics\3d\camera\Camera.h" />
+    <ClInclude Include="engine\graphics\3d\camera\SceneCameraSettings.h" />
     <ClInclude Include="engine\system\audio\AudioPlayer.h" />
     <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h" />
     <ClInclude Include="engine\graphics\3d\camera\debugCamera.h" />

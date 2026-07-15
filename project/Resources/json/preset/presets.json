@@ -468,7 +468,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 25,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
@@ -740,7 +740,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 25,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
@@ -876,7 +876,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 25,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
@@ -1148,7 +1148,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 25,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
@@ -1176,7 +1176,7 @@
             "maxFallSpeed": 60.0,
             "maxHp": 50.0,
             "morphDuration": 5.0,
-            "morphLimited": true,
+            "morphLimited": false,
             "moveAmount": 10.0,
             "moveSpeed": 6.0,
             "returnOnOff": true,
@@ -1284,7 +1284,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 25,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",

@@ -304,6 +304,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 22, "ゲートポータル (Gate Portal)", "GatePortal", {{ 0.0f, "渦ポータル", "Swirl" }, { 1.0f, "暖色ゲート", "Warm" }, { 2.0f, "封印ゲート", "Seal" }} },
         { 23, "アニメ調地形 (Stylized Terrain)", "StylizedTerrain", {} },
         { 24, "ダッシュパネル (Dash Panel)", "DashPanel", {} },
+        { 25, "スライム補正 (Slime Soft)", "SlimeSoft", {} },
     };
 
     std::vector<MaterialPreviewEntry> entries;
@@ -392,6 +393,12 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
         object->SetColor({ 0.25f, 0.95f, 1.0f, 1.0f });
         object->SetRoughness(0.62f);
         object->SetMetallic(0.56f);
+        object->SetTextureTiling({ 1.0f, 1.0f });
+        object->SetAutoTextureTiling(false);
+    }
+    else if (entry.materialType == 25) {
+        object->SetRoughness(0.60f);
+        object->SetMetallic(0.0f);
         object->SetTextureTiling({ 1.0f, 1.0f });
         object->SetAutoTextureTiling(false);
     }

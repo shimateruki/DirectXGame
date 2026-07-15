@@ -40,8 +40,11 @@ void ModelManager::Finalize() {
 
 Model* ModelManager::LoadModel(const std::string& modelName) {
     // すでに同じキーで読み込まれている場合は、GPUリソースを作り直さず再利用する。
-    if (models_.contains(modelName)) {
-        return models_[modelName].get();
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (models_.contains(modelName)) {
+            return models_[modelName].get();
+        }
     }
 
     std::filesystem::path path(modelName);
@@ -55,13 +58,16 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     if (!ext.empty()) {
         std::string extensionlessKey = parentPath.empty() ? stem : parentPath + "/" + stem;
         std::replace(extensionlessKey.begin(), extensionlessKey.end(), '\\', '/');
-        if (models_.contains(extensionlessKey)) {
-            return models_[extensionlessKey].get();
-        }
         const bool isFolderMainModel = !parentPath.empty() &&
             std::filesystem::path(parentPath).filename().string() == stem;
-        if (isFolderMainModel && models_.contains(parentPath)) {
-            return models_[parentPath].get();
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            if (models_.contains(extensionlessKey)) {
+                return models_[extensionlessKey].get();
+            }
+            if (isFolderMainModel && models_.contains(parentPath)) {
+                return models_[parentPath].get();
+            }
         }
     }
 
@@ -132,25 +138,42 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     auto start = std::chrono::high_resolution_clock::now();
 
     auto newModel = std::make_unique<Model>();
-    newModel->Initialize(modelCommon_.get(), directoryPath, fileName);
-
-    models_[modelName] = std::move(newModel);
+    ModelCommon* modelCommon = nullptr;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        modelCommon = modelCommon_.get();
+    }
+    newModel->Initialize(modelCommon, directoryPath, fileName);
 
     auto end = std::chrono::high_resolution_clock::now();
     float duration = std::chrono::duration<float, std::milli>(end - start).count();
     ProfilerManager::GetInstance()->RecordLoadTime("Model", modelName, duration);
 
-    return models_[modelName].get();
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        auto existingIt = models_.find(modelName);
+        if (existingIt != models_.end()) {
+            return existingIt->second.get();
+        }
+
+        auto inserted = models_.emplace(modelName, std::move(newModel));
+        return inserted.first->second.get();
+    }
 }
 // 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
 
 bool ModelManager::ReloadModel(const std::string& modelName) {
-    models_.erase(modelName);
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        models_.erase(modelName);
+    }
     return LoadModel(modelName) != nullptr;
 }
 // 現在読み込み済みのモデルキー一覧を返し、エディタやデバッグ表示で使えるようにする。
 
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     std::vector<std::string> names;
     for (const auto& pair : models_) {
         names.push_back(pair.first);
@@ -165,6 +188,8 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
 // ---------------------------------------------------------
 // Resources/3DModel配下を走査し、見つかったモデルファイルを事前にまとめて読み込む。
 void ModelManager::LoadAllModels() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (!std::filesystem::exists(kDefaultBaseDirectory)) return;
 
     OutputDebugStringA("=== 【ModelManager】事前ロード開始 ===\n");

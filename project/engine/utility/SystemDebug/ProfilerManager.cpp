@@ -16,14 +16,20 @@ ProfilerManager* ProfilerManager::GetInstance() {
 }
 
 void ProfilerManager::Initialize() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     loadDataMap_.clear();
 }
 
 void ProfilerManager::RecordLoadTime(const std::string& category, const std::string& name, float timeMs) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     loadDataMap_[category].push_back({ name, timeMs });
 }
 
 void ProfilerManager::RecordGpuTime(const std::string& name, float timeMs) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     std::string displayName = name;
     if (name == "Total") displayName = "全体";
 
@@ -55,6 +61,8 @@ void ProfilerManager::RecordGpuTime(const std::string& name, float timeMs) {
 }
 
 void ProfilerManager::RecordCpuTime(const std::string& name, float timeMs) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     auto& data = cpuDataMap_[name];
     data.current = timeMs;
     data.smoothed = data.smoothed * 0.9f + timeMs * 0.1f;
@@ -64,6 +72,8 @@ void ProfilerManager::RecordCpuTime(const std::string& name, float timeMs) {
 
 void ProfilerManager::DrawImGui() {
 #ifdef USE_IMGUI
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
     if (!isOpen_) return;
 
     // ウィンドウの初期サイズを設定

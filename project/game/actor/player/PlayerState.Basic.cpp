@@ -23,6 +23,11 @@ void PlayerStateIdle::Update(Player* player, float deltaTime) {
     (void)deltaTime;
     if (!player) return;
 
+    if (!player->IsGrounded()) {
+        player->ChangeState(std::make_unique<PlayerStateJump>());
+        return;
+    }
+
     // 速度があれば Run へ遷移
     Vector3 vel = player->GetVelocity();
     vel.y = 0.0f;
@@ -46,6 +51,11 @@ void PlayerStateRun::Enter(Player* player) {
 void PlayerStateRun::Update(Player* player, float deltaTime) {
     (void)deltaTime;
     if (!player) return;
+
+    if (!player->IsGrounded()) {
+        player->ChangeState(std::make_unique<PlayerStateJump>());
+        return;
+    }
 
     // 速度が落ちたら Idle へ遷移
     Vector3 vel = player->GetVelocity();
@@ -74,7 +84,7 @@ void PlayerStateJump::Update(Player* player, float deltaTime) {
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
 
     // 地面に着地したら Idle へ遷移
-    if (player->IsGrounded()) {
+    if (player->IsGrounded() && player->GetVelocity().y <= 0.0f) {
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
 }

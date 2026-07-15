@@ -50,7 +50,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
 
         enemy->GetTransform()->translate = { 
             playerPos.x + offsetX, 
-            playerPos.y + 2.5f + offsetY, 
+            playerPos.y + 1.55f + offsetY,
             playerPos.z + offsetZ 
         };
 

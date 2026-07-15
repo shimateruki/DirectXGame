@@ -314,7 +314,7 @@ namespace {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
-        return className == "CinematicCamera" ||
+        return object->IsCameraObject() ||
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }
@@ -691,7 +691,7 @@ void DebugEditor::Draw3DIcons() {
             iconStr = ICON_FA_BOX_OPEN;
             iconColor = IM_COL32(255, 150, 50, 200);  // オレンジ
         }
-        else if (className == "CinematicCamera") {
+        else if (obj->IsCameraObject()) {
             iconStr = ICON_FA_VIDEO;
             iconColor = IM_COL32(255, 100, 255, 200); // ピンク
         }
@@ -702,7 +702,7 @@ void DebugEditor::Draw3DIcons() {
             Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
 
             // カメラの場合は、頭上にアイコンを出すためにY軸を少し上げる
-            if (className == "CinematicCamera") {
+            if (obj->IsCameraObject()) {
                 worldPos.y += 1.5f;
             }
 

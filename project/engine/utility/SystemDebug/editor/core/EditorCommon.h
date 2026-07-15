@@ -5,5 +5,6 @@ enum class SaveMode {
     All,
     Player,
     Enemy,
-    Object
+    Object,
+    Camera
 };

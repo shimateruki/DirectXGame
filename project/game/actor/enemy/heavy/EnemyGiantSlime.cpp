@@ -77,6 +77,13 @@ void EnemyGiantSlime::Update(float deltaTime) {
     Vector3 direction = { 0.0f, 0.0f, 1.0f };
     float distance = 9999.0f;
     UpdateTargetFacing(direction, distance);
+    if (state_ == State::Idle && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+        SetVelocity({ 0.0f, GetVelocity().y, 0.0f });
+        ApplySlimeAnimation(deltaTime);
+        SyncGroundCollisionRadius();
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     UpdateStateMachine(deltaTime, direction, distance);
 
     SyncGroundCollisionRadius();

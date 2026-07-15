@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <d3d12.h>
+#include <mutex>
 #include <wrl.h>
 
 class DirectXCommon;
@@ -54,6 +55,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;
 
     uint32_t descriptorSize_ = 0;
+    mutable std::mutex mutex_;
 
     // 0,1 は ImGui が使うため、ゲーム用 SRV は 2 番から確保する。
     uint32_t nextIndex_ = 2;

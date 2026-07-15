@@ -276,7 +276,7 @@ void TutorialScene::Update(float deltaTime) {
 	}
 
 	ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
-	CameraManager::GetInstance()->Update();
+	CameraManager::GetInstance()->Update(deltaTime);
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime);
 	GPUParticleManager::GetInstance()->Update(deltaTime);

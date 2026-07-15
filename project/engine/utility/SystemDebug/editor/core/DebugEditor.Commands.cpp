@@ -314,7 +314,7 @@ namespace {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
-        return className == "CinematicCamera" ||
+        return object->IsCameraObject() ||
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }
@@ -601,6 +601,7 @@ void DebugEditor::MarkDirtyForObject(Object3d* object) {
 void DebugEditor::MarkDirtyForCategory(const std::string& category) {
     if (category == "Player") dirtyPlayer_ = true;
     else if (category == "Enemy") dirtyEnemy_ = true;
+    else if (category == "Camera") dirtyCamera_ = true;
     else dirtyObject_ = true;
 }
 
@@ -615,11 +616,15 @@ void DebugEditor::MarkDirty(SaveMode mode) {
     case SaveMode::Object:
         dirtyObject_ = true;
         break;
+    case SaveMode::Camera:
+        dirtyCamera_ = true;
+        break;
     case SaveMode::All:
     default:
         dirtyPlayer_ = true;
         dirtyEnemy_ = true;
         dirtyObject_ = true;
+        dirtyCamera_ = true;
         break;
     }
 }
@@ -635,11 +640,15 @@ void DebugEditor::ClearDirty(SaveMode mode) {
     case SaveMode::Object:
         dirtyObject_ = false;
         break;
+    case SaveMode::Camera:
+        dirtyCamera_ = false;
+        break;
     case SaveMode::All:
     default:
         dirtyPlayer_ = false;
         dirtyEnemy_ = false;
         dirtyObject_ = false;
+        dirtyCamera_ = false;
         break;
     }
 }
@@ -652,6 +661,8 @@ bool DebugEditor::IsDirty(SaveMode mode) const {
         return dirtyEnemy_;
     case SaveMode::Object:
         return dirtyObject_;
+    case SaveMode::Camera:
+        return dirtyCamera_;
     case SaveMode::All:
     default:
         return HasAnyDirty();
@@ -659,7 +670,7 @@ bool DebugEditor::IsDirty(SaveMode mode) const {
 }
 
 bool DebugEditor::HasAnyDirty() const {
-    return dirtyPlayer_ || dirtyEnemy_ || dirtyObject_;
+    return dirtyPlayer_ || dirtyEnemy_ || dirtyObject_ || dirtyCamera_;
 }
 
 std::string DebugEditor::GetDirtySummaryText() const {
@@ -669,6 +680,7 @@ std::string DebugEditor::GetDirtySummaryText() const {
     if (dirtyPlayer_) text += " Player";
     if (dirtyEnemy_) text += " Enemy";
     if (dirtyObject_) text += " Object";
+    if (dirtyCamera_) text += " Camera";
     return text;
 }
 

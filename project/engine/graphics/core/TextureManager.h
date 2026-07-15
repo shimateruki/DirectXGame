@@ -2,6 +2,7 @@
 
 #include <d3d12.h>
 #include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <wrl.h>
@@ -53,4 +54,5 @@ private:
 
     // ファイルパスから SRV ハンドルを逆引きする。
     std::map<std::string, uint32_t> textureHandleMap_;
+    mutable std::mutex mutex_;
 };

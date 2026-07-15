@@ -12,9 +12,9 @@ void CameraManager::Initialize() {
     mainCamera_->Initialize();
 }
 
-void CameraManager::Update() {
+void CameraManager::Update(float deltaTime) {
     if (mainCamera_) {
-        mainCamera_->Update();
+        mainCamera_->Update(deltaTime);
     }
 }
 

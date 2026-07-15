@@ -204,7 +204,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
         player->SetVelocity({ 0,0,0 });
 
         CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
-        CameraManager::GetInstance()->GetActiveCamera()->Update();
+        CameraManager::GetInstance()->GetActiveCamera()->Update(deltaTime);
         CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(true);
 
         irisCenter_ = CalculatePlayerIrisCenter(player);

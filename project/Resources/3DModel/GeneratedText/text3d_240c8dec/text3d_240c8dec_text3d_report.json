@@ -1,0 +1,18 @@
+{
+  "alphaThreshold": 48,
+  "faceCount": 330,
+  "filledCells": 130,
+  "font": "M PLUS 1p",
+  "fontSize": 128.0,
+  "maskHeight": 227,
+  "maskWidth": 89,
+  "modelHeight": 2.200000047683716,
+  "modelName": "GeneratedText/text3d_240c8dec",
+  "objPath": "Resources/3DModel/GeneratedText/text3d_240c8dec/text3d_240c8dec.obj",
+  "padding": 18.0,
+  "sampleStep": 4,
+  "text": "!",
+  "thickness": 0.2199999988079071,
+  "tool": "Text3DGenerator",
+  "vertexCount": 1320
+}

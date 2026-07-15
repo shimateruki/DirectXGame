@@ -314,7 +314,7 @@ namespace {
         if (!object) return false;
 
         const std::string className = object->GetClassName();
-        return className == "CinematicCamera" ||
+        return object->IsCameraObject() ||
             className == "GPUParticle" ||
             className == "InvisibleBox";
     }
@@ -433,7 +433,7 @@ void DebugEditor::SaveSingleObject() {
     }
 
     sceneSavePreview_.Build(targets, "単体保存: " + selectedObject_->GetName());
-    pendingSaveMode_ = SaveMode::Object;
+    pendingSaveMode_ = selectedObject_->IsCameraObject() ? SaveMode::Camera : SaveMode::Object;
     pendingSaveIsSingleObject_ = true;
     sceneSavePreview_.Open();
 #else
@@ -481,6 +481,8 @@ std::string DebugEditor::MakeSavePreviewTitle(SaveMode mode) const {
         return "シーン保存: " + baseName + " / Enemy";
     case SaveMode::Object:
         return "シーン保存: " + baseName + " / Object";
+    case SaveMode::Camera:
+        return "シーン保存: " + baseName + " / Camera";
     case SaveMode::All:
     default:
         return "シーン全体保存: " + baseName;

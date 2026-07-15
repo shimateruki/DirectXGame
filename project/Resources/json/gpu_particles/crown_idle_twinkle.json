@@ -1,0 +1,69 @@
+{
+    "baseColor": [
+        1.0,
+        0.82,
+        0.26,
+        0.0
+    ],
+    "baseSize": 0.035,
+    "blendModeIndex": 0,
+    "colorEaseType": 3,
+    "colorIntensity": 6.8,
+    "colorMidTime": 0.20,
+    "emitArea": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitCount": 1,
+    "emitInterval": 1.0,
+    "emitLife": 0.48,
+    "emitPos": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        0.015,
+        0.0
+    ],
+    "enableCollision": 0,
+    "endColor": [
+        1.0,
+        0.54,
+        0.10,
+        0.0
+    ],
+    "endSize": 0.05,
+    "envDrag": 0.96,
+    "envGravity": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "envTurbulence": 0.0,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": false,
+    "midColor": [
+        1.0,
+        1.0,
+        0.84,
+        1.0
+    ],
+    "midSize": 0.28,
+    "restitution": 0.0,
+    "rotSpeed": 0.55,
+    "shapeAngle": 0.0,
+    "shapeRadius": 0.0,
+    "shapeType": 1,
+    "sizeEaseType": 3,
+    "sizeMidTime": 0.22,
+    "softParticleFade": 1.6,
+    "texturePath": "Resources/sprite/effect/crown/crown_twinkle.png",
+    "velocityVariance": 0.0
+}

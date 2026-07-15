@@ -262,6 +262,7 @@ void TitleScene::Finalize() {
         digits.fill(nullptr);
     }
     saveSelectHeader_ = nullptr;
+    saveSelectBackdrop_ = nullptr;
     saveDeleteButtonBack_ = nullptr;
     saveDeleteButtonText_ = nullptr;
     savePromptBubble_ = nullptr;
@@ -307,7 +308,7 @@ void TitleScene::Update(float deltaTime) {
             UpdateSaveSlotUI();
             LightEditor::GetInstance()->Update();
             CameraEditor::GetInstance()->Update(player_, false);
-            CameraManager::GetInstance()->Update();
+            CameraManager::GetInstance()->Update(deltaTime);
             objectManager_->Update(deltaTime);
             particleSystem_->Update(deltaTime);
             UpdateTitleHeroAnimation(deltaTime);
@@ -336,7 +337,7 @@ void TitleScene::Update(float deltaTime) {
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
-    CameraManager::GetInstance()->Update();
+    CameraManager::GetInstance()->Update(deltaTime);
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
     UpdateTitleHeroAnimation(deltaTime);
@@ -772,6 +773,7 @@ void TitleScene::InitializeSaveSlotUI() {
         digits.fill(nullptr);
     }
     saveSelectHeader_ = nullptr;
+    saveSelectBackdrop_ = nullptr;
     saveDeleteButtonBack_ = nullptr;
     saveDeleteButtonText_ = nullptr;
     savePromptBubble_ = nullptr;
@@ -801,6 +803,8 @@ void TitleScene::InitializeSaveSlotUI() {
     if (saveSelectHeader_) {
         saveSelectHeader_->SetVisible(false);
     }
+
+    bindSprite(saveSelectBackdrop_, "saveSelectBackdrop", kWhite, { screenW * 0.5f, screenH * 0.5f }, { screenW, screenH }, { 0.04f, 0.08f, 0.13f, 0.42f });
 
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
         const Vector2 pos = { centerX, firstY + slotStep * static_cast<float>(i) };
@@ -901,23 +905,30 @@ void TitleScene::UpdateSaveSlotUI() {
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
 
+    if (saveSelectBackdrop_) {
+        saveSelectBackdrop_->SetVisible(inSaveSelect);
+        saveSelectBackdrop_->SetColor(deleteConfirm
+            ? Vector4{ 0.03f, 0.05f, 0.08f, 0.52f }
+            : Vector4{ 0.04f, 0.08f, 0.13f, 0.42f });
+    }
+
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
         const bool selected = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i;
         const bool deleteTarget = inSaveSelect && deleteConfirm && i == currentSaveSlotIndex_;
         const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(i);
         const bool emphasized = selected || deleteTarget;
         const Vector4 cardColor = emphasized
-            ? Vector4{ 1.0f, 1.0f, 1.0f, 0.86f + pulse * 0.14f }
-            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.82f : 0.58f };
+            ? Vector4{ 1.0f, 1.0f, 1.0f, 0.98f + pulse * 0.02f }
+            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.98f : 0.90f };
         const Vector4 iconColor = summary.exists
-            ? Vector4{ 1.0f, 1.0f, 1.0f, emphasized ? 1.0f : 0.82f }
-            : Vector4{ 0.95f, 0.95f, 0.95f, emphasized ? 0.64f : 0.36f };
+            ? Vector4{ 1.0f, 1.0f, 1.0f, emphasized ? 1.0f : 0.96f }
+            : Vector4{ 0.95f, 0.95f, 0.95f, emphasized ? 0.86f : 0.72f };
         const Vector4 numberColor = emphasized
-            ? Vector4{ 1.0f, 0.96f + pulse * 0.04f, 0.50f, 1.0f }
-            : Vector4{ 1.0f, 0.88f, 0.62f, summary.exists ? 0.80f : 0.42f };
+            ? Vector4{ 1.0f, 0.86f + pulse * 0.08f, 0.30f, 1.0f }
+            : Vector4{ 0.96f, 0.86f, 0.48f, summary.exists ? 0.96f : 0.80f };
         const Vector4 textColor = emphasized
-            ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }
-            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.82f : 0.48f };
+            ? Vector4{ 0.58f, 0.36f, 0.26f, 1.0f }
+            : Vector4{ 0.42f, 0.50f, 0.64f, summary.exists ? 1.0f : 0.82f };
 
         if (saveSlotCards_[i]) {
             saveSlotCards_[i]->SetVisible(inSaveSelect);

@@ -9,45 +9,18 @@
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "GPUParticleManager.h"
-#include "MeshEffectManager.h"
-#include "GameAudioSettings.h"
+#include "VFXSequencer.h"
 #include "HitEffectDirector.h"
 #include <PlayerState.h>
 #include <algorithm>
 
 namespace {
-constexpr const char* kCrownGetBurstPreset = "crown_get_burst";
-constexpr const char* kCrownGetRaysPreset = "crown_get_rays";
-constexpr const char* kCrownGetFountainPreset = "crown_get_twinkle_fountain";
-constexpr const char* kCrownGetAfterglowPreset = "crown_get_afterglow";
-constexpr const char* kCrownGetFlashRingEffect = "Resources/json/effect/effect_crown_get_flash_ring.json";
-constexpr const char* kCrownGetRayFlashEffect = "Resources/json/effect/effect_crown_get_ray_flash.json";
-constexpr const char* kCrownIdleParticlePreset = "crown_idle_sparkle";
-constexpr const char* kCrownAuraEffect = "Resources/json/effect/effect_crown_aura_ring.json";
-constexpr const char* kCrownRayEffect = "Resources/json/effect/effect_crown_ray_plane.json";
-
 void PlayCrownGetPresentation(Object3d* crownObject) {
     if (!crownObject) {
         return;
     }
 
-    const Vector3 basePos = crownObject->GetWorldPosition();
-    const Vector3 flashPos = basePos + Vector3{ 0.0f, 0.65f, 0.0f };
-    const Vector3 burstPos = basePos + Vector3{ 0.0f, 1.15f, 0.0f };
-
-    crownObject->SetGPUParticleName(kCrownIdleParticlePreset);
-    crownObject->SetMeshEffect1Name(kCrownAuraEffect);
-    crownObject->SetMeshEffect2Name(kCrownRayEffect);
-
-    MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownGetFlashRingEffect, flashPos, { 0.0f, 0.0f, 0.0f }, { 1.12f, 1.0f, 1.12f });
-    MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownGetRayFlashEffect, burstPos, { 0.0f, 0.0f, 0.0f }, { 1.08f, 1.08f, 1.08f });
-
-    GPUParticleManager::GetInstance()->Emit(kCrownGetAfterglowPreset, burstPos);
-    GPUParticleManager::GetInstance()->Emit(kCrownGetRaysPreset, burstPos);
-    GPUParticleManager::GetInstance()->Emit(kCrownGetFountainPreset, burstPos);
-    GPUParticleManager::GetInstance()->Emit(kCrownGetBurstPreset, burstPos);
-
-    GameAudioSettings::GetInstance()->PlaySE("crown_get");
+    VFXSequencer::PlayOneShot("crown_get_cue", crownObject->GetWorldPosition());
 }
 }
 
@@ -106,8 +79,11 @@ void GameRule::Initialize(BaseScene* scene) {
         case EventType::Goal:
         {
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                Player* player = dynamic_cast<Player*>(whoHit);
+                if (!player || player->isDead || player->GetHp() <= 0.0f) {
+                    break;
+                }
                 if (!gps->IsGoal()) {
-                    PlayCrownGetPresentation(objectHit);
                     gps->StartGoalPresentation(objectHit);
                 }
                 DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
@@ -186,6 +162,9 @@ void GameRule::Initialize(BaseScene* scene) {
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
         Player* playerTarget = dynamic_cast<Player*>(event.target);
+        if (playerTarget && playerTarget->IsCinematicLocked()) {
+            return;
+        }
         const bool isThunderSlimePlayerHit =
             playerTarget && event.attacker && event.attacker->GetEnemyType() == "ThunderSlime";
 
@@ -239,7 +218,7 @@ void GameRule::ApplyDamage(Object3d* target, float damage) {
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);
         // 被弾無敵または回避ダッシュ中ならダメージを無効化
-        if (player->IsInvincible()) {
+        if (player->IsInvincible() || player->IsCinematicLocked()) {
             return;
         }
     }

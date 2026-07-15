@@ -27,10 +27,11 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     std::string basePath = "Resources/json/3Dobject/" + baseName;
 
     // カテゴリ別の箱
-    json playerSceneData, enemySceneData, objectSceneData;
+    json playerSceneData, enemySceneData, objectSceneData, cameraSceneData;
     playerSceneData["objects"] = json::array();
     enemySceneData["objects"] = json::array();
     objectSceneData["objects"] = json::array();
+    cameraSceneData["objects"] = json::array();
 
     auto& allObjects = editor_->GetSceneManager()->GetCurrentScene()->GetObjects();
 
@@ -42,7 +43,8 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
 
         // SaveCategoryを見て振り分け
         std::string cat = obj->GetSaveCategory();
-        if (cat == "Player") playerSceneData["objects"].push_back(d);
+        if (obj->IsCameraObject() || cat == "Camera") cameraSceneData["objects"].push_back(d);
+        else if (cat == "Player") playerSceneData["objects"].push_back(d);
         else if (cat == "Enemy") enemySceneData["objects"].push_back(d);
         else objectSceneData["objects"].push_back(d);
     }
@@ -57,11 +59,14 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     if (mode == SaveMode::All || mode == SaveMode::Object) {
         targets.push_back({ "Object", basePath + "_object.json", objectSceneData, false });
     }
+    if (mode == SaveMode::All || mode == SaveMode::Camera) {
+        targets.push_back({ "Camera", basePath + "_camera.json", cameraSceneData, false });
+    }
 
     // メタデータファイルの作成
     if (mode == SaveMode::All) {
         json dummyData;
-        dummyData["_comment"] = "Actual data is in _player, _enemy, and _object.json";
+        dummyData["_comment"] = "Actual data is in _player, _enemy, _object, and _camera.json";
         targets.push_back({ "Meta", "Resources/json/3Dobject/" + currentFilename, dummyData, true });
     }
 
@@ -79,7 +84,8 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
 
     std::string cat = object->GetSaveCategory();
     std::string targetFilename;
-    if (cat == "Player") targetFilename = "Resources/json/3Dobject/" + baseName + "_player.json";
+    if (object->IsCameraObject() || cat == "Camera") targetFilename = "Resources/json/3Dobject/" + baseName + "_camera.json";
+    else if (cat == "Player") targetFilename = "Resources/json/3Dobject/" + baseName + "_player.json";
     else if (cat == "Enemy") targetFilename = "Resources/json/3Dobject/" + baseName + "_enemy.json";
     else targetFilename = "Resources/json/3Dobject/" + baseName + "_object.json";
 
@@ -159,8 +165,13 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["enemyType"] = obj->GetEnemyType();
     d["gimmickType"] = obj->GetGimmickType();
     d["itemType"] = obj->GetItemType();
+    if (obj->IsCameraObject()) {
+        d["type"] = "Camera";
+        d["saveCategory"] = "Camera";
+        d["camera"] = SerializeSceneCameraSettings(obj->GetSceneCameraSettings());
+    }
 
-    if (className != "InvisibleBox") {
+    if (className != "InvisibleBox" && !obj->IsCameraObject()) {
         d["modelName"] = obj->GetModelName();
     }
 
@@ -173,6 +184,15 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["rotation"] = { t->rotate.x, t->rotate.y, t->rotate.z };
     d["quaternion"] = { t->quaternion.x, t->quaternion.y, t->quaternion.z, t->quaternion.w };
     d["scale"] = { t->scale.x, t->scale.y, t->scale.z };
+
+    if (obj->IsCameraObject()) {
+        d["animation"]["animName"] = obj->animName_;
+        d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
+        d["recorder"]["recordPathName"] = obj->recordPathName_;
+        d["recorder"]["isRecordLoop"] = obj->isRecordLoop_;
+        d["recorder"]["isRecordRelative"] = obj->isRecordRelative_;
+        return d;
+    }
 
     // 4. Collider
     Object3d::ColliderConfig c = obj->GetColliderConfig();

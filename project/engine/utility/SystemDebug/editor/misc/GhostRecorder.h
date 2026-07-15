@@ -1,21 +1,19 @@
 #pragma once
-#include "Object3d.h" 
-#include <vector>
-#include <string>
-#include "engine/utility/math/Math.h" 
-#include "IEditable.h" 
+#include "Object3d.h"
+#include "engine/utility/math/Math.h"
+#include "IEditable.h"
+
 #include <deque>
+#include <string>
+#include <vector>
 
 class SceneManager;
-class CameraManager;
 
-// 1フレーム分の動きデータ
-// GhostFrameは、ゴースト再生用に1フレーム分の位置や回転などを保持する記録データです。
+// ゴースト再生用の1フレーム分のTransformとイベントを保持する。
 struct GhostFrame {
     Vector3 position;
     Vector3 rotation;
     Vector3 scale = { 1.0f, 1.0f, 1.0f };
-    bool triggerAttack = false;
     int eventID = 0;
 };
 
@@ -23,14 +21,12 @@ struct GhostFrame {
 // GhostRecorderは、プレイ中の動きやカメラ軌跡を記録し、エディタ上で再生確認するためのツールです。
 class GhostRecorder : public IEditable {
 public:
-    // 状態管理用
     enum class State {
         Idle,       // 待機中
         Recording,  // 録画中
         Playing     // 再生中
     };
 
-    // 自動生成用のパラメータ構造体
     struct GenerationParams {
         Vector3 startPos = { 0,0,0 };
         Vector3 startRot = { 0,0,0 };
@@ -55,29 +51,18 @@ public:
             float durationToNext = 1.0f;
             int easingToNext = 0;
         };
-        // 中継点のリスト
         std::vector<Waypoint> waypoints;
 
-        bool useEasing = false;        // 加減速を使うか
-        bool generateRelative = false; // 相対座標として生成するか
-        bool useSpline = true;         // スプライン曲線にするか
-
+        bool generateRelative = false;
+        bool useSpline = true;
     };
 
 public:
-        // 記録対象と保存先を準備し、ゴースト機能を利用できる状態にします。
-void Initialize(SceneManager* sceneManager);
-        // 記録、再生、プレビュー状態を毎フレーム進めます。
-void Update();
-
-    // Inspectorに表示するUI描画処理
-        // 録画、保存、読み込み、再生操作用のUIを描画します。
-void DrawImGui() override;
-
-    // Inspector上部に表示される名前
+    void Initialize(SceneManager* sceneManager);
+    void Update();
+    void DrawImGui() override;
     std::string GetName() override { return "Ghost Recorder (Cinematic/Path)"; }
 
-    // 3D空間への軌跡プレビュー描画
     void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size, bool isReadOnly = false);
     void DrawObjectGhostPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
@@ -94,48 +79,30 @@ void DrawImGui() override;
     void Save(const std::string& fileName);
     void Load(const std::string& fileName);
 
-    void SetCameraManager(CameraManager* cameraManager) { cameraManager_ = cameraManager; }
     int GetTotalFrames() const { return static_cast<int>(frames_.size()); }
     void EvaluateAtFrame(int frameIndex);
     void CaptureBasePose();
     void RestoreBasePose();
-    void SetScrubbing(bool isScrubbing) { isScrubbing_ = isScrubbing; }
     void PerformUndo();
     void PerformRedo();
-    int GetCurrentEventID() const {
-        if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
-            return frames_[currentFrameIndex_].eventID; // 今のフレームのIDを返す
-        }
-        return 0; // 何も起きていないときは0
-    }// 今の自分の状態（再生中かどうか）を返す
+    int GetCurrentEventID() const;
 
-    //  ピンが選択中かどうかを返す
     bool IsPinSelected() const { return selectedPinType_ != SelectedPinType::None; }
-
-    //  選択中のピン(Waypoint)を削除する
     void DeleteSelectedPin();
+    void DeselectPin();
+    void PlayFromMemory(bool loop, bool isCinematic);
 
-    void DeselectPin() {
-        selectedPinType_ = SelectedPinType::None;
-        selectedWaypointIndex_ = -1;
-    }
-    void PlayFromMemory(bool loop, bool isCinematic) {
-        if (frames_.empty()) return;
-        isLoop_ = loop;
-        isOverrideCamera_ = isCinematic;
-        if (target_) { target_->SetIsVisible(!isCinematic); }
-        StartPlayingInternal();
-    }
 private:
     void StartRecording();
     void StopRecording();
     void StartPlayingInternal();
+    void ApplyFrameTransform(const GhostFrame& frame);
+    void StartCinematicPlayback();
+    void StopCinematicPlayback();
     void SaveHistory();
 
-    Vector3 Lerp(const Vector3& start, const Vector3& end, float t);
-    float SmoothStep(float t);
     Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t);
-    Vector3 GetSplinePoint(const std::vector<Vector3>& points, float t, bool isLoop);
+    Vector3 GetSplinePoint(const std::vector<Vector3>& points, float t);
     Vector3 TransformCoord(const Vector3& vec, const Matrix4x4& mat);
     std::vector<GhostFrame> BuildPreviewSamples(int sampleCount);
     bool IsTargetInCurrentScene() const;
@@ -159,7 +126,6 @@ private:
     int objectPreviewSampleCount_ = 6;
     float objectPreviewAlpha_ = 0.24f;
 
-    CameraManager* cameraManager_ = nullptr;
     bool isOverrideCamera_ = false;
     Vector3 basePosition_ = { 0, 0, 0 };
     Vector3 baseRotation_ = { 0, 0, 0 };
@@ -167,7 +133,7 @@ private:
     bool isScrubbing_ = false; // Scrubbing中かどうかのフラグ
     Object3d* anchor_ = nullptr;
     std::string anchorName_ = "";
-    void FindAnchor(); // ロード後に名前から実体を結びつける関数
+    void FindAnchor();
     enum class SelectedPinType {
         None,
         Start,
@@ -175,8 +141,8 @@ private:
         End
     };
     SelectedPinType selectedPinType_ = SelectedPinType::None;
-    int selectedWaypointIndex_ = -1; // Waypointの場合の何番目か
-    std::deque<GenerationParams> undoStack_; //  戻る用履歴
-    std::deque<GenerationParams> redoStack_; //  やり直し用履歴
-    bool isDraggingGizmo_ = false;           //  Gizmoドラッグ判定用
+    int selectedWaypointIndex_ = -1;
+    std::deque<GenerationParams> undoStack_;
+    std::deque<GenerationParams> redoStack_;
+    bool isDraggingGizmo_ = false;
 };

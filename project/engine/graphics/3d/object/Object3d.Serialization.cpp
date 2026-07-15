@@ -97,6 +97,9 @@ json Object3d::ExportToJson() {
     d["isVisible"] = isVisible_;
     d["isLocked"] = isLocked_;
     d["castShadow"] = castShadow_;
+    if (IsCameraObject()) {
+        d["camera"] = SerializeSceneCameraSettings(sceneCameraSettings_);
+    }
 
     // 2. Transform
     d["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
@@ -257,6 +260,14 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
     if (j.contains("castShadow")) castShadow_ = j["castShadow"].get<bool>();
+    if (IsCameraObject()) {
+        // 旧CinematicCameraも読み込み時に新しいCamera Objectとして扱います。
+        className_ = "Camera";
+        saveCategory_ = "Camera";
+        if (j.contains("camera")) {
+            DeserializeSceneCameraSettings(j["camera"], sceneCameraSettings_);
+        }
+    }
 
     // 2. Transform
     if (j.contains("translate")) transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
@@ -419,7 +430,7 @@ void Object3d::ImportFromJson(const json& j) {
         if (rec.contains("isRecordRelative")) isRecordRelative_ = rec["isRecordRelative"];
     }
     if (recorder_ && !recordPathName_.empty()) {
-        bool isCinematic = (className_ == "CinematicCamera");
+        bool isCinematic = IsCameraObject();
         recorder_->Play(recordPathName_, isRecordLoop_, isRecordRelative_, isCinematic);
     }
 

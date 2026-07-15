@@ -6,6 +6,7 @@
 #include "engine/utility/math/Math.h"
 
 #include <map>
+#include <mutex>
 #include <random>
 #include <string>
 #include <vector>
@@ -122,5 +123,6 @@ void RecyclePiece(size_t index);
     std::vector<DebrisPiece> activePieces_;
     std::vector<DebrisPiece> pooledPieces_;
     std::map<std::string, DebrisEffectConfig> presets_;
+    mutable std::recursive_mutex mutex_;
     mutable std::mt19937 randomEngine_;
 };

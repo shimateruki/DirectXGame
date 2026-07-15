@@ -41,6 +41,11 @@ float ApplyEasing1(int type, float t) {
     }
 }
 void EffectObject3d::Initialize(Object3dCommon* common) {
+    if (!common || !common->GetDxCommon() || !common->GetDxCommon()->GetDevice()) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] Initialize failed: invalid Object3dCommon.");
+        return;
+    }
+
     // 親クラスの初期化
     Object3d::Initialize(common);
 
@@ -48,7 +53,14 @@ void EffectObject3d::Initialize(Object3dCommon* common) {
     CreateMaterialBuffer(common->GetDxCommon()->GetDevice());
 }
 
-void EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
+bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
+    materialBuffer_.Reset();
+    materialData_ = nullptr;
+    if (!device) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer creation failed: device is null.");
+        return false;
+    }
+
     // 256バイトアラインメント
     UINT sizeAligned = (sizeof(EffectMaterial) + 0xff) & ~0xff;
 
@@ -72,10 +84,19 @@ void EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
         nullptr,
         IID_PPV_ARGS(&materialBuffer_)
     );
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr) || !materialBuffer_) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer creation failed.");
+        return false;
+    }
 
     // マッピングして初期値を書き込む
-    materialBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    hr = materialBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    if (FAILED(hr) || !materialData_) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] material buffer map failed.");
+        materialBuffer_.Reset();
+        materialData_ = nullptr;
+        return false;
+    }
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->scrollSpeed = { 0.0f, -1.0f }; // デフォルトはV方向に流れる
     materialData_->time = 0.0f;
@@ -85,6 +106,7 @@ void EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialData_->edgeFadeStrength = 1.5f;   // 少し削る
     materialData_->alphaReference = 0.0f;     // デフォルト: 完全透明のみdiscard
     materialData_->enableDistortion = 0;
+    return true;
 }
 
 void EffectObject3d::Update(float deltaTime) {

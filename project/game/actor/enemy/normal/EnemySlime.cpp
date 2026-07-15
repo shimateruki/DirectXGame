@@ -140,10 +140,18 @@ void EnemySlime::Update(float deltaTime) {
     Vector3 targetDirection = GetTargetPlanarDirection(&targetDistance);
     float effectiveDetectionRange = detectionRange_;
     if (param_.has_value()) {
-        effectiveDetectionRange = (std::max)(effectiveDetectionRange, param_->detectionRange);
+    effectiveDetectionRange = (std::max)(effectiveDetectionRange, param_->detectionRange);
     }
     effectiveDetectionRange = (std::max)(effectiveDetectionRange, kDiveFallbackDetectionRange);
     const bool canDiveAtTarget = targetDistance <= effectiveDetectionRange && targetDistance >= kMinDiveDistance;
+
+    if (moveState_ == MoveState::Wander && UpdateNoticeReaction(deltaTime, targetDistance, effectiveDetectionRange, targetDirection)) {
+        FaceDirection(targetDirection, deltaTime * 10.0f);
+        SetVelocity({ 0.0f, GetVelocity().y, 0.0f });
+        ApplySlimeAnimation(deltaTime);
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
 
     if (moveState_ == MoveState::Dive && isGrounded_ && diveTimer_ > 0.18f && velocity_.y <= 0.0f) {
         BeginLandingRecovery();

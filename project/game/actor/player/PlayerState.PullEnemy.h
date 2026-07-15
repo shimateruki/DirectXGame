@@ -35,4 +35,6 @@ private:
     bool isHeavyPullTarget_ = false;
     Vector3 heavyPullBasePlayerPos_ = { 0.0f, 0.0f, 0.0f };
     bool hasHeavyPullBasePlayerPos_ = false;
+    Vector3 normalPullBasePlayerPos_ = { 0.0f, 0.0f, 0.0f };
+    bool hasNormalPullBasePlayerPos_ = false;
 };

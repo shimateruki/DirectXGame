@@ -294,12 +294,12 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		MeshEffectManager::GetInstance()->Update(effectDeltaTime);
 #endif
 	}
-	if (sceneManager_) {
+	if (sceneManager_ && !sceneManager_->IsTransitioning()) {
 		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
 			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
 		}
+		DebrisEffectManager::GetInstance()->Update(deltaTime);
 	}
-	DebrisEffectManager::GetInstance()->Update(deltaTime);
 	{
 		PROFILE_SCOPE("フェード");
 		Fade::GetInstance()->Update(deltaTime);
@@ -425,8 +425,10 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		if (editorController_) {
 			editorController_->DrawScenePreview(pointLight, spotLight);
 		}
-		DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
-		MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+		if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
+			DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+		}
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
@@ -447,8 +449,10 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			sceneManager_->Draw();
 			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
 			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
-			DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
-			MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			if (!sceneManager_->IsTransitioning()) {
+				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			}
 			sceneManager_->DrawUI();
 		}
 	}
@@ -469,28 +473,31 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	}
 
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
-	if (!cameraEditor || !cameraEditor->ShouldRenderCameraPreview()) {
+	if (!cameraEditor) {
+		return;
+	}
+	const bool renderEditorPreview = cameraEditor->ShouldRenderCameraPreview();
+	const bool renderSceneCameraPreview = cameraEditor->ShouldRenderSceneCameraPreview();
+	if (!renderEditorPreview && !renderSceneCameraPreview) {
 		return;
 	}
 
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-	Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f);
-	if (!previewCamera) {
-		return;
-	}
-
 	dxCommon_->SetCameraPreviewRendering(true);
-	postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
+	if (renderEditorPreview) {
+		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
+			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
 
-	// Camera Previewは通常GameViewとは別のRenderTextureへ描画する。
-	// GrabTexture依存のエフェクトは各Scene側でPreview中だけ抑制する。
-	if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
-		currentScene->DrawCameraPreview(previewCamera, 0);
+			// Camera Previewは通常GameViewとは別のRenderTextureへ描画する。
+			// GrabTexture依存のエフェクトは各Scene側でPreview中だけ抑制する。
+			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
+				currentScene->DrawCameraPreview(previewCamera, 0);
+			}
+			postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
+		}
 	}
 
-	postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
-
-	if (cameraEditor->ShouldShowSceneCameraPreviewOverlay()) {
+	if (renderSceneCameraPreview) {
 		Camera* cinematicPreviewCamera = cameraEditor->PrepareCinematicPreviewCamera(16.0f / 9.0f);
 		if (cinematicPreviewCamera) {
 			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCinematicCameraPreviewTextureIndex, true);
