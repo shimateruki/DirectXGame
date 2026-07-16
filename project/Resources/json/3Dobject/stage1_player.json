@@ -78,37 +78,10 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "player",
             "normalMapPath": "",
             "ormMapPath": "",
-            "param": {
-                "actionMode": 0,
-                "attackPower": 1.0,
-                "colorType": 0,
-                "detectionRange": 20.0,
-                "enemyType": "Goblin",
-                "fallDuration": 2.0,
-                "gimmickType": "",
-                "gravity": 50.0,
-                "healAmount": 1.0,
-                "hp": 6.0,
-                "interval": 3.0,
-                "itemType": "",
-                "jumpPower": 24.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 6.0,
-                "moveAmount": 10.0,
-                "moveSpeed": 6.0,
-                "returnOnOff": true,
-                "shakeDuration": 1.0,
-                "speed": 27.700000762939453,
-                "startActive": false,
-                "switchMode": 0,
-                "targetScene": "SELECT"
-            },
             "parentName": "",
             "particleName": "",
             "position": [
@@ -117,10 +90,10 @@
                 5.4772047996521
             ],
             "quaternion": [
-                -2.8241315064292394e-08,
-                1.0,
-                4.691258936873055e-08,
-                -4.371138828673793e-08
+                -1.3202582138660546e-08,
+                0.7071067690849304,
+                -5.31418251625837e-08,
+                0.7071067690849304
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -128,17 +101,12 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -9.38251787374611e-08,
-                3.1415927410125732,
-                -5.6482633681298466e-08
+                5.648261591773007e-08,
+                1.5707963705062866,
+                -9.382516452660639e-08
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Player",
-            "scale": [
-                2.0,
-                2.0,
-                2.0
-            ],
             "tag": "",
             "targetID": -1,
             "texturePath": "",

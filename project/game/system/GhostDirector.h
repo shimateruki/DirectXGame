@@ -1,40 +1,28 @@
 #pragma once
 
+#include "CinematicPlayer.h"
+#include "CinematicSequence.h"
 #include "IEditable.h"
-#include "Object3d.h"
-#include "SceneManager.h"
-#include "VFXSequencer.h"
+
 #include <string>
 #include <vector>
+
+class DebugEditor;
+class Object3d;
+class SceneManager;
 
 struct ActiveEvent {
     int id = 0;
     Object3d* targetObject = nullptr;
 };
 
+// 複数Object、Camera、VFXを1本のマスター時間で編集・再生します。
 class GhostDirector : public IEditable {
 public:
-    struct Track {
-        Object3d* target = nullptr;
-        std::string targetName;
-        std::string pathFileName;
-        float delayTime = 0.0f;
-        bool hasStarted = false;
-    };
-
-    struct VFXTrack {
-        Object3d* target = nullptr;
-        std::string targetName;
-        std::string sequenceName;
-        float delayTime = 0.0f;
-        bool hasStarted = false;
-        VFXSequencer sequencer;
-    };
-
-    void Initialize(SceneManager* sceneManager);
+    void Initialize(SceneManager* sceneManager, DebugEditor* editor = nullptr);
     void Update(float deltaTime);
     void DrawImGui() override;
-    std::string GetName() override { return "GhostDirector(Cinematic/Path)"; }
+    std::string GetName() override { return "Cinematic Director (Multi Object)"; }
 
     void PlayScenario(bool isLoop = false, bool useImguiTime = false);
     void StopScenario();
@@ -47,20 +35,45 @@ public:
     ActiveEvent GetActiveEvent() const;
     void AdvanceTime(float deltaTime);
 
+    void RecordTransformKey(Object3d* object, bool force = false);
+    bool IsAutoKeyEnabled() const { return autoKeyEnabled_; }
+    float GetCurrentTime() const { return currentScrubTime_; }
+
 private:
-    Object3d* ResolveObjectByName(const std::string& name) const;
-    void PreparePathTrack(Track& track);
-    void PrepareVFXTrack(VFXTrack& track);
+    static constexpr float kKeyTimeEpsilon = 1.0f / 120.0f;
+
+    int FindTransformTrack(Object3d* object) const;
+    int AddTransformTrack(Object3d* object);
+    void AddSelectedObjectsAsTracks();
+    void RemoveSelectedTrack();
+    void RefreshPlayer(bool preservePreview);
+    void EvaluatePreviewAtCurrentTime();
+    void SelectTrackTarget(int trackIndex);
+    Object3d* ResolveTrackTarget(const CinematicObjectBinding& binding) const;
+    void UpsertTransformKey(CinematicTransformTrack& track, const CinematicTransformKey& key);
+    float GetTransformTrackDuration(int trackIndex) const;
     float GetScenarioDuration() const;
 
+    void DrawTransportControls();
+    void DrawTransformTrackEditor();
+    void DrawVFXTrackEditor();
+    void DrawTimelineWindow();
+    void DrawTimelineCanvas();
+
     SceneManager* sceneManager_ = nullptr;
-    std::vector<Track> tracks_;
-    std::vector<VFXTrack> vfxTracks_;
+    DebugEditor* editor_ = nullptr;
+    CinematicSequence sequence_;
+    CinematicPlayer player_;
     char scenarioNameBuf_[64] = "boss_attack_1";
 
-    bool isPlaying_ = false;
     float currentScrubTime_ = 0.0f;
-    float playTimer_ = 0.0f;
+    float timelinePixelsPerSecond_ = 100.0f;
     bool isLooping_ = false;
-    bool useImguiTime_ = false;
+    bool autoKeyEnabled_ = true;
+    bool showSelectedTrackPreview_ = true;
+    bool showPreviewOrientation_ = true;
+    bool timelineWindowOpen_ = true;
+    int selectedTrackKind_ = 0;
+    int selectedTrackIndex_ = -1;
+    int selectedKeyIndex_ = -1;
 };

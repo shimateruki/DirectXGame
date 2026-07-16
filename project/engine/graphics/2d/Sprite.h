@@ -81,15 +81,8 @@ void Draw();
     const Vector2& GetSize() const { return size_; }
     void SetSize(const Vector2& size) { size_ = size; }
 
-    const Vector4& GetColor() const {
-        static const Vector4 kFallbackColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        return materialData_ ? materialData_->color : kFallbackColor;
-    }
-    void SetColor(const Vector4& color) {
-        if (materialData_) {
-            materialData_->color = color;
-        }
-    }
+    const Vector4& GetColor() const { return color_; }
+    void SetColor(const Vector4& color);
 
     void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
     const Vector2& GetAnchorPoint() const { return anchorPoint_; }
@@ -196,6 +189,7 @@ void AdjustTextureSize();
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
     Material* materialData_ = nullptr;
+    Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
     TransformationMatrix* wvpData_ = nullptr;

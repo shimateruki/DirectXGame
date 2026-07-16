@@ -1453,7 +1453,53 @@ void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 
 	const int lastFrameIndex = static_cast<int>(frames_.size()) - 1;
 	frameIndex = std::clamp(frameIndex, 0, lastFrameIndex);
+	currentFrameIndex_ = static_cast<size_t>(frameIndex);
 	ApplyFrameTransform(frames_[frameIndex]);
+}
+
+float GhostRecorder::GetDurationSeconds() const {
+	if (frames_.size() <= 1) {
+		return 0.0f;
+	}
+	return static_cast<float>(frames_.size() - 1) / 60.0f;
+}
+
+void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float previousTimeSeconds) {
+	ClearTargetIfMissingFromScene();
+	if (frames_.empty() || !target_) {
+		return;
+	}
+
+	const int lastFrameIndex = static_cast<int>(frames_.size()) - 1;
+	const float clampedTime = std::clamp(timeSeconds, 0.0f, GetDurationSeconds());
+	const float framePosition = clampedTime * 60.0f;
+	const int frameIndex = std::clamp(static_cast<int>(std::floor(framePosition)), 0, lastFrameIndex);
+	const int nextFrameIndex = std::min(frameIndex + 1, lastFrameIndex);
+	const float blend = std::clamp(framePosition - static_cast<float>(frameIndex), 0.0f, 1.0f);
+
+	GhostFrame sample = frames_[frameIndex];
+	if (nextFrameIndex != frameIndex) {
+		const GhostFrame& next = frames_[nextFrameIndex];
+		sample.position = AnimationInterpolation::Lerp(sample.position, next.position, blend);
+		sample.rotation = AnimationInterpolation::SlerpEuler(sample.rotation, next.rotation, blend);
+		sample.scale = AnimationInterpolation::Lerp(sample.scale, next.scale, blend);
+		sample.eventID = 0;
+	}
+
+	currentFrameIndex_ = static_cast<size_t>(frameIndex);
+	ApplyFrameTransform(sample);
+
+	if (!dispatchEvents || clampedTime < previousTimeSeconds) {
+		return;
+	}
+
+	const int firstEventFrame = std::max(0, static_cast<int>(std::floor(previousTimeSeconds * 60.0f)) + 1);
+	const int lastEventFrame = std::min(lastFrameIndex, static_cast<int>(std::floor(clampedTime * 60.0f + 0.0001f)));
+	for (int index = firstEventFrame; index <= lastEventFrame; ++index) {
+		if (frames_[index].eventID != 0) {
+			target_->OnRecordEvent(frames_[index].eventID);
+		}
+	}
 }
 void GhostRecorder::CaptureBasePose() {
 	ClearTargetIfMissingFromScene();

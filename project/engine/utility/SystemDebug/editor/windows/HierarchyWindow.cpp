@@ -460,7 +460,7 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostRecorder());
         }
         if (editor_->GetGhostDirector() && ImGui::Selectable("  " ICON_FA_BULLHORN " ゴーストディレクター (Ghost Director)", currentObj == editor_->GetGhostDirector())) {
-            editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
         }
      if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
             editor_->SetSelectedObject(nullptr); 
@@ -522,7 +522,7 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
         }
-        if (editor_->GetStatusTuningWindow() && ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス調整 (Status Tuning)", currentObj == editor_->GetStatusTuningWindow())) {
+        if (editor_->GetStatusTuningWindow() && ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス管理 (Status Management)", currentObj == editor_->GetStatusTuningWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
         }
@@ -631,6 +631,24 @@ void HierarchyWindow::Draw() {
     };
     ImGui::Combo("##LayerFilter", &currentLayerFilter_, layerFilterNames, IM_ARRAYSIZE(layerFilterNames));
     ImGui::PopItemWidth();
+
+    const auto& selectedObjects = editor_->GetSelectedObjects();
+    Object3d* primaryObject = editor_->GetSelectedObject();
+    if (!selectedObjects.empty() && primaryObject) {
+        const std::string primaryName = primaryObject->GetName().empty() ? "Selected" : primaryObject->GetName();
+        ImGui::Text("選択: %zu個 / 操作: %s", selectedObjects.size(), primaryName.c_str());
+        ImGui::SameLine();
+        ImGui::PushItemWidth(74.0f);
+        int overlayMode = editor_->GetSelectionOverlayMode();
+        const char* overlayModes[] = { "簡易", "詳細", "非表示" };
+        if (ImGui::Combo("##SelectionOverlayMode", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
+            editor_->SetSelectionOverlayMode(overlayMode);
+        }
+        ImGui::PopItemWidth();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("簡易: 主選択は外枠、副選択は小さいマーカー\n詳細: すべて外枠\n非表示: ImGuizmoのみ");
+        }
+    }
     ImGui::Separator();
 
     std::string filterStr = editor_->GetSearchFilterBuffer();
@@ -653,7 +671,7 @@ void HierarchyWindow::Draw() {
                     } else {
                         editor_->SetSelectedObject(obj.get());
                     }
-                    EditorManager::GetInstance()->SetSelectedObject(editor_);
+                    editor_->SyncObjectSelectionToInspector();
                 }
                 ImGui::PopID();
             }
@@ -833,7 +851,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         } else {
             editor_->SetSelectedObject(obj);
         }
-        EditorManager::GetInstance()->SetSelectedObject(editor_);
+        editor_->SyncObjectSelectionToInspector();
     }
 
     // --- ドラッグ＆ドロップ処理 ---

@@ -302,6 +302,7 @@ Model* ResolveDrawModel() const;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
+    Vector4 materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     // テクスチャとPBR補助マップ。
     std::string normalMapPath_ = "";

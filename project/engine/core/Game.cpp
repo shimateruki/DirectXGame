@@ -26,14 +26,36 @@
 #include "WinApp.h"
 #include "GPUParticleManager.h"
 #include "engine/graphics/postprocess/Fade.h"
+#include "engine/graphics/core/ColorSpace.h"
+#include "json.hpp"
 
 #include <Windows.h>
 #include <chrono>
+#include <fstream>
 
 namespace {
 constexpr float kDeltaTimeClamp = 0.1f;
 constexpr float kFixedDeltaTime = 1.0f / 60.0f;
 constexpr int kHistorySampleCount = 120;
+
+void LoadColorWorkflowSetting() {
+	std::ifstream file("Resources/json/post_effect.json");
+	if (!file.is_open()) {
+		return;
+	}
+
+	try {
+		nlohmann::json settings;
+		file >> settings;
+		if (settings.contains("linearWorkflowEnabled")) {
+			ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
+				settings["linearWorkflowEnabled"].get<bool>());
+		}
+	}
+	catch (...) {
+		// 設定ファイルが壊れている場合は従来方式を維持する。
+	}
+}
 
 #ifdef USE_IMGUI
 // 現在シーンの描画用カメラ情報を再反映し、プレビュー描画後の状態ずれを防ぐ。
@@ -134,8 +156,12 @@ void Game::ApplyInitialSceneOverrides() {
 // ポストエフェクト、LUT、フェード、キー設定を初期化する。
 
 void Game::InitializePostProcess() {
+	LoadColorWorkflowSetting();
+	LightManager::GetInstance()->ApplySceneClearColor();
 	PostEffect::GetInstance()->Initialize(dxCommon_);
-	uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/texture/lut/soft_adventure_lut.png");
+	uint32_t lutHandle = TextureManager::GetInstance()->Load(
+		"Resources/texture/lut/soft_adventure_lut.png",
+		TextureManager::TextureColorSpace::SRGB);
 	PostEffect::GetInstance()->SetLUTTexture(lutHandle);
 
 	Fade::GetInstance()->Initialize();
@@ -521,38 +547,38 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	uint32_t renderTextureHandle = dxCommon_->GetRenderTextureSrvHandle();
 
 	postEffect->PreDrawScene(commandList, 2);
-	postEffect->Draw(commandList, renderTextureHandle, 2);
+	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kExtractPipeline);
 	postEffect->TransitionToSRV(commandList, 2);
 
 	postEffect->PreDrawScene(commandList, 3);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), 3);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), PostEffect::kDownsamplePipeline);
 	postEffect->TransitionToSRV(commandList, 3);
 
 	postEffect->PreDrawScene(commandList, 4);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), 3);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), PostEffect::kDownsamplePipeline);
 	postEffect->TransitionToSRV(commandList, 4);
 
 	postEffect->PreDrawScene(commandList, 5);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), 3);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), PostEffect::kDownsamplePipeline);
 	postEffect->TransitionToSRV(commandList, 5);
 
 	postEffect->PreDrawScene(commandList, 0);
-	postEffect->Draw(commandList, renderTextureHandle, 0);
+	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kCopyPipeline);
 
 	postEffect->PreDrawScene(commandList, 0, false);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), 4);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), 4);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), 4);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(5), 4);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), PostEffect::kAddPipeline);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), PostEffect::kAddPipeline);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), PostEffect::kAddPipeline);
+	postEffect->Draw(commandList, postEffect->GetSRVHandle(5), PostEffect::kAddPipeline);
 	postEffect->TransitionToSRV(commandList, 0);
 
 	if (outputForEditorGameView) {
 		postEffect->PreDrawScene(commandList, 1);
-		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), 1);
+		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), PostEffect::kCompositeHdrPipeline);
 		postEffect->TransitionToSRV(commandList, 1);
 	} else {
 		dxCommon_->PreDraw();
-		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), 1);
+		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), PostEffect::kCompositeBackBufferPipeline);
 	}
 
 	dxCommon_->EndGpuProfile("後処理");

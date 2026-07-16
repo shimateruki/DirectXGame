@@ -4,6 +4,7 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include "TextureManager.h"
+#include "engine/graphics/core/ColorSpace.h"
 #include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
@@ -44,7 +45,7 @@ BakedShaderTextureCache& GetBakedShaderTextureCache() {
 uint32_t LoadTextureWithFallback(const char* texturePath) {
     const char* fallbackPath = "Resources/sprite/common/white.dds";
     const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
-    return TextureManager::GetInstance()->Load(pathToLoad, true);
+    return TextureManager::GetInstance()->Load(pathToLoad, TextureManager::TextureColorSpace::Linear);
 }
 
 void EnsureBakedShaderTexturesLoaded() {
@@ -186,7 +187,8 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // Inspectorから編集される見た目の値は、基本的にこのファイルへ集める。
 // ========================================================================
 void MeshRenderer::SetColor(const Vector4& color) {
-    if (materialData_) materialData_->color = color;
+    materialColor_ = color;
+    if (materialData_) materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
 }
 
 void MeshRenderer::SetMaterialType(int32_t type) {
@@ -198,7 +200,7 @@ void MeshRenderer::SetIntensity(float intensity) {
 }
 
 Vector4 MeshRenderer::GetColor() const {
-    return materialData_ ? materialData_->color : Vector4{ 1,1,1,1 };
+    return materialColor_;
 }
 
 int32_t MeshRenderer::GetMaterialType() const {
@@ -230,7 +232,7 @@ bool MeshRenderer::GetEnableNormalMap() const {
 void MeshRenderer::SetNormalMap(const std::string& texturePath) {
     normalMapPath_ = texturePath;
     if (!texturePath.empty()) {
-        normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath, true);
+        normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
     } else {
         normalMapHandle_ = 0;
     }
@@ -239,7 +241,7 @@ void MeshRenderer::SetNormalMap(const std::string& texturePath) {
 void MeshRenderer::SetOrmMap(const std::string& texturePath) {
     ormMapPath_ = texturePath;
     if (!texturePath.empty()) {
-        ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath, true);
+        ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::Linear);
     } else {
         ormMapHandle_ = 0;
     }
@@ -249,7 +251,7 @@ void MeshRenderer::SetOrmMap(const std::string& texturePath) {
 void MeshRenderer::SetTexture(const std::string& texturePath) {
     texturePath_ = texturePath;
     if (!texturePath.empty()) {
-        textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+        textureHandle_ = TextureManager::GetInstance()->Load(texturePath, TextureManager::TextureColorSpace::SRGB);
     } else {
         textureHandle_ = 0;
     }

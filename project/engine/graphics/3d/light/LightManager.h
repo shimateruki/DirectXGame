@@ -113,6 +113,7 @@ void Update();
     std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
     std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
     Vector4& GetSceneClearColor() { return sceneClearColor_; }
+    void ApplySceneClearColor();
     bool IsSkyboxEnabled() const { return skyboxEnabled_; }
     void SetSkyboxEnabled(bool enabled) { skyboxEnabled_ = enabled; }
     const std::string& GetSkyboxTexturePath() const { return skyboxTexturePath_; }

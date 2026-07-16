@@ -16,6 +16,11 @@ void ExecuteAbility(class Player* player) override;
     void ExecuteBreathAbility(class Player* player);
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     void ReleaseCarriedAbilityVisuals();
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
 private:
     // 攻撃本体、火の演出、スライムの伸縮を分けて管理する

@@ -580,12 +580,17 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     // 2. マテリアルごとにテクスチャをロード
     for (auto& material : modelData_.materials) {
         material.textureHandle = TextureManager::GetInstance()->Load(
-            material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath);
+            material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath,
+            TextureManager::TextureColorSpace::SRGB);
         if (material.hasNormalMap && !material.normalMapPath.empty()) {
-            material.normalMapHandle = TextureManager::GetInstance()->Load(material.normalMapPath, true);
+            material.normalMapHandle = TextureManager::GetInstance()->Load(
+                material.normalMapPath,
+                TextureManager::TextureColorSpace::Linear);
         }
         if (material.hasOrmMap && !material.ormMapPath.empty()) {
-            material.ormMapHandle = TextureManager::GetInstance()->Load(material.ormMapPath, true);
+            material.ormMapHandle = TextureManager::GetInstance()->Load(
+                material.ormMapPath,
+                TextureManager::TextureColorSpace::Linear);
         }
     }
 

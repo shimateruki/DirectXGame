@@ -124,12 +124,7 @@ void FlushCommandQueue(bool reset = true);
     void PostDrawRenderTexture();
     uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
 
-    void SetRenderClearColor(float r, float g, float b, float a) {
-        clearColor_[0] = r;
-        clearColor_[1] = g;
-        clearColor_[2] = b;
-        clearColor_[3] = a;
-    }
+    void SetRenderClearColor(float r, float g, float b, float a);
 
     void PreDrawBackBuffer();
 

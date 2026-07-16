@@ -28,6 +28,7 @@ public:
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     void DrawUI(); // プレイヤー専用 UI の描画。
+    void ApplyManagedScale(const Vector3& scale) override;
 
     // ==================================================
     // 衝突判定
@@ -156,6 +157,7 @@ private:
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
     PlayerGateReturnAnimation gateReturnAnimation_;
+    Vector3 managedBaseScale_ = { 2.0f, 2.0f, 2.0f };
 
     // --- 外部システム参照 ---
     InputManager* inputManager_ = nullptr;

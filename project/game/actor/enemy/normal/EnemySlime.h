@@ -9,6 +9,11 @@ public:
     void ExecuteAbility(class Player* player) override;
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     void CancelCarriedAbility(class Player* player);
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
 private:
     enum class MoveState {

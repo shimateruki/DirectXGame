@@ -70,6 +70,9 @@ public:
 
     virtual void Initialize(Object3dCommon* common);
     virtual void Update(float deltaTime);
+    /// ステータス管理からタイプ共通スケールを反映します。
+    /// 伸縮アニメーションを持つ派生クラスは、基準スケールも更新してください。
+    virtual void ApplyManagedScale(const Vector3& scale) { SetScale(scale); }
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     virtual void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);

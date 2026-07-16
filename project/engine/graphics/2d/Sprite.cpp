@@ -4,6 +4,7 @@
 #include <cassert>
 #include "TextureManager.h"
 #include "SRVManager.h"
+#include "engine/graphics/core/ColorSpace.h"
 #include <algorithm>
 
 namespace {
@@ -108,7 +109,8 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-	materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+	materialData_->color = ColorSpace::AuthoringToWorking(color_);
 	materialData_->emissive = 1.0f;
 }
 
@@ -116,6 +118,9 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 /// 更新処理
 /// </summary>
 void Sprite::Update() {
+	if (materialData_) {
+		materialData_->color = ColorSpace::AuthoringToWorking(color_);
+	}
 	//  アニメーション処理 
 	if (isPlaying_) {
 		// タイマーを進める
@@ -196,6 +201,13 @@ void Sprite::Update() {
 	wvpData_->World = worldMatrix;
 	materialData_->enableLighting = false;
 	materialData_->uvTransform = math.MakeIdentity4x4();
+}
+
+void Sprite::SetColor(const Vector4& color) {
+	color_ = color;
+	if (materialData_) {
+		materialData_->color = ColorSpace::AuthoringToWorking(color_);
+	}
 }
 /// <summary>
 /// 描画

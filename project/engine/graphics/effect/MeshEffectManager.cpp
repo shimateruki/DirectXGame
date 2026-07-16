@@ -120,14 +120,16 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
     if (j.contains("NoiseTexturePath")) {
         const std::string texturePath = j["NoiseTexturePath"].get<std::string>();
         if (!texturePath.empty()) {
-            effect->SetNoiseTexture(TextureManager::GetInstance()->Load(texturePath));
+            effect->SetNoiseTexture(TextureManager::GetInstance()->Load(
+                texturePath, TextureManager::TextureColorSpace::Linear));
             effect->SetEnableNoiseTexture(true);
         }
     }
     if (j.contains("RampTexturePath")) {
         const std::string texturePath = j["RampTexturePath"].get<std::string>();
         if (!texturePath.empty()) {
-            effect->SetRampTexture(TextureManager::GetInstance()->Load(texturePath));
+            effect->SetRampTexture(TextureManager::GetInstance()->Load(
+                texturePath, TextureManager::TextureColorSpace::SRGB));
             effect->SetEnableColorRamp(true);
         }
     }
@@ -321,8 +323,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         // --- パラメータ復元 ---
         if (j.contains("ModelName")) effect->SetModel(j["ModelName"].get<std::string>());
         if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
-        if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
-        if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp)); effect->SetEnableColorRamp(true); } }
+        if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np, TextureManager::TextureColorSpace::Linear)); effect->SetEnableNoiseTexture(true); } }
+        if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp, TextureManager::TextureColorSpace::SRGB)); effect->SetEnableColorRamp(true); } }
         if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0] * extScale.x, j["StartScale"][1] * extScale.y, j["StartScale"][2] * extScale.z });
         if (j.contains("EndScale")) effect->SetEndScale({ j["EndScale"][0] * extScale.x, j["EndScale"][1] * extScale.y, j["EndScale"][2] * extScale.z });
         if (j.contains("StartColor")) effect->SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
@@ -490,8 +492,8 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
         // --- パラメータ復元 (SpawnEffect と同じ) ---
         if (j.contains("ModelName")) effect->SetModel(j["ModelName"].get<std::string>());
         if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
-        if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
-        if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp)); effect->SetEnableColorRamp(true); } }
+        if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np, TextureManager::TextureColorSpace::Linear)); effect->SetEnableNoiseTexture(true); } }
+        if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp, TextureManager::TextureColorSpace::SRGB)); effect->SetEnableColorRamp(true); } }
         if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0] * scale.x, j["StartScale"][1] * scale.y, j["StartScale"][2] * scale.z });
         if (j.contains("EndScale"))   effect->SetEndScale(  { j["EndScale"][0]   * scale.x, j["EndScale"][1]   * scale.y, j["EndScale"][2]   * scale.z });
         if (j.contains("StartColor")) effect->SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });

@@ -42,7 +42,9 @@ Fade* Fade::GetInstance() {
 }
 
 void Fade::Initialize() {
-    const uint32_t noiseHandle = TextureManager::GetInstance()->Load("Resources/sprite/effect/noise0.png");
+    const uint32_t noiseHandle = TextureManager::GetInstance()->Load(
+        "Resources/sprite/effect/noise0.png",
+        TextureManager::TextureColorSpace::Linear);
     PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
     ResetPostEffectFade();
     InitializeSprites();

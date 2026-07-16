@@ -5,6 +5,8 @@
 #include <filesystem>
 #include "IconsFontAwesome5.h"
 #include "Fade.h"
+#include "engine/graphics/core/ColorSpace.h"
+#include "engine/graphics/3d/light/LightManager.h"
 using json = nlohmann::json;
 
 void PostEffectEditor::Initialize(PostEffect* postEffect) {
@@ -18,6 +20,21 @@ void PostEffectEditor::DrawImGui() {
     if (!targetEffect_) return;
 
     auto* params = targetEffect_->GetParams();
+
+    ImGui::Text("Color Workflow");
+    bool linearWorkflow = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
+    if (ImGui::Checkbox("リニアワークフローを使用", &linearWorkflow)) {
+        ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(linearWorkflow);
+        LightManager::GetInstance()->ApplySceneClearColor();
+        if (linearWorkflow && params->enableToneMapping == 0) {
+            params->enableToneMapping = 1;
+        }
+    }
+    ImGui::TextDisabled(
+        linearWorkflow
+            ? "sRGB入力をリニア化し、HDR合成後にsRGB出力します。"
+            : "従来互換の色計算です。既存シーンとの比較用に残しています。");
+    ImGui::Separator();
 
     // ==========================================================
     // トーンマッピングのモード切り替え
@@ -191,6 +208,7 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["bloomIntensity"] = params->bloomIntensity;
     j["spread"] = params->spread;
     j["enableToneMapping"] = params->enableToneMapping;
+    j["linearWorkflowEnabled"] = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled();
     j["vignetteIntensity"] = params->vignetteIntensity;
     j["vignettePower"] = params->vignettePower;
     j["chromaticAberration"] = params->chromaticAberration;
@@ -243,6 +261,12 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         file >> j;
 
         auto* params = targetEffect_->GetParams();
+
+        if (j.contains("linearWorkflowEnabled")) {
+            ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
+                j["linearWorkflowEnabled"].get<bool>());
+            LightManager::GetInstance()->ApplySceneClearColor();
+        }
 
         if (j.contains("threshold")) params->threshold = j["threshold"];
         if (j.contains("bloomIntensity")) params->bloomIntensity = j["bloomIntensity"];

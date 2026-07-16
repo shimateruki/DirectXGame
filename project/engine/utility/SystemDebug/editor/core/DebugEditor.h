@@ -165,6 +165,7 @@ void PerformRedo();
     }
 
     void SetSelectedObject(Object3d* obj);
+    void SyncObjectSelectionToInspector();
     void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
 
@@ -201,6 +202,8 @@ void PerformRedo();
     Object3d* GetSelectedObject3D() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
     Object3d* GetSelectedObject() const { return IsObjectInCurrentScene(selectedObject_) ? selectedObject_ : nullptr; }
     const std::vector<Object3d*>& GetSelectedObjects() const { return selectedObjects_; }
+    int GetSelectionOverlayMode() const;
+    void SetSelectionOverlayMode(int mode);
     bool IsObjectSelected(const Object3d* object) const;
     std::size_t GetSelectedObjectCount() const { return selectedObjects_.size(); }
     void ClearObjectSelection();
@@ -319,8 +322,15 @@ struct ObjectEditSnapshot {
     };
 
     // 選択、配置プレビュー、プリセットブラシの状態。
+    enum class SelectionOverlayMode {
+        Compact = 0,
+        Detailed,
+        Hidden
+    };
+
     Object3d* selectedObject_ = nullptr;
     std::vector<Object3d*> selectedObjects_;
+    SelectionOverlayMode selectionOverlayMode_ = SelectionOverlayMode::Compact;
     std::vector<ObjectEditSnapshot> groupTransformStartStates_;
     bool isSelectionRectDragging_ = false;
     bool isSelectionRectReady_ = false;

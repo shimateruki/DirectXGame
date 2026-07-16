@@ -14,6 +14,12 @@
 // TextureManagerは、画像ファイルの読み込み、DDSキャッシュ、SRV登録、ハンドル管理を担当します。
 class TextureManager {
 public:
+    enum class TextureColorSpace {
+        Auto,
+        SRGB,
+        Linear,
+    };
+
         // 読み込んだテクスチャ1件分のパス、メタデータ、GPUリソース、SRV番号です。
 struct TextureData {
         std::string filePath;
@@ -37,6 +43,11 @@ public:
 void Initialize(DirectXCommon* dxCommon);
         // テクスチャを読み込み、既存キャッシュが使える場合は同じハンドルを返します。
 uint32_t Load(const std::string& fileName, bool isNormalMap = false, bool allowDDSCache = true, bool forceReload = false);
+    uint32_t Load(
+        const std::string& fileName,
+        TextureColorSpace colorSpace,
+        bool allowDDSCache = true,
+        bool forceReload = false);
         // テクスチャサイズやフォーマットなどのメタデータを取得します。
 const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
         // 指定ディレクトリ以下のテクスチャをまとめて読み込みます。
@@ -46,6 +57,12 @@ void LoadAllTexture(const std::string& directoryPath);
 uint32_t GetSrvHandle(const std::string& filePath);
 
 private:
+    uint32_t LoadInternal(
+        const std::string& fileName,
+        TextureColorSpace colorSpace,
+        bool allowDDSCache,
+        bool forceReload);
+
     DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
 

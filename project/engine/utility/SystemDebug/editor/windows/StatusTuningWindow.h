@@ -1,7 +1,7 @@
 #pragma once
 
+#include "GameplayStatusManager.h"
 #include "IEditable.h"
-#include "Object3d.h"
 
 #include <array>
 #include <string>
@@ -10,62 +10,43 @@
 class DebugEditor;
 class SceneManager;
 
-/// プレイヤーや敵のステータスプリセットを編集し、シーンやステージJSONへ一括反映するウィンドウ。
+/// PlayerとEnemy Typeごとの共通ステータスをリアルタイム調整するウィンドウ。
 class StatusTuningWindow : public IEditable {
 public:
     void Initialize(DebugEditor* editor, SceneManager* sceneManager);
     void DrawImGui() override;
-    std::string GetName() override { return "ステータス調整"; }
-
-    /// HP、攻撃力、移動速度、モデル名など、1種類のキャラクター設定をまとめたプリセット。
-    struct StatusPreset {
-        float hp = 100.0f;
-        float maxHp = 100.0f;
-        float attackPower = 1.0f;
-        float speed = 1.0f;
-        float gravity = 50.0f;
-        float jumpPower = 10.0f;
-        float detectionRange = 20.0f;
-        Vector3 scale = { 0.0f, 0.0f, 0.0f };
-        std::string modelName;
-        bool morphLimited = true;
-        float morphDuration = 5.0f;
-    };
-
-    /// 敵タイプ名と対応プリセットをひとまとめにした編集用レコード。
-    struct EnemyTypeEntry {
-        const char* type;
-        const char* label;
-        StatusPreset preset;
-    };
+    std::string GetName() override { return "ステータス管理"; }
 
 private:
-    /// 保存済みのステータスプリセットJSONを読み込み、UIへ反映する。
-    void LoadPresets();
-    /// 現在のプリセット設定をJSONへ保存し、次回起動後も使えるようにする。
-    void SavePresets();
-    void ResetPresetsToDefaults();
-    bool DrawPresetEditor(StatusPreset& preset, const char* id);
-    void DrawSelectedObjectEditor();
-    void DrawCurrentSceneSummary();
-    void DrawEnemyPresetRows();
+    struct EnemyTypeInfo {
+        const char* type;
+        const char* label;
+    };
+
+    bool DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char* id);
     bool DrawModelPicker(const char* label, const char* id, std::string& modelName);
+    void DrawCurrentSceneSummary();
+    void DrawEnemyStatusRows();
     void RefreshCharacterModelList();
-    bool CapturePlayerPresetFromScene();
-    int ApplyPlayerPreset();
-    int ApplyPlayerPresetToStageFiles();
-    int ApplyEnemyPreset(const std::string& enemyType, const StatusPreset& preset);
-    /// 指定敵タイプのプリセットをステージJSON内の該当Enemyへまとめて書き込む。
-    int ApplyEnemyPresetToStageFiles(const std::string& enemyType, const StatusPreset& preset);
-    void ApplyPresetToObject(Object3d* object, const StatusPreset& preset);
-    Object3d::EntityParameter MakeParameter(const StatusPreset& preset, const Object3d::EntityParameter* baseParam) const;
+    int ApplyPlayerStatusLive();
+    int ApplyEnemyStatusLive(const std::string& enemyType);
+    int ApplyAllStatusLive();
 
 private:
     DebugEditor* editor_ = nullptr;
     SceneManager* sceneManager_ = nullptr;
-    StatusPreset playerPreset_;
-    std::array<EnemyTypeEntry, 10> enemyPresets_;
+    std::array<EnemyTypeInfo, 10> enemyTypes_ = {
+        EnemyTypeInfo{ "Slime", "ピンクスライム" },
+        EnemyTypeInfo{ "Bomb", "ボム" },
+        EnemyTypeInfo{ "Bomber", "ボムスライム" },
+        EnemyTypeInfo{ "Mushroom", "キノコ" },
+        EnemyTypeInfo{ "FireSlime", "ファイアスライム" },
+        EnemyTypeInfo{ "ThunderSlime", "サンダースライム" },
+        EnemyTypeInfo{ "GiantSlime", "巨大スライム" },
+        EnemyTypeInfo{ "Bat", "コウモリ" },
+        EnemyTypeInfo{ "BeamDrone", "ビームドローン" },
+        EnemyTypeInfo{ "BossCore", "ボスコア" }
+    };
     std::vector<std::string> characterModelNames_;
-    bool characterModelListReady_ = false;
-    std::string statusText_ = "現在シーンのプレイヤー/敵へタイプ別ステータスを一括反映できます。";
+    std::string statusText_ = "変更内容は現在シーンへリアルタイム反映され、操作終了時に自動保存されます。";
 };

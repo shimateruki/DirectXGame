@@ -1,4 +1,5 @@
 ﻿#include "BossCore.h"
+#include "SceneManager.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h"

@@ -204,6 +204,7 @@
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
+    <ClCompile Include="game\system\GameplayStatusManager.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp" />
     <ClCompile Include="game\system\EnemySpawner.cpp" />
@@ -322,6 +323,8 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
     <ClCompile Include="game\system\GhostDirector.cpp" />
+    <ClCompile Include="game\system\CinematicPlayer.cpp" />
+    <ClCompile Include="game\system\CinematicSequence.cpp" />
     <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
     <ClCompile Include="game\system\LevelLoader.cpp" />
     <ClCompile Include="game\system\LockOnSystem.cpp" />
@@ -587,6 +590,7 @@
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
+    <ClInclude Include="game\system\GameplayStatusManager.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h" />
@@ -854,6 +858,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
     <ClInclude Include="game\system\GhostDirector.h" />
+    <ClInclude Include="game\system\CinematicPlayer.h" />
+    <ClInclude Include="game\system\CinematicSequence.h" />
     <ClInclude Include="engine\utility\state\IAnimationState.h" />
     <ClInclude Include="engine\utility\state\IEditable.h" />
     <ClInclude Include="game\system\LevelLoader.h" />

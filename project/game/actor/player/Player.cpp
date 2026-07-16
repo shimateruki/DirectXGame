@@ -9,6 +9,7 @@
 #include "PlayerState.h"
 #include "PostEffect.h"
 #include "GameDataManager.h"
+#include "GameplayStatusManager.h"
 #include "SceneManager.h"
 #include"Winapp.h"
 #include <DebugConsole.h>
@@ -33,14 +34,6 @@ namespace {
     constexpr float kPlayerModelYawOffset = kPi;
     constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
     constexpr float kPinkSlimeMorphParticleInterval = 0.18f;
-    const Vector3 kPlayerBaseScale = { 2.0f, 2.0f, 2.0f };
-    constexpr float kPlayerDefaultHp = 100.0f;
-    constexpr float kPlayerDefaultAttackPower = 1.0f;
-    constexpr float kPlayerDefaultMoveSpeed = 27.7f;
-    constexpr float kPlayerDefaultGravity = 50.0f;
-    constexpr float kPlayerDefaultMaxFallSpeed = 60.0f;
-    constexpr float kPlayerDefaultJumpPower = 24.0f;
-    constexpr float kPlayerDefaultDetectionRange = 20.0f;
     constexpr float kElectricShockShakeAmount = 0.045f;
     constexpr const char* kElectricShockAuraEffectPath = "Resources/json/effect/effect_thunder_slime_constant_aura.json";
 
@@ -116,21 +109,8 @@ namespace {
         }
     }
 
-    void EmitThunderMorphBurst(const Vector3& position) {
-        EmitOuterThunderParticles(position, kPlayerBaseScale, 0.35f, 4);
-    }
-
-    Object3d::EntityParameter MakeDefaultPlayerParameter() {
-        Object3d::EntityParameter param;
-        param.hp = kPlayerDefaultHp;
-        param.maxHp = kPlayerDefaultHp;
-        param.attackPower = kPlayerDefaultAttackPower;
-        param.speed = kPlayerDefaultMoveSpeed;
-        param.gravity = kPlayerDefaultGravity;
-        param.maxFallSpeed = kPlayerDefaultMaxFallSpeed;
-        param.jumpPower = kPlayerDefaultJumpPower;
-        param.detectionRange = kPlayerDefaultDetectionRange;
-        return param;
+    void EmitThunderMorphBurst(const Vector3& position, const Vector3& scale) {
+        EmitOuterThunderParticles(position, scale, 0.35f, 4);
     }
 
 }
@@ -152,14 +132,16 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     SetClassName("Player");
     SetSaveCategory("Player");
     if (!param_.has_value()) {
-        param_ = MakeDefaultPlayerParameter();
+        param_.emplace();
     }
     jumpCount_ = 0;
 
     // 移動コンポーネントの構築
     mover_ = std::make_unique<PlayerMover>();
     mover_->Initialize(this, inputManager, particleSystem);
-    slimeAnimator_.Reset(kPlayerBaseScale);
+    auto* statusManager = GameplayStatusManager::GetInstance();
+    statusManager->Initialize();
+    statusManager->ApplyPlayerStatus(this, true);
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
@@ -179,14 +161,17 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_->GetTransform()->scale = { 0.5f, 0.5f, 0.5f };
     }
 }
+
+void Player::ApplyManagedScale(const Vector3& scale) {
+    managedBaseScale_ = scale;
+    SetScale(scale);
+    slimeAnimator_.Reset(scale);
+}
+
 void Player::Update(float deltaTime)
 {
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
-        const float maxScale = (std::max)({ std::abs(transform_.scale.x), std::abs(transform_.scale.y), std::abs(transform_.scale.z) });
-        if (maxScale < 1.2f) {
-            SetScale(kPlayerBaseScale);
-        }
         respawnPosition_ = transform_.translate;
         baseRotation_ = ResolveTransformEuler(transform_);
         baseRotation_.y = kPlayerModelYawOffset;
@@ -367,8 +352,11 @@ void Player::Update(float deltaTime)
     const bool isCarryingBat = (carriedEnemyBase && carriedEnemyBase->GetEnemyType() == "Bat") || isBatMorphActive;
 
     if (isControlActive_) {
-        float gravity = inputManager_->IsMouseButtonPressed(1) ? 10.0f : 50.0f;
-        float maxFallSpeed = 60.0f;
+        const float configuredGravity = param_.has_value() ? param_->gravity : 50.0f;
+        float gravity = inputManager_->IsMouseButtonPressed(1)
+            ? (std::min)(configuredGravity, 10.0f)
+            : configuredGravity;
+        float maxFallSpeed = param_.has_value() ? param_->maxFallSpeed : 60.0f;
 
         if (isCarryingBat && velocity_.y < 0.0f) {
             gravity = (std::min)(gravity, 12.0f);
@@ -936,7 +924,7 @@ void Player::FinishAbsorbEffect()
         }
     }
 
-    transform_.scale = kPlayerBaseScale;
+    transform_.scale = managedBaseScale_;
     absorbEffectActive_ = false;
     pendingAbsorbEnemy_ = nullptr;
     pendingAbsorbType_ = EnemyMorphType::None;
@@ -944,7 +932,11 @@ void Player::FinishAbsorbEffect()
     absorbEffectEmitTimer_ = 0.0f;
 
     StartEnemyMorph(enemy);
-    transform_.scale = { 2.65f, 0.72f, 2.65f };
+    transform_.scale = {
+        managedBaseScale_.x * 1.325f,
+        managedBaseScale_.y * 0.36f,
+        managedBaseScale_.z * 1.325f
+    };
 }
 
 void Player::CancelAbsorbEffect(bool restoreEnemy)
@@ -1045,7 +1037,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     }
 
     if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
-        EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f });
+        EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f }, managedBaseScale_);
     }
     else if (enemyMorphType_ == EnemyMorphType::Slime) {
         auto* gpuParticleManager = GPUParticleManager::GetInstance();
@@ -1771,13 +1763,13 @@ void Player::BeginCinematicLock()
 
     // Damage Stateなどの終了処理で基準姿勢へ戻してから、演出側が姿勢を取得します。
     ChangeState(std::make_unique<PlayerStateIdle>());
-    slimeAnimator_.Reset(kPlayerBaseScale);
+    slimeAnimator_.Reset(managedBaseScale_);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
 
     Vector3 stableRotation = GetRotation();
     stableRotation.x = baseRotation_.x;
     stableRotation.z = baseRotation_.z;
-    SetScale(kPlayerBaseScale);
+    SetScale(managedBaseScale_);
     SetRotation(stableRotation);
     SetVelocity({ 0.0f, 0.0f, 0.0f });
     SetIsControlActive(false);
@@ -1798,7 +1790,7 @@ void Player::EndCinematicLock(bool restoreControl)
     SetCollisionAttribute(cinematicSavedCollisionAttribute_);
     SetCollisionMask(cinematicSavedCollisionMask_);
     SetVelocity({ 0.0f, 0.0f, 0.0f });
-    slimeAnimator_.Reset(kPlayerBaseScale);
+    slimeAnimator_.Reset(managedBaseScale_);
     ChangeState(std::make_unique<PlayerStateIdle>());
     SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !isDead);
 }

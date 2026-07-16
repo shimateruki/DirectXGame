@@ -116,12 +116,12 @@ bool IsLinearTexturePath(const std::string& path) {
 }
 // テクスチャ用途に応じて、DDS変換時に使用する圧縮フォーマット名を決める。
 
-std::string GetDDSFormat(const std::string& filePath, bool isNormalMap) {
+std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
     const std::string ext = ToLower(std::filesystem::path(filePath).extension().string());
     if (ext == ".hdr") {
         return "BC6H_UF16";
     }
-    if (isNormalMap || IsLinearTexturePath(filePath)) {
+    if (isLinearTexture) {
         return "BC7_UNORM";
     }
     return "BC7_UNORM_SRGB";
@@ -259,6 +259,10 @@ void UploadTextureData(
     commandList->ResourceBarrier(1, &barrier);
 }
 
+std::string MakeTextureCacheKey(const std::string& path, bool isLinearTexture) {
+    return NormalizeTexturePath(path) + (isLinearTexture ? "|linear" : "|srgb");
+}
+
 // 実行中の描画コマンドリストを触らず、テクスチャ転送専用の一時コマンドリストでGPUへ送る。
 bool UploadTextureDataWithDedicatedCommandList(
     ID3D12Resource* texture,
@@ -346,10 +350,28 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 // テクスチャを読み込み、必要ならDDSキャッシュを優先しながらSRVハンドルとして登録する。
 
 uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDDSCache, bool forceReload) {
-    // 名前からリニア扱いが必要なテクスチャを自動判定する。
-    if (!isNormalMap && IsLinearTexturePath(filePath)) {
-        isNormalMap = true;
-    }
+    return LoadInternal(
+        filePath,
+        isNormalMap ? TextureColorSpace::Linear : TextureColorSpace::Auto,
+        allowDDSCache,
+        forceReload);
+}
+
+uint32_t TextureManager::Load(
+    const std::string& filePath,
+    TextureColorSpace colorSpace,
+    bool allowDDSCache,
+    bool forceReload) {
+    return LoadInternal(filePath, colorSpace, allowDDSCache, forceReload);
+}
+
+uint32_t TextureManager::LoadInternal(
+    const std::string& filePath,
+    TextureColorSpace colorSpace,
+    bool allowDDSCache,
+    bool forceReload) {
+    bool isLinearTexture = colorSpace == TextureColorSpace::Linear ||
+        (colorSpace == TextureColorSpace::Auto && IsLinearTexturePath(filePath));
 
     std::filesystem::path path(filePath);
     const bool useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
@@ -367,8 +389,8 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     }
 
     const std::string effectiveFilePath = NormalizeTexturePath(path.string());
-    if (!isNormalMap && IsLinearTexturePath(effectiveFilePath)) {
-        isNormalMap = true;
+    if (colorSpace == TextureColorSpace::Auto && IsLinearTexturePath(effectiveFilePath)) {
+        isLinearTexture = true;
     }
 
     const std::string ext = ToLower(path.extension().string());
@@ -395,9 +417,15 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         }
     }
 
+    // HDRは色指定に関係なくリニア値として扱う。
+    if (ToLower(std::filesystem::path(loadPath).extension().string()) == ".hdr") {
+        isLinearTexture = true;
+    }
+    const std::string cacheKey = MakeTextureCacheKey(loadPath, isLinearTexture);
+
     if (!forceReload) {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto it = textureHandleMap_.find(loadPath);
+        auto it = textureHandleMap_.find(cacheKey);
         if (it != textureHandleMap_.end()) {
             return it->second;
         }
@@ -406,7 +434,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     const auto start = std::chrono::high_resolution_clock::now();
 
     // 法線・マスク系以外は見た目の色を保つためsRGBとして読み込む。
-    const bool forceSRGB = !isNormalMap && ToLower(std::filesystem::path(loadPath).extension().string()) != ".hdr";
+    const bool forceSRGB = !isLinearTexture;
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath, forceSRGB);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
@@ -437,7 +465,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         std::lock_guard<std::mutex> lock(mutex_);
 
         // 他スレッドが読み込み中に同じテクスチャを先に登録していた場合は、そのハンドルを使う。
-        auto existingIt = textureHandleMap_.find(loadPath);
+        auto existingIt = textureHandleMap_.find(cacheKey);
         if (!forceReload && existingIt != textureHandleMap_.end()) {
             return existingIt->second;
         }
@@ -456,7 +484,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         newData.resource = resource;
         newData.srvHandle = srvHandle;
 
-        textureHandleMap_[loadPath] = srvHandle;
+        textureHandleMap_[cacheKey] = srvHandle;
     }
 
     const auto end = std::chrono::high_resolution_clock::now();
@@ -465,7 +493,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
 
     // まだ有効なDDSがない元画像は、裏側でDDS生成できるよう要求を積む。
     if (useDDSCache && isSourceTexture && !ddsIsUpToDate) {
-        AppendDDSCacheRequest(effectiveFilePath, isNormalMap, duration);
+        AppendDDSCacheRequest(effectiveFilePath, isLinearTexture, duration);
     }
     return srvHandle;
 }
@@ -531,28 +559,37 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
 std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    std::vector<std::string> paths;
-    for (const auto& pair : textureHandleMap_) {
-        paths.push_back(pair.first);
+    std::set<std::string> uniquePaths;
+    for (const auto& pair : textureDatas_) {
+        uniquePaths.insert(pair.second.filePath);
     }
-    return paths;
+    return { uniquePaths.begin(), uniquePaths.end() };
 }
 // 指定パスに対応するSRVハンドルを返し、元画像名で問い合わせた場合はDDS登録も補助的に探す。
 
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    auto it = textureHandleMap_.find(filePath);
-    if (it != textureHandleMap_.end()) {
-        return it->second;
-    }
-
-    std::filesystem::path ddsPath(filePath);
-    if (IsSourceTextureExtension(ddsPath.extension().string())) {
-        ddsPath.replace_extension(".dds");
-        it = textureHandleMap_.find(NormalizeTexturePath(ddsPath.string()));
+    const auto findHandle = [this](const std::string& path) -> uint32_t {
+        const bool autoLinear = IsLinearTexturePath(path);
+        auto it = textureHandleMap_.find(MakeTextureCacheKey(path, autoLinear));
         if (it != textureHandleMap_.end()) {
             return it->second;
+        }
+        it = textureHandleMap_.find(MakeTextureCacheKey(path, !autoLinear));
+        return it != textureHandleMap_.end() ? it->second : 0;
+    };
+
+    const std::string normalizedPath = NormalizeTexturePath(filePath);
+    if (const uint32_t handle = findHandle(normalizedPath); handle != 0) {
+        return handle;
+    }
+
+    std::filesystem::path ddsPath(normalizedPath);
+    if (IsSourceTextureExtension(ddsPath.extension().string())) {
+        ddsPath.replace_extension(".dds");
+        if (const uint32_t handle = findHandle(NormalizeTexturePath(ddsPath.string())); handle != 0) {
+            return handle;
         }
     }
 

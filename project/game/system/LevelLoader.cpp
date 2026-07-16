@@ -14,6 +14,7 @@
 #include "Sprite.h"
 #include "Player.h"
 #include "EnemyFactory.h"
+#include "GameplayStatusManager.h"
 #include "EnemySpawner.h"
 #include "BaseEnemy.h"
 #include "EnemyBomber.h"
@@ -88,13 +89,12 @@ void ApplySlimeSoftMaterialIfStandard(Object3d* object) {
     }
 }
 
-void ApplySlimeScaleAndModel(Object3d* object) {
+void ApplySlimeMaterialDefault(Object3d* object) {
     if (!object) {
         return;
     }
 
     if (object->GetClassName() == "Player") {
-        object->SetScale({ 2.0f, 2.0f, 2.0f });
         ApplySlimeSoftMaterialIfStandard(object);
         return;
     }
@@ -104,17 +104,6 @@ void ApplySlimeScaleAndModel(Object3d* object) {
         return;
     }
 
-    if (enemyType == "GiantSlime") {
-        object->SetScale({ 3.6f, 3.6f, 3.6f });
-        const Vector3 rotation = object->GetRotation();
-        object->SetRotation({ 0.0f, rotation.y, 0.0f });
-        if (object->param_.has_value()) {
-            object->param_->jumpPower = (std::max)(object->param_->jumpPower, 24.0f);
-        }
-    }
-    else {
-        object->SetScale({ 2.0f, 2.0f, 2.0f });
-    }
     ApplySlimeSoftMaterialIfStandard(object);
 }
 
@@ -155,6 +144,7 @@ void ApplyLodConfig(Object3d* object, const json& objData) {
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename) {
     // ロード前にプリセットを最新の状態にする
     PresetManager::GetInstance()->Initialize();
+    GameplayStatusManager::GetInstance()->Initialize();
 
     std::string justName = filename;
     size_t slashPos = justName.find_last_of("/\\");
@@ -290,8 +280,6 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon);
                         if (enemy) {
                             enemy->SetEnemyType(enemyType);
-                            // プリセットによるパラメータ上書き
-                            PresetManager::GetInstance()->ApplyPresetToObject(enemyType, enemy.get());
 
                             if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
                                 base->SetTarget(scene->GetPlayer());
@@ -584,17 +572,18 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (!targetObject->param_.has_value()) targetObject->param_.emplace();
                     json p = objData["param"];
                     auto& param = targetObject->param_.value();
-                    const bool hasHp = p.contains("hp");
-                    const bool hasMaxHp = p.contains("maxHp");
+                    const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(targetObject);
+                    const bool hasHp = !isManagedCharacter && p.contains("hp");
+                    const bool hasMaxHp = !isManagedCharacter && p.contains("maxHp");
                     if (hasHp) param.hp = p["hp"];
                     if (hasMaxHp) param.maxHp = p["maxHp"];
-                    if (p.contains("attackPower")) param.attackPower = p["attackPower"];
-                    if (p.contains("speed")) param.speed = p["speed"];
-                    if (p.contains("gravity")) param.gravity = p["gravity"];
-                    if (p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
-                    if (p.contains("morphLimited")) param.morphLimited = p["morphLimited"];
-                    if (p.contains("morphDuration")) param.morphDuration = p["morphDuration"];
-                    if (p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
+                    if (!isManagedCharacter && p.contains("attackPower")) param.attackPower = p["attackPower"];
+                    if (!isManagedCharacter && p.contains("speed")) param.speed = p["speed"];
+                    if (!isManagedCharacter && p.contains("gravity")) param.gravity = p["gravity"];
+                    if (!isManagedCharacter && p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
+                    if (!isManagedCharacter && p.contains("morphLimited")) param.morphLimited = p["morphLimited"];
+                    if (!isManagedCharacter && p.contains("morphDuration")) param.morphDuration = p["morphDuration"];
+                    if (!isManagedCharacter && p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
                     if (p.contains("enemyType")) param.enemyType = p["enemyType"];
                     if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
                     if (p.contains("itemType")) param.itemType = p["itemType"];
@@ -604,7 +593,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("shakeDuration")) param.shakeDuration = p["shakeDuration"];
                     if (p.contains("fallDuration")) param.fallDuration = p["fallDuration"];
                     if (p.contains("colorType")) param.colorType = p["colorType"];
-                    if (p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
+                    if (!isManagedCharacter && p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
                     if (p.contains("switchMode")) param.switchMode = p["switchMode"];
                     if (p.contains("actionMode")) param.actionMode = p["actionMode"];
                     if (p.contains("targetScene")) param.targetScene = p["targetScene"].get<std::string>();
@@ -612,21 +601,24 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
                     if (p.contains("startActive")) param.startActive = p["startActive"];
                     if (p.contains("returnOnOff")) param.returnOnOff = p["returnOnOff"];
-                    param.maxHp = (std::max)(param.maxHp, 1.0f);
-                    if (hasMaxHp && !hasHp) {
-                        param.hp = param.maxHp;
+                    if (!isManagedCharacter) {
+                        param.maxHp = (std::max)(param.maxHp, 1.0f);
+                        if (hasMaxHp && !hasHp) {
+                            param.hp = param.maxHp;
+                        }
+                        param.hp = (std::max)(param.hp, 0.0f);
+                        if (param.hp > param.maxHp) {
+                            param.maxHp = param.hp;
+                        }
+                        param.attackPower = (std::max)(param.attackPower, 0.0f);
                     }
-                    param.hp = (std::max)(param.hp, 0.0f);
-                    if (param.hp > param.maxHp) {
-                        param.maxHp = param.hp;
-                    }
-                    param.attackPower = (std::max)(param.attackPower, 0.0f);
-                    if (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty()) {
+                    if (!isManagedCharacter && (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty())) {
                         param.morphDuration = (std::max)(param.morphDuration, 0.1f);
                     }
                 }
 
-                ApplySlimeScaleAndModel(targetObject);
+                ApplySlimeMaterialDefault(targetObject);
+                GameplayStatusManager::GetInstance()->ApplyManagedStatus(targetObject, true);
                 ApplyLodConfig(targetObject, objData);
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();

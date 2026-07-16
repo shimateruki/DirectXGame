@@ -9,6 +9,11 @@ public:
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
 private:
     // 向き・胞子攻撃・見た目の潰れ戻りを小さな処理に分けている

@@ -1,6 +1,6 @@
 #pragma once
 
-/// エディタ機能やショートカット、各ツールの使い方をゲーム内で確認するための簡易マニュアル。
+/// エディタ機能の目的、操作手順、保存先、確認項目をゲーム内で検索できる統合マニュアル。
 class EngineManualWindow {
 public:
     EngineManualWindow() = default;
@@ -18,4 +18,5 @@ public:
 private:
     bool isOpen_ = false;
     int selectedIndex_ = 0;
+    char searchBuffer_[128] = {};
 };

@@ -275,7 +275,7 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 	DebugConsole::GetInstance()->Initialize();
 
 	ghostDirector_ = std::make_unique<GhostDirector>();
-	ghostDirector_->Initialize(sceneManager);
+	ghostDirector_->Initialize(sceneManager, debugEditor_.get());
 
 	engineManualWindow_ = std::make_unique<EngineManualWindow>();
 
@@ -850,6 +850,9 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 	const bool sceneTransitioning = sceneManager && sceneManager->IsTransitioning();
 
 	if (!sceneTransitioning) {
+		if (ghostDirector_) {
+			ghostDirector_->Update(isPlaying ? deltaTime * timeScale : deltaTime);
+		}
 		if (gpuParticleEditor_) {
 			gpuParticleEditor_->Update(deltaTime);
 		}

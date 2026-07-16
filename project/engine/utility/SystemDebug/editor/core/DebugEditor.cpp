@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
+#include "GhostDirector.h"
 #include "CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
@@ -660,12 +661,10 @@ void DebugEditor::Update() {
                         } else {
                             SetSelectedObject(hit);
                         }
-                        if (selectedObject_) {
-                            EditorManager::GetInstance()->SetSelectedObject(this);
-                        }
+                        SyncObjectSelectionToInspector();
                     } else if (!isShiftPressed) {
                         ClearObjectSelection();
-                        EditorManager::GetInstance()->ClearSelection();
+                        SyncObjectSelectionToInspector();
                     }
                 }
 
@@ -832,6 +831,15 @@ void DebugEditor::Update() {
                             groupTransformStartStates_.clear();
                         } else {
                             RegisterObjectEdited(selectedObject_, tempObjectStateStart_, "Gizmo Transform");
+                        }
+                        if (ghostDirector_ &&
+                            EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_ &&
+                            ghostDirector_->IsAutoKeyEnabled()) {
+                            for (Object3d* object : selectedObjects_) {
+                                if (object && IsObjectInCurrentScene(object)) {
+                                    ghostDirector_->RecordTransformKey(object);
+                                }
+                            }
                         }
                     }
                 }
@@ -1308,6 +1316,21 @@ void DebugEditor::DrawImGui() {
             ImGui::Combo("ギズモ基準", &gizmoPivotMode_, pivotModes, IM_ARRAYSIZE(pivotModes));
             if (gizmoPivotMode_ != 0) {
                 ImGui::TextDisabled("移動ギズモの表示位置だけを補正します。回転とスケールは原点基準です。");
+            }
+
+            ImGui::SeparatorText("選択表示");
+            int overlayMode = static_cast<int>(selectionOverlayMode_);
+            const char* overlayModes[] = { "簡易", "詳細", "非表示" };
+            if (ImGui::Combo("複数選択の可視化", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
+                selectionOverlayMode_ = static_cast<SelectionOverlayMode>(overlayMode);
+            }
+
+            const std::string activeName = selectedObject_->GetName().empty() ? "Selected" : selectedObject_->GetName();
+            ImGui::Text("選択: %zu個 / 操作対象: %s", selectedObjects_.size(), activeName.c_str());
+            if (selectionOverlayMode_ == SelectionOverlayMode::Compact && selectedObjects_.size() > 1) {
+                ImGui::TextDisabled("副選択は小さいマーカーで表示します。Altを押している間は外枠を表示します。");
+            } else if (selectionOverlayMode_ == SelectionOverlayMode::Hidden) {
+                ImGui::TextDisabled("選択枠を隠し、ImGuizmoだけを表示します。");
             }
         }
     }

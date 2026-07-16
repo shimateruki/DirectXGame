@@ -17,6 +17,11 @@ bool UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos, class Par
     void CancelHookSplitPull();
     float GetHookSplitProgress() const;
     bool HasSplit() const { return hasSplit_; }
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
 private:
         // 巨大スライムの待機、チャージ、ジャンプ、着地回復などの状態です。

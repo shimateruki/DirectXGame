@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "json.hpp"
 #include "TextureManager.h"
+#include "engine/graphics/core/ColorSpace.h"
 
 using json = nlohmann::json;
 
@@ -18,7 +19,9 @@ LightManager* LightManager::GetInstance() {
 void LightManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+    uint32_t envHandle = TextureManager::GetInstance()->Load(
+        "Resources/output_skybox.dds",
+        TextureManager::TextureColorSpace::SRGB);
     LightManager::GetInstance()->SetEnvironmentMapHandle(envHandle);
     skyboxTexturePath_ = "Resources/output_skybox.dds";
     skyboxTextureHandle_ = envHandle;
@@ -43,7 +46,7 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     directionalLightData_.fogEnd = 1000.0f;
     directionalLightData_.fogColor = { 0.66f, 0.76f, 0.86f };
     sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
-    dxCommon_->SetRenderClearColor(sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w);
+    ApplySceneClearColor();
 
     pointLights_.clear();
     spotLights_.clear();
@@ -69,7 +72,11 @@ void LightManager::Update() {
             }
 
             // 3. 安全が確認できたので書き込む
-            *dirMap = directionalLightData_;
+            DirectionalLight gpuLight = directionalLightData_;
+            gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+            gpuLight.ambientColor = ColorSpace::AuthoringToWorking(gpuLight.ambientColor);
+            gpuLight.fogColor = ColorSpace::AuthoringToWorking(gpuLight.fogColor);
+            *dirMap = gpuLight;
 
             // 4. アンマップ
             directionalLightResource_->Unmap(0, nullptr);
@@ -118,7 +125,9 @@ void LightManager::Update() {
 
         // --- GPUバッファへコピー ---
         int index = pointLightConstData_->activeCount;
-        pointLightConstData_->lights[index] = instance.data;
+        MeshRenderer::PointLight gpuLight = instance.data;
+        gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+        pointLightConstData_->lights[index] = gpuLight;
         pointLightConstData_->activeCount++;
     }
 
@@ -138,7 +147,9 @@ void LightManager::Update() {
 
         if (pointLightConstData_->activeCount < kMaxPointLights) {
             int transientIndex = pointLightConstData_->activeCount;
-            pointLightConstData_->lights[transientIndex] = pulse.data;
+            MeshRenderer::PointLight gpuLight = pulse.data;
+            gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+            pointLightConstData_->lights[transientIndex] = gpuLight;
             pointLightConstData_->activeCount++;
         }
         ++index;
@@ -190,9 +201,22 @@ void LightManager::Update() {
 
         // --- GPUバッファへコピー ---
         int index = spotLightConstData_->activeCount;
-        spotLightConstData_->lights[index] = instance.data;
+        MeshRenderer::SpotLight gpuLight = instance.data;
+        gpuLight.color = ColorSpace::AuthoringToWorking(gpuLight.color);
+        spotLightConstData_->lights[index] = gpuLight;
         spotLightConstData_->activeCount++;
     }
+}
+
+void LightManager::ApplySceneClearColor() {
+    if (!dxCommon_) {
+        return;
+    }
+    dxCommon_->SetRenderClearColor(
+        sceneClearColor_.x,
+        sceneClearColor_.y,
+        sceneClearColor_.z,
+        sceneClearColor_.w);
 }
 
 // 戻り値を Instance* に変更
@@ -275,7 +299,9 @@ bool LightManager::SetSkyboxTexturePath(const std::string& texturePath) {
             return false;
         }
         skyboxTexturePath_ = texturePath;
-        skyboxTextureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+        skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+            texturePath,
+            TextureManager::TextureColorSpace::SRGB);
         return true;
     } catch (...) {
         return false;
@@ -394,9 +420,7 @@ bool LightManager::LoadState(const std::string& filename) {
     } else {
         sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
     }
-    if (dxCommon_) {
-        dxCommon_->SetRenderClearColor(sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w);
-    }
+    ApplySceneClearColor();
 
     skyboxEnabled_ = true;
     if (root.contains("skybox") && root["skybox"].is_object()) {

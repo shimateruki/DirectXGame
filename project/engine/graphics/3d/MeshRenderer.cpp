@@ -4,6 +4,7 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include "TextureManager.h"
+#include "engine/graphics/core/ColorSpace.h"
 #include "DebugConsole.h"
 #include <cassert>
 #include <SrvManager.h>
@@ -235,7 +236,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
         common_ = nullptr;
         return;
     }
-    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    materialColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
     materialData_->enableLighting = 1;
     materialData_->uvTransform = Math::MakeIdentity4x4();
     materialData_->selectedLighting = 2;
@@ -383,6 +385,7 @@ void MeshRenderer::Update() {
     time_ += 1.0f / 60.0f;
     if (materialData_) {
         materialData_->time = time_;
+        materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
     }
     UpdateUvTransform();
 
@@ -399,10 +402,11 @@ void MeshRenderer::Update() {
         localFogData_->lightDirection = sun.direction;
 
         // 光の色に「輝度(intensity)」を掛け合わせて、より強い光にする
+        const Vector4 sunColor = ColorSpace::AuthoringToWorking(sun.color);
         localFogData_->lightColor = {
-            sun.color.x * sun.intensity,
-            sun.color.y * sun.intensity,
-            sun.color.z * sun.intensity
+            sunColor.x * sun.intensity,
+            sunColor.y * sun.intensity,
+            sunColor.z * sun.intensity
         };
 
     }

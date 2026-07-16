@@ -8,8 +8,12 @@ public:
         // コウモリ用モデル、Collider、ホーム位置、飛行状態を初期化します。
 void Initialize(Object3dCommon* common, const std::string& modelName) override;
         // 旋回、追跡、急降下、復帰、接触判定を更新します。
-void Update(float deltaTime) override;
+    void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        SetScale(scale);
+    }
 
 private:
     // 旋回、予兆、急降下、復帰の4状態で動きを管理する

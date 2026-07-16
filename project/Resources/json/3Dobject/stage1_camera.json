@@ -1,0 +1,80 @@
+{
+    "objects": [
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "camera": {
+                "blendInDuration": 0.30000001192092896,
+                "blendOutDuration": 0.30000001192092896,
+                "easing": 4,
+                "enabled": true,
+                "eyeFollowMode": 0,
+                "eyeFollowResponse": 12.0,
+                "eyeObjectName": "",
+                "eyeOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "eyeSource": 0,
+                "farClip": 1000.0,
+                "fixedTarget": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "forwardDistance": 10.0,
+                "fovY": 0.44999998807907104,
+                "nearClip": 0.10000000149011612,
+                "role": 1,
+                "targetFollowMode": 0,
+                "targetFollowResponse": 14.0,
+                "targetMode": 2,
+                "targetObjectName": "",
+                "targetOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "version": 1
+            },
+            "enemyType": "",
+            "gimmickType": "",
+            "itemType": "",
+            "layer": "Default",
+            "name": "Cinematic_Camera_01",
+            "parentName": "",
+            "position": [
+                -2.1330907344818115,
+                10.221175193786621,
+                -10.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "saveCategory": "Camera",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "type": "Camera"
+        }
+    ]
+}

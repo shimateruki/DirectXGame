@@ -80,7 +80,9 @@ public:
     void Load(const std::string& fileName);
 
     int GetTotalFrames() const { return static_cast<int>(frames_.size()); }
+    float GetDurationSeconds() const;
     void EvaluateAtFrame(int frameIndex);
+    void EvaluateAtTime(float timeSeconds, bool dispatchEvents = false, float previousTimeSeconds = 0.0f);
     void CaptureBasePose();
     void RestoreBasePose();
     void PerformUndo();

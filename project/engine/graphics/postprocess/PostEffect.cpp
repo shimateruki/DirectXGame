@@ -3,6 +3,7 @@
 #include"WinApp.h"
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
+#include "engine/graphics/core/ColorSpace.h"
 #include <algorithm>
 #include <cassert>
 
@@ -13,7 +14,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
     params.threshold = 1.0f;
     params.bloomIntensity = 0.0f;
     params.spread = 1.0f;
-    params.enableToneMapping = 0;
+    params.enableToneMapping = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1 : 0;
     params.vignetteIntensity = 0.0f;
     params.chromaticAberration = 0.0f;
     params.filmGrainIntensity = 0.0f;
@@ -45,6 +46,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
     params.dissolveThreshold = 0.0f;
     params.dissolveEdgeWidth = 0.02f;
     params.randomIntensity = 0.0f;
+    params.linearWorkflowEnabled = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
     params.dissolveEdgeColor = { 1.0f, 0.4f, 0.3f };
     params.projectionInverse = Math::MakeIdentity4x4();
     params.slimeFadeIntensity = 0.0f;
@@ -87,6 +89,8 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 void PostEffect::Update(float deltaTime) {
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
+    paramsData_->linearWorkflowEnabled =
+        ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
 }
 
 void PostEffect::ResetToNeutral() {
@@ -220,6 +224,14 @@ void PostEffect::CreatePipelineState() {
     // ==========================================================
     builder.SetShaders(vsBlob.Get(), psAdd.Get());
     builder.SetBlendMode(::BlendMode::kAdd); 
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
+    pipelineStates_.push_back(pso);
+
+    // バックバッファはsRGB形式なので、HDR中間ターゲットとは別のPSOを使用する。
+    const DXGI_FORMAT backBufferFormat[] = { dxCommon_->GetRTVFormat() };
+    builder.SetRenderTargets(1, backBufferFormat, DXGI_FORMAT_UNKNOWN);
+    builder.SetBlendMode(::BlendMode::kNone);
+    builder.SetShaders(vsBlob.Get(), psComposite.Get());
     builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 }

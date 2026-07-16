@@ -16,6 +16,15 @@ public:
     static constexpr int kCameraPreviewTextureIndex = 6;
     static constexpr int kCinematicCameraPreviewTextureIndex = 7;
 
+    enum PipelineIndex : int {
+        kCopyPipeline = 0,
+        kCompositeHdrPipeline,
+        kExtractPipeline,
+        kDownsamplePipeline,
+        kAddPipeline,
+        kCompositeBackBufferPipeline,
+    };
+
     static PostEffect* GetInstance() {
         static PostEffect instance;
         return &instance;
@@ -71,7 +80,7 @@ struct Params {
         float dissolveThreshold = 0.0f;     // ディゾルブのしきい値 (資料)
         float dissolveEdgeWidth = 0.02f;    // エッジの幅 (資料)
         float randomIntensity = 0.0f;       // GPUによる乱数生成の強度 (資料)
-        float padding_m1 = 0.0f;            // 128バイト境界に合わせる
+        float linearWorkflowEnabled = 0.0f; // 1: Editor色をsRGBからリニアへ変換
 
         Vector3 dissolveEdgeColor = { 1.0f, 0.4f, 0.3f }; // エッジの色 (資料)
         float padding_m2 = 0.0f;            // 144バイト境界に合わせる

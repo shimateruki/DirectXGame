@@ -50,7 +50,7 @@ cbuffer PostEffectParams : register(b0)
     float dissolveThreshold;
     float dissolveEdgeWidth;
     float randomIntensity;
-    float padding_m1;
+    float linearWorkflowEnabled;
     float3 dissolveEdgeColor;
     float padding_m2;
     float4x4 projectionInverse;
@@ -127,6 +127,15 @@ float3 ACESFilm(float3 x)
     float d = 0.59f;
     float e = 0.14f;
     return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
+// Converts colors authored in the Editor from sRGB to the linear working space.
+float3 AuthoringToWorking(float3 color)
+{
+    float3 low = color / 12.92f;
+    float3 high = pow(max((color + 0.055f) / 1.055f, 0.0f), 2.4f);
+    float3 converted = lerp(high, low, step(color, 0.04045f));
+    return lerp(color, converted, saturate(linearWorkflowEnabled));
 }
 
 float rand(float2 co)
@@ -400,7 +409,7 @@ float4 mainComposite(PSInput input) : SV_TARGET
         
         // 2. エッジ（境界線）の色付け
         float edge = 1.0f - smoothstep(dissolveThreshold, dissolveThreshold + dissolveEdgeWidth, mask);
-        finalColor.rgb += edge * dissolveEdgeColor;
+        finalColor.rgb += edge * AuthoringToWorking(dissolveEdgeColor);
     }
 
     // Random (資料に基づいた実装)
@@ -458,7 +467,7 @@ float4 mainComposite(PSInput input) : SV_TARGET
             
             // --- 3. スライムの色と透明度 ---
             // 中心部は濃く、エッジは少し透けるように
-            float3 baseSlime = slimeColor;
+            float3 baseSlime = AuthoringToWorking(slimeColor);
             float interior = smoothstep(0.0, 0.3, mask);
             float3 finalSlime = lerp(background, baseSlime, interior * 0.9);
             

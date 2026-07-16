@@ -1,6 +1,6 @@
 #include "PresetManager.h"
-#include "BaseEnemy.h"
 #include "EnemyFactory.h"
+#include "GameplayStatusManager.h"
 #include "CollisionConfig.h"
 #include <fstream>
 #include <iostream>
@@ -12,41 +12,11 @@
 namespace fs = std::filesystem;
 
 namespace {
-constexpr const char* kGameplayStatusPresetPath = "Resources/json/gameplay/status_presets.json";
-
 std::string ReadString(const json& source, const char* key, const std::string& fallback = "") {
     if (source.is_object() && source.contains(key) && source.at(key).is_string()) {
         return source.at(key).get<std::string>();
     }
     return fallback;
-}
-
-void ReadFloat(const json& source, const char* key, float& value) {
-    if (source.is_object() && source.contains(key) && source.at(key).is_number()) {
-        value = source.at(key).get<float>();
-    }
-}
-
-void ReadBool(const json& source, const char* key, bool& value) {
-    if (source.is_object() && source.contains(key) && source.at(key).is_boolean()) {
-        value = source.at(key).get<bool>();
-    }
-}
-
-bool ReadVector3(const json& source, const char* key, Vector3& value) {
-    if (!source.is_object() || !source.contains(key) || !source.at(key).is_array()) {
-        return false;
-    }
-    const json& array = source.at(key);
-    if (array.size() < 3 || !array[0].is_number() || !array[1].is_number() || !array[2].is_number()) {
-        return false;
-    }
-    value = { array[0].get<float>(), array[1].get<float>(), array[2].get<float>() };
-    return true;
-}
-
-bool IsStatusScaleEnabled(const Vector3& scale) {
-    return scale.x > 0.0f && scale.y > 0.0f && scale.z > 0.0f;
 }
 
 std::string ToLowerAscii(std::string value) {
@@ -119,81 +89,6 @@ std::string ResolveEnemyType(const json& node) {
     return enemyType;
 }
 
-void ApplyGameplayStatusPreset(Object3d* object, const std::string& fallbackEnemyType = "") {
-    if (!object) {
-        return;
-    }
-
-    std::string enemyType = !fallbackEnemyType.empty() ? fallbackEnemyType : object->GetEnemyType();
-    if (enemyType.empty() && object->param_.has_value()) {
-        enemyType = object->param_->enemyType;
-    }
-    if (enemyType.empty()) {
-        return;
-    }
-
-    std::ifstream file(kGameplayStatusPresetPath);
-    if (!file) {
-        return;
-    }
-
-    try {
-        json root;
-        file >> root;
-        if (!root.contains("enemies") || !root["enemies"].is_object()) {
-            return;
-        }
-
-        const json& enemies = root["enemies"];
-        if (!enemies.contains(enemyType) || !enemies.at(enemyType).is_object()) {
-            return;
-        }
-
-        const json& preset = enemies.at(enemyType);
-        if (!object->param_.has_value()) {
-            object->param_.emplace();
-        }
-
-        auto& p = object->param_.value();
-        ReadFloat(preset, "hp", p.hp);
-        ReadFloat(preset, "maxHp", p.maxHp);
-        ReadFloat(preset, "attackPower", p.attackPower);
-        ReadFloat(preset, "speed", p.speed);
-        ReadFloat(preset, "gravity", p.gravity);
-        ReadFloat(preset, "jumpPower", p.jumpPower);
-        ReadFloat(preset, "detectionRange", p.detectionRange);
-        ReadBool(preset, "morphLimited", p.morphLimited);
-        ReadFloat(preset, "morphDuration", p.morphDuration);
-        p.maxHp = (std::max)(p.maxHp, 1.0f);
-        p.hp = (std::max)(p.hp, 0.0f);
-        if (p.hp > p.maxHp) {
-            p.maxHp = p.hp;
-        }
-        p.attackPower = (std::max)(p.attackPower, 0.0f);
-        p.speed = (std::max)(p.speed, 0.0f);
-        p.jumpPower = (std::max)(p.jumpPower, 0.0f);
-        p.detectionRange = (std::max)(p.detectionRange, 0.0f);
-        p.morphDuration = (std::max)(p.morphDuration, 0.1f);
-        p.enemyType = enemyType;
-        object->SetClassName("Enemy");
-        object->SetEnemyType(enemyType);
-        if (auto* enemy = dynamic_cast<BaseEnemy*>(object)) {
-            enemy->SetDetectionRange(p.detectionRange);
-        }
-
-        const std::string modelName = ReadString(preset, "modelName");
-        if (!modelName.empty()) {
-            object->SetModel(modelName);
-        }
-
-        Vector3 scale = { 0.0f, 0.0f, 0.0f };
-        if (ReadVector3(preset, "scale", scale) && IsStatusScaleEnabled(scale)) {
-            object->SetScale(scale);
-        }
-    } catch (...) {
-    }
-}
-
 json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visited) {
     if (!object || visited.count(object) != 0) {
         return json::object();
@@ -242,7 +137,9 @@ void CreateObjectFromPresetNode(
             object->param_.emplace();
         }
         object->param_->enemyType = enemyType;
-        ApplyGameplayStatusPreset(object.get(), enemyType);
+        auto* statusManager = GameplayStatusManager::GetInstance();
+        statusManager->Initialize();
+        statusManager->ApplyEnemyStatus(object.get(), true);
     }
     ApplyGroundDefaultsIfNeeded(object.get());
     if (node.contains("name") && node["name"].is_string()) {
@@ -453,7 +350,9 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
     // JSONデータをオブジェクトに流し込む
     try {
         obj->ImportFromJson(presets_[presetName]);
-        ApplyGameplayStatusPreset(obj, ResolveEnemyType(presets_[presetName]));
+        auto* statusManager = GameplayStatusManager::GetInstance();
+        statusManager->Initialize();
+        statusManager->ApplyManagedStatus(obj, false);
     } catch (...) {}
 }
 

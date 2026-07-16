@@ -18,6 +18,11 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
 private:
     // 放電攻撃、常時オーラ、投げ状態の当たり判定調整を分けて管理する

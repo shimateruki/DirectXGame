@@ -13,6 +13,7 @@
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
+#include "GameplayStatusManager.h"
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
@@ -1016,6 +1017,8 @@ void InspectorWindow::Draw() {
             return;
         }
 
+        const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(selectedObject);
+
         static Object3d* tagLayerBufferOwner = nullptr;
         static char tagBuffer[128] = {};
         static char layerBuffer[128] = {};
@@ -1110,23 +1113,30 @@ void InspectorWindow::Draw() {
         if (selectedObject->GetClassName() != "InvisibleBox") {
             ImGui::Separator();
             ImGui::Text(ICON_FA_CUBE " モデルアセット: %s", selectedObject->GetModelName().c_str());
-            ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
+            if (isManagedCharacter) {
+                ImGui::TextDisabled("Player/Enemyのモデルはステータス管理のタイプ共通設定です。");
+                if (ImGui::Button(ICON_FA_SLIDERS_H " ステータス管理を開く##ModelStatus", ImVec2(-1, 0)) && editor_->GetStatusTuningWindow()) {
+                    EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
+                }
+            } else {
+                ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
 
-            if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                    const char* modelName = (const char*)payload->Data;
-                    ModelManager::GetInstance()->LoadModel(modelName);
-                    selectedObject->SetModel(modelName);
-                    DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                        const char* modelName = (const char*)payload->Data;
+                        ModelManager::GetInstance()->LoadModel(modelName);
+                        selectedObject->SetModel(modelName);
+                        DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+                    }
+
+                    // プリセットデータのドロップ受付
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                        const char* presetName = (const char*)payload->Data;
+                        PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);
+                        DebugConsole::GetInstance()->AddLog("Applied preset: " + std::string(presetName));
+                    }
+                    ImGui::EndDragDropTarget();
                 }
-                
-                // プリセットデータのドロップ受付
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
-                    const char* presetName = (const char*)payload->Data;
-                    PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);
-                    DebugConsole::GetInstance()->AddLog("Applied preset: " + std::string(presetName));
-                }
-                ImGui::EndDragDropTarget();
             }
 
             Model* currentModel = selectedObject->GetModel();
@@ -1214,20 +1224,25 @@ void InspectorWindow::Draw() {
             isTransformChanged = true;
         }
         const Vector3 beforeScale = transform->scale;
-        if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) {
-            ApplyPrimaryTransformDeltaToTargets(
-                inspectorTargets,
-                selectedObject,
-                transform->translate,
-                transform->translate,
-                transform->rotate,
-                transform->rotate,
-                beforeScale,
-                transform->scale,
-                false,
-                false,
-                true);
-            isTransformChanged = true;
+        if (isManagedCharacter) {
+            ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（ステータス管理）",
+                transform->scale.x, transform->scale.y, transform->scale.z);
+        } else {
+            if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) {
+                ApplyPrimaryTransformDeltaToTargets(
+                    inspectorTargets,
+                    selectedObject,
+                    transform->translate,
+                    transform->translate,
+                    transform->rotate,
+                    transform->rotate,
+                    beforeScale,
+                    transform->scale,
+                    false,
+                    false,
+                    true);
+                isTransformChanged = true;
+            }
         }
 
         if (isTransformChanged) {
@@ -2177,38 +2192,33 @@ void InspectorWindow::Draw() {
             }
 
             if (selectedObject->GetClassName() == "Enemy" || selectedObject->GetClassName() == "Player") {
-                if (!selectedObject->param_.has_value()) {
-                    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ステータスを追加", ImVec2(-1, 0))) selectedObject->param_.emplace();
+                ImGui::SeparatorText("キャラクター・ステータス（表示のみ）");
+                ImGui::TextDisabled("共通値の編集はステータス管理で行います。現在HPだけは実行中に変動します。");
+                if (selectedObject->param_.has_value()) {
+                    const auto& p = selectedObject->param_.value();
+                    if (ImGui::BeginTable("ManagedCharacterStatus", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                        auto drawValue = [](const char* name, const char* format, float value) {
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::TextUnformatted(name);
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text(format, value);
+                        };
+                        drawValue("現在HP", "%.1f", p.hp);
+                        drawValue("最大HP", "%.1f", p.maxHp);
+                        drawValue("攻撃力倍率", "%.2f", p.attackPower);
+                        drawValue("移動速度", "%.2f", p.speed);
+                        drawValue("重力", "%.2f", p.gravity);
+                        drawValue("最大落下速度", "%.2f", p.maxFallSpeed);
+                        drawValue("ジャンプ力", "%.2f", p.jumpPower);
+                        drawValue("感知範囲", "%.2f", p.detectionRange);
+                        ImGui::EndTable();
+                    }
+                } else {
+                    ImGui::TextDisabled("ステータスは次回の生成・ロード時に自動設定されます。");
                 }
-                else {
-                    auto& p = selectedObject->param_.value();
-                    ImGui::Text("キャラクター・ステータス:");
-                    ImGui::Indent();
-                    const float oldMaxHp = p.maxHp;
-                    const bool wasFullHp = std::abs(p.hp - p.maxHp) <= 0.001f;
-                    ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
-                    if (ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) {
-                        p.maxHp = (std::max)(p.maxHp, 1.0f);
-                        if (wasFullHp || std::abs(p.hp - oldMaxHp) <= 0.001f) {
-                            p.hp = p.maxHp;
-                        }
-                    }
-                    p.maxHp = (std::max)(p.maxHp, 1.0f);
-                    p.hp = (std::max)(p.hp, 0.0f);
-                    if (p.hp > p.maxHp) {
-                        p.maxHp = p.hp;
-                    }
-                    ImGui::DragFloat(ICON_FA_BOLT " 攻撃力倍率", &p.attackPower, 0.05f, 0.0f, 100.0f);
-                    p.attackPower = (std::max)(p.attackPower, 0.0f);
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
-                    ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_SEARCH " 検知範囲 (Detection)", &p.detectionRange, 0.5f, 0.0f, 500.0f);
-                    ImGui::Unindent();
-
-                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
-                    if (ImGui::Button(ICON_FA_TRASH_ALT " ステータスを削除", ImVec2(-1, 0))) selectedObject->param_ = std::nullopt;
-                    ImGui::PopStyleColor();
+                if (ImGui::Button(ICON_FA_SLIDERS_H " ステータス管理を開く##CharacterStatus", ImVec2(-1, 0)) && editor_->GetStatusTuningWindow()) {
+                    EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
                 }
             }
             else if (selectedObject->GetClassName() == "Gimmick") {

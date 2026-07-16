@@ -191,7 +191,7 @@ void MeshRenderer::SetModel(Model* model) {
     ClearLodLevels();
     if (model_ && materialData_) {
         if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
-            materialData_->color = material->baseColorFactor;
+            SetColor(material->baseColorFactor);
             materialData_->roughness = material->roughness;
             materialData_->metallic = material->metallic;
             materialData_->enableNormalMap = material->hasNormalMap ? 1 : 0;
@@ -204,7 +204,7 @@ void MeshRenderer::SetModel(const std::string& modelName) {
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
     if (model_ && materialData_) {
         if (const Model::MaterialData* material = model_->GetPrimaryMaterialData()) {
-            materialData_->color = material->baseColorFactor;
+            SetColor(material->baseColorFactor);
             materialData_->roughness = material->roughness;
             materialData_->metallic = material->metallic;
             materialData_->enableNormalMap = material->hasNormalMap ? 1 : 0;

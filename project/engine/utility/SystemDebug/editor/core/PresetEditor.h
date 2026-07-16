@@ -224,6 +224,9 @@ private:
         json& data = manager->GetPreset(selectedName_);
         Category category = DetectCategory(data);
         bool changed = false;
+        if (category == Category::Enemy) {
+            changed |= RemoveManagedEnemyFields(data);
+        }
 
         std::string displayName = ReadString(data, "name", selectedName_);
         ImGui::TextColored(GetCategoryColor(category), "%s", displayName.c_str());
@@ -251,7 +254,11 @@ private:
 
         if (ImGui::CollapsingHeader("配置テンプレート", ImGuiTreeNodeFlags_DefaultOpen)) {
             changed |= DrawStringField(data, "表示名", "name", selectedName_);
-            changed |= DrawModelField(data);
+            if (category == Category::Enemy) {
+                ImGui::TextDisabled("敵のモデルとタイプ共通スケールはステータス管理で設定します。");
+            } else {
+                changed |= DrawModelField(data);
+            }
             changed |= DrawColorField(data, "色", "color", { 1.0f, 1.0f, 1.0f, 1.0f });
             changed |= DrawIntField(data, "マテリアルタイプ", "materialType", 0);
             changed |= DrawFloatField(data, "発光", "emissive", 1.0f, 0.05f);
@@ -260,7 +267,11 @@ private:
         if (ImGui::CollapsingHeader("配置時Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
             changed |= DrawVector3Field(data, "位置オフセット", "translate", { 0.0f, 0.0f, 0.0f }, 0.1f);
             changed |= DrawVector3Field(data, "回転", "rotate", { 0.0f, 0.0f, 0.0f }, 0.01f);
-            changed |= DrawVector3Field(data, "スケール", "scale", { 1.0f, 1.0f, 1.0f }, 0.05f);
+            if (category == Category::Enemy) {
+                ImGui::TextDisabled("スケールはステータス管理の敵タイプ共通値を使用します。");
+            } else {
+                changed |= DrawVector3Field(data, "スケール", "scale", { 1.0f, 1.0f, 1.0f }, 0.05f);
+            }
         }
 
         if (category == Category::Enemy) {
@@ -298,13 +309,26 @@ private:
 
         if (ImGui::CollapsingHeader("敵パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
             changed |= DrawTypeCombo("敵の種類", data, param, "enemyType", GetEnemyOptions(), Category::Enemy);
-            changed |= DrawParamFloat(param, "HP", "hp", 100.0f, 1.0f);
-            changed |= DrawParamFloat(param, "最大HP", "maxHp", 100.0f, 1.0f);
-            changed |= DrawParamFloat(param, "攻撃力倍率", "attackPower", 1.0f, 0.05f);
-            changed |= DrawParamFloat(param, "移動速度", "speed", 1.0f, 0.05f);
-            changed |= DrawParamFloat(param, "重力", "gravity", 50.0f, 0.5f);
-            changed |= DrawParamFloat(param, "索敵範囲", "detectionRange", 20.0f, 0.25f);
-            changed |= DrawParamFloat(param, "行動間隔", "interval", 3.0f, 0.05f);
+            ImGui::TextDisabled("HP・攻撃力・移動・重力などはステータス管理でタイプごとに編集します。");
+        }
+        return changed;
+    }
+
+    bool RemoveManagedEnemyFields(json& data) {
+        bool changed = false;
+        changed |= data.erase("modelName") > 0;
+        changed |= data.erase("scale") > 0;
+        if (!data.contains("param") || !data["param"].is_object()) {
+            return changed;
+        }
+
+        json& param = data["param"];
+        const char* managedKeys[] = {
+            "hp", "maxHp", "attackPower", "speed", "gravity", "maxFallSpeed",
+            "jumpPower", "detectionRange", "morphLimited", "morphDuration", "interval"
+        };
+        for (const char* key : managedKeys) {
+            changed |= param.erase(key) > 0;
         }
         return changed;
     }
@@ -454,24 +478,17 @@ private:
     void ApplyTypeDefaults(json& data, Category category, const std::string& type) {
         if (category == Category::Enemy) {
             if (type == "Bat") {
-                data["modelName"] = "Characters/bat";
-                data["scale"] = { 0.6f, 0.6f, 0.6f };
                 data["animation"]["animName"] = "ArmatureAction";
                 data["animation"]["isAnimLoop"] = true;
                 SetColliderDefaults(data, 1, { 0.85f, 0.85f, 0.85f });
             }
             else if (type == "BeamDrone") {
-                data["modelName"] = "Characters/eye";
-                data["scale"] = { 0.85f, 0.85f, 0.85f };
                 SetColliderDefaults(data, 1, { 1.1f, 1.1f, 1.1f });
             }
             else if (type == "GiantSlime") {
-                data["modelName"] = "Characters/slime";
-                data["scale"] = { 2.8f, 2.8f, 2.8f };
                 SetColliderDefaults(data, 1, { 2.2f, 2.2f, 2.2f });
             }
             else {
-                data["modelName"] = "Characters/slime";
                 SetColliderDefaults(data, 1, { 1.0f, 1.0f, 1.0f });
             }
         }
@@ -666,10 +683,14 @@ private:
     json BuildBlankPreset(const std::string& name, Category category) const {
         json data = json::object();
         data["name"] = name;
-        data["modelName"] = category == Category::Enemy ? "Characters/slime" : "Stages/block";
+        if (category != Category::Enemy) {
+            data["modelName"] = "Stages/block";
+        }
         data["translate"] = { 0.0f, 0.0f, 0.0f };
         data["rotate"] = { 0.0f, 0.0f, 0.0f };
-        data["scale"] = { 1.0f, 1.0f, 1.0f };
+        if (category != Category::Enemy) {
+            data["scale"] = { 1.0f, 1.0f, 1.0f };
+        }
         data["color"] = { 1.0f, 1.0f, 1.0f, 1.0f };
         data["materialType"] = 0;
         data["emissive"] = 1.0f;
@@ -687,18 +708,18 @@ private:
             { "size", { 1.0f, 1.0f, 1.0f } },
             { "rotation", { 0.0f, 0.0f, 0.0f } }
         };
-        data["param"] = {
-            { "hp", 100.0f },
-            { "maxHp", 100.0f },
-            { "speed", 1.0f },
-            { "gravity", 50.0f },
-            { "detectionRange", 20.0f },
-            { "interval", 3.0f },
-            { "enemyType", category == Category::Enemy ? "Slime" : "" },
-            { "gimmickType", category == Category::Gimmick ? "Default" : "" },
-            { "itemType", category == Category::Item ? "Heal" : "" },
-            { "healAmount", 1.0f }
-        };
+        if (category == Category::Enemy) {
+            data["param"] = { { "enemyType", "Slime" } };
+        } else {
+            data["param"] = {
+                { "speed", 1.0f },
+                { "gravity", 50.0f },
+                { "interval", 3.0f },
+                { "gimmickType", category == Category::Gimmick ? "Default" : "" },
+                { "itemType", category == Category::Item ? "Heal" : "" },
+                { "healAmount", 1.0f }
+            };
+        }
 
         const_cast<PresetEditor*>(this)->ApplyHiddenCategoryFields(data, category);
         const std::string type =

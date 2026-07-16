@@ -12,6 +12,11 @@ public:
     void SetCarried(bool isCarried) override;
     void ExecuteAbility(class Player* player) override;
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
+    void ApplyManagedScale(const Vector3& scale) override {
+        baseScale_ = scale;
+        hasBaseScale_ = true;
+        SetScale(scale);
+    }
 
     void SetSpawnCallback(std::function<void(std::unique_ptr<BaseEnemy>)> callback) {
         spawnCallback_ = callback;

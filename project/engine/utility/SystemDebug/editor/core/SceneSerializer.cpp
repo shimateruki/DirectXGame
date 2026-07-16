@@ -158,6 +158,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     // 1. 基本設定
     std::string className = obj->GetClassName();
     if (className.empty()) className = "Model";
+    const bool isManagedCharacter = className == "Player" || className == "Enemy";
     d["type"] = className;
     d["tag"] = obj->GetTag();
     d["layer"] = obj->GetLayer().empty() ? "Default" : obj->GetLayer();
@@ -171,7 +172,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["camera"] = SerializeSceneCameraSettings(obj->GetSceneCameraSettings());
     }
 
-    if (className != "InvisibleBox" && !obj->IsCameraObject()) {
+    if (className != "InvisibleBox" && !obj->IsCameraObject() && !isManagedCharacter) {
         d["modelName"] = obj->GetModelName();
     }
 
@@ -183,7 +184,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["position"] = { t->translate.x, t->translate.y, t->translate.z };
     d["rotation"] = { t->rotate.x, t->rotate.y, t->rotate.z };
     d["quaternion"] = { t->quaternion.x, t->quaternion.y, t->quaternion.z, t->quaternion.w };
-    d["scale"] = { t->scale.x, t->scale.y, t->scale.z };
+    if (!isManagedCharacter) {
+        d["scale"] = { t->scale.x, t->scale.y, t->scale.z };
+    }
 
     if (obj->IsCameraObject()) {
         d["animation"]["animName"] = obj->animName_;
@@ -213,33 +216,39 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["targetID"] = obj->GetTargetID();
     d["myEventID"] = obj->GetEventID();
 
-    // 7. Stats (Param)
+    // 7. パラメータ。Player/Enemyの共通ステータスはGameplayStatusManagerだけが保存元です。
     if (obj->param_.has_value()) {
         auto& p = obj->param_.value();
-        d["param"]["hp"] = p.hp;
-        d["param"]["maxHp"] = p.maxHp;
-        d["param"]["attackPower"] = p.attackPower;
-        d["param"]["speed"] = p.speed;
-        d["param"]["gravity"] = p.gravity;
-        d["param"]["jumpPower"] = p.jumpPower;
-        d["param"]["maxFallSpeed"] = p.maxFallSpeed;
-        d["param"]["enemyType"] = p.enemyType;
-        d["param"]["gimmickType"] = p.gimmickType;
-        d["param"]["itemType"] = p.itemType;
-        d["param"]["healAmount"] = p.healAmount;
-        d["param"]["interval"] = p.interval;
-        d["param"]["maxCount"] = p.maxCount;
-        d["param"]["shakeDuration"] = p.shakeDuration;
-        d["param"]["fallDuration"] = p.fallDuration;
-        d["param"]["colorType"] = p.colorType;
-        d["param"]["detectionRange"] = p.detectionRange;
-        d["param"]["switchMode"] = p.switchMode;
-        d["param"]["actionMode"] = p.actionMode;
-        d["param"]["targetScene"] = p.targetScene;
-        d["param"]["moveAmount"] = p.moveAmount;
-        d["param"]["moveSpeed"] = p.moveSpeed;
-        d["param"]["startActive"] = p.startActive;
-        d["param"]["returnOnOff"] = p.returnOnOff;
+        if (isManagedCharacter) {
+            if (className == "Enemy" && !p.enemyType.empty()) {
+                d["param"]["enemyType"] = p.enemyType;
+            }
+        } else {
+            d["param"]["hp"] = p.hp;
+            d["param"]["maxHp"] = p.maxHp;
+            d["param"]["attackPower"] = p.attackPower;
+            d["param"]["speed"] = p.speed;
+            d["param"]["gravity"] = p.gravity;
+            d["param"]["jumpPower"] = p.jumpPower;
+            d["param"]["maxFallSpeed"] = p.maxFallSpeed;
+            d["param"]["enemyType"] = p.enemyType;
+            d["param"]["gimmickType"] = p.gimmickType;
+            d["param"]["itemType"] = p.itemType;
+            d["param"]["healAmount"] = p.healAmount;
+            d["param"]["interval"] = p.interval;
+            d["param"]["maxCount"] = p.maxCount;
+            d["param"]["shakeDuration"] = p.shakeDuration;
+            d["param"]["fallDuration"] = p.fallDuration;
+            d["param"]["colorType"] = p.colorType;
+            d["param"]["detectionRange"] = p.detectionRange;
+            d["param"]["switchMode"] = p.switchMode;
+            d["param"]["actionMode"] = p.actionMode;
+            d["param"]["targetScene"] = p.targetScene;
+            d["param"]["moveAmount"] = p.moveAmount;
+            d["param"]["moveSpeed"] = p.moveSpeed;
+            d["param"]["startActive"] = p.startActive;
+            d["param"]["returnOnOff"] = p.returnOnOff;
+        }
     }
 
     // 8. グラフィックス

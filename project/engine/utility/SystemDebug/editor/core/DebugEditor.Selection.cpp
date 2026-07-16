@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
+#include "GhostDirector.h"
 #include "CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
@@ -416,6 +417,20 @@ void DebugEditor::SetSelectedObject(Object3d* obj) {
     }
 }
 
+void DebugEditor::SyncObjectSelectionToInspector() {
+    EditorManager* editorManager = EditorManager::GetInstance();
+    if ((ghostRecorder_ && editorManager->GetSelectedObject() == ghostRecorder_) ||
+        (ghostDirector_ && editorManager->GetSelectedObject() == ghostDirector_)) {
+        return;
+    }
+
+    if (selectedObject_) {
+        editorManager->SetSelectedObject(this);
+    } else {
+        editorManager->ClearSelection();
+    }
+}
+
 bool DebugEditor::IsObjectSelected(const Object3d* object) const {
     if (!object || !IsObjectInCurrentScene(object)) return false;
 
@@ -423,6 +438,18 @@ bool DebugEditor::IsObjectSelected(const Object3d* object) const {
         if (selected == object) return true;
     }
     return false;
+}
+
+int DebugEditor::GetSelectionOverlayMode() const {
+    return static_cast<int>(selectionOverlayMode_);
+}
+
+void DebugEditor::SetSelectionOverlayMode(int mode) {
+    if (mode < static_cast<int>(SelectionOverlayMode::Compact) ||
+        mode > static_cast<int>(SelectionOverlayMode::Hidden)) {
+        return;
+    }
+    selectionOverlayMode_ = static_cast<SelectionOverlayMode>(mode);
 }
 
 void DebugEditor::ClearObjectSelection() {
@@ -564,10 +591,8 @@ void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector
         }
     }
 
-    if (selectedObject_) {
-        EditorManager::GetInstance()->SetSelectedObject(this);
-    } else if (!additive) {
-        EditorManager::GetInstance()->ClearSelection();
+    if (selectedObject_ || !additive) {
+        SyncObjectSelectionToInspector();
     }
 }
 
@@ -592,18 +617,12 @@ void DebugEditor::DrawSelectionRectangleOverlay() {
 void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 #ifdef USE_IMGUI
     PruneInvalidSelectedObjects();
-    if (selectedObjects_.empty()) return;
+    if (selectedObjects_.empty() || selectionOverlayMode_ == SelectionOverlayMode::Hidden) return;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     const std::size_t selectedCount = selectedObjects_.size();
-
-    if (selectedCount > 1) {
-        char countText[64];
-        sprintf_s(countText, "選択中: %zu個", selectedCount);
-        ImVec2 textPos = ImVec2(gameViewOffset_.x + 12.0f, gameViewOffset_.y + 12.0f);
-        drawList->AddRectFilled(ImVec2(textPos.x - 8.0f, textPos.y - 6.0f), ImVec2(textPos.x + 120.0f, textPos.y + 24.0f), IM_COL32(20, 35, 55, 180), 6.0f);
-        drawList->AddText(textPos, IM_COL32(180, 230, 255, 255), countText);
-    }
+    const bool showTemporaryDetails =
+        selectionOverlayMode_ == SelectionOverlayMode::Compact && ImGui::GetIO().KeyAlt;
 
     for (Object3d* object : selectedObjects_) {
         if (!object || !IsObjectInCurrentScene(object)) continue;
@@ -619,6 +638,35 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             Vector3 scale = object->GetTransform()->scale;
             minPos = center - scale;
             maxPos = center + scale;
+        }
+
+        const bool isPrimary = object == selectedObject_;
+        const bool showBounds = isPrimary ||
+            selectionOverlayMode_ == SelectionOverlayMode::Detailed ||
+            showTemporaryDetails;
+
+        if (!showBounds) {
+            const Vector3 center = {
+                (minPos.x + maxPos.x) * 0.5f,
+                (minPos.y + maxPos.y) * 0.5f,
+                (minPos.z + maxPos.z) * 0.5f
+            };
+            const Vector3 screen = WorldToScreen(center);
+            if (screen.z < 0.0f) continue;
+
+            const ImVec2 markerCenter = ImVec2(screen.x, screen.y);
+            constexpr float markerRadius = 4.5f;
+            drawList->AddCircleFilled(markerCenter, markerRadius + 1.5f, IM_COL32(10, 24, 36, 170));
+            drawList->AddCircle(markerCenter, markerRadius, IM_COL32(80, 210, 255, 235), 0, 1.8f);
+            drawList->AddLine(
+                ImVec2(markerCenter.x - 2.0f, markerCenter.y),
+                ImVec2(markerCenter.x + 2.0f, markerCenter.y),
+                IM_COL32(180, 240, 255, 235), 1.2f);
+            drawList->AddLine(
+                ImVec2(markerCenter.x, markerCenter.y - 2.0f),
+                ImVec2(markerCenter.x, markerCenter.y + 2.0f),
+                IM_COL32(180, 240, 255, 235), 1.2f);
+            continue;
         }
 
         Vector3 corners[8] = {
@@ -654,7 +702,6 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 
         if (!hasScreenPoint) continue;
 
-        const bool isPrimary = object == selectedObject_;
         ImU32 frameColor = isPrimary ? IM_COL32(255, 235, 80, 255) : IM_COL32(80, 210, 255, 235);
         ImU32 fillColor = isPrimary ? IM_COL32(255, 235, 80, 22) : IM_COL32(80, 210, 255, 18);
         const float thickness = isPrimary ? 2.4f : 1.7f;
@@ -663,7 +710,10 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         drawList->AddRect(rectMin, rectMax, frameColor, 3.0f, 0, thickness);
 
         if (isPrimary) {
-            const std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+            std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+            if (selectedCount > 1) {
+                label += " (+" + std::to_string(selectedCount - 1) + ")";
+            }
             ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - ImGui::GetFontSize() - 4.0f);
             drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), IM_COL32(0, 0, 0, 220), label.c_str());
             drawList->AddText(labelPos, IM_COL32(255, 245, 150, 255), label.c_str());

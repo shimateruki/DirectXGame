@@ -59,7 +59,8 @@ float LoadExplosionRadiusFromEffectJson() {
 }
 void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
-    SetScale({ kBombVisualScale, kBombVisualScale, kBombVisualScale });
+    managedBaseScale_ = { kBombVisualScale, kBombVisualScale, kBombVisualScale };
+    SetScale(managedBaseScale_);
     
     state_ = State::Chase;
     fuseTimer_ = 3.0f; // 辷・匱縺吶ｋ譎る俣繧貞ｰ代＠蟒ｶ髟ｷ・・遘抵ｼ・
@@ -74,6 +75,11 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     // 蠖薙◆繧雁愛螳壹・蛻晄悄螻樊ｧ縺ｨ繝槭せ繧ｯ險ｭ螳夲ｼ磯㍽逕溘・謨ｵ螻樊ｧ・・
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kAllSolid | kPlayerAttack | kAttributePlayerBullet);
+}
+
+void EnemyBomb::ApplyManagedScale(const Vector3& scale) {
+    managedBaseScale_ = scale;
+    SetScale(scale);
 }
 
 // 霑ｽ霍｡縲∫せ轣ｫ縲∫・逋ｺ繧ｹ繝・・繝医ｒ縺ｾ縺ｨ繧√※譖ｴ譁ｰ縺吶ｋ
@@ -353,14 +359,18 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
     if (progress > 1.0f) progress = 1.0f;
     float amplitude = 0.015f + 0.045f * progress;
     float offset = std::sin(pulseTimer_) * amplitude;
-    float scale = kBombVisualScale * (1.0f + offset);
+    const float scaleRate = 1.0f + offset;
     
     // 逅・ｽ薙Δ繝・Ν縺瑚ｻ｢縺後ｋ蝗櫁ｻ｢縺ｨ蟷ｲ貂峨＠縺ｪ縺・ｈ縺・√せ繧ｱ繝ｼ繝ｫ・磯ｼ灘虚縺ｮ莨ｸ邵ｮ・峨・縺ｿ繧呈峩譁ｰ縺励∪縺・
-    SetScale({ scale, scale, scale });
+    SetScale({
+        managedBaseScale_.x * scaleRate,
+        managedBaseScale_.y * scaleRate,
+        managedBaseScale_.z * scaleRate
+    });
 }
 void EnemyBomb::Explode() {
     state_ = State::Exploded;
-    SetScale({ kBombVisualScale, kBombVisualScale, kBombVisualScale });
+    SetScale(managedBaseScale_);
 
     // 繝｢繝・Ν繧貞叉蠎ｧ縺ｫ髱櫁｡ｨ遉ｺ縺ｫ縺吶ｋ・域兜謫ｲ辷・匱蠕後ｄ閾ｪ辷・ｾ後↓繝｢繝・Ν縺後◎縺ｮ蝣ｴ縺ｫ谿九ｋ繝舌げ繧貞ｮ悟・縺ｫ隗｣豸茨ｼ・
     SetIsVisible(false);

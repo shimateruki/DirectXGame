@@ -20,6 +20,7 @@ public:
     void SetCarried(bool isCarried) override;
     void ExecuteAbility(class Player* player) override;
     void Ignite(float fuseTime = 3.0f);
+    void ApplyManagedScale(const Vector3& scale) override;
 
 private:
     void UpdateChase(float deltaTime);
@@ -38,5 +39,6 @@ private:
 
     bool isThrown_ = false;        // 繝励Ξ繧､繝､繝ｼ縺ｫ繧医▲縺ｦ謚輔￡繧峨ｌ縺溘°
     bool isAbilityExecuted_ = false; // ExecuteAbility・郁・辷・・蜉幢ｼ峨′逋ｺ蜍輔＆繧後◆縺・
+    Vector3 managedBaseScale_ = { 0.16f, 0.16f, 0.16f };
 };
 

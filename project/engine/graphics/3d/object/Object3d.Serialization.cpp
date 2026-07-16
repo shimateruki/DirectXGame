@@ -83,10 +83,13 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // ========================================================================
 json Object3d::ExportToJson() {
     json d;
+    const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
 
     // 1. 基本設定
     d["name"] = name_;
-    d["modelName"] = GetModelName();
+    if (!isManagedCharacter) {
+        d["modelName"] = GetModelName();
+    }
     d["type"] = className_;
     d["tag"] = tag_;
     d["layer"] = layer_.empty() ? "Default" : layer_;
@@ -103,7 +106,9 @@ json Object3d::ExportToJson() {
 
     // 2. Transform
     d["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
-    d["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
+    if (!isManagedCharacter) {
+        d["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
+    }
     d["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
     d["quaternion"] = { transform_.quaternion.x, transform_.quaternion.y, transform_.quaternion.z, transform_.quaternion.w };
 
@@ -126,40 +131,45 @@ json Object3d::ExportToJson() {
      d["targetID"] = GetTargetID();
      d["myEventID"] = GetEventID();
 
-    // 5. Stats (Param)
+    // 5. パラメータ。Player/Enemyの共通ステータスは配置プリセットへ保存しません。
     if (param_.has_value()) {
         auto& p = param_.value();
-        d["param"]["hp"] = p.hp;
-        d["param"]["maxHp"] = p.maxHp;
-        d["param"]["speed"] = p.speed;
         json jp;
-        jp["hp"] = p.hp;
-        jp["maxHp"] = p.maxHp;
-        jp["attackPower"] = p.attackPower;
-        jp["speed"] = p.speed;
-        jp["gravity"] = p.gravity;
-        jp["jumpPower"] = p.jumpPower;
-        jp["maxFallSpeed"] = p.maxFallSpeed;
-        jp["morphLimited"] = p.morphLimited;
-        jp["morphDuration"] = p.morphDuration;
-        jp["enemyType"] = p.enemyType;
-        jp["gimmickType"] = p.gimmickType;
-        jp["itemType"] = p.itemType;
-        jp["healAmount"] = p.healAmount;
-        jp["interval"] = p.interval;
-        jp["maxCount"] = p.maxCount;
-        jp["detectionRange"] = p.detectionRange;
-        jp["colorType"] = p.colorType;
-        jp["shakeDuration"] = p.shakeDuration;
-        jp["fallDuration"] = p.fallDuration;
-        jp["switchMode"] = p.switchMode;
-        jp["actionMode"] = p.actionMode;
-        jp["targetScene"] = p.targetScene;
-        jp["moveAmount"] = p.moveAmount;
-        jp["moveSpeed"] = p.moveSpeed;
-        jp["startActive"] = p.startActive;
-        jp["returnOnOff"] = p.returnOnOff;
-        d["param"] = jp;
+        if (isManagedCharacter) {
+            if (className_ == "Enemy" && !p.enemyType.empty()) {
+                jp["enemyType"] = p.enemyType;
+            }
+        } else {
+            jp["hp"] = p.hp;
+            jp["maxHp"] = p.maxHp;
+            jp["attackPower"] = p.attackPower;
+            jp["speed"] = p.speed;
+            jp["gravity"] = p.gravity;
+            jp["jumpPower"] = p.jumpPower;
+            jp["maxFallSpeed"] = p.maxFallSpeed;
+            jp["morphLimited"] = p.morphLimited;
+            jp["morphDuration"] = p.morphDuration;
+            jp["enemyType"] = p.enemyType;
+            jp["gimmickType"] = p.gimmickType;
+            jp["itemType"] = p.itemType;
+            jp["healAmount"] = p.healAmount;
+            jp["interval"] = p.interval;
+            jp["maxCount"] = p.maxCount;
+            jp["detectionRange"] = p.detectionRange;
+            jp["colorType"] = p.colorType;
+            jp["shakeDuration"] = p.shakeDuration;
+            jp["fallDuration"] = p.fallDuration;
+            jp["switchMode"] = p.switchMode;
+            jp["actionMode"] = p.actionMode;
+            jp["targetScene"] = p.targetScene;
+            jp["moveAmount"] = p.moveAmount;
+            jp["moveSpeed"] = p.moveSpeed;
+            jp["startActive"] = p.startActive;
+            jp["returnOnOff"] = p.returnOnOff;
+        }
+        if (!jp.empty()) {
+            d["param"] = jp;
+        }
     }
 
     // 6. グラフィックス・マテリアル
@@ -243,8 +253,9 @@ json Object3d::ExportToJson() {
 
 void Object3d::ImportFromJson(const json& j) {
     // 1. 基本設定
-    if (j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
     if (j.contains("type")) className_ = j["type"];
+    const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
+    if (!isManagedCharacter && j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
     if (j.contains("tag") && j["tag"].is_string()) {
         tag_ = j["tag"].get<std::string>();
     }
@@ -271,7 +282,7 @@ void Object3d::ImportFromJson(const json& j) {
 
     // 2. Transform
     if (j.contains("translate")) transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
-    if (j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
+    if (!isManagedCharacter && j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
 
     if (j.contains("quaternion")) {
         transform_.quaternion = { j["quaternion"][0], j["quaternion"][1], j["quaternion"][2], j["quaternion"][3] };
@@ -307,26 +318,26 @@ void Object3d::ImportFromJson(const json& j) {
 
     // 5. Stats (Param)
     if (j.contains("param")) {
-        EntityParameter p;
+        EntityParameter p = isManagedCharacter && param_.has_value() ? param_.value() : EntityParameter{};
         const auto& jp = j["param"];
-        const bool hasHp = jp.contains("hp");
-        const bool hasMaxHp = jp.contains("maxHp");
+        const bool hasHp = !isManagedCharacter && jp.contains("hp");
+        const bool hasMaxHp = !isManagedCharacter && jp.contains("maxHp");
         if (hasHp) p.hp = jp["hp"];
         if (hasMaxHp) p.maxHp = jp["maxHp"];
-        if (jp.contains("attackPower")) p.attackPower = jp["attackPower"];
-        if (jp.contains("speed")) p.speed = jp["speed"];
-        if (jp.contains("gravity")) p.gravity = jp["gravity"];
-        if (jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
-        if (jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
-        if (jp.contains("morphLimited")) p.morphLimited = jp["morphLimited"];
-        if (jp.contains("morphDuration")) p.morphDuration = jp["morphDuration"];
+        if (!isManagedCharacter && jp.contains("attackPower")) p.attackPower = jp["attackPower"];
+        if (!isManagedCharacter && jp.contains("speed")) p.speed = jp["speed"];
+        if (!isManagedCharacter && jp.contains("gravity")) p.gravity = jp["gravity"];
+        if (!isManagedCharacter && jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
+        if (!isManagedCharacter && jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
+        if (!isManagedCharacter && jp.contains("morphLimited")) p.morphLimited = jp["morphLimited"];
+        if (!isManagedCharacter && jp.contains("morphDuration")) p.morphDuration = jp["morphDuration"];
         if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
         if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
         if (jp.contains("itemType")) p.itemType = jp["itemType"];
         if (jp.contains("healAmount")) p.healAmount = jp["healAmount"];
         if (jp.contains("interval")) p.interval = jp["interval"];
         if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
-        if (jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];
+        if (!isManagedCharacter && jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];
         if (jp.contains("colorType")) p.colorType = jp["colorType"];
         if (jp.contains("shakeDuration")) p.shakeDuration = jp["shakeDuration"];
         if (jp.contains("fallDuration")) p.fallDuration = jp["fallDuration"];
@@ -337,15 +348,17 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
         if (jp.contains("startActive")) p.startActive = jp["startActive"];
         if (jp.contains("returnOnOff")) p.returnOnOff = jp["returnOnOff"];
-        p.maxHp = (std::max)(p.maxHp, 1.0f);
-        if (hasMaxHp && !hasHp) {
-            p.hp = p.maxHp;
+        if (!isManagedCharacter) {
+            p.maxHp = (std::max)(p.maxHp, 1.0f);
+            if (hasMaxHp && !hasHp) {
+                p.hp = p.maxHp;
+            }
+            p.hp = (std::max)(p.hp, 0.0f);
+            if (p.hp > p.maxHp) {
+                p.maxHp = p.hp;
+            }
+            p.attackPower = (std::max)(p.attackPower, 0.0f);
         }
-        p.hp = (std::max)(p.hp, 0.0f);
-        if (p.hp > p.maxHp) {
-            p.maxHp = p.hp;
-        }
-        p.attackPower = (std::max)(p.attackPower, 0.0f);
         param_ = p;
     }
 

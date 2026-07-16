@@ -1,5 +1,6 @@
 
 #include "DirectXCommon.h"
+#include "ColorSpace.h"
 #include "WinApp.h"
 #include <algorithm>
 #include <cassert>
@@ -546,6 +547,10 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bo
 		// DDSの場合はすでにミップマップやキューブマップが構築されていることが多いので、
 		// そのまま返す（ミップマップ生成をスキップ）
 		if (SUCCEEDED(hr)) {
+			const DXGI_FORMAT requestedFormat = forceSRGB
+				? DirectX::MakeSRGB(image.GetMetadata().format)
+				: DirectX::MakeLinear(image.GetMetadata().format);
+			image.OverrideFormat(requestedFormat);
 			return image;
 		}
 	} else
@@ -1257,4 +1262,11 @@ void DirectXCommon::ProcessPendingResize() {
 	pendingResize_ = false;
 
 	ResizeSwapChain(width, height);
+}
+void DirectXCommon::SetRenderClearColor(float r, float g, float b, float a) {
+    const Vector4 workingColor = ColorSpace::AuthoringToWorking({ r, g, b, a });
+    clearColor_[0] = workingColor.x;
+    clearColor_[1] = workingColor.y;
+    clearColor_[2] = workingColor.z;
+    clearColor_[3] = workingColor.w;
 }
