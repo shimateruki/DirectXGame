@@ -20,6 +20,8 @@ private:
         std::string packageName;
         std::string configuration;
         bool buildBeforePackage = false;
+        int textureMode = 0;
+        bool createZip = true;
     };
 
     /// パッケージ作成タスクの成功可否と表示メッセージを返す結果情報。
@@ -38,7 +40,9 @@ private:
 
     DebugEditor* editor_ = nullptr;
     char packageNameBuffer_[128] = "GE3_Playable";
-    int configurationIndex_ = 1;
+    int configurationIndex_ = 2;
+    int textureModeIndex_ = 0;
+    bool createZip_ = true;
     std::future<PackageResult> task_;
     std::string statusText_ = "設定を選んで作成してください。";
 };

@@ -147,7 +147,7 @@ void ReplayDebugger::CaptureFrame(double time) {
     auto& objects = activeScene_->GetObjects();
     frame.objects.reserve(objects.size());
     for (auto& object : objects) {
-        if (!object) {
+        if (!object || object->IsEditorInternal()) {
             continue;
         }
         object->SetReplayRetained(true);
@@ -175,6 +175,9 @@ void ReplayDebugger::CaptureFrame(double time) {
         frame.estimatedBytes += snapshot.name.capacity();
         frame.estimatedBytes += snapshot.className.capacity();
         frame.estimatedBytes += snapshot.state.animationName.capacity();
+        frame.estimatedBytes += snapshot.state.animatorControllerPath.capacity();
+        frame.estimatedBytes += snapshot.state.animatorSnapshot.currentState.capacity();
+        frame.estimatedBytes += snapshot.state.animatorSnapshot.previousState.capacity();
         frame.estimatedBytes += snapshot.state.modelName.capacity();
         frame.estimatedBytes += snapshot.state.texturePath.capacity();
         frame.estimatedBytes += snapshot.state.custom.size() * 64;

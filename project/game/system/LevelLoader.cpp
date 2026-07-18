@@ -650,6 +650,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     const auto& anim = objData["animation"];
                     if (anim.contains("animName")) targetObject->animName_ = anim["animName"];
                     if (anim.contains("isAnimLoop")) targetObject->isAnimLoop_ = anim["isAnimLoop"];
+                    if (anim.contains("animatorController")) {
+                        targetObject->SetAnimatorController(anim.value("animatorController", ""));
+                    }
                 }
                 if (objData.contains("recorder")) {
                     const auto& rec = objData["recorder"];

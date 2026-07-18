@@ -2,6 +2,7 @@
     "Builtin/Enemy/Bat": {
         "animation": {
             "animName": "ArmatureAction",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -111,6 +112,7 @@
     "Builtin/Enemy/BeamDrone": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -220,6 +222,7 @@
     "Builtin/Enemy/Bomb": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -329,6 +332,7 @@
     "Builtin/Enemy/Bomber": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -438,6 +442,7 @@
     "Builtin/Enemy/BossCore": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -547,6 +552,7 @@
     "Builtin/Enemy/FireSlime": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -656,6 +662,7 @@
     "Builtin/Enemy/GiantSlime": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -765,6 +772,7 @@
     "Builtin/Enemy/Mushroom": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -874,6 +882,7 @@
     "Builtin/Enemy/Slime": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -983,6 +992,7 @@
     "Builtin/Enemy/ThunderSlime": {
         "animation": {
             "animName": "",
+            "animatorController": "",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,

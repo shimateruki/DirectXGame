@@ -523,7 +523,7 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (auto& obj : objects) {
-        if (!obj) continue;
+        if (!obj || obj->IsEditorInternal()) continue;
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
         if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
 
@@ -578,7 +578,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (auto& obj : objects) {
-        if (!obj) continue;
+        if (!obj || obj->IsEditorInternal()) continue;
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
         if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
 
@@ -723,7 +723,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 }
 
 bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
-    if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
+    if (!object || object->IsEditorInternal() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return false;
     }
 

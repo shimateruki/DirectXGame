@@ -19,7 +19,7 @@ constexpr int kMaxKnownMaterialType = 25;
 bool IsEditorOnlyObject(const Object3d* object) {
     if (!object) return false;
     const std::string& name = object->GetName();
-    return name.rfind("__Editor_", 0) == 0 || object->GetClassName() == "EditorOnly";
+    return object->IsEditorInternal() || name.rfind("__Editor_", 0) == 0 || object->GetClassName() == "EditorOnly";
 }
 
 std::string NormalizePath(std::string path) {

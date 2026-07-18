@@ -204,6 +204,11 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 7. アニメーション
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
+    if (!other->GetAnimatorControllerPath().empty()) {
+        this->SetAnimatorController(other->GetAnimatorControllerPath());
+    } else {
+        this->ClearAnimatorController();
+    }
 
     // パーティクル
     this->particleName_ = other->particleName_;

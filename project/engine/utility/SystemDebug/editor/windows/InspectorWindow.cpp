@@ -415,7 +415,7 @@ bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
     case PseudoComponentKind::MeshEffect:
         return !object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty();
     case PseudoComponentKind::BoneAnimation:
-        return !object->animName_.empty();
+        return !object->animName_.empty() || object->HasAnimatorController();
     case PseudoComponentKind::PathMove:
         return !object->recordPathName_.empty();
     case PseudoComponentKind::LinkIds:
@@ -443,7 +443,7 @@ const char* GetPseudoComponentDescription(PseudoComponentKind kind) {
     case PseudoComponentKind::Particle: return "Objectに追従するCPU/GPU Particleを管理します。";
     case PseudoComponentKind::Lod: return "距離で軽量モデルへ切り替える設定です。";
     case PseudoComponentKind::MeshEffect: return "メッシュに重ねる演出エフェクトを管理します。";
-    case PseudoComponentKind::BoneAnimation: return "モデルのボーンアニメーション名とループ設定です。";
+    case PseudoComponentKind::BoneAnimation: return "単発クリップまたはAnimator Controllerでボーンアニメーションを管理します。";
     case PseudoComponentKind::PathMove: return "GhostRecorderの移動パス再生設定です。";
     case PseudoComponentKind::LinkIds: return "ギミック連携用のEvent/Target IDです。";
     }
@@ -580,6 +580,7 @@ void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind)
     case PseudoComponentKind::BoneAnimation:
         object->animName_.clear();
         object->isAnimLoop_ = false;
+        object->ClearAnimatorController();
         break;
     case PseudoComponentKind::PathMove:
         object->recordPathName_.clear();
@@ -748,7 +749,7 @@ bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cam
     }
     if (scene) {
         for (const auto& object : scene->GetObjects()) {
-            if (!object || object.get() == cameraObject || object->GetName().empty()) {
+            if (!object || object->IsEditorInternal() || object.get() == cameraObject || object->GetName().empty()) {
                 continue;
             }
             const bool selected = objectName == object->GetName();
@@ -953,7 +954,7 @@ std::vector<Object3d*> CollectSceneObjects(BaseScene* scene) {
     }
     objects.reserve(scene->GetObjects().size());
     for (const auto& object : scene->GetObjects()) {
-        if (object) {
+        if (object && !object->IsEditorInternal()) {
             objects.push_back(object.get());
         }
     }
@@ -2264,6 +2265,75 @@ void InspectorWindow::Draw() {
         // ==========================================
         ImGui::Separator();
         ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
+
+        std::string controllerPath = selectedObject->GetAnimatorControllerPath();
+        bool hasMixedController = false;
+        for (Object3d* target : inspectorTargets) {
+            if (target && target->GetAnimatorControllerPath() != controllerPath) {
+                hasMixedController = true;
+                break;
+            }
+        }
+        std::string controllerPreview = "(なし)";
+        if (hasMixedController) {
+            controllerPreview = "(複数値)";
+        } else if (!controllerPath.empty()) {
+            controllerPreview = fs::path(controllerPath).stem().string();
+        }
+        if (ImGui::BeginCombo("Animator Controller##BoneAnim", controllerPreview.c_str())) {
+            const bool noneSelected = !hasMixedController && controllerPath.empty();
+            if (ImGui::Selectable("(なし)", noneSelected)) {
+                const auto beforeStates = editor_->CaptureObjectStates(inspectorTargets);
+                for (Object3d* target : inspectorTargets) {
+                    if (target) {
+                        target->ClearAnimatorController();
+                    }
+                }
+                editor_->RegisterObjectsEdited(beforeStates, "Animator Controller Clear");
+            }
+
+            std::vector<std::string> controllerFiles;
+            const fs::path controllerDirectory = "Resources/json/animator";
+            if (fs::exists(controllerDirectory) && fs::is_directory(controllerDirectory)) {
+                for (const auto& entry : fs::directory_iterator(controllerDirectory)) {
+                    if (entry.is_regular_file() && ToLowerAscii(entry.path().extension().string()) == ".json") {
+                        controllerFiles.push_back(entry.path().stem().string());
+                    }
+                }
+            }
+            std::sort(controllerFiles.begin(), controllerFiles.end());
+            for (const std::string& fileName : controllerFiles) {
+                const bool isSelected = !hasMixedController && fs::path(controllerPath).stem().string() == fileName;
+                if (ImGui::Selectable(fileName.c_str(), isSelected)) {
+                    const auto beforeStates = editor_->CaptureObjectStates(inspectorTargets);
+                    bool assigned = false;
+                    for (Object3d* target : inspectorTargets) {
+                        if (target && target->SetAnimatorController(fileName)) {
+                            assigned = true;
+                        }
+                    }
+                    if (assigned) {
+                        editor_->RegisterObjectsEdited(beforeStates, "Animator Controller Assign");
+                    } else {
+                        DebugConsole::GetInstance()->AddLog("Animator Controllerの読み込みに失敗しました: " + fileName);
+                    }
+                }
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (selectedObject->HasAnimatorController()) {
+            const std::string currentState = selectedObject->GetAnimatorCurrentStateName();
+            ImGui::TextDisabled("現在State: %s", currentState.empty() ? "(未再生)" : currentState.c_str());
+        }
+        if (ImGui::Button("Animator Controller Editorを開く##BoneAnim")) {
+            editor_->GetAnimatorControllerEditor()->SetPreviewTarget(selectedObject);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimatorControllerEditor());
+        }
+        ImGui::TextDisabled("Controller未設定時は下の旧単発クリップ設定を使用します。現行制作ではControllerを推奨します。");
+
         char animNameBuf[64];
         strncpy_s(animNameBuf, selectedObject->animName_.c_str(), sizeof(animNameBuf));
         if (ImGui::InputText("アニメ名##BoneAnim", animNameBuf, sizeof(animNameBuf))) {

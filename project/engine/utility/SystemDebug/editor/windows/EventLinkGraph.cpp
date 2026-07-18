@@ -23,7 +23,7 @@ void EventLinkGraph::CollectNodes() {
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (const auto& object : objects) {
-        if (!object) continue;
+        if (!object || object->IsEditorInternal()) continue;
 
         int eventID = object->GetEventID();
         int targetID = object->GetTargetID();
@@ -53,7 +53,7 @@ bool EventLinkGraph::HasEventID(int id, Object3d* ignoreObject) const {
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (const auto& object : objects) {
-        if (!object || object.get() == ignoreObject) continue;
+        if (!object || object->IsEditorInternal() || object.get() == ignoreObject) continue;
         if (object->GetEventID() == id) return true;
     }
     return false;
@@ -65,7 +65,7 @@ int EventLinkGraph::CountEventID(int id) const {
     int count = 0;
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
     for (const auto& object : objects) {
-        if (object && object->GetEventID() == id) count++;
+        if (object && !object->IsEditorInternal() && object->GetEventID() == id) count++;
     }
     return count;
 }

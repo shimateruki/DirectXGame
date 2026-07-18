@@ -13,6 +13,7 @@ constexpr float kLandingHoldDuration = 0.08f;
 constexpr float kLandingSquashDuration = 0.26f;
 constexpr float kLandingReboundDuration = 0.32f;
 constexpr float kGateReturnSlimeDuration = 1.12f;
+constexpr const char* kPlayerSlimeControllerPath = "Resources/json/animator/player_slime.json";
 
 float EaseOut(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
@@ -27,6 +28,9 @@ float HorizontalLength(const Vector3& v) {
 
 void PlayerSlimeAnimator::Reset(const Vector3& baseScale)
 {
+    if (!controllerLoaded_) {
+        ReloadController();
+    }
     baseScale_ = baseScale;
     mode_ = Mode::Idle;
     modeTimer_ = 0.0f;
@@ -46,6 +50,10 @@ void PlayerSlimeAnimator::Reset(const Vector3& baseScale)
     landingImpactRate_ = 1.0f;
     previousVelocityY_ = 0.0f;
     wasGrounded_ = true;
+    if (controllerLoaded_) {
+        controllerRuntime_.SetController(&controllerAsset_, true);
+        controllerRuntime_.Play(GetStateName(Mode::Idle));
+    }
 }
 
 void PlayerSlimeAnimator::SetMode(Mode mode)
@@ -56,7 +64,12 @@ void PlayerSlimeAnimator::SetMode(Mode mode)
     if (mode == Mode::Jump) {
         jumpTakeoffStretchTimer_ = kJumpTakeoffStretchDuration;
     }
-    modeTransitionTimer_ = kModeTransitionBlendDuration;
+    if (controllerLoaded_) {
+        controllerRuntime_.CrossFade(GetStateName(mode));
+        modeTransitionTimer_ = 0.0f;
+    } else {
+        modeTransitionTimer_ = kModeTransitionBlendDuration;
+    }
     modeTransitionCapturePending_ = true;
     mode_ = mode;
     modeTimer_ = 0.0f;
@@ -102,7 +115,12 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
         modeTransitionCapturePending_ = false;
     }
 
-    modeTimer_ += deltaTime;
+    if (controllerLoaded_) {
+        controllerRuntime_.Update(deltaTime, [](const std::string&) { return 0.0f; });
+        modeTimer_ = controllerRuntime_.GetStateTime();
+    } else {
+        modeTimer_ += deltaTime;
+    }
     const bool isGrounded = player->IsGrounded();
     const float verticalVelocity = player->GetVelocity().y;
     if (!wasGrounded_ && isGrounded) {
@@ -141,14 +159,20 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
 
     Vector3 targetRotation = BuildModeRotation(player);
     const bool landingActive = landingSquashTimer_ > 0.0f || landingReboundTimer_ > 0.0f;
-    if (modeTransitionTimer_ > 0.0f) {
-        const float progress = 1.0f - modeTransitionTimer_ / kModeTransitionBlendDuration;
-        const float blend = AnimationInterpolation::ApplyEasing(
-            progress,
-            AnimationInterpolation::EasingType::SmootherStep);
+    const bool controllerTransition = controllerLoaded_ && controllerRuntime_.IsTransitioning();
+    if (controllerTransition || modeTransitionTimer_ > 0.0f) {
+        float blend = controllerTransition ? controllerRuntime_.GetTransitionWeight() : 1.0f;
+        if (!controllerTransition) {
+            const float progress = 1.0f - modeTransitionTimer_ / kModeTransitionBlendDuration;
+            blend = AnimationInterpolation::ApplyEasing(
+                progress,
+                AnimationInterpolation::EasingType::SmootherStep);
+        }
         player->SetScale(AnimationInterpolation::Lerp(modeTransitionStartScale_, targetScale, blend));
         player->SetRotation(AnimationInterpolation::SlerpEuler(modeTransitionStartRotation_, targetRotation, blend));
-        modeTransitionTimer_ = (std::max)(0.0f, modeTransitionTimer_ - deltaTime);
+        if (!controllerTransition) {
+            modeTransitionTimer_ = (std::max)(0.0f, modeTransitionTimer_ - deltaTime);
+        }
     } else {
         float scaleFollowSpeed = 15.0f;
         if (landingActive) {
@@ -163,6 +187,38 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     }
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
+}
+
+bool PlayerSlimeAnimator::ReloadController()
+{
+    AnimatorControllerAsset asset;
+    if (!asset.Load(kPlayerSlimeControllerPath)) {
+        controllerLoaded_ = false;
+        controllerRuntime_.SetController(nullptr, false);
+        return false;
+    }
+    controllerAsset_ = std::move(asset);
+    controllerLoaded_ = true;
+    controllerRuntime_.SetController(&controllerAsset_, true);
+    controllerRuntime_.Play(GetStateName(mode_));
+    return true;
+}
+
+const char* PlayerSlimeAnimator::GetStateName(Mode mode)
+{
+    switch (mode) {
+    case Mode::Idle: return "Idle";
+    case Mode::Run: return "Run";
+    case Mode::Jump: return "Jump";
+    case Mode::Dash: return "Dash";
+    case Mode::AimHook: return "AimHook";
+    case Mode::ShootHook: return "ShootHook";
+    case Mode::PullEnemy: return "PullEnemy";
+    case Mode::Carry: return "Carry";
+    case Mode::GateReturn: return "GateReturn";
+    case Mode::Disabled: return "Disabled";
+    }
+    return "Idle";
 }
 
 Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const

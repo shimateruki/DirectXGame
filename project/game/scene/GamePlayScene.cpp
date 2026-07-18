@@ -58,6 +58,7 @@
 
 namespace {
 constexpr const char* kGoalPresentationTuningPath = "Resources/json/cinematic/goal_clear.json";
+constexpr const char* kGoalCinematicTimelinePath = "Resources/json/scenario/goal_clear_timeline.json";
 
 float GoalClamp01(float value) {
 	return std::clamp(value, 0.0f, 1.0f);
@@ -73,6 +74,178 @@ float GoalEaseInOut(float value) {
 	value = GoalClamp01(value);
 	return value * value * (3.0f - 2.0f * value);
 }
+}
+
+void GamePlayScene::InitializeGoalCinematicTimeline() {
+    goalCinematicPlayer_.Initialize(SceneManager::GetInstance());
+    goalCinematicPlayer_.SetAnimationCallback(
+        [this](Object3d* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
+            HandleGoalCinematicAnimation(target, clip, localTime, isPreview);
+        });
+    goalCinematicPlayer_.SetSignalCallback(
+        [this](Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+            HandleGoalCinematicSignal(target, signal, isPreview);
+        });
+
+    goalCinematicTimelineLoaded_ = goalCinematicSequence_.Load(kGoalCinematicTimelinePath);
+    if (!goalCinematicTimelineLoaded_) {
+        DebugConsole::GetInstance()->AddLog(
+            std::string("Goal Timeline load failed: ") + kGoalCinematicTimelinePath);
+        goalCinematicSequence_.Clear();
+        goalCinematicSequence_.name = "goal_clear_timeline";
+        SyncGoalCinematicTimelineFromTuning();
+        goalCinematicTimelineLoaded_ = true;
+    } else {
+        ApplyGoalCinematicTimingFromSequence();
+    }
+    goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
+}
+
+void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
+    GoalClearPlayerAnimator::Tuning animation = goalClearPlayerAnimator_.GetTuning();
+    for (const auto& marker : goalCinematicSequence_.signals) {
+        if (!marker.enabled) {
+            continue;
+        }
+        if (marker.signal == "goal.crown_focus_end") {
+            goalPresentationTuning_.crownFocusEndTime = marker.time;
+        } else if (marker.signal == "goal.crown_land") {
+            animation.crownLandTime = marker.time;
+        } else if (marker.signal == "goal.anticipation") {
+            animation.anticipationStartTime = marker.time;
+        } else if (marker.signal == "goal.jump") {
+            animation.jumpStartTime = marker.time;
+        } else if (marker.signal == "goal.apex") {
+            animation.apexTime = marker.time;
+        } else if (marker.signal == "goal.result") {
+            animation.resultUiTime = marker.time;
+        } else if (marker.signal == "goal.ready") {
+            animation.readyTime = marker.time;
+        }
+    }
+    goalClearPlayerAnimator_.SetTuning(animation);
+    SanitizeGoalPresentationTuning();
+}
+
+void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
+    const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
+    auto SetSignalTime = [this](const char* signalId, const char* displayName, float time) {
+        for (auto& marker : goalCinematicSequence_.signals) {
+            if (marker.signal == signalId) {
+                marker.time = time;
+                marker.enabled = true;
+                return;
+            }
+        }
+        CinematicSignalMarker marker;
+        marker.signal = signalId;
+        marker.name = displayName;
+        marker.time = time;
+        goalCinematicSequence_.signals.push_back(marker);
+    };
+
+    SetSignalTime("goal.crown_focus_end", "Crown Focus End", goalPresentationTuning_.crownFocusEndTime);
+    SetSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
+    SetSignalTime("goal.anticipation", "Anticipation", animation.anticipationStartTime);
+    SetSignalTime("goal.jump", "Big Jump", animation.jumpStartTime);
+    SetSignalTime("goal.apex", "Jump Apex", animation.apexTime);
+    SetSignalTime("goal.result", "Result UI", animation.resultUiTime);
+    SetSignalTime("goal.ready", "Ready To Return", animation.readyTime);
+
+    bool hasAnimationDriver = false;
+    for (auto& clip : goalCinematicSequence_.animationClips) {
+        if (clip.driver == "GoalClearPlayer") {
+            clip.startTime = 0.0f;
+            clip.duration = animation.readyTime;
+            clip.binding.targetName = player_ ? player_->GetName() : "player";
+            clip.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+            hasAnimationDriver = true;
+        }
+    }
+    if (!hasAnimationDriver) {
+        CinematicAnimationClipData clip;
+        clip.name = "Player Goal Celebration";
+        clip.driver = "GoalClearPlayer";
+        clip.clipName = "goal_clear";
+        clip.duration = animation.readyTime;
+        clip.binding.targetName = player_ ? player_->GetName() : "player";
+        clip.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+        goalCinematicSequence_.animationClips.push_back(clip);
+    }
+
+    bool hasCrownVfx = false;
+    bool hasResultVfx = false;
+    for (auto& track : goalCinematicSequence_.vfxTracks) {
+        if (track.sequenceName == "crown_get_cue") {
+            track.startTime = animation.crownLandTime;
+            hasCrownVfx = true;
+        } else if (track.sequenceName == "crown_result_cue") {
+            track.startTime = animation.apexTime;
+            hasResultVfx = true;
+        }
+    }
+    Object3d* crown = FindGoalCrownObject();
+    if (!hasCrownVfx) {
+        CinematicVFXTrackData track;
+        track.name = "Crown Landing VFX";
+        track.sequenceName = "crown_get_cue";
+        track.startTime = animation.crownLandTime;
+        track.binding.targetName = crown ? crown->GetName() : "goal";
+        track.binding.targetEventId = crown ? crown->GetEventID() : -1;
+        goalCinematicSequence_.vfxTracks.push_back(track);
+    }
+    if (!hasResultVfx) {
+        CinematicVFXTrackData track;
+        track.name = "Result Burst VFX";
+        track.sequenceName = "crown_result_cue";
+        track.startTime = animation.apexTime;
+        track.binding.targetName = player_ ? player_->GetName() : "player";
+        track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+        goalCinematicSequence_.vfxTracks.push_back(track);
+    }
+
+    bool hasJumpAudio = false;
+    for (auto& clip : goalCinematicSequence_.audioClips) {
+        if (clip.audioId == "slime_stretch") {
+            clip.startTime = animation.jumpStartTime;
+            hasJumpAudio = true;
+        }
+    }
+    if (!hasJumpAudio) {
+        CinematicAudioClipData clip;
+        clip.name = "Jump Stretch SE";
+        clip.audioId = "slime_stretch";
+        clip.startTime = animation.jumpStartTime;
+        clip.duration = 0.2f;
+        clip.volume = 0.85f;
+        goalCinematicSequence_.audioClips.push_back(clip);
+    }
+    goalCinematicSequence_.duration = animation.readyTime;
+    goalCinematicSequence_.Sort();
+}
+
+void GamePlayScene::HandleGoalCinematicAnimation(
+    Object3d* target,
+    const CinematicAnimationClipData& clip,
+    float localTime,
+    bool isPreview) {
+    (void)isPreview;
+    if (clip.driver != "GoalClearPlayer" || !player_ || (target && target != player_)) {
+        return;
+    }
+    goalClearPlayerAnimator_.Update(localTime);
+    goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
+}
+
+void GamePlayScene::HandleGoalCinematicSignal(
+    Object3d* target,
+    const CinematicSignalMarker& signal,
+    bool isPreview) {
+    (void)target;
+    (void)isPreview;
+    if (signal.signal == "goal.ready" && goalPresentationState_ == GoalPresentationState::Celebrating) {
+        goalPresentationState_ = GoalPresentationState::ReadyToReturn;
+    }
 }
 
 GamePlayScene::GamePlayScene() {}
@@ -792,6 +965,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
 
     if (changed) {
         SanitizeGoalPresentationTuning();
+        SyncGoalCinematicTimelineFromTuning();
     }
 
     if (ImGui::Button(ICON_FA_PLAY " 実ステージでプレビュー")) {
@@ -803,13 +977,30 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     }
     if (ImGui::Button(ICON_FA_SAVE " JSON保存")) {
         SanitizeGoalPresentationTuning();
+        SyncGoalCinematicTimelineFromTuning();
         SaveGoalPresentationTuning();
+        goalCinematicSequence_.Save(kGoalCinematicTimelinePath);
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_FOLDER_OPEN " JSON再読込")) {
         LoadGoalPresentationTuning();
+        SyncGoalCinematicTimelineFromTuning();
     }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(isGoal_);
+    if (ImGui::Button(ICON_FA_FILM " Timeline再読込")) {
+        goalCinematicTimelineLoaded_ = goalCinematicSequence_.Load(kGoalCinematicTimelinePath);
+        if (goalCinematicTimelineLoaded_) {
+            ApplyGoalCinematicTimingFromSequence();
+            goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
+        }
+    }
+    ImGui::EndDisabled();
     ImGui::TextDisabled("保存先: %s", kGoalPresentationTuningPath);
+    ImGui::TextDisabled("Timeline: %s", kGoalCinematicTimelinePath);
+    ImGui::TextColored(
+        goalCinematicTimelineLoaded_ ? ImVec4(0.45f, 0.92f, 0.55f, 1.0f) : ImVec4(0.95f, 0.45f, 0.35f, 1.0f),
+        goalCinematicTimelineLoaded_ ? "Timeline Runtime: Ready" : "Timeline Runtime: Load Failed");
 #endif
 }
 

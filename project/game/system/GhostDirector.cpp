@@ -6,6 +6,7 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EditorManager.h"
+#include "GameAudioSettings.h"
 #include "GhostRecorder.h"
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
@@ -132,7 +133,7 @@ void GhostDirector::Update(float deltaTime) {
 void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_FILM " Cinematic Director");
-    ImGui::TextDisabled("複数Object、Camera、VFXを同じマスター時刻で編集します。");
+    ImGui::TextDisabled("複数Object、Camera、Animation、VFX、Audio、Signalを同じマスター時刻で編集します。");
 
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " シーケンス", ImGuiTreeNodeFlags_DefaultOpen)) {
         const auto scenarioFiles = CollectJsonStems(kScenarioDirectory);
@@ -174,6 +175,22 @@ void GhostDirector::DrawImGui() {
 
     if (ImGui::CollapsingHeader(ICON_FA_MAGIC " VFX Tracks")) {
         DrawVFXTrackEditor();
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_CAMERA " Camera Shots", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawCameraShotEditor();
+    }
+
+    if (ImGui::CollapsingHeader("Animation Clips")) {
+        DrawAnimationClipEditor();
+    }
+
+    if (ImGui::CollapsingHeader("Audio Clips")) {
+        DrawAudioClipEditor();
+    }
+
+    if (ImGui::CollapsingHeader("Signals")) {
+        DrawSignalEditor();
     }
 
     DrawTimelineWindow();
@@ -662,6 +679,18 @@ void GhostDirector::RemoveSelectedTrack() {
     } else if (selectedTrackKind_ == 1 && selectedTrackIndex_ >= 0 &&
         selectedTrackIndex_ < static_cast<int>(sequence_.vfxTracks.size())) {
         sequence_.vfxTracks.erase(sequence_.vfxTracks.begin() + selectedTrackIndex_);
+    } else if (selectedTrackKind_ == 2 && selectedTrackIndex_ >= 0 &&
+        selectedTrackIndex_ < static_cast<int>(sequence_.cameraShots.size())) {
+        sequence_.cameraShots.erase(sequence_.cameraShots.begin() + selectedTrackIndex_);
+    } else if (selectedTrackKind_ == 3 && selectedTrackIndex_ >= 0 &&
+        selectedTrackIndex_ < static_cast<int>(sequence_.animationClips.size())) {
+        sequence_.animationClips.erase(sequence_.animationClips.begin() + selectedTrackIndex_);
+    } else if (selectedTrackKind_ == 4 && selectedTrackIndex_ >= 0 &&
+        selectedTrackIndex_ < static_cast<int>(sequence_.audioClips.size())) {
+        sequence_.audioClips.erase(sequence_.audioClips.begin() + selectedTrackIndex_);
+    } else if (selectedTrackKind_ == 5 && selectedTrackIndex_ >= 0 &&
+        selectedTrackIndex_ < static_cast<int>(sequence_.signals.size())) {
+        sequence_.signals.erase(sequence_.signals.begin() + selectedTrackIndex_);
     } else {
         return;
     }
@@ -720,6 +749,47 @@ Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& bindin
         }
     }
     return nameMatch;
+}
+
+bool GhostDirector::DrawObjectBindingEditor(
+    const char* label,
+    CinematicObjectBinding& binding,
+    bool cameraOnly,
+    bool allowWorld) {
+#ifdef USE_IMGUI
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        ImGui::TextDisabled("%s: シーンがありません", label);
+        return false;
+    }
+
+    bool changed = false;
+    const char* currentLabel = binding.targetName.empty() ? (allowWorld ? "World" : "(未設定)") : binding.targetName.c_str();
+    if (ImGui::BeginCombo(label, currentLabel)) {
+        if (allowWorld && ImGui::Selectable("World", binding.targetName.empty())) {
+            binding = {};
+            changed = true;
+        }
+        for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+            if (!object || object->IsEditorInternal() || (cameraOnly && !object->IsCameraObject())) {
+                continue;
+            }
+            const bool selected = object->GetName() == binding.targetName;
+            if (ImGui::Selectable(object->GetName().c_str(), selected)) {
+                binding.targetName = object->GetName();
+                binding.targetEventId = object->GetEventID();
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+#else
+    (void)label;
+    (void)binding;
+    (void)cameraOnly;
+    (void)allowWorld;
+    return false;
+#endif
 }
 
 void GhostDirector::UpsertTransformKey(CinematicTransformTrack& track, const CinematicTransformKey& key) {
@@ -787,8 +857,14 @@ void GhostDirector::DrawTransportControls() {
     if (ImGui::SliderFloat("現在時刻", &currentScrubTime_, 0.0f, duration, "%.3f sec")) {
         EvaluatePreviewAtCurrentTime();
     }
-    ImGui::Text("全体: %.3f sec / Transform: %zu / VFX: %zu",
-        duration, sequence_.transformTracks.size(), sequence_.vfxTracks.size());
+    ImGui::Text("全体: %.3f sec / Transform %zu / Camera %zu / Animation %zu / VFX %zu / Audio %zu / Signal %zu",
+        duration,
+        sequence_.transformTracks.size(),
+        sequence_.cameraShots.size(),
+        sequence_.animationClips.size(),
+        sequence_.vfxTracks.size(),
+        sequence_.audioClips.size(),
+        sequence_.signals.size());
 #endif
 }
 
@@ -833,7 +909,7 @@ void GhostDirector::DrawTransformTrackEditor() {
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         if (ImGui::BeginCombo("対象Object", track.binding.targetName.empty() ? "(未設定)" : track.binding.targetName.c_str())) {
             for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-                if (!object) {
+                if (!object || object->IsEditorInternal()) {
                     continue;
                 }
                 const bool selected = object->GetName() == track.binding.targetName;
@@ -1026,7 +1102,7 @@ void GhostDirector::DrawVFXTrackEditor() {
                 changed = true;
             }
             for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-                if (object && ImGui::Selectable(object->GetName().c_str(), object->GetName() == track.binding.targetName)) {
+                if (object && !object->IsEditorInternal() && ImGui::Selectable(object->GetName().c_str(), object->GetName() == track.binding.targetName)) {
                     track.binding.targetName = object->GetName();
                     track.binding.targetEventId = object->GetEventID();
                     changed = true;
@@ -1040,6 +1116,252 @@ void GhostDirector::DrawVFXTrackEditor() {
         RefreshPlayer(true);
     }
     if (ImGui::Button(ICON_FA_TRASH " VFXトラック削除", ImVec2(-1.0f, 0.0f))) {
+        RemoveSelectedTrack();
+    }
+#endif
+}
+
+void GhostDirector::DrawCameraShotEditor() {
+#ifdef USE_IMGUI
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Camera Shot追加", ImVec2(-1.0f, 0.0f))) {
+        CinematicCameraShot shot;
+        shot.name = "Camera Shot";
+        shot.startTime = currentScrubTime_;
+        if (editor_) {
+            Object3d* selected = editor_->GetSelectedObject();
+            if (selected && selected->IsCameraObject()) {
+                shot.name = selected->GetName();
+                shot.binding.targetName = selected->GetName();
+                shot.binding.targetEventId = selected->GetEventID();
+                const SceneCameraSettings& settings = selected->GetSceneCameraSettings();
+                shot.blendInDuration = settings.blendInDuration;
+                shot.blendOutDuration = settings.blendOutDuration;
+                shot.easing = static_cast<int>(settings.easing);
+            }
+        }
+        sequence_.cameraShots.push_back(shot);
+        selectedTrackKind_ = 2;
+        selectedTrackIndex_ = static_cast<int>(sequence_.cameraShots.size()) - 1;
+        selectedKeyIndex_ = -1;
+        RefreshPlayer(true);
+    }
+
+    for (int index = 0; index < static_cast<int>(sequence_.cameraShots.size()); ++index) {
+        const auto& shot = sequence_.cameraShots[index];
+        ImGui::PushID(20000 + index);
+        if (ImGui::Selectable(shot.name.c_str(), selectedTrackKind_ == 2 && selectedTrackIndex_ == index)) {
+            selectedTrackKind_ = 2;
+            selectedTrackIndex_ = index;
+            selectedKeyIndex_ = -1;
+            if (editor_) {
+                if (Object3d* target = ResolveTrackTarget(shot.binding)) {
+                    editor_->SetSelectedObject(target);
+                }
+            }
+        }
+        ImGui::PopID();
+    }
+
+    if (selectedTrackKind_ != 2 || selectedTrackIndex_ < 0 ||
+        selectedTrackIndex_ >= static_cast<int>(sequence_.cameraShots.size())) {
+        return;
+    }
+
+    auto& shot = sequence_.cameraShots[selectedTrackIndex_];
+    char name[128]{};
+    strncpy_s(name, sizeof(name), shot.name.c_str(), _TRUNCATE);
+    if (ImGui::InputText("Shot名", name, sizeof(name))) {
+        shot.name = name;
+    }
+    bool refresh = DrawObjectBindingEditor("Camera Object", shot.binding, true, false);
+    ImGui::Checkbox("有効##CameraShot", &shot.enabled);
+    ImGui::SameLine();
+    ImGui::Checkbox("Mute##CameraShot", &shot.muted);
+    ImGui::DragFloat("開始時刻##CameraShot", &shot.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
+    ImGui::DragFloat("長さ##CameraShot", &shot.duration, 0.01f, 0.05f, 600.0f, "%.3f sec");
+    ImGui::DragFloat("Blend In##CameraShot", &shot.blendInDuration, 0.01f, 0.0f, 10.0f, "%.3f sec");
+    ImGui::DragFloat("Blend Out##CameraShot", &shot.blendOutDuration, 0.01f, 0.0f, 10.0f, "%.3f sec");
+    const char* easingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
+    ImGui::Combo("Blend補間##CameraShot", &shot.easing, easingNames, IM_ARRAYSIZE(easingNames));
+    if (refresh) {
+        RefreshPlayer(true);
+    }
+    if (ImGui::Button(ICON_FA_TRASH " Camera Shot削除", ImVec2(-1.0f, 0.0f))) {
+        RemoveSelectedTrack();
+    }
+#endif
+}
+
+void GhostDirector::DrawAnimationClipEditor() {
+#ifdef USE_IMGUI
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Animation Clip追加", ImVec2(-1.0f, 0.0f))) {
+        CinematicAnimationClipData clip;
+        clip.name = "Animation Clip";
+        clip.startTime = currentScrubTime_;
+        if (editor_) {
+            if (Object3d* selected = editor_->GetSelectedObject()) {
+                clip.binding.targetName = selected->GetName();
+                clip.binding.targetEventId = selected->GetEventID();
+            }
+        }
+        sequence_.animationClips.push_back(clip);
+        selectedTrackKind_ = 3;
+        selectedTrackIndex_ = static_cast<int>(sequence_.animationClips.size()) - 1;
+        selectedKeyIndex_ = -1;
+        RefreshPlayer(true);
+    }
+
+    for (int index = 0; index < static_cast<int>(sequence_.animationClips.size()); ++index) {
+        const auto& clip = sequence_.animationClips[index];
+        ImGui::PushID(30000 + index);
+        if (ImGui::Selectable(clip.name.c_str(), selectedTrackKind_ == 3 && selectedTrackIndex_ == index)) {
+            selectedTrackKind_ = 3;
+            selectedTrackIndex_ = index;
+            selectedKeyIndex_ = -1;
+        }
+        ImGui::PopID();
+    }
+    if (selectedTrackKind_ != 3 || selectedTrackIndex_ < 0 ||
+        selectedTrackIndex_ >= static_cast<int>(sequence_.animationClips.size())) {
+        return;
+    }
+
+    auto& clip = sequence_.animationClips[selectedTrackIndex_];
+    char name[128]{};
+    char driver[128]{};
+    char clipName[128]{};
+    strncpy_s(name, sizeof(name), clip.name.c_str(), _TRUNCATE);
+    strncpy_s(driver, sizeof(driver), clip.driver.c_str(), _TRUNCATE);
+    strncpy_s(clipName, sizeof(clipName), clip.clipName.c_str(), _TRUNCATE);
+    if (ImGui::InputText("Clip名##Animation", name, sizeof(name))) clip.name = name;
+    bool refresh = DrawObjectBindingEditor("Animation対象", clip.binding, false, false);
+    if (ImGui::InputText("Driver", driver, sizeof(driver))) clip.driver = driver;
+    if (ImGui::InputText("Animation / State", clipName, sizeof(clipName))) clip.clipName = clipName;
+    ImGui::Checkbox("有効##Animation", &clip.enabled);
+    ImGui::SameLine();
+    ImGui::Checkbox("Mute##Animation", &clip.muted);
+    ImGui::SameLine();
+    ImGui::Checkbox("Loop##Animation", &clip.loop);
+    ImGui::DragFloat("開始時刻##Animation", &clip.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
+    ImGui::DragFloat("長さ##Animation", &clip.duration, 0.01f, 0.05f, 600.0f, "%.3f sec");
+    ImGui::DragFloat("再生速度##Animation", &clip.playbackSpeed, 0.01f, 0.0f, 8.0f, "%.2fx");
+    ImGui::DragFloat("Blend In##Animation", &clip.blendInDuration, 0.01f, 0.0f, 5.0f, "%.3f sec");
+    const char* easingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
+    ImGui::Combo("Blend補間##Animation", &clip.easing, easingNames, IM_ARRAYSIZE(easingNames));
+    ImGui::Checkbox("停止時に元のStateへ戻す##Animation", &clip.restoreOnStop);
+    ImGui::TextDisabled("Driverはゲーム側Callbackへ渡されます。GoalClearPlayerなど専用Driverも指定できます。");
+    if (refresh) {
+        RefreshPlayer(true);
+    }
+    if (ImGui::Button(ICON_FA_TRASH " Animation Clip削除", ImVec2(-1.0f, 0.0f))) {
+        RemoveSelectedTrack();
+    }
+#endif
+}
+
+void GhostDirector::DrawAudioClipEditor() {
+#ifdef USE_IMGUI
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Audio Clip追加", ImVec2(-1.0f, 0.0f))) {
+        CinematicAudioClipData clip;
+        clip.name = "Audio Clip";
+        clip.startTime = currentScrubTime_;
+        sequence_.audioClips.push_back(clip);
+        selectedTrackKind_ = 4;
+        selectedTrackIndex_ = static_cast<int>(sequence_.audioClips.size()) - 1;
+        selectedKeyIndex_ = -1;
+        RefreshPlayer(true);
+    }
+    for (int index = 0; index < static_cast<int>(sequence_.audioClips.size()); ++index) {
+        const auto& clip = sequence_.audioClips[index];
+        ImGui::PushID(40000 + index);
+        if (ImGui::Selectable(clip.name.c_str(), selectedTrackKind_ == 4 && selectedTrackIndex_ == index)) {
+            selectedTrackKind_ = 4;
+            selectedTrackIndex_ = index;
+            selectedKeyIndex_ = -1;
+        }
+        ImGui::PopID();
+    }
+    if (selectedTrackKind_ != 4 || selectedTrackIndex_ < 0 ||
+        selectedTrackIndex_ >= static_cast<int>(sequence_.audioClips.size())) {
+        return;
+    }
+
+    auto& clip = sequence_.audioClips[selectedTrackIndex_];
+    char name[128]{};
+    strncpy_s(name, sizeof(name), clip.name.c_str(), _TRUNCATE);
+    if (ImGui::InputText("Clip名##Audio", name, sizeof(name))) clip.name = name;
+    const char* audioLabel = clip.audioId.empty() ? "(未設定)" : clip.audioId.c_str();
+    if (ImGui::BeginCombo("Audio ID", audioLabel)) {
+        for (const auto& entry : GameAudioSettings::GetInstance()->GetEntries()) {
+            if (ImGui::Selectable(entry.id.c_str(), clip.audioId == entry.id)) {
+                clip.audioId = entry.id;
+                if (clip.name == "Audio Clip") {
+                    clip.name = entry.displayName.empty() ? entry.id : entry.displayName;
+                }
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::Checkbox("有効##Audio", &clip.enabled);
+    ImGui::SameLine();
+    ImGui::Checkbox("Mute##Audio", &clip.muted);
+    ImGui::SameLine();
+    ImGui::Checkbox("Loop##Audio", &clip.loop);
+    ImGui::DragFloat("開始時刻##Audio", &clip.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
+    ImGui::DragFloat("長さ##Audio", &clip.duration, 0.01f, 0.05f, 600.0f, "%.3f sec");
+    ImGui::SliderFloat("音量##Audio", &clip.volume, 0.0f, 2.0f, "%.2f");
+    ImGui::TextDisabled("スクラブ中は発音せず、再生ヘッドが開始時刻を通過した時だけ鳴ります。");
+    if (ImGui::Button(ICON_FA_TRASH " Audio Clip削除", ImVec2(-1.0f, 0.0f))) {
+        RemoveSelectedTrack();
+    }
+#endif
+}
+
+void GhostDirector::DrawSignalEditor() {
+#ifdef USE_IMGUI
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Signal追加", ImVec2(-1.0f, 0.0f))) {
+        CinematicSignalMarker signal;
+        signal.name = "Signal";
+        signal.time = currentScrubTime_;
+        sequence_.signals.push_back(signal);
+        selectedTrackKind_ = 5;
+        selectedTrackIndex_ = static_cast<int>(sequence_.signals.size()) - 1;
+        selectedKeyIndex_ = -1;
+        RefreshPlayer(true);
+    }
+    for (int index = 0; index < static_cast<int>(sequence_.signals.size()); ++index) {
+        const auto& signal = sequence_.signals[index];
+        ImGui::PushID(50000 + index);
+        if (ImGui::Selectable(signal.name.c_str(), selectedTrackKind_ == 5 && selectedTrackIndex_ == index)) {
+            selectedTrackKind_ = 5;
+            selectedTrackIndex_ = index;
+            selectedKeyIndex_ = -1;
+            currentScrubTime_ = signal.time;
+        }
+        ImGui::PopID();
+    }
+    if (selectedTrackKind_ != 5 || selectedTrackIndex_ < 0 ||
+        selectedTrackIndex_ >= static_cast<int>(sequence_.signals.size())) {
+        return;
+    }
+
+    auto& signal = sequence_.signals[selectedTrackIndex_];
+    char name[128]{};
+    char signalId[128]{};
+    char payload[256]{};
+    strncpy_s(name, sizeof(name), signal.name.c_str(), _TRUNCATE);
+    strncpy_s(signalId, sizeof(signalId), signal.signal.c_str(), _TRUNCATE);
+    strncpy_s(payload, sizeof(payload), signal.payload.c_str(), _TRUNCATE);
+    if (ImGui::InputText("Marker名", name, sizeof(name))) signal.name = name;
+    if (ImGui::InputText("Signal ID", signalId, sizeof(signalId))) signal.signal = signalId;
+    if (ImGui::InputText("Payload", payload, sizeof(payload))) signal.payload = payload;
+    DrawObjectBindingEditor("Signal対象", signal.binding, false, true);
+    ImGui::Checkbox("有効##Signal", &signal.enabled);
+    if (ImGui::DragFloat("時刻##Signal", &signal.time, 0.01f, 0.0f, 600.0f, "%.3f sec")) {
+        currentScrubTime_ = signal.time;
+    }
+    ImGui::TextDisabled("Signalは通常再生で時刻を通過した時だけ発火します。スクラブでは発火しません。");
+    if (ImGui::Button(ICON_FA_TRASH " Signal削除", ImVec2(-1.0f, 0.0f))) {
         RemoveSelectedTrack();
     }
 #endif
@@ -1096,8 +1418,13 @@ void GhostDirector::DrawTimelineCanvas() {
     constexpr float headerHeight = 28.0f;
     constexpr float rowHeight = 36.0f;
     const int transformCount = static_cast<int>(sequence_.transformTracks.size());
+    const int cameraCount = static_cast<int>(sequence_.cameraShots.size());
+    const int animationCount = static_cast<int>(sequence_.animationClips.size());
     const int vfxCount = static_cast<int>(sequence_.vfxTracks.size());
-    const int rowCount = std::max(1, transformCount + vfxCount);
+    const int audioCount = static_cast<int>(sequence_.audioClips.size());
+    const int signalCount = static_cast<int>(sequence_.signals.size());
+    const int authoredRowCount = transformCount + cameraCount + animationCount + vfxCount + audioCount + signalCount;
+    const int rowCount = std::max(1, authoredRowCount);
     const float duration = std::max(1.0f, GetScenarioDuration());
     const float contentWidth = std::max(ImGui::GetContentRegionAvail().x, labelWidth + duration * timelinePixelsPerSecond_ + 120.0f);
     const float contentHeight = headerHeight + rowHeight * rowCount + 16.0f;
@@ -1144,8 +1471,28 @@ void GhostDirector::DrawTimelineCanvas() {
                 drawList->AddCircleFilled(ImVec2(keyX, (y0 + y1) * 0.5f), keySelected ? 6.0f : 4.5f,
                     keySelected ? IM_COL32(255, 230, 90, 255) : IM_COL32(235, 245, 255, 255));
             }
-        } else if (row - transformCount < vfxCount) {
-            const int vfxIndex = row - transformCount;
+        } else if (row - transformCount < cameraCount) {
+            const int cameraIndex = row - transformCount;
+            const auto& shot = sequence_.cameraShots[cameraIndex];
+            const bool selected = selectedTrackKind_ == 2 && selectedTrackIndex_ == cameraIndex;
+            drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
+                selected ? IM_COL32(120, 235, 255, 255) : IM_COL32(215, 220, 230, 255), shot.name.c_str());
+            const float startX = origin.x + labelWidth + shot.startTime * timelinePixelsPerSecond_;
+            const float finishX = startX + std::max(0.05f, shot.duration) * timelinePixelsPerSecond_;
+            const ImU32 color = shot.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(45, 175, 205, 230);
+            drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
+        } else if (row - transformCount - cameraCount < animationCount) {
+            const int animationIndex = row - transformCount - cameraCount;
+            const auto& clip = sequence_.animationClips[animationIndex];
+            const bool selected = selectedTrackKind_ == 3 && selectedTrackIndex_ == animationIndex;
+            drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
+                selected ? IM_COL32(255, 205, 105, 255) : IM_COL32(215, 220, 230, 255), clip.name.c_str());
+            const float startX = origin.x + labelWidth + clip.startTime * timelinePixelsPerSecond_;
+            const float finishX = startX + std::max(0.05f, clip.duration) * timelinePixelsPerSecond_;
+            const ImU32 color = clip.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(220, 135, 45, 230);
+            drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
+        } else if (row - transformCount - cameraCount - animationCount < vfxCount) {
+            const int vfxIndex = row - transformCount - cameraCount - animationCount;
             const auto& track = sequence_.vfxTracks[vfxIndex];
             const bool selected = selectedTrackKind_ == 1 && selectedTrackIndex_ == vfxIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
@@ -1153,6 +1500,26 @@ void GhostDirector::DrawTimelineCanvas() {
             const float startX = origin.x + labelWidth + track.startTime * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.1f, track.duration) * timelinePixelsPerSecond_;
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), IM_COL32(165, 85, 215, 220), 4.0f);
+        } else if (row - transformCount - cameraCount - animationCount - vfxCount < audioCount) {
+            const int audioIndex = row - transformCount - cameraCount - animationCount - vfxCount;
+            const auto& clip = sequence_.audioClips[audioIndex];
+            const bool selected = selectedTrackKind_ == 4 && selectedTrackIndex_ == audioIndex;
+            drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
+                selected ? IM_COL32(135, 255, 155, 255) : IM_COL32(215, 220, 230, 255), clip.name.c_str());
+            const float startX = origin.x + labelWidth + clip.startTime * timelinePixelsPerSecond_;
+            const float finishX = startX + std::max(0.05f, clip.duration) * timelinePixelsPerSecond_;
+            const ImU32 color = clip.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(55, 175, 95, 230);
+            drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
+        } else if (row < authoredRowCount) {
+            const int signalIndex = row - transformCount - cameraCount - animationCount - vfxCount - audioCount;
+            const auto& signal = sequence_.signals[signalIndex];
+            const bool selected = selectedTrackKind_ == 5 && selectedTrackIndex_ == signalIndex;
+            drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
+                selected ? IM_COL32(255, 135, 145, 255) : IM_COL32(215, 220, 230, 255), signal.name.c_str());
+            const float markerX = origin.x + labelWidth + signal.time * timelinePixelsPerSecond_;
+            drawList->AddRectFilled(
+                ImVec2(markerX - 3.0f, y0 + 5.0f), ImVec2(markerX + 3.0f, y1 - 5.0f),
+                signal.enabled ? IM_COL32(235, 75, 85, 240) : IM_COL32(90, 90, 95, 220), 2.0f);
         }
     }
 
@@ -1164,15 +1531,36 @@ void GhostDirector::DrawTimelineCanvas() {
     if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         const ImVec2 mouse = ImGui::GetIO().MousePos;
         const int row = static_cast<int>((mouse.y - origin.y - headerHeight) / rowHeight);
-        if (row >= 0 && row < transformCount + vfxCount) {
+        if (row >= 0 && row < authoredRowCount) {
             if (row < transformCount) {
                 selectedTrackKind_ = 0;
                 selectedTrackIndex_ = row;
                 selectedKeyIndex_ = -1;
                 SelectTrackTarget(row);
-            } else {
-                selectedTrackKind_ = 1;
+            } else if (row - transformCount < cameraCount) {
+                selectedTrackKind_ = 2;
                 selectedTrackIndex_ = row - transformCount;
+                selectedKeyIndex_ = -1;
+                if (editor_) {
+                    if (Object3d* target = ResolveTrackTarget(sequence_.cameraShots[selectedTrackIndex_].binding)) {
+                        editor_->SetSelectedObject(target);
+                    }
+                }
+            } else if (row - transformCount - cameraCount < animationCount) {
+                selectedTrackKind_ = 3;
+                selectedTrackIndex_ = row - transformCount - cameraCount;
+                selectedKeyIndex_ = -1;
+            } else if (row - transformCount - cameraCount - animationCount < vfxCount) {
+                selectedTrackKind_ = 1;
+                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount;
+                selectedKeyIndex_ = -1;
+            } else if (row - transformCount - cameraCount - animationCount - vfxCount < audioCount) {
+                selectedTrackKind_ = 4;
+                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount - vfxCount;
+                selectedKeyIndex_ = -1;
+            } else {
+                selectedTrackKind_ = 5;
+                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount - vfxCount - audioCount;
                 selectedKeyIndex_ = -1;
             }
         }

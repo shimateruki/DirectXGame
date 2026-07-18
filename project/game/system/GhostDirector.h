@@ -57,8 +57,17 @@ private:
     void DrawTransportControls();
     void DrawTransformTrackEditor();
     void DrawVFXTrackEditor();
+    void DrawCameraShotEditor();
+    void DrawAnimationClipEditor();
+    void DrawAudioClipEditor();
+    void DrawSignalEditor();
     void DrawTimelineWindow();
     void DrawTimelineCanvas();
+    bool DrawObjectBindingEditor(
+        const char* label,
+        CinematicObjectBinding& binding,
+        bool cameraOnly,
+        bool allowWorld);
 
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* editor_ = nullptr;

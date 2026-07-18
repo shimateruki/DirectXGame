@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-// ムービー編集データをランタイム再生処理やImGuiから分離して保持します。
+// Timeline上のトラックとシーンObjectを、名前またはイベントIDで結び付けます。
 struct CinematicObjectBinding {
     std::string targetName;
     int targetEventId = -1;
@@ -42,6 +42,58 @@ struct CinematicVFXTrackData {
     bool muted = false;
 };
 
+// Camera Objectを使用する1つのカメラカットです。
+// カメラ自身の追従・注視設定はCamera Object側、カット固有の時間とBlendはTimeline側で管理します。
+struct CinematicCameraShot {
+    std::string name;
+    CinematicObjectBinding binding;
+    float startTime = 0.0f;
+    float duration = 1.0f;
+    float blendInDuration = 0.3f;
+    float blendOutDuration = 0.3f;
+    int easing = 4;
+    bool enabled = true;
+    bool muted = false;
+};
+
+// Runtime側のAnimation Driverへ渡すAnimation Clipです。
+struct CinematicAnimationClipData {
+    std::string name;
+    CinematicObjectBinding binding;
+    std::string driver;
+    std::string clipName;
+    float startTime = 0.0f;
+    float duration = 1.0f;
+    float playbackSpeed = 1.0f;
+    float blendInDuration = 0.12f;
+    int easing = 4;
+    bool loop = false;
+    bool restoreOnStop = true;
+    bool enabled = true;
+    bool muted = false;
+};
+
+struct CinematicAudioClipData {
+    std::string name;
+    std::string audioId;
+    float startTime = 0.0f;
+    float duration = 0.1f;
+    float volume = 1.0f;
+    bool loop = false;
+    bool enabled = true;
+    bool muted = false;
+};
+
+// シーン固有処理をTimelineの時刻へ接続する名前付きSignalです。
+struct CinematicSignalMarker {
+    float time = 0.0f;
+    std::string name;
+    std::string signal;
+    std::string payload;
+    CinematicObjectBinding binding;
+    bool enabled = true;
+};
+
 struct CinematicEventMarker {
     float time = 0.0f;
     int eventId = 0;
@@ -51,7 +103,7 @@ struct CinematicEventMarker {
 
 class CinematicSequence {
 public:
-    static constexpr int kCurrentVersion = 3;
+    static constexpr int kCurrentVersion = 4;
 
     void Clear();
     void Sort();
@@ -64,5 +116,9 @@ public:
     float duration = 0.0f;
     std::vector<CinematicTransformTrack> transformTracks;
     std::vector<CinematicVFXTrackData> vfxTracks;
+    std::vector<CinematicCameraShot> cameraShots;
+    std::vector<CinematicAnimationClipData> animationClips;
+    std::vector<CinematicAudioClipData> audioClips;
+    std::vector<CinematicSignalMarker> signals;
     std::vector<CinematicEventMarker> events;
 };

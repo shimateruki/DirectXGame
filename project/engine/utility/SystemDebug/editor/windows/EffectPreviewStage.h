@@ -23,6 +23,9 @@ public:
     bool IsEnabled() const { return enabled_; }
     bool IsLoopEnabled() const { return loopPreview_; }
     float GetPlaybackSpeed() const { return playbackSpeed_; }
+    /// 床、グリッド、接地型プレビューが共有する基準位置を返す。
+    Vector3 GetGroundPosition() const;
+    /// Mesh EffectやParticleを半分埋めずに確認するため、床から中心高さを加えた位置を返す。
     Vector3 GetPreviewPosition() const;
     int GetPlayRequestSerial() const { return playRequestSerial_; }
     /// プレビュー中だけカメラを見やすい位置へ移動し、終了時に戻せるようにする。
@@ -44,6 +47,10 @@ private:
     Object3d* FindEnvironmentObject(const std::string& name) const;
     void CreateEnvironmentObject(const std::string& name);
     void UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color);
+    void SetEnvironmentObjectVisible(const std::string& name, bool visible);
+    void ApplyStudioPreset(int presetIndex);
+    void ApplyStudioLighting();
+    void RestoreStudioLighting();
     void ApplyBackgroundColor();
     void CaptureCameraState();
     /// プレビュー開始前に保存したカメラ状態へ戻す。
@@ -58,22 +65,49 @@ private:
     bool isolatedSpace_ = true;
     bool moveCameraOnEnter_ = true;
     bool showFloor_ = true;
+    bool showGrid_ = true;
+    bool showAxes_ = true;
+    bool studioLighting_ = true;
     bool loopPreview_ = true;
     bool wasEnabled_ = false;
     bool hasCapturedCamera_ = false;
     bool hasPlacedCamera_ = false;
     bool recenterCameraRequested_ = false;
+    bool studioLightingApplied_ = false;
+    bool hasCapturedLighting_ = false;
     float playbackSpeed_ = 1.0f;
-    float floorSize_ = 12.0f;
+    float floorSize_ = 20.0f;
+    float gridSpacing_ = 1.0f;
+    float stageRadius_ = 35.0f;
+    float previewCenterHeight_ = 1.0f;
     float cameraDistance_ = 14.0f;
     float cameraHeight_ = 5.5f;
-    Vector3 origin_ = { 0.0f, 2.0f, 0.0f };
-    Vector3 isolatedBase_ = { 10000.0f, 10000.0f, 10000.0f };
+    float cameraAzimuthDegrees_ = 35.0f;
+    float cameraTargetHeight_ = 1.5f;
+    float studioLightIntensity_ = 1.35f;
+    float studioAmbientIntensity_ = 0.42f;
+    Vector3 origin_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 isolatedBase_ = { 2048.0f, 2048.0f, 2048.0f };
     Vector3 storedEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 storedTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 storedRotation_ = { 0.0f, 0.0f, 0.0f };
-    Vector4 backgroundColor_ = { 0.06f, 0.07f, 0.09f, 1.0f };
-    Vector4 floorColor_ = { 0.18f, 0.18f, 0.20f, 1.0f };
+    Vector4 backgroundColor_ = { 0.095f, 0.105f, 0.125f, 1.0f };
+    Vector4 floorColor_ = { 0.20f, 0.215f, 0.24f, 1.0f };
+    Vector4 minorGridColor_ = { 0.30f, 0.32f, 0.35f, 1.0f };
+    Vector4 majorGridColor_ = { 0.46f, 0.49f, 0.54f, 1.0f };
+    Vector4 xAxisColor_ = { 0.82f, 0.22f, 0.20f, 1.0f };
+    Vector4 yAxisColor_ = { 0.32f, 0.75f, 0.32f, 1.0f };
+    Vector4 zAxisColor_ = { 0.22f, 0.42f, 0.88f, 1.0f };
+    Vector4 studioLightColor_ = { 1.0f, 0.965f, 0.90f, 1.0f };
+    Vector3 studioLightDirection_ = { -0.45f, -1.0f, 0.35f };
+    Vector4 storedDirectionalColor_ = {};
+    Vector3 storedDirectionalDirection_ = {};
+    Vector3 storedAmbientColor_ = {};
+    float storedDirectionalIntensity_ = 0.0f;
+    float storedVolumetricIntensity_ = 0.0f;
+    int storedEnableFog_ = 0;
+    bool storedSkyboxEnabled_ = false;
+    int studioPresetIndex_ = 0;
     int playRequestSerial_ = 0;
     int storedCameraMode_ = 0;
 };

@@ -40,6 +40,8 @@ public:
     // ==================================================
     void ChangeState(std::unique_ptr<IAnimationState> newState);
     void PlayAnimation(const std::string& animName, bool loop = true);
+    bool ReloadSlimeAnimatorController() { return slimeAnimator_.ReloadController(); }
+    const AnimatorControllerAsset* GetSlimeAnimatorControllerAsset() const { return slimeAnimator_.GetControllerAsset(); }
     void SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode);
     void SetSlimeAnimationDirection(const Vector3& direction);
     void SetSlimePullDirection(const Vector3& direction);

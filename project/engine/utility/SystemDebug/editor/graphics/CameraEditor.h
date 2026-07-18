@@ -99,6 +99,12 @@ public:
     bool PlayOverrideCamera(Camera* camera, const std::string& cameraName);
     // Camera ObjectをGhostRecorderなどから実カメラとして再生する。
     bool PlaySceneObjectCamera(Camera* camera, Object3d* cameraObject);
+    bool PlaySceneObjectCamera(
+        Camera* camera,
+        Object3d* cameraObject,
+        float blendInDuration,
+        float blendOutDuration,
+        int easing);
     void StopSceneObjectCamera(Camera* camera);
     void SetSelectedCameraObject(Object3d* cameraObject);
     Object3d* GetSelectedCameraObject() const;

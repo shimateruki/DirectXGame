@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/utility/math/Math.h"
+#include "engine/animation/AnimatorController.h"
 
 class Player;
 
@@ -29,11 +30,14 @@ public:
     void SetJumpCharge(float chargeRate);
     void TriggerImpulse(const Vector3& scale, float duration);
     void Update(Player* player, float deltaTime);
+    bool ReloadController();
+    const AnimatorControllerAsset* GetControllerAsset() const { return controllerLoaded_ ? &controllerAsset_ : nullptr; }
 
 private:
     Vector3 NormalizeOrForward(const Vector3& direction) const;
     Vector3 BuildModeScale(Player* player, float deltaTime) const;
     Vector3 BuildModeRotation(Player* player) const;
+    static const char* GetStateName(Mode mode);
 
     Mode mode_ = Mode::Idle;
     float modeTimer_ = 0.0f;
@@ -56,4 +60,7 @@ private:
     Vector3 motionDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector3 pullDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector3 impulseScale_ = { 2.0f, 2.0f, 2.0f };
+    AnimatorControllerAsset controllerAsset_;
+    AnimatorControllerRuntime controllerRuntime_;
+    bool controllerLoaded_ = false;
 };

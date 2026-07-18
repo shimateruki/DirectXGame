@@ -3,6 +3,8 @@
 #include "AudioPlayer.h"
 #include "BulletManager.h"
 #include "Camera.h"
+#include "CinematicPlayer.h"
+#include "CinematicSequence.h"
 #include "DebugEditor.h"
 #include "Event.h"
 #include "GoalClearPlayerAnimator.h"
@@ -217,6 +219,9 @@ private:
     Camera* goalLockedPrimaryCamera_ = nullptr;
     Camera* goalLockedSecondaryCamera_ = nullptr;
     GoalClearPlayerAnimator goalClearPlayerAnimator_;
+    CinematicSequence goalCinematicSequence_;
+    CinematicPlayer goalCinematicPlayer_;
+    bool goalCinematicTimelineLoaded_ = false;
     GoalPresentationTuning goalPresentationTuning_;
     std::unique_ptr<Camera> goalPresentationCamera_;
     std::unique_ptr<Sprite> goalOverlayBackdrop_;
@@ -318,6 +323,18 @@ private:
     // フレーム更新
     bool HandleGoalClear(float& deltaTime);
     void InitializeGoalPresentationOverlay();
+    void InitializeGoalCinematicTimeline();
+    void ApplyGoalCinematicTimingFromSequence();
+    void SyncGoalCinematicTimelineFromTuning();
+    void HandleGoalCinematicAnimation(
+        Object3d* target,
+        const CinematicAnimationClipData& clip,
+        float localTime,
+        bool isPreview);
+    void HandleGoalCinematicSignal(
+        Object3d* target,
+        const CinematicSignalMarker& signal,
+        bool isPreview);
     void LoadGoalPresentationTuning();
     void SaveGoalPresentationTuning() const;
     void SanitizeGoalPresentationTuning();

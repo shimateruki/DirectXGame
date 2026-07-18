@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <memory>
@@ -193,7 +194,7 @@ void MaterialPreviewBoard::CreateBoard() {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     bool placedInEffectStage = useEffectPreviewStage_ && previewStage && previewStage->IsEnabled();
     if (placedInEffectStage) {
-        origin = previewStage->GetPreviewPosition();
+        origin = previewStage->GetGroundPosition();
         int visibleColumns = (std::min)(columnCount, static_cast<int>(entries.size()));
         origin.x -= static_cast<float>(visibleColumns - 1) * spacing_ * 0.5f;
         previewStage->RequestCameraRecenter();
@@ -219,14 +220,25 @@ void MaterialPreviewBoard::CreateBoard() {
 
         int col = static_cast<int>(i) % columnCount;
         int row = static_cast<int>(i) / columnCount;
-        object->SetTranslate({
+        Vector3 previewPosition = {
             origin.x + static_cast<float>(col) * spacing_,
             origin.y,
             origin.z + static_cast<float>(row) * spacing_
-        });
+        };
+        object->SetTranslate(previewPosition);
         object->SetScale({ 1.0f, 1.0f, 1.0f });
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
+        if (placedInEffectStage) {
+            const AABB bounds = object->GetModelWorldAABB();
+            if (std::isfinite(bounds.min.y)) {
+                constexpr float kGroundClearance = 0.02f;
+                previewPosition.y += origin.y - bounds.min.y + kGroundClearance;
+                object->SetTranslate(previewPosition);
+                object->UpdateLocalMatrix();
+                object->UpdateWorldMatrix();
+            }
+        }
         scene->AddObject(std::move(object));
     }
 

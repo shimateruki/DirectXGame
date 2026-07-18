@@ -341,7 +341,7 @@ void MeshEffectEditor::DrawImGui() {
 
             // シーン内の全オブジェクトをリストアップ
             for (auto& obj : objects) {
-                if (!obj) continue;
+                if (!obj || obj->IsEditorInternal()) continue;
                 bool isSelected = (targetObject_ == obj.get());
 
                 if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {

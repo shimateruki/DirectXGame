@@ -302,6 +302,7 @@
     <ClCompile Include="engine\graphics\3d\model\ModelCommon.cpp" />
     <ClCompile Include="engine\graphics\3d\model\ModelManager.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.cpp" />
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Animation.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Replay.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Collision.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Runtime.cpp" />
@@ -334,6 +335,7 @@
     <ClCompile Include="game\system\GhostDirector.cpp" />
     <ClCompile Include="game\system\CinematicPlayer.cpp" />
     <ClCompile Include="game\system\CinematicSequence.cpp" />
+    <ClCompile Include="engine\animation\AnimatorController.cpp" />
     <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
     <ClCompile Include="game\system\LevelLoader.cpp" />
     <ClCompile Include="game\system\LockOnSystem.cpp" />
@@ -364,6 +366,7 @@
     <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp" />
     <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp" />
@@ -874,6 +877,7 @@
     <ClInclude Include="game\system\GhostDirector.h" />
     <ClInclude Include="game\system\CinematicPlayer.h" />
     <ClInclude Include="game\system\CinematicSequence.h" />
+    <ClInclude Include="engine\animation\AnimatorController.h" />
     <ClInclude Include="engine\utility\state\IAnimationState.h" />
     <ClInclude Include="engine\utility\state\IEditable.h" />
     <ClInclude Include="game\system\LevelLoader.h" />
@@ -904,6 +908,7 @@
     <ClInclude Include="engine\graphics\particle\GPUParticleEmitter.h" />
     <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />

@@ -28,6 +28,8 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.animationTime = animationTime_;
     state.animationName = animName_;
     state.animationLoop = isAnimLoop_;
+    state.animatorControllerPath = animatorControllerPath_;
+    state.animatorSnapshot = animatorControllerRuntime_.CaptureSnapshot();
 
     state.hasParameter = param_.has_value();
     if (param_) {
@@ -61,6 +63,13 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     animationTime_ = state.animationTime;
     animName_ = state.animationName;
     isAnimLoop_ = state.animationLoop;
+    if (state.animatorControllerPath != animatorControllerPath_) {
+        SetAnimatorController(state.animatorControllerPath);
+    }
+    if (state.animatorSnapshot.valid) {
+        animatorControllerRuntime_.RestoreSnapshot(state.animatorSnapshot);
+        ApplyAnimatorControllerPose(GetModel(), true);
+    }
 
     if (state.hasParameter) {
         param_ = state.parameter;

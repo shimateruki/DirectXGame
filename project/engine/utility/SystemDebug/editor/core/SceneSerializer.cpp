@@ -37,7 +37,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
 
     for (auto& obj : allObjects) {
         if (obj->GetName().empty()) continue;
-        if (obj->GetClassName() == "EditorOnly" || obj->GetName().rfind("__Editor_", 0) == 0) continue;
+        if (obj->IsEditorInternal() || obj->GetClassName() == "EditorOnly" || obj->GetName().rfind("__Editor_", 0) == 0) continue;
 
         json d = SerializeObject(obj.get());
 
@@ -199,6 +199,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     if (obj->IsCameraObject()) {
         d["animation"]["animName"] = obj->animName_;
         d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
+        d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
         d["recorder"]["recordPathName"] = obj->recordPathName_;
         d["recorder"]["isRecordLoop"] = obj->isRecordLoop_;
         d["recorder"]["isRecordRelative"] = obj->isRecordRelative_;
@@ -300,6 +301,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     // 9. アニメーション
     d["animation"]["animName"] = obj->animName_;
     d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
+    d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
 
     // 10. レコーダー (Ghost)
     d["recorder"]["recordPathName"] = obj->recordPathName_;

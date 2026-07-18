@@ -1,0 +1,122 @@
+{
+    "version": 4,
+    "name": "goal_clear_timeline",
+    "duration": 2.75,
+    "tracks": [],
+    "cameraShots": [],
+    "animationClips": [
+        {
+            "name": "Player Goal Celebration",
+            "targetName": "player",
+            "targetEventId": -1,
+            "driver": "GoalClearPlayer",
+            "clipName": "goal_clear",
+            "startTime": 0.0,
+            "duration": 2.75,
+            "playbackSpeed": 1.0,
+            "loop": false,
+            "enabled": true,
+            "muted": false
+        }
+    ],
+    "vfxCues": [
+        {
+            "name": "Crown Landing VFX",
+            "targetName": "goal",
+            "targetEventId": -1,
+            "sequenceName": "crown_get_cue",
+            "startTime": 0.95,
+            "duration": 0.1,
+            "enabled": true,
+            "muted": false
+        },
+        {
+            "name": "Result Burst VFX",
+            "targetName": "player",
+            "targetEventId": -1,
+            "sequenceName": "crown_result_cue",
+            "startTime": 1.92,
+            "duration": 0.1,
+            "enabled": true,
+            "muted": false
+        }
+    ],
+    "audioClips": [
+        {
+            "name": "Jump Stretch SE",
+            "audioId": "slime_stretch",
+            "startTime": 1.24,
+            "duration": 0.2,
+            "volume": 0.85,
+            "loop": false,
+            "enabled": true,
+            "muted": false
+        }
+    ],
+    "signals": [
+        {
+            "time": 0.22,
+            "name": "Crown Focus End",
+            "signal": "goal.crown_focus_end",
+            "payload": "",
+            "targetName": "",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 0.95,
+            "name": "Crown Land",
+            "signal": "goal.crown_land",
+            "payload": "",
+            "targetName": "goal",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 1.04,
+            "name": "Anticipation",
+            "signal": "goal.anticipation",
+            "payload": "",
+            "targetName": "player",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 1.24,
+            "name": "Big Jump",
+            "signal": "goal.jump",
+            "payload": "",
+            "targetName": "player",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 1.92,
+            "name": "Jump Apex",
+            "signal": "goal.apex",
+            "payload": "",
+            "targetName": "player",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 2.0,
+            "name": "Result UI",
+            "signal": "goal.result",
+            "payload": "",
+            "targetName": "",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 2.75,
+            "name": "Ready To Return",
+            "signal": "goal.ready",
+            "payload": "",
+            "targetName": "",
+            "targetEventId": -1,
+            "enabled": true
+        }
+    ],
+    "events": []
+}

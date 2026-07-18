@@ -1045,6 +1045,7 @@ void GhostRecorder::DrawImGui() {
 			std::string currentTargetName = target_ ? target_->GetName() : "(未選択)";
 			if (ImGui::BeginCombo(ICON_FA_CROSSHAIRS " ターゲット", currentTargetName.c_str())) {
 				for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+					if (!obj || obj->IsEditorInternal()) continue;
 					bool isSelected = (target_ == obj.get());
 					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) SetTarget(obj.get());
 				}
@@ -1058,6 +1059,7 @@ void GhostRecorder::DrawImGui() {
 					anchor_ = nullptr;
 				}
 				for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+					if (!obj || obj->IsEditorInternal()) continue;
 					bool isSelected = (anchorName_ == obj->GetName());
 					if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
 						anchorName_ = obj->GetName();

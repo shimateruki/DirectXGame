@@ -514,6 +514,10 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimationWorkbench());
         }
+        if (editor_->GetAnimatorControllerEditor() && ImGui::Selectable("  " ICON_FA_RANDOM " Animator Controller", currentObj == editor_->GetAnimatorControllerEditor())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimatorControllerEditor());
+        }
         if (editor_->GetEventLinkGraph() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " イベントリンク図 (Event Link Graph)", currentObj == editor_->GetEventLinkGraph())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
@@ -943,7 +947,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 }
 
 bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
-    if (!obj) return false;
+    if (!obj || obj->IsEditorInternal()) return false;
 
     const std::string cat = obj->GetSaveCategory();
     bool categoryMatches = currentCategoryFilter_ == 0;

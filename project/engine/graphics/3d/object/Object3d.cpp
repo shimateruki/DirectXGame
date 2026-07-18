@@ -185,7 +185,10 @@ void Object3d::Update(float deltaTime) {
     if (meshRenderer_ && meshRenderer_->GetModel()) {
         bool appliedAnimation = false;
         Model* model = meshRenderer_->GetModel();
-        if (!animName_.empty()) {
+        const bool controllerApplied = UpdateAnimatorController(deltaTime, model);
+        if (controllerApplied) {
+            appliedAnimation = true;
+        } else if (!animName_.empty()) {
             const Model::Animation* anim = model->GetAnimation(animName_);
             if (anim) {
                 animationTime_ += deltaTime;
@@ -199,7 +202,9 @@ void Object3d::Update(float deltaTime) {
                 appliedAnimation = true;
             }
         }
-        model->Update(appliedAnimation);
+        if (!controllerApplied) {
+            model->Update(appliedAnimation);
+        }
     }
     auto endAnim = std::chrono::high_resolution_clock::now();
     cpuAnimTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAnim - startAnim).count()) / 1000.0f;

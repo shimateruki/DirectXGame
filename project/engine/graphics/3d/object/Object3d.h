@@ -14,6 +14,7 @@
 #include "Collider.h"
 #include "MeshRenderer.h" 
 #include "engine/graphics/3d/camera/SceneCameraSettings.h"
+#include "engine/animation/AnimatorController.h"
 
 using json = nlohmann::json;
 
@@ -80,6 +81,8 @@ public:
         float animationTime = 0.0f;
         std::string animationName;
         bool animationLoop = true;
+        std::string animatorControllerPath;
+        AnimatorControllerRuntime::Snapshot animatorSnapshot;
 
         bool hasParameter = false;
         EntityParameter parameter;
@@ -304,6 +307,28 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void StartCollectionAnimation() { isCollecting_ = true; collectTimer_ = 0.0f; }
     bool IsCollecting() const { return isCollecting_; }
 
+    // Animator Controllerは状態、条件、補間を管理し、Model Animationを滑らかに切り替えます。
+    bool SetAnimatorController(const std::string& assetPath);
+    void ClearAnimatorController();
+    const std::string& GetAnimatorControllerPath() const { return animatorControllerPath_; }
+    bool HasAnimatorController() const { return animatorControllerLoaded_; }
+    AnimatorControllerAsset* GetAnimatorControllerAsset() { return animatorControllerLoaded_ ? &animatorControllerAsset_ : nullptr; }
+    AnimatorControllerRuntime* GetAnimatorControllerRuntime() { return animatorControllerLoaded_ ? &animatorControllerRuntime_ : nullptr; }
+    const AnimatorControllerRuntime* GetAnimatorControllerRuntime() const { return animatorControllerLoaded_ ? &animatorControllerRuntime_ : nullptr; }
+    bool PlayAnimatorState(const std::string& stateName, float blendDuration = -1.0f, int easing = -1);
+    bool EvaluateAnimatorState(
+        const std::string& stateName,
+        float timeSeconds,
+        bool loop,
+        float blendDuration,
+        int easing,
+        bool exactPreview);
+    std::string GetAnimatorCurrentStateName() const;
+    AnimatorControllerRuntime::Snapshot CaptureAnimatorSnapshot() const;
+    void RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot);
+    float GetAnimationTime() const { return animationTime_; }
+    void RestoreAnimationPlayback(const std::string& animationName, float timeSeconds, bool loop);
+
     json ExportToJson();
     void ImportFromJson(const json& j);
 
@@ -372,6 +397,9 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     std::string GetSaveCategory() const { return saveCategory_; }
     bool GetIsLocked() const { return isLocked_; }
     void SetIsLocked(bool locked) { isLocked_ = locked; }
+    // Editorの描画補助専用Object。Sceneには存在するが通常の選択・一覧・保存対象にはしない。
+    void SetEditorInternal(bool editorInternal) { isEditorInternal_ = editorInternal; }
+    bool IsEditorInternal() const { return isEditorInternal_; }
 
 protected:
     virtual void CaptureReplayCustomState(json& state) const;
@@ -385,6 +413,13 @@ protected:
     Object3d* parent_ = nullptr;
 
     float animationTime_ = 0.0f;
+    std::string animatorControllerPath_;
+    AnimatorControllerAsset animatorControllerAsset_;
+    AnimatorControllerRuntime animatorControllerRuntime_;
+    bool animatorControllerLoaded_ = false;
+
+    bool UpdateAnimatorController(float deltaTime, Model* model);
+    bool ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate);
 
     // コンポーネント化された機能
     std::unique_ptr<Collider> collider_;
@@ -411,6 +446,7 @@ protected:
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;
+    bool isEditorInternal_ = false;
     bool isCollecting_ = false;
     float collectTimer_ = 0.0f;
     uint64_t replayId_ = 0;

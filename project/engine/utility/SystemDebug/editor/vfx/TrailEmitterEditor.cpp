@@ -183,7 +183,7 @@ void TrailEmitterEditor::DrawImGui() {
             }
             // シーン内の全オブジェクト
             for (auto& obj : objects) {
-                if (!obj) continue;
+                if (!obj || obj->IsEditorInternal()) continue;
                 bool isSel = (targetObject_ == obj.get());
                 std::string label = obj->GetName();
                 if (label.empty()) label = "(NoName)";

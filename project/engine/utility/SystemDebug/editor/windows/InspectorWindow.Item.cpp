@@ -411,7 +411,7 @@ bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
     case PseudoComponentKind::MeshEffect:
         return !object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty();
     case PseudoComponentKind::BoneAnimation:
-        return !object->animName_.empty();
+        return !object->animName_.empty() || object->HasAnimatorController();
     case PseudoComponentKind::PathMove:
         return !object->recordPathName_.empty();
     case PseudoComponentKind::LinkIds:
@@ -439,7 +439,7 @@ const char* GetPseudoComponentDescription(PseudoComponentKind kind) {
     case PseudoComponentKind::Particle: return "Objectに追従するCPU/GPU Particleを管理します。";
     case PseudoComponentKind::Lod: return "距離で軽量モデルへ切り替える設定です。";
     case PseudoComponentKind::MeshEffect: return "メッシュに重ねる演出エフェクトを管理します。";
-    case PseudoComponentKind::BoneAnimation: return "モデルのボーンアニメーション名とループ設定です。";
+    case PseudoComponentKind::BoneAnimation: return "単発クリップまたはAnimator Controllerでボーンアニメーションを管理します。";
     case PseudoComponentKind::PathMove: return "GhostRecorderの移動パス再生設定です。";
     case PseudoComponentKind::LinkIds: return "ギミック連携用のEvent/Target IDです。";
     }
@@ -576,6 +576,7 @@ void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind)
     case PseudoComponentKind::BoneAnimation:
         object->animName_.clear();
         object->isAnimLoop_ = false;
+        object->ClearAnimatorController();
         break;
     case PseudoComponentKind::PathMove:
         object->recordPathName_.clear();

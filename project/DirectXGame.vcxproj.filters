@@ -207,6 +207,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Animation.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
@@ -461,6 +462,7 @@
     <ClCompile Include="game\system\CinematicSequence.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\animation\AnimatorController.cpp" />
     <ClCompile Include="game\actor\enemy\boss\BossCore.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -563,6 +565,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.Ui.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Replay.cpp" />
@@ -1645,6 +1648,7 @@
     <ClInclude Include="game\system\CinematicSequence.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\animation\AnimatorController.h" />
     <ClInclude Include="game\actor\enemy\boss\BossCore.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1741,6 +1745,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />

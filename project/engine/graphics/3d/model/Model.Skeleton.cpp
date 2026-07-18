@@ -660,3 +660,61 @@ void Model::ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animat
         }
     }
 }
+
+// 2つのAnimationをJointごとに補間し、状態遷移中の急な姿勢変化を防ぎます。
+void Model::ApplyBlendedAnimation(
+    const Animation& fromAnimation,
+    float fromTime,
+    const Animation& toAnimation,
+    float toTime,
+    float blendWeight) {
+    Math math;
+    const float weight = std::clamp(blendWeight, 0.0f, 1.0f);
+    for (Joint& joint : modelData_.skeleton.joints) {
+        const auto FindNodeAnimation = [&joint](const Animation& animation) -> const NodeAnimation* {
+            const auto it = std::find_if(
+                animation.nodeAnimations.begin(), animation.nodeAnimations.end(),
+                [&joint](const NodeAnimation& node) { return node.name == joint.name; });
+            return it == animation.nodeAnimations.end() ? nullptr : &(*it);
+        };
+        const NodeAnimation* fromNode = FindNodeAnimation(fromAnimation);
+        const NodeAnimation* toNode = FindNodeAnimation(toAnimation);
+        if (!fromNode && !toNode) {
+            continue;
+        }
+
+        auto SampleScale = [](const NodeAnimation* node, float time, const Vector3& fallback) {
+            return node && !node->scale.empty() ? CalculateValue(node->scale, time) : fallback;
+        };
+        auto SampleTranslate = [](const NodeAnimation* node, float time, const Vector3& fallback) {
+            return node && !node->translate.empty() ? CalculateValue(node->translate, time) : fallback;
+        };
+        auto SampleRotate = [](const NodeAnimation* node, float time, const Quaternion& fallback) {
+            return node && !node->rotate.empty() ? CalculateValue(node->rotate, time) : fallback;
+        };
+
+        const Vector3 fromScale = SampleScale(fromNode, fromTime, joint.transform.scale);
+        const Vector3 fromTranslate = SampleTranslate(fromNode, fromTime, joint.transform.translate);
+        const Quaternion fromRotate = SampleRotate(fromNode, fromTime, joint.transform.rotate);
+        const Vector3 toScale = SampleScale(toNode, toTime, fromScale);
+        const Vector3 toTranslate = SampleTranslate(toNode, toTime, fromTranslate);
+        const Quaternion toRotate = SampleRotate(toNode, toTime, fromRotate);
+
+        joint.transform.scale = {
+            std::lerp(fromScale.x, toScale.x, weight),
+            std::lerp(fromScale.y, toScale.y, weight),
+            std::lerp(fromScale.z, toScale.z, weight)
+        };
+        joint.transform.translate = {
+            std::lerp(fromTranslate.x, toTranslate.x, weight),
+            std::lerp(fromTranslate.y, toTranslate.y, weight),
+            std::lerp(fromTranslate.z, toTranslate.z, weight)
+        };
+        joint.transform.rotate = Math::Slerp(fromRotate, toRotate, weight);
+
+        const Matrix4x4 scaleMatrix = math.MakeScaleMatrix(joint.transform.scale);
+        const Matrix4x4 rotateMatrix = math.MakeRotateQuaternionMatrix(joint.transform.rotate);
+        const Matrix4x4 translateMatrix = math.MakeTranslateMatrix(joint.transform.translate);
+        joint.localMatrix = math.Multiply(scaleMatrix, math.Multiply(rotateMatrix, translateMatrix));
+    }
+}

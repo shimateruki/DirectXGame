@@ -456,6 +456,7 @@ void LightEditor::DrawImGui() {
                     if (scene) {
                         if (ImGui::Selectable("(None)", instance.target == nullptr)) instance.target = nullptr;
                         for (auto& obj : scene->GetObjects()) {
+                            if (!obj || obj->IsEditorInternal()) continue;
                             bool isSelected = (instance.target == obj.get());
                             std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
                             if (ImGui::Selectable(name.c_str(), isSelected)) instance.target = obj.get();

@@ -152,6 +152,7 @@ void GamePlayScene::Initialize() {
     InitializeRenderCommons();
     InitializeGameplaySystems();
     LoadCurrentStageContent(currentStage);
+    InitializeGoalCinematicTimeline();
     StartRespawnIrisInIfNeeded();
     InitializeDebugAnimationPreview();
 
@@ -326,6 +327,8 @@ void GamePlayScene::InitializeDebugAnimationPreview() {
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
+    goalCinematicPlayer_.Stop(false);
+    goalCinematicTimelineLoaded_ = false;
     RestoreGoalPresentationCameraInput();
     goalPresentationCamera_.reset();
     goalCameraSnapshotValid_ = false;

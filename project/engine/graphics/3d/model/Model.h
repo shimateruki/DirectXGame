@@ -200,6 +200,12 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
     Vector3 GetSize() const { return size_; }
     Vector3 GetCenter() const { return center_; }
     void ApplyAnimation(const Animation& animation, float time);
+    void ApplyBlendedAnimation(
+        const Animation& fromAnimation,
+        float fromTime,
+        const Animation& toAnimation,
+        float toTime,
+        float blendWeight);
     const Animation* GetAnimation(const std::string& name) const;
     bool HasSkeleton() const;
     const std::vector<Joint>& GetJoints() const;

@@ -125,6 +125,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 
     isGoal_ = isGoal;
     if (!isGoal_) {
+        goalCinematicPlayer_.Stop(false);
         Camera* restoreCamera = goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
         goalClearPlayerAnimator_.RestoreInitialPose();
         if (goalCrownObject_ && goalCrownSnapshotValid_) {
@@ -228,6 +229,25 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     }
     LockGoalPresentationCameraInput();
     SetupGoalPresentationCamera();
+
+    if (goalCinematicTimelineLoaded_) {
+        for (auto& clip : goalCinematicSequence_.animationClips) {
+            if (clip.driver == "GoalClearPlayer" && player_) {
+                clip.binding.targetName = player_->GetName();
+                clip.binding.targetEventId = player_->GetEventID();
+            }
+        }
+        for (auto& track : goalCinematicSequence_.vfxTracks) {
+            Object3d* target = track.sequenceName == "crown_get_cue" ? crownObject : player_;
+            if (target) {
+                track.binding.targetName = target->GetName();
+                track.binding.targetEventId = target->GetEventID();
+            }
+        }
+        goalCinematicPlayer_.SetSequence(&goalCinematicSequence_);
+        goalCinematicPlayer_.Play(false);
+        goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
+    }
 
     UpdateGoalPresentationOverlay();
 }
@@ -461,11 +481,24 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
         return;
     }
 
-    goalPresentationTimer_ += deltaTime;
+    if (goalCinematicTimelineLoaded_) {
+        const bool wasTimelinePlaying = goalCinematicPlayer_.IsPlaying();
+        goalCinematicPlayer_.Update(deltaTime);
+        if (wasTimelinePlaying) {
+            goalPresentationTimer_ = goalCinematicPlayer_.GetCurrentTime();
+        } else {
+            // Ready後もUIの点滅と王冠のばね物理は動かし続けます。
+            goalPresentationTimer_ += deltaTime;
+        }
+    } else {
+        goalPresentationTimer_ += deltaTime;
+    }
     UpdateGoalPlayerCelebration(deltaTime);
     UpdateGoalCrownMotion(deltaTime);
     UpdateGoalPresentationCamera();
-    EmitGoalPresentationEffects(deltaTime);
+    if (!goalCinematicTimelineLoaded_) {
+        EmitGoalPresentationEffects(deltaTime);
+    }
     UpdateGoalPresentationOverlay();
 
     if (goalPresentationState_ == GoalPresentationState::Celebrating &&
@@ -480,8 +513,10 @@ void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
         return;
     }
 
-    goalClearPlayerAnimator_.Update(goalPresentationTimer_);
-    goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
+    if (!goalCinematicTimelineLoaded_) {
+        goalClearPlayerAnimator_.Update(goalPresentationTimer_);
+        goalPlayerPosePosition_ = goalClearPlayerAnimator_.GetPosePosition();
+    }
 }
 
 void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
@@ -845,6 +880,7 @@ void GamePlayScene::RequestGoalReturnToSelect() {
     }
 
     goalPresentationState_ = GoalPresentationState::Returning;
+    goalCinematicPlayer_.Stop(false);
     goalReturnFadeStarted_ = true;
     Fade::GetInstance()->StartFadeOut(0.55f);
     goalClearPlayerAnimator_.RestoreControl();

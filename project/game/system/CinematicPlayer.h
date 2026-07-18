@@ -3,6 +3,8 @@
 #include "CinematicSequence.h"
 #include "VFXSequencer.h"
 
+#include <functional>
+#include <utility>
 #include <vector>
 
 class BaseScene;
@@ -12,8 +14,15 @@ class SceneManager;
 // 1本のマスター時刻から全トラックを評価するムービー再生器です。
 class CinematicPlayer {
 public:
+    using AnimationCallback = std::function<void(
+        Object3d*, const CinematicAnimationClipData&, float localTime, bool isPreview)>;
+    using SignalCallback = std::function<void(
+        Object3d*, const CinematicSignalMarker&, bool isPreview)>;
+
     void Initialize(SceneManager* sceneManager);
     void SetSequence(CinematicSequence* sequence);
+    void SetAnimationCallback(AnimationCallback callback) { animationCallback_ = std::move(callback); }
+    void SetSignalCallback(SignalCallback callback) { signalCallback_ = std::move(callback); }
     void RefreshBindings();
 
     void Play(bool loop);
@@ -50,6 +59,19 @@ private:
         bool started = false;
     };
 
+    struct AudioRuntime {
+        bool started = false;
+    };
+
+    struct AnimationRuntime {
+        Object3d* target = nullptr;
+        AnimatorControllerRuntime::Snapshot animatorSnapshot;
+        std::string legacyAnimationName;
+        float legacyAnimationTime = 0.0f;
+        bool legacyLoop = true;
+        bool captured = false;
+    };
+
     Object3d* ResolveTarget(const CinematicObjectBinding& binding) const;
     float GetTransformTrackDuration(size_t index) const;
     void CaptureBasePoses();
@@ -57,7 +79,11 @@ private:
     void ResetRuntimeEvents();
     void Evaluate(float timeSeconds, float previousTimeSeconds, bool dispatchEvents);
     void EvaluateTransformTrack(size_t index, float timeSeconds, float previousTimeSeconds, bool dispatchEvents);
+    void EvaluateAnimationClips(float timeSeconds);
+    void DispatchSignals(float timeSeconds, float previousTimeSeconds);
     void UpdateVFXTracks(float timeSeconds, float previousTimeSeconds);
+    void UpdateAudioClips(float timeSeconds, float previousTimeSeconds);
+    void StopAudioClips();
     void UpdateCameraTrack(float timeSeconds);
     void StopCameraTrack();
 
@@ -66,7 +92,13 @@ private:
     CinematicSequence* sequence_ = nullptr;
     std::vector<TransformRuntime> transformRuntime_;
     std::vector<VFXRuntime> vfxRuntime_;
+    std::vector<AudioRuntime> audioRuntime_;
+    std::vector<AnimationRuntime> animationRuntime_;
     Object3d* activeCameraObject_ = nullptr;
+    int activeCameraShotIndex_ = -1;
+
+    AnimationCallback animationCallback_;
+    SignalCallback signalCallback_;
 
     float currentTime_ = 0.0f;
     bool isPlaying_ = false;

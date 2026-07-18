@@ -18,6 +18,7 @@
 
 // Editorを構成するサブウィンドウ。
 #include "AnimationWorkbench.h"
+#include "AnimatorControllerEditor.h"
 #include "AssetAuditWindow.h"
 #include "AudioSettingsWindow.h"
 #include "CaptureToolWindow.h"
@@ -255,6 +256,7 @@ void PerformRedo();
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
+    AnimatorControllerEditor* GetAnimatorControllerEditor() { return &animatorControllerEditor_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
     NodeGraphEditorWindow* GetNodeGraphEditorWindow() { return &nodeGraphEditorWindow_; }
     TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
@@ -500,6 +502,7 @@ enum class EditorCommandType {
     SceneValidator sceneValidator_;
     MaterialPreviewBoard materialPreviewBoard_;
     AnimationWorkbench animationWorkbench_;
+    AnimatorControllerEditor animatorControllerEditor_;
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
     NodeGraphEditorWindow nodeGraphEditorWindow_;

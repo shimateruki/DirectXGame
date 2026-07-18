@@ -244,6 +244,7 @@ json Object3d::ExportToJson() {
     // 7. アニメーション
     d["animation"]["animName"] = animName_;
     d["animation"]["isAnimLoop"] = isAnimLoop_;
+    d["animation"]["animatorController"] = animatorControllerPath_;
 
     // 8. レコーダー (Ghost)
     d["recorder"]["recordPathName"] = recordPathName_;
@@ -459,6 +460,14 @@ void Object3d::ImportFromJson(const json& j) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
+        if (anim.contains("animatorController")) {
+            const std::string controller = anim.value("animatorController", "");
+            if (!controller.empty()) {
+                SetAnimatorController(controller);
+            } else {
+                ClearAnimatorController();
+            }
+        }
         if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"]; // 互換性
         if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"]; // 互換性
     }

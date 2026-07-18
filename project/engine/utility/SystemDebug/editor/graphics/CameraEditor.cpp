@@ -869,7 +869,7 @@ void CameraEditor::DrawImGui() {
                     SceneManager* sceneManager = SceneManager::GetInstance();
                     if (sceneManager && sceneManager->GetCurrentScene()) {
                         for (const auto& object : sceneManager->GetCurrentScene()->GetObjects()) {
-                            if (!object || object->GetName().empty()) continue;
+                            if (!object || object->IsEditorInternal() || object->GetName().empty()) continue;
                             const bool selected = p.targetObjectName == object->GetName();
                             if (ImGui::Selectable(object->GetName().c_str(), selected)) {
                                 p.targetObjectName = object->GetName();
@@ -2128,6 +2128,24 @@ bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraN
 }
 
 bool CameraEditor::PlaySceneObjectCamera(Camera* camera, Object3d* cameraObject) {
+    if (!cameraObject) {
+        return false;
+    }
+    const SceneCameraSettings& settings = cameraObject->GetSceneCameraSettings();
+    return PlaySceneObjectCamera(
+        camera,
+        cameraObject,
+        settings.blendInDuration,
+        settings.blendOutDuration,
+        static_cast<int>(settings.easing));
+}
+
+bool CameraEditor::PlaySceneObjectCamera(
+    Camera* camera,
+    Object3d* cameraObject,
+    float blendInDuration,
+    float blendOutDuration,
+    int easing) {
     if (!camera || !cameraObject || !cameraObject->IsCameraObject()) {
         return false;
     }
@@ -2137,6 +2155,9 @@ bool CameraEditor::PlaySceneObjectCamera(Camera* camera, Object3d* cameraObject)
         return false;
     }
     Camera::CameraOverrideParams runtime = MakeRuntimeOverrideParams(cameraObject);
+    runtime.duration = std::max(0.0f, blendInDuration);
+    runtime.exitDuration = std::max(0.0f, blendOutDuration);
+    runtime.easing = static_cast<Camera::OverrideEasing>(std::clamp(easing, 0, 4));
 
     SetSelectedCameraObject(cameraObject);
     activeSceneCameraExitDuration_ = runtime.exitDuration;
