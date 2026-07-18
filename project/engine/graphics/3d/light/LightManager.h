@@ -8,6 +8,7 @@
 
 // 前方宣言
 class Object3d;
+class Camera;
 
 /// <summary>
 /// ライト（点光源・スポットライト・平行光源）を一括管理するクラス
@@ -112,6 +113,17 @@ void Update();
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
     std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
     std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
+    uint32_t GetActivePointLightCount() const {
+        return pointLightConstData_ ? static_cast<uint32_t>(pointLightConstData_->activeCount) : 0;
+    }
+    uint32_t GetActiveSpotLightCount() const {
+        return spotLightConstData_ ? static_cast<uint32_t>(spotLightConstData_->activeCount) : 0;
+    }
+    const Matrix4x4& GetDirectionalShadowViewProjection(const Camera* camera);
+    int GetShadowMapResolution() const;
+    void SetShadowMapResolution(int resolution);
+    float GetShadowAreaSize() const { return shadowAreaSize_; }
+    void SetShadowAreaSize(float size);
     Vector4& GetSceneClearColor() { return sceneClearColor_; }
     void ApplySceneClearColor();
     bool IsSkyboxEnabled() const { return skyboxEnabled_; }
@@ -171,6 +183,11 @@ private:
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     uint32_t environmentMapHandle_ = 0;
+    float shadowAreaSize_ = 80.0f;
+    bool shadowMatrixCacheValid_ = false;
+    Vector3 cachedShadowEye_{};
+    Vector3 cachedShadowDirection_{};
+    float cachedShadowAreaSize_ = 0.0f;
     Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
     bool skyboxEnabled_ = true;
     std::string skyboxTexturePath_ = "Resources/output_skybox.dds";

@@ -935,8 +935,8 @@ void DirectXCommon::CreateShadowMap() {
 
 	// 2. リソースの設定 (DSVとSRVの両方で使えるように TYPELESS にする)
 	D3D12_RESOURCE_DESC resDesc{};
-	resDesc.Width = kShadowMapWidth;
-	resDesc.Height = kShadowMapHeight;
+	resDesc.Width = shadowMapResolution_;
+	resDesc.Height = shadowMapResolution_;
 	resDesc.MipLevels = 1;
 	resDesc.DepthOrArraySize = 1;
 	resDesc.Format = DXGI_FORMAT_R32_TYPELESS; // ★重要: 型無しフォーマット
@@ -973,10 +973,43 @@ void DirectXCommon::CreateShadowMap() {
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Texture2D.MipLevels = 1;
 
-	// SRVManagerに登録してハンドルをもらう
-	shadowMapSrvHandle_ = SRVManager::GetInstance()->CreateSRV(shadowMapResource_.Get(), srvDesc);
+	// 解像度変更時は既存のSRV番号を再利用し、Descriptorの消費を増やさない。
+	if (shadowMapSrvHandle_ != 0) {
+		SRVManager::GetInstance()->CreateSRVforResource(shadowMapSrvHandle_, shadowMapResource_.Get(), srvDesc);
+	}
+	else {
+		shadowMapSrvHandle_ = SRVManager::GetInstance()->CreateSRV(shadowMapResource_.Get(), srvDesc);
+	}
 
 	Log("Created Shadow Map successfully.\n");
+}
+
+void DirectXCommon::SetShadowMapResolution(int resolution) {
+	// Power of two以外がJSONへ入っていても、対応する品質段階へ正規化する。
+	int normalizedResolution = 2048;
+	if (resolution <= 768) {
+		normalizedResolution = 512;
+	}
+	else if (resolution <= 1536) {
+		normalizedResolution = 1024;
+	}
+	else if (resolution <= 3072) {
+		normalizedResolution = 2048;
+	}
+	else {
+		normalizedResolution = 4096;
+	}
+
+	if (shadowMapResolution_ == normalizedResolution && shadowMapResource_) {
+		return;
+	}
+
+	// 前フレームが参照している可能性があるため、解放前にGPU完了を保証する。
+	WaitForGPUIdle();
+	shadowMapResolution_ = normalizedResolution;
+	shadowMapResource_.Reset();
+	shadowDsvHeap_.Reset();
+	CreateShadowMap();
 }
 // シャドウマップへ深度を書き込むため、描画先とビューポートを影用に切り替える。
 
@@ -998,14 +1031,14 @@ void DirectXCommon::PreDrawShadow() {
 
 	// 4. ビューポートとシザー矩形をシャドウマップの解像度に合わせる
 	D3D12_VIEWPORT viewport{};
-	viewport.Width = (float)kShadowMapWidth;
-	viewport.Height = (float)kShadowMapHeight;
+	viewport.Width = static_cast<float>(shadowMapResolution_);
+	viewport.Height = static_cast<float>(shadowMapResolution_);
 	viewport.MaxDepth = 1.0f;
 	commandList_->RSSetViewports(1, &viewport);
 
 	D3D12_RECT scissorRect{};
-	scissorRect.right = kShadowMapWidth;
-	scissorRect.bottom = kShadowMapHeight;
+	scissorRect.right = shadowMapResolution_;
+	scissorRect.bottom = shadowMapResolution_;
 	commandList_->RSSetScissorRects(1, &scissorRect);
 }
 // シャドウマップをSRV状態へ戻し、通常描画用の描画先とビューポートを復帰する。

@@ -1,4 +1,5 @@
 #include "PrimitiveDrawer.h"
+#include "RenderStats.h"
 #include "DirectXCommon.h"
 #include "CameraManager.h"
 #include <cassert>
@@ -165,6 +166,7 @@ void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+    RenderStats::GetInstance()->RecordIndexedDraw(24);
 }
 
 void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
@@ -188,6 +190,7 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
 
     // 16分割 * 3平面 * 2(線分) = 96 インデックス
     commandList->DrawIndexedInstanced(216, 1, 0, 0, 0);
+    RenderStats::GetInstance()->RecordIndexedDraw(216);
 
     // デフォルトの描画（キューブ）用バッファに復帰
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
@@ -218,6 +221,7 @@ void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, c
 
     // 16分割 × (上面+底面+縦線=3パーツ) × 2インデックス = 96インデックス
     commandList->DrawIndexedInstanced(96, 1, 0, 0, 0);
+    RenderStats::GetInstance()->RecordIndexedDraw(96);
 
     // 他の描画（DrawWireCube等）に影響が出ないようにキューブ用に戻しておく
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);

@@ -15,6 +15,8 @@ struct GPUParticleConfig {
     int emitCount = 1000;
     float emitLife = 2.0f;
     float velocityVariance = 1.0f;
+    // 0は発生数・寿命・間隔から安全な容量を自動計算します。
+    int maxParticles = 0;
 
     // --- 見た目パラメータ ---
     Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };

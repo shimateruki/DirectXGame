@@ -151,6 +151,10 @@ public:
     bool IsPinkSlimeMorphed() const;
     float GetEnemyMorphRate() const;
 
+protected:
+    void CaptureReplayCustomState(json& state) const override;
+    void RestoreReplayCustomState(const json& state) override;
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。

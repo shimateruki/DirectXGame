@@ -39,6 +39,9 @@ public:
     /// </summary>
     void Finalize();
 
+    // リプレイ分岐など、時間軸を切り替える際に残存弾を安全に破棄します。
+    void Clear();
+
     /// <summary>
     /// 全ての弾を更新 (移動、衝突による削除)
     /// </summary>

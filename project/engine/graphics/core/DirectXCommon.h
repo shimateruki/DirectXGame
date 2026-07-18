@@ -131,6 +131,8 @@ void FlushCommandQueue(bool reset = true);
     // シャドウマップ描画。
     void CreateShadowMap();
     uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
+    int GetShadowMapResolution() const { return shadowMapResolution_; }
+    void SetShadowMapResolution(int resolution);
     void PreDrawShadow();
     void PostDrawShadow();
 
@@ -232,8 +234,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
     uint32_t shadowMapSrvHandle_ = 0;
-    static const int kShadowMapWidth = 2048;
-    static const int kShadowMapHeight = 2048;
+    int shadowMapResolution_ = 2048;
 
     // GPU計測。
     static const uint32_t kMaxGpuQueries = 128;

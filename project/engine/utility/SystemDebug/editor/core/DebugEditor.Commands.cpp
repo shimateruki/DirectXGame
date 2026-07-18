@@ -50,6 +50,8 @@
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
 #include <unordered_map>
+#include <unordered_set>
+#include <functional>
 #include <utility>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
@@ -418,6 +420,23 @@ nlohmann::json DebugEditor::CaptureObjectState(Object3d* object) const {
     return state;
 }
 
+std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(const std::vector<Object3d*>& objects) const {
+    std::vector<ObjectStateSnapshot> snapshots;
+    snapshots.reserve(objects.size());
+    for (Object3d* object : objects) {
+        if (!object || !IsObjectInCurrentScene(object)) {
+            continue;
+        }
+        ObjectStateSnapshot snapshot;
+        snapshot.object = object;
+        snapshot.beforeState = CaptureObjectState(object);
+        if (snapshot.beforeState.is_object()) {
+            snapshots.push_back(std::move(snapshot));
+        }
+    }
+    return snapshots;
+}
+
 void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state) {
     if (!object || !state.is_object()) return;
 
@@ -486,12 +505,11 @@ std::unique_ptr<Object3d> DebugEditor::RemoveObjectImmediate(Object3d* object) {
 }
 
 void DebugEditor::RegisterCommand(const EditorCommand& command) {
-    undoStack_.push_back(command);
-    redoStack_.clear();
-    constexpr size_t kMaxUndoCount = 128;
-    while (undoStack_.size() > kMaxUndoCount) {
-        undoStack_.pop_front();
-    }
+    EditorTransaction transaction;
+    transaction.label = command.label;
+    transaction.undo = [this, command]() { ApplyEditorCommand(command, true); };
+    transaction.redo = [this, command]() { ApplyEditorCommand(command, false); };
+    EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 
 void DebugEditor::RegisterObjectEdited(Object3d* object, const std::string& label) {
@@ -518,10 +536,83 @@ void DebugEditor::RegisterObjectEdited(Object3d* object, const nlohmann::json& b
     MarkDirtyForObject(object);
 }
 
+void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& beforeStates, const std::string& label) {
+    struct StateChange {
+        std::string beforeName;
+        std::string afterName;
+        nlohmann::json beforeState;
+        nlohmann::json afterState;
+    };
+
+    std::vector<StateChange> changes;
+    changes.reserve(beforeStates.size());
+    for (const ObjectStateSnapshot& snapshot : beforeStates) {
+        if (!snapshot.object || !snapshot.beforeState.is_object() || !IsObjectInCurrentScene(snapshot.object)) {
+            continue;
+        }
+
+        nlohmann::json afterState = CaptureObjectState(snapshot.object);
+        if (!afterState.is_object() || snapshot.beforeState == afterState) {
+            continue;
+        }
+
+        StateChange change;
+        change.beforeName = snapshot.beforeState.value("name", snapshot.object->GetName());
+        change.afterName = afterState.value("name", snapshot.object->GetName());
+        change.beforeState = snapshot.beforeState;
+        change.afterState = std::move(afterState);
+        changes.push_back(std::move(change));
+        MarkDirtyForObject(snapshot.object);
+    }
+
+    if (changes.empty()) {
+        return;
+    }
+
+    auto applyStates = [this, changes](bool undo) {
+        std::vector<Object3d*> appliedObjects;
+        appliedObjects.reserve(changes.size());
+        for (const StateChange& change : changes) {
+            const std::string& primaryName = undo ? change.afterName : change.beforeName;
+            const std::string& fallbackName = undo ? change.beforeName : change.afterName;
+            Object3d* object = FindObjectByName(primaryName);
+            if (!object) {
+                object = FindObjectByName(fallbackName);
+            }
+            if (!object) {
+                continue;
+            }
+
+            // 保存先カテゴリが変わる編集では、復元前のカテゴリ側も更新対象に残します。
+            MarkDirtyForObject(object);
+            ApplyObjectState(object, undo ? change.beforeState : change.afterState);
+            MarkDirtyForObject(object);
+            appliedObjects.push_back(object);
+        }
+        if (!appliedObjects.empty()) {
+            ClearObjectSelection();
+            for (Object3d* object : appliedObjects) {
+                AddSelectedObject(object);
+            }
+            EditorManager::GetInstance()->SetSelectedObject(this);
+        }
+    };
+
+    EditorTransaction transaction;
+    transaction.label = label;
+    transaction.undo = [applyStates]() { applyStates(true); };
+    transaction.redo = [applyStates]() { applyStates(false); };
+    EditorTransactionManager::GetInstance()->Register(std::move(transaction));
+}
+
 void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label) {
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     Object3d* raw = object.get();
+    if (prefabEditMode_ && prefabEditRoot_ && raw != prefabEditRoot_ && raw->GetParent() == nullptr) {
+        // Prefab Modeで作成したRoot Objectは、編集対象Prefabの直下へ自動的に追加します。
+        raw->SetParent(prefabEditRoot_, true);
+    }
     ApplyGroundDefaultsForGeneratedModel(raw);
     nlohmann::json afterState = CaptureObjectState(raw);
 
@@ -555,37 +646,46 @@ void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> object
     }
 }
 
-void DebugEditor::TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::json& beforeState) {
+void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& beforeStates) {
 #ifdef USE_IMGUI
-    if (!beforeTarget || beforeTarget != selectedObject_ || !beforeState.is_object()) {
+    if (!selectedObject_ || beforeStates.empty()) {
         return;
     }
-    if (!IsObjectInCurrentScene(beforeTarget)) {
+    if (!IsObjectInCurrentScene(selectedObject_)) {
         ClearInvalidSelectedObject();
         return;
     }
 
-    nlohmann::json afterState = CaptureObjectState(selectedObject_);
-    bool changedThisFrame = beforeState != afterState;
+    bool changedThisFrame = false;
+    for (const ObjectStateSnapshot& snapshot : beforeStates) {
+        if (!snapshot.object || !snapshot.beforeState.is_object() || !IsObjectInCurrentScene(snapshot.object)) {
+            continue;
+        }
+        if (snapshot.beforeState != CaptureObjectState(snapshot.object)) {
+            changedThisFrame = true;
+            break;
+        }
+    }
     bool active = ImGui::IsAnyItemActive();
 
     if (changedThisFrame && !hasInspectorEditStart_) {
-        inspectorEditStartState_ = beforeState;
-        inspectorEditTarget_ = selectedObject_;
+        inspectorEditStartStates_ = beforeStates;
         hasInspectorEditStart_ = true;
     }
 
     if (changedThisFrame) {
-        MarkDirtyForObject(selectedObject_);
+        for (const ObjectStateSnapshot& snapshot : beforeStates) {
+            if (snapshot.object && IsObjectInCurrentScene(snapshot.object)) {
+                MarkDirtyForObject(snapshot.object);
+            }
+        }
     }
 
     if (!active && hasInspectorEditStart_) {
-        if (inspectorEditTarget_ == selectedObject_) {
-            RegisterObjectEdited(selectedObject_, inspectorEditStartState_, "Inspector Edit");
-        }
+        RegisterObjectsEdited(inspectorEditStartStates_,
+            inspectorEditStartStates_.size() > 1 ? "Inspector Multi Edit" : "Inspector Edit");
         hasInspectorEditStart_ = false;
-        inspectorEditTarget_ = nullptr;
-        inspectorEditStartState_.clear();
+        inspectorEditStartStates_.clear();
     }
 #endif
 }
@@ -593,6 +693,10 @@ void DebugEditor::TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::jso
 void DebugEditor::MarkDirtyForObject(Object3d* object) {
     if (!object) {
         MarkDirty(SaveMode::Object);
+        return;
+    }
+    if (prefabEditMode_ && IsPrefabEditObject(object)) {
+        prefabEditDirty_ = true;
         return;
     }
     MarkDirtyForCategory(object->GetSaveCategory());
@@ -731,6 +835,7 @@ void DebugEditor::DuplicateSelected() {
         for (Object3d* created : createdObjects) {
             AddSelectedObject(created);
         }
+        PresetManager::GetInstance()->AssignNewPrefabInstanceId(createdObjects);
         if (selectedObject_) {
             EditorManager::GetInstance()->SetSelectedObject(this);
         }
@@ -741,6 +846,9 @@ void DebugEditor::DuplicateSelected() {
 
     // 1. 完全なクローンを作成
     std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
+    if (newObj && newObj->IsPrefabInstance()) {
+        PresetManager::GetInstance()->AssignNewPrefabInstanceId({ newObj.get() });
+    }
 
     // 2. 名前変更
     static int duplicateCount = 0;
@@ -825,6 +933,83 @@ void DebugEditor::DeleteSelected() {
     PruneInvalidSelectedObjects();
     if (selectedObjects_.empty()) return;
 
+    if (prefabEditMode_ && std::find(selectedObjects_.begin(), selectedObjects_.end(), prefabEditRoot_) != selectedObjects_.end()) {
+        DebugConsole::GetInstance()->AddLog("Prefab Mode: Root Objectは削除できません。");
+        return;
+    }
+
+    if (prefabEditMode_) {
+        auto& sceneObjects = sceneManager_->GetCurrentScene()->GetObjects();
+        std::unordered_set<Object3d*> selectedSet(selectedObjects_.begin(), selectedObjects_.end());
+        std::vector<Object3d*> deleteRoots;
+        for (Object3d* selected : selectedObjects_) {
+            bool hasSelectedAncestor = false;
+            for (Object3d* parent = selected ? selected->GetParent() : nullptr; parent; parent = parent->GetParent()) {
+                if (selectedSet.find(parent) != selectedSet.end()) {
+                    hasSelectedAncestor = true;
+                    break;
+                }
+            }
+            if (selected && !hasSelectedAncestor) {
+                deleteRoots.push_back(selected);
+            }
+        }
+
+        std::vector<Object3d*> deleteObjects;
+        std::function<void(Object3d*)> collectChildren = [&](Object3d* parent) {
+            if (!parent) return;
+            deleteObjects.push_back(parent);
+            for (const auto& candidate : sceneObjects) {
+                if (candidate && candidate->GetParent() == parent) {
+                    collectChildren(candidate.get());
+                }
+            }
+        };
+        for (Object3d* root : deleteRoots) {
+            collectChildren(root);
+        }
+
+        std::vector<nlohmann::json> deletedStates;
+        deletedStates.reserve(deleteObjects.size());
+        for (Object3d* object : deleteObjects) {
+            deletedStates.push_back(CaptureObjectState(object));
+        }
+        for (auto it = deleteObjects.rbegin(); it != deleteObjects.rend(); ++it) {
+            RemoveObjectImmediate(*it);
+        }
+
+        EditorTransaction transaction;
+        transaction.label = "Delete Prefab Child";
+        transaction.undo = [this, deletedStates]() {
+            Object3d* firstRestored = nullptr;
+            for (const auto& state : deletedStates) {
+                Object3d* restored = AddObjectFromState(state);
+                if (!firstRestored) firstRestored = restored;
+            }
+            if (firstRestored) {
+                SetSelectedObject(firstRestored);
+                EditorManager::GetInstance()->SetSelectedObject(this);
+            }
+            prefabEditDirty_ = true;
+        };
+        transaction.redo = [this, deletedStates]() {
+            for (auto it = deletedStates.rbegin(); it != deletedStates.rend(); ++it) {
+                const std::string name = it->value("name", "");
+                if (Object3d* object = FindObjectByName(name)) {
+                    RemoveObjectImmediate(object);
+                }
+            }
+            ClearObjectSelection();
+            prefabEditDirty_ = true;
+        };
+        EditorTransactionManager::GetInstance()->Register(std::move(transaction));
+        prefabEditDirty_ = true;
+        ClearObjectSelection();
+        EditorManager::GetInstance()->ClearSelection();
+        DebugConsole::GetInstance()->AddLog("Prefab Childを削除: " + std::to_string(deleteObjects.size()));
+        return;
+    }
+
     std::vector<Object3d*> targets = selectedObjects_;
     const bool isGroupDelete = targets.size() > 1;
     int deletedCount = 0;
@@ -858,42 +1043,54 @@ void DebugEditor::DeleteSelected() {
         DebugConsole::GetInstance()->AddLog("Deleted Object: " + deletedName);
     }
 }
-// ==========================================
-//  Undo処理 
-// ==========================================
-void DebugEditor::PerformUndo() {
-    if (undoStack_.empty()) return;
-
-    EditorCommand cmd = undoStack_.back();
-    undoStack_.pop_back();
-    redoStack_.push_back(cmd);
-
-    switch (cmd.type) {
+void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
+    switch (command.type) {
     case EditorCommandType::ObjectCreated: {
-        Object3d* object = FindObjectByName(cmd.afterName);
-        if (object) {
-            MarkDirtyForObject(object);
-            RemoveObjectImmediate(object);
-            ClearObjectSelection();
-            EditorManager::GetInstance()->ClearSelection();
+        if (undo) {
+            Object3d* object = FindObjectByName(command.afterName);
+            if (object) {
+                MarkDirtyForObject(object);
+                RemoveObjectImmediate(object);
+                ClearObjectSelection();
+                EditorManager::GetInstance()->ClearSelection();
+            }
+        } else {
+            Object3d* created = AddObjectFromState(command.afterState);
+            if (created) {
+                SetSelectedObject(created);
+                EditorManager::GetInstance()->SetSelectedObject(this);
+                MarkDirtyForObject(created);
+            }
         }
         break;
     }
     case EditorCommandType::ObjectDeleted: {
-        Object3d* restored = AddObjectFromState(cmd.beforeState);
-        if (restored) {
-            SetSelectedObject(restored);
-            EditorManager::GetInstance()->SetSelectedObject(this);
-            MarkDirtyForObject(restored);
+        if (undo) {
+            Object3d* restored = AddObjectFromState(command.beforeState);
+            if (restored) {
+                SetSelectedObject(restored);
+                EditorManager::GetInstance()->SetSelectedObject(this);
+                MarkDirtyForObject(restored);
+            }
+        } else {
+            Object3d* object = FindObjectByName(command.beforeName);
+            if (object) {
+                MarkDirtyForObject(object);
+                RemoveObjectImmediate(object);
+                ClearObjectSelection();
+                EditorManager::GetInstance()->ClearSelection();
+            }
         }
         break;
     }
     case EditorCommandType::ObjectEdited:
     default: {
-        Object3d* object = FindObjectByName(cmd.afterName);
-        if (!object) object = FindObjectByName(cmd.beforeName);
+        const std::string& primaryName = undo ? command.afterName : command.beforeName;
+        const std::string& fallbackName = undo ? command.beforeName : command.afterName;
+        Object3d* object = FindObjectByName(primaryName);
+        if (!object) object = FindObjectByName(fallbackName);
         if (object) {
-            ApplyObjectState(object, cmd.beforeState);
+            ApplyObjectState(object, undo ? command.beforeState : command.afterState);
             SetSelectedObject(object);
             EditorManager::GetInstance()->SetSelectedObject(this);
             MarkDirtyForObject(object);
@@ -901,53 +1098,28 @@ void DebugEditor::PerformUndo() {
         break;
     }
     }
-    DebugConsole::GetInstance()->AddLog("Undo: " + cmd.label);
+}
+
+// ==========================================
+//  Undo処理
+// ==========================================
+void DebugEditor::PerformUndo() {
+    EditorTransactionManager* transactions = EditorTransactionManager::GetInstance();
+    const std::string label = transactions->GetUndoLabel();
+    if (transactions->Undo()) {
+        DebugConsole::GetInstance()->AddLog("Undo: " + label);
+    }
 }
 
 // ==========================================
 //  Redo処理
 // ==========================================
 void DebugEditor::PerformRedo() {
-    if (redoStack_.empty()) return;
-
-    EditorCommand cmd = redoStack_.back();
-    redoStack_.pop_back();
-    undoStack_.push_back(cmd);
-
-    switch (cmd.type) {
-    case EditorCommandType::ObjectCreated: {
-        Object3d* created = AddObjectFromState(cmd.afterState);
-        if (created) {
-            SetSelectedObject(created);
-            EditorManager::GetInstance()->SetSelectedObject(this);
-            MarkDirtyForObject(created);
-        }
-        break;
+    EditorTransactionManager* transactions = EditorTransactionManager::GetInstance();
+    const std::string label = transactions->GetRedoLabel();
+    if (transactions->Redo()) {
+        DebugConsole::GetInstance()->AddLog("Redo: " + label);
     }
-    case EditorCommandType::ObjectDeleted: {
-        Object3d* object = FindObjectByName(cmd.beforeName);
-        if (object) {
-            MarkDirtyForObject(object);
-            RemoveObjectImmediate(object);
-            ClearObjectSelection();
-            EditorManager::GetInstance()->ClearSelection();
-        }
-        break;
-    }
-    case EditorCommandType::ObjectEdited:
-    default: {
-        Object3d* object = FindObjectByName(cmd.beforeName);
-        if (!object) object = FindObjectByName(cmd.afterName);
-        if (object) {
-            ApplyObjectState(object, cmd.afterState);
-            SetSelectedObject(object);
-            EditorManager::GetInstance()->SetSelectedObject(this);
-            MarkDirtyForObject(object);
-        }
-        break;
-    }
-    }
-    DebugConsole::GetInstance()->AddLog("Redo: " + cmd.label);
 }
 
 

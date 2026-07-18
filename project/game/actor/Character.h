@@ -25,6 +25,7 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
     void SetVelocity(const Vector3& v) { velocity_ = v; }
 
     bool IsGrounded() const { return isGrounded_; }
+    void SetGrounded(bool grounded) { isGrounded_ = grounded; }
 
     /// <summary>
     /// このキャラクターに適用する重力を設定する。
@@ -52,6 +53,9 @@ void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
     std::unique_ptr<Object3d> Clone() const override;
 
 protected:
+    void CaptureReplayCustomState(json& state) const override;
+    void RestoreReplayCustomState(const json& state) override;
+
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 現在速度。
     bool isGrounded_ = false;                 // 最後の更新で接地しているか。
 };

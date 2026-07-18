@@ -9,6 +9,7 @@
 #include "CameraManager.h"
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
+#include <algorithm>
 
 using json = nlohmann::json;
 
@@ -131,6 +132,21 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat3(ICON_FA_TACHOMETER_ALT " 初期速度 (Velocity)", &config_.emitVelocity.x, 0.1f);
         ImGui::DragInt(ICON_FA_SORT_NUMERIC_UP " 発生数 (Count)", &config_.emitCount, 10, 1, GPUParticleSystem::kMaxParticles);
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 寿命 (Life Time)", &config_.emitLife, 0.05f, 0.1f, 10.0f);
+        ImGui::DragInt("最大同時数 (0 = Auto)", &config_.maxParticles, 256, 0, GPUParticleSystem::kMaxParticles);
+        config_.maxParticles = (std::max)(config_.maxParticles, 0);
+        const uint32_t resolvedCapacity = GPUParticleManager::ResolveParticleCapacity(config_);
+        ImGui::TextDisabled("実行容量: %u particles / System", resolvedCapacity);
+        if (config_.maxParticles > 0 && config_.maxParticles < config_.emitCount) {
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
+                "最大同時数が1回の発生数より小さいため、粒子が欠けます。");
+        }
+        if (config_.maxParticles == 0 && resolvedCapacity == GPUParticleSystem::kMaxParticles) {
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
+                "Auto容量が上限です。発生数・寿命を減らすか、Loop間隔を長くするとGPU負荷を下げられます。");
+        }
+        ImGui::TextDisabled("AutoはLoop時の同時生存数、単発時は6回分の重なりを見込んで計算します。");
         ImGui::DragFloat(ICON_FA_RANDOM " 速度のばらつき (Variance)", &config_.velocityVariance, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat(ICON_FA_SYNC " 回転スピード (Rot Speed)", &config_.rotSpeed, 0.05f, 0.0f, 20.0f);
 
@@ -449,6 +465,7 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["emitVelocity"] = { config_.emitVelocity.x, config_.emitVelocity.y, config_.emitVelocity.z };
     j["emitCount"] = config_.emitCount;
     j["emitLife"] = config_.emitLife;
+    j["maxParticles"] = config_.maxParticles;
     j["velocityVariance"] = config_.velocityVariance;
     j["baseColor"] = { config_.baseColor.x, config_.baseColor.y, config_.baseColor.z, config_.baseColor.w };
     j["envGravity"] = { config_.envGravity.x, config_.envGravity.y, config_.envGravity.z };
@@ -509,12 +526,14 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         config_.spriteSheetFps = 0.0f;
         config_.spriteSheetLoop = 0;
         config_.spriteSheetRandomStart = 0;
+        config_.maxParticles = 0;
 
         if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
         if (j.contains("emitArea")) { config_.emitArea.x = j["emitArea"][0]; config_.emitArea.y = j["emitArea"][1]; config_.emitArea.z = j["emitArea"][2]; }
         if (j.contains("emitVelocity")) { config_.emitVelocity.x = j["emitVelocity"][0]; config_.emitVelocity.y = j["emitVelocity"][1]; config_.emitVelocity.z = j["emitVelocity"][2]; }
         if (j.contains("emitCount")) config_.emitCount = j["emitCount"];
         if (j.contains("emitLife")) config_.emitLife = j["emitLife"];
+        if (j.contains("maxParticles")) config_.maxParticles = j["maxParticles"];
         if (j.contains("envGravity")) { config_.envGravity.x = j["envGravity"][0]; config_.envGravity.y = j["envGravity"][1]; config_.envGravity.z = j["envGravity"][2]; }
         if (j.contains("envDrag")) config_.envDrag = j["envDrag"];
         if (j.contains("envWind")) { config_.envWind.x = j["envWind"][0]; config_.envWind.y = j["envWind"][1]; config_.envWind.z = j["envWind"][2]; }

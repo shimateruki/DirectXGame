@@ -40,6 +40,9 @@ virtual void BeginThrown(const Vector3& initialVelocity);
 
 
 protected:
+    void CaptureReplayCustomState(json& state) const override;
+    void RestoreReplayCustomState(const json& state) override;
+
     // ターゲットが遠い時に使う、スポーン位置基準のランダム徘徊
         // 徘徊目標へ向かう速度を計算します。
 Vector3 CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale = 0.65f, float verticalOffset = 0.0f, bool includeVertical = false);

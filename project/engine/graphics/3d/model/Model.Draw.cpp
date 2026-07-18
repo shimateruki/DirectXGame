@@ -2,6 +2,7 @@
 #include <fstream>
 #include "Model.h"
 #include "DirectXCommon.h"
+#include "RenderStats.h"
 #include "engine/utility/math/Math.h"
 #include <sstream>
 #include <cassert>
@@ -532,6 +533,7 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
 // シャドウマップ生成用に、マテリアル描画を省いた深度向けメッシュ描画を行う。
 void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    RenderStats::GetInstance()->RecordObjectDraw();
 
     // [0] WVP
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
@@ -553,12 +555,14 @@ void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
+        RenderStats::GetInstance()->RecordIndexedDraw(static_cast<uint32_t>(mesh.indices.size()));
     }
 }
 
 // 既に外側で必要な描画状態を設定している前提で、メッシュ本体だけを描画する。
 void Model::DrawMeshOnly(int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    RenderStats::GetInstance()->RecordObjectDraw();
 
     // メッシュごとに頂点バッファだけをセットして描画
     for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
@@ -573,6 +577,7 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
+        RenderStats::GetInstance()->RecordIndexedDraw(static_cast<uint32_t>(mesh.indices.size()));
     }
 }
 

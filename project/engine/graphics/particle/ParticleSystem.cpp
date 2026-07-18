@@ -1,4 +1,5 @@
 #include "ParticleSystem.h"
+#include "RenderStats.h"
 #include "ParticleCommon.h"
 #include "DirectXCommon.h"
 #include "TextureManager.h"
@@ -367,6 +368,8 @@ void ParticleSystem::Draw() {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
 
     commandList->DrawIndexedInstanced(6, particleCount_, 0, 0, 0);
+    RenderStats::GetInstance()->RecordIndexedDraw(6, particleCount_, 2);
+    RenderStats::GetInstance()->RecordCpuParticles(particleCount_);
 }
 
 void ParticleSystem::CreateResources() {

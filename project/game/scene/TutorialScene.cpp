@@ -18,6 +18,7 @@
 #include "SceneManager.h"
 #include "DebugConsole.h"
 #include "ProfilerManager.h"
+#include "RenderStats.h"
 #include <cassert>
 #include "BulletManager.h"
 #include "MoveStrategy3D.h"
@@ -415,5 +416,9 @@ bool TutorialScene::IsVisible(Object3d* obj) {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return true;
     AABB worldAabb = obj->GetModelWorldAABB();
-    return Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
+    const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
+    if (!visible) {
+        RenderStats::GetInstance()->RecordCulledObject();
+    }
+    return visible;
 }

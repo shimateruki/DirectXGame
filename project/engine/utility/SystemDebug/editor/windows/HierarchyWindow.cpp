@@ -425,6 +425,26 @@ void HierarchyWindow::Draw() {
 
     ImGui::Begin(ICON_FA_SITEMAP " Hierarchy###Hierarchy");
 
+    if (editor_->IsPrefabEditMode()) {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.18f, 0.28f, 1.0f));
+        if (ImGui::BeginChild("PrefabModeHeader", ImVec2(0.0f, 74.0f), true)) {
+            ImGui::TextColored(ImVec4(0.35f, 0.78f, 1.0f, 1.0f),
+                ICON_FA_CUBE " Prefab Mode > %s%s",
+                editor_->GetPrefabEditName().c_str(),
+                editor_->IsPrefabEditDirty() ? " *" : "");
+            if (ImGui::Button(ICON_FA_SAVE " Prefabを保存")) {
+                editor_->SavePrefabEditSession();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_TIMES " 破棄して戻る")) {
+                editor_->CancelPrefabEditSession();
+            }
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Separator();
+    }
+
     if (ImGui::BeginPopupContextWindow("HierarchyCreateContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
         DrawCreateContextMenu(currentScene, false);
         ImGui::EndPopup();
@@ -521,6 +541,11 @@ void HierarchyWindow::Draw() {
         if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
+        }
+        if (editor_->GetPropertyMatrixWindow() && ImGui::Selectable("  " ICON_FA_TABLE " プロパティマトリクス (Property Matrix)", currentObj == editor_->GetPropertyMatrixWindow())) {
+            // 表へ渡す複数選択を維持したまま、専用ウィンドウとInspectorを開きます。
+            editor_->GetPropertyMatrixWindow()->Open();
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetPropertyMatrixWindow());
         }
         if (editor_->GetStatusTuningWindow() && ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス管理 (Status Management)", currentObj == editor_->GetStatusTuningWindow())) {
             editor_->SetSelectedObject(nullptr);
@@ -659,6 +684,7 @@ void HierarchyWindow::Draw() {
         ImGui::TextColored(ImVec4(0, 1, 1, 1), ICON_FA_SEARCH_PLUS " 検索結果:");
         auto& objects = currentScene->GetObjects();
         for (auto& obj : objects) {
+            if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
             std::string name = obj->GetName();
             if (name.empty()) continue;
             if (!HasMatchingCategory(obj.get())) continue;
@@ -745,6 +771,7 @@ void HierarchyWindow::Draw() {
         ImGui::Separator();
         auto& objects = currentScene->GetObjects();
         for (auto& obj : objects) {
+            if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
             if (obj->GetParent() == nullptr) {
                 DrawHierarchyNode(obj.get());
             }

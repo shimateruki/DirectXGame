@@ -4,8 +4,10 @@
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
 #include "engine/graphics/core/ColorSpace.h"
+#include "RenderStats.h"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 
 namespace {
 PostEffect::Params MakeNeutralPostEffectParams(float time) {
@@ -62,6 +64,8 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
+    renderWidth_ = WinApp::kClientWidth;
+    renderHeight_ = WinApp::kClientHeight;
     renderTextures_.resize(8);
     CreateConstBuffer();
     CreateRootSignature();
@@ -82,8 +86,7 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 
     // [5] 縮小ブラー用3 (HDR / 1/16サイズ)
     CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
-    CreateRenderTexture(kCameraPreviewTextureIndex, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
-    CreateRenderTexture(kCinematicCameraPreviewTextureIndex, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    ResizeCameraPreviewTextures();
 }
 
 void PostEffect::Update(float deltaTime) {
@@ -102,6 +105,52 @@ void PostEffect::ResetToNeutral() {
     *paramsData_ = MakeNeutralPostEffectParams(currentTime);
 }
 
+void PostEffect::SetBloomQuality(BloomQuality quality) {
+    switch (quality) {
+    case BloomQuality::Low:
+    case BloomQuality::Medium:
+    case BloomQuality::High:
+        bloomQuality_ = quality;
+        break;
+    default:
+        bloomQuality_ = BloomQuality::High;
+        break;
+    }
+}
+
+bool PostEffect::IsBloomActive() const {
+    constexpr float kBloomIntensityEpsilon = 0.0001f;
+    return bloomEnabled_ && paramsData_ && paramsData_->bloomIntensity > kBloomIntensityEpsilon;
+}
+
+int PostEffect::GetBloomLevelCount() const {
+    switch (bloomQuality_) {
+    case BloomQuality::Low: return 1;
+    case BloomQuality::Medium: return 2;
+    case BloomQuality::High: return 4;
+    default: return 4;
+    }
+}
+
+int PostEffect::GetExpectedPostEffectPassCount() const {
+    if (!IsBloomActive()) {
+        return 1;
+    }
+    return GetBloomLevelCount() * 2 + 2;
+}
+
+void PostEffect::SetCameraPreviewResolutionScale(float scale) {
+    const float clampedScale = std::clamp(scale, 0.25f, 1.0f);
+    if (std::abs(cameraPreviewResolutionScale_ - clampedScale) < 0.0001f) {
+        return;
+    }
+
+    cameraPreviewResolutionScale_ = clampedScale;
+    if (dxCommon_ && renderTextures_.size() >= 8 && renderWidth_ > 0 && renderHeight_ > 0) {
+        ResizeCameraPreviewTextures();
+    }
+}
+
 void PostEffect::ResizeRenderTextures(int width, int height) {
     if (!dxCommon_ || renderTextures_.size() < 8) {
         return;
@@ -109,6 +158,8 @@ void PostEffect::ResizeRenderTextures(int width, int height) {
 
     width = (std::max)(width, 16);
     height = (std::max)(height, 16);
+    renderWidth_ = width;
+    renderHeight_ = height;
 
     // 画面サイズ変更時は、ポストエフェクト用RTも同じタイミングで作り直す。
     CreateRenderTexture(0, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT);
@@ -117,8 +168,29 @@ void PostEffect::ResizeRenderTextures(int width, int height) {
     CreateRenderTexture(3, (std::max)(width / 4, 1), (std::max)(height / 4, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(4, (std::max)(width / 8, 1), (std::max)(height / 8, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
     CreateRenderTexture(5, (std::max)(width / 16, 1), (std::max)(height / 16, 1), DXGI_FORMAT_R16G16B16A16_FLOAT);
-    CreateRenderTexture(kCameraPreviewTextureIndex, (std::max)(width / 2, 16), (std::max)(height / 2, 16), DXGI_FORMAT_R16G16B16A16_FLOAT);
-    CreateRenderTexture(kCinematicCameraPreviewTextureIndex, (std::max)(width / 2, 16), (std::max)(height / 2, 16), DXGI_FORMAT_R16G16B16A16_FLOAT);
+    ResizeCameraPreviewTextures();
+}
+
+void PostEffect::ResizeCameraPreviewTextures() {
+    if (!dxCommon_ || renderTextures_.size() < 8 || renderWidth_ <= 0 || renderHeight_ <= 0) {
+        return;
+    }
+
+    // プレビューは表示側と同じ16:9に固定し、縦横比による映像の伸びを防ぎます。
+    constexpr float kPreviewAspect = 16.0f / 9.0f;
+    int width = (std::max)(static_cast<int>(renderWidth_ * cameraPreviewResolutionScale_), 16);
+    int height = (std::max)(static_cast<int>(renderHeight_ * cameraPreviewResolutionScale_), 16);
+    if (static_cast<float>(width) / static_cast<float>(height) > kPreviewAspect) {
+        width = (std::max)(static_cast<int>(height * kPreviewAspect), 16);
+    }
+    else {
+        height = (std::max)(static_cast<int>(width / kPreviewAspect), 16);
+    }
+
+    cameraPreviewWidth_ = width;
+    cameraPreviewHeight_ = height;
+    CreateRenderTexture(kCameraPreviewTextureIndex, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(kCinematicCameraPreviewTextureIndex, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 
@@ -337,6 +409,8 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, currentNoiseHandle);
 
     commandList->DrawInstanced(3, 1, 0, 0); // 3頂点に変更
+    RenderStats::GetInstance()->RecordNonIndexedDraw(3, 1, 1);
+    RenderStats::GetInstance()->RecordPostProcessPass();
 }
 void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要

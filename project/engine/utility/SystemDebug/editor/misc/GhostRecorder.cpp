@@ -15,9 +15,48 @@
 #include "Easing.h"
 #include "ImGuizmo.h"
 #include "IconsFontAwesome5.h"
+#include "EditorTransactionManager.h"
 using json = nlohmann::json;
 
 namespace {
+
+bool NearlyEqual(float lhs, float rhs) {
+	return std::fabs(lhs - rhs) <= 0.00001f;
+}
+
+bool VectorEquals(const Vector3& lhs, const Vector3& rhs) {
+	return NearlyEqual(lhs.x, rhs.x) && NearlyEqual(lhs.y, rhs.y) && NearlyEqual(lhs.z, rhs.z);
+}
+
+bool WaypointEquals(const GhostRecorder::GenerationParams::Waypoint& lhs,
+	const GhostRecorder::GenerationParams::Waypoint& rhs) {
+	return VectorEquals(lhs.pos, rhs.pos) && VectorEquals(lhs.rot, rhs.rot) && VectorEquals(lhs.scale, rhs.scale) &&
+		lhs.eventID == rhs.eventID && NearlyEqual(lhs.waitTime, rhs.waitTime) &&
+		NearlyEqual(lhs.durationToNext, rhs.durationToNext) && lhs.easingToNext == rhs.easingToNext;
+}
+
+bool GenerationParamsEqual(const GhostRecorder::GenerationParams& lhs, const GhostRecorder::GenerationParams& rhs) {
+	if (!VectorEquals(lhs.startPos, rhs.startPos) || !VectorEquals(lhs.startRot, rhs.startRot) ||
+		!VectorEquals(lhs.startScale, rhs.startScale) || lhs.startEventID != rhs.startEventID ||
+		!NearlyEqual(lhs.startWaitTime, rhs.startWaitTime) ||
+		!NearlyEqual(lhs.startDurationToNext, rhs.startDurationToNext) ||
+		lhs.startEasingToNext != rhs.startEasingToNext || !VectorEquals(lhs.endPos, rhs.endPos) ||
+		!VectorEquals(lhs.endRot, rhs.endRot) || !VectorEquals(lhs.endScale, rhs.endScale) ||
+		lhs.endEventID != rhs.endEventID || !NearlyEqual(lhs.endWaitTime, rhs.endWaitTime) ||
+		!VectorEquals(lhs.anchorOffsetPos, rhs.anchorOffsetPos) ||
+		!VectorEquals(lhs.anchorOffsetRot, rhs.anchorOffsetRot) ||
+		lhs.generateRelative != rhs.generateRelative || lhs.useSpline != rhs.useSpline ||
+		lhs.waypoints.size() != rhs.waypoints.size()) {
+		return false;
+	}
+
+	for (std::size_t index = 0; index < lhs.waypoints.size(); ++index) {
+		if (!WaypointEquals(lhs.waypoints[index], rhs.waypoints[index])) {
+			return false;
+		}
+	}
+	return true;
+}
 
 bool IsObjectInScene(SceneManager* sceneManager, Object3d* object) {
 	if (!object) {
@@ -91,8 +130,9 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	anchor_ = nullptr;
 	anchorName_.clear();
 	frames_.clear();
-	undoStack_.clear();
-	redoStack_.clear();
+	pendingHistoryState_.reset();
+	hasUiEditStart_ = false;
+	historyRegisteredThisFrame_ = false;
 	state_ = State::Idle;
 
 	isLoop_ = false;
@@ -703,8 +743,9 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 					*targetScale = newScale;
 				}
-				else {
+				else if (isDraggingGizmo_) {
 					isDraggingGizmo_ = false;
+					CommitHistory("Ghost Recorder Gizmo");
 				}
 			}
 			ImGui::PopID();
@@ -928,6 +969,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 				selectedWaypointIndex_ = static_cast<int>(genParams_.waypoints.size()) - 1;
 				DebugConsole::GetInstance()->AddLog("Waypoint Added at Camera Depth!");
 			}
+			CommitHistory("Ghost Recorder Add Waypoint");
 		}
 	
 			
@@ -947,6 +989,8 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 void GhostRecorder::DrawImGui() {
 #ifdef USE_IMGUI
 	Update();
+	historyRegisteredThisFrame_ = false;
+	const GenerationParams beforeUiState = genParams_;
 	if (!ImGui::GetIO().WantTextInput) {
 		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z)) PerformUndo();
 		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y)) PerformRedo();
@@ -958,6 +1002,7 @@ void GhostRecorder::DrawImGui() {
 				selectedPinType_ = SelectedPinType::None;
 				selectedWaypointIndex_ = -1;
 				DebugConsole::GetInstance()->AddLog("Waypoint Deleted!");
+				CommitHistory("Ghost Recorder Delete Waypoint");
 			}
 		}
 	}
@@ -1122,7 +1167,10 @@ void GhostRecorder::DrawImGui() {
 				}
 				ImGui::PopID();
 			}
-			if (waypointToDelete >= 0) genParams_.waypoints.erase(genParams_.waypoints.begin() + waypointToDelete);
+			if (waypointToDelete >= 0) {
+				genParams_.waypoints.erase(genParams_.waypoints.begin() + waypointToDelete);
+				CommitHistory("Ghost Recorder Delete Waypoint");
+			}
 
 			if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ＋ 現在地を追加", ImVec2(-1, 0))) {
 				SaveHistory();
@@ -1130,6 +1178,7 @@ void GhostRecorder::DrawImGui() {
 				wp.pos = target_->GetTranslate(); wp.rot = target_->GetRotation(); wp.scale = target_->GetScale();
 				wp.durationToNext = 1.0f; wp.easingToNext = 0;
 				genParams_.waypoints.push_back(wp);
+				CommitHistory("Ghost Recorder Add Waypoint");
 			}
 
 			// --- End 設定 ---
@@ -1288,6 +1337,18 @@ void GhostRecorder::DrawImGui() {
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(ICON_FA_STOP " 停止")) Stop();
+
+	const bool changedThisFrame = !GenerationParamsEqual(beforeUiState, genParams_);
+	if (!historyRegisteredThisFrame_) {
+		if (changedThisFrame && !hasUiEditStart_) {
+			uiEditStartState_ = beforeUiState;
+			hasUiEditStart_ = true;
+		}
+		if (!ImGui::IsAnyItemActive() && hasUiEditStart_) {
+			RegisterHistory(uiEditStartState_, genParams_, "Ghost Recorder Inspector Edit");
+			hasUiEditStart_ = false;
+		}
+	}
 #endif
 }
 
@@ -1569,36 +1630,48 @@ void GhostRecorder::FindAnchor() {
 // Undo / Redo 機能
 // ==========================================================================
 void GhostRecorder::SaveHistory() {
-	undoStack_.push_back(genParams_);
-	constexpr size_t kMaxHistoryEntries = 50;
-	if (undoStack_.size() > kMaxHistoryEntries) {
-		undoStack_.pop_front();
-	}
-	redoStack_.clear(); // 新しい操作をしたらRedoの履歴は消える
+	pendingHistoryState_ = genParams_;
 }
 
 void GhostRecorder::PerformUndo() {
-	if (undoStack_.empty()) return;
-
-	redoStack_.push_back(genParams_); // 今の状態をRedoに積む
-	genParams_ = undoStack_.back();   // 1個前の状態を取り出す
-	undoStack_.pop_back();
-
-	DeselectPin();
-
-	DebugConsole::GetInstance()->AddLog("GhostRecorder: Undo!");
+	EditorTransactionManager::GetInstance()->Undo();
 }
 
 void GhostRecorder::PerformRedo() {
-	if (redoStack_.empty()) return;
+	EditorTransactionManager::GetInstance()->Redo();
+}
 
-	undoStack_.push_back(genParams_); // 今の状態をUndoに積む
-	genParams_ = redoStack_.back();   // 未来の状態を取り出す
-	redoStack_.pop_back();
+void GhostRecorder::CommitHistory(const std::string& label) {
+	if (!pendingHistoryState_.has_value()) {
+		return;
+	}
+	RegisterHistory(*pendingHistoryState_, genParams_, label);
+	pendingHistoryState_.reset();
+	historyRegisteredThisFrame_ = true;
+}
 
-	DeselectPin();
+void GhostRecorder::RegisterHistory(
+	const GenerationParams& before,
+	const GenerationParams& after,
+	const std::string& label) {
+	if (GenerationParamsEqual(before, after)) {
+		return;
+	}
 
-	DebugConsole::GetInstance()->AddLog("GhostRecorder: Redo!");
+	std::weak_ptr<int> lifetime = historyLifetime_;
+	EditorTransaction transaction;
+	transaction.label = label;
+	transaction.undo = [this, lifetime, before]() {
+		if (lifetime.expired()) return;
+		genParams_ = before;
+		DeselectPin();
+	};
+	transaction.redo = [this, lifetime, after]() {
+		if (lifetime.expired()) return;
+		genParams_ = after;
+		DeselectPin();
+	};
+	EditorTransactionManager::GetInstance()->Register(std::move(transaction));
 }
 
 void GhostRecorder::DeleteSelectedPin() {
@@ -1611,5 +1684,6 @@ void GhostRecorder::DeleteSelectedPin() {
 
 		DeselectPin();
 		DebugConsole::GetInstance()->AddLog("Waypoint Deleted!");
+		CommitHistory("Ghost Recorder Delete Waypoint");
 	}
 }

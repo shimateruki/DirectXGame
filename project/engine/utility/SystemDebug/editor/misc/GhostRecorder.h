@@ -3,7 +3,8 @@
 #include "engine/utility/math/Math.h"
 #include "IEditable.h"
 
-#include <deque>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -102,6 +103,8 @@ private:
     void StartCinematicPlayback();
     void StopCinematicPlayback();
     void SaveHistory();
+    void CommitHistory(const std::string& label);
+    void RegisterHistory(const GenerationParams& before, const GenerationParams& after, const std::string& label);
 
     Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t);
     Vector3 GetSplinePoint(const std::vector<Vector3>& points, float t);
@@ -144,7 +147,10 @@ private:
     };
     SelectedPinType selectedPinType_ = SelectedPinType::None;
     int selectedWaypointIndex_ = -1;
-    std::deque<GenerationParams> undoStack_;
-    std::deque<GenerationParams> redoStack_;
+    std::optional<GenerationParams> pendingHistoryState_;
+    GenerationParams uiEditStartState_;
+    bool hasUiEditStart_ = false;
+    bool historyRegisteredThisFrame_ = false;
+    std::shared_ptr<int> historyLifetime_ = std::make_shared<int>(0);
     bool isDraggingGizmo_ = false;
 };

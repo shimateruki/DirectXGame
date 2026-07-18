@@ -31,6 +31,7 @@ struct Particle
 };
 
 StructuredBuffer<Particle> particles : register(t0);
+StructuredBuffer<uint> aliveParticleIndices : register(t4);
 
 cbuffer ViewProj : register(b0)
 {
@@ -105,16 +106,8 @@ float2 ApplySpriteSheet(float2 baseUV, Particle particle, uint instanceID)
 VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 {
     VSOutput output;
-    Particle p = particles[instanceID];
-    
-    if (p.life <= 0.0f)
-    {
-        output.pos = float4(0, 0, 0, 0);
-        output.color = float4(0, 0, 0, 0);
-        output.uv = float2(0.0f, 0.0f);
-        output.projPos = float4(0, 0, 0, 0);
-        return output;
-    }
+    uint particleIndex = aliveParticleIndices[instanceID];
+    Particle p = particles[particleIndex];
 
     float3 localPos = positions[vertexID] * p.scale;
     float c = cos(p.rotation);
@@ -127,7 +120,7 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     float3 worldPos = p.position + mul(rotatedPos, (float3x3) billboardMatrix);
 
     output.pos = mul(float4(worldPos, 1.0f), viewProj);
-    output.uv = ApplySpriteSheet(uvs[vertexID], p, instanceID);
+    output.uv = ApplySpriteSheet(uvs[vertexID], p, particleIndex);
     output.color = p.color;
     
     // =======================================================

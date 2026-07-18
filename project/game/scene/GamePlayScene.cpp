@@ -18,6 +18,7 @@
 #include "SceneManager.h"
 #include "DebugConsole.h"
 #include "ProfilerManager.h"
+#include "RenderStats.h"
 #include <cassert>
 #include "BulletManager.h"
 #include "MoveStrategy3D.h"
@@ -209,13 +210,17 @@ void GamePlayScene::Draw() {
 		}
 	}
 
-	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+	GPUParticleManager* gpuParticleManager = GPUParticleManager::GetInstance();
+	const bool hasGPUParticles = !gpuParticleManager->IsEmpty();
+	const bool gpuParticlesNeedGrab = hasGPUParticles && gpuParticleManager->RequiresSceneColorCopy();
 	bool grabUpdated = false;
 	const bool isCameraPreview = dxCommon_ && dxCommon_->IsCameraPreviewRendering();
 	if (!isCameraPreview && (hasFluid || hasGPUParticles)) {
-		// 画面をキャプチャして背景テクスチャにする (必要な時だけ1回呼ぶ)
-		dxCommon_->UpdateGrabTexture();
-		grabUpdated = true;
+		// 特殊マテリアルか歪みパーティクルが背景色を使う時だけ、画面全体をコピーする。
+		if (hasFluid || gpuParticlesNeedGrab) {
+			dxCommon_->UpdateGrabTexture();
+			grabUpdated = true;
+		}
 
 		if (hasFluid) {
 			for (auto& obj : objects) {
@@ -276,11 +281,11 @@ void GamePlayScene::Draw() {
 					obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				}
 			}
+			BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
-		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 
 		if (hasGPUParticles) {
-			GPUParticleManager::GetInstance()->Draw(
+			gpuParticleManager->Draw(
 				dxCommon_->GetCommandList(),
 				camera->GetViewMatrix(),
 				camera->GetProjectionMatrix(),
@@ -861,5 +866,9 @@ bool GamePlayScene::IsVisible(Object3d* obj) {
     // モデルデータに基づいた正確なワールド空間AABBを取得
     AABB worldAabb = obj->GetModelWorldAABB();
 
-    return Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
+    const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
+    if (!visible) {
+        RenderStats::GetInstance()->RecordCulledObject();
+    }
+    return visible;
 }

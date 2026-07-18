@@ -145,6 +145,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->isVisible_ = other->isVisible_;
     this->isLocked_ = other->isLocked_;
     this->castShadow_ = other->castShadow_;
+    this->prefabInstanceInfo_ = other->prefabInstanceInfo_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
     }

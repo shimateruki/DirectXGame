@@ -17,6 +17,7 @@ struct ID3D12GraphicsCommandList;
 class MeshEffectEditor;
 class ParticleEditor;
 class PostEffectEditor;
+class ReplayDebugger;
 class SceneManager;
 class SpriteDebugEditor;
 class TrailEmitterEditor;
@@ -53,6 +54,10 @@ void BeginFrame();
 void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	    // 各エディタツールの更新処理をまとめて呼び出します。
 void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
+    // リプレイ停止中はGame側のシーン更新を完全に止めます。
+    bool ShouldFreezeSimulationForReplay() const;
+    // 通常のシーン更新後に、リプレイ用スナップショットを記録します。
+    void CaptureReplayFrame(float simulationDeltaTime, bool isPlaying);
 	    // Inspector、Project、VFX、ステータスなどのツールウィンドウを描画します。
 void DrawToolWindows(
 		float& timeScale,
@@ -80,6 +85,7 @@ void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	
 	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 private:
 	void SetupDefaultDockspace();
+	void SetReplayDebuggerVisible(bool visible);
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
 	void DrawGhostPreview(bool isPlaying, const GameViewArea& area);
 	void RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
@@ -111,6 +117,8 @@ private:
 	std::unique_ptr<DebrisEffectEditor> debrisEffectEditor_;
 	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
 	std::unique_ptr<EngineManualWindow> engineManualWindow_;	bool showDebugWindows_ = true;
+	std::unique_ptr<ReplayDebugger> replayDebugger_;
+	bool showReplayDebugger_ = false;
 	bool showDebugConsole_ = true;
 	bool showTimeController_ = true;
 	bool showBossDebug_ = false;

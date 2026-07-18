@@ -34,6 +34,7 @@ void Emit(const std::string& presetName, const Vector3& position, const Matrix4x
     float GetTimeScale() const { return timeScale_; }
     void SetTimeScale(float timeScale) { timeScale_ = timeScale; }
     bool IsInitialized() const { return dxCommon_ != nullptr; }
+    static uint32_t ResolveParticleCapacity(const GPUParticleConfig& config);
 
     const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
 
@@ -43,6 +44,8 @@ uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position)
     void StopAutoEmitter(uint32_t id);
     void ClearAllAutoEmitters();
     bool IsEmpty() const;
+    // 背景色を参照する歪みパーティクルが描画対象に含まれるかを返します。
+    bool RequiresSceneColorCopy() const;
 
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         meshVb_ = vb; meshVCount_ = vCount; meshVStride_ = vStride; meshBoneSrv_ = boneSrvIndex;

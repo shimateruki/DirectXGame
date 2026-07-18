@@ -704,6 +704,17 @@ void ProjectWindow::Draw() {
                                     presetThumbnailAlbum_[name].isCaptured = false;
                                 }
                             }
+                            if (ImGui::MenuItem(ICON_FA_CODE_BRANCH " Prefabへ変換")) {
+                                std::string prefabName = name;
+                                int suffix = 1;
+                                while (PresetManager::GetInstance()->HasPrefab(prefabName)) {
+                                    prefabName = name + "_Prefab" + std::to_string(suffix++);
+                                }
+                                if (PresetManager::GetInstance()->CreatePrefabFromPreset(name, prefabName)) {
+                                    DebugConsole::GetInstance()->AddLog(
+                                        "Converted Preset to Prefab: " + name + " -> " + prefabName);
+                                }
+                            }
                             if (ImGui::MenuItem(ICON_FA_CAMERA " Update Thumbnail")) presetThumbnailAlbum_[name].isCaptured = false;
 
                             ImGui::Separator();
@@ -786,7 +797,7 @@ void ProjectWindow::Draw() {
     // =================================================================================
     
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("Prefabs (v1)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Prefabs (v3 / Variants)", ImGuiTreeNodeFlags_DefaultOpen)) {
             static char prefabNameBuf[64] = "NewPrefab";
             ImGui::InputText("Prefab名", prefabNameBuf, IM_ARRAYSIZE(prefabNameBuf));
 
@@ -799,7 +810,8 @@ void ProjectWindow::Draw() {
                 PresetManager::GetInstance()->AddPrefabFromObject(prefabNameBuf, selectedObject);
             }
 
-            ImGui::TextDisabled("Prefab v1は階層を複製保存します。元Prefabとのリンク/Overrideは未対応です。");
+            ImGui::TextDisabled("Scene上のInstanceは元Prefabとのリンクを保持し、InspectorからApply/Revertできます。");
+            ImGui::TextDisabled("旧Prefab v1/v2は読み込み時にv3へ移行されます。Presetは右クリックからPrefabへ明示変換できます。");
 
             const auto& prefabs = PresetManager::GetInstance()->GetPrefabs();
             if (prefabs.empty()) {
@@ -808,16 +820,50 @@ void ProjectWindow::Draw() {
 
             int prefabIndex = 0;
             for (const auto& [prefabName, prefabJson] : prefabs) {
-                (void)prefabJson;
+                const bool isVariant = PresetManager::GetInstance()->IsPrefabVariant(prefabName);
+                const std::string basePrefabName = PresetManager::GetInstance()->GetPrefabBaseName(prefabName);
+                const auto structureSummary =
+                    PresetManager::GetInstance()->GetPrefabStructureOverrideSummary(prefabName);
                 ImGui::PushID(prefabName.c_str());
                 ImGui::BeginGroup();
-                ImGui::Button("Prefab", ImVec2(86.0f, 46.0f));
+                ImGui::Button(isVariant ? "Variant" : "Prefab", ImVec2(86.0f, 46.0f));
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && editor_) {
+                    editor_->BeginPrefabEditSession(prefabName);
+                }
                 if (ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload("PREFAB_ASSET", prefabName.c_str(), prefabName.size() + 1);
                     ImGui::Text("Prefab: %s", prefabName.c_str());
                     ImGui::EndDragDropSource();
                 }
                 ImGui::TextWrapped("%s", prefabName.c_str());
+                if (isVariant) {
+                    ImGui::TextDisabled("Base: %s", basePrefabName.empty() ? "Missing" : basePrefabName.c_str());
+                    if (structureSummary.HasOverrides()) {
+                        ImGui::TextDisabled("Structure: +%d -%d Move:%d",
+                            structureSummary.addedObjects,
+                            structureSummary.removedObjects,
+                            structureSummary.reparentedObjects);
+                    }
+                }
+                if (ImGui::BeginPopupContextItem("PrefabContextMenu")) {
+                    if (ImGui::MenuItem(ICON_FA_CUBE " Prefab Modeで開く") && editor_) {
+                        editor_->BeginPrefabEditSession(prefabName);
+                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem(ICON_FA_CODE_BRANCH " Variantを作成")) {
+                        std::string variantName = prefabName + "_Variant";
+                        int suffix = 1;
+                        while (PresetManager::GetInstance()->HasPrefab(variantName)) {
+                            variantName = prefabName + "_Variant" + std::to_string(suffix++);
+                        }
+                        if (PresetManager::GetInstance()->CreatePrefabVariant(prefabName, variantName)) {
+                            DebugConsole::GetInstance()->AddLog(
+                                "Created Prefab Variant: " + variantName + " from " + prefabName);
+                        }
+                    }
+                    ImGui::TextDisabled("Asset ID: %s", prefabJson.value("assetId", "").c_str());
+                    ImGui::EndPopup();
+                }
                 ImGui::EndGroup();
                 ImGui::PopID();
 

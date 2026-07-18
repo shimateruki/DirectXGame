@@ -252,20 +252,22 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
 }
 
 bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
-    if (!dxCommon || !camera || GPUParticleManager::GetInstance()->IsEmpty()) {
+    GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
+    if (!dxCommon || !camera || particleManager->IsEmpty()) {
         return grabAlreadyUpdated;
     }
     if (dxCommon->IsCameraPreviewRendering()) {
         return grabAlreadyUpdated;
     }
 
-    if (!grabAlreadyUpdated) {
+    // 加算・半透明パーティクルは背景色を参照しないため、全画面コピーを省略します。
+    if (!grabAlreadyUpdated && particleManager->RequiresSceneColorCopy()) {
         dxCommon->UpdateGrabTexture();
         grabAlreadyUpdated = true;
     }
 
     dxCommon->PreDrawLocalFog();
-    GPUParticleManager::GetInstance()->Draw(
+    particleManager->Draw(
         dxCommon->GetCommandList(),
         camera->GetViewMatrix(),
         camera->GetProjectionMatrix(),

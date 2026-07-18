@@ -260,6 +260,7 @@ void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
 private:
     bool HasRequiredBuffers() const;
+    const Matrix4x4& GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix);
     void InitializeFireProxyModel();
     void InitializeGatePortalProxyModel();
         // 特殊マテリアル描画の共通処理をまとめます。
@@ -286,6 +287,9 @@ Model* ResolveDrawModel() const;
     // 通常描画用GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
     TransformationMatrix* wvpData_ = nullptr;
+    Matrix4x4 cachedWorldMatrix_ = Math::MakeIdentity4x4();
+    Matrix4x4 cachedWorldInverseTranspose_ = Math::MakeIdentity4x4();
+    bool worldInverseTransposeCacheValid_ = false;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     DirectionalLight* directionalLightData_ = nullptr;

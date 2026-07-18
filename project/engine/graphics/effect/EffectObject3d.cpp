@@ -10,6 +10,17 @@
 #include <nlohmann/json.hpp>
 
 namespace {
+constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
+
+// 未設定テクスチャ用SRVを共有し、Effectの描画ごとのファイル確認を避けます。
+uint32_t GetDefaultWhiteTextureHandle() {
+    static uint32_t handle = 0;
+    if (handle == 0) {
+        handle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+    }
+    return handle;
+}
+
 float ResolveTargetRootYaw(Object3d* targetObject) {
     if (!targetObject) {
         return 0.0f;
@@ -212,9 +223,10 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     commandList->SetGraphicsRootConstantBufferView(2, materialBuffer_->GetGPUVirtualAddress());
 
     // [3] DescriptorTable t0 (PS用) -> テクスチャ
+    const uint32_t fallbackTextureHandle = GetDefaultWhiteTextureHandle();
     uint32_t texHandle = meshRenderer_->GetTextureHandle();
     if (texHandle == 0) {
-        texHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+        texHandle = fallbackTextureHandle;
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, texHandle);
     uint32_t grabSrvHandle = common_->GetDxCommon()->GetGrabSrvHandle();
@@ -225,12 +237,12 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     uint32_t noiseHandle = noiseTextureHandle_;
     if (noiseHandle == 0) {
         // まだエディタで設定されていない場合は白画像を入れてクラッシュを回避
-        noiseHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+        noiseHandle = fallbackTextureHandle;
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, noiseHandle);
     uint32_t rampHandle = rampTextureHandle_;
     if (rampHandle == 0) {
-        rampHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+        rampHandle = fallbackTextureHandle;
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, rampHandle);
     // =======================================================

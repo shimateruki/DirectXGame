@@ -1,5 +1,7 @@
 #include "LightManager.h"
 #include "Object3d.h" // 追従対象の座標を取得するために必要
+#include "Camera.h"
+#include "CameraManager.h"
 #include <cassert>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +12,23 @@
 #include "engine/graphics/core/ColorSpace.h"
 
 using json = nlohmann::json;
+
+namespace {
+bool IntersectsFrustumSphere(const Frustum& frustum, const Vector3& center, float radius) {
+    const float safeRadius = (std::max)(radius, 0.0f);
+    for (const Plane& plane : frustum.planes) {
+        const float signedDistance =
+            plane.normal.x * center.x +
+            plane.normal.y * center.y +
+            plane.normal.z * center.z +
+            plane.distance;
+        if (signedDistance < -safeRadius) {
+            return false;
+        }
+    }
+    return true;
+}
+}
 
 LightManager* LightManager::GetInstance() {
     static LightManager instance;
@@ -54,9 +73,13 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
 
 void LightManager::Update() {
 
+    Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+    const Frustum* activeFrustum = activeCamera ? &activeCamera->GetFrustum() : nullptr;
+
     // ---------------------------------------------------
     // 1. 平行光源 (Directional Light)
     // ---------------------------------------------------
+    GetDirectionalShadowViewProjection(CameraManager::GetInstance()->GetActiveCamera());
     if (directionalLightResource_) {
         DirectionalLight* dirMap = nullptr;
 
@@ -123,6 +146,13 @@ void LightManager::Update() {
             instance.data.intensity = instance.baseIntensity;
         }
 
+        if (instance.data.intensity <= 0.0001f || instance.data.radius <= 0.0001f) {
+            continue;
+        }
+        if (activeFrustum && !IntersectsFrustumSphere(*activeFrustum, instance.data.position, instance.data.radius)) {
+            continue;
+        }
+
         // --- GPUバッファへコピー ---
         int index = pointLightConstData_->activeCount;
         MeshRenderer::PointLight gpuLight = instance.data;
@@ -142,6 +172,12 @@ void LightManager::Update() {
         if (progress >= 1.0f) {
             transientPointLights_[index] = transientPointLights_.back();
             transientPointLights_.pop_back();
+            continue;
+        }
+
+        if (pulse.data.intensity <= 0.0001f || pulse.data.radius <= 0.0001f ||
+            (activeFrustum && !IntersectsFrustumSphere(*activeFrustum, pulse.data.position, pulse.data.radius))) {
+            ++index;
             continue;
         }
 
@@ -199,6 +235,13 @@ void LightManager::Update() {
             instance.data.intensity = instance.baseIntensity;
         }
 
+        if (instance.data.intensity <= 0.0001f || instance.data.distance <= 0.0001f) {
+            continue;
+        }
+        if (activeFrustum && !IntersectsFrustumSphere(*activeFrustum, instance.data.position, instance.data.distance)) {
+            continue;
+        }
+
         // --- GPUバッファへコピー ---
         int index = spotLightConstData_->activeCount;
         MeshRenderer::SpotLight gpuLight = instance.data;
@@ -206,6 +249,69 @@ void LightManager::Update() {
         spotLightConstData_->lights[index] = gpuLight;
         spotLightConstData_->activeCount++;
     }
+}
+
+const Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* camera) {
+    Math math;
+    Vector3 lightDirection = directionalLightData_.direction;
+    if (Math::Length(lightDirection) > 0.0001f) {
+        lightDirection = Math::Normalize(lightDirection);
+    }
+    else {
+        lightDirection = { 0.0f, -1.0f, 0.0f };
+    }
+    directionalLightData_.direction = lightDirection;
+
+    const Vector3 target = camera ? camera->GetEye() : Vector3{};
+    const float areaSize = std::clamp(shadowAreaSize_, 20.0f, 240.0f);
+    const auto changed = [](float lhs, float rhs) {
+        return std::abs(lhs - rhs) > 0.0001f;
+    };
+    const bool eyeChanged =
+        changed(target.x, cachedShadowEye_.x) ||
+        changed(target.y, cachedShadowEye_.y) ||
+        changed(target.z, cachedShadowEye_.z);
+    const bool directionChanged =
+        changed(lightDirection.x, cachedShadowDirection_.x) ||
+        changed(lightDirection.y, cachedShadowDirection_.y) ||
+        changed(lightDirection.z, cachedShadowDirection_.z);
+
+    if (!shadowMatrixCacheValid_ || eyeChanged || directionChanged || changed(areaSize, cachedShadowAreaSize_)) {
+        const Vector3 lightPosition = {
+            target.x - lightDirection.x * 200.0f,
+            target.y - lightDirection.y * 200.0f,
+            target.z - lightDirection.z * 200.0f,
+        };
+        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        if (std::abs(lightDirection.x) < 0.001f && std::abs(lightDirection.z) < 0.001f) {
+            up = { 0.0f, 0.0f, 1.0f };
+        }
+
+        const Matrix4x4 lightView = math.MakeLookAtMatrix(lightPosition, target, up);
+        const Matrix4x4 lightProjection = math.MakeOrthographicMatrix(areaSize, areaSize, 1.0f, 400.0f);
+        directionalLightData_.lightViewProj = math.Multiply(lightView, lightProjection);
+        cachedShadowEye_ = target;
+        cachedShadowDirection_ = lightDirection;
+        cachedShadowAreaSize_ = areaSize;
+        shadowMatrixCacheValid_ = true;
+    }
+
+    return directionalLightData_.lightViewProj;
+}
+
+int LightManager::GetShadowMapResolution() const {
+    return dxCommon_ ? dxCommon_->GetShadowMapResolution() : 2048;
+}
+
+void LightManager::SetShadowMapResolution(int resolution) {
+    if (dxCommon_) {
+        dxCommon_->SetShadowMapResolution(resolution);
+    }
+}
+
+void LightManager::SetShadowAreaSize(float size) {
+    shadowAreaSize_ = std::clamp(size, 20.0f, 240.0f);
+    shadowMatrixCacheValid_ = false;
 }
 
 void LightManager::ApplySceneClearColor() {
@@ -314,6 +420,8 @@ bool LightManager::SaveState(const std::string& filename) {
     root["clearColor"] = { sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w };
     root["skybox"]["enabled"] = skyboxEnabled_;
     root["skybox"]["texture"] = skyboxTexturePath_;
+    root["shadow"]["resolution"] = GetShadowMapResolution();
+    root["shadow"]["areaSize"] = shadowAreaSize_;
 
     // --- 平行光源 ---
     root["directionalLight"]["color"] = { directionalLightData_.color.x, directionalLightData_.color.y, directionalLightData_.color.z, directionalLightData_.color.w };
@@ -437,6 +545,16 @@ bool LightManager::LoadState(const std::string& filename) {
     } else {
         SetSkyboxTexturePath("Resources/output_skybox.dds");
     }
+
+    int shadowResolution = 2048;
+    float shadowAreaSize = 80.0f;
+    if (root.contains("shadow") && root["shadow"].is_object()) {
+        const json& shadow = root["shadow"];
+        shadowResolution = shadow.value("resolution", shadowResolution);
+        shadowAreaSize = shadow.value("areaSize", shadowAreaSize);
+    }
+    SetShadowMapResolution(shadowResolution);
+    SetShadowAreaSize(shadowAreaSize);
 
     // --- 平行光源 ---
     if (root.contains("directionalLight")) {

@@ -6,6 +6,8 @@
 #include "SRVManager.h"
 #include <TextureManager.h>
 #include <d3d12.h>
+#include <algorithm>
+#include <cmath>
 #include <sstream>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -20,7 +22,8 @@ std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
         << "_frames" << config.spriteSheetFrameCount
         << "_fps" << config.spriteSheetFps
         << "_loop" << config.spriteSheetLoop
-        << "_rand" << config.spriteSheetRandomStart;
+        << "_rand" << config.spriteSheetRandomStart
+        << "_capacity" << GPUParticleManager::ResolveParticleCapacity(config);
     return key.str();
 }
 }
@@ -28,6 +31,41 @@ std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
 GPUParticleManager* GPUParticleManager::GetInstance() {
     static GPUParticleManager instance;
     return &instance;
+}
+
+uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& config) {
+    if (config.maxParticles > 0) {
+        return static_cast<uint32_t>(std::clamp(
+            config.maxParticles,
+            static_cast<int>(GPUParticleSystem::kMinParticles),
+            static_cast<int>(GPUParticleSystem::kMaxParticles)));
+    }
+
+    const uint64_t emitCount = static_cast<uint64_t>((std::max)(config.emitCount, 1));
+    uint64_t requiredCapacity = 0;
+    if (config.isLooping) {
+        const float interval = (std::max)(config.emitInterval, 1.0f / 60.0f);
+        const float life = (std::max)(config.emitLife, 0.0f);
+        const uint64_t overlappingEmits = static_cast<uint64_t>(std::ceil(life / interval)) + 2u;
+        requiredCapacity = emitCount * overlappingEmits;
+    }
+    else {
+        // 同じTexture/Blendの単発演出が同時に6回重なっても溢れにくい余裕を持たせる。
+        requiredCapacity = emitCount * 6u;
+    }
+
+    requiredCapacity = (std::max)(
+        requiredCapacity,
+        static_cast<uint64_t>(GPUParticleSystem::kMinParticles));
+    if (requiredCapacity >= GPUParticleSystem::kMaxParticles) {
+        return GPUParticleSystem::kMaxParticles;
+    }
+
+    uint32_t capacity = GPUParticleSystem::kMinParticles;
+    while (capacity < requiredCapacity && capacity < GPUParticleSystem::kMaxParticles) {
+        capacity *= 2u;
+    }
+    return (std::min)(capacity, GPUParticleSystem::kMaxParticles);
 }
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
@@ -105,7 +143,7 @@ GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig
 
     if (systems_.find(key) == systems_.end()) {
         auto newSystem = std::make_unique<GPUParticleSystem>();
-        newSystem->Initialize(dxCommon_);
+        newSystem->Initialize(dxCommon_, ResolveParticleCapacity(config));
         systems_[key] = std::move(newSystem);
         DebugConsole::GetInstance()->AddLog("Created new Particle System for: " + key);
     }
@@ -138,6 +176,15 @@ bool GPUParticleManager::IsEmpty() const {
         }
     }
     return true;
+}
+
+bool GPUParticleManager::RequiresSceneColorCopy() const {
+    for (const auto& pair : systems_) {
+        if (pair.second && pair.second->RequiresSceneColorCopy()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
@@ -178,6 +225,7 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("emitVelocity")) { config.emitVelocity.x = j["emitVelocity"][0]; config.emitVelocity.y = j["emitVelocity"][1]; config.emitVelocity.z = j["emitVelocity"][2]; }
                 if (j.contains("emitCount")) config.emitCount = j["emitCount"];
                 if (j.contains("emitLife")) config.emitLife = j["emitLife"];
+                if (j.contains("maxParticles")) config.maxParticles = j["maxParticles"];
                 if (j.contains("velocityVariance")) config.velocityVariance = j["velocityVariance"];
                 if (j.contains("baseColor")) { config.baseColor.x = j["baseColor"][0]; config.baseColor.y = j["baseColor"][1]; config.baseColor.z = j["baseColor"][2]; config.baseColor.w = j["baseColor"][3]; }
                 if (j.contains("endColor")) { config.endColor.x = j["endColor"][0]; config.endColor.y = j["endColor"][1]; config.endColor.z = j["endColor"][2]; config.endColor.w = j["endColor"][3]; }

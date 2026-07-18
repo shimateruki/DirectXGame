@@ -17,6 +17,7 @@
 #include "Object3d.h"
 #include "PostEffect.h"
 #include "ProfilerManager.h"
+#include "RenderStats.h"
 #include "SceneFactory.h"
 #include "SceneManager.h"
 #include "SrvManager.h"
@@ -30,6 +31,7 @@
 #include "json.hpp"
 
 #include <Windows.h>
+#include <array>
 #include <chrono>
 #include <fstream>
 
@@ -299,12 +301,25 @@ void Game::UpdateEditorFrame(float deltaTime) {
 
 void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	auto startUpdate = std::chrono::high_resolution_clock::now();
+	bool replayFrozen = false;
+#ifdef USE_IMGUI
+	if (editorController_) {
+		replayFrozen = editorController_->ShouldFreezeSimulationForReplay();
+	}
+#endif
 
 	{
 		PROFILE_SCOPE("シーン");
 		if (sceneManager_) {
 			const float sceneDeltaTime = sceneManager_->IsTransitioning() ? deltaTime : finalDeltaTime;
-			sceneManager_->Update(sceneDeltaTime);
+			if (!replayFrozen || sceneManager_->IsTransitioning()) {
+				sceneManager_->Update(sceneDeltaTime);
+#ifdef USE_IMGUI
+				if (editorController_ && !sceneManager_->IsTransitioning()) {
+					editorController_->CaptureReplayFrame(sceneDeltaTime, isPlaying_);
+				}
+#endif
+			}
 		}
 	}
 	{
@@ -313,7 +328,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	}
 	{
 		PROFILE_SCOPE("パーティクル");
-		const float effectDeltaTime = isPlaying_ ? finalDeltaTime : 0.0f;
+		const float effectDeltaTime = isPlaying_ && !replayFrozen ? finalDeltaTime : 0.0f;
 		VFXSequencer::UpdateOneShots(effectDeltaTime);
 		GPUParticleManager::GetInstance()->Update(effectDeltaTime);
 #ifndef USE_IMGUI
@@ -324,14 +339,14 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
 			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
 		}
-		DebrisEffectManager::GetInstance()->Update(deltaTime);
+		DebrisEffectManager::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
 	}
 	{
 		PROFILE_SCOPE("フェード");
-		Fade::GetInstance()->Update(deltaTime);
+		Fade::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
 	}
 
-	PostEffect::GetInstance()->GetParams()->time += deltaTime;
+	PostEffect::GetInstance()->GetParams()->time += replayFrozen ? 0.0f : deltaTime;
 
 	if (sceneManager_) {
 		sceneManager_->SetIsPlaying(isPlaying_);
@@ -362,6 +377,11 @@ void Game::RecordUpdateProfile(const std::chrono::high_resolution_clock::time_po
 void Game::Draw() {
 	PostEffect* postEffect = PostEffect::GetInstance();
 	dxCommon_->ReadAllGpuProfiles();
+	RenderStats* renderStats = RenderStats::GetInstance();
+	renderStats->BeginFrame();
+	renderStats->SetActiveLightCounts(
+		LightManager::GetInstance()->GetActivePointLightCount(),
+		LightManager::GetInstance()->GetActiveSpotLightCount());
 
 	auto startDraw = std::chrono::high_resolution_clock::now();
 
@@ -371,6 +391,7 @@ void Game::Draw() {
 	DrawRuntimeFrame(postEffect);
 #endif
 
+	renderStats->EndFrame();
 	RecordDrawProfile(startDraw);
 	RecordFixedFpsProfile();
 }
@@ -432,8 +453,11 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
 
 	dxCommon_->StartGpuProfile("影描画");
-	if (sceneManager_) {
-		sceneManager_->DrawShadow();
+	{
+		ScopedRenderPass renderPass(RenderPass::Shadow);
+		if (sceneManager_) {
+			sceneManager_->DrawShadow();
+		}
 	}
 	dxCommon_->EndGpuProfile("影描画");
 	dxCommon_->PostDrawShadow();
@@ -443,48 +467,66 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 #ifdef USE_IMGUI
 	if (editorMode) {
 		dxCommon_->StartGpuProfile("  3Dシーン");
-		ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-		ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
-		if (sceneManager_) {
-			sceneManager_->Draw();
-		}
-		if (editorController_) {
-			editorController_->DrawScenePreview(pointLight, spotLight);
-		}
-		if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
-			DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
-			MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+		{
+			ScopedRenderPass renderPass(RenderPass::MainScene);
+			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+			if (sceneManager_) {
+				sceneManager_->Draw();
+			}
+			if (editorController_) {
+				editorController_->DrawScenePreview(pointLight, spotLight);
+			}
+			if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
+				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			}
 		}
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
-		if (sceneManager_) {
-			sceneManager_->DrawUI();
+		{
+			ScopedRenderPass renderPass(RenderPass::GameUI);
+			if (sceneManager_) {
+				sceneManager_->DrawUI();
+			}
 		}
 		dxCommon_->EndGpuProfile("  ゲームUI");
 
 		dxCommon_->StartGpuProfile("  デバッグ");
-		if (editorController_) {
-			editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
+		{
+			ScopedRenderPass renderPass(RenderPass::EditorOverlay);
+			if (editorController_) {
+				editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
+			}
 		}
 		dxCommon_->EndGpuProfile("  デバッグ");
 	} else
 #endif
 	{
 		if (sceneManager_) {
-			sceneManager_->Draw();
-			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
-			if (!sceneManager_->IsTransitioning()) {
-				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
-				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+			{
+				ScopedRenderPass renderPass(RenderPass::MainScene);
+				sceneManager_->Draw();
+				ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+				ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+				if (!sceneManager_->IsTransitioning()) {
+					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+					MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
+				}
 			}
-			sceneManager_->DrawUI();
+			{
+				ScopedRenderPass renderPass(RenderPass::GameUI);
+				sceneManager_->DrawUI();
+			}
 		}
 	}
 
 	dxCommon_->StartGpuProfile("Fade");
-	Fade::GetInstance()->Draw();
+	{
+		ScopedRenderPass renderPass(RenderPass::GameUI);
+		Fade::GetInstance()->Draw();
+	}
 	dxCommon_->EndGpuProfile("Fade");
 
 	dxCommon_->EndGpuProfile("メイン描画");
@@ -509,6 +551,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	}
 
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+	ScopedRenderPass renderPass(RenderPass::CameraPreview);
 	dxCommon_->SetCameraPreviewRendering(true);
 	if (renderEditorPreview) {
 		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
@@ -520,6 +563,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 				currentScene->DrawCameraPreview(previewCamera, 0);
 			}
 			postEffect->TransitionToSRV(commandList, PostEffect::kCameraPreviewTextureIndex);
+			cameraEditor->NotifyCameraPreviewRendered(false);
 		}
 	}
 
@@ -531,6 +575,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 				currentScene->DrawCameraPreview(cinematicPreviewCamera, 1);
 			}
 			postEffect->TransitionToSRV(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
+			cameraEditor->NotifyCameraPreviewRendered(true);
 		}
 	}
 
@@ -543,43 +588,57 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 
 void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView) {
 	dxCommon_->StartGpuProfile("後処理");
+	ScopedRenderPass renderPass(RenderPass::PostProcess);
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-	uint32_t renderTextureHandle = dxCommon_->GetRenderTextureSrvHandle();
+	const uint32_t renderTextureHandle = dxCommon_->GetRenderTextureSrvHandle();
 
-	postEffect->PreDrawScene(commandList, 2);
+	auto drawFinalComposite = [&](uint32_t sourceHandle) {
+		if (outputForEditorGameView) {
+			postEffect->PreDrawScene(commandList, 1);
+			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeHdrPipeline);
+			postEffect->TransitionToSRV(commandList, 1);
+		} else {
+			dxCommon_->PreDraw();
+			postEffect->Draw(commandList, sourceHandle, PostEffect::kCompositeBackBufferPipeline);
+		}
+	};
+
+	// Bloomが無効、または強度が実質0なら、抽出・縮小・加算をすべて省略する。
+	// Tone Mappingや色調補正などは最終Compositeで引き続き適用される。
+	if (!postEffect->IsBloomActive()) {
+		drawFinalComposite(renderTextureHandle);
+		dxCommon_->EndGpuProfile("後処理");
+		return;
+	}
+
+	constexpr std::array<int, 4> kBloomTextureIndices = { 2, 3, 4, 5 };
+	const int bloomLevelCount = postEffect->GetBloomLevelCount();
+
+	postEffect->PreDrawScene(commandList, kBloomTextureIndices[0]);
 	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kExtractPipeline);
-	postEffect->TransitionToSRV(commandList, 2);
+	postEffect->TransitionToSRV(commandList, kBloomTextureIndices[0]);
 
-	postEffect->PreDrawScene(commandList, 3);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), PostEffect::kDownsamplePipeline);
-	postEffect->TransitionToSRV(commandList, 3);
-
-	postEffect->PreDrawScene(commandList, 4);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), PostEffect::kDownsamplePipeline);
-	postEffect->TransitionToSRV(commandList, 4);
-
-	postEffect->PreDrawScene(commandList, 5);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), PostEffect::kDownsamplePipeline);
-	postEffect->TransitionToSRV(commandList, 5);
+	for (int level = 1; level < bloomLevelCount; ++level) {
+		const int sourceIndex = kBloomTextureIndices[level - 1];
+		const int targetIndex = kBloomTextureIndices[level];
+		postEffect->PreDrawScene(commandList, targetIndex);
+		postEffect->Draw(commandList, postEffect->GetSRVHandle(sourceIndex), PostEffect::kDownsamplePipeline);
+		postEffect->TransitionToSRV(commandList, targetIndex);
+	}
 
 	postEffect->PreDrawScene(commandList, 0);
 	postEffect->Draw(commandList, renderTextureHandle, PostEffect::kCopyPipeline);
 
 	postEffect->PreDrawScene(commandList, 0, false);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(2), PostEffect::kAddPipeline);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(3), PostEffect::kAddPipeline);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(4), PostEffect::kAddPipeline);
-	postEffect->Draw(commandList, postEffect->GetSRVHandle(5), PostEffect::kAddPipeline);
+	for (int level = 0; level < bloomLevelCount; ++level) {
+		postEffect->Draw(
+			commandList,
+			postEffect->GetSRVHandle(kBloomTextureIndices[level]),
+			PostEffect::kAddPipeline);
+	}
 	postEffect->TransitionToSRV(commandList, 0);
 
-	if (outputForEditorGameView) {
-		postEffect->PreDrawScene(commandList, 1);
-		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), PostEffect::kCompositeHdrPipeline);
-		postEffect->TransitionToSRV(commandList, 1);
-	} else {
-		dxCommon_->PreDraw();
-		postEffect->Draw(commandList, postEffect->GetSRVHandle(0), PostEffect::kCompositeBackBufferPipeline);
-	}
+	drawFinalComposite(postEffect->GetSRVHandle(0));
 
 	dxCommon_->EndGpuProfile("後処理");
 }

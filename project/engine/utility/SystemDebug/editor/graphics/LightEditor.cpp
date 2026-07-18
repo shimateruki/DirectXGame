@@ -339,6 +339,38 @@ void LightEditor::DrawImGui() {
         }
 
         ImGui::Separator();
+        ImGui::Text(ICON_FA_ADJUST " シャドウ品質");
+        constexpr int kShadowResolutions[] = { 1024, 2048, 4096 };
+        const char* shadowResolutionLabels[] = {
+            "1024 x 1024 (軽量)",
+            "2048 x 2048 (標準)",
+            "4096 x 4096 (高精細)",
+        };
+        int shadowResolutionIndex = 1;
+        const int currentShadowResolution = lightManager_->GetShadowMapResolution();
+        for (int i = 0; i < IM_ARRAYSIZE(kShadowResolutions); ++i) {
+            if (currentShadowResolution == kShadowResolutions[i]) {
+                shadowResolutionIndex = i;
+                break;
+            }
+        }
+        if (ImGui::Combo(
+            "シャドウマップ解像度",
+            &shadowResolutionIndex,
+            shadowResolutionLabels,
+            IM_ARRAYSIZE(shadowResolutionLabels))) {
+            lightManager_->SetShadowMapResolution(kShadowResolutions[shadowResolutionIndex]);
+            SetStatusMessage("シャドウマップ解像度を変更しました。保存するとLight JSONへ記録されます。", true);
+        }
+
+        float shadowAreaSize = lightManager_->GetShadowAreaSize();
+        if (ImGui::DragFloat("影を作る範囲", &shadowAreaSize, 1.0f, 20.0f, 240.0f, "%.0f")) {
+            lightManager_->SetShadowAreaSize(shadowAreaSize);
+        }
+        ImGui::TextDisabled("範囲を狭くすると影が鮮明になり、ライト視錐台外のShadow Drawも減ります。");
+        ImGui::TextDisabled("1024は2048に対して生成ピクセル数と深度メモリが1/4です。");
+
+        ImGui::Separator();
         bool isFogEnabled = (sun.enableFog != 0);
         if (ImGui::Checkbox(ICON_FA_SMOG " フォグ関連をすべて有効化 (Enable All Fog)", &isFogEnabled)) {
             sun.enableFog = isFogEnabled ? 1 : 0;

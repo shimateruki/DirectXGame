@@ -166,6 +166,14 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["enemyType"] = obj->GetEnemyType();
     d["gimmickType"] = obj->GetGimmickType();
     d["itemType"] = obj->GetItemType();
+    if (obj->IsPrefabInstance()) {
+        const auto& prefab = obj->GetPrefabInstanceInfo();
+        d["prefabInstance"]["assetId"] = prefab.assetId;
+        d["prefabInstance"]["prefabName"] = prefab.prefabName;
+        d["prefabInstance"]["instanceId"] = prefab.instanceId;
+        d["prefabInstance"]["sourceObjectId"] = prefab.sourceObjectId;
+        d["prefabInstance"]["isRoot"] = prefab.isRoot;
+    }
     if (obj->IsCameraObject()) {
         d["type"] = "Camera";
         d["saveCategory"] = "Camera";
@@ -266,10 +274,12 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     Vector2 tiling = obj->GetTextureTiling();
     d["textureTiling"] = { tiling.x, tiling.y };
     d["autoTextureTiling"] = obj->GetAutoTextureTiling();
+    d["enableLighting"] = obj->GetEnableLighting();
     d["enableEnvMap"] = obj->GetEnableEnvMap();
     d["envIntensity"] = obj->GetEnvIntensity();
     d["emissive"] = obj->GetEmissive();
     d["castShadow"] = obj->GetCastShadow();
+    d["isStatic"] = obj->IsStatic();
     d["particleName"] = obj->GetParticleName();
     d["gpuParticleName"] = obj->GetGPUParticleName();
     d["meshEffect1"] = obj->GetMeshEffect1Name();

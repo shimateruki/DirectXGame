@@ -99,7 +99,18 @@ json Object3d::ExportToJson() {
     d["itemType"] = itemType_;
     d["isVisible"] = isVisible_;
     d["isLocked"] = isLocked_;
+    d["isStatic"] = isStatic_;
     d["castShadow"] = castShadow_;
+    if (prefabInstanceInfo_.IsLinked()) {
+        d["prefabInstance"]["assetId"] = prefabInstanceInfo_.assetId;
+        d["prefabInstance"]["prefabName"] = prefabInstanceInfo_.prefabName;
+        d["prefabInstance"]["instanceId"] = prefabInstanceInfo_.instanceId;
+        d["prefabInstance"]["sourceObjectId"] = prefabInstanceInfo_.sourceObjectId;
+        d["prefabInstance"]["isRoot"] = prefabInstanceInfo_.isRoot;
+    } else {
+        // EditorのUndoスナップショットでは、Unpack済み状態を明示的に表します。
+        d["prefabInstance"] = nullptr;
+    }
     if (IsCameraObject()) {
         d["camera"] = SerializeSceneCameraSettings(sceneCameraSettings_);
     }
@@ -185,6 +196,8 @@ json Object3d::ExportToJson() {
 
     d["meshEffect1"] = meshEffectName1_;
     d["meshEffect2"] = meshEffectName2_;
+    d["particleName"] = particleName_;
+    d["gpuParticleName"] = gpuParticleName_;
 
     d["enableNormalMap"] = GetEnableNormalMap();
     d["normalMapPath"] = GetNormalMapPath();
@@ -270,7 +283,20 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("itemType")) itemType_ = j["itemType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
+    if (j.contains("isStatic")) isStatic_ = j["isStatic"];
     if (j.contains("castShadow")) castShadow_ = j["castShadow"].get<bool>();
+    if (j.contains("prefabInstance")) {
+        if (j["prefabInstance"].is_object()) {
+            const auto& prefab = j["prefabInstance"];
+            prefabInstanceInfo_.assetId = prefab.value("assetId", "");
+            prefabInstanceInfo_.prefabName = prefab.value("prefabName", "");
+            prefabInstanceInfo_.instanceId = prefab.value("instanceId", "");
+            prefabInstanceInfo_.sourceObjectId = prefab.value("sourceObjectId", "");
+            prefabInstanceInfo_.isRoot = prefab.value("isRoot", false);
+        } else if (j["prefabInstance"].is_null()) {
+            prefabInstanceInfo_ = PrefabInstanceInfo{};
+        }
+    }
     if (IsCameraObject()) {
         // 旧CinematicCameraも読み込み時に新しいCamera Objectとして扱います。
         className_ = "Camera";
@@ -374,6 +400,8 @@ void Object3d::ImportFromJson(const json& j) {
 
     if (j.contains("meshEffect1")) meshEffectName1_ = j["meshEffect1"].get<std::string>();
     if (j.contains("meshEffect2")) meshEffectName2_ = j["meshEffect2"].get<std::string>();
+    if (j.contains("particleName")) particleName_ = j["particleName"].get<std::string>();
+    if (j.contains("gpuParticleName")) gpuParticleName_ = j["gpuParticleName"].get<std::string>();
 
     if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"]);
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);

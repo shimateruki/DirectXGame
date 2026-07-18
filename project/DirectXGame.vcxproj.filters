@@ -75,6 +75,9 @@
     <ClCompile Include="engine\graphics\core\DirectXCommon.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
     </ClCompile>
+    <ClCompile Include="engine\graphics\core\RenderStats.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
+    </ClCompile>
     <ClCompile Include="engine\core\Framework.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
     </ClCompile>
@@ -204,6 +207,9 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -557,6 +563,12 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.Ui.cpp" />
+    <ClCompile Include="engine\graphics\3d\object\Object3d.Replay.cpp" />
+    <ClCompile Include="game\actor\Character.Replay.cpp" />
+    <ClCompile Include="game\actor\player\Player.Replay.cpp" />
+    <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp" />
     <ClCompile Include="engine\system\input\KeyConfig.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -774,6 +786,9 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\core\DirectXCommon.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\graphics\core\RenderStats.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\base</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Framework.h">
@@ -1726,12 +1741,16 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.h" />
     <ClInclude Include="engine\system\input\KeyConfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>

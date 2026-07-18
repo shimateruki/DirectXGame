@@ -405,6 +405,17 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 if (!targetObject) continue;
 
+                if (objData.contains("prefabInstance") && objData["prefabInstance"].is_object()) {
+                    const auto& prefab = objData["prefabInstance"];
+                    Object3d::PrefabInstanceInfo info;
+                    info.assetId = prefab.value("assetId", "");
+                    info.prefabName = prefab.value("prefabName", "");
+                    info.instanceId = prefab.value("instanceId", "");
+                    info.sourceObjectId = prefab.value("sourceObjectId", "");
+                    info.isRoot = prefab.value("isRoot", false);
+                    targetObject->SetPrefabInstanceInfo(info);
+                }
+
                 if (targetObject->IsCameraObject()) {
                     targetObject->SetClassName("Camera");
                     targetObject->SetSaveCategory("Camera");
@@ -501,6 +512,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     });
                 }
                 if (objData.contains("autoTextureTiling")) targetObject->SetAutoTextureTiling(objData["autoTextureTiling"].get<bool>());
+                if (objData.contains("enableLighting")) targetObject->SetEnableLighting(objData["enableLighting"].get<bool>());
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
@@ -556,6 +568,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 if (!targetObject->IsCameraObject() && objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
                 if (!targetObject->IsCameraObject() && objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
+                if (!targetObject->IsCameraObject() && objData.contains("isStatic")) targetObject->SetStatic(objData["isStatic"].get<bool>());
                 if (!targetObject->IsCameraObject() && objData.contains("terrainCollisionPath") && objData["terrainCollisionPath"].is_string()) {
                     targetObject->LoadTerrainCollisionFromFile(objData["terrainCollisionPath"].get<std::string>());
                 }

@@ -5,6 +5,7 @@
 #include "TextureManager.h"
 #include "SRVManager.h"
 #include "engine/graphics/core/ColorSpace.h"
+#include "RenderStats.h"
 #include <algorithm>
 
 namespace {
@@ -227,6 +228,7 @@ void Sprite::Draw() {
 	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
 	SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+	RenderStats::GetInstance()->RecordIndexedDraw(6);
 }
 
 /// <summary>

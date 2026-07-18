@@ -27,6 +27,9 @@ bool IsCollisionActive(Object3d* object) {
 }
 
 void CollisionManager::AddObject(Object3d* object) {
+    if (!object || std::find(objects_.begin(), objects_.end(), object) != objects_.end()) {
+        return;
+    }
     objects_.push_back(object);
     // 静的グリッドの再構築が必要
     needsStaticGridRebuild_ = true;

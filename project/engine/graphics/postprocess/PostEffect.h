@@ -2,6 +2,7 @@
 #include "DirectXCommon.h"
 #include "engine/utility/math/Math.h"
 #include <wrl.h>
+#include <cstdint>
 #include <vector>
 #include <string>
 
@@ -23,6 +24,14 @@ public:
         kDownsamplePipeline,
         kAddPipeline,
         kCompositeBackBufferPipeline,
+    };
+
+    // ブルームで生成する縮小テクスチャ段数です。
+    // 高品質は従来と同じ4段、低品質ほど全画面パスを減らします。
+    enum class BloomQuality : int32_t {
+        Low = 0,
+        Medium,
+        High,
     };
 
     static PostEffect* GetInstance() {
@@ -127,6 +136,17 @@ void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0
     uint32_t GetSRVHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
     Params* GetParams() { return paramsData_; }
+    bool IsBloomEnabled() const { return bloomEnabled_; }
+    void SetBloomEnabled(bool enabled) { bloomEnabled_ = enabled; }
+    BloomQuality GetBloomQuality() const { return bloomQuality_; }
+    void SetBloomQuality(BloomQuality quality);
+    bool IsBloomActive() const;
+    int GetBloomLevelCount() const;
+    int GetExpectedPostEffectPassCount() const;
+    float GetCameraPreviewResolutionScale() const { return cameraPreviewResolutionScale_; }
+    int GetCameraPreviewWidth() const { return cameraPreviewWidth_; }
+    int GetCameraPreviewHeight() const { return cameraPreviewHeight_; }
+    void SetCameraPreviewResolutionScale(float scale);
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
     void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
         // 画面効果をニュートラルな初期状態へ戻します。
@@ -138,6 +158,7 @@ private:
     void CreateRootSignature();
     void CreatePipelineState();
     void CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format);
+    void ResizeCameraPreviewTextures();
     void CreateConstBuffer();
 
 private:
@@ -177,4 +198,11 @@ struct RenderTexture {
     // カラーグレーディング用LUTのSRVハンドル
     uint32_t lutSrvHandle_ = 0;
     uint32_t noiseSrvHandle_ = 0;
+    bool bloomEnabled_ = true;
+    BloomQuality bloomQuality_ = BloomQuality::High;
+    int renderWidth_ = 0;
+    int renderHeight_ = 0;
+    int cameraPreviewWidth_ = 0;
+    int cameraPreviewHeight_ = 0;
+    float cameraPreviewResolutionScale_ = 0.5f;
 };

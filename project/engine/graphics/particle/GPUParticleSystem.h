@@ -96,7 +96,8 @@ public:
         float restitution;
         float colorIntensity;
         uint32_t currentConfigIndex;
-        Vector2 padding_col;
+        uint32_t maxParticles;
+        float padding_col;
     };
 
     struct EmitRequest {
@@ -127,7 +128,7 @@ public:
     ~GPUParticleSystem() = default;
 
         // パーティクル用バッファ、RootSignature、PipelineStateを作成します。
-void Initialize(DirectXCommon* dxCommon);
+void Initialize(DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
         // ComputeShaderでパーティクル寿命、速度、色、サイズを更新します。
 void Update(float deltaTime);
         // 生存しているパーティクルをビルボードとして描画します。
@@ -145,10 +146,13 @@ void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, c
 
     void SetTimeScale(float scale) { timeScale_ = scale; }
     void RequestWarmup() { warmupRequested_ = true; lastEmitTimer_ = 0.0f; }
-    bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= 2.0f; }
+    bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= activeLifetimeWindow_; }
+    bool RequiresSceneColorCopy() const { return IsActive() && blendModeIndex_ == 2; }
+    uint32_t GetParticleCapacity() const { return maxParticles_; }
 
-    // ★重要: 部隊ごとに作られるので、10万から1万に減らす！
-    static const uint32_t kMaxParticles = 10000;
+    // Systemごとの上限。実際の確保数はプリセット設定から自動計算できます。
+    static constexpr uint32_t kMaxParticles = 10000;
+    static constexpr uint32_t kMinParticles = 256;
     static const uint32_t kMaxEmitRequests = 256;
 private:
     void CreateBuffer();
@@ -166,6 +170,11 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListIndexBuffer_;
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListBuffer_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> aliveParticleIndexBuffer_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> indirectDrawArgumentBuffer_;
+    uint32_t aliveParticleIndexUav_ = 0;
+    uint32_t indirectDrawArgumentUav_ = 0;
+    uint32_t aliveParticleIndexSrv_ = 0;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> configBuffer_;
     CSConfig* configData_ = nullptr;
@@ -179,6 +188,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateInit_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateResetDrawArguments_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateUpdate_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateEmit_;
 
@@ -186,6 +196,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAlpha_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateDistortion_;
+    Microsoft::WRL::ComPtr<ID3D12CommandSignature> indirectDrawCommandSignature_;
 
     std::vector<EmitRequest> emitRequests_;
     CSConfig lastConfig_ = {};
@@ -198,7 +209,8 @@ private:
     // 軽量化用: 最後にEmitしてからどれくらい経ったか
     float lastEmitTimer_ = 0.0f;
     bool warmupRequested_ = false;
-    const float kIdleKillTime = 5.0f; // 5秒間何も出なかったら一旦止める
+    float activeLifetimeWindow_ = 2.0f;
+    uint32_t maxParticles_ = kMaxParticles;
 
     uint32_t emitCountThisFrame_ = 0;
     float softParticleFade_ = 5.0f;

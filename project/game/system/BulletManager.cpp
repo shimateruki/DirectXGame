@@ -76,9 +76,20 @@ void BulletManager::Initialize(Object3dCommon* common, CollisionManager* colMana
 }
 
 void BulletManager::Finalize() {
-    bullets_.clear();
+    Clear();
     common_ = nullptr;
     colManager_ = nullptr;
+}
+
+void BulletManager::Clear() {
+    if (colManager_) {
+        for (const auto& bullet : bullets_) {
+            if (bullet) {
+                colManager_->RemoveObject(bullet.get());
+            }
+        }
+    }
+    bullets_.clear();
 }
 
 void BulletManager::Fire(const Vector3& pos, const Vector3& vel,

@@ -407,6 +407,10 @@ namespace {
 // ========================================================================
 
 void DebugEditor::SaveScene(SaveMode mode) {
+    if (prefabEditMode_) {
+        SavePrefabEditSession();
+        return;
+    }
 #ifdef USE_IMGUI
     auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, mode);
     if (targets.empty()) {
@@ -423,6 +427,10 @@ void DebugEditor::SaveScene(SaveMode mode) {
 #endif
 }
 void DebugEditor::SaveSingleObject() {
+    if (prefabEditMode_) {
+        SavePrefabEditSession();
+        return;
+    }
     if (!selectedObject_) return;
 
 #ifdef USE_IMGUI

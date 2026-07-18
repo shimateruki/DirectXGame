@@ -80,9 +80,33 @@ void PostEffectEditor::DrawImGui() {
     // ==========================================================
     ImGui::Text(ICON_FA_SUN " Bloom Settings");
 
+	bool bloomEnabled = targetEffect_->IsBloomEnabled();
+	if (ImGui::Checkbox("Bloomを使用", &bloomEnabled)) {
+		targetEffect_->SetBloomEnabled(bloomEnabled);
+	}
+
+	int bloomQuality = static_cast<int>(targetEffect_->GetBloomQuality());
+	const char* bloomQualityItems[] = {
+		"低 (4 passes / 1 level)",
+		"中 (6 passes / 2 levels)",
+		"高 (10 passes / 4 levels)",
+	};
+	if (ImGui::Combo("Bloom品質", &bloomQuality, bloomQualityItems, IM_ARRAYSIZE(bloomQualityItems))) {
+		targetEffect_->SetBloomQuality(static_cast<PostEffect::BloomQuality>(bloomQuality));
+	}
+
+	ImGui::Text(
+		"現在の後処理: %d passes",
+		targetEffect_->GetExpectedPostEffectPassCount());
+	if (!targetEffect_->IsBloomActive()) {
+		ImGui::TextDisabled("Bloom無効またはIntensityが0のため、最終Composite 1回だけ実行します。");
+	}
+
+	ImGui::BeginDisabled(!bloomEnabled);
     ImGui::DragFloat(" Threshold (発光の閾値)", &params->threshold, 0.01f, 0.0f, 5.0f);
     ImGui::DragFloat(" Intensity (光の強さ)", &params->bloomIntensity, 0.01f, 0.0f, 10.0f);
     ImGui::DragFloat(" Spread (ぼかしの広がり)", &params->spread, 0.1f, 0.0f, 10.0f);
+	ImGui::EndDisabled();
 
     ImGui::Separator();
 
@@ -204,6 +228,8 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
 
     auto* params = targetEffect_->GetParams();
     json j;
+    j["bloomEnabled"] = targetEffect_->IsBloomEnabled();
+    j["bloomQuality"] = static_cast<int>(targetEffect_->GetBloomQuality());
     j["threshold"] = params->threshold;
     j["bloomIntensity"] = params->bloomIntensity;
     j["spread"] = params->spread;
@@ -261,6 +287,13 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         file >> j;
 
         auto* params = targetEffect_->GetParams();
+		if (j.contains("bloomEnabled")) {
+			targetEffect_->SetBloomEnabled(j["bloomEnabled"].get<bool>());
+		}
+		if (j.contains("bloomQuality")) {
+			targetEffect_->SetBloomQuality(
+				static_cast<PostEffect::BloomQuality>(j["bloomQuality"].get<int>()));
+		}
 
         if (j.contains("linearWorkflowEnabled")) {
             ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(

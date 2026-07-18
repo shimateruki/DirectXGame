@@ -51,6 +51,7 @@
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
@@ -412,6 +413,8 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     selectedObject_ = nullptr;
     selectedObjects_.clear();
     lastUpdatedScene_ = nullptr;
+    EditorPropertyRegistry::GetInstance()->InitializeBuiltInProperties();
+    EditorTransactionManager::GetInstance()->Clear();
     PresetManager::GetInstance()->Initialize();
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
@@ -454,6 +457,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     text3DGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
     assetAuditWindow_.Initialize(this);
+    propertyMatrixWindow_.Initialize(this);
     statusTuningWindow_.Initialize(this, sceneManager_);
     gameDataDebugEditor_.Initialize(sceneManager);
     terrainEditorWindow_.Initialize(this);
@@ -484,6 +488,162 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     }
 }
 
+bool DebugEditor::BeginPrefabEditSession(const std::string& prefabName) {
+    if (prefabName.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
+        sceneManager_->IsPlaying() || !PresetManager::GetInstance()->HasPrefab(prefabName)) {
+        return false;
+    }
+
+    if (prefabEditMode_) {
+        if (prefabEditName_ == prefabName) {
+            return true;
+        }
+        CancelPrefabEditSession();
+    }
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    Object3dCommon* common = scene->GetObject3dCommon();
+    if (!common) {
+        return false;
+    }
+
+    auto prefabObjects = PresetManager::GetInstance()->CreateObjectsFromPrefab(prefabName, common);
+    if (prefabObjects.empty() || !prefabObjects.front()) {
+        return false;
+    }
+
+    ClearObjectSelection();
+    EditorManager::GetInstance()->ClearSelection();
+    EditorTransactionManager::GetInstance()->Clear();
+    prefabEditPreviousVisibility_.clear();
+    for (auto& sceneObject : scene->GetObjects()) {
+        if (!sceneObject) continue;
+        prefabEditPreviousVisibility_[sceneObject.get()] = sceneObject->GetIsVisible();
+        sceneObject->SetIsVisible(false);
+    }
+
+    prefabEditMode_ = true;
+    prefabEditDirty_ = false;
+    prefabEditName_ = prefabName;
+    prefabEditScene_ = scene;
+    prefabEditRoot_ = prefabObjects.front().get();
+
+    auto& sceneObjects = scene->GetObjects();
+    for (auto& object : prefabObjects) {
+        if (!object) continue;
+        CollisionManager::GetInstance()->AddObject(object.get());
+        sceneObjects.push_back(std::move(object));
+    }
+
+    SetSelectedObject(prefabEditRoot_);
+    EditorManager::GetInstance()->SetSelectedObject(this);
+    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
+    DebugConsole::GetInstance()->AddLog("Prefab Mode: " + prefabName);
+    return true;
+}
+
+bool DebugEditor::SavePrefabEditSession() {
+    if (!prefabEditMode_ || !prefabEditRoot_ || !prefabEditScene_ ||
+        !prefabEditScene_->IsAlive(prefabEditRoot_)) {
+        return false;
+    }
+
+    // 一時Objectを指すUndoを先に破棄し、Asset更新だけをUndo履歴へ残します。
+    EditorTransactionManager::GetInstance()->Clear();
+    const std::string savedPrefabName = prefabEditName_;
+    PresetManager* prefabManager = PresetManager::GetInstance();
+    const auto beforePrefabs = prefabManager->GetPrefabs();
+    if (!prefabManager->UpdatePrefabFromObject(savedPrefabName, prefabEditRoot_)) {
+        return false;
+    }
+    const int synchronizedObjects = prefabManager->SynchronizePrefabInstances(
+        beforePrefabs,
+        prefabEditScene_->GetObjects(),
+        prefabEditScene_->GetObject3dCommon());
+
+    EndPrefabEditSession(false);
+    if (synchronizedObjects > 0) {
+        // 現行Scene形式はPrefab Instanceの実値も保存するため、同期結果をScene保存対象にします。
+        MarkDirty(SaveMode::All);
+    }
+    DebugConsole::GetInstance()->AddLog(
+        "Saved Prefab: " + savedPrefabName +
+        " / synchronized " + std::to_string(synchronizedObjects) + " objects");
+    return true;
+}
+
+void DebugEditor::CancelPrefabEditSession() {
+    if (!prefabEditMode_) {
+        return;
+    }
+    const std::string cancelledPrefabName = prefabEditName_;
+    EndPrefabEditSession(true);
+    DebugConsole::GetInstance()->AddLog("Discarded Prefab Mode: " + cancelledPrefabName);
+}
+
+bool DebugEditor::IsPrefabEditObject(const Object3d* object) const {
+    if (!prefabEditMode_ || !object || !prefabEditRoot_) {
+        return false;
+    }
+
+    const Object3d* current = object;
+    for (int depth = 0; current && depth < 512; ++depth) {
+        if (current == prefabEditRoot_) {
+            return true;
+        }
+        current = current->GetParent();
+    }
+    return false;
+}
+
+void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
+    BaseScene* scene = prefabEditScene_;
+    std::unordered_set<Object3d*> editObjects;
+    if (scene) {
+        for (auto& object : scene->GetObjects()) {
+            if (object && IsPrefabEditObject(object.get())) {
+                editObjects.insert(object.get());
+            }
+        }
+        for (Object3d* object : editObjects) {
+            CollisionManager::GetInstance()->RemoveObject(object);
+        }
+
+        auto& objects = scene->GetObjects();
+        objects.erase(std::remove_if(objects.begin(), objects.end(), [&editObjects](const auto& object) {
+            return object && editObjects.find(object.get()) != editObjects.end();
+        }), objects.end());
+
+        for (const auto& [object, wasVisible] : prefabEditPreviousVisibility_) {
+            if (scene->IsAlive(object)) {
+                object->SetIsVisible(wasVisible);
+            }
+        }
+    }
+
+    ClearObjectSelection();
+    EditorManager::GetInstance()->ClearSelection();
+    prefabEditMode_ = false;
+    prefabEditDirty_ = false;
+    prefabEditName_.clear();
+    prefabEditRoot_ = nullptr;
+    prefabEditScene_ = nullptr;
+    prefabEditPreviousVisibility_.clear();
+    if (clearTransactions) {
+        EditorTransactionManager::GetInstance()->Clear();
+    }
+}
+
+void DebugEditor::ResetPrefabEditSessionForSceneChange() {
+    prefabEditMode_ = false;
+    prefabEditDirty_ = false;
+    prefabEditName_.clear();
+    prefabEditRoot_ = nullptr;
+    prefabEditScene_ = nullptr;
+    prefabEditPreviousVisibility_.clear();
+    EditorTransactionManager::GetInstance()->Clear();
+}
+
 // ========================================================================
 // 更新 (ImGui処理)
 // ========================================================================
@@ -507,6 +667,9 @@ void DebugEditor::Update() {
     // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
     // =========================================================
     if (lastUpdatedScene_ != currentScene) {
+        if (prefabEditMode_) {
+            ResetPrefabEditSessionForSceneChange();
+        }
         ClearObjectSelection();
         isSelectionRectDragging_ = false;
         isSelectionRectReady_ = false;
@@ -518,11 +681,10 @@ void DebugEditor::Update() {
         hasLastBrushStamp_ = false;
         previewCreateCommandLabel_ = "Place Preview Object";
         lastUpdatedScene_ = currentScene;
-        undoStack_.clear();
-        redoStack_.clear();
+        EditorTransactionManager::GetInstance()->Clear();
         ClearDirty(SaveMode::All);
         hasInspectorEditStart_ = false;
-        inspectorEditTarget_ = nullptr;
+        inspectorEditStartStates_.clear();
         requestGameViewCreateMenu_ = false;
         EditorManager::GetInstance()->ClearSelection();
     }
@@ -736,7 +898,7 @@ void DebugEditor::Update() {
                             groupTransformStartStates_.clear();
                             for (Object3d* object : selectedObjects_) {
                                 if (!object || !IsObjectInCurrentScene(object)) continue;
-                                ObjectEditSnapshot snapshot;
+                                ObjectStateSnapshot snapshot;
                                 snapshot.object = object;
                                 snapshot.beforeState = CaptureObjectState(object);
                                 groupTransformStartStates_.push_back(snapshot);
@@ -824,10 +986,8 @@ void DebugEditor::Update() {
                     else if (isDraggingTransform_) {
                         isDraggingTransform_ = false;
                         if (!groupTransformStartStates_.empty()) {
-                            for (const ObjectEditSnapshot& snapshot : groupTransformStartStates_) {
-                                if (!snapshot.object || !IsObjectInCurrentScene(snapshot.object)) continue;
-                                RegisterObjectEdited(snapshot.object, snapshot.beforeState, snapshot.object == selectedObject_ ? "Gizmo Transform" : "Gizmo Group Transform");
-                            }
+                            RegisterObjectsEdited(groupTransformStartStates_,
+                                groupTransformStartStates_.size() > 1 ? "Gizmo Group Transform" : "Gizmo Transform");
                             groupTransformStartStates_.clear();
                         } else {
                             RegisterObjectEdited(selectedObject_, tempObjectStateStart_, "Gizmo Transform");
@@ -868,9 +1028,13 @@ void DebugEditor::Update() {
 // 終了処理
 // ========================================================================
 void DebugEditor::Finalize() {
+    if (prefabEditMode_) {
+        EndPrefabEditSession(true);
+    }
     FinalizeCrashRecovery();
     animationWorkbench_.Finalize();
     primitiveDrawer_.Finalize();
+    EditorTransactionManager::GetInstance()->Clear();
 }
 
 
@@ -1295,16 +1459,13 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 // ==========================================================================================
 void DebugEditor::DrawHierarchy() {
     hierarchyWindow_.Draw();
+    propertyMatrixWindow_.DrawWindow();
 }
 // ==========================================================================================
 // 2. 右パネル：Inspector (選択したオブジェクトの詳細設定)
 // ==========================================================================================
 void DebugEditor::DrawImGui() {
-    Object3d* beforeTarget = selectedObject_;
-    nlohmann::json beforeState;
-    if (beforeTarget) {
-        beforeState = CaptureObjectState(beforeTarget);
-    }
+    const std::vector<ObjectStateSnapshot> beforeStates = CaptureObjectStates(selectedObjects_);
 
     inspectorWindow_.Draw();
 
@@ -1335,7 +1496,7 @@ void DebugEditor::DrawImGui() {
         }
     }
 
-    TrackInspectorEdit(beforeTarget, beforeState);
+    TrackInspectorEdit(beforeStates);
 #endif
 }
 
@@ -1343,6 +1504,9 @@ void DebugEditor::DrawImGui() {
 
 #ifdef USE_IMGUI
 void DebugEditor::DrawProjectWindow() {
+    if (!projectWindowVisible_) {
+        return;
+    }
     projectWindow_.Draw();
 }
 #endif

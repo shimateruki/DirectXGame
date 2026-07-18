@@ -61,7 +61,16 @@ void Camera::UpdateProjectionMatrix() {
 
     // 現在のパラメータを使ってプロジェクション行列を再計算
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    RefreshDerivedMatrices();
+}
+
+void Camera::RefreshDerivedMatrices() {
+    viewProjectionMatrix_ = math.Multiply(viewMatrix_, projectionMatrix_);
+    inverseViewProjectionMatrix_ = math.Inverse(viewProjectionMatrix_);
+    frustum_ = math.ExtractFrustumPlanes(viewProjectionMatrix_);
+
     if (constMap_) {
+        constMap_->view = viewMatrix_;
         constMap_->projection = projectionMatrix_;
     }
 }
@@ -89,13 +98,32 @@ void Camera::SetLookAtPreviewView(const Vector3& eye, const Vector3& target, flo
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
-    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
-    frustum_ = math.ExtractFrustumPlanes(vp);
+    RefreshDerivedMatrices();
+}
 
-    if (constMap_) {
-        constMap_->view = viewMatrix_;
-        constMap_->projection = projectionMatrix_;
+void Camera::ApplyReplayView(
+    const Vector3& eye,
+    const Vector3& target,
+    const Vector3& rotation,
+    float fovY,
+    float nearClip,
+    float farClip) {
+    Vector3 safeTarget = target;
+    if (math.Length(safeTarget - eye) < 0.0001f) {
+        safeTarget = eye + Vector3{ 0.0f, 0.0f, 1.0f };
     }
+
+    eye_ = eye;
+    target_ = safeTarget;
+    rotation_ = rotation;
+    fovY_ = fovY;
+    nearClip_ = (std::max)(nearClip, 0.001f);
+    farClip_ = (std::max)(farClip, nearClip_ + 0.01f);
+    smoothEye_ = eye_;
+    smoothTarget_ = target_;
+    viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
+    projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    RefreshDerivedMatrices();
 }
 
 void Camera::SetFreezeEye(bool freeze) {
@@ -132,10 +160,7 @@ void Camera::Initialize() {
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
-    if (constMap_) {
-        constMap_->view = viewMatrix_;
-        constMap_->projection = projectionMatrix_;
-    }
+    RefreshDerivedMatrices();
 }
 
 
@@ -573,14 +598,7 @@ void Camera::Update(float deltaTime) {
 
     viewMatrix_ = math.MakeLookAtMatrix(viewEye, viewTarget, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
-
-    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
-    frustum_ = math.ExtractFrustumPlanes(vp);
-
-    if (constMap_) {
-        constMap_->view = viewMatrix_;
-        constMap_->projection = projectionMatrix_;
-    }
+    RefreshDerivedMatrices();
 }
 void Camera::ConfigFixed(const Vector3& offset) {
     fixedOffset_ = offset;

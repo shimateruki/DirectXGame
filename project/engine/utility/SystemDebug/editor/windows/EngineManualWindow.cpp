@@ -81,7 +81,7 @@ void DrawShortcutTable() {
     AddShortcutRow("T / R / S", "移動、回転、スケールのImGuizmoを切り替えます。");
     AddShortcutRow("Delete", "選択中の3Dオブジェクトを削除します。ロック中の対象は先にロックを解除します。");
     AddShortcutRow("Ctrl + C", "選択中の3Dオブジェクトを複製します。");
-    AddShortcutRow("Ctrl + Z / Ctrl + Y", "Editor操作をUndo / Redoします。保存済みJSONそのものを巻き戻す機能ではありません。");
+    AddShortcutRow("Ctrl + Z / Ctrl + Y", "Inspector、ImGuizmo、Ghost Recorderを含むEditor操作を共通履歴でUndo / Redoします。保存済みJSONそのものは巻き戻しません。");
     AddShortcutRow("End", "選択中のオブジェクトを床へ落とします。コリジョン形状と接地位置を確認してください。");
     AddShortcutRow("Tab", "Game View上の作成パレットを開閉します。");
     AddShortcutRow("左クリック", "配置プレビュー、ブラシ配置、Game View上の選択を確定します。");
@@ -342,6 +342,7 @@ const std::vector<ManualPage>& GetManualPages() {
                 "Camera Objectを作成し、Transform、FOV、Near/Far Clip、Blend In/Out、切替Easingを設定します。",
                 "Eye / FollowとTarget / Followで追従対象、完全追従か補間追従か、オフセットを設定します。",
                 "Camera Object選択中のImGuiプレビューで構図を確認し、「Cameraをテスト再生」で切替と追従を確認します。",
+                "Camera Editorのプレビュー更新頻度と解像度は、通常15 FPS・50%を基準にします。別タブや折り畳み中のプレビューは自動停止します。",
                 "ムービーではGhost DirectorへCamera Objectをトラックとして追加し、複数オブジェクトと同期します。",
             },
             "カメラ設定はResources/json/camera/<name>.json、Editor自由カメラ状態はResources/json/camera/editor_camera_state.json、Camera ObjectはScene FileのCameraカテゴリへ保存します。",
@@ -360,8 +361,10 @@ const std::vector<ManualPage>& GetManualPages() {
             "Hierarchy最上部の「ライティング設定 (Lighting)」を選びます。",
             {
                 "既存のLight JSONを選択してLoadし、現在シーンの基準状態を読み込みます。",
+                "シャドウ解像度は通常2048、負荷優先は1024を使います。影を作る範囲は必要なプレイ領域だけを覆う値にします。",
                 "Directional Lightの方向、色、強度と影を調整します。必要なら「明るい影プリセット」を出発点にします。",
                 "Point / Spot Lightを追加し、位置、範囲、減衰、色、強度、追従対象を設定します。",
+                "ステータスの有効ライト数を確認します。視錐台外・強度0・範囲0のライトは自動的にGPU転送から除外されます。",
                 "Fog、Skybox、Environment Map、IBLを調整し、遠景とモデル材質の見え方を確認します。",
                 "Game Viewの昼夜、屋内外、特殊マテリアルを確認してからSaveします。",
             },
@@ -381,7 +384,7 @@ const std::vector<ManualPage>& GetManualPages() {
             "Hierarchy最上部の「ポストエフェクト (Post Effect)」を選びます。",
             {
                 "Tone MappingをOFF、Real、Animeから選び、シーンの基準となる明るさと色を決めます。",
-                "Bloomの閾値と強度を調整し、発光物だけが輝く状態にします。画面全体が白くならないよう確認します。",
+                "BloomのON / OFF、品質、閾値、強度を調整します。低4・中6・高10 passesで、無効またはIntensity 0なら最終Composite 1 passだけになります。",
                 "Blur、Outline、Dissolveなど必要な効果だけ有効化し、通常プレイへの負荷と視認性を確認します。",
                 "Iris Fade、Slime Fadeなど時間変化する項目はテスト操作で開始・終了まで確認します。",
                 "複数シーンで使う場合は同じJSONをLoadして差を比較してからSaveします。",
@@ -444,6 +447,7 @@ const std::vector<ManualPage>& GetManualPages() {
             {
                 "Quick Presetから近い用途を選ぶか、新規設定でSystemとEmit Shapeを決めます。",
                 "発生数、Burst / Loop、寿命、速度、重力、Drag、Collisionを調整します。",
+                "最大同時数は通常0 (Auto)にし、表示されるSystem実行容量を確認します。重い演出だけ手動容量を増やします。",
                 "Color、Alpha、Size、回転、Blend、Spritesheetを調整します。",
                 "Preview Environmentで背景、床、カメラ距離を変え、単発とループの両方を再生します。",
                 "ゲーム内の発生位置・スケールで負荷と見え方を確認して保存します。",
@@ -452,6 +456,7 @@ const std::vector<ManualPage>& GetManualPages() {
             {
                 "Burstが一度だけ発生し、Loopは停止後に収束する。",
                 "Collisionや床バウンドで粒子が無限に残らない。",
+                "発生数、寿命、間隔に対してSystem実行容量が過剰でも不足でもない。",
                 "同時に複数個出した時も過剰な発光やフレーム低下がない。",
             },
             "Editorの隔離プレビューだけで完成扱いにせず、実ゲームの背景、カメラ、Post Effectを含めて確認してください。",
@@ -584,6 +589,28 @@ const std::vector<ManualPage>& GetManualPages() {
         },
         {
             "04 データ・検証",
+            "プロパティマトリクス (Property Matrix)",
+            "multi edit property matrix compare bulk prefab override table",
+            "Hierarchyで複数選択したObjectの共通プロパティを横長の表で比較し、セル単位または選択全体へまとめて編集します。",
+            "HierarchyでCtrlまたはShiftを使って複数Objectを選択し、最上部の「プロパティマトリクス (Property Matrix)」を選びます。",
+            {
+                "Object名とProperty名の検索、基本・Transform・描画・Component・Camera・Gameplayなどのカテゴリで表示範囲を絞ります。",
+                "行ごとの差を比較し、単独セルを直接編集します。回転は度数表示で入力されます。",
+                "同じ値を揃える場合は一括適用欄でPropertyと値を選び、対象件数を確認して適用します。",
+                "橙色のセルはPrefab Overrideです。元Prefabへ反映する場合はObjectをInspectorで開き、ApplyまたはRevertを選びます。",
+                "編集後はCtrl+Z / Ctrl+Yでセル編集または一括適用が1操作として戻ることを確認します。",
+            },
+            "編集結果は現在シーンのObjectへ即時反映されます。確定後はScene Fileから該当カテゴリまたはAllを保存します。",
+            {
+                "複数Objectの位置、回転、描画値を一画面で比較できる。",
+                "一括適用でロック中のObjectが意図せず変更されていない。",
+                "Prefab Overrideと通常のScene差分を混同していない。",
+                "Undo / Redo後も対象Objectと値が正しく復元される。",
+            },
+            "Camera固有値とGimmick / ItemのGameplay値にも対応します。Player / Enemyの共通StatusはStatus Tuningを正としているため、Matrixでは重複編集しません。",
+        },
+        {
+            "04 データ・検証",
             "プリセットエディタ (Preset Editor)",
             "Preset prefab palette brush enemy gimmick item template",
             "よく使うObject、Enemy、Gimmick、Itemと親子構造を配置テンプレートとして管理し、パレットやブラシから再利用します。",
@@ -591,7 +618,12 @@ const std::vector<ManualPage>& GetManualPages() {
             {
                 "検索またはEnemy / Gimmick / Item / Modelフィルターで既存Presetを選びます。",
                 "既存ObjectからPreset化するか、空Presetを作成し、モデル、Transform、Material、Collision、クラス固有値を設定します。",
-                "必要なら子Objectを含むPrefab構造として登録します。名前に/を使うとカテゴリ分けできます。",
+                "再利用するだけならPreset、配置後も元データと接続したい場合はProjectのPrefabs (v3)へ登録します。Presetの右クリックからPrefabへ明示変換もできます。",
+                "Prefab Instanceを選ぶとInspector上部へOverride一覧が表示されます。項目単位または全体でApply / Revertできます。",
+                "Prefab Assetをダブルクリックするか右クリックしてPrefab Modeを開き、隔離表示された階層を通常のInspector / ImGuizmoで編集します。",
+                "Prefab Modeでは子Objectの追加・削除・親変更も編集できます。Hierarchy上部のPrefabを保存、または破棄して戻るで終了します。",
+                "Variantを作る場合はPrefab Assetを右クリックしてVariantを作成し、Prefab Modeで基底との差分だけを編集します。",
+                "Scene固有にしたい場合はUnpackします。Prefabルートの位置・回転はScene配置値として保持されます。",
                 "ダブルクリックまたはドラッグで配置し、Brushでは間隔と向きを確認しながら連続配置します。",
                 "変更を保存し、新規シーンへ一度配置して再現性を確認します。",
             },
@@ -599,9 +631,10 @@ const std::vector<ManualPage>& GetManualPages() {
             {
                 "Event IDなど配置ごとに一意であるべき値を固定していない。",
                 "親子構造、保存カテゴリ、クラスが配置後も正しい。",
-                "Preset更新が既配置Objectへ自動反映されると思い込んでいない。",
+                "Presetはコピー配置、Prefab v3はリンク配置という違いを確認した。",
+                "Variantの追加・削除・親変更がStructure差分として表示されている。",
             },
-            "Presetを削除・上書きすると以後の配置元が変わります。既配置Objectは別データなので、Presetとシーンの両方を確認してください。",
+            "Presetの既配置Objectは独立データです。Prefab v3の保存やApplyはローカルOverrideのない別Instanceへ伝播します。Prefab Mode中に通常Scene保存を実行するとPrefab保存へ切り替わり、一時編集ObjectがScene JSONへ混ざらないよう保護されます。",
         },
         {
             "04 データ・検証",
@@ -733,6 +766,31 @@ const std::vector<ManualPage>& GetManualPages() {
                 "Lock / Mute / 終了姿勢保持が本番仕様に合っている。",
             },
             "Auto Key中は意図しないImGuizmo操作もKeyになります。Timeline Headと選択Trackを確認してから動かし、試験後はStop・姿勢復元を使ってください。",
+        },
+        {
+            "05 アニメーション",
+            "リプレイデバッガー (Replay Debugger)",
+            "replay rewind pause playback branch timeline time machine デバッグ 巻き戻し",
+            "実行中シーンのObject、HP、速度、Player・敵の主要状態、Cameraを短時間記録し、停止、巻き戻し、履歴再生、選択地点からの分岐再開を行います。ゲーム用リプレイ動画ではなく、不具合再現と調査のためのTime Machineです。",
+            "ゲームを再生し、上部の「リプレイ」メニューまたは「表示」から下段Replay Editorを開きます。Editorは通常は非表示で、開いている間だけProject、Console、ステータス領域を置き換える固定パネルになります。自動記録が有効ならシーン遷移完了後に記録が始まります。",
+            {
+                "記録頻度と履歴秒数を決めてからゲームを再生します。既定値は15fps・20秒で、実フレームすべてではなく一定間隔の状態を保持します。",
+                "調べたい現象が起きたらMain Menu Barの「一時停止」を押します。Replay Editorが自動で開き、敵AI、物理、Camera、VFXを含むシーン更新が止まります。Editor内の一時停止も同じ用途で使えます。",
+                "Frames、Spawn / Remove、HP / Deathの3レーンから変化が起きた時刻を探し、タイムラインをクリックまたはドラッグして発生直前へ戻します。Space、左右キー、Shift+左右キーでも操作できます。",
+                "下段のObject一覧を変化のみ・名前・Classで絞り込み、選択ObjectのTransform、HP、速度、前Frame差分を右側Inspectorで確認します。ダブルクリックまたは「Scene上で選択」でGame Viewの対象と対応付けます。",
+                "「前の変化」「次の変化」で、選択Objectが変わったフレームへ直接移動します。必要なら「履歴を再生」で記録済み区間を確認します。",
+                "その時点から別の入力を試す場合は「この時点からプレイ再開」を押します。選択位置より後の履歴は破棄され、新しい時間軸として記録されます。",
+                "Main Menu Barの「リプレイ再開」は、現在選んでいる時点から分岐再開します。下段Editorを閉じるとProject、Console、ステータスは元の表示設定で復帰します。",
+                "通常の編集状態へ戻す場合は上部の停止ボタンを使います。シーン再読み込みと同時にリプレイ履歴も破棄されます。",
+            },
+            "履歴はメモリ上だけに保持し、JSONやScene Fileへは保存しません。",
+            {
+                "停止中に敵やPlayerの位置、HP、速度、Camera構図が記録時点へ戻る。",
+                "撃破済みの敵や途中生成Objectが記録区間内なら表示・非表示を含めて戻る。",
+                "分岐再開後に敵、Player、Collisionが動き出し、新しい履歴が増える。",
+                "シーン切り替え後に前シーンの履歴が残っていない。",
+            },
+            "Particle、Bullet、Audioは完全な逆再生をせず、時間軸を切り替える際に破棄します。また敵固有AIの私有状態は今後個別対応が必要な場合があります。見た目の確認だけで決定論的なネットワークリプレイとして扱わないでください。",
         },
         {
             "06 生成・最適化",

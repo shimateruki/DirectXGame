@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 
@@ -302,6 +303,16 @@ bool MeshRenderer::HasRequiredBuffers() const {
         materialResource_ && materialData_;
 }
 
+const Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix) {
+    if (!worldInverseTransposeCacheValid_ ||
+        std::memcmp(&cachedWorldMatrix_, &worldMatrix, sizeof(Matrix4x4)) != 0) {
+        cachedWorldMatrix_ = worldMatrix;
+        cachedWorldInverseTranspose_ = Math::Transpose(Math::Inverse(worldMatrix));
+        worldInverseTransposeCacheValid_ = true;
+    }
+    return cachedWorldInverseTranspose_;
+}
+
 void MeshRenderer::RefreshCameraDependentData() {
     if (!common_ || !HasRequiredBuffers() || !shadowWvpData_ || !localFogData_ || !waterParamData_ || !transform_) {
         return;
@@ -311,25 +322,16 @@ void MeshRenderer::RefreshCameraDependentData() {
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (camera) {
-        const Matrix4x4& view = camera->GetViewMatrix();
-        const Matrix4x4& proj = camera->GetProjectionMatrix();
-        Matrix4x4 viewProj = math.Multiply(view, proj);
+        const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
         const Matrix4x4& worldMatrix = transform_->matWorld;
 
         wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
         wvpData_->world = worldMatrix;
-        wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
+        wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
         cameraData_->worldPosition = camera->GetEye();
         waterParamData_->cameraWorldPosition = camera->GetEye();
         localFogData_->cameraPos = camera->GetEye();
-
-        static Matrix4x4 lastVP;
-        static Matrix4x4 cachedInvVP;
-        if (std::memcmp(&lastVP, &viewProj, sizeof(Matrix4x4)) != 0) {
-            lastVP = viewProj;
-            cachedInvVP = math.Inverse(viewProj);
-        }
-        localFogData_->inverseViewProj = cachedInvVP;
+        localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
     } else {
         wvpData_->WVP = Math::MakeIdentity4x4();
         wvpData_->world = Math::MakeIdentity4x4();
@@ -341,38 +343,8 @@ void MeshRenderer::RefreshCameraDependentData() {
         return;
     }
 
-    if (directionalLightData_) {
-        directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
-    }
-
-    Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
-    if (math.Length(lightDir) > 0.0001f) {
-        lightDir = math.Normalize(lightDir);
-    } else {
-        lightDir = { 0.0f, -1.0f, 0.0f };
-    }
-
-    Vector3 target = { 0.0f, 0.0f, 0.0f };
-    if (camera) {
-        target = camera->GetEye();
-    }
-
-    Vector3 lightPos = {
-        target.x - lightDir.x * 200.0f,
-        target.y - lightDir.y * 200.0f,
-        target.z - lightDir.z * 200.0f
-    };
-
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
-    if (std::abs(lightDir.x) < 0.001f && std::abs(lightDir.z) < 0.001f) {
-        up = { 0.0f, 0.0f, 1.0f };
-    }
-
-    Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
-    Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
-    Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
-    LightManager::GetInstance()->GetDirectionalLight().lightViewProj = lightVP;
-
+    const Matrix4x4& lightVP =
+        LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
     shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
     shadowWvpData_->world = transform_->matWorld;
 }
@@ -416,30 +388,20 @@ void MeshRenderer::Update() {
         Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (camera) {
-            const Matrix4x4& view = camera->GetViewMatrix();
-            const Matrix4x4& proj = camera->GetProjectionMatrix();
-            Matrix4x4 viewProj = math.Multiply(view, proj);
+            const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
 
             // Transform側ですでに計算されたワールド行列を使う
             const Matrix4x4& worldMatrix = transform_->matWorld;
 
             wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
             wvpData_->world = worldMatrix;
-            wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
+            wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
             cameraData_->worldPosition = camera->GetEye();
             if (waterParamData_) {
                 waterParamData_->cameraWorldPosition = camera->GetEye();
             }
             localFogData_->cameraPos = camera->GetEye();
-            
-            // 軽量化: ViewProjの逆行列はカメラ共通なのでキャッシュする
-            static Matrix4x4 lastVP;
-            static Matrix4x4 cachedInvVP;
-            if (std::memcmp(&lastVP, &viewProj, sizeof(Matrix4x4)) != 0) {
-                lastVP = viewProj;
-                cachedInvVP = math.Inverse(viewProj);
-            }
-            localFogData_->inverseViewProj = cachedInvVP;
+            localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
         } else {
             wvpData_->WVP = Math::MakeIdentity4x4();
             wvpData_->world = Math::MakeIdentity4x4();
@@ -452,50 +414,9 @@ void MeshRenderer::Update() {
             }
             return; 
         }
-        // ライト更新
-        if (directionalLightData_) {
-            directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
-        }
-
         if (shadowWvpData_ && transform_) {
-            Math math;
-
-            Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
-            // 0除算防止のための安全対策を追加
-            if (math.Length(lightDir) > 0.0001f) {
-                lightDir = math.Normalize(lightDir);
-            } else {
-                lightDir = { 0.0f, -1.0f, 0.0f }; // デフォルトの下向き
-            }
-
-            // 1. カメラの位置を取得して、影の箱の「中心（ターゲット）」にする
-            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-            Vector3 target = { 0.0f, 0.0f, 0.0f };
-            if (camera) {
-                target = camera->GetEye(); // カメラ（プレイヤー）の位置を基準にする
-            }
-
-            // 2. 太陽の位置を、カメラから光の逆方向へ離す
-            Vector3 lightPos = {
-                target.x - lightDir.x * 200.0f,
-                target.y - lightDir.y * 200.0f,
-                target.z - lightDir.z * 200.0f
-            };
-
-            Vector3 up = { 0.0f, 1.0f, 0.0f };
-
-            if (std::abs(lightDir.x) < 0.001f && std::abs(lightDir.z) < 0.001f) {
-                up = { 0.0f, 0.0f, 1.0f };
-            }
-
-            // 太陽目線のビュー行列
-            Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
-
-            Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
-
-            Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
-            LightManager::GetInstance()->GetDirectionalLight().lightViewProj = lightVP;
-            // 影用のWVP = モデルのワールド行列 * 太陽のビュープロジェクション
+            const Matrix4x4& lightVP =
+                LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
             shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
             shadowWvpData_->world = transform_->matWorld;
         }

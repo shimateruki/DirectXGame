@@ -940,10 +940,54 @@ void CameraEditor::DrawCameraPreviewPanel() {
     ImGui::SameLine();
     ImGui::Checkbox("カメラ本体モデルを表示", &settings_.cameraBodyVisible);
     ImGui::SameLine();
-    ImGui::Checkbox("プレビュー枠を表示", &settings_.cameraPreviewVisible);
+    if (ImGui::Checkbox("プレビュー枠を表示", &settings_.cameraPreviewVisible)) {
+        InvalidateCameraPreviews();
+    }
     ImGui::DragFloat("ガイド本体の大きさ", &settings_.cameraGuideSize, 0.01f, 0.1f, 3.0f, "%.2f");
     ImGui::DragFloat("視錐台の長さ", &settings_.cameraFrustumLength, 0.1f, 1.0f, 50.0f, "%.1f");
     ImGui::DragFloat("プレビュー高さ", &settings_.cameraPreviewHeight, 1.0f, 80.0f, 480.0f, "%.0f");
+
+    constexpr int kPreviewFpsValues[] = { 10, 15, 30, 60 };
+    const char* previewFpsLabels[] = { "10 FPS (軽量)", "15 FPS (推奨)", "30 FPS", "60 FPS" };
+    int previewFpsIndex = 1;
+    for (int i = 0; i < IM_ARRAYSIZE(kPreviewFpsValues); ++i) {
+        if (settings_.cameraPreviewFps == kPreviewFpsValues[i]) {
+            previewFpsIndex = i;
+            break;
+        }
+    }
+    if (ImGui::Combo("プレビュー更新頻度", &previewFpsIndex, previewFpsLabels, IM_ARRAYSIZE(previewFpsLabels))) {
+        settings_.cameraPreviewFps = kPreviewFpsValues[previewFpsIndex];
+        InvalidateCameraPreviews();
+        SaveSettings();
+    }
+
+    constexpr float kPreviewResolutionScales[] = { 0.25f, 0.5f, 1.0f };
+    const char* previewResolutionLabels[] = { "25% (軽量)", "50% (推奨)", "100% (高精細)" };
+    int previewResolutionIndex = 1;
+    float nearestScaleDistance = 10.0f;
+    for (int i = 0; i < IM_ARRAYSIZE(kPreviewResolutionScales); ++i) {
+        const float distance = std::abs(settings_.cameraPreviewResolutionScale - kPreviewResolutionScales[i]);
+        if (distance < nearestScaleDistance) {
+            nearestScaleDistance = distance;
+            previewResolutionIndex = i;
+        }
+    }
+    if (ImGui::Combo(
+        "プレビュー解像度",
+        &previewResolutionIndex,
+        previewResolutionLabels,
+        IM_ARRAYSIZE(previewResolutionLabels))) {
+        settings_.cameraPreviewResolutionScale = kPreviewResolutionScales[previewResolutionIndex];
+        PostEffect::GetInstance()->SetCameraPreviewResolutionScale(settings_.cameraPreviewResolutionScale);
+        InvalidateCameraPreviews();
+        SaveSettings();
+    }
+    const PostEffect* postEffect = PostEffect::GetInstance();
+    ImGui::TextDisabled(
+        "実描画: %d x %d / 非表示・別タブ・折り畳み中は更新停止",
+        postEffect->GetCameraPreviewWidth(),
+        postEffect->GetCameraPreviewHeight());
 
     Object3d* selectedCameraObject = GetSelectedCameraObject();
     if (selectedCameraObject) {
@@ -1003,13 +1047,65 @@ void CameraEditor::DrawCameraPreviewPanel() {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indent);
     }
     ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(width, height));
+    cameraPreviewPanelVisibleThisFrame_ = ImGui::IsItemVisible();
 #endif
 }
 
-bool CameraEditor::ShouldRenderSceneCameraPreview() const {
+void CameraEditor::BeginPreviewUiFrame() {
+    cameraPreviewPanelVisibleThisFrame_ = false;
+    sceneCameraPreviewWindowVisibleThisFrame_ = false;
+}
+
+void CameraEditor::SetSceneCameraPreviewWindowVisible(bool visible) {
+    sceneCameraPreviewWindowVisibleThisFrame_ = visible;
+}
+
+bool CameraEditor::HasSceneCameraPreviewTarget() const {
     Vector3 eye{};
     Vector3 target{};
     return GetSelectedCameraObject() != nullptr && ResolveCinematicPreviewPose(eye, target);
+}
+
+bool CameraEditor::ShouldRenderCameraPreview() const {
+    return settings_.cameraPreviewVisible &&
+        cameraPreviewPanelVisibleThisFrame_ &&
+        IsPreviewUpdateDue(lastCameraPreviewRenderTime_, hasRenderedCameraPreview_);
+}
+
+bool CameraEditor::ShouldRenderSceneCameraPreview() const {
+    return sceneCameraPreviewWindowVisibleThisFrame_ &&
+        HasSceneCameraPreviewTarget() &&
+        IsPreviewUpdateDue(lastSceneCameraPreviewRenderTime_, hasRenderedSceneCameraPreview_);
+}
+
+void CameraEditor::NotifyCameraPreviewRendered(bool sceneCameraPreview) {
+    const auto now = std::chrono::steady_clock::now();
+    if (sceneCameraPreview) {
+        hasRenderedSceneCameraPreview_ = true;
+        lastSceneCameraPreviewRenderTime_ = now;
+    }
+    else {
+        hasRenderedCameraPreview_ = true;
+        lastCameraPreviewRenderTime_ = now;
+    }
+}
+
+bool CameraEditor::IsPreviewUpdateDue(
+    const std::chrono::steady_clock::time_point& lastRenderTime,
+    bool hasRenderedFrame) const {
+    if (!hasRenderedFrame) {
+        return true;
+    }
+
+    const int previewFps = std::clamp(settings_.cameraPreviewFps, 1, 60);
+    const float updateInterval = 1.0f / static_cast<float>(previewFps);
+    const std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - lastRenderTime;
+    return elapsed.count() >= updateInterval;
+}
+
+void CameraEditor::InvalidateCameraPreviews() {
+    hasRenderedCameraPreview_ = false;
+    hasRenderedSceneCameraPreview_ = false;
 }
 
 Camera* CameraEditor::PreparePreviewCamera(float aspectRatio) {
@@ -1122,6 +1218,8 @@ void CameraEditor::SaveSettings() {
     j["cameraGuideVisible"] = settings_.cameraGuideVisible;
     j["cameraBodyVisible"] = settings_.cameraBodyVisible;
     j["cameraPreviewVisible"] = settings_.cameraPreviewVisible;
+    j["cameraPreviewFps"] = settings_.cameraPreviewFps;
+    j["cameraPreviewResolutionScale"] = settings_.cameraPreviewResolutionScale;
     j["cameraGuideSize"] = settings_.cameraGuideSize;
     j["cameraFrustumLength"] = settings_.cameraFrustumLength;
     j["cameraPreviewHeight"] = settings_.cameraPreviewHeight;
@@ -1223,6 +1321,14 @@ void CameraEditor::LoadSettings() {
         if (j.contains("cameraGuideVisible")) settings_.cameraGuideVisible = j["cameraGuideVisible"];
         if (j.contains("cameraBodyVisible")) settings_.cameraBodyVisible = j["cameraBodyVisible"];
         if (j.contains("cameraPreviewVisible")) settings_.cameraPreviewVisible = j["cameraPreviewVisible"];
+        if (j.contains("cameraPreviewFps")) settings_.cameraPreviewFps = j["cameraPreviewFps"];
+        if (j.contains("cameraPreviewResolutionScale")) {
+            settings_.cameraPreviewResolutionScale = j["cameraPreviewResolutionScale"];
+        }
+        settings_.cameraPreviewFps = std::clamp(settings_.cameraPreviewFps, 1, 60);
+        settings_.cameraPreviewResolutionScale = std::clamp(settings_.cameraPreviewResolutionScale, 0.25f, 1.0f);
+        PostEffect::GetInstance()->SetCameraPreviewResolutionScale(settings_.cameraPreviewResolutionScale);
+        InvalidateCameraPreviews();
         if (j.contains("cameraGuideSize")) settings_.cameraGuideSize = j["cameraGuideSize"];
         if (j.contains("cameraFrustumLength")) settings_.cameraFrustumLength = j["cameraFrustumLength"];
         if (j.contains("cameraPreviewHeight")) settings_.cameraPreviewHeight = j["cameraPreviewHeight"];
@@ -1525,13 +1631,14 @@ Object3d* CameraEditor::FindSceneObjectByName(const std::string& name) const {
 }
 
 void CameraEditor::SetSelectedCameraObject(Object3d* cameraObject) {
-    selectedCameraObject_ = cameraObject &&
+    Object3d* newSelection = cameraObject &&
         cameraObject->IsCameraObject() &&
         IsObjectInCurrentScene(cameraObject)
         ? cameraObject
         : nullptr;
-    if (!selectedCameraObject_) {
-        return;
+    if (selectedCameraObject_ != newSelection) {
+        selectedCameraObject_ = newSelection;
+        hasRenderedSceneCameraPreview_ = false;
     }
 }
 

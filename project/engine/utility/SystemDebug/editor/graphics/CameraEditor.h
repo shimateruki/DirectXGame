@@ -3,6 +3,7 @@
 #include "IEditable.h"
 #include "engine/utility/math/Math.h"
 #include "Object3d.h"
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -49,6 +50,8 @@ public:
         bool cameraGuideVisible = true;
         bool cameraBodyVisible = true;
         bool cameraPreviewVisible = false;
+        int cameraPreviewFps = 15;
+        float cameraPreviewResolutionScale = 0.5f;
         float cameraGuideSize = 0.65f;
         float cameraFrustumLength = 6.0f;
         float cameraPreviewHeight = 180.0f;
@@ -111,8 +114,13 @@ public:
     void SetObject3dCommon(Object3dCommon* common);
     void DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vector2& gameViewSize, bool snapEnabled, float snapValue);
-    bool ShouldRenderCameraPreview() const { return settings_.cameraPreviewVisible; }
+    // ImGui上で実際に見えているプレビューだけを、指定FPSで更新します。
+    void BeginPreviewUiFrame();
+    void SetSceneCameraPreviewWindowVisible(bool visible);
+    bool HasSceneCameraPreviewTarget() const;
+    bool ShouldRenderCameraPreview() const;
     bool ShouldRenderSceneCameraPreview() const;
+    void NotifyCameraPreviewRendered(bool sceneCameraPreview);
     Camera* PreparePreviewCamera(float aspectRatio);
     Camera* PrepareCinematicPreviewCamera(float aspectRatio);
 
@@ -153,6 +161,10 @@ private:
     // 選択中カメラのプレビュー表示と操作パネルを描画する。
     void DrawCameraPreviewPanel();
     void ApplyConfiguredCameraPreview(Camera* camera) const;
+    bool IsPreviewUpdateDue(
+        const std::chrono::steady_clock::time_point& lastRenderTime,
+        bool hasRenderedFrame) const;
+    void InvalidateCameraPreviews();
 
 private:
     CameraEditor() = default;
@@ -181,6 +193,12 @@ private:
     Object3d* targetPlayer_ = nullptr;
     Camera previewCamera_;
     bool previewCameraInitialized_ = false;
+    bool cameraPreviewPanelVisibleThisFrame_ = false;
+    bool sceneCameraPreviewWindowVisibleThisFrame_ = false;
+    bool hasRenderedCameraPreview_ = false;
+    bool hasRenderedSceneCameraPreview_ = false;
+    std::chrono::steady_clock::time_point lastCameraPreviewRenderTime_{};
+    std::chrono::steady_clock::time_point lastSceneCameraPreviewRenderTime_{};
     Object3dCommon* object3dCommon_ = nullptr;
     std::unique_ptr<Object3d> gameCameraModelGizmo_;
 };

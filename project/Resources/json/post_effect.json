@@ -1,5 +1,7 @@
 {
+    "bloomEnabled": true,
     "bloomIntensity": 0.18000000715255737,
+    "bloomQuality": 2,
     "boxFilterSize": 0,
     "chromaticAberration": 0.0,
     "cinemaBarHeight": 0.0,

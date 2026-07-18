@@ -22,6 +22,7 @@
 #include "ImguiManager.h"
 #include "InputManager.h"
 #include "LightEditor.h"
+#include "LightManager.h"
 #include "MeshEffectEditor.h"
 #include "MeshEffectManager.h"
 #include "Object3d.h"
@@ -29,6 +30,8 @@
 #include "PostEffect.h"
 #include "PostEffectEditor.h"
 #include "ProfilerManager.h"
+#include "RenderStats.h"
+#include "ReplayDebugger.h"
 #include "ProjectWindow.h"
 #include "SceneManager.h"
 #include "Sprite.h"
@@ -278,6 +281,8 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 	ghostDirector_->Initialize(sceneManager, debugEditor_.get());
 
 	engineManualWindow_ = std::make_unique<EngineManualWindow>();
+	replayDebugger_ = std::make_unique<ReplayDebugger>();
+	replayDebugger_->Initialize(sceneManager, debugEditor_.get());
 
 	if (sceneManager) {
 		if (BaseScene* currentScene = sceneManager->GetCurrentScene()) {
@@ -303,6 +308,10 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 // 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
 
 void GameEditorController::Finalize() {
+	if (replayDebugger_) {
+		replayDebugger_->Finalize();
+	}
+	replayDebugger_.reset();
 	trailEmitterEditor_.reset();
 	debrisEffectEditor_.reset();
 	meshEffectEditor_.reset();
@@ -322,6 +331,7 @@ void GameEditorController::Finalize() {
 void GameEditorController::BeginFrame() {
 	ImGuiManager::GetInstance()->BeginFrame();
 	ImGuizmo::BeginFrame();
+	CameraEditor::GetInstance()->BeginPreviewUiFrame();
 	SetupDefaultDockspace();
 }
 // ポートフォリオ撮影用に、エディタUIを隠すモードのON/OFFを切り替える。
@@ -336,6 +346,16 @@ void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 		portfolioCaptureMode_
 			? "ポートフォリオ撮影モード: ON (F10でエディタ表示に戻ります)"
 			: "ポートフォリオ撮影モード: OFF (エディタ表示を再開しました)");
+}
+
+void GameEditorController::SetReplayDebuggerVisible(bool visible) {
+	if (showReplayDebugger_ == visible) {
+		return;
+	}
+
+	showReplayDebugger_ = visible;
+	// Replay表示中は下段を1枚の固定パネルに組み直し、閉じたら通常配置へ戻します。
+	dockspaceInitialized_ = false;
 }
 // 初回起動時にHierarchy、Inspector、Project、GameViewなどの既定ドック配置を作る。
 void GameEditorController::SetupDefaultDockspace() {
@@ -356,19 +376,36 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGuiID dockMainId = dockspaceId;
 	ImGuiID dockLeftId = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.22f, nullptr, &dockMainId);
 	ImGuiID dockRightId = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Right, 0.25f, nullptr, &dockMainId);
-	ImGuiID dockBottomId = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Down, 0.30f, nullptr, &dockMainId);
-	ImGuiID dockBottomLeftId = ImGui::DockBuilderSplitNode(dockBottomId, ImGuiDir_Left, 0.60f, nullptr, &dockBottomId);
-	ImGuiID dockBottomRightId = dockBottomId;
+	ImGuiID dockBottomId = ImGui::DockBuilderSplitNode(
+		dockMainId,
+		ImGuiDir_Down,
+		showReplayDebugger_ ? 0.42f : 0.30f,
+		nullptr,
+		&dockMainId);
 
 	ImGui::DockBuilderDockWindow("Hierarchy", dockLeftId);
 	ImGui::DockBuilderDockWindow(ICON_FA_LIST_UL " Sprite Hierarchy", dockLeftId);
 	ImGui::DockBuilderDockWindow("Inspector", dockRightId);
 	ImGui::DockBuilderDockWindow(ICON_FA_INFO_CIRCLE " Sprite Inspector", dockRightId);
-	ImGui::DockBuilderDockWindow("Project (Assets)", dockBottomLeftId);
-	ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomLeftId);
-	ImGui::DockBuilderDockWindow("Debug Console", dockBottomRightId);
-	ImGui::DockBuilderDockWindow("ステータス", dockBottomRightId);
-	ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomRightId);
+	if (showReplayDebugger_) {
+		ImGui::DockBuilderDockWindow("リプレイデバッガー - Time Machine", dockBottomId);
+		if (ImGuiDockNode* replayNode = ImGui::DockBuilderGetNode(dockBottomId)) {
+			replayNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
+		}
+	} else {
+		ImGuiID dockBottomRightId = dockBottomId;
+		ImGuiID dockBottomLeftId = ImGui::DockBuilderSplitNode(
+			dockBottomId,
+			ImGuiDir_Left,
+			0.60f,
+			nullptr,
+			&dockBottomRightId);
+		ImGui::DockBuilderDockWindow("Project (Assets)", dockBottomLeftId);
+		ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomLeftId);
+		ImGui::DockBuilderDockWindow("Debug Console", dockBottomRightId);
+		ImGui::DockBuilderDockWindow("ステータス", dockBottomRightId);
+		ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomRightId);
+	}
 	ImGui::DockBuilderDockWindow("Game View", dockMainId);
 	ImGui::DockBuilderFinish(dockspaceId);
 }
@@ -462,7 +499,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
-	if (!isPlaying) {
+	if (!isPlaying && !showReplayDebugger_) {
 		DrawCameraObjectPreviewWindow();
 	}
 
@@ -474,7 +511,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 void DrawCameraObjectPreviewWindow() {
 	CameraEditor* cameraEditor = CameraEditor::GetInstance();
 	Object3d* cameraObject = cameraEditor ? cameraEditor->GetSelectedCameraObject() : nullptr;
-	if (!cameraObject || !cameraEditor->ShouldRenderSceneCameraPreview()) {
+	if (!cameraObject || !cameraEditor->HasSceneCameraPreviewTarget()) {
 		return;
 	}
 
@@ -523,6 +560,7 @@ void DrawCameraObjectPreviewWindow() {
 				const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
 					SRVManager::GetInstance()->GetGPUDescriptorHandle(textureHandle);
 				ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(previewWidth, previewHeight));
+				cameraEditor->SetSceneCameraPreviewWindowVisible(ImGui::IsItemVisible());
 			}
 		}
 		ImGui::EndChild();
@@ -679,6 +717,19 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 	previousPlayingState_ = isPlaying;
 
 	ImGui::Text(isPlaying ? " | 実行中" : " | 編集モード");
+	if (isPlaying && replayDebugger_) {
+		ImGui::SameLine();
+		const bool canControlReplay = replayDebugger_->HasFrames();
+		const bool replayPaused = replayDebugger_->ShouldFreezeSimulation();
+		ImGui::BeginDisabled(!canControlReplay);
+		if (ImGui::Button(replayPaused ? ICON_FA_PLAY " リプレイ再開" : ICON_FA_PAUSE " 一時停止")) {
+			replayDebugger_->ToggleSimulationPause();
+			if (!replayPaused) {
+				SetReplayDebuggerVisible(true);
+			}
+		}
+		ImGui::EndDisabled();
+	}
 
 	if (ImGui::BeginMenu("表示")) {
 				if (ImGui::MenuItem("ポートフォリオ撮影モード", "F10", portfolioCaptureMode_)) {
@@ -692,7 +743,28 @@ ImGui::MenuItem("Hierarchy / Inspector 表示", nullptr, &showDebugWindows_);
 		ImGui::Separator();
 		ImGui::MenuItem("デバッグログ", nullptr, &showDebugConsole_);
 		ImGui::MenuItem("ステータス", nullptr, &showTimeController_);
+		if (ImGui::MenuItem("リプレイデバッガー", nullptr, showReplayDebugger_)) {
+			SetReplayDebuggerVisible(!showReplayDebugger_);
+		}
 		ImGui::MenuItem("ボスロジックデバッグ", nullptr, &showBossDebug_);
+		ImGui::EndMenu();
+	}
+
+	if (ImGui::BeginMenu(ICON_FA_HISTORY " リプレイ")) {
+		if (ImGui::MenuItem("下段Replay Editorを表示", nullptr, showReplayDebugger_)) {
+			SetReplayDebuggerVisible(!showReplayDebugger_);
+		}
+		ImGui::Separator();
+		const bool canControlReplay = isPlaying && replayDebugger_ && replayDebugger_->HasFrames();
+		const bool replayPaused = replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
+		ImGui::BeginDisabled(!canControlReplay);
+		if (ImGui::MenuItem(replayPaused ? "選択時点から実行を再開" : "実行を一時停止")) {
+			replayDebugger_->ToggleSimulationPause();
+			if (!replayPaused) {
+				SetReplayDebuggerVisible(true);
+			}
+		}
+		ImGui::EndDisabled();
 		ImGui::EndMenu();
 	}
 
@@ -763,6 +835,9 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 // シーンに紐づく選択状態やゴースト対象をクリアし、再読み込み後の不整合を防ぐ。
 
 void GameEditorController::ClearSceneBoundEditorState() {
+	if (replayDebugger_) {
+		replayDebugger_->ResetForSceneChange();
+	}
 	if (ghostRecorder_) {
 		ghostRecorder_->ClearTarget();
 	}
@@ -848,8 +923,12 @@ void GameEditorController::DrawUnsavedExitConfirmPopup() {
 void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float timeScale) {
 	SceneManager* sceneManager = SceneManager::GetInstance();
 	const bool sceneTransitioning = sceneManager && sceneManager->IsTransitioning();
+	if (replayDebugger_) {
+		replayDebugger_->UpdateBeforeSimulation(deltaTime, isPlaying);
+	}
+	const bool replayFrozen = ShouldFreezeSimulationForReplay();
 
-	if (!sceneTransitioning) {
+	if (!sceneTransitioning && !replayFrozen) {
 		if (ghostDirector_) {
 			ghostDirector_->Update(isPlaying ? deltaTime * timeScale : deltaTime);
 		}
@@ -874,7 +953,7 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 		debugEditor_->GetCaptureToolWindow()->UpdateHotkeys();
 	}
 
-	if (isPlaying && !sceneTransitioning) {
+	if (isPlaying && !sceneTransitioning && !replayFrozen) {
 		MeshEffectManager::GetInstance()->Update(deltaTime * timeScale);
 		GPUParticleManager::GetInstance()->Update(deltaTime * timeScale);
 	}
@@ -889,8 +968,10 @@ void GameEditorController::DrawToolWindows(
 	float* updateTimeHistory,
 	float* drawTimeHistory,
 	int timeHistoryIndex) {
+	const bool replayWorkspaceActive = replayDebugger_ && showReplayDebugger_;
 	if (showDebugWindows_) {
 		if (debugEditor_) {
+			debugEditor_->SetProjectWindowVisible(!replayWorkspaceActive);
 			debugEditor_->DrawHierarchy();
 		}
 
@@ -899,20 +980,39 @@ void GameEditorController::DrawToolWindows(
 		if (spriteDebugEditor_) {
 			spriteDebugEditor_->DrawHierarchyWindow();
 			spriteDebugEditor_->DrawInspectorWindow();
-			spriteDebugEditor_->DrawProjectWindow();
+			if (!replayWorkspaceActive) {
+				spriteDebugEditor_->DrawProjectWindow();
+			}
 		}
 	}
 
-	if (showDebugConsole_) {
+	if (!replayWorkspaceActive && showDebugConsole_) {
 		DebugConsole::GetInstance()->DrawImGui();
 	}
-	if (showTimeController_) {
+	if (!replayWorkspaceActive && showTimeController_) {
 		DrawStatusWindow(timeScale, sceneUpdateTimeMs, cpuCmdTimeMs, drawTimeMs, updateTimeHistory, drawTimeHistory, timeHistoryIndex);
+	}
+	if (replayWorkspaceActive) {
+		bool replayOpen = true;
+		replayDebugger_->Draw(&replayOpen);
+		if (!replayOpen) {
+			SetReplayDebuggerVisible(false);
+		}
 	}
 	if (engineManualWindow_) {
 		engineManualWindow_->Draw();
 	}
 	ProfilerManager::GetInstance()->DrawImGui();
+}
+
+bool GameEditorController::ShouldFreezeSimulationForReplay() const {
+	return replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
+}
+
+void GameEditorController::CaptureReplayFrame(float simulationDeltaTime, bool isPlaying) {
+	if (replayDebugger_) {
+		replayDebugger_->CaptureAfterSimulation(simulationDeltaTime, isPlaying);
+	}
 }
 // FPS、CPU/GPU負荷、時間倍率などを確認するステータスウィンドウを描画する。
 
@@ -970,6 +1070,106 @@ void GameEditorController::DrawStatusWindow(
 		0.0f,
 		16.66f,
 		ImVec2(ImGui::GetContentRegionAvail().x, 60.0f));
+
+	ImGui::Separator();
+	if (ImGui::CollapsingHeader("描画統計 (Render Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
+		const RenderFrameStats& frame = RenderStats::GetInstance()->GetLastCompletedFrame();
+		uint64_t totalDrawCalls = 0;
+		uint64_t totalIndirectDrawCalls = 0;
+		uint64_t totalObjects = 0;
+		uint64_t totalCulled = 0;
+		uint64_t totalTriangles = 0;
+		uint64_t totalInstances = 0;
+		uint64_t totalDispatches = 0;
+		uint64_t totalThreadGroups = 0;
+
+		for (const RenderPassStats& pass : frame.passes) {
+			totalDrawCalls += pass.drawCalls;
+			totalIndirectDrawCalls += pass.indirectDrawCalls;
+			totalObjects += pass.submittedObjects;
+			totalCulled += pass.culledObjects;
+			totalTriangles += pass.submittedTriangles;
+			totalInstances += pass.submittedInstances;
+			totalDispatches += pass.computeDispatches;
+			totalThreadGroups += pass.computeThreadGroups;
+		}
+
+		if (frame.frameNumber == 0) {
+			ImGui::TextDisabled("描画統計を準備中です。");
+		} else {
+			ImGui::Text("計測フレーム: %llu", static_cast<unsigned long long>(frame.frameNumber));
+			ImGui::Text(
+				"Draw: %llu (Indirect %llu)  Object送信: %llu  カリング: %llu",
+				static_cast<unsigned long long>(totalDrawCalls),
+				static_cast<unsigned long long>(totalIndirectDrawCalls),
+				static_cast<unsigned long long>(totalObjects),
+				static_cast<unsigned long long>(totalCulled));
+			ImGui::Text(
+				"送信Triangle: %llu  Instance: %llu",
+				static_cast<unsigned long long>(totalTriangles),
+				static_cast<unsigned long long>(totalInstances));
+
+			if (ImGui::BeginTable(
+				"RenderStatsByPass",
+				6,
+				ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+				ImGui::TableSetupColumn("描画パス");
+				ImGui::TableSetupColumn("Draw");
+				ImGui::TableSetupColumn("Object");
+				ImGui::TableSetupColumn("Cull");
+				ImGui::TableSetupColumn("Triangle");
+				ImGui::TableSetupColumn("Instance");
+				ImGui::TableHeadersRow();
+
+				for (size_t passIndex = 0; passIndex < kRenderPassCount; ++passIndex) {
+					const RenderPass passType = static_cast<RenderPass>(passIndex);
+					const RenderPassStats& pass = frame.passes[passIndex];
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::TextUnformatted(RenderStats::GetPassDisplayName(passType));
+					ImGui::TableSetColumnIndex(1);
+					ImGui::Text("%llu", static_cast<unsigned long long>(pass.drawCalls));
+					ImGui::TableSetColumnIndex(2);
+					ImGui::Text("%llu", static_cast<unsigned long long>(pass.submittedObjects));
+					ImGui::TableSetColumnIndex(3);
+					ImGui::Text("%llu", static_cast<unsigned long long>(pass.culledObjects));
+					ImGui::TableSetColumnIndex(4);
+					ImGui::Text("%llu", static_cast<unsigned long long>(pass.submittedTriangles));
+					ImGui::TableSetColumnIndex(5);
+					ImGui::Text("%llu", static_cast<unsigned long long>(pass.submittedInstances));
+				}
+				ImGui::EndTable();
+			}
+
+			ImGui::Spacing();
+			ImGui::Text(
+				"有効ライト: Point %u / %zu  Spot %u / %zu",
+				frame.activePointLights,
+				LightManager::GetInstance()->GetPointLights().size(),
+				frame.activeSpotLights,
+				LightManager::GetInstance()->GetSpotLights().size());
+			ImGui::Text(
+				"Shadow Map: %d x %d / 範囲 %.0f",
+				DirectXCommon::GetInstance()->GetShadowMapResolution(),
+				DirectXCommon::GetInstance()->GetShadowMapResolution(),
+				LightManager::GetInstance()->GetShadowAreaSize());
+			ImGui::Text(
+				"GPU Particle: %u systems / System容量合計 %llu",
+				frame.gpuParticleSystems,
+				static_cast<unsigned long long>(frame.gpuParticleCapacity));
+			ImGui::Text(
+				"CPU Particle: %llu / PostEffect Pass: %u",
+				static_cast<unsigned long long>(frame.cpuParticleCount),
+				frame.postProcessPasses);
+			ImGui::Text(
+				"Compute Dispatch: %llu / Thread Group: %llu",
+				static_cast<unsigned long long>(totalDispatches),
+				static_cast<unsigned long long>(totalThreadGroups));
+			ImGui::TextDisabled("Draw数はエンジンが発行した命令です。ImGui内部描画は含みません。");
+			ImGui::TextDisabled("GPU ParticleのSystem容量合計は生存数ではなく、各プリセットが確保・Compute更新する上限枠の合計です。");
+			ImGui::TextDisabled("Indirect Particleの実Instance/Triangle数はGPUが決めるため、上のCPU集計には含みません。");
+		}
+	}
 
 	ImGui::End();
 }
@@ -1050,6 +1250,9 @@ void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameSt
 // エフェクトプレビューやアニメーション作業台のカメラ上書きを現在フレームへ反映する。
 
 void GameEditorController::ApplyCameraOverrides() {
+	if (ShouldFreezeSimulationForReplay()) {
+		return;
+	}
 	if (debugEditor_ && debugEditor_->GetEffectPreviewStage()) {
 		debugEditor_->GetEffectPreviewStage()->ApplyCameraOverride();
 	}

@@ -107,17 +107,16 @@ void Update(float deltaTime = 1.0f / 60.0f);
     // 行列取得。
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
     const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix_; }
-
-    Matrix4x4 GetViewProjectionMatrix() const {
-        static Math math;
-        return math.Multiply(viewMatrix_, projectionMatrix_);
-    }
+    const Matrix4x4& GetViewProjectionMatrix() const { return viewProjectionMatrix_; }
+    const Matrix4x4& GetInverseViewProjectionMatrix() const { return inverseViewProjectionMatrix_; }
 
         // FOVやアスペクト比から射影行列を再計算します。
 void UpdateProjectionMatrix();
     void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
     // 演出用カメラPreviewなど、通常Updateを通さず指定Eye/Targetで即時に描画用行列を作ります。
     void SetLookAtPreviewView(const Vector3& eye, const Vector3& target, float aspectRatio);
+    // デバッグリプレイの記録値を通常の追従計算を通さず描画行列へ反映します。
+    void ApplyReplayView(const Vector3& eye, const Vector3& target, const Vector3& rotation, float fovY, float nearClip, float farClip);
 
     // 入力と追従対象。
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
@@ -192,6 +191,9 @@ void SetFreezeEye(bool freeze);
     ID3D12Resource* GetConstantBuffer() const { return constBuffer_.Get(); }
 
 private:
+    // View/Projectionから派生する行列、視錐台、GPU定数をまとめて更新します。
+    void RefreshDerivedMatrices();
+
     struct CameraVP {
         Matrix4x4 view;
         Matrix4x4 projection;
@@ -212,6 +214,8 @@ private:
     // View/Projection行列。
     Matrix4x4 viewMatrix_ = {};
     Matrix4x4 projectionMatrix_ = {};
+    Matrix4x4 viewProjectionMatrix_ = Math::MakeIdentity4x4();
+    Matrix4x4 inverseViewProjectionMatrix_ = Math::MakeIdentity4x4();
 
     // 入力と追従対象への参照。Cameraは所有しない。
     InputManager* inputManager_ = nullptr;

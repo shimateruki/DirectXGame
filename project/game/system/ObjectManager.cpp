@@ -1,9 +1,12 @@
 #include "ObjectManager.h"
 #include "CollisionManager.h"
 #include "CameraManager.h"
+#include "LightManager.h"
+#include "RenderStats.h"
 #include "engine/utility/math/Math.h"
 #include <string>
 #include <algorithm> // remove_if用
+#include <unordered_set>
 
 namespace {
 bool ShouldDrawStageGateFrame(const std::unique_ptr<Object3d>& obj) {
@@ -17,14 +20,31 @@ bool ShouldDrawStageGateFrame(const std::unique_ptr<Object3d>& obj) {
 void ObjectManager::Update(float deltaTime) {
 	// 1. 各オブジェクトの更新
 	for (auto& obj : objects_) {
+		if (!obj || obj->IsReplayRemoved()) continue;
 		obj->Update(deltaTime);
 	}
 
-	// 2. 行列更新 (UpdateWorldMatrix)
-	for (auto& obj : objects_) {
-		obj->UpdateLocalMatrix();
-		obj->UpdateWorldMatrix();
-	}
+    // 2. 全ロジック更新後のTransformと描画定数を確定する。
+    // 親を持つObjectは親側の再帰更新に含め、同じMeshRenderer::Updateが
+    // 1フレームに複数回走らないようにする。
+    std::unordered_set<Object3d*> managedObjects;
+    managedObjects.reserve(objects_.size());
+    for (const auto& obj : objects_) {
+        if (obj) {
+            managedObjects.insert(obj.get());
+        }
+    }
+
+    for (auto& obj : objects_) {
+        if (!obj || obj->IsReplayRemoved()) continue;
+
+        Object3d* parent = obj->GetParent();
+        const bool hierarchyRoot =
+            parent == nullptr || managedObjects.find(parent) == managedObjects.end();
+        if (hierarchyRoot) {
+            obj->UpdateWorldMatrix();
+        }
+    }
 
 	// 3. 保留オブジェクトの追加 (AddObjectされたものをリストへ)
 	if (!pendingObjects_.empty()) {
@@ -114,7 +134,17 @@ void ObjectManager::ProcessRemovals() {
 
 	auto it = std::remove_if(objects_.begin(), objects_.end(),
 		[&](const std::unique_ptr<Object3d>& p) {
-			return p && isRequestedForRemoval(p.get());
+			if (!p || !isRequestedForRemoval(p.get())) {
+				return false;
+			}
+			if (p->IsReplayRetained()) {
+				// リプレイ記録中は所有権を維持し、過去フレームから復元できるようにする。
+				p->SetReplayRemoved(true);
+				p->SetIsVisible(false);
+				p->isDead = true;
+				return false;
+			}
+			return true;
 		});
 	objects_.erase(it, objects_.end());
 
@@ -124,9 +154,11 @@ void ObjectManager::ProcessRemovals() {
 void ObjectManager::DrawShadow() {
 	if (objects_.empty()) return;
 
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 	if (!camera) return;
-	const Frustum& frustum = camera->GetFrustum();
+	const Matrix4x4& lightViewProjection =
+		LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
+	const Frustum shadowFrustum = Math::ExtractFrustumPlanes(lightViewProjection);
 
 	// 軽量化: 共通の状態設定はループの外で1回だけ行う
 	bool isFirst = true;
@@ -137,10 +169,11 @@ void ObjectManager::DrawShadow() {
 		if (!obj->GetCastShadow()) continue;
 		if (obj->GetMaterialType() == 7) continue;
 
-		// 視錐台カリング（影についてもカメラから見えないものは描画スキップ）
-		// 本来はライト視点のカリングが望ましいが、簡易的な軽量化として有効
+		// ライトの視錐台外にある物体はシャドウマップへ書き込まれないため除外する。
+		// 画面外から影だけを落とす物体は残るので、メインカメラ基準より見た目も正確になる。
 		AABB worldAabb = obj->GetModelWorldAABB();
-		if (!Math::IntersectFrustumAABB(frustum, worldAabb.min, worldAabb.max)) {
+		if (!Math::IntersectFrustumAABB(shadowFrustum, worldAabb.min, worldAabb.max)) {
+			RenderStats::GetInstance()->RecordCulledObject();
 			continue;
 		}
 

@@ -4,6 +4,7 @@
 #include "BaseScene.h"
 #include "Object3d.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "ParticleManager.h"
@@ -418,7 +419,7 @@ bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
     case PseudoComponentKind::PathMove:
         return !object->recordPathName_.empty();
     case PseudoComponentKind::LinkIds:
-        return object->GetEventID() != 0 || object->GetTargetID() != 0;
+        return object->GetEventID() >= 0 || object->GetTargetID() >= 0;
     }
     return false;
 }
@@ -587,8 +588,8 @@ void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind)
         }
         break;
     case PseudoComponentKind::LinkIds:
-        object->SetEventID(0);
-        object->SetTargetID(0);
+        object->SetEventID(-1);
+        object->SetTargetID(-1);
         break;
     }
 }
@@ -683,7 +684,7 @@ void DrawPseudoComponentPanel(DebugEditor* editor, Object3d* primary, const std:
 
     ImGui::SeparatorText("Components");
     ImGui::TextDisabled("Object3Dの既存機能をUnity風のComponentとして追加/削除します。");
-    ImGui::TextDisabled("v1はPrefab化しやすいコピー型Componentです。元Prefabとのリンク管理はまだ行いません。");
+    ImGui::TextDisabled("Prefab InstanceではComponentの追加/削除もOverrideとして追跡されます。");
 
     if (ImGui::Button("Add Component", ImVec2(-1.0f, 30.0f))) {
         ImGui::OpenPopup("AddPseudoComponentMenu");
@@ -762,6 +763,26 @@ bool DrawSceneObjectNameCombo(const char* label, BaseScene* scene, Object3d* cam
     }
     ImGui::EndCombo();
     return changed;
+}
+
+bool HasMixedInspectorValue(const std::vector<Object3d*>& targets, const char* propertyPath) {
+    return EditorPropertyRegistry::GetInstance()->HasMixedValue(targets, propertyPath);
+}
+
+void DrawMixedValueHint(bool mixed) {
+    if (!mixed) {
+        return;
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("— 複数の値");
+}
+
+void PushMixedCheckbox(bool mixed) {
+    ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, mixed);
+}
+
+void PopMixedCheckbox() {
+    ImGui::PopItemFlag();
 }
 
 void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* cameraObject) {
@@ -925,6 +946,169 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
     }
 }
 
+std::vector<Object3d*> CollectSceneObjects(BaseScene* scene) {
+    std::vector<Object3d*> objects;
+    if (!scene) {
+        return objects;
+    }
+    objects.reserve(scene->GetObjects().size());
+    for (const auto& object : scene->GetObjects()) {
+        if (object) {
+            objects.push_back(object.get());
+        }
+    }
+    return objects;
+}
+
+std::vector<Object3d*> CollectPrefabInstanceObjects(BaseScene* scene, const std::string& instanceId) {
+    std::vector<Object3d*> objects;
+    if (!scene || instanceId.empty()) {
+        return objects;
+    }
+    for (const auto& object : scene->GetObjects()) {
+        if (object && object->IsPrefabInstance() &&
+            object->GetPrefabInstanceInfo().instanceId == instanceId) {
+            objects.push_back(object.get());
+        }
+    }
+    return objects;
+}
+
+void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* object) {
+    if (!editor || !scene || !object || !object->IsPrefabInstance()) {
+        return;
+    }
+
+    PresetManager* manager = PresetManager::GetInstance();
+    const auto info = object->GetPrefabInstanceInfo();
+    const auto overrides = manager->GetPrefabOverrides(object);
+    const auto variantOverrides = manager->GetPrefabVariantOverrides(object);
+    const auto structureSummary = manager->GetPrefabStructureOverrideSummary(info.prefabName);
+
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.33f, 0.50f, 1.0f));
+    const bool open = ImGui::CollapsingHeader(ICON_FA_CUBES " Prefab Instance", ImGuiTreeNodeFlags_DefaultOpen);
+    ImGui::PopStyleColor();
+    if (!open) {
+        return;
+    }
+
+    ImGui::Text("Prefab: %s", info.prefabName.empty() ? "(名称不明)" : info.prefabName.c_str());
+    const std::string basePrefabName = manager->GetPrefabBaseName(info.prefabName);
+    if (!basePrefabName.empty()) {
+        ImGui::TextColored(ImVec4(0.70f, 0.55f, 1.0f, 1.0f),
+            ICON_FA_CODE_BRANCH " Variant of: %s", basePrefabName.c_str());
+    }
+    ImGui::TextDisabled("Asset ID: %s", info.assetId.c_str());
+    ImGui::TextDisabled("Instance ID: %s", info.instanceId.c_str());
+    if (editor->IsPrefabEditMode()) {
+        ImGui::TextColored(ImVec4(0.35f, 0.78f, 1.0f, 1.0f),
+            ICON_FA_CUBE " Prefab ModeでAssetを直接編集中です。");
+        ImGui::TextDisabled("保存・破棄はHierarchy上部から実行します。");
+        ImGui::Separator();
+        return;
+    }
+    if (!manager->HasValidPrefabSource(object)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.25f, 1.0f),
+            ICON_FA_EXCLAMATION_TRIANGLE " 元Prefabが見つかりません。UnpackするかPrefab Assetを復元してください。");
+    }
+    if (info.isRoot) {
+        ImGui::TextDisabled("ルートの位置・回転はScene配置値として保持されます。");
+        if (ImGui::Button(ICON_FA_CUBE " Prefab Modeで開く")) {
+            editor->BeginPrefabEditSession(info.prefabName);
+            return;
+        }
+    }
+
+    const std::vector<Object3d*> sceneObjects = CollectSceneObjects(scene);
+    const std::vector<Object3d*> instanceObjects = CollectPrefabInstanceObjects(scene, info.instanceId);
+
+    if (ImGui::Button(ICON_FA_UPLOAD " Apply All", ImVec2(112.0f, 0.0f))) {
+        EditorTransactionManager::GetInstance()->BeginGroup("Apply All Prefab Overrides");
+        const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
+        const int applied = manager->ApplyAllPrefabOverrides(object, sceneObjects);
+        editor->RegisterObjectsEdited(beforeStates, "Prefab Apply Propagation");
+        EditorTransactionManager::GetInstance()->EndGroup();
+        DebugConsole::GetInstance()->AddLog("Prefab Apply All: " + std::to_string(applied) + " properties");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_UNDO " Revert All", ImVec2(112.0f, 0.0f))) {
+        const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
+        const int reverted = manager->RevertAllPrefabOverrides(object, sceneObjects);
+        editor->RegisterObjectsEdited(beforeStates, "Prefab Revert All");
+        DebugConsole::GetInstance()->AddLog("Prefab Revert All: " + std::to_string(reverted) + " properties");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_UNLINK " Unpack", ImVec2(96.0f, 0.0f))) {
+        const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
+        const int unpacked = manager->UnpackPrefabInstance(object, sceneObjects);
+        editor->RegisterObjectsEdited(beforeStates, "Unpack Prefab Instance");
+        DebugConsole::GetInstance()->AddLog("Prefab Unpack: " + std::to_string(unpacked) + " objects");
+    }
+
+    ImGui::SeparatorText(("Overrides (" + std::to_string(overrides.size()) + ")").c_str());
+    if (overrides.empty()) {
+        ImGui::TextDisabled("このObjectに適用差分はありません。");
+    }
+    for (const auto& entry : overrides) {
+        ImGui::PushID(entry.propertyPath.c_str());
+        ImGui::Text("%s", entry.displayName.c_str());
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", entry.propertyPath.c_str());
+
+        if (ImGui::SmallButton(ICON_FA_UPLOAD " Apply")) {
+            EditorTransactionManager::GetInstance()->BeginGroup("Apply Prefab Override");
+            const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
+            if (manager->ApplyPrefabProperty(object, entry.propertyPath, sceneObjects)) {
+                editor->RegisterObjectsEdited(beforeStates, "Prefab Apply Propagation");
+                DebugConsole::GetInstance()->AddLog("Prefab Apply: " + entry.propertyPath);
+            }
+            EditorTransactionManager::GetInstance()->EndGroup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton(ICON_FA_UNDO " Revert")) {
+            const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
+            if (manager->RevertPrefabProperty(object, entry.propertyPath)) {
+                editor->RegisterObjectsEdited(beforeStates, "Prefab Revert Property");
+                DebugConsole::GetInstance()->AddLog("Prefab Revert: " + entry.propertyPath);
+            }
+        }
+        ImGui::PopID();
+    }
+
+    if (!basePrefabName.empty()) {
+        ImGui::SeparatorText(("Variant Source Overrides (" + std::to_string(variantOverrides.size()) + ")").c_str());
+        ImGui::TextDisabled("InstanceのApplyで作られた、基底Prefabに対するVariant固有差分です。");
+        if (structureSummary.HasOverrides()) {
+            ImGui::Text("構造差分: 追加 %d / 削除 %d / 移動 %d / その他 %d",
+                structureSummary.addedObjects,
+                structureSummary.removedObjects,
+                structureSummary.reparentedObjects,
+                structureSummary.rawNodeOverrides);
+        }
+        if (variantOverrides.empty()) {
+            ImGui::TextDisabled("このObjectにはVariant固有差分がありません。");
+        }
+        for (const auto& entry : variantOverrides) {
+            ImGui::PushID(("Variant_" + entry.propertyPath).c_str());
+            ImGui::Text("%s", entry.displayName.c_str());
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", entry.propertyPath.c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_UNDO " Baseへ戻す")) {
+                EditorTransactionManager::GetInstance()->BeginGroup("Revert Prefab Variant Override");
+                const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
+                if (manager->RevertPrefabVariantProperty(object, entry.propertyPath, sceneObjects)) {
+                    editor->RegisterObjectsEdited(beforeStates, "Variant Revert Propagation");
+                    DebugConsole::GetInstance()->AddLog("Prefab Variant Revert: " + entry.propertyPath);
+                }
+                EditorTransactionManager::GetInstance()->EndGroup();
+            }
+            ImGui::PopID();
+        }
+    }
+    ImGui::Separator();
+}
+
 }
 
 void InspectorWindow::Initialize(DebugEditor* editor) {
@@ -962,6 +1146,8 @@ void InspectorWindow::Draw() {
             ImGui::TextDisabled("名前・親子・モデル分割など、代表Object専用の項目は代表Objectだけを編集します。");
             ImGui::Separator();
         }
+
+        DrawPrefabInstancePanel(editor_, currentScene, selectedObject);
 
         // --- 名前表示 ---
         char nameBuffer[256];
@@ -1031,6 +1217,7 @@ void InspectorWindow::Draw() {
 
         ImGui::SeparatorText("Tag / Layer");
         ImGui::TextDisabled("Tagは役割名、Layerは処理対象の分類として使います。");
+        const bool mixedTag = HasMixedInspectorValue(inspectorTargets, "identity.tag");
         if (ImGui::InputText("Tag", tagBuffer, sizeof(tagBuffer))) {
             const std::string newTag = tagBuffer;
             for (Object3d* target : inspectorTargets) {
@@ -1040,6 +1227,7 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        DrawMixedValueHint(mixedTag);
 
         const char* layerPresets[] = {
             "Default",
@@ -1058,6 +1246,7 @@ void InspectorWindow::Draw() {
                 break;
             }
         }
+        const bool mixedLayer = HasMixedInspectorValue(inspectorTargets, "identity.layer");
         if (ImGui::Combo("Layer Preset", &layerPresetIndex, layerPresets, IM_ARRAYSIZE(layerPresets))) {
             strcpy_s(layerBuffer, layerPresets[layerPresetIndex]);
             const std::string newLayer = layerBuffer;
@@ -1068,6 +1257,7 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        DrawMixedValueHint(mixedLayer);
         if (ImGui::InputText("Layer", layerBuffer, sizeof(layerBuffer))) {
             const std::string newLayer = layerBuffer[0] == '\0' ? "Default" : std::string(layerBuffer);
             if (layerBuffer[0] == '\0') {
@@ -1080,6 +1270,7 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        DrawMixedValueHint(mixedLayer);
 
 
         DrawPseudoComponentPanel(editor_, selectedObject, inspectorTargets);
@@ -1090,6 +1281,7 @@ void InspectorWindow::Draw() {
         if (currentCat == "Player") catIndex = 1;
         else if (currentCat == "Enemy") catIndex = 2;
 
+        const bool mixedSaveCategory = HasMixedInspectorValue(inspectorTargets, "identity.saveCategory");
         if (ImGui::Combo(ICON_FA_FOLDER " 保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
             for (Object3d* object : inspectorTargets) {
                 if (!object) continue;
@@ -1097,6 +1289,7 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        DrawMixedValueHint(mixedSaveCategory);
 
         // --- 親の名前表示 ---
         if (selectedObject->GetParent()) {
@@ -1157,6 +1350,8 @@ void InspectorWindow::Draw() {
         // --- 可視性設定 ---
         ImGui::Separator();
         bool isVisible = selectedObject->GetIsVisible();
+        const bool mixedVisible = HasMixedInspectorValue(inspectorTargets, "rendering.visible");
+        PushMixedCheckbox(mixedVisible);
         if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
             for (Object3d* object : inspectorTargets) {
                 if (!object) continue;
@@ -1164,7 +1359,10 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        PopMixedCheckbox();
         bool isLocked = selectedObject->GetIsLocked();
+        const bool mixedLocked = HasMixedInspectorValue(inspectorTargets, "editor.locked");
+        PushMixedCheckbox(mixedLocked);
         if (ImGui::Checkbox(ICON_FA_LOCK " ロック (編集保護)", &isLocked)) {
             for (Object3d* object : inspectorTargets) {
                 if (!object) continue;
@@ -1172,7 +1370,10 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        PopMixedCheckbox();
         bool castShadow = selectedObject->GetCastShadow();
+        const bool mixedCastShadow = HasMixedInspectorValue(inspectorTargets, "rendering.castShadow");
+        PushMixedCheckbox(mixedCastShadow);
         if (ImGui::Checkbox(ICON_FA_LIGHTBULB " 影を落とす", &castShadow)) {
             for (Object3d* object : inspectorTargets) {
                 if (!object) continue;
@@ -1180,6 +1381,7 @@ void InspectorWindow::Draw() {
             }
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
+        PopMixedCheckbox();
 
         // --- Transform編集 ---
         ImGui::Separator();
@@ -1188,6 +1390,7 @@ void InspectorWindow::Draw() {
         bool isTransformChanged = false;
 
         const Vector3 beforePos = transform->translate;
+        const bool mixedPosition = HasMixedInspectorValue(inspectorTargets, "transform.position");
         if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) {
             ApplyPrimaryTransformDeltaToTargets(
                 inspectorTargets,
@@ -1203,9 +1406,11 @@ void InspectorWindow::Draw() {
                 false);
             isTransformChanged = true;
         }
+        DrawMixedValueHint(mixedPosition);
 
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         const Vector3 beforeRot = transform->rotate;
+        const bool mixedRotation = HasMixedInspectorValue(inspectorTargets, "transform.rotation");
         if (ImGui::DragFloat3(ICON_FA_SYNC " 回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
             transform->isQuaternionMaster = false;
@@ -1223,11 +1428,13 @@ void InspectorWindow::Draw() {
                 false);
             isTransformChanged = true;
         }
+        DrawMixedValueHint(mixedRotation);
         const Vector3 beforeScale = transform->scale;
         if (isManagedCharacter) {
             ImGui::TextDisabled(ICON_FA_EXPAND_ARROWS_ALT " スケール: %.3f, %.3f, %.3f（ステータス管理）",
                 transform->scale.x, transform->scale.y, transform->scale.z);
         } else {
+            const bool mixedScale = HasMixedInspectorValue(inspectorTargets, "transform.scale");
             if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) {
                 ApplyPrimaryTransformDeltaToTargets(
                     inspectorTargets,
@@ -1243,6 +1450,7 @@ void InspectorWindow::Draw() {
                     true);
                 isTransformChanged = true;
             }
+            DrawMixedValueHint(mixedScale);
         }
 
         if (isTransformChanged) {

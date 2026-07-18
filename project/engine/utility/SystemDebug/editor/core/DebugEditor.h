@@ -22,6 +22,8 @@
 #include "AudioSettingsWindow.h"
 #include "CaptureToolWindow.h"
 #include "EditorCommon.h"
+#include "EditorPropertyRegistry.h"
+#include "EditorTransactionManager.h"
 #include "EffectPreviewStage.h"
 #include "EventLinkGraph.h"
 #include "ExecutablePackageWindow.h"
@@ -35,6 +37,7 @@
 #include "NodeGraphEditorWindow.h"
 #include "PrimitiveDrawer.h"
 #include "ProjectWindow.h"
+#include "PropertyMatrixWindow.h"
 #include "SceneSavePreview.h"
 #include "SceneSerializer.h"
 #include "SceneValidator.h"
@@ -66,6 +69,11 @@ class DebugEditor : public IEditable {
     friend class HierarchyWindow; // 既存の直接参照互換のため残す。
 
 public:
+    struct ObjectStateSnapshot {
+        Object3d* object = nullptr;
+        nlohmann::json beforeState;
+    };
+
     // ライフサイクル。
         // シーン管理やDirectX関連の参照を受け取り、各エディタ機能を利用できる状態にします。
 void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
@@ -88,6 +96,8 @@ void DrawImGui() override;
     // 主要ウィンドウ。
     void DrawProjectWindow();
     void DrawHierarchy();
+    // 下段を別の固定Editorで使う間だけProject描画を止めます。
+    void SetProjectWindowVisible(bool visible) { projectWindowVisible_ = visible; }
 
     // シーン保存と保存通知。
     void SaveScene(SaveMode mode = SaveMode::All);
@@ -119,9 +129,18 @@ void PerformRedo();
     void StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
     void AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label);
     void AddEditorObjects(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
+    bool BeginPrefabEditSession(const std::string& prefabName);
+    bool SavePrefabEditSession();
+    void CancelPrefabEditSession();
+    bool IsPrefabEditMode() const { return prefabEditMode_; }
+    bool IsPrefabEditDirty() const { return prefabEditDirty_; }
+    const std::string& GetPrefabEditName() const { return prefabEditName_; }
+    bool IsPrefabEditObject(const Object3d* object) const;
     nlohmann::json CaptureObjectState(Object3d* object) const;
+    std::vector<ObjectStateSnapshot> CaptureObjectStates(const std::vector<Object3d*>& objects) const;
     void RegisterObjectEdited(Object3d* object, const std::string& label);
     void RegisterObjectEdited(Object3d* object, const nlohmann::json& beforeState, const std::string& label);
+    void RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& beforeStates, const std::string& label);
     void MarkDirtyForObject(Object3d* object);
     void MarkDirty(SaveMode mode);
     void ClearDirty(SaveMode mode);
@@ -242,6 +261,7 @@ void PerformRedo();
     Text3DGenerator* GetText3DGenerator() { return &text3DGenerator_; }
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
     AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
+    PropertyMatrixWindow* GetPropertyMatrixWindow() { return &propertyMatrixWindow_; }
     StatusTuningWindow* GetStatusTuningWindow() { return &statusTuningWindow_; }
     GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
     TerrainEditorWindow* GetTerrainEditorWindow() { return &terrainEditorWindow_; }
@@ -306,7 +326,9 @@ struct PlacementResult {
     Object3d* FindObjectByName(const std::string& name) const;
     Object3d* AddObjectFromState(const nlohmann::json& state);
     std::unique_ptr<Object3d> RemoveObjectImmediate(Object3d* object);
-    void TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::json& beforeState);
+    void EndPrefabEditSession(bool clearTransactions);
+    void ResetPrefabEditSessionForSceneChange();
+    void TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& beforeStates);
     void MarkDirtyForCategory(const std::string& category);
 
 private:
@@ -314,12 +336,6 @@ private:
     SceneManager* sceneManager_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
     Math math_;
-
-        // Undo/Redo用に、編集前後のオブジェクト状態を保持します。
-struct ObjectEditSnapshot {
-        Object3d* object = nullptr;
-        nlohmann::json beforeState;
-    };
 
     // 選択、配置プレビュー、プリセットブラシの状態。
     enum class SelectionOverlayMode {
@@ -331,7 +347,7 @@ struct ObjectEditSnapshot {
     Object3d* selectedObject_ = nullptr;
     std::vector<Object3d*> selectedObjects_;
     SelectionOverlayMode selectionOverlayMode_ = SelectionOverlayMode::Compact;
-    std::vector<ObjectEditSnapshot> groupTransformStartStates_;
+    std::vector<ObjectStateSnapshot> groupTransformStartStates_;
     bool isSelectionRectDragging_ = false;
     bool isSelectionRectReady_ = false;
     Vector2 selectionRectStart_ = { 0.0f, 0.0f };
@@ -372,9 +388,18 @@ struct PreviewVisualState {
     std::unordered_map<Object3d*, PreviewVisualState> previewVisualStates_;
     BaseScene* lastUpdatedScene_ = nullptr;
 
+    // Prefab Modeでは現在Sceneを一時的に隠し、Prefab階層だけを同じInspector/Gizmoで編集します。
+    bool prefabEditMode_ = false;
+    bool prefabEditDirty_ = false;
+    std::string prefabEditName_;
+    Object3d* prefabEditRoot_ = nullptr;
+    BaseScene* prefabEditScene_ = nullptr;
+    std::unordered_map<Object3d*, bool> prefabEditPreviousVisibility_;
+
     bool drawColliders_ = true;
     bool drawEventIDs_ = true;
     bool isPathEditMode_ = false;
+    bool projectWindowVisible_ = true;
 
     // ファイル名、検索、モデル一覧。
     char currentSceneFilename_[128] = "scene_layout.json";
@@ -425,10 +450,8 @@ enum class EditorCommandType {
     };
 
     void RegisterCommand(const EditorCommand& command);
-    std::deque<EditorCommand> undoStack_;
-    std::deque<EditorCommand> redoStack_;
-    nlohmann::json inspectorEditStartState_;
-    Object3d* inspectorEditTarget_ = nullptr;
+    void ApplyEditorCommand(const EditorCommand& command, bool undo);
+    std::vector<ObjectStateSnapshot> inspectorEditStartStates_;
     bool hasInspectorEditStart_ = false;
     Transform tempTransformStart_;
     nlohmann::json tempObjectStateStart_;
@@ -484,6 +507,7 @@ enum class EditorCommandType {
     Text3DGenerator text3DGenerator_;
     ModelOptimizerWindow modelOptimizerWindow_;
     AssetAuditWindow assetAuditWindow_;
+    PropertyMatrixWindow propertyMatrixWindow_;
     StatusTuningWindow statusTuningWindow_;
     GameDataDebugEditor gameDataDebugEditor_;
     TerrainEditorWindow terrainEditorWindow_;

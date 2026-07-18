@@ -287,7 +287,11 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
         PointLight pLight = gPointLights.lights[i];
         float3 Lp = pLight.position - worldPosition;
         float distance = length(Lp);
-        Lp = normalize(Lp);
+        if (distance >= pLight.radius)
+        {
+            continue;
+        }
+        Lp /= max(distance, 0.0001f);
         float attenuation = pow(saturate(-distance / pLight.radius + 1.0f), pLight.decay);
         float pointBand = (dot(N, Lp) > 0.18f) ? 1.0f : 0.38f;
         localLight += baseColor * pLight.color.rgb * min(pLight.intensity, 2.0f) * attenuation * pointBand * 0.11f;
@@ -298,7 +302,11 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
         SpotLight sLight = gSpotLights.lights[j];
         float3 Ls = sLight.position - worldPosition;
         float distance = length(Ls);
-        Ls = normalize(Ls);
+        if (distance >= sLight.distance)
+        {
+            continue;
+        }
+        Ls /= max(distance, 0.0001f);
         float distanceFactor = pow(saturate(-distance / sLight.distance + 1.0f), sLight.decay);
         float angleCos = dot(-Ls, normalize(sLight.direction));
         float falloffFactor = saturate((angleCos - sLight.cosAngle) / (sLight.cosFalloffStart - sLight.cosAngle));
@@ -420,7 +428,10 @@ PixelShaderOutput main(VertexShaderOutput input)
         float bias = 0.005f;
         shadowFactor = 0.0f;
 
-        float2 texelSize = 1.0f / 2048.0f;
+        uint shadowMapWidth;
+        uint shadowMapHeight;
+        gShadowMap.GetDimensions(shadowMapWidth, shadowMapHeight);
+        float2 texelSize = 1.0f / float2(shadowMapWidth, shadowMapHeight);
         float spread = 1.5f;
 
         for (int y = -1; y <= 1; ++y)
@@ -812,7 +823,11 @@ PixelShaderOutput main(VertexShaderOutput input)
                         PointLight pLight = gPointLights.lights[i];
                         float3 L_point = pLight.position - input.worldPosition;
                         float distance = length(L_point);
-                        L_point = normalize(L_point);
+                        if (distance >= pLight.radius)
+                        {
+                            continue;
+                        }
+                        L_point /= max(distance, 0.0001f);
                         float attenuation = pow(saturate(-distance / pLight.radius + 1.0f), pLight.decay);
                         float3 radiance_point = pLight.color.rgb * pLight.intensity * attenuation;
                         Lo += CalcPBRLight(L_point, V, N, radiance_point, albedo, roughness, metallic, F0);
@@ -824,7 +839,11 @@ PixelShaderOutput main(VertexShaderOutput input)
                         SpotLight sLight = gSpotLights.lights[j];
                         float3 L_spot = sLight.position - input.worldPosition;
                         float distance = length(L_spot);
-                        L_spot = normalize(L_spot);
+                        if (distance >= sLight.distance)
+                        {
+                            continue;
+                        }
+                        L_spot /= max(distance, 0.0001f);
                         float distanceFactor = pow(saturate(-distance / sLight.distance + 1.0f), sLight.decay);
                         float angleCos = dot(-L_spot, normalize(sLight.direction));
                         float falloffFactor = saturate((angleCos - sLight.cosAngle) / (sLight.cosFalloffStart - sLight.cosAngle));

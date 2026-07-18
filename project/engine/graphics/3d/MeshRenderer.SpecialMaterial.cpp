@@ -226,11 +226,11 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
     }
 
     Math math;
-    const Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
     const Matrix4x4& worldMatrix = transform_->matWorld;
     previewWvpData->WVP = math.Multiply(worldMatrix, viewProj);
     previewWvpData->world = worldMatrix;
-    previewWvpData->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
+    previewWvpData->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
     previewCameraData->worldPosition = camera->GetEye();
 
     common_->SetGraphicsCommand();

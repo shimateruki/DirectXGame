@@ -42,7 +42,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -72,6 +74,8 @@
         "param": {
             "enemyType": "Bat"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -147,7 +151,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -177,6 +183,8 @@
         "param": {
             "enemyType": "BeamDrone"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -252,7 +260,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -282,6 +292,8 @@
         "param": {
             "enemyType": "Bomb"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -357,7 +369,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -387,6 +401,8 @@
         "param": {
             "enemyType": "Bomber"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -462,7 +478,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -492,6 +510,8 @@
         "param": {
             "enemyType": "BossCore"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -567,7 +587,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -597,6 +619,8 @@
         "param": {
             "enemyType": "FireSlime"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -672,7 +696,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -702,6 +728,8 @@
         "param": {
             "enemyType": "GiantSlime"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             1.0,
@@ -777,7 +805,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -807,6 +837,8 @@
         "param": {
             "enemyType": "Mushroom"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -882,7 +914,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -912,6 +946,8 @@
         "param": {
             "enemyType": "Slime"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,
@@ -987,7 +1023,9 @@
         "envIntensity": 1.0,
         "eventType": 0,
         "gimmickType": "",
+        "gpuParticleName": "",
         "isLocked": false,
+        "isStatic": false,
         "isVisible": true,
         "itemType": "",
         "layer": "Default",
@@ -1017,6 +1055,8 @@
         "param": {
             "enemyType": "ThunderSlime"
         },
+        "particleName": "",
+        "prefabInstance": null,
         "quaternion": [
             0.0,
             0.0,

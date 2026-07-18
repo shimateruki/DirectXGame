@@ -746,8 +746,7 @@ void DebugEditor::ClearInvalidSelectedObject() {
     ClearObjectSelection();
     isDraggingTransform_ = false;
     hasInspectorEditStart_ = false;
-    inspectorEditTarget_ = nullptr;
-    inspectorEditStartState_.clear();
+    inspectorEditStartStates_.clear();
     tempObjectStateStart_.clear();
     if (editorWasSelected) {
         EditorManager::GetInstance()->ClearSelection();

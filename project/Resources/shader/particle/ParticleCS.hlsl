@@ -29,6 +29,8 @@ struct Particle
 RWStructuredBuffer<Particle> particles : register(u0);
 RWStructuredBuffer<int> gFreeListIndex : register(u1);
 RWStructuredBuffer<uint> gFreeList : register(u2);
+RWStructuredBuffer<uint> gAliveParticleIndices : register(u3);
+RWStructuredBuffer<uint> gDrawArguments : register(u4);
 ByteAddressBuffer emitterMesh : register(t0);
 
 cbuffer Config : register(b0)
@@ -93,7 +95,8 @@ cbuffer Config : register(b0)
     float restitution;
     float colorIntensity;
     uint currentConfigIndex;
-    float2 padding_col;
+    uint maxParticles;
+    float padding_col;
 };
 struct BoneData
 {
@@ -358,11 +361,31 @@ float3 GetWorldPosFromDepth(float2 uv, float depth, matrix invViewProj)
     float4 worldPos = mul(ndc, invViewProj);
     return worldPos.xyz / worldPos.w;
 }
+
+void AppendAliveParticle(uint particleIndex)
+{
+    uint aliveSlot;
+    InterlockedAdd(gDrawArguments[1], 1, aliveSlot);
+    if (aliveSlot < maxParticles)
+    {
+        gAliveParticleIndices[aliveSlot] = particleIndex;
+    }
+}
+
+[numthreads(1, 1, 1)]
+void ResetDrawArgumentsCS(uint3 DTid : SV_DispatchThreadID)
+{
+    gDrawArguments[0] = 4;
+    gDrawArguments[1] = 0;
+    gDrawArguments[2] = 0;
+    gDrawArguments[3] = 0;
+}
+
 [numthreads(1024, 1, 1)]
 void InitCS(uint3 DTid : SV_DispatchThreadID)
 {
     uint index = DTid.x;
-    if (index < 10000)
+    if (index < maxParticles)
     {
         Particle p = (Particle)0;
         particles[index] = p;
@@ -370,7 +393,7 @@ void InitCS(uint3 DTid : SV_DispatchThreadID)
     }
     if (index == 0)
     {
-        gFreeListIndex[0] = 10000 - 1;
+        gFreeListIndex[0] = int(maxParticles) - 1;
     }
 }
 
@@ -499,6 +522,10 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
         p.memTurbulence = turbulence;
 
         particles[pIndex] = p;
+        if (p.life > 0.0f)
+        {
+            AppendAliveParticle(pIndex);
+        }
     }
     else
     {
@@ -512,7 +539,7 @@ void UpdateCS(uint3 DTid : SV_DispatchThreadID)
 {
     uint index = DTid.x;
 
-    if (index >= 10000)
+    if (index >= maxParticles)
         return;
 
     Particle p = particles[index];
@@ -606,10 +633,14 @@ void UpdateCS(uint3 DTid : SV_DispatchThreadID)
             // Particle just died! Return to FreeList
             int freeListPos;
             InterlockedAdd(gFreeListIndex[0], 1, freeListPos);
-            if (freeListPos + 1 < 10000)
+            if (freeListPos + 1 < int(maxParticles))
             {
                 gFreeList[freeListPos + 1] = index;
             }
+        }
+        else
+        {
+            AppendAliveParticle(index);
         }
 
         particles[index] = p;

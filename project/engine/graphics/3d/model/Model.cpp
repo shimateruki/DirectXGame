@@ -2,6 +2,7 @@
 #include <fstream>
 #include "Model.h"
 #include "DirectXCommon.h"
+#include "RenderStats.h"
 #include "engine/utility/math/Math.h"
 #include <sstream>
 #include <cassert>
@@ -23,6 +24,15 @@ constexpr uint32_t kModelCacheVersion = 2;
 constexpr uint32_t kMaxCacheStringSize = 1024 * 1024;
 constexpr uint32_t kMaxCacheVectorCount = 10'000'000;
 constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
+
+// 描画中に同じフォールバック画像のファイル確認を繰り返さないよう、SRVを一度だけ解決します。
+uint32_t GetDefaultWhiteTextureHandle() {
+    static uint32_t handle = 0;
+    if (handle == 0) {
+        handle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+    }
+    return handle;
+}
 
 template <typename T>
 // POD値をバイナリへそのまま書き込み、モデルキャッシュ保存の基本単位にする。
@@ -781,6 +791,7 @@ void Model::UpdateBoneBuffer() {
 void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    RenderStats::GetInstance()->RecordObjectDraw();
     // 1. マテリアル設定
     if (overrideMaterialResource) {
         commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
@@ -806,21 +817,6 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
     }
-    uint32_t handleToBind = normalMapHandle;
-    if (handleToBind == 0) {
-        // 画像が設定されていない場合はダミーの白画像を使う
-        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
-    uint32_t ormHandleToBind = ormMapHandle;
-
-    // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
-    if (ormHandleToBind <= 0 || ormHandleToBind >= DirectXCommon::kMaxSRVCount) {
-        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    }
-
-    // 次のインデックス(例: 10番)にORMマップをセット！
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
     // 3. メッシュごとの描画ループ
     for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
         if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
@@ -843,7 +839,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             meshNormalHandle = meshMaterial->normalMapHandle;
         }
         if (meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) {
-            meshNormalHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+            meshNormalHandle = GetDefaultWhiteTextureHandle();
         }
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, meshNormalHandle);
 
@@ -854,7 +850,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             meshOrmHandle = meshMaterial->ormMapHandle;
         }
         if (meshOrmHandle == 0 || meshOrmHandle >= DirectXCommon::kMaxSRVCount) {
-            meshOrmHandle = TextureManager::GetInstance()->Load(kDefaultWhiteTexture);
+            meshOrmHandle = GetDefaultWhiteTextureHandle();
         }
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
 
@@ -872,6 +868,8 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         }
 
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);
+        RenderStats::GetInstance()->RecordIndexedDraw(
+            static_cast<uint32_t>(mesh.indices.size()), instanceCount);
     }
 }
 

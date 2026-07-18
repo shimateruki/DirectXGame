@@ -3,6 +3,7 @@
 #include "Object3dCommon.h"
 #include "Model.h"
 #include <wrl.h>
+#include <cstdint>
 #include <string>
 #include <memory>
 #include <optional>
@@ -63,6 +64,51 @@ public:
         EntityParameter() = default;
     };
 
+    // デバッグリプレイで1フレーム分の実行状態を保持します。
+    // シーン保存用JSONとは分離し、実行中だけ変化するHPやアニメーション時刻も扱います。
+    struct ReplayState {
+        Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        Vector3 translation = { 0.0f, 0.0f, 0.0f };
+        Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
+        bool quaternionMaster = true;
+
+        bool visible = true;
+        bool dead = false;
+        bool collecting = false;
+        float collectTimer = 0.0f;
+        float animationTime = 0.0f;
+        std::string animationName;
+        bool animationLoop = true;
+
+        bool hasParameter = false;
+        EntityParameter parameter;
+        uint32_t collisionAttribute = 0;
+        uint32_t collisionMask = 0;
+
+        std::string modelName;
+        std::string texturePath;
+        int32_t materialType = 0;
+        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float emissive = 1.0f;
+
+        bool replayRemoved = false;
+        json custom = json::object();
+    };
+
+    /// Prefab Asset内の元Objectと、Scene上のInstanceを結び付ける情報です。
+    struct PrefabInstanceInfo {
+        std::string assetId;
+        std::string prefabName;
+        std::string instanceId;
+        std::string sourceObjectId;
+        bool isRoot = false;
+
+        bool IsLinked() const {
+            return !assetId.empty() && !instanceId.empty() && !sourceObjectId.empty();
+        }
+    };
+
     using ColliderConfig = ::ColliderConfig;
 
 public:
@@ -84,9 +130,21 @@ public:
     MeshRenderer::LocalFogData* GetLocalFogData();
     virtual std::unique_ptr<Object3d> Clone() const;
 
+    // デバッグリプレイ専用の安定IDと実行状態を扱います。
+    uint64_t EnsureReplayId();
+    uint64_t GetReplayId() const { return replayId_; }
+    ReplayState CaptureReplayState() const;
+    void RestoreReplayState(const ReplayState& state);
+    void SetReplayRetained(bool retained) { replayRetained_ = retained; }
+    bool IsReplayRetained() const { return replayRetained_; }
+    void SetReplayRemoved(bool removed) { replayRemoved_ = removed; }
+    bool IsReplayRemoved() const { return replayRemoved_; }
+
     // トランスフォーム
     void UpdateLocalMatrix();
-    void UpdateWorldMatrix();
+    // 階層のワールド行列を更新します。ゲームの一括更新中はfalseを指定し、
+    // 全オブジェクトのロジック更新後に描画定数を一度だけ確定できます。
+    void UpdateWorldMatrix(bool refreshRenderer = true);
     void RefreshRenderCameraData();
 
     Transform* GetTransform() { return &transform_; }
@@ -157,6 +215,10 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     void SetName(const std::string& name) { name_ = name; }
     const std::string& GetName() const { return name_; }
+    const PrefabInstanceInfo& GetPrefabInstanceInfo() const { return prefabInstanceInfo_; }
+    void SetPrefabInstanceInfo(const PrefabInstanceInfo& info) { prefabInstanceInfo_ = info; }
+    void ClearPrefabInstanceInfo() { prefabInstanceInfo_ = PrefabInstanceInfo{}; }
+    bool IsPrefabInstance() const { return prefabInstanceInfo_.IsLinked(); }
 
     // 衝突判定 (Colliderへ委譲)
     Collider* GetCollider() const { return collider_.get(); }
@@ -312,6 +374,9 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void SetIsLocked(bool locked) { isLocked_ = locked; }
 
 protected:
+    virtual void CaptureReplayCustomState(json& state) const;
+    virtual void RestoreReplayCustomState(const json& state);
+
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";
 
@@ -334,6 +399,7 @@ protected:
     std::string layer_ = "Default";
     bool isVisible_ = true;
     bool castShadow_ = true;
+    PrefabInstanceInfo prefabInstanceInfo_;
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";
@@ -347,6 +413,9 @@ protected:
     bool isLocked_ = false;
     bool isCollecting_ = false;
     float collectTimer_ = 0.0f;
+    uint64_t replayId_ = 0;
+    bool replayRetained_ = false;
+    bool replayRemoved_ = false;
     std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
     // 先ほどは <EffectObject3d> にしていましたが、<Object3d> に変更します
     std::string meshEffectName1_ = "";

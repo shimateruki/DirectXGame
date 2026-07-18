@@ -1,4 +1,5 @@
 #include "Skybox.h"
+#include "RenderStats.h"
 #include "SRVManager.h"
 #ifdef USE_IMGUI
 #include "DebugConsole.h"
@@ -107,4 +108,5 @@ void Skybox::Draw(ID3D12Resource* vpResource) {
 
     // 描画実行
     commandList->DrawIndexedInstanced(36, 1, 0, 0, 0);
+    RenderStats::GetInstance()->RecordIndexedDraw(36);
 }

@@ -110,6 +110,9 @@ Object3d::~Object3d() {
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
     common_ = common;
+    EnsureReplayId();
+    replayRetained_ = false;
+    replayRemoved_ = false;
 
     // Transform初期化
     transform_.scale = { 1.0f, 1.0f, 1.0f };
@@ -203,10 +206,10 @@ void Object3d::Update(float deltaTime) {
 
     // --- 行列・その他計測 ---
     auto startMat = std::chrono::high_resolution_clock::now();
-    if (meshRenderer_) {
-        meshRenderer_->Update();
-    }
-    UpdateWorldMatrix();
+    // 派生クラスがこの後Transformを変更する可能性があるため、ここでは
+    // エフェクト追従に必要な行列だけを更新します。描画定数はObjectManagerが
+    // 全オブジェクトのロジック更新後に一度だけ確定します。
+    UpdateWorldMatrix(false);
 
     if (recorder_) {
         recorder_->Update();
@@ -302,15 +305,15 @@ void Object3d::UpdateLocalMatrix() {
     transform_.UpdateMatrix();
 }
 
-void Object3d::UpdateWorldMatrix() {
+void Object3d::UpdateWorldMatrix(bool refreshRenderer) {
     transform_.UpdateMatrix();
 
-    if (meshRenderer_) {
+    if (refreshRenderer && meshRenderer_) {
         meshRenderer_->Update();
     }
     for (Object3d* child : children_) {
         if (child) {
-            child->UpdateWorldMatrix();
+            child->UpdateWorldMatrix(refreshRenderer);
         }
     }
 }
