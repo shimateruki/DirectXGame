@@ -293,6 +293,10 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->effectScaleY = 1.0f;
     waterParamData_->effectScaleZ = 1.0f;
     waterParamData_->waterParamPadding0 = 0.0f;
+    waterParamData_->waterLightDirection = { -0.35f, -0.82f, 0.45f };
+    waterParamData_->waterLightIntensity = 1.0f;
+    waterParamData_->waterLightColor = { 1.0f, 0.96f, 0.88f };
+    waterParamData_->waterParamPadding1 = 0.0f;
     EnsureBakedShaderTexturesLoaded();
     
 }
@@ -367,6 +371,12 @@ void MeshRenderer::Update() {
         // ★流速に基づいてオフセットを蓄積）
         waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * (1.0f / 60.0f);
         waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * (1.0f / 60.0f);
+
+        auto& sun = LightManager::GetInstance()->GetDirectionalLight();
+        const Vector4 sunColor = ColorSpace::AuthoringToWorking(sun.color);
+        waterParamData_->waterLightDirection = sun.direction;
+        waterParamData_->waterLightIntensity = sun.intensity;
+        waterParamData_->waterLightColor = { sunColor.x, sunColor.y, sunColor.z };
     }
     if (localFogData_) {
         localFogData_->time = time_;

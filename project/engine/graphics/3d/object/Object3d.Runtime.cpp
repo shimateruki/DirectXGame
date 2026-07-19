@@ -17,6 +17,11 @@
 #include <ProfilerManager.h>
 #include <fstream>
 #include <filesystem>
+#include <array>
+#include <cctype>
+#include <iomanip>
+#include <random>
+#include <sstream>
 
 namespace {
 
@@ -99,6 +104,289 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
     return newObj;
 }
 
+std::string Object3d::GeneratePersistentGuid() {
+    std::array<unsigned char, 16> bytes{};
+    std::random_device random;
+    for (unsigned char& value : bytes) {
+        value = static_cast<unsigned char>(random());
+    }
+
+    // UUID version 4 / RFC 4122 variantのビット配置に合わせます。
+    bytes[6] = static_cast<unsigned char>((bytes[6] & 0x0Fu) | 0x40u);
+    bytes[8] = static_cast<unsigned char>((bytes[8] & 0x3Fu) | 0x80u);
+
+    std::ostringstream stream;
+    stream << std::hex << std::setfill('0');
+    for (std::size_t index = 0; index < bytes.size(); ++index) {
+        if (index == 4 || index == 6 || index == 8 || index == 10) {
+            stream << '-';
+        }
+        stream << std::setw(2) << static_cast<unsigned int>(bytes[index]);
+    }
+    return stream.str();
+}
+
+bool Object3d::IsPersistentGuidValid(std::string_view guid) {
+    if (guid.size() != 36) {
+        return false;
+    }
+    for (std::size_t index = 0; index < guid.size(); ++index) {
+        const bool isSeparator = index == 8 || index == 13 || index == 18 || index == 23;
+        if (isSeparator) {
+            if (guid[index] != '-') return false;
+            continue;
+        }
+        if (std::isxdigit(static_cast<unsigned char>(guid[index])) == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const std::string& Object3d::EnsurePersistentGuid() {
+    if (!IsPersistentGuidValid(persistentGuid_)) {
+        persistentGuid_ = GeneratePersistentGuid();
+    }
+    return persistentGuid_;
+}
+
+bool Object3d::SetPersistentGuid(const std::string& guid) {
+    if (!IsPersistentGuidValid(guid)) {
+        return false;
+    }
+    persistentGuid_ = guid;
+    return true;
+}
+
+void Object3d::RegeneratePersistentGuid() {
+    persistentGuid_ = GeneratePersistentGuid();
+}
+
+ParticleEmitterComponent* Object3d::EnsureParticleEmitterComponent() {
+    if (!particleEmitterComponent_) {
+        particleEmitterComponent_.emplace();
+    }
+    SetComponentPresenceMarker(std::string(kParticleEmitterComponentType), true);
+    return &*particleEmitterComponent_;
+}
+
+bool Object3d::RemoveParticleEmitterComponent() {
+    if (!particleEmitterComponent_) {
+        return false;
+    }
+    particleEmitterComponent_.reset();
+    gpuEmitter_.reset();
+    SetComponentPresenceMarker(std::string(kParticleEmitterComponentType), false);
+    return true;
+}
+
+ParticleEmitterComponent* Object3d::GetParticleEmitterComponent() {
+    return particleEmitterComponent_ ? &*particleEmitterComponent_ : nullptr;
+}
+
+const ParticleEmitterComponent* Object3d::GetParticleEmitterComponent() const {
+    return particleEmitterComponent_ ? &*particleEmitterComponent_ : nullptr;
+}
+
+void Object3d::SetParticleName(const std::string& name) {
+    if (!particleEmitterComponent_ && name.empty()) return;
+    EnsureParticleEmitterComponent()->SetCpuParticle(name);
+}
+
+const std::string& Object3d::GetParticleName() const {
+    static const std::string empty;
+    return particleEmitterComponent_ ? particleEmitterComponent_->GetCpuParticle() : empty;
+}
+
+void Object3d::SetGPUParticleName(const std::string& name) {
+    if (!particleEmitterComponent_ && name.empty()) return;
+    EnsureParticleEmitterComponent()->SetGpuParticle(name);
+}
+
+const std::string& Object3d::GetGPUParticleName() const {
+    static const std::string empty;
+    return particleEmitterComponent_ ? particleEmitterComponent_->GetGpuParticle() : empty;
+}
+
+MeshEffectComponent* Object3d::EnsureMeshEffectComponent() {
+    if (!meshEffectComponent_) {
+        meshEffectComponent_.emplace();
+    }
+    SetComponentPresenceMarker(std::string(kMeshEffectComponentType), true);
+    return &*meshEffectComponent_;
+}
+
+bool Object3d::RemoveMeshEffectComponent() {
+    if (!meshEffectComponent_) {
+        return false;
+    }
+    meshEffectComponent_.reset();
+    currentMeshEffect1_.clear();
+    currentMeshEffect2_.clear();
+    attachedEffects1_.clear();
+    attachedEffects2_.clear();
+    SetComponentPresenceMarker(std::string(kMeshEffectComponentType), false);
+    return true;
+}
+
+MeshEffectComponent* Object3d::GetMeshEffectComponent() {
+    return meshEffectComponent_ ? &*meshEffectComponent_ : nullptr;
+}
+
+const MeshEffectComponent* Object3d::GetMeshEffectComponent() const {
+    return meshEffectComponent_ ? &*meshEffectComponent_ : nullptr;
+}
+
+void Object3d::SetMeshEffect1Name(const std::string& name) {
+    if (!meshEffectComponent_ && name.empty()) return;
+    EnsureMeshEffectComponent()->SetPrimaryEffect(name);
+}
+
+const std::string& Object3d::GetMeshEffect1Name() const {
+    static const std::string empty;
+    return meshEffectComponent_ ? meshEffectComponent_->GetPrimaryEffect() : empty;
+}
+
+void Object3d::SetMeshEffect2Name(const std::string& name) {
+    if (!meshEffectComponent_ && name.empty()) return;
+    EnsureMeshEffectComponent()->SetSecondaryEffect(name);
+}
+
+const std::string& Object3d::GetMeshEffect2Name() const {
+    static const std::string empty;
+    return meshEffectComponent_ ? meshEffectComponent_->GetSecondaryEffect() : empty;
+}
+
+PathMoverComponent* Object3d::EnsurePathMoverComponent() {
+    if (!pathMoverComponent_) {
+        pathMoverComponent_.emplace();
+    }
+    SetComponentPresenceMarker(std::string(kPathMoverComponentType), true);
+    return &*pathMoverComponent_;
+}
+
+bool Object3d::RemovePathMoverComponent() {
+    if (!pathMoverComponent_) {
+        return false;
+    }
+    pathMoverComponent_.reset();
+    if (recorder_) {
+        recorder_->Stop();
+    }
+    SetComponentPresenceMarker(std::string(kPathMoverComponentType), false);
+    return true;
+}
+
+PathMoverComponent* Object3d::GetPathMoverComponent() {
+    return pathMoverComponent_ ? &*pathMoverComponent_ : nullptr;
+}
+
+const PathMoverComponent* Object3d::GetPathMoverComponent() const {
+    return pathMoverComponent_ ? &*pathMoverComponent_ : nullptr;
+}
+
+void Object3d::SetRecordPathName(const std::string& name) {
+    if (!pathMoverComponent_ && name.empty()) return;
+    EnsurePathMoverComponent()->SetPathName(name);
+}
+
+const std::string& Object3d::GetRecordPathName() const {
+    static const std::string empty;
+    return pathMoverComponent_ ? pathMoverComponent_->GetPathName() : empty;
+}
+
+void Object3d::SetRecordLoop(bool loop) {
+    if (!pathMoverComponent_ && !loop) return;
+    EnsurePathMoverComponent()->SetLoop(loop);
+}
+
+bool Object3d::IsRecordLoop() const {
+    return pathMoverComponent_ && pathMoverComponent_->IsLoop();
+}
+
+void Object3d::SetRecordRelative(bool relative) {
+    if (!pathMoverComponent_ && !relative) return;
+    EnsurePathMoverComponent()->SetRelative(relative);
+}
+
+bool Object3d::IsRecordRelative() const {
+    return pathMoverComponent_ && pathMoverComponent_->IsRelative();
+}
+
+GameplayLinkComponent* Object3d::EnsureGameplayLinkComponent() {
+    if (!gameplayLinkComponent_) {
+        gameplayLinkComponent_.emplace();
+    }
+    SetComponentPresenceMarker(std::string(kGameplayLinkComponentType), true);
+    return &*gameplayLinkComponent_;
+}
+
+bool Object3d::RemoveGameplayLinkComponent() {
+    if (!gameplayLinkComponent_) {
+        return false;
+    }
+    gameplayLinkComponent_.reset();
+    SetComponentPresenceMarker(std::string(kGameplayLinkComponentType), false);
+    return true;
+}
+
+GameplayLinkComponent* Object3d::GetGameplayLinkComponent() {
+    return gameplayLinkComponent_ ? &*gameplayLinkComponent_ : nullptr;
+}
+
+const GameplayLinkComponent* Object3d::GetGameplayLinkComponent() const {
+    return gameplayLinkComponent_ ? &*gameplayLinkComponent_ : nullptr;
+}
+
+void Object3d::SetEventID(int id) {
+    if (!gameplayLinkComponent_ && id < 0) return;
+    EnsureGameplayLinkComponent()->SetEventId(id);
+}
+
+int Object3d::GetEventID() const {
+    return gameplayLinkComponent_ ? gameplayLinkComponent_->GetEventId() : -1;
+}
+
+void Object3d::SetTargetID(int id) {
+    if (!gameplayLinkComponent_ && id < 0) return;
+    EnsureGameplayLinkComponent()->SetTargetId(id);
+}
+
+int Object3d::GetTargetID() const {
+    return gameplayLinkComponent_ ? gameplayLinkComponent_->GetTargetId() : -1;
+}
+
+std::vector<Object3d::BuiltInComponentInfo> Object3d::GetBuiltInComponentInfos() const {
+    return {
+        { kTransformComponentType, "Transform", true, false },
+        { kMeshRendererComponentType, "Mesh Renderer", meshRenderer_ != nullptr, false },
+        { kColliderComponentType, "Collider", collider_ != nullptr, false },
+        { kParticleEmitterComponentType, "Particle Emitter", particleEmitterComponent_.has_value(), true },
+        { kMeshEffectComponentType, "Mesh Effect", meshEffectComponent_.has_value(), true },
+        { kPathMoverComponentType, "Path Mover", pathMoverComponent_.has_value(), true },
+        { kGameplayLinkComponentType, "Gameplay Link", gameplayLinkComponent_.has_value(), true },
+    };
+}
+
+bool Object3d::HasBuiltInComponent(std::string_view typeId) const {
+    return FindBuiltInComponent(typeId) != nullptr;
+}
+
+void* Object3d::FindBuiltInComponent(std::string_view typeId) {
+    return const_cast<void*>(static_cast<const Object3d*>(this)->FindBuiltInComponent(typeId));
+}
+
+const void* Object3d::FindBuiltInComponent(std::string_view typeId) const {
+    if (typeId == kTransformComponentType) return &transform_;
+    if (typeId == kMeshRendererComponentType) return meshRenderer_.get();
+    if (typeId == kColliderComponentType) return collider_.get();
+    if (typeId == kParticleEmitterComponentType) return GetParticleEmitterComponent();
+    if (typeId == kMeshEffectComponentType) return GetMeshEffectComponent();
+    if (typeId == kPathMoverComponentType) return GetPathMoverComponent();
+    if (typeId == kGameplayLinkComponentType) return GetGameplayLinkComponent();
+    return nullptr;
+}
+
 
 void Object3d::DrawShadow() {
     if (IsCameraObject()) return;
@@ -134,6 +422,8 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     // 1. 基本設定・識別子
     this->name_ = other->name_;
+    // 複製先にはInitialize時に発行した別GUIDを維持します。
+    this->opaqueComponents_ = other->opaqueComponents_;
     this->className_ = other->className_;
     this->sceneCameraSettings_ = other->sceneCameraSettings_;
     this->tag_ = other->tag_;
@@ -168,8 +458,7 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     // 4. イベント関連
     this->eventType_ = other->eventType_;
-    this->SetTargetID(other->GetTargetID());
-    this->SetEventID(other->GetEventID());
+    this->gameplayLinkComponent_ = other->gameplayLinkComponent_;
 
     // 5. Stats (Param)
     this->param_ = other->param_;
@@ -210,23 +499,24 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->ClearAnimatorController();
     }
 
-    // パーティクル
-    this->particleName_ = other->particleName_;
-    this->gpuParticleName_ = other->gpuParticleName_;
-
-    // メッシュエフェクト
-    this->meshEffectName1_ = other->meshEffectName1_;
-    this->meshEffectName2_ = other->meshEffectName2_;
-
-    // 8. レコーダー (Ghost)
-    this->recordPathName_ = other->recordPathName_;
-    this->isRecordLoop_ = other->isRecordLoop_;
-    this->isRecordRelative_ = other->isRecordRelative_;
+    // 実体Componentは存在状態を含めてコピーします。再生中Instanceは複製しません。
+    this->particleEmitterComponent_ = other->particleEmitterComponent_;
+    this->meshEffectComponent_ = other->meshEffectComponent_;
+    this->pathMoverComponent_ = other->pathMoverComponent_;
+    this->gpuEmitter_.reset();
+    this->currentMeshEffect1_.clear();
+    this->currentMeshEffect2_.clear();
+    this->attachedEffects1_.clear();
+    this->attachedEffects2_.clear();
 
     this->InitializeRecorder(nullptr);
-    if (!this->recordPathName_.empty() && this->recorder_) {
+    if (!this->GetRecordPathName().empty() && this->recorder_) {
         bool isCinematic = this->IsCameraObject();
-        this->recorder_->Play(this->recordPathName_, this->isRecordLoop_, this->isRecordRelative_, isCinematic);
+        this->recorder_->Play(
+            this->GetRecordPathName(),
+            this->IsRecordLoop(),
+            this->IsRecordRelative(),
+            isCinematic);
     }
 
     // 9. ローカルフォグ (もし両方にフォグデータがあれば構造体ごとコピー)

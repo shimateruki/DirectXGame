@@ -110,6 +110,10 @@ bool Destroy(Object3d* object);
 void TriggerEvent(int targetID);
     void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
+    Object3d* FindObjectByPersistentGuid(const std::string& guid);
+    const Object3d* FindObjectByPersistentGuid(const std::string& guid) const;
+    /// 旧SceneのGUID不足と重複を補正します。戻り値は再発行したObject数です。
+    std::size_t EnsureUniquePersistentObjectGuids();
     virtual void DrawUI() {}
     virtual void DrawCameraPreview(Camera* camera, int previewBufferIndex = 0);
 

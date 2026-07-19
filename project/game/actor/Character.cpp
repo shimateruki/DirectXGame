@@ -127,19 +127,22 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->isAnimLoop_ = isAnimLoop_;
 
     // 5. ゴーストレコーダー(パス移動)のコピーと初期化
-    newObj->recordPathName_ = recordPathName_;
-    newObj->isRecordLoop_ = isRecordLoop_;
-    newObj->isRecordRelative_ = isRecordRelative_;
+    if (HasPathMoverComponent()) {
+        newObj->EnsurePathMoverComponent();
+        newObj->SetRecordPathName(GetRecordPathName());
+        newObj->SetRecordLoop(IsRecordLoop());
+        newObj->SetRecordRelative(IsRecordRelative());
+    }
 
     newObj->InitializeRecorder(nullptr);
 
     // パス名が設定されていれば自動再生を開始
-    if (!newObj->recordPathName_.empty() && newObj->recorder_) {
+    if (!newObj->GetRecordPathName().empty() && newObj->recorder_) {
         bool isCinematic = newObj->IsCameraObject();
         newObj->recorder_->Play(
-            newObj->recordPathName_,
-            newObj->isRecordLoop_,
-            newObj->isRecordRelative_,
+            newObj->GetRecordPathName(),
+            newObj->IsRecordLoop(),
+            newObj->IsRecordRelative(),
             isCinematic
         );
     }

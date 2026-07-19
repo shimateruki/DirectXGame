@@ -104,12 +104,14 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     // ========================================================
     // --- スロット1 ---
     // ========================================================
-    if (!meshEffectName1_.empty()) {
-        if (attachedEffects1_.empty() || currentMeshEffect1_ != meshEffectName1_) {
+    const std::string& primaryEffect = GetMeshEffect1Name();
+    const std::string& secondaryEffect = GetMeshEffect2Name();
+    if (!primaryEffect.empty()) {
+        if (attachedEffects1_.empty() || currentMeshEffect1_ != primaryEffect) {
             attachedEffects1_.clear();
             currentMeshEffect1_ = "";
 
-            std::ifstream file(meshEffectName1_);
+            std::ifstream file(primaryEffect);
             if (file.is_open()) {
                 json j; file >> j; file.close();
 
@@ -119,9 +121,9 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                 for (int i = 0; i < numSpawns; ++i) {
                     auto effect = std::make_unique<EffectObject3d>();
                     effect->Initialize(common_);
-                    effect->SetName(meshEffectName1_ + "_" + std::to_string(i));
+                    effect->SetName(primaryEffect + "_" + std::to_string(i));
 
-                    if (effect->LoadFromJson(meshEffectName1_)) {
+                    if (effect->LoadFromJson(primaryEffect)) {
                         Vector3 localRot = effect->GetRotation();
                         Vector3 localPos = effect->GetTranslate();
 
@@ -148,7 +150,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         attachedEffects1_.push_back(std::move(effect));
                     }
                 }
-                currentMeshEffect1_ = meshEffectName1_;
+                currentMeshEffect1_ = primaryEffect;
             }
         }
     }
@@ -160,12 +162,12 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     // ========================================================
     // --- スロット2 ---
     // ========================================================
-    if (!meshEffectName2_.empty()) {
-        if (attachedEffects2_.empty() || currentMeshEffect2_ != meshEffectName2_) {
+    if (!secondaryEffect.empty()) {
+        if (attachedEffects2_.empty() || currentMeshEffect2_ != secondaryEffect) {
             attachedEffects2_.clear();
             currentMeshEffect2_ = "";
 
-            std::ifstream file(meshEffectName2_);
+            std::ifstream file(secondaryEffect);
             if (file.is_open()) {
                 json j; file >> j; file.close();
 
@@ -175,9 +177,9 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                 for (int i = 0; i < numSpawns; ++i) {
                     auto effect = std::make_unique<EffectObject3d>();
                     effect->Initialize(common_);
-                    effect->SetName(meshEffectName2_ + "_" + std::to_string(i));
+                    effect->SetName(secondaryEffect + "_" + std::to_string(i));
 
-                    if (effect->LoadFromJson(meshEffectName2_)) {
+                    if (effect->LoadFromJson(secondaryEffect)) {
                         Vector3 localRot = effect->GetRotation();
                         Vector3 localPos = effect->GetTranslate();
 
@@ -204,7 +206,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         attachedEffects2_.push_back(std::move(effect));
                     }
                 }
-                currentMeshEffect2_ = meshEffectName2_;
+                currentMeshEffect2_ = secondaryEffect;
             }
         }
     }

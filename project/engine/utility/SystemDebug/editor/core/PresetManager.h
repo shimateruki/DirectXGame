@@ -23,6 +23,13 @@ public:
         json instanceValue;
     };
 
+    struct PrefabComponentOverride {
+        std::string componentTypeId;
+        std::string displayName;
+        bool sourcePresent = false;
+        bool instancePresent = false;
+    };
+
     struct PrefabVariantOverride {
         std::string propertyPath;
         std::string displayName;
@@ -30,15 +37,23 @@ public:
         json variantValue;
     };
 
+    struct PrefabVariantComponentOverride {
+        std::string componentTypeId;
+        std::string displayName;
+        bool basePresent = false;
+        bool variantPresent = false;
+    };
+
     struct PrefabStructureOverrideSummary {
         int addedObjects = 0;
         int removedObjects = 0;
         int reparentedObjects = 0;
         int rawNodeOverrides = 0;
+        int componentOverrides = 0;
 
         bool HasOverrides() const {
             return addedObjects > 0 || removedObjects > 0 ||
-                reparentedObjects > 0 || rawNodeOverrides > 0;
+                reparentedObjects > 0 || rawNodeOverrides > 0 || componentOverrides > 0;
         }
     };
 
@@ -120,14 +135,22 @@ public:
     std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const;
 
     std::vector<PrefabPropertyOverride> GetPrefabOverrides(const Object3d* object) const;
+    std::vector<PrefabComponentOverride> GetPrefabComponentOverrides(const Object3d* object) const;
     std::vector<PrefabVariantOverride> GetPrefabVariantOverrides(const Object3d* object) const;
+    std::vector<PrefabVariantComponentOverride> GetPrefabVariantComponentOverrides(const Object3d* object) const;
     PrefabStructureOverrideSummary GetPrefabStructureOverrideSummary(const std::string& prefabName) const;
     bool HasValidPrefabSource(const Object3d* object) const;
     bool ApplyPrefabProperty(Object3d* object, const std::string& propertyPath, const std::vector<Object3d*>& sceneObjects);
     bool RevertPrefabProperty(Object3d* object, const std::string& propertyPath);
+    bool ApplyPrefabComponent(Object3d* object, const std::string& componentTypeId, const std::vector<Object3d*>& sceneObjects);
+    bool RevertPrefabComponent(Object3d* object, const std::string& componentTypeId);
     bool RevertPrefabVariantProperty(
         Object3d* object,
         const std::string& propertyPath,
+        const std::vector<Object3d*>& sceneObjects);
+    bool RevertPrefabVariantComponent(
+        Object3d* object,
+        const std::string& componentTypeId,
         const std::vector<Object3d*>& sceneObjects);
     int ApplyAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);
     int RevertAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);

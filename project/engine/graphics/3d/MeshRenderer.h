@@ -116,6 +116,10 @@ struct MaterialData {
         float effectScaleY;
         float effectScaleZ;
         float waterParamPadding0;
+        Vector3 waterLightDirection;
+        float waterLightIntensity;
+        Vector3 waterLightColor;
+        float waterParamPadding1;
     };
 
         // カメラ距離に応じて切り替えるLODモデルの1段階分の設定です。
@@ -261,6 +265,7 @@ void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 private:
     bool HasRequiredBuffers() const;
     const Matrix4x4& GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix);
+    void InitializeWaterProxyModel();
     void InitializeFireProxyModel();
     void InitializeGatePortalProxyModel();
         // 特殊マテリアル描画の共通処理をまとめます。
@@ -321,6 +326,7 @@ Model* ResolveDrawModel() const;
     // 水面、火、影、ローカルフォグ用リソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;
+    std::unique_ptr<Model> waterProxyModel_;
     std::unique_ptr<Model> fireProxyModel_;
     std::unique_ptr<Model> gatePortalProxyModel_;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;

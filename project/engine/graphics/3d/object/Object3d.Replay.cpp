@@ -44,6 +44,11 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.color = GetColor();
     state.emissive = GetEmissive();
 
+    state.particleEmitterComponent = particleEmitterComponent_;
+    state.meshEffectComponent = meshEffectComponent_;
+    state.pathMoverComponent = pathMoverComponent_;
+    state.gameplayLinkComponent = gameplayLinkComponent_;
+
     state.replayRemoved = replayRemoved_;
     CaptureReplayCustomState(state.custom);
     return state;
@@ -88,6 +93,34 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     SetMaterialType(state.materialType);
     SetColor(state.color);
     SetEmissive(state.emissive);
+
+    const bool particleAssetChanged =
+        particleEmitterComponent_.has_value() != state.particleEmitterComponent.has_value() ||
+        (particleEmitterComponent_ && state.particleEmitterComponent &&
+            (particleEmitterComponent_->GetCpuParticle() != state.particleEmitterComponent->GetCpuParticle() ||
+             particleEmitterComponent_->GetGpuParticle() != state.particleEmitterComponent->GetGpuParticle()));
+    const bool meshEffectChanged =
+        meshEffectComponent_.has_value() != state.meshEffectComponent.has_value() ||
+        (meshEffectComponent_ && state.meshEffectComponent &&
+            (meshEffectComponent_->GetPrimaryEffect() != state.meshEffectComponent->GetPrimaryEffect() ||
+             meshEffectComponent_->GetSecondaryEffect() != state.meshEffectComponent->GetSecondaryEffect()));
+
+    particleEmitterComponent_ = state.particleEmitterComponent;
+    meshEffectComponent_ = state.meshEffectComponent;
+    pathMoverComponent_ = state.pathMoverComponent;
+    gameplayLinkComponent_ = state.gameplayLinkComponent;
+
+    // Assetが変わった場合だけ実行用Instanceを破棄します。
+    // 同じフレームを復元するたびにEffectやGhost Pathを再生成しないようにします。
+    if (particleAssetChanged) {
+        gpuEmitter_.reset();
+    }
+    if (meshEffectChanged) {
+        currentMeshEffect1_.clear();
+        currentMeshEffect2_.clear();
+        attachedEffects1_.clear();
+        attachedEffects2_.clear();
+    }
 
     replayRemoved_ = state.replayRemoved;
     RestoreReplayCustomState(state.custom);

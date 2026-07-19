@@ -15,6 +15,9 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "GameplayStatusManager.h"
+#include "EditorPropertyDrawer.h"
+#include "EditorPropertyRegistry.h"
+#include "EditorCommandRegistry.h"
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
@@ -388,345 +391,287 @@ void ConfigureSpriteCardObject(Object3d* object) {
     object->SetColliderConfig(colliderConfig);
 }
 
-enum class PseudoComponentKind {
-    Collision,
-    Particle,
-    Lod,
-    MeshEffect,
-    BoneAnimation,
-    PathMove,
-    LinkIds,
-};
-
-bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
-    if (!object) {
-        return false;
-    }
-
-    switch (kind) {
-    case PseudoComponentKind::Collision: {
-        const Object3d::ColliderConfig& config = object->GetColliderConfig();
-        return config.type != ColliderType::kNone || object->GetCollisionAttribute() != 0 || object->GetCollisionMask() != 0;
-    }
-    case PseudoComponentKind::Particle:
-        return !object->GetParticleName().empty() || !object->GetGPUParticleName().empty();
-    case PseudoComponentKind::Lod:
-        return object->IsLodEnabled() || object->HasLodLevels();
-    case PseudoComponentKind::MeshEffect:
-        return !object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty();
-    case PseudoComponentKind::BoneAnimation:
-        return !object->animName_.empty() || object->HasAnimatorController();
-    case PseudoComponentKind::PathMove:
-        return !object->recordPathName_.empty();
-    case PseudoComponentKind::LinkIds:
-        return object->GetEventID() >= 0 || object->GetTargetID() >= 0;
-    }
-    return false;
-}
-
-const char* GetPseudoComponentName(PseudoComponentKind kind) {
-    switch (kind) {
-    case PseudoComponentKind::Collision: return "Collision";
-    case PseudoComponentKind::Particle: return "Particle";
-    case PseudoComponentKind::Lod: return "LOD";
-    case PseudoComponentKind::MeshEffect: return "Mesh Effect";
-    case PseudoComponentKind::BoneAnimation: return "Bone Animation";
-    case PseudoComponentKind::PathMove: return "Path Move";
-    case PseudoComponentKind::LinkIds: return "Link IDs";
-    }
-    return "Unknown";
-}
-
-const char* GetPseudoComponentDescription(PseudoComponentKind kind) {
-    switch (kind) {
-    case PseudoComponentKind::Collision: return "当たり判定、Trigger、Collision Maskを管理します。";
-    case PseudoComponentKind::Particle: return "Objectに追従するCPU/GPU Particleを管理します。";
-    case PseudoComponentKind::Lod: return "距離で軽量モデルへ切り替える設定です。";
-    case PseudoComponentKind::MeshEffect: return "メッシュに重ねる演出エフェクトを管理します。";
-    case PseudoComponentKind::BoneAnimation: return "単発クリップまたはAnimator Controllerでボーンアニメーションを管理します。";
-    case PseudoComponentKind::PathMove: return "GhostRecorderの移動パス再生設定です。";
-    case PseudoComponentKind::LinkIds: return "ギミック連携用のEvent/Target IDです。";
-    }
-    return "";
-}
-
-std::string FindFirstMeshEffectPath() {
-    const std::string effectDir = "Resources/json/effect";
-    if (!fs::exists(effectDir) || !fs::is_directory(effectDir)) {
-        return "";
-    }
-
-    std::vector<std::string> candidates;
-    for (const auto& entry : fs::directory_iterator(effectDir)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            candidates.push_back(entry.path().generic_string());
-        }
-    }
-
-    std::sort(candidates.begin(), candidates.end());
-    return candidates.empty() ? "" : candidates.front();
-}
-
-void AddDefaultParticleComponent(Object3d* object) {
-    if (!object) {
-        return;
-    }
-
-    const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
-    if (!gpuPresets.empty()) {
-        object->SetGPUParticleName(gpuPresets.begin()->first);
-        object->SetParticleName("");
-        return;
-    }
-
-    const auto& cpuParams = ParticleManager::GetInstance()->GetParamsMap();
-    if (!cpuParams.empty()) {
-        object->SetParticleName(cpuParams.begin()->first);
-        object->SetGPUParticleName("");
-        return;
-    }
-
-    DebugConsole::GetInstance()->AddLog("Particle component add skipped: particle preset was not found.");
-}
-
-void AddPseudoComponentToObject(Object3d* object, PseudoComponentKind kind, bool triggerCollision = false) {
-    if (!object) {
-        return;
-    }
-
-    switch (kind) {
-    case PseudoComponentKind::Collision: {
-        Object3d::ColliderConfig config = object->GetColliderConfig();
-        config.type = ColliderType::kAABB;
-        if (std::fabs(config.size.x) < 0.001f || std::fabs(config.size.y) < 0.001f || std::fabs(config.size.z) < 0.001f) {
-            config.size = { 1.0f, 1.0f, 1.0f };
-        }
-        object->SetColliderConfig(config);
-        if (triggerCollision) {
-            object->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            object->SetCollisionMask(CollisionAttribute::kPlayer);
-            object->SetStatic(false);
-        }
-        else {
-            object->SetCollisionAttribute(CollisionAttribute::kGround);
-            object->SetCollisionMask(0xFFFFFFFFu);
-            object->SetStatic(true);
-        }
-        break;
-    }
-    case PseudoComponentKind::Particle:
-        AddDefaultParticleComponent(object);
-        break;
-    case PseudoComponentKind::Lod:
-        object->SetLodEnabled(true);
-        if (!object->HasLodLevels()) {
-            object->ReloadLodManifest();
-        }
-        break;
-    case PseudoComponentKind::MeshEffect: {
-        if (object->GetMeshEffect1Name().empty()) {
-            const std::string effectPath = FindFirstMeshEffectPath();
-            if (!effectPath.empty()) {
-                object->SetMeshEffect1Name(effectPath);
-            }
-            else {
-                DebugConsole::GetInstance()->AddLog("Mesh Effect component add skipped: effect json was not found.");
-            }
-        }
-        break;
-    }
-    case PseudoComponentKind::BoneAnimation:
-        if (object->animName_.empty()) {
-            object->animName_ = "Idle";
-        }
-        object->isAnimLoop_ = true;
-        break;
-    case PseudoComponentKind::PathMove:
-        DebugConsole::GetInstance()->AddLog("Path Move component is enabled by selecting a path in the Path Move section.");
-        break;
-    case PseudoComponentKind::LinkIds:
-        DebugConsole::GetInstance()->AddLog("Link IDs component is enabled by setting Event ID or Target ID.");
-        break;
-    }
-}
-
-void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind) {
-    if (!object) {
-        return;
-    }
-
-    switch (kind) {
-    case PseudoComponentKind::Collision: {
-        Object3d::ColliderConfig config = object->GetColliderConfig();
-        config.type = ColliderType::kNone;
-        object->SetColliderConfig(config);
-        object->SetCollisionAttribute(0);
-        object->SetCollisionMask(0);
-        object->SetStatic(false);
-        break;
-    }
-    case PseudoComponentKind::Particle:
-        object->SetParticleName("");
-        object->SetGPUParticleName("");
-        break;
-    case PseudoComponentKind::Lod:
-        object->SetLodEnabled(false);
-        object->ClearLodLevels();
-        break;
-    case PseudoComponentKind::MeshEffect:
-        object->SetMeshEffect1Name("");
-        object->SetMeshEffect2Name("");
-        break;
-    case PseudoComponentKind::BoneAnimation:
-        object->animName_.clear();
-        object->isAnimLoop_ = false;
-        object->ClearAnimatorController();
-        break;
-    case PseudoComponentKind::PathMove:
-        object->recordPathName_.clear();
-        if (object->recorder_) {
-            object->recorder_->Stop();
-        }
-        break;
-    case PseudoComponentKind::LinkIds:
-        object->SetEventID(-1);
-        object->SetTargetID(-1);
-        break;
-    }
-}
-
-void ApplyPseudoComponentToTargets(
+void ApplyRegisteredComponentToTargets(
     DebugEditor* editor,
     const std::vector<Object3d*>& targets,
-    PseudoComponentKind kind,
-    bool add,
-    bool triggerCollision = false) {
+    const std::string& componentTypeId,
+    bool add) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    bool changed = false;
     for (Object3d* target : targets) {
         if (!target) {
             continue;
         }
-        if (add) {
-            AddPseudoComponentToObject(target, kind, triggerCollision);
-        }
-        else {
-            RemovePseudoComponentFromObject(target, kind);
-        }
+        changed |= add
+            ? registry->AddComponent(target, componentTypeId)
+            : registry->RemoveComponent(target, componentTypeId);
     }
-
-    MarkInspectorTargetsDirty(editor, targets);
-    RefreshInspectorTargetMatrices(targets);
+    if (changed) {
+        MarkInspectorTargetsDirty(editor, targets);
+        RefreshInspectorTargetMatrices(targets);
+    }
 }
 
-void DrawPseudoComponentRow(
+void ApplyTriggerColliderPreset(DebugEditor* editor, const std::vector<Object3d*>& targets) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    bool changed = false;
+    for (Object3d* target : targets) {
+        if (!target || !registry->IsComponentApplicable(target, "Collider")) {
+            continue;
+        }
+        if (!registry->IsComponentPresent(target, "Collider")) {
+            changed |= registry->AddComponent(target, "Collider");
+        }
+        Object3d::ColliderConfig config = target->GetColliderConfig();
+        config.type = ColliderType::kAABB;
+        if (std::fabs(config.size.x) < 0.001f || std::fabs(config.size.y) < 0.001f ||
+            std::fabs(config.size.z) < 0.001f) {
+            config.size = { 1.0f, 1.0f, 1.0f };
+        }
+        target->SetColliderConfig(config);
+        target->SetCollisionAttribute(CollisionAttribute::kTrigger);
+        target->SetCollisionMask(CollisionAttribute::kPlayer);
+        target->SetStatic(false);
+        changed = true;
+    }
+    if (changed) {
+        MarkInspectorTargetsDirty(editor, targets);
+        RefreshInspectorTargetMatrices(targets);
+    }
+}
+
+void DrawRegisteredComponentRow(
     DebugEditor* editor,
     const std::vector<Object3d*>& targets,
-    const char* name,
-    const char* description,
-    bool removable,
-    PseudoComponentKind kind) {
-    ImGui::PushID(name);
+    const EditorComponentDescriptor& component) {
+    ImGui::PushID(component.typeId.c_str());
     ImGui::BeginGroup();
-    ImGui::TextUnformatted(name);
-    ImGui::TextDisabled("%s", description);
+    ImGui::TextUnformatted(component.displayName.c_str());
+    ImGui::TextDisabled("%s", component.description.c_str());
     ImGui::EndGroup();
 
-    if (removable) {
+    if (component.removable && component.remove) {
         ImGui::SameLine();
         if (ImGui::SmallButton("Remove")) {
-            ApplyPseudoComponentToTargets(editor, targets, kind, false);
+            ApplyRegisteredComponentToTargets(editor, targets, component.typeId, false);
         }
     }
     else {
         ImGui::SameLine();
         ImGui::TextDisabled("固定");
     }
-
     ImGui::Separator();
     ImGui::PopID();
 }
 
-void DrawAddComponentMenu(DebugEditor* editor, const std::vector<Object3d*>& targets, Object3d* primary) {
-    if (!ImGui::BeginPopup("AddPseudoComponentMenu")) {
+void DrawRegisteredAddComponentMenu(
+    DebugEditor* editor,
+    const std::vector<Object3d*>& targets,
+    Object3d* primary) {
+    if (!ImGui::BeginPopup("AddRegisteredComponentMenu")) {
         return;
     }
 
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
     ImGui::TextDisabled("追加するComponent");
     ImGui::Separator();
 
-    const bool hasCollision = HasPseudoComponent(primary, PseudoComponentKind::Collision);
-    if (ImGui::MenuItem("Box Collider (Ground)", nullptr, false, !hasCollision)) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Collision, true, false);
-    }
-    if (ImGui::MenuItem("Trigger Collider", nullptr, false, true)) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Collision, true, true);
-    }
-    if (ImGui::MenuItem("Particle", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::Particle))) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Particle, true);
-    }
-    if (ImGui::MenuItem("LOD", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::Lod))) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::Lod, true);
-    }
-    if (ImGui::MenuItem("Mesh Effect", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::MeshEffect))) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::MeshEffect, true);
-    }
-    if (ImGui::MenuItem("Bone Animation", nullptr, false, !HasPseudoComponent(primary, PseudoComponentKind::BoneAnimation))) {
-        ApplyPseudoComponentToTargets(editor, targets, PseudoComponentKind::BoneAnimation, true);
+    bool hasAddableComponent = false;
+    for (const EditorComponentDescriptor& component : registry->GetComponents()) {
+        if (!component.add || !registry->IsComponentApplicable(primary, component.typeId)) {
+            continue;
+        }
+        hasAddableComponent = true;
+        const bool present = registry->IsComponentPresent(primary, component.typeId);
+        if (ImGui::MenuItem(component.displayName.c_str(), nullptr, false, !present)) {
+            ApplyRegisteredComponentToTargets(editor, targets, component.typeId, true);
+        }
+        if (ImGui::IsItemHovered() && !component.description.empty()) {
+            ImGui::SetTooltip("%s", component.description.c_str());
+        }
     }
 
+    if (!hasAddableComponent) {
+        ImGui::TextDisabled("追加可能なComponentはありません。");
+    }
     ImGui::Separator();
-    ImGui::TextWrapped("Path MoveとLink IDsは下の専用セクションで値を入れるとComponentとして有効になります。");
+    if (ImGui::MenuItem("Trigger Collider Preset")) {
+        ApplyTriggerColliderPreset(editor, targets);
+    }
     ImGui::EndPopup();
 }
 
-void DrawPseudoComponentPanel(DebugEditor* editor, Object3d* primary, const std::vector<Object3d*>& targets) {
+bool HasRegisteredComponent(const Object3d* object, const char* componentTypeId) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    return registry->IsComponentPresent(object, componentTypeId);
+}
+
+std::vector<Object3d*> CollectRegisteredComponentTargets(
+    const std::vector<Object3d*>& targets,
+    const char* componentTypeId) {
+    std::vector<Object3d*> result;
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    for (Object3d* target : targets) {
+        if (target && registry->IsComponentPresent(target, componentTypeId)) {
+            result.push_back(target);
+        }
+    }
+    return result;
+}
+
+bool IsPrefabPropertyOverridden(const Object3d* object, const std::string& propertyPath) {
+    if (!object || !object->IsPrefabInstance()) {
+        return false;
+    }
+    for (const auto& entry : PresetManager::GetInstance()->GetPrefabOverrides(object)) {
+        if (entry.propertyPath == propertyPath) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void DrawAutomaticComponentProperties(
+    DebugEditor* editor,
+    Object3d* primary,
+    const std::vector<Object3d*>& targets,
+    const EditorComponentDescriptor& component) {
+    if (!editor || !primary ||
+        component.inspectorMode != EditorComponentInspectorMode::Automatic) {
+        return;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    const std::vector<const EditorPropertyDescriptor*> properties =
+        registry->GetPropertiesForComponent(component.typeId);
+    if (properties.empty()) {
+        return;
+    }
+
+    std::vector<Object3d*> componentTargets;
+    componentTargets.reserve(targets.size());
+    for (Object3d* target : targets) {
+        if (!target || (component.applicable && !component.applicable(*target)) ||
+            (component.present && !component.present(*target))) {
+            continue;
+        }
+        componentTargets.push_back(target);
+    }
+    if (componentTargets.empty()) {
+        return;
+    }
+
+    ImGui::Indent();
+    if (componentTargets.size() != targets.size()) {
+        ImGui::TextDisabled(
+            "このComponentを持つ%zu / %zu Objectを編集",
+            componentTargets.size(),
+            targets.size());
+    }
+    if (ImGui::BeginTable(
+        ("##AutoComponentProperties_" + component.typeId).c_str(),
+        2,
+        ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV)) {
+        ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+        for (const EditorPropertyDescriptor* property : properties) {
+            if (!property || !registry->IsApplicable(primary, property->path)) {
+                continue;
+            }
+
+            ImGui::PushID(property->path.c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            const bool multiEditable = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::MultiEdit);
+            const bool mixed = multiEditable && registry->HasMixedValue(componentTargets, property->path);
+            const bool prefabOverride =
+                HasEditorPropertyFlag(property->flags, EditorPropertyFlags::PrefabOverride) &&
+                IsPrefabPropertyOverridden(primary, property->path);
+            if (prefabOverride) {
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.63f, 0.20f, 1.0f),
+                    mixed ? "%s * —" : "%s *",
+                    property->displayName.c_str());
+            }
+            else if (mixed) {
+                ImGui::TextDisabled("%s —", property->displayName.c_str());
+            }
+            else {
+                ImGui::TextUnformatted(property->displayName.c_str());
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextDisabled("%s", property->path.c_str());
+                if (prefabOverride) {
+                    ImGui::TextUnformatted("Prefab Override");
+                }
+                ImGui::EndTooltip();
+            }
+
+            ImGui::TableSetColumnIndex(1);
+            nlohmann::json value = registry->GetValue(primary, property->path);
+            const bool readOnly = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly);
+            ImGui::BeginDisabled(readOnly);
+            EditorPropertyDrawOptions options;
+            options.compact = true;
+            options.mixed = mixed;
+            const bool changed = EditorPropertyDrawer::DrawValue(*property, value, "##Value", options);
+            ImGui::EndDisabled();
+
+            if (!multiEditable && componentTargets.size() > 1) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("代表のみ");
+            }
+
+            if (changed && !readOnly) {
+                for (Object3d* target : componentTargets) {
+                    if (!target || (!multiEditable && target != primary) ||
+                        !registry->IsApplicable(target, property->path)) {
+                        continue;
+                    }
+                    registry->SetValue(target, property->path, value);
+                }
+                MarkInspectorTargetsDirty(editor, componentTargets);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::Unindent();
+}
+
+void DrawComponentPanel(DebugEditor* editor, Object3d* primary, const std::vector<Object3d*>& targets) {
     if (!primary) {
         return;
     }
 
     ImGui::SeparatorText("Components");
     ImGui::TextDisabled("Object3Dの既存機能をUnity風のComponentとして追加/削除します。");
-    ImGui::TextDisabled("Prefab InstanceではComponentの追加/削除もOverrideとして追跡されます。");
+    ImGui::TextDisabled("Prefab InstanceではRegistry Propertyの差分をOverrideとして追跡します。");
 
     if (ImGui::Button("Add Component", ImVec2(-1.0f, 30.0f))) {
-        ImGui::OpenPopup("AddPseudoComponentMenu");
+        ImGui::OpenPopup("AddRegisteredComponentMenu");
     }
-    DrawAddComponentMenu(editor, targets, primary);
+    DrawRegisteredAddComponentMenu(editor, targets, primary);
 
     ImGui::Spacing();
-    DrawPseudoComponentRow(editor, targets, "Transform", "位置・回転・スケール。Object3Dの必須Componentです。", false, PseudoComponentKind::Collision);
-
-    const bool hasRenderer = primary->GetClassName() != "InvisibleBox" && !primary->GetModelName().empty();
-    if (hasRenderer) {
-        DrawPseudoComponentRow(editor, targets, "Renderer / Material", "モデル、マテリアル、影、PBRテクスチャを管理します。", false, PseudoComponentKind::Collision);
-    }
-    else {
-        ImGui::TextDisabled("Renderer / Material: モデル未設定またはInvisibleBoxのため非表示扱いです。");
-        ImGui::Separator();
-    }
-
-    const PseudoComponentKind optionalKinds[] = {
-        PseudoComponentKind::Collision,
-        PseudoComponentKind::Particle,
-        PseudoComponentKind::Lod,
-        PseudoComponentKind::MeshEffect,
-        PseudoComponentKind::BoneAnimation,
-        PseudoComponentKind::PathMove,
-        PseudoComponentKind::LinkIds,
-    };
-
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    const std::vector<const EditorComponentDescriptor*> registeredComponents =
+        registry->GetComponentsForObject(primary);
     bool hasOptionalComponent = false;
-    for (PseudoComponentKind kind : optionalKinds) {
-        if (!HasPseudoComponent(primary, kind)) {
+    for (const EditorComponentDescriptor* component : registeredComponents) {
+        if (!component || component->typeId == "SceneObject" || component->typeId == "Camera" ||
+            component->typeId == "Gameplay" || component->typeId == "EditorState") {
             continue;
         }
-        hasOptionalComponent = true;
-        DrawPseudoComponentRow(
-            editor,
-            targets,
-            GetPseudoComponentName(kind),
-            GetPseudoComponentDescription(kind),
-            true,
-            kind);
+        hasOptionalComponent |= component->removable;
+        DrawRegisteredComponentRow(editor, targets, *component);
+        DrawAutomaticComponentProperties(editor, primary, targets, *component);
     }
 
     if (!hasOptionalComponent) {
@@ -902,10 +847,10 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
     }
 
     ImGui::SeparatorText("Ghost Recorder");
-    const std::string recordPreview = cameraObject->recordPathName_.empty() ? "(なし)" : cameraObject->recordPathName_;
+    const std::string recordPreview = cameraObject->GetRecordPathName().empty() ? "(なし)" : cameraObject->GetRecordPathName();
     if (ImGui::BeginCombo("パスデータ", recordPreview.c_str())) {
-        if (ImGui::Selectable("(なし)", cameraObject->recordPathName_.empty())) {
-            cameraObject->recordPathName_.clear();
+        if (ImGui::Selectable("(なし)", cameraObject->GetRecordPathName().empty())) {
+            cameraObject->SetRecordPathName("");
             if (cameraObject->recorder_) cameraObject->recorder_->Stop();
             changed = true;
         }
@@ -914,9 +859,9 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
             for (const auto& entry : fs::directory_iterator(directory)) {
                 if (entry.path().extension() != ".json") continue;
                 const std::string pathName = entry.path().stem().string();
-                const bool selected = cameraObject->recordPathName_ == pathName;
+                const bool selected = cameraObject->GetRecordPathName() == pathName;
                 if (ImGui::Selectable(pathName.c_str(), selected)) {
-                    cameraObject->recordPathName_ = pathName;
+                    cameraObject->SetRecordPathName(pathName);
                     changed = true;
                 }
                 if (selected) ImGui::SetItemDefaultFocus();
@@ -924,8 +869,16 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         }
         ImGui::EndCombo();
     }
-    if (ImGui::Checkbox("ループ再生##CameraRecord", &cameraObject->isRecordLoop_)) changed = true;
-    if (ImGui::Checkbox("相対座標##CameraRecord", &cameraObject->isRecordRelative_)) changed = true;
+    bool recordLoop = cameraObject->IsRecordLoop();
+    if (ImGui::Checkbox("ループ再生##CameraRecord", &recordLoop)) {
+        cameraObject->SetRecordLoop(recordLoop);
+        changed = true;
+    }
+    bool recordRelative = cameraObject->IsRecordRelative();
+    if (ImGui::Checkbox("相対座標##CameraRecord", &recordRelative)) {
+        cameraObject->SetRecordRelative(recordRelative);
+        changed = true;
+    }
 
     if (ImGui::Button(ICON_FA_PLAY " Cameraをテスト再生")) {
         CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(), cameraObject);
@@ -935,10 +888,14 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         if (cameraObject->recorder_) cameraObject->recorder_->Stop();
         CameraEditor::GetInstance()->StopSceneObjectCamera(CameraManager::GetInstance()->GetMainCamera());
     }
-    if (!cameraObject->recordPathName_.empty() && ImGui::Button(ICON_FA_GHOST " Ghost Recorder再生")) {
+    if (!cameraObject->GetRecordPathName().empty() && ImGui::Button(ICON_FA_GHOST " Ghost Recorder再生")) {
         if (!cameraObject->recorder_) cameraObject->InitializeRecorder(nullptr);
         if (cameraObject->recorder_) {
-            cameraObject->recorder_->Play(cameraObject->recordPathName_, cameraObject->isRecordLoop_, cameraObject->isRecordRelative_, true);
+            cameraObject->recorder_->Play(
+                cameraObject->GetRecordPathName(),
+                cameraObject->IsRecordLoop(),
+                cameraObject->IsRecordRelative(),
+                true);
         }
     }
 
@@ -983,7 +940,9 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
     PresetManager* manager = PresetManager::GetInstance();
     const auto info = object->GetPrefabInstanceInfo();
     const auto overrides = manager->GetPrefabOverrides(object);
+    const auto componentOverrides = manager->GetPrefabComponentOverrides(object);
     const auto variantOverrides = manager->GetPrefabVariantOverrides(object);
+    const auto variantComponentOverrides = manager->GetPrefabVariantComponentOverrides(object);
     const auto structureSummary = manager->GetPrefabStructureOverrideSummary(info.prefabName);
 
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.18f, 0.33f, 0.50f, 1.0f));
@@ -1029,14 +988,14 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
         const int applied = manager->ApplyAllPrefabOverrides(object, sceneObjects);
         editor->RegisterObjectsEdited(beforeStates, "Prefab Apply Propagation");
         EditorTransactionManager::GetInstance()->EndGroup();
-        DebugConsole::GetInstance()->AddLog("Prefab Apply All: " + std::to_string(applied) + " properties");
+        DebugConsole::GetInstance()->AddLog("Prefab Apply All: " + std::to_string(applied) + " overrides");
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_UNDO " Revert All", ImVec2(112.0f, 0.0f))) {
         const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
         const int reverted = manager->RevertAllPrefabOverrides(object, sceneObjects);
         editor->RegisterObjectsEdited(beforeStates, "Prefab Revert All");
-        DebugConsole::GetInstance()->AddLog("Prefab Revert All: " + std::to_string(reverted) + " properties");
+        DebugConsole::GetInstance()->AddLog("Prefab Revert All: " + std::to_string(reverted) + " overrides");
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_UNLINK " Unpack", ImVec2(96.0f, 0.0f))) {
@@ -1046,7 +1005,39 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
         DebugConsole::GetInstance()->AddLog("Prefab Unpack: " + std::to_string(unpacked) + " objects");
     }
 
-    ImGui::SeparatorText(("Overrides (" + std::to_string(overrides.size()) + ")").c_str());
+    ImGui::SeparatorText(("Component Overrides (" + std::to_string(componentOverrides.size()) + ")").c_str());
+    if (componentOverrides.empty()) {
+        ImGui::TextDisabled("このObjectにComponent構造差分はありません。");
+    }
+    for (const auto& entry : componentOverrides) {
+        ImGui::PushID(("Component_" + entry.componentTypeId).c_str());
+        ImGui::Text("%s", entry.displayName.c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(
+            entry.instancePresent ? ImVec4(0.45f, 0.90f, 0.55f, 1.0f) : ImVec4(1.0f, 0.55f, 0.35f, 1.0f),
+            entry.instancePresent ? "追加" : "削除");
+
+        if (ImGui::SmallButton(ICON_FA_UPLOAD " Apply")) {
+            EditorTransactionManager::GetInstance()->BeginGroup("Apply Prefab Component Override");
+            const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
+            if (manager->ApplyPrefabComponent(object, entry.componentTypeId, sceneObjects)) {
+                editor->RegisterObjectsEdited(beforeStates, "Prefab Component Apply Propagation");
+                DebugConsole::GetInstance()->AddLog("Prefab Component Apply: " + entry.componentTypeId);
+            }
+            EditorTransactionManager::GetInstance()->EndGroup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton(ICON_FA_UNDO " Revert")) {
+            const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
+            if (manager->RevertPrefabComponent(object, entry.componentTypeId)) {
+                editor->RegisterObjectsEdited(beforeStates, "Prefab Component Revert");
+                DebugConsole::GetInstance()->AddLog("Prefab Component Revert: " + entry.componentTypeId);
+            }
+        }
+        ImGui::PopID();
+    }
+
+    ImGui::SeparatorText(("Property Overrides (" + std::to_string(overrides.size()) + ")").c_str());
     if (overrides.empty()) {
         ImGui::TextDisabled("このObjectに適用差分はありません。");
     }
@@ -1077,17 +1068,38 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
     }
 
     if (!basePrefabName.empty()) {
-        ImGui::SeparatorText(("Variant Source Overrides (" + std::to_string(variantOverrides.size()) + ")").c_str());
+        const std::size_t variantOverrideCount = variantOverrides.size() + variantComponentOverrides.size();
+        ImGui::SeparatorText(("Variant Source Overrides (" + std::to_string(variantOverrideCount) + ")").c_str());
         ImGui::TextDisabled("InstanceのApplyで作られた、基底Prefabに対するVariant固有差分です。");
         if (structureSummary.HasOverrides()) {
-            ImGui::Text("構造差分: 追加 %d / 削除 %d / 移動 %d / その他 %d",
+            ImGui::Text("構造差分: Object追加 %d / 削除 %d / 移動 %d / Component %d / その他 %d",
                 structureSummary.addedObjects,
                 structureSummary.removedObjects,
                 structureSummary.reparentedObjects,
+                structureSummary.componentOverrides,
                 structureSummary.rawNodeOverrides);
         }
-        if (variantOverrides.empty()) {
+        if (variantOverrides.empty() && variantComponentOverrides.empty()) {
             ImGui::TextDisabled("このObjectにはVariant固有差分がありません。");
+        }
+        for (const auto& entry : variantComponentOverrides) {
+            ImGui::PushID(("VariantComponent_" + entry.componentTypeId).c_str());
+            ImGui::Text("%s", entry.displayName.c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(
+                entry.variantPresent ? ImVec4(0.45f, 0.90f, 0.55f, 1.0f) : ImVec4(1.0f, 0.55f, 0.35f, 1.0f),
+                entry.variantPresent ? "追加" : "削除");
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_UNDO " Baseへ戻す")) {
+                EditorTransactionManager::GetInstance()->BeginGroup("Revert Prefab Variant Component Override");
+                const auto beforeStates = editor->CaptureObjectStates(sceneObjects);
+                if (manager->RevertPrefabVariantComponent(object, entry.componentTypeId, sceneObjects)) {
+                    editor->RegisterObjectsEdited(beforeStates, "Variant Component Revert Propagation");
+                    DebugConsole::GetInstance()->AddLog("Prefab Variant Component Revert: " + entry.componentTypeId);
+                }
+                EditorTransactionManager::GetInstance()->EndGroup();
+            }
+            ImGui::PopID();
         }
         for (const auto& entry : variantOverrides) {
             ImGui::PushID(("Variant_" + entry.propertyPath).c_str());
@@ -1187,7 +1199,7 @@ void InspectorWindow::Draw() {
         ImGui::Spacing();
 
         if (ImGui::Button(ICON_FA_COPY " 複製 (Duplicate)")) {
-            editor_->DuplicateSelected();
+            EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDuplicate);
         }
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_DOWNLOAD " 単体保存 (JSON更新)")) {
@@ -1274,7 +1286,7 @@ void InspectorWindow::Draw() {
         DrawMixedValueHint(mixedLayer);
 
 
-        DrawPseudoComponentPanel(editor_, selectedObject, inspectorTargets);
+        DrawComponentPanel(editor_, selectedObject, inspectorTargets);
 
         const char* saveCategories[] = { "Object", "Player", "Enemy" };
         std::string currentCat = selectedObject->GetSaveCategory();
@@ -1822,6 +1834,52 @@ void InspectorWindow::Draw() {
                             const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :
                                 ICON_FA_SNOWFLAKE " --- Ice Settings ---";
                             ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), settingTitle);
+                            if (currentMatType == 8) {
+                                const char* waterMeshTypes[] = {
+                                    "専用グリッド (Recommended)",
+                                    "元モデルを使用 (Legacy)"
+                                };
+                                int waterMeshType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 1);
+                                if (ImGui::Combo("水面形状 (Surface Mesh)", &waterMeshType, waterMeshTypes, IM_ARRAYSIZE(waterMeshTypes))) {
+                                    waterData->effectType = static_cast<float>(waterMeshType);
+                                    isGraphicsChanged = true;
+                                }
+
+                                if (ImGui::Button(ICON_FA_MAGIC " 明るいアニメ海プリセット")) {
+                                    waterData->effectType = 0.0f;
+                                    waterData->waveSpeed = 1.05f;
+                                    waterData->waveHeight = 0.42f;
+                                    waterData->waveFrequency = 4.20f;
+                                    waterData->flowSpeedX = 0.035f;
+                                    waterData->flowSpeedY = 0.018f;
+                                    waterData->effectScale = 0.82f;
+                                    waterData->effectSoftness = 0.48f;
+                                    waterData->effectIntensity = 1.15f;
+                                    waterData->billboardScale = 0.50f;
+                                    waterData->effectScaleX = 8.0f;
+                                    waterData->effectScaleY = 0.35f;
+                                    waterData->effectScaleZ = 1.15f;
+                                    isGraphicsChanged = true;
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::Button(ICON_FA_WATER " 穏やかな水プリセット")) {
+                                    waterData->effectType = 0.0f;
+                                    waterData->waveSpeed = 0.70f;
+                                    waterData->waveHeight = 0.24f;
+                                    waterData->waveFrequency = 3.10f;
+                                    waterData->flowSpeedX = 0.020f;
+                                    waterData->flowSpeedY = 0.012f;
+                                    waterData->effectScale = 0.55f;
+                                    waterData->effectSoftness = 0.36f;
+                                    waterData->effectIntensity = 0.95f;
+                                    waterData->billboardScale = 0.44f;
+                                    waterData->effectScaleX = 10.0f;
+                                    waterData->effectScaleY = 0.45f;
+                                    waterData->effectScaleZ = 0.85f;
+                                    isGraphicsChanged = true;
+                                }
+                                ImGui::TextDisabled("専用グリッドは元モデルに関係なく64分割の水面として描画します");
+                            }
                             if (ImGui::DragFloat("Wave Speed (波の速さ)", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("Wave Height (波の高さ)", &waterData->waveHeight, 0.05f, 0.0f, 10.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("Wave Frequency (波の細かさ)", &waterData->waveFrequency, 0.05f, 0.0f, 20.0f)) isGraphicsChanged = true;
@@ -1835,6 +1893,10 @@ void InspectorWindow::Draw() {
                                 if (ImGui::DragFloat("屈折の強さ (Refraction)", &waterData->effectScale, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
                                 if (ImGui::SliderFloat("泡の広がり (Foam Width)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                                 if (ImGui::DragFloat("水面の明るさ (Brightness)", &waterData->effectIntensity, 0.05f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                                if (ImGui::DragFloat("波模様の量 (Surface Pattern)", &waterData->billboardScale, 0.01f, 0.0f, 2.0f)) isGraphicsChanged = true;
+                                if (ImGui::DragFloat("深さ色の範囲 (Depth Range)", &waterData->effectScaleX, 0.10f, 1.0f, 30.0f)) isGraphicsChanged = true;
+                                if (ImGui::DragFloat("反射のきらめき (Sparkle)", &waterData->effectScaleY, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
+                                if (ImGui::DragFloat("接触泡の強さ (Foam Intensity)", &waterData->effectScaleZ, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
                             }
                         }
                     }
@@ -2069,7 +2131,8 @@ void InspectorWindow::Draw() {
             }
 
             ImGui::Separator();
-            if (ImGui::CollapsingHeader(ICON_FA_COMPRESS_ARROWS_ALT " LOD / 軽量モデル")) {
+            if (HasRegisteredComponent(selectedObject, "LOD") &&
+                ImGui::CollapsingHeader(ICON_FA_COMPRESS_ARROWS_ALT " LOD / 軽量モデル")) {
                 MeshRenderer* renderer = selectedObject->GetMeshRenderer();
                 if (!renderer || selectedObject->GetModelName().empty()) {
                     ImGui::TextDisabled("モデルが設定されていません。");
@@ -2137,7 +2200,8 @@ void InspectorWindow::Draw() {
             }
 
             ImGui::Separator();
-            if (ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
+            if (HasRegisteredComponent(selectedObject, "ParticleEmitter") &&
+                ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
                 // --- CPU Particle (Old) ---
                 const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();
                 std::vector<const char*> cpuItemNames;
@@ -2186,7 +2250,8 @@ void InspectorWindow::Draw() {
             }
 
             ImGui::Separator();
-            if (ImGui::CollapsingHeader(ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)")) {
+            if (HasRegisteredComponent(selectedObject, "MeshEffect") &&
+                ImGui::CollapsingHeader(ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)")) {
                 std::vector<std::string> effectPaths;
                 std::vector<std::string> effectDisplayNames;
                 
@@ -2247,28 +2312,18 @@ void InspectorWindow::Draw() {
             if (currentMask != selectedObject->GetCollisionMask()) selectedObject->SetCollisionMask(currentMask);
         }
 
-        // --- Gimmick (ID設定) ---
-        ImGui::Separator();
-        if (ImGui::CollapsingHeader(ICON_FA_LINK " ギミック設定 (Link IDs)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Text("イベント連携ID:");
-            int tID = selectedObject->GetTargetID();
-            if (ImGui::InputInt("送信先ID (Target)", &tID)) selectedObject->SetTargetID(tID);
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("トリガーを作動させたい相手のIDを指定してください");
-
-            int eID = selectedObject->GetEventID();
-            if (ImGui::InputInt("自分ID (Event)", &eID)) selectedObject->SetEventID(eID);
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("ギミック等から起動されるための、自分のIDを指定してください");
-        }
-
-        // ==========================================
-        // 1. ボーンアニメーション設定
-        // ==========================================
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
+        if (HasRegisteredComponent(selectedObject, "Animator")) {
+            // ==========================================
+            // 1. ボーンアニメーション設定
+            // ==========================================
+            ImGui::Separator();
+            ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
+            const std::vector<Object3d*> animatorTargets =
+                CollectRegisteredComponentTargets(inspectorTargets, "Animator");
 
         std::string controllerPath = selectedObject->GetAnimatorControllerPath();
         bool hasMixedController = false;
-        for (Object3d* target : inspectorTargets) {
+        for (Object3d* target : animatorTargets) {
             if (target && target->GetAnimatorControllerPath() != controllerPath) {
                 hasMixedController = true;
                 break;
@@ -2283,8 +2338,8 @@ void InspectorWindow::Draw() {
         if (ImGui::BeginCombo("Animator Controller##BoneAnim", controllerPreview.c_str())) {
             const bool noneSelected = !hasMixedController && controllerPath.empty();
             if (ImGui::Selectable("(なし)", noneSelected)) {
-                const auto beforeStates = editor_->CaptureObjectStates(inspectorTargets);
-                for (Object3d* target : inspectorTargets) {
+                const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
+                for (Object3d* target : animatorTargets) {
                     if (target) {
                         target->ClearAnimatorController();
                     }
@@ -2305,9 +2360,9 @@ void InspectorWindow::Draw() {
             for (const std::string& fileName : controllerFiles) {
                 const bool isSelected = !hasMixedController && fs::path(controllerPath).stem().string() == fileName;
                 if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                    const auto beforeStates = editor_->CaptureObjectStates(inspectorTargets);
+                    const auto beforeStates = editor_->CaptureObjectStates(animatorTargets);
                     bool assigned = false;
-                    for (Object3d* target : inspectorTargets) {
+                    for (Object3d* target : animatorTargets) {
                         if (target && target->SetAnimatorController(fileName)) {
                             assigned = true;
                         }
@@ -2339,19 +2394,21 @@ void InspectorWindow::Draw() {
         if (ImGui::InputText("アニメ名##BoneAnim", animNameBuf, sizeof(animNameBuf))) {
             selectedObject->animName_ = animNameBuf;
         }
-        ImGui::Checkbox("ループ再生##BoneAnim", &selectedObject->isAnimLoop_);
+            ImGui::Checkbox("ループ再生##BoneAnim", &selectedObject->isAnimLoop_);
+        }
 
-        // ==========================================
-        // 2. パス移動 (GhostRecorder) 設定
-        // ==========================================
-        ImGui::Separator();
-        ImGui::Text(ICON_FA_GHOST " 【パス移動 (GhostRecorder)】");
-        std::string currentRecordPreview = selectedObject->recordPathName_.empty() ? "(なし)" : selectedObject->recordPathName_;
+        if (HasRegisteredComponent(selectedObject, "PathMover")) {
+            // ==========================================
+            // 2. パス移動 (GhostRecorder) 設定
+            // ==========================================
+            ImGui::Separator();
+            ImGui::Text(ICON_FA_GHOST " 【パス移動 (GhostRecorder)】");
+            std::string currentRecordPreview = selectedObject->GetRecordPathName().empty() ? "(なし)" : selectedObject->GetRecordPathName();
 
         if (ImGui::BeginCombo("パスデータ", currentRecordPreview.c_str())) {
-            bool isNoneSelected = selectedObject->recordPathName_.empty();
+            bool isNoneSelected = selectedObject->GetRecordPathName().empty();
             if (ImGui::Selectable("(なし)", isNoneSelected)) {
-                selectedObject->recordPathName_ = "";
+                selectedObject->SetRecordPathName("");
                 if (selectedObject->recorder_) selectedObject->recorder_->Stop();
             }
             if (isNoneSelected) ImGui::SetItemDefaultFocus();
@@ -2361,13 +2418,17 @@ void InspectorWindow::Draw() {
                 for (const auto& entry : fs::directory_iterator(dirPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string fileName = entry.path().stem().string();
-                        bool isSelected = (selectedObject->recordPathName_ == fileName);
+                        bool isSelected = (selectedObject->GetRecordPathName() == fileName);
 
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                            selectedObject->recordPathName_ = fileName;
+                            selectedObject->SetRecordPathName(fileName);
                             if (selectedObject->recorder_) {
                                 bool isCinematic = selectedObject->IsCameraObject();
-                                selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
+                                selectedObject->recorder_->Play(
+                                    selectedObject->GetRecordPathName(),
+                                    selectedObject->IsRecordLoop(),
+                                    selectedObject->IsRecordRelative(),
+                                    isCinematic);
                             }
                         }
                         if (isSelected) ImGui::SetItemDefaultFocus();
@@ -2377,22 +2438,39 @@ void InspectorWindow::Draw() {
             ImGui::EndCombo();
         }
 
-        if (ImGui::Checkbox("ループ再生##Record", &selectedObject->isRecordLoop_)) {
-            if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
+        bool pathLoop = selectedObject->IsRecordLoop();
+        if (ImGui::Checkbox("ループ再生##Record", &pathLoop)) {
+            selectedObject->SetRecordLoop(pathLoop);
+            if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
                 bool isCinematic = selectedObject->IsCameraObject();
-                selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
+                selectedObject->recorder_->Play(
+                    selectedObject->GetRecordPathName(),
+                    selectedObject->IsRecordLoop(),
+                    selectedObject->IsRecordRelative(),
+                    isCinematic);
             }
         }
-        if (ImGui::Checkbox("相対座標モード##Record", &selectedObject->isRecordRelative_)) {
-            if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
+        bool pathRelative = selectedObject->IsRecordRelative();
+        if (ImGui::Checkbox("相対座標モード##Record", &pathRelative)) {
+            selectedObject->SetRecordRelative(pathRelative);
+            if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
                 bool isCinematic = selectedObject->IsCameraObject();
-                selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
+                selectedObject->recorder_->Play(
+                    selectedObject->GetRecordPathName(),
+                    selectedObject->IsRecordLoop(),
+                    selectedObject->IsRecordRelative(),
+                    isCinematic);
             }
         }
-        if (ImGui::Button("テスト再生##Record")) {
-            if (selectedObject->recorder_ && !selectedObject->recordPathName_.empty()) {
-                bool isCinematic = selectedObject->IsCameraObject();
-                selectedObject->recorder_->Play(selectedObject->recordPathName_, selectedObject->isRecordLoop_, selectedObject->isRecordRelative_, isCinematic);
+            if (ImGui::Button("テスト再生##Record")) {
+                if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
+                    bool isCinematic = selectedObject->IsCameraObject();
+                    selectedObject->recorder_->Play(
+                        selectedObject->GetRecordPathName(),
+                        selectedObject->IsRecordLoop(),
+                        selectedObject->IsRecordRelative(),
+                        isCinematic);
+                }
             }
         }
 
@@ -2687,7 +2765,7 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
 
         if (ImGui::Button(ICON_FA_TRASH_ALT " オブジェクト削除", ImVec2(-1, 0))) {
-            editor_->DeleteSelected();
+            EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDelete);
             EditorManager::GetInstance()->ClearSelection();
         }
 

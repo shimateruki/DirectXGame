@@ -10,6 +10,7 @@
 #include <fstream>
 #include <filesystem>
 #include <system_error>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace fs = std::filesystem;
@@ -102,6 +103,54 @@ bool WriteJsonObject(const fs::path& path, const json& data, std::string& errorM
     if (!stream.good()) {
         errorMessage = "ファイルの書き込みに失敗しました: " + path.string();
         return false;
+    }
+    return true;
+}
+
+bool RegenerateCopiedSceneObjectGuids(
+    const std::vector<fs::path>& paths,
+    std::string& errorMessage) {
+    struct SceneDocument {
+        fs::path path;
+        json data;
+    };
+
+    std::vector<SceneDocument> documents;
+    std::unordered_map<std::string, std::string> guidRemap;
+    for (const fs::path& path : paths) {
+        if (!fs::exists(path)) continue;
+
+        json data = ReadJsonObject(path);
+        if (!data.contains("objects") || !data["objects"].is_array()) {
+            continue;
+        }
+        for (json& object : data["objects"]) {
+            if (!object.is_object()) continue;
+
+            const std::string oldGuid = object.value("guid", std::string());
+            const std::string newGuid = Object3d::GeneratePersistentGuid();
+            object["guid"] = newGuid;
+            if (Object3d::IsPersistentGuidValid(oldGuid)) {
+                guidRemap.emplace(oldGuid, newGuid);
+            }
+        }
+        documents.push_back({ path, std::move(data) });
+    }
+
+    for (SceneDocument& document : documents) {
+        for (json& object : document.data["objects"]) {
+            if (!object.is_object() || !object.contains("parentGuid") ||
+                !object["parentGuid"].is_string()) {
+                continue;
+            }
+            const auto parent = guidRemap.find(object["parentGuid"].get<std::string>());
+            if (parent != guidRemap.end()) {
+                object["parentGuid"] = parent->second;
+            }
+        }
+        if (!WriteJsonObject(document.path, document.data, errorMessage)) {
+            return false;
+        }
     }
     return true;
 }
@@ -266,7 +315,9 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     objectSceneData["objects"] = json::array();
     cameraSceneData["objects"] = json::array();
 
-    auto& allObjects = editor_->GetSceneManager()->GetCurrentScene()->GetObjects();
+    BaseScene* currentScene = editor_->GetSceneManager()->GetCurrentScene();
+    currentScene->EnsureUniquePersistentObjectGuids();
+    auto& allObjects = currentScene->GetObjects();
 
     for (auto& obj : allObjects) {
         if (obj->GetName().empty()) continue;
@@ -358,7 +409,11 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     }
 
     for (auto& objData : sceneData["objects"]) {
-        if (objData.contains("name") && objData["name"] == object->GetName()) {
+        const bool sameGuid = objData.contains("guid") && objData["guid"].is_string() &&
+            objData["guid"] == object->GetPersistentGuid();
+        const bool legacyNameMatch = !objData.contains("guid") &&
+            objData.contains("name") && objData["name"] == object->GetName();
+        if (sameGuid || legacyNameMatch) {
             objData = currentData;
             found = true;
             break;
@@ -395,7 +450,12 @@ std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveM
 
 nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     json d;
+    d["guid"] = obj->EnsurePersistentGuid();
     d["name"] = obj->GetName();
+    const json components = obj->SerializeFeatureComponents();
+    if (!components.empty()) {
+        d["components"] = components;
+    }
 
     // 1. 基本設定
     std::string className = obj->GetClassName();
@@ -428,6 +488,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
 
     // 2. 親子関係
     d["parentName"] = obj->GetParent() ? obj->GetParent()->GetName() : "";
+    d["parentGuid"] = obj->GetParent() ? obj->GetParent()->EnsurePersistentGuid() : "";
 
     // 3. Transform
     Transform* t = obj->GetTransform();
@@ -442,9 +503,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["animation"]["animName"] = obj->animName_;
         d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
         d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
-        d["recorder"]["recordPathName"] = obj->recordPathName_;
-        d["recorder"]["isRecordLoop"] = obj->isRecordLoop_;
-        d["recorder"]["isRecordRelative"] = obj->isRecordRelative_;
+        d["recorder"]["recordPathName"] = obj->GetRecordPathName();
+        d["recorder"]["isRecordLoop"] = obj->IsRecordLoop();
+        d["recorder"]["isRecordRelative"] = obj->IsRecordRelative();
         return d;
     }
 
@@ -546,9 +607,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
 
     // 10. レコーダー (Ghost)
-    d["recorder"]["recordPathName"] = obj->recordPathName_;
-    d["recorder"]["isRecordLoop"] = obj->isRecordLoop_;
-    d["recorder"]["isRecordRelative"] = obj->isRecordRelative_;
+    d["recorder"]["recordPathName"] = obj->GetRecordPathName();
+    d["recorder"]["isRecordLoop"] = obj->IsRecordLoop();
+    d["recorder"]["isRecordRelative"] = obj->IsRecordRelative();
 
     // 11. ローカルフォグ
     if (auto* fogData = obj->GetLocalFogData()) {
@@ -806,6 +867,14 @@ bool SceneSerializer::DuplicateSceneAsset(
             return false;
         }
         createdPaths.push_back(destinationPaths[index]);
+    }
+
+    if (!RegenerateCopiedSceneObjectGuids(destinationPaths, errorMessage)) {
+        for (const fs::path& path : createdPaths) {
+            std::error_code removeError;
+            fs::remove(path, removeError);
+        }
+        return false;
     }
 
     const std::string sourceSpritePath = ResolveExistingSpritePath(sourceId);

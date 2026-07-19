@@ -7,6 +7,7 @@
 #include "ImGuizmo.h"
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
+#include "EditorCommandRegistry.h"
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "PostEffectEditor.h"
@@ -1042,7 +1043,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_VIDEO " Camera")) editor_->SaveScene(SaveMode::Camera);
     if (ImGui::Button(ICON_FA_DOWNLOAD " Active Sceneを保存", ImVec2(-1.0f, 0.0f))) {
-        editor_->SaveScene(SaveMode::All);
+        EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::SceneSave);
     }
     ImGui::EndDisabled();
     ImGui::TextDisabled("保存先: Resources/json/3Dobject/%s", currentFilename.c_str());

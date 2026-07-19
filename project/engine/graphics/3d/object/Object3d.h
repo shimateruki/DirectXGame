@@ -9,10 +9,15 @@
 #include <optional>
 #include "Event.h"
 #include <vector>
+#include <string_view>
 #include "Transform.h" 
 #include "json.hpp"
 #include "Collider.h"
+#include "GameplayLinkComponent.h"
+#include "MeshEffectComponent.h"
 #include "MeshRenderer.h" 
+#include "ParticleEmitterComponent.h"
+#include "PathMoverComponent.h"
 #include "engine/graphics/3d/camera/SceneCameraSettings.h"
 #include "engine/animation/AnimatorController.h"
 
@@ -27,6 +32,23 @@ class EffectObject3d;
 // Object3dは、Transform、階層、描画、衝突、エフェクト連携を持つ3Dオブジェクトの基本クラスです。
 class Object3d {
 public:
+    /// 既存機能をComponentとして公開するための軽量な型情報です。
+    /// 実データの所有場所は移さず、Editorと将来のRegistryから共通参照できます。
+    struct BuiltInComponentInfo {
+        std::string_view typeId;
+        std::string_view displayName;
+        bool isPresent = false;
+        bool removable = false;
+    };
+
+    static constexpr std::string_view kTransformComponentType = "Transform";
+    static constexpr std::string_view kMeshRendererComponentType = "MeshRenderer";
+    static constexpr std::string_view kColliderComponentType = "Collider";
+    static constexpr std::string_view kParticleEmitterComponentType = ParticleEmitterComponent::kTypeId;
+    static constexpr std::string_view kMeshEffectComponentType = MeshEffectComponent::kTypeId;
+    static constexpr std::string_view kPathMoverComponentType = PathMoverComponent::kTypeId;
+    static constexpr std::string_view kGameplayLinkComponentType = GameplayLinkComponent::kTypeId;
+
     // 互換性維持のためエイリアスを作成
     using TransformationMatrix = MeshRenderer::TransformationMatrix;
     using DirectionalLight = MeshRenderer::DirectionalLight;
@@ -95,6 +117,13 @@ public:
         Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
         float emissive = 1.0f;
 
+        // 実体Componentの有無と実行状態も巻き戻し対象にします。
+        // ParticleEmitterComponentには発生間隔タイマーも含まれます。
+        std::optional<ParticleEmitterComponent> particleEmitterComponent;
+        std::optional<MeshEffectComponent> meshEffectComponent;
+        std::optional<PathMoverComponent> pathMoverComponent;
+        std::optional<GameplayLinkComponent> gameplayLinkComponent;
+
         bool replayRemoved = false;
         json custom = json::object();
     };
@@ -132,6 +161,20 @@ public:
 
     MeshRenderer::LocalFogData* GetLocalFogData();
     virtual std::unique_ptr<Object3d> Clone() const;
+
+    // Scene保存、Prefab Instance、EditorのUndo/Redoで共通利用する永続GUIDです。
+    // Replay IDやPrefab内Source ID、ゲームイベントIDとは別の識別子です。
+    static std::string GeneratePersistentGuid();
+    static bool IsPersistentGuidValid(std::string_view guid);
+    const std::string& EnsurePersistentGuid();
+    const std::string& GetPersistentGuid() const { return persistentGuid_; }
+    bool SetPersistentGuid(const std::string& guid);
+    void RegeneratePersistentGuid();
+
+    std::vector<BuiltInComponentInfo> GetBuiltInComponentInfos() const;
+    bool HasBuiltInComponent(std::string_view typeId) const;
+    void* FindBuiltInComponent(std::string_view typeId);
+    const void* FindBuiltInComponent(std::string_view typeId) const;
 
     // デバッグリプレイ専用の安定IDと実行状態を扱います。
     uint64_t EnsureReplayId();
@@ -285,21 +328,47 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void SetCastShadow(bool enabled) { castShadow_ = enabled; }
     bool GetCastShadow() const { return castShadow_; }
 
-    void SetEventID(int id) { eventID_ = id; }
-    int GetEventID() const { return eventID_; }
-    void SetTargetID(int id) { targetID_ = id; }
-    int GetTargetID() const { return targetID_; }
+    GameplayLinkComponent* EnsureGameplayLinkComponent();
+    bool RemoveGameplayLinkComponent();
+    bool HasGameplayLinkComponent() const { return gameplayLinkComponent_.has_value(); }
+    GameplayLinkComponent* GetGameplayLinkComponent();
+    const GameplayLinkComponent* GetGameplayLinkComponent() const;
+    void SetEventID(int id);
+    int GetEventID() const;
+    void SetTargetID(int id);
+    int GetTargetID() const;
 
-    void SetParticleName(const std::string& name) { particleName_ = name; }
-    const std::string& GetParticleName() const { return particleName_; }
+    ParticleEmitterComponent* EnsureParticleEmitterComponent();
+    bool RemoveParticleEmitterComponent();
+    bool HasParticleEmitterComponent() const { return particleEmitterComponent_.has_value(); }
+    ParticleEmitterComponent* GetParticleEmitterComponent();
+    const ParticleEmitterComponent* GetParticleEmitterComponent() const;
+    void SetParticleName(const std::string& name);
+    const std::string& GetParticleName() const;
+    void SetGPUParticleName(const std::string& name);
+    const std::string& GetGPUParticleName() const;
 
-    void SetGPUParticleName(const std::string& name) { gpuParticleName_ = name; }
-    const std::string& GetGPUParticleName() const { return gpuParticleName_; }
+    MeshEffectComponent* EnsureMeshEffectComponent();
+    bool RemoveMeshEffectComponent();
+    bool HasMeshEffectComponent() const { return meshEffectComponent_.has_value(); }
+    MeshEffectComponent* GetMeshEffectComponent();
+    const MeshEffectComponent* GetMeshEffectComponent() const;
+    void SetMeshEffect1Name(const std::string& name);
+    const std::string& GetMeshEffect1Name() const;
+    void SetMeshEffect2Name(const std::string& name);
+    const std::string& GetMeshEffect2Name() const;
 
-    void SetMeshEffect1Name(const std::string& name) { meshEffectName1_ = name; }
-    const std::string& GetMeshEffect1Name() const { return meshEffectName1_; }
-    void SetMeshEffect2Name(const std::string& name) { meshEffectName2_ = name; }
-    const std::string& GetMeshEffect2Name() const { return meshEffectName2_; }
+    PathMoverComponent* EnsurePathMoverComponent();
+    bool RemovePathMoverComponent();
+    bool HasPathMoverComponent() const { return pathMoverComponent_.has_value(); }
+    PathMoverComponent* GetPathMoverComponent();
+    const PathMoverComponent* GetPathMoverComponent() const;
+    void SetRecordPathName(const std::string& name);
+    const std::string& GetRecordPathName() const;
+    void SetRecordLoop(bool loop);
+    bool IsRecordLoop() const;
+    void SetRecordRelative(bool relative);
+    bool IsRecordRelative() const;
 
     void UpdateAttachedEffects(float deltaTime);
     void DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
@@ -331,6 +400,18 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     json ExportToJson();
     void ImportFromJson(const json& j);
+    /// 実体Componentを新しいcomponents Payloadへ直列化します。未知のPayloadも保持します。
+    json SerializeFeatureComponents() const;
+    /// 新しいcomponents Payloadを優先し、旧Top-Level JSONをFallbackとして読み込みます。
+    void DeserializeFeatureComponents(const json& objectData);
+    const json& GetOpaqueComponents() const { return opaqueComponents_; }
+    void SetOpaqueComponents(const json& components) {
+        opaqueComponents_ = components.is_object() ? components : json::object();
+    }
+    /// 値が未設定でもComponentが追加済みであることを保存するMarkerを確認します。
+    bool HasComponentPresenceMarker(const std::string& componentTypeId) const;
+    /// Componentの追加・削除状態だけを更新し、未知のComponentデータは保持します。
+    void SetComponentPresenceMarker(const std::string& componentTypeId, bool present);
 
     virtual void OnTrigger() { isVisible_ = false; }
     virtual void OnSwitchEvent(bool active) { if (active) OnTrigger(); }
@@ -388,10 +469,7 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     std::string animName_ = "";
     bool isAnimLoop_ = true;
 
-    // --- GhostRecorder (パス再生) 用 ---
-    std::string recordPathName_ = ""; // 読み込むパスデータのファイル名
-    bool isRecordLoop_ = false;       // パスのループフラグ
-    bool isRecordRelative_ = false;   // パスの相対再生フラグ
+    // GhostRecorder本体はPathMoverComponentの再生Runtimeとして段階的に分離します。
     GhostRecorder* recorder_ = nullptr;
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
     std::string GetSaveCategory() const { return saveCategory_; }
@@ -407,6 +485,9 @@ protected:
 
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";
+    std::string persistentGuid_;
+    // 未知Componentを読み込んでも再保存時に失わないための透過データです。
+    json opaqueComponents_ = json::object();
 
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
     Transform effectAnchor_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
@@ -435,15 +516,14 @@ protected:
     bool isVisible_ = true;
     bool castShadow_ = true;
     PrefabInstanceInfo prefabInstanceInfo_;
-    int eventID_ = -1;
-    int targetID_ = -1;
     std::string enemyType_ = "";
     std::string gimmickType_ = "";
     std::string itemType_ = "";
 
-    std::string particleName_ = ""; // JSONファイル名
-    std::string gpuParticleName_ = ""; // GPUパーティクル用
-    float particleTimer_ = 0.0f;    // 発射タイミング管理用
+    std::optional<ParticleEmitterComponent> particleEmitterComponent_;
+    std::optional<MeshEffectComponent> meshEffectComponent_;
+    std::optional<PathMoverComponent> pathMoverComponent_;
+    std::optional<GameplayLinkComponent> gameplayLinkComponent_;
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;
     bool isEditorInternal_ = false;
@@ -453,9 +533,7 @@ protected:
     bool replayRetained_ = false;
     bool replayRemoved_ = false;
     std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
-    // 先ほどは <EffectObject3d> にしていましたが、<Object3d> に変更します
-    std::string meshEffectName1_ = "";
-    std::string meshEffectName2_ = "";
+    // MeshEffectComponentの再生中InstanceはObject3d側の描画Runtimeとして保持します。
     std::string currentMeshEffect1_ = "";
     std::string currentMeshEffect2_ = "";
     std::vector<std::unique_ptr<Object3d>> attachedEffects1_;

@@ -148,6 +148,15 @@ bool JsonValuesEqual(const json& lhs, const json& rhs) {
     return lhs == rhs;
 }
 
+void RemoveSceneObjectGuids(json& node) {
+    if (!node.is_object()) return;
+    node.erase("guid");
+    if (!node.contains("children") || !node["children"].is_array()) return;
+    for (json& child : node["children"]) {
+        RemoveSceneObjectGuids(child);
+    }
+}
+
 json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visited) {
     if (!object || visited.count(object) != 0) {
         return json::object();
@@ -155,6 +164,7 @@ json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visi
 
     visited.insert(object);
     json node = object->ExportToJson();
+    node.erase("guid");
     node.erase("prefabInstance");
     node.erase("prefabObjectId");
     json children = json::array();
@@ -182,6 +192,7 @@ json BuildPrefabNode(
 
     visited.insert(object);
     json node = object->ExportToJson();
+    node.erase("guid");
     node.erase("prefabInstance");
 
     const auto& instance = object->GetPrefabInstanceInfo();
@@ -213,6 +224,8 @@ void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::st
         node["prefabObjectId"] = MakeStableId("object", assetId + ':' + hierarchyPath);
     }
     node.erase("prefabInstance");
+    // Prefab AssetはScene上の実体GUIDを所有しません。
+    node.erase("guid");
 
     if (!node.contains("children") || !node["children"].is_array()) {
         return;
@@ -235,6 +248,9 @@ void EnsurePrefabVariantFields(json& asset) {
     }
     if (!asset.contains("nodeOverrides") || !asset["nodeOverrides"].is_object()) {
         asset["nodeOverrides"] = json::object();
+    }
+    if (!asset.contains("componentOverrides") || !asset["componentOverrides"].is_object()) {
+        asset["componentOverrides"] = json::object();
     }
 }
 
@@ -409,7 +425,56 @@ bool EraseJsonPath(json& source, const std::string& path) {
     if (!source.is_object() || !source.contains(head)) {
         return false;
     }
-    return EraseJsonPath(source[head], path.substr(separator + 1));
+    const bool erased = EraseJsonPath(source[head], path.substr(separator + 1));
+    if (erased && source.contains(head) && source[head].is_object() && source[head].empty()) {
+        source.erase(head);
+    }
+    return erased;
+}
+
+void MigrateLegacyComponentOverrides(json& asset) {
+    EnsurePrefabVariantFields(asset);
+    json& nodeOverrides = asset["nodeOverrides"];
+    if (!nodeOverrides.is_object()) {
+        return;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    for (auto nodeIt = nodeOverrides.begin(); nodeIt != nodeOverrides.end();) {
+        json& patch = nodeIt.value();
+        if (!patch.is_object() || !patch.contains("components") || !patch["components"].is_object()) {
+            ++nodeIt;
+            continue;
+        }
+
+        json& serializedComponents = patch["components"];
+        for (const EditorComponentDescriptor& component : registry->GetComponents()) {
+            if (!component.removable || !component.serializedPresent || !component.setSerializedPresent ||
+                !serializedComponents.contains(component.typeId) ||
+                !serializedComponents[component.typeId].is_object()) {
+                continue;
+            }
+            json& componentPatch = serializedComponents[component.typeId];
+            if (componentPatch.contains("_editorPresent") &&
+                componentPatch["_editorPresent"].is_boolean()) {
+                asset["componentOverrides"][nodeIt.key()][component.typeId] =
+                    componentPatch["_editorPresent"];
+                componentPatch.erase("_editorPresent");
+            }
+            if (componentPatch.empty()) {
+                serializedComponents.erase(component.typeId);
+            }
+        }
+        if (serializedComponents.empty()) {
+            patch.erase("components");
+        }
+        if (patch.empty()) {
+            nodeIt = nodeOverrides.erase(nodeIt);
+        } else {
+            ++nodeIt;
+        }
+    }
 }
 
 json NormalizePrefabAsset(const std::string& prefabName, const json& value) {
@@ -436,6 +501,7 @@ json NormalizePrefabAsset(const std::string& prefabName, const json& value) {
         asset["propertyOverrides"] = json::object();
     }
     EnsurePrefabVariantFields(asset);
+    MigrateLegacyComponentOverrides(asset);
     EnsurePrefabObjectIds(asset["root"], assetId, "root");
     for (std::size_t index = 0; index < asset["addedChildren"].size(); ++index) {
         json& entry = asset["addedChildren"][index];
@@ -472,6 +538,8 @@ void CreateObjectFromPresetNode(
         object->Initialize(common);
     }
     object->ImportFromJson(node);
+    // Preset/Prefabの生成物は、Asset内データとは別のScene実体です。
+    object->RegeneratePersistentGuid();
     if (!enemyType.empty()) {
         object->SetClassName("Enemy");
         object->SetEnemyType(enemyType);
@@ -549,6 +617,13 @@ const json* FindSourceNodeRecursive(const json& node, const std::string& sourceO
 }
 
 const char* GetSerializedPropertyKey(const std::string& propertyPath) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    if (const EditorPropertyDescriptor* descriptor = registry->Find(propertyPath)) {
+        return descriptor->serializedPath.empty() ? nullptr : descriptor->serializedPath.c_str();
+    }
+
+    // Registry導入前の外部Propertyに対する移行期間用Fallbackです。
     if (propertyPath == "identity.name") return "name";
     if (propertyPath == "identity.tag") return "tag";
     if (propertyPath == "identity.layer") return "layer";
@@ -590,6 +665,7 @@ const char* GetSerializedPropertyKey(const std::string& propertyPath) {
     if (propertyPath == "component.meshEffect.secondary") return "meshEffect2";
     if (propertyPath == "component.animation.name") return "animation.animName";
     if (propertyPath == "component.animation.loop") return "animation.isAnimLoop";
+    if (propertyPath == "component.animation.controller") return "animation.animatorController";
     if (propertyPath == "component.path.name") return "recorder.recordPathName";
     if (propertyPath == "component.path.loop") return "recorder.isRecordLoop";
     if (propertyPath == "component.path.relative") return "recorder.isRecordRelative";
@@ -632,6 +708,19 @@ const char* GetSerializedPropertyKey(const std::string& propertyPath) {
     return nullptr;
 }
 
+const char* GetCanonicalComponentPropertyKey(const std::string& propertyPath) {
+    if (propertyPath == "component.particle.cpu") return "components.ParticleEmitter.cpuParticle";
+    if (propertyPath == "component.particle.gpu") return "components.ParticleEmitter.gpuParticle";
+    if (propertyPath == "component.meshEffect.primary") return "components.MeshEffect.primary";
+    if (propertyPath == "component.meshEffect.secondary") return "components.MeshEffect.secondary";
+    if (propertyPath == "component.path.name") return "components.PathMover.path";
+    if (propertyPath == "component.path.loop") return "components.PathMover.loop";
+    if (propertyPath == "component.path.relative") return "components.PathMover.relative";
+    if (propertyPath == "component.link.eventId") return "components.GameplayLink.eventId";
+    if (propertyPath == "component.link.targetId") return "components.GameplayLink.targetId";
+    return nullptr;
+}
+
 const json* FindJsonPath(const json& source, const std::string& path) {
     const json* current = &source;
     std::size_t begin = 0;
@@ -670,6 +759,13 @@ json* EnsureJsonPath(json& source, const std::string& path) {
 }
 
 json GetMissingSourceDefault(const std::string& propertyPath) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    if (const EditorPropertyDescriptor* descriptor = registry->Find(propertyPath)) {
+        return descriptor->defaultValue;
+    }
+
+    // Registry未登録の旧Propertyだけを従来値で扱います。
     if (propertyPath == "component.collision.static" ||
         propertyPath == "component.lod.enabled" ||
         propertyPath == "component.path.loop" ||
@@ -684,6 +780,7 @@ json GetMissingSourceDefault(const std::string& propertyPath) {
         propertyPath == "component.meshEffect.primary" ||
         propertyPath == "component.meshEffect.secondary" ||
         propertyPath == "component.animation.name" ||
+        propertyPath == "component.animation.controller" ||
         propertyPath == "component.path.name") {
         return "";
     }
@@ -709,11 +806,112 @@ bool WriteSourceProperty(json& sourceNode, const std::string& propertyPath, cons
         return false;
     }
     *target = value;
+    if (const char* canonicalKey = GetCanonicalComponentPropertyKey(propertyPath)) {
+        if (json* canonicalTarget = EnsureJsonPath(sourceNode, canonicalKey)) {
+            *canonicalTarget = value;
+        }
+    }
     if (propertyPath == "transform.rotation") {
         // Euler角のOverrideを適用した時は、古いQuaternionが優先されないようにします。
         sourceNode.erase("quaternion");
     }
     return true;
+}
+
+bool IsPrefabComponentDescriptor(const EditorComponentDescriptor& component) {
+    return component.removable && component.serializedPresent && component.setSerializedPresent;
+}
+
+void RemoveComponentPropertyOverrides(
+    json& asset,
+    const std::string& sourceObjectId,
+    const std::string& componentTypeId) {
+    if (!asset.contains("propertyOverrides") || !asset["propertyOverrides"].is_object() ||
+        !asset["propertyOverrides"].contains(sourceObjectId) ||
+        !asset["propertyOverrides"][sourceObjectId].is_object()) {
+        return;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    json& objectOverrides = asset["propertyOverrides"][sourceObjectId];
+    for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(componentTypeId)) {
+        if (property) {
+            objectOverrides.erase(property->path);
+        }
+    }
+    if (objectOverrides.empty()) {
+        asset["propertyOverrides"].erase(sourceObjectId);
+    }
+}
+
+bool WriteComponentStateFromObject(
+    json& sourceNode,
+    Object3d* object,
+    const EditorComponentDescriptor& component,
+    bool present) {
+    if (!object || !component.setSerializedPresent) {
+        return false;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    if (present) {
+        for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(component.typeId)) {
+            if (!property || !HasEditorPropertyFlag(property->flags, EditorPropertyFlags::PrefabOverride) ||
+                property->serializedPath.empty()) {
+                continue;
+            }
+            const json value = registry->GetValue(object, property->path);
+            if (!value.is_null()) {
+                WriteSourceProperty(sourceNode, property->path, value);
+            }
+        }
+    }
+    component.setSerializedPresent(sourceNode, present);
+    return true;
+}
+
+bool ApplySerializedComponentState(
+    Object3d* object,
+    const json& sourceNode,
+    const EditorComponentDescriptor& component) {
+    if (!object || !component.serializedPresent) {
+        return false;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    const bool desiredPresent = component.serializedPresent(sourceNode);
+    const bool currentPresent = registry->IsComponentPresent(object, component.typeId);
+    if (desiredPresent != currentPresent) {
+        const bool changed = desiredPresent
+            ? registry->AddComponent(object, component.typeId)
+            : registry->RemoveComponent(object, component.typeId);
+        if (!changed) {
+            return false;
+        }
+    }
+
+    if (desiredPresent) {
+        for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(component.typeId)) {
+            if (!property || property->serializedPath.empty()) {
+                continue;
+            }
+            const json value = ReadSourceProperty(sourceNode, property->path);
+            if (!value.is_null()) {
+                registry->SetValue(object, property->path, value);
+            }
+        }
+    }
+    return true;
+}
+
+void RemoveKnownComponentPresenceMarkers(json& node) {
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    for (const EditorComponentDescriptor& component : registry->GetComponents()) {
+        if (IsPrefabComponentDescriptor(component)) {
+            EraseJsonPath(node, "components." + component.typeId + "._editorPresent");
+            EraseJsonPath(node, "components." + component.typeId + ".version");
+        }
+    }
 }
 
 bool IsInstancePlacementProperty(const Object3d::PrefabInstanceInfo& info, const std::string& propertyPath) {
@@ -789,7 +987,9 @@ void PresetManager::LoadPresets(const std::string& filename) {
         file >> root;
         if (root.is_object()) {
             for (auto& element : root.items()) {
-                presets_[element.key()] = element.value();
+                json preset = element.value();
+                RemoveSceneObjectGuids(preset);
+                presets_[element.key()] = std::move(preset);
             }
         }
     } catch (...) {
@@ -800,7 +1000,9 @@ void PresetManager::LoadPresets(const std::string& filename) {
 void PresetManager::SavePresets(const std::string& filename) {
     json root = json::object();
     for (const auto& pair : presets_) {
-        root[pair.first] = pair.second;
+        json preset = pair.second;
+        RemoveSceneObjectGuids(preset);
+        root[pair.first] = std::move(preset);
     }
 
     try {
@@ -829,7 +1031,9 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
     }
 
     try {
-        obj->ImportFromJson(it->second);
+        json preset = it->second;
+        RemoveSceneObjectGuids(preset);
+        obj->ImportFromJson(preset);
         auto* statusManager = GameplayStatusManager::GetInstance();
         statusManager->Initialize();
         statusManager->ApplyManagedStatus(obj, false);
@@ -1025,6 +1229,29 @@ void PresetManager::RefreshPrefabInheritance() {
                 }
             }
 
+            // Componentの追加・削除はProperty値とは別の構造差分として最後に反映します。
+            // 削除時は基底Prefabの実行時設定も無効化されるため、値だけが残ることはありません。
+            const json& componentOverrides = asset["componentOverrides"];
+            if (componentOverrides.is_object()) {
+                EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+                registry->InitializeBuiltInProperties();
+                for (auto objectIt = componentOverrides.begin(); objectIt != componentOverrides.end(); ++objectIt) {
+                    json* node = FindSourceNodeRecursive(resolvedRoot, objectIt.key());
+                    if (!node || !objectIt.value().is_object()) {
+                        continue;
+                    }
+                    for (auto componentIt = objectIt.value().begin();
+                        componentIt != objectIt.value().end(); ++componentIt) {
+                        if (componentIt.value().is_boolean()) {
+                            registry->SetComponentPresent(
+                                *node,
+                                componentIt.key(),
+                                componentIt.value().get<bool>());
+                        }
+                    }
+                }
+            }
+
             if (!asset.contains("root") || asset["root"] != resolvedRoot) {
                 asset["root"] = std::move(resolvedRoot);
                 changed = true;
@@ -1093,6 +1320,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
         assetIt->second["addedChildren"] = json::array();
         assetIt->second["reparentedObjects"] = json::array();
         assetIt->second["nodeOverrides"] = json::object();
+        assetIt->second["componentOverrides"] = json::object();
     } else {
         auto baseIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&baseAssetId](const auto& pair) {
             return pair.second.value("assetId", "") == baseAssetId;
@@ -1163,7 +1391,9 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
 
         json propertyOverrides = json::object();
         json nodeOverrides = json::object();
+        json componentOverrides = json::object();
         EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+        registry->InitializeBuiltInProperties();
         for (const auto& [sourceObjectId, editedLocation] : editedLocations) {
             auto baseLocationIt = baseLocations.find(sourceObjectId);
             if (baseLocationIt == baseLocations.end() || !editedLocation.node || !baseLocationIt->second.node) {
@@ -1172,6 +1402,16 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
 
             const json& baseNode = *baseLocationIt->second.node;
             const json& editedNode = *editedLocation.node;
+            for (const EditorComponentDescriptor& component : registry->GetComponents()) {
+                if (!IsPrefabComponentDescriptor(component)) {
+                    continue;
+                }
+                const bool basePresent = registry->IsComponentPresent(baseNode, component.typeId);
+                const bool editedPresent = registry->IsComponentPresent(editedNode, component.typeId);
+                if (basePresent != editedPresent) {
+                    componentOverrides[sourceObjectId][component.typeId] = editedPresent;
+                }
+            }
             for (const EditorPropertyDescriptor& descriptor : registry->GetProperties()) {
                 if (!HasEditorPropertyFlag(descriptor.flags, EditorPropertyFlags::PrefabOverride) ||
                     !GetSerializedPropertyKey(descriptor.path)) {
@@ -1191,10 +1431,14 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
                 raw->erase("prefabObjectId");
                 raw->erase("prefabInstance");
                 raw->erase("quaternion");
+                RemoveKnownComponentPresenceMarkers(*raw);
                 for (const EditorPropertyDescriptor& descriptor : registry->GetProperties()) {
                     const char* serializedPath = GetSerializedPropertyKey(descriptor.path);
                     if (serializedPath) {
                         EraseJsonPath(*raw, serializedPath);
+                    }
+                    if (const char* canonicalPath = GetCanonicalComponentPropertyKey(descriptor.path)) {
+                        EraseJsonPath(*raw, canonicalPath);
                     }
                 }
             }
@@ -1211,6 +1455,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
         assetIt->second["reparentedObjects"] = std::move(reparentedObjects);
         assetIt->second["propertyOverrides"] = std::move(propertyOverrides);
         assetIt->second["nodeOverrides"] = std::move(nodeOverrides);
+        assetIt->second["componentOverrides"] = std::move(componentOverrides);
         // RootはRefreshPrefabInheritanceで必ず基底＋差分から再構築します。
         assetIt->second["root"] = baseRoot;
     }
@@ -1497,6 +1742,13 @@ PresetManager::PrefabStructureOverrideSummary PresetManager::GetPrefabStructureO
     if (asset.contains("nodeOverrides") && asset["nodeOverrides"].is_object()) {
         summary.rawNodeOverrides = static_cast<int>(asset["nodeOverrides"].size());
     }
+    if (asset.contains("componentOverrides") && asset["componentOverrides"].is_object()) {
+        for (const auto& objectOverrides : asset["componentOverrides"]) {
+            if (objectOverrides.is_object()) {
+                summary.componentOverrides += static_cast<int>(objectOverrides.size());
+            }
+        }
+    }
     if (asset.contains("addedChildren") && asset["addedChildren"].is_array()) {
         for (const auto& entry : asset["addedChildren"]) {
             if (entry.is_object() && entry.contains("node")) {
@@ -1570,10 +1822,21 @@ std::vector<PresetManager::PrefabPropertyOverride> PresetManager::GetPrefabOverr
     }
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
     for (const EditorPropertyDescriptor& property : registry->GetProperties()) {
         if (!HasEditorPropertyFlag(property.flags, EditorPropertyFlags::PrefabOverride) ||
             property.path == "identity.name" || IsInstancePlacementProperty(info, property.path)) {
             continue;
+        }
+
+        const EditorComponentDescriptor* component = registry->FindComponent(property.componentTypeId);
+        if (component && IsPrefabComponentDescriptor(*component)) {
+            const bool sourcePresent = registry->IsComponentPresent(*sourceNode, component->typeId);
+            const bool instancePresent = registry->IsComponentPresent(object, component->typeId);
+            // Component追加・削除中は、内部Propertyではなく構造差分として一括処理します。
+            if (!sourcePresent || !instancePresent) {
+                continue;
+            }
         }
 
         const json sourceValue = ReadSourceProperty(*sourceNode, property.path);
@@ -1583,6 +1846,39 @@ std::vector<PresetManager::PrefabPropertyOverride> PresetManager::GetPrefabOverr
         }
 
         overrides.push_back({ property.path, property.displayName, sourceValue, instanceValue });
+    }
+    return overrides;
+}
+
+std::vector<PresetManager::PrefabComponentOverride> PresetManager::GetPrefabComponentOverrides(
+    const Object3d* object) const {
+    std::vector<PrefabComponentOverride> overrides;
+    if (!object || !object->IsPrefabInstance()) {
+        return overrides;
+    }
+
+    const json* sourceNode = FindPrefabSourceNode(object->GetPrefabInstanceInfo());
+    if (!sourceNode) {
+        return overrides;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    for (const EditorComponentDescriptor& component : registry->GetComponents()) {
+        if (!IsPrefabComponentDescriptor(component) ||
+            !registry->IsComponentApplicable(object, component.typeId)) {
+            continue;
+        }
+        const bool sourcePresent = registry->IsComponentPresent(*sourceNode, component.typeId);
+        const bool instancePresent = registry->IsComponentPresent(object, component.typeId);
+        if (sourcePresent != instancePresent) {
+            overrides.push_back({
+                component.typeId,
+                component.displayName,
+                sourcePresent,
+                instancePresent,
+            });
+        }
     }
     return overrides;
 }
@@ -1626,14 +1922,78 @@ std::vector<PresetManager::PrefabVariantOverride> PresetManager::GetPrefabVarian
     }
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
     for (auto it = propertyOverrides[info.sourceObjectId].begin();
         it != propertyOverrides[info.sourceObjectId].end(); ++it) {
         const EditorPropertyDescriptor* property = registry->Find(it.key());
+        const json& componentOverrides = assetIt->second["componentOverrides"];
+        if (property && componentOverrides.is_object() &&
+            componentOverrides.contains(info.sourceObjectId) &&
+            componentOverrides[info.sourceObjectId].is_object() &&
+            componentOverrides[info.sourceObjectId].contains(property->componentTypeId)) {
+            continue;
+        }
         overrides.push_back({
             it.key(),
             property ? property->displayName : it.key(),
             ReadSourceProperty(*baseNode, it.key()),
             ReadSourceProperty(*variantNode, it.key()),
+        });
+    }
+    return overrides;
+}
+
+std::vector<PresetManager::PrefabVariantComponentOverride>
+PresetManager::GetPrefabVariantComponentOverrides(const Object3d* object) const {
+    std::vector<PrefabVariantComponentOverride> overrides;
+    if (!object || !object->IsPrefabInstance()) {
+        return overrides;
+    }
+
+    const auto& info = object->GetPrefabInstanceInfo();
+    auto assetIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&info](const auto& pair) {
+        return pair.second.value("assetId", "") == info.assetId;
+    });
+    if (assetIt == prefabs_.end()) {
+        return overrides;
+    }
+
+    const std::string baseAssetId = assetIt->second.value("baseAssetId", "");
+    auto baseIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&baseAssetId](const auto& pair) {
+        return pair.second.value("assetId", "") == baseAssetId;
+    });
+    if (baseAssetId.empty() || baseIt == prefabs_.end() || !baseIt->second.contains("root")) {
+        return overrides;
+    }
+
+    const json& allOverrides = assetIt->second["componentOverrides"];
+    if (!allOverrides.is_object() || !allOverrides.contains(info.sourceObjectId) ||
+        !allOverrides[info.sourceObjectId].is_object()) {
+        return overrides;
+    }
+
+    const json* baseNode = FindSourceNodeRecursive(baseIt->second["root"], info.sourceObjectId);
+    const json* variantNode = FindPrefabSourceNode(info);
+    if (!baseNode || !variantNode) {
+        return overrides;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    for (auto it = allOverrides[info.sourceObjectId].begin();
+        it != allOverrides[info.sourceObjectId].end(); ++it) {
+        if (!it.value().is_boolean()) {
+            continue;
+        }
+        const EditorComponentDescriptor* component = registry->FindComponent(it.key());
+        if (!component || !IsPrefabComponentDescriptor(*component)) {
+            continue;
+        }
+        overrides.push_back({
+            component->typeId,
+            component->displayName,
+            registry->IsComponentPresent(*baseNode, component->typeId),
+            registry->IsComponentPresent(*variantNode, component->typeId),
         });
     }
     return overrides;
@@ -1742,6 +2102,160 @@ bool PresetManager::ApplyPrefabProperty(
     return true;
 }
 
+bool PresetManager::ApplyPrefabComponent(
+    Object3d* object,
+    const std::string& componentTypeId,
+    const std::vector<Object3d*>& sceneObjects) {
+    if (!object || !object->IsPrefabInstance()) {
+        return false;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    const EditorComponentDescriptor* component = registry->FindComponent(componentTypeId);
+    if (!component || !IsPrefabComponentDescriptor(*component) ||
+        !registry->IsComponentApplicable(object, componentTypeId)) {
+        return false;
+    }
+
+    const auto info = object->GetPrefabInstanceInfo();
+    json* sourceNode = FindPrefabSourceNode(info);
+    if (!sourceNode) {
+        return false;
+    }
+    const bool sourcePresent = registry->IsComponentPresent(*sourceNode, componentTypeId);
+    const bool instancePresent = registry->IsComponentPresent(object, componentTypeId);
+    if (sourcePresent == instancePresent) {
+        return false;
+    }
+
+    std::string prefabName = info.prefabName;
+    auto assetIt = prefabs_.find(prefabName);
+    if (assetIt == prefabs_.end() || assetIt->second.value("assetId", "") != info.assetId) {
+        assetIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&info](const auto& pair) {
+            return pair.second.value("assetId", "") == info.assetId;
+        });
+        if (assetIt == prefabs_.end()) {
+            return false;
+        }
+        prefabName = assetIt->first;
+    }
+    MigrateLegacyComponentOverrides(assetIt->second);
+
+    std::unordered_map<std::string, bool> oldEffectivePresence;
+    for (const auto& [name, asset] : prefabs_) {
+        (void)name;
+        if (!asset.contains("root") || !asset["root"].is_object()) {
+            continue;
+        }
+        const json* node = FindSourceNodeRecursive(asset["root"], info.sourceObjectId);
+        if (node) {
+            oldEffectivePresence[asset.value("assetId", "")] =
+                registry->IsComponentPresent(*node, componentTypeId);
+        }
+    }
+
+    const json beforeAsset = assetIt->second;
+    const std::string baseAssetId = assetIt->second.value("baseAssetId", "");
+    if (baseAssetId.empty()) {
+        if (!WriteComponentStateFromObject(*sourceNode, object, *component, instancePresent)) {
+            return false;
+        }
+    } else {
+        auto baseIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&baseAssetId](const auto& pair) {
+            return pair.second.value("assetId", "") == baseAssetId;
+        });
+        const json* baseNode = baseIt != prefabs_.end() && baseIt->second.contains("root")
+            ? FindSourceNodeRecursive(baseIt->second["root"], info.sourceObjectId)
+            : nullptr;
+        if (!baseNode) {
+            return false;
+        }
+
+        RemoveComponentPropertyOverrides(assetIt->second, info.sourceObjectId, componentTypeId);
+        json& objectComponentOverrides = assetIt->second["componentOverrides"][info.sourceObjectId];
+        const bool basePresent = registry->IsComponentPresent(*baseNode, componentTypeId);
+        if (basePresent == instancePresent) {
+            objectComponentOverrides.erase(componentTypeId);
+            if (objectComponentOverrides.empty()) {
+                assetIt->second["componentOverrides"].erase(info.sourceObjectId);
+            }
+        } else {
+            objectComponentOverrides[componentTypeId] = instancePresent;
+        }
+
+        if (instancePresent) {
+            for (const EditorPropertyDescriptor* property : registry->GetPropertiesForComponent(componentTypeId)) {
+                if (!property || !HasEditorPropertyFlag(property->flags, EditorPropertyFlags::PrefabOverride) ||
+                    property->serializedPath.empty()) {
+                    continue;
+                }
+                const json instanceValue = registry->GetValue(object, property->path);
+                const json baseValue = ReadSourceProperty(*baseNode, property->path);
+                if (!instanceValue.is_null() && !JsonValuesEqual(baseValue, instanceValue)) {
+                    assetIt->second["propertyOverrides"][info.sourceObjectId][property->path] = instanceValue;
+                }
+            }
+        }
+    }
+
+    RefreshPrefabInheritance();
+    for (Object3d* candidate : sceneObjects) {
+        if (!candidate || candidate == object || !candidate->IsPrefabInstance()) {
+            continue;
+        }
+        const auto& candidateInfo = candidate->GetPrefabInstanceInfo();
+        if (candidateInfo.sourceObjectId != info.sourceObjectId ||
+            candidateInfo.instanceId == info.instanceId) {
+            continue;
+        }
+        const auto oldIt = oldEffectivePresence.find(candidateInfo.assetId);
+        const json* newNode = FindPrefabSourceNode(candidateInfo);
+        if (oldIt == oldEffectivePresence.end() || !newNode) {
+            continue;
+        }
+        const bool newPresence = registry->IsComponentPresent(*newNode, componentTypeId);
+        const bool candidatePresence = registry->IsComponentPresent(candidate, componentTypeId);
+        if (newPresence != oldIt->second && candidatePresence == oldIt->second) {
+            ApplySerializedComponentState(candidate, *newNode, *component);
+        }
+    }
+
+    SavePrefabs();
+    if (!suppressPrefabAssetTransaction_) {
+        RegisterPrefabAssetTransaction(
+            this,
+            prefabName,
+            beforeAsset,
+            assetIt->second,
+            "Apply Prefab Component Override");
+    }
+    return true;
+}
+
+bool PresetManager::RevertPrefabComponent(Object3d* object, const std::string& componentTypeId) {
+    if (!object || !object->IsPrefabInstance()) {
+        return false;
+    }
+
+    const json* sourceNode = FindPrefabSourceNode(object->GetPrefabInstanceInfo());
+    if (!sourceNode) {
+        return false;
+    }
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    const EditorComponentDescriptor* component = registry->FindComponent(componentTypeId);
+    if (!component || !IsPrefabComponentDescriptor(*component)) {
+        return false;
+    }
+    const bool sourcePresent = registry->IsComponentPresent(*sourceNode, componentTypeId);
+    const bool instancePresent = registry->IsComponentPresent(object, componentTypeId);
+    if (sourcePresent == instancePresent) {
+        return false;
+    }
+    return ApplySerializedComponentState(object, *sourceNode, *component);
+}
+
 bool PresetManager::RevertPrefabVariantProperty(
     Object3d* object,
     const std::string& propertyPath,
@@ -1805,6 +2319,82 @@ bool PresetManager::RevertPrefabVariantProperty(
     return true;
 }
 
+bool PresetManager::RevertPrefabVariantComponent(
+    Object3d* object,
+    const std::string& componentTypeId,
+    const std::vector<Object3d*>& sceneObjects) {
+    if (!object || !object->IsPrefabInstance()) {
+        return false;
+    }
+
+    const auto info = object->GetPrefabInstanceInfo();
+    auto assetIt = std::find_if(prefabs_.begin(), prefabs_.end(), [&info](const auto& pair) {
+        return pair.second.value("assetId", "") == info.assetId;
+    });
+    if (assetIt == prefabs_.end() || assetIt->second.value("baseAssetId", "").empty()) {
+        return false;
+    }
+
+    json& allOverrides = assetIt->second["componentOverrides"];
+    if (!allOverrides.is_object() || !allOverrides.contains(info.sourceObjectId) ||
+        !allOverrides[info.sourceObjectId].is_object() ||
+        !allOverrides[info.sourceObjectId].contains(componentTypeId)) {
+        return false;
+    }
+
+    EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    registry->InitializeBuiltInProperties();
+    const EditorComponentDescriptor* component = registry->FindComponent(componentTypeId);
+    if (!component || !IsPrefabComponentDescriptor(*component)) {
+        return false;
+    }
+
+    std::unordered_map<std::string, bool> oldEffectivePresence;
+    for (const auto& [name, asset] : prefabs_) {
+        (void)name;
+        if (!asset.contains("root") || !asset["root"].is_object()) continue;
+        const json* node = FindSourceNodeRecursive(asset["root"], info.sourceObjectId);
+        if (node) {
+            oldEffectivePresence[asset.value("assetId", "")] =
+                registry->IsComponentPresent(*node, componentTypeId);
+        }
+    }
+
+    const std::string prefabName = assetIt->first;
+    const json beforeAsset = assetIt->second;
+    allOverrides[info.sourceObjectId].erase(componentTypeId);
+    if (allOverrides[info.sourceObjectId].empty()) {
+        allOverrides.erase(info.sourceObjectId);
+    }
+    RemoveComponentPropertyOverrides(assetIt->second, info.sourceObjectId, componentTypeId);
+    RefreshPrefabInheritance();
+
+    for (Object3d* candidate : sceneObjects) {
+        if (!candidate || !candidate->IsPrefabInstance() ||
+            candidate->GetPrefabInstanceInfo().sourceObjectId != info.sourceObjectId) {
+            continue;
+        }
+        const auto& candidateInfo = candidate->GetPrefabInstanceInfo();
+        const auto oldIt = oldEffectivePresence.find(candidateInfo.assetId);
+        const json* newNode = FindPrefabSourceNode(candidateInfo);
+        if (oldIt == oldEffectivePresence.end() || !newNode) continue;
+        const bool newPresence = registry->IsComponentPresent(*newNode, componentTypeId);
+        const bool currentPresence = registry->IsComponentPresent(candidate, componentTypeId);
+        if (newPresence != oldIt->second && currentPresence == oldIt->second) {
+            ApplySerializedComponentState(candidate, *newNode, *component);
+        }
+    }
+
+    SavePrefabs();
+    RegisterPrefabAssetTransaction(
+        this,
+        prefabName,
+        beforeAsset,
+        assetIt->second,
+        "Revert Prefab Variant Component Override");
+    return true;
+}
+
 bool PresetManager::RevertPrefabProperty(Object3d* object, const std::string& propertyPath) {
     if (!object || !object->IsPrefabInstance()) {
         return false;
@@ -1851,6 +2441,12 @@ int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<O
             candidate->GetPrefabInstanceInfo().instanceId != instanceId) {
             continue;
         }
+        const auto componentOverrides = GetPrefabComponentOverrides(candidate);
+        for (const auto& entry : componentOverrides) {
+            if (ApplyPrefabComponent(candidate, entry.componentTypeId, sceneObjects)) {
+                ++applied;
+            }
+        }
         const auto overrides = GetPrefabOverrides(candidate);
         for (const auto& entry : overrides) {
             if (ApplyPrefabProperty(candidate, entry.propertyPath, sceneObjects)) {
@@ -1876,6 +2472,12 @@ int PresetManager::RevertAllPrefabOverrides(Object3d* object, const std::vector<
         if (!candidate || !candidate->IsPrefabInstance() ||
             candidate->GetPrefabInstanceInfo().instanceId != instanceId) {
             continue;
+        }
+        const auto componentOverrides = GetPrefabComponentOverrides(candidate);
+        for (const auto& entry : componentOverrides) {
+            if (RevertPrefabComponent(candidate, entry.componentTypeId)) {
+                ++reverted;
+            }
         }
         const auto overrides = GetPrefabOverrides(candidate);
         for (const auto& entry : overrides) {

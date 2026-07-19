@@ -81,9 +81,16 @@ void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	
 	// ポートフォリオ用に、エディタUIを隠してゲーム画面だけを表示する撮影モードを切り替える。
 	void SetPortfolioCaptureMode(bool enabled);
 	bool IsPortfolioCaptureMode() const { return portfolioCaptureMode_; }
+	// 登録済みEditor Commandを、メニュー以外のUIや入力処理から実行します。
+	bool ExecuteEditorCommand(const char* commandId);
 
 	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 private:
+	void RegisterEditorCommands();
+	bool DrawEditorCommandMenuItem(const char* commandId, const char* labelOverride = nullptr, bool selected = false);
+	bool CanEditScene() const;
+	bool CanEditSelectedObject() const;
+	void StopPlay();
 	void SetupDefaultDockspace();
 	void SetReplayDebuggerVisible(bool visible);
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
@@ -105,6 +112,9 @@ bool HasUnsavedEditorChanges() const;
 		int timeHistoryIndex);
 
 private:
+	SceneManager* sceneManager_ = nullptr;
+	bool* activePlayState_ = nullptr;
+	std::string activeSceneName_;
 	std::unique_ptr<PostEffectEditor> postEffectEditor_;
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;

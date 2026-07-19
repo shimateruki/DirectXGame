@@ -25,6 +25,11 @@ private:
     void LoadSingleJson(BaseScene* scene, const std::string& filename);
 
 private:
+    struct PendingParentReference {
+        std::string guid;
+        std::string legacyName;
+    };
+
     // 子オブジェクト読み込み後に親子関係を解決するための待機リスト。
-    std::map<Object3d*, std::string> parentPendingList_;
+    std::map<Object3d*, PendingParentReference> parentPendingList_;
 };

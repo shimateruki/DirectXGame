@@ -80,8 +80,9 @@ void DrawShortcutTable() {
     AddShortcutRow("F", "選択中の3DオブジェクトへEditorカメラをフォーカスします。");
     AddShortcutRow("T / R / S", "移動、回転、スケールのImGuizmoを切り替えます。");
     AddShortcutRow("Delete", "選択中の3Dオブジェクトを削除します。ロック中の対象は先にロックを解除します。");
-    AddShortcutRow("Ctrl + C", "選択中の3Dオブジェクトを複製します。");
+    AddShortcutRow("Ctrl + D / Ctrl + C", "選択中の3Dオブジェクトを複製します。どちらも同じEditor Commandを実行します。");
     AddShortcutRow("Ctrl + Z / Ctrl + Y", "Inspector、ImGuizmo、Ghost Recorderを含むEditor操作を共通履歴でUndo / Redoします。保存済みJSONそのものは巻き戻しません。");
+    AddShortcutRow("Ctrl + P", "Active Sceneの再生と停止を切り替えます。");
     AddShortcutRow("End", "選択中のオブジェクトを床へ落とします。コリジョン形状と接地位置を確認してください。");
     AddShortcutRow("Tab", "Game View上の作成パレットを開閉します。");
     AddShortcutRow("左クリック", "配置プレビュー、ブラシ配置、Game View上の選択を確定します。");

@@ -405,17 +405,17 @@ bool HasPseudoComponent(const Object3d* object, PseudoComponentKind kind) {
         return config.type != ColliderType::kNone || object->GetCollisionAttribute() != 0 || object->GetCollisionMask() != 0;
     }
     case PseudoComponentKind::Particle:
-        return !object->GetParticleName().empty() || !object->GetGPUParticleName().empty();
+        return object->HasParticleEmitterComponent();
     case PseudoComponentKind::Lod:
         return object->IsLodEnabled() || object->HasLodLevels();
     case PseudoComponentKind::MeshEffect:
-        return !object->GetMeshEffect1Name().empty() || !object->GetMeshEffect2Name().empty();
+        return object->HasMeshEffectComponent();
     case PseudoComponentKind::BoneAnimation:
         return !object->animName_.empty() || object->HasAnimatorController();
     case PseudoComponentKind::PathMove:
-        return !object->recordPathName_.empty();
+        return object->HasPathMoverComponent();
     case PseudoComponentKind::LinkIds:
-        return object->GetEventID() != 0 || object->GetTargetID() != 0;
+        return object->HasGameplayLinkComponent();
     }
     return false;
 }
@@ -468,6 +468,7 @@ void AddDefaultParticleComponent(Object3d* object) {
         return;
     }
 
+    object->EnsureParticleEmitterComponent();
     const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
     if (!gpuPresets.empty()) {
         object->SetGPUParticleName(gpuPresets.begin()->first);
@@ -520,6 +521,7 @@ void AddPseudoComponentToObject(Object3d* object, PseudoComponentKind kind, bool
         }
         break;
     case PseudoComponentKind::MeshEffect: {
+        object->EnsureMeshEffectComponent();
         if (object->GetMeshEffect1Name().empty()) {
             const std::string effectPath = FindFirstMeshEffectPath();
             if (!effectPath.empty()) {
@@ -538,9 +540,11 @@ void AddPseudoComponentToObject(Object3d* object, PseudoComponentKind kind, bool
         object->isAnimLoop_ = true;
         break;
     case PseudoComponentKind::PathMove:
+        object->EnsurePathMoverComponent();
         DebugConsole::GetInstance()->AddLog("Path Move component is enabled by selecting a path in the Path Move section.");
         break;
     case PseudoComponentKind::LinkIds:
+        object->EnsureGameplayLinkComponent();
         DebugConsole::GetInstance()->AddLog("Link IDs component is enabled by setting Event ID or Target ID.");
         break;
     }
@@ -562,16 +566,14 @@ void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind)
         break;
     }
     case PseudoComponentKind::Particle:
-        object->SetParticleName("");
-        object->SetGPUParticleName("");
+        object->RemoveParticleEmitterComponent();
         break;
     case PseudoComponentKind::Lod:
         object->SetLodEnabled(false);
         object->ClearLodLevels();
         break;
     case PseudoComponentKind::MeshEffect:
-        object->SetMeshEffect1Name("");
-        object->SetMeshEffect2Name("");
+        object->RemoveMeshEffectComponent();
         break;
     case PseudoComponentKind::BoneAnimation:
         object->animName_.clear();
@@ -579,14 +581,10 @@ void RemovePseudoComponentFromObject(Object3d* object, PseudoComponentKind kind)
         object->ClearAnimatorController();
         break;
     case PseudoComponentKind::PathMove:
-        object->recordPathName_.clear();
-        if (object->recorder_) {
-            object->recorder_->Stop();
-        }
+        object->RemovePathMoverComponent();
         break;
     case PseudoComponentKind::LinkIds:
-        object->SetEventID(0);
-        object->SetTargetID(0);
+        object->RemoveGameplayLinkComponent();
         break;
     }
 }

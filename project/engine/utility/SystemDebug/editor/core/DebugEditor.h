@@ -368,6 +368,7 @@ struct PlacementResult {
     Vector3 GetObjectWorldPositionForSelection(Object3d* object);
     void ApplyObjectState(Object3d* object, const nlohmann::json& state);
     Object3d* FindObjectByName(const std::string& name) const;
+    Object3d* FindObjectByPersistentGuid(const std::string& guid) const;
     Object3d* AddObjectFromState(const nlohmann::json& state);
     std::unique_ptr<Object3d> RemoveObjectImmediate(Object3d* object);
     void EndPrefabEditSession(bool clearTransactions);

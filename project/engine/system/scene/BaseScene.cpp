@@ -8,6 +8,7 @@
 #include "LightManager.h"
 #include "SceneManager.h"
 #include <algorithm>
+#include <unordered_set>
 
 std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& defaultPath) {
     if (sceneAssetObjectLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {
@@ -391,6 +392,43 @@ Object3d* BaseScene::FindObjectByEventID(int eventID) {
         }
     }
     return nullptr;
+}
+
+Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
+    if (!Object3d::IsPersistentGuidValid(guid)) {
+        return nullptr;
+    }
+    for (const auto& object : GetObjects()) {
+        if (object && object->GetPersistentGuid() == guid) {
+            return object.get();
+        }
+    }
+    return nullptr;
+}
+
+const Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
+    return const_cast<BaseScene*>(this)->FindObjectByPersistentGuid(guid);
+}
+
+std::size_t BaseScene::EnsureUniquePersistentObjectGuids() {
+    std::unordered_set<std::string> usedGuids;
+    usedGuids.reserve(GetObjects().size());
+    std::size_t regeneratedCount = 0;
+
+    for (const auto& object : GetObjects()) {
+        if (!object) continue;
+
+        const std::string currentGuid = object->EnsurePersistentGuid();
+        if (usedGuids.insert(currentGuid).second) {
+            continue;
+        }
+
+        do {
+            object->RegeneratePersistentGuid();
+        } while (!usedGuids.insert(object->GetPersistentGuid()).second);
+        ++regeneratedCount;
+    }
+    return regeneratedCount;
 }
 
 // 名前からスプライトを取得する

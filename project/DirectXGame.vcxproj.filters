@@ -211,7 +211,9 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Animation.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
@@ -1578,6 +1580,21 @@
     <ClInclude Include="engine\component\Collider.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\component\GameplayLinkComponent.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\component\MeshEffectComponent.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\component\ObjectComponent.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\component\ParticleEmitterComponent.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\component\PathMoverComponent.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\3d\MeshRenderer.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1755,6 +1772,8 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />

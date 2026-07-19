@@ -256,6 +256,8 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Save.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Selection.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp" />
@@ -568,6 +570,8 @@
     <ClInclude Include="game\actor\enemy\core\AttackTelegraph.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
@@ -578,6 +582,11 @@
     <ClInclude Include="game\actor\enemy\boss\BossCore.h" />
     <ClInclude Include="game\actor\enemy\core\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
+    <ClInclude Include="engine\component\GameplayLinkComponent.h" />
+    <ClInclude Include="engine\component\MeshEffectComponent.h" />
+    <ClInclude Include="engine\component\ObjectComponent.h" />
+    <ClInclude Include="engine\component\ParticleEmitterComponent.h" />
+    <ClInclude Include="engine\component\PathMoverComponent.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorManager.h" />
     <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h" />

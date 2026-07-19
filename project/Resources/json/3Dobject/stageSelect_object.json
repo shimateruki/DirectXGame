@@ -7,7 +7,7 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
-            "castShadow": true,
+            "castShadow": false,
             "collider": {
                 "center": [
                     0.0,
@@ -105,19 +105,19 @@
             ],
             "type": "Model",
             "waterParam": {
-                "billboardScale": 0.550000011920929,
-                "effectIntensity": 0.05000000074505806,
-                "effectScale": 1.0,
-                "effectScaleX": 1.0,
-                "effectScaleY": 1.0,
-                "effectScaleZ": 1.0,
-                "effectSoftness": 0.08500000089406967,
+                "billboardScale": 0.5,
+                "effectIntensity": 1.15,
+                "effectScale": 0.82,
+                "effectScaleX": 8.0,
+                "effectScaleY": 0.35,
+                "effectScaleZ": 1.15,
+                "effectSoftness": 0.48,
                 "effectType": 0.0,
-                "flowSpeedX": 0.05000000074505806,
-                "flowSpeedY": 0.07999999821186066,
-                "waveFrequency": 11.100000381469727,
-                "waveHeight": 0.2800000011920929,
-                "waveSpeed": 1.850000023841858
+                "flowSpeedX": 0.035,
+                "flowSpeedY": 0.018,
+                "waveFrequency": 4.2,
+                "waveHeight": 0.42,
+                "waveSpeed": 1.05
             }
         },
         {

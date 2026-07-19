@@ -205,12 +205,15 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 
     // 全ファイルを読み込み後、親子関係を解決
     auto& objects = scene->GetObjects();
-    for (auto const& [childObj, parentName] : parentPendingList_) {
-        Object3d* parentObj = nullptr;
-        for (auto& obj : objects) {
-            if (obj && obj->GetName() == parentName) {
-                parentObj = obj.get();
-                break;
+    scene->EnsureUniquePersistentObjectGuids();
+    for (auto const& [childObj, parentReference] : parentPendingList_) {
+        Object3d* parentObj = scene->FindObjectByPersistentGuid(parentReference.guid);
+        if (!parentObj && !parentReference.legacyName.empty()) {
+            for (auto& obj : objects) {
+                if (obj && obj->GetName() == parentReference.legacyName) {
+                    parentObj = obj.get();
+                    break;
+                }
             }
         }
         if (parentObj) {
@@ -408,6 +411,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 if (!targetObject) continue;
 
+                if (objData.contains("guid") && objData["guid"].is_string()) {
+                    targetObject->SetPersistentGuid(objData["guid"].get<std::string>());
+                }
+                targetObject->EnsurePersistentGuid();
+                targetObject->DeserializeFeatureComponents(objData);
+
                 if (objData.contains("prefabInstance") && objData["prefabInstance"].is_object()) {
                     const auto& prefab = objData["prefabInstance"];
                     Object3d::PrefabInstanceInfo info;
@@ -520,10 +529,6 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
                 if (objData.contains("castShadow")) targetObject->SetCastShadow(objData["castShadow"].get<bool>());
-                if (objData.contains("particleName")) targetObject->SetParticleName(objData["particleName"].get<std::string>());
-                if (objData.contains("gpuParticleName")) targetObject->SetGPUParticleName(objData["gpuParticleName"].get<std::string>());
-                if (objData.contains("meshEffect1")) targetObject->SetMeshEffect1Name(objData["meshEffect1"].get<std::string>());
-                if (objData.contains("meshEffect2")) targetObject->SetMeshEffect2Name(objData["meshEffect2"].get<std::string>());
                 if (objData.contains("localFog")) {
                     if (auto* fogData = targetObject->GetLocalFogData()) {
                         auto& f = objData["localFog"];
@@ -578,8 +583,6 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 // 6. Events & Params
                 if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
-                if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"]);
-                if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"]);
                 if (objData.contains("itemType") && objData["itemType"].is_string()) {
                     targetObject->SetItemType(objData["itemType"].get<std::string>());
                 }
@@ -646,7 +649,6 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 // 古いフラットな形式の読み込み（後方互換性用）
                 if (objData.contains("animName")) targetObject->animName_ = objData["animName"];
                 if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"];
-                if (objData.contains("isAnimRelative")) targetObject->isRecordRelative_ = objData["isAnimRelative"];
 
                 // ネストされた形式の読み込み（最新仕様）
                 if (objData.contains("animation")) {
@@ -657,30 +659,29 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         targetObject->SetAnimatorController(anim.value("animatorController", ""));
                     }
                 }
-                if (objData.contains("recorder")) {
-                    const auto& rec = objData["recorder"];
-                    if (rec.contains("recordPathName")) targetObject->recordPathName_ = rec["recordPathName"];
-                    if (rec.contains("isRecordLoop")) targetObject->isRecordLoop_ = rec["isRecordLoop"];
-                    if (rec.contains("isRecordRelative")) targetObject->isRecordRelative_ = rec["isRecordRelative"];
-                }
-
                 targetObject->InitializeRecorder(nullptr);
                 bool isCinematic = targetObject->IsCameraObject();
 
                 // パスデータが存在する場合に再生を開始
-                if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {
+                if (!targetObject->GetRecordPathName().empty() && targetObject->recorder_) {
                     targetObject->recorder_->Play(
-                        targetObject->recordPathName_,
-                        targetObject->isRecordLoop_,
-                        targetObject->isRecordRelative_,
+                        targetObject->GetRecordPathName(),
+                        targetObject->IsRecordLoop(),
+                        targetObject->IsRecordRelative(),
                         isCinematic
                     );
                 }
 
                 // 8. 親子関係保留 (一括解決のためにメンバ変数のリストに追加しておく)
+                PendingParentReference parentReference;
+                if (objData.contains("parentGuid") && objData["parentGuid"].is_string()) {
+                    parentReference.guid = objData["parentGuid"].get<std::string>();
+                }
                 if (objData.contains("parentName") && objData["parentName"].is_string()) {
-                    std::string pName = objData["parentName"].get<std::string>();
-                    if (!pName.empty()) parentPendingList_[targetObject] = pName;
+                    parentReference.legacyName = objData["parentName"].get<std::string>();
+                }
+                if (!parentReference.guid.empty() || !parentReference.legacyName.empty()) {
+                    parentPendingList_[targetObject] = std::move(parentReference);
                 }
             }
         }

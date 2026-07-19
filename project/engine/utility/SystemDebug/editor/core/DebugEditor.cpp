@@ -50,6 +50,7 @@
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
+#include "EditorCommandRegistry.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -762,14 +763,24 @@ void DebugEditor::Update() {
                 }
                 // 通常モードなら「オブジェクト」を消す！
                 else if (!isPathEditMode_) {
-                    DeleteSelected();
+                    EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDelete);
                 }
             }
 
-            if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
-            if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Z)) PerformUndo();
-            if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Y)) PerformRedo();
-            if (input->IsKeyTriggered(DIK_END)) DropToFloor();
+            const bool isControlPressed =
+                input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
+            if (isControlPressed && (input->IsKeyTriggered(DIK_C) || input->IsKeyTriggered(DIK_D))) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDuplicate);
+            }
+            if (isControlPressed && input->IsKeyTriggered(DIK_Z)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditUndo);
+            }
+            if (isControlPressed && input->IsKeyTriggered(DIK_Y)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditRedo);
+            }
+            if (input->IsKeyTriggered(DIK_END)) {
+                EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::ObjectDropToFloor);
+            }
 
             // カメラフォーカス機能
             if (input->IsKeyTriggered(DIK_F) && current == CameraEditor::GetInstance()) {

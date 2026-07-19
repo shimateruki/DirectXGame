@@ -17,6 +17,7 @@
 #include <ProfilerManager.h>
 #include <fstream>
 #include <filesystem>
+#include <initializer_list>
 
 namespace {
 
@@ -81,12 +82,219 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // Editor保存、シーンロード、Prefab的な複製で使うObject3dの入出力を担当する。
 // 保存項目が増えた時は、このファイル内でExport/Importの対応をそろえる。
 // ========================================================================
+bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) const {
+    if (componentTypeId.empty()) {
+        return false;
+    }
+    const auto component = opaqueComponents_.find(componentTypeId);
+    return component != opaqueComponents_.end() && component->is_object() &&
+        component->value("_editorPresent", false);
+}
+
+void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bool present) {
+    if (componentTypeId.empty()) {
+        return;
+    }
+
+    if (present) {
+        json& component = opaqueComponents_[componentTypeId];
+        if (!component.is_object()) {
+            component = json::object();
+        }
+        component["_editorPresent"] = true;
+        return;
+    }
+
+    const auto component = opaqueComponents_.find(componentTypeId);
+    if (component == opaqueComponents_.end() || !component->is_object()) {
+        return;
+    }
+    component->erase("_editorPresent");
+    if (component->empty()) {
+        opaqueComponents_.erase(component);
+    }
+}
+
+json Object3d::SerializeFeatureComponents() const {
+    json components = opaqueComponents_.is_object() ? opaqueComponents_ : json::object();
+
+    const auto clearKnownPayload = [&components](
+        const std::string& typeId,
+        std::initializer_list<const char*> knownKeys) {
+        if (!components.contains(typeId) || !components[typeId].is_object()) {
+            return;
+        }
+        json& payload = components[typeId];
+        payload.erase("_editorPresent");
+        payload.erase("version");
+        for (const char* key : knownKeys) {
+            payload.erase(key);
+        }
+        if (payload.empty()) {
+            components.erase(typeId);
+        } else {
+            payload["_editorPresent"] = false;
+        }
+    };
+
+    if (particleEmitterComponent_) {
+        json& payload = components[std::string(kParticleEmitterComponentType)];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload["_editorPresent"] = true;
+        payload["cpuParticle"] = particleEmitterComponent_->GetCpuParticle();
+        payload["gpuParticle"] = particleEmitterComponent_->GetGpuParticle();
+    } else {
+        clearKnownPayload(std::string(kParticleEmitterComponentType), { "cpuParticle", "gpuParticle" });
+    }
+
+    if (meshEffectComponent_) {
+        json& payload = components[std::string(kMeshEffectComponentType)];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload["_editorPresent"] = true;
+        payload["primary"] = meshEffectComponent_->GetPrimaryEffect();
+        payload["secondary"] = meshEffectComponent_->GetSecondaryEffect();
+    } else {
+        clearKnownPayload(std::string(kMeshEffectComponentType), { "primary", "secondary" });
+    }
+
+    if (pathMoverComponent_) {
+        json& payload = components[std::string(kPathMoverComponentType)];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload["_editorPresent"] = true;
+        payload["path"] = pathMoverComponent_->GetPathName();
+        payload["loop"] = pathMoverComponent_->IsLoop();
+        payload["relative"] = pathMoverComponent_->IsRelative();
+    } else {
+        clearKnownPayload(std::string(kPathMoverComponentType), { "path", "loop", "relative" });
+    }
+
+    if (gameplayLinkComponent_) {
+        json& payload = components[std::string(kGameplayLinkComponentType)];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload["_editorPresent"] = true;
+        payload["eventId"] = gameplayLinkComponent_->GetEventId();
+        payload["targetId"] = gameplayLinkComponent_->GetTargetId();
+    } else {
+        clearKnownPayload(std::string(kGameplayLinkComponentType), { "eventId", "targetId" });
+    }
+
+    return components;
+}
+
+void Object3d::DeserializeFeatureComponents(const json& objectData) {
+    opaqueComponents_ = objectData.contains("components") && objectData["components"].is_object()
+        ? objectData["components"]
+        : json::object();
+
+    particleEmitterComponent_.reset();
+    meshEffectComponent_.reset();
+    pathMoverComponent_.reset();
+    gameplayLinkComponent_.reset();
+    gpuEmitter_.reset();
+    currentMeshEffect1_.clear();
+    currentMeshEffect2_.clear();
+    attachedEffects1_.clear();
+    attachedEffects2_.clear();
+    if (recorder_) recorder_->Stop();
+
+    const auto getPayload = [this](std::string_view typeId) -> const json* {
+        const std::string key(typeId);
+        return opaqueComponents_.contains(key) && opaqueComponents_[key].is_object()
+            ? &opaqueComponents_[key]
+            : nullptr;
+    };
+    const auto resolvePresence = [](const json* payload, bool legacyPresent) {
+        if (payload && payload->contains("_editorPresent") && (*payload)["_editorPresent"].is_boolean()) {
+            return (*payload)["_editorPresent"].get<bool>();
+        }
+        return payload != nullptr || legacyPresent;
+    };
+
+    const json* particlePayload = getPayload(kParticleEmitterComponentType);
+    const std::string legacyCpu = objectData.value("particleName", "");
+    const std::string legacyGpu = objectData.value("gpuParticleName", "");
+    if (resolvePresence(particlePayload, !legacyCpu.empty() || !legacyGpu.empty())) {
+        ParticleEmitterComponent* component = EnsureParticleEmitterComponent();
+        component->SetCpuParticle(
+            particlePayload && particlePayload->contains("cpuParticle")
+                ? particlePayload->value("cpuParticle", "") : legacyCpu);
+        component->SetGpuParticle(
+            particlePayload && particlePayload->contains("gpuParticle")
+                ? particlePayload->value("gpuParticle", "") : legacyGpu);
+    }
+
+    const json* meshEffectPayload = getPayload(kMeshEffectComponentType);
+    const std::string legacyPrimary = objectData.value("meshEffect1", "");
+    const std::string legacySecondary = objectData.value("meshEffect2", "");
+    if (resolvePresence(meshEffectPayload, !legacyPrimary.empty() || !legacySecondary.empty())) {
+        MeshEffectComponent* component = EnsureMeshEffectComponent();
+        component->SetPrimaryEffect(
+            meshEffectPayload && meshEffectPayload->contains("primary")
+                ? meshEffectPayload->value("primary", "") : legacyPrimary);
+        component->SetSecondaryEffect(
+            meshEffectPayload && meshEffectPayload->contains("secondary")
+                ? meshEffectPayload->value("secondary", "") : legacySecondary);
+    }
+
+    const json* recorder = objectData.contains("recorder") && objectData["recorder"].is_object()
+        ? &objectData["recorder"] : nullptr;
+    const json* animation = objectData.contains("animation") && objectData["animation"].is_object()
+        ? &objectData["animation"] : nullptr;
+    std::string legacyPath;
+    bool legacyLoop = false;
+    bool legacyRelative = false;
+    if (animation) {
+        legacyPath = animation->value("recordPathName", "");
+        legacyRelative = animation->value("isAnimRelative", false);
+    }
+    if (recorder) {
+        legacyPath = recorder->value("recordPathName", legacyPath);
+        legacyLoop = recorder->value("isRecordLoop", false);
+        legacyRelative = recorder->value("isRecordRelative", legacyRelative);
+    }
+    const json* pathPayload = getPayload(kPathMoverComponentType);
+    if (resolvePresence(pathPayload, !legacyPath.empty())) {
+        PathMoverComponent* component = EnsurePathMoverComponent();
+        component->SetPathName(
+            pathPayload && pathPayload->contains("path")
+                ? pathPayload->value("path", "") : legacyPath);
+        component->SetLoop(
+            pathPayload && pathPayload->contains("loop")
+                ? pathPayload->value("loop", false) : legacyLoop);
+        component->SetRelative(
+            pathPayload && pathPayload->contains("relative")
+                ? pathPayload->value("relative", false) : legacyRelative);
+    }
+
+    const int legacyEventId = objectData.value("myEventID", -1);
+    const int legacyTargetId = objectData.value("targetID", -1);
+    const json* linkPayload = getPayload(kGameplayLinkComponentType);
+    if (resolvePresence(linkPayload, legacyEventId >= 0 || legacyTargetId >= 0)) {
+        GameplayLinkComponent* component = EnsureGameplayLinkComponent();
+        component->SetEventId(
+            linkPayload && linkPayload->contains("eventId")
+                ? linkPayload->value("eventId", -1) : legacyEventId);
+        component->SetTargetId(
+            linkPayload && linkPayload->contains("targetId")
+                ? linkPayload->value("targetId", -1) : legacyTargetId);
+    }
+}
+
 json Object3d::ExportToJson() {
     json d;
     const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
 
     // 1. 基本設定
+    d["guid"] = EnsurePersistentGuid();
     d["name"] = name_;
+    const json components = SerializeFeatureComponents();
+    if (!components.empty()) {
+        d["components"] = components;
+    }
     if (!isManagedCharacter) {
         d["modelName"] = GetModelName();
     }
@@ -194,10 +402,10 @@ json Object3d::ExportToJson() {
     d["metallic"] = GetMetallic();
     d["roughness"] = GetRoughness();
 
-    d["meshEffect1"] = meshEffectName1_;
-    d["meshEffect2"] = meshEffectName2_;
-    d["particleName"] = particleName_;
-    d["gpuParticleName"] = gpuParticleName_;
+    d["meshEffect1"] = GetMeshEffect1Name();
+    d["meshEffect2"] = GetMeshEffect2Name();
+    d["particleName"] = GetParticleName();
+    d["gpuParticleName"] = GetGPUParticleName();
 
     d["enableNormalMap"] = GetEnableNormalMap();
     d["normalMapPath"] = GetNormalMapPath();
@@ -247,9 +455,9 @@ json Object3d::ExportToJson() {
     d["animation"]["animatorController"] = animatorControllerPath_;
 
     // 8. レコーダー (Ghost)
-    d["recorder"]["recordPathName"] = recordPathName_;
-    d["recorder"]["isRecordLoop"] = isRecordLoop_;
-    d["recorder"]["isRecordRelative"] = isRecordRelative_;
+    d["recorder"]["recordPathName"] = GetRecordPathName();
+    d["recorder"]["isRecordLoop"] = IsRecordLoop();
+    d["recorder"]["isRecordRelative"] = IsRecordRelative();
 
     // 9. ローカルフォグ
     if (auto* fogData = GetLocalFogData()) {
@@ -267,6 +475,12 @@ json Object3d::ExportToJson() {
 
 void Object3d::ImportFromJson(const json& j) {
     // 1. 基本設定
+    if (j.contains("guid") && j["guid"].is_string()) {
+        SetPersistentGuid(j["guid"].get<std::string>());
+    }
+    EnsurePersistentGuid();
+    // 実体Componentと未知Payloadを一度に復元し、旧Top-Level形式も受け入れます。
+    DeserializeFeatureComponents(j);
     if (j.contains("type")) className_ = j["type"];
     const bool isManagedCharacter = className_ == "Player" || className_ == "Enemy";
     if (!isManagedCharacter && j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
@@ -340,8 +554,6 @@ void Object3d::ImportFromJson(const json& j) {
 
     // 4. イベント関連
     if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
-     if (j.contains("targetID")) SetTargetID(j["targetID"]);
-     if (j.contains("myEventID")) SetEventID(j["myEventID"]);
 
     // 5. Stats (Param)
     if (j.contains("param")) {
@@ -399,10 +611,6 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
     if (j.contains("roughness")) SetRoughness(j["roughness"].get<float>());
 
-    if (j.contains("meshEffect1")) meshEffectName1_ = j["meshEffect1"].get<std::string>();
-    if (j.contains("meshEffect2")) meshEffectName2_ = j["meshEffect2"].get<std::string>();
-    if (j.contains("particleName")) particleName_ = j["particleName"].get<std::string>();
-    if (j.contains("gpuParticleName")) gpuParticleName_ = j["gpuParticleName"].get<std::string>();
 
     if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"]);
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);
@@ -468,20 +676,12 @@ void Object3d::ImportFromJson(const json& j) {
                 ClearAnimatorController();
             }
         }
-        if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"]; // 互換性
-        if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"]; // 互換性
     }
 
     // 8. レコーダー (Ghost)
-    if (j.contains("recorder")) {
-        const auto& rec = j["recorder"];
-        if (rec.contains("recordPathName")) recordPathName_ = rec["recordPathName"];
-        if (rec.contains("isRecordLoop")) isRecordLoop_ = rec["isRecordLoop"];
-        if (rec.contains("isRecordRelative")) isRecordRelative_ = rec["isRecordRelative"];
-    }
-    if (recorder_ && !recordPathName_.empty()) {
+    if (recorder_ && !GetRecordPathName().empty()) {
         bool isCinematic = IsCameraObject();
-        recorder_->Play(recordPathName_, isRecordLoop_, isRecordRelative_, isCinematic);
+        recorder_->Play(GetRecordPathName(), IsRecordLoop(), IsRecordRelative(), isCinematic);
     }
 
     // 9. ローカルフォグ

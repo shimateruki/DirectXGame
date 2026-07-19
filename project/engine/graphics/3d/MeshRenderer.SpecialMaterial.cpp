@@ -259,6 +259,11 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
 
+    const bool useWaterGrid = !waterParamData_ || waterParamData_->effectType < 0.5f;
+    if (useWaterGrid && !waterProxyModel_) {
+        InitializeWaterProxyModel();
+    }
+
     common_->SetWaterGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
@@ -271,7 +276,8 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetWaterBakedShaderTextures());
 
-    drawModel->DrawMeshOnly(meshDrawIndex_);
+    drawModel = (useWaterGrid && waterProxyModel_) ? waterProxyModel_.get() : drawModel;
+    drawModel->DrawMeshOnly((useWaterGrid && waterProxyModel_) ? -1 : meshDrawIndex_);
 }
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
@@ -400,6 +406,52 @@ void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
+}
+
+void MeshRenderer::InitializeWaterProxyModel() {
+    ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
+    if (!modelCommon) {
+        return;
+    }
+
+    waterProxyModel_ = std::make_unique<Model>();
+
+    constexpr int kSegments = 64;
+    constexpr int kRow = kSegments + 1;
+    std::vector<Model::VertexData> vertices;
+    vertices.reserve(kRow * kRow);
+
+    for (int iz = 0; iz <= kSegments; ++iz) {
+        const float v = static_cast<float>(iz) / static_cast<float>(kSegments);
+        const float z = -1.0f + v * 2.0f;
+        for (int ix = 0; ix <= kSegments; ++ix) {
+            const float u = static_cast<float>(ix) / static_cast<float>(kSegments);
+            const float x = -1.0f + u * 2.0f;
+
+            Model::VertexData vertex{};
+            vertex.position = { x, 0.0f, z, 1.0f };
+            vertex.texcoord = { u, v };
+            vertex.normal = { 0.0f, 1.0f, 0.0f };
+            vertex.tangent = { 1.0f, 0.0f, 0.0f };
+            vertex.boneWeights = { 0.0f, 0.0f, 0.0f, 0.0f };
+            vertex.boneIndices = { 0.0f, 0.0f, 0.0f, 0.0f };
+            vertices.push_back(vertex);
+        }
+    }
+
+    std::vector<uint32_t> indices;
+    indices.reserve(kSegments * kSegments * 6);
+    for (int iz = 0; iz < kSegments; ++iz) {
+        for (int ix = 0; ix < kSegments; ++ix) {
+            const uint32_t i0 = static_cast<uint32_t>(iz * kRow + ix);
+            const uint32_t i1 = i0 + 1;
+            const uint32_t i2 = i0 + static_cast<uint32_t>(kRow);
+            const uint32_t i3 = i2 + 1;
+            indices.insert(indices.end(), { i0, i2, i1, i1, i2, i3 });
+        }
+    }
+
+    waterProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 
 void MeshRenderer::InitializeFireProxyModel() {

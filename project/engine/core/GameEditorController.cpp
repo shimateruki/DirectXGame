@@ -13,7 +13,9 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "DirectXCommon.h"
+#include "EditorCommandRegistry.h"
 #include "EditorManager.h"
+#include "EditorTransactionManager.h"
 #include "EngineManualWindow.h"
 #include "GhostDirector.h"
 #include "GhostRecorder.h"
@@ -238,9 +240,161 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Obj
 GameEditorController::GameEditorController() = default;
 // GameEditorControllerの既定デストラクタ。明示的な解放はFinalizeで行う。
 GameEditorController::~GameEditorController() = default;
+
+bool GameEditorController::CanEditScene() const {
+	if (!debugEditor_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
+		return false;
+	}
+	const bool isPlaying = activePlayState_ ? *activePlayState_ : sceneManager_->IsPlaying();
+	return !isPlaying;
+}
+
+bool GameEditorController::CanEditSelectedObject() const {
+	return CanEditScene() && debugEditor_->GetSelectedObject() && !debugEditor_->GetIsPathEditMode();
+}
+
+bool GameEditorController::ExecuteEditorCommand(const char* commandId) {
+	return commandId && EditorCommandRegistry::GetInstance()->Execute(commandId);
+}
+
+bool GameEditorController::DrawEditorCommandMenuItem(
+	const char* commandId,
+	const char* labelOverride,
+	bool selected) {
+	const EditorCommand* command = EditorCommandRegistry::GetInstance()->Find(commandId ? commandId : "");
+	if (!command) {
+		return false;
+	}
+	const char* label = labelOverride ? labelOverride : command->displayName.c_str();
+	const char* shortcut = command->shortcut.empty() ? nullptr : command->shortcut.c_str();
+	if (!ImGui::MenuItem(label, shortcut, selected, EditorCommandRegistry::GetInstance()->CanExecute(command->id))) {
+		return false;
+	}
+	return ExecuteEditorCommand(command->id.c_str());
+}
+
+void GameEditorController::StopPlay() {
+	if (!activePlayState_ || !*activePlayState_) {
+		return;
+	}
+	*activePlayState_ = false;
+	if (sceneManager_) {
+		sceneManager_->SetIsPlaying(false);
+	}
+}
+
+void GameEditorController::RegisterEditorCommands() {
+	EditorCommandRegistry* registry = EditorCommandRegistry::GetInstance();
+	registry->UnregisterOwner(this);
+
+	registry->Register({
+		EditorCommandId::Play, "再生", "Game", "Ctrl+P",
+		"Active Sceneをゲームモードで再生します。", { "play", "game", "実行" },
+		[this]() {
+			return activePlayState_ && !*activePlayState_ && sceneManager_ && !sceneManager_->IsTransitioning();
+		},
+		[this]() { RequestPlay(sceneManager_, *activePlayState_, activeSceneName_); }, this });
+
+	registry->Register({
+		EditorCommandId::Stop, "停止", "Game", "Ctrl+P",
+		"ゲームモードを停止して編集Sceneへ戻ります。", { "stop", "game", "停止" },
+		[this]() { return activePlayState_ && *activePlayState_; },
+		[this]() { StopPlay(); }, this });
+
+	registry->Register({
+		EditorCommandId::ReplayPauseResume, "実行を一時停止／再開", "Replay", "",
+		"Replay Debuggerの現在位置でシミュレーションを停止または再開します。",
+		{ "replay", "pause", "resume", "一時停止" },
+		[this]() {
+			return activePlayState_ && *activePlayState_ && replayDebugger_ && replayDebugger_->HasFrames();
+		},
+		[this]() {
+			const bool wasPaused = replayDebugger_->ShouldFreezeSimulation();
+			replayDebugger_->ToggleSimulationPause();
+			if (!wasPaused) SetReplayDebuggerVisible(true);
+		}, this });
+
+	registry->Register({
+		EditorCommandId::SceneNew, "新規Scene Asset", "Scene", "",
+		"新しいScene Assetの作成画面を開きます。", { "scene", "new", "作成" },
+		[this]() { return CanEditScene(); },
+		[this]() { showDebugWindows_ = true; debugEditor_->OpenCreateSceneAssetDialog(); }, this });
+
+	registry->Register({
+		EditorCommandId::SceneSave, "Active Sceneを保存", "Scene", "Ctrl+S",
+		"現在のScene Object、Camera、Spriteを保存します。", { "scene", "save", "保存" },
+		[this]() { return CanEditScene(); },
+		[this]() { debugEditor_->SaveScene(SaveMode::All); }, this });
+
+	registry->Register({
+		EditorCommandId::EditUndo, "元に戻す", "Edit", "Ctrl+Z",
+		"直前のEditor操作を取り消します。", { "undo", "戻す" },
+		[this]() { return CanEditScene() && EditorTransactionManager::GetInstance()->CanUndo(); },
+		[this]() { debugEditor_->PerformUndo(); }, this });
+
+	registry->Register({
+		EditorCommandId::EditRedo, "やり直す", "Edit", "Ctrl+Y",
+		"取り消したEditor操作を再適用します。", { "redo", "やり直す" },
+		[this]() { return CanEditScene() && EditorTransactionManager::GetInstance()->CanRedo(); },
+		[this]() { debugEditor_->PerformRedo(); }, this });
+
+	registry->Register({
+		EditorCommandId::EditDuplicate, "選択Objectを複製", "Edit", "Ctrl+D / Ctrl+C",
+		"選択中のObjectと選択中Hierarchyを複製します。", { "duplicate", "copy", "複製" },
+		[this]() { return CanEditSelectedObject(); },
+		[this]() { debugEditor_->DuplicateSelected(); }, this });
+
+	registry->Register({
+		EditorCommandId::EditDelete, "選択Objectを削除", "Edit", "Delete",
+		"選択中のObjectをSceneから削除します。", { "delete", "remove", "削除" },
+		[this]() { return CanEditSelectedObject(); },
+		[this]() { debugEditor_->DeleteSelected(); }, this });
+
+	registry->Register({
+		EditorCommandId::ObjectDropToFloor, "選択Objectを床へ移動", "Object", "End",
+		"選択Objectを直下のColliderへ接地させます。", { "drop", "floor", "ground", "床" },
+		[this]() { return CanEditSelectedObject(); },
+		[this]() { debugEditor_->DropToFloor(); }, this });
+
+	registry->Register({
+		EditorCommandId::ViewEditorPanels, "Hierarchy / Inspector表示", "View", "",
+		"主要Editorパネルの表示を切り替えます。", { "hierarchy", "inspector", "window" }, {},
+		[this]() { showDebugWindows_ = !showDebugWindows_; }, this });
+	registry->Register({
+		EditorCommandId::ViewConsole, "デバッグログ", "View", "",
+		"Debug Consoleの表示を切り替えます。", { "console", "log", "ログ" }, {},
+		[this]() { showDebugConsole_ = !showDebugConsole_; }, this });
+	registry->Register({
+		EditorCommandId::ViewStatus, "ステータス", "View", "",
+		"CPU/GPUステータスの表示を切り替えます。", { "status", "performance", "fps" }, {},
+		[this]() { showTimeController_ = !showTimeController_; }, this });
+	registry->Register({
+		EditorCommandId::ViewReplay, "リプレイデバッガー", "View", "",
+		"Replay Editorの表示を切り替えます。", { "replay", "time machine" }, {},
+		[this]() { SetReplayDebuggerVisible(!showReplayDebugger_); }, this });
+	registry->Register({
+		EditorCommandId::ViewBossDebug, "ボスロジックデバッグ", "View", "",
+		"ボスロジックデバッグの表示を切り替えます。", { "boss", "debug", "ボス" }, {},
+		[this]() { showBossDebug_ = !showBossDebug_; }, this });
+	registry->Register({
+		EditorCommandId::ViewPortfolio, "ポートフォリオ撮影モード", "View", "F10",
+		"Editor UIを隠してゲーム画面だけを表示します。", { "capture", "portfolio", "撮影" }, {},
+		[this]() { SetPortfolioCaptureMode(!portfolioCaptureMode_); }, this });
+
+	registry->Register({
+		EditorCommandId::HelpManual, "エンジン説明書", "Help", "",
+		"Editor内のエンジン説明書を開きます。", { "manual", "help", "説明書" },
+		[this]() { return engineManualWindow_ != nullptr; },
+		[this]() { engineManualWindow_->Open(); }, this });
+	registry->Register({
+		EditorCommandId::HelpProfiler, "システムプロファイラ", "Help", "",
+		"CPU/GPUシステムプロファイラを開きます。", { "profiler", "performance", "性能" }, {},
+		[]() { ProfilerManager::GetInstance()->Open(); }, this });
+}
 // ゲームエディタで使う各種ツールとウィンドウを生成し、SceneManagerへ接続する。
 
 void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+	sceneManager_ = sceneManager;
 	postEffectEditor_ = std::make_unique<PostEffectEditor>();
 	postEffectEditor_->Initialize(PostEffect::GetInstance());
 
@@ -304,10 +458,16 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 			debrisEffectEditor_.get(),
 			trailEmitterEditor_.get());
 	}
+
+	RegisterEditorCommands();
 }
 // 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
 
 void GameEditorController::Finalize() {
+	EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
+	activePlayState_ = nullptr;
+	activeSceneName_.clear();
+	sceneManager_ = nullptr;
 	if (replayDebugger_) {
 		replayDebugger_->Finalize();
 	}
@@ -689,21 +849,26 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 // 再生/停止、表示切替、シーン切替、ヘルプなどのメインメニューを描画する。
 
 void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	sceneManager_ = sceneManager;
+	activePlayState_ = &isPlaying;
+	activeSceneName_ = currentSceneName;
+
 	if (!ImGui::BeginMainMenuBar()) {
 		return;
 	}
 
 	if (isPlaying) {
+		ImGui::BeginDisabled(!EditorCommandRegistry::GetInstance()->CanExecute(EditorCommandId::Stop));
 		if (ImGui::Button(ICON_FA_STOP " 停止")) {
-			isPlaying = false;
-			if (sceneManager) {
-				sceneManager->SetIsPlaying(false);
-			}
+			ExecuteEditorCommand(EditorCommandId::Stop);
 		}
+		ImGui::EndDisabled();
 	} else {
+		ImGui::BeginDisabled(!EditorCommandRegistry::GetInstance()->CanExecute(EditorCommandId::Play));
 		if (ImGui::Button(ICON_FA_PLAY " 再生")) {
-			RequestPlay(sceneManager, isPlaying, currentSceneName);
+			ExecuteEditorCommand(EditorCommandId::Play);
 		}
+		ImGui::EndDisabled();
 	}
 	if (previousPlayingState_ != isPlaying && !isPlaying) {
 		MeshEffectManager::GetInstance()->Clear();
@@ -723,30 +888,22 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		const bool replayPaused = replayDebugger_->ShouldFreezeSimulation();
 		ImGui::BeginDisabled(!canControlReplay);
 		if (ImGui::Button(replayPaused ? ICON_FA_PLAY " リプレイ再開" : ICON_FA_PAUSE " 一時停止")) {
-			replayDebugger_->ToggleSimulationPause();
-			if (!replayPaused) {
-				SetReplayDebuggerVisible(true);
-			}
+			ExecuteEditorCommand(EditorCommandId::ReplayPauseResume);
 		}
 		ImGui::EndDisabled();
 	}
 
-	const bool canEditSceneAssets = !isPlaying && sceneManager && !sceneManager->IsTransitioning();
 	const ImGuiIO& menuIo = ImGui::GetIO();
-	if (canEditSceneAssets && debugEditor_ && !menuIo.WantTextInput && menuIo.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-		debugEditor_->SaveScene(SaveMode::All);
+	if (!menuIo.WantTextInput && menuIo.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+		ExecuteEditorCommand(EditorCommandId::SceneSave);
+	}
+	if (!menuIo.WantTextInput && menuIo.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_P, false)) {
+		ExecuteEditorCommand(isPlaying ? EditorCommandId::Stop : EditorCommandId::Play);
 	}
 
 	if (ImGui::BeginMenu(ICON_FA_FILE " ファイル")) {
-		ImGui::BeginDisabled(!canEditSceneAssets || !debugEditor_);
-		if (ImGui::MenuItem(ICON_FA_PLUS " 新規Scene Asset")) {
-			showDebugWindows_ = true;
-			debugEditor_->OpenCreateSceneAssetDialog();
-		}
-		if (ImGui::MenuItem(ICON_FA_SAVE " Active Sceneを保存", "Ctrl+S")) {
-			debugEditor_->SaveScene(SaveMode::All);
-		}
-		ImGui::EndDisabled();
+		DrawEditorCommandMenuItem(EditorCommandId::SceneNew, ICON_FA_PLUS " 新規Scene Asset");
+		DrawEditorCommandMenuItem(EditorCommandId::SceneSave, ICON_FA_SAVE " Active Sceneを保存");
 		ImGui::Separator();
 		if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Scene Asset管理を表示")) {
 			showDebugWindows_ = true;
@@ -754,40 +911,44 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		ImGui::EndMenu();
 	}
 
+	if (ImGui::BeginMenu("編集")) {
+		const std::string undoLabel = EditorTransactionManager::GetInstance()->CanUndo()
+			? "元に戻す: " + EditorTransactionManager::GetInstance()->GetUndoLabel()
+			: "元に戻す";
+		const std::string redoLabel = EditorTransactionManager::GetInstance()->CanRedo()
+			? "やり直す: " + EditorTransactionManager::GetInstance()->GetRedoLabel()
+			: "やり直す";
+		DrawEditorCommandMenuItem(EditorCommandId::EditUndo, undoLabel.c_str());
+		DrawEditorCommandMenuItem(EditorCommandId::EditRedo, redoLabel.c_str());
+		ImGui::Separator();
+		DrawEditorCommandMenuItem(EditorCommandId::EditDuplicate);
+		DrawEditorCommandMenuItem(EditorCommandId::EditDelete);
+		DrawEditorCommandMenuItem(EditorCommandId::ObjectDropToFloor);
+		ImGui::EndMenu();
+	}
+
 	if (ImGui::BeginMenu("表示")) {
-				if (ImGui::MenuItem("ポートフォリオ撮影モード", "F10", portfolioCaptureMode_)) {
-			SetPortfolioCaptureMode(!portfolioCaptureMode_);
-		}
+		DrawEditorCommandMenuItem(EditorCommandId::ViewPortfolio, nullptr, portfolioCaptureMode_);
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("ONにするとImGuiを描画せず、ゲーム画面だけを直接表示します。戻るときはF10です。");
 		}
 		ImGui::Separator();
-ImGui::MenuItem("Hierarchy / Inspector 表示", nullptr, &showDebugWindows_);
+		DrawEditorCommandMenuItem(EditorCommandId::ViewEditorPanels, nullptr, showDebugWindows_);
 		ImGui::Separator();
-		ImGui::MenuItem("デバッグログ", nullptr, &showDebugConsole_);
-		ImGui::MenuItem("ステータス", nullptr, &showTimeController_);
-		if (ImGui::MenuItem("リプレイデバッガー", nullptr, showReplayDebugger_)) {
-			SetReplayDebuggerVisible(!showReplayDebugger_);
-		}
-		ImGui::MenuItem("ボスロジックデバッグ", nullptr, &showBossDebug_);
+		DrawEditorCommandMenuItem(EditorCommandId::ViewConsole, nullptr, showDebugConsole_);
+		DrawEditorCommandMenuItem(EditorCommandId::ViewStatus, nullptr, showTimeController_);
+		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, nullptr, showReplayDebugger_);
+		DrawEditorCommandMenuItem(EditorCommandId::ViewBossDebug, nullptr, showBossDebug_);
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu(ICON_FA_HISTORY " リプレイ")) {
-		if (ImGui::MenuItem("下段Replay Editorを表示", nullptr, showReplayDebugger_)) {
-			SetReplayDebuggerVisible(!showReplayDebugger_);
-		}
+		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, "下段Replay Editorを表示", showReplayDebugger_);
 		ImGui::Separator();
-		const bool canControlReplay = isPlaying && replayDebugger_ && replayDebugger_->HasFrames();
 		const bool replayPaused = replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
-		ImGui::BeginDisabled(!canControlReplay);
-		if (ImGui::MenuItem(replayPaused ? "選択時点から実行を再開" : "実行を一時停止")) {
-			replayDebugger_->ToggleSimulationPause();
-			if (!replayPaused) {
-				SetReplayDebuggerVisible(true);
-			}
-		}
-		ImGui::EndDisabled();
+		DrawEditorCommandMenuItem(
+			EditorCommandId::ReplayPauseResume,
+			replayPaused ? "選択時点から実行を再開" : "実行を一時停止");
 		ImGui::EndMenu();
 	}
 
@@ -837,12 +998,8 @@ ImGui::MenuItem("Hierarchy / Inspector 表示", nullptr, &showDebugWindows_);
 	}
 
 	if (ImGui::BeginMenu("ヘルプ")) {
-		if (ImGui::MenuItem(ICON_FA_BOOK " エンジン説明書") && engineManualWindow_) {
-			engineManualWindow_->Open();
-		}
-		if (ImGui::MenuItem(ICON_FA_CHART_BAR " システムプロファイラ")) {
-			ProfilerManager::GetInstance()->Open();
-		}
+		DrawEditorCommandMenuItem(EditorCommandId::HelpManual, ICON_FA_BOOK " エンジン説明書");
+		DrawEditorCommandMenuItem(EditorCommandId::HelpProfiler, ICON_FA_CHART_BAR " システムプロファイラ");
 		ImGui::EndMenu();
 	}
 

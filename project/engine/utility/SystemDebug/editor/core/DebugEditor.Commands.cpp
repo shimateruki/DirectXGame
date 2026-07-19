@@ -416,6 +416,7 @@ nlohmann::json DebugEditor::CaptureObjectState(Object3d* object) const {
     state = object->ExportToJson();
     state["name"] = object->GetName();
     state["parentName"] = object->GetParent() ? object->GetParent()->GetName() : "";
+    state["parentGuid"] = object->GetParent() ? object->GetParent()->EnsurePersistentGuid() : "";
     state["isStatic"] = object->IsStatic();
     return state;
 }
@@ -449,7 +450,11 @@ void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state
     }
 
     Object3d* parent = nullptr;
-    if (state.contains("parentName")) {
+    if (state.contains("parentGuid") && state["parentGuid"].is_string()) {
+        parent = FindObjectByPersistentGuid(state["parentGuid"].get<std::string>());
+        if (parent == object) parent = nullptr;
+    }
+    if (!parent && state.contains("parentName")) {
         std::string parentName = state["parentName"].get<std::string>();
         if (!parentName.empty()) {
             parent = FindObjectByName(parentName);
@@ -473,6 +478,11 @@ Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
     return nullptr;
 }
 
+Object3d* DebugEditor::FindObjectByPersistentGuid(const std::string& guid) const {
+    if (guid.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
+    return sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(guid);
+}
+
 Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || !state.is_object()) return nullptr;
 
@@ -482,6 +492,9 @@ Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
     auto object = std::make_unique<Object3d>();
     object->Initialize(common);
     ApplyObjectState(object.get(), state);
+    if (FindObjectByPersistentGuid(object->GetPersistentGuid())) {
+        object->RegeneratePersistentGuid();
+    }
 
     Object3d* raw = object.get();
     CollisionManager::GetInstance()->AddObject(raw);
@@ -538,6 +551,7 @@ void DebugEditor::RegisterObjectEdited(Object3d* object, const nlohmann::json& b
 
 void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& beforeStates, const std::string& label) {
     struct StateChange {
+        std::string guid;
         std::string beforeName;
         std::string afterName;
         nlohmann::json beforeState;
@@ -557,6 +571,7 @@ void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& 
         }
 
         StateChange change;
+        change.guid = snapshot.beforeState.value("guid", snapshot.object->GetPersistentGuid());
         change.beforeName = snapshot.beforeState.value("name", snapshot.object->GetName());
         change.afterName = afterState.value("name", snapshot.object->GetName());
         change.beforeState = snapshot.beforeState;
@@ -575,7 +590,8 @@ void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& 
         for (const StateChange& change : changes) {
             const std::string& primaryName = undo ? change.afterName : change.beforeName;
             const std::string& fallbackName = undo ? change.beforeName : change.afterName;
-            Object3d* object = FindObjectByName(primaryName);
+            Object3d* object = FindObjectByPersistentGuid(change.guid);
+            if (!object) object = FindObjectByName(primaryName);
             if (!object) {
                 object = FindObjectByName(fallbackName);
             }
@@ -609,6 +625,10 @@ void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::s
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     Object3d* raw = object.get();
+    raw->EnsurePersistentGuid();
+    if (FindObjectByPersistentGuid(raw->GetPersistentGuid())) {
+        raw->RegeneratePersistentGuid();
+    }
     if (prefabEditMode_ && prefabEditRoot_ && raw != prefabEditRoot_ && raw->GetParent() == nullptr) {
         // Prefab Modeで作成したRoot Objectは、編集対象Prefabの直下へ自動的に追加します。
         raw->SetParent(prefabEditRoot_, true);
@@ -797,12 +817,14 @@ void DebugEditor::DuplicateSelected() {
         std::vector<Object3d*> sourceObjects = selectedObjects_;
         std::vector<Object3d*> createdObjects;
         createdObjects.reserve(sourceObjects.size());
+        std::unordered_map<Object3d*, Object3d*> duplicateMap;
 
         const Vector3 duplicateOffset = { 1.5f, 0.0f, 1.5f };
         for (Object3d* source : sourceObjects) {
             if (!source || !IsObjectInCurrentScene(source)) continue;
 
             nlohmann::json duplicatedState = CaptureObjectState(source);
+            duplicatedState.erase("guid");
             std::string baseName = source->GetName().empty() ? "Object" : source->GetName();
             std::string newName = baseName + "_copy";
             int suffix = 1;
@@ -820,6 +842,21 @@ void DebugEditor::DuplicateSelected() {
             created->UpdateLocalMatrix();
             created->UpdateWorldMatrix();
 
+            duplicateMap[source] = created;
+            createdObjects.push_back(created);
+        }
+
+        // 選択範囲内の親子関係は、複製元ではなく複製先同士へ張り直します。
+        for (const auto& [source, created] : duplicateMap) {
+            Object3d* sourceParent = source ? source->GetParent() : nullptr;
+            const auto parent = duplicateMap.find(sourceParent);
+            if (parent != duplicateMap.end()) {
+                created->SetParent(parent->second, true);
+                created->UpdateWorldMatrix();
+            }
+        }
+
+        for (Object3d* created : createdObjects) {
             nlohmann::json afterState = CaptureObjectState(created);
             EditorCommand command;
             command.type = EditorCommandType::ObjectCreated;
@@ -828,7 +865,6 @@ void DebugEditor::DuplicateSelected() {
             command.afterName = afterState.value("name", created->GetName());
             RegisterCommand(command);
             MarkDirtyForObject(created);
-            createdObjects.push_back(created);
         }
 
         ClearObjectSelection();
@@ -1047,7 +1083,9 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     switch (command.type) {
     case EditorCommandType::ObjectCreated: {
         if (undo) {
-            Object3d* object = FindObjectByName(command.afterName);
+            Object3d* object = FindObjectByPersistentGuid(
+                command.afterState.value("guid", std::string()));
+            if (!object) object = FindObjectByName(command.afterName);
             if (object) {
                 MarkDirtyForObject(object);
                 RemoveObjectImmediate(object);
@@ -1073,7 +1111,9 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
                 MarkDirtyForObject(restored);
             }
         } else {
-            Object3d* object = FindObjectByName(command.beforeName);
+            Object3d* object = FindObjectByPersistentGuid(
+                command.beforeState.value("guid", std::string()));
+            if (!object) object = FindObjectByName(command.beforeName);
             if (object) {
                 MarkDirtyForObject(object);
                 RemoveObjectImmediate(object);
@@ -1087,7 +1127,9 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     default: {
         const std::string& primaryName = undo ? command.afterName : command.beforeName;
         const std::string& fallbackName = undo ? command.beforeName : command.afterName;
-        Object3d* object = FindObjectByName(primaryName);
+        const nlohmann::json& targetState = undo ? command.beforeState : command.afterState;
+        Object3d* object = FindObjectByPersistentGuid(targetState.value("guid", std::string()));
+        if (!object) object = FindObjectByName(primaryName);
         if (!object) object = FindObjectByName(fallbackName);
         if (object) {
             ApplyObjectState(object, undo ? command.beforeState : command.afterState);

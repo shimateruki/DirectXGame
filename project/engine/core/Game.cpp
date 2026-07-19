@@ -6,6 +6,7 @@
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
+#include "EditorCommandRegistry.h"
 #include "GameAudioSettings.h"
 #include "GameDataManager.h"
 #include "GameSettingsManager.h"
@@ -268,7 +269,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 	}
 
 	if (InputManager::GetInstance()->IsKeyTriggered(DIK_F10)) {
-		editorController_->SetPortfolioCaptureMode(!editorController_->IsPortfolioCaptureMode());
+		editorController_->ExecuteEditorCommand(EditorCommandId::ViewPortfolio);
 	}
 
 	if (editorController_->IsPortfolioCaptureMode()) {

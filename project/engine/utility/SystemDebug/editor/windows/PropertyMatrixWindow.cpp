@@ -1,6 +1,7 @@
 #include "PropertyMatrixWindow.h"
 
 #include "DebugEditor.h"
+#include "EditorPropertyDrawer.h"
 #include "EditorPropertyRegistry.h"
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
@@ -11,31 +12,12 @@
 #endif
 
 #include <algorithm>
-#include <array>
-#include <cfloat>
-#include <cmath>
-#include <cstdio>
-#include <cstdint>
 #include <sstream>
 #include <unordered_set>
 
 namespace {
 
 using json = nlohmann::json;
-
-constexpr float kRadiansToDegrees = 57.29577951308232f;
-constexpr float kDegreesToRadians = 0.017453292519943295f;
-
-float ReadNumber(const json& value, float fallback = 0.0f) {
-    return value.is_number() ? value.get<float>() : fallback;
-}
-
-float ReadArrayNumber(const json& value, std::size_t index, float fallback = 0.0f) {
-    if (!value.is_array() || index >= value.size() || !value[index].is_number()) {
-        return fallback;
-    }
-    return value[index].get<float>();
-}
 
 bool ContainsText(const std::string& value, const char* filter) {
     return filter == nullptr || filter[0] == '\0' || value.find(filter) != std::string::npos;
@@ -388,121 +370,9 @@ bool PropertyMatrixWindow::DrawValueEditor(
     json& value,
     const char* id,
     bool compact) const {
-#ifdef USE_IMGUI
-    ImGui::SetNextItemWidth(compact ? -FLT_MIN : 430.0f);
-    switch (property.type) {
-    case EditorPropertyType::Bool: {
-        bool current = value.is_boolean() ? value.get<bool>() : false;
-        if (ImGui::Checkbox(id, &current)) {
-            value = current;
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::Integer: {
-        std::int64_t current = value.is_number_unsigned() || value.is_number_integer()
-            ? value.get<std::int64_t>() : 0;
-        if (!property.enumLabels.empty()) {
-            int enumValue = std::clamp(static_cast<int>(current), 0,
-                static_cast<int>(property.enumLabels.size()) - 1);
-            std::vector<const char*> labels;
-            labels.reserve(property.enumLabels.size());
-            for (const std::string& label : property.enumLabels) {
-                labels.push_back(label.c_str());
-            }
-            if (ImGui::Combo(id, &enumValue, labels.data(), static_cast<int>(labels.size()))) {
-                value = enumValue;
-                return true;
-            }
-        } else if (ImGui::InputScalar(id, ImGuiDataType_S64, &current)) {
-            value = current;
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::Number: {
-        float current = ReadNumber(value);
-        const bool degrees = property.path == "camera.fov";
-        if (degrees) current *= kRadiansToDegrees;
-        bool changed = false;
-        if (property.path == "rendering.metallic" || property.path == "rendering.roughness") {
-            changed = ImGui::SliderFloat(id, &current, 0.0f, 1.0f, "%.3f");
-        } else if (property.path == "rendering.emissive") {
-            changed = ImGui::DragFloat(id, &current, 0.02f, 0.0f, 100.0f, "%.3f");
-        } else if (degrees) {
-            changed = ImGui::SliderFloat(id, &current, 3.0f, 170.0f, "%.1f deg");
-        } else {
-            changed = ImGui::DragFloat(id, &current, 0.05f, 0.0f, 0.0f, "%.3f");
-        }
-        if (changed) {
-            if (degrees) current *= kDegreesToRadians;
-            value = current;
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::String: {
-        std::array<char, 256> buffer = {};
-        const std::string current = value.is_string() ? value.get<std::string>() : std::string();
-        std::snprintf(buffer.data(), buffer.size(), "%s", current.c_str());
-        if (ImGui::InputText(id, buffer.data(), buffer.size())) {
-            value = std::string(buffer.data());
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::Vector2: {
-        float current[2] = { ReadArrayNumber(value, 0), ReadArrayNumber(value, 1) };
-        if (ImGui::DragFloat2(id, current, 0.05f, 0.0f, 0.0f, "%.3f")) {
-            value = json::array({ current[0], current[1] });
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::Vector3: {
-        float current[3] = {
-            ReadArrayNumber(value, 0),
-            ReadArrayNumber(value, 1),
-            ReadArrayNumber(value, 2),
-        };
-        const bool degrees = property.path == "transform.rotation" ||
-            property.path == "component.collision.rotation";
-        if (degrees) {
-            for (float& component : current) component *= kRadiansToDegrees;
-        }
-        if (ImGui::DragFloat3(id, current, degrees ? 0.25f : 0.05f, 0.0f, 0.0f, "%.3f")) {
-            if (degrees) {
-                for (float& component : current) component *= kDegreesToRadians;
-            }
-            value = json::array({ current[0], current[1], current[2] });
-            return true;
-        }
-        break;
-    }
-    case EditorPropertyType::Vector4: {
-        float current[4] = {
-            ReadArrayNumber(value, 0),
-            ReadArrayNumber(value, 1),
-            ReadArrayNumber(value, 2),
-            ReadArrayNumber(value, 3, 1.0f),
-        };
-        const bool changed = property.path == "rendering.color"
-            ? ImGui::ColorEdit4(id, current, ImGuiColorEditFlags_Float)
-            : ImGui::DragFloat4(id, current, 0.05f, 0.0f, 0.0f, "%.3f");
-        if (changed) {
-            value = json::array({ current[0], current[1], current[2], current[3] });
-            return true;
-        }
-        break;
-    }
-    }
-#else
-    (void)property;
-    (void)value;
-    (void)id;
-    (void)compact;
-#endif
-    return false;
+    EditorPropertyDrawOptions options;
+    options.compact = compact;
+    return EditorPropertyDrawer::DrawValue(property, value, id, options);
 }
 
 bool PropertyMatrixWindow::IsPropertyVisible(const EditorPropertyDescriptor& property) const {

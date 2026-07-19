@@ -110,9 +110,14 @@ Object3d::~Object3d() {
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
     common_ = common;
+    EnsurePersistentGuid();
     EnsureReplayId();
     replayRetained_ = false;
     replayRemoved_ = false;
+    particleEmitterComponent_.reset();
+    meshEffectComponent_.reset();
+    pathMoverComponent_.reset();
+    gameplayLinkComponent_.reset();
 
     // Transform初期化
     transform_.scale = { 1.0f, 1.0f, 1.0f };
@@ -229,23 +234,32 @@ void Object3d::Update(float deltaTime) {
 }
 
 void Object3d::UpdateParticle() {
+    ParticleEmitterComponent* particle = GetParticleEmitterComponent();
+    if (!particle) {
+        gpuEmitter_.reset();
+        return;
+    }
+
     // 1. CPUパーティクル (旧仕様)
-    if (!particleName_.empty()) {
+    if (!particle->GetCpuParticle().empty()) {
         Vector3 pos = GetWorldPosition();
-        ParticleManager::GetInstance()->Emit(particleName_, pos, particleTimer_);
+        ParticleManager::GetInstance()->Emit(
+            particle->GetCpuParticle(),
+            pos,
+            particle->GetEmissionTimer());
     }
 
     // 2. GPUパーティクル (新仕様)
-    if (!gpuParticleName_.empty()) {
+    if (!particle->GetGpuParticle().empty()) {
         // 未作成なら作成
         if (!gpuEmitter_) {
             gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
-            gpuEmitter_->Initialize(gpuParticleName_, this);
+            gpuEmitter_->Initialize(particle->GetGpuParticle(), this);
             gpuEmitter_->Play();
         }
         // 名前が不一致なら作り直し
-        else if (gpuEmitter_->GetName() != gpuParticleName_) {
-            gpuEmitter_->Initialize(gpuParticleName_, this);
+        else if (gpuEmitter_->GetName() != particle->GetGpuParticle()) {
+            gpuEmitter_->Initialize(particle->GetGpuParticle(), this);
             gpuEmitter_->Play();
         }
     }

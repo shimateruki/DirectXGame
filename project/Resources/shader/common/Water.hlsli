@@ -27,6 +27,10 @@ cbuffer cbWaterParam : register(b1)
     float effectScaleY;
     float effectScaleZ;
     float waterParamPadding0;
+    float3 waterLightDirection;
+    float waterLightIntensity;
+    float3 waterLightColor;
+    float waterParamPadding1;
 };
 
 // [2] Material color from the inspector.

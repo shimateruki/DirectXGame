@@ -433,14 +433,19 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     switch (entry.materialType) {
     case 8:
         object->SetBlendMode(BlendMode::kNormal);
-        water->waveSpeed = 1.35f;
-        water->waveHeight = 0.55f;
-        water->waveFrequency = 5.2f;
-        water->flowSpeedX = 0.08f;
-        water->flowSpeedY = 0.05f;
-        water->effectScale = 0.9f;
-        water->effectSoftness = 0.58f;
-        water->effectIntensity = 1.25f;
+        water->effectType = 0.0f;
+        water->waveSpeed = 1.05f;
+        water->waveHeight = 0.42f;
+        water->waveFrequency = 4.2f;
+        water->flowSpeedX = 0.035f;
+        water->flowSpeedY = 0.018f;
+        water->effectScale = 0.82f;
+        water->effectSoftness = 0.48f;
+        water->effectIntensity = 1.15f;
+        water->billboardScale = 0.50f;
+        water->effectScaleX = 8.0f;
+        water->effectScaleY = 0.35f;
+        water->effectScaleZ = 1.15f;
         break;
     case 9:
         object->SetBlendMode(BlendMode::kNone);
