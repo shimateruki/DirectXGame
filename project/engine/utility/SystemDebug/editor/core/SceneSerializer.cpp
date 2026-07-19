@@ -5,11 +5,244 @@
 #include "SceneManager.h"
 #include "DebugConsole.h"
 #include "Transform.h"
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <filesystem>
+#include <system_error>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+
+namespace {
+constexpr const char* kSceneObjectDirectory = "Resources/json/3Dobject";
+constexpr const char* kSceneSpriteDirectory = "Resources/json/sprite";
+constexpr const char* kSceneCategorySuffixes[] = {
+    "_player.json",
+    "_enemy.json",
+    "_object.json",
+    "_camera.json"
+};
+
+std::string GetSceneBaseName(std::string filename) {
+    const size_t slash = filename.find_last_of("/\\");
+    if (slash != std::string::npos) {
+        filename = filename.substr(slash + 1);
+    }
+    if (filename.size() >= 5 && filename.substr(filename.size() - 5) == ".json") {
+        filename.resize(filename.size() - 5);
+    }
+    return filename;
+}
+
+bool HasSceneCategorySuffix(const std::string& filename) {
+    for (const char* suffix : kSceneCategorySuffixes) {
+        const size_t suffixLength = std::char_traits<char>::length(suffix);
+        if (filename.size() >= suffixLength &&
+            filename.compare(filename.size() - suffixLength, suffixLength, suffix) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsValidSceneId(const std::string& sceneId, std::string& errorMessage) {
+    if (sceneId.empty()) {
+        errorMessage = "Scene IDを入力してください。";
+        return false;
+    }
+    if (sceneId.size() > 80) {
+        errorMessage = "Scene IDは80文字以内にしてください。";
+        return false;
+    }
+    for (unsigned char character : sceneId) {
+        if (!std::isalnum(character) && character != '_' && character != '-') {
+            errorMessage = "Scene IDには半角英数字、_、-だけを使用できます。";
+            return false;
+        }
+    }
+    const std::string filename = sceneId + ".json";
+    if (HasSceneCategorySuffix(filename)) {
+        errorMessage = "_player、_enemy、_object、_cameraで終わるIDは使用できません。";
+        return false;
+    }
+    return true;
+}
+
+json ReadJsonObject(const fs::path& path) {
+    std::ifstream stream(path);
+    if (!stream.is_open()) {
+        return json::object();
+    }
+    try {
+        json data;
+        stream >> data;
+        return data.is_object() ? data : json::object();
+    }
+    catch (...) {
+        return json::object();
+    }
+}
+
+bool WriteJsonObject(const fs::path& path, const json& data, std::string& errorMessage) {
+    std::error_code error;
+    fs::create_directories(path.parent_path(), error);
+    if (error) {
+        errorMessage = "保存先フォルダーを作成できませんでした: " + path.parent_path().string();
+        return false;
+    }
+
+    std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+    if (!stream.is_open()) {
+        errorMessage = "ファイルを作成できませんでした: " + path.string();
+        return false;
+    }
+    stream << data.dump(4);
+    if (!stream.good()) {
+        errorMessage = "ファイルの書き込みに失敗しました: " + path.string();
+        return false;
+    }
+    return true;
+}
+
+json MakeEmptyObjectLayout() {
+    json data;
+    data["objects"] = json::array();
+    return data;
+}
+
+json MakeEmptySpriteLayout() {
+    json data;
+    data["designResolution"] = { 1920.0f, 1080.0f };
+    data["scaleToWindow"] = true;
+    data["sprites"] = json::array();
+    return data;
+}
+
+void ApplySceneAssetMetadata(
+    json& data,
+    const std::string& sceneId,
+    const std::string& displayName,
+    const std::string& runtimeScene) {
+    data["_sceneAsset"]["version"] = 3;
+    data["_sceneAsset"]["id"] = sceneId;
+    data["_sceneAsset"]["displayName"] = displayName.empty() ? sceneId : displayName;
+    data["_sceneAsset"]["runtimeScene"] = runtimeScene.empty() ? "SCENE_EDITOR" : runtimeScene;
+    if (!data["_sceneAsset"].contains("controller")) {
+        data["_sceneAsset"]["controller"] = "DEFAULT";
+    }
+    if (!data["_sceneAsset"].contains("resources") || !data["_sceneAsset"]["resources"].is_object()) {
+        data["_sceneAsset"]["resources"] = json::object();
+    }
+    json& resources = data["_sceneAsset"]["resources"];
+    if (!resources.contains("bgm")) resources["bgm"] = "";
+    if (!resources.contains("light")) resources["light"] = "";
+    if (!resources.contains("camera")) resources["camera"] = "";
+    if (!resources.contains("skybox")) resources["skybox"] = "";
+    data["_sceneAsset"]["spriteLayout"] =
+        std::string(kSceneSpriteDirectory) + "/" + sceneId + "_sprite.json";
+    if (!data.contains("objects")) {
+        data["_comment"] = "Actual data is in _player, _enemy, _object, and _camera.json";
+    }
+}
+
+std::vector<fs::path> BuildObjectAssetPaths(const std::string& sceneId) {
+    const fs::path base = fs::path(kSceneObjectDirectory) / sceneId;
+    return {
+        fs::path(base.string() + ".json"),
+        fs::path(base.string() + "_player.json"),
+        fs::path(base.string() + "_enemy.json"),
+        fs::path(base.string() + "_object.json"),
+        fs::path(base.string() + "_camera.json")
+    };
+}
+
+bool AnySceneDestinationExists(const std::string& sceneId) {
+    for (const fs::path& path : BuildObjectAssetPaths(sceneId)) {
+        if (fs::exists(path)) {
+            return true;
+        }
+    }
+    return fs::exists(fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json")) ||
+        fs::exists(fs::path(kSceneSpriteDirectory) / (sceneId + ".json"));
+}
+
+std::string ResolveExistingSpritePath(const std::string& sceneId) {
+    const fs::path standard = fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json");
+    if (fs::exists(standard)) {
+        return standard.generic_string();
+    }
+    const fs::path legacy = fs::path(kSceneSpriteDirectory) / (sceneId + ".json");
+    if (fs::exists(legacy)) {
+        return legacy.generic_string();
+    }
+    return {};
+}
+
+bool IsRuntimeReferencedScene(const std::string& sceneId, std::string& referenceDescription) {
+    static const char* kFixedRuntimeScenes[] = {
+        "titleScene",
+        "stageSelect",
+        "gameOverScene",
+        "gameClearScene",
+        "sample",
+        "tutorial",
+        "stage1",
+        "stage2",
+        "stage3",
+        "stage4",
+        "stage5"
+    };
+    for (const char* fixedScene : kFixedRuntimeScenes) {
+        if (sceneId == fixedScene) {
+            referenceDescription = "ゲーム用Sceneクラスから固定パスで参照されています。";
+            return true;
+        }
+    }
+
+    const fs::path stageDefinitions = "Resources/json/stage_select/stages.json";
+    const json root = ReadJsonObject(stageDefinitions);
+    if (!root.contains("stages") || !root["stages"].is_array()) {
+        return false;
+    }
+
+    const std::string expectedLevelPath =
+        (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
+    for (const json& stage : root["stages"]) {
+        if (!stage.is_object()) {
+            continue;
+        }
+        if (stage.value("levelPath", std::string()) == expectedLevelPath) {
+            referenceDescription = "stages.jsonのステージ「" +
+                stage.value("name", stage.value("id", sceneId)) + "」から参照されています。";
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string InferLegacyRuntimeScene(const std::string& sceneId) {
+    if (sceneId == "titleScene") return "TITLE";
+    if (sceneId == "stageSelect") return "SELECT";
+    if (sceneId == "gameOverScene") return "GAMEOVER";
+    if (sceneId == "gameClearScene") return "GAMECLEAR";
+    if (sceneId == "sample") return "PREVIEW";
+    if (sceneId == "tutorial") return "TUTORIAL";
+
+    const json root = ReadJsonObject("Resources/json/stage_select/stages.json");
+    if (root.contains("stages") && root["stages"].is_array()) {
+        const std::string expectedPath =
+            (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
+        for (const json& stage : root["stages"]) {
+            if (stage.is_object() && stage.value("levelPath", std::string()) == expectedPath) {
+                return "GAMEPLAY";
+            }
+        }
+    }
+    return {};
+}
+}
 
 void SceneSerializer::Initialize(DebugEditor* editor) {
     editor_ = editor;
@@ -63,11 +296,20 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
         targets.push_back({ "Camera", basePath + "_camera.json", cameraSceneData, false });
     }
 
-    // メタデータファイルの作成
+    // メタデータファイルの作成。既存の表示名などは保存後も維持します。
     if (mode == SaveMode::All) {
-        json dummyData;
-        dummyData["_comment"] = "Actual data is in _player, _enemy, _object, and _camera.json";
-        targets.push_back({ "Meta", "Resources/json/3Dobject/" + currentFilename, dummyData, true });
+        const fs::path metadataPath = fs::path(kSceneObjectDirectory) / currentFilename;
+        json metadata = ReadJsonObject(metadataPath);
+        metadata.erase("objects");
+        std::string displayName = baseName;
+        if (metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()) {
+            displayName = metadata["_sceneAsset"].value("displayName", baseName);
+        }
+        const std::string runtimeScene = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
+            ? metadata["_sceneAsset"].value("runtimeScene", std::string("SCENE_EDITOR"))
+            : "SCENE_EDITOR";
+        ApplySceneAssetMetadata(metadata, baseName, displayName, runtimeScene);
+        targets.push_back({ "Meta", metadataPath.generic_string(), metadata, true });
     }
 
     return targets;
@@ -356,4 +598,549 @@ void SceneSerializer::SaveToFile(const std::string& path, const json& data) {
         f << data.dump(4);
         DebugConsole::GetInstance()->AddLog("Saved JSON to " + path);
     }
+}
+
+std::vector<SceneSerializer::SceneAssetInfo> SceneSerializer::DiscoverSceneAssets() const {
+    std::vector<SceneAssetInfo> assets;
+    const fs::path directory = kSceneObjectDirectory;
+    if (!fs::exists(directory)) {
+        return assets;
+    }
+
+    std::error_code error;
+    for (const fs::directory_entry& entry : fs::directory_iterator(directory, error)) {
+        if (error || !entry.is_regular_file() || entry.path().extension() != ".json") {
+            continue;
+        }
+
+        const std::string filename = entry.path().filename().string();
+        if (HasSceneCategorySuffix(filename)) {
+            continue;
+        }
+
+        SceneAssetInfo asset;
+        asset.filename = filename;
+        asset.id = GetSceneBaseName(filename);
+        asset.displayName = asset.id;
+        asset.objectLayoutPath = entry.path().generic_string();
+
+        const json metadata = ReadJsonObject(entry.path());
+        const bool hasSceneAssetMetadata =
+            metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object();
+        if (hasSceneAssetMetadata) {
+            const json& sceneAsset = metadata["_sceneAsset"];
+            asset.displayName = sceneAsset.value("displayName", asset.id);
+            asset.runtimeScene = sceneAsset.value(
+                "runtimeScene",
+                std::string("SCENE_EDITOR"));
+            asset.controllerName = sceneAsset.value("controller", std::string("DEFAULT"));
+            if (sceneAsset.contains("resources") && sceneAsset["resources"].is_object()) {
+                const json& resources = sceneAsset["resources"];
+                asset.bgmPath = resources.value("bgm", std::string());
+                asset.lightPath = resources.value("light", std::string());
+                asset.cameraPath = resources.value("camera", std::string());
+                asset.skyboxPath = resources.value("skybox", std::string());
+            }
+        }
+        else {
+            asset.runtimeScene = InferLegacyRuntimeScene(asset.id);
+            if (asset.runtimeScene.empty()) {
+                continue;
+            }
+            asset.usesLegacyMetadata = true;
+        }
+
+        const std::vector<fs::path> objectPaths = BuildObjectAssetPaths(asset.id);
+        for (size_t index = 1; index < objectPaths.size(); ++index) {
+            if (fs::exists(objectPaths[index])) {
+                asset.usesSplitFiles = true;
+                break;
+            }
+        }
+
+        asset.spriteLayoutPath = ResolveExistingSpritePath(asset.id);
+        asset.hasSpriteLayout = !asset.spriteLayoutPath.empty();
+        assets.push_back(std::move(asset));
+    }
+
+    std::sort(assets.begin(), assets.end(), [](const SceneAssetInfo& left, const SceneAssetInfo& right) {
+        if (left.displayName != right.displayName) {
+            return left.displayName < right.displayName;
+        }
+        return left.id < right.id;
+    });
+    return assets;
+}
+
+bool SceneSerializer::CreateSceneAsset(
+    const std::string& sceneIdInput,
+    const std::string& displayName,
+    const std::string& runtimeScene,
+    SceneAssetTemplate sceneTemplate,
+    std::string& createdFilename,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    createdFilename.clear();
+    const std::string sceneId = GetSceneBaseName(sceneIdInput);
+    if (!IsValidSceneId(sceneId, errorMessage)) {
+        return false;
+    }
+    if (runtimeScene.empty() || !editor_ || !editor_->GetSceneManager() ||
+        !editor_->GetSceneManager()->IsSceneRegistered(runtimeScene)) {
+        errorMessage = "登録されていない実行クラスです: " + runtimeScene;
+        return false;
+    }
+    if (AnySceneDestinationExists(sceneId)) {
+        errorMessage = "同じScene IDのファイルが既に存在します。";
+        return false;
+    }
+
+    const std::string filename = sceneId + ".json";
+    if (sceneTemplate == SceneAssetTemplate::CurrentScene) {
+        if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
+            errorMessage = "複製元となる現在のシーンがありません。";
+            return false;
+        }
+
+        std::vector<SaveTarget> targets = BuildSceneSaveTargets(filename, SaveMode::All);
+        for (SaveTarget& target : targets) {
+            if (target.isMetadata) {
+                ApplySceneAssetMetadata(target.data, sceneId, displayName, runtimeScene);
+            }
+        }
+        SaveTargets(targets);
+
+        const std::string currentId = GetSceneBaseName(editor_->GetCurrentSceneFilenameBuffer());
+        const std::string currentSpritePath = ResolveExistingSpritePath(currentId);
+        const fs::path newSpritePath = fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json");
+        if (!currentSpritePath.empty()) {
+            std::error_code copyError;
+            fs::copy_file(currentSpritePath, newSpritePath, fs::copy_options::none, copyError);
+            if (copyError) {
+                errorMessage = "Spriteレイアウトの複製に失敗しました: " + copyError.message();
+                DeleteSceneAsset(filename, errorMessage);
+                return false;
+            }
+        }
+        else if (!WriteJsonObject(newSpritePath, MakeEmptySpriteLayout(), errorMessage)) {
+            DeleteSceneAsset(filename, errorMessage);
+            return false;
+        }
+    }
+    else {
+        std::vector<fs::path> createdPaths;
+        auto writeAndTrack = [&](const fs::path& path, const json& data) {
+            if (!WriteJsonObject(path, data, errorMessage)) {
+                return false;
+            }
+            createdPaths.push_back(path);
+            return true;
+        };
+
+        json metadata = json::object();
+        ApplySceneAssetMetadata(metadata, sceneId, displayName, runtimeScene);
+        const std::vector<fs::path> objectPaths = BuildObjectAssetPaths(sceneId);
+        if (!writeAndTrack(objectPaths[0], metadata)) {
+            return false;
+        }
+        for (size_t index = 1; index < objectPaths.size(); ++index) {
+            if (!writeAndTrack(objectPaths[index], MakeEmptyObjectLayout())) {
+                for (const fs::path& createdPath : createdPaths) {
+                    std::error_code removeError;
+                    fs::remove(createdPath, removeError);
+                }
+                return false;
+            }
+        }
+        if (!writeAndTrack(fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json"), MakeEmptySpriteLayout())) {
+            for (const fs::path& createdPath : createdPaths) {
+                std::error_code removeError;
+                fs::remove(createdPath, removeError);
+            }
+            return false;
+        }
+    }
+
+    createdFilename = filename;
+    return true;
+}
+
+bool SceneSerializer::DuplicateSceneAsset(
+    const std::string& sourceFilename,
+    const std::string& newSceneIdInput,
+    const std::string& displayName,
+    std::string& createdFilename,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    createdFilename.clear();
+    const std::string sourceId = GetSceneBaseName(sourceFilename);
+    const std::string newSceneId = GetSceneBaseName(newSceneIdInput);
+    if (!IsValidSceneId(newSceneId, errorMessage)) {
+        return false;
+    }
+    if (AnySceneDestinationExists(newSceneId)) {
+        errorMessage = "同じScene IDのファイルが既に存在します。";
+        return false;
+    }
+
+    const std::vector<fs::path> sourcePaths = BuildObjectAssetPaths(sourceId);
+    const std::vector<fs::path> destinationPaths = BuildObjectAssetPaths(newSceneId);
+    if (!fs::exists(sourcePaths[0])) {
+        errorMessage = "複製元のScene Assetが見つかりません。";
+        return false;
+    }
+
+    std::vector<fs::path> createdPaths;
+    for (size_t index = 0; index < sourcePaths.size(); ++index) {
+        if (!fs::exists(sourcePaths[index])) {
+            continue;
+        }
+        std::error_code copyError;
+        fs::copy_file(sourcePaths[index], destinationPaths[index], fs::copy_options::none, copyError);
+        if (copyError) {
+            errorMessage = "Scene Assetの複製に失敗しました: " + copyError.message();
+            for (const fs::path& path : createdPaths) {
+                std::error_code removeError;
+                fs::remove(path, removeError);
+            }
+            return false;
+        }
+        createdPaths.push_back(destinationPaths[index]);
+    }
+
+    const std::string sourceSpritePath = ResolveExistingSpritePath(sourceId);
+    const fs::path destinationSpritePath = fs::path(kSceneSpriteDirectory) / (newSceneId + "_sprite.json");
+    if (!sourceSpritePath.empty()) {
+        std::error_code copyError;
+        fs::copy_file(sourceSpritePath, destinationSpritePath, fs::copy_options::none, copyError);
+        if (copyError) {
+            errorMessage = "Spriteレイアウトの複製に失敗しました: " + copyError.message();
+            for (const fs::path& path : createdPaths) {
+                std::error_code removeError;
+                fs::remove(path, removeError);
+            }
+            return false;
+        }
+        createdPaths.push_back(destinationSpritePath);
+    }
+    else if (!WriteJsonObject(destinationSpritePath, MakeEmptySpriteLayout(), errorMessage)) {
+        for (const fs::path& path : createdPaths) {
+            std::error_code removeError;
+            fs::remove(path, removeError);
+        }
+        return false;
+    }
+
+    json metadata = ReadJsonObject(destinationPaths[0]);
+    const std::string runtimeScene = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
+        ? metadata["_sceneAsset"].value("runtimeScene", std::string("SCENE_EDITOR"))
+        : "SCENE_EDITOR";
+    ApplySceneAssetMetadata(metadata, newSceneId, displayName, runtimeScene);
+    if (!WriteJsonObject(destinationPaths[0], metadata, errorMessage)) {
+        for (const fs::path& path : createdPaths) {
+            std::error_code removeError;
+            fs::remove(path, removeError);
+        }
+        return false;
+    }
+
+    createdFilename = newSceneId + ".json";
+    return true;
+}
+
+bool SceneSerializer::RenameSceneAsset(
+    const std::string& sourceFilename,
+    const std::string& newSceneIdInput,
+    const std::string& displayName,
+    std::string& renamedFilename,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    renamedFilename.clear();
+    const std::string sourceId = GetSceneBaseName(sourceFilename);
+    const std::string newSceneId = GetSceneBaseName(newSceneIdInput);
+    if (!IsValidSceneId(newSceneId, errorMessage)) {
+        return false;
+    }
+    if (sourceId != newSceneId && AnySceneDestinationExists(newSceneId)) {
+        errorMessage = "同じScene IDのファイルが既に存在します。";
+        return false;
+    }
+    if (sourceId != newSceneId) {
+        std::string referenceDescription;
+        if (IsRuntimeReferencedScene(sourceId, referenceDescription)) {
+            errorMessage = "このScene IDは変更できません。" + referenceDescription;
+            return false;
+        }
+    }
+
+    const std::vector<fs::path> sourcePaths = BuildObjectAssetPaths(sourceId);
+    const std::vector<fs::path> destinationPaths = BuildObjectAssetPaths(newSceneId);
+    if (!fs::exists(sourcePaths[0])) {
+        errorMessage = "名前を変更するScene Assetが見つかりません。";
+        return false;
+    }
+
+    struct MovedPath {
+        fs::path source;
+        fs::path destination;
+    };
+    std::vector<MovedPath> movedPaths;
+    if (sourceId != newSceneId) {
+        for (size_t index = 0; index < sourcePaths.size(); ++index) {
+            if (!fs::exists(sourcePaths[index])) {
+                continue;
+            }
+            std::error_code moveError;
+            fs::rename(sourcePaths[index], destinationPaths[index], moveError);
+            if (moveError) {
+                errorMessage = "Scene Assetの名前変更に失敗しました: " + moveError.message();
+                for (auto rollback = movedPaths.rbegin(); rollback != movedPaths.rend(); ++rollback) {
+                    std::error_code rollbackError;
+                    fs::rename(rollback->destination, rollback->source, rollbackError);
+                }
+                return false;
+            }
+            movedPaths.push_back({ sourcePaths[index], destinationPaths[index] });
+        }
+
+        const std::string sourceSpritePath = ResolveExistingSpritePath(sourceId);
+        if (!sourceSpritePath.empty()) {
+            const fs::path destinationSpritePath = fs::path(kSceneSpriteDirectory) / (newSceneId + "_sprite.json");
+            std::error_code moveError;
+            fs::rename(sourceSpritePath, destinationSpritePath, moveError);
+            if (moveError) {
+                errorMessage = "Spriteレイアウトの名前変更に失敗しました: " + moveError.message();
+                for (auto rollback = movedPaths.rbegin(); rollback != movedPaths.rend(); ++rollback) {
+                    std::error_code rollbackError;
+                    fs::rename(rollback->destination, rollback->source, rollbackError);
+                }
+                return false;
+            }
+            movedPaths.push_back({ sourceSpritePath, destinationSpritePath });
+        }
+    }
+
+    const fs::path metadataPath = destinationPaths[0];
+    json metadata = ReadJsonObject(metadataPath);
+    const std::string runtimeScene = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
+        ? metadata["_sceneAsset"].value("runtimeScene", std::string("SCENE_EDITOR"))
+        : "SCENE_EDITOR";
+    ApplySceneAssetMetadata(metadata, newSceneId, displayName, runtimeScene);
+    if (!WriteJsonObject(metadataPath, metadata, errorMessage)) {
+        for (auto rollback = movedPaths.rbegin(); rollback != movedPaths.rend(); ++rollback) {
+            std::error_code rollbackError;
+            fs::rename(rollback->destination, rollback->source, rollbackError);
+        }
+        return false;
+    }
+
+    renamedFilename = newSceneId + ".json";
+    return true;
+}
+
+bool SceneSerializer::DeleteSceneAsset(const std::string& filename, std::string& errorMessage) {
+    errorMessage.clear();
+    const std::string sceneId = GetSceneBaseName(filename);
+    std::string referenceDescription;
+    if (IsRuntimeReferencedScene(sceneId, referenceDescription)) {
+        errorMessage = "このScene Assetは削除できません。" + referenceDescription;
+        return false;
+    }
+    bool removedAny = false;
+    for (const fs::path& path : BuildObjectAssetPaths(sceneId)) {
+        if (!fs::exists(path)) {
+            continue;
+        }
+        std::error_code removeError;
+        if (!fs::remove(path, removeError) || removeError) {
+            errorMessage = "Scene Assetを削除できませんでした: " + path.string();
+            return false;
+        }
+        removedAny = true;
+    }
+
+    const fs::path spritePaths[] = {
+        fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json"),
+        fs::path(kSceneSpriteDirectory) / (sceneId + ".json")
+    };
+    for (const fs::path& path : spritePaths) {
+        if (!fs::exists(path)) {
+            continue;
+        }
+        std::error_code removeError;
+        if (!fs::remove(path, removeError) || removeError) {
+            errorMessage = "Spriteレイアウトを削除できませんでした: " + path.string();
+            return false;
+        }
+        removedAny = true;
+    }
+
+    if (!removedAny) {
+        errorMessage = "削除するScene Assetが見つかりません。";
+        return false;
+    }
+    return true;
+}
+
+bool SceneSerializer::SetSceneAssetRuntimeScene(
+    const std::string& filename,
+    const std::string& runtimeScene,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    if (runtimeScene.empty() || !editor_ || !editor_->GetSceneManager() ||
+        !editor_->GetSceneManager()->IsSceneRegistered(runtimeScene)) {
+        errorMessage = "登録されていない実行クラスです: " + runtimeScene;
+        return false;
+    }
+
+    const fs::path metadataPath = fs::path(kSceneObjectDirectory) / (GetSceneBaseName(filename) + ".json");
+    if (!fs::exists(metadataPath)) {
+        errorMessage = "Scene Assetが見つかりません: " + filename;
+        return false;
+    }
+
+    json metadata = ReadJsonObject(metadataPath);
+    const std::string sceneId = GetSceneBaseName(filename);
+    const std::string displayName = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object()
+        ? metadata["_sceneAsset"].value("displayName", sceneId)
+        : sceneId;
+    ApplySceneAssetMetadata(metadata, sceneId, displayName, runtimeScene);
+    return WriteJsonObject(metadataPath, metadata, errorMessage);
+}
+
+bool SceneSerializer::SetSceneAssetRuntimeSettings(
+    const std::string& filename,
+    const std::string& controllerName,
+    const std::string& bgmPath,
+    const std::string& lightPath,
+    const std::string& cameraPath,
+    const std::string& skyboxPath,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    if (controllerName.empty()) {
+        errorMessage = "Controller名を入力してください。";
+        return false;
+    }
+
+    const std::string sceneId = GetSceneBaseName(filename);
+    const fs::path metadataPath = fs::path(kSceneObjectDirectory) / (sceneId + ".json");
+    if (!fs::exists(metadataPath)) {
+        errorMessage = "Scene Assetが見つかりません: " + filename;
+        return false;
+    }
+
+    json metadata = ReadJsonObject(metadataPath);
+    const bool hasSceneAsset = metadata.contains("_sceneAsset") && metadata["_sceneAsset"].is_object();
+    const std::string displayName = hasSceneAsset
+        ? metadata["_sceneAsset"].value("displayName", sceneId)
+        : sceneId;
+    std::string runtimeScene = hasSceneAsset
+        ? metadata["_sceneAsset"].value("runtimeScene", std::string())
+        : InferLegacyRuntimeScene(sceneId);
+    if (runtimeScene.empty()) {
+        runtimeScene = "SCENE_EDITOR";
+    }
+
+    ApplySceneAssetMetadata(metadata, sceneId, displayName, runtimeScene);
+    metadata["_sceneAsset"]["controller"] = controllerName;
+    json& resources = metadata["_sceneAsset"]["resources"];
+    resources["bgm"] = bgmPath;
+    resources["light"] = lightPath;
+    resources["camera"] = cameraPath;
+    resources["skybox"] = skyboxPath;
+    return WriteJsonObject(metadataPath, metadata, errorMessage);
+}
+
+SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
+    const std::string& filename) const {
+    SceneAssetValidationResult result;
+    const std::vector<SceneAssetInfo> assets = DiscoverSceneAssets();
+    const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneAssetInfo& candidate) {
+        return candidate.filename == filename;
+    });
+    if (asset == assets.end()) {
+        result.errors.push_back("Scene Assetが見つかりません: " + filename);
+        return result;
+    }
+
+    if (!fs::exists(asset->objectLayoutPath)) {
+        result.errors.push_back("Objectレイアウトが見つかりません: " + asset->objectLayoutPath);
+    }
+    if (!asset->spriteLayoutPath.empty() && !fs::exists(asset->spriteLayoutPath)) {
+        result.errors.push_back("Spriteレイアウトが見つかりません: " + asset->spriteLayoutPath);
+    }
+    if (asset->usesLegacyMetadata) {
+        result.warnings.push_back("旧形式Sceneです。実行設定を保存するとScene Asset形式へ更新されます。");
+    }
+    if (!asset->bgmPath.empty() && !fs::exists(asset->bgmPath)) {
+        result.warnings.push_back("BGMが見つかりません: " + asset->bgmPath);
+    }
+    if (!asset->lightPath.empty() && !fs::exists(asset->lightPath)) {
+        result.warnings.push_back("Light JSONが見つかりません: " + asset->lightPath);
+    }
+    if (!asset->cameraPath.empty() &&
+        !fs::exists(fs::path("Resources/json/camera") / asset->cameraPath)) {
+        result.warnings.push_back("Camera JSONが見つかりません: " + asset->cameraPath);
+    }
+    if (!asset->skyboxPath.empty() && !fs::exists(asset->skyboxPath)) {
+        result.warnings.push_back("Skyboxが見つかりません: " + asset->skyboxPath);
+    }
+
+    bool hasPlayer = false;
+    bool hasCamera = false;
+    bool hasGoal = false;
+    std::unordered_set<std::string> objectNames;
+    std::unordered_set<std::string> duplicateNames;
+    const std::vector<fs::path> objectPaths = BuildObjectAssetPaths(asset->id);
+    for (const fs::path& path : objectPaths) {
+        if (!fs::exists(path)) {
+            continue;
+        }
+        const json data = ReadJsonObject(path);
+        if (!data.contains("objects") || !data["objects"].is_array()) {
+            continue;
+        }
+        for (const json& object : data["objects"]) {
+            if (!object.is_object()) {
+                continue;
+            }
+            const std::string name = object.value("name", std::string());
+            const std::string category = object.value("saveCategory", std::string());
+            hasPlayer = hasPlayer || category == "Player" || name == "player";
+            hasCamera = hasCamera || category == "Camera" || object.contains("camera");
+            hasGoal = hasGoal || name == "goal" || name == "Goal";
+            if (!name.empty() && !objectNames.insert(name).second) {
+                duplicateNames.insert(name);
+            }
+        }
+    }
+
+    if (asset->runtimeScene == "GAMEPLAY") {
+        if (!hasPlayer) {
+            result.errors.push_back("GAMEPLAYにはPlayerが1体必要です。");
+        }
+        if (!hasCamera) {
+            result.warnings.push_back("Camera Objectがありません。固定Camera設定だけで成立するか確認してください。");
+        }
+        if (!hasGoal) {
+            result.warnings.push_back("goal Objectがありません。クリア条件が別実装か確認してください。");
+        }
+        if (InferLegacyRuntimeScene(asset->id) != "GAMEPLAY") {
+            result.warnings.push_back(
+                "stages.jsonに同じStage IDがありません。解放進行へ使用する場合はStage定義へ登録してください。");
+        }
+    }
+    for (const std::string& duplicateName : duplicateNames) {
+        result.warnings.push_back("Object名が重複しています: " + duplicateName);
+    }
+    return result;
+}
+
+std::string SceneSerializer::ResolveSceneAssetObjectPath(const std::string& filename) const {
+    const std::string sceneId = GetSceneBaseName(filename);
+    return (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
+}
+
+std::string SceneSerializer::ResolveSceneAssetSpritePath(const std::string& filename) const {
+    return ResolveExistingSpritePath(GetSceneBaseName(filename));
 }

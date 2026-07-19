@@ -1,0 +1,36 @@
+{
+    "version": 2,
+    "events": [
+        {
+            "type": 0,
+            "presetName": "crown_get_afterglow",
+            "triggerTime": 0.0,
+            "offset": [0.0, 0.0, 0.0],
+            "scale": [0.55, 0.55, 0.55]
+        },
+        {
+            "type": 0,
+            "presetName": "crown_idle_twinkle",
+            "triggerTime": 0.08,
+            "offset": [-0.32, 0.30, 0.0],
+            "scale": [0.75, 0.75, 0.75]
+        },
+        {
+            "type": 0,
+            "presetName": "crown_idle_twinkle",
+            "triggerTime": 0.34,
+            "offset": [0.34, 0.48, 0.0],
+            "scale": [0.70, 0.70, 0.70]
+        },
+        {
+            "type": 6,
+            "presetName": "",
+            "triggerTime": 0.0,
+            "duration": 1.2,
+            "intensity": 0.55,
+            "lightRadius": 4.5,
+            "lightDecay": 1.8,
+            "lightColor": [1.0, 0.78, 0.30, 1.0]
+        }
+    ]
+}

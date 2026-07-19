@@ -37,11 +37,19 @@ void ReplayDebugger::Finalize() {
 }
 
 bool ReplayDebugger::ShouldFreezeSimulation() const {
-    return mode_ == Mode::Paused || mode_ == Mode::Playback;
+    return (mode_ == Mode::Paused || mode_ == Mode::Playback) &&
+        GetValidatedActiveScene() != nullptr;
+}
+
+bool ReplayDebugger::HasFrames() const {
+    return !frames_.empty() && GetValidatedActiveScene() != nullptr;
 }
 
 void ReplayDebugger::ToggleSimulationPause() {
-    if (frames_.empty()) {
+    if (!HasFrames()) {
+        if (!frames_.empty()) {
+            ResetForSceneChange();
+        }
         return;
     }
 
@@ -61,8 +69,16 @@ void ReplayDebugger::UpdateBeforeSimulation(float realDeltaTime, bool isPlaying)
         return;
     }
 
-    if (!isPlaying || sceneManager_->IsTransitioning()) {
+    if (!isPlaying) {
         if (!isPlaying && wasPlaying_) {
+            ResetForSceneChange();
+        }
+        wasPlaying_ = isPlaying;
+        return;
+    }
+
+    if (sceneManager_->IsTransitioning()) {
+        if (activeScene_ || !frames_.empty()) {
             ResetForSceneChange();
         }
         wasPlaying_ = isPlaying;
@@ -75,18 +91,22 @@ void ReplayDebugger::UpdateBeforeSimulation(float realDeltaTime, bool isPlaying)
         return;
     }
 
-    if (activeScene_ != scene) {
-        // 古いSceneは既に破棄されている可能性があるため参照せず、履歴だけ破棄します。
-        frames_.clear();
+    if (activeScene_ != scene || activeSceneGeneration_ != sceneManager_->GetSceneGeneration()) {
+        const bool replacedScene = activeScene_ != nullptr;
+        ResetForSceneChange();
         activeScene_ = scene;
+        activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
         cursor_ = 0;
         timelineTime_ = 0.0;
         captureAccumulator_ = 0.0f;
         playbackTime_ = 0.0f;
         mode_ = Mode::Idle;
         selectedReplayId_ = 0;
+        selectedSpriteReplayId_ = 0;
         estimatedMemoryBytes_ = 0;
-        statusMessage_ = "シーンが切り替わったため、リプレイ履歴を初期化しました。";
+        if (replacedScene) {
+            statusMessage_ = "シーンが切り替わったため、リプレイ履歴を初期化しました。";
+        }
     }
 
     if (autoRecord_ && mode_ == Mode::Idle) {
@@ -113,6 +133,11 @@ void ReplayDebugger::CaptureAfterSimulation(float simulationDeltaTime, bool isPl
         return;
     }
 
+    if (!GetValidatedActiveScene()) {
+        ResetForSceneChange();
+        return;
+    }
+
     const float safeDeltaTime = (std::max)(0.0f, simulationDeltaTime);
     timelineTime_ += safeDeltaTime;
     captureAccumulator_ += safeDeltaTime;
@@ -127,7 +152,13 @@ void ReplayDebugger::CaptureAfterSimulation(float simulationDeltaTime, bool isPl
 }
 
 void ReplayDebugger::BeginRecording(BaseScene* scene) {
+    if (!sceneManager_ || sceneManager_->IsTransitioning() ||
+        sceneManager_->GetCurrentScene() != scene) {
+        return;
+    }
+
     activeScene_ = scene;
+    activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
     mode_ = Mode::Recording;
     captureAccumulator_ = 0.0f;
     playbackTime_ = 0.0f;
@@ -138,13 +169,14 @@ void ReplayDebugger::BeginRecording(BaseScene* scene) {
 }
 
 void ReplayDebugger::CaptureFrame(double time) {
-    if (!activeScene_) {
+    BaseScene* scene = GetValidatedActiveScene();
+    if (!scene) {
         return;
     }
 
     FrameSnapshot frame;
     frame.time = time;
-    auto& objects = activeScene_->GetObjects();
+    auto& objects = scene->GetObjects();
     frame.objects.reserve(objects.size());
     for (auto& object : objects) {
         if (!object || object->IsEditorInternal()) {
@@ -159,6 +191,25 @@ void ReplayDebugger::CaptureFrame(double time) {
         frame.objects.push_back(std::move(snapshot));
     }
 
+    std::vector<Sprite*> replaySprites;
+    scene->CollectReplaySprites(replaySprites);
+    frame.sprites.reserve(replaySprites.size());
+    std::unordered_set<Sprite*> capturedSprites;
+    capturedSprites.reserve(replaySprites.size());
+    for (Sprite* sprite : replaySprites) {
+        if (!sprite || !capturedSprites.insert(sprite).second) {
+            continue;
+        }
+        sprite->SetReplayRetained(true);
+        SpriteSnapshot snapshot;
+        snapshot.replayId = sprite->EnsureReplayId();
+        snapshot.name = sprite->GetName().empty() ? "Sprite" : sprite->GetName();
+        snapshot.state = sprite->CaptureReplayState();
+        frame.sprites.push_back(std::move(snapshot));
+    }
+
+    scene->CaptureReplaySceneState(frame.sceneState);
+
     if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
         frame.camera.valid = true;
         frame.camera.eye = camera->GetEye();
@@ -170,7 +221,9 @@ void ReplayDebugger::CaptureFrame(double time) {
     }
 
     BuildFrameDiagnostics(frame);
-    frame.estimatedBytes = sizeof(FrameSnapshot) + frame.objects.capacity() * sizeof(ObjectSnapshot);
+    frame.estimatedBytes = sizeof(FrameSnapshot) +
+        frame.objects.capacity() * sizeof(ObjectSnapshot) +
+        frame.sprites.capacity() * sizeof(SpriteSnapshot);
     for (const ObjectSnapshot& snapshot : frame.objects) {
         frame.estimatedBytes += snapshot.name.capacity();
         frame.estimatedBytes += snapshot.className.capacity();
@@ -182,6 +235,10 @@ void ReplayDebugger::CaptureFrame(double time) {
         frame.estimatedBytes += snapshot.state.texturePath.capacity();
         frame.estimatedBytes += snapshot.state.custom.size() * 64;
     }
+    for (const SpriteSnapshot& snapshot : frame.sprites) {
+        frame.estimatedBytes += snapshot.name.capacity();
+    }
+    frame.estimatedBytes += frame.sceneState.dump().size();
     estimatedMemoryBytes_ += frame.estimatedBytes;
     frames_.push_back(std::move(frame));
     cursor_ = frames_.empty() ? 0 : frames_.size() - 1;
@@ -196,17 +253,22 @@ void ReplayDebugger::CaptureFrame(double time) {
             ? player->replayId
             : frames_.back().objects.front().replayId;
     }
+    if (selectedSpriteReplayId_ == 0 && !frames_.back().sprites.empty()) {
+        selectedSpriteReplayId_ = frames_.back().sprites.front().replayId;
+    }
     TrimToCapacity();
 }
 
 void ReplayDebugger::ApplyFrame(std::size_t index) {
-    if (!activeScene_ || frames_.empty()) {
+    BaseScene* scene = GetValidatedActiveScene();
+    if (!scene || frames_.empty()) {
         return;
     }
 
     index = (std::min)(index, frames_.size() - 1);
     FrameSnapshot& frame = frames_[index];
-    auto& objects = activeScene_->GetObjects();
+    scene->RestoreReplaySceneState(frame.sceneState);
+    auto& objects = scene->GetObjects();
 
     std::unordered_map<uint64_t, Object3d*> currentObjects;
     currentObjects.reserve(objects.size());
@@ -216,10 +278,63 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
         }
     }
 
+    std::vector<Sprite*> replaySprites;
+    scene->CollectReplaySprites(replaySprites);
+    std::unordered_map<uint64_t, Sprite*> currentSprites;
+    currentSprites.reserve(replaySprites.size());
+    for (Sprite* sprite : replaySprites) {
+        if (sprite) {
+            currentSprites[sprite->EnsureReplayId()] = sprite;
+        }
+    }
+
+    std::unordered_set<uint64_t> spriteSnapshotIds;
+    spriteSnapshotIds.reserve(frame.sprites.size());
+    for (const SpriteSnapshot& snapshot : frame.sprites) {
+        spriteSnapshotIds.insert(snapshot.replayId);
+    }
+    for (auto& [replayId, sprite] : currentSprites) {
+        if (!sprite->IsReplayRetained() || spriteSnapshotIds.contains(replayId)) {
+            continue;
+        }
+        sprite->SetReplayRemoved(true);
+        sprite->SetVisible(false);
+    }
+
     std::unordered_set<uint64_t> snapshotIds;
     snapshotIds.reserve(frame.objects.size());
     for (const ObjectSnapshot& snapshot : frame.objects) {
         snapshotIds.insert(snapshot.replayId);
+    }
+
+    lastMissingSpriteCount_ = 0;
+    for (const SpriteSnapshot& snapshot : frame.sprites) {
+        const auto found = currentSprites.find(snapshot.replayId);
+        if (found == currentSprites.end()) {
+            ++lastMissingSpriteCount_;
+            continue;
+        }
+        Sprite* sprite = found->second;
+        sprite->RestoreReplayState(snapshot.state);
+        sprite->SetReplayRetained(true);
+    }
+
+    // Sprite階層は全ローカル状態を戻してから再接続し、親の復元順へ依存させません。
+    for (const SpriteSnapshot& snapshot : frame.sprites) {
+        const auto found = currentSprites.find(snapshot.replayId);
+        if (found == currentSprites.end()) {
+            continue;
+        }
+        Sprite* sprite = found->second;
+        Sprite* parent = nullptr;
+        if (snapshot.state.parentReplayId != 0) {
+            const auto parentFound = currentSprites.find(snapshot.state.parentReplayId);
+            if (parentFound != currentSprites.end()) {
+                parent = parentFound->second;
+            }
+        }
+        sprite->SetParent(parent, false);
+        sprite->RefreshAfterReplayRestore();
     }
 
     CollisionManager* collisionManager = CollisionManager::GetInstance();
@@ -289,7 +404,10 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
 }
 
 void ReplayDebugger::PauseAt(std::size_t index) {
-    if (frames_.empty()) {
+    if (!HasFrames()) {
+        if (!frames_.empty()) {
+            ResetForSceneChange();
+        }
         return;
     }
     const bool enteringPause = mode_ == Mode::Recording || mode_ == Mode::Playback;
@@ -301,7 +419,10 @@ void ReplayDebugger::PauseAt(std::size_t index) {
 }
 
 void ReplayDebugger::StartPlayback() {
-    if (frames_.empty()) {
+    if (!HasFrames()) {
+        if (!frames_.empty()) {
+            ResetForSceneChange();
+        }
         return;
     }
     mode_ = Mode::Playback;
@@ -311,7 +432,10 @@ void ReplayDebugger::StartPlayback() {
 }
 
 void ReplayDebugger::ResumeFromCursor() {
-    if (frames_.empty()) {
+    if (!HasFrames()) {
+        if (!frames_.empty()) {
+            ResetForSceneChange();
+        }
         return;
     }
 
@@ -329,7 +453,7 @@ void ReplayDebugger::ResumeFromCursor() {
 }
 
 void ReplayDebugger::StepCursor(int direction) {
-    if (frames_.empty()) {
+    if (!HasFrames()) {
         return;
     }
     const std::ptrdiff_t current = static_cast<std::ptrdiff_t>(cursor_);
@@ -348,30 +472,49 @@ void ReplayDebugger::ClearHistory(bool continueRecording) {
     captureAccumulator_ = 0.0f;
     playbackTime_ = 0.0f;
     lastMissingObjectCount_ = 0;
+    lastMissingSpriteCount_ = 0;
     estimatedMemoryBytes_ = 0;
     selectedReplayId_ = 0;
+    selectedSpriteReplayId_ = 0;
     statusMessage_ = "リプレイ履歴をクリアしました。";
-    mode_ = continueRecording && activeScene_ ? Mode::Recording : Mode::Idle;
+    mode_ = continueRecording && GetValidatedActiveScene() ? Mode::Recording : Mode::Idle;
     if (mode_ == Mode::Recording) {
         CaptureFrame(0.0);
     }
 }
 
+BaseScene* ReplayDebugger::GetValidatedActiveScene(bool allowTransition) const {
+    if (!sceneManager_ || !activeScene_) {
+        return nullptr;
+    }
+    if (!allowTransition && sceneManager_->IsTransitioning()) {
+        return nullptr;
+    }
+    if (sceneManager_->GetSceneGeneration() != activeSceneGeneration_) {
+        return nullptr;
+    }
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    return currentScene == activeScene_ ? currentScene : nullptr;
+}
+
 void ReplayDebugger::ReleaseRetainedObjects() {
-    if (!activeScene_ || !sceneManager_ || sceneManager_->GetCurrentScene() != activeScene_) {
+    BaseScene* scene = GetValidatedActiveScene(true);
+    if (!scene) {
         return;
     }
 
-    auto& objects = activeScene_->GetObjects();
+    auto& objects = scene->GetObjects();
     for (auto& object : objects) {
         if (!object || !object->IsReplayRetained()) {
             continue;
         }
         object->SetReplayRetained(false);
         if (object->IsReplayRemoved()) {
-            activeScene_->RequestRemoveObject(object.get());
+            scene->RequestRemoveObject(object.get());
         }
     }
+    scene->ReleaseReplaySprites();
 }
 
 void ReplayDebugger::ClearTransientRuntime() {
@@ -379,8 +522,8 @@ void ReplayDebugger::ClearTransientRuntime() {
     MeshEffectManager::GetInstance()->Clear();
     DebrisEffectManager::GetInstance()->Clear();
     GPUParticleManager::GetInstance()->ClearAllAutoEmitters();
-    if (activeScene_) {
-        if (ParticleSystem* particles = activeScene_->GetParticleSystem()) {
+    if (BaseScene* scene = GetValidatedActiveScene()) {
+        if (ParticleSystem* particles = scene->GetParticleSystem()) {
             particles->Clear();
         }
     }
@@ -390,14 +533,17 @@ void ReplayDebugger::ResetForSceneChange() {
     ReleaseRetainedObjects();
     frames_.clear();
     activeScene_ = nullptr;
+    activeSceneGeneration_ = 0;
     cursor_ = 0;
     mode_ = Mode::Idle;
     captureAccumulator_ = 0.0f;
     playbackTime_ = 0.0f;
     timelineTime_ = 0.0;
     lastMissingObjectCount_ = 0;
+    lastMissingSpriteCount_ = 0;
     estimatedMemoryBytes_ = 0;
     selectedReplayId_ = 0;
+    selectedSpriteReplayId_ = 0;
     statusMessage_.clear();
 }
 
@@ -416,6 +562,11 @@ void ReplayDebugger::BuildFrameDiagnostics(FrameSnapshot& frame) const {
     for (const ObjectSnapshot& snapshot : frame.objects) {
         if (!snapshot.state.replayRemoved) {
             ++frame.diagnostics.activeObjects;
+        }
+    }
+    for (const SpriteSnapshot& snapshot : frame.sprites) {
+        if (!snapshot.state.replayRemoved) {
+            ++frame.diagnostics.activeSprites;
         }
     }
     if (frames_.empty()) {
@@ -462,6 +613,26 @@ void ReplayDebugger::BuildFrameDiagnostics(FrameSnapshot& frame) const {
         if (!currentIds.contains(before.replayId) && !before.state.replayRemoved) {
             ++frame.diagnostics.removedObjects;
             ++frame.diagnostics.changedObjects;
+        }
+    }
+
+    std::unordered_map<uint64_t, const SpriteSnapshot*> previousSprites;
+    previousSprites.reserve(previous.sprites.size());
+    for (const SpriteSnapshot& snapshot : previous.sprites) {
+        previousSprites[snapshot.replayId] = &snapshot;
+    }
+    std::unordered_set<uint64_t> currentSpriteIds;
+    currentSpriteIds.reserve(frame.sprites.size());
+    for (const SpriteSnapshot& current : frame.sprites) {
+        currentSpriteIds.insert(current.replayId);
+        const auto found = previousSprites.find(current.replayId);
+        if (found == previousSprites.end() || HasMeaningfulChange(*found->second, current)) {
+            ++frame.diagnostics.changedSprites;
+        }
+    }
+    for (const SpriteSnapshot& before : previous.sprites) {
+        if (!currentSpriteIds.contains(before.replayId)) {
+            ++frame.diagnostics.changedSprites;
         }
     }
 }

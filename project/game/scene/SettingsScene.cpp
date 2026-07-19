@@ -45,7 +45,8 @@ void SettingsScene::Initialize() {
 
     InitializeSprites();
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/Alarm02.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile(
+        ResolveSceneBgmPath("Resources/audio/Alarm02.mp3"));
     audioPlayer_->PlayBGM(bgmHandle_, true, 0.65f);
 
     DebugConsole::GetInstance()->AddLog("[Settings] Open settings scene.");

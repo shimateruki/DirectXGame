@@ -115,6 +115,35 @@ void SaveIndicatorOverlay::Draw() {
     }
 }
 
+void SaveIndicatorOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    replaySprites.reserve(replaySprites.size() + sprites_.size());
+    for (const auto& sprite : sprites_) {
+        if (sprite) {
+            replaySprites.push_back(sprite.get());
+        }
+    }
+}
+
+void SaveIndicatorOverlay::CaptureReplayState(json& state) const {
+    state = {
+        { "active", isActive_ },
+        { "debugHold", debugHold_ },
+        { "timer", timer_ },
+        { "holdDuration", holdDuration_ }
+    };
+}
+
+void SaveIndicatorOverlay::RestoreReplayState(const json& state) {
+    if (!state.is_object()) {
+        return;
+    }
+    isActive_ = state.value("active", isActive_);
+    debugHold_ = state.value("debugHold", debugHold_);
+    timer_ = state.value("timer", timer_);
+    holdDuration_ = state.value("holdDuration", holdDuration_);
+    Update(0.0f);
+}
+
 #ifdef USE_IMGUI
 void SaveIndicatorOverlay::DrawImGui() {
     if (ImGui::Button("セーブ中表示を再生", ImVec2(-1.0f, 28.0f))) {

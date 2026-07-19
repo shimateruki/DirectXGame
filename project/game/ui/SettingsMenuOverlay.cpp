@@ -128,6 +128,47 @@ void SettingsMenuOverlay::Draw() {
     }
 }
 
+void SettingsMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    replaySprites.reserve(replaySprites.size() + sprites_.size());
+    for (const auto& sprite : sprites_) {
+        if (sprite) {
+            replaySprites.push_back(sprite.get());
+        }
+    }
+}
+
+void SettingsMenuOverlay::CaptureReplayState(json& state) const {
+    state = {
+        { "active", isActive_ },
+        { "suppressInput", suppressCloseInput_ },
+        { "focusArea", static_cast<int>(focusArea_) },
+        { "selectedIndex", selectedIndex_ },
+        { "footerIndex", footerIndex_ },
+        { "sceneTime", sceneTime_ },
+        { "repeatTimer", repeatTimer_ },
+        { "repeatDirection", repeatDirection_ }
+    };
+}
+
+void SettingsMenuOverlay::RestoreReplayState(const json& state) {
+    if (!state.is_object()) {
+        return;
+    }
+    isActive_ = state.value("active", isActive_);
+    suppressCloseInput_ = state.value("suppressInput", suppressCloseInput_);
+    const int focus = std::clamp(state.value("focusArea", static_cast<int>(focusArea_)), 0, 1);
+    focusArea_ = static_cast<FocusArea>(focus);
+    selectedIndex_ = std::clamp(state.value("selectedIndex", selectedIndex_), 0, static_cast<int>(Item::Count) - 1);
+    footerIndex_ = std::clamp(state.value("footerIndex", footerIndex_), 0, static_cast<int>(FooterAction::Count) - 1);
+    sceneTime_ = state.value("sceneTime", sceneTime_);
+    repeatTimer_ = state.value("repeatTimer", repeatTimer_);
+    repeatDirection_ = state.value("repeatDirection", repeatDirection_);
+    SetAllVisible(isActive_);
+    if (isActive_) {
+        UpdateSprites();
+    }
+}
+
 void SettingsMenuOverlay::LoadLayout(const std::string& layoutPath) {
     sprites_.clear();
     if (!spriteCommon_) {

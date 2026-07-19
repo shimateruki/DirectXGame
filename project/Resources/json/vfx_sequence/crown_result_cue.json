@@ -2,10 +2,25 @@
     "version": 2,
     "events": [
         {
-            "type": 0,
-            "presetName": "crown_get_afterglow",
+            "type": 1,
+            "presetName": "effect_crown_get_flash_ring",
             "triggerTime": 0.0,
-            "offset": [0.0, 0.0, 0.0],
+            "offset": [0.0, 0.18, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.72, 0.72, 0.72]
+        },
+        {
+            "type": 0,
+            "presetName": "crown_get_burst",
+            "triggerTime": 0.02,
+            "offset": [0.0, 0.48, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": 0,
+            "presetName": "crown_get_twinkle_fountain",
+            "triggerTime": 0.08,
+            "offset": [0.0, 0.32, 0.0],
             "scale": [1.0, 1.0, 1.0]
         },
         {
@@ -23,12 +38,28 @@
             "scale": [1.0, 1.0, 1.0]
         },
         {
+            "type": 0,
+            "presetName": "crown_idle_twinkle",
+            "triggerTime": 0.22,
+            "offset": [-0.42, 0.92, 0.18],
+            "scale": [0.85, 0.85, 0.85]
+        },
+        {
+            "type": 4,
+            "presetName": "",
+            "triggerTime": 0.0,
+            "duration": 0.22,
+            "intensity": 0.045,
+            "frequency": 18.0,
+            "scale": [0.55, 0.28, 0.55]
+        },
+        {
             "type": 6,
             "presetName": "",
             "triggerTime": 0.0,
-            "duration": 0.48,
-            "intensity": 1.15,
-            "lightRadius": 6.5,
+            "duration": 0.62,
+            "intensity": 1.45,
+            "lightRadius": 7.5,
             "lightDecay": 1.5,
             "lightColor": [1.0, 0.78, 0.32, 1.0]
         }

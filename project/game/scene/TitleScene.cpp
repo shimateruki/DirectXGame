@@ -131,7 +131,8 @@ void TitleScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("Samples/teapot");
     LOG("TitleScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile(
+        ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
     // --- 3. マネージャ・共通クラスの初期化 ---
     CameraManager::GetInstance()->Initialize();
@@ -149,7 +150,8 @@ void TitleScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
-    skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+        ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 
@@ -177,9 +179,10 @@ void TitleScene::Initialize() {
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/titleScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
 
-    LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
+    LightManager::GetInstance()->LoadState(
+        ResolveSceneLightPath("Resources/json/light/titleScene.json"));
     CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile("title_camera.json");
+    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("title_camera.json"));
     
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");

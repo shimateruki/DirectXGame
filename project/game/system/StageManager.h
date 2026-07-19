@@ -96,6 +96,22 @@ public:
     }
     int GetCurrentStageIndex() const { return currentStageIndex_; }
     const std::vector<StageData>& GetStages() const { return stages_; }
+    int FindStageIndexById(const std::string& stageId) const {
+        for (int index = 0; index < static_cast<int>(stages_.size()); ++index) {
+            if (stages_[index].id == stageId) {
+                return index;
+            }
+        }
+        return -1;
+    }
+    bool SetCurrentStageById(const std::string& stageId) {
+        const int index = FindStageIndexById(stageId);
+        if (index < 0) {
+            return false;
+        }
+        SetCurrentStage(index);
+        return true;
+    }
 
 private:
     StageManager() = default;

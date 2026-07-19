@@ -102,7 +102,7 @@ void PreviewScene::Initialize() {
 	LOG("Preview Scene Initialized!");
 
 	const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-	bgmHandle_ = audioPlayer_->LoadSoundFile(currentStage.bgmPath);
+	bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
 
 	// --- 2. 各種マネージャ初期化 ---
 	EventManager::GetInstance()->ClearAllListeners();
@@ -144,7 +144,8 @@ void PreviewScene::Initialize() {
 	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
-	skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+	skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+		ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
 	skybox_ = std::make_unique<Skybox>();
 	skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 
@@ -152,9 +153,10 @@ void PreviewScene::Initialize() {
 	levelLoader_ = std::make_unique<LevelLoader>();
 	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/sample.json");
 	levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
-	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+	LightManager::GetInstance()->LoadState(
+		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
-	CameraEditor::GetInstance()->LoadFile("game_camera.json");
+	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
 	animatedCube_ = std::make_unique<Object3d>();
 	animatedCube_->Initialize(object3dCommon_.get());

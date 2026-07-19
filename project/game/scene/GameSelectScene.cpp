@@ -458,7 +458,8 @@ void GameSelectScene::Initialize() {
 	gateReturnTargetGate_ = nullptr;
 	pendingStageClearRewardPresentation_ = {};
 
-	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+	bgmHandle_ = audioPlayer_->LoadSoundFile(
+		ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
 	// --- 2. 各種マネージャ初期化 ---
 	EventManager::GetInstance()->ClearAllListeners();
@@ -509,7 +510,8 @@ void GameSelectScene::Initialize() {
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
 	// 1. キューブマップ（DDS）の読み込み
-	skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+	skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+		ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
 
 	// 2. スカイボックスの生成と初期化
 	skybox_ = std::make_unique<Skybox>();
@@ -521,9 +523,10 @@ void GameSelectScene::Initialize() {
 	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/stageSelect.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
 	InitializeStageSelectHUD();
-	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+	LightManager::GetInstance()->LoadState(
+		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
-	CameraEditor::GetInstance()->LoadFile("game_camera.json");
+	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
 	auto* gameData = GameDataManager::GetInstance();
 	gameData->MarkStageUnlockSeen(0);

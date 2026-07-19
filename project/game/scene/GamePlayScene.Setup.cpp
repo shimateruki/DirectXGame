@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GamePlayScene.h"
+#include "SceneController.h"
 
 #include "AudioPlayer.h"
 #include "BulletManager.h"
@@ -116,6 +117,7 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "crown_get_rays",
     "crown_get_twinkle_fountain",
     "crown_get_afterglow",
+    "crown_idle_twinkle",
     "crown_idle_sparkle",
     "crown_goal_idle_sparkle"
 };
@@ -130,6 +132,7 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
     "throw_slam_cue",
     "enemy_ability_hit_cue",
     "crown_get_cue",
+    "crown_focus_cue",
     "crown_result_cue"
 };
 
@@ -145,6 +148,9 @@ constexpr const char* kGameplayDebrisPresetsToPreload[] = {
 }
 
 void GamePlayScene::Initialize() {
+    if (HasSceneAssetContext()) {
+        StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
+    }
     const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
 
     LoadGoalPresentationTuning();
@@ -152,6 +158,17 @@ void GamePlayScene::Initialize() {
     InitializeRenderCommons();
     InitializeGameplaySystems();
     LoadCurrentStageContent(currentStage);
+    const std::string controllerName = GetSceneLoadContext().controllerName.empty()
+        ? "DEFAULT"
+        : GetSceneLoadContext().controllerName;
+    sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
+    if (!sceneController_) {
+        LOG("Scene Controller not registered: " + controllerName + ". Falling back to DEFAULT.");
+        sceneController_ = SceneControllerFactory::GetInstance()->Create("DEFAULT");
+    }
+    if (sceneController_) {
+        sceneController_->OnInitialize(*this);
+    }
     InitializeGoalCinematicTimeline();
     StartRespawnIrisInIfNeeded();
     InitializeDebugAnimationPreview();
@@ -160,6 +177,10 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::Finalize() {
+    if (sceneController_) {
+        sceneController_->OnFinalize(*this);
+        sceneController_.reset();
+    }
     FinalizeGameplayResources();
 }
 
@@ -169,7 +190,7 @@ void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     LOG("Game Initialized!");
-    bgmHandle_ = audioPlayer_->LoadSoundFile(currentStage.bgmPath);
+    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
 
     EventManager::GetInstance()->ClearAllListeners();
     CameraManager::GetInstance()->Initialize();
@@ -207,6 +228,7 @@ void GamePlayScene::InitializeGameplaySystems() {
     uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
     lockOnSprite_ = std::make_unique<Sprite>();
     lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+    lockOnSprite_->SetName("HUD_LockOn");
     lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f });
     lockOnSprite_->SetSize({ 64.0f, 64.0f });
 
@@ -233,7 +255,8 @@ void GamePlayScene::InitializeGameplaySystems() {
     }
     audioPlayer_->LoadSoundFile(kExplosionSePath);
 
-    skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+        ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 }
@@ -244,9 +267,10 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
     ApplyGoalCrownState();
     levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
 
-    LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+    LightManager::GetInstance()->LoadState(
+        ResolveSceneLightPath("Resources/json/light/light_layout.json"));
     CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile("game_camera.json");
+    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
     InitializeGameplayHUD();
 
@@ -339,10 +363,14 @@ void GamePlayScene::FinalizeGameplayResources() {
     saveIndicatorOverlay_.reset();
     goalOverlayBackdrop_.reset();
     goalOverlayFlash_.reset();
-    goalOverlayPanel_.reset();
-    goalOverlayCrown_.reset();
+    goalOverlayGlow_.reset();
+    goalOverlayTopLine_.reset();
+    goalOverlayBottomLine_.reset();
     goalOverlayStageClearText_.reset();
     goalOverlayReturnText_.reset();
+    for (auto& sparkle : goalOverlaySparkles_) {
+        sparkle.reset();
+    }
     goalPresentationState_ = GoalPresentationState::Inactive;
     goalPresentationTimer_ = 0.0f;
     goalStarEmitTimer_ = 0.0f;

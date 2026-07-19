@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GamePlayScene.h"
+#include "SceneController.h"
 
 #include "BulletManager.h"
 #include "CameraEditor.h"
@@ -96,6 +97,12 @@ Vector3 NormalizePlanarDirection(const Vector3& direction, const Vector3& fallba
     result.x /= length;
     result.z /= length;
     return result;
+}
+
+Vector3 QuadraticBezier(const Vector3& start, const Vector3& control, const Vector3& end, float rate) {
+    const float t = std::clamp(rate, 0.0f, 1.0f);
+    const float inv = 1.0f - t;
+    return start * (inv * inv) + control * (2.0f * inv * t) + end * (t * t);
 }
 
 Vector3 MakeLookAtEuler(const Vector3& eye, const Vector3& target, float roll = 0.0f) {
@@ -238,7 +245,10 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
             }
         }
         for (auto& track : goalCinematicSequence_.vfxTracks) {
-            Object3d* target = track.sequenceName == "crown_get_cue" ? crownObject : player_;
+            const bool followsCrown =
+                track.sequenceName == "crown_focus_cue" ||
+                track.sequenceName == "crown_get_cue";
+            Object3d* target = followsCrown ? crownObject : player_;
             if (target) {
                 track.binding.targetName = target->GetName();
                 track.binding.targetEventId = target->GetEventID();
@@ -259,6 +269,10 @@ void GamePlayScene::Update(float deltaTime) {
 
     if (HandlePauseOverlay(deltaTime)) {
         return;
+    }
+
+    if (sceneController_) {
+        sceneController_->OnUpdate(*this, deltaTime);
     }
 
     UpdatePostEffectState(deltaTime);
@@ -457,11 +471,14 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
     GPUParticleManager::GetInstance()->Update(deltaTime);
     UpdateUI(deltaTime);
 
-    if (!goalEditorPreviewMode_ &&
-        goalPresentationState_ == GoalPresentationState::ReadyToReturn &&
-        inputManager_ &&
-        inputManager_->IsKeyTriggered(DIK_SPACE)) {
-        RequestGoalReturnToSelect();
+    if (!goalEditorPreviewMode_ && goalPresentationState_ == GoalPresentationState::ReadyToReturn) {
+        constexpr float kAutomaticReturnDelay = 0.85f;
+        const bool confirmPressed = inputManager_ && inputManager_->IsActionTriggered("Jump");
+        const bool automaticReturn =
+            goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime + kAutomaticReturnDelay;
+        if (confirmPressed || automaticReturn) {
+            RequestGoalReturnToSelect();
+        }
     }
 
     if (goalPresentationState_ == GoalPresentationState::Returning) {
@@ -556,26 +573,50 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     Vector3 crownScale = goalCrownBaseScale_;
     Vector3 crownRotation = goalCrownBaseRotation_;
 
-    if (t < presentation.crownFocusEndTime) {
-        const float move = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, 0.0f, presentation.crownFocusEndTime),
-            AnimationInterpolation::EasingType::EaseOut);
-        crownPosition = AnimationInterpolation::Lerp(goalCrownBasePosition_, dropStartPosition, move);
-        crownPosition.y += std::sin(move * kPi) * 0.18f;
-        crownRotation.y = goalCrownBaseRotation_.y + 0.18f * move;
+    if (t < presentation.crownMoveStartTime) {
+        // カメラが寄り切るまでは王冠をその場に留め、取得物を読ませます。
+        const float focusPulse = (std::sin(t * 7.0f) + 1.0f) * 0.5f;
+        const float focusScale = 1.0f + focusPulse * 0.012f;
+        crownScale.x *= focusScale;
+        crownScale.y *= focusScale;
+        crownScale.z *= focusScale;
+        crownRotation.y = goalCrownBaseRotation_.y + t * 0.34f;
     } else if (t < animation.crownLandTime) {
-        const float fall = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, presentation.crownFocusEndTime, animation.crownLandTime),
-            AnimationInterpolation::EasingType::SmootherStep);
-        crownPosition = AnimationInterpolation::Lerp(dropStartPosition, headPosition, fall);
-        crownRotation = AnimationInterpolation::SlerpEuler(
-            { goalCrownBaseRotation_.x, goalCrownBaseRotation_.y + 0.18f, goalCrownBaseRotation_.z },
-            { goalCrownBaseRotation_.x, goalCrownBaseRotation_.y + 0.34f, goalCrownBaseRotation_.z },
-            fall);
-        const float settlePulse = std::sin(fall * kPi);
-        crownScale.x *= 1.0f + settlePulse * 0.025f;
-        crownScale.y *= 1.0f + settlePulse * 0.018f;
-        crownScale.z *= 1.0f + settlePulse * 0.025f;
+        const float moveDuration = std::max(0.01f, animation.crownLandTime - presentation.crownMoveStartTime);
+        const float approachEndTime = presentation.crownMoveStartTime + moveDuration * 0.34f;
+        const float moveStartYaw = goalCrownBaseRotation_.y + presentation.crownMoveStartTime * 0.34f;
+
+        if (t < approachEndTime) {
+            // 取得位置から頭上へ弧を描いて運び、そこから降下へ接続します。
+            const float approach = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(t, presentation.crownMoveStartTime, approachEndTime),
+                AnimationInterpolation::EasingType::SmootherStep);
+            Vector3 control = AnimationInterpolation::Lerp(goalCrownBasePosition_, dropStartPosition, 0.52f);
+            control.y = std::max(goalCrownBasePosition_.y, dropStartPosition.y) + presentation.crownDropHeight * 0.34f;
+            control = control + goalMoveRight_ * 0.28f;
+            crownPosition = QuadraticBezier(goalCrownBasePosition_, control, dropStartPosition, approach);
+            crownRotation = AnimationInterpolation::SlerpEuler(
+                { goalCrownBaseRotation_.x, moveStartYaw, goalCrownBaseRotation_.z },
+                { goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f },
+                approach);
+            const float arcPulse = std::sin(approach * kPi);
+            crownScale.x *= 1.0f + arcPulse * 0.018f;
+            crownScale.y *= 1.0f + arcPulse * 0.012f;
+            crownScale.z *= 1.0f + arcPulse * 0.018f;
+        } else {
+            const float fall = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(t, approachEndTime, animation.crownLandTime),
+                AnimationInterpolation::EasingType::SmootherStep);
+            crownPosition = AnimationInterpolation::Lerp(dropStartPosition, headPosition, fall);
+            crownRotation = AnimationInterpolation::SlerpEuler(
+                { goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f },
+                { goalCrownBaseRotation_.x, goalCrownBaseRotation_.y + 0.52f, goalCrownBaseRotation_.z },
+                fall);
+            const float descentPulse = std::sin(fall * kPi);
+            crownScale.x *= 1.0f + descentPulse * 0.016f;
+            crownScale.y *= 1.0f + descentPulse * 0.010f;
+            crownScale.z *= 1.0f + descentPulse * 0.016f;
+        }
         goalCrownSpringInitialized_ = false;
         goalCrownSpringPosition_ = crownPosition;
         goalCrownSpringVelocity_ = {};
@@ -594,7 +635,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + Vector3{ 0.0f, physics.landingDownVelocity, 0.0f };
             goalCrownSpringRotation_ = {
                 goalCrownBaseRotation_.x + 0.10f,
-                goalCrownBaseRotation_.y + 0.34f,
+                goalCrownBaseRotation_.y + 0.52f,
                 goalCrownBaseRotation_.z - 0.12f
             };
             goalCrownSpringRotationVelocity_ = { 0.0f, 0.0f, physics.landingRollVelocity };
@@ -798,15 +839,20 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(goalCameraGameplayTarget_, movingCrownTarget, p);
         fov = AnimationInterpolation::Lerp(goalCameraGameplayFov_, camera.crownFocusFov, p);
     } else if (t < animation.crownLandTime) {
+        // 王冠の移動中も専用ショットを維持し、常に王冠を画面の主役にします。
+        eye = movingCrownEye;
+        target = movingCrownTarget;
+        fov = camera.crownFocusFov;
+    } else if (t < animation.anticipationStartTime) {
         const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, camera.crownFocusEndTime, animation.crownLandTime),
+            AnimationInterpolation::SegmentRate(t, animation.crownLandTime, animation.anticipationStartTime),
             AnimationInterpolation::EasingType::SmootherStep);
         eye = AnimationInterpolation::Lerp(movingCrownEye, goalCameraLandingEye_, p);
         target = AnimationInterpolation::Lerp(movingCrownTarget, goalCameraLandingTarget_, p);
         fov = AnimationInterpolation::Lerp(camera.crownFocusFov, camera.landingFov, p);
     } else if (t < animation.jumpStartTime) {
         const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, animation.crownLandTime, animation.jumpStartTime),
+            AnimationInterpolation::SegmentRate(t, animation.anticipationStartTime, animation.jumpStartTime),
             AnimationInterpolation::EasingType::SmootherStep);
         eye = AnimationInterpolation::Lerp(goalCameraLandingEye_, goalCameraJumpEye_, p);
         target = AnimationInterpolation::Lerp(goalCameraLandingTarget_, goalCameraJumpTarget_, p);

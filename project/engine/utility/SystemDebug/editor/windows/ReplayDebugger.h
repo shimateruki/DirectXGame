@@ -3,6 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "Object3d.h"
+#include "Sprite.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -34,7 +35,7 @@ public:
 
     bool ShouldFreezeSimulation() const;
     bool IsRecording() const { return mode_ == Mode::Recording; }
-    bool HasFrames() const { return !frames_.empty(); }
+    bool HasFrames() const;
     Mode GetMode() const { return mode_; }
     // Main Menu Barから、実行を停止または選択時点から分岐再開します。
     void ToggleSimulationPause();
@@ -50,6 +51,12 @@ private:
         Object3d::ReplayState state;
     };
 
+    struct SpriteSnapshot {
+        uint64_t replayId = 0;
+        std::string name;
+        Sprite::ReplayState state;
+    };
+
     struct FrameDiagnostics {
         std::size_t activeObjects = 0;
         std::size_t changedObjects = 0;
@@ -57,6 +64,8 @@ private:
         std::size_t removedObjects = 0;
         std::size_t hpChanges = 0;
         std::size_t deaths = 0;
+        std::size_t activeSprites = 0;
+        std::size_t changedSprites = 0;
     };
 
     struct CameraSnapshot {
@@ -72,7 +81,9 @@ private:
     struct FrameSnapshot {
         double time = 0.0;
         std::vector<ObjectSnapshot> objects;
+        std::vector<SpriteSnapshot> sprites;
         CameraSnapshot camera;
+        json sceneState = json::object();
         FrameDiagnostics diagnostics;
         std::size_t estimatedBytes = 0;
     };
@@ -85,6 +96,7 @@ private:
     void ResumeFromCursor();
     void StepCursor(int direction);
     void ClearHistory(bool continueRecording);
+    BaseScene* GetValidatedActiveScene(bool allowTransition = false) const;
     void ReleaseRetainedObjects();
     void ClearTransientRuntime();
     void TrimToCapacity();
@@ -99,13 +111,17 @@ private:
     void DrawTimelineEditor();
     void DrawObjectBrowser();
     void DrawObjectInspector();
+    void DrawSpriteBrowser();
+    void DrawSpriteInspector();
     void DrawSettingsPanel();
     void HandleEditorShortcuts();
     void SelectFrameFromTimeline(double time);
     void SelectSceneObject(uint64_t replayId);
     void JumpToObjectChange(int direction);
     bool HasMeaningfulChange(const ObjectSnapshot& lhs, const ObjectSnapshot& rhs) const;
+    bool HasMeaningfulChange(const SpriteSnapshot& lhs, const SpriteSnapshot& rhs) const;
     const ObjectSnapshot* FindObjectSnapshot(const FrameSnapshot& frame, uint64_t replayId) const;
+    const SpriteSnapshot* FindSpriteSnapshot(const FrameSnapshot& frame, uint64_t replayId) const;
     const ObjectSnapshot* FindPreviousObjectSnapshot(uint64_t replayId) const;
     const ObjectSnapshot* FindLatestObjectSnapshot(uint64_t replayId) const;
     static const char* FormatBytes(std::size_t bytes, char* buffer, std::size_t bufferSize);
@@ -114,6 +130,7 @@ private:
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
     BaseScene* activeScene_ = nullptr;
+    uint64_t activeSceneGeneration_ = 0;
     std::deque<FrameSnapshot> frames_;
     std::size_t cursor_ = 0;
     Mode mode_ = Mode::Idle;
@@ -127,9 +144,12 @@ private:
     float playbackTime_ = 0.0f;
     double timelineTime_ = 0.0;
     std::size_t lastMissingObjectCount_ = 0;
+    std::size_t lastMissingSpriteCount_ = 0;
     std::size_t estimatedMemoryBytes_ = 0;
 
     uint64_t selectedReplayId_ = 0;
+    uint64_t selectedSpriteReplayId_ = 0;
+    bool inspectSprites_ = false;
     float timelinePixelsPerSecond_ = 110.0f;
     bool autoScrollTimeline_ = true;
     bool showOnlyChangedObjects_ = false;

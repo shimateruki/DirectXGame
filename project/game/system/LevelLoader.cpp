@@ -146,14 +146,17 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     PresetManager::GetInstance()->Initialize();
     GameplayStatusManager::GetInstance()->Initialize();
 
-    std::string justName = filename;
+    const std::string resolvedFilename = scene
+        ? scene->ResolvePrimaryObjectLayoutPath(filename)
+        : filename;
+    std::string justName = resolvedFilename;
     size_t slashPos = justName.find_last_of("/\\");
     if (slashPos != std::string::npos) {
         justName = justName.substr(slashPos + 1);
     }
     scene->SetLoadedFilename(justName);
     // filename は "Resources/json/3Dobject/scene_layout.json" のようになっている
-    std::string baseFilename = filename;
+    std::string baseFilename = resolvedFilename;
 
 
     size_t extPos = baseFilename.find(".json");
@@ -197,7 +200,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
         LoadSingleJson(scene, cameraFile);
     } else {
         // 旧仕様：過去の単一ファイル (scene_layout.json など) をそのまま読み込む
-        LoadSingleJson(scene, filename);
+        LoadSingleJson(scene, resolvedFilename);
     }
 
     // 全ファイルを読み込み後、親子関係を解決
@@ -693,13 +696,16 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
 
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
-    std::string justName = filename;
+    const std::string resolvedFilename = scene
+        ? scene->ResolvePrimarySpriteLayoutPath(filename)
+        : filename;
+    std::string justName = resolvedFilename;
     size_t slashPos = justName.find_last_of("/\\");
     if (slashPos != std::string::npos) {
         justName = justName.substr(slashPos + 1);
     }
     scene->SetLoadedSpriteFilename(justName);
-    std::ifstream file(filename);
+    std::ifstream file(resolvedFilename);
     if (!file.is_open()) return;
 
     auto& sprites = scene->GetSprites();

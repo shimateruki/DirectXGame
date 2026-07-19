@@ -159,6 +159,10 @@
     <ClCompile Include="game\scene\PreviewScene.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="game\scene\SceneAssetEditorScene.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\SceneController.cpp" />
     <ClCompile Include="game\scene\TutorialScene.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClCompile>
@@ -857,6 +861,11 @@
     <ClInclude Include="game\scene\PreviewScene.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClInclude>
+    <ClInclude Include="game\scene\SceneAssetEditorScene.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\SceneController.h" />
+    <ClInclude Include="engine\system\scene\SceneLoadContext.h" />
     <ClInclude Include="game\scene\TutorialScene.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClInclude>

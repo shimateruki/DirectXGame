@@ -80,7 +80,7 @@ void TutorialScene::Initialize() {
 
 	// チュートリアル用の設定 (StageManagerがチュートリアル(-1)に対応している前提)
 	const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-	bgmHandle_ = audioPlayer_->LoadSoundFile(currentStage.bgmPath);
+	bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
 
 	// --- 2. 各種マネージャ初期化 ---
 	EventManager::GetInstance()->ClearAllListeners();
@@ -123,7 +123,8 @@ void TutorialScene::Initialize() {
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
 	// 1. キューブマップ（DDS）の読み込み
-	skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+	skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+		ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
 
 	// 2. スカイボックスの生成と初期化
 	skybox_ = std::make_unique<Skybox>();
@@ -143,9 +144,10 @@ void TutorialScene::Initialize() {
 	saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
 	saveIndicatorOverlay_->Initialize(spriteCommon_.get());
 
-	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+	LightManager::GetInstance()->LoadState(
+		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
-	CameraEditor::GetInstance()->LoadFile("game_camera.json");
+	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
 	// 課題用アニメーションモデルの生成
 	animatedCube_ = std::make_unique<Object3d>();

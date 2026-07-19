@@ -6,7 +6,28 @@
 #include "Camera.h"
 #include "GPUParticleManager.h"
 #include "LightManager.h"
+#include "SceneManager.h"
 #include <algorithm>
+
+std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& defaultPath) {
+    if (sceneAssetObjectLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {
+        return defaultPath;
+    }
+
+    sceneAssetObjectLayoutConsumed_ = true;
+    const std::string& assetPath = sceneLoadContext_.objectLayoutPath;
+    return assetPath.empty() ? defaultPath : assetPath;
+}
+
+std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& defaultPath) {
+    if (sceneAssetSpriteLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {
+        return defaultPath;
+    }
+
+    sceneAssetSpriteLayoutConsumed_ = true;
+    const std::string& assetPath = sceneLoadContext_.spriteLayoutPath;
+    return assetPath.empty() ? defaultPath : assetPath;
+}
 
 bool BaseScene::Destroy(Object3d* object) {
     return DestroyObject(object);
@@ -14,6 +35,45 @@ bool BaseScene::Destroy(Object3d* object) {
 
 bool BaseScene::Destroy(Sprite* sprite) {
     return DestroySprite(sprite);
+}
+
+void BaseScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+    auto& sprites = GetSprites();
+    replaySprites.reserve(replaySprites.size() + sprites.size());
+    for (auto& sprite : sprites) {
+        if (sprite) {
+            replaySprites.push_back(sprite.get());
+        }
+    }
+}
+
+void BaseScene::CaptureReplaySceneState(json& state) const {
+    state = json::object();
+}
+
+void BaseScene::RestoreReplaySceneState(const json& state) {
+    (void)state;
+}
+
+void BaseScene::ReleaseReplaySprites() {
+    std::vector<Sprite*> replaySprites;
+    CollectReplaySprites(replaySprites);
+    for (Sprite* sprite : replaySprites) {
+        if (sprite) {
+            sprite->SetReplayRetained(false);
+        }
+    }
+
+    auto& sprites = GetSprites();
+    sprites.erase(
+        std::remove_if(sprites.begin(), sprites.end(), [](const std::unique_ptr<Sprite>& sprite) {
+            if (!sprite || !sprite->IsReplayRemoved()) {
+                return false;
+            }
+            sprite->SetParent(nullptr, false);
+            return true;
+        }),
+        sprites.end());
 }
 
 void BaseScene::RefreshRenderCameraData() {
@@ -82,6 +142,19 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
         return false;
     }
 
+    if (sprite->IsReplayRetained()) {
+        std::vector<Sprite*> children = sprite->GetChildren();
+        for (Sprite* child : children) {
+            if (child) {
+                child->SetParent(nullptr);
+            }
+        }
+        sprite->SetParent(nullptr);
+        sprite->SetReplayRemoved(true);
+        sprite->SetVisible(false);
+        return true;
+    }
+
     std::vector<Sprite*> children = sprite->GetChildren();
     for (Sprite* child : children) {
         if (child) {
@@ -112,7 +185,7 @@ bool BaseScene::IsAlive(Sprite* sprite) {
 
     auto& sprites = GetSprites();
     return std::any_of(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
-        return candidate && candidate.get() == sprite;
+        return candidate && candidate.get() == sprite && !candidate->IsReplayRemoved();
     });
 }
 

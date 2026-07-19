@@ -11,19 +11,19 @@
 class GoalClearPlayerAnimator {
 public:
     struct Tuning {
-        float crownLandTime = 0.95f;
-        float anticipationStartTime = 1.04f;
-        float jumpStartTime = 1.24f;
-        float apexTime = 1.92f;
-        float resultUiTime = 2.00f;
-        float readyTime = 2.75f;
-        float jumpHeight = 3.25f;
-        float forwardDistance = 0.45f;
-        float anticipationDepth = 0.22f;
-        float landingSquash = 0.16f;
-        float anticipationSquash = 0.28f;
-        float takeoffStretch = 0.34f;
-        float resultStretch = 0.12f;
+        float crownLandTime = 2.30f;
+        float anticipationStartTime = 2.48f;
+        float jumpStartTime = 2.82f;
+        float apexTime = 3.72f;
+        float resultUiTime = 3.80f;
+        float readyTime = 5.35f;
+        float jumpHeight = 4.10f;
+        float forwardDistance = 0.60f;
+        float anticipationDepth = 0.30f;
+        float landingSquash = 0.20f;
+        float anticipationSquash = 0.34f;
+        float takeoffStretch = 0.38f;
+        float resultStretch = 0.10f;
         float resultYawBias = 0.10f;
     };
 

@@ -710,7 +710,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		DebrisEffectManager::GetInstance()->Clear();
 		ClearSceneBoundEditorState();
 		if (sceneManager) {
-			sceneManager->ChangeScene(currentSceneName);
+			sceneManager->ReloadCurrentScene();
 		}
 		CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 	}
@@ -729,6 +729,29 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 			}
 		}
 		ImGui::EndDisabled();
+	}
+
+	const bool canEditSceneAssets = !isPlaying && sceneManager && !sceneManager->IsTransitioning();
+	const ImGuiIO& menuIo = ImGui::GetIO();
+	if (canEditSceneAssets && debugEditor_ && !menuIo.WantTextInput && menuIo.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+		debugEditor_->SaveScene(SaveMode::All);
+	}
+
+	if (ImGui::BeginMenu(ICON_FA_FILE " ファイル")) {
+		ImGui::BeginDisabled(!canEditSceneAssets || !debugEditor_);
+		if (ImGui::MenuItem(ICON_FA_PLUS " 新規Scene Asset")) {
+			showDebugWindows_ = true;
+			debugEditor_->OpenCreateSceneAssetDialog();
+		}
+		if (ImGui::MenuItem(ICON_FA_SAVE " Active Sceneを保存", "Ctrl+S")) {
+			debugEditor_->SaveScene(SaveMode::All);
+		}
+		ImGui::EndDisabled();
+		ImGui::Separator();
+		if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Scene Asset管理を表示")) {
+			showDebugWindows_ = true;
+		}
+		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("表示")) {
@@ -769,13 +792,47 @@ ImGui::MenuItem("Hierarchy / Inspector 表示", nullptr, &showDebugWindows_);
 	}
 
 	if (ImGui::BeginMenu("シーン切り替え")) {
-		const char* sceneNames[] = { "TITLE", "SELECT", "GAMEPLAY", "GAMEOVER", "GAMECLEAR", "PREVIEW", "TUTORIAL" };
-		for (const char* sceneName : sceneNames) {
-			if (ImGui::MenuItem(sceneName) && sceneManager) {
-				ClearSceneBoundEditorState();
-				sceneManager->ChangeScene(sceneName);
+		const bool canSwitchScene = sceneManager && !sceneManager->IsTransitioning() && !isPlaying;
+		ImGui::BeginDisabled(!canSwitchScene);
+		ImGui::TextDisabled("C++ Scene");
+		if (sceneManager) {
+			const bool hasUnsavedChanges = debugEditor_ && debugEditor_->HasAnyDirty();
+			ImGui::BeginDisabled(hasUnsavedChanges);
+			for (const std::string& sceneName : sceneManager->GetRegisteredSceneNames()) {
+				if (sceneName == "SCENE_EDITOR") {
+					continue;
+				}
+				if (ImGui::MenuItem(sceneName.c_str(), nullptr, sceneName == sceneManager->GetCurrentSceneName() && !sceneManager->HasActiveSceneAsset())) {
+					ClearSceneBoundEditorState();
+					sceneManager->ChangeScene(sceneName);
+				}
+			}
+			ImGui::EndDisabled();
+			if (hasUnsavedChanges) {
+				ImGui::TextDisabled("先にActive Sceneを保存してください");
 			}
 		}
+
+		ImGui::Separator();
+		ImGui::TextDisabled("Scene Asset");
+		if (debugEditor_) {
+			const std::vector<SceneSerializer::SceneAssetInfo> sceneAssets = debugEditor_->GetSceneAssets();
+			if (sceneAssets.empty()) {
+				ImGui::TextDisabled("Scene Assetがありません");
+			}
+			for (const SceneSerializer::SceneAssetInfo& asset : sceneAssets) {
+				const std::string label = asset.displayName + "##SceneAssetMenu_" + asset.filename;
+				const std::string runtimeLabel = asset.runtimeScene + " / " + asset.controllerName;
+				if (ImGui::MenuItem(
+					label.c_str(),
+					runtimeLabel.c_str(),
+					debugEditor_->IsCurrentSceneAsset(asset.filename))) {
+					showDebugWindows_ = true;
+					debugEditor_->RequestOpenSceneAssetFromMenu(asset.filename);
+				}
+			}
+		}
+		ImGui::EndDisabled();
 		ImGui::EndMenu();
 	}
 
@@ -823,7 +880,7 @@ void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlayi
 void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
 	ClearSceneBoundEditorState();
 	if (sceneManager) {
-		sceneManager->ChangeScene(currentSceneName);
+		sceneManager->ReloadCurrentScene();
 	}
 	MeshEffectManager::GetInstance()->Clear();
 	isPlaying = true;

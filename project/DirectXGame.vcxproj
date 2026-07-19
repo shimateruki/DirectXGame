@@ -283,6 +283,8 @@
     <ClCompile Include="game\scene\GamePlayScene.Setup.cpp" />
     <ClCompile Include="game\scene\GamePlayScene.Update.cpp" />
     <ClCompile Include="game\scene\PreviewScene.cpp" />
+    <ClCompile Include="game\scene\SceneAssetEditorScene.cpp" />
+    <ClCompile Include="game\scene\SceneController.cpp" />
     <ClCompile Include="game\scene\TutorialScene.cpp" />
     <ClCompile Include="game\scene\GameSelectScene.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
@@ -843,6 +845,9 @@
     <ClInclude Include="engine\graphics\core\SrvManager.h" />
     <ClInclude Include="game\scene\GamePlayScene.h" />
     <ClInclude Include="game\scene\PreviewScene.h" />
+    <ClInclude Include="game\scene\SceneAssetEditorScene.h" />
+    <ClInclude Include="game\scene\SceneController.h" />
+    <ClInclude Include="engine\system\scene\SceneLoadContext.h" />
     <ClInclude Include="game\scene\TutorialScene.h" />
     <ClInclude Include="game\scene\GameSelectScene.h" />
     <ClInclude Include="game\scene\SettingsScene.h" />

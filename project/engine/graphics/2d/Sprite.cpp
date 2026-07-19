@@ -7,8 +7,11 @@
 #include "engine/graphics/core/ColorSpace.h"
 #include "RenderStats.h"
 #include <algorithm>
+#include <atomic>
 
 namespace {
+std::atomic<uint64_t> gNextSpriteReplayId{ 0x8000000000000001ull };
+
 Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
 	Math math;
 	Vector2 position = sprite ? sprite->GetPosition() : Vector2{ 0.0f, 0.0f };
@@ -216,7 +219,7 @@ void Sprite::SetColor(const Vector4& color) {
 void Sprite::Draw() {
 	if (!common_ || !dxCommon_) return;
 	assert(common_);
-	if (!isVisible_ || textureHandle_ == 0) return;
+	if (!isVisible_ || replayRemoved_ || textureHandle_ == 0) return;
 	if (!vertexResource_ || !indexResource_ || !wvpResource_ || !materialResource_) return;
 	if (!vertexData_ || !materialData_) return;
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
@@ -292,6 +295,78 @@ void Sprite::Play() {
 /// </summary>
 void Sprite::Stop() {
 	isPlaying_ = false;
+}
+
+uint64_t Sprite::EnsureReplayId() {
+	if (replayId_ == 0) {
+		replayId_ = gNextSpriteReplayId.fetch_add(1, std::memory_order_relaxed);
+	}
+	return replayId_;
+}
+
+Sprite::ReplayState Sprite::CaptureReplayState() const {
+	ReplayState state;
+	state.position = position_;
+	state.rotation = rotation_;
+	state.size = size_;
+	state.color = color_;
+	state.anchorPoint = anchorPoint_;
+	state.flipX = isFlipX_;
+	state.flipY = isFlipY_;
+	state.textureLeftTop = textureLeftTop_;
+	state.textureSize = textureSize_;
+	state.textureHandle = textureHandle_;
+	state.emissive = GetEmissive();
+	state.visible = isVisible_;
+	state.locked = isLocked_;
+
+	state.animationPlaying = isPlaying_;
+	state.animationLooping = isLooping_;
+	state.frameDuration = frameDuration_;
+	state.animationTimer = animationTimer_;
+	state.totalFrames = totalFrames_;
+	state.currentFrame = currentFrame_;
+	state.frameWidth = frameWidth_;
+	state.frameHeight = frameHeight_;
+
+	state.parentReplayId = parent_ ? parent_->EnsureReplayId() : 0;
+	state.replayRemoved = replayRemoved_;
+	return state;
+}
+
+void Sprite::RestoreReplayState(const ReplayState& state) {
+	SetParent(nullptr, false);
+	position_ = state.position;
+	rotation_ = state.rotation;
+	size_ = state.size;
+	anchorPoint_ = state.anchorPoint;
+	isFlipX_ = state.flipX;
+	isFlipY_ = state.flipY;
+	textureLeftTop_ = state.textureLeftTop;
+	textureSize_ = state.textureSize;
+	textureHandle_ = state.textureHandle;
+	isVisible_ = state.visible;
+	isLocked_ = state.locked;
+
+	isPlaying_ = state.animationPlaying;
+	isLooping_ = state.animationLooping;
+	frameDuration_ = state.frameDuration;
+	animationTimer_ = state.animationTimer;
+	totalFrames_ = state.totalFrames;
+	currentFrame_ = state.currentFrame;
+	frameWidth_ = state.frameWidth;
+	frameHeight_ = state.frameHeight;
+	replayRemoved_ = state.replayRemoved;
+	SetColor(state.color);
+	SetEmissive(state.emissive);
+	RefreshAfterReplayRestore();
+}
+
+void Sprite::RefreshAfterReplayRestore() {
+	const bool wasPlaying = isPlaying_;
+	isPlaying_ = false;
+	Update();
+	isPlaying_ = wasPlaying;
 }
 
 void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {

@@ -84,7 +84,8 @@ void GameOverScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/GameOver.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile(
+        ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -121,9 +122,10 @@ void GameOverScene::Initialize() {
     InitializeFallingCrowns();
     InitializeDizzyStars();
 
-    LightManager::GetInstance()->LoadState("Resources/json/light/gameOverScene.json");
+    LightManager::GetInstance()->LoadState(
+        ResolveSceneLightPath("Resources/json/light/gameOverScene.json"));
     CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile("gameOver_camera.json");
+    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameOver_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
     CameraEditor::GetInstance()->Update(nullptr, false);
     CameraManager::GetInstance()->Update();

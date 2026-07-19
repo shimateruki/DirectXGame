@@ -20,6 +20,7 @@ class BulletManager;
 class Player;
 
 #include "engine/utility/state/IEditable.h"
+#include "SceneLoadContext.h"
 
 /// <summary>
 /// すべてのシーンが実装する基底クラス。
@@ -46,6 +47,24 @@ virtual void Finalize() = 0;
     // --- マネージャ設定 ---
     virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
     virtual void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
+    virtual void SetSceneLoadContext(const SceneLoadContext& context) { sceneLoadContext_ = context; }
+    SceneManager* GetSceneManager() const { return sceneManager_; }
+    const SceneLoadContext& GetSceneLoadContext() const { return sceneLoadContext_; }
+    bool HasSceneAssetContext() const { return sceneLoadContext_.IsSceneAsset(); }
+    std::string ResolveSceneBgmPath(const std::string& defaultPath) const {
+        return sceneLoadContext_.bgmPath.empty() ? defaultPath : sceneLoadContext_.bgmPath;
+    }
+    std::string ResolveSceneLightPath(const std::string& defaultPath) const {
+        return sceneLoadContext_.lightPath.empty() ? defaultPath : sceneLoadContext_.lightPath;
+    }
+    std::string ResolveSceneCameraPath(const std::string& defaultPath) const {
+        return sceneLoadContext_.cameraPath.empty() ? defaultPath : sceneLoadContext_.cameraPath;
+    }
+    std::string ResolveSceneSkyboxPath(const std::string& defaultPath) const {
+        return sceneLoadContext_.skyboxPath.empty() ? defaultPath : sceneLoadContext_.skyboxPath;
+    }
+    std::string ResolvePrimaryObjectLayoutPath(const std::string& defaultPath);
+    std::string ResolvePrimarySpriteLayoutPath(const std::string& defaultPath);
 
     // --- オブジェクト管理 (LevelLoader / Editor 用) ---
     virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
@@ -57,6 +76,13 @@ virtual void Finalize() = 0;
         static std::vector<std::unique_ptr<Sprite>> empty;
         return empty;
     }
+
+    // ReplayDebuggerへ、Sceneが現在所有している永続Spriteを列挙します。
+    // 個別unique_ptrで保持するHUDは派生Sceneで追加してください。
+    virtual void CollectReplaySprites(std::vector<Sprite*>& sprites);
+    virtual void CaptureReplaySceneState(json& state) const;
+    virtual void RestoreReplaySceneState(const json& state);
+    void ReleaseReplaySprites();
 
         // エディタやロード処理からObject3dを追加するための入口です。
 virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
@@ -105,6 +131,9 @@ bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureH
 
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
+    SceneLoadContext sceneLoadContext_;
     std::string loadedFilename_ = "scene_layout.json";
     std::string loadedSpriteFilename_ = "sprite_layout.json";
+    bool sceneAssetObjectLayoutConsumed_ = false;
+    bool sceneAssetSpriteLayoutConsumed_ = false;
 };

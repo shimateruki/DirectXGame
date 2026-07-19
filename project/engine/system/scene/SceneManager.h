@@ -1,9 +1,12 @@
 #pragma once
 #include "AbstractSceneFactory.h"
 #include "BaseScene.h"
+#include "SceneLoadContext.h"
+#include <cstdint>
 #include <future>
 #include <memory>
 #include <string>
+#include <vector>
 
 class DebugEditor;
 
@@ -53,15 +56,36 @@ void Draw();
         // シーン名を指定して次のシーンへの遷移を開始します。
 void ChangeScene(const std::string& sceneName);
 
+    bool ReloadCurrentScene();
+    std::vector<std::string> GetRegisteredSceneNames() const;
+    bool IsSceneRegistered(const std::string& sceneName) const;
+
     std::string LoadLastSceneName();
     void SaveLastSceneName(const std::string& sceneName);
     const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
     BaseScene* GetCurrentScene() const;
+    // Sceneインスタンスが差し替わるたびに増加します。ポインタのアドレス再利用による誤判定を防ぎます。
+    uint64_t GetSceneGeneration() const { return sceneGeneration_; }
     void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
     bool IsPlaying() const { return isPlaying_; }
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
+
+    // Editor専用SceneへScene Assetを読み込みます。ゲーム用Sceneクラスの種類とは分離して扱います。
+    bool OpenSceneAsset(
+        const std::string& objectLayoutPath,
+        const std::string& spriteLayoutPath,
+        const std::string& runtimeSceneName);
+    bool OpenSceneAsset(const SceneLoadContext& context);
+    bool OpenEditorSceneAsset(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+    void SetEditorSceneAssetPaths(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+    const std::string& GetEditorSceneAssetObjectPath() const { return activeSceneLoadContext_.objectLayoutPath; }
+    const std::string& GetEditorSceneAssetSpritePath() const { return activeSceneLoadContext_.spriteLayoutPath; }
+    const std::string& GetActiveSceneAssetRuntimeScene() const { return activeSceneLoadContext_.runtimeScene; }
+    const SceneLoadContext& GetActiveSceneLoadContext() const { return activeSceneLoadContext_; }
+    bool HasActiveSceneAsset() const { return activeSceneLoadContext_.IsSceneAsset(); }
+    void ClearActiveSceneAsset();
 
 private:
         // 非同期ロード中のシーン切り替えフェーズを表します。
@@ -98,6 +122,7 @@ private:
     const std::string kUserConfigPath = "Resources/json/user_config.json";
 
     bool isPlaying_ = false;
+    uint64_t sceneGeneration_ = 0;
     TransitionPhase transitionPhase_ = TransitionPhase::Idle;
     std::string nextSceneName_ = "";
     std::string currentSceneName_;
@@ -106,4 +131,6 @@ private:
     float loadingElapsed_ = 0.0f;
     float minLoadingDisplayTime_ = 0.45f;
     bool preparedSceneInitialized_ = false;
+    SceneLoadContext activeSceneLoadContext_;
+    bool preserveSceneAssetForNextChange_ = false;
 };

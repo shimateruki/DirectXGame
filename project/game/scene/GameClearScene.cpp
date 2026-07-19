@@ -33,7 +33,8 @@ void GameClearScene::Initialize() {
     // --- 2. リソースロード ---
     LOG("GameClearScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile(
+        ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
     // --- 3. 共通クラス・マネージャの初期化 ---
     CameraManager::GetInstance()->Initialize();
@@ -85,9 +86,10 @@ void GameClearScene::Initialize() {
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameClearScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameClearScene.json");
 
-    LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
+    LightManager::GetInstance()->LoadState(
+        ResolveSceneLightPath("Resources/json/light/gameClearScene.json"));
     CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile("gameClear_camera.json");
+    CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameClear_camera.json"));
 
     dxCommon_->FlushCommandQueue(false);
 }

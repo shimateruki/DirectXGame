@@ -698,7 +698,9 @@ void DebugEditor::Update() {
     std::string currentLoadedName = currentScene->GetLoadedFilename();
 
     // ファイル名が前フレームから変わった時「だけ」同期する
-    if (!currentLoadedName.empty() && s_lastSyncedSceneFilename != currentLoadedName) {
+    if (!sceneManager_->IsTransitioning() &&
+        !currentLoadedName.empty() &&
+        s_lastSyncedSceneFilename != currentLoadedName) {
         SetSceneFilename(currentLoadedName);
         s_lastSyncedSceneFilename = currentLoadedName;
     }

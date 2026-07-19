@@ -106,6 +106,48 @@ void DrawImGui() override;
     void TriggerSaveNotification(const std::string& filename);
     void DrawSaveNotification();
 
+    // Unity風のScene Asset操作。ゲーム用Sceneクラスとは分離してJSON一式を管理します。
+    std::vector<SceneSerializer::SceneAssetInfo> GetSceneAssets() const;
+    bool CreateSceneAsset(
+        const std::string& sceneId,
+        const std::string& displayName,
+        const std::string& runtimeScene,
+        SceneSerializer::SceneAssetTemplate sceneTemplate,
+        std::string& createdFilename,
+        std::string& errorMessage);
+    bool DuplicateSceneAsset(
+        const std::string& sourceFilename,
+        const std::string& newSceneId,
+        const std::string& displayName,
+        std::string& createdFilename,
+        std::string& errorMessage);
+    bool RenameSceneAsset(
+        const std::string& sourceFilename,
+        const std::string& newSceneId,
+        const std::string& displayName,
+        std::string& renamedFilename,
+        std::string& errorMessage);
+    bool DeleteSceneAsset(const std::string& filename, std::string& errorMessage);
+    bool SetSceneAssetRuntimeScene(
+        const std::string& filename,
+        const std::string& runtimeScene,
+        std::string& errorMessage);
+    bool SetSceneAssetRuntimeSettings(
+        const std::string& filename,
+        const std::string& controllerName,
+        const std::string& bgmPath,
+        const std::string& lightPath,
+        const std::string& cameraPath,
+        const std::string& skyboxPath,
+        std::string& errorMessage);
+    SceneSerializer::SceneAssetValidationResult ValidateSceneAsset(const std::string& filename) const;
+    std::vector<std::string> GetRegisteredSceneNames() const;
+    bool OpenSceneAsset(const std::string& filename, bool discardUnsavedChanges, std::string& errorMessage);
+    void SaveThenOpenSceneAsset(const std::string& filename);
+    bool IsCurrentSceneAsset(const std::string& filename) const;
+    void OpenCreateSceneAssetDialog();
+    void RequestOpenSceneAssetFromMenu(const std::string& filename);
+
     // 選択中オブジェクトへの編集操作。
         // 選択中オブジェクトを複製し、編集対象として扱えるように登録します。
 void DuplicateSelected();
@@ -433,6 +475,7 @@ struct PreviewVisualState {
     bool dirtyCamera_ = false;
     SaveMode pendingSaveMode_ = SaveMode::All;
     bool pendingSaveIsSingleObject_ = false;
+    std::string pendingSceneAssetOpenAfterSave_;
 
     // Undo/Redoコマンド。
         // Undo/Redoで扱う編集操作の種類を表します。

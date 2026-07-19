@@ -21,6 +21,7 @@
 #include "Text.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
+#include "SceneController.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include <GhostRecorder.h>
 #include <Skybox.h>
@@ -68,6 +69,9 @@ public:
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    void CollectReplaySprites(std::vector<Sprite*>& sprites) override;
+    void CaptureReplaySceneState(json& state) const override;
+    void RestoreReplaySceneState(const json& state) override;
 
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
@@ -119,6 +123,7 @@ private:
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     std::unique_ptr<Text> debugText_;
     std::unique_ptr<GameRule> gameRule_;
+    std::unique_ptr<ISceneController> sceneController_;
 
     Player* player_ = nullptr;
 
@@ -143,26 +148,32 @@ private:
 
     // --- ゴール/クリア演出 ---
     struct GoalPresentationTuning {
-        float crownFocusEndTime = 0.22f;
-        float crownDropHeight = 1.35f;
+        float crownFocusEndTime = 0.60f;
+        float crownMoveStartTime = 0.88f;
+        float crownDropHeight = 2.00f;
         float crownSeatDepth = 0.10f;
-        float crownFocusDistance = 3.55f;
-        float crownFocusSide = 0.62f;
-        float crownFocusHeight = 0.72f;
-        float landingCameraDistance = 5.15f;
-        float landingCameraSide = 0.72f;
-        float landingCameraHeight = 1.18f;
-        float jumpCameraDistance = 6.10f;
-        float jumpCameraSide = 0.58f;
-        float jumpCameraHeight = 1.05f;
-        float resultCameraDistance = 7.10f;
-        float resultCameraSide = 0.48f;
-        float resultCameraHeight = 0.92f;
-        float resultTargetSide = 1.35f;
-        float crownFocusFov = 0.46f;
-        float landingFov = 0.54f;
-        float jumpFov = 0.60f;
-        float resultFov = 0.62f;
+        float crownFocusDistance = 5.20f;
+        float crownFocusSide = 0.85f;
+        float crownFocusHeight = 1.05f;
+        float landingCameraDistance = 7.00f;
+        float landingCameraSide = 1.00f;
+        float landingCameraHeight = 1.60f;
+        float jumpCameraDistance = 8.50f;
+        float jumpCameraSide = 0.75f;
+        float jumpCameraHeight = 2.00f;
+        float resultCameraDistance = 9.00f;
+        float resultCameraSide = 0.30f;
+        float resultCameraHeight = 1.40f;
+        float resultTargetSide = 2.00f;
+        float crownFocusFov = 0.50f;
+        float landingFov = 0.58f;
+        float jumpFov = 0.68f;
+        float resultFov = 0.64f;
+        float resultUiCenterX = 0.50f;
+        float resultUiCenterY = 0.72f;
+        float resultUiScale = 1.00f;
+        float resultBackdropAlpha = 0.30f;
+        float resultGlowAlpha = 0.18f;
     };
 
     bool isGoal_ = false;
@@ -226,10 +237,12 @@ private:
     std::unique_ptr<Camera> goalPresentationCamera_;
     std::unique_ptr<Sprite> goalOverlayBackdrop_;
     std::unique_ptr<Sprite> goalOverlayFlash_;
-    std::unique_ptr<Sprite> goalOverlayPanel_;
-    std::unique_ptr<Sprite> goalOverlayCrown_;
+    std::unique_ptr<Sprite> goalOverlayGlow_;
+    std::unique_ptr<Sprite> goalOverlayTopLine_;
+    std::unique_ptr<Sprite> goalOverlayBottomLine_;
     std::unique_ptr<Sprite> goalOverlayStageClearText_;
     std::unique_ptr<Sprite> goalOverlayReturnText_;
+    std::array<std::unique_ptr<Sprite>, 8> goalOverlaySparkles_;
 
     // HUD の基準値。演出で拡縮しても戻せるよう保存する。
     struct HudSpriteState {

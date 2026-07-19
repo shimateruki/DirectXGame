@@ -718,7 +718,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
     TriggerSaveNotification(crashRecoveryStatus_);
 
     if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty() && !sceneManager_->IsTransitioning()) {
-        sceneManager_->ChangeScene(sceneManager_->GetCurrentSceneName());
+        sceneManager_->ReloadCurrentScene();
     }
     return true;
 }

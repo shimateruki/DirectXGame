@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "json.hpp"
 
 class InputManager;
 class Sprite;
@@ -28,6 +29,9 @@ public:
     bool IsActive() const { return isActive_; }
     Action Update(float deltaTime);
     void Draw();
+    void CollectReplaySprites(std::vector<Sprite*>& sprites) const;
+    void CaptureReplayState(nlohmann::json& state) const;
+    void RestoreReplayState(const nlohmann::json& state);
 
 private:
     enum class Item {

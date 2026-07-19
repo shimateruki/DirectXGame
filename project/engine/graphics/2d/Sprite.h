@@ -39,9 +39,38 @@ struct Material {
         float padding2[3];
     };
 
-    struct TransformationMatrix {
+struct TransformationMatrix {
         Matrix4x4 WVP;
         Matrix4x4 World;
+    };
+
+    // デバッグリプレイ専用の実行状態です。Scene保存用データとは分離します。
+    struct ReplayState {
+        Vector2 position = { 0.0f, 0.0f };
+        float rotation = 0.0f;
+        Vector2 size = { 100.0f, 100.0f };
+        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector2 anchorPoint = { 0.5f, 0.5f };
+        bool flipX = false;
+        bool flipY = false;
+        Vector2 textureLeftTop = { 0.0f, 0.0f };
+        Vector2 textureSize = { 100.0f, 100.0f };
+        uint32_t textureHandle = 0;
+        float emissive = 1.0f;
+        bool visible = true;
+        bool locked = false;
+
+        bool animationPlaying = false;
+        bool animationLooping = false;
+        float frameDuration = 1.0f;
+        float animationTimer = 0.0f;
+        int totalFrames = 1;
+        int currentFrame = 0;
+        int frameWidth = 0;
+        int frameHeight = 0;
+
+        uint64_t parentReplayId = 0;
+        bool replayRemoved = false;
     };
 
 public:
@@ -146,6 +175,17 @@ void SetParent(Sprite* parent, bool keepWorldPosition = true);
     const std::vector<Sprite*>& GetChildren() const { return children_; }
     Vector2 GetWorldPosition() const;
 
+    // ReplayDebuggerがフレームをまたいで同じSpriteを識別するためのIDです。
+    uint64_t EnsureReplayId();
+    uint64_t GetReplayId() const { return replayId_; }
+    ReplayState CaptureReplayState() const;
+    void RestoreReplayState(const ReplayState& state);
+    void RefreshAfterReplayRestore();
+    bool IsReplayRetained() const { return replayRetained_; }
+    void SetReplayRetained(bool retained) { replayRetained_ = retained; }
+    bool IsReplayRemoved() const { return replayRemoved_; }
+    void SetReplayRemoved(bool removed) { replayRemoved_ = removed; }
+
 private:
     SpriteCommon* common_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
@@ -200,4 +240,8 @@ void AdjustTextureSize();
     std::string textureName_ = "";
     Sprite* parent_ = nullptr;
     std::vector<Sprite*> children_;
+
+    uint64_t replayId_ = 0;
+    bool replayRetained_ = false;
+    bool replayRemoved_ = false;
 };

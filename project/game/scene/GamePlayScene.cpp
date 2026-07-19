@@ -109,6 +109,8 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
         }
         if (marker.signal == "goal.crown_focus_end") {
             goalPresentationTuning_.crownFocusEndTime = marker.time;
+        } else if (marker.signal == "goal.crown_move_start") {
+            goalPresentationTuning_.crownMoveStartTime = marker.time;
         } else if (marker.signal == "goal.crown_land") {
             animation.crownLandTime = marker.time;
         } else if (marker.signal == "goal.anticipation") {
@@ -145,6 +147,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     };
 
     SetSignalTime("goal.crown_focus_end", "Crown Focus End", goalPresentationTuning_.crownFocusEndTime);
+    SetSignalTime("goal.crown_move_start", "Crown Move Start", goalPresentationTuning_.crownMoveStartTime);
     SetSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
     SetSignalTime("goal.anticipation", "Anticipation", animation.anticipationStartTime);
     SetSignalTime("goal.jump", "Big Jump", animation.jumpStartTime);
@@ -173,10 +176,14 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         goalCinematicSequence_.animationClips.push_back(clip);
     }
 
+    bool hasCrownFocusVfx = false;
     bool hasCrownVfx = false;
     bool hasResultVfx = false;
     for (auto& track : goalCinematicSequence_.vfxTracks) {
-        if (track.sequenceName == "crown_get_cue") {
+        if (track.sequenceName == "crown_focus_cue") {
+            track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
+            hasCrownFocusVfx = true;
+        } else if (track.sequenceName == "crown_get_cue") {
             track.startTime = animation.crownLandTime;
             hasCrownVfx = true;
         } else if (track.sequenceName == "crown_result_cue") {
@@ -185,6 +192,15 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         }
     }
     Object3d* crown = FindGoalCrownObject();
+    if (!hasCrownFocusVfx) {
+        CinematicVFXTrackData track;
+        track.name = "Crown Focus VFX";
+        track.sequenceName = "crown_focus_cue";
+        track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
+        track.binding.targetName = crown ? crown->GetName() : "goal";
+        track.binding.targetEventId = crown ? crown->GetEventID() : -1;
+        goalCinematicSequence_.vfxTracks.push_back(track);
+    }
     if (!hasCrownVfx) {
         CinematicVFXTrackData track;
         track.name = "Crown Landing VFX";
@@ -506,6 +522,12 @@ void GamePlayScene::DrawUI() {
         DrawGameplayHUD();
         return;
     }
+
+    // クリア演出中は通常HUDを隠し、カメラとリザルトへ視線を集中させます。
+    if (isGoal_) {
+        DrawGoalPresentationOverlay();
+        return;
+    }
 	for (auto& sprite : sprites_) {
 		if (sprite && !IsGameplayHUDSprite(sprite.get())) {
 			sprite->Draw();
@@ -530,39 +552,244 @@ void GamePlayScene::DrawUI() {
 	DrawGoalPresentationOverlay();
 }
 
+void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+	BaseScene::CollectReplaySprites(replaySprites);
+	auto add = [&replaySprites](Sprite* sprite) {
+		if (sprite) {
+			replaySprites.push_back(sprite);
+		}
+	};
+
+	add(lockOnSprite_.get());
+	add(goalOverlayBackdrop_.get());
+	add(goalOverlayFlash_.get());
+	add(goalOverlayGlow_.get());
+	add(goalOverlayTopLine_.get());
+	add(goalOverlayBottomLine_.get());
+	add(goalOverlayStageClearText_.get());
+	add(goalOverlayReturnText_.get());
+	for (const auto& sparkle : goalOverlaySparkles_) {
+		add(sparkle.get());
+	}
+	if (pauseMenuOverlay_) {
+		pauseMenuOverlay_->CollectReplaySprites(replaySprites);
+	}
+	if (settingsOverlay_) {
+		settingsOverlay_->CollectReplaySprites(replaySprites);
+	}
+	if (saveIndicatorOverlay_) {
+		saveIndicatorOverlay_->CollectReplaySprites(replaySprites);
+	}
+}
+
+void GamePlayScene::CaptureReplaySceneState(json& state) const {
+	json pauseState = json::object();
+	json settingsState = json::object();
+	json saveIndicatorState = json::object();
+	if (pauseMenuOverlay_) pauseMenuOverlay_->CaptureReplayState(pauseState);
+	if (settingsOverlay_) settingsOverlay_->CaptureReplayState(settingsState);
+	if (saveIndicatorOverlay_) saveIndicatorOverlay_->CaptureReplayState(saveIndicatorState);
+
+	state = {
+		{ "goal", {
+			{ "active", isGoal_ },
+			{ "state", static_cast<int>(goalPresentationState_) },
+			{ "timer", goalPresentationTimer_ },
+			{ "starEmitTimer", goalStarEmitTimer_ },
+			{ "burstEmitTimer", goalBurstEmitTimer_ },
+			{ "crownIdleTime", goalCrownIdleTime_ },
+			{ "crownSparkleTimer", goalCrownSparkleTimer_ },
+			{ "crownSparklePattern", goalCrownSparklePatternIndex_ },
+			{ "crownSpringPosition", { goalCrownSpringPosition_.x, goalCrownSpringPosition_.y, goalCrownSpringPosition_.z } },
+			{ "crownSpringVelocity", { goalCrownSpringVelocity_.x, goalCrownSpringVelocity_.y, goalCrownSpringVelocity_.z } },
+			{ "crownSpringRotation", { goalCrownSpringRotation_.x, goalCrownSpringRotation_.y, goalCrownSpringRotation_.z } },
+			{ "crownSpringRotationVelocity", { goalCrownSpringRotationVelocity_.x, goalCrownSpringRotationVelocity_.y, goalCrownSpringRotationVelocity_.z } },
+			{ "crownSpringInitialized", goalCrownSpringInitialized_ },
+			{ "returnFadeStarted", goalReturnFadeStarted_ },
+			{ "landingCuePlayed", goalLandingCuePlayed_ },
+			{ "resultCuePlayed", goalResultCuePlayed_ },
+			{ "cinematicPlaying", goalCinematicPlayer_.IsPlaying() }
+		} },
+		{ "hud", {
+			{ "stageStarPulseTimers", hudStageStarPulseTimers_ },
+			{ "stageStarCollected", hudStageStarVisualCollected_ },
+			{ "lifeGainPulseTimer", hudLifeGainPulseTimer_ },
+			{ "coinPulseTimer", hudCoinPulseTimer_ },
+			{ "previousLives", hudPreviousLives_ },
+			{ "previousCoins", hudPreviousCoins_ },
+			{ "previousHp", hudPreviousHp_ },
+			{ "damagePulseTimer", hudDamagePulseTimer_ },
+			{ "hurtIconTimer", hudHurtIconTimer_ },
+			{ "hpDamageHoldTimer", hudHpDamageHoldTimer_ },
+			{ "hpDelayedRate", hudHpDelayedRate_ },
+			{ "morphGaugeTimer", hudMorphGaugeTimer_ },
+			{ "morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_ }
+		} },
+		{ "lifeLost", {
+			{ "active", lifeLostPresentationActive_ },
+			{ "finished", lifeLostPresentationFinished_ },
+			{ "blackHold", lifeLostBlackHold_ },
+			{ "numberDropped", lifeLostNumberDropped_ },
+			{ "timer", lifeLostPresentationTimer_ },
+			{ "beforeLives", lifeLostBeforeLives_ },
+			{ "afterLives", lifeLostAfterLives_ },
+			{ "revive", lifeLostRevive_ }
+		} },
+		{ "overlays", {
+			{ "pause", std::move(pauseState) },
+			{ "settings", std::move(settingsState) },
+			{ "saveIndicator", std::move(saveIndicatorState) }
+		} }
+	};
+}
+
+void GamePlayScene::RestoreReplaySceneState(const json& state) {
+	if (!state.is_object()) {
+		return;
+	}
+
+	auto restoreVector3 = [](const json& object, const char* key, Vector3& value) {
+		const auto found = object.find(key);
+		if (found != object.end() && found->is_array() && found->size() >= 3) {
+			value = { (*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>() };
+		}
+	};
+
+	if (const auto found = state.find("goal"); found != state.end() && found->is_object()) {
+		const json& goal = *found;
+		isGoal_ = goal.value("active", isGoal_);
+		const int stateValue = std::clamp(goal.value("state", static_cast<int>(goalPresentationState_)), 0, 3);
+		goalPresentationState_ = static_cast<GoalPresentationState>(stateValue);
+		goalPresentationTimer_ = goal.value("timer", goalPresentationTimer_);
+		goalStarEmitTimer_ = goal.value("starEmitTimer", goalStarEmitTimer_);
+		goalBurstEmitTimer_ = goal.value("burstEmitTimer", goalBurstEmitTimer_);
+		goalCrownIdleTime_ = goal.value("crownIdleTime", goalCrownIdleTime_);
+		goalCrownSparkleTimer_ = goal.value("crownSparkleTimer", goalCrownSparkleTimer_);
+		goalCrownSparklePatternIndex_ = goal.value("crownSparklePattern", goalCrownSparklePatternIndex_);
+		restoreVector3(goal, "crownSpringPosition", goalCrownSpringPosition_);
+		restoreVector3(goal, "crownSpringVelocity", goalCrownSpringVelocity_);
+		restoreVector3(goal, "crownSpringRotation", goalCrownSpringRotation_);
+		restoreVector3(goal, "crownSpringRotationVelocity", goalCrownSpringRotationVelocity_);
+		goalCrownSpringInitialized_ = goal.value("crownSpringInitialized", goalCrownSpringInitialized_);
+		goalReturnFadeStarted_ = goal.value("returnFadeStarted", goalReturnFadeStarted_);
+		goalLandingCuePlayed_ = goal.value("landingCuePlayed", goalLandingCuePlayed_);
+		goalResultCuePlayed_ = goal.value("resultCuePlayed", goalResultCuePlayed_);
+
+		if (goalCinematicTimelineLoaded_ && isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
+			const bool shouldPlay = goal.value("cinematicPlaying", goalCinematicPlayer_.IsPlaying());
+			goalCinematicPlayer_.SetTime(goalPresentationTimer_, false);
+			if (shouldPlay && !goalCinematicPlayer_.IsPlaying()) {
+				goalCinematicPlayer_.Resume(false);
+			} else if (!shouldPlay && goalCinematicPlayer_.IsPlaying()) {
+				goalCinematicPlayer_.Pause();
+			}
+		}
+	}
+
+	if (const auto found = state.find("hud"); found != state.end() && found->is_object()) {
+		const json& hud = *found;
+		if (const auto values = hud.find("stageStarPulseTimers"); values != hud.end() && values->is_array()) {
+			for (size_t i = 0; i < hudStageStarPulseTimers_.size() && i < values->size(); ++i) {
+				hudStageStarPulseTimers_[i] = (*values)[i].get<float>();
+			}
+		}
+		if (const auto values = hud.find("stageStarCollected"); values != hud.end() && values->is_array()) {
+			for (size_t i = 0; i < hudStageStarVisualCollected_.size() && i < values->size(); ++i) {
+				hudStageStarVisualCollected_[i] = (*values)[i].get<bool>();
+			}
+		}
+		hudLifeGainPulseTimer_ = hud.value("lifeGainPulseTimer", hudLifeGainPulseTimer_);
+		hudCoinPulseTimer_ = hud.value("coinPulseTimer", hudCoinPulseTimer_);
+		hudPreviousLives_ = hud.value("previousLives", hudPreviousLives_);
+		hudPreviousCoins_ = hud.value("previousCoins", hudPreviousCoins_);
+		hudPreviousHp_ = hud.value("previousHp", hudPreviousHp_);
+		hudDamagePulseTimer_ = hud.value("damagePulseTimer", hudDamagePulseTimer_);
+		hudHurtIconTimer_ = hud.value("hurtIconTimer", hudHurtIconTimer_);
+		hudHpDamageHoldTimer_ = hud.value("hpDamageHoldTimer", hudHpDamageHoldTimer_);
+		hudHpDelayedRate_ = hud.value("hpDelayedRate", hudHpDelayedRate_);
+		hudMorphGaugeTimer_ = hud.value("morphGaugeTimer", hudMorphGaugeTimer_);
+		hudMorphGaugeVisibleTimer_ = hud.value("morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_);
+	}
+
+	if (const auto found = state.find("lifeLost"); found != state.end() && found->is_object()) {
+		const json& lifeLost = *found;
+		lifeLostPresentationActive_ = lifeLost.value("active", lifeLostPresentationActive_);
+		lifeLostPresentationFinished_ = lifeLost.value("finished", lifeLostPresentationFinished_);
+		lifeLostBlackHold_ = lifeLost.value("blackHold", lifeLostBlackHold_);
+		lifeLostNumberDropped_ = lifeLost.value("numberDropped", lifeLostNumberDropped_);
+		lifeLostPresentationTimer_ = lifeLost.value("timer", lifeLostPresentationTimer_);
+		lifeLostBeforeLives_ = lifeLost.value("beforeLives", lifeLostBeforeLives_);
+		lifeLostAfterLives_ = lifeLost.value("afterLives", lifeLostAfterLives_);
+		lifeLostRevive_ = lifeLost.value("revive", lifeLostRevive_);
+	}
+
+	if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {
+		const json& overlays = *found;
+		if (pauseMenuOverlay_ && overlays.contains("pause")) {
+			pauseMenuOverlay_->RestoreReplayState(overlays["pause"]);
+		}
+		if (settingsOverlay_ && overlays.contains("settings")) {
+			settingsOverlay_->RestoreReplayState(overlays["settings"]);
+		}
+		if (saveIndicatorOverlay_ && overlays.contains("saveIndicator")) {
+			saveIndicatorOverlay_->RestoreReplayState(overlays["saveIndicator"]);
+		}
+	}
+}
+
 void GamePlayScene::InitializeGoalPresentationOverlay() {
 	if (!spriteCommon_) {
 		return;
 	}
 
 	const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-	const uint32_t crownHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/title/crown_progress_icon.png");
+	const uint32_t glowHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle/glow_core.png");
+	const uint32_t sparkleHandle = TextureManager::GetInstance()->Load("Resources/sprite/fade/fade_sparkle.png");
 	const uint32_t clearTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/stage_clear_text.png");
 	const uint32_t returnTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
 
 	goalOverlayBackdrop_ = std::make_unique<Sprite>();
 	goalOverlayBackdrop_->Initialize(spriteCommon_.get(), whiteHandle);
+	goalOverlayBackdrop_->SetName("GoalClear_Backdrop");
 	goalOverlayBackdrop_->SetAnchorPoint({ 0.5f, 0.5f });
 
 	goalOverlayFlash_ = std::make_unique<Sprite>();
 	goalOverlayFlash_->Initialize(spriteCommon_.get(), whiteHandle);
+	goalOverlayFlash_->SetName("GoalClear_Flash");
 	goalOverlayFlash_->SetAnchorPoint({ 0.5f, 0.5f });
 
-	goalOverlayPanel_ = std::make_unique<Sprite>();
-	goalOverlayPanel_->Initialize(spriteCommon_.get(), whiteHandle);
-	goalOverlayPanel_->SetAnchorPoint({ 0.5f, 0.5f });
+	goalOverlayGlow_ = std::make_unique<Sprite>();
+	goalOverlayGlow_->Initialize(spriteCommon_.get(), glowHandle);
+	goalOverlayGlow_->SetName("GoalClear_Glow");
+	goalOverlayGlow_->SetAnchorPoint({ 0.5f, 0.5f });
 
-	goalOverlayCrown_ = std::make_unique<Sprite>();
-	goalOverlayCrown_->Initialize(spriteCommon_.get(), crownHandle);
-	goalOverlayCrown_->SetAnchorPoint({ 0.5f, 0.5f });
+	goalOverlayTopLine_ = std::make_unique<Sprite>();
+	goalOverlayTopLine_->Initialize(spriteCommon_.get(), whiteHandle);
+	goalOverlayTopLine_->SetName("GoalClear_TopLine");
+	goalOverlayTopLine_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	goalOverlayBottomLine_ = std::make_unique<Sprite>();
+	goalOverlayBottomLine_->Initialize(spriteCommon_.get(), whiteHandle);
+	goalOverlayBottomLine_->SetName("GoalClear_BottomLine");
+	goalOverlayBottomLine_->SetAnchorPoint({ 0.5f, 0.5f });
 
 	goalOverlayStageClearText_ = std::make_unique<Sprite>();
 	goalOverlayStageClearText_->Initialize(spriteCommon_.get(), clearTextHandle);
+	goalOverlayStageClearText_->SetName("GoalClear_Title");
 	goalOverlayStageClearText_->SetAnchorPoint({ 0.5f, 0.5f });
 
 	goalOverlayReturnText_ = std::make_unique<Sprite>();
 	goalOverlayReturnText_->Initialize(spriteCommon_.get(), returnTextHandle);
+	goalOverlayReturnText_->SetName("GoalClear_ReturnText");
 	goalOverlayReturnText_->SetAnchorPoint({ 0.5f, 0.5f });
+
+	for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
+		auto& sparkle = goalOverlaySparkles_[i];
+		sparkle = std::make_unique<Sprite>();
+		sparkle->Initialize(spriteCommon_.get(), sparkleHandle);
+		sparkle->SetName("GoalClear_Sparkle_" + std::to_string(i));
+		sparkle->SetAnchorPoint({ 0.5f, 0.5f });
+	}
 
 	UpdateGoalPresentationOverlay();
 }
@@ -573,56 +800,94 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
 	const float screenH = static_cast<float>(WinApp::kClientHeight);
 	const float t = goalPresentationTimer_;
 	const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
-	const float resultIn = GoalEaseOut((t - animation.resultUiTime) / 0.36f);
-	const float returnStartTime = std::max(animation.resultUiTime + 0.34f, animation.readyTime - 0.32f);
-	const float returnIn = GoalEaseInOut((t - returnStartTime) / 0.30f);
-	const float flashIn = GoalEaseOut((t - animation.crownLandTime) / 0.05f);
-	const float flashOut = 1.0f - GoalEaseOut((t - animation.crownLandTime - 0.07f) / 0.24f);
+	const GoalPresentationTuning& presentation = goalPresentationTuning_;
+	const float baseScale = std::min(screenW / 1280.0f, screenH / 720.0f);
+	const float uiScale = baseScale * presentation.resultUiScale;
+	const float centerX = screenW * presentation.resultUiCenterX;
+	const float centerY = screenH * presentation.resultUiCenterY;
+	const float backdropIn = GoalEaseInOut((t - animation.resultUiTime + 0.28f) / 0.28f);
+	const float resultIn = GoalEaseOut((t - animation.resultUiTime) / 0.34f);
+	const float titlePhase = GoalClamp01((t - animation.resultUiTime) / 0.36f);
+	const float titleScale = 0.72f + 0.28f * resultIn + std::sin(titlePhase * std::numbers::pi_v<float>) * 0.10f;
+	const float returnStartTime = std::max(animation.resultUiTime + 0.52f, animation.readyTime - 0.48f);
+	const float returnIn = GoalEaseInOut((t - returnStartTime) / 0.34f);
+	const float flashIn = GoalEaseOut((t - animation.resultUiTime) / 0.04f);
+	const float flashOut = 1.0f - GoalEaseOut((t - animation.resultUiTime - 0.06f) / 0.30f);
 	const float flash = visible ? flashIn * flashOut : 0.0f;
-	const float panelX = screenW * 0.70f;
-	const float panelY = screenH * 0.50f;
-	const float pulse = 1.0f + std::sin(t * 5.8f) * 0.030f * resultIn;
+	const float textFloat = std::sin((t - animation.resultUiTime) * 3.2f) * 2.0f * resultIn * uiScale;
 
 	if (goalOverlayBackdrop_) {
 		goalOverlayBackdrop_->SetPosition({ screenW * 0.5f, screenH * 0.5f });
 		goalOverlayBackdrop_->SetSize({ screenW + 8.0f, screenH + 8.0f });
-		goalOverlayBackdrop_->SetColor({ 0.0f, 0.0f, 0.0f, visible ? 0.24f * resultIn : 0.0f });
+		goalOverlayBackdrop_->SetColor({ 0.005f, 0.008f, 0.025f, visible ? presentation.resultBackdropAlpha * backdropIn : 0.0f });
 		goalOverlayBackdrop_->Update();
 	}
 	if (goalOverlayFlash_) {
 		goalOverlayFlash_->SetPosition({ screenW * 0.5f, screenH * 0.5f });
 		goalOverlayFlash_->SetSize({ screenW + 8.0f, screenH + 8.0f });
-		goalOverlayFlash_->SetColor({ 1.0f, 0.76f, 0.28f, flash * 0.24f });
+		goalOverlayFlash_->SetColor({ 1.0f, 0.82f, 0.38f, flash * 0.20f });
 		goalOverlayFlash_->Update();
 	}
-	if (goalOverlayPanel_) {
-		const float panelScale = 0.92f + 0.08f * GoalEaseOut((t - animation.resultUiTime) / 0.36f);
-		goalOverlayPanel_->SetPosition({ panelX + 26.0f * (1.0f - resultIn), panelY });
-		goalOverlayPanel_->SetSize({ 540.0f * panelScale, 318.0f * panelScale });
-		goalOverlayPanel_->SetRotation(-0.035f);
-		goalOverlayPanel_->SetColor({ 0.02f, 0.025f, 0.035f, visible ? 0.58f * resultIn : 0.0f });
-		goalOverlayPanel_->Update();
+	if (goalOverlayGlow_) {
+		const float glowScale = 0.78f + 0.22f * resultIn;
+		goalOverlayGlow_->SetPosition({ centerX, centerY });
+		goalOverlayGlow_->SetSize({ 980.0f * uiScale * glowScale, 300.0f * uiScale * glowScale });
+		goalOverlayGlow_->SetColor({ 1.0f, 0.64f, 0.18f, visible ? presentation.resultGlowAlpha * backdropIn : 0.0f });
+		goalOverlayGlow_->Update();
 	}
-	if (goalOverlayCrown_) {
-		goalOverlayCrown_->SetPosition({ panelX, panelY - 118.0f - 18.0f * (1.0f - resultIn) });
-		goalOverlayCrown_->SetSize({ 94.0f * pulse, 94.0f * pulse });
-		goalOverlayCrown_->SetRotation(std::sin(t * 4.4f) * 0.07f * resultIn);
-		goalOverlayCrown_->SetColor({ 1.0f, 0.96f, 0.72f, visible ? resultIn : 0.0f });
-		goalOverlayCrown_->Update();
+	const float lineWidth = 760.0f * uiScale * resultIn;
+	if (goalOverlayTopLine_) {
+		goalOverlayTopLine_->SetPosition({ centerX, centerY - 76.0f * uiScale });
+		goalOverlayTopLine_->SetSize({ lineWidth, 2.0f * uiScale });
+		goalOverlayTopLine_->SetColor({ 1.0f, 0.86f, 0.38f, visible ? 0.62f * resultIn : 0.0f });
+		goalOverlayTopLine_->Update();
+	}
+	if (goalOverlayBottomLine_) {
+		goalOverlayBottomLine_->SetPosition({ centerX, centerY + 72.0f * uiScale });
+		goalOverlayBottomLine_->SetSize({ lineWidth * 0.82f, 2.0f * uiScale });
+		goalOverlayBottomLine_->SetColor({ 1.0f, 0.76f, 0.22f, visible ? 0.44f * resultIn : 0.0f });
+		goalOverlayBottomLine_->Update();
 	}
 	if (goalOverlayStageClearText_) {
-		goalOverlayStageClearText_->SetPosition({ panelX, panelY - 14.0f + 18.0f * (1.0f - resultIn) });
-		goalOverlayStageClearText_->SetSize({ 620.0f * pulse, 118.0f * pulse });
-		goalOverlayStageClearText_->SetRotation(-0.025f);
+		goalOverlayStageClearText_->SetPosition({ centerX, centerY + 20.0f * (1.0f - resultIn) * uiScale + textFloat });
+		goalOverlayStageClearText_->SetSize({ 780.0f * uiScale * titleScale, 140.0f * uiScale * titleScale });
+		goalOverlayStageClearText_->SetRotation(0.0f);
 		goalOverlayStageClearText_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? resultIn : 0.0f });
 		goalOverlayStageClearText_->Update();
 	}
 	if (goalOverlayReturnText_) {
-		goalOverlayReturnText_->SetPosition({ panelX, panelY + 112.0f + 14.0f * (1.0f - returnIn) });
-		goalOverlayReturnText_->SetSize({ 398.0f, 48.0f });
-		goalOverlayReturnText_->SetRotation(-0.015f);
-		goalOverlayReturnText_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? returnIn * 0.88f : 0.0f });
+		goalOverlayReturnText_->SetPosition({ centerX, centerY + (112.0f + 12.0f * (1.0f - returnIn)) * uiScale });
+		goalOverlayReturnText_->SetSize({ 358.0f * uiScale, 43.0f * uiScale });
+		goalOverlayReturnText_->SetRotation(0.0f);
+		goalOverlayReturnText_->SetColor({ 1.0f, 0.96f, 0.80f, visible ? returnIn * 0.86f : 0.0f });
 		goalOverlayReturnText_->Update();
+	}
+
+	static const std::array<Vector2, 8> kSparkOffsets = {
+		Vector2{ -420.0f, -64.0f }, Vector2{ -342.0f, 72.0f }, Vector2{ -236.0f, -96.0f },
+		Vector2{ 242.0f, -92.0f }, Vector2{ 346.0f, 70.0f }, Vector2{ 424.0f, -58.0f },
+		Vector2{ -116.0f, 92.0f }, Vector2{ 126.0f, 96.0f }
+	};
+	for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
+		Sprite* sparkle = goalOverlaySparkles_[i].get();
+		if (!sparkle) {
+			continue;
+		}
+		const float localTime = std::max(0.0f, t - animation.resultUiTime - static_cast<float>(i) * 0.035f);
+		const float sparkleIn = GoalEaseOut(localTime / 0.18f) * resultIn;
+		const float wave = 0.5f + 0.5f * std::sin(localTime * (5.2f + static_cast<float>(i) * 0.23f) + static_cast<float>(i) * 0.9f);
+		const float shimmer = 0.28f + 0.72f * std::pow(wave, 3.0f);
+		const float baseSize = (i % 3 == 0) ? 42.0f : 28.0f;
+		const float drift = std::sin(localTime * 1.8f + static_cast<float>(i)) * 4.0f * uiScale;
+		sparkle->SetPosition({
+			centerX + kSparkOffsets[i].x * uiScale + drift,
+			centerY + kSparkOffsets[i].y * uiScale - localTime * 3.0f * uiScale
+		});
+		sparkle->SetSize({ baseSize * uiScale * (0.76f + 0.30f * shimmer), baseSize * uiScale * (0.76f + 0.30f * shimmer) });
+		sparkle->SetRotation(localTime * (0.25f + static_cast<float>(i) * 0.035f));
+		const bool coolSparkle = (i % 3) == 1;
+		sparkle->SetColor({ coolSparkle ? 0.72f : 1.0f, coolSparkle ? 0.92f : 0.86f, 1.0f, visible ? sparkleIn * shimmer * 0.92f : 0.0f });
+		sparkle->Update();
 	}
 }
 
@@ -637,11 +902,19 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
 	if (goalOverlayFlash_) {
 		goalOverlayFlash_->Draw();
 	}
-	if (goalOverlayPanel_) {
-		goalOverlayPanel_->Draw();
+	if (goalOverlayGlow_) {
+		goalOverlayGlow_->Draw();
 	}
-	if (goalOverlayCrown_) {
-		goalOverlayCrown_->Draw();
+	if (goalOverlayTopLine_) {
+		goalOverlayTopLine_->Draw();
+	}
+	if (goalOverlayBottomLine_) {
+		goalOverlayBottomLine_->Draw();
+	}
+	for (auto& sparkle : goalOverlaySparkles_) {
+		if (sparkle) {
+			sparkle->Draw();
+		}
 	}
 	if (goalOverlayStageClearText_) {
 		goalOverlayStageClearText_->Draw();
@@ -807,6 +1080,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
         if (const auto it = root.find("timeline"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.crownFocusEndTime = j.value("crownFocusEndTime", goalPresentationTuning_.crownFocusEndTime);
+            goalPresentationTuning_.crownMoveStartTime = j.value("crownMoveStartTime", goalPresentationTuning_.crownMoveStartTime);
             animation.crownLandTime = j.value("crownLandTime", animation.crownLandTime);
             animation.anticipationStartTime = j.value("anticipationStartTime", animation.anticipationStartTime);
             animation.jumpStartTime = j.value("jumpStartTime", animation.jumpStartTime);
@@ -850,6 +1124,14 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             goalPresentationTuning_.jumpFov = j.value("jumpFov", goalPresentationTuning_.jumpFov);
             goalPresentationTuning_.resultFov = j.value("resultFov", goalPresentationTuning_.resultFov);
         }
+        if (const auto it = root.find("ui"); it != root.end() && it->is_object()) {
+            const auto& j = *it;
+            goalPresentationTuning_.resultUiCenterX = j.value("centerX", goalPresentationTuning_.resultUiCenterX);
+            goalPresentationTuning_.resultUiCenterY = j.value("centerY", goalPresentationTuning_.resultUiCenterY);
+            goalPresentationTuning_.resultUiScale = j.value("scale", goalPresentationTuning_.resultUiScale);
+            goalPresentationTuning_.resultBackdropAlpha = j.value("backdropAlpha", goalPresentationTuning_.resultBackdropAlpha);
+            goalPresentationTuning_.resultGlowAlpha = j.value("glowAlpha", goalPresentationTuning_.resultGlowAlpha);
+        }
 
         goalClearPlayerAnimator_.SetTuning(animation);
         SanitizeGoalPresentationTuning();
@@ -865,7 +1147,8 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
     nlohmann::json root;
     root["version"] = 1;
     root["timeline"] = {
-        {"crownFocusEndTime", g.crownFocusEndTime}, {"crownLandTime", a.crownLandTime},
+        {"crownFocusEndTime", g.crownFocusEndTime}, {"crownMoveStartTime", g.crownMoveStartTime},
+        {"crownLandTime", a.crownLandTime},
         {"anticipationStartTime", a.anticipationStartTime}, {"jumpStartTime", a.jumpStartTime},
         {"apexTime", a.apexTime}, {"resultUiTime", a.resultUiTime}, {"readyTime", a.readyTime}
     };
@@ -888,6 +1171,11 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
         {"resultTargetSide", g.resultTargetSide}, {"crownFocusFov", g.crownFocusFov},
         {"landingFov", g.landingFov}, {"jumpFov", g.jumpFov}, {"resultFov", g.resultFov}
     };
+    root["ui"] = {
+        {"centerX", g.resultUiCenterX}, {"centerY", g.resultUiCenterY},
+        {"scale", g.resultUiScale}, {"backdropAlpha", g.resultBackdropAlpha},
+        {"glowAlpha", g.resultGlowAlpha}
+    };
 
     std::ofstream file(kGoalPresentationTuningPath, std::ios::binary);
     if (file.is_open()) {
@@ -898,8 +1186,9 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
 void GamePlayScene::SanitizeGoalPresentationTuning() {
     GoalClearPlayerAnimator::Tuning a = goalClearPlayerAnimator_.GetTuning();
     GoalPresentationTuning& g = goalPresentationTuning_;
-    g.crownFocusEndTime = std::clamp(g.crownFocusEndTime, 0.08f, 0.70f);
-    a.crownLandTime = std::max(a.crownLandTime, g.crownFocusEndTime + 0.30f);
+    g.crownFocusEndTime = std::clamp(g.crownFocusEndTime, 0.20f, 1.50f);
+    g.crownMoveStartTime = std::max(g.crownMoveStartTime, g.crownFocusEndTime + 0.12f);
+    a.crownLandTime = std::max(a.crownLandTime, g.crownMoveStartTime + 0.70f);
     a.anticipationStartTime = std::max(a.anticipationStartTime, a.crownLandTime + 0.06f);
     a.jumpStartTime = std::max(a.jumpStartTime, a.anticipationStartTime + 0.10f);
     a.apexTime = std::max(a.apexTime, a.jumpStartTime + 0.36f);
@@ -918,6 +1207,11 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     g.landingFov = std::clamp(g.landingFov, 0.30f, 1.10f);
     g.jumpFov = std::clamp(g.jumpFov, 0.30f, 1.10f);
     g.resultFov = std::clamp(g.resultFov, 0.30f, 1.10f);
+    g.resultUiCenterX = std::clamp(g.resultUiCenterX, 0.30f, 0.70f);
+    g.resultUiCenterY = std::clamp(g.resultUiCenterY, 0.45f, 0.82f);
+    g.resultUiScale = std::clamp(g.resultUiScale, 0.60f, 1.35f);
+    g.resultBackdropAlpha = std::clamp(g.resultBackdropAlpha, 0.0f, 0.65f);
+    g.resultGlowAlpha = std::clamp(g.resultGlowAlpha, 0.0f, 0.45f);
     goalClearPlayerAnimator_.SetTuning(a);
 }
 
@@ -931,13 +1225,14 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     GoalPresentationTuning& g = goalPresentationTuning_;
     bool changed = false;
     ImGui::TextUnformatted("タイムライン");
-    changed |= ImGui::DragFloat("王冠フォーカス終了", &g.crownFocusEndTime, 0.01f, 0.08f, 0.70f, "%.2f 秒");
-    changed |= ImGui::DragFloat("王冠着地", &a.crownLandTime, 0.01f, 0.40f, 2.00f, "%.2f 秒");
-    changed |= ImGui::DragFloat("溜め開始", &a.anticipationStartTime, 0.01f, 0.45f, 2.30f, "%.2f 秒");
-    changed |= ImGui::DragFloat("大ジャンプ開始", &a.jumpStartTime, 0.01f, 0.55f, 2.60f, "%.2f 秒");
-    changed |= ImGui::DragFloat("頂点・静止", &a.apexTime, 0.01f, 0.90f, 3.50f, "%.2f 秒");
-    changed |= ImGui::DragFloat("リザルト表示", &a.resultUiTime, 0.01f, 1.00f, 4.00f, "%.2f 秒");
-    changed |= ImGui::DragFloat("入力待ち開始", &a.readyTime, 0.01f, 1.50f, 6.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("王冠フォーカス完了", &g.crownFocusEndTime, 0.01f, 0.20f, 1.50f, "%.2f 秒");
+    changed |= ImGui::DragFloat("王冠移動開始", &g.crownMoveStartTime, 0.01f, 0.30f, 2.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("王冠着地", &a.crownLandTime, 0.01f, 1.00f, 4.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("溜め開始", &a.anticipationStartTime, 0.01f, 1.10f, 4.50f, "%.2f 秒");
+    changed |= ImGui::DragFloat("大ジャンプ開始", &a.jumpStartTime, 0.01f, 1.20f, 5.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("頂点・静止", &a.apexTime, 0.01f, 1.60f, 6.50f, "%.2f 秒");
+    changed |= ImGui::DragFloat("リザルト表示", &a.resultUiTime, 0.01f, 1.70f, 7.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("帰還案内開始", &a.readyTime, 0.01f, 2.20f, 8.00f, "%.2f 秒");
 
     ImGui::Separator();
     ImGui::TextUnformatted("プレイヤー");
@@ -962,6 +1257,14 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     changed |= ImGui::DragFloat3("リザルト 距離/横/高さ", &g.resultCameraDistance, 0.01f, -16.0f, 16.0f, "%.2f");
     changed |= ImGui::DragFloat("リザルト注視点の横ずらし", &g.resultTargetSide, 0.01f, -4.0f, 4.0f, "%.2f");
     changed |= ImGui::DragFloat4("FOV 王冠/着地/ジャンプ/結果", &g.crownFocusFov, 0.005f, 0.30f, 1.10f, "%.3f");
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("クリアUI");
+    changed |= ImGui::DragFloat("表示位置 X", &g.resultUiCenterX, 0.005f, 0.30f, 0.70f, "%.3f");
+    changed |= ImGui::DragFloat("表示位置 Y", &g.resultUiCenterY, 0.005f, 0.45f, 0.82f, "%.3f");
+    changed |= ImGui::DragFloat("UIスケール", &g.resultUiScale, 0.005f, 0.60f, 1.35f, "%.3f");
+    changed |= ImGui::DragFloat("背景暗転", &g.resultBackdropAlpha, 0.005f, 0.0f, 0.65f, "%.3f");
+    changed |= ImGui::DragFloat("中央グロー", &g.resultGlowAlpha, 0.005f, 0.0f, 0.45f, "%.3f");
 
     if (changed) {
         SanitizeGoalPresentationTuning();

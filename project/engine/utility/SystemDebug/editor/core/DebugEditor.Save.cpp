@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
+#include "SceneController.h"
 #include "CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
@@ -406,6 +407,245 @@ namespace {
 // 初期化
 // ========================================================================
 
+std::vector<SceneSerializer::SceneAssetInfo> DebugEditor::GetSceneAssets() const {
+    return serializer_.DiscoverSceneAssets();
+}
+
+bool DebugEditor::CreateSceneAsset(
+    const std::string& sceneId,
+    const std::string& displayName,
+    const std::string& runtimeScene,
+    SceneSerializer::SceneAssetTemplate sceneTemplate,
+    std::string& createdFilename,
+    std::string& errorMessage) {
+    const bool created = serializer_.CreateSceneAsset(
+        sceneId,
+        displayName,
+        runtimeScene,
+        sceneTemplate,
+        createdFilename,
+        errorMessage);
+    if (created) {
+        DebugConsole::GetInstance()->AddLog("Created Scene Asset: " + createdFilename);
+    }
+    return created;
+}
+
+bool DebugEditor::DuplicateSceneAsset(
+    const std::string& sourceFilename,
+    const std::string& newSceneId,
+    const std::string& displayName,
+    std::string& createdFilename,
+    std::string& errorMessage) {
+    const bool duplicated = serializer_.DuplicateSceneAsset(
+        sourceFilename,
+        newSceneId,
+        displayName,
+        createdFilename,
+        errorMessage);
+    if (duplicated) {
+        DebugConsole::GetInstance()->AddLog(
+            "Duplicated Scene Asset: " + sourceFilename + " -> " + createdFilename);
+    }
+    return duplicated;
+}
+
+bool DebugEditor::RenameSceneAsset(
+    const std::string& sourceFilename,
+    const std::string& newSceneId,
+    const std::string& displayName,
+    std::string& renamedFilename,
+    std::string& errorMessage) {
+    const bool wasCurrentScene = IsCurrentSceneAsset(sourceFilename);
+    const bool renamed = serializer_.RenameSceneAsset(
+        sourceFilename,
+        newSceneId,
+        displayName,
+        renamedFilename,
+        errorMessage);
+    if (!renamed) {
+        return false;
+    }
+
+    if (wasCurrentScene) {
+        SetSceneFilename(renamedFilename);
+        if (sceneManager_) {
+            sceneManager_->SetEditorSceneAssetPaths(
+                serializer_.ResolveSceneAssetObjectPath(renamedFilename),
+                serializer_.ResolveSceneAssetSpritePath(renamedFilename));
+        }
+    }
+    DebugConsole::GetInstance()->AddLog(
+        "Renamed Scene Asset: " + sourceFilename + " -> " + renamedFilename);
+    return true;
+}
+
+bool DebugEditor::DeleteSceneAsset(const std::string& filename, std::string& errorMessage) {
+    if (IsCurrentSceneAsset(filename)) {
+        errorMessage = "開いているScene Assetは削除できません。別のシーンを開いてから削除してください。";
+        return false;
+    }
+    if (!serializer_.DeleteSceneAsset(filename, errorMessage)) {
+        return false;
+    }
+    DebugConsole::GetInstance()->AddLog("Deleted Scene Asset: " + filename);
+    return true;
+}
+
+bool DebugEditor::SetSceneAssetRuntimeScene(
+    const std::string& filename,
+    const std::string& runtimeScene,
+    std::string& errorMessage) {
+    if (!serializer_.SetSceneAssetRuntimeScene(filename, runtimeScene, errorMessage)) {
+        return false;
+    }
+    DebugConsole::GetInstance()->AddLog(
+        "Scene Asset runtime changed: " + filename + " -> " + runtimeScene);
+    return true;
+}
+
+bool DebugEditor::SetSceneAssetRuntimeSettings(
+    const std::string& filename,
+    const std::string& controllerName,
+    const std::string& bgmPath,
+    const std::string& lightPath,
+    const std::string& cameraPath,
+    const std::string& skyboxPath,
+    std::string& errorMessage) {
+    if (!serializer_.SetSceneAssetRuntimeSettings(
+        filename,
+        controllerName,
+        bgmPath,
+        lightPath,
+        cameraPath,
+        skyboxPath,
+        errorMessage)) {
+        return false;
+    }
+    DebugConsole::GetInstance()->AddLog("Updated Scene Asset runtime settings: " + filename);
+    return true;
+}
+
+SceneSerializer::SceneAssetValidationResult DebugEditor::ValidateSceneAsset(
+    const std::string& filename) const {
+    SceneSerializer::SceneAssetValidationResult result = serializer_.ValidateSceneAsset(filename);
+    const std::vector<SceneSerializer::SceneAssetInfo> assets = serializer_.DiscoverSceneAssets();
+    const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneSerializer::SceneAssetInfo& candidate) {
+        return candidate.filename == filename;
+    });
+    if (asset != assets.end() && asset->runtimeScene == "GAMEPLAY" &&
+        !SceneControllerFactory::GetInstance()->IsRegistered(asset->controllerName)) {
+        result.errors.push_back("Scene Controllerが登録されていません: " + asset->controllerName);
+    }
+    return result;
+}
+
+std::vector<std::string> DebugEditor::GetRegisteredSceneNames() const {
+    return sceneManager_ ? sceneManager_->GetRegisteredSceneNames() : std::vector<std::string>{};
+}
+
+bool DebugEditor::OpenSceneAsset(
+    const std::string& filename,
+    bool discardUnsavedChanges,
+    std::string& errorMessage) {
+    errorMessage.clear();
+    if (!sceneManager_) {
+        errorMessage = "SceneManagerが初期化されていません。";
+        return false;
+    }
+    if (sceneManager_->IsPlaying()) {
+        errorMessage = "実行中はScene Assetを切り替えられません。停止してから開いてください。";
+        return false;
+    }
+    if (prefabEditMode_) {
+        errorMessage = "Prefab Modeを終了してからScene Assetを開いてください。";
+        return false;
+    }
+    if (HasAnyDirty() && !discardUnsavedChanges) {
+        errorMessage = "未保存の変更があります。保存するか、破棄して開く操作を選んでください。";
+        return false;
+    }
+
+    const std::string objectPath = serializer_.ResolveSceneAssetObjectPath(filename);
+    const std::string spritePath = serializer_.ResolveSceneAssetSpritePath(filename);
+    const std::vector<SceneSerializer::SceneAssetInfo> assets = serializer_.DiscoverSceneAssets();
+    const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneSerializer::SceneAssetInfo& candidate) {
+        return candidate.filename == filename;
+    });
+    if (asset == assets.end()) {
+        errorMessage = "Scene Assetが見つかりません: " + filename;
+        return false;
+    }
+    if (!sceneManager_->IsSceneRegistered(asset->runtimeScene)) {
+        errorMessage = "実行クラスがSceneFactoryへ登録されていません: " + asset->runtimeScene;
+        return false;
+    }
+    const SceneSerializer::SceneAssetValidationResult validation = ValidateSceneAsset(filename);
+    if (!validation.IsValid()) {
+        errorMessage = validation.errors.front();
+        for (size_t index = 1; index < validation.errors.size(); ++index) {
+            errorMessage += "\n" + validation.errors[index];
+        }
+        return false;
+    }
+    for (const std::string& warning : validation.warnings) {
+        DebugConsole::GetInstance()->AddLog("Scene validation warning: " + warning);
+    }
+
+    SceneLoadContext context;
+    context.sceneAssetId = asset->id;
+    context.displayName = asset->displayName;
+    context.runtimeScene = asset->runtimeScene;
+    context.objectLayoutPath = objectPath;
+    context.spriteLayoutPath = spritePath;
+    context.controllerName = asset->controllerName;
+    context.bgmPath = asset->bgmPath;
+    context.lightPath = asset->lightPath;
+    context.cameraPath = asset->cameraPath;
+    context.skyboxPath = asset->skyboxPath;
+    if (!sceneManager_->OpenSceneAsset(context)) {
+        errorMessage = "シーン遷移中のためScene Assetを開けませんでした。";
+        return false;
+    }
+
+    if (ghostRecorder_) {
+        ghostRecorder_->ClearTarget();
+    }
+    ClearObjectSelection();
+    EditorManager::GetInstance()->ClearSelection();
+    EditorTransactionManager::GetInstance()->Clear();
+    pendingSceneAssetOpenAfterSave_.clear();
+    ClearDirty(SaveMode::All);
+    SetSceneFilename(filename);
+    DebugConsole::GetInstance()->AddLog("Opening Scene Asset: " + filename);
+    return true;
+}
+
+void DebugEditor::SaveThenOpenSceneAsset(const std::string& filename) {
+    pendingSceneAssetOpenAfterSave_ = filename;
+    SaveScene(SaveMode::All);
+}
+
+bool DebugEditor::IsCurrentSceneAsset(const std::string& filename) const {
+    if (!sceneManager_ || !sceneManager_->HasActiveSceneAsset()) {
+        return false;
+    }
+    std::string leafName = filename;
+    const size_t slash = leafName.find_last_of("/\\");
+    if (slash != std::string::npos) {
+        leafName = leafName.substr(slash + 1);
+    }
+    return leafName == currentSceneFilename_;
+}
+
+void DebugEditor::OpenCreateSceneAssetDialog() {
+    hierarchyWindow_.OpenCreateSceneDialog();
+}
+
+void DebugEditor::RequestOpenSceneAssetFromMenu(const std::string& filename) {
+    hierarchyWindow_.OpenSceneAssetFromMenu(filename);
+}
+
 void DebugEditor::SaveScene(SaveMode mode) {
     if (prefabEditMode_) {
         SavePrefabEditSession();
@@ -467,9 +707,19 @@ void DebugEditor::DrawSavePreview() {
         }
         DebugConsole::GetInstance()->AddLog("Save Preview: 保存を確定しました。");
         TriggerSaveNotification(notificationName);
+
+        if (!pendingSceneAssetOpenAfterSave_.empty() && !HasAnyDirty()) {
+            const std::string filenameToOpen = pendingSceneAssetOpenAfterSave_;
+            pendingSceneAssetOpenAfterSave_.clear();
+            std::string openError;
+            if (!OpenSceneAsset(filenameToOpen, false, openError)) {
+                DebugConsole::GetInstance()->AddLog("Scene Asset Open Error: " + openError);
+            }
+        }
     }
     else {
         DebugConsole::GetInstance()->AddLog("Save Preview: 保存をキャンセルしました。");
+        pendingSceneAssetOpenAfterSave_.clear();
     }
 
     sceneSavePreview_.Close();

@@ -2,6 +2,7 @@
 #include "BaseScene.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 /// <summary>
 /// SceneManager が具体的なシーンクラスを知らずに生成するための抽象ファクトリ。
@@ -16,4 +17,7 @@ public:
     /// </summary>
         // 指定シーン名に対応するシーンを生成して返します。
 virtual std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) = 0;
+
+    // EditorのScene切り替えやScene Asset設定へ、登録済み実行クラス名を公開します。
+    virtual std::vector<std::string> GetRegisteredSceneNames() const = 0;
 };

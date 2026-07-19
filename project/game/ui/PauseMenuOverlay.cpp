@@ -96,6 +96,38 @@ void PauseMenuOverlay::Draw() {
     }
 }
 
+void PauseMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    replaySprites.reserve(replaySprites.size() + sprites_.size());
+    for (const auto& sprite : sprites_) {
+        if (sprite) {
+            replaySprites.push_back(sprite.get());
+        }
+    }
+}
+
+void PauseMenuOverlay::CaptureReplayState(json& state) const {
+    state = {
+        { "active", isActive_ },
+        { "suppressInput", suppressOpenCloseInput_ },
+        { "selectedIndex", selectedIndex_ },
+        { "time", time_ }
+    };
+}
+
+void PauseMenuOverlay::RestoreReplayState(const json& state) {
+    if (!state.is_object()) {
+        return;
+    }
+    isActive_ = state.value("active", isActive_);
+    suppressOpenCloseInput_ = state.value("suppressInput", suppressOpenCloseInput_);
+    selectedIndex_ = std::clamp(state.value("selectedIndex", selectedIndex_), 0, static_cast<int>(Item::Count) - 1);
+    time_ = state.value("time", time_);
+    SetAllVisible(isActive_);
+    if (isActive_) {
+        UpdateSprites();
+    }
+}
+
 void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
     sprites_.clear();
     if (!spriteCommon_) {

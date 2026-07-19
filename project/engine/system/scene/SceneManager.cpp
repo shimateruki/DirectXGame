@@ -40,6 +40,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     }
 
     currentScene_->Initialize();
+    ++sceneGeneration_;
 }
 
 void SceneManager::Finalize() {
@@ -55,6 +56,7 @@ void SceneManager::Finalize() {
         currentScene_->Finalize();
         currentScene_.reset();
     }
+    ++sceneGeneration_;
 
     if (preparedScene_ && preparedSceneInitialized_) {
         preparedScene_->Finalize();
@@ -166,14 +168,96 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
         return;
     }
 
+    if (!IsSceneRegistered(sceneName)) {
+        assert(false && "Requested scene is not registered in SceneFactory.");
+        return;
+    }
+
+    if (!preserveSceneAssetForNextChange_) {
+        ClearActiveSceneAsset();
+    }
+    preserveSceneAssetForNextChange_ = false;
+
     nextSceneName_ = sceneName;
     pendingSceneNameForSwap_ = sceneName;
     transitionPhase_ = TransitionPhase::FadingOutCurrent;
     Fade::GetInstance()->StartFadeOut(1.0f);
 
 #ifdef USE_IMGUI
-    SaveLastSceneName(sceneName);
+    // Editor専用Sceneは起動時のゲームSceneとして復元しません。
+    if (sceneName != "SCENE_EDITOR") {
+        SaveLastSceneName(sceneName);
+    }
 #endif
+}
+
+bool SceneManager::ReloadCurrentScene() {
+    if (currentSceneName_.empty() || IsTransitionBusy()) {
+        return false;
+    }
+
+    preserveSceneAssetForNextChange_ = HasActiveSceneAsset();
+    ChangeScene(currentSceneName_);
+    return true;
+}
+
+std::vector<std::string> SceneManager::GetRegisteredSceneNames() const {
+    return sceneFactory_ ? sceneFactory_->GetRegisteredSceneNames() : std::vector<std::string>{};
+}
+
+bool SceneManager::IsSceneRegistered(const std::string& sceneName) const {
+    const std::vector<std::string> sceneNames = GetRegisteredSceneNames();
+    return std::find(sceneNames.begin(), sceneNames.end(), sceneName) != sceneNames.end();
+}
+
+bool SceneManager::OpenSceneAsset(
+    const std::string& objectLayoutPath,
+    const std::string& spriteLayoutPath,
+    const std::string& runtimeSceneName) {
+    SceneLoadContext context;
+    context.sceneAssetId = objectLayoutPath;
+    context.runtimeScene = runtimeSceneName;
+    context.objectLayoutPath = objectLayoutPath;
+    context.spriteLayoutPath = spriteLayoutPath;
+    return OpenSceneAsset(context);
+}
+
+bool SceneManager::OpenSceneAsset(const SceneLoadContext& context) {
+    if (!context.IsSceneAsset() || context.objectLayoutPath.empty() ||
+        isPlaying_ || IsTransitionBusy() || !IsSceneRegistered(context.runtimeScene)) {
+        return false;
+    }
+
+    activeSceneLoadContext_ = context;
+    preserveSceneAssetForNextChange_ = true;
+    ChangeScene(context.runtimeScene);
+    return true;
+}
+
+bool SceneManager::OpenEditorSceneAsset(
+    const std::string& objectLayoutPath,
+    const std::string& spriteLayoutPath) {
+    return OpenSceneAsset(objectLayoutPath, spriteLayoutPath, "SCENE_EDITOR");
+}
+
+void SceneManager::SetEditorSceneAssetPaths(
+    const std::string& objectLayoutPath,
+    const std::string& spriteLayoutPath) {
+    activeSceneLoadContext_.objectLayoutPath = objectLayoutPath;
+    activeSceneLoadContext_.spriteLayoutPath = spriteLayoutPath;
+    std::string sceneAssetId = objectLayoutPath;
+    const size_t slash = sceneAssetId.find_last_of("/\\");
+    if (slash != std::string::npos) {
+        sceneAssetId = sceneAssetId.substr(slash + 1);
+    }
+    if (sceneAssetId.size() >= 5 && sceneAssetId.substr(sceneAssetId.size() - 5) == ".json") {
+        sceneAssetId.resize(sceneAssetId.size() - 5);
+    }
+    activeSceneLoadContext_.sceneAssetId = sceneAssetId;
+}
+
+void SceneManager::ClearActiveSceneAsset() {
+    activeSceneLoadContext_ = {};
 }
 
 void SceneManager::BeginLoadingTransition() {
@@ -192,6 +276,7 @@ void SceneManager::BeginLoadingTransition() {
     loadingElapsed_ = 0.0f;
 
     currentScene_ = std::make_unique<LoadingScene>();
+    ++sceneGeneration_;
     currentScene_->SetSceneManager(this);
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
@@ -238,6 +323,7 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
     }
 
     preparedScene_->SetSceneManager(this);
+    preparedScene_->SetSceneLoadContext(activeSceneLoadContext_);
     if (debugEditor_) {
         preparedScene_->SetDebugEditor(debugEditor_);
     }
@@ -256,6 +342,7 @@ void SceneManager::SwapToPreparedScene() {
     }
 
     currentScene_ = std::move(preparedScene_);
+    ++sceneGeneration_;
     preparedSceneInitialized_ = false;
     if (!pendingSceneNameForSwap_.empty()) {
         currentSceneName_ = pendingSceneNameForSwap_;
@@ -276,6 +363,7 @@ void SceneManager::SwapToDirectNextScene() {
     }
 
     currentScene_ = std::move(nextScene_);
+    ++sceneGeneration_;
     nextScene_ = nullptr;
     if (!pendingSceneNameForSwap_.empty()) {
         currentSceneName_ = pendingSceneNameForSwap_;
@@ -284,6 +372,7 @@ void SceneManager::SwapToDirectNextScene() {
 
     if (currentScene_) {
         currentScene_->SetSceneManager(this);
+        currentScene_->SetSceneLoadContext(activeSceneLoadContext_);
         if (debugEditor_) {
             currentScene_->SetDebugEditor(debugEditor_);
         }
