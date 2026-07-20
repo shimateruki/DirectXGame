@@ -11,6 +11,22 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace {
+
+void EnsureFallbackBone(Model::ModelData& modelData) {
+    if (!modelData.bones.empty()) {
+        return;
+    }
+
+    Model::Bone dummyBone;
+    dummyBone.name = "DummyBone";
+    Math math;
+    dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();
+    modelData.bones.push_back(dummyBone);
+}
+
+} // namespace
+
 // ==========================================
 // 初期化: メッシュごとにバッファを作る
 // ==========================================
@@ -21,6 +37,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 
     // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
     modelData_ = LoadFile(directoryPath, filename);
+    EnsureFallbackBone(modelData_);
 
     // --- AABB（モデルのサイズ）計算 ---
     Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
@@ -107,15 +124,26 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 void Model::CreateBoneBuffer() {
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    // LoadFileでダミーボーンを作っているので、必ず1つ以上ボーンがある状態になります
-    // (なので empty チェックで return はしません)
+    // 読み込み失敗時も0バイトのGPUバッファを作らないようにします。
+    EnsureFallbackBone(modelData_);
 
     // 1. リソース作成
     UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());
     boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
+    if (!boneResource_) {
+        OutputDebugStringA("[Model] Failed to create bone buffer.\n");
+        boneMappedData_ = nullptr;
+        return;
+    }
 
     // 2. マッピング
-    boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
+    const HRESULT mapResult = boneResource_->Map(0, nullptr, reinterpret_cast<void**>(&boneMappedData_));
+    if (FAILED(mapResult) || !boneMappedData_) {
+        OutputDebugStringA("[Model] Failed to map bone buffer.\n");
+        boneMappedData_ = nullptr;
+        boneResource_.Reset();
+        return;
+    }
 
     // ★重要: 初期値を「単位行列」で埋めておく
     // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
@@ -143,6 +171,10 @@ void Model::CreateBoneBuffer() {
 // ボーン行列の更新 
 // ==========================================
 void Model::UpdateBoneBuffer() {
+    if (!boneMappedData_) {
+        return;
+    }
+
     // ボーンごとに計算
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
         // ボーン名に対応するNodeを探す
@@ -244,7 +276,9 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     ModelData modelData;
     Assimp::Importer importer;
 
-    std::string sep = (directoryPath.back() == '/' || directoryPath.back() == '\\') ? "" : "/";
+    const bool hasTrailingSeparator = !directoryPath.empty() &&
+        (directoryPath.back() == '/' || directoryPath.back() == '\\');
+    std::string sep = directoryPath.empty() || hasTrailingSeparator ? "" : "/";
     std::string filePath = directoryPath + sep + filename;
 
 
@@ -253,6 +287,10 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_OptimizeMeshes);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        const std::string errorMessage =
+            "[Model] Failed to load: " + filePath + "\nAssimp: " + importer.GetErrorString() + "\n";
+        OutputDebugStringA(errorMessage.c_str());
+        EnsureFallbackBone(modelData);
         return modelData;
     }
 
@@ -368,11 +406,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     // =========================================================
     if (modelData.bones.empty()) {
         // 1. ダミーボーンを作る (単位行列)
-        Bone dummyBone;
-        dummyBone.name = "DummyBone";
-        Math math;
-        dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();
-        modelData.bones.push_back(dummyBone);
+        EnsureFallbackBone(modelData);
 
         // 2. すべての頂点にダミーボーンの影響(100%)を与える
         for (auto& mesh : modelData.meshes) {
