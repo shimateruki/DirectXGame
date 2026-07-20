@@ -3,6 +3,7 @@
 #include <cassert>
 #include <filesystem> 
 #include <algorithm>
+#include <set>
 #include "ProfilerManager.h"
 #include <chrono>
 
@@ -31,6 +32,7 @@ void ModelManager::Initialize(DirectXCommon* dxCommon) {
 
 void ModelManager::Finalize() {
     models_.clear(); // 読み込み済みモデルをすべて解放する。
+    preparedModels_.clear();
     modelCommon_.reset(); // ModelCommonを先に破棄し、GPU関連の参照を残さない。
     delete instance;
     instance = nullptr;
@@ -137,13 +139,31 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    std::unique_ptr<PreparedModel> preparedModel;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        auto prepared = preparedModels_.find(modelName);
+        if (prepared != preparedModels_.end()) {
+            preparedModel = std::move(prepared->second);
+            preparedModels_.erase(prepared);
+        }
+    }
+
     auto newModel = std::make_unique<Model>();
     ModelCommon* modelCommon = nullptr;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         modelCommon = modelCommon_.get();
     }
-    newModel->Initialize(modelCommon, directoryPath, fileName);
+    if (preparedModel) {
+        newModel->InitializeFromCpuData(
+            modelCommon,
+            std::move(preparedModel->data),
+            preparedModel->fileName);
+    }
+    else {
+        newModel->Initialize(modelCommon, directoryPath, fileName);
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     float duration = std::chrono::duration<float, std::milli>(end - start).count();
@@ -159,6 +179,111 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         auto inserted = models_.emplace(modelName, std::move(newModel));
         return inserted.first->second.get();
     }
+}
+
+bool ModelManager::PrepareModel(const std::string& modelName) {
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (models_.contains(modelName) || preparedModels_.contains(modelName)) {
+            return true;
+        }
+    }
+
+    std::string directoryPath;
+    std::string fileName;
+    if (!ResolveModelPath(modelName, directoryPath, fileName)) {
+        return false;
+    }
+
+    auto prepared = std::make_unique<PreparedModel>();
+    prepared->directoryPath = directoryPath;
+    prepared->fileName = fileName;
+    prepared->data = Model::LoadCpuData(directoryPath, fileName);
+
+    for (const Model::MaterialData& material : prepared->data.materials) {
+        TextureManager::GetInstance()->Prepare(
+            material.textureFilePath.empty()
+                ? "Resources/sprite/common/white.png"
+                : material.textureFilePath,
+            TextureManager::TextureColorSpace::SRGB);
+        if (material.hasNormalMap && !material.normalMapPath.empty()) {
+            TextureManager::GetInstance()->Prepare(
+                material.normalMapPath,
+                TextureManager::TextureColorSpace::Linear);
+        }
+        if (material.hasOrmMap && !material.ormMapPath.empty()) {
+            TextureManager::GetInstance()->Prepare(
+                material.ormMapPath,
+                TextureManager::TextureColorSpace::Linear);
+        }
+    }
+
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (models_.contains(modelName) || preparedModels_.contains(modelName)) {
+        return true;
+    }
+    preparedModels_.emplace(modelName, std::move(prepared));
+    return true;
+}
+
+bool ModelManager::ResolveModelPath(
+    const std::string& modelName,
+    std::string& directoryPath,
+    std::string& fileName) const {
+    std::filesystem::path path(modelName);
+    std::string parentPath = path.parent_path().string();
+    std::replace(parentPath.begin(), parentPath.end(), '\\', '/');
+    const std::string stem = path.stem().string();
+    const std::string extension = path.extension().string();
+
+    directoryPath = parentPath.empty()
+        ? kDefaultBaseDirectory + stem + "/"
+        : kDefaultBaseDirectory + parentPath + "/" + stem + "/";
+
+    if (!extension.empty()) {
+        fileName = path.filename().string();
+        const std::string legacyDirectory = directoryPath;
+        const std::string directDirectory =
+            kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
+        if (std::filesystem::exists(legacyDirectory + fileName)) {
+            directoryPath = legacyDirectory;
+        }
+        else if (std::filesystem::exists(directDirectory + fileName)) {
+            directoryPath = directDirectory;
+        }
+        else {
+            return false;
+        }
+        return true;
+    }
+
+    const std::string objName = stem + ".obj";
+    const std::string gltfName = stem + ".gltf";
+    const std::string glbName = stem + ".glb";
+    if (std::filesystem::exists(directoryPath + objName)) {
+        fileName = objName;
+    }
+    else if (std::filesystem::exists(directoryPath + gltfName)) {
+        fileName = gltfName;
+    }
+    else if (std::filesystem::exists(directoryPath + glbName)) {
+        fileName = glbName;
+    }
+    else if (std::filesystem::exists(directoryPath)) {
+        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+            const std::string candidateExtension = entry.path().extension().string();
+            if (candidateExtension == ".obj" || candidateExtension == ".gltf" ||
+                candidateExtension == ".glb") {
+                fileName = entry.path().filename().string();
+                break;
+            }
+        }
+    }
+
+    return !fileName.empty() && std::filesystem::exists(directoryPath + fileName);
 }
 // 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
 
@@ -178,6 +303,54 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     for (const auto& pair : models_) {
         names.push_back(pair.first);
     }
+    return names;
+}
+
+std::vector<std::string> ModelManager::GetAvailableModelNames() const {
+    std::vector<std::string> names = GetLoadedModelNames();
+    std::set<std::string> uniqueNames(names.begin(), names.end());
+
+    std::error_code error;
+    if (!std::filesystem::exists(kDefaultBaseDirectory, error) || error) {
+        return names;
+    }
+
+    for (std::filesystem::recursive_directory_iterator iterator(
+             kDefaultBaseDirectory,
+             std::filesystem::directory_options::skip_permission_denied,
+             error), end;
+         iterator != end;
+         iterator.increment(error)) {
+        if (error) {
+            error.clear();
+            continue;
+        }
+        if (!iterator->is_regular_file(error) || error) {
+            error.clear();
+            continue;
+        }
+
+        const std::string extension = iterator->path().extension().string();
+        if (extension != ".obj" && extension != ".gltf" && extension != ".glb") {
+            continue;
+        }
+
+        std::filesystem::path relativePath = std::filesystem::relative(
+            iterator->path().parent_path(),
+            kDefaultBaseDirectory,
+            error);
+        if (error || relativePath.empty()) {
+            error.clear();
+            continue;
+        }
+
+        std::string modelName = relativePath.generic_string();
+        if (uniqueNames.insert(modelName).second) {
+            names.push_back(std::move(modelName));
+        }
+    }
+
+    std::sort(names.begin(), names.end());
     return names;
 }
 

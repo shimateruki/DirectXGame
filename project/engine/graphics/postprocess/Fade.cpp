@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <utility>
 
 namespace {
 float ScreenW() {
@@ -42,29 +43,28 @@ Fade* Fade::GetInstance() {
 }
 
 void Fade::Initialize() {
-    const uint32_t noiseHandle = TextureManager::GetInstance()->Load(
-        "Resources/sprite/effect/noise0.png",
-        TextureManager::TextureColorSpace::Linear);
-    PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
+    ResolveNoiseTexture();
     ResetPostEffectFade();
     InitializeSprites();
 }
 
 void Fade::InitializeSprites() {
-    if (spriteCommon_) {
+    if (fallbackBlack_) {
         return;
     }
 
-    spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(DirectXCommon::GetInstance());
+    if (!spriteCommon_) {
+        spriteCommon_ = std::make_unique<SpriteCommon>();
+        spriteCommon_->Initialize(DirectXCommon::GetInstance());
+    }
 
-    const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+    const uint32_t whiteHandle = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/common/white.png");
+    if (whiteHandle == 0) {
+        return;
+    }
     fallbackBlack_ = std::make_unique<Sprite>();
     fallbackBlack_->Initialize(spriteCommon_.get(), whiteHandle);
     fallbackBlack_->SetAnchorPoint({ 0.5f, 0.5f });
-
-    LoadSequence(slimeWipe_, "Resources/sprite/fade/slime_wipe", 48);
-    LoadSequence(crownIris_, "Resources/sprite/fade/crown_iris", 48);
 }
 
 void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, int frameCount) {
@@ -72,10 +72,17 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
         return;
     }
 
-    sequence.textureHandles.reserve(frameCount);
+    std::vector<uint32_t> resolvedHandles;
+    resolvedHandles.reserve(frameCount);
     for (int i = 0; i < frameCount; ++i) {
-        sequence.textureHandles.push_back(TextureManager::GetInstance()->Load(MakeFramePath(directory, i)));
+        const uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(MakeFramePath(directory, i));
+        if (handle == 0) {
+            return;
+        }
+        resolvedHandles.push_back(handle);
     }
+
+    sequence.textureHandles = std::move(resolvedHandles);
 
     if (!sequence.textureHandles.empty()) {
         sequence.sprite = std::make_unique<Sprite>();
@@ -84,7 +91,21 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
     }
 }
 
+void Fade::ResolveNoiseTexture() {
+    if (noiseTextureResolved_) {
+        return;
+    }
+    const uint32_t noiseHandle = TextureManager::GetInstance()->GetSrvHandle(
+        "Resources/sprite/effect/noise0.png");
+    if (noiseHandle == 0) {
+        return;
+    }
+    PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
+    noiseTextureResolved_ = true;
+}
+
 void Fade::Update(float deltaTime) {
+    ResolveNoiseTexture();
     if (status_ == Status::None || status_ == Status::Finished) {
         return;
     }
@@ -109,8 +130,10 @@ void Fade::Draw() {
     InitializeSprites();
 
     if (style_ == VisualStyle::CrownIris) {
+        LoadSequence(crownIris_, "Resources/sprite/fade/crown_iris", 48);
         DrawFrameSequence(crownIris_, coverage_);
     } else {
+        LoadSequence(slimeWipe_, "Resources/sprite/fade/slime_wipe", 48);
         DrawFrameSequence(slimeWipe_, coverage_);
     }
 }

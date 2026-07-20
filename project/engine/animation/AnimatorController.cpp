@@ -78,6 +78,7 @@ bool AnimatorControllerAsset::Save(const std::string& filePath) const {
         root["states"].push_back({
             { "name", state.name },
             { "clipName", state.clipName },
+            { "bodyClipName", state.bodyClipName },
             { "speed", state.speed },
             { "loop", state.loop },
             { "blendDuration", state.blendDuration },
@@ -141,6 +142,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
             AnimatorStateDefinition state;
             state.name = item.value("name", "State");
             state.clipName = item.value("clipName", "");
+            state.bodyClipName = item.value("bodyClipName", "");
             state.speed = item.value("speed", 1.0f);
             state.loop = item.value("loop", true);
             state.blendDuration = item.value("blendDuration", 0.12f);

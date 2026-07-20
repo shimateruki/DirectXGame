@@ -2,6 +2,10 @@
 
 #include "engine/utility/math/Math.h"
 #include "engine/animation/AnimatorController.h"
+#include "engine/animation/BodyAnimationClip.h"
+
+#include <string>
+#include <unordered_map>
 
 class Player;
 
@@ -37,6 +41,8 @@ private:
     Vector3 NormalizeOrForward(const Vector3& direction) const;
     Vector3 BuildModeScale(Player* player, float deltaTime) const;
     Vector3 BuildModeRotation(Player* player) const;
+    bool TryBuildAuthoredBodyPose(Player* player, Vector3& scaleOut, Vector3& rotationOut) const;
+    void ReloadBodyClips();
     static const char* GetStateName(Mode mode);
 
     Mode mode_ = Mode::Idle;
@@ -62,5 +68,6 @@ private:
     Vector3 impulseScale_ = { 2.0f, 2.0f, 2.0f };
     AnimatorControllerAsset controllerAsset_;
     AnimatorControllerRuntime controllerRuntime_;
+    std::unordered_map<std::string, BodyAnimationClip> bodyClips_;
     bool controllerLoaded_ = false;
 };

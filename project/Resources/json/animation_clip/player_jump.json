@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "name": "player_jump",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 1.0,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0.0,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.18, 0.7, 1.18],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.12,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [-0.035, 0.0, 0.0],
+      "scale": [0.72, 1.55, 0.72],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.48,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.025, 0.0, 0.018],
+      "scale": [1.08, 0.9, 1.08],
+      "easingToNext": 4
+    },
+    {
+      "time": 0.82,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.055, 0.0, -0.018],
+      "scale": [1.24, 0.76, 1.24],
+      "easingToNext": 1
+    },
+    {
+      "time": 1.0,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

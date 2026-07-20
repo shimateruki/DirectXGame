@@ -57,6 +57,7 @@ private:
 
     void InitializeSprites();
     void LoadSequence(FrameSequence& sequence, const std::string& directory, int frameCount);
+    void ResolveNoiseTexture();
     void ResetPostEffectFade();
     void Begin(Status status, VisualStyle style, float duration, const Vector2& center, float initialCoverage);
 
@@ -79,4 +80,5 @@ private:
     std::unique_ptr<Sprite> fallbackBlack_;
     FrameSequence slimeWipe_;
     FrameSequence crownIris_;
+    bool noiseTextureResolved_ = false;
 };

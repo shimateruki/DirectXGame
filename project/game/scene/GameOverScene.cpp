@@ -1,5 +1,6 @@
 ﻿#define NOMINMAX
 #include "GameOverScene.h"
+#include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -66,18 +67,21 @@ bool IsFadePlayingForSceneIntro() {
 }
 }
 
-void GameOverScene::Initialize() {
-    PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
-    if (postParams) {
-        postParams->slimeFadeIntensity = 0.0f;
-        postParams->irisFadeIntensity = 0.0f;
-        postParams->blackout = 0.0f;
-        postParams->dangerVignette = 0.0f;
-        postParams->damageFlash = 0.0f;
-    }
+SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+        ? GetSceneLoadContext().objectLayoutPath
+        : "Resources/json/3Dobject/gameOverScene.json");
+    manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+        ? GetSceneLoadContext().spriteLayoutPath
+        : "Resources/json/sprite/gameOverScene.json");
+    manifest.AddModel("Characters/player");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    return manifest;
+}
 
+void GameOverScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
-    dxCommon_->SetRenderClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
@@ -131,7 +135,18 @@ void GameOverScene::Initialize() {
     CameraManager::GetInstance()->Update();
     InitializeGameOverPresentation();
 
-    dxCommon_->FlushCommandQueue(false);
+}
+
+void GameOverScene::OnActivated() {
+    PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+    if (postParams) {
+        postParams->slimeFadeIntensity = 0.0f;
+        postParams->irisFadeIntensity = 0.0f;
+        postParams->blackout = 0.0f;
+        postParams->dangerVignette = 0.0f;
+        postParams->damageFlash = 0.0f;
+    }
+    dxCommon_->SetRenderClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void GameOverScene::Finalize() {

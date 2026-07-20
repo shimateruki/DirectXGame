@@ -228,17 +228,18 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 // ========================================================================
 
 void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        return;
-    }
-
     json sceneData;
     auto& objects = scene->GetObjects();
     Object3dCommon* object3dCommon = scene->GetObject3dCommon();
 
     try {
-        sceneData = json::parse(file);
+        if (!scene->TakePreparedJson(filename, sceneData)) {
+            std::ifstream file(filename);
+            if (!file.is_open()) {
+                return;
+            }
+            sceneData = json::parse(file);
+        }
 
         if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
 
@@ -690,7 +691,6 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
         std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
         OutputDebugStringA(message.c_str());
     }
-    file.close();
 }
 
 
@@ -706,15 +706,18 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
         justName = justName.substr(slashPos + 1);
     }
     scene->SetLoadedSpriteFilename(justName);
-    std::ifstream file(resolvedFilename);
-    if (!file.is_open()) return;
-
     auto& sprites = scene->GetSprites();
     SpriteCommon* spriteCommon = scene->GetSpriteCommon();
 
     json layoutData;
     try {
-        layoutData = json::parse(file);
+        if (!scene->TakePreparedJson(resolvedFilename, layoutData)) {
+            std::ifstream file(resolvedFilename);
+            if (!file.is_open()) {
+                return;
+            }
+            layoutData = json::parse(file);
+        }
         const auto layoutScale = SpriteLayoutScaler::Make(layoutData);
         if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
             std::vector<std::pair<Sprite*, std::string>> spriteParentPending;
@@ -799,5 +802,4 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
         }
     }
     catch (...) {}
-    file.close();
 }

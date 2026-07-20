@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "PreviewScene.h"
+#include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -91,6 +92,31 @@ Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
 }
 }
 
+SceneLoadManifest PreviewScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+        ? GetSceneLoadContext().objectLayoutPath
+        : "Resources/json/3Dobject/sample.json");
+
+    std::string spritePath = "Resources/json/sprite/stage1_sprite.json";
+    const auto& stages = StageManager::GetInstance()->GetStages();
+    const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+    if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
+        spritePath = stages[stageIndex].spritePath;
+    }
+    if (HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()) {
+        spritePath = GetSceneLoadContext().spriteLayoutPath;
+    }
+    manifest.AddSpriteLayout(spritePath);
+    manifest.AddTexture("Resources/sprite/common/circle2.png");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+        ? "Resources/output_skybox.dds"
+        : GetSceneLoadContext().skyboxPath);
+    return manifest;
+}
+
 void PreviewScene::Initialize() {
 	using json = nlohmann::json;
 
@@ -172,7 +198,6 @@ void PreviewScene::Initialize() {
 
 	InitializePreviewHUD();
 
-	dxCommon_->FlushCommandQueue(false);
 }
 
 void PreviewScene::Finalize() {

@@ -32,6 +32,8 @@ static ModelManager* GetInstance();
     /// モデル名から読み込み済みモデルを取得し、未読み込みなら読み込む。
     /// </summary>
     Model* LoadModel(const std::string& modelName);
+    // ファイル解析とテクスチャデコードをCPU側だけ先行し、GPU生成はLoadModelまで遅延します。
+    bool PrepareModel(const std::string& modelName);
 
     /// <summary>
     /// 指定モデルを再読み込みする。
@@ -42,6 +44,8 @@ static ModelManager* GetInstance();
     /// 読み込み済みのモデル名一覧を取得する。
     /// </summary>
     std::vector<std::string> GetLoadedModelNames() const;
+    // GPUへ読み込まず、Resources/3DModelに存在するモデル候補を列挙します。
+    std::vector<std::string> GetAvailableModelNames() const;
 
     /// <summary>
     /// 既定のモデルディレクトリにあるモデルを一括読み込みする。
@@ -51,6 +55,12 @@ static ModelManager* GetInstance();
     ModelCommon* GetModelCommon() const { return modelCommon_.get(); }
 
 private:
+    struct PreparedModel {
+        std::string directoryPath;
+        std::string fileName;
+        Model::ModelData data;
+    };
+
     ModelManager() = default;
     ~ModelManager() = default;
     ModelManager(const ModelManager&) = delete;
@@ -67,6 +77,7 @@ private:
     // モデル描画共通情報と読み込み済みモデルのキャッシュ。
     std::unique_ptr<ModelCommon> modelCommon_;
     std::map<std::string, std::unique_ptr<Model>> models_;
+    std::map<std::string, std::unique_ptr<PreparedModel>> preparedModels_;
     mutable std::recursive_mutex mutex_;
 
     // 既定のモデル検索パスと拡張子。

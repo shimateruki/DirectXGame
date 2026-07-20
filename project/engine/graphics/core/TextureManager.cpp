@@ -217,7 +217,8 @@ void UploadTextureData(
     const DirectX::ScratchImage& mipImages,
     ID3D12Resource** intermediateResource,
     ID3D12Device* device,
-    ID3D12GraphicsCommandList* commandList)
+    ID3D12GraphicsCommandList* commandList,
+    D3D12_RESOURCE_STATES finalState)
 {
     // アップロードに必要なサブリソース情報を準備します。
     // ミップごとの転送情報をDirectXTexから作成する。
@@ -249,18 +250,85 @@ void UploadTextureData(
 
     UpdateSubresources(commandList, texture, *intermediateResource, 0, 0, UINT(subresources.size()), subresources.data());
 
-    // 転送完了後はシェーダー読み取り用の状態へ遷移させる。
+    // Copy QueueではCOMMONまで戻し、Direct Queueの初回参照時に読み取り状態へ昇格させます。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
     barrier.Transition.pResource = texture;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+    barrier.Transition.StateAfter = finalState;
     commandList->ResourceBarrier(1, &barrier);
 }
 
 std::string MakeTextureCacheKey(const std::string& path, bool isLinearTexture) {
     return NormalizeTexturePath(path) + (isLinearTexture ? "|linear" : "|srgb");
+}
+
+struct ResolvedTexturePath {
+    std::string effectiveFilePath;
+    std::string loadPath;
+    std::string cacheKey;
+    bool isLinearTexture = false;
+    bool useDDSCache = false;
+    bool isSourceTexture = false;
+    bool ddsIsUpToDate = false;
+};
+
+ResolvedTexturePath ResolveTexturePath(
+    const std::string& filePath,
+    TextureManager::TextureColorSpace colorSpace,
+    bool allowDDSCache) {
+    ResolvedTexturePath resolved;
+    resolved.isLinearTexture = colorSpace == TextureManager::TextureColorSpace::Linear ||
+        (colorSpace == TextureManager::TextureColorSpace::Auto && IsLinearTexturePath(filePath));
+
+    std::filesystem::path path(filePath);
+    resolved.useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
+    const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
+    if (requestedDDS) {
+        const std::filesystem::path sourcePath = FindSourceTextureForDDS(path);
+        if (!sourcePath.empty()) {
+            const bool ddsMissing = !std::filesystem::exists(path);
+            const bool ddsOutdated = !ddsMissing &&
+                std::filesystem::last_write_time(sourcePath) > std::filesystem::last_write_time(path);
+            if (!resolved.useDDSCache || ddsMissing || ddsOutdated) {
+                path = sourcePath;
+            }
+        }
+    }
+
+    resolved.effectiveFilePath = NormalizeTexturePath(path.string());
+    if (colorSpace == TextureManager::TextureColorSpace::Auto &&
+        IsLinearTexturePath(resolved.effectiveFilePath)) {
+        resolved.isLinearTexture = true;
+    }
+
+    const std::string extension = ToLower(path.extension().string());
+    resolved.isSourceTexture = IsSourceTextureExtension(extension);
+    std::filesystem::path ddsPath = path;
+    ddsPath.replace_extension(".dds");
+    resolved.loadPath = resolved.effectiveFilePath;
+
+    if (resolved.useDDSCache && resolved.isSourceTexture && std::filesystem::exists(ddsPath)) {
+        if (!std::filesystem::exists(path)) {
+            resolved.loadPath = NormalizeTexturePath(ddsPath.string());
+            resolved.ddsIsUpToDate = true;
+        }
+        else {
+            const auto sourceTime = std::filesystem::last_write_time(path);
+            const auto ddsTime = std::filesystem::last_write_time(ddsPath);
+            if (sourceTime <= ddsTime) {
+                resolved.loadPath = NormalizeTexturePath(ddsPath.string());
+                resolved.ddsIsUpToDate = true;
+            }
+        }
+    }
+
+    if (ToLower(std::filesystem::path(resolved.loadPath).extension().string()) == ".hdr") {
+        resolved.isLinearTexture = true;
+    }
+    resolved.cacheKey = MakeTextureCacheKey(resolved.loadPath, resolved.isLinearTexture);
+    return resolved;
 }
 
 // 実行中の描画コマンドリストを触らず、テクスチャ転送専用の一時コマンドリストでGPUへ送る。
@@ -294,7 +362,13 @@ bool UploadTextureDataWithDedicatedCommandList(
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
-    UploadTextureData(texture, mipImages, intermediateResource.GetAddressOf(), device, uploadCommandList.Get());
+    UploadTextureData(
+        texture,
+        mipImages,
+        intermediateResource.GetAddressOf(),
+        device,
+        uploadCommandList.Get(),
+        D3D12_RESOURCE_STATE_GENERIC_READ);
 
     hr = uploadCommandList->Close();
     if (FAILED(hr)) {
@@ -346,6 +420,182 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     device_ = dxCommon->GetDevice();
+
+    D3D12_COMMAND_QUEUE_DESC copyQueueDesc{};
+    copyQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    copyQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    copyQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    copyQueueDesc.NodeMask = 0;
+
+    HRESULT hr = device_->CreateCommandQueue(
+        &copyQueueDesc,
+        IID_PPV_ARGS(copyCommandQueue_.GetAddressOf()));
+    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        copyCommandQueue_.Reset();
+        return;
+    }
+
+    hr = device_->CreateFence(
+        0,
+        D3D12_FENCE_FLAG_NONE,
+        IID_PPV_ARGS(copyFence_.GetAddressOf()));
+    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+        copyCommandQueue_.Reset();
+        copyFence_.Reset();
+    }
+}
+
+bool TextureManager::BeginAsyncUploadBatch() {
+    if (!device_ || !copyCommandQueue_ || !copyFence_ || asyncUploadBatchSubmitted_) {
+        return false;
+    }
+    if (asyncUploadBatchActive_) {
+        return true;
+    }
+
+    asyncTextureUploads_.clear();
+    asyncUploadAllocator_.Reset();
+    asyncUploadCommandList_.Reset();
+
+    HRESULT hr = device_->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_COPY,
+        IID_PPV_ARGS(asyncUploadAllocator_.GetAddressOf()));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    hr = device_->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_COPY,
+        asyncUploadAllocator_.Get(),
+        nullptr,
+        IID_PPV_ARGS(asyncUploadCommandList_.GetAddressOf()));
+    if (FAILED(hr)) {
+        asyncUploadAllocator_.Reset();
+        return false;
+    }
+
+    pendingCopyFenceValue_ = 0;
+    asyncUploadBatchActive_ = true;
+    asyncUploadRecording_ = false;
+    asyncUploadBatchSubmitted_ = false;
+    return true;
+}
+
+void TextureManager::SetAsyncUploadRecording(bool enabled) {
+    asyncUploadRecording_ = enabled && asyncUploadBatchActive_ && !asyncUploadBatchSubmitted_;
+}
+
+bool TextureManager::RecordAsyncTextureUpload(
+    ID3D12Resource* texture,
+    const DirectX::ScratchImage& mipImages) {
+    if (!texture || !device_ || !asyncUploadCommandList_ ||
+        !asyncUploadBatchActive_ || !asyncUploadRecording_ || asyncUploadBatchSubmitted_) {
+        return false;
+    }
+
+    AsyncTextureUpload upload;
+    upload.destination = texture;
+    UploadTextureData(
+        texture,
+        mipImages,
+        upload.intermediate.GetAddressOf(),
+        device_.Get(),
+        asyncUploadCommandList_.Get(),
+        D3D12_RESOURCE_STATE_COMMON);
+    if (!upload.intermediate) {
+        return false;
+    }
+
+    asyncTextureUploads_.push_back(std::move(upload));
+    return true;
+}
+
+bool TextureManager::SubmitAsyncUploadBatch() {
+    if (!asyncUploadBatchActive_) {
+        return true;
+    }
+    if (asyncUploadBatchSubmitted_) {
+        return true;
+    }
+    if (!asyncUploadCommandList_ || !copyCommandQueue_ || !copyFence_) {
+        return false;
+    }
+
+    asyncUploadRecording_ = false;
+    HRESULT hr = asyncUploadCommandList_->Close();
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    ID3D12CommandList* commandLists[] = { asyncUploadCommandList_.Get() };
+    copyCommandQueue_->ExecuteCommandLists(1, commandLists);
+
+    pendingCopyFenceValue_ = ++copyFenceValue_;
+    hr = copyCommandQueue_->Signal(copyFence_.Get(), pendingCopyFenceValue_);
+    if (FAILED(hr)) {
+        pendingCopyFenceValue_ = 0;
+        return false;
+    }
+
+    asyncUploadBatchSubmitted_ = true;
+    return true;
+}
+
+bool TextureManager::PollAsyncUploadBatch() {
+    if (!asyncUploadBatchActive_) {
+        return true;
+    }
+    if (!asyncUploadBatchSubmitted_ || !copyFence_) {
+        return false;
+    }
+    if (copyFence_->GetCompletedValue() < pendingCopyFenceValue_) {
+        return false;
+    }
+
+    ReleaseCompletedAsyncUploadBatch();
+    return true;
+}
+
+void TextureManager::WaitForAsyncUploadBatch() {
+    if (!asyncUploadBatchActive_) {
+        return;
+    }
+    if (!asyncUploadBatchSubmitted_ && !SubmitAsyncUploadBatch()) {
+        ReleaseCompletedAsyncUploadBatch();
+        return;
+    }
+
+    if (copyFence_ && copyFence_->GetCompletedValue() < pendingCopyFenceValue_) {
+        HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        if (fenceEvent) {
+            const HRESULT hr = copyFence_->SetEventOnCompletion(
+                pendingCopyFenceValue_,
+                fenceEvent);
+            if (SUCCEEDED(hr)) {
+                WaitForSingleObject(fenceEvent, INFINITE);
+            }
+            CloseHandle(fenceEvent);
+        }
+    }
+
+    ReleaseCompletedAsyncUploadBatch();
+}
+
+bool TextureManager::IsAsyncUploadBatchPending() const {
+    return asyncUploadBatchActive_;
+}
+
+void TextureManager::ReleaseCompletedAsyncUploadBatch() {
+    asyncUploadRecording_ = false;
+    asyncUploadBatchSubmitted_ = false;
+    asyncUploadBatchActive_ = false;
+    pendingCopyFenceValue_ = 0;
+    asyncTextureUploads_.clear();
+    asyncUploadCommandList_.Reset();
+    asyncUploadAllocator_.Reset();
 }
 // テクスチャを読み込み、必要ならDDSキャッシュを優先しながらSRVハンドルとして登録する。
 
@@ -365,63 +615,52 @@ uint32_t TextureManager::Load(
     return LoadInternal(filePath, colorSpace, allowDDSCache, forceReload);
 }
 
+bool TextureManager::Prepare(
+    const std::string& filePath,
+    TextureColorSpace colorSpace,
+    bool allowDDSCache) {
+    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDDSCache);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (textureHandleMap_.contains(resolved.cacheKey) ||
+            preparedTextures_.contains(resolved.cacheKey)) {
+            return true;
+        }
+    }
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    auto prepared = std::make_unique<PreparedTextureData>();
+    prepared->mipImages = DirectXCommon::LoadTexture(
+        resolved.loadPath,
+        !resolved.isLinearTexture);
+    const auto end = std::chrono::high_resolution_clock::now();
+    prepared->decodeDurationMs = std::chrono::duration<float, std::milli>(end - start).count();
+    if (prepared->mipImages.GetImageCount() == 0) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (textureHandleMap_.contains(resolved.cacheKey) ||
+        preparedTextures_.contains(resolved.cacheKey)) {
+        return true;
+    }
+    preparedTextures_.emplace(resolved.cacheKey, std::move(prepared));
+    return true;
+}
+
 uint32_t TextureManager::LoadInternal(
     const std::string& filePath,
     TextureColorSpace colorSpace,
     bool allowDDSCache,
     bool forceReload) {
-    bool isLinearTexture = colorSpace == TextureColorSpace::Linear ||
-        (colorSpace == TextureColorSpace::Auto && IsLinearTexturePath(filePath));
-
-    std::filesystem::path path(filePath);
-    const bool useDDSCache = allowDDSCache && !IsDDSCacheDisabled();
-    // DDSを直接指定された場合でも、元画像が新しければ元画像を読み直して再生成要求につなげる。
-    const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
-    if (requestedDDS) {
-        const std::filesystem::path sourcePath = FindSourceTextureForDDS(path);
-        if (!sourcePath.empty()) {
-            const bool ddsMissing = !std::filesystem::exists(path);
-            const bool ddsOutdated = !ddsMissing && std::filesystem::last_write_time(sourcePath) > std::filesystem::last_write_time(path);
-            if (!useDDSCache || ddsMissing || ddsOutdated) {
-                path = sourcePath;
-            }
-        }
-    }
-
-    const std::string effectiveFilePath = NormalizeTexturePath(path.string());
-    if (colorSpace == TextureColorSpace::Auto && IsLinearTexturePath(effectiveFilePath)) {
-        isLinearTexture = true;
-    }
-
-    const std::string ext = ToLower(path.extension().string());
-    const bool isSourceTexture = IsSourceTextureExtension(ext);
-
-    std::filesystem::path ddsPath = path;
-    ddsPath.replace_extension(".dds");
-
-    std::string loadPath = effectiveFilePath;
-    bool ddsIsUpToDate = false;
-
-    // 元画像より新しいDDSがある場合は、重い変換を避けてDDSを優先する。
-    if (useDDSCache && isSourceTexture && std::filesystem::exists(ddsPath)) {
-        if (!std::filesystem::exists(path)) {
-            loadPath = NormalizeTexturePath(ddsPath.string());
-            ddsIsUpToDate = true;
-        } else {
-            const auto srcTime = std::filesystem::last_write_time(path);
-            const auto dstTime = std::filesystem::last_write_time(ddsPath);
-            if (srcTime <= dstTime) {
-                loadPath = NormalizeTexturePath(ddsPath.string());
-                ddsIsUpToDate = true;
-            }
-        }
-    }
-
-    // HDRは色指定に関係なくリニア値として扱う。
-    if (ToLower(std::filesystem::path(loadPath).extension().string()) == ".hdr") {
-        isLinearTexture = true;
-    }
-    const std::string cacheKey = MakeTextureCacheKey(loadPath, isLinearTexture);
+    const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDDSCache);
+    const bool isLinearTexture = resolved.isLinearTexture;
+    const bool useDDSCache = resolved.useDDSCache;
+    const bool isSourceTexture = resolved.isSourceTexture;
+    const bool ddsIsUpToDate = resolved.ddsIsUpToDate;
+    const std::string& effectiveFilePath = resolved.effectiveFilePath;
+    const std::string& loadPath = resolved.loadPath;
+    const std::string& cacheKey = resolved.cacheKey;
 
     if (!forceReload) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -435,14 +674,36 @@ uint32_t TextureManager::LoadInternal(
 
     // 法線・マスク系以外は見た目の色を保つためsRGBとして読み込む。
     const bool forceSRGB = !isLinearTexture;
-    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath, forceSRGB);
+    DirectX::ScratchImage mipImages;
+    float preparedDecodeDurationMs = 0.0f;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto prepared = preparedTextures_.find(cacheKey);
+        if (prepared != preparedTextures_.end()) {
+            preparedDecodeDurationMs = prepared->second->decodeDurationMs;
+            mipImages = std::move(prepared->second->mipImages);
+            preparedTextures_.erase(prepared);
+        }
+    }
+    if (mipImages.GetImageCount() == 0) {
+        mipImages = DirectXCommon::LoadTexture(loadPath, forceSRGB);
+    }
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     if (!resource) {
         return 0;
     }
 
-    if (!UploadTextureDataWithDedicatedCommandList(resource.Get(), mipImages, device_.Get(), dxCommon_->GetCommandQueue())) {
+    if (asyncUploadRecording_) {
+        if (!RecordAsyncTextureUpload(resource.Get(), mipImages)) {
+            return 0;
+        }
+    }
+    else if (!UploadTextureDataWithDedicatedCommandList(
+                 resource.Get(),
+                 mipImages,
+                 device_.Get(),
+                 dxCommon_->GetCommandQueue())) {
         return 0;
     }
 
@@ -488,7 +749,8 @@ uint32_t TextureManager::LoadInternal(
     }
 
     const auto end = std::chrono::high_resolution_clock::now();
-    float duration = std::chrono::duration<float, std::milli>(end - start).count();
+    float duration = preparedDecodeDurationMs +
+        std::chrono::duration<float, std::milli>(end - start).count();
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
     // まだ有効なDDSがない元画像は、裏側でDDS生成できるよう要求を積む。
@@ -563,6 +825,49 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
     for (const auto& pair : textureDatas_) {
         uniquePaths.insert(pair.second.filePath);
     }
+    return { uniquePaths.begin(), uniquePaths.end() };
+}
+
+std::vector<std::string> TextureManager::GetAvailableTexturePaths() const {
+    std::set<std::string> uniquePaths;
+    for (const std::string& loadedPath : GetLoadedTexturePaths()) {
+        uniquePaths.insert(NormalizeTexturePath(loadedPath));
+    }
+
+    const std::filesystem::path roots[] = {
+        "Resources/sprite",
+        "Resources/texture"
+    };
+    std::error_code error;
+    for (const std::filesystem::path& root : roots) {
+        if (!std::filesystem::exists(root, error) || error) {
+            error.clear();
+            continue;
+        }
+
+        for (std::filesystem::recursive_directory_iterator iterator(
+                 root,
+                 std::filesystem::directory_options::skip_permission_denied,
+                 error), end;
+             iterator != end;
+             iterator.increment(error)) {
+            if (error) {
+                error.clear();
+                continue;
+            }
+            if (!iterator->is_regular_file(error) || error) {
+                error.clear();
+                continue;
+            }
+
+            const std::string extension = ToLower(iterator->path().extension().string());
+            if (extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
+                extension == ".tga" || extension == ".dds" || extension == ".hdr") {
+                uniquePaths.insert(ToProjectPath(iterator->path()));
+            }
+        }
+    }
+
     return { uniquePaths.begin(), uniquePaths.end() };
 }
 // 指定パスに対応するSRVハンドルを返し、元画像名で問い合わせた場合はDDS登録も補助的に探す。

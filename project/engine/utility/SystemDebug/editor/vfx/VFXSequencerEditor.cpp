@@ -144,7 +144,7 @@ void VFXSequencerEditor::RefreshFileList() {
 
     const std::string particleDir = "Resources/json/gpu_particles/";
     if (GPUParticleManager::GetInstance() && GPUParticleManager::GetInstance()->IsInitialized()) {
-        GPUParticleManager::GetInstance()->LoadAllPresets(particleDir);
+        GPUParticleManager::GetInstance()->ReloadAllPresets(particleDir);
     }
     if (fs::exists(particleDir)) {
         for (const auto& entry : fs::directory_iterator(particleDir)) {

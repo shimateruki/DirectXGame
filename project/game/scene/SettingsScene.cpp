@@ -8,6 +8,7 @@
 #include "InputManager.h"
 #include "LevelLoader.h"
 #include "SceneManager.h"
+#include "ScenePreloader.h"
 #include "Sprite.h"
 #include "TextureManager.h"
 
@@ -30,6 +31,14 @@ Vector4 LerpColor(const Vector4& a, const Vector4& b, float t) {
         a.w + (b.w - a.w) * t
     };
 }
+}
+
+SceneLoadManifest SettingsScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+        ? GetSceneLoadContext().spriteLayoutPath
+        : kSettingsSpriteLayoutPath);
+    return manifest;
 }
 
 void SettingsScene::Initialize() {

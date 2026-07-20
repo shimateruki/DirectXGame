@@ -123,8 +123,16 @@ void DirectXCommon::PreDraw() {
 	// 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
-	// SetRenderClearColorで指定された色でクリアします。
-	commandList_->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
+	// Scene構築スレッドから背景色が更新されても、描画側では一貫した4要素を使用します。
+	float clearColor[4];
+	{
+		std::lock_guard<std::mutex> lock(clearColorMutex_);
+		clearColor[0] = clearColor_[0];
+		clearColor[1] = clearColor_[1];
+		clearColor[2] = clearColor_[2];
+		clearColor[3] = clearColor_[3];
+	}
+	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 	// 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -909,7 +917,15 @@ void DirectXCommon::PreDrawBackBuffer() {
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 	// SetRenderClearColorで指定された色でクリアします。
-	commandList_->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
+	float clearColor[4];
+	{
+		std::lock_guard<std::mutex> lock(clearColorMutex_);
+		clearColor[0] = clearColor_[0];
+		clearColor[1] = clearColor_[1];
+		clearColor[2] = clearColor_[2];
+		clearColor[3] = clearColor_[3];
+	}
+	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	// ImGuiが深度を使う場合はクリアが必要
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -1298,6 +1314,7 @@ void DirectXCommon::ProcessPendingResize() {
 }
 void DirectXCommon::SetRenderClearColor(float r, float g, float b, float a) {
     const Vector4 workingColor = ColorSpace::AuthoringToWorking({ r, g, b, a });
+    std::lock_guard<std::mutex> lock(clearColorMutex_);
     clearColor_[0] = workingColor.x;
     clearColor_[1] = workingColor.y;
     clearColor_[2] = workingColor.z;

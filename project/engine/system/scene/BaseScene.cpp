@@ -7,8 +7,17 @@
 #include "GPUParticleManager.h"
 #include "LightManager.h"
 #include "SceneManager.h"
+#include "ScenePreloader.h"
 #include <algorithm>
 #include <unordered_set>
+
+SceneLoadManifest BaseScene::BuildAsyncLoadManifest() const {
+    return {};
+}
+
+bool BaseScene::TakePreparedJson(const std::string& path, json& destination) {
+    return preparedLoadData_ && preparedLoadData_->TakeJson(path, destination);
+}
 
 std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& defaultPath) {
     if (sceneAssetObjectLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {

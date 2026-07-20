@@ -6,6 +6,7 @@
 #include <dxcapi.h>
 #include <dxgi1_6.h>
 #include <map>
+#include <mutex>
 #include <string>
 #include <wrl.h>
 
@@ -229,6 +230,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtRtvHeap_;
     uint32_t renderTextureSrvHandle_ = 0;
     float clearColor_[4] = { 0.1f, 0.25f, 0.5f, 1.0f };
+    mutable std::mutex clearColorMutex_;
 
     // シャドウマップ。
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;

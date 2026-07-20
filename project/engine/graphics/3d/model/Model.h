@@ -165,6 +165,13 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
     /// 蛻晄悄蛹・
     /// </summary>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
+    // Assimp/キャッシュ解析だけを行い、DirectXリソースを生成しないCPU側ロードです。
+    static ModelData LoadCpuData(const std::string& directoryPath, const std::string& filename);
+    // ワーカースレッドで準備したCPUデータから、メインスレッドでGPUリソースを生成します。
+    void InitializeFromCpuData(
+        ModelCommon* common,
+        ModelData modelData,
+        const std::string& sourceName);
     void Update();
     void Update(bool force);
     /// <summary>

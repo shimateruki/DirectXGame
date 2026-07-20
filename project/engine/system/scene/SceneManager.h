@@ -2,6 +2,8 @@
 #include "AbstractSceneFactory.h"
 #include "BaseScene.h"
 #include "SceneLoadContext.h"
+#include "ScenePreloader.h"
+#include <atomic>
 #include <cstdint>
 #include <future>
 #include <memory>
@@ -71,6 +73,9 @@ void ChangeScene(const std::string& sceneName);
     bool IsPlaying() const { return isPlaying_; }
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
+    bool IsSceneInitializingAsync() const {
+        return sceneInitializationStarted_ && !sceneInitializationFinished_;
+    }
 
     // Editor専用SceneへScene Assetを読み込みます。ゲーム用Sceneクラスの種類とは分離して扱います。
     bool OpenSceneAsset(
@@ -102,6 +107,8 @@ void BeginLoadingTransition();
 void StartAsyncSceneCreate();
     bool IsAsyncSceneReady() const;
     void PrepareLoadedSceneOnMainThread();
+    void StartPreparedAssetsAsync();
+    float CalculateLoadingProgress() const;
         // 準備完了した次シーンを現在シーンとして差し替えます。
 void SwapToPreparedScene();
     void SwapToDirectNextScene();
@@ -114,7 +121,11 @@ private:
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
     std::unique_ptr<BaseScene> preparedScene_ = nullptr;
-    std::future<std::unique_ptr<BaseScene>> loadingFuture_;
+    std::future<std::shared_ptr<ScenePreloadData>> loadingFuture_;
+    std::future<void> assetCreationFuture_;
+    std::future<void> sceneInitializationFuture_;
+    std::shared_ptr<ScenePreloadData> preparedLoadData_;
+    std::shared_ptr<ScenePreloadProgress> preloadProgress_;
 
     AbstractSceneFactory* sceneFactory_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
@@ -131,6 +142,15 @@ private:
     float loadingElapsed_ = 0.0f;
     float minLoadingDisplayTime_ = 0.45f;
     bool preparedSceneInitialized_ = false;
+    std::atomic<std::size_t> preparedTextureIndex_ = 0;
+    std::atomic<std::size_t> preparedModelIndex_ = 0;
+    bool asyncUploadBatchStarted_ = false;
+    bool asyncUploadBatchSubmitted_ = false;
+    bool assetCreationStarted_ = false;
+    bool assetCreationFinished_ = false;
+    bool preparedAssetsReady_ = false;
+    bool sceneInitializationStarted_ = false;
+    bool sceneInitializationFinished_ = false;
     SceneLoadContext activeSceneLoadContext_;
     bool preserveSceneAssetForNextChange_ = false;
 };

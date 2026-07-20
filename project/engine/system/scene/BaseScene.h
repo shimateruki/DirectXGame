@@ -18,6 +18,8 @@ class Camera;
 class DirectXCommon;
 class BulletManager;
 class Player;
+class ScenePreloadData;
+struct SceneLoadManifest;
 
 #include "engine/utility/state/IEditable.h"
 #include "SceneLoadContext.h"
@@ -37,6 +39,10 @@ public:
     // --- 必須オーバーライド ---
         // シーン固有のオブジェクト、カメラ、UI、管理クラスを初期化します。
 virtual void Initialize() = 0;
+        // 非同期初期化完了後、現在Sceneへ切り替える直前にメインスレッドで呼ばれます。
+virtual void OnActivated() {}
+        // ワーカースレッドで先読みするScene Assetと依存リソースを列挙します。
+virtual SceneLoadManifest BuildAsyncLoadManifest() const;
         // シーン内のゲームロジックをフレーム時間に合わせて更新します。
 virtual void Update(float deltaTime) = 0;
         // シーン内の3D/2D要素を描画します。
@@ -48,6 +54,8 @@ virtual void Finalize() = 0;
     virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
     virtual void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
     virtual void SetSceneLoadContext(const SceneLoadContext& context) { sceneLoadContext_ = context; }
+    void SetPreparedLoadData(std::shared_ptr<ScenePreloadData> data) { preparedLoadData_ = std::move(data); }
+    bool TakePreparedJson(const std::string& path, json& destination);
     SceneManager* GetSceneManager() const { return sceneManager_; }
     const SceneLoadContext& GetSceneLoadContext() const { return sceneLoadContext_; }
     bool HasSceneAssetContext() const { return sceneLoadContext_.IsSceneAsset(); }
@@ -136,6 +144,7 @@ bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureH
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
     SceneLoadContext sceneLoadContext_;
+    std::shared_ptr<ScenePreloadData> preparedLoadData_;
     std::string loadedFilename_ = "scene_layout.json";
     std::string loadedSpriteFilename_ = "sprite_layout.json";
     bool sceneAssetObjectLayoutConsumed_ = false;

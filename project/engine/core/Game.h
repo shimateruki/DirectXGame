@@ -62,6 +62,7 @@ private:
 
 	float timeScale_ = 1.0f;
 	bool isPlaying_ = false;
+	bool initialSceneOverridesPending_ = false;
 	std::string currentSceneName_;
 
 	float sceneUpdateTimeMs_ = 0.0f;

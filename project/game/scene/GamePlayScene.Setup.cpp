@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GamePlayScene.h"
+#include "ScenePreloader.h"
 #include "SceneController.h"
 
 #include "AudioPlayer.h"
@@ -147,6 +148,44 @@ constexpr const char* kGameplayDebrisPresetsToPreload[] = {
 };
 }
 
+SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+
+    std::string objectLayoutPath = "Resources/json/3Dobject/stage1.json";
+    std::string spriteLayoutPath = "Resources/json/sprite/stage1_sprite.json";
+    if (HasSceneAssetContext()) {
+        if (!GetSceneLoadContext().objectLayoutPath.empty()) {
+            objectLayoutPath = GetSceneLoadContext().objectLayoutPath;
+        }
+        if (!GetSceneLoadContext().spriteLayoutPath.empty()) {
+            spriteLayoutPath = GetSceneLoadContext().spriteLayoutPath;
+        }
+    }
+    else {
+        const auto& stages = StageManager::GetInstance()->GetStages();
+        const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+        if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
+            objectLayoutPath = stages[stageIndex].levelPath;
+            spriteLayoutPath = stages[stageIndex].spritePath;
+        }
+    }
+
+    manifest.AddObjectLayout(objectLayoutPath);
+    manifest.AddSpriteLayout(spriteLayoutPath);
+    manifest.AddSpriteLayout("Resources/json/sprite/gameplayHUD.json");
+    manifest.AddTexture("Resources/sprite/common/circle2.png");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+        ? "Resources/output_skybox.dds"
+        : GetSceneLoadContext().skyboxPath);
+    manifest.AddTexture("Resources/sprite/particle/glow_core.png");
+    manifest.AddTexture("Resources/sprite/fade/fade_sparkle.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/stage_clear_text.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/returning_select_text.png");
+    return manifest;
+}
+
 void GamePlayScene::Initialize() {
     if (HasSceneAssetContext()) {
         StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
@@ -170,10 +209,11 @@ void GamePlayScene::Initialize() {
         sceneController_->OnInitialize(*this);
     }
     InitializeGoalCinematicTimeline();
-    StartRespawnIrisInIfNeeded();
     InitializeDebugAnimationPreview();
+}
 
-    dxCommon_->FlushCommandQueue(false);
+void GamePlayScene::OnActivated() {
+    StartRespawnIrisInIfNeeded();
 }
 
 void GamePlayScene::Finalize() {

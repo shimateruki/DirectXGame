@@ -13,6 +13,7 @@
 #include "ModelManager.h"
 #include "Object3d.h"
 #include "SceneManager.h"
+#include "engine/utility/math/AnimationInterpolation.h"
 #include "json.hpp"
 
 #include <algorithm>
@@ -24,9 +25,18 @@
 
 namespace {
 constexpr const char* kPreviewObjectName = "__Editor_AnimationWorkbenchPreview";
-constexpr const char* kSaveDirectory = "Resources/json/enemy_animation/";
+constexpr const char* kSaveDirectory = "Resources/json/animation_clip/";
+constexpr const char* kLegacySaveDirectory = "Resources/json/enemy_animation/";
 constexpr float kPi = 3.14159265358979323846f;
 constexpr float kKeyEpsilon = 0.001f;
+
+const char* kEasingNames[] = {
+    "Linear",
+    "Ease In",
+    "Ease Out",
+    "Ease In Out",
+    "Smoother Step"
+};
 
 const char* kEventTypeNames[] = {
     "Attack On",
@@ -47,6 +57,7 @@ void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
 void AnimationWorkbench::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
+    RefreshAssetFiles();
 }
 
 void AnimationWorkbench::Finalize() {
@@ -125,12 +136,31 @@ void AnimationWorkbench::DrawImGui() {
     ImGui::SameLine();
     ImGui::Checkbox("自動反映", &autoApply_);
 
+    ImGui::SeparatorText("編集対象");
+    if (ImGui::RadioButton("Body Transform", editBodyTransform_)) {
+        editBodyTransform_ = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Bone Pose", !editBodyTransform_)) {
+        editBodyTransform_ = false;
+    }
+    ImGui::TextDisabled("Bodyは単体Objectの見た目、BoneはSkeleton Jointを編集します。");
+
     DrawPreviewControls();
     DrawTimelineControls();
-    DrawJointControls();
-    DrawKeyframeControls();
+    DrawAssetControls();
+    if (editBodyTransform_) {
+        DrawBodyControls();
+    } else {
+        DrawJointControls();
+        DrawKeyframeControls();
+    }
     DrawEventControls();
-    DrawBoneOverlayAndGizmo();
+    if (editBodyTransform_) {
+        DrawBodyGizmo();
+    } else {
+        DrawBoneOverlayAndGizmo();
+    }
 #endif
 }
 
@@ -140,7 +170,7 @@ void AnimationWorkbench::DrawPreviewControls() {
 
     ImGui::InputText("モデル名", modelNameBuffer_, sizeof(modelNameBuffer_));
 
-    std::vector<std::string> loadedModels = ModelManager::GetInstance()->GetLoadedModelNames();
+    std::vector<std::string> loadedModels = ModelManager::GetInstance()->GetAvailableModelNames();
     if (ImGui::BeginCombo("ロード済みモデル", modelNameBuffer_[0] ? modelNameBuffer_ : "選択なし")) {
         for (const std::string& name : loadedModels) {
             bool selected = (name == modelNameBuffer_);
@@ -213,6 +243,7 @@ void AnimationWorkbench::DrawTimelineControls() {
         currentTime_ = 0.0f;
         play_ = false;
         ApplyTimelinePose();
+        SyncBodyUiFromTimeline();
     }
     ImGui::SameLine();
     ImGui::Checkbox("ループ", &loop_);
@@ -221,17 +252,144 @@ void AnimationWorkbench::DrawTimelineControls() {
     ImGui::DragFloat("再生速度", &playbackSpeed_, 0.01f, -5.0f, 5.0f, "%.2f");
     if (ImGui::SliderFloat("現在時間", &currentTime_, 0.0f, duration_, "%.3f")) {
         ApplyTimelinePose();
+        SyncBodyUiFromTimeline();
     }
 
     const float frameStep = 1.0f / 30.0f;
     if (ImGui::Button("-1F")) {
         currentTime_ = (std::max)(0.0f, currentTime_ - frameStep);
         ApplyTimelinePose();
+        SyncBodyUiFromTimeline();
     }
     ImGui::SameLine();
     if (ImGui::Button("+1F")) {
         currentTime_ = (std::min)(duration_, currentTime_ + frameStep);
         ApplyTimelinePose();
+        SyncBodyUiFromTimeline();
+    }
+#endif
+}
+
+void AnimationWorkbench::DrawAssetControls() {
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("Animation Clip Asset", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+    const char* currentFile = saveFileBuffer_[0] ? saveFileBuffer_ : "(新規)";
+    if (ImGui::BeginCombo("既存Clip", currentFile)) {
+        for (const std::string& fileName : assetFiles_) {
+            const bool selected = fileName == std::filesystem::path(saveFileBuffer_).stem().string();
+            if (ImGui::Selectable(fileName.c_str(), selected)) {
+                CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), fileName + ".json");
+                LoadAuthoringJson();
+            }
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText("保存ファイル", saveFileBuffer_, sizeof(saveFileBuffer_));
+    if (ImGui::Button(ICON_FA_FILE " 新規")) {
+        NewAuthoringClip();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_SAVE " 保存")) {
+        SaveAuthoringJson();
+        RefreshAssetFiles();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_FOLDER_OPEN " 再読込")) {
+        LoadAuthoringJson();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_SYNC " 一覧更新")) {
+        RefreshAssetFiles();
+    }
+
+    ImGui::Text("Body %zu / Bone %zu / Event %zu", bodyKeys_.size(), keys_.size(), events_.size());
+    ImGui::TextDisabled("保存先: %s", GetSavePath().c_str());
+#endif
+}
+
+void AnimationWorkbench::DrawBodyControls() {
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("Body Transform", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+    ImGui::TextDisabled("Scaleは基準Scaleへの倍率、RotationとPositionは見た目用Offsetです。");
+    ImGui::TextDisabled("Player Runtimeでは物理座標を守るためPosition Offsetを移動処理へ加算しません。");
+
+    bool edited = false;
+    edited |= ImGui::DragFloat3("Position Offset", &bodyTranslateUi_.x, 0.01f);
+    edited |= ImGui::DragFloat3("Rotation Offset (deg)", &bodyRotateDegUi_.x, 0.5f);
+    edited |= ImGui::DragFloat3("Scale Multiplier", &bodyScaleUi_.x, 0.01f, 0.01f, 8.0f);
+    edited |= ImGui::Combo("次のキーへのEasing", &bodyEasingToNext_, kEasingNames, IM_ARRAYSIZE(kEasingNames));
+    if (ImGui::RadioButton("移動##BodyGizmo", gizmoOperation_ == 0)) gizmoOperation_ = 0;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("回転##BodyGizmo", gizmoOperation_ == 1)) gizmoOperation_ = 1;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("拡縮##BodyGizmo", gizmoOperation_ == 2)) gizmoOperation_ = 2;
+    ImGui::Checkbox("Body Gizmo", &enableBodyGizmo_);
+    ImGui::SameLine();
+    ImGui::Checkbox("Gizmo操作で自動キー", &autoKeyBodyOnGizmo_);
+
+    if (edited) {
+        bodyEditOverrideActive_ = true;
+        ApplyTimelinePose();
+    }
+
+    if (bodyEditOverrideActive_) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.25f, 1.0f), "編集中: キー未登録のBody姿勢があります");
+    }
+
+    if (ImGui::Button(ICON_FA_KEY " 現在Body姿勢をキー登録")) {
+        AddOrUpdateBodyKey();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_UNDO " 編集姿勢を破棄")) {
+        bodyEditOverrideActive_ = false;
+        SyncBodyUiFromTimeline();
+        ApplyTimelinePose();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size()));
+    if (ImGui::Button(ICON_FA_TRASH " 選択キー削除")) {
+        DeleteSelectedBodyKey();
+    }
+    ImGui::EndDisabled();
+
+    if (ImGui::BeginTable("AnimationWorkbenchBodyKeyTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0.0f, 190.0f))) {
+        ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 62.0f);
+        ImGui::TableSetupColumn("Position");
+        ImGui::TableSetupColumn("Rotation");
+        ImGui::TableSetupColumn("Scale");
+        ImGui::TableSetupColumn("Easing", ImGuiTableColumnFlags_WidthFixed, 105.0f);
+        ImGui::TableHeadersRow();
+
+        for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+            const BodyAnimationClip::Key& key = bodyKeys_[index];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::PushID(20000 + index);
+            char timeLabel[32]{};
+            std::snprintf(timeLabel, sizeof(timeLabel), "%.3f", key.time);
+            if (ImGui::Selectable(timeLabel, selectedBodyKeyIndex_ == index, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectedBodyKeyIndex_ = index;
+                currentTime_ = key.time;
+                bodyEditOverrideActive_ = false;
+                SyncBodyUiFromKey(key);
+                ApplyTimelinePose();
+            }
+            ImGui::PopID();
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%.2f %.2f %.2f", key.translate.x, key.translate.y, key.translate.z);
+            ImGui::TableSetColumnIndex(2);
+            const Vector3 rotateDeg = ToDegrees(key.rotate);
+            ImGui::Text("%.1f %.1f %.1f", rotateDeg.x, rotateDeg.y, rotateDeg.z);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%.2f %.2f %.2f", key.scale.x, key.scale.y, key.scale.z);
+            ImGui::TableSetColumnIndex(4);
+            ImGui::TextUnformatted(kEasingNames[std::clamp(key.easingToNext, 0, 4)]);
+        }
+        ImGui::EndTable();
     }
 #endif
 }
@@ -346,14 +504,6 @@ void AnimationWorkbench::DrawKeyframeControls() {
         ImGui::EndTable();
     }
 
-    ImGui::InputText("保存ファイル", saveFileBuffer_, sizeof(saveFileBuffer_));
-    if (ImGui::Button(ICON_FA_SAVE " 保存")) {
-        SaveAuthoringJson();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_FOLDER_OPEN " 読み込み")) {
-        LoadAuthoringJson();
-    }
 #endif
 }
 
@@ -405,6 +555,7 @@ void AnimationWorkbench::DrawEventControls() {
             if (ImGui::Selectable(rowId.c_str(), selectedEventIndex_ == i, ImGuiSelectableFlags_SpanAllColumns)) {
                 selectedEventIndex_ = i;
                 currentTime_ = marker.time;
+                SyncBodyUiFromTimeline();
                 ApplyTimelinePose();
             }
             ImGui::SameLine();
@@ -431,12 +582,18 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
     }
 
     previewModel_ = model;
+    bodyKeys_.clear();
     keys_.clear();
     events_.clear();
     ClearAllEditOverrides();
     lastEventPreviewText_.clear();
     eventPreviewTimer_ = 0.0f;
     selectedJointIndex_ = -1;
+    selectedBodyKeyIndex_ = -1;
+    bodyTranslateUi_ = {};
+    bodyRotateDegUi_ = {};
+    bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+    bodyEasingToNext_ = 4;
     currentTime_ = 0.0f;
 
     const auto& animations = previewModel_->GetModelData().animations;
@@ -510,7 +667,31 @@ Object3d* AnimationWorkbench::FindPreviewObject() const {
 }
 
 void AnimationWorkbench::ApplyTimelinePose() {
-    if (!previewModel_) return;
+    if (!previewModel_ || !previewObject_) return;
+
+    BodyAnimationClip::Key bodyPose;
+    const bool hasBodyPose = bodyEditOverrideActive_
+        ? (bodyPose = BuildBodyKeyFromUi(), true)
+        : TryGetInterpolatedBodyKey(currentTime_, bodyPose);
+    if (hasBodyPose) {
+        previewObject_->SetTranslate({
+            previewOrigin_.x + bodyPose.translate.x,
+            previewOrigin_.y + bodyPose.translate.y,
+            previewOrigin_.z + bodyPose.translate.z
+        });
+        previewObject_->SetRotation(bodyPose.rotate);
+        previewObject_->SetScale({
+            previewScale_.x * bodyPose.scale.x,
+            previewScale_.y * bodyPose.scale.y,
+            previewScale_.z * bodyPose.scale.z
+        });
+    } else {
+        previewObject_->SetTranslate(previewOrigin_);
+        previewObject_->SetRotation({});
+        previewObject_->SetScale(previewScale_);
+    }
+    previewObject_->UpdateLocalMatrix();
+    previewObject_->UpdateWorldMatrix();
 
     previewModel_->ResetSkeletonPose();
 
@@ -541,6 +722,118 @@ void AnimationWorkbench::ApplyTimelinePose() {
         (void)jointIndex;
         ApplyPoseKey(key);
     }
+}
+
+BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
+    BodyAnimationClip::Key key;
+    key.time = currentTime_;
+    key.translate = bodyTranslateUi_;
+    key.rotate = ToRadians(bodyRotateDegUi_);
+    key.scale = {
+        (std::max)(0.01f, bodyScaleUi_.x),
+        (std::max)(0.01f, bodyScaleUi_.y),
+        (std::max)(0.01f, bodyScaleUi_.z)
+    };
+    key.easingToNext = std::clamp(bodyEasingToNext_, 0, 4);
+    return key;
+}
+
+void AnimationWorkbench::AddOrUpdateBodyKey() {
+    BodyAnimationClip::Key key = BuildBodyKeyFromUi();
+    for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+        if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
+            bodyKeys_[index] = key;
+            selectedBodyKeyIndex_ = index;
+            bodyEditOverrideActive_ = false;
+            SortBodyKeys();
+            ApplyTimelinePose();
+            return;
+        }
+    }
+
+    bodyKeys_.push_back(key);
+    bodyEditOverrideActive_ = false;
+    duration_ = (std::max)(duration_, key.time);
+    SortBodyKeys();
+    for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
+        if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
+            selectedBodyKeyIndex_ = index;
+            break;
+        }
+    }
+    ApplyTimelinePose();
+}
+
+void AnimationWorkbench::DeleteSelectedBodyKey() {
+    if (selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size())) {
+        return;
+    }
+    bodyKeys_.erase(bodyKeys_.begin() + selectedBodyKeyIndex_);
+    selectedBodyKeyIndex_ = -1;
+    bodyEditOverrideActive_ = false;
+    SyncBodyUiFromTimeline();
+    ApplyTimelinePose();
+}
+
+bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const {
+    if (bodyKeys_.empty()) {
+        return false;
+    }
+    if (bodyKeys_.size() == 1 || time <= bodyKeys_.front().time) {
+        keyOut = bodyKeys_.front();
+        return true;
+    }
+    if (time >= bodyKeys_.back().time) {
+        keyOut = bodyKeys_.back();
+        return true;
+    }
+
+    for (size_t index = 0; index + 1 < bodyKeys_.size(); ++index) {
+        const BodyAnimationClip::Key& from = bodyKeys_[index];
+        const BodyAnimationClip::Key& to = bodyKeys_[index + 1];
+        if (time < from.time || time > to.time) {
+            continue;
+        }
+        const float segmentDuration = (std::max)(kKeyEpsilon, to.time - from.time);
+        const float rawRate = (time - from.time) / segmentDuration;
+        const float rate = AnimationInterpolation::ApplyEasing(
+            rawRate,
+            static_cast<AnimationInterpolation::EasingType>(std::clamp(from.easingToNext, 0, 4)));
+        keyOut = from;
+        keyOut.time = time;
+        keyOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
+        keyOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
+        keyOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
+        return true;
+    }
+    keyOut = bodyKeys_.back();
+    return true;
+}
+
+void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
+    bodyTranslateUi_ = key.translate;
+    bodyRotateDegUi_ = ToDegrees(key.rotate);
+    bodyScaleUi_ = key.scale;
+    bodyEasingToNext_ = std::clamp(key.easingToNext, 0, 4);
+}
+
+void AnimationWorkbench::SyncBodyUiFromTimeline() {
+    BodyAnimationClip::Key key;
+    if (TryGetInterpolatedBodyKey(currentTime_, key)) {
+        SyncBodyUiFromKey(key);
+    } else {
+        bodyTranslateUi_ = {};
+        bodyRotateDegUi_ = {};
+        bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+        bodyEasingToNext_ = 4;
+    }
+    bodyEditOverrideActive_ = false;
+}
+
+void AnimationWorkbench::SortBodyKeys() {
+    std::sort(bodyKeys_.begin(), bodyKeys_.end(), [](const BodyAnimationClip::Key& lhs, const BodyAnimationClip::Key& rhs) {
+        return lhs.time < rhs.time;
+    });
 }
 
 void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
@@ -647,14 +940,66 @@ void AnimationWorkbench::SortKeys() {
     });
 }
 
+void AnimationWorkbench::RefreshAssetFiles() {
+    namespace fs = std::filesystem;
+    assetFiles_.clear();
+    if (!fs::exists(kSaveDirectory)) {
+        return;
+    }
+    for (const auto& entry : fs::directory_iterator(kSaveDirectory)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            assetFiles_.push_back(entry.path().stem().string());
+        }
+    }
+    std::sort(assetFiles_.begin(), assetFiles_.end());
+}
+
+void AnimationWorkbench::NewAuthoringClip() {
+    CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), "new_body_animation.json");
+    bodyKeys_.clear();
+    keys_.clear();
+    events_.clear();
+    ClearAllEditOverrides();
+    bodyEditOverrideActive_ = false;
+    selectedBodyKeyIndex_ = -1;
+    selectedJointIndex_ = -1;
+    selectedEventIndex_ = -1;
+    currentTime_ = 0.0f;
+    duration_ = 1.0f;
+    playbackSpeed_ = 1.0f;
+    loop_ = true;
+    play_ = false;
+    bodyTranslateUi_ = {};
+    bodyRotateDegUi_ = {};
+    bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+    bodyEasingToNext_ = 4;
+    lastEventPreviewText_.clear();
+    eventPreviewTimer_ = 0.0f;
+    ApplyTimelinePose();
+}
+
 void AnimationWorkbench::SaveAuthoringJson() {
     namespace fs = std::filesystem;
     fs::create_directories(kSaveDirectory);
 
     nlohmann::json data;
+    data["version"] = BodyAnimationClip::kCurrentVersion;
+    data["name"] = fs::path(saveFileBuffer_).stem().string();
     data["model"] = modelNameBuffer_;
     data["baseAnimation"] = animationNameBuffer_;
     data["duration"] = duration_;
+    data["loop"] = loop_;
+    data["previewPlaybackSpeed"] = playbackSpeed_;
+    data["bodyKeys"] = nlohmann::json::array();
+    for (const BodyAnimationClip::Key& key : bodyKeys_) {
+        data["bodyKeys"].push_back({
+            {"time", key.time},
+            {"translate", {key.translate.x, key.translate.y, key.translate.z}},
+            {"rotate", {key.rotate.x, key.rotate.y, key.rotate.z}},
+            {"scale", {key.scale.x, key.scale.y, key.scale.z}},
+            {"easingToNext", key.easingToNext}
+        });
+    }
     data["keys"] = nlohmann::json::array();
     for (const PoseKey& key : keys_) {
         data["keys"].push_back({
@@ -685,8 +1030,16 @@ void AnimationWorkbench::SaveAuthoringJson() {
 void AnimationWorkbench::LoadAuthoringJson() {
     std::ifstream ifs(GetSavePath(), std::ios::binary);
     if (!ifs) {
-        DebugConsole::GetInstance()->AddLog(("Animation Workbench json not found: " + GetSavePath()).c_str());
-        return;
+        std::string legacyFileName = saveFileBuffer_;
+        if (legacyFileName.empty()) legacyFileName = "enemy_animation.json";
+        if (legacyFileName.find(".json") == std::string::npos) legacyFileName += ".json";
+        const std::string legacyPath = std::string(kLegacySaveDirectory) + legacyFileName;
+        ifs.clear();
+        ifs.open(legacyPath, std::ios::binary);
+        if (!ifs) {
+            DebugConsole::GetInstance()->AddLog(("Animation Workbench json not found: " + GetSavePath()).c_str());
+            return;
+        }
     }
 
     nlohmann::json data;
@@ -706,7 +1059,23 @@ void AnimationWorkbench::LoadAuthoringJson() {
     }
     CopyToBuffer(animationNameBuffer_, sizeof(animationNameBuffer_), baseAnimation);
     duration_ = loadedDuration;
+    loop_ = data.value("loop", true);
+    playbackSpeed_ = data.value("previewPlaybackSpeed", 1.0f);
     useBaseAnimation_ = animationNameBuffer_[0] != '\0';
+
+    bodyKeys_.clear();
+    for (const auto& item : data.value("bodyKeys", nlohmann::json::array())) {
+        BodyAnimationClip::Key key;
+        key.time = item.value("time", 0.0f);
+        auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
+        auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
+        if (translate.size() >= 3) key.translate = { translate[0], translate[1], translate[2] };
+        if (rotate.size() >= 3) key.rotate = { rotate[0], rotate[1], rotate[2] };
+        if (scale.size() >= 3) key.scale = { scale[0], scale[1], scale[2] };
+        key.easingToNext = std::clamp(item.value("easingToNext", 4), 0, 4);
+        bodyKeys_.push_back(key);
+    }
 
     keys_.clear();
     for (const auto& item : data.value("keys", nlohmann::json::array())) {
@@ -738,14 +1107,18 @@ void AnimationWorkbench::LoadAuthoringJson() {
         events_.push_back(marker);
     }
 
+    SortBodyKeys();
     SortKeys();
+    selectedBodyKeyIndex_ = -1;
+    bodyEditOverrideActive_ = false;
+    SyncBodyUiFromTimeline();
     ApplyTimelinePose();
     DebugConsole::GetInstance()->AddLog(("Animation Workbench loaded json: " + GetSavePath()).c_str());
 }
 
 std::string AnimationWorkbench::GetSavePath() const {
     std::string filename = saveFileBuffer_;
-    if (filename.empty()) filename = "enemy_animation.json";
+    if (filename.empty()) filename = "new_body_animation.json";
     if (filename.find(".json") == std::string::npos) {
         filename += ".json";
     }
@@ -832,6 +1205,64 @@ Vector3 AnimationWorkbench::ToRadians(const Vector3& degrees) const {
 void AnimationWorkbench::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
     gameViewOffset_ = offset;
     gameViewSize_ = size;
+}
+
+void AnimationWorkbench::DrawBodyGizmo() {
+#ifdef USE_IMGUI
+    if (!enabled_ || !previewObject_ || !enableBodyGizmo_) return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;
+
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) return;
+
+    Matrix4x4 view = camera->GetViewMatrix();
+    Matrix4x4 projection = camera->GetProjectionMatrix();
+    Matrix4x4 bodyWorld = previewObject_->GetWorldMatrix();
+
+    ImGuizmo::SetDrawlist();
+    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+
+    ImGuizmo::OPERATION operation = ImGuizmo::TRANSLATE;
+    if (gizmoOperation_ == 1) operation = ImGuizmo::ROTATE;
+    if (gizmoOperation_ == 2) operation = ImGuizmo::SCALE;
+
+    ImGuizmo::Manipulate(
+        &view.m[0][0],
+        &projection.m[0][0],
+        operation,
+        ImGuizmo::WORLD,
+        &bodyWorld.m[0][0],
+        nullptr,
+        nullptr);
+
+    if (!ImGuizmo::IsUsing()) return;
+
+    Vector3 worldScale;
+    Vector3 worldRotateDeg;
+    Vector3 worldTranslate;
+    ImGuizmo::DecomposeMatrixToComponents(
+        &bodyWorld.m[0][0],
+        &worldTranslate.x,
+        &worldRotateDeg.x,
+        &worldScale.x);
+
+    bodyTranslateUi_ = {
+        worldTranslate.x - previewOrigin_.x,
+        worldTranslate.y - previewOrigin_.y,
+        worldTranslate.z - previewOrigin_.z
+    };
+    bodyRotateDegUi_ = worldRotateDeg;
+    bodyScaleUi_ = {
+        worldScale.x / (std::max)(previewScale_.x, 0.0001f),
+        worldScale.y / (std::max)(previewScale_.y, 0.0001f),
+        worldScale.z / (std::max)(previewScale_.z, 0.0001f)
+    };
+    bodyEditOverrideActive_ = true;
+    ApplyTimelinePose();
+    if (autoKeyBodyOnGizmo_) {
+        AddOrUpdateBodyKey();
+    }
+#endif
 }
 
 void AnimationWorkbench::DrawBoneOverlayAndGizmo() {

@@ -49,6 +49,8 @@ public:
     ~GamePlayScene() override;
 
     void Initialize() override;
+    void OnActivated() override;
+    SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
     void Update(float deltaTime) override;
     void UpdateUI(float deltaTime);

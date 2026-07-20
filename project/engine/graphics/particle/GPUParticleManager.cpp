@@ -70,24 +70,11 @@ uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& co
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
-    // パーティクル用のディレクトリをスキャンして、すべての画像を自動で事前ロードする
-    std::string particleDir = "Resources/sprite/particle";
-    if (fs::exists(particleDir)) {
-        for (const auto& entry : fs::directory_iterator(particleDir)) {
-            if (entry.path().extension() == ".png") {
-                // Windowsのパス区切り(\)を(/)に統一してロード
-                std::string path = entry.path().string();
-                std::replace(path.begin(), path.end(), '\\', '/');
-                TextureManager::GetInstance()->Load(path);
-            }
-        }
+    // テクスチャはScenePreloaderの転送バッチで準備します。
+    // Scene初期化のたびに全PNGを同期ロードするとLoadingSceneが停止するため、ここでは読み込みません。
+    if (presets_.empty()) {
+        LoadAllPresets("Resources/json/gpu_particles/");
     }
-    
-    // 万が一フォルダが空だった場合などの最低限の保険
-    TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
-
-    // 全てのプリセットJSONを読み込む
-    LoadAllPresets("Resources/json/gpu_particles/");
 }
 
 void GPUParticleManager::BeginFrame() {
@@ -211,6 +198,11 @@ void GPUParticleManager::Emit(const std::string& presetName, const Vector3& posi
 // 以下、旧コードからの移植（JSON読み込みとオートエミッター）
 // ====================================================================
 void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
+    std::string normalizedDirectory = directoryPath;
+    std::replace(normalizedDirectory.begin(), normalizedDirectory.end(), '\\', '/');
+    if (!presets_.empty() && loadedPresetDirectory_ == normalizedDirectory) {
+        return;
+    }
     if (!fs::exists(directoryPath)) { fs::create_directories(directoryPath); return; }
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
         if (entry.path().extension() == ".json") {
@@ -283,6 +275,13 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
             }
         }
     }
+    loadedPresetDirectory_ = normalizedDirectory;
+}
+
+void GPUParticleManager::ReloadAllPresets(const std::string& directoryPath) {
+    presets_.clear();
+    loadedPresetDirectory_.clear();
+    LoadAllPresets(directoryPath);
 }
 
 uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const Vector3& position) {

@@ -256,7 +256,7 @@ void DebrisEffectEditor::DrawImGui() {
 }
 
 void DebrisEffectEditor::RefreshLists() {
-    modelList_ = ModelManager::GetInstance()->GetLoadedModelNames();
+    modelList_ = ModelManager::GetInstance()->GetAvailableModelNames();
     std::sort(modelList_.begin(), modelList_.end());
 
     presetList_.clear();

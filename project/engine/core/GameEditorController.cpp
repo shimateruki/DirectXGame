@@ -588,6 +588,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 		ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
 
 		if (displaySize.x > 0.0f && displaySize.y > 0.0f) {
+			const bool sceneTransitioning = sceneManager && sceneManager->IsTransitioning();
 			uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
 			D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
 			ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
@@ -601,11 +602,14 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				displaySize.y,
 			};
 
-			HandleGameViewDropTargets(sceneManager, area);
+			if (!sceneTransitioning) {
+				HandleGameViewDropTargets(sceneManager, area);
+			}
 
 			bool isHovered = ImGui::IsItemHovered();
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
 
+			if (!sceneTransitioning) {
 			if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
 				camera->SetAspectRatio(area.width / area.height);
 				camera->UpdateProjectionMatrix();
@@ -655,11 +659,12 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				DrawSelectedObjectOrientation(area, activeCamera, selectedObject);
 				DrawSceneDirectionGizmo(area, activeCamera);
 			}
+			}
 		}
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
-	if (!isPlaying && !showReplayDebugger_) {
+	if (!isPlaying && !showReplayDebugger_ && (!sceneManager || !sceneManager->IsTransitioning())) {
 		DrawCameraObjectPreviewWindow();
 	}
 

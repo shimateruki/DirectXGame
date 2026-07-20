@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GameSelectScene.h"
+#include "ScenePreloader.h"
 
 #include <algorithm>
 #include <cmath>
@@ -418,6 +419,24 @@ std::string MakeStageClearCrownName(int stageIndex) {
 GameSelectScene::GameSelectScene() {}
 GameSelectScene::~GameSelectScene() {}
 
+SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+        ? GetSceneLoadContext().objectLayoutPath
+        : "Resources/json/3Dobject/stageSelect.json");
+    manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+        ? GetSceneLoadContext().spriteLayoutPath
+        : "Resources/json/sprite/stageSelect_sprite.json");
+    manifest.AddTexture("Resources/sprite/common/circle2.png");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+    manifest.AddTexture("Resources/sprite/ui/gate/gate_prompt_player_e.png");
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+        ? "Resources/output_skybox.dds"
+        : GetSceneLoadContext().skyboxPath);
+    return manifest;
+}
+
 void GameSelectScene::Initialize() {
 	using json = nlohmann::json;
 
@@ -544,7 +563,6 @@ void GameSelectScene::Initialize() {
 	ApplyStageGateStates();
 	UpdateStageSelectDecorations(0.0f);
     
-	dxCommon_->FlushCommandQueue(false);
 }
 
 void GameSelectScene::Finalize() {

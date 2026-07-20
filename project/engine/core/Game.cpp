@@ -95,9 +95,6 @@ void Game::InitializeEngineServices() {
 	Framework::Initialize();
 
 	ProfilerManager::GetInstance()->Initialize();
-	TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
-	TextureManager::GetInstance()->LoadAllTexture("Resources/texture/PBR/");
-	ModelManager::GetInstance()->LoadAllModels();
 	StageManager::GetInstance()->Initialize();
 	GameDataManager::GetInstance()->Initialize();
 	GameSettingsManager::GetInstance()->Initialize();
@@ -110,6 +107,7 @@ void Game::InitializeEngineServices() {
 
 void Game::InitializeScene() {
 	currentSceneName_ = ResolveStartSceneName();
+	initialSceneOverridesPending_ = true;
 	sceneManager_->Initialize(sceneFactory_.get(), currentSceneName_);
 	ApplyInitialSceneOverrides();
 }
@@ -137,7 +135,7 @@ std::string Game::ResolveStartSceneName() const {
 // 起動直後に必要なシーン内オブジェクトの初期上書きを適用する。
 
 void Game::ApplyInitialSceneOverrides() {
-	if (!sceneManager_) {
+	if (!initialSceneOverridesPending_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
 		return;
 	}
 
@@ -155,6 +153,7 @@ void Game::ApplyInitialSceneOverrides() {
 			break;
 		}
 	}
+	initialSceneOverridesPending_ = false;
 }
 // ポストエフェクト、LUT、フェード、キー設定を初期化する。
 
@@ -238,8 +237,11 @@ void Game::Update() {
 	}
 
 	float deltaTime = CalculateDeltaTime();
-	GPUParticleManager::GetInstance()->BeginFrame();
-	MeshEffectManager::GetInstance()->BeginFrame();
+	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
+	if (!sceneTransitioning) {
+		GPUParticleManager::GetInstance()->BeginFrame();
+		MeshEffectManager::GetInstance()->BeginFrame();
+	}
 	if (isPlaying_) {
 		GPUParticleManager::GetInstance()->SetTimeScale(1.0f);
 	}
@@ -250,6 +252,7 @@ void Game::Update() {
 
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ : 0.0f;
 	UpdateGameSystems(deltaTime, finalDeltaTime);
+	ApplyInitialSceneOverrides();
 }
 // 前フレームからの経過時間を求め、極端に大きい値は固定値へ丸める。
 
@@ -284,16 +287,21 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		currentSceneName_ = sceneManager_->GetCurrentSceneName();
 	}
 	editorController_->DrawMainMenuBar(sceneManager_.get(), isPlaying_, currentSceneName_);
-	editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
-	editorController_->DrawToolWindows(
-		timeScale_,
-		sceneUpdateTimeMs_,
-		cpuCmdTimeMs_,
-		drawTimeMs_,
-		updateTimeHistory_,
-		drawTimeHistory_,
-		timeHistoryIndex_);
-	editorController_->ApplyCameraInputState(editorFrameState_, isPlaying_);
+	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
+		editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
+		editorController_->DrawToolWindows(
+			timeScale_,
+			sceneUpdateTimeMs_,
+			cpuCmdTimeMs_,
+			drawTimeMs_,
+			updateTimeHistory_,
+			drawTimeHistory_,
+			timeHistoryIndex_);
+		editorController_->ApplyCameraInputState(editorFrameState_, isPlaying_);
+	}
+	else {
+		editorFrameState_ = {};
+	}
 #else
 	(void)deltaTime;
 #endif
@@ -303,6 +311,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	auto startUpdate = std::chrono::high_resolution_clock::now();
 	bool replayFrozen = false;
+	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 #ifdef USE_IMGUI
 	if (editorController_) {
 		replayFrozen = editorController_->ShouldFreezeSimulationForReplay();
@@ -323,11 +332,11 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 			}
 		}
 	}
-	{
+	if (!sceneTransitioning) {
 		PROFILE_SCOPE("ライト");
 		LightManager::GetInstance()->Update();
 	}
-	{
+	if (!sceneTransitioning) {
 		PROFILE_SCOPE("パーティクル");
 		const float effectDeltaTime = isPlaying_ && !replayFrozen ? finalDeltaTime : 0.0f;
 		VFXSequencer::UpdateOneShots(effectDeltaTime);
@@ -342,7 +351,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		}
 		DebrisEffectManager::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
 	}
-	{
+	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		PROFILE_SCOPE("フェード");
 		Fade::GetInstance()->Update(replayFrozen ? 0.0f : deltaTime);
 	}
@@ -354,7 +363,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	}
 
 #ifdef USE_IMGUI
-	if (editorController_) {
+	if (editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
 		editorController_->ApplyCameraOverrides();
 	}
 #endif
@@ -380,9 +389,14 @@ void Game::Draw() {
 	dxCommon_->ReadAllGpuProfiles();
 	RenderStats* renderStats = RenderStats::GetInstance();
 	renderStats->BeginFrame();
-	renderStats->SetActiveLightCounts(
-		LightManager::GetInstance()->GetActivePointLightCount(),
-		LightManager::GetInstance()->GetActiveSpotLightCount());
+	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
+		renderStats->SetActiveLightCounts(
+			LightManager::GetInstance()->GetActivePointLightCount(),
+			LightManager::GetInstance()->GetActiveSpotLightCount());
+	}
+	else {
+		renderStats->SetActiveLightCounts(0, 0);
+	}
 
 	auto startDraw = std::chrono::high_resolution_clock::now();
 
@@ -406,7 +420,9 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 	}
 	DrawSceneToRenderTexture(true);
 	ApplyPostEffectPipeline(postEffect, true);
-	DrawCameraEditorPreview(postEffect);
+	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
+		DrawCameraEditorPreview(postEffect);
+	}
 
 	dxCommon_->StartGpuProfile("エディタUI");
 	dxCommon_->PreDrawBackBuffer();
@@ -442,7 +458,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	dxCommon_->PreDrawRenderTexture();
 
 #ifdef USE_IMGUI
-	if (editorMode && editorController_) {
+	if (editorMode && editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
 		editorController_->CapturePendingThumbnails();
 	}
 #else
@@ -470,12 +486,13 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		dxCommon_->StartGpuProfile("  3Dシーン");
 		{
 			ScopedRenderPass renderPass(RenderPass::MainScene);
-			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+			const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
+			ID3D12Resource* pointLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetPointLightResource();
+			ID3D12Resource* spotLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetSpotLightResource();
 			if (sceneManager_) {
 				sceneManager_->Draw();
 			}
-			if (editorController_) {
+			if (editorController_ && !sceneTransitioning) {
 				editorController_->DrawScenePreview(pointLight, spotLight);
 			}
 			if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
@@ -497,7 +514,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		dxCommon_->StartGpuProfile("  デバッグ");
 		{
 			ScopedRenderPass renderPass(RenderPass::EditorOverlay);
-			if (editorController_) {
+			if (editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
 				editorController_->DrawSceneDebug(dxCommon_->GetCommandList());
 			}
 		}
@@ -509,9 +526,11 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			{
 				ScopedRenderPass renderPass(RenderPass::MainScene);
 				sceneManager_->Draw();
-				ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-				ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+				ID3D12Resource* pointLight = nullptr;
+				ID3D12Resource* spotLight = nullptr;
 				if (!sceneManager_->IsTransitioning()) {
+					pointLight = LightManager::GetInstance()->GetPointLightResource();
+					spotLight = LightManager::GetInstance()->GetSpotLightResource();
 					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 					MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 				}
@@ -524,7 +543,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	}
 
 	dxCommon_->StartGpuProfile("Fade");
-	{
+	if (!sceneManager_ || !sceneManager_->IsSceneInitializingAsync()) {
 		ScopedRenderPass renderPass(RenderPass::GameUI);
 		Fade::GetInstance()->Draw();
 	}

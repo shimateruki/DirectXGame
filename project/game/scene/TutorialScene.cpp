@@ -1,5 +1,6 @@
 ﻿#define NOMINMAX
 #include "TutorialScene.h"
+#include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -65,6 +66,24 @@ void TutorialScene::SetIsGoal(bool isGoal) {
 	if (!isGoal_) {
 		goalSavePerformed_ = false;
 	}
+}
+
+SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
+	SceneLoadManifest manifest;
+	manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+		? GetSceneLoadContext().objectLayoutPath
+		: "Resources/json/3Dobject/tutorial.json");
+	manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+		? GetSceneLoadContext().spriteLayoutPath
+		: "Resources/json/sprite/tutorialScene.json");
+	manifest.AddModel("Samples/walk");
+	manifest.AddTexture("Resources/sprite/common/circle2.png");
+	manifest.AddTexture("Resources/sprite/common/white.png");
+	manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+	manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+		? "Resources/output_skybox.dds"
+		: GetSceneLoadContext().skyboxPath);
+	return manifest;
 }
 
 void TutorialScene::Initialize() {
@@ -162,7 +181,6 @@ void TutorialScene::Initialize() {
 	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f});
 	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
 
-	dxCommon_->FlushCommandQueue(false);
 }
 
 void TutorialScene::Finalize() {

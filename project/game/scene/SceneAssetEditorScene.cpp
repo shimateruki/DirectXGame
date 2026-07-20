@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "SceneAssetEditorScene.h"
+#include "ScenePreloader.h"
 
 #include "BulletManager.h"
 #include "Camera.h"
@@ -31,6 +32,21 @@
 #include <filesystem>
 
 namespace fs = std::filesystem;
+
+SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    if (!GetSceneLoadContext().objectLayoutPath.empty()) {
+        manifest.AddObjectLayout(GetSceneLoadContext().objectLayoutPath);
+    }
+    if (!GetSceneLoadContext().spriteLayoutPath.empty()) {
+        manifest.AddSpriteLayout(GetSceneLoadContext().spriteLayoutPath);
+    }
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+        ? "Resources/output_skybox.dds"
+        : GetSceneLoadContext().skyboxPath);
+    return manifest;
+}
 
 void SceneAssetEditorScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
@@ -89,7 +105,6 @@ void SceneAssetEditorScene::Initialize() {
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 
-    dxCommon_->FlushCommandQueue(false);
 }
 
 void SceneAssetEditorScene::Finalize() {

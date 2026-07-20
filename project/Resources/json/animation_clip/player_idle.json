@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "name": "player_idle",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 2.4,
+  "loop": true,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0.0,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 4
+    },
+    {
+      "time": 0.6,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.012, 0.0, -0.014],
+      "scale": [1.045, 0.935, 1.038],
+      "easingToNext": 4
+    },
+    {
+      "time": 1.2,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [-0.008, 0.0, 0.012],
+      "scale": [0.982, 1.035, 0.986],
+      "easingToNext": 4
+    },
+    {
+      "time": 1.8,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.006, 0.0, 0.008],
+      "scale": [1.025, 0.965, 1.02],
+      "easingToNext": 4
+    },
+    {
+      "time": 2.4,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

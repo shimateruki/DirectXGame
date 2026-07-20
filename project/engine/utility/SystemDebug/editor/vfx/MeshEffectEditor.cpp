@@ -519,7 +519,7 @@ void MeshEffectEditor::DrawImGui() {
 
         // --- メッシュ選択 (UI修正) ---
         if (editProceduralType_ == 0) {
-            std::vector<std::string> modelNames = ModelManager::GetInstance()->GetLoadedModelNames();
+            std::vector<std::string> modelNames = ModelManager::GetInstance()->GetAvailableModelNames();
             if (ImGui::BeginCombo(ICON_FA_CUBE " メッシュ選択", editModelName_)) {
                 for (const auto& name : modelNames) {
                     bool isSelected = (name == editModelName_);

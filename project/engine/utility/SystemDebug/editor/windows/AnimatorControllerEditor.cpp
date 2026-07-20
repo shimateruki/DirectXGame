@@ -18,6 +18,7 @@ namespace fs = std::filesystem;
 
 namespace {
 constexpr const char* kAnimatorDirectory = "Resources/json/animator/";
+constexpr const char* kBodyAnimationDirectory = "Resources/json/animation_clip/";
 
 const char* kEasingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
 const char* kParameterTypeNames[] = { "Float", "Int", "Bool", "Trigger" };
@@ -62,15 +63,23 @@ void AnimatorControllerEditor::DrawImGui() {
 
 void AnimatorControllerEditor::RefreshFiles() {
     files_.clear();
-    if (!fs::exists(kAnimatorDirectory)) {
-        return;
+    bodyAnimationFiles_.clear();
+    if (fs::exists(kAnimatorDirectory)) {
+        for (const auto& entry : fs::directory_iterator(kAnimatorDirectory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                files_.push_back(entry.path().stem().string());
+            }
+        }
     }
-    for (const auto& entry : fs::directory_iterator(kAnimatorDirectory)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            files_.push_back(entry.path().stem().string());
+    if (fs::exists(kBodyAnimationDirectory)) {
+        for (const auto& entry : fs::directory_iterator(kBodyAnimationDirectory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                bodyAnimationFiles_.push_back(entry.path().stem().string());
+            }
         }
     }
     std::sort(files_.begin(), files_.end());
+    std::sort(bodyAnimationFiles_.begin(), bodyAnimationFiles_.end());
 }
 
 void AnimatorControllerEditor::NewController() {
@@ -165,6 +174,10 @@ void AnimatorControllerEditor::DrawAssetControls() {
     if (ImGui::Button(ICON_FA_SYNC " 再読込")) {
         LoadController(fileNameBuffer_);
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Clip一覧更新")) {
+        RefreshFiles();
+    }
     ImGui::TextDisabled("保存先: %s", GetAssetPath().c_str());
 #endif
 }
@@ -233,9 +246,9 @@ void AnimatorControllerEditor::DrawStateEditor() {
             RenameState(oldName, stateName);
         }
         Object3d* target = ResolvePreviewTarget();
-        const char* clipLabel = state.clipName.empty() ? "(Procedural / None)" : state.clipName.c_str();
-        if (ImGui::BeginCombo("Animation Clip", clipLabel)) {
-            if (ImGui::Selectable("(Procedural / None)", state.clipName.empty())) state.clipName.clear();
+        const char* clipLabel = state.clipName.empty() ? "(なし)" : state.clipName.c_str();
+        if (ImGui::BeginCombo("Model Animation Clip", clipLabel)) {
+            if (ImGui::Selectable("(なし)", state.clipName.empty())) state.clipName.clear();
             if (target && target->GetModel()) {
                 for (const auto& animation : target->GetModel()->GetModelData().animations) {
                     if (ImGui::Selectable(animation.name.c_str(), animation.name == state.clipName)) state.clipName = animation.name;
@@ -243,6 +256,17 @@ void AnimatorControllerEditor::DrawStateEditor() {
             }
             ImGui::EndCombo();
         }
+        const char* bodyClipLabel = state.bodyClipName.empty() ? "(Procedural / Code)" : state.bodyClipName.c_str();
+        if (ImGui::BeginCombo("Body Animation Clip", bodyClipLabel)) {
+            if (ImGui::Selectable("(Procedural / Code)", state.bodyClipName.empty())) state.bodyClipName.clear();
+            for (const std::string& fileName : bodyAnimationFiles_) {
+                if (ImGui::Selectable(fileName.c_str(), fileName == state.bodyClipName)) {
+                    state.bodyClipName = fileName;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextDisabled("Body Clip未設定時は従来のコードAnimationを使用します。");
         ImGui::DragFloat("Speed", &state.speed, 0.01f, 0.0f, 8.0f, "%.2fx");
         ImGui::Checkbox("Loop", &state.loop);
         ImGui::DragFloat("Default Blend", &state.blendDuration, 0.01f, 0.0f, 5.0f, "%.3f sec");

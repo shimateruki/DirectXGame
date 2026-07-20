@@ -4,6 +4,7 @@
 #include "engine/utility/math/AnimationInterpolation.h"
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace {
 constexpr float kPi = 3.1415926535f;
@@ -145,7 +146,28 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     }
     previousVelocityY_ = verticalVelocity;
 
-    Vector3 targetScale = BuildModeScale(player, deltaTime);
+    Vector3 targetScale;
+    Vector3 targetRotation;
+    const bool usesAuthoredBodyClip = TryBuildAuthoredBodyPose(player, targetScale, targetRotation);
+    if (!usesAuthoredBodyClip) {
+        targetScale = BuildModeScale(player, deltaTime);
+        targetRotation = BuildModeRotation(player);
+    }
+    else if (landingSquashTimer_ > 0.0f) {
+        const float t = landingSquashTimer_ / kLandingSquashDuration;
+        const float squash = std::clamp(t * t * 0.72f * landingImpactRate_, 0.0f, 0.82f);
+        targetScale.x *= 1.0f + squash * 1.08f;
+        targetScale.y *= (std::max)(0.38f, 1.0f - squash * 0.92f);
+        targetScale.z *= 1.0f + squash * 1.08f;
+    }
+    else if (usesAuthoredBodyClip && landingReboundTimer_ > 0.0f) {
+        const float t = 1.0f - (landingReboundTimer_ / kLandingReboundDuration);
+        const float damping = std::pow(1.0f - t, 1.25f);
+        const float rebound = std::sin(t * kPi * 2.5f) * damping * 0.20f * landingImpactRate_;
+        targetScale.x *= 1.0f - rebound * 0.45f;
+        targetScale.y *= 1.0f + rebound;
+        targetScale.z *= 1.0f - rebound * 0.45f;
+    }
     if (impulseTimer_ > 0.0f) {
         impulseTimer_ = (std::max)(0.0f, impulseTimer_ - deltaTime);
         const float t = impulseTimer_ / (std::max)(impulseDuration_, 0.01f);
@@ -157,7 +179,6 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
         };
     }
 
-    Vector3 targetRotation = BuildModeRotation(player);
     const bool landingActive = landingSquashTimer_ > 0.0f || landingReboundTimer_ > 0.0f;
     const bool controllerTransition = controllerLoaded_ && controllerRuntime_.IsTransitioning();
     if (controllerTransition || modeTransitionTimer_ > 0.0f) {
@@ -195,12 +216,87 @@ bool PlayerSlimeAnimator::ReloadController()
     if (!asset.Load(kPlayerSlimeControllerPath)) {
         controllerLoaded_ = false;
         controllerRuntime_.SetController(nullptr, false);
+        bodyClips_.clear();
         return false;
     }
     controllerAsset_ = std::move(asset);
     controllerLoaded_ = true;
     controllerRuntime_.SetController(&controllerAsset_, true);
     controllerRuntime_.Play(GetStateName(mode_));
+    ReloadBodyClips();
+    return true;
+}
+
+void PlayerSlimeAnimator::ReloadBodyClips()
+{
+    bodyClips_.clear();
+    if (!controllerLoaded_) {
+        return;
+    }
+
+    for (const AnimatorStateDefinition& state : controllerAsset_.states) {
+        if (state.bodyClipName.empty() || bodyClips_.contains(state.bodyClipName)) {
+            continue;
+        }
+        BodyAnimationClip clip;
+        const std::string path = BodyAnimationClip::ResolveAssetPath(state.bodyClipName);
+        if (clip.Load(path)) {
+            bodyClips_.emplace(state.bodyClipName, std::move(clip));
+        }
+    }
+}
+
+bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(
+    Player* player,
+    Vector3& scaleOut,
+    Vector3& rotationOut) const
+{
+    if (!player || !controllerLoaded_) {
+        return false;
+    }
+
+    const AnimatorStateDefinition* state = controllerAsset_.FindState(GetStateName(mode_));
+    if (!state || state->bodyClipName.empty()) {
+        return false;
+    }
+    const auto clipIt = bodyClips_.find(state->bodyClipName);
+    if (clipIt == bodyClips_.end()) {
+        return false;
+    }
+
+    float sampleTime = modeTimer_;
+    if (mode_ == Mode::Jump) {
+        if (jumpChargeRate_ > 0.0f) {
+            sampleTime = 0.0f;
+        } else {
+            const float jumpPower = (std::max)(player->GetJumpPower(), 0.01f);
+            const float verticalVelocity = player->GetVelocity().y;
+            if (verticalVelocity >= 0.0f) {
+                const float riseRate = 1.0f - std::clamp(verticalVelocity / jumpPower, 0.0f, 1.0f);
+                sampleTime = AnimationInterpolation::Lerp(0.12f, 0.48f, riseRate);
+            } else {
+                const float fallRate = std::clamp(-verticalVelocity / jumpPower, 0.0f, 1.0f);
+                sampleTime = AnimationInterpolation::Lerp(0.48f, 0.82f, fallRate);
+            }
+        }
+    }
+
+    BodyAnimationClip::Sample sample;
+    if (!clipIt->second.Evaluate(sampleTime, mode_ == Mode::Jump ? false : state->loop, sample)) {
+        return false;
+    }
+
+    scaleOut = {
+        baseScale_.x * sample.scale.x,
+        baseScale_.y * sample.scale.y,
+        baseScale_.z * sample.scale.z
+    };
+    const Vector3 proceduralRotation = BuildModeRotation(player);
+    rotationOut = {
+        proceduralRotation.x + sample.rotate.x,
+        proceduralRotation.y + sample.rotate.y,
+        proceduralRotation.z + sample.rotate.z
+    };
     return true;
 }
 

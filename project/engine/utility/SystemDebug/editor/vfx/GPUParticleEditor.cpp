@@ -156,7 +156,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
         ImGui::DragFloat(ICON_FA_SUN " 発光強度 (HDR Intensity)", &config_.colorIntensity, 0.1f, 0.0f, 20.0f);
 
-        std::vector<std::string> allPaths = TextureManager::GetInstance()->GetLoadedTexturePaths();
+        std::vector<std::string> allPaths = TextureManager::GetInstance()->GetAvailableTexturePaths();
         static std::vector<std::string> filteredPaths;
         static std::vector<std::string> fileNames;
         filteredPaths.clear();

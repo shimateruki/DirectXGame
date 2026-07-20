@@ -42,6 +42,7 @@ public:
     ~PreviewScene() override;
 
     void Initialize() override;
+    SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
     void Update(float deltaTime) override;
     void UpdateUI(float deltaTime);

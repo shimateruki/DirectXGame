@@ -24,6 +24,7 @@ void Update(float deltaTime);
 void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
     void LoadAllPresets(const std::string& directoryPath);
+    void ReloadAllPresets(const std::string& directoryPath);
     void PreloadPresetSystem(const std::string& presetName);
     void PreloadPresetSystems(const std::vector<std::string>& presetNames);
 
@@ -56,6 +57,7 @@ private:
 
     // プリセットデータ（司令部が一括管理）
     std::map<std::string, GPUParticleConfig> presets_;
+    std::string loadedPresetDirectory_;
 
     // ========================================================
     // ★ ここが魔法のコア！テクスチャとブレンドモードごとに分割された部隊たち

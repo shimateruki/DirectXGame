@@ -36,6 +36,7 @@ private:
     DebugEditor* editor_ = nullptr;
     AnimatorControllerAsset controller_;
     std::vector<std::string> files_;
+    std::vector<std::string> bodyAnimationFiles_;
     char fileNameBuffer_[128] = "new_animator";
     std::string previewTargetName_;
     int selectedStateIndex_ = -1;

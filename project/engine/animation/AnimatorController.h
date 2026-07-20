@@ -32,7 +32,10 @@ struct AnimatorParameterDefinition {
 
 struct AnimatorStateDefinition {
     std::string name;
+    // Model内のSkeletal Animation名です。
     std::string clipName;
+    // Animation Workbenchで作成したBody Transform Clip Asset名です。
+    std::string bodyClipName;
     float speed = 1.0f;
     bool loop = true;
     float blendDuration = 0.12f;

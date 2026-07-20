@@ -541,12 +541,23 @@ bool ReadModelCache(const std::filesystem::path& sourcePath, Model::ModelData& d
 
 // モデル共通情報とファイル名を受け取り、モデルデータ・GPUリソース・スケルトンを初期化する。
 void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
+    InitializeFromCpuData(common, LoadFile(directoryPath, filename), filename);
+}
+
+Model::ModelData Model::LoadCpuData(const std::string& directoryPath, const std::string& filename) {
+    return LoadFile(directoryPath, filename);
+}
+
+void Model::InitializeFromCpuData(
+    ModelCommon* common,
+    ModelData modelData,
+    const std::string& sourceName) {
     assert(common);
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
-    modelData_ = LoadFile(directoryPath, filename);
+    // 1. ワーカースレッドまたは同期経路で読み込んだCPUデータを受け取る
+    modelData_ = std::move(modelData);
     modelData_.meshes.erase(
         std::remove_if(modelData_.meshes.begin(), modelData_.meshes.end(),
             [](const Mesh& mesh) {
@@ -612,7 +623,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         // 頂点バッファ
         mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
         if (!mesh.vertexResource) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + filename);
+            DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + sourceName);
             continue;
         }
         mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
@@ -622,7 +633,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         VertexData* vertexData = nullptr;
         HRESULT vertexMapResult = mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
         if (FAILED(vertexMapResult) || !vertexData) {
-            DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + filename);
+            DebugConsole::GetInstance()->AddLog("Model vertex buffer map failed: " + sourceName);
             mesh.vertexResource.Reset();
             continue;
         }
@@ -632,7 +643,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         // インデックスバッファ
         mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
         if (!mesh.indexResource) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + filename);
+            DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + sourceName);
             mesh.vertexResource.Reset();
             continue;
         }
@@ -643,7 +654,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         uint32_t* indexData = nullptr;
         HRESULT indexMapResult = mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
         if (FAILED(indexMapResult) || !indexData) {
-            DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + filename);
+            DebugConsole::GetInstance()->AddLog("Model index buffer map failed: " + sourceName);
             mesh.vertexResource.Reset();
             mesh.indexResource.Reset();
             continue;
@@ -656,13 +667,13 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_ = nullptr;
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
     if (!materialResource_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + filename);
+        DebugConsole::GetInstance()->AddLog("Model material buffer creation failed: " + sourceName);
         return;
     }
 
     HRESULT materialMapResult = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     if (FAILED(materialMapResult) || !materialData_) {
-        DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + filename);
+        DebugConsole::GetInstance()->AddLog("Model material buffer map failed: " + sourceName);
         materialResource_.Reset();
         materialData_ = nullptr;
         return;

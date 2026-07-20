@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "GameClearScene.h"
+#include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -23,6 +24,18 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+
+SceneLoadManifest GameClearScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+        ? GetSceneLoadContext().objectLayoutPath
+        : "Resources/json/3Dobject/gameClearScene.json");
+    manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+        ? GetSceneLoadContext().spriteLayoutPath
+        : "Resources/json/sprite/gameClearScene.json");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    return manifest;
+}
 
 void GameClearScene::Initialize() {
     // --- 1. システム基盤の取得 ---
@@ -91,7 +104,6 @@ void GameClearScene::Initialize() {
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameClear_camera.json"));
 
-    dxCommon_->FlushCommandQueue(false);
 }
 
 void GameClearScene::Finalize() {

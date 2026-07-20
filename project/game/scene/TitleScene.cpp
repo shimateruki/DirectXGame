@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "TitleScene.h"
+#include "ScenePreloader.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -119,6 +120,24 @@ Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
 
 }
 
+SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
+    SceneLoadManifest manifest;
+    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+        ? GetSceneLoadContext().objectLayoutPath
+        : "Resources/json/3Dobject/titleScene.json");
+    manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+        ? GetSceneLoadContext().spriteLayoutPath
+        : "Resources/json/sprite/titleScene.json");
+    manifest.AddModel("Characters/player");
+    manifest.AddModel("Characters/slime");
+    manifest.AddModel("Samples/teapot");
+    manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+        ? "Resources/output_skybox.dds"
+        : GetSceneLoadContext().skyboxPath);
+    return manifest;
+}
+
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
@@ -228,7 +247,6 @@ void TitleScene::Initialize() {
     InitializeSaveSlotUI();
     UpdateSaveSlotUI();
 
-    dxCommon_->FlushCommandQueue(false);
 }
 
 void TitleScene::Finalize() {

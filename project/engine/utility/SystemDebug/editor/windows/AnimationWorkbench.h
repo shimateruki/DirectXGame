@@ -2,6 +2,7 @@
 
 #include "IEditable.h"
 #include "Model.h"
+#include "engine/animation/BodyAnimationClip.h"
 #include "engine/utility/math/Math.h"
 
 #include <map>
@@ -16,7 +17,7 @@ class SceneManager;
 /// <summary>
 /// モデルのポーズキー、イベントマーカー、プレビュー再生を編集する作業用ウィンドウ。
 /// </summary>
-/// モデルのボーン姿勢、キーフレーム、イベントを編集・プレビューするアニメーション作業台。
+/// 単体ObjectのBody Transformと、モデルのボーン姿勢を編集・プレビューするアニメーション作業台。
 class AnimationWorkbench : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
@@ -53,6 +54,8 @@ private:
 private:
     void DrawPreviewControls();
     void DrawTimelineControls();
+    void DrawAssetControls();
+    void DrawBodyControls();
     void DrawJointControls();
     void DrawKeyframeControls();
     void DrawEventControls();
@@ -62,6 +65,13 @@ private:
     Object3d* FindPreviewObject() const;
     /// 現在時刻に対応する補間姿勢をプレビューObjectへ適用する。
     void ApplyTimelinePose();
+    BodyAnimationClip::Key BuildBodyKeyFromUi() const;
+    void AddOrUpdateBodyKey();
+    void DeleteSelectedBodyKey();
+    bool TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const;
+    void SyncBodyUiFromKey(const BodyAnimationClip::Key& key);
+    void SyncBodyUiFromTimeline();
+    void SortBodyKeys();
     void ApplyPoseKey(const PoseKey& key);
     PoseKey BuildPoseKeyFromUi() const;
     void AddOrUpdateKey();
@@ -70,6 +80,8 @@ private:
     bool TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const;
     void SyncUiFromJoint(int jointIndex);
     void SortKeys();
+    void RefreshAssetFiles();
+    void NewAuthoringClip();
     /// 編集中のキーやイベントをAuthoring用JSONへ保存する。
     void SaveAuthoringJson();
     void LoadAuthoringJson();
@@ -80,6 +92,7 @@ private:
     void UpdateEventPreview(float previousTime, float currentTime);
     void FireEventPreview(const EventMarker& marker);
     std::string FormatEventMarker(const EventMarker& marker) const;
+    void DrawBodyGizmo();
     void DrawBoneOverlayAndGizmo();
     bool ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const;
     Matrix4x4 GetJointWorldMatrix(int jointIndex) const;
@@ -99,11 +112,15 @@ private:
     bool autoApply_ = true;
     bool play_ = false;
     bool loop_ = true;
+    bool editBodyTransform_ = true;
     bool useBaseAnimation_ = true;
     bool showBoneOverlay_ = true;
     bool showBoneNames_ = false;
     bool enableBoneGizmo_ = true;
     bool autoKeyOnGizmo_ = false;
+    bool enableBodyGizmo_ = true;
+    bool autoKeyBodyOnGizmo_ = false;
+    bool bodyEditOverrideActive_ = false;
     bool previewEvents_ = true;
     bool cameraMoveOnEnter_ = true;
     bool recenterCameraRequested_ = false;
@@ -123,16 +140,21 @@ private:
     // UI入力。
     char modelNameBuffer_[256] = "";
     char animationNameBuffer_[128] = "";
-    char saveFileBuffer_[128] = "enemy_animation.json";
+    char saveFileBuffer_[128] = "new_body_animation.json";
     char jointSearchBuffer_[128] = "";
     char eventNameBuffer_[128] = "attack";
     int selectedJointIndex_ = -1;
+    int selectedBodyKeyIndex_ = -1;
     int selectedEventIndex_ = -1;
     int eventType_ = 0;
     std::string lastEventPreviewText_;
     Vector3 jointTranslateUi_ = { 0.0f, 0.0f, 0.0f };
     Vector3 jointRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
     Vector3 jointScaleUi_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 bodyTranslateUi_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 bodyRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
+    int bodyEasingToNext_ = 4;
     Vector3 eventOffsetUi_ = { 0.0f, 0.0f, 0.0f };
     Vector2 gameViewOffset_ = { 0.0f, 0.0f };
     Vector2 gameViewSize_ = { 1280.0f, 720.0f };
@@ -140,7 +162,9 @@ private:
     bool isGameViewHovered_ = false;
     int gizmoOperation_ = 0;
 
+    std::vector<BodyAnimationClip::Key> bodyKeys_;
     std::vector<PoseKey> keys_;
     std::vector<EventMarker> events_;
+    std::vector<std::string> assetFiles_;
     std::map<int, PoseKey> editPoseOverrides_;
 };

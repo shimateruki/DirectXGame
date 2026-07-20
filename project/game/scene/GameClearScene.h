@@ -36,6 +36,7 @@ public:
     /// 初期化
     /// </summary>
     void Initialize() override;
+    SceneLoadManifest BuildAsyncLoadManifest() const override;
 
     /// <summary>
     /// 終了処理
