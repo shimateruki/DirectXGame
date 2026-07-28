@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f0e79a69a02789eade87634df7d07e53",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/portal_gate/portal_gate.obj",
+  "version": 1
+}

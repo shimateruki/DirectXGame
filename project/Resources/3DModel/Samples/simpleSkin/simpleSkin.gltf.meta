@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a4560b48680b33c29188bdb33581bc41",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Samples/simpleSkin/simpleSkin.gltf",
+  "version": 1
+}

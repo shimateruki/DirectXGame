@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "be9e2f0c09b534783408194ba026eb72",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Magma.VS.hlsl",
+  "version": 1
+}

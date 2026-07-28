@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/utility/math/Math.h"
+#include "Event.h"
 
 class Object3d;
 
@@ -14,7 +15,11 @@ public:
     static void SpawnBombExplosionHit(const Vector3& position);
     static void SpawnEnemyAbilityHit(const Vector3& position);
 
-    static void SpawnDamageEventHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity);
+    static void SpawnDamageEventHit(
+        Object3d* target,
+        Object3d* attacker,
+        const Vector3& knockbackVelocity,
+        DamageType damageType = DamageType::Physical);
     static Vector3 ResolveGroundEffectPosition(const Vector3& position);
 
 private:

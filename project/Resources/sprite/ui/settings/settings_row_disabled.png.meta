@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d13ff74b996062e12faef627332d6702",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_row_disabled.png",
+  "version": 1
+}

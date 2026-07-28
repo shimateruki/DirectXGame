@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "57162c55d459f3bf29481de38aeaa2bc",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/font.png",
+  "version": 1
+}

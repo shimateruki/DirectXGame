@@ -8,6 +8,7 @@
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "EditorCommandRegistry.h"
+#include "EditorAssetDragPayload.h"
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "PostEffectEditor.h"
@@ -376,11 +377,13 @@ namespace {
         if (ImGui::BeginMenu(ICON_FA_SKULL " 敵")) {
             if (ImGui::MenuItem("Fire Slime")) CreateEnemy(editor, scene, "FireSlime", useGameViewCursor);
             if (ImGui::MenuItem("Thunder Slime")) CreateEnemy(editor, scene, "ThunderSlime", useGameViewCursor);
+            if (ImGui::MenuItem("Wind Slime")) CreateEnemy(editor, scene, "WindSlime", useGameViewCursor);
             if (ImGui::MenuItem("スライム")) CreateEnemy(editor, scene, "Slime", useGameViewCursor);
             if (ImGui::MenuItem("ボム")) CreateEnemy(editor, scene, "Bomb", useGameViewCursor);
             if (ImGui::MenuItem("ボマー")) CreateEnemy(editor, scene, "Bomber", useGameViewCursor);
             if (ImGui::MenuItem("キノコ")) CreateEnemy(editor, scene, "Mushroom", useGameViewCursor);
             if (ImGui::MenuItem("巨大スライム")) CreateEnemy(editor, scene, "GiantSlime", useGameViewCursor);
+            if (ImGui::MenuItem("プリズムスライム（中ボス）")) CreateEnemy(editor, scene, "PrismSlime", useGameViewCursor);
             if (ImGui::MenuItem("コウモリ")) CreateEnemy(editor, scene, "Bat", useGameViewCursor);
             if (ImGui::MenuItem("目玉ビーム")) CreateEnemy(editor, scene, "BeamDrone", useGameViewCursor);
             if (ImGui::MenuItem("ボスコア")) CreateEnemy(editor, scene, "BossCore", useGameViewCursor);
@@ -511,6 +514,10 @@ void HierarchyWindow::Draw() {
         if (editor_->GetEffectPreviewStage() && ImGui::Selectable("  " ICON_FA_MAGIC " エフェクト確認ステージ (Effect Preview)", currentObj == editor_->GetEffectPreviewStage())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEffectPreviewStage());
+        }
+        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
         }
         if (editor_->GetAnimationWorkbench() && ImGui::Selectable("  " ICON_FA_RUNNING " アニメーション制作 (Animation Workbench)", currentObj == editor_->GetAnimationWorkbench())) {
             editor_->SetSelectedObject(nullptr);
@@ -681,12 +688,12 @@ void HierarchyWindow::Draw() {
         }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                const char* modelName = (const char*)payload->Data;
-                ModelManager::GetInstance()->LoadModel(modelName);
+                const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
                 Object3dCommon* common = currentScene->GetObject3dCommon();
-                if (common) {
+                if (common && !modelName.empty()) {
+                    ModelManager::GetInstance()->LoadModel(modelName);
                     auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common); newObj->SetModel(modelName); newObj->SetClassName("Model"); newObj->SetName("Preview_" + std::string(modelName));
+                    newObj->Initialize(common); newObj->SetModel(modelName); newObj->SetClassName("Model"); newObj->SetName("Preview_" + modelName);
                     newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->SetPreviewObject(std::move(newObj));
                 }

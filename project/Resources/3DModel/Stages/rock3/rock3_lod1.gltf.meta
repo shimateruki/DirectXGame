@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9911e4c0577da429682992130b26397d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/rock3/rock3_lod1.gltf",
+  "version": 1
+}

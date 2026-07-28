@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "57c6cb4aed6f7493a67a342b40b8c519",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/crown_stage_gate/crown_stage_gate_aqua.png",
+  "version": 1
+}

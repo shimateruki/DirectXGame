@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b042bcdb591a448f76b72351d5950a3f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_arrow_left.png",
+  "version": 1
+}

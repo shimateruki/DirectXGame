@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1d6fd4e89ae4f277254854a76ea41e41",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/wind_gust_sheet.dds",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0856aa9c469250a112e6d3297d871275",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/scenario/goal_clear_timeline.json",
+  "version": 1
+}

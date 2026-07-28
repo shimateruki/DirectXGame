@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f4a699155a0d06913a920e269622925d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/bunny/bunny_lod2.obj",
+  "version": 1
+}

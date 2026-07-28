@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2ef3175fe7d09d9863627913cee4f581",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/cylinder/cylinder.obj",
+  "version": 1
+}

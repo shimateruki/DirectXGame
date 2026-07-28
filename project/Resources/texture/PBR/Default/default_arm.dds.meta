@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "53cc267db459e507d95fa1fb61cf4489",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Default/default_arm.dds",
+  "version": 1
+}

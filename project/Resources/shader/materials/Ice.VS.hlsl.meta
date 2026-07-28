@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "c0370aae06ec082ff54ccfaab691ef48",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Ice.VS.hlsl",
+  "version": 1
+}

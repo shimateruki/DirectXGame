@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c28e9dfde69f0017c17aa7f2cba7a477",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/smoke_puff.png",
+  "version": 1
+}

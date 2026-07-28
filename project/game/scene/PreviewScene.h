@@ -63,12 +63,14 @@ public:
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
+    GameRule* GetGameRule() override { return gameRule_.get(); }
 
     void SetIsGoal(bool isGoal) { isGoal_ = isGoal; }
     bool IsGoal() const { return isGoal_; }
@@ -155,6 +157,7 @@ private:
     float hudHurtIconTimer_ = 0.0f;
     float hudHpDamageHoldTimer_ = 0.0f;
     float hudHpDelayedRate_ = 1.0f;
+    float hudHpAnimationTimer_ = 0.0f;
     float hudMorphGaugeTimer_ = 0.0f;
     float hudMorphGaugeVisibleTimer_ = 0.0f;
 

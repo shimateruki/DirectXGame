@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5f0e351e41117783ed74a17e75f4bef7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/player_hurt.dds",
+  "version": 1
+}

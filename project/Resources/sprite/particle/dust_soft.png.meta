@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d044d1e0842e55d0b3c3742a079f334c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/dust_soft.png",
+  "version": 1
+}

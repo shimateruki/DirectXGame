@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bc0afcf0322a3ebda00a167fecf7e2c5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/star/Star_baseColor.dds",
+  "version": 1
+}

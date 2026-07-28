@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a3fce838a99bcef7d94fae0236600793",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/gate_swirl_mask.png",
+  "version": 1
+}

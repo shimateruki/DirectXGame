@@ -4,6 +4,7 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EffectPreviewStage.h"
+#include "EditorAssetDragPayload.h"
 #include "IconsFontAwesome5.h"
 #include "ModelManager.h"
 #include "Object3d.h"
@@ -46,7 +47,7 @@ bool IsModelFolder(const std::filesystem::path& folder) {
 }
 
 bool IsSpecialMaterialType(int materialType) {
-    return materialType >= 8 && materialType <= 22;
+    return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
 std::string ToModelName(const std::filesystem::path& folder) {
@@ -160,11 +161,11 @@ void MaterialPreviewBoard::DrawModelSelector() {
     ImGui::Button(ICON_FA_BOX_OPEN " Projectからモデルをドロップ", ImVec2(-1, 30));
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-            const char* modelName = static_cast<const char*>(payload->Data);
-            if (modelName && modelName[0] != '\0') {
+            const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+            if (!modelName.empty()) {
                 SetPreviewModel(modelName);
                 RefreshModelCandidates();
-                DebugConsole::GetInstance()->AddLog("Material preview model: " + std::string(modelName));
+                DebugConsole::GetInstance()->AddLog("Material preview model: " + modelName);
             }
         }
         ImGui::EndDragDropTarget();
@@ -317,6 +318,8 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 23, "アニメ調地形 (Stylized Terrain)", "StylizedTerrain", {} },
         { 24, "ダッシュパネル (Dash Panel)", "DashPanel", {} },
         { 25, "スライム補正 (Slime Soft)", "SlimeSoft", {} },
+        { 26, "風弾 (Wind Orb)", "WindOrb", {{ 0.0f, "安定した風弾", "Stable" }, { 1.0f, "高速の渦", "Fast" }, { 2.0f, "圧縮した風", "Compressed" }} },
+        { 27, "プリズム結晶 (Prism Crystal)", "PrismCrystal", {} },
     };
 
     std::vector<MaterialPreviewEntry> entries;
@@ -413,6 +416,13 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
         object->SetMetallic(0.0f);
         object->SetTextureTiling({ 1.0f, 1.0f });
         object->SetAutoTextureTiling(false);
+    }
+    else if (entry.materialType == 27) {
+        object->SetColor({ 0.46f, 0.82f, 0.96f, 1.0f });
+        object->SetRoughness(0.18f);
+        object->SetMetallic(0.72f);
+        object->SetEnableEnvMap(true);
+        object->SetEnvIntensity(1.15f);
     }
 
     MeshRenderer* renderer = object->GetMeshRenderer();
@@ -546,6 +556,18 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
         water->effectSoftness = 0.46f;
         water->effectIntensity = 2.2f;
         water->billboardScale = 1.15f;
+        break;
+    case 26:
+        object->SetBlendMode(BlendMode::kNormal);
+        object->SetColor({ 0.42f, 1.0f, 0.80f, 0.96f });
+        object->SetEmissive(1.9f);
+        water->waveSpeed = 2.65f;
+        water->waveHeight = 0.72f;
+        water->waveFrequency = 12.0f;
+        water->effectScale = 0.86f;
+        water->effectSoftness = 0.32f;
+        water->effectIntensity = 1.72f;
+        water->billboardScale = 1.0f;
         break;
     default:
         break;

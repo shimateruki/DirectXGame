@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0bb5a466f13a37b721c4762f600e33a5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Normal/rocky_terrain_02_nor_dx_2k.png",
+  "version": 1
+}

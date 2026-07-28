@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ddd13781b17be8a74c65a487a36b89c4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/thunder/thunder_slime_round_aura.png",
+  "version": 1
+}

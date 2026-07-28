@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f712a0df27b7f2c7337eecf7d0c8f92e",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gameplay/status_settings.json",
+  "version": 1
+}

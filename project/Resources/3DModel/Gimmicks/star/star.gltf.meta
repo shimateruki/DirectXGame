@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f014f3ba8c23885e586d9b0ec953b02f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/star/star.gltf",
+  "version": 1
+}

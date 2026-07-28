@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "65183e363bb7206b46764be3a691cb6f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/mushroom.png",
+  "version": 1
+}

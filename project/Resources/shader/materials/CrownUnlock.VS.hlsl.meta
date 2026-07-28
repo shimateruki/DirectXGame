@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "6bcd7b580228654cc0676b9f40afe98d",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/CrownUnlock.VS.hlsl",
+  "version": 1
+}

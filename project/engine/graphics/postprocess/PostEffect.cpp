@@ -4,6 +4,7 @@
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h"
 #include "engine/graphics/core/ColorSpace.h"
+#include "LightManager.h"
 #include "RenderStats.h"
 #include <algorithm>
 #include <cassert>
@@ -372,7 +373,13 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
     commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
     if (clear) {
-        float clearColor[] = { 0.08f, 0.10f, 0.14f, 1.0f };
+        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        float clearColor[] = {
+            sceneClearColor.x,
+            sceneClearColor.y,
+            sceneClearColor.z,
+            sceneClearColor.w
+        };
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     }
@@ -385,6 +392,79 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
 
     ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
     commandList->SetDescriptorHeaps(1, descriptorHeaps);
+}
+
+bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex) {
+    if (!commandList || targetTexIndex < 0 || targetTexIndex >= static_cast<int>(renderTextures_.size())) {
+        return false;
+    }
+
+    RenderTexture& rt = renderTextures_[targetTexIndex];
+    if (!rt.resource || !rt.depthResource || !rt.grabResource ||
+        !rt.rtvHeap || rt.depthSrvHandle == 0 || rt.grabSrvHandle == 0) {
+        return false;
+    }
+
+    commandList->OMSetRenderTargets(0, nullptr, false, nullptr);
+
+    D3D12_RESOURCE_BARRIER barriers[2]{};
+    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barriers[0].Transition.pResource = rt.resource.Get();
+    barriers[0].Transition.StateBefore = rt.currentState;
+    barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barriers[1].Transition.pResource = rt.grabResource.Get();
+    barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+    commandList->ResourceBarrier(2, barriers);
+
+    commandList->CopyResource(rt.grabResource.Get(), rt.resource.Get());
+
+    barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList->ResourceBarrier(2, barriers);
+    rt.currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    if (rt.depthState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
+        D3D12_RESOURCE_BARRIER depthBarrier{};
+        depthBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        depthBarrier.Transition.pResource = rt.depthResource.Get();
+        depthBarrier.Transition.StateBefore = rt.depthState;
+        depthBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        commandList->ResourceBarrier(1, &depthBarrier);
+        rt.depthState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    }
+
+    const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+    return true;
+}
+
+void PostEffect::EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex) {
+    if (!commandList || targetTexIndex < 0 || targetTexIndex >= static_cast<int>(renderTextures_.size())) {
+        return;
+    }
+
+    RenderTexture& rt = renderTextures_[targetTexIndex];
+    if (!rt.resource || !rt.depthResource || !rt.rtvHeap || !rt.dsvHeap) {
+        return;
+    }
+
+    if (rt.depthState != D3D12_RESOURCE_STATE_DEPTH_WRITE) {
+        D3D12_RESOURCE_BARRIER depthBarrier{};
+        depthBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        depthBarrier.Transition.pResource = rt.depthResource.Get();
+        depthBarrier.Transition.StateBefore = rt.depthState;
+        depthBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        commandList->ResourceBarrier(1, &depthBarrier);
+        rt.depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    }
+
+    const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = rt.dsvHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 }
 
 void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex) {
@@ -423,6 +503,9 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     ID3D12Device* device = dxCommon_->GetDevice();
 
     RenderTexture& rt = renderTextures_[texIndex];
+    const bool needsPreviewSampling =
+        texIndex == kCameraPreviewTextureIndex ||
+        texIndex == kCinematicCameraPreviewTextureIndex;
 
     // 1. リソース設定 
     D3D12_RESOURCE_DESC resDesc = {};
@@ -472,7 +555,8 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     depthDesc.Height = height;
     depthDesc.MipLevels = 1;
     depthDesc.DepthOrArraySize = 1;
-    depthDesc.Format = dxCommon_->GetDSVFormat();
+    // DSVとSRVの両方から参照するため、Resource本体はTypelessで作成します。
+    depthDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
     depthDesc.SampleDesc.Count = 1;
     depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -506,6 +590,20 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     device->CreateDepthStencilView(newDepthResource.Get(), &dsvDesc, newDsvHeap->GetCPUDescriptorHandleForHeapStart());
 
+    if (needsPreviewSampling) {
+        D3D12_SHADER_RESOURCE_VIEW_DESC depthSrvDesc{};
+        depthSrvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        depthSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        depthSrvDesc.Texture2D.MipLevels = 1;
+        depthSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        if (rt.depthSrvHandle != 0) {
+            SRVManager::GetInstance()->CreateSRVforResource(rt.depthSrvHandle, newDepthResource.Get(), depthSrvDesc);
+        }
+        else {
+            rt.depthSrvHandle = SRVManager::GetInstance()->CreateSRV(newDepthResource.Get(), depthSrvDesc);
+        }
+    }
+
     // 3. SRV (画像としての設定)
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = format;
@@ -520,9 +618,34 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
         rt.srvHandle = SRVManager::GetInstance()->CreateSRV(newResource.Get(), srvDesc);
     }
 
+    Microsoft::WRL::ComPtr<ID3D12Resource> newGrabResource;
+    if (needsPreviewSampling) {
+        // 特殊マテリアル用の背景コピーはCamera Previewの2枚だけに確保します。
+        D3D12_RESOURCE_DESC grabDesc = resDesc;
+        grabDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        hr = device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &grabDesc,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            nullptr,
+            IID_PPV_ARGS(&newGrabResource));
+        if (FAILED(hr) || !newGrabResource) {
+            return;
+        }
+        if (rt.grabSrvHandle != 0) {
+            SRVManager::GetInstance()->CreateSRVforResource(rt.grabSrvHandle, newGrabResource.Get(), srvDesc);
+        }
+        else {
+            rt.grabSrvHandle = SRVManager::GetInstance()->CreateSRV(newGrabResource.Get(), srvDesc);
+        }
+    }
+
     rt.resource = newResource;
     rt.rtvHeap = newRtvHeap;
     rt.depthResource = newDepthResource;
     rt.dsvHeap = newDsvHeap;
+    rt.grabResource = newGrabResource;
     rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    rt.depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 }

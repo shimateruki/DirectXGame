@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d7028e3540d8275689ad2a9af7d4ce5d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/koin/coin_star_2_normal.dds",
+  "version": 1
+}

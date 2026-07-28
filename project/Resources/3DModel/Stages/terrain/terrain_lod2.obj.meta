@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8ac471cc4bc5023a1199d9e792ec4f00",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/terrain/terrain_lod2.obj",
+  "version": 1
+}

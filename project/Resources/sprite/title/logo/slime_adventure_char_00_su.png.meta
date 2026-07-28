@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "73c4c227c52930f3d16fbb096408d6ed",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/title/logo/slime_adventure_char_00_su.png",
+  "version": 1
+}

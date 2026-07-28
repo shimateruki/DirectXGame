@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4139b69e44e828427baed5b153b1334c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/gradationLine.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e8e5ac0dbdcf7d1f41e13abbe7733861",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_title_plate.png",
+  "version": 1
+}

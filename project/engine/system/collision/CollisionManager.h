@@ -33,6 +33,21 @@ struct RaycastHit {
     Vector3 normal;                // 衝突面の法線。
 };
 
+// Physics Queryで対象Layer、Trigger、自己Colliderの除外を共通指定します。
+struct PhysicsQueryFilter {
+    uint32_t mask = 0xFFFFFFFFu;
+    Object3d* ignoredObject = nullptr;
+    bool ignoreDescendants = true;
+    bool includeTriggers = false;
+    bool includeDisabled = false;
+};
+
+// Overlap Queryが返す対象と、Query形状を押し戻す方向を保持します。
+struct PhysicsOverlapHit {
+    Object3d* object = nullptr;
+    CollisionInfo collision;
+};
+
 /// <summary>
 /// オブジェクト同士の衝突判定とレイキャストを管理するクラス。
 /// </summary>
@@ -66,6 +81,25 @@ void ClearObjects();
     /// </summary>
     RaycastHit Raycast(const Vector3& start, const Vector3& direction,
         float maxDistance, uint32_t mask = 0xFFFFFFFF);
+    RaycastHit Raycast(const Vector3& start, const Vector3& direction,
+        float maxDistance, const PhysicsQueryFilter& filter);
+
+    std::vector<PhysicsOverlapHit> OverlapSphere(
+        const Vector3& center, float radius,
+        const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+    std::vector<PhysicsOverlapHit> OverlapAABB(
+        const AABB& bounds,
+        const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+    std::vector<PhysicsOverlapHit> OverlapCapsule(
+        const Vector3& pointA, const Vector3& pointB, float radius,
+        const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+    RaycastHit SphereCast(
+        const Vector3& start, float radius, const Vector3& direction, float maxDistance,
+        const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+    RaycastHit CapsuleCast(
+        const Vector3& pointA, const Vector3& pointB, float radius,
+        const Vector3& direction, float maxDistance,
+        const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
     /// <summary>
     /// 登録済みオブジェクト一覧を取得する。
@@ -86,6 +120,11 @@ private:
     int64_t GetGridIDFromIndices(int x, int y, int z);
         // 2つのObject3dのColliderを比較し、衝突イベントを通知します。
 void CheckCollisionPair(Object3d* objA, Object3d* objB);
+    void DispatchContactEvents();
+    bool PassesQueryFilter(Object3d* object, const PhysicsQueryFilter& filter) const;
+    RaycastHit RaycastInternal(
+        const Vector3& start, const Vector3& direction, float maxDistance,
+        const PhysicsQueryFilter& filter, bool excludePlayerHierarchy) const;
 
     /// <summary>
     /// 静的オブジェクトを staticGrid_ に登録する。
@@ -100,4 +139,10 @@ private:
     std::list<Object3d*> objects_;
     std::unordered_map<int64_t, std::list<Object3d*>> grid_;
     std::unordered_set<std::pair<Object3d*, Object3d*>, PairHash> checkedPairs_;
+    struct ContactState {
+        CollisionInfo firstInfo;
+        bool isTrigger = false;
+    };
+    std::unordered_map<std::pair<Object3d*, Object3d*>, ContactState, PairHash> previousContacts_;
+    std::unordered_map<std::pair<Object3d*, Object3d*>, ContactState, PairHash> currentContacts_;
 };

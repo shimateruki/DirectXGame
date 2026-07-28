@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "fd1f68d7338da3fe0ac41e6c6390cdb3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/electric_bolt_sheet.png",
+  "version": 1
+}

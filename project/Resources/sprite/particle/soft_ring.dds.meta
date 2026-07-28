@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7f6091da0623cfd791cc7cd16367888d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/soft_ring.dds",
+  "version": 1
+}

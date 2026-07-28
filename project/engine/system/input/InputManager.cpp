@@ -316,12 +316,18 @@ bool InputManager::IsKeyTriggered(BYTE keyCode) const {
 
 // 指定されたマウスボタンが押されているか
 bool InputManager::IsMouseButtonPressed(int button) const {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+        return false;
+    }
     // マウスボタンの状態の最上位ビットが1であれば、ボタンは押されている
     return (mouseState.rgbButtons[button] & 0x80) != 0;
 }
 
 // 指定されたマウスボタンがこのフレームで押された瞬間か (トリガー)
 bool InputManager::IsMouseButtonTriggered(int button) const {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+        return false;
+    }
     // (現在押されている) かつ (前フレームでは押されていない) 場合にtrue
     return (mouseState.rgbButtons[button] & 0x80) && !(prevMouseState.rgbButtons[button] & 0x80);
 }
@@ -393,6 +399,9 @@ Vector2 InputManager::GetMousePosition() const {
 /// 指定されたマウスボタンがこのフレームで離された瞬間か (リリース)
 /// </summary>
 bool InputManager::IsMouseButtonReleased(int button) const {
+    if (button < 0 || button >= static_cast<int>(sizeof(mouseState.rgbButtons))) {
+        return false;
+    }
     // (現在 離されている) かつ (前フレームでは 押されていた) 場合にtrue
     // (※ IsMouseButtonTriggered とロジックが逆)
     return !(mouseState.rgbButtons[button] & 0x80) && (prevMouseState.rgbButtons[button] & 0x80);

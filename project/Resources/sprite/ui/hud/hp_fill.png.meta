@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "30f94672f38fd7a3d3a502fd6d4fc422",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/hp_fill.png",
+  "version": 1
+}

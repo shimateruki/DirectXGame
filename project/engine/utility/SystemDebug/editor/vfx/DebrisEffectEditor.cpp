@@ -3,6 +3,7 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "EffectPreviewStage.h"
+#include "EditorManager.h"
 #include "IconsFontAwesome5.h"
 #include "ModelManager.h"
 #include "SceneManager.h"
@@ -40,7 +41,10 @@ constexpr const char* kMaterialTypeNames[] = {
     "雲 (Cloud)",
     "ゲートポータル (Gate Portal)",
     "アニメ調地形 (Stylized Terrain)",
-    "ダッシュパネル (Dash Panel)"
+    "ダッシュパネル (Dash Panel)",
+    "スライム補正 (Slime Soft)",
+    "風弾 (Wind Orb)",
+    "プリズム結晶 (Prism Crystal)"
 };
 
 void CopyToBuffer(std::array<char, 128>& buffer, const std::string& text) {
@@ -125,20 +129,83 @@ void DebrisEffectEditor::Initialize(SceneManager* sceneManager) {
 
 void DebrisEffectEditor::Update(float deltaTime) {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
-    if (previewStage && previewStage->IsEnabled()) {
-        if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
-            lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
-            Preview();
+    DebrisEffectManager* manager = DebrisEffectManager::GetInstance();
+    const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    const bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
+    if (!usePreviewStage) {
+        manager->SetTimeScale(1.0f);
+        return;
+    }
+
+    const float previewDuration = (std::max)(config_.lifetimeMax, 0.1f);
+    auto restartPreviewAt = [&](float seekTime) {
+        manager->ResetEditorPreview();
+        manager->SpawnFromConfig(config_, GetPreviewPosition());
+        previewTime_ = 0.0f;
+        loopTimer_ = 0.0f;
+
+        const float targetTime = std::clamp(seekTime, 0.0f, previewDuration);
+        const float previousScale = manager->GetTimeScale();
+        manager->SetTimeScale(1.0f);
+        while (previewTime_ + (1.0f / 60.0f) < targetTime) {
+            manager->Update(1.0f / 60.0f);
+            previewTime_ += 1.0f / 60.0f;
+        }
+        if (targetTime > previewTime_) {
+            manager->Update(targetTime - previewTime_);
+            previewTime_ = targetTime;
+        }
+        manager->SetTimeScale(previousScale);
+    };
+
+    if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+        restartPreviewAt(0.0f);
+    }
+    if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+        lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+        manager->ResetEditorPreview();
+        previewTime_ = 0.0f;
+        loopTimer_ = 0.0f;
+    }
+    if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+        restartPreviewAt(previewStage->GetSeekTargetTime());
+    }
+
+    manager->SetTimeScale(previewStage->GetPlaybackSpeed());
+    const float scaledDelta = deltaTime * manager->GetTimeScale();
+    if (loopPreview_ && scaledDelta > 0.0f) {
+        loopTimer_ += scaledDelta;
+        if (loopTimer_ >= loopInterval_) {
+            loopTimer_ = 0.0f;
+            restartPreviewAt(0.0f);
         }
     }
 
-    if (loopPreview_) {
-        loopTimer_ += deltaTime;
-        if (loopTimer_ >= loopInterval_) {
-            loopTimer_ = 0.0f;
-            Preview();
+    if (scaledDelta > 0.0f) {
+        previewTime_ += scaledDelta;
+        if (previewTime_ >= previewDuration) {
+            if (previewStage->IsLoopEnabled()) {
+                restartPreviewAt(0.0f);
+            } else {
+                previewTime_ = previewDuration;
+            }
         }
     }
+
+    std::vector<EffectPreviewStage::TimelineEvent> events;
+    events.push_back({ "Burst", 0.0f, 0.06f, Vector4{ 1.0f, 0.65f, 0.25f, 1.0f } });
+    events.push_back({ "Debris lifetime", 0.0f, previewDuration, Vector4{ 0.75f, 0.55f, 0.35f, 1.0f } });
+    events.push_back({ "Fade", previewDuration * std::clamp(config_.fadeStartRatio, 0.0f, 1.0f), previewDuration, Vector4{ 0.9f, 0.45f, 0.25f, 1.0f } });
+    previewStage->ReportToolState(
+        EffectPreviewStage::ToolKind::Debris,
+        "Debris",
+        previewTime_,
+        previewDuration,
+        previewStage->IsTransportPlaying(),
+        manager->GetActivePieceCount(),
+        events);
 }
 
 void DebrisEffectEditor::DrawImGui() {
@@ -170,6 +237,10 @@ void DebrisEffectEditor::DrawImGui() {
         if (ImGui::Button("小石の散り", ImVec2(120.0f, 28.0f))) {
             ApplyQuickPresetPebble();
             SyncModelBuffersFromConfig();
+        }
+        if (ImGui::Button("プリズム破砕", ImVec2(120.0f, 28.0f))) {
+            Load("prism_crystal_shatter");
+            CopyToBuffer(presetNameBuffer_, sizeof(presetNameBuffer_), "prism_crystal_shatter");
         }
     }
 
@@ -212,6 +283,12 @@ void DebrisEffectEditor::DrawImGui() {
         ImGui::DragFloat("縮小開始比率", &config_.fadeStartRatio, 0.01f, 0.0f, 0.98f);
         ImGui::ColorEdit4("色", &config_.color.x);
         DrawMaterialTypeCombo(config_.materialType);
+        ImGui::DragFloat("粗さ", &config_.roughness, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("金属度", &config_.metallic, 0.01f, 0.0f, 1.0f);
+        ImGui::Checkbox("環境反射を使う", &config_.enableEnvMap);
+        if (config_.enableEnvMap) {
+            ImGui::DragFloat("環境反射の強さ", &config_.envIntensity, 0.02f, 0.0f, 4.0f);
+        }
         ImGui::DragFloat("発光", &config_.emissive, 0.05f, 0.0f, 20.0f);
     }
 

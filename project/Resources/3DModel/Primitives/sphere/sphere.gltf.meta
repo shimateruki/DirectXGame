@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "bbfa904bd86dbba333a7a2315b9aa6b5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/sphere/sphere.gltf",
+  "version": 1
+}

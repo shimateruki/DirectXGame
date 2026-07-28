@@ -51,6 +51,17 @@ void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inp
 void SpriteDebugEditor::Finalize() {
 	// (unique_ptr が自動で解放するので、特に何もしない)
 }
+
+void SpriteDebugEditor::ClearSceneSelection() {
+	selectedSprite_ = nullptr;
+	isMovingX_ = false;
+	isMovingY_ = false;
+	lastUpdatedScene_ = nullptr;
+	initializedSpriteCommon_ = nullptr;
+	gizmoArrowX_.reset();
+	gizmoArrowY_.reset();
+}
+
 void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 #ifdef USE_IMGUI
 	if (sceneManager_ == nullptr) return;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "28e901149686395c0bec41e41f40f3e1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/goal/goal.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6132bb8a5a8bf95babbef5b209027a34",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_row_selected.png",
+  "version": 1
+}

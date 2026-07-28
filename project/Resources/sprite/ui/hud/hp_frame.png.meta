@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ebfd1e389e7b214a4fcf9ba9412bc7c9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/hp_frame.png",
+  "version": 1
+}

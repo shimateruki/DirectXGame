@@ -2,7 +2,10 @@
 
 #ifdef USE_IMGUI
 
+#include "SceneLoadContext.h"
+
 #include <memory>
+#include <cstdint>
 #include <string>
 
 class DebugEditor;
@@ -69,6 +72,7 @@ void DrawToolWindows(
 		int timeHistoryIndex);
 
 	void CapturePendingThumbnails();
+	void ExportCapturedHudPortraits();
 	void DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 	void DrawSceneDebug(ID3D12GraphicsCommandList* commandList);
 	void DrawBackBufferUi();
@@ -91,13 +95,13 @@ private:
 	bool CanEditScene() const;
 	bool CanEditSelectedObject() const;
 	void StopPlay();
+	void ReloadPlayOriginScene();
 	void SetupDefaultDockspace();
 	void SetReplayDebuggerVisible(bool visible);
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
 	void DrawGhostPreview(bool isPlaying, const GameViewArea& area);
 	void RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
-	void DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void DrawUnsavedExitConfirmPopup();
 	    // 再生や終了前に確認すべき未保存変更があるか調べます。
 bool HasUnsavedEditorChanges() const;
@@ -129,13 +133,19 @@ private:
 	std::unique_ptr<EngineManualWindow> engineManualWindow_;	bool showDebugWindows_ = true;
 	std::unique_ptr<ReplayDebugger> replayDebugger_;
 	bool showReplayDebugger_ = false;
+	bool showEnemyAttackTimeline_ = false;
+	bool showEffectPreviewTimeline_ = false;
 	bool showDebugConsole_ = true;
 	bool showTimeController_ = true;
 	bool showBossDebug_ = false;
 	bool portfolioCaptureMode_ = false;
-	bool previousPlayingState_ = false;
+	bool pendingPlayOriginReload_ = false;
+	bool sceneTransitionStateCleared_ = false;
+	uint64_t playOriginSceneGeneration_ = 0;
+	std::string playOriginSceneName_;
+	SceneLoadContext playOriginSceneLoadContext_;
 	bool dockspaceInitialized_ = false;
-	bool openUnsavedPlayConfirm_ = false;	bool openUnsavedExitConfirm_ = false;
+	bool openUnsavedExitConfirm_ = false;
 };
 
 #endif

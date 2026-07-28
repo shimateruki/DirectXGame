@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2c92d37813f576417aa8841b4293777e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/brazier/brazier.obj",
+  "version": 1
+}

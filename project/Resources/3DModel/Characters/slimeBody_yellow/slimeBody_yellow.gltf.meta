@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ddc0e72f059c2acaef8f76ac22dc23c9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_yellow/slimeBody_yellow.gltf",
+  "version": 1
+}

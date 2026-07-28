@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "df905fbcee68a35ef340c893404afd7c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/white.dds",
+  "version": 1
+}

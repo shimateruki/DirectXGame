@@ -41,7 +41,8 @@ void InitializeEngineServices();
 
 	void UpdateEditorFrame(float deltaTime);
 	    // シーン、パーティクル、VFXなどゲーム中に動くシステムを更新します。
-void UpdateGameSystems(float deltaTime, float finalDeltaTime);
+	void UpdateGameSystems(float deltaTime, float finalDeltaTime);
+	void RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTransitioning);
 	void RecordUpdateProfile(const std::chrono::high_resolution_clock::time_point& startUpdate);
 
 	void DrawEditorFrame(PostEffect* postEffect);
@@ -61,6 +62,7 @@ private:
 	std::chrono::high_resolution_clock::time_point prePostDrawTime_;
 
 	float timeScale_ = 1.0f;
+	float fixedUpdateAccumulator_ = 0.0f;
 	bool isPlaying_ = false;
 	bool initialSceneOverridesPending_ = false;
 	std::string currentSceneName_;

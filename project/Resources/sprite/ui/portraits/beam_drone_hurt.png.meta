@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ac9c7fe0f9cbe44b20268eb5630f196e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/beam_drone_hurt.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7ed0cb812ed5d362d7a86b37072e035d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/monsterBall.png",
+  "version": 1
+}

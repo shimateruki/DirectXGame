@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "84b5c2de605b3886f78a52ac425724f5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/save/save_icon.png",
+  "version": 1
+}

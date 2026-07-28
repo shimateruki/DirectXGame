@@ -1,7 +1,9 @@
 #pragma once
 #include "BaseEnemy.h"
 #include "EffectObject3d.h"
+#include <array>
 #include <memory>
+#include <unordered_set>
 
 // 地面に広がる放電と常時オーラで攻撃範囲を見せる雷スライム
 // EnemyThunderSlimeは、チャージ放電、雷オーラ、待機火花を使う属性スライム敵です。
@@ -17,7 +19,11 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
+    void ExecuteEvadeAbility(class Player* player);
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
+    // 敵攻撃プレビューで選択した攻撃だけを確認できるよう、AIの攻撃候補を限定します。
+    void SetDebugPreviewAttackId(const std::string& attackId);
+    const char* GetDebugAttackPhaseName() const;
     void ApplyManagedScale(const Vector3& scale) override {
         baseScale_ = scale;
         hasBaseScale_ = true;
@@ -32,6 +38,11 @@ private:
     void UpdateWildTimers(float deltaTime);
     void UpdateWildBehavior(float deltaTime, Vector3& velocity);
     void UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance);
+    void StartWildLightning(const Vector3& direction);
+    void UpdateWildLightning(float deltaTime);
+    void SpawnWildLightningStrike(const Vector3& groundPosition);
+    void DispatchWildLightningDamage(const Vector3& groundPosition);
+    void ResetWildLightning();
     void UpdateWanderBehavior(float deltaTime, Vector3& velocity);
     void ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity);
     void UpdateFacing(const Vector3& direction);
@@ -48,7 +59,18 @@ void UpdateAuraEffect(float deltaTime);
     void HideAuraEffect();
     void CalculateAuraShape(Vector3& center, float& horizontalDiameter, float& verticalDiameter) const;
     void EmitOuterThunderEffect(const char* presetName, int count, float phaseOffset = 0.0f);
+    void EmitLineChargeEffect(const char* presetName, float progress);
     void EmitThunderPreset(const char* presetName, const Vector3& position);
+    void PrepareCarriedLightning(Player* player);
+    void UpdateCarriedLightning(Player* player, float deltaTime);
+    Vector3 FindStrikeGround(const Vector3& samplePosition, Object3d* ignoredObject, float fallbackHeight) const;
+    void SpawnLightningStrikeVisual(const Vector3& groundPosition, const Vector3& direction);
+    void SpawnChargeGroundEffect(const Vector3& groundPosition, float scale = 1.0f);
+    void SpawnCarriedLightningStrike(const Vector3& groundPosition, Player* player);
+    void DispatchCarriedLightningDamage(const Vector3& groundPosition, Player* player);
+    void ResetCarriedLightning();
+    bool ResolveCarriedEvadeDestination(Player* player, Vector3& start, Vector3& destination, Vector3& direction) const;
+    void SpawnCarriedEvadeEffects(const Vector3& start, const Vector3& destination, const Vector3& direction);
     void ApplySlimeAnimation(float deltaTime);
     void SyncWorldCollisionRadius(float worldRadius);
     void SyncGroundCollisionRadius();
@@ -61,11 +83,37 @@ void UpdateAuraEffect(float deltaTime);
     float idleTimer_ = 0.0f;             // 待機アニメーション用。
     float groundHopTimer_ = 0.0f;        // 通常移動中の小ホップ周期。
     float idleSparkTimer_ = 0.0f;        // 常時火花の発生間隔。
+    enum class WildLightningState {
+        Idle,
+        Charging,
+        Striking,
+    };
+    WildLightningState wildLightningState_ = WildLightningState::Idle;
+    std::array<Vector3, 5> wildStrikePositions_{};
+    Vector3 wildLightningDirection_ = { 0.0f, 0.0f, 1.0f };
+    float wildLightningTimer_ = 0.0f;
+    float wildLightningEffectTimer_ = 0.0f;
+    int wildStrikeIndex_ = 0;
+    bool wildLightningHitTarget_ = false;
     float carriedShockCooldown_ = 0.0f;  // 持ち運び能力の再使用待ち。
-    float carriedEffectTimer_ = 0.0f;    // 持ち運び発動後の発光演出。
+    float carriedEvadeCooldown_ = 0.0f;  // 雷回避の再使用待ち。
+    float carriedEffectTimer_ = 0.0f;    // 持ち運び中の蓄電火花間隔。
+    enum class CarriedLightningState {
+        Idle,
+        Charging,
+        Striking,
+    };
+    CarriedLightningState carriedLightningState_ = CarriedLightningState::Idle;
+    std::array<Vector3, 5> carriedStrikePositions_{};
+    std::unordered_set<Object3d*> carriedLightningHitTargets_;
+    Vector3 carriedLightningDirection_ = { 0.0f, 0.0f, 1.0f };
+    float carriedLightningTimer_ = 0.0f;
+    int carriedStrikeIndex_ = 0;
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 lastShockDirection_ = { 0.0f, 0.0f, 1.0f };
     std::unique_ptr<EffectObject3d> auraEffect_;
     bool hasBaseScale_ = false;
     bool isCharging_ = false;
+    bool chargeWarningTriggered_ = false;
+    std::string debugPreviewAttackId_;
 };

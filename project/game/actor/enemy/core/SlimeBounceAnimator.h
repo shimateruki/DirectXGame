@@ -80,4 +80,36 @@ inline Vector3 MakeChargeSquash(const Vector3& baseScale, float chargeRate, floa
     };
 }
 
+// 減衰比を指定できる安定したスプリング補間です。1未満では少し反発し、1で臨界減衰になります。
+inline void StepDampedSpring(
+    Vector3& value,
+    Vector3& velocity,
+    const Vector3& target,
+    float deltaTime,
+    float frequency,
+    float dampingRatio) {
+    const float safeDelta = std::clamp(deltaTime, 0.0f, 0.05f);
+    if (safeDelta <= 0.0f) {
+        return;
+    }
+
+    const float omega = (std::max)(frequency, 0.01f);
+    const float damping = (std::max)(dampingRatio, 0.0f);
+    const float f = 1.0f + 2.0f * safeDelta * damping * omega;
+    const float omegaSquared = omega * omega;
+    const float deltaOmegaSquared = safeDelta * omegaSquared;
+    const float deltaSquaredOmegaSquared = safeDelta * deltaOmegaSquared;
+    const float inverseDeterminant = 1.0f / (f + deltaSquaredOmegaSquared);
+
+    const auto stepComponent = [&](float& current, float& currentVelocity, float targetValue) {
+        const float previous = current;
+        current = (f * previous + safeDelta * currentVelocity + deltaSquaredOmegaSquared * targetValue) * inverseDeterminant;
+        currentVelocity = (currentVelocity + deltaOmegaSquared * (targetValue - previous)) * inverseDeterminant;
+    };
+
+    stepComponent(value.x, velocity.x, target.x);
+    stepComponent(value.y, velocity.y, target.y);
+    stepComponent(value.z, velocity.z, target.z);
+}
+
 } // namespace SlimeBounceAnimator

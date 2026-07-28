@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0dadfe885188cd8e8404171c9e226b6e",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/sample.json",
+  "version": 1
+}

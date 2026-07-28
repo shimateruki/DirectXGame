@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "a1f1802ce1724e3123959fc736cf60cd",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/texture/BakedShader/shader_texture_bake_manifest.json",
+  "version": 1
+}

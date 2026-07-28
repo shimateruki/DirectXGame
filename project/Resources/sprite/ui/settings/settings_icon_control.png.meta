@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2d476308c0fe5a0ea6a5b19cb4373f10",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_icon_control.png",
+  "version": 1
+}

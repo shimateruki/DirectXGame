@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5f8dd096adca525c7ec024818a894c50",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/eye/eye.gltf",
+  "version": 1
+}

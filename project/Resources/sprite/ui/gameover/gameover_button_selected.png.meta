@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8030e54f9f4ffc58b191ed173d1cc516",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/gameover_button_selected.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6819787ca2a5d55fa492552b5e737336",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/star/Star_metallicRoughness.png",
+  "version": 1
+}

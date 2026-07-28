@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cfea1b87e03747b63930d863e8e420b4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/gameover_label_continue.png",
+  "version": 1
+}

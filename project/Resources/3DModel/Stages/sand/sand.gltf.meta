@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3a9a13bc3fb74e8e9b65bd0f3c9545f9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/sand/sand.gltf",
+  "version": 1
+}

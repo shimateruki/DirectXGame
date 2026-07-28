@@ -125,8 +125,11 @@ void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoInd
 
     // 描画前準備: 指定したレンダーターゲットをセット
         // シーン描画先をポストエフェクト用RenderTextureへ切り替えます。
-void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
+    void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
     void PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex = kCameraPreviewTextureIndex, bool clear = true);
+    // Camera Preview内の水・炎などが、Preview自身の色と深度を参照できる状態へ切り替えます。
+    bool BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex);
+    void EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex);
 
     // リソースバリア管理
     void TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex);
@@ -135,6 +138,8 @@ void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0
     // アクセッサ
     uint32_t GetSRVHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
+    uint32_t GetDepthSRVHandle(int texIndex) const { return renderTextures_[texIndex].depthSrvHandle; }
+    uint32_t GetGrabSRVHandle(int texIndex) const { return renderTextures_[texIndex].grabSrvHandle; }
     Params* GetParams() { return paramsData_; }
     bool IsBloomEnabled() const { return bloomEnabled_; }
     void SetBloomEnabled(bool enabled) { bloomEnabled_ = enabled; }
@@ -169,8 +174,12 @@ struct RenderTexture {
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
         Microsoft::WRL::ComPtr<ID3D12Resource> depthResource;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
+        Microsoft::WRL::ComPtr<ID3D12Resource> grabResource;
         uint32_t srvHandle = 0;
+        uint32_t depthSrvHandle = 0;
+        uint32_t grabSrvHandle = 0;
         D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        D3D12_RESOURCE_STATES depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
     };
 
     // マルチパス用の内部テクスチャチェーン

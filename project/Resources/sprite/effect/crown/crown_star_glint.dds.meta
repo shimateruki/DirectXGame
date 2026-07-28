@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "57a4aeb9d9f13046fbb14ba91372a26d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_star_glint.dds",
+  "version": 1
+}

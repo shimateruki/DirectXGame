@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "c242893c974771a4bab0ccb5d24a4158",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/tree1/tree1.gltf",
+  "version": 1
+}

@@ -32,6 +32,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreatePoisonSporePipeline();
     CreateCloudPipeline();
     CreateGatePortalPipeline();
+    CreateWindOrbPipeline();
 
     CreateSkyboxPipeline();
 }
@@ -676,6 +677,16 @@ void Object3dCommon::CreateGatePortalPipeline() {
     );
 }
 
+void Object3dCommon::CreateWindOrbPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/materials/WindOrb.VS.hlsl",
+        L"Resources/shader/materials/WindOrb.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_BACK,
+        windOrbPipelineState_.GetAddressOf()
+    );
+}
+
 void Object3dCommon::SetLaserGraphicsCommand() {
     if (!laserPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
@@ -761,6 +772,14 @@ void Object3dCommon::SetGatePortalGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(gatePortalPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetWindOrbGraphicsCommand() {
+    if (!windOrbPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(windOrbPipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 

@@ -145,6 +145,13 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
     return F0 + (1.0f - F0) * pow(clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
 }
 
+float3 BuildPrismSpectrum(float phase)
+{
+    float3 shiftedPhase = frac(phase.xxx + float3(0.00f, 0.67f, 0.33f));
+    float3 spectrum = 0.56f + 0.44f * cos(6.2831853f * (shiftedPhase - 0.08f));
+    return saturate(spectrum);
+}
+
 float3 CalcPBRLight(float3 L, float3 V, float3 N, float3 radiance, float3 albedo, float roughness, float metallic, float3 F0)
 {
     float3 H = normalize(V + L);
@@ -224,30 +231,34 @@ float3 BuildSlimeSoftTexture(float2 uv, float3 textureBase)
 
 float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 N, float3 V, float3 worldPosition, float shadowFactor)
 {
-    float textureBlend = lerp(0.02f, 0.30f, saturate(gMaterial.roughness));
+    float textureBlend = lerp(0.02f, 0.34f, saturate(gMaterial.roughness));
     float paintStrength = saturate(gMaterial.metallic);
+    float reliefStrength = saturate(gMaterial.envIntensity * 0.5f);
 
     float slope = saturate(N.y);
-    float macroNoise = ValueNoise2D(worldPosition.xz * 0.026f);
-    float detailNoise = ValueNoise2D(worldPosition.xz * 0.115f + macroNoise * 3.7f);
-    float tinyNoise = ValueNoise2D(worldPosition.xz * 0.34f + detailNoise * 2.0f);
-    float patchNoise = floor(saturate(macroNoise * 0.62f + detailNoise * 0.38f) * 4.0f) / 3.0f;
+    float macroNoise = ValueNoise2D(worldPosition.xz * 0.022f);
+    float detailNoise = ValueNoise2D(worldPosition.xz * 0.105f + macroNoise * 3.7f);
+    float tinyNoise = ValueNoise2D(worldPosition.xz * 0.36f + detailNoise * 2.0f);
+    float patchSource = saturate(macroNoise * 0.64f + detailNoise * 0.36f);
+    float patchNoise = floor(patchSource * 5.0f) * 0.25f;
 
-    float steepMask = 1.0f - smoothstep(0.22f, 0.62f, slope);
+    float steepMask = 1.0f - smoothstep(0.28f, 0.70f, slope);
     float flatMask = smoothstep(0.52f, 0.92f, slope);
     float dryMask = smoothstep(0.68f, 0.96f, macroNoise) * flatMask;
-    float shadePatch = (1.0f - patchNoise) * lerp(0.18f, 0.62f, paintStrength);
+    float shadePatch = (1.0f - patchNoise) * lerp(0.20f, 0.66f, paintStrength);
+    float dappleMask = smoothstep(0.68f, 0.88f, detailNoise) * flatMask;
 
-    float3 grassShadow = float3(0.17f, 0.36f, 0.10f);
-    float3 grassBase = float3(0.39f, 0.66f, 0.21f);
-    float3 grassLight = float3(0.72f, 0.84f, 0.34f);
-    float3 earthBase = float3(0.58f, 0.40f, 0.20f);
-    float3 rockBase = float3(0.43f, 0.44f, 0.36f);
+    float3 grassShadow = float3(0.10f, 0.25f, 0.04f);
+    float3 grassBase = float3(0.30f, 0.57f, 0.13f);
+    float3 grassLight = float3(0.55f, 0.74f, 0.22f);
+    float3 earthBase = float3(0.43f, 0.27f, 0.11f);
+    float3 rockBase = float3(0.31f, 0.33f, 0.27f);
 
     float3 palette = lerp(earthBase, grassBase, flatMask);
-    palette = lerp(palette, rockBase, steepMask * 0.68f);
-    palette = lerp(palette, grassLight, dryMask * 0.30f);
-    palette = lerp(palette, grassShadow, shadePatch * 0.32f);
+    palette = lerp(palette, rockBase, steepMask * lerp(0.58f, 0.82f, reliefStrength));
+    palette = lerp(palette, grassLight, dryMask * lerp(0.18f, 0.34f, reliefStrength));
+    palette = lerp(palette, grassShadow, shadePatch * lerp(0.25f, 0.42f, reliefStrength));
+    palette = lerp(palette, grassLight, dappleMask * 0.08f * reliefStrength);
 
     float3 accentColor = saturate(max(terrainTint, float3(0.02f, 0.02f, 0.02f)));
     float accentDelta = max(max(abs(accentColor.r - 1.0f), abs(accentColor.g - 1.0f)), abs(accentColor.b - 1.0f));
@@ -262,23 +273,28 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
     textureDetail = lerp(textureDetail, saturate(textureHue * palette * 1.18f), textureBlend * 0.45f);
 
     float3 baseColor = lerp(palette, textureDetail, textureBlend);
-    baseColor *= lerp(0.86f, 1.13f, patchNoise);
-    baseColor += (tinyNoise - 0.5f) * 0.045f * paintStrength;
+    baseColor *= lerp(
+        lerp(0.91f, 1.07f, patchNoise),
+        lerp(0.80f, 1.13f, patchNoise),
+        reliefStrength);
+    baseColor += (tinyNoise - 0.5f) * 0.052f * paintStrength * reliefStrength;
 
     float baseLuma = dot(baseColor, float3(0.299f, 0.587f, 0.114f));
-    baseColor = lerp(float3(baseLuma, baseLuma, baseLuma), baseColor, 1.38f);
+    baseColor = lerp(float3(baseLuma, baseLuma, baseLuma), baseColor, lerp(1.30f, 1.55f, reliefStrength));
+    float sideShade = lerp(lerp(0.72f, 1.0f, slope), lerp(0.55f, 1.0f, slope), reliefStrength);
+    baseColor *= sideShade;
     baseColor = saturate(baseColor);
 
     float3 L = normalize(-gDirectionalLight.direction);
     float NdotL = saturate(dot(N, L));
-    float lightBand = (NdotL < 0.30f) ? 0.78f : ((NdotL < 0.68f) ? 0.96f : 1.12f);
-    lightBand *= lerp(0.76f, 1.0f, shadowFactor);
+    float lightBand = (NdotL < 0.30f) ? 0.68f : ((NdotL < 0.68f) ? 0.92f : 1.10f);
+    lightBand *= lerp(lerp(0.80f, 0.70f, reliefStrength), 1.0f, shadowFactor);
 
     float ambientLevel = max(max(gDirectionalLight.ambientColor.r, gDirectionalLight.ambientColor.g), gDirectionalLight.ambientColor.b);
-    float ambientStrength = 0.46f + saturate(ambientLevel) * 0.24f;
-    float directStrength = saturate(gDirectionalLight.intenssity * 0.68f);
-    float3 lightTint = lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.10f);
-    float combinedLight = ambientStrength + lightBand * directStrength * 0.42f;
+    float ambientStrength = 0.40f + saturate(ambientLevel) * 0.22f;
+    float directStrength = saturate(gDirectionalLight.intenssity * 0.72f);
+    float3 lightTint = lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.16f);
+    float combinedLight = ambientStrength + lightBand * directStrength * 0.46f;
     float3 color = baseColor * combinedLight * lightTint;
     float3 localLight = float3(0.0f, 0.0f, 0.0f);
 
@@ -314,7 +330,7 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
         localLight += baseColor * sLight.color.rgb * min(sLight.intensity, 2.0f) * distanceFactor * falloffFactor * spotBand * 0.11f;
     }
 
-    float rim = pow(1.0f - saturate(dot(N, V)), 3.0f) * slope * 0.035f;
+    float rim = pow(1.0f - saturate(dot(N, V)), 3.0f) * slope * 0.026f;
     float3 rimColor = grassLight * rim;
 
     return saturate(color + localLight + rimColor);
@@ -404,7 +420,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         textureColor.a *= 1.0f - portalEdge * 0.22f;
     }
     
-    if ((gMaterial.materialType == 0 || gMaterial.materialType == 25) && textureColor.a <= 0.5)
+    if ((gMaterial.materialType == 0 || gMaterial.materialType == 25 || gMaterial.materialType == 27) && textureColor.a <= 0.5)
     {
         discard;
     }
@@ -724,6 +740,75 @@ PixelShaderOutput main(VertexShaderOutput input)
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
             // ===========================================================
+            // Prism Crystal
+            // ===========================================================
+                else if (gMaterial.materialType == 27)
+                {
+                    float3 prismNormal = normalize(input.normal);
+                    if (gMaterial.enableNormalMap == 1)
+                    {
+                        float3 tangent = normalize(input.tangent);
+                        tangent = normalize(tangent - dot(tangent, prismNormal) * prismNormal);
+                        float3 bitangent = cross(prismNormal, tangent);
+                        float3x3 tangentBasis = float3x3(tangent, bitangent, prismNormal);
+                        float3 sampledNormal = gNormalMap.Sample(gSampler, transformedUV.xy).rgb * 2.0f - 1.0f;
+                        prismNormal = normalize(mul(sampledNormal, tangentBasis));
+                    }
+
+                    float3 viewDirection = normalize(gCamera.worldPosition - input.worldPosition);
+                    float3 lightDirection = normalize(-gDirectionalLight.direction);
+                    float3 halfDirection = normalize(lightDirection + viewDirection);
+                    float viewFacing = saturate(dot(prismNormal, viewDirection));
+                    float lightFacing = saturate(dot(prismNormal, lightDirection));
+                    float fresnel = pow(1.0f - viewFacing, 2.35f);
+
+                    float dispersion = lerp(0.010f, 0.034f, saturate(gMaterial.metallic));
+                    float eta = 1.0f / 1.48f;
+                    float3 refractR = refract(-viewDirection, prismNormal, eta - dispersion);
+                    float3 refractG = refract(-viewDirection, prismNormal, eta);
+                    float3 refractB = refract(-viewDirection, prismNormal, eta + dispersion);
+                    float mipLevel = lerp(0.0f, 4.5f, saturate(gMaterial.roughness));
+                    float3 envR = gEnvTexture.SampleLevel(gSampler, refractR, mipLevel).rgb;
+                    float3 envG = gEnvTexture.SampleLevel(gSampler, refractG, mipLevel).rgb;
+                    float3 envB = gEnvTexture.SampleLevel(gSampler, refractB, mipLevel).rgb;
+                    float3 dispersedRefraction = float3(envR.r, envG.g, envB.b) * gMaterial.envIntensity;
+
+                    float3 reflectionDirection = reflect(-viewDirection, prismNormal);
+                    float3 reflection = gEnvTexture.SampleLevel(gSampler, reflectionDirection, mipLevel * 0.55f).rgb;
+                    reflection *= gMaterial.envIntensity;
+
+                    float facetCoordinate = dot(prismNormal, normalize(float3(0.63f, 0.31f, 0.71f))) * 1.75f;
+                    facetCoordinate += dot(input.worldPosition, float3(0.071f, 0.113f, 0.053f));
+                    float spectrumPhase = frac(facetCoordinate * 0.43f + gMaterial.time * 0.018f);
+                    float3 spectrum = BuildPrismSpectrum(spectrumPhase);
+                    float facetBand = pow(saturate(0.5f + 0.5f * sin(facetCoordinate * 11.0f + gMaterial.time * 0.24f)), 7.0f);
+
+                    float3 baseTint = saturate(gMaterial.color.rgb * textureColor.rgb);
+                    float3 spectralBody = spectrum * (0.36f + baseTint * 0.82f);
+                    float facetColorWeight = 0.20f + facetBand * 0.34f + fresnel * 0.08f;
+                    float3 jewelTint = lerp(baseTint, spectralBody, saturate(facetColorWeight));
+                    float ambientLevel = 0.28f + dot(saturate(gDirectionalLight.ambientColor), float3(0.16f, 0.24f, 0.10f));
+                    float directLevel = lerp(0.18f, 0.66f, lightFacing) * saturate(gDirectionalLight.intenssity);
+                    directLevel *= lerp(0.70f, 1.0f, shadowFactor);
+                    float3 crystalBody = jewelTint * (ambientLevel + directLevel);
+                    crystalBody = lerp(
+                        crystalBody,
+                        dispersedRefraction * (0.30f + baseTint * 0.74f),
+                        0.10f + fresnel * 0.18f);
+
+                    float specularPower = lerp(180.0f, 42.0f, saturate(gMaterial.roughness));
+                    float sharpSpecular = pow(saturate(dot(prismNormal, halfDirection)), specularPower);
+                    float3 spectralRim = spectrum * (fresnel * 0.92f + facetBand * (0.15f + fresnel * 0.30f));
+                    float3 whiteGlint = float3(1.0f, 1.04f, 1.10f) * sharpSpecular * 0.82f;
+
+                    output.color.rgb = crystalBody;
+                    output.color.rgb += reflection * (0.04f + fresnel * 0.34f);
+                    output.color.rgb += spectralRim * lerp(0.48f, 0.88f, saturate(gMaterial.metallic));
+                    output.color.rgb += whiteGlint;
+                    output.color.rgb *= lerp(0.96f, 1.14f, saturate((gMaterial.emissive - 0.6f) * 0.72f));
+                    output.color.a = gMaterial.color.a * textureColor.a;
+                }
+            // ===========================================================
             // Stylized terrain
             // ===========================================================
                 else if (gMaterial.materialType == 23)
@@ -739,7 +824,8 @@ PixelShaderOutput main(VertexShaderOutput input)
                         float3 normalMap = gNormalMap.Sample(gSampler, transformedUV.xy).rgb;
                         normalMap = normalMap * 2.0f - 1.0f;
                         float3 mappedNormal = normalize(mul(normalMap, TBN));
-                        terrainNormal = normalize(lerp(terrainNormal, mappedNormal, 0.18f));
+                        float terrainNormalStrength = lerp(0.0f, 0.42f, saturate(gMaterial.envIntensity * 0.5f));
+                        terrainNormal = normalize(lerp(terrainNormal, mappedNormal, terrainNormalStrength));
                     }
 
                     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);

@@ -96,7 +96,7 @@ cbuffer Config : register(b0)
     float colorIntensity;
     uint currentConfigIndex;
     uint maxParticles;
-    float padding_col;
+    float initialAge;
 };
 struct BoneData
 {
@@ -496,6 +496,24 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
             p.position = emitPos + float3(rX, rY, rZ) * emitArea;
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
+
+        // Restore the particle age when the editor reconstructs a scrubbed frame.
+        float restoredAge = clamp(initialAge, 0.0f, emitLife);
+        if (restoredAge >= emitLife)
+        {
+            int restoredFreeListPos;
+            InterlockedAdd(gFreeListIndex[0], 1, restoredFreeListPos);
+            if (restoredFreeListPos + 1 < int(maxParticles))
+            {
+                gFreeList[restoredFreeListPos + 1] = pIndex;
+            }
+            return;
+        }
+        p.life = emitLife - restoredAge;
+        float3 restoredAcceleration = gravity + wind;
+        p.position += p.velocity * restoredAge + restoredAcceleration * (0.5f * restoredAge * restoredAge);
+        p.velocity += restoredAcceleration * restoredAge;
+        p.velocity *= exp(-max(drag, 0.0f) * restoredAge);
 
         // ========================================================
         // その他の初期化

@@ -5,11 +5,23 @@ json ToJson(const Vector3& value) {
     return json::array({ value.x, value.y, value.z });
 }
 
+json ToJson(const Vector4& value) {
+    return json::array({ value.x, value.y, value.z, value.w });
+}
+
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
     return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+}
+
+
+Vector4 ReadVector4(const json& value, const Vector4& fallback) {
+    if (!value.is_array() || value.size() < 4) {
+        return fallback;
+    }
+    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() };
 }
 }
 
@@ -26,6 +38,8 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerDamageCooldownTimer"] = damageCooldownTimer_;
     state["playerDamageInvincible"] = isDamageInvincible_;
     state["playerDashInvincible"] = isDashInvincible_;
+    state["playerEvasionInvincibleTimer"] = evasionInvincibleTimer_;
+    state["playerEvasionInvincible"] = isEvasionInvincible_;
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
     state["playerDeathTimer"] = deathTimer_;
     state["playerRespawnPosition"] = ToJson(respawnPosition_);
@@ -40,6 +54,18 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerMorphDuration"] = enemyMorphDuration_;
     state["playerMorphEffectTimer"] = enemyMorphEffectTimer_;
     state["playerMorphVisualTimer"] = enemyMorphVisualTimer_;
+    state["playerMorphReleaseActive"] = enemyMorphReleaseActive_;
+    state["playerMorphReleaseBurstStarted"] = enemyMorphReleaseBurstStarted_;
+    state["playerMorphReleaseExpired"] = enemyMorphReleaseExpired_;
+    state["playerMorphReleaseTimer"] = enemyMorphReleaseTimer_;
+    state["playerMorphReleaseDuration"] = enemyMorphReleaseDuration_;
+    state["playerMorphReleaseBurstTime"] = enemyMorphReleaseBurstTime_;
+    state["playerMorphReleaseParticleTimer"] = enemyMorphReleaseParticleTimer_;
+    state["playerMorphReleasePlayerScale"] = ToJson(enemyMorphReleasePlayerScale_);
+    state["playerMorphReleaseVisualScale"] = ToJson(enemyMorphReleaseVisualScale_);
+    state["playerMorphReleaseStartPosition"] = ToJson(enemyMorphReleaseStartPosition_);
+    state["playerMorphReleaseDirection"] = ToJson(enemyMorphReleaseDirection_);
+    state["playerMorphReleaseTint"] = ToJson(enemyMorphReleaseTint_);
     state["playerElectricShockTimer"] = electricShockFeedbackTimer_;
     state["playerElectricShockLocked"] = electricShockControlLocked_;
 }
@@ -57,6 +83,8 @@ void Player::RestoreReplayCustomState(const json& state) {
     damageCooldownTimer_ = state.value("playerDamageCooldownTimer", damageCooldownTimer_);
     isDamageInvincible_ = state.value("playerDamageInvincible", isDamageInvincible_);
     isDashInvincible_ = state.value("playerDashInvincible", isDashInvincible_);
+    evasionInvincibleTimer_ = state.value("playerEvasionInvincibleTimer", evasionInvincibleTimer_);
+    isEvasionInvincible_ = state.value("playerEvasionInvincible", isEvasionInvincible_);
     invincibleBlinkTimer_ = state.value("playerInvincibleBlinkTimer", invincibleBlinkTimer_);
     deathTimer_ = state.value("playerDeathTimer", deathTimer_);
     if (state.contains("playerRespawnPosition")) {
@@ -73,7 +101,7 @@ void Player::RestoreReplayCustomState(const json& state) {
 
     const int morphType = state.value("playerEnemyMorphType", static_cast<int>(enemyMorphType_));
     if (morphType >= static_cast<int>(EnemyMorphType::None) &&
-        morphType <= static_cast<int>(EnemyMorphType::ThunderSlime)) {
+        morphType <= static_cast<int>(EnemyMorphType::WindSlime)) {
         enemyMorphType_ = static_cast<EnemyMorphType>(morphType);
     }
     isEnemyMorphed_ = state.value("playerEnemyMorphed", isEnemyMorphed_);
@@ -82,6 +110,34 @@ void Player::RestoreReplayCustomState(const json& state) {
     enemyMorphDuration_ = state.value("playerMorphDuration", enemyMorphDuration_);
     enemyMorphEffectTimer_ = state.value("playerMorphEffectTimer", enemyMorphEffectTimer_);
     enemyMorphVisualTimer_ = state.value("playerMorphVisualTimer", enemyMorphVisualTimer_);
+    enemyMorphReleaseActive_ = state.value("playerMorphReleaseActive", false);
+    enemyMorphReleaseBurstStarted_ = state.value("playerMorphReleaseBurstStarted", false);
+    enemyMorphReleaseExpired_ = state.value("playerMorphReleaseExpired", false);
+    enemyMorphReleaseTimer_ = state.value("playerMorphReleaseTimer", 0.0f);
+    enemyMorphReleaseDuration_ = state.value("playerMorphReleaseDuration", enemyMorphReleaseDuration_);
+    enemyMorphReleaseBurstTime_ = state.value("playerMorphReleaseBurstTime", enemyMorphReleaseBurstTime_);
+    enemyMorphReleaseParticleTimer_ = state.value("playerMorphReleaseParticleTimer", 0.0f);
+    if (state.contains("playerMorphReleasePlayerScale")) {
+        enemyMorphReleasePlayerScale_ = ReadVector3(state["playerMorphReleasePlayerScale"], enemyMorphReleasePlayerScale_);
+    }
+    if (state.contains("playerMorphReleaseVisualScale")) {
+        enemyMorphReleaseVisualScale_ = ReadVector3(state["playerMorphReleaseVisualScale"], enemyMorphReleaseVisualScale_);
+    }
+    if (state.contains("playerMorphReleaseStartPosition")) {
+        enemyMorphReleaseStartPosition_ = ReadVector3(state["playerMorphReleaseStartPosition"], enemyMorphReleaseStartPosition_);
+    }
+    if (state.contains("playerMorphReleaseDirection")) {
+        enemyMorphReleaseDirection_ = ReadVector3(state["playerMorphReleaseDirection"], enemyMorphReleaseDirection_);
+    }
+    if (state.contains("playerMorphReleaseTint")) {
+        enemyMorphReleaseTint_ = ReadVector4(state["playerMorphReleaseTint"], enemyMorphReleaseTint_);
+    }
+    if (enemyMorphReleaseActive_) {
+        UpdateEnemyMorphRelease(0.0f);
+    }
+    else if (enemyMorphReleaseVisual_) {
+        enemyMorphReleaseVisual_->SetIsVisible(false);
+    }
     electricShockFeedbackTimer_ = state.value("playerElectricShockTimer", electricShockFeedbackTimer_);
     electricShockControlLocked_ = state.value("playerElectricShockLocked", electricShockControlLocked_);
 }

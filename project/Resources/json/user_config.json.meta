@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "fe6222dd7c8344c784b39b6096a9db45",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/user_config.json",
+  "version": 1
+}

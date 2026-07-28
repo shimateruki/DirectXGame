@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c652d4559557d6d6f7e2d894ec45d181",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/bubble_ring.dds",
+  "version": 1
+}

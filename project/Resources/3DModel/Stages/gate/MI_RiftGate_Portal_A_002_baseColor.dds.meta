@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5b37505fc071e8ebb1256b48cab0f1b0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/gate/MI_RiftGate_Portal_A_002_baseColor.dds",
+  "version": 1
+}

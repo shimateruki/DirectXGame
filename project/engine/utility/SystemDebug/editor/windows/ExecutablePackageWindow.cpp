@@ -56,6 +56,14 @@ struct ResourceCopyStats {
     uint64_t omittedTextureBytes = 0;
 };
 
+struct ProjectCopyStats {
+    uint64_t copiedFiles = 0;
+    uint64_t copiedBytes = 0;
+    uint64_t skippedFiles = 0;
+    uint64_t skippedBytes = 0;
+    uint64_t skippedDirectories = 0;
+};
+
 struct ResourceFile {
     fs::path source;
     fs::path relative;
@@ -284,6 +292,156 @@ std::wstring ToLowerWide(std::wstring text) {
 bool IsEditorGeneratedDirectory(const fs::path& relative) {
     const std::wstring normalized = ToLowerWide(relative.generic_wstring());
     return normalized == L"generated/editor" || normalized.rfind(L"generated/editor/", 0) == 0;
+}
+
+bool HasPathPrefix(const std::wstring& normalized, const std::wstring& prefix) {
+    return normalized == prefix || normalized.rfind(prefix + L"/", 0) == 0;
+}
+
+bool IsProjectDirectoryExcluded(const fs::path& relative) {
+    const std::wstring normalized = ToLowerWide(relative.generic_wstring());
+    static constexpr std::array<const wchar_t*, 11> kExcludedRoots = {
+        L".vs",
+        L".git",
+        L".agents",
+        L".codex",
+        L"output",
+        L"tmp",
+        L"debug",
+        L"development",
+        L"release",
+        L"executablesets",
+        L"submissionpackages"
+    };
+    for (const wchar_t* root : kExcludedRoots) {
+        if (HasPathPrefix(normalized, root)) {
+            return true;
+        }
+    }
+
+    if (HasPathPrefix(normalized, L"resources/.cache") ||
+        HasPathPrefix(normalized, L"resources/.backup") ||
+        HasPathPrefix(normalized, L"resources/.trash") ||
+        HasPathPrefix(normalized, L"resources/generated/editor") ||
+        HasPathPrefix(normalized, L"externals/.cache")) {
+        return true;
+    }
+
+    for (const fs::path& part : relative) {
+        if (ToLowerWide(part.wstring()) == L"__pycache__") {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsProjectFileExcluded(const fs::path& relative, uint64_t fileBytes, ProjectCopyStats& stats) {
+    const std::wstring fileName = ToLowerWide(relative.filename().wstring());
+    const std::wstring extension = ToLowerWide(relative.extension().wstring());
+    const bool rootLocalState = relative.parent_path().empty() &&
+        (fileName == L"imgui.ini" ||
+         fileName == L"nodeeditor.json" ||
+         fileName == L"shader_compile.log" ||
+         fileName == L"system.drawing.drawing2d.graphicspath" ||
+         fileName == L"スプリント振り返り_2026-07-10.md");
+    const bool generatedFile =
+        fileName == L"thumbs.db" ||
+        fileName == L".ds_store" ||
+        extension == L".user" ||
+        extension == L".suo" ||
+        extension == L".opendb" ||
+        extension == L".ipch" ||
+        extension == L".pyc" ||
+        extension == L".pyo" ||
+        extension == L".log" ||
+        extension == L".tmp";
+    if (!rootLocalState && !generatedFile) {
+        return false;
+    }
+
+    ++stats.skippedFiles;
+    stats.skippedBytes += fileBytes;
+    return true;
+}
+
+bool IsReparsePoint(const fs::path& path) {
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+}
+
+bool CopyProjectFiltered(
+    const fs::path& source,
+    const fs::path& destination,
+    ProjectCopyStats& stats,
+    std::string& errorMessage) {
+    std::error_code ec;
+    if (!fs::exists(source, ec) || !fs::is_directory(source, ec)) {
+        errorMessage = "プロジェクトフォルダが見つかりません: " + PathToUtf8(source);
+        return false;
+    }
+
+    fs::create_directories(destination, ec);
+    if (ec) {
+        errorMessage = "projectコピー先を作成できません: " + PathToUtf8(destination);
+        return false;
+    }
+
+    fs::recursive_directory_iterator it(source, fs::directory_options::skip_permission_denied, ec);
+    const fs::recursive_directory_iterator end;
+    if (ec) {
+        errorMessage = "プロジェクトを走査できません: " + ec.message();
+        return false;
+    }
+
+    for (; it != end; it.increment(ec)) {
+        if (ec) {
+            errorMessage = "プロジェクトコピー中に走査エラーが発生しました: " + ec.message();
+            return false;
+        }
+
+        const fs::path entryPath = it->path();
+        const fs::path relative = fs::relative(entryPath, source, ec);
+        if (ec) {
+            errorMessage = "プロジェクト内の相対パスを作れません: " + ec.message();
+            return false;
+        }
+
+        if (it->is_directory(ec)) {
+            if (IsReparsePoint(entryPath) || IsProjectDirectoryExcluded(relative)) {
+                ++stats.skippedDirectories;
+                it.disable_recursion_pending();
+            }
+            continue;
+        }
+        if (!it->is_regular_file(ec) || IsReparsePoint(entryPath)) {
+            continue;
+        }
+
+        const uint64_t bytes = static_cast<uint64_t>(it->file_size(ec));
+        if (ec) {
+            errorMessage = "プロジェクトファイルのサイズを取得できません: " + PathToUtf8(entryPath);
+            return false;
+        }
+        if (IsProjectFileExcluded(relative, bytes, stats)) {
+            continue;
+        }
+
+        const fs::path target = destination / relative;
+        fs::create_directories(target.parent_path(), ec);
+        if (ec) {
+            errorMessage = "project内のコピー先を作成できません: " + PathToUtf8(target.parent_path());
+            return false;
+        }
+        fs::copy_file(entryPath, target, fs::copy_options::overwrite_existing, ec);
+        if (ec) {
+            errorMessage = "プロジェクトファイルをコピーできません: " + PathToUtf8(entryPath);
+            return false;
+        }
+        ++stats.copiedFiles;
+        stats.copiedBytes += bytes;
+    }
+
+    return true;
 }
 
 void AccumulateSkippedDirectory(const fs::path& directory, ResourceCopyStats& stats) {
@@ -726,8 +884,13 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
     request.buildBeforePackage = buildBeforePackage;
     request.textureMode = std::clamp(textureModeIndex_, 0, static_cast<int>(kTextureModeLabels.size()) - 1);
     request.createZip = createZip_;
+    request.includeProject = includeProject_;
+    request.includeReadMe = includeProject_ && includeReadMe_;
 
-    statusText_ = buildBeforePackage ? "ビルドしてから実行ファイルセットを作成しています..." : "既存のビルド出力から実行ファイルセットを作成しています...";
+    const char* packageKind = includeProject_ ? "提出パッケージ" : "実行ファイルセット";
+    statusText_ = buildBeforePackage
+        ? std::string("ビルドしてから") + packageKind + "を作成しています..."
+        : std::string("既存のビルド出力から") + packageKind + "を作成しています...";
     task_ = std::async(std::launch::async, [request]() {
         return RunPackageTask(request);
     });
@@ -737,11 +900,11 @@ void ExecutablePackageWindow::DrawImGui() {
 #ifdef USE_IMGUI
     PollTask();
 
-    ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_BOX_OPEN " 実行ファイルセット作成");
-    ImGui::TextWrapped("指定したビルド構成から、提出・配布用の最小構成フォルダを作成します。元のResourcesは変更しません。");
+    ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_BOX_OPEN " パッケージ作成");
+    ImGui::TextWrapped("実行ファイルセットだけ、または提出要件に合わせた完全パッケージをプロジェクト外へ作成します。元のファイルは変更しません。");
     ImGui::Separator();
 
-    ImGui::InputTextWithHint("出力名", "例: GE3_Playable", packageNameBuffer_, sizeof(packageNameBuffer_));
+    ImGui::InputTextWithHint("出力名", "例: LE3A_99_カマタ_タロウ", packageNameBuffer_, sizeof(packageNameBuffer_));
     ImGui::Combo("構成", &configurationIndex_, kConfigurations.data(), static_cast<int>(kConfigurations.size()));
     ImGui::Combo("テクスチャ構成", &textureModeIndex_, kTextureModeLabels.data(), static_cast<int>(kTextureModeLabels.size()));
     if (textureModeIndex_ == static_cast<int>(TexturePackageMode::CompactPng)) {
@@ -751,15 +914,23 @@ void ExecutablePackageWindow::DrawImGui() {
     } else {
         ImGui::TextDisabled("DDSとPNGを両方コピーします。容量は最大ですが、素材確認用に安全です。");
     }
+    ImGui::Checkbox("project一式も含める（提出形式）", &includeProject_);
+    if (includeProject_) {
+        ImGui::Indent();
+        ImGui::Checkbox("プロジェクト外のReadMe.mdを同梱", &includeReadMe_);
+        ImGui::TextDisabled("参照元: projectと同じ階層のReadMe.md（このツールでは内容を生成・変更しません）");
+        ImGui::Unindent();
+    }
     ImGui::Checkbox("提出用ZIPも作成", &createZip_);
 
     const std::string sanitizedName = SanitizePackageName(packageNameBuffer_);
     const fs::path detectedProjectRoot = FindProjectRoot();
     const fs::path previewRoot = detectedProjectRoot.empty() ? fs::path{} : detectedProjectRoot.parent_path();
     if (!previewRoot.empty()) {
-        ImGui::TextWrapped("出力先: %s", PathToUtf8(previewRoot / "ExecutableSets" / PathFromUtf8(sanitizedName)).c_str());
+        const fs::path outputFolder = includeProject_ ? fs::path("SubmissionPackages") : fs::path("ExecutableSets");
+        ImGui::TextWrapped("出力先: %s", PathToUtf8(previewRoot / outputFolder / PathFromUtf8(sanitizedName)).c_str());
         if (createZip_) {
-            ImGui::TextWrapped("ZIP: %s", PathToUtf8(previewRoot / "ExecutableSets" / PathFromUtf8(sanitizedName + ".zip")).c_str());
+            ImGui::TextWrapped("ZIP: %s", PathToUtf8(previewRoot / outputFolder / PathFromUtf8(sanitizedName + ".zip")).c_str());
         }
     } else {
         ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f), "プロジェクトルートを検出できません。");
@@ -787,8 +958,13 @@ void ExecutablePackageWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::TextWrapped("%s", statusText_.c_str());
-    ImGui::BulletText("コピー対象: exe / dll / Runtime Resources / package_manifest.json");
-    ImGui::BulletText("除外対象: .cache / .backup / .trash / tools / generated/editor");
+    if (includeProject_) {
+        ImGui::BulletText("提出構成: 実行ファイルセット / project / ReadMe.md");
+        ImGui::BulletText("project除外: .vs / .git / .agents / .codex / キャッシュ / バックアップ / 一時ファイル");
+    } else {
+        ImGui::BulletText("コピー対象: exe / dll / Runtime Resources / package_manifest.json");
+        ImGui::BulletText("除外対象: .cache / .backup / .trash / tools / generated/editor");
+    }
     ImGui::BulletText("DDS/PNGは同一フォルダ・同一名のペアだけを安全に整理します。");
     ImGui::BulletText("作成失敗時は既存の完成済みSetを残し、一時フォルダだけを削除します。");
 #endif
@@ -824,10 +1000,11 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         }
 
         const TexturePackageMode textureMode = ToTexturePackageMode(request.textureMode);
-        const fs::path packageRoot = projectRoot.parent_path() / "ExecutableSets";
+        const fs::path packageRoot = projectRoot.parent_path() /
+            (request.includeProject ? fs::path("SubmissionPackages") : fs::path("ExecutableSets"));
         fs::create_directories(packageRoot, ec);
         if (ec) {
-            return makeResult(false, "ExecutableSetsフォルダを作成できません: " + PathToUtf8(packageRoot));
+            return makeResult(false, "パッケージ出力フォルダを作成できません: " + PathToUtf8(packageRoot));
         }
 
         const fs::path destination = packageRoot / PathFromUtf8(packageName);
@@ -863,8 +1040,16 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         }
         ScopedDirectoryCleanup stagingCleanup(staging);
 
+        const fs::path runtimeDestination = request.includeProject
+            ? staging / fs::path(L"実行ファイルセット")
+            : staging;
+        fs::create_directories(runtimeDestination, ec);
+        if (ec) {
+            return makeResult(false, "実行ファイルセットの出力先を作成できません: " + PathToUtf8(runtimeDestination));
+        }
+
         const std::string exeFileName = packageName + ".exe";
-        fs::copy_file(sourceExe, staging / PathFromUtf8(exeFileName), fs::copy_options::overwrite_existing, ec);
+        fs::copy_file(sourceExe, runtimeDestination / PathFromUtf8(exeFileName), fs::copy_options::overwrite_existing, ec);
         if (ec) {
             return makeResult(false, "実行ファイルをコピーできません: " + PathToUtf8(sourceExe));
         }
@@ -878,7 +1063,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
                 continue;
             }
 
-            fs::copy_file(entry.path(), staging / entry.path().filename(), fs::copy_options::overwrite_existing, ec);
+            fs::copy_file(entry.path(), runtimeDestination / entry.path().filename(), fs::copy_options::overwrite_existing, ec);
             if (ec) {
                 return makeResult(false, "DLLをコピーできません: " + PathToUtf8(entry.path()));
             }
@@ -891,18 +1076,18 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         ResourceCopyStats resourceStats;
         std::string copyError;
-        if (!CopyDirectoryFiltered(projectRoot / "Resources", staging / "Resources", textureMode, resourceStats, copyError)) {
+        if (!CopyDirectoryFiltered(projectRoot / "Resources", runtimeDestination / "Resources", textureMode, resourceStats, copyError)) {
             return makeResult(false, copyError);
         }
 
         std::string batchError;
-        if (!WriteLaunchBatch(staging, exeFileName, batchError)) {
+        if (!WriteLaunchBatch(runtimeDestination, exeFileName, batchError)) {
             return makeResult(false, batchError);
         }
 
         std::string manifestError;
         if (!WritePackageManifest(
-            staging,
+            runtimeDestination,
             packageName,
             request.configuration,
             request.buildBeforePackage,
@@ -913,6 +1098,25 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             resourceStats,
             manifestError)) {
             return makeResult(false, manifestError);
+        }
+
+        ProjectCopyStats projectStats;
+        if (request.includeProject) {
+            std::string projectCopyError;
+            if (!CopyProjectFiltered(projectRoot, staging / "project", projectStats, projectCopyError)) {
+                return makeResult(false, projectCopyError);
+            }
+
+            if (request.includeReadMe) {
+                const fs::path readMeSource = projectRoot.parent_path() / "ReadMe.md";
+                if (!fs::exists(readMeSource, ec) || !fs::is_regular_file(readMeSource, ec)) {
+                    return makeResult(false, "プロジェクト外のReadMe.mdが見つかりません: " + PathToUtf8(readMeSource));
+                }
+                fs::copy_file(readMeSource, staging / "ReadMe.md", fs::copy_options::overwrite_existing, ec);
+                if (ec) {
+                    return makeResult(false, "ReadMe.mdを提出フォルダへコピーできません: " + PathToUtf8(readMeSource));
+                }
+            }
         }
 
         const bool hadPreviousSet = fs::exists(destination, ec);
@@ -956,6 +1160,10 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             << "件 / Resources " << resourceStats.copiedFiles << "件 (" << FormatMiB(resourceStats.copiedBytes) << ")"
             << " / 除外 " << resourceStats.skippedFiles << "件 (" << FormatMiB(resourceStats.skippedBytes) << ")"
             << " / Texture Pair " << resourceStats.texturePairs << "組";
+        if (request.includeProject) {
+            message << " / project " << projectStats.copiedFiles << "件 (" << FormatMiB(projectStats.copiedBytes) << ")"
+                << " / project除外 " << projectStats.skippedFiles << "件・" << projectStats.skippedDirectories << "フォルダ";
+        }
         if (request.createZip) {
             const uint64_t zipBytes = static_cast<uint64_t>(fs::file_size(zipPath, ec));
             message << " / ZIP " << FormatMiB(zipBytes);

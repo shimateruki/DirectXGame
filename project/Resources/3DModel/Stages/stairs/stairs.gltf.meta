@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ebd543011f3151e53cee4c1a31989b24",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stairs/stairs.gltf",
+  "version": 1
+}

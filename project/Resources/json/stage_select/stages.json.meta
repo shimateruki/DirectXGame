@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "21e6feed487bdc453044e052b19c7be7",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/stage_select/stages.json",
+  "version": 1
+}

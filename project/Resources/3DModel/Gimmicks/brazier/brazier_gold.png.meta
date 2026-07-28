@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7f533a207a60b7f765b530a4db319a73",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/brazier/brazier_gold.png",
+  "version": 1
+}

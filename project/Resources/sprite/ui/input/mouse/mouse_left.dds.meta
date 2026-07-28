@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c0f009c8bc23bbf1909fc3cbb9c81ed0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/mouse/mouse_left.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cc4ed64102f78083f648703a5d82dde4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/stage_star_spark.png",
+  "version": 1
+}

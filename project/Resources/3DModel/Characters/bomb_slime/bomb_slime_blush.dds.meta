@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "03908a105680377ab9912439ea280e0b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bomb_slime/bomb_slime_blush.dds",
+  "version": 1
+}

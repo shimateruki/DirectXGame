@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "674e55ede90e61ba55c7a39ab1c0a5dc",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/GeneratedText/_preview_text3d/_preview_text3d.obj",
+  "version": 1
+}

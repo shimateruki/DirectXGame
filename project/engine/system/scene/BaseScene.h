@@ -18,6 +18,8 @@ class Camera;
 class DirectXCommon;
 class BulletManager;
 class Player;
+class GameRule;
+class Skybox;
 class ScenePreloadData;
 struct SceneLoadManifest;
 
@@ -40,11 +42,13 @@ public:
         // シーン固有のオブジェクト、カメラ、UI、管理クラスを初期化します。
 virtual void Initialize() = 0;
         // 非同期初期化完了後、現在Sceneへ切り替える直前にメインスレッドで呼ばれます。
-virtual void OnActivated() {}
+virtual void OnActivated();
         // ワーカースレッドで先読みするScene Assetと依存リソースを列挙します。
 virtual SceneLoadManifest BuildAsyncLoadManifest() const;
         // シーン内のゲームロジックをフレーム時間に合わせて更新します。
 virtual void Update(float deltaTime) = 0;
+        // 固定刻みで動かす物理・ゲーム処理をScene内Objectへ通知します。
+virtual void FixedUpdate(float fixedDeltaTime);
         // シーン内の3D/2D要素を描画します。
 virtual void Draw() = 0;
         // シーン終了時にリソースや登録状態を片付けます。
@@ -108,10 +112,12 @@ bool Destroy(Object3d* object);
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
     virtual SpriteCommon* GetSpriteCommon() { return nullptr; }
     virtual ParticleSystem* GetParticleSystem() { return nullptr; }
+    virtual Skybox* GetSkybox() { return nullptr; }
 
     // --- Player 連携 (LevelLoader 用) ---
     virtual Player* GetPlayer() const { return nullptr; }
     virtual void SetPlayer(Player* player) { (void)player; }
+    virtual GameRule* GetGameRule() { return nullptr; }
 
     // --- イベント連携 ---
         // targetIDに紐づくイベント受信オブジェクトへ通知します。

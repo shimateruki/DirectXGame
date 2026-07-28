@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "41f31b869843eb87df0682bec7453310",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/loading/slime_hop_sheet_right.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a3a1a8f89990739fa69d43ed7941afe9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/soft_mound/soft_mound.obj",
+  "version": 1
+}

@@ -164,6 +164,8 @@ void RefreshCameraDependentData();
 void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     // 演出用カメラPreview専用。通常描画のWVP/Camera定数を汚さず、別バッファで描画します。
     void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
+    // 特殊マテリアルも通常描画用WVPを上書きせず、Camera Preview専用定数で描画します。
+    void DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex = 0);
 
     // モデルとLOD設定。
         // 直接指定されたModelを描画対象として設定します。
@@ -244,6 +246,14 @@ void DrawShadow();
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
+      // 当たり判定やゲーム進行用Transformを変更せず、描画だけにローカル姿勢を重ねます。
+      void SetVisualTransform(const Vector3& scale, const Vector3& rotation, const Vector3& offset);
+      const Vector3& GetVisualScale() const { return visualScale_; }
+      const Vector3& GetVisualRotation() const { return visualRotation_; }
+      const Vector3& GetVisualOffset() const { return visualOffset_; }
+    // 指定したローカルY座標を支点に、上側だけを水平方向へ傾けます。
+    void SetVisualShear(const Vector3& horizontalShear, float pivotY);
+    void ResetVisualTransform();
         // 水面系特殊マテリアルとして描画します。
 void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -260,10 +270,18 @@ void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 
 private:
     bool HasRequiredBuffers() const;
+    Matrix4x4 BuildRenderWorldMatrix() const;
+    bool PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource);
+    void DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
     const Matrix4x4& GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix);
     void InitializeWaterProxyModel();
     void InitializeFireProxyModel();
@@ -277,6 +295,11 @@ Model* ResolveDrawModel() const;
     // 外部オブジェクトへの参照。MeshRendererは所有しない。
     Object3dCommon* common_ = nullptr;
     Transform* transform_ = nullptr;
+    Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
+    float visualShearPivotY_ = 0.0f;
 
     // 描画モデルとLOD状態。
     Model* model_ = nullptr;

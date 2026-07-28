@@ -104,6 +104,7 @@ Object3dCommon* DebrisEffectManager::ResolveCommon() {
 
 void DebrisEffectManager::Update(float deltaTime) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
+    deltaTime *= timeScale_;
 
     if (activePieces_.empty()) {
         return;
@@ -215,6 +216,17 @@ void DebrisEffectManager::Clear() {
     }
 }
 
+void DebrisEffectManager::ResetEditorPreview(uint32_t randomSeed) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    Clear();
+    randomEngine_.seed(randomSeed);
+}
+
+int DebrisEffectManager::GetActivePieceCount() const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return static_cast<int>(activePieces_.size());
+}
+
 void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -278,6 +290,10 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
     if (j.contains("fadeStartRatio")) config.fadeStartRatio = j["fadeStartRatio"].get<float>();
     config.color = ReadVector4(j, "color", config.color);
     if (j.contains("materialType")) config.materialType = j["materialType"].get<int>();
+    if (j.contains("roughness")) config.roughness = j["roughness"].get<float>();
+    if (j.contains("metallic")) config.metallic = j["metallic"].get<float>();
+    if (j.contains("enableEnvMap")) config.enableEnvMap = j["enableEnvMap"].get<bool>();
+    if (j.contains("envIntensity")) config.envIntensity = j["envIntensity"].get<float>();
     if (j.contains("emissive")) config.emissive = j["emissive"].get<float>();
     if (j.contains("collideGround")) config.collideGround = j["collideGround"].get<bool>();
     if (j.contains("shrinkOnFade")) config.shrinkOnFade = j["shrinkOnFade"].get<bool>();
@@ -315,6 +331,10 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
     j["fadeStartRatio"] = config.fadeStartRatio;
     WriteVector4(j, "color", config.color);
     j["materialType"] = config.materialType;
+    j["roughness"] = config.roughness;
+    j["metallic"] = config.metallic;
+    j["enableEnvMap"] = config.enableEnvMap;
+    j["envIntensity"] = config.envIntensity;
     j["emissive"] = config.emissive;
     j["collideGround"] = config.collideGround;
     j["shrinkOnFade"] = config.shrinkOnFade;
@@ -611,11 +631,11 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     piece.materialData->selectedLighting = 2;
     piece.materialData->shininess = 20.0f;
     piece.materialData->materialType = config.materialType;
-    piece.materialData->roughness = 0.5f;
-    piece.materialData->metallic = 0.0f;
+    piece.materialData->roughness = std::clamp(config.roughness, 0.0f, 1.0f);
+    piece.materialData->metallic = std::clamp(config.metallic, 0.0f, 1.0f);
     piece.materialData->enableNormalMap = 0;
-    piece.materialData->enableEnvMap = 0;
-    piece.materialData->envIntensity = 1.0f;
+    piece.materialData->enableEnvMap = config.enableEnvMap ? 1 : 0;
+    piece.materialData->envIntensity = (std::max)(0.0f, config.envIntensity);
     piece.materialData->emissive = config.emissive;
     return true;
 }
@@ -630,6 +650,9 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4&
     piece.wvpData->WVP = Math::Multiply(world, viewProjection);
     piece.wvpData->world = world;
     piece.wvpData->WorldInverseTranspose = Math::Transpose(Math::Inverse(world));
+    if (piece.materialData) {
+        piece.materialData->time = piece.age;
+    }
 
     if (piece.shadowWvpData && lightViewProjection) {
         piece.shadowWvpData->WVP = Math::Multiply(world, *lightViewProjection);

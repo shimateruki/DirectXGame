@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "69342c1d8a3e664c971826fef47dc113",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/signboard/signboard_wood.dds",
+  "version": 1
+}

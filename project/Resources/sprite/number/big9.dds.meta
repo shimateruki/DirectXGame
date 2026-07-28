@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6653601ea6f7539eb4d9017365d4f8e2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/big9.dds",
+  "version": 1
+}

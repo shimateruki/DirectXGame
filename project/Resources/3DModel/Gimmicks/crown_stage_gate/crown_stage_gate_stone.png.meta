@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7b0064fe6f83845b141ae74dd1257bb4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/crown_stage_gate/crown_stage_gate_stone.png",
+  "version": 1
+}

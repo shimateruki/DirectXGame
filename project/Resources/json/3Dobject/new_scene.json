@@ -1,0 +1,9 @@
+{
+    "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
+    "_sceneAsset": {
+        "displayName": "sample",
+        "id": "new_scene",
+        "spriteLayout": "Resources/json/sprite/new_scene_sprite.json",
+        "version": 1
+    }
+}

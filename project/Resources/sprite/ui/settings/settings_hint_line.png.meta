@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6f1b84c1afe082f3f1f6950c4698de32",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_hint_line.png",
+  "version": 1
+}

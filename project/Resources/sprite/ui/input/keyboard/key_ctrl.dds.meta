@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cca6d56cc89b92f6ac5400dcfa4a0eb6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_ctrl.dds",
+  "version": 1
+}

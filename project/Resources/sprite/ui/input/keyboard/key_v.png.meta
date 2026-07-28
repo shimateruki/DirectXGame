@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "513f9b2a13efe1b472a5d45ecd50d8a2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_v.png",
+  "version": 1
+}

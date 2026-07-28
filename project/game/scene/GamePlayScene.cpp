@@ -340,7 +340,7 @@ void GamePlayScene::Draw() {
 		}
 
 		// 半透明マテリアル(1)、ローカルフォグ(7)、特殊描画マテリアル(8〜22)はここでは描画しない
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue;
 
 		obj->Draw(pointLightRes, spotLightRes);
 	}
@@ -393,7 +393,7 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) {
+		if (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) {
 			hasFluid = true;
 			break;
 		}
@@ -410,6 +410,8 @@ void GamePlayScene::Draw() {
 			dxCommon_->UpdateGrabTexture();
 			grabUpdated = true;
 		}
+		// 水・炎・GPUパーティクルは深度をSRVとして読むため、この区間ではDSVを外します。
+		dxCommon_->PreDrawLocalFog();
 
 		if (hasFluid) {
 			for (auto& obj : objects) {
@@ -469,6 +471,10 @@ void GamePlayScene::Draw() {
 				else if (matType == 22) {
 					obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				}
+				else if (matType == 26) {
+					obj->DrawWindOrb(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				obj->DrawOwnedSpecialMaterialVisuals(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			}
 			BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
@@ -482,6 +488,7 @@ void GamePlayScene::Draw() {
 				dxCommon_->GetDepthSrvHandle()
 			);
 		}
+		dxCommon_->PostDrawLocalFog();
 	}
 
 	// =======================================================
@@ -540,6 +547,9 @@ void GamePlayScene::DrawUI() {
 		player_->DrawUI();
 	}
 	DrawGameplayHUD();
+    if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
+        controlsGuideOverlay_->Draw();
+    }
     if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive() && !(settingsOverlay_ && settingsOverlay_->IsActive())) {
         pauseMenuOverlay_->Draw();
     }
@@ -574,6 +584,9 @@ void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 	if (pauseMenuOverlay_) {
 		pauseMenuOverlay_->CollectReplaySprites(replaySprites);
 	}
+	if (controlsGuideOverlay_) {
+		controlsGuideOverlay_->CollectReplaySprites(replaySprites);
+	}
 	if (settingsOverlay_) {
 		settingsOverlay_->CollectReplaySprites(replaySprites);
 	}
@@ -584,9 +597,11 @@ void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 
 void GamePlayScene::CaptureReplaySceneState(json& state) const {
 	json pauseState = json::object();
+	json controlsGuideState = json::object();
 	json settingsState = json::object();
 	json saveIndicatorState = json::object();
 	if (pauseMenuOverlay_) pauseMenuOverlay_->CaptureReplayState(pauseState);
+	if (controlsGuideOverlay_) controlsGuideOverlay_->CaptureReplayState(controlsGuideState);
 	if (settingsOverlay_) settingsOverlay_->CaptureReplayState(settingsState);
 	if (saveIndicatorOverlay_) saveIndicatorOverlay_->CaptureReplayState(saveIndicatorState);
 
@@ -622,6 +637,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
 			{ "hurtIconTimer", hudHurtIconTimer_ },
 			{ "hpDamageHoldTimer", hudHpDamageHoldTimer_ },
 			{ "hpDelayedRate", hudHpDelayedRate_ },
+			{ "hpAnimationTimer", hudHpAnimationTimer_ },
 			{ "morphGaugeTimer", hudMorphGaugeTimer_ },
 			{ "morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_ }
 		} },
@@ -637,6 +653,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
 		} },
 		{ "overlays", {
 			{ "pause", std::move(pauseState) },
+			{ "controlsGuide", std::move(controlsGuideState) },
 			{ "settings", std::move(settingsState) },
 			{ "saveIndicator", std::move(saveIndicatorState) }
 		} }
@@ -707,6 +724,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 		hudHurtIconTimer_ = hud.value("hurtIconTimer", hudHurtIconTimer_);
 		hudHpDamageHoldTimer_ = hud.value("hpDamageHoldTimer", hudHpDamageHoldTimer_);
 		hudHpDelayedRate_ = hud.value("hpDelayedRate", hudHpDelayedRate_);
+		hudHpAnimationTimer_ = hud.value("hpAnimationTimer", hudHpAnimationTimer_);
 		hudMorphGaugeTimer_ = hud.value("morphGaugeTimer", hudMorphGaugeTimer_);
 		hudMorphGaugeVisibleTimer_ = hud.value("morphGaugeVisibleTimer", hudMorphGaugeVisibleTimer_);
 	}
@@ -727,6 +745,9 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 		const json& overlays = *found;
 		if (pauseMenuOverlay_ && overlays.contains("pause")) {
 			pauseMenuOverlay_->RestoreReplayState(overlays["pause"]);
+		}
+		if (controlsGuideOverlay_ && overlays.contains("controlsGuide")) {
+			controlsGuideOverlay_->RestoreReplayState(overlays["controlsGuide"]);
 		}
 		if (settingsOverlay_ && overlays.contains("settings")) {
 			settingsOverlay_->RestoreReplayState(overlays["settings"]);

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c0a0791cf60f24b0765eaf3910d05e75",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/terrain/grass.dds",
+  "version": 1
+}

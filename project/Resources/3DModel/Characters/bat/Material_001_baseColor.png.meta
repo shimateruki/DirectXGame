@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b2a055c1f6a096189bd491ee7c1264b9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bat/Material_001_baseColor.png",
+  "version": 1
+}

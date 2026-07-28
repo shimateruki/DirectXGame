@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ea389d39de31465f6cb03d0aee17f8b4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/water_flow_noise.dds",
+  "version": 1
+}

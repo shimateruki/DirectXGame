@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "671ba6fe0c596e73c25e2ce0dd0e0c09",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/fire_orb_mask.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "301cb03aa95fe608a1148ea973a98536",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/electric_arc_sheet.dds",
+  "version": 1
+}

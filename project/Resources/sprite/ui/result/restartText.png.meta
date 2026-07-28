@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d1a0ea0d127777a761aed1dce5837dca",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/restartText.png",
+  "version": 1
+}

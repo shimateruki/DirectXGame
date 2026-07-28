@@ -150,7 +150,7 @@ void DirectXCommon::PreDraw() {
 
 
 
-
+//
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_t sizeInBytes)
 {
 	//頂点とリソース用のヒープ設定

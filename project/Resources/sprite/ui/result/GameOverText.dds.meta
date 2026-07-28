@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ece5244fa5fd7c30457d17b1f167c42b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/GameOverText.dds",
+  "version": 1
+}

@@ -3,6 +3,8 @@
 #include "engine/utility/math/Math.h"
 #include <cmath> 
 #include <algorithm> // std::find
+#include <limits>
+#include <unordered_map>
 
 
 
@@ -24,6 +26,34 @@ bool IsCollisionActive(Object3d* object) {
     }
     return true;
 }
+
+std::pair<Object3d*, Object3d*> MakeContactPair(Object3d* objectA, Object3d* objectB) {
+    if (std::less<Object3d*>{}(objectB, objectA)) {
+        std::swap(objectA, objectB);
+    }
+    return { objectA, objectB };
+}
+
+bool IsTriggerObject(const Object3d* object) {
+    return object && (object->GetCollisionAttribute() & CollisionAttribute::kTrigger) != 0;
+}
+
+bool IsInIgnoredHierarchy(Object3d* object, Object3d* ignoredRoot) {
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        if (current == ignoredRoot) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Vector3 SafeNormalize(const Vector3& value) {
+    const float length = std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+    if (length <= 0.000001f) {
+        return { 0.0f, 0.0f, 0.0f };
+    }
+    return value / length;
+}
 }
 
 void CollisionManager::AddObject(Object3d* object) {
@@ -42,6 +72,18 @@ void CollisionManager::RemoveObject(Object3d* object) {
         // 静的グリッドの再構築が必要
         needsStaticGridRebuild_ = true;
     }
+
+    const auto removeContacts = [object](auto& contacts) {
+        for (auto it = contacts.begin(); it != contacts.end();) {
+            if (it->first.first == object || it->first.second == object) {
+                it = contacts.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    };
+    removeContacts(previousContacts_);
+    removeContacts(currentContacts_);
 }
 
 void CollisionManager::ClearObjects() {
@@ -49,6 +91,8 @@ void CollisionManager::ClearObjects() {
     grid_.clear();
     checkedPairs_.clear();
     staticGrid_.clear();
+    previousContacts_.clear();
+    currentContacts_.clear();
     needsStaticGridRebuild_ = true;
 }
 
@@ -137,6 +181,8 @@ void CollisionManager::BuildStaticGrid() {
 // 更新処理 (静的/動的 分離版)
 void CollisionManager::Update() {
 
+    currentContacts_.clear();
+
     // 1. 静的グリッドの再構築 (必要な場合のみ)
     if (needsStaticGridRebuild_) {
         BuildStaticGrid();
@@ -190,8 +236,9 @@ void CollisionManager::Update() {
 
                             if (objA == objB || !IsCollisionActive(objB)) continue;
 
-                            Object3d* pairA = (objA < objB) ? objA : objB;
-                            Object3d* pairB = (objA < objB) ? objB : objA;
+                            const auto pair = MakeContactPair(objA, objB);
+                            Object3d* pairA = pair.first;
+                            Object3d* pairB = pair.second;
 
                             if (checkedPairs_.count({ pairA, pairB })) {
                                 continue;
@@ -208,7 +255,8 @@ void CollisionManager::Update() {
                         std::list<Object3d*>& cellObjects = it_static->second;
                         for (Object3d* objB : cellObjects) {
                             if (!IsCollisionActive(objB)) continue;
-                            // (objB は静的なので、ペアチェックは不要)
+                            // 既存の地形押し戻しは動的オブジェクトを先に通知し、
+                            // 占有セルごとに再評価する順序を前提に調整されています。
                             CheckCollisionPair(objA, objB);
                         }
                     }
@@ -216,6 +264,9 @@ void CollisionManager::Update() {
             }
         }
     }
+
+    DispatchContactEvents();
+    previousContacts_ = currentContacts_;
 }
 
 
@@ -244,6 +295,55 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
 
     objA->OnCollision(objB);
     objB->OnCollision(objA);
+
+    const auto pair = MakeContactPair(objA, objB);
+    ContactState state;
+    state.firstInfo = collisionInfo;
+    if (pair.first != objA) {
+        state.firstInfo.normal = state.firstInfo.normal * -1.0f;
+    }
+    state.isTrigger = IsTriggerObject(objA) || IsTriggerObject(objB);
+    currentContacts_[pair] = state;
+}
+
+void CollisionManager::DispatchContactEvents() {
+    const auto dispatch = [](Object3d* self, Object3d* other, CollisionInfo info,
+        CollisionEventPhase phase, bool isTrigger) {
+        if (!self || !other) return;
+        CollisionEvent event;
+        event.self = self;
+        event.other = other;
+        event.collision = info;
+        event.phase = phase;
+        event.isTrigger = isTrigger;
+
+        if (isTrigger) {
+            if (phase == CollisionEventPhase::Enter) self->OnTriggerEnter(event);
+            else if (phase == CollisionEventPhase::Stay) self->OnTriggerStay(event);
+            else self->OnTriggerExit(event);
+        } else {
+            if (phase == CollisionEventPhase::Enter) self->OnCollisionEnter(event);
+            else if (phase == CollisionEventPhase::Stay) self->OnCollisionStay(event);
+            else self->OnCollisionExit(event);
+        }
+    };
+
+    for (const auto& [pair, state] : currentContacts_) {
+        const CollisionEventPhase phase = previousContacts_.count(pair)
+            ? CollisionEventPhase::Stay : CollisionEventPhase::Enter;
+        dispatch(pair.first, pair.second, state.firstInfo, phase, state.isTrigger);
+        CollisionInfo secondInfo = state.firstInfo;
+        secondInfo.normal = secondInfo.normal * -1.0f;
+        dispatch(pair.second, pair.first, secondInfo, phase, state.isTrigger);
+    }
+
+    for (const auto& [pair, state] : previousContacts_) {
+        if (currentContacts_.count(pair)) continue;
+        dispatch(pair.first, pair.second, state.firstInfo, CollisionEventPhase::Exit, state.isTrigger);
+        CollisionInfo secondInfo = state.firstInfo;
+        secondInfo.normal = secondInfo.normal * -1.0f;
+        dispatch(pair.second, pair.first, secondInfo, CollisionEventPhase::Exit, state.isTrigger);
+    }
 }
 
 
@@ -466,3 +566,245 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
         return closestHit;
     }
+
+RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direction,
+    float maxDistance, const PhysicsQueryFilter& filter) {
+    return RaycastInternal(start, direction, maxDistance, filter, false);
+}
+
+bool CollisionManager::PassesQueryFilter(Object3d* object, const PhysicsQueryFilter& filter) const {
+    if (!object || !object->GetCollider() || object->GetColliderType() == ColliderType::kNone) {
+        return false;
+    }
+    if (!filter.includeDisabled && object->GetCollisionAttribute() == 0) {
+        return false;
+    }
+    if (object->GetCollisionAttribute() != 0 &&
+        (object->GetCollisionAttribute() & filter.mask) == 0) {
+        return false;
+    }
+    if (!filter.includeTriggers && IsTriggerObject(object)) {
+        return false;
+    }
+    if (filter.ignoredObject) {
+        if (object == filter.ignoredObject) return false;
+        if (filter.ignoreDescendants && IsInIgnoredHierarchy(object, filter.ignoredObject)) return false;
+    }
+    return true;
+}
+
+RaycastHit CollisionManager::RaycastInternal(
+    const Vector3& start, const Vector3& direction, float maxDistance,
+    const PhysicsQueryFilter& filter, bool excludePlayerHierarchy) const {
+    RaycastHit closestHit;
+    closestHit.distance = (std::max)(0.0f, maxDistance);
+    const Vector3 rayDirection = SafeNormalize(direction);
+    if (Math::Length(rayDirection) <= 0.000001f || maxDistance < 0.0f) return closestHit;
+
+    for (Object3d* object : objects_) {
+        if (!PassesQueryFilter(object, filter)) continue;
+
+        if (excludePlayerHierarchy) {
+            bool isPlayerPart = false;
+            for (Object3d* current = object; current; current = current->GetParent()) {
+                if (current->GetClassName() == "Player" ||
+                    current->GetName().find("Player") != std::string::npos) {
+                    isPlayerPart = true;
+                    break;
+                }
+            }
+            if (isPlayerPart) continue;
+        }
+
+        const ColliderType colliderType = object->GetColliderType();
+        float distance = std::numeric_limits<float>::max();
+        if (colliderType == ColliderType::kAABB) {
+            distance = IntersectRayAABB(start, rayDirection, object->GetAABB());
+        } else if (colliderType == ColliderType::kOBB) {
+            distance = IntersectRayOBB(start, rayDirection, object->GetOBB());
+        } else if (colliderType == ColliderType::kSphere) {
+            const AABB sphereBounds = object->GetAABB();
+            const Vector3 sphereCenter = (sphereBounds.min + sphereBounds.max) * 0.5f;
+            distance = IntersectRaySphere(
+                start, rayDirection, sphereCenter, object->GetCollisionRadius());
+        } else {
+            continue;
+        }
+        if (distance > closestHit.distance) continue;
+
+        closestHit.isHit = true;
+        closestHit.distance = distance;
+        closestHit.hitObject = object;
+        closestHit.hitPoint = start + rayDirection * distance;
+
+        if (colliderType == ColliderType::kSphere) {
+            const AABB sphereBounds = object->GetAABB();
+            closestHit.normal = SafeNormalize(
+                closestHit.hitPoint - (sphereBounds.min + sphereBounds.max) * 0.5f);
+        } else if (colliderType == ColliderType::kAABB) {
+            const AABB bounds = object->GetAABB();
+            const float faceDistances[6] = {
+                std::abs(closestHit.hitPoint.x - bounds.min.x),
+                std::abs(closestHit.hitPoint.x - bounds.max.x),
+                std::abs(closestHit.hitPoint.y - bounds.min.y),
+                std::abs(closestHit.hitPoint.y - bounds.max.y),
+                std::abs(closestHit.hitPoint.z - bounds.min.z),
+                std::abs(closestHit.hitPoint.z - bounds.max.z),
+            };
+            const Vector3 normals[6] = {
+                { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 },
+                { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 },
+            };
+            int bestFace = 0;
+            for (int face = 1; face < 6; ++face) {
+                if (faceDistances[face] < faceDistances[bestFace]) bestFace = face;
+            }
+            closestHit.normal = normals[bestFace];
+        } else {
+            const OBB bounds = object->GetOBB();
+            const Vector3 local = closestHit.hitPoint - bounds.center;
+            float bestDistance = std::numeric_limits<float>::max();
+            for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
+                const float halfSize = axisIndex == 0 ? bounds.size.x : axisIndex == 1 ? bounds.size.y : bounds.size.z;
+                const float projection = Math::Dot(local, bounds.orientations[axisIndex]);
+                const float surfaceDistance = std::abs(halfSize - std::abs(projection));
+                if (surfaceDistance < bestDistance) {
+                    bestDistance = surfaceDistance;
+                    closestHit.normal = bounds.orientations[axisIndex] * (projection >= 0.0f ? 1.0f : -1.0f);
+                }
+            }
+        }
+    }
+    return closestHit;
+}
+
+std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphere(
+    const Vector3& center, float radius, const PhysicsQueryFilter& filter) const {
+    std::vector<PhysicsOverlapHit> hits;
+    if (radius <= 0.0f) return hits;
+
+    Transform queryTransform;
+    queryTransform.translate = center;
+    queryTransform.UpdateMatrix();
+    Collider queryCollider(&queryTransform);
+    ColliderConfig queryConfig;
+    queryConfig.type = ColliderType::kSphere;
+    queryConfig.size = { radius, radius, radius };
+    queryCollider.SetConfig(queryConfig);
+
+    for (Object3d* object : objects_) {
+        if (!PassesQueryFilter(object, filter)) continue;
+        CollisionInfo collision = queryCollider.CheckCollision(object->GetCollider());
+        if (collision.isColliding) hits.push_back({ object, collision });
+    }
+    return hits;
+}
+
+std::vector<PhysicsOverlapHit> CollisionManager::OverlapAABB(
+    const AABB& bounds, const PhysicsQueryFilter& filter) const {
+    std::vector<PhysicsOverlapHit> hits;
+    const Vector3 halfSize = (bounds.max - bounds.min) * 0.5f;
+    if (halfSize.x < 0.0f || halfSize.y < 0.0f || halfSize.z < 0.0f) return hits;
+
+    Transform queryTransform;
+    queryTransform.translate = (bounds.min + bounds.max) * 0.5f;
+    queryTransform.UpdateMatrix();
+    Collider queryCollider(&queryTransform);
+    ColliderConfig queryConfig;
+    queryConfig.type = ColliderType::kAABB;
+    queryConfig.size = halfSize;
+    queryCollider.SetConfig(queryConfig);
+
+    for (Object3d* object : objects_) {
+        if (!PassesQueryFilter(object, filter)) continue;
+        CollisionInfo collision = queryCollider.CheckCollision(object->GetCollider());
+        if (collision.isColliding) hits.push_back({ object, collision });
+    }
+    return hits;
+}
+
+std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
+    const Vector3& pointA, const Vector3& pointB, float radius,
+    const PhysicsQueryFilter& filter) const {
+    std::unordered_map<Object3d*, CollisionInfo> uniqueHits;
+    if (radius <= 0.0f) return {};
+
+    const Vector3 segment = pointB - pointA;
+    const float length = Math::Length(segment);
+    const int sampleCount = (std::max)(1, static_cast<int>(std::ceil(length / (std::max)(radius, 0.05f))));
+    for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex) {
+        const float t = static_cast<float>(sampleIndex) / static_cast<float>(sampleCount);
+        for (const PhysicsOverlapHit& hit : OverlapSphere(pointA + segment * t, radius, filter)) {
+            auto found = uniqueHits.find(hit.object);
+            if (found == uniqueHits.end() || hit.collision.penetration > found->second.penetration) {
+                uniqueHits[hit.object] = hit.collision;
+            }
+        }
+    }
+
+    std::vector<PhysicsOverlapHit> hits;
+    hits.reserve(uniqueHits.size());
+    for (const auto& [object, collision] : uniqueHits) hits.push_back({ object, collision });
+    return hits;
+}
+
+RaycastHit CollisionManager::SphereCast(
+    const Vector3& start, float radius, const Vector3& direction, float maxDistance,
+    const PhysicsQueryFilter& filter) const {
+    RaycastHit hit;
+    hit.distance = (std::max)(0.0f, maxDistance);
+    const Vector3 castDirection = SafeNormalize(direction);
+    if (radius <= 0.0f || Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f) return hit;
+
+    const float stepLength = (std::max)(0.05f, radius * 0.5f);
+    const int stepCount = (std::max)(1, static_cast<int>(std::ceil(maxDistance / stepLength)));
+    for (int stepIndex = 0; stepIndex <= stepCount; ++stepIndex) {
+        const float distance = (std::min)(maxDistance, stepLength * static_cast<float>(stepIndex));
+        const Vector3 center = start + castDirection * distance;
+        const auto overlaps = OverlapSphere(center, radius, filter);
+        if (overlaps.empty()) continue;
+
+        const PhysicsOverlapHit* deepest = &overlaps.front();
+        for (const PhysicsOverlapHit& overlap : overlaps) {
+            if (overlap.collision.penetration > deepest->collision.penetration) deepest = &overlap;
+        }
+        hit.isHit = true;
+        hit.hitObject = deepest->object;
+        hit.distance = distance;
+        hit.normal = deepest->collision.normal;
+        hit.hitPoint = center - hit.normal * radius;
+        return hit;
+    }
+    return hit;
+}
+
+RaycastHit CollisionManager::CapsuleCast(
+    const Vector3& pointA, const Vector3& pointB, float radius,
+    const Vector3& direction, float maxDistance,
+    const PhysicsQueryFilter& filter) const {
+    RaycastHit hit;
+    hit.distance = (std::max)(0.0f, maxDistance);
+    const Vector3 castDirection = SafeNormalize(direction);
+    if (radius <= 0.0f || Math::Length(castDirection) <= 0.000001f || maxDistance < 0.0f) return hit;
+
+    const float stepLength = (std::max)(0.05f, radius * 0.5f);
+    const int stepCount = (std::max)(1, static_cast<int>(std::ceil(maxDistance / stepLength)));
+    for (int stepIndex = 0; stepIndex <= stepCount; ++stepIndex) {
+        const float distance = (std::min)(maxDistance, stepLength * static_cast<float>(stepIndex));
+        const Vector3 offset = castDirection * distance;
+        const auto overlaps = OverlapCapsule(pointA + offset, pointB + offset, radius, filter);
+        if (overlaps.empty()) continue;
+
+        const PhysicsOverlapHit* deepest = &overlaps.front();
+        for (const PhysicsOverlapHit& overlap : overlaps) {
+            if (overlap.collision.penetration > deepest->collision.penetration) deepest = &overlap;
+        }
+        hit.isHit = true;
+        hit.hitObject = deepest->object;
+        hit.distance = distance;
+        hit.normal = deepest->collision.normal;
+        hit.hitPoint = (pointA + pointB) * 0.5f + offset - hit.normal * radius;
+        return hit;
+    }
+    return hit;
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e90cdd87d54ac7bddd2bcb9daffc3256",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Item/heart/heart_lod1.gltf",
+  "version": 1
+}

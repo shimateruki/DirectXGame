@@ -182,6 +182,27 @@ json Object3d::SerializeFeatureComponents() const {
         clearKnownPayload(std::string(kGameplayLinkComponentType), { "eventId", "targetId" });
     }
 
+    if (navAgentComponent_) {
+        json& payload = components[std::string(kNavAgentComponentType)];
+        if (!payload.is_object()) payload = json::object();
+        payload["version"] = 1;
+        payload["_editorPresent"] = true;
+        payload["enabled"] = navAgentComponent_->IsEnabled();
+        payload["cellSize"] = navAgentComponent_->GetCellSize();
+        payload["agentRadius"] = navAgentComponent_->GetAgentRadius();
+        payload["agentHeight"] = navAgentComponent_->GetAgentHeight();
+        payload["searchPadding"] = navAgentComponent_->GetSearchPadding();
+        payload["repathInterval"] = navAgentComponent_->GetRepathInterval();
+        payload["stoppingDistance"] = navAgentComponent_->GetStoppingDistance();
+        payload["obstacleMask"] = navAgentComponent_->GetObstacleMask();
+        payload["allowDiagonal"] = navAgentComponent_->AllowsDiagonal();
+    } else {
+        clearKnownPayload(std::string(kNavAgentComponentType), {
+            "enabled", "cellSize", "agentRadius", "agentHeight", "searchPadding",
+            "repathInterval", "stoppingDistance", "obstacleMask", "allowDiagonal"
+        });
+    }
+
     return components;
 }
 
@@ -194,6 +215,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     meshEffectComponent_.reset();
     pathMoverComponent_.reset();
     gameplayLinkComponent_.reset();
+    navAgentComponent_.reset();
     gpuEmitter_.reset();
     currentMeshEffect1_.clear();
     currentMeshEffect2_.clear();
@@ -281,6 +303,22 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
         component->SetTargetId(
             linkPayload && linkPayload->contains("targetId")
                 ? linkPayload->value("targetId", -1) : legacyTargetId);
+    }
+
+    const json* navPayload = getPayload(kNavAgentComponentType);
+    if (resolvePresence(navPayload, false)) {
+        NavAgentComponent* component = EnsureNavAgentComponent();
+        if (navPayload) {
+            component->SetCellSize(navPayload->value("cellSize", 1.0f));
+            component->SetAgentRadius(navPayload->value("agentRadius", 0.55f));
+            component->SetAgentHeight(navPayload->value("agentHeight", 1.5f));
+            component->SetSearchPadding(navPayload->value("searchPadding", 5.0f));
+            component->SetRepathInterval(navPayload->value("repathInterval", 0.35f));
+            component->SetStoppingDistance(navPayload->value("stoppingDistance", 0.25f));
+            component->SetObstacleMask(navPayload->value("obstacleMask", kAllSolid));
+            component->SetAllowDiagonal(navPayload->value("allowDiagonal", true));
+            component->SetEnabled(navPayload->value("enabled", true));
+        }
     }
 }
 
@@ -431,7 +469,7 @@ json Object3d::ExportToJson() {
         }
         d["lod"] = lodJson;
     }
-    if (GetMaterialType() >= 8 && GetMaterialType() <= 22 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if (((GetMaterialType() >= 8 && GetMaterialType() <= 22) || GetMaterialType() == 26) && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         json jw;
         jw["waveSpeed"] = water->waveSpeed;
@@ -643,7 +681,7 @@ void Object3d::ImportFromJson(const json& j) {
         }
         SetLodEnabled(enabled);
     }
-    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 22) {
+    if (j.contains("waterParam") && ((GetMaterialType() >= 8 && GetMaterialType() <= 22) || GetMaterialType() == 26)) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
             const auto& jw = j["waterParam"];

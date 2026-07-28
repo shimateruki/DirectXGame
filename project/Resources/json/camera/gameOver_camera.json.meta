@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "3e952e505f33c60615a06503a723f74d",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/camera/gameOver_camera.json",
+  "version": 1
+}

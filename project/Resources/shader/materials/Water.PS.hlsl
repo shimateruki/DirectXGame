@@ -38,8 +38,21 @@ float4 main(VSOutput input) : SV_TARGET
     screenUV = float2(screenUV.x * 0.5f + 0.5f, -screenUV.y * 0.5f + 0.5f);
     screenUV = saturate(screenUV);
 
-    float sceneDepth = LinearizeDepth(depthTex.Sample(smp, screenUV).r);
-    float surfaceDepth = LinearizeDepth(input.screenPos.z / input.screenPos.w);
+    uint depthWidth = 1;
+    uint depthHeight = 1;
+    depthTex.GetDimensions(depthWidth, depthHeight);
+    uint2 depthCoord = min(
+        uint2(screenUV * float2(depthWidth, depthHeight)),
+        uint2(depthWidth - 1, depthHeight - 1));
+
+    float rawSceneDepth = depthTex.Load(int3(depthCoord, 0));
+    float rawSurfaceDepth = saturate(input.screenPos.z / input.screenPos.w);
+
+    // The depth buffer is sampled while no DSV is bound, so reject water hidden by opaque geometry explicitly.
+    clip(rawSceneDepth - rawSurfaceDepth + 0.00001f);
+
+    float sceneDepth = LinearizeDepth(rawSceneDepth);
+    float surfaceDepth = LinearizeDepth(rawSurfaceDepth);
     float depthDifference = max(sceneDepth - surfaceDepth, 0.0f);
     float depthRange = max(effectScaleX, 1.0f);
     float depthFactor = saturate(depthDifference / depthRange);

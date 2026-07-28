@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ce52c6ff06ac5599f57a068fe53e16a7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/star/Star_normal.png",
+  "version": 1
+}

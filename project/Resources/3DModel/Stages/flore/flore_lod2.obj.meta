@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f50baafb7a72ac13017c19ccb4749a7d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/flore/flore_lod2.obj",
+  "version": 1
+}

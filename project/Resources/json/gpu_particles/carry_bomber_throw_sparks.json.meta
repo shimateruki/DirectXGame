@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "fa31edc185e2574c306bbdf7b5c4b7b5",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/carry_bomber_throw_sparks.json",
+  "version": 1
+}

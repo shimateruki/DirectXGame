@@ -163,10 +163,13 @@
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp" />
     <ClCompile Include="game\actor\enemy\core\AttackTelegraph.cpp" />
+    <ClCompile Include="game\actor\enemy\core\EnemyAttackProfile.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\elemental\EnemyWindSlime.cpp" />
     <ClCompile Include="game\actor\enemy\heavy\EnemyGiantSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\EnemyPrismSlime.cpp" />
     <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp" />
     <ClCompile Include="engine\graphics\effect\EffectObject3d.cpp" />
@@ -237,10 +240,12 @@
     <ClCompile Include="game\scene\GameOverScene.cpp" />
     <ClCompile Include="game\scene\GameClearScene.cpp" />
     <ClCompile Include="game\scene\SettingsScene.cpp" />
+    <ClCompile Include="game\ui\ControlsGuideOverlay.cpp" />
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp" />
     <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp" />
     <ClCompile Include="game\system\GameRule.cpp" />
+    <ClCompile Include="game\system\TutorialDirector.cpp" />
     <ClCompile Include="game\system\GroundEffectLocator.cpp" />
     <ClCompile Include="game\system\HitEffectDirector.cpp" />
     <ClCompile Include="game\system\GameAudioSettings.cpp" />
@@ -259,11 +264,14 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Creation.cpp" />
     <ClCompile Include="engine\system\collision\CollisionConfig.cpp" />
     <ClCompile Include="engine\system\collision\CollisionManager.cpp" />
+    <ClCompile Include="engine\system\navigation\NavGrid.cpp" />
+    <ClCompile Include="engine\component\NavAgentComponent.cpp" />
     <ClCompile Include="engine\system\scene\BaseScene.cpp" />
     <ClCompile Include="engine\system\scene\LoadingScene.cpp" />
     <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp" />
@@ -374,6 +382,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp" />
@@ -570,11 +579,14 @@
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h" />
     <ClInclude Include="game\actor\enemy\core\AttackTelegraph.h" />
+    <ClInclude Include="game\actor\enemy\core\EnemyAttackProfile.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorAssetDragPayload.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.h" />
@@ -582,6 +594,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\boss\BossCore.h" />
+    <ClInclude Include="game\actor\enemy\boss\EnemyPrismSlime.h" />
     <ClInclude Include="game\actor\enemy\core\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\component\GameplayLinkComponent.h" />
@@ -589,6 +602,7 @@
     <ClInclude Include="engine\component\ObjectComponent.h" />
     <ClInclude Include="engine\component\ParticleEmitterComponent.h" />
     <ClInclude Include="engine\component\PathMoverComponent.h" />
+    <ClInclude Include="engine\component\NavAgentComponent.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorManager.h" />
     <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h" />
@@ -625,6 +639,7 @@
     <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyThunderSlime.h" />
+    <ClInclude Include="game\actor\enemy\elemental\EnemyWindSlime.h" />
     <ClInclude Include="game\actor\enemy\heavy\EnemyGiantSlime.h" />
     <ClInclude Include="game\actor\enemy\flying\EnemyBat.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h" />
@@ -816,6 +831,7 @@
     <ClInclude Include="game\scene\GameOverScene.h" />
     <ClInclude Include="game\scene\GameClearScene.h" />
     <ClInclude Include="game\system\GameRule.h" />
+    <ClInclude Include="game\system\TutorialDirector.h" />
     <ClInclude Include="game\system\GroundEffectLocator.h" />
     <ClInclude Include="game\system\HitEffectDirector.h" />
     <ClInclude Include="game\actor\Bullet.h" />
@@ -826,6 +842,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\DebugEditor.h" />
     <ClInclude Include="game\actor\CollisionConfig.h" />
     <ClInclude Include="engine\system\collision\CollisionManager.h" />
+    <ClInclude Include="engine\system\collision\CollisionEvent.h" />
+    <ClInclude Include="engine\system\navigation\NavGrid.h" />
     <ClInclude Include="engine\system\scene\BaseScene.h" />
     <ClInclude Include="engine\system\scene\LoadingScene.h" />
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h" />
@@ -862,6 +880,7 @@
     <ClInclude Include="game\scene\TutorialScene.h" />
     <ClInclude Include="game\scene\GameSelectScene.h" />
     <ClInclude Include="game\scene\SettingsScene.h" />
+    <ClInclude Include="game\ui\ControlsGuideOverlay.h" />
     <ClInclude Include="game\ui\PauseMenuOverlay.h" />
     <ClInclude Include="game\ui\SaveIndicatorOverlay.h" />
     <ClInclude Include="game\ui\SettingsMenuOverlay.h" />
@@ -928,6 +947,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h" />

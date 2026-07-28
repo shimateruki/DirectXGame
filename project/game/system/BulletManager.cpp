@@ -4,7 +4,7 @@
 
 namespace {
 bool IsSpecialMaterial(int32_t materialType) {
-    return materialType >= 8 && materialType <= 22;
+    return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
 void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
@@ -58,6 +58,9 @@ void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrv
     case 22:
         bullet->DrawGatePortal(depthSrvHandle, grabSrvHandle);
         break;
+    case 26:
+        bullet->DrawWindOrb(depthSrvHandle, grabSrvHandle);
+        break;
     default:
         break;
     }
@@ -95,7 +98,8 @@ void BulletManager::Clear() {
 void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     uint32_t attr, uint32_t mask,
     const std::string& model, float radius, float life,
-    const BulletVisualConfig& visualConfig) {
+    const BulletVisualConfig& visualConfig, float damage,
+    const StatusEffectApplication& statusEffect, DamageType damageType) {
 
     if (!common_ || !colManager_) {
         return;
@@ -115,6 +119,9 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
 
     if (MeshRenderer* renderer = bullet->GetMeshRenderer()) {
         if (auto* param = renderer->GetWaterParamData()) {
+            param->waveSpeed = visualConfig.waveSpeed;
+            param->waveHeight = visualConfig.waveHeight;
+            param->waveFrequency = visualConfig.waveFrequency;
             param->effectType = visualConfig.effectType;
             param->effectScale = visualConfig.effectScale;
             param->effectSoftness = visualConfig.effectSoftness;
@@ -126,7 +133,12 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     bullet->SetColliderType(ColliderType::kSphere);
     bullet->SetCollisionRadius(radius);
     bullet->SetCollisionSize({ radius, radius, radius });
-    bullet->Fire(pos, vel, life, attr, mask);
+    bullet->Fire(pos, vel, life, attr, mask, damage, statusEffect, damageType);
+    bullet->ConfigureVfx(
+        visualConfig.trailPreset,
+        visualConfig.impactPreset,
+        visualConfig.trailInterval,
+        visualConfig.trailSpeedScale);
 
     colManager_->AddObject(bullet.get());
     bullets_.push_back(std::move(bullet));

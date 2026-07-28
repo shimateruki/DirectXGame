@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f388bea730abc8e207920b6a3cd390a6",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/bunny/bunny.obj",
+  "version": 1
+}

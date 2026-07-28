@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e0d2e90ed075554cba33dc102ff0c551",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/diamond_shard.png",
+  "version": 1
+}

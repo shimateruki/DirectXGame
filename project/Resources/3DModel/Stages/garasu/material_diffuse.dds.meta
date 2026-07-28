@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "48e174332769544b72fa5ca85a924fd4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/garasu/material_diffuse.dds",
+  "version": 1
+}

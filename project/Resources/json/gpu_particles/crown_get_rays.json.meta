@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "9d0cfec02bd7b6efb4c647c42714e49c",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/crown_get_rays.json",
+  "version": 1
+}

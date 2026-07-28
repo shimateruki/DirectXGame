@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "3960bfd5a9791b48a9a4a24aa4602448",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_enemy_ability.json",
+  "version": 1
+}

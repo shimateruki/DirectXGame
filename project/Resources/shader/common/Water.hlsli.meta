@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "6e2a89cc13d332715354f5e7cb85e5cd",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/common/Water.hlsli",
+  "version": 1
+}

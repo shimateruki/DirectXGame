@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8ac14d48047685d8b24025c45e76d60d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_sparkle.png",
+  "version": 1
+}

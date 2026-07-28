@@ -14,6 +14,7 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "MeshRenderer.h"
+#include "game/ui/ControlsGuideOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 
 #include "ObjectManager.h"
@@ -32,6 +33,7 @@ class LevelLoader;
 class LockOnSystem;
 class GameRule;
 class BossCore;
+class TutorialDirector;
 
 
 /// <summary>
@@ -69,13 +71,15 @@ public:
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
     // 各種コモンクラス
-    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     // プレイヤー連携
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
+    GameRule* GetGameRule() override { return gameRule_.get(); }
 
     // ゴール判定
     void SetIsGoal(bool isGoal);
@@ -89,6 +93,10 @@ public:
     }
 
 private:
+    bool HandleControlsGuideOverlay(float deltaTime);
+    bool IsControlsGuideOpenTriggered() const;
+    void HandleTutorialFlowCompleted();
+
     enum class MovieState {
         kNone,
         kBridgeDrop
@@ -145,6 +153,8 @@ private:
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+    std::unique_ptr<TutorialDirector> tutorialDirector_;
+    std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
 
     // フラスタムカリング判定

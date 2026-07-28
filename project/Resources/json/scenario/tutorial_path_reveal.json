@@ -1,0 +1,23 @@
+{
+  "version": 4,
+  "name": "Tutorial Route Reveal",
+  "duration": 2.2,
+  "tracks": [],
+  "vfxCues": [],
+  "cameraShots": [
+    {
+      "name": "Route Overview",
+      "targetName": "TutorialCamera_Path",
+      "startTime": 0.0,
+      "duration": 2.2,
+      "blendInDuration": 0.35,
+      "blendOutDuration": 0.4,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    }
+  ],
+  "animationClips": [],
+  "audioCues": [],
+  "signals": []
+}

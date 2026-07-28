@@ -19,6 +19,7 @@ void ProfilerManager::Initialize() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     loadDataMap_.clear();
+    latestGpuTimeMap_.clear();
 }
 
 void ProfilerManager::RecordLoadTime(const std::string& category, const std::string& name, float timeMs) {
@@ -29,6 +30,7 @@ void ProfilerManager::RecordLoadTime(const std::string& category, const std::str
 
 void ProfilerManager::RecordGpuTime(const std::string& name, float timeMs) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
+    latestGpuTimeMap_[name] = timeMs;
 
     std::string displayName = name;
     if (name == "Total") displayName = "全体";
@@ -68,6 +70,18 @@ void ProfilerManager::RecordCpuTime(const std::string& name, float timeMs) {
     data.smoothed = data.smoothed * 0.9f + timeMs * 0.1f;
     data.history[data.historyIndex] = timeMs;
     data.historyIndex = (data.historyIndex + 1) % kHistorySize;
+}
+
+float ProfilerManager::GetLatestGpuTime(const std::string& name) const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    const auto it = latestGpuTimeMap_.find(name);
+    return it != latestGpuTimeMap_.end() ? it->second : 0.0f;
+}
+
+float ProfilerManager::GetLatestCpuTime(const std::string& name) const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    const auto it = cpuDataMap_.find(name);
+    return it != cpuDataMap_.end() ? it->second.current : 0.0f;
 }
 
 void ProfilerManager::DrawImGui() {

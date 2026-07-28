@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a3e05fe6dbeac213be25acfd0765adac",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/common/white.dds",
+  "version": 1
+}

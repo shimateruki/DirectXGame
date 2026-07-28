@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "5d3ded763455ec278309c36d0f44ec9e",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Shadow.VS.hlsl",
+  "version": 1
+}

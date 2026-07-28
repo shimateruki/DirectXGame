@@ -7,6 +7,7 @@
 #include <TextureManager.h>
 #include <d3d12.h>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <sstream>
 using json = nlohmann::json;
@@ -23,6 +24,8 @@ std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
         << "_fps" << config.spriteSheetFps
         << "_loop" << config.spriteSheetLoop
         << "_rand" << config.spriteSheetRandomStart
+        << "_align" << config.alignToVelocity
+        << "_stretch" << config.velocityStretch
         << "_capacity" << GPUParticleManager::ResolveParticleCapacity(config);
     return key.str();
 }
@@ -85,6 +88,7 @@ void GPUParticleManager::Update(float deltaTime) {
     if (updatedThisFrame_) {
         return;
     }
+    const auto cpuStart = std::chrono::high_resolution_clock::now();
     updatedThisFrame_ = true;
 
     float scaledDelta = deltaTime * timeScale_;
@@ -106,10 +110,24 @@ void GPUParticleManager::Update(float deltaTime) {
         pair.second->SetTimeScale(timeScale_);
         pair.second->Update(deltaTime);
     }
+
+    const auto cpuEnd = std::chrono::high_resolution_clock::now();
+    lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
+}
+
+void GPUParticleManager::UpdateEditorPreviewStep(float deltaTime) {
+    updatedThisFrame_ = false;
+    Update(deltaTime);
 }
 
 void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummy, uint32_t depthSrvHandle) {
-    if (systems_.empty()) return;
+    if (systems_.empty()) {
+        lastDrawCpuTimeMs_ = 0.0f;
+        return;
+    }
+
+    const auto cpuStart = std::chrono::high_resolution_clock::now();
+    dxCommon_->StartGpuProfile("Particle GPU pass");
 
     // ★ 共通の状態設定はループの外で行う（軽量化）
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
@@ -118,6 +136,10 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
         // 各部隊が自分のテクスチャとブレンドを使う
         pair.second->Draw(commandList, viewMatrix, projectionMatrix, dummy, depthSrvHandle);
     }
+
+    dxCommon_->EndGpuProfile("Particle GPU pass");
+    const auto cpuEnd = std::chrono::high_resolution_clock::now();
+    lastDrawCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
 // ====================================================================
@@ -165,6 +187,24 @@ bool GPUParticleManager::IsEmpty() const {
     return true;
 }
 
+int GPUParticleManager::GetActiveSystemCount() const {
+    int activeCount = 0;
+    for (const auto& pair : systems_) {
+        if (pair.second && pair.second->IsActive()) {
+            ++activeCount;
+        }
+    }
+    return activeCount;
+}
+
+size_t GPUParticleManager::GetEstimatedMemoryBytesForConfig(const GPUParticleConfig& config) const {
+    const auto it = systems_.find(MakeParticleSystemKey(config));
+    if (it == systems_.end() || !it->second) {
+        return 0;
+    }
+    return it->second->GetEstimatedMemoryBytes();
+}
+
 bool GPUParticleManager::RequiresSceneColorCopy() const {
     for (const auto& pair : systems_) {
         if (pair.second && pair.second->RequiresSceneColorCopy()) {
@@ -192,6 +232,30 @@ void GPUParticleManager::Emit(const std::string& presetName, const Vector3& posi
         config.emitterWorldMatrix = emitterWorldMatrix;
         EmitFromConfig(config);
     }
+}
+
+void GPUParticleManager::EmitDirected(
+    const std::string& presetName,
+    const Vector3& position,
+    const Vector3& direction,
+    float speedScale,
+    const Matrix4x4& emitterWorldMatrix) {
+    const auto it = presets_.find(presetName);
+    if (it == presets_.end()) {
+        return;
+    }
+
+    GPUParticleConfig config = it->second;
+    config.emitPos = position;
+    config.emitterWorldMatrix = emitterWorldMatrix;
+
+    const float directionLength = Math::Length(direction);
+    if (directionLength > 0.0001f) {
+        const float presetSpeed = Math::Length(config.emitVelocity);
+        const float resolvedSpeed = (std::max)(presetSpeed, 0.01f) * (std::max)(speedScale, 0.0f);
+        config.emitVelocity = direction / directionLength * resolvedSpeed;
+    }
+    EmitFromConfig(config);
 }
 
 // ====================================================================
@@ -256,6 +320,10 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("spriteSheetRandomStart")) {
                     config.spriteSheetRandomStart = j["spriteSheetRandomStart"].is_boolean() ? (j["spriteSheetRandomStart"].get<bool>() ? 1 : 0) : j["spriteSheetRandomStart"].get<int>();
                 }
+                if (j.contains("alignToVelocity")) {
+                    config.alignToVelocity = j["alignToVelocity"].is_boolean() ? (j["alignToVelocity"].get<bool>() ? 1 : 0) : j["alignToVelocity"].get<int>();
+                }
+                if (j.contains("velocityStretch")) config.velocityStretch = j["velocityStretch"];
                 if (j.contains("spriteAnimation") && j["spriteAnimation"].is_object()) {
                     const auto& anim = j["spriteAnimation"];
                     if (anim.contains("columns")) config.spriteSheetColumns = anim["columns"];
@@ -298,3 +366,14 @@ void GPUParticleManager::StopAutoEmitter(uint32_t id) {
     autoEmitters_.erase(std::remove_if(autoEmitters_.begin(), autoEmitters_.end(), [id](const AutoEmitter& e) { return e.id == id; }), autoEmitters_.end());
 }
 void GPUParticleManager::ClearAllAutoEmitters() { autoEmitters_.clear(); }
+
+void GPUParticleManager::ResetSimulation() {
+    autoEmitters_.clear();
+    for (auto& [key, system] : systems_) {
+        (void)key;
+        if (system) {
+            system->RequestSimulationReset();
+        }
+    }
+    updatedThisFrame_ = false;
+}

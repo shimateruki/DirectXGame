@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "bbaa8935e40cb04891dfedbc0f9ac785",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/portal_surface/portal_surface.obj",
+  "version": 1
+}

@@ -19,6 +19,7 @@
 #include "SpriteCommon.h"
 #include "SpriteDebugEditor.h"
 #include "Text.h"
+#include "game/ui/ControlsGuideOverlay.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 #include "SceneController.h"
@@ -76,11 +77,13 @@ public:
     void RestoreReplaySceneState(const json& state) override;
 
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
+    GameRule* GetGameRule() override { return gameRule_.get(); }
 
     // ゴール判定とステージクリア演出
     void SetIsGoal(bool isGoal);
@@ -297,6 +300,7 @@ private:
     float hudHurtIconTimer_ = 0.0f;
     float hudHpDamageHoldTimer_ = 0.0f;
     float hudHpDelayedRate_ = 1.0f;
+    float hudHpAnimationTimer_ = 0.0f;
     float hudMorphGaugeTimer_ = 0.0f;
     float hudMorphGaugeVisibleTimer_ = 0.0f;
 
@@ -319,6 +323,7 @@ private:
     bool lifeLostRevive_ = false;
 
     // --- オーバーレイ ---
+    std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<PauseMenuOverlay> pauseMenuOverlay_;
     std::unique_ptr<SettingsMenuOverlay> settingsOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
@@ -376,6 +381,8 @@ private:
     void UpdateGameplayHUD(float deltaTime);
     void UpdateStageStarHUD(float deltaTime, bool visible);
     void UpdateLifeLostPresentation(float deltaTime);
+    bool HandleControlsGuideOverlay(float deltaTime);
+    bool IsControlsGuideOpenTriggered() const;
     bool HandlePauseOverlay(float deltaTime);
     bool IsPauseOpenTriggered() const;
 

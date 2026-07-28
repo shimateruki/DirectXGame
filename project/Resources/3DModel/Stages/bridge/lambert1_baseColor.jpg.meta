@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "04fce41dbb3890c1e974a31419394777",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/bridge/lambert1_baseColor.jpg",
+  "version": 1
+}

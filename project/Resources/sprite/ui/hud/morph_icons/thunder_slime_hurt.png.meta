@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6f52871b323019baa0bc471daf10fb49",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/thunder_slime_hurt.png",
+  "version": 1
+}

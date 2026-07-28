@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bc6839cfe69519347579ce7a774b5316",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_delete_button_selected.dds",
+  "version": 1
+}

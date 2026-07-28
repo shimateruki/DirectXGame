@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "cb7055d1dedaed71b048bd62c246e75f",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Updraft.PS.hlsl",
+  "version": 1
+}

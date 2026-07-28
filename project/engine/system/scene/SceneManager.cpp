@@ -5,6 +5,9 @@
 #include "ModelManager.h"
 #include "TextureManager.h"
 #include "engine/graphics/postprocess/Fade.h"
+#ifdef USE_IMGUI
+#include "CameraEditor.h"
+#endif
 #include "json.hpp"
 
 #include <cassert>
@@ -33,41 +36,57 @@ SceneManager::~SceneManager() {
 
 void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName) {
     sceneFactory_ = factory;
-    currentSceneName_.clear();
-    pendingSceneNameForSwap_ = firstSceneName;
-    loadingTargetSceneName_ = firstSceneName;
+    currentSceneName_ = firstSceneName;
+    pendingSceneNameForSwap_.clear();
+    loadingTargetSceneName_.clear();
     loadingElapsed_ = 0.0f;
 
-    currentScene_ = std::make_unique<LoadingScene>();
+    assert(sceneFactory_ && "SceneFactory is not set in SceneManager.");
+    assert(IsSceneRegistered(firstSceneName) && "Initial scene is not registered in SceneFactory.");
+    currentScene_ = sceneFactory_->CreateScene(firstSceneName);
+    assert(currentScene_ && "Initial scene creation failed.");
+    if (!currentScene_) {
+        currentSceneName_.clear();
+        transitionPhase_ = TransitionPhase::Idle;
+        return;
+    }
+
     ++sceneGeneration_;
     currentScene_->SetSceneManager(this);
+    currentScene_->SetSceneLoadContext(activeSceneLoadContext_);
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
     }
+
+    // 初回起動ではローディングSceneを生成せず、最初のSceneを直接初期化します。
+    // これによりロードUIの初期化と最低表示時間を省き、ロード画面はScene遷移時だけ表示します。
     TextureManager* textureManager = TextureManager::GetInstance();
-    const bool loadingUiUploadBatch = textureManager->BeginAsyncUploadBatch();
-    textureManager->SetAsyncUploadRecording(loadingUiUploadBatch);
-    currentScene_->Initialize();
+    const bool initialUploadBatch = textureManager->BeginAsyncUploadBatch();
+    textureManager->SetAsyncUploadRecording(initialUploadBatch);
+    try {
+        currentScene_->Initialize();
+    }
+    catch (...) {
+        textureManager->SetAsyncUploadRecording(false);
+        if (initialUploadBatch) {
+            textureManager->SubmitAsyncUploadBatch();
+            textureManager->WaitForAsyncUploadBatch();
+        }
+        currentScene_.reset();
+        currentSceneName_.clear();
+        throw;
+    }
     textureManager->SetAsyncUploadRecording(false);
-    if (loadingUiUploadBatch) {
+    if (initialUploadBatch) {
         textureManager->SubmitAsyncUploadBatch();
         textureManager->WaitForAsyncUploadBatch();
     }
-    SetLoadingProgress(0.08f);
 
-    StartAsyncSceneCreate();
-    transitionPhase_ = TransitionPhase::Loading;
+    currentScene_->OnActivated();
+    transitionPhase_ = TransitionPhase::Idle;
 }
 
 void SceneManager::Finalize() {
-    if (sceneInitializationFuture_.valid()) {
-        sceneInitializationFuture_.wait();
-        try {
-            sceneInitializationFuture_.get();
-        }
-        catch (...) {
-        }
-    }
     if (assetCreationFuture_.valid()) {
         assetCreationFuture_.wait();
         try {
@@ -335,6 +354,9 @@ void SceneManager::BeginLoadingTransition() {
 
     currentScene_ = std::make_unique<LoadingScene>();
     ++sceneGeneration_;
+#ifdef USE_IMGUI
+    CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
+#endif
     currentScene_->SetSceneManager(this);
     if (debugEditor_) {
         currentScene_->SetDebugEditor(debugEditor_);
@@ -480,50 +502,20 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
             preparedScene_->SetDebugEditor(debugEditor_);
         }
 
+        // Scene::Initialize() は CameraManager / LightManager / GPU描画管理など、
+        // メインスレッド専用の共有状態を更新します。アセットの読み込み準備だけを
+        // 非同期にし、Scene本体の構築は描画と競合しないこのスレッドで確定します。
         asyncUploadBatchStarted_ = TextureManager::GetInstance()->BeginAsyncUploadBatch();
-        BaseScene* sceneToInitialize = preparedScene_.get();
-        const bool recordDeferredUploads = asyncUploadBatchStarted_;
-        sceneInitializationFuture_ = std::async(
-            std::launch::async,
-            [sceneToInitialize, recordDeferredUploads]() {
-                SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-                const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-                TextureManager::GetInstance()->SetAsyncUploadRecording(recordDeferredUploads);
-                try {
-                    sceneToInitialize->Initialize();
-                }
-                catch (...) {
-                    TextureManager::GetInstance()->SetAsyncUploadRecording(false);
-                    if (SUCCEEDED(comResult)) {
-                        CoUninitialize();
-                    }
-                    throw;
-                }
-                TextureManager::GetInstance()->SetAsyncUploadRecording(false);
-                if (SUCCEEDED(comResult)) {
-                    CoUninitialize();
-                }
-            });
         sceneInitializationStarted_ = true;
-        return;
-    }
-
-    if (!sceneInitializationFinished_) {
-        if (!sceneInitializationFuture_.valid() ||
-            sceneInitializationFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            return;
-        }
+        TextureManager::GetInstance()->SetAsyncUploadRecording(asyncUploadBatchStarted_);
         try {
-            sceneInitializationFuture_.get();
-        }
-        catch (const std::exception& exception) {
-            OutputDebugStringA((std::string("Scene initialization failed: ") + exception.what() + "\n").c_str());
-            assert(false && "Scene initialization failed.");
+            preparedScene_->Initialize();
         }
         catch (...) {
-            OutputDebugStringA("Scene initialization failed with an unknown exception.\n");
-            assert(false && "Scene initialization failed.");
+            TextureManager::GetInstance()->SetAsyncUploadRecording(false);
+            throw;
         }
+        TextureManager::GetInstance()->SetAsyncUploadRecording(false);
         sceneInitializationFinished_ = true;
     }
 
@@ -539,7 +531,6 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
     }
 
     preparedScene_->SetPreparedLoadData(nullptr);
-    preparedScene_->OnActivated();
     preparedSceneInitialized_ = true;
 }
 
@@ -627,6 +618,9 @@ void SceneManager::SwapToPreparedScene() {
 
     currentScene_ = std::move(preparedScene_);
     ++sceneGeneration_;
+#ifdef USE_IMGUI
+    CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
+#endif
     preparedSceneInitialized_ = false;
     preparedLoadData_.reset();
     preloadProgress_.reset();
@@ -645,6 +639,12 @@ void SceneManager::SwapToPreparedScene() {
     }
     loadingTargetSceneName_.clear();
 
+    // 有効化処理は、SceneManager上でも現在シーンへ切り替わった後に行います。
+    // カメラ、ライト、スカイボックスなどがLoadingScene側の状態で上書きされるのを防ぎます。
+    if (currentScene_) {
+        currentScene_->OnActivated();
+    }
+
     Fade::GetInstance()->StartFadeIn(1.0f);
     transitionPhase_ = TransitionPhase::Idle;
 }
@@ -659,6 +659,9 @@ void SceneManager::SwapToDirectNextScene() {
 
     currentScene_ = std::move(nextScene_);
     ++sceneGeneration_;
+#ifdef USE_IMGUI
+    CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
+#endif
     nextScene_ = nullptr;
     if (!pendingSceneNameForSwap_.empty()) {
         currentSceneName_ = pendingSceneNameForSwap_;
@@ -672,6 +675,7 @@ void SceneManager::SwapToDirectNextScene() {
             currentScene_->SetDebugEditor(debugEditor_);
         }
         currentScene_->Initialize();
+        currentScene_->OnActivated();
     }
 }
 

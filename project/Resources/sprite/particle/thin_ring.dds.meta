@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b2808e359120da3273cb883b951e1f8a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/thin_ring.dds",
+  "version": 1
+}

@@ -1,5 +1,6 @@
 #pragma once 
 #include "engine/utility/math/Math.h"
+#include <string>
 class Object3d;
 class Bullet;
 /// <summary>
@@ -21,12 +22,40 @@ struct BulletHitEvent {
 // =========================================================
 // ダメージイベント (Enemyへの攻撃時などに発行する)
 // =========================================================
+enum class StatusEffectType {
+    None = 0,
+    Burning,
+};
+
+// 攻撃の性質を表し、被弾演出やリアクションの選択に使います。
+enum class DamageType {
+    Physical = 0,
+    Fire,
+    Electric,
+    Explosion,
+};
+
+// 攻撃から対象へ付与する状態異常の実行時データです。
+struct StatusEffectApplication {
+    StatusEffectType type = StatusEffectType::None;
+    float duration = 0.0f;
+    float tickInterval = 0.5f;
+    float tickDamage = 0.0f;
+    std::string vfxPreset;
+
+    bool IsValid() const {
+        return type != StatusEffectType::None && duration > 0.0f;
+    }
+};
+
 // DamageEventは、ダメージ対象、攻撃者、ダメージ量、ノックバックをまとめます。
 struct DamageEvent {
     Object3d* target = nullptr;   // ダメージを受ける人
     Object3d* attacker = nullptr; // 攻撃した人
     float damageAmount = 0.0f;    // ダメージ量
     Vector3 knockbackVelocity = { 0,0,0 }; // 追加：吹き飛ばしベクトル
+    DamageType damageType = DamageType::Physical;
+    StatusEffectApplication statusEffect;
 };
 
 struct PlayerDeathEvent {

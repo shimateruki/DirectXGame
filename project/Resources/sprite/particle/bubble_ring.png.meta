@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e9fccb1771ae8b982db810ef2c56234e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/bubble_ring.png",
+  "version": 1
+}

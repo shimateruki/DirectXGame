@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "e84b15e59103f84c180ae3a4224014bc",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/sprite/Sprite.VS.hlsl",
+  "version": 1
+}

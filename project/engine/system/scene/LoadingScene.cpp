@@ -5,11 +5,31 @@
 #include "WinApp.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
-#include <string>
+#include <random>
 
 namespace {
 constexpr float kPi = 3.1415926535f;
+constexpr float kGaugeWidth = 680.0f;
+constexpr float kGaugeHeight = 26.0f;
+constexpr float kSlimeFrameWidth = 543.0f;
+constexpr float kSlimeFrameHeight = 724.0f;
+
+const char* SelectLoadingSlimeTexturePath() {
+    // 通常スライムを主役にしつつ、低確率で属性違いが登場するようにする。
+    static constexpr std::array<const char*, 4> kTexturePaths = {
+        "Resources/sprite/loading/slime_hop_sheet_right.png",
+        "Resources/sprite/loading/slime_hop_sheet_right_thunder.png",
+        "Resources/sprite/loading/slime_hop_sheet_right_fire.png",
+        "Resources/sprite/loading/slime_hop_sheet_right_bomber.png",
+    };
+    static constexpr std::array<int, 4> kAppearanceWeights = { 70, 10, 10, 10 };
+    static std::mt19937 randomEngine(std::random_device{}());
+
+    std::discrete_distribution<int> distribution(kAppearanceWeights.begin(), kAppearanceWeights.end());
+    return kTexturePaths[static_cast<std::size_t>(distribution(randomEngine))];
+}
 
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
@@ -22,6 +42,14 @@ float ScreenW() {
 float ScreenH() {
     return static_cast<float>(WinApp::kClientHeight);
 }
+
+float GaugeLeft() {
+    return (ScreenW() - kGaugeWidth) * 0.5f;
+}
+
+float GaugeY() {
+    return ScreenH() - 72.0f;
+}
 }
 
 void LoadingScene::Initialize() {
@@ -29,15 +57,12 @@ void LoadingScene::Initialize() {
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
 
     const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+    const uint32_t glowHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/circle2.png");
     const uint32_t fadeFinalHandle = TextureManager::GetInstance()->Load("Resources/sprite/fade/crown_iris/frame_47.png");
-    const uint32_t slimeHandle = TextureManager::GetInstance()->Load("Resources/sprite/title/slime_save_icon.png");
+    const uint32_t slimeHandle = TextureManager::GetInstance()->Load(SelectLoadingSlimeTexturePath());
     const uint32_t loadingTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/generated/text/text_text_load.png");
     const uint32_t hintTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/generated/text/text_loading_hint.png");
     const uint32_t dotHandle = TextureManager::GetInstance()->Load("Resources/sprite/number/dot.png");
-    const uint32_t slashHandle = TextureManager::GetInstance()->Load("Resources/sprite/number/slash.png");
-    for (int i = 0; i < 10; ++i) {
-        digitTextureHandles_[i] = TextureManager::GetInstance()->Load("Resources/sprite/number/big" + std::to_string(i) + ".png");
-    }
 
     background_ = CreateSprite(
         fadeFinalHandle,
@@ -53,61 +78,86 @@ void LoadingScene::Initialize() {
 
     loadingText_ = CreateSprite(
         loadingTextHandle,
-        { 112.0f, ScreenH() - 72.0f },
-        { 168.0f, 62.0f },
+        { ScreenW() * 0.5f - 18.0f, ScreenH() - 132.0f },
+        { 154.0f, 56.0f },
         { 0.88f, 0.98f, 1.0f, 1.0f });
 
     dots_.clear();
     for (int i = 0; i < 3; ++i) {
         dots_.push_back(CreateSprite(
             dotHandle,
-            { 198.0f + static_cast<float>(i) * 22.0f, ScreenH() - 55.0f },
-            { 13.0f, 13.0f },
+            { ScreenW() * 0.5f + 62.0f + static_cast<float>(i) * 18.0f, ScreenH() - 119.0f },
+            { 10.0f, 10.0f },
             { 0.88f, 0.98f, 1.0f, 1.0f }));
     }
 
-    shadow_ = CreateSprite(
+    const float gaugeCenterX = ScreenW() * 0.5f;
+
+    gaugeShadow_ = CreateSprite(
         whiteHandle,
-        { 300.0f, ScreenH() - 51.0f },
-        { 92.0f, 16.0f },
-        { 0.0f, 0.0f, 0.0f, 0.35f });
+        { gaugeCenterX + 3.0f, GaugeY() + 4.0f },
+        { kGaugeWidth + 10.0f, 36.0f },
+        { 0.0f, 0.08f, 0.12f, 0.30f });
+
+    gaugeFrame_ = CreateSprite(
+        whiteHandle,
+        { gaugeCenterX, GaugeY() },
+        { kGaugeWidth + 6.0f, 32.0f },
+        { 0.015f, 0.12f, 0.20f, 0.98f });
+
+    gaugeTrack_ = CreateSprite(
+        whiteHandle,
+        { gaugeCenterX, GaugeY() },
+        { kGaugeWidth, kGaugeHeight },
+        { 0.02f, 0.25f, 0.32f, 0.96f });
+
+    gaugeFill_ = CreateSprite(
+        whiteHandle,
+        { GaugeLeft(), GaugeY() },
+        { 0.0f, 18.0f },
+        { 0.20f, 0.92f, 1.0f, 1.0f });
+    gaugeFill_->SetAnchorPoint({ 0.0f, 0.5f });
+
+    gaugeHighlight_ = CreateSprite(
+        whiteHandle,
+        { GaugeLeft(), GaugeY() - 5.0f },
+        { 0.0f, 5.0f },
+        { 0.78f, 1.0f, 1.0f, 0.80f });
+    gaugeHighlight_->SetAnchorPoint({ 0.0f, 0.5f });
+
+    gaugeGlow_ = CreateSprite(
+        glowHandle,
+        { GaugeLeft(), GaugeY() },
+        { 44.0f, 44.0f },
+        { 0.40f, 0.96f, 1.0f, 0.0f });
+
+    gaugeBubbles_.clear();
+    for (int i = 0; i < 12; ++i) {
+        gaugeBubbles_.push_back(CreateSprite(
+            glowHandle,
+            { GaugeLeft(), GaugeY() },
+            { 18.0f, 18.0f },
+            { 0.88f, 1.0f, 1.0f, 0.0f }));
+    }
+
+    shadow_ = CreateSprite(
+        glowHandle,
+        { GaugeLeft(), ScreenH() - 171.0f },
+        { 96.0f, 30.0f },
+        { 0.0f, 0.10f, 0.15f, 0.30f });
 
     slime_ = CreateSprite(
         slimeHandle,
-        { 300.0f, ScreenH() - 102.0f },
-        { 86.0f, 86.0f },
+        { GaugeLeft(), ScreenH() - 203.0f },
+        { 116.0f, 130.0f },
         { 1.0f, 1.0f, 1.0f, 1.0f });
-
-    progressDigits_.clear();
-    for (int i = 0; i < 3; ++i) {
-        Sprite* digit = CreateSprite(
-            digitTextureHandles_[0],
-            { ScreenW() - 152.0f + static_cast<float>(i) * 30.0f, ScreenH() - 55.0f },
-            { 28.0f, 28.0f },
-            { 0.90f, 1.0f, 1.0f, 1.0f });
-        progressDigits_.push_back(digit);
-    }
-    progressSlash_ = CreateSprite(
-        slashHandle,
-        { ScreenW() - 72.0f, ScreenH() - 55.0f },
-        { 21.0f, 31.0f },
-        { 0.90f, 1.0f, 1.0f, 1.0f });
-    progressDotTop_ = CreateSprite(
-        dotHandle,
-        { ScreenW() - 84.0f, ScreenH() - 65.0f },
-        { 7.0f, 7.0f },
-        { 0.90f, 1.0f, 1.0f, 1.0f });
-    progressDotBottom_ = CreateSprite(
-        dotHandle,
-        { ScreenW() - 61.0f, ScreenH() - 45.0f },
-        { 7.0f, 7.0f },
-        { 0.90f, 1.0f, 1.0f, 1.0f });
+    slime_->SetTextureRect({ 0.0f, 0.0f }, { kSlimeFrameWidth, kSlimeFrameHeight });
 
     timer_ = 0.0f;
     targetProgress_ = 0.0f;
     displayedProgress_ = 0.0f;
-    lastDisplayedPercent_ = -1;
-    UpdateProgressSprites();
+    slimeFrame_ = -1;
+    UpdateProgressGauge();
 }
 
 void LoadingScene::Update(float deltaTime) {
@@ -120,9 +170,9 @@ void LoadingScene::Update(float deltaTime) {
         displayedProgress_ = (std::max)(displayedProgress_, 0.995f);
     }
 
+    UpdateProgressGauge();
     UpdateSlimeRunAnimation();
     UpdateDotAnimation();
-    UpdateProgressSprites();
 
     for (auto& sprite : sprites_) {
         if (sprite) {
@@ -149,15 +199,18 @@ void LoadingScene::DrawUI() {
 
 void LoadingScene::Finalize() {
     dots_.clear();
-    progressDigits_.clear();
+    gaugeBubbles_.clear();
     background_ = nullptr;
     loadingText_ = nullptr;
     slime_ = nullptr;
     shadow_ = nullptr;
     hintText_ = nullptr;
-    progressSlash_ = nullptr;
-    progressDotTop_ = nullptr;
-    progressDotBottom_ = nullptr;
+    gaugeShadow_ = nullptr;
+    gaugeFrame_ = nullptr;
+    gaugeTrack_ = nullptr;
+    gaugeFill_ = nullptr;
+    gaugeHighlight_ = nullptr;
+    gaugeGlow_ = nullptr;
     sprites_.clear();
     spriteCommon_.reset();
 }
@@ -185,30 +238,51 @@ void LoadingScene::UpdateSlimeRunAnimation() {
         return;
     }
 
-    const float runStartX = 292.0f;
-    const float runEndX = ScreenW() - 176.0f;
-    const float runWidth = (std::max)(runEndX - runStartX, 1.0f);
-    const float loopT = std::fmod(timer_ * 0.28f, 1.0f);
-    const float x = runStartX + runWidth * loopT;
+    const float progress = Clamp01(displayedProgress_);
+    const float x = GaugeLeft() + kGaugeWidth * progress;
+    const float hopT = std::fmod(timer_ * 1.45f, 1.0f);
+    int frame = 0;
+    float lift = 0.0f;
+    Vector2 size = { 116.0f, 130.0f };
+    float rotation = 0.0f;
 
-    const float jumpCycle = std::fmod(timer_ * 2.35f, 1.0f);
-    const float jump = std::sin(jumpCycle * kPi);
-    const float landT = jumpCycle > 0.78f ? Clamp01((jumpCycle - 0.78f) / 0.22f) : 0.0f;
-    const float squash = std::sin(landT * kPi);
-    const float baseY = ScreenH() - 102.0f;
-    const float y = baseY - jump * 34.0f + squash * 8.0f;
-    const float scaleX = 1.0f + squash * 0.18f;
-    const float scaleY = 1.0f - squash * 0.16f + jump * 0.05f;
-    const float sway = std::sin(timer_ * 7.0f) * 0.07f;
+    if (hopT < 0.22f) {
+        frame = 0;
+        size = { 120.0f, 122.0f };
+        lift = -2.0f;
+    } else if (hopT < 0.42f) {
+        frame = 1;
+        size = { 112.0f, 138.0f };
+        lift = 17.0f;
+        rotation = 0.025f;
+    } else if (hopT < 0.76f) {
+        frame = 2;
+        size = { 116.0f, 130.0f };
+        const float airT = (hopT - 0.42f) / 0.34f;
+        lift = 22.0f + std::sin(airT * kPi) * 9.0f;
+        rotation = -0.018f;
+    } else {
+        frame = 3;
+        size = { 130.0f, 112.0f };
+        const float landT = (hopT - 0.76f) / 0.24f;
+        lift = -4.0f + std::sin(landT * kPi) * 4.0f;
+    }
 
-    slime_->SetPosition({ x, y });
-    slime_->SetSize({ 86.0f * scaleX, 86.0f * scaleY });
-    slime_->SetRotation(sway);
+    if (frame != slimeFrame_) {
+        slimeFrame_ = frame;
+        slime_->SetTextureRect(
+            { kSlimeFrameWidth * static_cast<float>(frame), 0.0f },
+            { kSlimeFrameWidth, kSlimeFrameHeight });
+    }
 
-    const float shadowScale = 0.70f + (1.0f - jump) * 0.40f;
-    shadow_->SetPosition({ x, ScreenH() - 51.0f });
-    shadow_->SetSize({ 92.0f * shadowScale, 16.0f });
-    shadow_->SetColor({ 0.0f, 0.0f, 0.0f, 0.18f + (1.0f - jump) * 0.18f });
+    slime_->SetPosition({ x, ScreenH() - 203.0f - lift });
+    slime_->SetSize(size);
+    slime_->SetRotation(rotation);
+
+    const float shadowScale = 1.0f - Clamp01(lift / 34.0f) * 0.34f;
+    shadow_->SetPosition({ x, ScreenH() - 164.0f });
+    shadow_->SetSize({ 96.0f * shadowScale, 30.0f * shadowScale });
+    shadow_->SetColor({ 0.0f, 0.08f, 0.14f, 0.12f + shadowScale * 0.16f });
 }
 
 void LoadingScene::UpdateDotAnimation() {
@@ -222,78 +296,53 @@ void LoadingScene::UpdateDotAnimation() {
         const float pulse = 0.5f + 0.5f * std::sin(phase);
         const float alpha = 0.26f + pulse * 0.74f;
         const float scale = 0.72f + pulse * 0.35f;
-        dot->SetSize({ 13.0f * scale, 13.0f * scale });
+        dot->SetSize({ 10.0f * scale, 10.0f * scale });
         dot->SetColor({ 0.88f, 0.98f, 1.0f, alpha });
     }
 }
 
-void LoadingScene::UpdateProgressSprites() {
-    if (progressDigits_.empty() || !progressSlash_ || !progressDotTop_ || !progressDotBottom_) {
+void LoadingScene::UpdateProgressGauge() {
+    if (!gaugeFill_ || !gaugeHighlight_ || !gaugeGlow_) {
         return;
     }
 
-    int percent = static_cast<int>(std::round(Clamp01(displayedProgress_) * 100.0f));
-    percent = std::clamp(percent, 0, 100);
-    if (percent == lastDisplayedPercent_) {
-        return;
-    }
+    const float progress = Clamp01(displayedProgress_);
+    const float fillWidth = kGaugeWidth * progress;
+    const float wave = std::sin(timer_ * 5.4f) * 1.2f;
+    const float pulse = 0.5f + 0.5f * std::sin(timer_ * 4.2f);
 
-    lastDisplayedPercent_ = percent;
-    LayoutProgressSprites(percent);
-}
+    gaugeFill_->SetPosition({ GaugeLeft(), GaugeY() + wave * 0.20f });
+    gaugeFill_->SetSize({ fillWidth, 18.0f + wave });
+    gaugeFill_->SetColor({ 0.10f + pulse * 0.06f, 0.78f + pulse * 0.12f, 1.0f, 1.0f });
 
-void LoadingScene::LayoutProgressSprites(int percent) {
-    const int clampedPercent = std::clamp(percent, 0, 100);
-    int digits[3] = {
-        clampedPercent / 100,
-        (clampedPercent / 10) % 10,
-        clampedPercent % 10
-    };
+    gaugeHighlight_->SetPosition({ GaugeLeft(), GaugeY() - 5.0f + wave * 0.45f });
+    gaugeHighlight_->SetSize({ fillWidth, 3.0f + pulse * 1.5f });
+    gaugeHighlight_->SetColor({ 0.84f, 1.0f, 1.0f, 0.44f + pulse * 0.30f });
 
-    const int digitCount = clampedPercent >= 100 ? 3 : (clampedPercent >= 10 ? 2 : 1);
-    const int firstDigitIndex = 3 - digitCount;
-    const float digitWidth = 28.0f;
-    const float digitGap = 3.0f;
-    const float percentGap = 8.0f;
-    const float percentWidth = 28.0f;
-    const float totalWidth =
-        static_cast<float>(digitCount) * digitWidth +
-        static_cast<float>(digitCount - 1) * digitGap +
-        percentGap +
-        percentWidth;
-    const float rightX = ScreenW() - 54.0f;
-    const float baseY = ScreenH() - 55.0f;
-    float x = rightX - totalWidth;
+    gaugeGlow_->SetVisible(progress > 0.002f);
+    gaugeGlow_->SetPosition({ GaugeLeft() + fillWidth, GaugeY() });
+    gaugeGlow_->SetSize({ 36.0f + pulse * 8.0f, 36.0f + pulse * 8.0f });
+    gaugeGlow_->SetColor({ 0.42f, 0.98f, 1.0f, 0.18f + pulse * 0.18f });
 
-    for (size_t i = 0; i < progressDigits_.size(); ++i) {
-        Sprite* digitSprite = progressDigits_[i];
-        if (!digitSprite) {
+    for (size_t i = 0; i < gaugeBubbles_.size(); ++i) {
+        Sprite* bubble = gaugeBubbles_[i];
+        if (!bubble) {
             continue;
         }
 
-        const int sourceIndex = firstDigitIndex + static_cast<int>(i);
-        const bool visible = static_cast<int>(i) < digitCount;
-        digitSprite->SetVisible(visible);
+        const float normalizedX = (static_cast<float>(i) + 0.5f) / static_cast<float>(gaugeBubbles_.size());
+        const float bubbleX = GaugeLeft() + normalizedX * kGaugeWidth;
+        const bool visible = fillWidth > normalizedX * kGaugeWidth + 6.0f;
+        bubble->SetVisible(visible);
         if (!visible) {
             continue;
         }
 
-        const int digit = digits[sourceIndex];
-        digitSprite->SetTextureHandle(digitTextureHandles_[digit]);
-        digitSprite->SetPosition({ x + digitWidth * 0.5f, baseY });
-        digitSprite->SetSize({ digitWidth, digitWidth });
-        digitSprite->SetColor({ 0.90f, 1.0f, 1.0f, 1.0f });
-        x += digitWidth + digitGap;
+        const float phase = timer_ * 3.0f - static_cast<float>(i) * 0.52f;
+        const float rise = std::sin(phase);
+        const float size = 12.0f + (0.5f + 0.5f * std::sin(phase * 0.73f)) * 7.0f;
+        bubble->SetPosition({ bubbleX, GaugeY() + rise * 3.0f });
+        bubble->SetSize({ size, size });
+        bubble->SetColor({ 0.74f, 1.0f, 1.0f, 0.16f + pulse * 0.20f });
     }
-
-    x += percentGap;
-    progressSlash_->SetPosition({ x + 14.0f, baseY });
-    progressSlash_->SetSize({ 21.0f, 31.0f });
-    progressSlash_->SetColor({ 0.90f, 1.0f, 1.0f, 1.0f });
-    progressDotTop_->SetPosition({ x + 6.0f, baseY - 10.0f });
-    progressDotBottom_->SetPosition({ x + 25.0f, baseY + 10.0f });
-    progressDotTop_->SetSize({ 7.0f, 7.0f });
-    progressDotBottom_->SetSize({ 7.0f, 7.0f });
-    progressDotTop_->SetColor({ 0.90f, 1.0f, 1.0f, 1.0f });
-    progressDotBottom_->SetColor({ 0.90f, 1.0f, 1.0f, 1.0f });
 }

@@ -1,0 +1,50 @@
+{
+    "name": "prism_crystal_shatter",
+    "modelNames": [
+        "Effects/prism_crystal_fragment_a",
+        "Effects/prism_crystal_fragment_b",
+        "Effects/prism_crystal_fragment_c"
+    ],
+    "spawnCount": 10,
+    "spawnOffset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "baseDirection": [
+        0.0,
+        0.0,
+        1.0
+    ],
+    "horizontalSpread": 1.65,
+    "verticalMin": 0.18,
+    "verticalMax": 1.2,
+    "speedMin": 6.5,
+    "speedMax": 13.5,
+    "angularSpeedMin": 8.0,
+    "angularSpeedMax": 20.0,
+    "scaleMin": 0.22,
+    "scaleMax": 0.52,
+    "lifetimeMin": 0.9,
+    "lifetimeMax": 1.4,
+    "gravity": 18.0,
+    "airDrag": 0.08,
+    "restitution": 0.24,
+    "friction": 0.74,
+    "groundY": 0.0,
+    "fadeStartRatio": 0.72,
+    "color": [
+        0.54,
+        0.26,
+        0.82,
+        1.0
+    ],
+    "materialType": 27,
+    "roughness": 0.11,
+    "metallic": 0.92,
+    "enableEnvMap": true,
+    "envIntensity": 1.18,
+    "emissive": 0.94,
+    "collideGround": true,
+    "shrinkOnFade": true
+}

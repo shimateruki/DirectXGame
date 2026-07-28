@@ -2,6 +2,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include <algorithm>
 // プロジェクト内のパスに合わせて調整してください
 #include "externals/nlohmann/json.hpp"
 
@@ -34,6 +35,7 @@ void to_json(json& j, const ParticleSystem::EmitterParams& p) {
         {"spawnArea", p.spawnArea},
         {"initialVelocity", p.initialVelocity},
         {"velocityRandomness", p.velocityRandomness},
+        {"emitCount", p.emitCount},
         {"particlesPerSecond", p.particlesPerSecond},
         {"particleLifetime", p.particleLifetime},
         {"startColor", p.startColor},
@@ -60,6 +62,7 @@ void from_json(const json& j, ParticleSystem::EmitterParams& p) {
     if (j.contains("spawnArea")) j.at("spawnArea").get_to(p.spawnArea);
     if (j.contains("initialVelocity")) j.at("initialVelocity").get_to(p.initialVelocity);
     if (j.contains("velocityRandomness")) j.at("velocityRandomness").get_to(p.velocityRandomness);
+    p.emitCount = std::clamp(j.value("emitCount", 1), 1, ParticleSystem::GetMaxParticles());
     if (j.contains("particlesPerSecond")) j.at("particlesPerSecond").get_to(p.particlesPerSecond);
     if (j.contains("particleLifetime")) j.at("particleLifetime").get_to(p.particleLifetime);
     if (j.contains("startColor")) j.at("startColor").get_to(p.startColor);
@@ -127,6 +130,9 @@ void ParticleManager::Emit(const std::string& name, const Vector3& position, flo
 
     // パラメータ取得
     const auto& params = paramsMap_[name];
+    if (params.particlesPerSecond <= 0.0f) {
+        return;
+    }
 
     // 生成レート計算 (1秒間に何個出すか -> 1個出すのに何秒かかるか)
     float rate = 1.0f / params.particlesPerSecond;
@@ -134,10 +140,14 @@ void ParticleManager::Emit(const std::string& name, const Vector3& position, flo
     // タイマーを進める (60FPS固定と仮定。可変ならdeltaTimeを引数でもらうべき)
     timer += 1.0f / 60.0f;
 
+    // particlesPerSecondは実粒子数/秒なので、この経路では1粒ずつ生成します。
+    // emitCountはEditorの単発発生や明示的なEmitOneShot呼び出しだけに適用します。
+    ParticleSystem::EmitterParams singleParticleParams = params;
+    singleParticleParams.emitCount = 1;
+
     // 生成タイミングになったらループで放出
     while (timer >= rate) {
         timer -= rate;
-        // ParticleSystemに「1個出せ」と命令
-        particleSystem_->EmitOneShot(params, position);
+        particleSystem_->EmitOneShot(singleParticleParams, position);
     }
 }

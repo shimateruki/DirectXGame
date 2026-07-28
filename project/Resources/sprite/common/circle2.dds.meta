@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "fdebfeaf97a9ae117a2b1689c3641d79",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/common/circle2.dds",
+  "version": 1
+}

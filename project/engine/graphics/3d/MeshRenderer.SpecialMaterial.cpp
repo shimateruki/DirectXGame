@@ -214,24 +214,12 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
 
 void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     Model* drawModel = ResolveDrawModel();
-    const int safePreviewIndex = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
-    ID3D12Resource* previewWvpResource = previewWvpResources_[safePreviewIndex].Get();
-    TransformationMatrix* previewWvpData = previewWvpData_[safePreviewIndex];
-    ID3D12Resource* previewCameraResource = previewCameraResources_[safePreviewIndex].Get();
-    CameraForGPU* previewCameraData = previewCameraData_[safePreviewIndex];
-
-    if (!camera || !drawModel || !common_ || !HasRequiredBuffers() ||
-        !previewWvpResource || !previewWvpData || !previewCameraResource || !previewCameraData) {
+    ID3D12Resource* previewWvpResource = nullptr;
+    ID3D12Resource* previewCameraResource = nullptr;
+    if (!drawModel || !common_ || !HasRequiredBuffers() ||
+        !PreparePreviewCameraData(camera, previewBufferIndex, previewWvpResource, previewCameraResource)) {
         return;
     }
-
-    Math math;
-    const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
-    const Matrix4x4& worldMatrix = transform_->matWorld;
-    previewWvpData->WVP = math.Multiply(worldMatrix, viewProj);
-    previewWvpData->world = worldMatrix;
-    previewWvpData->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
-    previewCameraData->worldPosition = camera->GetEye();
 
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
@@ -255,9 +243,100 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
     );
 }
 
+bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource) {
+    wvpResource = nullptr;
+    cameraResource = nullptr;
+    if (!camera) {
+        return false;
+    }
+
+    const int safePreviewIndex = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
+    wvpResource = previewWvpResources_[safePreviewIndex].Get();
+    cameraResource = previewCameraResources_[safePreviewIndex].Get();
+    TransformationMatrix* previewWvpData = previewWvpData_[safePreviewIndex];
+    CameraForGPU* previewCameraData = previewCameraData_[safePreviewIndex];
+    if (!wvpResource || !cameraResource || !previewWvpData || !previewCameraData) {
+        return false;
+    }
+
+    Math math;
+    const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
+    previewWvpData->WVP = math.Multiply(worldMatrix, camera->GetViewProjectionMatrix());
+    previewWvpData->world = worldMatrix;
+    previewWvpData->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+    previewCameraData->worldPosition = camera->GetEye();
+    return true;
+}
+
+void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex) {
+    ID3D12Resource* previewWvpResource = nullptr;
+    ID3D12Resource* previewCameraResource = nullptr;
+    if (!common_ || !HasRequiredBuffers() ||
+        !PreparePreviewCameraData(camera, previewBufferIndex, previewWvpResource, previewCameraResource)) {
+        return;
+    }
+
+    switch (materialType) {
+    case 8:
+        DrawWaterWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
+        break;
+    case 9:
+        DrawMagmaWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
+        break;
+    case 10:
+        DrawIceWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
+        break;
+    case 11:
+        DrawFireWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
+        break;
+    case 12:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLaserGraphicsCommand);
+        break;
+    case 13:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetSlimeGelGraphicsCommand);
+        break;
+    case 14:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetShockwaveGraphicsCommand);
+        break;
+    case 15:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLiquidContactGraphicsCommand);
+        break;
+    case 16:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetDamageCrackGraphicsCommand);
+        break;
+    case 17:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetUpdraftGraphicsCommand, true);
+        break;
+    case 18:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetStunBindGraphicsCommand, true);
+        break;
+    case 19:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetCrownUnlockGraphicsCommand, true);
+        break;
+    case 20:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetPoisonSporeGraphicsCommand, true);
+        break;
+    case 21:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetCloudGraphicsCommand, true);
+        break;
+    case 22:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
+        break;
+    case 26:
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &Object3dCommon::SetWindOrbGraphicsCommand);
+        break;
+    default:
+        break;
+    }
+}
+
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawWaterWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
+}
+
+void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
     const bool useWaterGrid = !waterParamData_ || waterParamData_->effectType < 0.5f;
     if (useWaterGrid && !waterProxyModel_) {
@@ -267,7 +346,7 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     common_->SetWaterGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
@@ -280,13 +359,17 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     drawModel->DrawMeshOnly((useWaterGrid && waterProxyModel_) ? -1 : meshDrawIndex_);
 }
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawMagmaWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
+}
+
+void MeshRenderer::DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
     common_->SetMagmaGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
@@ -297,13 +380,17 @@ void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 }
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawIceWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
+}
+
+void MeshRenderer::DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
     common_->SetIceGraphicsCommand(); 
     // (以下、DrawMagmaと全く同じ)
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
@@ -312,8 +399,12 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawFireWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
+}
+
+void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
     if (!fireProxyModel_) {
         InitializeFireProxyModel();
@@ -321,7 +412,7 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
     common_->SetFireGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
@@ -332,8 +423,12 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
+    DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle, setGraphicsCommand, useProxyModel, bakedTextureMode);
+}
+
+void MeshRenderer::DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand) return;
+    if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand || !wvpResource) return;
 
     Model* proxyModel = nullptr;
     if (useProxyModel) {
@@ -352,7 +447,7 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
 
     (common_->*setGraphicsCommand)();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
@@ -406,6 +501,10 @@ void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
+}
+
+void MeshRenderer::DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetWindOrbGraphicsCommand);
 }
 
 void MeshRenderer::InitializeWaterProxyModel() {

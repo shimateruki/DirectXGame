@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d5633963b3c675c25956c6555544aea1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Primitives/AnimatedCube/AnimatedCube_BaseColor.png",
+  "version": 1
+}

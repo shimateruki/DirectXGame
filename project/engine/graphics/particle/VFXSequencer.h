@@ -72,6 +72,7 @@ void Play();
         const Vector3& scale = { 1.0f, 1.0f, 1.0f });
 
     bool IsPlaying() const { return isPlaying_; }
+    float GetCurrentTime() const { return currentTime_; }
     float GetDuration() const;
     void Save(const std::string& sequenceName);
     void Load(const std::string& sequenceName);
@@ -90,6 +91,7 @@ void Play();
     static void PlayOneShotOnTarget(const std::string& sequenceName, Object3d* targetObject);
     static void PlayOneShotOnTarget(const std::string& sequenceName, Object3d* targetObject, const Vector3& localOffset, const Vector3& scale, const Vector3& rotation);
     static void UpdateOneShots(float deltaTime);
+    static void ClearOneShots();
 
 private:
     std::vector<VFXEvent> events_;

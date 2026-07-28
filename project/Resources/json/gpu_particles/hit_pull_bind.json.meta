@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "03964508ba4dc6b9f7d0958e4f1f5403",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_pull_bind.json",
+  "version": 1
+}

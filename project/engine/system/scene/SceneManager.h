@@ -123,7 +123,6 @@ private:
     std::unique_ptr<BaseScene> preparedScene_ = nullptr;
     std::future<std::shared_ptr<ScenePreloadData>> loadingFuture_;
     std::future<void> assetCreationFuture_;
-    std::future<void> sceneInitializationFuture_;
     std::shared_ptr<ScenePreloadData> preparedLoadData_;
     std::shared_ptr<ScenePreloadProgress> preloadProgress_;
 

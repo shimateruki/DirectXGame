@@ -149,6 +149,16 @@ void GimmickStageGate::SetGateActivation(float activation) {
     targetActivation_ = Clamp01(activation);
 }
 
+void GimmickStageGate::SetTransitionEnabled(bool enabled) {
+    if (!param_.has_value()) {
+        param_.emplace();
+    }
+    param_->startActive = enabled;
+    if (enabled) {
+        hasTriggeredTransition_ = false;
+    }
+}
+
 void GimmickStageGate::TriggerEntryReaction() {
     // プレイヤーが触れた瞬間に、ゲートを強く反応させます。
     targetActivation_ = 1.0f;

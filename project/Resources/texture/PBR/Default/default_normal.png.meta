@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "85f70aac92111e03186bbc7bf0dfd7ae",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Default/default_normal.png",
+  "version": 1
+}

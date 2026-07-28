@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4cf42819ca30942e8705dd6c4689fe0d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/crown_iris/frame_09.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d74ba504e752b05bf5039d7ad749bc13",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/clear/returning_select_text.png",
+  "version": 1
+}

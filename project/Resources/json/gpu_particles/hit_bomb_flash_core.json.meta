@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "8dbcc8f57fa1615e39ef886e34a54b6c",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_bomb_flash_core.json",
+  "version": 1
+}

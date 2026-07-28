@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c67381eba0e5899bb03a3ac87731fbe1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/bomber.png",
+  "version": 1
+}

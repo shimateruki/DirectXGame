@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "206b906afe6041e6adef89c956e84064",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stage_select_bridge/bridge_rope.png",
+  "version": 1
+}

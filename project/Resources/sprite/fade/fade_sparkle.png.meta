@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "517b5d8553d0edb6241c71d68e8f650a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/fade_sparkle.png",
+  "version": 1
+}

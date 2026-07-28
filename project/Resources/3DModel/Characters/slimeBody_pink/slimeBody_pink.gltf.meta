@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "57e1a06e19a223bf4038097e9eb13e73",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_pink/slimeBody_pink.gltf",
+  "version": 1
+}

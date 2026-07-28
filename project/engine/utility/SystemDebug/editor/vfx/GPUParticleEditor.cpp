@@ -9,7 +9,9 @@
 #include "CameraManager.h"
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
+#include "ProfilerManager.h"
 #include <algorithm>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -17,33 +19,117 @@ void GPUParticleEditor::Initialize() {
     emitTimer_ = 0.0f;
 }
 
-void GPUParticleEditor::Update(float deltaTime) {
+void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
-    bool usePreviewStage = previewStage && previewStage->IsEnabled();
+    const bool usePreviewStage = previewStage && previewStage->IsEnabled();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
-    if (usePreviewStage && isThisEditorSelected) {
-        GPUParticleManager::GetInstance()->SetTimeScale(previewStage->GetPlaybackSpeed());
-        if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
-            lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
-            EmitWithPreview();
+    GPUParticleManager* manager = GPUParticleManager::GetInstance();
+    if (!usePreviewStage || !isThisEditorSelected) {
+        manager->SetTimeScale(1.0f);
+        return;
+    }
+
+    const float previewDuration = (std::max)(0.1f, config_.emitLife + 0.25f);
+    auto restartPreview = [&](float seekTime) {
+        manager->ResetSimulation();
+        emitTimer_ = 0.0f;
+        previewTime_ = 0.0f;
+        EmitWithPreview();
+
+        const float clampedSeek = std::clamp(seekTime, 0.0f, previewDuration);
+        const float previousScale = manager->GetTimeScale();
+        manager->SetTimeScale(1.0f);
+        while (previewTime_ + (1.0f / 60.0f) < clampedSeek) {
+            manager->UpdateEditorPreviewStep(1.0f / 60.0f);
+            previewTime_ += 1.0f / 60.0f;
         }
+        if (clampedSeek > previewTime_) {
+            manager->UpdateEditorPreviewStep(clampedSeek - previewTime_);
+            previewTime_ = clampedSeek;
+        }
+        manager->SetTimeScale(previousScale);
+    };
+
+    if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+        restartPreview(0.0f);
+    }
+    if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+        lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+        manager->ResetSimulation();
+        previewTime_ = 0.0f;
+        emitTimer_ = 0.0f;
+    }
+    if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+        restartPreview(previewStage->GetSeekTargetTime());
     }
 
     // エディタのプレビュー間隔もスローモーションに対応させる
-    float scaledDelta = deltaTime * GPUParticleManager::GetInstance()->GetTimeScale();
+    manager->SetTimeScale(previewStage->GetPlaybackSpeed());
+    const float scaledDelta = deltaTime * manager->GetTimeScale();
 
-    bool loopPreview = isThisEditorSelected && (config_.isLooping || (usePreviewStage && previewStage->IsLoopEnabled()));
-    if (loopPreview) {
+    if (config_.isLooping && scaledDelta > 0.0f) {
         emitTimer_ += scaledDelta;
-        if (emitTimer_ >= config_.emitInterval) {
+        if (emitTimer_ >= (std::max)(0.01f, config_.emitInterval)) {
             EmitWithPreview();
             emitTimer_ = 0.0f;
         }
     }
 
-    if (isThisEditorSelected) {
-        GPUParticleManager::GetInstance()->Update(deltaTime);
+    if (scaledDelta > 0.0f) {
+        previewTime_ += scaledDelta;
+        if (previewTime_ >= previewDuration) {
+            if (previewStage->IsLoopEnabled()) {
+                restartPreview(0.0f);
+            } else {
+                previewTime_ = previewDuration;
+            }
+        }
     }
+
+    if (!sceneIsPlaying) {
+        // 編集停止中はGame側の0秒更新済みフラグを解除し、Preview時間を確実に進めます。
+        manager->UpdateEditorPreviewStep(deltaTime);
+    }
+
+    std::vector<EffectPreviewStage::TimelineEvent> events;
+    events.push_back({ "Spawn", 0.0f, 0.05f, Vector4{ 0.35f, 0.85f, 1.0f, 1.0f } });
+    events.push_back({ "Particle life", 0.0f, (std::min)(config_.emitLife, previewDuration), Vector4{ 0.25f, 0.65f, 1.0f, 1.0f } });
+    if (config_.isLooping) {
+        events.push_back({ "Emit interval", 0.0f, (std::min)((std::max)(config_.emitInterval, 0.01f), previewDuration), Vector4{ 0.55f, 0.95f, 0.75f, 1.0f } });
+    }
+    const uint32_t capacity = GPUParticleManager::ResolveParticleCapacity(config_);
+    uint64_t estimatedParticleCount = static_cast<uint64_t>((std::max)(config_.emitCount, 0));
+    if (config_.isLooping && config_.emitInterval > 0.0f) {
+        const double batchesByLifetime = std::ceil(
+            static_cast<double>(config_.emitLife) / config_.emitInterval);
+        const double batchesByElapsed = 1.0 + std::floor(
+            static_cast<double>(previewTime_) / config_.emitInterval);
+        const double aliveBatchCount = (std::max)(
+            1.0, (std::min)(batchesByLifetime, batchesByElapsed));
+        const uint64_t aliveBatches = static_cast<uint64_t>(aliveBatchCount);
+        estimatedParticleCount *= aliveBatches;
+    }
+
+    EffectPreviewStage::PerformanceMetrics performance;
+    performance.available = true;
+    performance.particleCount = static_cast<int>((std::min)(
+        estimatedParticleCount,
+        static_cast<uint64_t>(capacity)));
+    performance.cpuTimeMs = manager->GetLastUpdateCpuTimeMs() + manager->GetLastDrawCpuTimeMs();
+    performance.gpuTimeMs = ProfilerManager::GetInstance()->GetLatestGpuTime("Particle GPU pass");
+    performance.frameDeltaSeconds = deltaTime;
+    performance.memoryBytes = manager->GetEstimatedMemoryBytesForConfig(config_);
+    previewStage->ReportToolState(
+        EffectPreviewStage::ToolKind::GpuParticle,
+        "GPU Particle",
+        previewTime_,
+        previewDuration,
+        previewStage->IsTransportPlaying(),
+        performance.particleCount,
+        events,
+        performance);
 }
 void GPUParticleEditor::DrawImGui() {
 #ifdef USE_IMGUI
@@ -427,6 +513,13 @@ void GPUParticleEditor::DrawImGui() {
         if (ImGui::Checkbox("Random Start", &randomStart)) {
             config_.spriteSheetRandomStart = randomStart ? 1 : 0;
         }
+
+        bool alignToVelocity = config_.alignToVelocity != 0;
+        if (ImGui::Checkbox("速度方向へSpriteを整列", &alignToVelocity)) {
+            config_.alignToVelocity = alignToVelocity ? 1 : 0;
+        }
+        ImGui::DragFloat("速度による横伸び", &config_.velocityStretch, 0.005f, 0.0f, 0.20f, "%.3f");
+        ImGui::TextDisabled("横向きの風・斬撃・軌跡Spriteを移動方向へ揃える設定です。");
     }
 #endif
 }
@@ -493,6 +586,8 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["restitution"] = config_.restitution;
     j["colorIntensity"] = config_.colorIntensity;
     j["texturePath"] = config_.texturePath;
+    j["alignToVelocity"] = config_.alignToVelocity != 0;
+    j["velocityStretch"] = config_.velocityStretch;
     j["spriteAnimation"] = {
         { "columns", config_.spriteSheetColumns },
         { "rows", config_.spriteSheetRows },
@@ -526,6 +621,8 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         config_.spriteSheetFps = 0.0f;
         config_.spriteSheetLoop = 0;
         config_.spriteSheetRandomStart = 0;
+        config_.alignToVelocity = 0;
+        config_.velocityStretch = 0.0f;
         config_.maxParticles = 0;
 
         if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
@@ -575,6 +672,10 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("spriteSheetRandomStart")) {
             config_.spriteSheetRandomStart = j["spriteSheetRandomStart"].is_boolean() ? (j["spriteSheetRandomStart"].get<bool>() ? 1 : 0) : j["spriteSheetRandomStart"].get<int>();
         }
+        if (j.contains("alignToVelocity")) {
+            config_.alignToVelocity = j["alignToVelocity"].is_boolean() ? (j["alignToVelocity"].get<bool>() ? 1 : 0) : j["alignToVelocity"].get<int>();
+        }
+        if (j.contains("velocityStretch")) config_.velocityStretch = j["velocityStretch"];
         if (j.contains("spriteAnimation")) {
             const auto& anim = j["spriteAnimation"];
             if (anim.contains("columns")) config_.spriteSheetColumns = anim["columns"];

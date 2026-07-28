@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cb6fc12b13f5a6fca6a76562fda72101",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/common/circle2.png",
+  "version": 1
+}

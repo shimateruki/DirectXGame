@@ -28,6 +28,8 @@ public:
     void RecordLoadTime(const std::string& category, const std::string& name, float timeMs);
     void RecordGpuTime(const std::string& name, float timeMs);
     void RecordCpuTime(const std::string& name, float timeMs);
+    float GetLatestGpuTime(const std::string& name) const;
+    float GetLatestCpuTime(const std::string& name) const;
 
     /// <summary>
     /// ImGui描画
@@ -62,6 +64,7 @@ private:
     std::map<std::string, std::vector<LoadData>> loadDataMap_;
     std::map<std::string, TimelineData> gpuDataMap_;
     std::map<std::string, TimelineData> cpuDataMap_;
+    std::map<std::string, float> latestGpuTimeMap_;
     mutable std::recursive_mutex mutex_;
     const std::vector<std::unique_ptr<Object3d>>* currentObjects_ = nullptr;
     bool isOpen_ = false;

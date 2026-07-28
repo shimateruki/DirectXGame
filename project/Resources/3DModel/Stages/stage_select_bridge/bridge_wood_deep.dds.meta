@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "84a3c1840910ae7f8bc8865ce1db7aae",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stage_select_bridge/bridge_wood_deep.dds",
+  "version": 1
+}

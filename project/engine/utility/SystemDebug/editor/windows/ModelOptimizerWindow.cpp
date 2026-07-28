@@ -4,6 +4,7 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EditorManager.h"
+#include "EditorAssetDragPayload.h"
 #include "EffectPreviewStage.h"
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
@@ -383,8 +384,8 @@ void ModelOptimizerWindow::DrawImGui() {
 
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-            const char* modelName = static_cast<const char*>(payload->Data);
-            if (modelName && modelName[0] != '\0') {
+            const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+            if (!modelName.empty()) {
                 SetModelName(modelName);
             }
         }

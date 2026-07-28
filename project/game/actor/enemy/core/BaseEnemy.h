@@ -1,8 +1,18 @@
 #pragma once
 #include "Character.h"
 #include "AttackTelegraph.h"
+#include "EnemyAttackProfile.h"
 #include <cstdint>
 #include <memory>
+
+// 敵固有の移動・攻撃姿勢へ最後に重ねる、短い被弾リアクションの見た目です。
+// scaleは倍率、rotationとoffsetはローカル空間の加算値です。
+struct EnemyVisualReactionPose {
+    Vector3 scale = { 1.0f, 1.0f, 1.0f };
+    Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+    Vector3 offset = { 0.0f, 0.0f, 0.0f };
+    float weight = 0.0f;
+};
 
 // 全ての敵が共有する移動・被ダメージ・投げ物理・撃破演出をまとめる基底クラス
 // BaseEnemyは、敵共通の追跡対象、徘徊、被弾、投げ物理、撃破演出を持つ基底クラスです。
@@ -26,6 +36,10 @@ virtual bool OnCollision(Object3d* other) override;
     // 追跡や攻撃の基準になるターゲットを登録する
     void SetTarget(Object3d* target) { target_ = target; }
 
+    // シーン演出などで敵のAI・重力・当たり判定を一時停止します。
+    void SetDormant(bool dormant);
+    bool IsDormant() const { return isDormant_; }
+
     void SetDetectionRange(float range) { detectionRange_ = range; }
     float GetDetectionRange() const { return detectionRange_; }
         // プレイヤーに持たれている状態を切り替えます。
@@ -35,8 +49,17 @@ virtual void SetCarried(bool isCarried);
 virtual void BeginThrown(const Vector3& initialVelocity);
     bool IsThrownPhysics() const { return isThrownPhysics_; }
     bool IsDefeatEffectPlaying() const { return isDefeatEffectPlaying_; }
+    // 中ボスなど、フック命中演出は受けても持ち運びへ移行しない敵が上書きします。
+    virtual bool IsPullImmune() const { return false; }
+    // DamageEventを受けた敵へ、攻撃方向に応じた潰れと反発を開始します。
+    void PlayDamageReaction(Object3d* attacker, const Vector3& knockbackVelocity, float damage);
+    float GetDamageReactionWeight() const;
     virtual void ExecuteAbility(class Player* player);
     virtual void UpdateCarriedAbility(class Player* player, float deltaTime);
+
+    // 現在の敵タイプに対応する攻撃プロファイルを再読み込みします。
+    bool ReloadAttackProfile(std::string* errorMessage = nullptr);
+    const EnemyAttackProfile& GetAttackProfile() const { return attackProfile_; }
 
 
 protected:
@@ -56,20 +79,31 @@ Vector3 CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusSc
     bool ShouldHandleDefeatEffect() const;
         // 円形攻撃予兆を敵共通のAttackTelegraphへ表示します。
 void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color);
+    void ShowAttackTelegraphDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color, const std::string& texturePath);
     void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
     void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
     void HideAttackTelegraph();
     bool UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection);
     void CancelNoticeReaction();
     void SpawnDefeatCoinDrops();
+    const EnemyAttackDefinition& GetAttackDefinition(const std::string& attackId) const;
+    EnemyVisualReactionPose GetDamageReactionPose() const;
+    void ApplyDamageReactionPose(
+        Vector3& scale,
+        Vector3& rotation,
+        Vector3* offset = nullptr,
+        float intensity = 1.0f) const;
+    void UpdateDamageFeedbackTimers(float deltaTime);
     virtual void OnSlamImpact(const Vector3& impactPosition, float impactSpeed);
 
     Object3d* target_ = nullptr; // 追いかける対象。基本的にはプレイヤー。
     float detectionRange_ = 20.0f; // ターゲットを検知して攻撃AIへ入る距離。
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ短い無敵時間。
     float colorResetTimer_ = 0.0f;     // 被弾時の赤色を元に戻すタイマー。
+    EnemyAttackProfile attackProfile_;
     Vector4 defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 被弾演出後に戻す基準色。
     bool isCarried_ = false;
+    bool isDormant_ = false;
     float throwRecoveryTimer_ = 0.0f;
     bool isThrownPhysics_ = false;
 
@@ -90,7 +124,6 @@ private:
     // 高速で地面へ叩きつけられた時の範囲ダメージと演出
     void SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed);
     void DamageSlamTargets(const Vector3& impactPosition, float impactSpeed);
-    void UpdateDamageFeedbackTimers(float deltaTime);
     void BeginNoticeReaction();
     void EndNoticeReaction(bool restoreVisual = true);
     void EnsureNoticeMarkObject();
@@ -133,6 +166,10 @@ void BeginDefeatEffect();
     Vector4 noticeBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;
+    float damageReactionTimer_ = 0.0f;
+    float damageReactionDuration_ = 0.0f;
+    float damageReactionStrength_ = 0.0f;
+    Vector3 damageReactionLocalDirection_ = { 0.0f, 0.0f, -1.0f };
     Vector3 defeatBasePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 defeatBaseScale_ = { 1.0f, 1.0f, 1.0f };
     Vector4 defeatBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };

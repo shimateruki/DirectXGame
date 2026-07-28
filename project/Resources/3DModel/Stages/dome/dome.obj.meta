@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "fdac2a8536f7fd2f543d2f13e83c7c04",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/dome/dome.obj",
+  "version": 1
+}

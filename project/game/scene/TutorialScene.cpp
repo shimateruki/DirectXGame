@@ -53,6 +53,7 @@
 #include "StageManager.h"
 #include "GameDataManager.h"
 #include "GameSettingsManager.h"
+#include "TutorialDirector.h"
 
 TutorialScene::TutorialScene() {}
 TutorialScene::~TutorialScene() {}
@@ -159,14 +160,33 @@ void TutorialScene::Initialize() {
 	// ファイルが存在しない場合は代替パス (GamePlayと同じものなど) を検討
 	levelLoader_->LoadObjectLayout(this, objectPath);
 	levelLoader_->LoadSpriteLayout(this, spritePath);
+	if (player_) {
+		player_->SetTutorialSafetyEnabled(true);
+	}
+
+	controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
+	controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
 
 	saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
 	saveIndicatorOverlay_->Initialize(spriteCommon_.get());
 
+	tutorialDirector_ = std::make_unique<TutorialDirector>();
+	if (tutorialDirector_->Initialize(this, player_, inputManager_)) {
+		tutorialDirector_->SetCompletionCallback([this]() {
+			HandleTutorialFlowCompleted();
+		});
+	}
+
 	LightManager::GetInstance()->LoadState(
 		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
-	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
+	// チュートリアルだけ別の距離・高さにすると、通常シーンで覚えた視点感覚と一致しません。
+	// セレクト・ゲーム本編と同じ三人称設定を共有します。
+	CameraEditor::GetInstance()->LoadFile("game_camera.json");
+	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+	if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+		camera->ResetFollowSmoothing();
+	}
 
 	// 課題用アニメーションモデルの生成
 	animatedCube_ = std::make_unique<Object3d>();
@@ -184,6 +204,14 @@ void TutorialScene::Initialize() {
 }
 
 void TutorialScene::Finalize() {
+	if (tutorialDirector_) {
+		tutorialDirector_->Finalize();
+	}
+	tutorialDirector_.reset();
+	if (controlsGuideOverlay_) {
+		controlsGuideOverlay_->Finalize();
+	}
+	controlsGuideOverlay_.reset();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	saveIndicatorOverlay_.reset();
@@ -218,6 +246,13 @@ void TutorialScene::Update(float deltaTime) {
 			SceneManager::GetInstance()->ChangeScene("SELECT");
 			return;
 		}
+	}
+
+	if (HandleControlsGuideOverlay(deltaTime)) {
+		if (saveIndicatorOverlay_) {
+			saveIndicatorOverlay_->Update(deltaTime);
+		}
+		return;
 	}
 
 	// --- ポストエフェクト更新 ---
@@ -299,7 +334,13 @@ void TutorialScene::Update(float deltaTime) {
 	ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
 	CameraManager::GetInstance()->Update(deltaTime);
 	particleSystem_->Update(deltaTime);
+	if (tutorialDirector_) {
+		tutorialDirector_->Update(deltaTime);
+	}
 	objectManager_->Update(deltaTime);
+	if (gameRule_) {
+		gameRule_->Update(deltaTime);
+	}
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
@@ -358,7 +399,7 @@ void TutorialScene::Draw() {
 		}
 
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue;
 
 		obj->Draw(pointLightRes, spotLightRes);
 	}
@@ -405,6 +446,9 @@ void TutorialScene::DrawUI() {
 	for (auto& sprite : sprites_) sprite->Draw();
 	if (isDrawLockOn_ && lockOnSprite_) lockOnSprite_->Draw();
 	if (player_) player_->DrawUI();
+	if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
+		controlsGuideOverlay_->Draw();
+	}
 	if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive()) saveIndicatorOverlay_->Draw();
 }
 
@@ -424,12 +468,68 @@ void TutorialScene::DrawImGui() {
     if (saveIndicatorOverlay_ && ImGui::CollapsingHeader("Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
         saveIndicatorOverlay_->DrawImGui();
     }
+    if (tutorialDirector_ && ImGui::CollapsingHeader("Tutorial Flow", ImGuiTreeNodeFlags_DefaultOpen)) {
+        tutorialDirector_->DrawImGui();
+    }
     ImGui::Separator();
     ImGui::TextDisabled("※この項目は TutorialScene::DrawImGui() で編集可能です");
 #endif
 }
 
-void TutorialScene::StartBridgeDropMovie() {}
+void TutorialScene::StartBridgeDropMovie() {
+    if (tutorialDirector_) {
+        tutorialDirector_->JumpToStep("path_reveal");
+    }
+}
+
+bool TutorialScene::HandleControlsGuideOverlay(float deltaTime) {
+    if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
+        controlsGuideOverlay_->SetPlayer(player_);
+        controlsGuideOverlay_->Update(deltaTime);
+        return true;
+    }
+
+    if (!IsControlsGuideOpenTriggered()) {
+        return false;
+    }
+
+    if (controlsGuideOverlay_) {
+        controlsGuideOverlay_->SetPlayer(player_);
+        controlsGuideOverlay_->SetActive(true);
+    }
+    if (tutorialDirector_) {
+        tutorialDirector_->NotifyControlsGuideOpened();
+    }
+    return true;
+}
+
+bool TutorialScene::IsControlsGuideOpenTriggered() const {
+    if (!inputManager_ || isGoal_) {
+        return false;
+    }
+
+#ifdef USE_IMGUI
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        return false;
+    }
+#endif
+
+    return inputManager_->IsKeyTriggered(DIK_TAB);
+}
+
+void TutorialScene::HandleTutorialFlowCompleted() {
+    if (goalSavePerformed_) {
+        return;
+    }
+
+    GameDataManager::GetInstance()->MarkStageCleared(-1);
+    if (saveIndicatorOverlay_) {
+        saveIndicatorOverlay_->Play(1.35f);
+    }
+    DebugConsole::GetInstance()->AddLog("Tutorial flow completed. Exit gate unlocked.");
+    goalSavePerformed_ = true;
+}
 
 bool TutorialScene::IsVisible(Object3d* obj) {
     if (!obj) return false;

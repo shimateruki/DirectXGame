@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "143a480912f8aa5daebafe588e3f4baa",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bomb_slime/bomb_slime_spark.dds",
+  "version": 1
+}

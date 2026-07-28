@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a827df4ed60cba136e5d09abbcdf978f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/plane/plane.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "611616824d90f419788ac097e3081b4c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/portal_gate/portal_gate_gold.dds",
+  "version": 1
+}

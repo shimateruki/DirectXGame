@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0211cb436f0f6cfb41b979114f228624",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/soft_circle.dds",
+  "version": 1
+}

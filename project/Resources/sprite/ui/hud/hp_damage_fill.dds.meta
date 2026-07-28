@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a2a7479ffd118a0cbea9fccd6fe77e53",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/hp_damage_fill.dds",
+  "version": 1
+}

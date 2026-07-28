@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "919ba773c93f7d7d5b1a6be07544ca69",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_white/slime_white.gltf",
+  "version": 1
+}

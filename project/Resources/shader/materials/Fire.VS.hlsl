@@ -61,10 +61,18 @@ VSOutput main(VSInput input)
     proxyRadius = max(proxyRadius, 0.001f);
 
     float2 quad = input.pos.xy;
-    float2 noiseSeed = quad * 1.4f + input.uv * 0.8f;
+    float2 phaseSeed = float2(uvOffsetX, uvOffsetY) * float2(0.37f, 0.23f);
+    float2 noiseSeed = quad * 1.4f + input.uv * 0.8f + phaseSeed;
     float slowCurl = Fbm2(noiseSeed + float2(time * 0.22f, -time * 0.37f));
     float fastCurl = Fbm2(noiseSeed * 1.8f + float2(-time * 0.76f, time * 0.54f));
-    float2 flutter = float2(slowCurl - 0.5f, fastCurl - 0.5f) * 0.035f;
+    float motion = saturate(abs(flowSpeedY));
+    float wind = clamp(flowSpeedX, -1.0f, 1.0f);
+    float height01 = saturate(quad.y * 0.5f + 0.5f);
+    float topWeight = height01 * height01;
+    float flameMode = (effectType < 0.5f || (effectType >= 1.5f && effectType < 2.5f)) ? 1.0f : 0.0f;
+    float gust = sin(time * (4.6f + motion * 2.2f) + phaseSeed.x * 3.1f) * 0.025f;
+    quad.x += (wind * (0.08f + motion * 0.18f) + gust) * topWeight * flameMode;
+    float2 flutter = float2(slowCurl - 0.5f, fastCurl - 0.5f) * (0.028f + motion * 0.026f);
 
     float3 worldOffset = viewRight * (quad.x + flutter.x) * proxyRadius;
     worldOffset += viewUp * (quad.y + flutter.y) * proxyRadius;

@@ -48,7 +48,8 @@ cbuffer ViewProj : register(b0)
     float spriteSheetFps;
     uint spriteSheetLoop;
     uint spriteSheetRandomStart;
-    float2 spriteSheetPadding;
+    uint alignToVelocity;
+    float velocityStretch;
 };
 
 struct VSOutput
@@ -100,7 +101,9 @@ float2 ApplySpriteSheet(float2 baseUV, Particle particle, uint instanceID)
     uint frameX = frame % columns;
     uint frameY = frame / columns;
     float2 frameScale = float2(1.0f / (float)columns, 1.0f / (float)rows);
-    return (baseUV + float2((float)frameX, (float)frameY)) * frameScale;
+    // Keep bilinear sampling inside the selected cell to prevent atlas bleeding.
+    float2 safeUV = lerp(float2(0.004f, 0.004f), float2(0.996f, 0.996f), saturate(baseUV));
+    return (safeUV + float2((float)frameX, (float)frameY)) * frameScale;
 }
 
 VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
@@ -110,8 +113,23 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     Particle p = particles[particleIndex];
 
     float3 localPos = positions[vertexID] * p.scale;
-    float c = cos(p.rotation);
-    float s = sin(p.rotation);
+    float velocityLength = length(p.velocity);
+    localPos.x *= 1.0f + min(velocityLength * max(velocityStretch, 0.0f), 2.5f);
+
+    float rotation = p.rotation;
+    if (alignToVelocity != uint(0) && velocityLength > 0.0001f)
+    {
+        float3 cameraRight = normalize(float3(billboardMatrix._11, billboardMatrix._12, billboardMatrix._13));
+        float3 cameraUp = normalize(float3(billboardMatrix._21, billboardMatrix._22, billboardMatrix._23));
+        float2 projectedVelocity = float2(dot(p.velocity, cameraRight), dot(p.velocity, cameraUp));
+        if (dot(projectedVelocity, projectedVelocity) > 0.000001f)
+        {
+            rotation += atan2(projectedVelocity.y, projectedVelocity.x);
+        }
+    }
+
+    float c = cos(rotation);
+    float s = sin(rotation);
     float3 rotatedPos;
     rotatedPos.x = localPos.x * c - localPos.y * s;
     rotatedPos.y = localPos.x * s + localPos.y * c;

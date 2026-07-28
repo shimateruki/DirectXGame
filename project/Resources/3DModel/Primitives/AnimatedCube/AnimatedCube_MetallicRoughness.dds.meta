@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "646ecbd7b985328d836fd491a77f0880",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Primitives/AnimatedCube/AnimatedCube_MetallicRoughness.dds",
+  "version": 1
+}

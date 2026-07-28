@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "84cedb8e83a659b559a764a1fc53ee18",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/glow_core.png",
+  "version": 1
+}

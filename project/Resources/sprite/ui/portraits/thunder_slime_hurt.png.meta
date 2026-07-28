@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3864d6b2d1fc5aa3f441fc9f93741dc4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/thunder_slime_hurt.png",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "ffe431fd8397745c5cade1b3f60054be",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/wind_slime_gust_burst.json",
+  "version": 1
+}

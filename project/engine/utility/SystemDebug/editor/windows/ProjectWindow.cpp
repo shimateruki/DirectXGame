@@ -14,14 +14,42 @@
 #include "CameraManager.h"
 #include "Object3dCommon.h"
 #include "IconsFontAwesome5.h"
+#include "AssetDatabase.h"
+#include "EditorAssetDragPayload.h"
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <cmath>
+#include <cstring>
 #include <filesystem>
 
 
 namespace fs = std::filesystem;
 
 namespace {
+struct HudPortraitSpec {
+    const char* presetName;
+    const char* fileStem;
+    float yaw;
+    float pitch;
+    float scale;
+    float offsetY;
+};
+
+constexpr std::array<HudPortraitSpec, 9> kHudPortraitSpecs = {
+    HudPortraitSpec{ "Builtin/Enemy/Slime", "slime", 0.0f, -0.12f, 1.08f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/Bomber", "bomber", 0.0f, -0.12f, 1.08f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/Bat", "bat", 0.0f, -0.08f, 2.20f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/BeamDrone", "beam_drone", 0.0f, -0.08f, 1.05f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/Mushroom", "mushroom", 0.0f, -0.12f, 1.10f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/GiantSlime", "giant_slime", 0.0f, -0.12f, 1.24f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/FireSlime", "fire_slime", 0.0f, -0.12f, 1.08f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/ThunderSlime", "thunder_slime", 0.0f, -0.12f, 1.08f, 0.0f },
+    HudPortraitSpec{ "Builtin/Enemy/WindSlime", "wind_slime", 0.0f, -0.12f, 1.08f, 0.0f },
+};
+
+constexpr const char* kHudPortraitDirectory = "Resources/sprite/ui/hud/morph_icons";
+
 std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
@@ -53,6 +81,74 @@ void ApplyThumbnailLightOverride(Object3d* object) {
         ApplyThumbnailLightOverride(child);
     }
 }
+
+bool SavePng(const DirectX::Image& image, const fs::path& path) {
+    const std::wstring widePath = path.wstring();
+    return SUCCEEDED(DirectX::SaveToWICFile(
+        image,
+        DirectX::WIC_FLAGS_NONE,
+        GUID_ContainerFormatPng,
+        widePath.c_str(),
+        &GUID_WICPixelFormat32bppRGBA));
+}
+
+bool CreateHurtPortrait(const DirectX::Image& source, DirectX::ScratchImage& hurtImage) {
+    if (source.format != DXGI_FORMAT_R8G8B8A8_UNORM || source.width == 0 || source.height == 0) {
+        return false;
+    }
+
+    const size_t squashedHeight = (std::max)(size_t{ 1 }, static_cast<size_t>(std::lround(source.height * 0.86)));
+    DirectX::ScratchImage squashed;
+    if (FAILED(DirectX::Resize(
+        source,
+        source.width,
+        squashedHeight,
+        DirectX::TEX_FILTER_CUBIC,
+        squashed))) {
+        return false;
+    }
+
+    if (FAILED(hurtImage.Initialize2D(
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        source.width,
+        source.height,
+        1,
+        1))) {
+        return false;
+    }
+
+    const DirectX::Image* squashedImage = squashed.GetImage(0, 0, 0);
+    const DirectX::Image* destination = hurtImage.GetImage(0, 0, 0);
+    if (!squashedImage || !destination) {
+        return false;
+    }
+
+    std::memset(destination->pixels, 0, destination->slicePitch);
+    const size_t verticalOffset = (source.height - squashedHeight) / 2 + 4;
+    const size_t copyHeight = (std::min)(squashedHeight, source.height - (std::min)(verticalOffset, source.height));
+    const size_t copyBytes = (std::min)(source.width * 4, (std::min)(squashedImage->rowPitch, destination->rowPitch));
+    for (size_t y = 0; y < copyHeight; ++y) {
+        std::memcpy(
+            destination->pixels + (verticalOffset + y) * destination->rowPitch,
+            squashedImage->pixels + y * squashedImage->rowPitch,
+            copyBytes);
+    }
+
+    // 被弾時は同じモデルの形を保ったまま、つぶれと赤みだけで反応を出します。
+    for (size_t y = 0; y < destination->height; ++y) {
+        uint8_t* row = destination->pixels + y * destination->rowPitch;
+        for (size_t x = 0; x < destination->width; ++x) {
+            uint8_t* pixel = row + x * 4;
+            if (pixel[3] == 0) {
+                continue;
+            }
+            pixel[0] = static_cast<uint8_t>((std::min)(255.0f, pixel[0] * 0.88f + 42.0f));
+            pixel[1] = static_cast<uint8_t>(pixel[1] * 0.76f);
+            pixel[2] = static_cast<uint8_t>(pixel[2] * 0.76f);
+        }
+    }
+    return true;
+}
 }
 
 void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
@@ -61,6 +157,32 @@ void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
     if (dxCommon_) {
         previewObject3dCommon_ = std::make_unique<Object3dCommon>();
         previewObject3dCommon_->Initialize(dxCommon_);
+    }
+}
+
+void ProjectWindow::QueueHudPortraitExports(bool forceAll) {
+    const fs::path outputDirectory(kHudPortraitDirectory);
+    for (const HudPortraitSpec& spec : kHudPortraitSpecs) {
+        const fs::path normalPath = outputDirectory / (std::string(spec.fileStem) + ".png");
+        const fs::path hurtPath = outputDirectory / (std::string(spec.fileStem) + "_hurt.png");
+        if (!forceAll && fs::exists(normalPath) && fs::exists(hurtPath)) {
+            continue;
+        }
+
+        if (presetThumbnailAlbum_.find(spec.presetName) == presetThumbnailAlbum_.end()) {
+            CreatePresetThumbnailResource(spec.presetName);
+        }
+
+        ThumbnailData& data = presetThumbnailAlbum_[spec.presetName];
+        data.isHudPortrait = true;
+        data.exportRequested = true;
+        data.exportFileStem = spec.fileStem;
+        data.portraitYaw = spec.yaw;
+        data.portraitPitch = spec.pitch;
+        data.portraitScale = spec.scale;
+        data.portraitOffsetY = spec.offsetY;
+        data.isCaptured = false;
+        data.previewObject.reset();
     }
 }
 
@@ -186,6 +308,10 @@ uint64_t ProjectWindow::GetPresetThumbnailGpuPtr(const std::string& presetName) 
 // ==========================================================
 void ProjectWindow::CapturePendingThumbnails() {
     if (!dxCommon_) return;
+    if (!hudPortraitAutoScanDone_) {
+        hudPortraitAutoScanDone_ = true;
+        QueueHudPortraitExports(false);
+    }
     auto device = dxCommon_->GetDevice();
     auto commandList = dxCommon_->GetCommandList();
 
@@ -364,7 +490,12 @@ void ProjectWindow::CapturePendingThumbnails() {
         D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart();
         commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
-        const float clearColor[] = { 0.2f, 0.2f, 0.25f, 1.0f };
+        const float clearColor[] = {
+            data.isHudPortrait ? 0.0f : 0.2f,
+            data.isHudPortrait ? 0.0f : 0.2f,
+            data.isHudPortrait ? 0.0f : 0.25f,
+            data.isHudPortrait ? 0.0f : 1.0f
+        };
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -388,8 +519,8 @@ void ProjectWindow::CapturePendingThumbnails() {
         // プレビュー用に姿勢を微調整（くるくる回す）
         static float rotationY = 0.0f;
         rotationY += 0.02f;
-        data.previewObject->GetTransform()->rotate.y = rotationY;
-        data.previewObject->GetTransform()->rotate.x = -0.2f;
+        data.previewObject->GetTransform()->rotate.y = data.isHudPortrait ? data.portraitYaw : rotationY;
+        data.previewObject->GetTransform()->rotate.x = data.isHudPortrait ? data.portraitPitch : -0.2f;
 
         // モデルの自動フィット計算 (モデルが設定されている場合のみ)
         if (!data.previewObject->GetModelName().empty()) {
@@ -400,9 +531,13 @@ void ProjectWindow::CapturePendingThumbnails() {
                 float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
                 if (maxDim > 0.001f) {
                     float autoScale = 8.0f / maxDim;
+                    if (data.isHudPortrait) {
+                        autoScale *= data.portraitScale;
+                    }
                     data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
                     data.previewObject->GetTransform()->translate.x = -modelCenter.x * autoScale;
-                    data.previewObject->GetTransform()->translate.y = -modelCenter.y * autoScale + 1.1f;
+                    data.previewObject->GetTransform()->translate.y =
+                        -modelCenter.y * autoScale + 1.1f + (data.isHudPortrait ? data.portraitOffsetY : 0.0f);
                     data.previewObject->GetTransform()->translate.z = -modelCenter.z * autoScale;
                 }
             }
@@ -427,12 +562,124 @@ void ProjectWindow::CapturePendingThumbnails() {
     commandList->RSSetViewports(1, &originalViewport);
     commandList->RSSetScissorRects(1, &originalScissor);
 }
+
+void ProjectWindow::ExportCapturedHudPortraits() {
+    if (!dxCommon_) {
+        return;
+    }
+
+    const fs::path outputDirectory(kHudPortraitDirectory);
+    std::error_code directoryError;
+    fs::create_directories(outputDirectory, directoryError);
+    if (directoryError) {
+        DebugConsole::GetInstance()->AddLog("HUD icon export failed: output directory could not be created.");
+        return;
+    }
+
+    for (auto& [presetName, data] : presetThumbnailAlbum_) {
+        if (!data.exportRequested || !data.isCaptured || !data.resource) {
+            continue;
+        }
+
+        data.exportRequested = false;
+        DirectX::ScratchImage captured;
+        HRESULT hr = DirectX::CaptureTexture(
+            dxCommon_->GetCommandQueue(),
+            data.resource.Get(),
+            false,
+            captured,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        if (FAILED(hr)) {
+            DebugConsole::GetInstance()->AddLog("HUD icon export failed while reading GPU texture: " + presetName);
+            continue;
+        }
+
+        const DirectX::Image* source = captured.GetImage(0, 0, 0);
+        if (!source) {
+            DebugConsole::GetInstance()->AddLog("HUD icon export failed: captured image is empty: " + presetName);
+            continue;
+        }
+
+        DirectX::ScratchImage converted;
+        hr = DirectX::Convert(
+            *source,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            DirectX::TEX_FILTER_DEFAULT,
+            DirectX::TEX_THRESHOLD_DEFAULT,
+            converted);
+        const DirectX::Image* normalImage = converted.GetImage(0, 0, 0);
+        if (FAILED(hr) || !normalImage) {
+            DebugConsole::GetInstance()->AddLog("HUD icon export failed while converting image: " + presetName);
+            continue;
+        }
+
+        const fs::path normalPath = outputDirectory / (data.exportFileStem + ".png");
+        const fs::path hurtPath = outputDirectory / (data.exportFileStem + "_hurt.png");
+        DirectX::ScratchImage hurtImage;
+        const bool savedNormal = SavePng(*normalImage, normalPath);
+        const bool madeHurt = CreateHurtPortrait(*normalImage, hurtImage);
+        const DirectX::Image* hurt = madeHurt ? hurtImage.GetImage(0, 0, 0) : nullptr;
+        const bool savedHurt = hurt && SavePng(*hurt, hurtPath);
+
+        if (savedNormal && savedHurt) {
+            DebugConsole::GetInstance()->AddLog("HUD icons exported from preset: " + presetName);
+        } else {
+            DebugConsole::GetInstance()->AddLog("HUD icon PNG save failed: " + presetName);
+        }
+    }
+}
 void ProjectWindow::Draw() {
 #ifdef USE_IMGUI
+    AssetDatabase* assetDatabase = AssetDatabase::GetInstance();
+
     // ---------------------------------------------------------
     // ウィンドウ開始
     // ---------------------------------------------------------
     ImGui::Begin("Project (Assets)");
+
+    ImGui::SeparatorText("Asset Database");
+    const AssetDatabaseRefreshResult& databaseStatus = assetDatabase->GetLastRefreshResult();
+    if (assetDatabase->IsInitialIndexBuildInProgress()) {
+        if (assetDatabase->IsInitialDirectoryScanInProgress()) {
+            ImGui::Text(
+                "Asset一覧を確認中: %zu件検出",
+                assetDatabase->GetInitialDiscoveredAssetCount());
+            const float scanAnimation = static_cast<float>(std::fmod(ImGui::GetTime() * 0.5, 1.0));
+            ImGui::ProgressBar(scanAnimation, ImVec2(-1.0f, 0.0f));
+        }
+        else {
+            const std::size_t progress = assetDatabase->GetInitialIndexProgress();
+            const std::size_t total = assetDatabase->GetInitialIndexTotal();
+            const float fraction = total > 0
+                ? static_cast<float>(progress) / static_cast<float>(total)
+                : 1.0f;
+            ImGui::Text("初期索引を作成中: %zu / %zu", progress, total);
+            ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f));
+        }
+    }
+    else {
+        ImGui::Text(
+            "%zu Assets / Meta作成 %zu / Error %zu",
+            databaseStatus.assetCount,
+            databaseStatus.createdMetaCount,
+            databaseStatus.errorCount);
+    }
+    ImGui::BeginDisabled(assetDatabase->IsInitialIndexBuildInProgress());
+    if (ImGui::Button(ICON_FA_SYNC " Asset Databaseを更新")) {
+        assetDatabase->RequestRefresh(true);
+    }
+    ImGui::EndDisabled();
+    if (!assetDatabase->GetIssues().empty() && ImGui::TreeNode("Asset Database Issues")) {
+        for (const AssetDatabaseIssue& issue : assetDatabase->GetIssues()) {
+            const ImVec4 color = issue.severity == AssetDatabaseIssueSeverity::Error
+                ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                : ImVec4(1.0f, 0.78f, 0.25f, 1.0f);
+            ImGui::TextColored(color, "%s", issue.path.c_str());
+            ImGui::TextWrapped("  %s", issue.message.c_str());
+        }
+        ImGui::TreePop();
+    }
 
     // =================================================================================
     // 1. モデルファイル一覧 (Raw Models)
@@ -458,149 +705,160 @@ void ProjectWindow::Draw() {
         ImGui::TextDisabled("%s", currentModelDirectory_.c_str());
         ImGui::Separator();
 
-        if (fs::exists(currentModelDirectory_) && fs::is_directory(currentModelDirectory_)) {
-            ImGui::TextDisabled("Drag & Drop to Scene to Place");
-            ImGui::Separator();
+        const std::vector<std::string> modelDirectories = assetDatabase->GetSubdirectories(currentModelDirectory_);
+        const std::vector<const EditorAssetRecord*> directoryAssets =
+            assetDatabase->GetAssetsInDirectory(currentModelDirectory_, false);
+        ImGui::TextDisabled("Drag & Drop to Scene to Place");
+        ImGui::Separator();
 
-            float thumbnailSize = 64.0f;
-            float padding = 16.0f;
-            float cellSize = thumbnailSize + padding;
-            float panelWidth = ImGui::GetContentRegionAvail().x;
-            int columnCount = std::max(1, (int)(panelWidth / cellSize));
+        const float thumbnailSize = 64.0f;
+        const float padding = 16.0f;
+        const float cellSize = thumbnailSize + padding;
+        const float panelWidth = ImGui::GetContentRegionAvail().x;
+        const int columnCount = std::max(1, static_cast<int>(panelWidth / cellSize));
 
-            if (ImGui::BeginTable("ModelAssetTable", columnCount)) {
-                for (const auto& entry : fs::directory_iterator(currentModelDirectory_)) {
-                    if (entry.is_directory()) {
-                        std::string folderName = entry.path().filename().string();
-                        std::string payloadName = fs::relative(entry.path(), baseDirectory).generic_string();
-                        std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
-                        std::string displayModelName = payloadName; // ModelManagerのキー名として使用
-                        
-                        bool isModelFolder = false;
-                        for (const auto& subEntry : fs::directory_iterator(entry.path())) {
-                            if (subEntry.is_regular_file()) {
-                                std::string subExt = subEntry.path().extension().string();
-                                std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
-                                if (subExt == ".obj" || subExt == ".gltf" || subExt == ".glb") {
-                                    isModelFolder = true;
-                                    break;
-                                }
-                            }
-                        }
+        if (ImGui::BeginTable("ModelAssetTable", columnCount)) {
+            for (const std::string& directoryPath : modelDirectories) {
+                const fs::path path(directoryPath);
+                const std::string folderName = path.filename().string();
+                std::string payloadName = fs::relative(path, baseDirectory).generic_string();
+                std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
+                const std::vector<const EditorAssetRecord*> childAssets =
+                    assetDatabase->GetAssetsInDirectory(directoryPath, false);
+                const auto modelAssetIterator = std::find_if(
+                    childAssets.begin(),
+                    childAssets.end(),
+                    [](const EditorAssetRecord* asset) {
+                        return asset && asset->type == EditorAssetType::Model;
+                    });
+                const bool isModelFolder = modelAssetIterator != childAssets.end();
 
-                        ImGui::TableNextColumn();
-                        if (isModelFolder) {
-                            // 1. アルバムにこのモデル用の画用紙が無ければ作る
-                            if (thumbnailAlbum_.find(displayModelName) == thumbnailAlbum_.end()) {
-                                CreateThumbnailResource(displayModelName);
-                            }
-
-                            // 2. 作った（あるいは既にある）画用紙の画像ハンドルを取得
-                            uint32_t srvHandle = thumbnailAlbum_[displayModelName].srvHandle;
-                            D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
-
-                            ImGui::PushID(displayModelName.c_str());
-                            ImGui::BeginGroup();
-
-                            // 3. 画用紙を表示
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                            ImGui::ImageButton(displayModelName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
-                            ImGui::PopStyleColor();
-
-                            // ドラッグ＆ドロップ処理
-                            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                                ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
-                                ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
-                                ImGui::SameLine();
-                                ImGui::Text("Place: %s", folderName.c_str());
-                                ImGui::EndDragDropSource();
-                            }
-
-                            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
-                            ImGui::TextWrapped("%s", folderName.c_str());
-                            ImGui::PopTextWrapPos();
-
-                            ImGui::EndGroup();
-                            ImGui::PopID();
-                        } else {
-                            // カテゴリフォルダとして扱う
-                            ImGui::PushID(folderName.c_str());
-                            ImGui::BeginGroup();
-
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.7f, 0.2f, 1.0f));
-
-                            ImGui::SetWindowFontScale(3.0f);
-                            if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
-                                currentModelDirectory_ = entry.path().generic_string() + "/";
-                            }
-                            ImGui::SetWindowFontScale(1.0f);
-                            ImGui::PopStyleColor(4);
-
-                            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
-                            ImGui::TextWrapped("%s", folderName.c_str());
-                            ImGui::PopTextWrapPos();
-
-                            ImGui::EndGroup();
-                            ImGui::PopID();
-                        }
+                ImGui::TableNextColumn();
+                if (isModelFolder) {
+                    if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
+                        CreateThumbnailResource(payloadName);
                     }
-                    else if (entry.is_regular_file() && IsModelAssetFile(entry.path())) {
-                        const std::string fileName = entry.path().filename().string();
-                        std::string payloadName = fs::relative(entry.path(), baseDirectory).generic_string();
-                        std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
-                        const bool isGeneratedLod = IsGeneratedLodAsset(entry.path());
+                    const uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
+                    const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
+                        SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
 
-                        if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
-                            CreateThumbnailResource(payloadName);
+                    ImGui::PushID(directoryPath.c_str());
+                    ImGui::BeginGroup();
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                    ImGui::ImageButton(
+                        payloadName.c_str(),
+                        static_cast<ImTextureID>(gpuHandle.ptr),
+                        ImVec2(thumbnailSize, thumbnailSize));
+                    ImGui::PopStyleColor();
+
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                        const EditorAssetDragPayload dragPayload = MakeEditorAssetDragPayload(
+                            (*modelAssetIterator)->guid,
+                            payloadName);
+                        ImGui::SetDragDropPayload("MODEL_ASSET", &dragPayload, sizeof(dragPayload));
+                        ImGui::Image(
+                            static_cast<ImTextureID>(gpuHandle.ptr),
+                            ImVec2(32.0f, 32.0f));
+                        ImGui::SameLine();
+                        ImGui::Text("Place: %s", folderName.c_str());
+                        if (!(*modelAssetIterator)->guid.empty()) {
+                            ImGui::TextDisabled("GUID: %s", (*modelAssetIterator)->guid.c_str());
                         }
-
-                        uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
-                        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
-
-                        ImGui::TableNextColumn();
-                        ImGui::PushID(payloadName.c_str());
-                        ImGui::BeginGroup();
-
-                        if (isGeneratedLod) {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.28f, 0.05f, 0.9f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.43f, 0.08f, 1.0f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.52f, 0.10f, 1.0f));
-                        }
-                        else {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
-                        }
-                        ImGui::ImageButton(payloadName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
-                        ImGui::PopStyleColor(3);
-
-                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                            ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
-                            ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
-                            ImGui::SameLine();
-                            ImGui::Text("Place: %s", fileName.c_str());
-                            ImGui::EndDragDropSource();
-                        }
-
-                        if (isGeneratedLod) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "LOD");
-                        }
-                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
-                        ImGui::TextWrapped("%s", fileName.c_str());
-                        ImGui::PopTextWrapPos();
-
-                        ImGui::EndGroup();
-                        ImGui::PopID();
+                        ImGui::EndDragDropSource();
                     }
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                    ImGui::TextWrapped("%s", folderName.c_str());
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndGroup();
+                    ImGui::PopID();
                 }
-                ImGui::EndTable();
+                else {
+                    ImGui::PushID(directoryPath.c_str());
+                    ImGui::BeginGroup();
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.7f, 0.2f, 1.0f));
+                    ImGui::SetWindowFontScale(3.0f);
+                    if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
+                        currentModelDirectory_ = directoryPath + "/";
+                    }
+                    ImGui::SetWindowFontScale(1.0f);
+                    ImGui::PopStyleColor(4);
+                    ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                    ImGui::TextWrapped("%s", folderName.c_str());
+                    ImGui::PopTextWrapPos();
+                    ImGui::EndGroup();
+                    ImGui::PopID();
+                }
             }
-        }
-        else {
-            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", currentModelDirectory_.c_str());
+
+            for (const EditorAssetRecord* asset : directoryAssets) {
+                if (!asset || asset->type != EditorAssetType::Model) {
+                    continue;
+                }
+                const fs::path sourcePath(asset->sourcePath);
+                const std::string fileName = sourcePath.filename().string();
+                std::string payloadName = fs::relative(sourcePath, baseDirectory).generic_string();
+                std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
+                const bool isGeneratedLod = IsGeneratedLodAsset(sourcePath);
+
+                if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
+                    CreateThumbnailResource(payloadName);
+                }
+                const uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
+                const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
+                    SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
+
+                ImGui::TableNextColumn();
+                ImGui::PushID(asset->guid.empty() ? asset->sourcePath.c_str() : asset->guid.c_str());
+                ImGui::BeginGroup();
+                if (isGeneratedLod) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.28f, 0.05f, 0.9f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.43f, 0.08f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.52f, 0.10f, 1.0f));
+                }
+                else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+                }
+                ImGui::ImageButton(
+                    payloadName.c_str(),
+                    static_cast<ImTextureID>(gpuHandle.ptr),
+                    ImVec2(thumbnailSize, thumbnailSize));
+                ImGui::PopStyleColor(3);
+
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                    const EditorAssetDragPayload dragPayload = MakeEditorAssetDragPayload(asset->guid, payloadName);
+                    ImGui::SetDragDropPayload("MODEL_ASSET", &dragPayload, sizeof(dragPayload));
+                    ImGui::Image(
+                        static_cast<ImTextureID>(gpuHandle.ptr),
+                        ImVec2(32.0f, 32.0f));
+                    ImGui::SameLine();
+                    ImGui::Text("Place: %s", fileName.c_str());
+                    if (!asset->guid.empty()) {
+                        ImGui::TextDisabled("GUID: %s", asset->guid.c_str());
+                    }
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::IsItemHovered() && !asset->guid.empty()) {
+                    ImGui::SetTooltip(
+                        "%s\nGUID: %s\nImporter: %s",
+                        asset->sourcePath.c_str(),
+                        asset->guid.c_str(),
+                        asset->importer.c_str());
+                }
+                if (isGeneratedLod) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "LOD");
+                }
+                ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                ImGui::TextWrapped("%s", fileName.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::EndGroup();
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
         }
     }
 
@@ -632,6 +890,16 @@ void ProjectWindow::Draw() {
         else {
             ImGui::TextDisabled("(Select an object in Scene to save)");
         }
+
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button("HUDアイコンを再生成")) {
+            QueueHudPortraitExports(true);
+            DebugConsole::GetInstance()->AddLog("HUD icon regeneration queued.");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("実際の敵プリセットから通常・被弾PNGを生成します");
 
         ImGui::Separator();
         ImGui::Spacing();

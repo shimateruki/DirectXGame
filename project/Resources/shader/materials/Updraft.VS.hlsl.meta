@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "8c0a187033963bceecd4de3ca9c54a29",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Updraft.VS.hlsl",
+  "version": 1
+}

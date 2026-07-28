@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c6110d7cf9be4a88aea69687f145db57",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_slash.png",
+  "version": 1
+}

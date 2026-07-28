@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cce11f5cfab60f35f68891e4704bb3c3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/hitfx/hit_galaxy_ray.png",
+  "version": 1
+}

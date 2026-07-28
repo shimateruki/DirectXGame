@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b7024e04946aeccead025a26da169362",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/combo/combo_arrows.dds",
+  "version": 1
+}

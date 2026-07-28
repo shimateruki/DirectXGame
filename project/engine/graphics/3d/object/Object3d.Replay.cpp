@@ -48,6 +48,7 @@ Object3d::ReplayState Object3d::CaptureReplayState() const {
     state.meshEffectComponent = meshEffectComponent_;
     state.pathMoverComponent = pathMoverComponent_;
     state.gameplayLinkComponent = gameplayLinkComponent_;
+    state.navAgentComponent = navAgentComponent_;
 
     state.replayRemoved = replayRemoved_;
     CaptureReplayCustomState(state.custom);
@@ -109,6 +110,7 @@ void Object3d::RestoreReplayState(const ReplayState& state) {
     meshEffectComponent_ = state.meshEffectComponent;
     pathMoverComponent_ = state.pathMoverComponent;
     gameplayLinkComponent_ = state.gameplayLinkComponent;
+    navAgentComponent_ = state.navAgentComponent;
 
     // Assetが変わった場合だけ実行用Instanceを破棄します。
     // 同じフレームを復元するたびにEffectやGhost Pathを再生成しないようにします。

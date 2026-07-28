@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "ad8aa6b40bafd55f099f48b5b96fe072",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/prism_spike_shatter.json",
+  "version": 1
+}

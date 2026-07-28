@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8d00d901e645de5b0e76af0953cead59",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/garasu/garasu.gltf",
+  "version": 1
+}

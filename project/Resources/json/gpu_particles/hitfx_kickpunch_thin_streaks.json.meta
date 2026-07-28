@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "43d9ea3fb76dac76ad297b20efb55bf7",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hitfx_kickpunch_thin_streaks.json",
+  "version": 1
+}

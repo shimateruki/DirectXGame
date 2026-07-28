@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "edbc4a3bade40eca094a386a9471cb9a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/colon.dds",
+  "version": 1
+}

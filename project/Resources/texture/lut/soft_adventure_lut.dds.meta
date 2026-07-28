@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f0e31424bc420518ef31be3a9e6f6f02",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/lut/soft_adventure_lut.dds",
+  "version": 1
+}

@@ -445,16 +445,21 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetEye(eye);
     if (!IsEditorStateSaveBlocked()) {
+        const bool stateChanged =
+            eye.x != settings_.editorCameraPos.x ||
+            eye.y != settings_.editorCameraPos.y ||
+            eye.z != settings_.editorCameraPos.z ||
+            rotation.x != settings_.editorCameraAngle.x ||
+            rotation.y != settings_.editorCameraAngle.y ||
+            rotation.z != settings_.editorCameraAngle.z;
         settings_.editorCameraPos = eye;
         settings_.editorCameraAngle = rotation;
-    }
-
-    if (!IsEditorStateSaveBlocked()) {
-        static float saveTimer = 0.0f;
-        saveTimer += 0.016f; // おおよそ60fps
-        if (saveTimer > 1.0f) { // 1秒ごとに自動保存
-            SaveEditorState(); // 専用ファイルに保存
-            saveTimer = 0.0f;
+        if (stateChanged) {
+            editorStateDirty_ = true;
+            editorStateSaveReadyAt_ = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+        }
+        if (editorStateDirty_ && std::chrono::steady_clock::now() >= editorStateSaveReadyAt_) {
+            SaveEditorState();
         }
     }
 
@@ -2190,18 +2195,41 @@ void CameraEditor::StopSceneObjectCamera(Camera* camera) {
 void CameraEditor::SaveEditorState() {
     if (IsEditorStateSaveBlocked()) return;
 
-    std::string filePath = kDirectoryPath_ + "editor_camera_state.json";
+    const fs::path filePath(kEditorStatePath_);
+    std::error_code error;
+    fs::create_directories(filePath.parent_path(), error);
+    if (error) {
+        return;
+    }
     json j;
     j["editorCameraPos"] = { settings_.editorCameraPos.x, settings_.editorCameraPos.y, settings_.editorCameraPos.z };
     j["editorCameraAngle"] = { settings_.editorCameraAngle.x, settings_.editorCameraAngle.y, settings_.editorCameraAngle.z };
     std::ofstream file(filePath);
     if (file.is_open()) {
         file << j.dump(4);
+        if (file.good()) {
+            editorStateDirty_ = false;
+        }
     }
 }
 
+void CameraEditor::InvalidatePreviewForSceneChange() {
+    selectedCameraObject_ = nullptr;
+    hasRenderedCameraPreview_ = false;
+    hasRenderedSceneCameraPreview_ = false;
+    cameraPreviewPanelVisibleThisFrame_ = false;
+    sceneCameraPreviewWindowVisibleThisFrame_ = false;
+    lastCameraPreviewRenderTime_ = {};
+    lastSceneCameraPreviewRenderTime_ = {};
+    SetObject3dCommon(nullptr);
+}
+
 void CameraEditor::LoadEditorState() {
-    std::string filePath = kDirectoryPath_ + "editor_camera_state.json";
+    fs::path filePath(kEditorStatePath_);
+    if (!fs::exists(filePath)) {
+        // 旧保存先から一度だけ読み込み、次回保存時にEditor専用領域へ移行します。
+        filePath = fs::path(kDirectoryPath_) / "editor_camera_state.json";
+    }
     std::ifstream file(filePath);
     if (!file.is_open()) return;
     try {
@@ -2217,6 +2245,7 @@ void CameraEditor::LoadEditorState() {
             settings_.editorCameraAngle.y = j["editorCameraAngle"][1];
             settings_.editorCameraAngle.z = j["editorCameraAngle"][2];
         }
+        editorStateDirty_ = false;
     }
     catch (...) {}
 }

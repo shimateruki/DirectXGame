@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "29a4c277d920542540583ec5832ce9e5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/citrus_orchard_road_puresky_4k.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a23eb7b65c44c0b190ed53e073b15c10",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_albedo.png",
+  "version": 1
+}

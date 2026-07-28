@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9d3fc24862574c91bb3c600bf5fc228a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/prism/prism_spell_circle.dds",
+  "version": 1
+}

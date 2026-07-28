@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f7e798745b88e8ba04be618ee6f5502e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/dot.png",
+  "version": 1
+}

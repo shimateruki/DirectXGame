@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "b5aadd820ca807698d0bd73873ec3c9b",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/DamageCrack.VS.hlsl",
+  "version": 1
+}

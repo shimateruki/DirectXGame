@@ -54,6 +54,15 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_hitfx_kickpunch_shock_arc.json",
     "Resources/json/effect/effect_hitfx_kickpunch_thin_streak.json",
     "Resources/json/effect/effect_thunder_slime_constant_aura.json",
+    "Resources/json/effect/effect_player_thunder_warning.json",
+    "Resources/json/effect/effect_player_thunder_bolt.json",
+    "Resources/json/effect/effect_player_thunder_core.json",
+    "Resources/json/effect/effect_player_thunder_impact_ring.json",
+    "Resources/json/effect/effect_player_thunder_evade_trail.json",
+    "Resources/json/effect/effect_player_thunder_evade_burst.json",
+    "Resources/json/effect/effect_thunder_charge_ground.json",
+    "Resources/json/effect/effect_thunder_scorch_mark.json",
+    "Resources/json/effect/effect_prism_spike_ground_flash.json",
     "Resources/json/effect/effect_enemy_defeat_core_flash.json",
     "Resources/json/effect/effect_enemy_defeat_pop_ring.json",
     "Resources/json/effect/effect_carry_bomber_throw_burst.json",
@@ -106,12 +115,28 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "carry_eye_beam_sparks",
     "carry_bat_glide_wisp",
     "thunder_slime_aura",
+    "thunder_slime_radial_charge",
     "thunder_slime_charge",
     "thunder_slime_discharge",
     "thunder_slime_idle_spark",
+    "player_thunder_strike_impact",
+    "player_thunder_evade_sparks",
+    "prism_slime_charge",
+    "prism_slime_pulse",
+    "prism_spike_warning",
+    "prism_spike_burst",
+    "prism_spike_shatter",
     "fire_slime_breath",
+    "fire_slime_breath_embers",
     "fire_slime_cast",
     "fire_slime_head_flame",
+    "fire_slime_head_embers",
+    "status_burning_flame",
+    "hit_player_fire_flame",
+    "hit_player_fire_embers",
+    "hit_player_explosion_core",
+    "hit_player_explosion_sparks",
+    "hit_player_explosion_smoke",
     "player_jump_dust",
     "player_land_dust",
     "crown_get_burst",
@@ -139,6 +164,7 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
 
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {
     "bomb_hit_fragment_burst",
+    "prism_crystal_shatter",
     "throw_slam_pebble_burst",
     "pink_slime_charge_pebble_pull",
     "pink_slime_landing_pebble_burst",
@@ -180,6 +206,13 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         ? "Resources/output_skybox.dds"
         : GetSceneLoadContext().skyboxPath);
     manifest.AddTexture("Resources/sprite/particle/glow_core.png");
+    manifest.AddTexture("Resources/sprite/particle/diamond_shard.png");
+    manifest.AddTexture("Resources/sprite/effect/prism/prism_spell_circle.dds");
+    manifest.AddTexture("Resources/sprite/effect/prism/prism_spike_ground_flash.dds");
+    manifest.AddModel("Effects/prism_crystal_spike");
+    manifest.AddModel("Effects/prism_crystal_fragment_a");
+    manifest.AddModel("Effects/prism_crystal_fragment_b");
+    manifest.AddModel("Effects/prism_crystal_fragment_c");
     manifest.AddTexture("Resources/sprite/fade/fade_sparkle.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/stage_clear_text.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/returning_select_text.png");
@@ -213,6 +246,7 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::OnActivated() {
+    BaseScene::OnActivated();
     StartRespawnIrisInIfNeeded();
 }
 
@@ -313,6 +347,9 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
     InitializeGameplayHUD();
+
+    controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
+    controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
 
     pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
     pauseMenuOverlay_->Initialize(spriteCommon_.get());
@@ -420,6 +457,7 @@ void GamePlayScene::FinalizeGameplayResources() {
     goalReturnFadeStarted_ = false;
     goalCrownObject_ = nullptr;
     goalClearPlayerAnimator_.Reset();
+    controlsGuideOverlay_.reset();
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
     hudHpIcon_ = {};
@@ -427,6 +465,7 @@ void GamePlayScene::FinalizeGameplayResources() {
     hudHpDamageFill_ = {};
     hudHpFill_ = {};
     hudHpHighlight_ = {};
+    hudHpAnimationTimer_ = 0.0f;
     hudLifeIcon_ = {};
     hudLifeXIcon_ = {};
     for (auto& digit : hudLifeDigits_) {

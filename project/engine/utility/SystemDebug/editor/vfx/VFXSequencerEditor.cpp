@@ -101,23 +101,62 @@ void VFXSequencerEditor::Update(float deltaTime) {
     }
 
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
-    const bool usePreviewStage = previewStage && previewStage->IsEnabled();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    const bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
+    GPUParticleManager* gpuManager = GPUParticleManager::GetInstance();
+    MeshEffectManager* meshManager = MeshEffectManager::GetInstance();
+
+    auto restartPreviewAt = [&](float seekTime) {
+        previewSequencer_.Stop();
+        meshManager->ClearActiveEffects();
+        gpuManager->ResetSimulation();
+        PlayPreview();
+
+        const float targetTime = std::clamp(seekTime, 0.0f, (std::max)(previewSequencer_.GetDuration(), 0.0f));
+        const float previousScale = gpuManager->GetTimeScale();
+        gpuManager->SetTimeScale(1.0f);
+        float simulatedTime = 0.0f;
+        while (simulatedTime + (1.0f / 60.0f) < targetTime) {
+            previewSequencer_.Update(1.0f / 60.0f);
+            meshManager->UpdateEditorPreviewStep(1.0f / 60.0f);
+            gpuManager->UpdateEditorPreviewStep(1.0f / 60.0f);
+            simulatedTime += 1.0f / 60.0f;
+        }
+        if (targetTime > simulatedTime) {
+            const float remainder = targetTime - simulatedTime;
+            previewSequencer_.Update(remainder);
+            meshManager->UpdateEditorPreviewStep(remainder);
+            gpuManager->UpdateEditorPreviewStep(remainder);
+        }
+        gpuManager->SetTimeScale(previousScale);
+    };
+
     float particlePreviewScale = previewPlaybackSpeed_;
-    if (usePreviewStage && isThisEditorSelected) {
+    if (usePreviewStage) {
         particlePreviewScale *= previewStage->GetPlaybackSpeed();
         timeStep *= previewStage->GetPlaybackSpeed();
         if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
             lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
-            PlayPreview();
+            restartPreviewAt(0.0f);
         }
-        if (previewStage->IsLoopEnabled() && !previewSequencer_.IsPlaying() && !previewSequencer_.GetEvents().empty()) {
-            PlayPreview();
+        if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+            lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+            previewSequencer_.Stop();
+            meshManager->ClearActiveEffects();
+            gpuManager->ResetSimulation();
+        }
+        if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+            lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+            restartPreviewAt(previewStage->GetSeekTargetTime());
+        }
+        if (previewStage->IsLoopEnabled() && previewStage->IsTransportPlaying() &&
+            !previewSequencer_.IsPlaying() && !previewSequencer_.GetEvents().empty()) {
+            restartPreviewAt(0.0f);
         }
     }
     timeStep *= previewPlaybackSpeed_;
     if (isThisEditorSelected) {
-        GPUParticleManager::GetInstance()->SetTimeScale((std::max)(0.0f, particlePreviewScale));
+        gpuManager->SetTimeScale((std::max)(0.0f, particlePreviewScale));
     }
 
     const bool previewPaused = isThisEditorSelected && particlePreviewScale <= 0.0001f;
@@ -131,8 +170,31 @@ void VFXSequencerEditor::Update(float deltaTime) {
     }
 
     if (!isGamePlaying && isThisEditorSelected) {
-        MeshEffectManager::GetInstance()->Update(previewPaused ? 0.0f : timeStep);
-        GPUParticleManager::GetInstance()->Update(deltaTime);
+        meshManager->Update(previewPaused ? 0.0f : timeStep);
+        gpuManager->Update(deltaTime);
+    }
+
+    if (usePreviewStage) {
+        const float duration = (std::max)(previewSequencer_.GetDuration(), 0.1f);
+        std::vector<EffectPreviewStage::TimelineEvent> timelineEvents;
+        timelineEvents.reserve(previewSequencer_.GetEvents().size());
+        for (const VFXEvent& event : previewSequencer_.GetEvents()) {
+            const ImVec4 color = GetEventColor(event.type);
+            timelineEvents.push_back({
+                GetEventTypeName(event.type),
+                event.triggerTime,
+                (std::min)(GetEventEndTime(event), duration),
+                Vector4{ color.x, color.y, color.z, color.w }
+            });
+        }
+        previewStage->ReportToolState(
+            EffectPreviewStage::ToolKind::VfxSequence,
+            "VFX Sequence",
+            std::clamp(previewSequencer_.GetCurrentTime(), 0.0f, duration),
+            duration,
+            previewStage->IsTransportPlaying(),
+            static_cast<int>(meshManager->GetActiveEffects().size()) + gpuManager->GetActiveSystemCount(),
+            timelineEvents);
     }
 }
 

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "00f8fa82f246ed20d0c1a20d9f278dac",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/wind_slime_cutter.json",
+  "version": 1
+}

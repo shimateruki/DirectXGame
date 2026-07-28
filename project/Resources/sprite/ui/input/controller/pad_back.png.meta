@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6a4ce57ce608b3125c030e10ad922ffd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/controller/pad_back.png",
+  "version": 1
+}

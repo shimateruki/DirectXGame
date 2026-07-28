@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "eefbd3fc667ab9334cff9d10a8eaebc9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/slash_streak.dds",
+  "version": 1
+}

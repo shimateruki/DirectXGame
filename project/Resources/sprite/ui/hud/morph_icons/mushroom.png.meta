@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8c939bc2773955ceb7d29e9e4b99ea5b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/mushroom.png",
+  "version": 1
+}

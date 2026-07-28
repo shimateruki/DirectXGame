@@ -90,6 +90,15 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
         if (dist < 5.0f) {
             hookTipPos_ = enemyPos;
+            if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_); enemyBase && enemyBase->IsPullImmune()) {
+                HitEffectDirector::SpawnPullBindHit(enemyPos);
+                if (Object3d* marker = player->GetHookMarker()) {
+                    marker->SetIsVisible(false);
+                }
+                player->SetSlimePullProgress(0.0f);
+                player->ChangeState(std::make_unique<PlayerStateIdle>());
+                return;
+            }
             phase_ = Phase::kPullEnemy;
             enemyStartPos_ = enemyPos;
             HitEffectDirector::SpawnPullBindHit(enemyPos);
@@ -151,24 +160,38 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
 
         // 【演出】ヒットストップ：時間がマイナスの間は引き寄せず、お互いに激しくブルブル震える
         if (pullTimer_ < 0.0f) {
-            float shakeX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
-            float shakeY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
-            float shakeZ = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
-            
-            targetEnemy_->GetTransform()->translate = {
-                enemyStartPos_.x + shakeX, enemyStartPos_.y + shakeY, enemyStartPos_.z + shakeZ
-            };
-            targetEnemy_->GetTransform()->isQuaternionMaster = false;
-            targetEnemy_->UpdateLocalMatrix();
-            targetEnemy_->UpdateWorldMatrix();
+            Vector3 tetherEnemyPos = targetEnemy_->GetWorldPosition();
+            float shakeX = 0.0f;
+            float shakeY = 0.0f;
+            float shakeZ = 0.0f;
+            if (isHeavyPullTarget_) {
+                // 巨大スライムは本体座標を乱数で揺らさず、後端を固定した専用抵抗モーションを使います。
+                if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_)) {
+                    giantSlime->UpdateHookSplitPull(0.0f, playerPos, player->GetParticleSystem());
+                    tetherEnemyPos = giantSlime->GetHookAttachmentPosition();
+                }
+            } else {
+                shakeX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+                shakeY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+                shakeZ = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+                tetherEnemyPos = {
+                    enemyStartPos_.x + shakeX,
+                    enemyStartPos_.y + shakeY,
+                    enemyStartPos_.z + shakeZ
+                };
+                targetEnemy_->GetTransform()->translate = tetherEnemyPos;
+                targetEnemy_->GetTransform()->isQuaternionMaster = false;
+                targetEnemy_->UpdateLocalMatrix();
+                targetEnemy_->UpdateWorldMatrix();
+            }
             
             Object3d* marker = player->GetHookMarker();
             if (marker) {
-                Vector3 diff = enemyStartPos_ - playerPos;
+                Vector3 diff = tetherEnemyPos - playerPos;
                 marker->GetTransform()->translate = {
-                    playerPos.x + diff.x * 0.5f + shakeX * 0.5f, 
-                    playerPos.y + diff.y * 0.5f + shakeY * 0.5f, 
-                    playerPos.z + diff.z * 0.5f + shakeZ * 0.5f
+                    playerPos.x + diff.x * 0.5f,
+                    playerPos.y + diff.y * 0.5f,
+                    playerPos.z + diff.z * 0.5f
                 };
                 // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
                 float len = Math::Length(diff);
@@ -196,6 +219,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             }
 
             Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+            const Vector3 hookAttachmentPos = giantSlime->GetHookAttachmentPosition();
             Vector3 playerToEnemy = enemyCurrentPos - heavyPullBasePlayerPos_;
             Vector3 pullDir = { playerToEnemy.x, 0.0f, playerToEnemy.z };
             float pullDirLength = Math::Length(pullDir);
@@ -207,12 +231,12 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             player->SetTranslate(visualPlayerPos);
             playerPos = visualPlayerPos;
 
-            player->SetSlimePullDirection(enemyCurrentPos - playerPos);
+            player->SetSlimePullDirection(hookAttachmentPos - playerPos);
             player->SetSlimePullProgress(progress);
 
             Object3d* marker = player->GetHookMarker();
             if (marker) {
-                Vector3 diff = enemyCurrentPos - playerPos;
+                Vector3 diff = hookAttachmentPos - playerPos;
                 float len = Math::Length(diff);
                 if (len < 0.01f) len = 0.01f;
 

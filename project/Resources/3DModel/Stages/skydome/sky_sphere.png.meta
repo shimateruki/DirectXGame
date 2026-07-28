@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7129530047b70976ba4811ec721fe359",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/skydome/sky_sphere.png",
+  "version": 1
+}

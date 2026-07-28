@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ee779803908bcdabddd2cd77f4f384f8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_slot_card_empty.png",
+  "version": 1
+}

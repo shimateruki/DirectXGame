@@ -26,6 +26,7 @@
 #include "EditorPropertyRegistry.h"
 #include "EditorTransactionManager.h"
 #include "EffectPreviewStage.h"
+#include "EnemyAttackPreviewWindow.h"
 #include "EventLinkGraph.h"
 #include "ExecutablePackageWindow.h"
 #include "GameDataDebugEditor.h"
@@ -297,6 +298,7 @@ void PerformRedo();
     SceneValidator* GetSceneValidator() { return &sceneValidator_; }
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
+    EnemyAttackPreviewWindow* GetEnemyAttackPreviewWindow() { return &enemyAttackPreviewWindow_; }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     AnimatorControllerEditor* GetAnimatorControllerEditor() { return &animatorControllerEditor_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
@@ -441,7 +443,7 @@ struct PreviewVisualState {
     BaseScene* prefabEditScene_ = nullptr;
     std::unordered_map<Object3d*, bool> prefabEditPreviousVisibility_;
 
-    bool drawColliders_ = true;
+    bool drawColliders_ = false;
     bool drawEventIDs_ = true;
     bool isPathEditMode_ = false;
     bool projectWindowVisible_ = true;
@@ -545,6 +547,7 @@ enum class EditorCommandType {
     PrimitiveDrawer primitiveDrawer_;
     SceneValidator sceneValidator_;
     MaterialPreviewBoard materialPreviewBoard_;
+    EnemyAttackPreviewWindow enemyAttackPreviewWindow_;
     AnimationWorkbench animationWorkbench_;
     AnimatorControllerEditor animatorControllerEditor_;
     SceneSavePreview sceneSavePreview_;

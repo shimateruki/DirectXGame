@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "be3835727fd7e31416cb465ddcce8e48",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/SlimeGel.PS.hlsl",
+  "version": 1
+}

@@ -4,6 +4,7 @@
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
+#include "Bullet.h"
 
 #include "CollisionManager.h"
 #include "SceneManager.h"
@@ -52,6 +53,8 @@ constexpr float kEnemyDropCoinBlinkStart = 2.2f;
 constexpr const char* kEnemyNoticeMarkModel = "GeneratedText/text3d_240c8dec";
 constexpr float kEnemyNoticeDuration = 0.36f;
 constexpr float kEnemyNoticeCooldown = 1.25f;
+constexpr float kDamageReactionMinDuration = 0.22f;
+constexpr float kDamageReactionMaxDuration = 0.34f;
 
 float PlanarDistance(const Vector3& a, const Vector3& b) {
     const float dx = a.x - b.x;
@@ -92,10 +95,14 @@ float NextDropRandom(uint32_t& seed) {
 }
 
 int GetCoinDropCountByEnemyType(const std::string& enemyType) {
+    if (enemyType == "PrismSlime") {
+        return 12;
+    }
     if (enemyType == "GiantSlime") {
         return 8;
     }
-    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "Bomber" || enemyType == "BeamDrone") {
+    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" ||
+        enemyType == "Bomber" || enemyType == "BeamDrone") {
         return 4;
     }
     if (enemyType == "Bat" || enemyType == "Mushroom") {
@@ -124,8 +131,32 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     noticeReactionTimer_ = 0.0f;
     noticeReactionCooldown_ = 0.0f;
     noticeMarkYaw_ = 0.0f;
+    damageReactionTimer_ = 0.0f;
+    damageReactionDuration_ = 0.0f;
+    damageReactionStrength_ = 0.0f;
+    damageReactionLocalDirection_ = { 0.0f, 0.0f, -1.0f };
     attackTelegraph_ = std::make_unique<AttackTelegraph>();
     attackTelegraph_->Initialize(common);
+}
+
+bool BaseEnemy::ReloadAttackProfile(std::string* errorMessage) {
+    const std::string enemyType = GetEnemyType();
+    if (enemyType.empty()) {
+        if (errorMessage) {
+            *errorMessage = "敵タイプが未設定のため攻撃プロファイルを読み込めません。";
+        }
+        return false;
+    }
+    return EnemyAttackProfile::LoadCachedForEnemy(enemyType, attackProfile_, errorMessage);
+}
+
+const EnemyAttackDefinition& BaseEnemy::GetAttackDefinition(const std::string& attackId) const {
+    if (const EnemyAttackDefinition* attack = attackProfile_.FindAttack(attackId)) {
+        return *attack;
+    }
+
+    static const EnemyAttackDefinition fallback;
+    return fallback;
 }
 
 // 徘徊目標の管理
@@ -496,9 +527,132 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
 
     if (colorResetTimer_ > 0.0f) {
         colorResetTimer_ -= deltaTime;
+        SetColor({
+            1.0f,
+            defaultColor_.y * 0.32f + 0.12f,
+            defaultColor_.z * 0.32f + 0.12f,
+            defaultColor_.w
+        });
         if (colorResetTimer_ <= 0.0f) {
             SetColor(defaultColor_);
         }
+    }
+
+    if (damageReactionTimer_ > 0.0f) {
+        damageReactionTimer_ = (std::max)(0.0f, damageReactionTimer_ - deltaTime);
+    }
+}
+
+void BaseEnemy::PlayDamageReaction(Object3d* attacker, const Vector3& knockbackVelocity, float damage) {
+    if (isDead || isDefeatEffectPlaying_ || isDefeatEffectFinished_) {
+        return;
+    }
+
+    Vector3 worldDirection = { knockbackVelocity.x, 0.0f, knockbackVelocity.z };
+    float planarLength = std::sqrt(
+        worldDirection.x * worldDirection.x +
+        worldDirection.z * worldDirection.z);
+    if (planarLength <= 0.001f && attacker) {
+        worldDirection = GetWorldPosition() - attacker->GetWorldPosition();
+        worldDirection.y = 0.0f;
+        planarLength = std::sqrt(
+            worldDirection.x * worldDirection.x +
+            worldDirection.z * worldDirection.z);
+    }
+    if (planarLength <= 0.001f) {
+        const float yaw = GetRotation().y;
+        worldDirection = { -std::sin(yaw), 0.0f, -std::cos(yaw) };
+        planarLength = 1.0f;
+    }
+    worldDirection.x /= planarLength;
+    worldDirection.z /= planarLength;
+
+    const float yaw = GetRotation().y;
+    const Vector3 localRight = { std::cos(yaw), 0.0f, -std::sin(yaw) };
+    const Vector3 localForward = { std::sin(yaw), 0.0f, std::cos(yaw) };
+    damageReactionLocalDirection_ = {
+        worldDirection.x * localRight.x + worldDirection.z * localRight.z,
+        0.0f,
+        worldDirection.x * localForward.x + worldDirection.z * localForward.z
+    };
+
+    const float knockbackStrength = std::clamp(planarLength / 18.0f, 0.0f, 1.0f);
+    const float damageStrength = std::clamp(damage / 24.0f, 0.0f, 1.0f);
+    damageReactionStrength_ = std::clamp(
+        0.72f + knockbackStrength * 0.28f + damageStrength * 0.34f,
+        0.72f,
+        1.30f);
+    damageReactionDuration_ = kDamageReactionMinDuration +
+        (kDamageReactionMaxDuration - kDamageReactionMinDuration) * damageStrength;
+    damageReactionTimer_ = damageReactionDuration_;
+    colorResetTimer_ = (std::max)(colorResetTimer_, 0.11f);
+}
+
+float BaseEnemy::GetDamageReactionWeight() const {
+    if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
+        return 0.0f;
+    }
+    return std::clamp(damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
+}
+
+EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
+    EnemyVisualReactionPose pose;
+    if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
+        return pose;
+    }
+
+    const float progress = 1.0f - std::clamp(
+        damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
+    float response = 0.0f;
+    if (progress < 0.18f) {
+        const float t = progress / 0.18f;
+        response = t * t * (3.0f - 2.0f * t);
+    } else if (progress < 0.52f) {
+        const float t = (progress - 0.18f) / 0.34f;
+        const float eased = t * t * (3.0f - 2.0f * t);
+        response = 1.0f + (-0.38f - 1.0f) * eased;
+    } else {
+        const float t = (progress - 0.52f) / 0.48f;
+        response = -0.38f * (1.0f - t) * std::cos(t * kWanderPi * 2.0f);
+    }
+
+    const float impulse = response * damageReactionStrength_;
+    const float localX = damageReactionLocalDirection_.x;
+    const float localZ = damageReactionLocalDirection_.z;
+    const float alongX = std::abs(localX);
+    const float alongZ = std::abs(localZ);
+
+    pose.scale.x = 1.0f - impulse * 0.14f * alongX + impulse * 0.075f * alongZ;
+    pose.scale.y = 1.0f + impulse * 0.075f;
+    pose.scale.z = 1.0f - impulse * 0.14f * alongZ + impulse * 0.075f * alongX;
+    pose.rotation.x = -localZ * impulse * 0.13f;
+    pose.rotation.z = localX * impulse * 0.13f;
+    pose.offset = {
+        localX * impulse * 0.055f,
+        std::abs(impulse) * 0.018f,
+        localZ * impulse * 0.055f
+    };
+    pose.weight = std::abs(impulse);
+    return pose;
+}
+
+void BaseEnemy::ApplyDamageReactionPose(
+    Vector3& scale,
+    Vector3& rotation,
+    Vector3* offset,
+    float intensity) const {
+    const EnemyVisualReactionPose reaction = GetDamageReactionPose();
+    const float safeIntensity = (std::max)(0.0f, intensity);
+    scale.x *= 1.0f + (reaction.scale.x - 1.0f) * safeIntensity;
+    scale.y *= 1.0f + (reaction.scale.y - 1.0f) * safeIntensity;
+    scale.z *= 1.0f + (reaction.scale.z - 1.0f) * safeIntensity;
+    rotation.x += reaction.rotation.x * safeIntensity;
+    rotation.y += reaction.rotation.y * safeIntensity;
+    rotation.z += reaction.rotation.z * safeIntensity;
+    if (offset) {
+        offset->x += reaction.offset.x * safeIntensity;
+        offset->y += reaction.offset.y * safeIntensity;
+        offset->z += reaction.offset.z * safeIntensity;
     }
 }
 
@@ -902,8 +1056,24 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
     );
 }
 
+void BaseEnemy::SetDormant(bool dormant) {
+    isDormant_ = dormant;
+    if (dormant) {
+        HideAttackTelegraph();
+        CancelNoticeReaction();
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+    }
+}
+
 // 全敵共通の最終更新。固有AIの後に呼ばれる想定。
 void BaseEnemy::Update(float deltaTime) {
+    if (isDormant_) {
+        HideAttackTelegraph();
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        Object3d::Update(deltaTime);
+        return;
+    }
+
     if (attackTelegraph_) {
         attackTelegraph_->Update(deltaTime);
     }
@@ -939,17 +1109,36 @@ void BaseEnemy::Update(float deltaTime) {
         UpdateThrowRecovery(deltaTime);
     }
 
+    // Nav Agentを追加した敵だけ、既存AIが決めた速さを保ったままA*経路方向へ補正します。
+    // Component未追加の既存敵には一切影響しません。
+    if (target_) {
+        if (NavAgentComponent* navAgent = GetNavAgentComponent(); navAgent && navAgent->IsEnabled()) {
+            Vector3 velocity = GetVelocity();
+            const float planarSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            if (planarSpeed > 0.01f) {
+                const Vector3 direction = navAgent->CalculateDirection(
+                    this, GetWorldPosition(), target_->GetWorldPosition(), deltaTime);
+                velocity.x = direction.x * planarSpeed;
+                velocity.z = direction.z * planarSpeed;
+                SetVelocity(velocity);
+            }
+        }
+    }
+
     Character::Update(deltaTime);
     UpdateDamageFeedbackTimers(deltaTime);
 }
 
 void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (attackTelegraph_) {
-        attackTelegraph_->Draw(pointLightResource, spotLightResource);
+        attackTelegraph_->DrawGround(pointLightResource, spotLightResource);
     }
     Character::Draw(pointLightResource, spotLightResource);
     if (noticeMarkObject_ && noticeMarkObject_->GetIsVisible()) {
         noticeMarkObject_->Draw(pointLightResource, spotLightResource);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->DrawWarning(pointLightResource, spotLightResource);
     }
 }
 
@@ -960,6 +1149,21 @@ void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, f
     }
     if (attackTelegraph_) {
         attackTelegraph_->ShowCircle(center, radius, progress, color);
+    }
+}
+
+void BaseEnemy::ShowAttackTelegraphDecalCircle(
+    const Vector3& center,
+    float radius,
+    float progress,
+    const Vector4& color,
+    const std::string& texturePath) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowDecalCircle(center, radius, progress, color, texturePath);
     }
 }
 
@@ -980,11 +1184,21 @@ void BaseEnemy::TriggerAttackTelegraphCue(const Vector4& color) {
     }
     if (attackTelegraph_) {
         const Vector3 scale = GetScale();
-        const float bodyScale = (std::max)({ 0.75f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
-        const float radius = (std::clamp)(bodyScale * 0.92f, 0.75f, 3.8f);
-        Vector3 center = GetTranslate();
-        center.y += 0.02f;
-        attackTelegraph_->TriggerCueAt(center, radius, color);
+        const float horizontalScale = (std::max)({ 0.75f, std::abs(scale.x), std::abs(scale.z) });
+        const float verticalScale = (std::max)(0.75f, std::abs(scale.y));
+        // 雷スライムなど横潰れする敵は現在Scaleが極端に広がるため、見た目上の体格へ補正します。
+        const float bodyScale = (std::min)(horizontalScale, (std::max)(1.5f, verticalScale * 2.4f));
+        const Vector3 bodyOffset = { 0.0f, (std::clamp)(verticalScale * 0.62f, 0.55f, 3.8f), 0.0f };
+
+        // 床の範囲強調と、敵本体の入力タイミング表示は別レイヤーとして同時に再生します。
+        if (attackTelegraph_->IsVisible()) {
+            attackTelegraph_->TriggerCue(color);
+        }
+        attackTelegraph_->TriggerWarningCue(
+            this,
+            bodyOffset,
+            (std::clamp)(bodyScale * 1.18f, 1.0f, 5.2f),
+            color);
     }
 }
 
@@ -995,7 +1209,7 @@ void BaseEnemy::HideAttackTelegraph() {
 }
 
 bool BaseEnemy::OnCollision(Object3d* other) {
-    if (!other) {
+    if (isDormant_ || !other) {
         return false;
     }
 
@@ -1026,7 +1240,14 @@ bool BaseEnemy::OnCollision(Object3d* other) {
         DamageEvent dmgEvent;
         dmgEvent.target = this;
         dmgEvent.attacker = other;
-        dmgEvent.damageAmount = 10.0f;
+        if (const Bullet* attackBullet = dynamic_cast<const Bullet*>(other)) {
+            dmgEvent.damageAmount = attackBullet->GetDamage();
+            dmgEvent.damageType = attackBullet->GetDamageType();
+            dmgEvent.statusEffect = attackBullet->GetStatusEffect();
+        }
+        else {
+            dmgEvent.damageAmount = 10.0f;
+        }
         EventManager::GetInstance()->Dispatch(dmgEvent);
 
    

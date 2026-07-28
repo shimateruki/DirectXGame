@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "2595077c07fa714af27a507e67d51191",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/effects/Effect3d.VS.hlsl",
+  "version": 1
+}

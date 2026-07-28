@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ef2d6fbd709fedce243cc4aada518266",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/slash.dds",
+  "version": 1
+}

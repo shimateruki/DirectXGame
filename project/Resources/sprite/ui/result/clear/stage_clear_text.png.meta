@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "142ea66a943dbb34e5b0ca04e5afdace",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/clear/stage_clear_text.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "43eb5c3729fd61852468cec03fa7a136",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_slot_card.png",
+  "version": 1
+}

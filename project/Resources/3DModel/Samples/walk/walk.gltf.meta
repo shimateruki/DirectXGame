@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2f76c82c4ca248c0e22db7183ac0d1b0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Samples/walk/walk.gltf",
+  "version": 1
+}

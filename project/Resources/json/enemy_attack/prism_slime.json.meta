@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "a4580bc10c2525feece160cdc450ac31",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy_attack/prism_slime.json",
+  "version": 1
+}

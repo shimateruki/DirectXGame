@@ -22,6 +22,9 @@ public:
         // マウス入力からSpriteの選択やドラッグ操作を更新します。
 void Update(const Vector2& localMousePos, bool isHovered);
 
+    // Scene遷移前に、破棄予定のSpriteと描画基盤への参照を解放します。
+    void ClearSceneSelection();
+
     // GameView内でのデバッグ描画（選択枠やギズモ）
     void Draw();
 

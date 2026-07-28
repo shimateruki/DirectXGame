@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "819fe5897413704edde964c64e8ba40c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/electric_aura_sheet.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9132a510a0f99c88e2cae45fe160964a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/explosion_fire_sheet.png",
+  "version": 1
+}

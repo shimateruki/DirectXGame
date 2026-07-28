@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6486508113da05cb58928d26fabdca80",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/star_iris/frame_11.png",
+  "version": 1
+}

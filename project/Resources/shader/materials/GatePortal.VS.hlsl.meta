@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "c11cb9109b17824dd6a962a553fee4ae",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/GatePortal.VS.hlsl",
+  "version": 1
+}

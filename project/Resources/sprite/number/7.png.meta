@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e657726278f34291f1f595f2fce099ee",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/7.png",
+  "version": 1
+}

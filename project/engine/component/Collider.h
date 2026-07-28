@@ -41,12 +41,18 @@ void SetConfig(const ColliderConfig& config) { config_ = config; }
     void SetMask(uint32_t mask) { mask_ = mask; }
     void SetTerrainData(const TerrainCollisionData& data) { terrainData_ = data; }
     void ClearTerrainData() { terrainData_ = TerrainCollisionData{}; }
+    // 描画アニメーションで所有Transformのscaleが変形するObject向けに、
+    // 物理形状だけが参照する固定スケールを指定します。
+    void SetScaleOverride(const Vector3& scale) { scaleOverride_ = scale; useScaleOverride_ = true; }
+    void ClearScaleOverride() { useScaleOverride_ = false; }
 
     // --- 取得 (Getters) ---
     const ColliderConfig& GetConfig() const { return config_; }
     uint32_t GetAttribute() const { return attribute_; }
     uint32_t GetMask() const { return mask_; }
     const TerrainCollisionData& GetTerrainData() const { return terrainData_; }
+    bool HasScaleOverride() const { return useScaleOverride_; }
+    const Vector3& GetScaleOverride() const { return scaleOverride_; }
 
     // タイプやサイズのショートカット
     ColliderType GetType() const { return config_.type; }
@@ -68,6 +74,9 @@ float GetRadius() const;
     CollisionInfo CheckCollision(const Collider* other) const;
 
 private:
+    Vector3 GetCollisionScale() const;
+    Matrix4x4 GetCollisionWorldMatrix() const;
+
         // 地形Colliderから指定座標の高さと法線をサンプリングします。
 bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
     Vector3 GetSphereCenter() const;
@@ -83,6 +92,9 @@ bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float&
     // フィルタリング用
     uint32_t attribute_ = 0;
     uint32_t mask_ = 0xFFFFFFFF;
+
+    bool useScaleOverride_ = false;
+    Vector3 scaleOverride_ = { 1.0f, 1.0f, 1.0f };
 
     TerrainCollisionData terrainData_;
 };

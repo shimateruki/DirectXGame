@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "b2f0340951080b46de8fa0f4b5186721",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/LiquidContact.PS.hlsl",
+  "version": 1
+}

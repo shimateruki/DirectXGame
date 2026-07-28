@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c923073b955c42eabaf39fafe85264c2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/control_guide_panel.png",
+  "version": 1
+}

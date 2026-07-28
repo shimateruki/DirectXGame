@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "836a76f284b0c4bc1531e33ab3322a43",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation/player_move.json",
+  "version": 1
+}

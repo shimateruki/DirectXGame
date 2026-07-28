@@ -72,6 +72,7 @@ void CreateEffectRootSignature();
     void CreatePoisonSporePipeline();
     void CreateCloudPipeline();
     void CreateGatePortalPipeline();
+    void CreateWindOrbPipeline();
 
     // 特殊マテリアルごとの描画コマンド設定。
     void SetMagmaGraphicsCommand();
@@ -88,6 +89,7 @@ void CreateEffectRootSignature();
     void SetPoisonSporeGraphicsCommand();
     void SetCloudGraphicsCommand();
     void SetGatePortalGraphicsCommand();
+    void SetWindOrbGraphicsCommand();
 
     // スカイボックス描画用パイプライン。
     void CreateSkyboxPipeline();
@@ -139,6 +141,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> poisonSporePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> cloudPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gatePortalPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> windOrbPipelineState_;
 
     // スカイボックス用の描画リソース。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;

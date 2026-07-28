@@ -1,192 +1,226 @@
 {
-    "schemaVersion": 4,
-    "player": {
-        "maxHp": 5.0,
-        "attackPower": 1.0,
-        "speed": 27.700000762939453,
-        "gravity": 50.0,
-        "maxFallSpeed": 60.0,
-        "jumpPower": 24.0,
-        "detectionRange": 20.0,
-        "scale": [
-            2.0,
-            2.0,
-            2.0
-        ],
-        "modelName": "Characters/slime",
-        "morphLimited": false,
-        "morphDuration": 5.0
-    },
     "enemies": {
         "Bat": {
-            "maxHp": 25.0,
             "attackPower": 0.800000011920929,
-            "speed": 2.5999999046325684,
-            "gravity": 0.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 10.0,
             "detectionRange": 24.0,
+            "gravity": 0.0,
+            "jumpPower": 10.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 25.0,
+            "modelName": "Characters/bat",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 0.6000000238418579,
                 0.6000000238418579,
                 0.6000000238418579
             ],
-            "modelName": "Characters/bat",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 2.5999999046325684
         },
         "BeamDrone": {
-            "maxHp": 45.0,
             "attackPower": 1.0,
-            "speed": 4.0,
-            "gravity": 0.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 10.0,
             "detectionRange": 30.0,
+            "gravity": 0.0,
+            "jumpPower": 10.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 45.0,
+            "modelName": "Characters/eye",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 0.8500000238418579,
                 0.8500000238418579,
                 0.8500000238418579
             ],
-            "modelName": "Characters/eye",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 4.0
         },
         "Bomb": {
-            "maxHp": 30.0,
             "attackPower": 1.0,
-            "speed": 0.03999999910593033,
-            "gravity": 60.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 16.0,
             "detectionRange": 20.0,
+            "gravity": 60.0,
+            "jumpPower": 16.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 30.0,
+            "modelName": "Gimmicks/blob",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 0.1599999964237213,
                 0.1599999964237213,
                 0.1599999964237213
             ],
-            "modelName": "Gimmicks/blob",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 0.03999999910593033
         },
         "Bomber": {
-            "maxHp": 60.0,
             "attackPower": 1.149999976158142,
-            "speed": 0.0,
-            "gravity": 60.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 16.0,
             "detectionRange": 32.0,
+            "gravity": 60.0,
+            "jumpPower": 16.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 60.0,
+            "modelName": "Characters/slime_black",
+            "morphDuration": 5.0,
+            "morphLimited": false,
             "scale": [
                 2.0,
                 2.0,
                 2.0
             ],
-            "modelName": "Characters/slime_black",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 0.0
         },
         "BossCore": {
-            "maxHp": 1000.0,
             "attackPower": 1.5,
-            "speed": 0.05000000074505806,
-            "gravity": 0.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 10.0,
             "detectionRange": 20.0,
+            "gravity": 0.0,
+            "jumpPower": 10.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 1000.0,
+            "modelName": "Stages/block",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "modelName": "Stages/block",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 0.05000000074505806
         },
         "FireSlime": {
-            "maxHp": 45.0,
             "attackPower": 1.0,
-            "speed": 2.3499999046325684,
-            "gravity": 60.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 18.0,
             "detectionRange": 24.0,
+            "gravity": 60.0,
+            "jumpPower": 18.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 45.0,
+            "modelName": "Characters/slime_red",
+            "morphDuration": 5.0,
+            "morphLimited": false,
             "scale": [
                 2.0,
                 2.0,
                 2.0
             ],
-            "modelName": "Characters/slime_red",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 2.3499999046325684
         },
         "GiantSlime": {
-            "maxHp": 160.0,
             "attackPower": 1.25,
-            "speed": 0.0,
-            "gravity": 70.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 24.0,
             "detectionRange": 26.0,
+            "gravity": 70.0,
+            "jumpPower": 24.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 160.0,
+            "modelName": "Characters/slime_pink",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 3.5999999046325684,
                 3.5999999046325684,
                 3.5999999046325684
             ],
-            "modelName": "Characters/slime_pink",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 0.0
         },
         "Mushroom": {
-            "maxHp": 35.0,
             "attackPower": 1.0,
-            "speed": 2.0999999046325684,
-            "gravity": 60.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 16.0,
             "detectionRange": 16.0,
+            "gravity": 60.0,
+            "jumpPower": 16.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 35.0,
+            "modelName": "Primitives/cylinder",
+            "morphDuration": 5.0,
+            "morphLimited": true,
             "scale": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "modelName": "Primitives/cylinder",
+            "speed": 2.0999999046325684
+        },
+        "PrismSlime": {
+            "attackPower": 1.350000023841858,
+            "detectionRange": 30.0,
+            "gravity": 72.0,
+            "jumpPower": 22.0,
+            "maxFallSpeed": 62.0,
+            "maxHp": 420.0,
+            "modelName": "Characters/prism_slime",
+            "morphDuration": 5.0,
             "morphLimited": true,
-            "morphDuration": 5.0
+            "scale": [
+                4.199999809265137,
+                4.199999809265137,
+                4.199999809265137
+            ],
+            "speed": 1.350000023841858
         },
         "Slime": {
-            "maxHp": 50.0,
             "attackPower": 1.0,
-            "speed": 0.10000000149011612,
-            "gravity": 60.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 18.0,
             "detectionRange": 20.0,
+            "gravity": 60.0,
+            "jumpPower": 18.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 50.0,
+            "modelName": "Characters/slime_pink",
+            "morphDuration": 5.0,
+            "morphLimited": false,
             "scale": [
                 2.0,
                 2.0,
                 2.0
             ],
-            "modelName": "Characters/slime_pink",
-            "morphLimited": false,
-            "morphDuration": 5.0
+            "speed": 0.10000000149011612
         },
         "ThunderSlime": {
-            "maxHp": 45.0,
             "attackPower": 1.0,
-            "speed": 3.0,
-            "gravity": 62.0,
-            "maxFallSpeed": 60.0,
-            "jumpPower": 18.0,
             "detectionRange": 20.0,
+            "gravity": 62.0,
+            "jumpPower": 18.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 45.0,
+            "modelName": "Characters/slime_yellow",
+            "morphDuration": 5.0,
+            "morphLimited": false,
             "scale": [
                 2.0,
                 2.0,
                 2.0
             ],
-            "modelName": "Characters/slime_yellow",
-            "morphLimited": true,
-            "morphDuration": 5.0
+            "speed": 3.0
+        },
+        "WindSlime": {
+            "attackPower": 0.8999999761581421,
+            "detectionRange": 22.0,
+            "gravity": 54.0,
+            "jumpPower": 19.0,
+            "maxFallSpeed": 58.0,
+            "maxHp": 42.0,
+            "modelName": "Characters/slime_wind",
+            "morphDuration": 5.0,
+            "morphLimited": false,
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "speed": 3.4000000953674316
         }
-    }
+    },
+    "player": {
+        "attackPower": 1.0,
+        "detectionRange": 20.0,
+        "gravity": 50.0,
+        "jumpPower": 24.0,
+        "maxFallSpeed": 60.0,
+        "maxHp": 8.0,
+        "modelName": "Characters/slime",
+        "morphDuration": 5.0,
+        "morphLimited": false,
+        "scale": [
+            2.0,
+            2.0,
+            2.0
+        ],
+        "speed": 27.700000762939453
+    },
+    "schemaVersion": 4
 }

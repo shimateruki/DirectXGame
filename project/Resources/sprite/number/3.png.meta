@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "584ab3ec748abd93f071587d84bfafe7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/3.png",
+  "version": 1
+}

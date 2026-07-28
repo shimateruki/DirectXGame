@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "addf8d99ea2d37c5dfb805f02d0c0282",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/PoisonSpore.PS.hlsl",
+  "version": 1
+}

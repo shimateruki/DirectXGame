@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "60848cf401d43c76ddc45e439758dcb4",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Ice.PS.hlsl",
+  "version": 1
+}

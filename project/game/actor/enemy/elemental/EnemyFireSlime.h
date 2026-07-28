@@ -36,6 +36,8 @@ private:
         // 炎ブレス攻撃の予兆と再生状態を開始します。
 void StartBreath();
     void UpdateBreath(float deltaTime, const Vector3& direction, float distance);
+    void StartFireballWindup(const Vector3& direction, float distance);
+    void UpdateFireballWindup(float deltaTime, Vector3& velocity, const Vector3& direction, float distance);
         // ブレス範囲内の対象へダメージを通知します。
 void DispatchBreathDamage(const Vector3& direction, float distance);
     void DispatchCarriedBreathDamage(class Player* player, const Vector3& direction);
@@ -49,7 +51,9 @@ void UpdateHeadFlameVisual(float deltaTime);
     void UpdateBreathFlameVisuals(const Vector3& direction, float deltaTime);
     void HideBreathFlameVisuals();
     void RequestRemoveBreathFlameVisuals();
+    void EmitBreathParticles(const Vector3& origin, const Vector3& direction);
     void EmitFirePreset(const char* presetName, const Vector3& position);
+    void EmitDirectedFirePreset(const char* presetName, const Vector3& position, const Vector3& direction, float speedScale = 1.0f);
     void ApplySlimeAnimation(float deltaTime);
     void SyncWorldCollisionRadius(float worldRadius);
     void SyncGroundCollisionRadius();
@@ -57,18 +61,30 @@ void UpdateHeadFlameVisual(float deltaTime);
 
     float attackCooldown_ = 0.65f;       // 野生時の攻撃再使用待ち。
     float breathTimer_ = 0.0f;           // ブレス持続時間。
+    float fireballWindupTimer_ = 0.0f;   // 火球を撃つ前に見せる溜め時間。
     float breathParticleTimer_ = 0.0f;   // ブレス粒子の発生間隔。
+    float breathEmberTimer_ = 0.0f;      // ブレスの火の粉発生間隔。
+    float headFlameParticleTimer_ = 0.0f;
+    float headEmberParticleTimer_ = 0.0f;
     float attackTimer_ = 0.0f;           // 攻撃中の伸縮演出。
     float idleTimer_ = 0.0f;             // 待機呼吸アニメーション用。
     float groundHopTimer_ = 0.0f;        // 通常移動中の小ホップ周期。
     float carriedFireCooldown_ = 0.0f;   // 持ち運び能力の再使用待ち。
     float carriedEffectTimer_ = 0.0f;    // 発射直後の発光演出。
     float carriedBreathDamageTimer_ = 0.0f; // 吸収中ブレスの連続ヒット間隔。
+    float pendingFireballDistance_ = 0.0f;
+    Vector3 pendingFireballDirection_ = { 0.0f, 0.0f, 1.0f };
+    Vector3 smoothedFlameVelocity_ = { 0.0f, 0.0f, 0.0f };
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
     Object3d* headFlameVisual_ = nullptr;
-    Object3d* breathFlameVisuals_[4] = {};
+    Object3d* breathFlameVisuals_[7] = {};
+    int breathParticleCursor_ = 0;
+    int headFlameParticleCursor_ = 0;
     bool hasBaseScale_ = false;
     bool breathDamageDone_ = false;
+    bool breathWarningTriggered_ = false;
+    bool fireballWarningTriggered_ = false;
+    bool fireballAimLocked_ = false;
     bool headFlameRemoveRequested_ = false;
     bool breathFlameRemoveRequested_ = false;
 };

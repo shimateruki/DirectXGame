@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "147497ba023b7ef4d4faf804a59c5b32",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Cloud.PS.hlsl",
+  "version": 1
+}

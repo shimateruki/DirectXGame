@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f9741e52af418480802d39be8dd2dcbc",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/cylinder/cylinderAtumi.gltf",
+  "version": 1
+}

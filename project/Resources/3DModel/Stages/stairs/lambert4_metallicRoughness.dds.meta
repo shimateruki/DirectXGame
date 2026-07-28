@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cba97aab55a1ed8005fc50498e8431b0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stairs/lambert4_metallicRoughness.dds",
+  "version": 1
+}

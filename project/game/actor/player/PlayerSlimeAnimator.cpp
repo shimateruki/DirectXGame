@@ -190,7 +190,13 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
                 AnimationInterpolation::EasingType::SmootherStep);
         }
         player->SetScale(AnimationInterpolation::Lerp(modeTransitionStartScale_, targetScale, blend));
-        player->SetRotation(AnimationInterpolation::SlerpEuler(modeTransitionStartRotation_, targetRotation, blend));
+        // スライムの傾きは小さいEuler角なので軸ごとに補間します。
+        // クォータニオンからEuler角へ戻す際のY=180度付近の折り返しで、
+        // 移動方向として使うY回転が0度側へ化けることを防ぎます。
+        player->SetRotation(AnimationInterpolation::LerpEulerAxes(
+            modeTransitionStartRotation_,
+            targetRotation,
+            blend));
         if (!controllerTransition) {
             modeTransitionTimer_ = (std::max)(0.0f, modeTransitionTimer_ - deltaTime);
         }
@@ -204,7 +210,11 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
             scaleFollowSpeed = 20.0f;
         }
         player->SetScale(AnimationInterpolation::Damp(player->GetScale(), targetScale, scaleFollowSpeed, deltaTime));
-        player->SetRotation(AnimationInterpolation::DampEuler(player->GetRotation(), targetRotation, 13.0f, deltaTime));
+        player->SetRotation(AnimationInterpolation::DampEulerAxes(
+            player->GetRotation(),
+            targetRotation,
+            13.0f,
+            deltaTime));
     }
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();

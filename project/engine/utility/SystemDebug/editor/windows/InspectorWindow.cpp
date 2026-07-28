@@ -18,6 +18,7 @@
 #include "EditorPropertyDrawer.h"
 #include "EditorPropertyRegistry.h"
 #include "EditorCommandRegistry.h"
+#include "EditorAssetDragPayload.h"
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
@@ -412,27 +413,15 @@ void ApplyRegisteredComponentToTargets(
     }
 }
 
-void ApplyTriggerColliderPreset(DebugEditor* editor, const std::vector<Object3d*>& targets) {
+void ApplyRegisteredComponentPresetToTargets(
+    DebugEditor* editor,
+    const std::vector<Object3d*>& targets,
+    const std::string& componentTypeId,
+    const std::string& presetId) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
     bool changed = false;
     for (Object3d* target : targets) {
-        if (!target || !registry->IsComponentApplicable(target, "Collider")) {
-            continue;
-        }
-        if (!registry->IsComponentPresent(target, "Collider")) {
-            changed |= registry->AddComponent(target, "Collider");
-        }
-        Object3d::ColliderConfig config = target->GetColliderConfig();
-        config.type = ColliderType::kAABB;
-        if (std::fabs(config.size.x) < 0.001f || std::fabs(config.size.y) < 0.001f ||
-            std::fabs(config.size.z) < 0.001f) {
-            config.size = { 1.0f, 1.0f, 1.0f };
-        }
-        target->SetColliderConfig(config);
-        target->SetCollisionAttribute(CollisionAttribute::kTrigger);
-        target->SetCollisionMask(CollisionAttribute::kPlayer);
-        target->SetStatic(false);
-        changed = true;
+        changed |= registry->ApplyComponentPreset(target, componentTypeId, presetId);
     }
     if (changed) {
         MarkInspectorTargetsDirty(editor, targets);
@@ -478,26 +467,41 @@ void DrawRegisteredAddComponentMenu(
     ImGui::Separator();
 
     bool hasAddableComponent = false;
-    for (const EditorComponentDescriptor& component : registry->GetComponents()) {
-        if (!component.add || !registry->IsComponentApplicable(primary, component.typeId)) {
+    for (const EditorComponentDescriptor* component : registry->GetApplicableComponentsForObject(primary)) {
+        if (!component) {
             continue;
         }
-        hasAddableComponent = true;
-        const bool present = registry->IsComponentPresent(primary, component.typeId);
-        if (ImGui::MenuItem(component.displayName.c_str(), nullptr, false, !present)) {
-            ApplyRegisteredComponentToTargets(editor, targets, component.typeId, true);
+        ImGui::PushID(component->typeId.c_str());
+        if (component->add) {
+            hasAddableComponent = true;
+            const bool present = registry->IsComponentPresent(primary, component->typeId);
+            if (ImGui::MenuItem(component->displayName.c_str(), nullptr, false, !present)) {
+                ApplyRegisteredComponentToTargets(editor, targets, component->typeId, true);
+            }
+            if (ImGui::IsItemHovered() && !component->description.empty()) {
+                ImGui::SetTooltip("%s", component->description.c_str());
+            }
         }
-        if (ImGui::IsItemHovered() && !component.description.empty()) {
-            ImGui::SetTooltip("%s", component.description.c_str());
+        for (const EditorComponentPresetDescriptor& preset : component->presets) {
+            hasAddableComponent = true;
+            ImGui::PushID(preset.id.c_str());
+            if (ImGui::MenuItem(preset.displayName.c_str())) {
+                ApplyRegisteredComponentPresetToTargets(
+                    editor,
+                    targets,
+                    component->typeId,
+                    preset.id);
+            }
+            if (ImGui::IsItemHovered() && !preset.description.empty()) {
+                ImGui::SetTooltip("%s", preset.description.c_str());
+            }
+            ImGui::PopID();
         }
+        ImGui::PopID();
     }
 
     if (!hasAddableComponent) {
         ImGui::TextDisabled("追加可能なComponentはありません。");
-    }
-    ImGui::Separator();
-    if (ImGui::MenuItem("Trigger Collider Preset")) {
-        ApplyTriggerColliderPreset(editor, targets);
     }
     ImGui::EndPopup();
 }
@@ -665,8 +669,7 @@ void DrawComponentPanel(DebugEditor* editor, Object3d* primary, const std::vecto
         registry->GetComponentsForObject(primary);
     bool hasOptionalComponent = false;
     for (const EditorComponentDescriptor* component : registeredComponents) {
-        if (!component || component->typeId == "SceneObject" || component->typeId == "Camera" ||
-            component->typeId == "Gameplay" || component->typeId == "EditorState") {
+        if (!component || !component->showInInspector) {
             continue;
         }
         hasOptionalComponent |= component->removable;
@@ -1329,10 +1332,12 @@ void InspectorWindow::Draw() {
 
                 if (ImGui::BeginDragDropTarget()) {
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                        const char* modelName = (const char*)payload->Data;
-                        ModelManager::GetInstance()->LoadModel(modelName);
-                        selectedObject->SetModel(modelName);
-                        DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+                        const std::string modelName = ReadEditorAssetDragPath(payload->Data, payload->DataSize);
+                        if (!modelName.empty()) {
+                            ModelManager::GetInstance()->LoadModel(modelName);
+                            selectedObject->SetModel(modelName);
+                            DebugConsole::GetInstance()->AddLog("Switched model to: " + modelName);
+                        }
                     }
 
                     // プリセットデータのドロップ受付
@@ -1548,11 +1553,13 @@ void InspectorWindow::Draw() {
                                          "ゲートポータル (Gate Portal)",
                                          "アニメ調地形 (Stylized Terrain)",
                                          "ダッシュパネル (Dash Panel)",
-                                         "スライム補正 (Slime Soft)"
+                                         "スライム補正 (Slime Soft)",
+                                         "風弾 (Wind Orb)",
+                                         "プリズム結晶 (Prism Crystal)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 25) currentMatType = 0;
+                if (currentMatType > 27) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     for (Object3d* object : inspectorTargets) {
                         if (!object) continue;
@@ -1596,12 +1603,29 @@ void InspectorWindow::Draw() {
                     }
                     float textureBlend = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
-                        selectedObject->SetRoughness(textureBlend); isGraphicsChanged = true;
+                        for (Object3d* object : inspectorTargets) {
+                            if (object) object->SetRoughness(textureBlend);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
                     }
                     float paintStrength = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("塗りの濃さ / 色ムラ (Paint Strength)", &paintStrength, 0.0f, 1.0f)) {
-                        selectedObject->SetMetallic(paintStrength); isGraphicsChanged = true;
+                        for (Object3d* object : inspectorTargets) {
+                            if (object) object->SetMetallic(paintStrength);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
                     }
+                    float reliefStrength = selectedObject->GetEnvIntensity();
+                    if (ImGui::SliderFloat("立体感 / 凹凸強度 (Relief)", &reliefStrength, 0.0f, 2.0f)) {
+                        for (Object3d* object : inspectorTargets) {
+                            if (object) object->SetEnvIntensity(reliefStrength);
+                        }
+                        MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                        isGraphicsChanged = true;
+                    }
+                    ImGui::TextDisabled("側面の陰影・色面の差・法線マップ強度をまとめて調整します");
                 }
                 else if (currentMatType == 24) {
                     ImGui::Separator();
@@ -1613,6 +1637,33 @@ void InspectorWindow::Draw() {
                     float lineDensity = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("ライン密度 (Line Density)", &lineDensity, 0.0f, 1.0f)) {
                         selectedObject->SetMetallic(lineDensity); isGraphicsChanged = true;
+                    }
+                }
+                else if (currentMatType == 27) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.72f, 0.92f, 1.0f, 1.0f), ICON_FA_GEM " --- Prism Crystal Settings ---");
+                    float facetSoftness = selectedObject->GetRoughness();
+                    if (ImGui::SliderFloat("面反射の柔らかさ (Facet Softness)", &facetSoftness, 0.02f, 0.70f)) {
+                        for (Object3d* object : inspectorTargets) {
+                            if (object) object->SetRoughness(facetSoftness);
+                        }
+                        isGraphicsChanged = true;
+                    }
+                    float dispersionStrength = selectedObject->GetMetallic();
+                    if (ImGui::SliderFloat("分光の強さ (Dispersion)", &dispersionStrength, 0.0f, 1.0f)) {
+                        for (Object3d* object : inspectorTargets) {
+                            if (object) object->SetMetallic(dispersionStrength);
+                        }
+                        isGraphicsChanged = true;
+                    }
+                    float environmentIntensity = selectedObject->GetEnvIntensity();
+                    if (ImGui::SliderFloat("環境反射の強さ (Environment)", &environmentIntensity, 0.0f, 3.0f)) {
+                        for (Object3d* object : inspectorTargets) {
+                            if (!object) continue;
+                            object->SetEnableEnvMap(true);
+                            object->SetEnvIntensity(environmentIntensity);
+                        }
+                        isGraphicsChanged = true;
                     }
                 }
 
@@ -1646,7 +1697,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType >= 8 && currentMatType <= 22) {
+                if ((currentMatType >= 8 && currentMatType <= 22) || currentMatType == 26) {
                     ImGui::Separator();
 
                     if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
@@ -1816,6 +1867,21 @@ void InspectorWindow::Draw() {
                             if (ImGui::DragFloat("厚みスケール (Scale Z)", &waterData->effectScaleZ, 0.001f, 0.0f, 3.0f, "%.3f")) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 8.0f, "%.3f")) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 26) {
+                            ImGui::TextColored(ImVec4(0.42f, 1.0f, 0.82f, 1.0f), ICON_FA_WIND " --- Wind Orb Settings ---");
+                            const char* windOrbTypes[] = { "安定した風弾 (Stable)", "高速の渦 (Fast)", "圧縮した風 (Compressed)" };
+                            int windOrbType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("風弾タイプ (Wind Orb Type)", &windOrbType, windOrbTypes, IM_ARRAYSIZE(windOrbTypes))) {
+                                waterData->effectType = static_cast<float>(windOrbType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("帯の流速 (Band Speed)", &waterData->waveSpeed, 0.01f, 0.05f, 12.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("表面の揺れ (Surface Motion)", &waterData->waveHeight, 0.005f, 0.0f, 3.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("内部の細かさ (Inner Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("屈折の強さ (Refraction)", &waterData->effectScale, 0.005f, 0.05f, 3.0f, "%.3f")) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("帯の柔らかさ (Band Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 5.0f, "%.3f")) isGraphicsChanged = true;
                         }
                         else if (currentMatType == 9) {
                             ImGui::TextColored(ImVec4(1.0f, 0.28f, 0.04f, 1.0f), ICON_FA_FIRE " --- Magma Settings ---");

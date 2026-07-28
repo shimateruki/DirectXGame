@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "3bf1afe7f92ccf78a64cdd45368fffcf",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/bossEfect.json",
+  "version": 1
+}

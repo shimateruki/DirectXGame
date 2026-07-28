@@ -575,3 +575,7 @@ void VFXSequencer::UpdateOneShots(float deltaTime) {
             }),
         sequences.end());
 }
+
+void VFXSequencer::ClearOneShots() {
+    ActiveOneShotSequences().clear();
+}

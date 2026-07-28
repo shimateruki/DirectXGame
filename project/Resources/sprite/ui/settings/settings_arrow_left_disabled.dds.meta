@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "da08547982c957f30a133a6023ffe0b5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_arrow_left_disabled.dds",
+  "version": 1
+}

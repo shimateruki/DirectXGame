@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dfb58f332d021561174fe8e3e91eb79e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gate/gate_prompt_enter_e.dds",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "6277db62ace2acfe8974690568b34027",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/light/light_layout.json",
+  "version": 1
+}

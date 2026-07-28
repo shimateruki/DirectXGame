@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "269ad98203ce8fba72e1a69ad360fa63",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/skybox/Skybox.hlsli",
+  "version": 1
+}

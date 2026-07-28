@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "1e2eb0fa8ff9acbeacfef38a72b82d6b",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Object3d.hlsli",
+  "version": 1
+}

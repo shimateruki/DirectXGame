@@ -164,6 +164,13 @@ void EnemyBomb::Update(float deltaTime) {
             break;
         }
 
+        if (state_ == State::Chase) {
+            Vector3 targetScale = managedBaseScale_;
+            Vector3 reactionRotation = { 0.0f, 0.0f, 0.0f };
+            ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
+            SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 15.0f)));
+        }
+
         // 遘ｻ蜍募宛髯舌ｄ蠎ｧ讓呎峩譁ｰ縺ｯ BaseEnemy::Update 縺瑚｡後▲縺ｦ縺上ｌ繧・
         BaseEnemy::Update(deltaTime);
         ResolveSweptCollision(previousPosition);
@@ -362,11 +369,14 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
     const float scaleRate = 1.0f + offset;
     
     // 逅・ｽ薙Δ繝・Ν縺瑚ｻ｢縺後ｋ蝗櫁ｻ｢縺ｨ蟷ｲ貂峨＠縺ｪ縺・ｈ縺・√せ繧ｱ繝ｼ繝ｫ・磯ｼ灘虚縺ｮ莨ｸ邵ｮ・峨・縺ｿ繧呈峩譁ｰ縺励∪縺・
-    SetScale({
+    Vector3 targetScale = {
         managedBaseScale_.x * scaleRate,
         managedBaseScale_.y * scaleRate,
         managedBaseScale_.z * scaleRate
-    });
+    };
+    Vector3 reactionRotation = { 0.0f, 0.0f, 0.0f };
+    ApplyDamageReactionPose(targetScale, reactionRotation, nullptr, 0.90f);
+    SetScale(targetScale);
 }
 void EnemyBomb::Explode() {
     state_ = State::Exploded;

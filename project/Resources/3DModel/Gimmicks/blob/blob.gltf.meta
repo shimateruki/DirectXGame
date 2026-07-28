@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "82062e31fbe1743c57a25d58c979d802",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/blob/blob.gltf",
+  "version": 1
+}

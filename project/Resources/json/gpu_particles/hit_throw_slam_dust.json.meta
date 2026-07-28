@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "650fb4981b822774fd5ca59d143f9ee1",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_throw_slam_dust.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b27e7398f2bda14e64d247f06b0796f4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/soft_dot.dds",
+  "version": 1
+}

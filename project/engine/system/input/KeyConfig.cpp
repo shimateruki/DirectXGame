@@ -39,15 +39,16 @@ KeyConfig* KeyConfig::GetInstance() {
 
 void KeyConfig::Initialize() {
     // 1. デフォルト設定 (キーとパッドの両方を設定！)
-    bindings_["Forward"] = { 0x11, XINPUT_GAMEPAD_DPAD_UP };      // W / 上字
-    bindings_["Backward"] = { 0x1F, XINPUT_GAMEPAD_DPAD_DOWN };    // S / 下十字
-    bindings_["Left"] = { 0x1E, XINPUT_GAMEPAD_DPAD_LEFT };    // A / 左十字
-    bindings_["Right"] = { 0x20, XINPUT_GAMEPAD_DPAD_RIGHT };   // D / 右十字
-    bindings_["Jump"] = { 0x39, XINPUT_GAMEPAD_A };            // Space / Aボタン
-    bindings_["Attack"] = { 0x2C, XINPUT_GAMEPAD_X };            // Z / Xボタン
-    bindings_["Dash"] = { 0x2A, XINPUT_GAMEPAD_RIGHT_SHOULDER };// L-Shift / RB
+    bindings_["Forward"] = { 0x11, -1, XINPUT_GAMEPAD_DPAD_UP };       // W / 上十字
+    bindings_["Backward"] = { 0x1F, -1, XINPUT_GAMEPAD_DPAD_DOWN };    // S / 下十字
+    bindings_["Left"] = { 0x1E, -1, XINPUT_GAMEPAD_DPAD_LEFT };        // A / 左十字
+    bindings_["Right"] = { 0x20, -1, XINPUT_GAMEPAD_DPAD_RIGHT };      // D / 右十字
+    bindings_["Jump"] = { 0x39, -1, XINPUT_GAMEPAD_A };                // Space / Aボタン
+    bindings_["Attack"] = { 0x2C, -1, XINPUT_GAMEPAD_X };              // Z / Xボタン
+    bindings_["Dash"] = { 0x2A, -1, XINPUT_GAMEPAD_RIGHT_SHOULDER };   // L-Shift / RB
 
-    bindings_["Ability"] = { 0x12, XINPUT_GAMEPAD_Y };
+    bindings_["Ability"] = { 0x12, -1, XINPUT_GAMEPAD_Y };
+    bindings_["MorphRelease"] = { 0x13, -1, XINPUT_GAMEPAD_B };        // R / Bボタン
 
     Load();
 }
@@ -227,7 +228,7 @@ void KeyConfig::DrawImGui() {
         std::string newName(newActionName_);
         // 空文字ではなく、まだ登録されていない名前なら辞書に追加！
         if (!newName.empty() && bindings_.find(newName) == bindings_.end()) {
-            bindings_[newName] = { 0, 0 }; // 初期値（未設定）で登録
+            bindings_[newName] = { 0, -1, 0 }; // 初期値（未設定）で登録
             newActionName_[0] = '\0';      // 入力欄を綺麗にクリア
         }
     }

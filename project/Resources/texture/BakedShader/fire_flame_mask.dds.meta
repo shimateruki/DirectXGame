@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "aefee991dcfa2c5e5700440432498624",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/fire_flame_mask.dds",
+  "version": 1
+}

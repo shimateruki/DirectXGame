@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "89cf31c1729728d41e4c4c49eb314849",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/blob/bomb_normal.dds",
+  "version": 1
+}

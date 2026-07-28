@@ -9,6 +9,10 @@
 #include "Object3d.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
+#include "EffectPreviewStage.h"
+#include "EditorManager.h"
+#include <algorithm>
+#include <cmath>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -21,6 +25,82 @@ void TrailEmitterEditor::Initialize(SceneManager* sceneManager) {
     RefreshFileLists();
 }
 
+void TrailEmitterEditor::ResetDummyPreview(bool clearEffects) {
+    previewTime_ = 0.0f;
+    dummyFirstFrame_ = true;
+    isDummyRunning_ = true;
+    if (clearEffects) {
+        MeshEffectManager::GetInstance()->ClearActiveEffects();
+        GPUParticleManager::GetInstance()->ResetSimulation();
+    }
+}
+
+void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
+    if (!isDummyRunning_) {
+        return;
+    }
+
+    const float duration = (std::max)(previewDuration_, 0.01f);
+    previewTime_ += (std::max)(deltaTime, 0.0f);
+    if (previewTime_ >= duration) {
+        if (allowLoop) {
+            previewTime_ = std::fmod(previewTime_, duration);
+            dummyFirstFrame_ = true;
+        } else {
+            previewTime_ = duration;
+        }
+    }
+
+    Vector3 origin = { 0.0f, 0.0f, 0.0f };
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    if (previewStage && previewStage->IsEnabled() &&
+        EditorManager::GetInstance()->GetSelectedObject() == this) {
+        origin = previewStage->GetPreviewPosition();
+    }
+
+    const float t = previewTime_ / duration;
+    dummyPos_ = origin;
+    dummyPos_.x += sinf(t * 3.14159f * 2.0f) * previewRange_;
+
+    if (dummyFirstFrame_) {
+        lastDummyPos_ = dummyPos_;
+        dummyFirstFrame_ = false;
+        return;
+    }
+
+    Vector3 diff = dummyPos_ - lastDummyPos_;
+    const float dist = Math::Length(diff);
+    const TrailEmitterConfig& cfg = emitter_.GetConfig();
+    if (dist < cfg.emitDistance) {
+        return;
+    }
+
+    Vector3 dir = Math::Normalize(diff);
+    const float rotY = atan2f(dir.x, dir.z);
+    Vector3 spawnPos = {
+        (lastDummyPos_.x + dummyPos_.x) * 0.5f,
+        (lastDummyPos_.y + dummyPos_.y) * 0.5f,
+        (lastDummyPos_.z + dummyPos_.z) * 0.5f
+    };
+    const Vector3 rotation = cfg.autoOrient ? Vector3{ 0.0f, rotY, 0.0f } : Vector3{ 0.0f, 0.0f, 0.0f };
+
+    if (cfg.emitMesh && !cfg.meshEffectPreset.empty()) {
+        MeshEffectManager::GetInstance()->SpawnEffectAt(
+            "Resources/json/effect/" + cfg.meshEffectPreset + ".json",
+            spawnPos,
+            rotation,
+            cfg.scale);
+    }
+    if (cfg.emitParticle && !cfg.gpuParticlePreset.empty()) {
+        Matrix4x4 transform = Math::MakeIdentity4x4();
+        transform.m[3][0] = spawnPos.x;
+        transform.m[3][1] = spawnPos.y;
+        transform.m[3][2] = spawnPos.z;
+        GPUParticleManager::GetInstance()->Emit(cfg.gpuParticlePreset, spawnPos, transform);
+    }
+    lastDummyPos_ = dummyPos_;
+}
+
 // ============================================================
 //  Update
 // ============================================================
@@ -28,11 +108,21 @@ void TrailEmitterEditor::Update(float deltaTime) {
     if (deltaTime <= 0.0001f) deltaTime = 1.0f / 60.0f;
 
     bool isGamePlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    const bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
+    MeshEffectManager* meshManager = MeshEffectManager::GetInstance();
+    GPUParticleManager* gpuManager = GPUParticleManager::GetInstance();
+    const float previewScale = usePreviewStage ? previewStage->GetPlaybackSpeed() : 1.0f;
+    const float previewDelta = deltaTime * previewScale;
+    if (usePreviewStage) {
+        gpuManager->SetTimeScale(previewScale);
+    }
 
     // ゲームが止まっているときも更新を代行
     if (!isGamePlaying) {
-        MeshEffectManager::GetInstance()->Update(deltaTime);
-        GPUParticleManager::GetInstance()->Update(deltaTime);
+        meshManager->Update(previewDelta);
+        gpuManager->Update(deltaTime);
     }
 
     // ── Play開始を検知 → ポインタリセット ──
@@ -69,6 +159,41 @@ void TrailEmitterEditor::Update(float deltaTime) {
         return;
     }
 
+    auto seekDummyPreview = [&](float seekTime) {
+        ResetDummyPreview(true);
+        const float targetTime = std::clamp(seekTime, 0.0f, (std::max)(previewDuration_, 0.01f));
+        const float previousGpuScale = gpuManager->GetTimeScale();
+        gpuManager->SetTimeScale(1.0f);
+        while (previewTime_ + (1.0f / 60.0f) < targetTime) {
+            StepDummyPreview(1.0f / 60.0f, false);
+            meshManager->UpdateEditorPreviewStep(1.0f / 60.0f);
+            gpuManager->UpdateEditorPreviewStep(1.0f / 60.0f);
+        }
+        if (targetTime > previewTime_) {
+            const float remainder = targetTime - previewTime_;
+            StepDummyPreview(remainder, false);
+            meshManager->UpdateEditorPreviewStep(remainder);
+            gpuManager->UpdateEditorPreviewStep(remainder);
+        }
+        gpuManager->SetTimeScale(previousGpuScale);
+    };
+
+    if (usePreviewStage && previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+        seekDummyPreview(0.0f);
+    }
+    if (usePreviewStage && previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+        lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+        isDummyRunning_ = false;
+        previewTime_ = 0.0f;
+        meshManager->ClearActiveEffects();
+        gpuManager->ResetSimulation();
+    }
+    if (usePreviewStage && previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+        seekDummyPreview(previewStage->GetSeekTargetTime());
+    }
+
     // ── モード1: 実オブジェクト追従 ──
     if (isTracking_ && targetObject_) {
         // エディットモードのみ: シーンのオブジェクトリストで有効性を検証
@@ -85,51 +210,38 @@ void TrailEmitterEditor::Update(float deltaTime) {
                 return;
             }
         }
-        emitter_.Update(deltaTime);
+        emitter_.Update(previewDelta);
         return;
     }
 
     // ── モード2: サイン波ダミープレビュー ──
     if (isDummyRunning_) {
-        previewTime_ += deltaTime;
-        float t   = previewTime_ / previewDuration_;
-        dummyPos_.x = sinf(t * 3.14159f * 2.0f) * previewRange_;
-
-        if (dummyFirstFrame_) {
-            lastDummyPos_    = dummyPos_;
-            dummyFirstFrame_ = false;
+        const bool allowLoop = usePreviewStage ? previewStage->IsLoopEnabled() : true;
+        StepDummyPreview(previewDelta, allowLoop);
+        if (usePreviewStage && !allowLoop && previewTime_ >= previewDuration_) {
+            isDummyRunning_ = false;
         }
+    }
 
-        Vector3 diff = dummyPos_ - lastDummyPos_;
-        float dist = Math::Length(diff);
-        const TrailEmitterConfig& cfg = emitter_.GetConfig();
-
-        if (dist >= cfg.emitDistance) {
-            Vector3 dir  = Math::Normalize(diff);
-            float rotY   = atan2f(dir.x, dir.z);
-            Vector3 spawnPos = {
-                (lastDummyPos_.x + dummyPos_.x) * 0.5f,
-                (lastDummyPos_.y + dummyPos_.y) * 0.5f,
-                (lastDummyPos_.z + dummyPos_.z) * 0.5f
-            };
-            Vector3 rot = cfg.autoOrient ? Vector3{ 0.0f, rotY, 0.0f } : Vector3{ 0, 0, 0 };
-
-            if (cfg.emitMesh && !cfg.meshEffectPreset.empty()) {
-                std::string path = "Resources/json/effect/" + cfg.meshEffectPreset + ".json";
-                MeshEffectManager::GetInstance()->SpawnEffectAt(path, spawnPos, rot, cfg.scale);
-            }
-            if (cfg.emitParticle && !cfg.gpuParticlePreset.empty()) {
-                Matrix4x4 mat = Math::MakeIdentity4x4();
-                mat.m[3][0] = spawnPos.x; mat.m[3][1] = spawnPos.y; mat.m[3][2] = spawnPos.z;
-                GPUParticleManager::GetInstance()->Emit(cfg.gpuParticlePreset, spawnPos, mat);
-            }
-            lastDummyPos_ = dummyPos_;
+    if (usePreviewStage) {
+        const float duration = (std::max)(previewDuration_, 0.01f);
+        const TrailEmitterConfig& config = emitter_.GetConfig();
+        std::vector<EffectPreviewStage::TimelineEvent> events;
+        events.push_back({ "Motion path", 0.0f, duration, Vector4{ 0.65f, 0.45f, 1.0f, 1.0f } });
+        if (config.emitMesh) {
+            events.push_back({ "Mesh emit", 0.0f, duration, Vector4{ 0.25f, 0.8f, 1.0f, 1.0f } });
         }
-
-        if (previewTime_ >= previewDuration_) {
-            previewTime_     = 0.0f;
-            dummyFirstFrame_ = true;
+        if (config.emitParticle) {
+            events.push_back({ "Particle emit", 0.0f, duration, Vector4{ 1.0f, 0.55f, 0.2f, 1.0f } });
         }
+        previewStage->ReportToolState(
+            EffectPreviewStage::ToolKind::Trail,
+            "Trail Emitter",
+            std::clamp(previewTime_, 0.0f, duration),
+            duration,
+            previewStage->IsTransportPlaying(),
+            static_cast<int>(meshManager->GetActiveEffects().size()) + gpuManager->GetActiveSystemCount(),
+            events);
     }
 }
 

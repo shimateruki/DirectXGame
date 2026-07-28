@@ -89,4 +89,6 @@ private:
     std::vector<std::unique_ptr<EffectObject3d>> extraPreviewEffects_;
     bool forcePlayRequest_ = false;
     int lastStagePlayRequestSerial_ = 0;
+    int lastStageStopRequestSerial_ = 0;
+    int lastStageSeekRequestSerial_ = 0;
 };

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "15de7f8c5e1a3919381170a41c11bb1f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/wind_slime_gust_impact.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4f5250bd8cdfbda330eda50e8fac65a1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Samples/teapot/teapot.obj",
+  "version": 1
+}

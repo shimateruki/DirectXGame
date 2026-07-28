@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f01374f9a28a44cd8f5cd446c9c87f7b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/prism/prism_spike_ground_flash.dds",
+  "version": 1
+}

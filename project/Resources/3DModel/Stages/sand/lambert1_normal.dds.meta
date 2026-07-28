@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "117645ebc937d6634d0b6851acde1e25",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/sand/lambert1_normal.dds",
+  "version": 1
+}

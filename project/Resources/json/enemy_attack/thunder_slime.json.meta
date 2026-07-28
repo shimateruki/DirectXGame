@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "5f45e6d5a339b7fe0ad4be00097038ec",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/enemy_attack/thunder_slime.json",
+  "version": 1
+}

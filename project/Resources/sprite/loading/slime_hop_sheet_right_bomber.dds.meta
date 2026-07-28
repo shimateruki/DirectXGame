@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "87056b0b3653266b2648d4088ef8c95a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/loading/slime_hop_sheet_right_bomber.dds",
+  "version": 1
+}

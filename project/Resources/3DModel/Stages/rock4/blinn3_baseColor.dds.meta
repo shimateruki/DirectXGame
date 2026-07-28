@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "16344e5da1454fdf42475ddefd45df69",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/rock4/blinn3_baseColor.dds",
+  "version": 1
+}

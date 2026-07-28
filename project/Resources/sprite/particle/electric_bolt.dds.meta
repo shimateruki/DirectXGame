@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "06a643eb0631ec6fcb31096ddd6d094e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/electric_bolt.dds",
+  "version": 1
+}

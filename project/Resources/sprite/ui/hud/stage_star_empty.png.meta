@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2cc71227a5bcfa42699373aa4b6046e3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/stage_star_empty.png",
+  "version": 1
+}

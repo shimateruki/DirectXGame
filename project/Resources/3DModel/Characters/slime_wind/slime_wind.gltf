@@ -1,0 +1,92 @@
+{
+  "asset": {
+    "generator": "CG2 Wind Slime shared-mesh model",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "WindSlimeScene",
+      "nodes": [1, 2]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "WindSlime",
+      "rotation": [-0.70710688829422, 0.0, 0.0, 0.7071066498756409],
+      "scale": [100.0, 99.99999237060547, 99.99999237060547]
+    },
+    {
+      "children": [0],
+      "name": "RootNode"
+    },
+    {
+      "mesh": 0,
+      "name": "WindSlime_Mesh"
+    }
+  ],
+  "materials": [
+    {
+      "alphaCutoff": 0.4151618182659149,
+      "alphaMode": "MASK",
+      "doubleSided": true,
+      "name": "WindSlimeMint",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [0.42, 1.0, 0.82, 1.0],
+        "baseColorTexture": { "index": 0 },
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.52
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "WindSlime_Mesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [{ "sampler": 0, "source": 0 }],
+  "images": [
+    {
+      "mimeType": "image/png",
+      "name": "WindSlimeBaseColor",
+      "uri": "Slime_baseColor_wind.png"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 465,
+      "max": [0.5119686722755432, 0.7366077899932861, 0.5145934820175171],
+      "min": [-0.5154838562011719, -0.005467218346893787, -0.5132371783256531],
+      "type": "VEC3"
+    },
+    { "bufferView": 1, "componentType": 5126, "count": 465, "type": "VEC3" },
+    { "bufferView": 2, "componentType": 5126, "count": 465, "type": "VEC2" },
+    { "bufferView": 3, "componentType": 5123, "count": 2310, "type": "SCALAR" }
+  ],
+  "bufferViews": [
+    { "buffer": 0, "byteLength": 5580, "byteOffset": 0, "target": 34962 },
+    { "buffer": 0, "byteLength": 5580, "byteOffset": 5580, "target": 34962 },
+    { "buffer": 0, "byteLength": 3720, "byteOffset": 11160, "target": 34962 },
+    { "buffer": 0, "byteLength": 4620, "byteOffset": 14880, "target": 34963 }
+  ],
+  "samplers": [{ "magFilter": 9729, "minFilter": 9987 }],
+  "buffers": [
+    {
+      "byteLength": 19500,
+      "uri": "slime_wind.bin"
+    }
+  ]
+}

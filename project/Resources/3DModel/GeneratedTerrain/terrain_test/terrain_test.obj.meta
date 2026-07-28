@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f11979ecd5cea95f4a0a92eb0a0505c7",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/GeneratedTerrain/terrain_test/terrain_test.obj",
+  "version": 1
+}

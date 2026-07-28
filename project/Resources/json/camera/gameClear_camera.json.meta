@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e9914e9fbbcd06f15535c20e0187173c",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/camera/gameClear_camera.json",
+  "version": 1
+}

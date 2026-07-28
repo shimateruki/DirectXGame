@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7bd5df889e1dc7a8685b311a905cd6dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/xUi.dds",
+  "version": 1
+}

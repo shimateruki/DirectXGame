@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "46b8a5741ef3aa5b9158363dd97c37f6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/flame_soft.png",
+  "version": 1
+}

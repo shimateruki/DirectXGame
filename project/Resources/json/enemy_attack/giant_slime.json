@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "enemyType": "GiantSlime",
+  "displayName": "巨大スライム",
+  "attacks": [
+    {
+      "id": "jump_press",
+      "displayName": "ジャンププレス",
+      "targeting": { "minRange": 4.0, "maxRange": 18.0, "radius": 7.0 },
+      "timing": { "windup": 0.78, "active": 0.0, "recovery": 1.15, "cooldown": 1.15, "warningLead": 0.18 },
+      "combat": { "damage": 2.0 },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 9.0, "duration": 5.0 },
+      "presentation": { "animation": "", "windupVfx": "", "activeVfx": "", "impactVfx": "", "audioCue": "" }
+    }
+  ]
+}

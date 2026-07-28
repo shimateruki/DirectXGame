@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "fbfcd45820aaa8fffa7fa41e628dd3c4",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_damage_pop_stars.json",
+  "version": 1
+}

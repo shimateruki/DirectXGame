@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f80c5eff1acac89f7e8efbf55f5f753a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_slider_fill.dds",
+  "version": 1
+}

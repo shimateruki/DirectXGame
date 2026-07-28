@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "53828f17a9871ab2a503653a62cfcf8a",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/gate_entry_pull_sparks.json",
+  "version": 1
+}

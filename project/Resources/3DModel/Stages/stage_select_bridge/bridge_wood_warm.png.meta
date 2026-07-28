@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "411bfd678c474b969d6bcba4aecd2d66",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stage_select_bridge/bridge_wood_warm.png",
+  "version": 1
+}

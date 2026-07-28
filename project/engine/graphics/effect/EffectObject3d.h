@@ -1,6 +1,7 @@
 #pragma once
 #include "Object3d.h"
 #include"Model.h"
+#include <algorithm>
 #include <vector>
 #include <wrl.h>
 
@@ -51,13 +52,24 @@ void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLigh
     EffectMaterial* GetMaterialData() const { return materialData_; }
     // --- アニメーション用セッター ---
         // 寿命を指定してエフェクト再生を開始します。
-void Play(float lifetime) {
+    void Play(float lifetime) {
         currentTime_ = 0.0f;
         lifetime_ = lifetime;
         isPlaying_ = true;
         if (materialData_) materialData_->time = 0.0f;
     }
+    // JSONで設定した寿命を保ったまま、同じエフェクトを先頭から再生します。
+    void Restart() {
+        currentTime_ = 0.0f;
+        isPlaying_ = true;
+        if (materialData_) materialData_->time = 0.0f;
+    }
     bool IsPlaying() const { return isPlaying_; }
+    float GetLifetime() const { return lifetime_; }
+    float GetCurrentTime() const { return currentTime_; }
+    float GetPlaybackProgress() const {
+        return lifetime_ > 0.0f ? std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f) : 1.0f;
+    }
 
     void SetStartScale(const Vector3& s) { startScale_ = s; }
     void SetEndScale(const Vector3& s) { endScale_ = s; }

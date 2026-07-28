@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "990f736d2b8fbf505c910640f746b55d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/9.png",
+  "version": 1
+}

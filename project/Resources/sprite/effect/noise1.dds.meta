@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a0b725b4a562336f98728982d34cdc8d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/noise1.dds",
+  "version": 1
+}

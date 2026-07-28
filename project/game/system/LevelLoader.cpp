@@ -18,6 +18,7 @@
 #include "EnemySpawner.h"
 #include "BaseEnemy.h"
 #include "EnemyBomber.h"
+#include "EnemyPrismSlime.h"
 #include "GimmickFactory.h"
 #include "BaseGimmick.h"
 #include "ItemFactory.h"
@@ -34,6 +35,7 @@ using json = nlohmann::json;
 
 namespace {
 constexpr int kSlimeSoftMaterialType = 25;
+constexpr int kPrismCrystalMaterialType = 27;
 
 void ConfigureBomberSpawnCallback(BaseScene* scene, EnemyBomber* bomber) {
     if (!scene || !bomber) {
@@ -46,6 +48,24 @@ void ConfigureBomberSpawnCallback(BaseScene* scene, EnemyBomber* bomber) {
         }
 
         spawned->SetTarget(scene->GetPlayer());
+        scene->AddObject(std::move(spawned));
+    });
+}
+
+void ConfigurePrismSpawnCallback(BaseScene* scene, EnemyPrismSlime* prismSlime) {
+    if (!scene || !prismSlime) {
+        return;
+    }
+
+    prismSlime->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
+        if (!spawned) {
+            return;
+        }
+
+        spawned->SetTarget(scene->GetPlayer());
+        if (auto* bomber = dynamic_cast<EnemyBomber*>(spawned.get())) {
+            ConfigureBomberSpawnCallback(scene, bomber);
+        }
         scene->AddObject(std::move(spawned));
     });
 }
@@ -67,6 +87,9 @@ void ConfigureEnemyRuntimeReferences(BaseScene* scene) {
         if (auto* bomber = dynamic_cast<EnemyBomber*>(enemy)) {
             ConfigureBomberSpawnCallback(scene, bomber);
         }
+        if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy)) {
+            ConfigurePrismSpawnCallback(scene, prismSlime);
+        }
     }
 }
 
@@ -75,7 +98,9 @@ bool IsSlimeEnemyType(const std::string& enemyType) {
         enemyType == "Bomber" ||
         enemyType == "FireSlime" ||
         enemyType == "ThunderSlime" ||
-        enemyType == "GiantSlime";
+        enemyType == "WindSlime" ||
+        enemyType == "GiantSlime" ||
+        enemyType == "PrismSlime";
 }
 
 bool IsSlimeModelName(std::string modelName) {
@@ -101,6 +126,12 @@ void ApplySlimeMaterialDefault(Object3d* object) {
 
     const std::string enemyType = object->GetEnemyType();
     if (!IsSlimeEnemyType(enemyType)) {
+        return;
+    }
+
+    if (enemyType == "PrismSlime" &&
+        (object->GetMaterialType() == 0 || object->GetMaterialType() == kSlimeSoftMaterialType)) {
+        object->SetMaterialType(kPrismCrystalMaterialType);
         return;
     }
 
@@ -294,6 +325,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             if (auto bomber = dynamic_cast<EnemyBomber*>(enemy.get())) {
                                 ConfigureBomberSpawnCallback(scene, bomber);
                             }
+                            if (auto prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy.get())) {
+                                ConfigurePrismSpawnCallback(scene, prismSlime);
+                            }
                             newObj = std::move(enemy);
                         }
                     }
@@ -340,6 +374,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                                 }
                                 if (auto bomber = dynamic_cast<EnemyBomber*>(newEnemy.get())) {
                                     ConfigureBomberSpawnCallback(scene, bomber);
+                                }
+                                if (auto prismSlime = dynamic_cast<EnemyPrismSlime*>(newEnemy.get())) {
+                                    ConfigurePrismSpawnCallback(scene, prismSlime);
                                 }
                                 // 直接シーンに追加
                                 CollisionManager::GetInstance()->AddObject(newEnemy.get());
@@ -544,7 +581,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
                 }
-                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) {
+                if (objData.contains("waterParam") && ((targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) || targetObject->GetMaterialType() == 26)) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
                         const auto& jw = objData["waterParam"];

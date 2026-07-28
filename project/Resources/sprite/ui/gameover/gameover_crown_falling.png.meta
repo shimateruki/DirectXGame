@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "13740ec5193171d0e81d8952c7d5c4f9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/gameover_crown_falling.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "79826f8cc696b18d74835a1fd4d8b7e9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/big9.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "59c10227a40ac1f56a195cde18b3ce4c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/rostock_laage_airport_4k.dds",
+  "version": 1
+}

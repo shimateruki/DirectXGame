@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d9b2749a17ccd97e3a550a3007d1e19f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/crown_progress_icon.dds",
+  "version": 1
+}

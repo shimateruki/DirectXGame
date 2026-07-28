@@ -517,6 +517,24 @@ void Object3d::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     }
 }
 
+void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+    if (!isVisible_ || !meshRenderer_) {
+        return;
+    }
+    meshRenderer_->DrawSpecialMaterialForCamera(
+        GetMaterialType(),
+        camera,
+        depthSrvHandle,
+        grabSrvHandle,
+        previewBufferIndex);
+}
+
+void Object3d::DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawWindOrb(depthSrvHandle, grabSrvHandle);
+    }
+}
+
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }

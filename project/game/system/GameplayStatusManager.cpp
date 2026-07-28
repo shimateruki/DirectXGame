@@ -209,8 +209,12 @@ void GameplayStatusManager::ResetToDefaults() {
         Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_red", true, 5.0f));
     enemyStatuses_.emplace("ThunderSlime", MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f,
         Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_yellow", true, 5.0f));
+    enemyStatuses_.emplace("WindSlime", MakeStatus(42.0f, 0.9f, 3.4f, 54.0f, 58.0f, 19.0f, 22.0f,
+        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_wind", false, 5.0f));
     enemyStatuses_.emplace("GiantSlime", MakeStatus(160.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
         Vector3{ 3.6f, 3.6f, 3.6f }, "Characters/slime_pink", true, 5.0f));
+    enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 30.0f,
+        Vector3{ 4.2f, 4.2f, 4.2f }, "Characters/prism_slime", true, 5.0f));
     enemyStatuses_.emplace("Bat", MakeStatus(25.0f, 0.8f, 2.6f, 0.0f, 60.0f, 10.0f, 24.0f,
         Vector3{ 0.6f, 0.6f, 0.6f }, "Characters/bat", true, 5.0f));
     enemyStatuses_.emplace("BeamDrone", MakeStatus(45.0f, 1.0f, 4.0f, 0.0f, 60.0f, 10.0f, 30.0f,

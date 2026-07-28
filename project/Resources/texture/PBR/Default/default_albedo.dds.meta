@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a7c229a8b98238a9612d20e92356b546",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Default/default_albedo.dds",
+  "version": 1
+}

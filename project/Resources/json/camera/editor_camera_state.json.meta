@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "3f6c38d1dcb9c4a455078949996fd33b",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/camera/editor_camera_state.json",
+  "version": 1
+}

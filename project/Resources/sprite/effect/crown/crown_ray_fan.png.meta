@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2b4cdccb72da78e98dafd7ed5193f918",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_ray_fan.png",
+  "version": 1
+}

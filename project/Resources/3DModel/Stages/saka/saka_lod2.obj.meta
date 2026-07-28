@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ce770af29e6ab2fd77f366471faead75",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/saka/saka_lod2.obj",
+  "version": 1
+}

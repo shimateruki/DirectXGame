@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dedfa0873ec08cc7dd78006465d6ef88",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_delete.png",
+  "version": 1
+}

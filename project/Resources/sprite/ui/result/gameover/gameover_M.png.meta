@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4590c075e94b550b03231168ea91be1b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/gameover/gameover_M.png",
+  "version": 1
+}

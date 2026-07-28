@@ -4,16 +4,14 @@
 // 基礎変身の見本になる、溜めジャンプから急降下を行うピンクスライム。
 class EnemySlime : public BaseEnemy {
 public:
+    void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     void CancelCarriedAbility(class Player* player);
-    void ApplyManagedScale(const Vector3& scale) override {
-        baseScale_ = scale;
-        hasBaseScale_ = true;
-        SetScale(scale);
-    }
+    void ApplyManagedScale(const Vector3& scale) override;
+    const char* GetDebugMoveStateName() const;
 
 private:
     enum class MoveState {
@@ -53,6 +51,9 @@ private:
     void SpawnDiveTrailEffect(float deltaTime);
     void SpawnLandingEffect();
     void ApplySlimeAnimation(float deltaTime);
+    void ResetVisualPose();
+    Vector3 CalculateGroundedVisualOffset(const Vector3& visualScale) const;
+    Vector3 CalculateDiveVisualOffset(const Vector3& visualScale, const Vector3& visualRotation) const;
     void BeginCarriedCharge(class Player* player);
     void UpdateCarriedCharge(class Player* player, float deltaTime);
     void BeginCarriedRise(class Player* player);
@@ -92,5 +93,10 @@ private:
     Vector3 diveDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector3 carriedDiveDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f };
+    Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 visualScaleVelocity_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 visualRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 visualRotationVelocity_ = { 0.0f, 0.0f, 0.0f };
     bool hasBaseScale_ = false;
+    bool attackWarningTriggered_ = false;
 };

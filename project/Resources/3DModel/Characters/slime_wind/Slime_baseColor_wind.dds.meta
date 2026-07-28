@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "410ca25ea97a0c02585c46dd0abf5ac8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slime_wind/Slime_baseColor_wind.dds",
+  "version": 1
+}

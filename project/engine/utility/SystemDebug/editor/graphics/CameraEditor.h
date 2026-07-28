@@ -127,6 +127,8 @@ public:
     bool ShouldRenderCameraPreview() const;
     bool ShouldRenderSceneCameraPreview() const;
     void NotifyCameraPreviewRendered(bool sceneCameraPreview);
+    // Scene差し替え時に、破棄済みObjectへの選択とPreview更新履歴を無効化します。
+    void InvalidatePreviewForSceneChange();
     Camera* PreparePreviewCamera(float aspectRatio);
     Camera* PrepareCinematicPreviewCamera(float aspectRatio);
 
@@ -182,12 +184,15 @@ private:
     char fileNameBuffer_[64] = "camera_settings.json";
 
     const std::string kDirectoryPath_ = "Resources/json/camera/";
+    const std::string kEditorStatePath_ = "output/editor_state/editor_camera_state.json";
     std::vector<std::string> fileList_;
     bool isGameViewHovered_ = false;
     bool isDraggingOrbitCenterGizmo_ = false;
     int orbitEditGizmoTarget_ = 1;
     std::map<std::string, Camera::CameraOverrideParams> overrideParamsMap_;
     uint32_t editorStateSaveBlockers_ = 0;
+    bool editorStateDirty_ = false;
+    std::chrono::steady_clock::time_point editorStateSaveReadyAt_{};
     std::string selectedOverrideName_ = "";
     Object3d* selectedCameraObject_ = nullptr;
     float activeSceneCameraExitDuration_ = 0.30f;

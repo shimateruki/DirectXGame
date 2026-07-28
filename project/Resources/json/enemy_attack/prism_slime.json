@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "enemyType": "PrismSlime",
+  "displayName": "プリズムスライム",
+  "attacks": [
+    {
+      "id": "crystal_spikes",
+      "displayName": "晶槍召喚陣",
+      "targeting": { "minRange": 2.0, "maxRange": 12.0, "radius": 3.6 },
+      "timing": { "windup": 0.88, "active": 0.82, "recovery": 0.62, "cooldown": 2.9, "warningLead": 0.28 },
+      "combat": { "damage": 1.0 },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 7.5, "duration": 4.8 },
+      "presentation": { "animation": "prism_spike_summon", "windupVfx": "prism_spike_warning", "activeVfx": "prism_spike_burst", "impactVfx": "prism_spike_shatter", "audioCue": "" }
+    },
+    {
+      "id": "crystal_lance_volley",
+      "displayName": "浮遊晶槍斉射",
+      "targeting": { "minRange": 4.0, "maxRange": 22.0, "radius": 0.85 },
+      "timing": { "windup": 0.95, "active": 0.85, "recovery": 0.55, "cooldown": 3.8, "warningLead": 0.24 },
+      "combat": { "damage": 1.0 },
+      "movement": { "minSpeed": 18.0, "maxSpeed": 24.0, "lifetime": 2.4 },
+      "preview": { "targetDistance": 10.0, "duration": 5.0 },
+      "presentation": { "animation": "crystal_lance_volley", "windupVfx": "prism_slime_charge", "activeVfx": "prism_lance_trail", "impactVfx": "prism_spike_shatter", "audioCue": "" }
+    },
+    {
+      "id": "fire_fan",
+      "displayName": "炎の扇状連射",
+      "targeting": { "minRange": 4.0, "maxRange": 18.0, "radius": 0.48 },
+      "timing": { "windup": 0.65, "active": 0.52, "recovery": 0.48, "cooldown": 2.9, "warningLead": 0.20 },
+      "combat": {
+        "damage": 1.0,
+        "statusEffect": { "type": "burning", "duration": 2.4, "tickInterval": 0.55, "tickDamage": 0.14, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 13.0, "maxSpeed": 28.0, "lifetime": 2.8 },
+      "preview": { "targetDistance": 9.0, "duration": 4.2 },
+      "presentation": { "animation": "fire_fan_recoil", "windupVfx": "fire_slime_cast", "activeVfx": "fire_slime_breath_embers", "impactVfx": "fire_slime_cast", "audioCue": "" }
+    },
+    {
+      "id": "thunder_chain",
+      "displayName": "直線連続落雷",
+      "targeting": { "minRange": 4.0, "maxRange": 18.0, "radius": 1.42 },
+      "timing": { "windup": 0.76, "active": 0.62, "recovery": 0.48, "cooldown": 3.15, "warningLead": 0.23 },
+      "combat": { "damage": 1.0 },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 10.0, "duration": 4.4 },
+      "presentation": { "animation": "thunder_chain_tremble", "windupVfx": "thunder_slime_charge", "activeVfx": "player_thunder_strike_impact", "impactVfx": "Resources/json/effect/effect_thunder_scorch_mark.json", "audioCue": "" }
+    },
+    {
+      "id": "wind_wave",
+      "displayName": "持続する暴風波",
+      "targeting": { "minRange": 0.0, "maxRange": 10.5, "radius": 3.1 },
+      "timing": { "windup": 0.58, "active": 1.12, "recovery": 0.46, "cooldown": 2.75, "warningLead": 0.20 },
+      "combat": { "damage": 0.65 },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 6.8, "duration": 4.3 },
+      "presentation": { "animation": "wind_wave_stretch", "windupVfx": "wind_slime_charge", "activeVfx": "wind_slime_breath_stream", "impactVfx": "Resources/json/effect/effect_wind_gust_ring.json", "audioCue": "" }
+    },
+    {
+      "id": "slime_summon",
+      "displayName": "彩色スライム召喚陣",
+      "targeting": { "minRange": 0.0, "maxRange": 30.0, "radius": 6.0 },
+      "timing": { "windup": 1.25, "active": 0.72, "recovery": 0.55, "cooldown": 5.5, "warningLead": 0.28 },
+      "combat": { "damage": 0.0 },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 8.0, "duration": 5.4 },
+      "presentation": { "animation": "slime_summon_cast", "windupVfx": "prism_slime_charge", "activeVfx": "prism_slime_pulse", "impactVfx": "", "audioCue": "" }
+    }
+  ]
+}

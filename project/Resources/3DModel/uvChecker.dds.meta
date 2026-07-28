@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "70b31ab11cea9d28919bd4f99bfecddc",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/uvChecker.dds",
+  "version": 1
+}

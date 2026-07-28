@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c1cfe5480c9ca3503ae48736032af92e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/soft_tree/soft_tree_leaf.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "95e8fb85045c115398828075095cc50b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/saka/saka.obj",
+  "version": 1
+}

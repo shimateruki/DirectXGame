@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d1673844b98d4690b0556645a860f843",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stage_select_bridge/bridge_peg.png",
+  "version": 1
+}

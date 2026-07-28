@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cfc8c2b7b8d891795bde3a930ba02c9e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_footer_button_selected.png",
+  "version": 1
+}

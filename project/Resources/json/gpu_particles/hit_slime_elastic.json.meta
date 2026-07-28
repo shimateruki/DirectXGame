@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "53d9f533c4f8aef960bb19de0e1e2f5b",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_slime_elastic.json",
+  "version": 1
+}

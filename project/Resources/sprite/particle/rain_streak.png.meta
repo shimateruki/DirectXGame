@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5adefd25bb5cba7f0c4b254dc92361be",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/rain_streak.png",
+  "version": 1
+}

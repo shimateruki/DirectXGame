@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bf325abb5f1e5d50942158e6bc8151e5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/eye/Material_002_baseColor.png",
+  "version": 1
+}

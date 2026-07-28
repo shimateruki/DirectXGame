@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "1087f921e12695659bd155a3a57612d8",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/enemy_defeat_smoke_trail.json",
+  "version": 1
+}

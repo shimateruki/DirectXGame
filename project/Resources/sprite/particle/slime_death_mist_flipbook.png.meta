@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "344873982e86acfc9cc6de944a00e94f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/slime_death_mist_flipbook.png",
+  "version": 1
+}

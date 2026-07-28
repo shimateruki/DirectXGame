@@ -1,0 +1,23 @@
+{
+  "version": 4,
+  "name": "Tutorial Intro",
+  "duration": 3.2,
+  "tracks": [],
+  "vfxCues": [],
+  "cameraShots": [
+    {
+      "name": "Start Area",
+      "targetName": "TutorialCamera_Intro",
+      "startTime": 0.0,
+      "duration": 3.2,
+      "blendInDuration": 0.45,
+      "blendOutDuration": 0.4,
+      "easing": 4,
+      "enabled": true,
+      "muted": false
+    }
+  ],
+  "animationClips": [],
+  "audioCues": [],
+  "signals": []
+}

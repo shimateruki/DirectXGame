@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "af56eaa84d79770f1d0afe7f78bf21b8",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/postprocess/PostEffect.VS.hlsl",
+  "version": 1
+}

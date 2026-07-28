@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2fa3c73a735d66c2abc3578a5187b7f3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_black/slimeBody_black.gltf",
+  "version": 1
+}

@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <cstddef>
 #include <vector>
 #include <DirectXCommon.h>
 
@@ -20,6 +21,7 @@ void Initialize(DirectXCommon* dxCommon);
 void BeginFrame();
         // 各GPUパーティクルシステムのシミュレーション時間を進めます。
 void Update(float deltaTime);
+    void UpdateEditorPreviewStep(float deltaTime);
         // 全GPUパーティクルをカメラ行列と深度情報に合わせて描画します。
 void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
@@ -30,6 +32,9 @@ void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, c
 
         // プリセット名を指定して指定位置へGPUパーティクルを発生させます。
 void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+    // プリセットの速度量を保ったまま、発生方向だけを実行時の方向へ合わせます。
+    void EmitDirected(const std::string& presetName, const Vector3& position, const Vector3& direction,
+        float speedScale = 1.0f, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
     void EmitFromConfig(const GPUParticleConfig& config);
 
     float GetTimeScale() const { return timeScale_; }
@@ -44,7 +49,13 @@ uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position)
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
     void StopAutoEmitter(uint32_t id);
     void ClearAllAutoEmitters();
+    // エディターの時間シーク時に、保持中のGPU粒子を安全に初期状態へ戻します。
+    void ResetSimulation();
     bool IsEmpty() const;
+    int GetActiveSystemCount() const;
+    float GetLastUpdateCpuTimeMs() const { return lastUpdateCpuTimeMs_; }
+    float GetLastDrawCpuTimeMs() const { return lastDrawCpuTimeMs_; }
+    size_t GetEstimatedMemoryBytesForConfig(const GPUParticleConfig& config) const;
     // 背景色を参照する歪みパーティクルが描画対象に含まれるかを返します。
     bool RequiresSceneColorCopy() const;
 
@@ -80,6 +91,8 @@ private:
     uint32_t nextAutoEmitterId_ = 0;
     float timeScale_ = 1.0f;
     bool updatedThisFrame_ = false;
+    float lastUpdateCpuTimeMs_ = 0.0f;
+    float lastDrawCpuTimeMs_ = 0.0f;
 
     // メッシュデータ保持用
     ID3D12Resource* meshVb_ = nullptr;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "be14900efe94291c5690ab9e8730a1da",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slime_white/Slime_baseColor_white.dds",
+  "version": 1
+}

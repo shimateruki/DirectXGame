@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "abe3b09476fa478a8d90c5aa6be37302",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/flag/flag.gltf",
+  "version": 1
+}

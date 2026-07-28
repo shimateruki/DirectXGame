@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6351ded1dcf6960e90c6cb6b80b02799",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/bridge/lambert1_metallicRoughness.dds",
+  "version": 1
+}

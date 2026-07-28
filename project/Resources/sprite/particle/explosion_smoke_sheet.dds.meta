@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8edffc4afdd6c4628fab8302717b96de",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/explosion_smoke_sheet.dds",
+  "version": 1
+}

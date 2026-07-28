@@ -195,6 +195,7 @@ std::string ResolveComponentTypeId(const std::string& path) {
     if (StartsWith(path, "component.animation.")) return "Animator";
     if (StartsWith(path, "component.path.")) return "PathMover";
     if (StartsWith(path, "component.link.")) return "GameplayLink";
+    if (StartsWith(path, "component.nav.")) return "NavAgent";
     if (StartsWith(path, "camera.")) return "Camera";
     if (StartsWith(path, "gameplay.")) return "Gameplay";
     return "SceneObject";
@@ -249,6 +250,10 @@ std::string ResolveSerializedPath(const std::string& path) {
     if (path == "component.path.relative") return "recorder.isRecordRelative";
     if (path == "component.link.eventId") return "myEventID";
     if (path == "component.link.targetId") return "targetID";
+    if (StartsWith(path, "component.nav.")) {
+        const std::string property = path.substr(std::string("component.nav.").size());
+        return "components.NavAgent." + property;
+    }
     if (StartsWith(path, "gameplay.")) return "param." + path.substr(9);
     if (StartsWith(path, "camera.")) {
         const std::string property = path.substr(7);
@@ -337,6 +342,15 @@ bool EditorPropertyRegistry::RegisterComponent(EditorComponentDescriptor descrip
         componentIndices_.find(descriptor.typeId) != componentIndices_.end()) {
         return false;
     }
+    std::vector<std::string> presetIds;
+    presetIds.reserve(descriptor.presets.size());
+    for (const EditorComponentPresetDescriptor& preset : descriptor.presets) {
+        if (preset.id.empty() || preset.displayName.empty() || !preset.apply ||
+            std::find(presetIds.begin(), presetIds.end(), preset.id) != presetIds.end()) {
+            return false;
+        }
+        presetIds.push_back(preset.id);
+    }
     if (descriptor.removable && !descriptor.serializedPresent) {
         const std::string typeId = descriptor.typeId;
         descriptor.serializedPresent = [typeId](const json& source) {
@@ -386,19 +400,48 @@ const EditorComponentDescriptor* EditorPropertyRegistry::FindComponent(const std
     return it == componentIndices_.end() ? nullptr : &components_[it->second];
 }
 
+const EditorComponentPresetDescriptor* EditorPropertyRegistry::FindComponentPreset(
+    const std::string& typeId,
+    const std::string& presetId) const {
+    const EditorComponentDescriptor* component = FindComponent(typeId);
+    if (!component) {
+        return nullptr;
+    }
+    const auto it = std::find_if(
+        component->presets.begin(),
+        component->presets.end(),
+        [&presetId](const EditorComponentPresetDescriptor& preset) {
+            return preset.id == presetId;
+        });
+    return it == component->presets.end() ? nullptr : &*it;
+}
+
+std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetApplicableComponentsForObject(
+    const Object3d* object) const {
+    std::vector<const EditorComponentDescriptor*> result;
+    if (!object) {
+        return result;
+    }
+
+    for (const EditorComponentDescriptor& component : components_) {
+        if (!component.applicable || component.applicable(*object)) {
+            result.push_back(&component);
+        }
+    }
+    std::stable_sort(result.begin(), result.end(), [](const auto* left, const auto* right) {
+        return left->displayOrder < right->displayOrder;
+    });
+    return result;
+}
+
 std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetComponentsForObject(
     const Object3d* object) const {
     std::vector<const EditorComponentDescriptor*> result;
-    if (!object) return result;
-
-    for (const EditorComponentDescriptor& component : components_) {
-        if (component.applicable && !component.applicable(*object)) continue;
-        if (component.present && !component.present(*object)) continue;
-        result.push_back(&component);
+    for (const EditorComponentDescriptor* component : GetApplicableComponentsForObject(object)) {
+        if (component && (!component->present || component->present(*object))) {
+            result.push_back(component);
+        }
     }
-    std::sort(result.begin(), result.end(), [](const auto* left, const auto* right) {
-        return left->displayOrder < right->displayOrder;
-    });
     return result;
 }
 
@@ -454,6 +497,17 @@ bool EditorPropertyRegistry::AddComponent(Object3d* object, const std::string& t
         return false;
     }
     return component->add(*object);
+}
+
+bool EditorPropertyRegistry::ApplyComponentPreset(
+    Object3d* object,
+    const std::string& typeId,
+    const std::string& presetId) const {
+    const EditorComponentPresetDescriptor* preset = FindComponentPreset(typeId, presetId);
+    if (!object || !preset || !IsComponentApplicable(object, typeId)) {
+        return false;
+    }
+    return preset->apply(*object);
 }
 
 bool EditorPropertyRegistry::RemoveComponent(Object3d* object, const std::string& typeId) const {
@@ -532,7 +586,12 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
 
     const auto always = [](const Object3d&) { return true; };
     const auto never = [](const Object3d&) { return false; };
-    RegisterComponent({ "SceneObject", "Scene Object", "名前、GUID、Tag、LayerなどObject自体の情報です。", 0, true, false,
+    const auto registerInspectorHiddenComponent = [this](EditorComponentDescriptor descriptor) {
+        descriptor.showInInspector = false;
+        return RegisterComponent(std::move(descriptor));
+    };
+
+    registerInspectorHiddenComponent({ "SceneObject", "Scene Object", "名前、GUID、Tag、LayerなどObject自体の情報です。", 0, true, false,
         always, always, EditorComponentInspectorMode::Custom });
     RegisterComponent({ "Transform", "Transform", "位置・回転・スケールと親子Transformを管理します。", 10, true, false, always,
         [](const Object3d& object) { return object.HasBuiltInComponent(Object3d::kTransformComponentType); },
@@ -541,7 +600,7 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
         [](const Object3d& object) { return !object.IsCameraObject(); },
         [](const Object3d& object) { return object.HasBuiltInComponent(Object3d::kMeshRendererComponentType); },
         EditorComponentInspectorMode::Custom });
-    RegisterComponent({ "Collider", "Collider", "衝突形状、属性、衝突Maskを管理します。", 30, false, true,
+    EditorComponentDescriptor colliderComponent{ "Collider", "Collider", "衝突形状、属性、衝突Maskを管理します。", 30, false, true,
         [](const Object3d& object) { return !object.IsCameraObject(); },
         [](const Object3d& object) {
             return object.HasComponentPresenceMarker("Collider") ||
@@ -572,7 +631,27 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
             object.SetStatic(false);
             object.SetComponentPresenceMarker("Collider", false);
             return true;
-        } });
+        } };
+    colliderComponent.presets.push_back({
+        "Trigger",
+        "Trigger Collider Preset",
+        "Playerを検知するTrigger Colliderとして追加または再設定します。",
+        [](Object3d& object) {
+            Object3d::ColliderConfig config = object.GetColliderConfig();
+            config.type = ColliderType::kAABB;
+            if (std::fabs(config.size.x) < 0.001f || std::fabs(config.size.y) < 0.001f ||
+                std::fabs(config.size.z) < 0.001f) {
+                config.size = { 1.0f, 1.0f, 1.0f };
+            }
+            object.SetColliderConfig(config);
+            object.SetCollisionAttribute(CollisionAttribute::kTrigger);
+            object.SetCollisionMask(CollisionAttribute::kPlayer);
+            object.SetStatic(false);
+            object.SetComponentPresenceMarker("Collider", true);
+            return true;
+        },
+    });
+    RegisterComponent(std::move(colliderComponent));
     RegisterComponent({ "ParticleEmitter", "Particle Emitter", "CPU/GPU Particle AssetをObjectへ接続します。", 40, false, true, always,
         [](const Object3d& object) {
             return object.HasParticleEmitterComponent();
@@ -659,14 +738,25 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
         [](Object3d& object) {
             return object.RemoveGameplayLinkComponent();
         } });
-    RegisterComponent({ "Camera", "Camera", "Scene CameraのLens、追従、Blendを管理します。", 100, false, false,
+    RegisterComponent({ "NavAgent", "Nav Agent", "Physics QueryとA*で障害物を避ける移動方向を計算します。", 95, false, true,
+        [](const Object3d& object) { return !object.IsCameraObject(); },
+        [](const Object3d& object) { return object.HasNavAgentComponent(); },
+        EditorComponentInspectorMode::Automatic,
+        [](Object3d& object) {
+            object.EnsureNavAgentComponent();
+            return true;
+        },
+        [](Object3d& object) {
+            return object.RemoveNavAgentComponent();
+        } });
+    registerInspectorHiddenComponent({ "Camera", "Camera", "Scene CameraのLens、追従、Blendを管理します。", 100, false, false,
         [](const Object3d& object) { return object.IsCameraObject(); },
         [](const Object3d& object) { return object.IsCameraObject(); },
         EditorComponentInspectorMode::Custom });
-    RegisterComponent({ "Gameplay", "Gameplay", "敵、ギミック、Item固有の配置Parameterです。", 110, false, false, always,
+    registerInspectorHiddenComponent({ "Gameplay", "Gameplay", "敵、ギミック、Item固有の配置Parameterです。", 110, false, false, always,
         [](const Object3d& object) { return object.param_.has_value(); },
         EditorComponentInspectorMode::Custom });
-    RegisterComponent({ "EditorState", "Editor State", "Editorだけが使用する表示・Lock状態です。", 1000, true, false,
+    registerInspectorHiddenComponent({ "EditorState", "Editor State", "Editorだけが使用する表示・Lock状態です。", 1000, true, false,
         never, never, EditorComponentInspectorMode::Custom });
 
     Register({
@@ -1185,6 +1275,87 @@ void EditorPropertyRegistry::InitializeBuiltInProperties() {
         [](Object3d& object, const json& value) {
             if (!value.is_number_integer()) return false;
             object.SetTargetID(value.get<int>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.enabled", "経路探索を有効化", "Component", EditorPropertyType::Bool, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() && object.GetNavAgentComponent()->IsEnabled()); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_boolean()) return false;
+            object.EnsureNavAgentComponent()->SetEnabled(value.get<bool>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.cellSize", "セルサイズ", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetCellSize() : 1.0f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetCellSize(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.agentRadius", "Agent半径", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentRadius() : 0.55f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetAgentRadius(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.agentHeight", "Agent高さ", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetAgentHeight() : 1.5f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetAgentHeight(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.searchPadding", "探索余白", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetSearchPadding() : 5.0f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetSearchPadding(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.repathInterval", "再探索間隔", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetRepathInterval() : 0.35f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetRepathInterval(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.stoppingDistance", "停止距離", "Component", EditorPropertyType::Number, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetStoppingDistance() : 0.25f); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number()) return false;
+            object.EnsureNavAgentComponent()->SetStoppingDistance(value.get<float>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.obstacleMask", "障害物Mask", "Component", EditorPropertyType::Integer, CommonFlags(),
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetObstacleMask() : kAllSolid); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_number_integer() && !value.is_number_unsigned()) return false;
+            object.EnsureNavAgentComponent()->SetObstacleMask(value.get<std::uint32_t>());
+            return true;
+        },
+    });
+    Register({
+        "component.nav.allowDiagonal", "斜め移動", "Component", EditorPropertyType::Bool, CommonFlags(),
+        [](const Object3d& object) { return json(!object.GetNavAgentComponent() || object.GetNavAgentComponent()->AllowsDiagonal()); },
+        [](Object3d& object, const json& value) {
+            if (!value.is_boolean()) return false;
+            object.EnsureNavAgentComponent()->SetAllowDiagonal(value.get<bool>());
             return true;
         },
     });

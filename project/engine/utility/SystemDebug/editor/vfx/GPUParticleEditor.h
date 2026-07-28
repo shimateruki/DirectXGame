@@ -13,7 +13,7 @@ class GPUParticleEditor : public IEditable {
 public:
     void Initialize();
         // プレビュー再生やパラメータ変更をフレーム時間に合わせて更新します。
-void Update(float deltaTime);
+void Update(float deltaTime, bool sceneIsPlaying = false);
         // 発生、速度、色、テクスチャなどの編集UIを描画します。
 void DrawImGui() override;
 
@@ -29,7 +29,10 @@ private:
     char presetNameInput_[64] = "FirePreset";
     bool isPreviewMode_ = true;
     float previewDistance_ = 5.0f;
+    float previewTime_ = 0.0f;
     int lastStagePlayRequestSerial_ = 0;
+    int lastStageStopRequestSerial_ = 0;
+    int lastStageSeekRequestSerial_ = 0;
 
         // 現在の設定で一度発生させ、見た目を即確認できるようにします。
 void EmitWithPreview();

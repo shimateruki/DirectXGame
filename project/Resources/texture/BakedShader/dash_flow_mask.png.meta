@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5de824ea82fa71daeb161c322840daa6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/dash_flow_mask.png",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "dc02507075196dcac79be83ff7bce20c",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/LiquidContact.VS.hlsl",
+  "version": 1
+}

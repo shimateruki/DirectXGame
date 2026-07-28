@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c9cb39b034af311b25229738b96c2491",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/lockOn.png",
+  "version": 1
+}

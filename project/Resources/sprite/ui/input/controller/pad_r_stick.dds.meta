@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "401e5cceba11c6fbb8a77490ff6694b5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/controller/pad_r_stick.dds",
+  "version": 1
+}

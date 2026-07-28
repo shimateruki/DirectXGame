@@ -1,6 +1,6 @@
 #pragma once
-#include "Camera.h"
 #include <d3d12.h>
+#include "Camera.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -20,6 +20,13 @@ struct ThumbnailData {
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;
     uint32_t srvHandle = 0;
     bool isCaptured = false;
+    bool isHudPortrait = false;
+    bool exportRequested = false;
+    std::string exportFileStem;
+    float portraitYaw = 0.0f;
+    float portraitPitch = -0.2f;
+    float portraitScale = 1.0f;
+    float portraitOffsetY = 0.0f;
     std::shared_ptr<Object3d> previewObject;
 };
 
@@ -50,12 +57,18 @@ public:
     /// まだ撮影されていないモデル/プリセットのサムネイルを順次生成する。
     void CapturePendingThumbnails();
 
+    /// <summary>
+    /// 描画済みのHUD用ポートレートを透過PNGへ書き出します。
+    /// </summary>
+    void ExportCapturedHudPortraits();
+
     uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
 
 private:
     /// 指定モデルのプレビューObjectと描画先を作り、サムネイル撮影の準備をする。
     void CreateThumbnailResource(const std::string& modelName);
     void CreatePresetThumbnailResource(const std::string& presetName);
+    void QueueHudPortraitExports(bool forceAll);
 
     // EditorとDirectX基盤への参照。ProjectWindowは所有しない。
     DebugEditor* editor_ = nullptr;
@@ -73,4 +86,5 @@ private:
     // サムネイル撮影用の簡易スタジオカメラ。
     Camera studioCamera_;
     bool isStudioCameraInitialized_ = false;
+    bool hudPortraitAutoScanDone_ = false;
 };

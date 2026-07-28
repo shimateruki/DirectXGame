@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2b9a89796a174d71c1e55151c93a1903",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/title_menu_button_beige.dds",
+  "version": 1
+}

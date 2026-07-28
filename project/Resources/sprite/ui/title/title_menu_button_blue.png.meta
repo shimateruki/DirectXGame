@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "066888e8cfd206f61ed7dc17de75e9e1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/title_menu_button_blue.png",
+  "version": 1
+}

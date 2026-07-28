@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9cde45f506a480d80069f36ff6f85533",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/slime_hurt.png",
+  "version": 1
+}

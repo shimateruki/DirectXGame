@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "44a34eb65dca374bc30804de334dd376",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_wind_dash.json",
+  "version": 1
+}

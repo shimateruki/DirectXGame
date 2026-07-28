@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9574f313fad5a419ad3b50f1b716955f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/output_skybox.dds",
+  "version": 1
+}

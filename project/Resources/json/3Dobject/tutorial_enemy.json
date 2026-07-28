@@ -1,3 +1,52 @@
 {
-    "objects": []
+  "objects": [
+    {
+      "type": "Enemy",
+      "saveCategory": "Enemy",
+      "name": "Tutorial_PinkSlime_Throw",
+      "guid": "a38277e9-bd94-48d6-9e7a-5e006ad8bb21",
+      "enemyType": "Slime",
+      "gimmickType": "",
+      "itemType": "",
+      "position": [20.0, -0.62, 4.0],
+      "rotation": [0.0, -1.5707963, 0.0],
+      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
+      "scale": [0.8, 1.3, 0.8],
+      "materialType": 25,
+      "enableLighting": true,
+      "enableEnvMap": false,
+      "envIntensity": 1.0,
+      "emissive": 1.0,
+      "castShadow": true,
+      "param": {
+        "enemyType": "Slime"
+      },
+      "parentGuid": "",
+      "parentName": ""
+    },
+    {
+      "type": "Enemy",
+      "saveCategory": "Enemy",
+      "name": "Tutorial_PinkSlime_Absorb",
+      "guid": "8e1bc73d-f2f9-4ab0-8c56-c71d3f2ef812",
+      "enemyType": "Slime",
+      "gimmickType": "",
+      "itemType": "",
+      "position": [24.0, -0.62, 8.0],
+      "rotation": [0.0, -1.5707963, 0.0],
+      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
+      "scale": [0.8, 1.3, 0.8],
+      "materialType": 25,
+      "enableLighting": true,
+      "enableEnvMap": false,
+      "envIntensity": 1.0,
+      "emissive": 1.0,
+      "castShadow": true,
+      "param": {
+        "enemyType": "Slime"
+      },
+      "parentGuid": "",
+      "parentName": ""
+    }
+  ]
 }

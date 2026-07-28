@@ -56,9 +56,9 @@ float3 TonalFireRamp(float heat, float ember, float3 artistTint)
 {
     float3 deepCoal = float3(0.060f, 0.006f, 0.002f);
     float3 redCore = lerp(float3(0.95f, 0.040f, 0.008f), artistTint, 0.18f);
-    float3 orange = float3(2.10f, 0.50f, 0.055f);
-    float3 yellow = float3(3.35f, 1.55f, 0.23f);
-    float3 whiteHot = float3(4.65f, 3.65f, 1.70f);
+    float3 orange = float3(1.62f, 0.42f, 0.050f);
+    float3 yellow = float3(2.45f, 1.18f, 0.19f);
+    float3 whiteHot = float3(3.20f, 2.42f, 1.08f);
 
     float3 c = deepCoal;
     c = lerp(c, redCore, smoothstep(0.18f, 0.22f, heat));
@@ -112,6 +112,7 @@ float4 main(VSOutput input) : SV_TARGET
     float proxyMask = 1.0f;
     float2 proceduralUV = billboard * 0.5f + 0.5f;
     float2 surfaceUV = proceduralUV * 2.0f - 1.0f;
+    float2 phaseSeed = float2(uvOffsetX, uvOffsetY) * float2(0.37f, 0.23f);
 
     float heat = 0.0f;
     float core = 0.0f;
@@ -131,7 +132,7 @@ float4 main(VSOutput input) : SV_TARGET
             (billboard.x * 0.5f + 0.5f) * (3.2f + detail * 0.8f),
             height01 * (4.0f + detail * 1.4f) - time * animSpeed * 1.15f
         );
-        float bodyNoise = Fbm2(flameUV + float2(time * 0.10f, 0.0f));
+        float bodyNoise = Fbm2(flameUV + phaseSeed + float2(time * 0.10f, 0.0f));
         float tongueNoise = Fbm2(float2(side * 5.8f + bodyNoise * 2.2f, height01 * 8.5f - time * animSpeed * 2.0f));
         float emberNoise = Fbm2(float2(proceduralUV.x * 19.0f + time * 0.35f, height01 * 18.0f - time * animSpeed * 3.0f));
         float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.04f, 0.0f)));
@@ -159,7 +160,7 @@ float4 main(VSOutput input) : SV_TARGET
     {
         float radial = length(billboard);
         float2 orbUV = billboard * (2.2f + detail * 0.42f);
-        float bodyNoise = Fbm2(orbUV + float2(time * 0.18f, -time * animSpeed * 0.44f));
+        float bodyNoise = Fbm2(orbUV + phaseSeed + float2(time * 0.18f, -time * animSpeed * 0.44f));
         float broadNoise = Fbm2(orbUV * 0.48f + float2(-time * 0.07f, time * 0.11f));
         float crackNoise = Fbm2(orbUV * 3.4f + float2(time * 0.46f, -time * animSpeed * 0.96f));
         float pulse = sin(time * animSpeed * 2.4f + bodyNoise * 5.2f) * 0.5f + 0.5f;
@@ -193,7 +194,7 @@ float4 main(VSOutput input) : SV_TARGET
             wrapBillboard.x * (4.0f + detail * 0.75f) + wind * time * (0.22f + move * 0.18f),
             height01 * (4.8f + detail * 1.0f) - time * animSpeed * (0.70f + move * 0.42f)
         );
-        float bodyNoise = Fbm2(wrapUV + float2(time * 0.08f, 0.0f));
+        float bodyNoise = Fbm2(wrapUV + phaseSeed + float2(time * 0.08f, 0.0f));
         float tongueNoise = Fbm2(float2(abs(wrapBillboard.x) * 5.6f + bodyNoise * 1.8f, height01 * 7.4f - time * animSpeed * (1.55f + move * 0.65f)));
         float emberNoise = Fbm2(float2(proceduralUV.x * 15.0f + time * 0.28f, height01 * 13.0f - time * animSpeed * 2.1f));
         float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.035f + lean * 0.08f, 0.0f)));
@@ -202,8 +203,10 @@ float4 main(VSOutput input) : SV_TARGET
         float topFade = smoothstep(1.08f, 0.54f, height01 + (tongueNoise - 0.5f) * 0.10f);
         float bottomFade = smoothstep(0.02f, 0.17f, height01);
         float sideLick = smoothstep(0.88f, 0.45f, abs(wrapBillboard.x) + (tongueNoise - 0.5f) * 0.22f);
+        float proxyBoundary = smoothstep(1.08f, 0.82f, oval);
         float flameMask = saturate(bodyShell * bottomFade * topFade);
         flameMask = saturate(flameMask * (0.46f + sideLick * 0.34f) + bakedFlame.a * 0.18f);
+        flameMask *= proxyBoundary;
 
         float inner = saturate(1.0f - oval);
         heat = saturate(0.16f + fromBase * 0.12f + inner * 0.16f + bodyNoise * 0.26f + tongueNoise * 0.22f + bakedFlame.r * 0.20f + move * 0.08f);
@@ -221,14 +224,13 @@ float4 main(VSOutput input) : SV_TARGET
         float sy = max(effectScaleY, 0.12f);
         float2 plume = float2((billboard.x + wind * 0.12f) / sx, billboard.y / sy);
         float radial = length(float2(plume.x * 0.88f, plume.y * 1.18f));
-        float front = saturate(proceduralUV.x);
         float centerBand = saturate(1.0f - abs(plume.y) * 1.8f);
 
         float2 plumeUV = float2(
             plume.x * (3.2f + detail * 0.7f) + time * (0.28f + stream * 0.22f) + wind * 0.35f,
             plume.y * (4.6f + detail * 0.8f) - time * animSpeed * (1.25f + stream * 0.55f)
         );
-        float bodyNoise = Fbm2(plumeUV);
+        float bodyNoise = Fbm2(plumeUV + phaseSeed);
         float lickNoise = Fbm2(plumeUV * 1.85f + float2(time * 0.22f, -time * animSpeed * 0.70f));
         float emberNoise = Fbm2(plumeUV * 3.2f + float2(time * 0.55f, -time * 0.80f));
         float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.05f + wind * 0.04f, (lickNoise - 0.5f) * 0.035f)));
@@ -236,7 +238,9 @@ float4 main(VSOutput input) : SV_TARGET
         float shell = smoothstep(1.18f, 0.56f, radial + (bodyNoise - 0.5f) * 0.18f);
         float tornEdge = smoothstep(0.40f, 0.92f, lickNoise + centerBand * 0.20f + bakedFlame.r * 0.18f);
         float flameMask = saturate(shell * (0.54f + tornEdge * 0.42f) + bakedFlame.a * 0.20f);
-        flameMask *= smoothstep(0.02f, 0.18f, front);
+        float borderFade = smoothstep(0.00f, 0.10f, proceduralUV.x) * smoothstep(0.00f, 0.10f, 1.0f - proceduralUV.x);
+        borderFade *= smoothstep(0.00f, 0.08f, proceduralUV.y) * smoothstep(0.00f, 0.08f, 1.0f - proceduralUV.y);
+        flameMask *= borderFade;
         flameMask *= lerp(0.84f, 1.0f, centerBand);
 
         heat = saturate(0.22f + centerBand * 0.18f + bodyNoise * 0.28f + lickNoise * 0.24f + bakedFlame.r * 0.22f + stream * 0.08f);
@@ -266,8 +270,8 @@ float4 main(VSOutput input) : SV_TARGET
     float3 artistTint = max(color.rgb, float3(0.08f, 0.02f, 0.005f));
     float3 fireColor = TonalFireRamp(heat, ember, artistTint);
 
-    fireColor += float3(1.25f, 0.28f, 0.035f) * edgeGlow * 0.55f;
-    fireColor += float3(2.0f, 0.75f, 0.12f) * core * 0.28f;
+    fireColor += float3(1.10f, 0.25f, 0.032f) * edgeGlow * 0.42f;
+    fireColor += float3(1.65f, 0.62f, 0.10f) * core * 0.20f;
     fireColor *= intensity;
 
     float3 smokeColor = lerp(float3(0.105f, 0.044f, 0.018f), float3(0.032f, 0.025f, 0.020f), heat);
@@ -280,9 +284,9 @@ float4 main(VSOutput input) : SV_TARGET
     }
 
     float distortMix = saturate((0.18f + heat * 0.28f + smoke * 0.16f) * softFactor);
-    float3 background = lerp(sceneColor, distortedScene, distortMix);
-    float3 source = lerp(background, fireColor, saturate(alpha * 0.92f + 0.16f));
-    source += fireColor * (0.12f + core * 0.24f + ember * 0.12f);
+    float3 refractionDelta = (distortedScene - sceneColor) * distortMix;
+    float3 source = fireColor * (0.78f + core * 0.18f + ember * 0.08f);
+    source += refractionDelta * 0.32f;
 
     return float4(source, alpha);
 }

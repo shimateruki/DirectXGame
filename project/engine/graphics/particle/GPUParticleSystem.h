@@ -2,6 +2,7 @@
 #include "DirectXCommon.h"
 #include "engine/utility/math/Math.h"
 #include <wrl.h>
+#include <cstddef>
 #include <string>
 #include "GPUParticleConfig.h"
 #include <vector>
@@ -97,7 +98,7 @@ public:
         float colorIntensity;
         uint32_t currentConfigIndex;
         uint32_t maxParticles;
-        float padding_col;
+        float initialAge;
     };
 
     struct EmitRequest {
@@ -121,7 +122,8 @@ public:
         float spriteSheetFps;
         uint32_t spriteSheetLoop;
         uint32_t spriteSheetRandomStart;
-        Vector2 spriteSheetPadding;
+        uint32_t alignToVelocity;
+        float velocityStretch;
     };
 
     GPUParticleSystem() = default;
@@ -146,9 +148,12 @@ void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, c
 
     void SetTimeScale(float scale) { timeScale_ = scale; }
     void RequestWarmup() { warmupRequested_ = true; lastEmitTimer_ = 0.0f; }
+    // GPUバッファを解放せず、次の描画時にInitCSで粒子状態だけを初期化します。
+    void RequestSimulationReset();
     bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= activeLifetimeWindow_; }
     bool RequiresSceneColorCopy() const { return IsActive() && blendModeIndex_ == 2; }
     uint32_t GetParticleCapacity() const { return maxParticles_; }
+    size_t GetEstimatedMemoryBytes() const;
 
     // Systemごとの上限。実際の確保数はプリセット設定から自動計算できます。
     static constexpr uint32_t kMaxParticles = 10000;
@@ -221,6 +226,8 @@ private:
     float spriteSheetFps_ = 0.0f;
     uint32_t spriteSheetLoop_ = 0;
     uint32_t spriteSheetRandomStart_ = 0;
+    uint32_t alignToVelocity_ = 0;
+    float velocityStretch_ = 0.0f;
 
     uint32_t currentTextureHandle_ = 0;
 

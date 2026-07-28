@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0202073d1291e47b62e0f2b726e03010",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_z.png",
+  "version": 1
+}

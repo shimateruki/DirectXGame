@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5f9d580393427526ddb35b7b4b4fe87e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/pause/pause_retry.png",
+  "version": 1
+}

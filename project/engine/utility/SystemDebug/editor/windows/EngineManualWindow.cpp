@@ -140,6 +140,7 @@ void DrawMaterialTable() {
     AddMaterialRow("22", "ゲートポータル", "ステージゲートの渦、入口、転送表現に使います。");
     AddMaterialRow("23", "アニメ調地形", "地形をPBR寄りではなく、色を塗ったアニメ調に寄せます。");
     AddMaterialRow("24", "ダッシュパネル", "流れるラインを持つダッシュパネル専用の見た目です。");
+    AddMaterialRow("26", "風弾", "球状コア、球面を回る風の帯、屈折を一体化した風属性の弾に使います。");
 
     ImGui::EndTable();
 }

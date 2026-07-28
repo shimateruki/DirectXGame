@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f38442bf258d362b3f8d592b1568df11",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/reticle.png",
+  "version": 1
+}

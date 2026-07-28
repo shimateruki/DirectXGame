@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a79742bceaa88d464ca0474736d972e9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Albedo/red_brick_diff_2k.dds",
+  "version": 1
+}

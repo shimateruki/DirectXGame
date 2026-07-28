@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "92a4e1c5b63f47d8a0e91f2c3b57684d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/prism_crystal_fragment_b/prism_crystal_fragment_b.obj",
+  "version": 1
+}

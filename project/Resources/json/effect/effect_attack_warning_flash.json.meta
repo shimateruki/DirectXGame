@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e4413d958a268da80ade8cd5029b7670",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/effect/effect_attack_warning_flash.json",
+  "version": 1
+}

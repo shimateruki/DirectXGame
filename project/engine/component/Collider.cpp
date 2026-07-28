@@ -8,14 +8,39 @@ Collider::Collider(Transform* ownerTransform) {
     transform_ = ownerTransform;
 }
 
+Vector3 Collider::GetCollisionScale() const {
+    if (!transform_) {
+        return { 1.0f, 1.0f, 1.0f };
+    }
+    return useScaleOverride_ ? scaleOverride_ : transform_->scale;
+}
+
+Matrix4x4 Collider::GetCollisionWorldMatrix() const {
+    if (!transform_ || !useScaleOverride_) {
+        return transform_ ? transform_->matWorld : Math::MakeIdentity4x4();
+    }
+
+    Math math;
+    Quaternion rotation = transform_->quaternion;
+    if (!transform_->isQuaternionMaster) {
+        rotation = math.EulerToQuaternion(transform_->rotate);
+    }
+
+    const Matrix4x4 local = math.Multiply(
+        math.Multiply(math.MakeScaleMatrix(scaleOverride_), math.MakeRotateQuaternionMatrix(rotation)),
+        math.MakeTranslateMatrix(transform_->translate));
+    return transform_->parent ? math.Multiply(local, transform_->parent->matWorld) : local;
+}
+
 float Collider::GetRadius() const {
     if (!transform_) return config_.size.x;
 
     // スケールの最大値を掛ける
+    const Vector3 collisionScale = GetCollisionScale();
     float maxScale = (std::max)({
-        std::abs(transform_->scale.x),
-        std::abs(transform_->scale.y),
-        std::abs(transform_->scale.z)
+        std::abs(collisionScale.x),
+        std::abs(collisionScale.y),
+        std::abs(collisionScale.z)
         });
     return config_.size.x * maxScale;
 }
@@ -27,7 +52,7 @@ Vector3 Collider::GetSphereCenter() const {
 
     Math math;
     Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
-    Matrix4x4 matFinal = math.Multiply(matTrans, transform_->matWorld);
+    Matrix4x4 matFinal = math.Multiply(matTrans, GetCollisionWorldMatrix());
     return { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
 }
 
@@ -47,7 +72,7 @@ OBB Collider::GetOBB() const {
     Matrix4x4 matColliderLocal = math.Multiply(matRot, matTrans);
 
     // 2. 持ち主のワールド行列と合成
-    Matrix4x4 matFinal = math.Multiply(matColliderLocal, transform_->matWorld);
+    Matrix4x4 matFinal = math.Multiply(matColliderLocal, GetCollisionWorldMatrix());
 
     // 3. 情報抽出
     obb.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
@@ -55,16 +80,44 @@ OBB Collider::GetOBB() const {
     obb.orientations[1] = math.Normalize({ matFinal.m[1][0], matFinal.m[1][1], matFinal.m[1][2] });
     obb.orientations[2] = math.Normalize({ matFinal.m[2][0], matFinal.m[2][1], matFinal.m[2][2] });
 
+    const Vector3 collisionScale = GetCollisionScale();
     obb.size = {
-        config_.size.x * transform_->scale.x,
-        config_.size.y * transform_->scale.y,
-        config_.size.z * transform_->scale.z
+        config_.size.x * collisionScale.x,
+        config_.size.y * collisionScale.y,
+        config_.size.z * collisionScale.z
     };
 
     return obb;
 }
 
 AABB Collider::GetAABB() const {
+    if (config_.type == ColliderType::kAABB && transform_) {
+        // AABBは所有Objectの見た目の傾きへ追従させません。
+        // 親Transformは維持しつつ、ローカル回転だけを除いた行列で中心を求めます。
+        Math math;
+        const Vector3 collisionScale = GetCollisionScale();
+        Matrix4x4 ownerMatrix = math.Multiply(
+            math.MakeScaleMatrix(collisionScale),
+            math.MakeTranslateMatrix(transform_->translate));
+        if (transform_->parent) {
+            ownerMatrix = math.Multiply(ownerMatrix, transform_->parent->matWorld);
+        }
+
+        const Matrix4x4 centerMatrix = math.Multiply(
+            math.MakeTranslateMatrix(config_.center), ownerMatrix);
+        const Vector3 center = {
+            centerMatrix.m[3][0],
+            centerMatrix.m[3][1],
+            centerMatrix.m[3][2]
+        };
+        const Vector3 extent = {
+            std::abs(config_.size.x * collisionScale.x),
+            std::abs(config_.size.y * collisionScale.y),
+            std::abs(config_.size.z * collisionScale.z)
+        };
+        return { center - extent, center + extent };
+    }
+
     OBB obb = GetOBB();
     Vector3 axisX = obb.orientations[0] * obb.size.x;
     Vector3 axisY = obb.orientations[1] * obb.size.y;
@@ -114,7 +167,7 @@ Ring Collider::GetRing() const {
     Vector3 localNormal = { 0, 1, 0 }; // ローカル空間でのリングの向き (上向き)
     
     // 回転行列を適用
-    Matrix4x4 worldRot = math.Multiply(matRot, transform_->matWorld);
+    Matrix4x4 worldRot = math.Multiply(matRot, GetCollisionWorldMatrix());
     // スケールを除去した回転成分だけ取り出すのが正しいが、
     // ここでは normal を変換して正規化する
     ring.normal = math.Normalize({
@@ -125,14 +178,15 @@ Ring Collider::GetRing() const {
 
     // 3. 中心座標 (オフセット加味)
     Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
-    Matrix4x4 matFinal = math.Multiply(matTrans, transform_->matWorld);
+    Matrix4x4 matFinal = math.Multiply(matTrans, GetCollisionWorldMatrix());
     ring.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
 
     // 4. サイズ (スケールを反映)
     // X を外径、Z を内径、Y を厚みとして扱う
-    ring.outerRadius = config_.size.x * std::abs(transform_->scale.x);
-    ring.innerRadius = config_.size.z * std::abs(transform_->scale.z);
-    ring.height = config_.size.y * 2.0f * std::abs(transform_->scale.y);
+    const Vector3 collisionScale = GetCollisionScale();
+    ring.outerRadius = config_.size.x * std::abs(collisionScale.x);
+    ring.innerRadius = config_.size.z * std::abs(collisionScale.z);
+    ring.height = config_.size.y * 2.0f * std::abs(collisionScale.y);
 
     // 外径が内径より小さくならないように調整
     if (ring.outerRadius < ring.innerRadius) {
@@ -155,12 +209,12 @@ Cylinder Collider::GetCylinder() const {
 
     // 2. 中心 (オフセット加味)
     Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
-    Matrix4x4 matFinal = math.Multiply(math.Multiply(matRot, matTrans), transform_->matWorld);
+    Matrix4x4 matFinal = math.Multiply(math.Multiply(matRot, matTrans), GetCollisionWorldMatrix());
     cyl.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
 
     // 3. 軸 (Y軸を想定)
     Vector3 localAxis = { 0, 1, 0 };
-    Matrix4x4 worldRot = math.Multiply(matRot, transform_->matWorld);
+    Matrix4x4 worldRot = math.Multiply(matRot, GetCollisionWorldMatrix());
     cyl.axis = math.Normalize({
         localAxis.x * worldRot.m[0][0] + localAxis.y * worldRot.m[1][0] + localAxis.z * worldRot.m[2][0],
         localAxis.x * worldRot.m[0][1] + localAxis.y * worldRot.m[1][1] + localAxis.z * worldRot.m[2][1],
@@ -168,8 +222,9 @@ Cylinder Collider::GetCylinder() const {
     });
 
     // 4. サイズ
-    cyl.radius = config_.size.x * std::abs(transform_->scale.x);
-    cyl.height = config_.size.y * 2.0f * std::abs(transform_->scale.y);
+    const Vector3 collisionScale = GetCollisionScale();
+    cyl.radius = config_.size.x * std::abs(collisionScale.x);
+    cyl.height = config_.size.y * 2.0f * std::abs(collisionScale.y);
 
     return cyl;
 }

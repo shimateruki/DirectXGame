@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d10a5a084e405100d92c56dd9ad86d63",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Normal/brown_mud_leaves_01_nor_dx_2k.dds",
+  "version": 1
+}

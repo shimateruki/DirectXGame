@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3adcc2aeb1aabbec8967ed9f65fc2d5e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_esc.png",
+  "version": 1
+}

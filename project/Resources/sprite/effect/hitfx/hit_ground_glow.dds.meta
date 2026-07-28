@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "23346d612fc21bab19b3dc2b8e95857b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/hitfx/hit_ground_glow.dds",
+  "version": 1
+}

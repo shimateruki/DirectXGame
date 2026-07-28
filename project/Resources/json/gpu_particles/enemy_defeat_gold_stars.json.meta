@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "551cf2413ee87aca25b2cde6bdaa3d06",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/enemy_defeat_gold_stars.json",
+  "version": 1
+}

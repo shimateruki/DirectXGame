@@ -28,6 +28,10 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     Character::CaptureReplayCustomState(state);
     state["enemyDamageCooldown"] = damageCooldownTimer_;
     state["enemyColorResetTimer"] = colorResetTimer_;
+    state["enemyDamageReactionTimer"] = damageReactionTimer_;
+    state["enemyDamageReactionDuration"] = damageReactionDuration_;
+    state["enemyDamageReactionStrength"] = damageReactionStrength_;
+    state["enemyDamageReactionDirection"] = ToJson(damageReactionLocalDirection_);
     state["enemyDefaultColor"] = ToJson(defaultColor_);
     state["enemyCarried"] = isCarried_;
     state["enemyThrowRecoveryTimer"] = throwRecoveryTimer_;
@@ -66,6 +70,12 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     Character::RestoreReplayCustomState(state);
     damageCooldownTimer_ = state.value("enemyDamageCooldown", damageCooldownTimer_);
     colorResetTimer_ = state.value("enemyColorResetTimer", colorResetTimer_);
+    damageReactionTimer_ = state.value("enemyDamageReactionTimer", damageReactionTimer_);
+    damageReactionDuration_ = state.value("enemyDamageReactionDuration", damageReactionDuration_);
+    damageReactionStrength_ = state.value("enemyDamageReactionStrength", damageReactionStrength_);
+    if (state.contains("enemyDamageReactionDirection")) {
+        damageReactionLocalDirection_ = ReadVector3(state["enemyDamageReactionDirection"], damageReactionLocalDirection_);
+    }
     if (state.contains("enemyDefaultColor")) defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
     isCarried_ = state.value("enemyCarried", isCarried_);
     throwRecoveryTimer_ = state.value("enemyThrowRecoveryTimer", throwRecoveryTimer_);

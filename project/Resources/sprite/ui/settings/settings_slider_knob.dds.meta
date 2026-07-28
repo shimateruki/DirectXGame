@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4a9712b82dd0be6d69fae7b79c4be9fd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_slider_knob.dds",
+  "version": 1
+}

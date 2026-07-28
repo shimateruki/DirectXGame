@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "151d230a20639264e95bd20fe8750587",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/bossBattleSkydome/bossBattleSkydome.png",
+  "version": 1
+}

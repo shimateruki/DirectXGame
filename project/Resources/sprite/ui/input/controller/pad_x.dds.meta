@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c304454820bfb89740973e11ae7516c1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/controller/pad_x.dds",
+  "version": 1
+}

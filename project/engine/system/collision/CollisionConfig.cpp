@@ -93,7 +93,8 @@ CollisionInfo CheckSphereAABBCollision(
         math.Clamp(spherePos.y, aabb.min.y, aabb.max.y),
         math.Clamp(spherePos.z, aabb.min.z, aabb.max.z)
     };
-    float distanceSq = math.Length(spherePos - closestPoint); // LengthSqを使用
+    const Vector3 difference = spherePos - closestPoint;
+    const float distanceSq = math.Dot(difference, difference);
 
     if (distanceSq < (sphereRadius * sphereRadius)) {
         info.isColliding = true;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "359c3978cc10e1395836c5749f9cfeef",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bomb_slime/bomb_slime_bomb.png",
+  "version": 1
+}

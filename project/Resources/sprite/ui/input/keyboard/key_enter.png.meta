@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5c00e783611d9869603b5c82fac886dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_enter.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5413dcd1133e6cdbe1d1405f9539c51d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/attack_warning_flash.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e65d780b3f0e8f4fd8694cdd9fa3c314",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/coin_icon.png",
+  "version": 1
+}

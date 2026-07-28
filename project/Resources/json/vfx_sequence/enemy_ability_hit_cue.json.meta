@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "9d5156d3a8b06db2ac843feda9e0c1e1",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/vfx_sequence/enemy_ability_hit_cue.json",
+  "version": 1
+}

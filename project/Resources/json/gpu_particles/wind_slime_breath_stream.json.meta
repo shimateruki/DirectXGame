@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "8b1a8cba239dbd478ef734a9a2bc83da",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/wind_slime_breath_stream.json",
+  "version": 1
+}

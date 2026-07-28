@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "31de47ac3484521d65296becf8ca2a85",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/cube/cube.obj",
+  "version": 1
+}

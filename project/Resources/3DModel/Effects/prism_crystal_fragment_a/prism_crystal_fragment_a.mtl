@@ -1,0 +1,7 @@
+newmtl PrismFragment
+Ka 0.08 0.04 0.16
+Kd 0.56 0.30 0.92
+Ks 1.00 1.00 1.00
+Ns 196.0
+d 1.0
+illum 2

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b6331c232f4842fa855a26eadf03b3f0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/efect/efect.gltf",
+  "version": 1
+}

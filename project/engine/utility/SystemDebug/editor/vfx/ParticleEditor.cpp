@@ -5,14 +5,118 @@
 #include "ParticleSystem.h" 
 #include "ParticleManager.h"
 #include "IconsFontAwesome5.h"
+#include "EffectPreviewStage.h"
+#include "EditorManager.h"
+#include "ProfilerManager.h"
+#include <algorithm>
+#include <vector>
 namespace fs = std::filesystem;
 void ParticleEditor::Initialize(SceneManager* sceneManager) {
     sceneManager_ = sceneManager;
 }
 
-// ロジック専用の Update (今は空)
-void ParticleEditor::Update() {
+void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        targetSystem_ = nullptr;
+        return;
+    }
 
+    targetSystem_ = sceneManager_->GetCurrentScene()->GetParticleSystem();
+    if (!targetSystem_) {
+        return;
+    }
+
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    const bool isSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    if (!isSelected || !previewStage) {
+        targetSystem_->SetEditorPreviewOffset({ 0.0f, 0.0f, 0.0f });
+        targetSystem_->SetSimulationTimeScale(1.0f);
+        return;
+    }
+
+    previewStage->EnableForToolPreview();
+    targetSystem_->SetEditorPreviewOffset(previewStage->GetPreviewPosition());
+    ParticleSystem::EmitterParams& params = targetSystem_->params_;
+    const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
+
+    const auto restartPreview = [&](float seekTime) {
+        targetSystem_->ResetSimulation();
+        previewTime_ = 0.0f;
+        if (!params.isEmitting) {
+            targetSystem_->EmitOneShot(
+                params,
+                params.spawnPosition + previewStage->GetPreviewPosition());
+        }
+
+        targetSystem_->SetSimulationTimeScale(1.0f);
+        constexpr float kSeekStep = 1.0f / 60.0f;
+        float remaining = std::clamp(seekTime, 0.0f, duration);
+        while (remaining > 0.0001f) {
+            const float step = (std::min)(kSeekStep, remaining);
+            targetSystem_->Update(step);
+            previewTime_ += step;
+            remaining -= step;
+        }
+    };
+
+    if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+        restartPreview(0.0f);
+    }
+    if (previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+        lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+        targetSystem_->ResetSimulation();
+        previewTime_ = 0.0f;
+    }
+    if (previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+        restartPreview(previewStage->GetSeekTargetTime());
+    }
+
+    const float effectiveSpeed = previewStage->GetPlaybackSpeed();
+    targetSystem_->SetSimulationTimeScale(effectiveSpeed);
+    if (!sceneIsPlaying && effectiveSpeed > 0.0f) {
+        targetSystem_->Update(deltaTime);
+    }
+    if (effectiveSpeed > 0.0f) {
+        previewTime_ += deltaTime * effectiveSpeed;
+        if (previewStage->IsLoopEnabled() && previewTime_ >= duration) {
+            restartPreview(0.0f);
+            targetSystem_->SetSimulationTimeScale(effectiveSpeed);
+        } else {
+            previewTime_ = (std::min)(previewTime_, duration);
+        }
+    }
+
+    std::vector<EffectPreviewStage::TimelineEvent> events;
+    events.push_back({
+        params.isEmitting ? "連続発生" : "単発発生",
+        0.0f,
+        params.isEmitting ? duration : 0.08f,
+        { 0.30f, 0.82f, 1.0f, 0.90f }
+    });
+    events.push_back({
+        "粒子寿命",
+        0.0f,
+        (std::min)(params.particleLifetime, duration),
+        { 0.36f, 1.0f, 0.62f, 0.85f }
+    });
+    EffectPreviewStage::PerformanceMetrics performance;
+    performance.available = true;
+    performance.particleCount = static_cast<int>(targetSystem_->GetActiveParticleCount());
+    performance.cpuTimeMs = targetSystem_->GetLastUpdateCpuTimeMs() + targetSystem_->GetLastDrawCpuTimeMs();
+    performance.gpuTimeMs = ProfilerManager::GetInstance()->GetLatestGpuTime("Particle CPU pass");
+    performance.frameDeltaSeconds = deltaTime;
+    performance.memoryBytes = targetSystem_->GetEstimatedMemoryBytes();
+    previewStage->ReportToolState(
+        EffectPreviewStage::ToolKind::CpuParticle,
+        "通常パーティクル",
+        previewTime_,
+        duration,
+        effectiveSpeed > 0.0f,
+        static_cast<int>(targetSystem_->GetActiveParticleCount()),
+        events,
+        performance);
 }
 
 void EditCurve(const char* label, float* values, int count, float minVal, float maxVal) {
@@ -98,6 +202,22 @@ void ParticleEditor::DrawImGui() {
         }
 
         ImGui::Checkbox(ICON_FA_TOGGLE_ON " 放出有効 (Emit)", &params.isEmitting);
+        if (ImGui::DragInt(
+            ICON_FA_SORT_NUMERIC_UP " 単発の発生数 (Emit Count)",
+            &params.emitCount, 1.0f, 1, ParticleSystem::GetMaxParticles())) {
+            params.emitCount = std::clamp(params.emitCount, 1, ParticleSystem::GetMaxParticles());
+            if (!params.isEmitting) {
+                targetSystem->ResetSimulation();
+                Vector3 origin = params.spawnPosition;
+                if (EffectPreviewStage* stage = EffectPreviewStage::GetInstance(); stage && stage->IsEnabled()) {
+                    origin += stage->GetPreviewPosition();
+                }
+                targetSystem->EmitOneShot(params, origin);
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("単発プレビューとEmitOneShot 1回で生成する粒子数です");
+        }
         ImGui::DragFloat(ICON_FA_STREAM " 生成レート (個/秒)", &params.particlesPerSecond, 1.0f, 0.0f, 1000.0f);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("1秒間に何個パーティクルを出すか");
 
@@ -191,5 +311,6 @@ void ParticleEditor::DrawImGui() {
             targetSystem->SetTexture(params.textureName);
         }
     }
+
 #endif
 }

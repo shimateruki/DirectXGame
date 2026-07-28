@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "bea9da340627fdff91b4830efff4f8ee",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Editor/camera_gizmo/camera_gizmo.obj",
+  "version": 1
+}

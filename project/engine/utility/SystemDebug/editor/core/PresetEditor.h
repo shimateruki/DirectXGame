@@ -907,6 +907,7 @@ private:
         return {
             { "FireSlime", "Fire Slime" },
             { "ThunderSlime", "Thunder Slime" },
+            { "WindSlime", "Wind Slime" },
             { "Slime", "スライム" },
             { "BossCore", "ボスコア" },
             { "Bomb", "ボム" },

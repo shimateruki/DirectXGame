@@ -72,6 +72,47 @@ float PreviewUiY(float value) {
 	return SpriteLayoutScaler::ScaleDesignY(value);
 }
 
+void SetPreviewFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+	if (!sprite || textureHandle == 0) {
+		return;
+	}
+
+	sprite->SetTextureHandle(textureHandle);
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle);
+	sprite->SetTextureRect(
+		{ 0.0f, 0.0f },
+		{ static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
+}
+
+const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon) {
+	if (player && player->IsEnemyMorphed()) {
+		switch (player->GetEnemyMorphType()) {
+		case Player::EnemyMorphType::Slime:
+			return showHurtIcon ? "ui/portraits/slime_hurt.png" : "ui/portraits/slime.png";
+		case Player::EnemyMorphType::Bomber:
+			return showHurtIcon ? "ui/portraits/bomber_hurt.png" : "ui/portraits/bomber.png";
+		case Player::EnemyMorphType::Bat:
+			return showHurtIcon ? "ui/portraits/bat_hurt.png" : "ui/portraits/bat.png";
+		case Player::EnemyMorphType::BeamDrone:
+			return showHurtIcon ? "ui/portraits/beam_drone_hurt.png" : "ui/portraits/beam_drone.png";
+		case Player::EnemyMorphType::Mushroom:
+			return showHurtIcon ? "ui/portraits/mushroom_hurt.png" : "ui/portraits/mushroom.png";
+		case Player::EnemyMorphType::GiantSlime:
+			return showHurtIcon ? "ui/portraits/giant_slime_hurt.png" : "ui/portraits/giant_slime.png";
+		case Player::EnemyMorphType::FireSlime:
+			return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
+		case Player::EnemyMorphType::ThunderSlime:
+			return showHurtIcon ? "ui/portraits/thunder_slime_hurt.png" : "ui/portraits/thunder_slime.png";
+		case Player::EnemyMorphType::WindSlime:
+			return showHurtIcon ? "ui/portraits/wind_slime_hurt.png" : "ui/portraits/wind_slime.png";
+		default:
+			break;
+		}
+	}
+
+	return showHurtIcon ? "ui/portraits/player_hurt.png" : "ui/portraits/player.png";
+}
+
 Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
 	Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 	const float screenW = static_cast<float>(WinApp::kClientWidth);
@@ -322,6 +363,9 @@ void PreviewScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update(deltaTime);
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); 
+	if (gameRule_) {
+		gameRule_->Update(deltaTime);
+	}
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
@@ -378,7 +422,7 @@ void PreviewScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 	
@@ -483,37 +527,45 @@ std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& 
 
 void PreviewScene::InitializePreviewHUD() {
 	hudHpIcon_ = CreatePreviewHUDSprite(
-		"Resources/sprite/title/slime_save_icon.png",
-		{ 98.0f, 988.0f },
-		{ 84.0f, 84.0f },
+		"Resources/sprite/ui/portraits/player.png",
+		{ 116.0f, 988.0f },
+		{ 78.0f, 78.0f },
 		{ 0.5f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 1.0f }
 	);
 	hudHpDamageFill_ = CreatePreviewHUDSprite(
 		"Resources/sprite/ui/hud/hp_damage_fill.png",
-		{ 146.0f, 1002.0f },
-		{ 278.0f, 32.0f },
+		{ 162.0f, 988.0f },
+		{ 298.0f, 16.0f },
 		{ 0.0f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 0.92f }
 	);
 	hudHpFill_ = CreatePreviewHUDSprite(
 		"Resources/sprite/ui/hud/hp_fill.png",
-		{ 146.0f, 1002.0f },
-		{ 278.0f, 32.0f },
+		{ 162.0f, 988.0f },
+		{ 298.0f, 16.0f },
 		{ 0.0f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 1.0f }
 	);
+	hudHpFill_->SetAnimation(8, 0.08f, true);
+	hudHpFill_->Play();
+	hudHpFill_->SetSize(PreviewUiSize({ 298.0f, 16.0f }));
+	hudHpFill_->Update();
 	hudHpHighlight_ = CreatePreviewHUDSprite(
 		"Resources/sprite/ui/hud/hp_highlight.png",
-		{ 146.0f, 1002.0f },
-		{ 278.0f, 32.0f },
+		{ 162.0f, 988.0f },
+		{ 298.0f, 16.0f },
 		{ 0.0f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 0.38f }
 	);
+	hudHpHighlight_->SetAnimation(6, 0.10f, true);
+	hudHpHighlight_->Play();
+	hudHpHighlight_->SetSize(PreviewUiSize({ 298.0f, 16.0f }));
+	hudHpHighlight_->Update();
 	hudHpFrame_ = CreatePreviewHUDSprite(
-		"Resources/sprite/ui/hud/hp_frame.png",
-		{ 44.0f, 988.0f },
-		{ 420.0f, 108.0f },
+		"Resources/sprite/ui/hud/hp_bar_frame.png",
+		{ 72.0f, 988.0f },
+		{ 410.0f, 88.0f },
 		{ 0.0f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 0.98f }
 	);
@@ -601,6 +653,7 @@ void PreviewScene::InitializePreviewHUD() {
 	hudDamagePulseTimer_ = 0.0f;
 	hudHurtIconTimer_ = 0.0f;
 	hudHpDamageHoldTimer_ = 0.0f;
+	hudHpAnimationTimer_ = 0.0f;
 	hudMorphGaugeTimer_ = 0.0f;
 	hudMorphGaugeVisibleTimer_ = 0.0f;
 	UpdatePreviewHUD(0.0f);
@@ -664,51 +717,70 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
 	} else {
 		hudHpDelayedRate_ = std::max(hpRate, hudHpDelayedRate_ - deltaTime * 0.62f);
 	}
+	hudHpAnimationTimer_ = std::fmod(hudHpAnimationTimer_ + std::max(deltaTime, 0.0f), 1000.0f);
 
 	const float pulse = hudDamagePulseTimer_ > 0.0f ? std::sin(hudDamagePulseTimer_ * 70.0f) : 0.0f;
-	const float hpIconPulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.07f : 1.0f;
+	const float damageRate = std::clamp(hudDamagePulseTimer_ / 0.42f, 0.0f, 1.0f);
+	const float damageImpact = std::sin((1.0f - damageRate) * std::numbers::pi_v<float>) * damageRate;
+	const float lowHpRate = visible ? std::clamp((0.34f - hpRate) / 0.34f, 0.0f, 1.0f) : 0.0f;
+	const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(hudHpAnimationTimer_ * (5.0f + lowHpRate * 3.0f)));
+	const float liquidWave = std::sin(hudHpAnimationTimer_ * 4.6f);
+	const float idleIconPulse = 1.0f + std::sin(hudHpAnimationTimer_ * 2.2f) * 0.012f + lowHpPulse * 0.035f;
+	const float hpIconPulse = idleIconPulse + std::abs(pulse) * damageRate * 0.07f;
+	const float barShake = damageRate > 0.0f
+		? std::sin(hudDamagePulseTimer_ * 92.0f) * PreviewUiX(3.2f) * damageRate
+		: 0.0f;
+	const Vector2 liquidOffset = { barShake, 0.0f };
+	const float liquidHeightScale = 1.0f + damageImpact * 0.07f;
 
+	const bool damageReacting = hudHurtIconTimer_ > 0.0f;
+	const float hpIconShakeX = damageReacting ? std::sin(hudHurtIconTimer_ * 85.0f) * PreviewUiX(3.0f) : 0.0f;
+	const float hpIconShakeY = damageReacting ? std::sin(hudHurtIconTimer_ * 61.0f) * PreviewUiY(1.2f) : 0.0f;
+	const float hpIconRotation = damageReacting ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.055f : liquidWave * lowHpRate * 0.012f;
 	if (hudHpIcon_) {
-		const bool showHurtIcon = hudHurtIconTimer_ > 0.0f;
-		const uint32_t handle = Sprite::LoadTexture(showHurtIcon ? "ui/hud/slime_hurt_icon.png" : "title/slime_save_icon.png");
-		const float shake = showHurtIcon ? std::sin(hudHurtIconTimer_ * 85.0f) * PreviewUiX(2.0f) : 0.0f;
-		hudHpIcon_->SetTextureHandle(handle);
+		const uint32_t handle = Sprite::LoadTexture(ResolvePreviewHpIconTexture(player_, damageReacting));
+		SetPreviewFullTextureRect(hudHpIcon_.get(), handle);
 		hudHpIcon_->SetVisible(visible);
-		const Vector2 hpIconPosition = PreviewUiPosition({ 98.0f, 988.0f });
-		hudHpIcon_->SetPosition({ hpIconPosition.x + shake, hpIconPosition.y });
-		hudHpIcon_->SetSize(PreviewUiSize({ 84.0f * hpIconPulse, 84.0f * hpIconPulse }));
-		hudHpIcon_->SetRotation(showHurtIcon ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.05f : 0.0f);
+		const Vector2 hpIconPosition = PreviewUiPosition({ 116.0f, 988.0f });
+		hudHpIcon_->SetPosition({ hpIconPosition.x + hpIconShakeX, hpIconPosition.y + hpIconShakeY });
+		hudHpIcon_->SetSize(PreviewUiSize({ 78.0f * hpIconPulse, 78.0f * hpIconPulse }));
+		hudHpIcon_->SetRotation(hpIconRotation);
 		hudHpIcon_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 1.0f : 0.0f });
 		hudHpIcon_->Update();
 	}
 	if (hudHpDamageFill_) {
 		const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
 		hudHpDamageFill_->SetVisible(visible && rate > 0.001f);
-		hudHpDamageFill_->SetPosition(PreviewUiPosition({ 146.0f, 1002.0f }));
-		hudHpDamageFill_->SetSize(PreviewUiSize({ 278.0f * rate, 32.0f }));
-		hudHpDamageFill_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.92f : 0.0f });
+		const Vector2 basePosition = PreviewUiPosition({ 162.0f, 988.0f });
+		hudHpDamageFill_->SetPosition({ basePosition.x + liquidOffset.x, basePosition.y + liquidOffset.y });
+		hudHpDamageFill_->SetSize(PreviewUiSize({ 298.0f * rate, 16.0f * liquidHeightScale }));
+		hudHpDamageFill_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.92f * (0.88f + damageRate * 0.12f) : 0.0f });
 		hudHpDamageFill_->Update();
 	}
 	if (hudHpFill_) {
 		hudHpFill_->SetVisible(visible && hpRate > 0.001f);
-		hudHpFill_->SetPosition(PreviewUiPosition({ 146.0f, 1002.0f }));
-		hudHpFill_->SetSize(PreviewUiSize({ 278.0f * hpRate, 32.0f }));
-		hudHpFill_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 1.0f : 0.0f });
+		const Vector2 basePosition = PreviewUiPosition({ 162.0f, 988.0f });
+		hudHpFill_->SetPosition({ basePosition.x + liquidOffset.x, basePosition.y + liquidOffset.y });
+		hudHpFill_->SetSize(PreviewUiSize({ 298.0f * hpRate, 16.0f * liquidHeightScale }));
+		hudHpFill_->SetColor({ 1.0f, 1.0f - lowHpPulse * 0.08f, 1.0f - lowHpPulse * 0.14f, visible ? 1.0f : 0.0f });
 		hudHpFill_->Update();
 	}
 	if (hudHpHighlight_) {
-		const float alpha = visible && hpRate > 0.001f ? 0.38f * (0.7f + hpRate * 0.3f) : 0.0f;
+		const float shimmer = 0.78f + hpRate * 0.10f + damageImpact * 0.12f;
+		const float alpha = visible && hpRate > 0.001f ? 0.38f * shimmer : 0.0f;
 		hudHpHighlight_->SetVisible(visible && hpRate > 0.001f);
-		hudHpHighlight_->SetPosition(PreviewUiPosition({ 146.0f, 1002.0f }));
-		hudHpHighlight_->SetSize(PreviewUiSize({ 278.0f * hpRate, 32.0f }));
+		const Vector2 basePosition = PreviewUiPosition({ 162.0f, 988.0f });
+		hudHpHighlight_->SetPosition({ basePosition.x + liquidOffset.x, basePosition.y - PreviewUiY(0.35f) });
+		hudHpHighlight_->SetSize(PreviewUiSize({ 298.0f * hpRate, 16.0f * liquidHeightScale }));
 		hudHpHighlight_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
 		hudHpHighlight_->Update();
 	}
 	if (hudHpFrame_) {
 		hudHpFrame_->SetVisible(visible);
-		hudHpFrame_->SetPosition(PreviewUiPosition({ 44.0f, 988.0f }));
-		hudHpFrame_->SetSize(PreviewUiSize({ 420.0f, 108.0f }));
-		hudHpFrame_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.98f : 0.0f });
+		const Vector2 basePosition = PreviewUiPosition({ 72.0f, 988.0f });
+		hudHpFrame_->SetPosition({ basePosition.x + barShake, basePosition.y });
+		hudHpFrame_->SetSize(PreviewUiSize({ 410.0f * (1.0f + damageImpact * 0.012f), 88.0f * (1.0f + damageImpact * 0.055f) }));
+		hudHpFrame_->SetColor({ 1.0f, 1.0f - lowHpPulse * 0.10f, 1.0f - lowHpPulse * 0.16f, visible ? 0.98f : 0.0f });
 		hudHpFrame_->Update();
 	}
 
@@ -846,10 +918,10 @@ void PreviewScene::DrawPreviewHUD() {
 	for (auto& digit : hudCoinDigits_) {
 		if (digit) digit->Draw();
 	}
+	if (hudHpFrame_) hudHpFrame_->Draw();
 	if (hudHpDamageFill_) hudHpDamageFill_->Draw();
 	if (hudHpFill_) hudHpFill_->Draw();
 	if (hudHpHighlight_) hudHpHighlight_->Draw();
-	if (hudHpFrame_) hudHpFrame_->Draw();
 	if (hudHpIcon_) hudHpIcon_->Draw();
 	if (hudMorphGaugeBack_) hudMorphGaugeBack_->Draw();
 	if (hudMorphGaugeFill_) hudMorphGaugeFill_->Draw();

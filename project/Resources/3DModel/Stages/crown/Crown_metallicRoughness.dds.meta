@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "99d6b71d797220b24cd9c3bd26a1cc19",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/crown/Crown_metallicRoughness.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "90627b361543f5a4ac91f1df19a5e0f5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/gate/gate.gltf",
+  "version": 1
+}

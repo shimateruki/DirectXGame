@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "68fc64a91b232831fb1e5457ee0030dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bomb_slime/bomb_slime_eye.dds",
+  "version": 1
+}

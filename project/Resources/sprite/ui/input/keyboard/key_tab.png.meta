@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "25889946ee5d12b089f62702d6d80ba8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_tab.png",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "b58b3d8d57396fc416bcc60c623e8a52",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/fire_slime_cast.json",
+  "version": 1
+}

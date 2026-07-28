@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c26aef9ee1f4c10170945d8db3db673d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stairs/lambert4_normal.jpg",
+  "version": 1
+}

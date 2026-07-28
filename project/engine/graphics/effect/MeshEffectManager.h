@@ -1,6 +1,7 @@
 #pragma once
 #include "EffectObject3d.h"
 #include "engine/utility/math/Math.h"
+#include <algorithm>
 #include <vector>
 #include <memory>
 #include <string>
@@ -24,6 +25,9 @@ void PreloadEffect(const std::string& jsonFilePath);
 
     // 毎フレームの更新（寿命が切れたエフェクトの自動削除も行う）
     void Update(float deltaTime);
+    void UpdateEditorPreviewStep(float deltaTime);
+    void SetTimeScale(float timeScale) { timeScale_ = (std::max)(0.0f, timeScale); }
+    float GetTimeScale() const { return timeScale_; }
 
     // 描画
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
@@ -41,6 +45,9 @@ void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, con
 
     // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
     void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
+
+    // エディターの時間シーク用に、初期化状態とプリロードを維持したまま再生中のエフェクトだけを消します。
+    void ClearActiveEffects() { activeEffects_.clear(); previewEffectForDebug_ = nullptr; }
 
     // シーン切り替え時などに全てのエフェクトを消す
     // common_ も一緒にリセットし、次のSpawn時に自己修復させる
@@ -61,5 +68,6 @@ private:
     EffectObject3d* previewEffectForDebug_ = nullptr;
     std::unordered_set<std::string> preloadedEffects_;
     bool updatedThisFrame_ = false;
+    float timeScale_ = 1.0f;
 
 };

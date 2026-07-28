@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f48c70f75ad5bb932d5b07b829576614",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_damage_puni_mist.json",
+  "version": 1
+}

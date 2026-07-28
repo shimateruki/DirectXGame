@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3c1cc30ad07601b01db7249dd0a7b833",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_gauge/fill_05.dds",
+  "version": 1
+}

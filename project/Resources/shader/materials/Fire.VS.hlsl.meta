@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "af06ae7030db3557300778f235f8e309",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/Fire.VS.hlsl",
+  "version": 1
+}

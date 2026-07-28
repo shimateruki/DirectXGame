@@ -37,6 +37,8 @@ struct GPUParticleConfig {
     float spriteSheetFps = 0.0f;
     int spriteSheetLoop = 0;
     int spriteSheetRandomStart = 0;
+    int alignToVelocity = 0;
+    float velocityStretch = 0.0f;
 
     // --- 環境パラメータ ---
     Vector3 envGravity = { 0.0f, -9.8f, 0.0f };

@@ -1,0 +1,141 @@
+{
+  "designResolution": [1920.0, 1080.0],
+  "scaleToWindow": true,
+  "sprites": [
+    {
+      "name": "controls_guide_background",
+      "texture": "common/white.png",
+      "position": [960.0, 540.0],
+      "size": [1920.0, 1080.0],
+      "anchor": [0.5, 0.5],
+      "color": [0.015, 0.04, 0.07, 0.72],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_0_panel",
+      "texture": "ui/control_guide/control_guide_panel.png",
+      "position": [960.0, 540.0],
+      "size": [1500.0, 750.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_0_portrait",
+      "texture": "ui/portraits/player.png",
+      "position": [514.0, 560.0],
+      "size": [330.0, 330.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_0_action_0",
+      "texture": "ui/input/combo/combo_wasd.png",
+      "position": [820.0, 397.0],
+      "size": [154.0, 104.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_0_action_1",
+      "texture": "ui/input/keyboard/key_space.png",
+      "position": [820.0, 570.0],
+      "size": [178.0, 78.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_0_action_2",
+      "texture": "ui/input/mouse/mouse_move.png",
+      "position": [820.0, 737.0],
+      "size": [108.0, 108.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_panel",
+      "texture": "ui/control_guide/control_guide_panel.png",
+      "position": [960.0, 540.0],
+      "size": [1500.0, 750.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_portrait",
+      "texture": "ui/portraits/player.png",
+      "position": [514.0, 560.0],
+      "size": [330.0, 330.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_action_0",
+      "texture": "ui/input/keyboard/key_e.png",
+      "position": [820.0, 397.0],
+      "size": [104.0, 104.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_action_1",
+      "texture": "ui/input/mouse/mouse_left.png",
+      "position": [820.0, 570.0],
+      "size": [112.0, 112.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_action_2",
+      "texture": "ui/input/mouse/mouse_right.png",
+      "position": [820.0, 737.0],
+      "size": [112.0, 112.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_left_arrow",
+      "texture": "ui/settings/settings_arrow_left.png",
+      "position": [124.0, 540.0],
+      "size": [82.0, 82.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 0.96, 0.72, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_right_arrow",
+      "texture": "ui/settings/settings_arrow_right.png",
+      "position": [1796.0, 540.0],
+      "size": [82.0, 82.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 0.96, 0.72, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_dot_0",
+      "texture": "ui/settings/settings_slider_knob.png",
+      "position": [938.0, 968.0],
+      "size": [24.0, 24.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 0.86, 0.28, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_dot_1",
+      "texture": "ui/settings/settings_slider_knob.png",
+      "position": [982.0, 968.0],
+      "size": [24.0, 24.0],
+      "anchor": [0.5, 0.5],
+      "color": [0.65, 0.90, 1.0, 0.72],
+      "emissive": 1.0
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "90319320cc61c5b96276c4ac79eb855b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_arrow_up.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "215786e5ffcc89eeef196ef36112bdd5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/soft_tree/soft_tree.obj",
+  "version": 1
+}

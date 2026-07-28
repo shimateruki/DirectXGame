@@ -1,0 +1,10 @@
+{
+  "assetType": "Audio",
+  "guid": "cb547503f8d81932e01fd9ffe7adaf05",
+  "importSettings": {
+    "streaming": false
+  },
+  "importer": "AudioImporter",
+  "source": "Resources/audio/se/Alarm01.wav",
+  "version": 1
+}

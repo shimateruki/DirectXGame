@@ -1,0 +1,10 @@
+{
+  "assetType": "Audio",
+  "guid": "ef19b2ab5abf43f162cdd8ee737a04cb",
+  "importSettings": {
+    "streaming": false
+  },
+  "importer": "AudioImporter",
+  "source": "Resources/audio/Alarm02.mp3",
+  "version": 1
+}

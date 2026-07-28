@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "04fb1f17eef61fd966f9a7f67ee7131a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/settings_divider_line.dds",
+  "version": 1
+}

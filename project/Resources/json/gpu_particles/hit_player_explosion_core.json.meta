@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "6da85b610ad28e3800a83d6dae488634",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_player_explosion_core.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c98ea9460c373f657d60d6cb1351af97",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/fire_slime_hurt.png",
+  "version": 1
+}

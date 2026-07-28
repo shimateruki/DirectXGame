@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7de19dfe77488c5510c508840f4a1d26",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/hp_bar_frame.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7a1d4c74e20febd7fa0c3ba678cf8ab6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/stage_star_filled.dds",
+  "version": 1
+}

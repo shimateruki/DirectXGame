@@ -221,7 +221,10 @@ void GimmickFireCannon::FireProjectile(const Vector3& direction) {
         "Primitives/sphere",
         radius,
         life,
-        visual);
+        visual,
+        1.0f,
+        {},
+        DamageType::Fire);
 }
 
 float GimmickFireCannon::GetProjectileSpeed() const {

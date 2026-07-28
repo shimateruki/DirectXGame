@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "97f5e64c76d34df61d13d459166bd330",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/kirby_sdx_gameover_backdrop.png",
+  "version": 1
+}

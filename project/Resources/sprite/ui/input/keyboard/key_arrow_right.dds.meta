@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a3f66c0e20355380f6ffc621770e0b8c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_arrow_right.dds",
+  "version": 1
+}

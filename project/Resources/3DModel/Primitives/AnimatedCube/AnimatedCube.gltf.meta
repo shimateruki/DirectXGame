@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6adb95460664c3e17034ddd1d201b5c4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/AnimatedCube/AnimatedCube.gltf",
+  "version": 1
+}

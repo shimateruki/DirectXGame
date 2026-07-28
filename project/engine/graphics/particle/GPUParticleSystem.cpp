@@ -251,18 +251,33 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
 void GPUParticleSystem::Update(float deltaTime) {
     float scaledDeltaTime = deltaTime * timeScale_;
     totalTime_ += scaledDeltaTime;
-    frameDeltaTime_ = scaledDeltaTime;
+    frameDeltaTime_ += scaledDeltaTime;
 
     // 軽量化タイマー更新
     lastEmitTimer_ += scaledDeltaTime;
+}
+
+void GPUParticleSystem::RequestSimulationReset() {
+    emitRequests_.clear();
+    emitCountThisFrame_ = 0;
+    lastConfig_ = {};
+    totalTime_ = 0.0f;
+    frameDeltaTime_ = 0.0f;
+    lastEmitTimer_ = 0.0f;
+    isInitialized_ = false;
+    warmupRequested_ = true;
 }
 
 void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
     if (!commandList) return;
 
     // 最後に発生した粒子の寿命が終わったSystemは、Computeと描画を完全にスキップします。
-    if (lastEmitTimer_ > activeLifetimeWindow_ && !warmupRequested_) return;
+    if (lastEmitTimer_ > activeLifetimeWindow_ && !warmupRequested_) {
+        frameDeltaTime_ = 0.0f;
+        return;
+    }
     const bool warmupOnly = warmupRequested_ && emitRequests_.empty();
+    const bool rebuiltSimulationThisDraw = !isInitialized_;
 
     // --- Compute Shader ---
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
@@ -300,47 +315,9 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     static Math math;
     Matrix4x4 vp = math.Multiply(viewMatrix, projectionMatrix);
 
-    // 1. Indirect Draw引数をリセットし、このフレームの生存一覧を作り直します。
-    commandList->SetPipelineState(computePipelineStateResetDrawArguments_.Get());
-    commandList->Dispatch(1, 1, 1);
-    RenderStats::GetInstance()->RecordComputeDispatch(1);
-
     D3D12_RESOURCE_BARRIER resetArgumentBarrier{};
     resetArgumentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     resetArgumentBarrier.UAV.pResource = indirectDrawArgumentBuffer_.Get();
-    commandList->ResourceBarrier(1, &resetArgumentBarrier);
-
-    // 2. Update Pass
-    commandList->SetPipelineState(computePipelineStateUpdate_.Get());
-    
-    CSConfig updateConfig = lastConfig_;
-    updateConfig.deltaTime = frameDeltaTime_;
-    updateConfig.time = totalTime_;
-    updateConfig.viewProj = vp;
-    updateConfig.inverseViewProj = math.Inverse(vp);
-    updateConfig.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
-    updateConfig.maxParticles = maxParticles_;
-    
-    configData_[0] = updateConfig;
-    D3D12_GPU_VIRTUAL_ADDRESS updateCbvAddress = configBuffer_->GetGPUVirtualAddress();
-    commandList->SetComputeRootConstantBufferView(1, updateCbvAddress);
-    
-    // Bind dummy buffers for Update Pass (just to fill the slots)
-    commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
-    
-    uint32_t updateBoneSrv = (dummyBoneSrvIndex_ > 0) ? dummyBoneSrvIndex_ : 0; // dummyBoneSrvIndex_ should be valid
-    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
-    
-    if (depthSrvHandle > 0) {
-        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
-    } else {
-        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
-    }
-    
-    UINT groupCountUpdate = (maxParticles_ + 255) / 256;
-    commandList->Dispatch(groupCountUpdate, 1, 1);
-    RenderStats::GetInstance()->RecordComputeDispatch(groupCountUpdate);
-    
     D3D12_RESOURCE_BARRIER updateBarriers[5] = {};
     updateBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     updateBarriers[0].UAV.pResource = particleBuffer_.Get();
@@ -352,10 +329,45 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     updateBarriers[3].UAV.pResource = aliveParticleIndexBuffer_.Get();
     updateBarriers[4].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     updateBarriers[4].UAV.pResource = indirectDrawArgumentBuffer_.Get();
-    commandList->ResourceBarrier(5, updateBarriers);
+
+    const auto rebuildAliveParticleList = [&](float simulationDeltaTime) {
+        commandList->SetPipelineState(computePipelineStateResetDrawArguments_.Get());
+        commandList->Dispatch(1, 1, 1);
+        RenderStats::GetInstance()->RecordComputeDispatch(1);
+        commandList->ResourceBarrier(1, &resetArgumentBarrier);
+
+        commandList->SetPipelineState(computePipelineStateUpdate_.Get());
+        CSConfig updateConfig = lastConfig_;
+        updateConfig.deltaTime = simulationDeltaTime;
+        updateConfig.time = totalTime_;
+        updateConfig.viewProj = vp;
+        updateConfig.inverseViewProj = math.Inverse(vp);
+        updateConfig.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+        updateConfig.maxParticles = maxParticles_;
+        configData_[0] = updateConfig;
+
+        commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
+        commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
+        const uint32_t updateBoneSrv = (dummyBoneSrvIndex_ > 0) ? dummyBoneSrvIndex_ : 0;
+        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
+        if (depthSrvHandle > 0) {
+            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+        } else {
+            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
+        }
+
+        const UINT groupCountUpdate = (maxParticles_ + 255) / 256;
+        commandList->Dispatch(groupCountUpdate, 1, 1);
+        RenderStats::GetInstance()->RecordComputeDispatch(groupCountUpdate);
+        commandList->ResourceBarrier(5, updateBarriers);
+    };
+
+    // Rebuild the alive list for particles that existed before this frame's emit pass.
+    rebuildAliveParticleList(frameDeltaTime_);
 
     // 3. Emit Pass
-    if (!emitRequests_.empty()) {
+    const bool hasEmitRequests = !emitRequests_.empty();
+    if (hasEmitRequests) {
         commandList->SetPipelineState(computePipelineStateEmit_.Get());
 
         for (size_t i = 0; i < emitRequests_.size(); ++i) {
@@ -364,7 +376,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
             req.config.inverseViewProj = math.Inverse(vp);
             req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
             req.config.deltaTime = 0.0f; // Emit pass does not progress physics
-            req.config.time = totalTime_;
+            req.config.initialAge = rebuiltSimulationThisDraw ?
+                (std::max)(0.0f, totalTime_ - req.config.time) : 0.0f;
             req.config.meshVertexCount = req.vb ? req.vCount : 1;
             req.config.meshVertexStride = req.vb ? req.vStride : sizeof(Vector3);
             req.config.maxParticles = maxParticles_;
@@ -396,8 +409,16 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
         lastConfig_ = emitRequests_.back().config;
     }
 
+    // A seek reset initializes and emits in the same frame. Rebuild once more so
+    // the newly emitted particles become visible immediately at the scrubbed time.
+    if (rebuiltSimulationThisDraw && hasEmitRequests) {
+        rebuildAliveParticleList(0.0f);
+        warmupRequested_ = false;
+    }
+
     emitRequests_.clear();
     emitCountThisFrame_ = 0;
+    frameDeltaTime_ = 0.0f;
 
     // --- Graphics Shader ---
     Matrix4x4 billboard = math.Inverse(viewMatrix);
@@ -415,7 +436,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     cameraData_->spriteSheetFps = spriteSheetFps_;
     cameraData_->spriteSheetLoop = spriteSheetLoop_;
     cameraData_->spriteSheetRandomStart = spriteSheetRandomStart_;
-    cameraData_->spriteSheetPadding = { 0.0f, 0.0f };
+    cameraData_->alignToVelocity = alignToVelocity_;
+    cameraData_->velocityStretch = velocityStretch_;
 
     D3D12_RESOURCE_BARRIER drawBarriers[3] = {};
     drawBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -507,6 +529,7 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     lastEmitTimer_ = 0.0f;
 
     CSConfig reqConfig = {};
+    reqConfig.time = totalTime_;
     reqConfig.emitPos = config.emitPos;
     reqConfig.emitArea = config.emitArea;
     reqConfig.emitVelocity = config.emitVelocity;
@@ -554,6 +577,29 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     spriteSheetFps_ = config.spriteSheetFps > 0.0f ? config.spriteSheetFps : 0.0f;
     spriteSheetLoop_ = config.spriteSheetLoop != 0 ? 1u : 0u;
     spriteSheetRandomStart_ = config.spriteSheetRandomStart != 0 ? 1u : 0u;
+    alignToVelocity_ = config.alignToVelocity != 0 ? 1u : 0u;
+    velocityStretch_ = (std::max)(config.velocityStretch, 0.0f);
+}
+
+size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {
+    size_t bytes = emitRequests_.capacity() * sizeof(EmitRequest);
+    ID3D12Resource* resources[] = {
+        particleBuffer_.Get(),
+        freeListIndexBuffer_.Get(),
+        freeListBuffer_.Get(),
+        aliveParticleIndexBuffer_.Get(),
+        indirectDrawArgumentBuffer_.Get(),
+        configBuffer_.Get(),
+        cameraBuffer_.Get(),
+        dummyVertexBuffer_.Get(),
+        dummyBoneBuffer_.Get()
+    };
+    for (ID3D12Resource* resource : resources) {
+        if (resource) {
+            bytes += static_cast<size_t>(resource->GetDesc().Width);
+        }
+    }
+    return bytes;
 }
 
 void GPUParticleSystem::SetCurrentTexture(const std::string& path) {

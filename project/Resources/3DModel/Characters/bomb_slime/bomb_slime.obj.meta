@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "026a38dbfc9c6e611df5abdd67b9c3d7",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/bomb_slime/bomb_slime.obj",
+  "version": 1
+}

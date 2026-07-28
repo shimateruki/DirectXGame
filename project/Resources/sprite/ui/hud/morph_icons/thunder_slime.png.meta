@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bc7f48b26bd9cdee9e63855166fbce20",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/thunder_slime.png",
+  "version": 1
+}

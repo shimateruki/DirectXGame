@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cbe8462fb4389ef96dfd66909d09ce64",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/flagHata/flagHata.gltf",
+  "version": 1
+}

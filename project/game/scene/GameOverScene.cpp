@@ -138,6 +138,7 @@ void GameOverScene::Initialize() {
 }
 
 void GameOverScene::OnActivated() {
+    BaseScene::OnActivated();
     PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
     if (postParams) {
         postParams->slimeFadeIntensity = 0.0f;

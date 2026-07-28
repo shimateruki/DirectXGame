@@ -27,6 +27,19 @@ void Character::Update(float deltaTime) {
         velocity_.y = -param_->maxFallSpeed;
     }
 
+    if (externalImpulseTimer_ > 0.0f) {
+        const float duration = (std::max)(externalImpulseDuration_, 0.001f);
+        const float remaining = std::clamp(externalImpulseTimer_ / duration, 0.0f, 1.0f);
+        const float weight = remaining * remaining * (3.0f - 2.0f * remaining);
+        velocity_.x = Math::Lerp(velocity_.x, externalImpulseVelocity_.x, weight);
+        velocity_.z = Math::Lerp(velocity_.z, externalImpulseVelocity_.z, weight);
+        if (externalImpulseVerticalPending_) {
+            velocity_.y = (std::max)(velocity_.y, externalImpulseVelocity_.y);
+            externalImpulseVerticalPending_ = false;
+        }
+        externalImpulseTimer_ = (std::max)(0.0f, externalImpulseTimer_ - deltaTime);
+    }
+
     // 死亡判定
     if (param_->hp <= 0) {
         isDead = true;
@@ -34,6 +47,29 @@ void Character::Update(float deltaTime) {
 
     // 速度を座標に適用
     transform_.translate += velocity_ * deltaTime;
+}
+
+void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
+    const float safeDuration = (std::max)(0.01f, duration);
+    if (externalImpulseTimer_ <= 0.0f) {
+        externalImpulseVelocity_ = velocity;
+        externalImpulseDuration_ = safeDuration;
+        externalImpulseTimer_ = safeDuration;
+        externalImpulseVerticalPending_ = true;
+        return;
+    }
+
+    const float currentPlanarSq = externalImpulseVelocity_.x * externalImpulseVelocity_.x +
+        externalImpulseVelocity_.z * externalImpulseVelocity_.z;
+    const float nextPlanarSq = velocity.x * velocity.x + velocity.z * velocity.z;
+    if (nextPlanarSq >= currentPlanarSq * 0.72f) {
+        externalImpulseVelocity_ = velocity;
+    } else {
+        externalImpulseVelocity_.y = (std::max)(externalImpulseVelocity_.y, velocity.y);
+    }
+    externalImpulseDuration_ = (std::max)(externalImpulseDuration_, safeDuration);
+    externalImpulseTimer_ = (std::max)(externalImpulseTimer_, safeDuration);
+    externalImpulseVerticalPending_ = true;
 }
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {

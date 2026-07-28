@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dae42c791a6b387334880eedad55338b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/title_main_menu_panel.png",
+  "version": 1
+}

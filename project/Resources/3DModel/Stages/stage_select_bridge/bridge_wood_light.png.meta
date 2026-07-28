@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bb05eff1c02d4517a78b34c4481351df",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/stage_select_bridge/bridge_wood_light.png",
+  "version": 1
+}

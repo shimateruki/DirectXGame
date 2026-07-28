@@ -6,6 +6,8 @@
 #include "engine/utility/math/Math.h"
 
 #include <map>
+#include <algorithm>
+#include <cstdint>
 #include <mutex>
 #include <random>
 #include <string>
@@ -41,6 +43,10 @@ struct DebrisEffectConfig {
     float fadeStartRatio = 0.72f;
     Vector4 color = { 0.62f, 0.55f, 0.48f, 1.0f };
     int materialType = 0;
+    float roughness = 0.5f;
+    float metallic = 0.0f;
+    bool enableEnvMap = false;
+    float envIntensity = 1.0f;
     float emissive = 0.0f;
     bool collideGround = true;
     bool shrinkOnFade = true;
@@ -59,6 +65,10 @@ void Update(float deltaTime);
         // 現在表示中の破片をライト情報つきで描画します。
 void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
     void Clear();
+    void ResetEditorPreview(uint32_t randomSeed = 0xD3B1u);
+    void SetTimeScale(float timeScale) { timeScale_ = (std::max)(0.0f, timeScale); }
+    float GetTimeScale() const { return timeScale_; }
+    int GetActivePieceCount() const;
 
         // 指定フォルダ内の破片プリセットJSONをまとめて読み込みます。
 void LoadAllPresets(const std::string& directoryPath);
@@ -125,4 +135,5 @@ void RecyclePiece(size_t index);
     std::map<std::string, DebrisEffectConfig> presets_;
     mutable std::recursive_mutex mutex_;
     mutable std::mt19937 randomEngine_;
+    float timeScale_ = 1.0f;
 };

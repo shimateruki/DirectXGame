@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "448e5ee89468c4150613ad1b0e7cf101",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/leverDodai/leverDodai.gltf",
+  "version": 1
+}

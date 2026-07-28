@@ -18,8 +18,10 @@
 #include "MeshRenderer.h" 
 #include "ParticleEmitterComponent.h"
 #include "PathMoverComponent.h"
+#include "NavAgentComponent.h"
 #include "engine/graphics/3d/camera/SceneCameraSettings.h"
 #include "engine/animation/AnimatorController.h"
+#include "engine/system/collision/CollisionEvent.h"
 
 using json = nlohmann::json;
 
@@ -48,6 +50,7 @@ public:
     static constexpr std::string_view kMeshEffectComponentType = MeshEffectComponent::kTypeId;
     static constexpr std::string_view kPathMoverComponentType = PathMoverComponent::kTypeId;
     static constexpr std::string_view kGameplayLinkComponentType = GameplayLinkComponent::kTypeId;
+    static constexpr std::string_view kNavAgentComponentType = NavAgentComponent::kTypeId;
 
     // 互換性維持のためエイリアスを作成
     using TransformationMatrix = MeshRenderer::TransformationMatrix;
@@ -123,6 +126,7 @@ public:
         std::optional<MeshEffectComponent> meshEffectComponent;
         std::optional<PathMoverComponent> pathMoverComponent;
         std::optional<GameplayLinkComponent> gameplayLinkComponent;
+        std::optional<NavAgentComponent> navAgentComponent;
 
         bool replayRemoved = false;
         json custom = json::object();
@@ -148,12 +152,16 @@ public:
 
     virtual void Initialize(Object3dCommon* common);
     virtual void Update(float deltaTime);
+    // 物理や決定論的なゲーム処理向けの固定刻み更新です。
+    // 既存のUpdate互換性を壊さないよう、既定実装は何もしません。
+    virtual void FixedUpdate(float fixedDeltaTime) { (void)fixedDeltaTime; }
     /// ステータス管理からタイプ共通スケールを反映します。
     /// 伸縮アニメーションを持つ派生クラスは、基準スケールも更新してください。
     virtual void ApplyManagedScale(const Vector3& scale) { SetScale(scale); }
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     virtual void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
+    virtual void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0);
     void DrawShadow();
     void SetShadowCommonState(); // 共通の状態を設定
     void DrawShadowOnly();       // 設定済みの状態で描画だけ行う
@@ -298,6 +306,12 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     CollisionInfo CheckCollision(Object3d* other);
     virtual bool OnCollision(Object3d* other) { (void)other; return false; }
+    virtual void OnCollisionEnter(const CollisionEvent& event) { (void)event; }
+    virtual void OnCollisionStay(const CollisionEvent& event) { (void)event; }
+    virtual void OnCollisionExit(const CollisionEvent& event) { (void)event; }
+    virtual void OnTriggerEnter(const CollisionEvent& event) { (void)event; }
+    virtual void OnTriggerStay(const CollisionEvent& event) { (void)event; }
+    virtual void OnTriggerExit(const CollisionEvent& event) { (void)event; }
 
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
@@ -333,6 +347,11 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     bool HasGameplayLinkComponent() const { return gameplayLinkComponent_.has_value(); }
     GameplayLinkComponent* GetGameplayLinkComponent();
     const GameplayLinkComponent* GetGameplayLinkComponent() const;
+    NavAgentComponent* EnsureNavAgentComponent();
+    bool RemoveNavAgentComponent();
+    bool HasNavAgentComponent() const { return navAgentComponent_.has_value(); }
+    NavAgentComponent* GetNavAgentComponent();
+    const NavAgentComponent* GetNavAgentComponent() const;
     void SetEventID(int id);
     int GetEventID() const;
     void SetTargetID(int id);
@@ -465,6 +484,12 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    virtual bool HasOwnedSpecialMaterialVisuals() const { return false; }
+    virtual void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+        (void)depthSrvHandle;
+        (void)grabSrvHandle;
+    }
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;
@@ -524,6 +549,7 @@ protected:
     std::optional<MeshEffectComponent> meshEffectComponent_;
     std::optional<PathMoverComponent> pathMoverComponent_;
     std::optional<GameplayLinkComponent> gameplayLinkComponent_;
+    std::optional<NavAgentComponent> navAgentComponent_;
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;
     bool isEditorInternal_ = false;

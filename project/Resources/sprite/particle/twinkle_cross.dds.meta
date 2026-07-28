@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f5fba0d240017611da236dd83c8a2820",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/twinkle_cross.dds",
+  "version": 1
+}

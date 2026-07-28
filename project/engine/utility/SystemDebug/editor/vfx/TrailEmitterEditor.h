@@ -27,6 +27,8 @@ void RefreshFileLists();
 private:
     void Save(const std::string& name);
     void Load(const std::string& name);
+    void ResetDummyPreview(bool clearEffects);
+    void StepDummyPreview(float deltaTime, bool allowLoop);
 
     SceneManager* sceneManager_ = nullptr;
     BaseScene* lastScene_ = nullptr;
@@ -48,6 +50,9 @@ private:
     Vector3 dummyPos_ = { 0.0f, 0.0f, 0.0f };
     Vector3 lastDummyPos_ = { 0.0f, 0.0f, 0.0f };
     bool dummyFirstFrame_ = true;
+    int lastStagePlayRequestSerial_ = 0;
+    int lastStageStopRequestSerial_ = 0;
+    int lastStageSeekRequestSerial_ = 0;
 
     bool wasPlaying_ = false;
 

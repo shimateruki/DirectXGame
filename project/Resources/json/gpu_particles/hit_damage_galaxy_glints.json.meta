@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "ccb47411c34cc52e7a717d90c391cca0",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/hit_damage_galaxy_glints.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2eacb31863cdefc1b61adaec7ad13c9d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/bat.png",
+  "version": 1
+}

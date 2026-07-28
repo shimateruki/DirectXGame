@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "fab9497eae43040047bfbeb2e14c0b29",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/wind_slime_idle_wisp.json",
+  "version": 1
+}

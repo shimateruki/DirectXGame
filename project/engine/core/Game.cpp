@@ -39,6 +39,7 @@
 namespace {
 constexpr float kDeltaTimeClamp = 0.1f;
 constexpr float kFixedDeltaTime = 1.0f / 60.0f;
+constexpr int kMaxFixedStepsPerFrame = 4;
 constexpr int kHistorySampleCount = 120;
 
 void LoadColorWorkflowSetting() {
@@ -80,8 +81,8 @@ void RefreshSceneRenderCameraData(SceneManager* sceneManager) {
 
 void Game::Initialize() {
 	InitializeEngineServices();
-	InitializeScene();
 	InitializePostProcess();
+	InitializeScene();
 	InitializeEditorTools();
 	ConfigureInitialPlayState();
 
@@ -117,7 +118,7 @@ std::string Game::ResolveStartSceneName() const {
 	std::string startScene = "TITLE";
 
 #ifdef DD
-	StageManager::GetInstance()->SetCurrentStage(2);
+	StageManager::GetInstance()->SetCurrentStage(0);
 	startScene = "GAMEPLAY";
 #endif
 
@@ -287,8 +288,8 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		currentSceneName_ = sceneManager_->GetCurrentSceneName();
 	}
 	editorController_->DrawMainMenuBar(sceneManager_.get(), isPlaying_, currentSceneName_);
+	editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
-		editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
 		editorController_->DrawToolWindows(
 			timeScale_,
 			sceneUpdateTimeMs_,
@@ -317,6 +318,8 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		replayFrozen = editorController_->ShouldFreezeSimulationForReplay();
 	}
 #endif
+
+	RunFixedUpdates(finalDeltaTime, replayFrozen, sceneTransitioning);
 
 	{
 		PROFILE_SCOPE("シーン");
@@ -369,6 +372,32 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 #endif
 
 	RecordUpdateProfile(startUpdate);
+}
+
+void Game::RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTransitioning) {
+	if (!sceneManager_ || replayFrozen || sceneTransitioning || finalDeltaTime <= 0.0f) {
+		fixedUpdateAccumulator_ = 0.0f;
+		return;
+	}
+
+	BaseScene* currentScene = sceneManager_->GetCurrentScene();
+	if (!currentScene) {
+		fixedUpdateAccumulator_ = 0.0f;
+		return;
+	}
+
+	fixedUpdateAccumulator_ += (std::min)(finalDeltaTime, kDeltaTimeClamp);
+	int stepCount = 0;
+	while (fixedUpdateAccumulator_ >= kFixedDeltaTime && stepCount < kMaxFixedStepsPerFrame) {
+		currentScene->FixedUpdate(kFixedDeltaTime);
+		fixedUpdateAccumulator_ -= kFixedDeltaTime;
+		++stepCount;
+	}
+
+	// 長い停止後に古い時間を持ち越さず、次フレームの処理急増を防ぎます。
+	if (stepCount == kMaxFixedStepsPerFrame) {
+		fixedUpdateAccumulator_ = (std::min)(fixedUpdateAccumulator_, kFixedDeltaTime);
+	}
 }
 // 更新処理にかかったCPU時間を履歴とProfilerManagerへ記録する。
 
@@ -436,6 +465,7 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 	dxCommon_->PostDraw();
 
 	if (editorController_) {
+		editorController_->ExportCapturedHudPortraits();
 		editorController_->EndFrame();
 	}
 #else

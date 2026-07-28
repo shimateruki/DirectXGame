@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "06868f5c39fdd63aefadeb3cd92ad1cc",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/3Dobject/sample_enemy.json",
+  "version": 1
+}

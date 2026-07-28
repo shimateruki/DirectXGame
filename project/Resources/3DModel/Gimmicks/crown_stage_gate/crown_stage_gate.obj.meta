@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ced700ac6b52aeca618fc192ab343ee0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/crown_stage_gate/crown_stage_gate.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3e8ada870b639957ba87b2cdaad42e9a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/gameover_dizzy_star.png",
+  "version": 1
+}

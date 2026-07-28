@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dd8767d58bf8f961e0785d62d012ea23",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/dome/dome.dds",
+  "version": 1
+}

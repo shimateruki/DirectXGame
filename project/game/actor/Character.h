@@ -24,6 +24,9 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
     Vector3 GetVelocity() const { return velocity_; }
     void SetVelocity(const Vector3& v) { velocity_ = v; }
 
+    // ダメージ状態へ移行せず、一定時間だけ移動へ外力を重ねます。
+    void ApplyExternalImpulse(const Vector3& velocity, float duration = 0.16f);
+
     bool IsGrounded() const { return isGrounded_; }
     void SetGrounded(bool grounded) { isGrounded_ = grounded; }
 
@@ -58,4 +61,8 @@ protected:
 
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 現在速度。
     bool isGrounded_ = false;                 // 最後の更新で接地しているか。
+    Vector3 externalImpulseVelocity_ = { 0.0f, 0.0f, 0.0f };
+    float externalImpulseTimer_ = 0.0f;
+    float externalImpulseDuration_ = 0.0f;
+    bool externalImpulseVerticalPending_ = false;
 };

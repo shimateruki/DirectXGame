@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "72abf5e2e5cbe3fe7e6287d28910ce6b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/slime.png",
+  "version": 1
+}

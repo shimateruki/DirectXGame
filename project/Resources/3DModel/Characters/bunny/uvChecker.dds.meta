@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9123d147784caee81d9c1aedefdd3aaa",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/bunny/uvChecker.dds",
+  "version": 1
+}

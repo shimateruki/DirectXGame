@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "fd658d07aff5eefe7770f245bba7c3f0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Primitives/cube/cube.dds",
+  "version": 1
+}

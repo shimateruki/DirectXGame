@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1537da6248d60ab01603c5770aa075fb",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/5.dds",
+  "version": 1
+}

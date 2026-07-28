@@ -35,6 +35,7 @@ public:
 	void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
 	bool IsDashing() const { return isDashing_; }
+	void StopDashOnImpact();
 	void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 	void ApplyIceSurface(float duration, float friction, float steering);
 

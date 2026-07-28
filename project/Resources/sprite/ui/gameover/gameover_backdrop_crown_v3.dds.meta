@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "923d20d58b37045c6872dde22d8c85d1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/gameover/gameover_backdrop_crown_v3.dds",
+  "version": 1
+}

@@ -10,6 +10,15 @@
 
 class Object3d;
 
+/// Component追加時に選べる初期設定Presetです。
+/// Inspector側はこの登録を列挙するだけで、Component固有の分岐を持ちません。
+struct EditorComponentPresetDescriptor {
+    std::string id;
+    std::string displayName;
+    std::string description;
+    std::function<bool(Object3d&)> apply;
+};
+
 /// ComponentのProperty欄を自動生成するか、既存の専用UIへ任せるかを表します。
 enum class EditorComponentInspectorMode {
     Automatic,
@@ -33,6 +42,10 @@ struct EditorComponentDescriptor {
     std::function<bool(const nlohmann::json&)> serializedPresent;
     /// Prefab継承用にComponentの存在状態をJSONへ明示します。削除時は実行時機能も無効化します。
     std::function<void(nlohmann::json&, bool)> setSerializedPresent;
+    /// Collider Presetなど、Component固有の追加候補です。
+    std::vector<EditorComponentPresetDescriptor> presets;
+    /// 専用Inspectorだけで扱う内部Componentはfalseにします。
+    bool showInInspector = true;
 };
 
 /// Editor上で扱うObject3dプロパティの型です。
@@ -108,9 +121,13 @@ public:
     bool RegisterComponent(EditorComponentDescriptor descriptor);
     bool Register(EditorPropertyDescriptor descriptor);
     const EditorComponentDescriptor* FindComponent(const std::string& typeId) const;
+    const EditorComponentPresetDescriptor* FindComponentPreset(
+        const std::string& typeId,
+        const std::string& presetId) const;
     const EditorPropertyDescriptor* Find(const std::string& path) const;
     const std::vector<EditorComponentDescriptor>& GetComponents() const { return components_; }
     const std::vector<EditorPropertyDescriptor>& GetProperties() const { return properties_; }
+    std::vector<const EditorComponentDescriptor*> GetApplicableComponentsForObject(const Object3d* object) const;
     std::vector<const EditorComponentDescriptor*> GetComponentsForObject(const Object3d* object) const;
     std::vector<const EditorPropertyDescriptor*> GetPropertiesForComponent(const std::string& typeId) const;
     bool IsComponentApplicable(const Object3d* object, const std::string& typeId) const;
@@ -118,6 +135,10 @@ public:
     bool IsComponentPresent(const nlohmann::json& serializedObject, const std::string& typeId) const;
     bool SetComponentPresent(nlohmann::json& serializedObject, const std::string& typeId, bool present) const;
     bool AddComponent(Object3d* object, const std::string& typeId) const;
+    bool ApplyComponentPreset(
+        Object3d* object,
+        const std::string& typeId,
+        const std::string& presetId) const;
     bool RemoveComponent(Object3d* object, const std::string& typeId) const;
 
     nlohmann::json GetValue(const Object3d* object, const std::string& path) const;

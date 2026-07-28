@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "eac6e511fb7947def521158ce3dfd239",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_core_glow.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "25e5dcb1fe0ad2895735852cd405ae4d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/koin/koin_lod1.gltf",
+  "version": 1
+}

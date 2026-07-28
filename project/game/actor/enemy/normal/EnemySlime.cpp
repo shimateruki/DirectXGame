@@ -13,6 +13,7 @@
 #include <cmath>
 
 namespace {
+constexpr const char* kDiveAttackId = "dive_slam";
 constexpr const char* kChargePulseEffectPath = "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json";
 constexpr const char* kChargeCoreEffectPath = "Resources/json/effect/effect_pink_slime_charge_core_flash.json";
 constexpr const char* kChargeVortexEffectPath = "Resources/json/effect/effect_pink_slime_charge_vortex_streak.json";
@@ -25,26 +26,18 @@ constexpr const char* kLandingShockArcEffectPath = "Resources/json/effect/effect
 constexpr const char* kChargeDebrisPresetName = "pink_slime_charge_pebble_pull";
 constexpr const char* kLandingDebrisPresetName = "pink_slime_landing_pebble_burst";
 constexpr float kSlimeModelYawOffset = 3.1415926535f;
-constexpr float kMinDiveDistance = 0.35f;
-constexpr float kChargeDuration = 1.35f;
 constexpr float kChargePulseInterval = 0.56f;
 constexpr float kChargeDebrisInterval = 0.64f;
 constexpr float kChargeVortexInterval = 0.34f;
-constexpr float kDiveFallbackDetectionRange = 12.0f;
-constexpr float kChargeTelegraphRadius = 1.35f;
 constexpr float kRiseJumpSpeed = 32.0f;
 constexpr float kRiseApexMinTime = 0.16f;
 constexpr float kRiseMaxDuration = 1.15f;
-constexpr float kDiveMinSpeed = 22.0f;
-constexpr float kDiveMaxSpeed = 40.0f;
 constexpr float kDiveDistanceSpeedRate = 0.72f;
 constexpr float kDiveSteerStrength = 5.5f;
 constexpr float kDiveStartDownSpeed = -16.0f;
 constexpr float kDiveDropSpeed = -62.0f;
-constexpr float kDiveMaxDuration = 0.46f;
 constexpr float kDiveTrailInterval = 0.12f;
 constexpr float kWanderHopInterval = 1.15f;
-constexpr float kLandingRecoverDuration = 0.24f;
 constexpr float kLandingSquashDuration = 0.20f;
 constexpr float kCarriedChargeMinDuration = 0.45f;
 constexpr float kCarriedChargeMaxDuration = 1.05f;
@@ -112,7 +105,26 @@ void SpawnDebrisOnGroundSafe(const char* presetName, const Vector3& position, fl
 
 }
 
+void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+    BaseEnemy::Initialize(common, modelName);
+    SetEnemyType("Slime");
+    ReloadAttackProfile();
+    ResetVisualPose();
+}
+
+void EnemySlime::ApplyManagedScale(const Vector3& scale) {
+    baseScale_ = scale;
+    hasBaseScale_ = true;
+    SetScale(scale);
+    ResetVisualPose();
+}
+
 void EnemySlime::Update(float deltaTime) {
+    if (IsDormant()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
+
     if (ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
         BaseEnemy::Update(deltaTime);
@@ -142,8 +154,9 @@ void EnemySlime::Update(float deltaTime) {
     if (param_.has_value()) {
     effectiveDetectionRange = (std::max)(effectiveDetectionRange, param_->detectionRange);
     }
-    effectiveDetectionRange = (std::max)(effectiveDetectionRange, kDiveFallbackDetectionRange);
-    const bool canDiveAtTarget = targetDistance <= effectiveDetectionRange && targetDistance >= kMinDiveDistance;
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    effectiveDetectionRange = (std::min)(effectiveDetectionRange, attack.maxRange);
+    const bool canDiveAtTarget = targetDistance <= effectiveDetectionRange && targetDistance >= attack.minRange;
 
     if (moveState_ == MoveState::Wander && UpdateNoticeReaction(deltaTime, targetDistance, effectiveDetectionRange, targetDirection)) {
         FaceDirection(targetDirection, deltaTime * 10.0f);
@@ -189,6 +202,64 @@ void EnemySlime::EnsureBaseScale() {
         SetScale(baseScale_);
     }
     hasBaseScale_ = true;
+}
+
+void EnemySlime::ResetVisualPose() {
+    visualScale_ = { 1.0f, 1.0f, 1.0f };
+    visualScaleVelocity_ = { 0.0f, 0.0f, 0.0f };
+    visualRotation_ = { 0.0f, 0.0f, 0.0f };
+    visualRotationVelocity_ = { 0.0f, 0.0f, 0.0f };
+    if (MeshRenderer* renderer = GetMeshRenderer()) {
+        renderer->ResetVisualTransform();
+    }
+}
+
+Vector3 EnemySlime::CalculateGroundedVisualOffset(const Vector3& visualScale) const {
+    const Model* model = GetModel();
+    if (!model) {
+        return { 0.0f, 0.0f, 0.0f };
+    }
+
+    const Vector3 modelCenter = model->GetCenter();
+    const Vector3 modelSize = model->GetSize();
+    const float modelBottom = modelCenter.y - modelSize.y * 0.5f;
+    return { 0.0f, modelBottom * (1.0f - visualScale.y), 0.0f };
+}
+
+Vector3 EnemySlime::CalculateDiveVisualOffset(const Vector3& visualScale, const Vector3& visualRotation) const {
+    const Model* model = GetModel();
+    if (!model) {
+        return { 0.0f, 0.0f, 0.0f };
+    }
+
+    const Vector3 modelCenter = model->GetCenter();
+    const Vector3 modelSize = model->GetSize();
+    // ピンクスライムのモデル正面はローカル-Zです。顔側を固定し、伸びを後方へ逃がします。
+    const Vector3 frontAnchor = {
+        modelCenter.x,
+        modelCenter.y,
+        modelCenter.z - modelSize.z * 0.5f
+    };
+    const Matrix4x4 visualMatrix = Math::MakeAffineMatrix(
+        visualScale, visualRotation, { 0.0f, 0.0f, 0.0f });
+    const Vector3 deformedAnchor = Math::Transform(frontAnchor, visualMatrix);
+    return frontAnchor - deformedAnchor;
+}
+
+const char* EnemySlime::GetDebugMoveStateName() const {
+    switch (moveState_) {
+    case MoveState::Charge:
+        return "溜め";
+    case MoveState::Rise:
+        return "上昇";
+    case MoveState::Dive:
+        return "突進";
+    case MoveState::Recover:
+        return "着地反発";
+    case MoveState::Wander:
+    default:
+        return "待機・移動";
+    }
 }
 
 Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
@@ -238,6 +309,7 @@ void EnemySlime::UpdateWander(float deltaTime) {
     chargeDebrisTimer_ = 0.0f;
     chargeVortexTimer_ = 0.0f;
     diveTrailTimer_ = 0.0f;
+    attackWarningTriggered_ = false;
 
     const float wanderSpeed = (std::max)(1.35f, param_->speed * 3.0f);
     Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
@@ -268,12 +340,14 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
     jumpTimer_ = 0.0f;
     diveDirection_ = NormalizePlanarOr(direction, diveDirection_);
 
-    const float chargeRate = Clamp01(chargeTimer_ / kChargeDuration);
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    const float chargeDuration = (std::max)(0.01f, attack.windupDuration);
+    const float chargeRate = Clamp01(chargeTimer_ / chargeDuration);
     const float ringPulse = std::sin(idleTimer_ * 14.0f) * 0.06f * (0.35f + chargeRate);
     const Vector3 telegraphCenter = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.05f);
     ShowAttackTelegraphCircle(
         telegraphCenter,
-        kChargeTelegraphRadius + chargeRate * 0.24f + ringPulse,
+        attack.radius + chargeRate * 0.24f + ringPulse,
         (std::max)(0.20f, chargeRate),
         { 1.0f, 0.24f, 0.76f, 0.84f });
     SpawnChargePulseEffect(deltaTime, chargeRate);
@@ -285,7 +359,13 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
     velocity_.z = 0.0f;
     chargeTimer_ += deltaTime;
 
-    if (chargeTimer_ >= kChargeDuration) {
+    const float remainingChargeTime = (std::max)(0.0f, chargeDuration - chargeTimer_);
+    if (!attackWarningTriggered_ && remainingChargeTime <= attack.warningLeadTime) {
+        TriggerAttackTelegraphCue({ 1.0f, 0.34f, 0.78f, 1.0f });
+        attackWarningTriggered_ = true;
+    }
+
+    if (chargeTimer_ >= chargeDuration) {
         BeginRise(diveDirection_);
     }
 }
@@ -346,7 +426,8 @@ void EnemySlime::BeginDive(const Vector3& direction, float distance) {
 
     const float speedFromDistance = distance * kDiveDistanceSpeedRate;
     const float speedFromStatus = param_.has_value() ? param_->speed * 2.0f : 0.0f;
-    diveSpeed_ = std::clamp(kDiveMinSpeed + speedFromDistance + speedFromStatus, kDiveMinSpeed, kDiveMaxSpeed);
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    diveSpeed_ = std::clamp(attack.minSpeed + speedFromDistance + speedFromStatus, attack.minSpeed, attack.maxSpeed);
 
     velocity_.x = diveDirection_.x * diveSpeed_;
     velocity_.z = diveDirection_.z * diveSpeed_;
@@ -372,24 +453,25 @@ void EnemySlime::UpdateDive(float deltaTime) {
         FaceDirection(diveDirection_, 0.22f);
     }
 
-    const float curveRate = SmoothStep01(diveTimer_ / kDiveMaxDuration);
+    const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).activeDuration);
+    const float curveRate = SmoothStep01(diveTimer_ / activeDuration);
     const float targetSpeed = diveSpeed_ * (1.0f + curveRate * 0.34f);
     const float velocityRate = deltaTime * (kDiveSteerStrength + curveRate * 5.5f);
     velocity_.x = LerpFloat(velocity_.x, diveDirection_.x * targetSpeed, velocityRate);
     velocity_.z = LerpFloat(velocity_.z, diveDirection_.z * targetSpeed, velocityRate);
 
-    const float diveRate = SmoothStep01(diveTimer_ / kDiveMaxDuration);
+    const float diveRate = SmoothStep01(diveTimer_ / activeDuration);
     const float targetYSpeed = LerpFloat(kDiveStartDownSpeed, kDiveDropSpeed, diveRate);
     velocity_.y = LerpFloat(velocity_.y, targetYSpeed, deltaTime * 22.0f);
 
-    if (diveTimer_ > kDiveMaxDuration) {
-        diveTimer_ = kDiveMaxDuration;
+    if (diveTimer_ > activeDuration) {
+        diveTimer_ = activeDuration;
     }
 }
 
 void EnemySlime::BeginLandingRecovery() {
     moveState_ = MoveState::Recover;
-    recoverTimer_ = kLandingRecoverDuration;
+    recoverTimer_ = GetAttackDefinition(kDiveAttackId).recoveryDuration;
     landingSquashTimer_ = kLandingSquashDuration;
     chargeTimer_ = 0.0f;
     riseTimer_ = 0.0f;
@@ -431,7 +513,9 @@ void EnemySlime::SpawnChargePulseEffect(float deltaTime, float chargeRate) {
 
     Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
     const float scale = 0.84f + chargeRate * 0.82f;
-    SpawnMeshEffectAtSafe(kChargePulseEffectPath, position, { 0.0f, 0.0f, 0.0f }, { scale, 0.9f, scale });
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    const char* windupVfx = attack.windupVfx.empty() ? kChargePulseEffectPath : attack.windupVfx.c_str();
+    SpawnMeshEffectAtSafe(windupVfx, position, { 0.0f, 0.0f, 0.0f }, { scale, 0.9f, scale });
 
     if (chargeRate > 0.52f) {
         Vector3 corePosition = GetTranslate();
@@ -504,15 +588,20 @@ void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
     position.x -= diveDirection_.x * 0.52f;
     position.y += 0.22f;
     position.z -= diveDirection_.z * 0.52f;
-    const float diveRate = SmoothStep01(diveTimer_ / kDiveMaxDuration);
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    const float activeDuration = (std::max)(0.01f, attack.activeDuration);
+    const float diveRate = SmoothStep01(diveTimer_ / activeDuration);
     const float scaleZ = 1.35f + diveRate * 0.80f;
-    SpawnMeshEffectAtSafe(kDiveTrailEffectPath, position, MakeDiveEffectRotation(diveDirection_, -0.52f), { 0.58f, 0.58f, scaleZ });
+    const char* activeVfx = attack.activeVfx.empty() ? kDiveTrailEffectPath : attack.activeVfx.c_str();
+    SpawnMeshEffectAtSafe(activeVfx, position, MakeDiveEffectRotation(diveDirection_, -0.52f), { 0.58f, 0.58f, scaleZ });
 }
 
 void EnemySlime::SpawnLandingEffect() {
     Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
     SpawnDebrisOnGroundSafe(kLandingDebrisPresetName, GetTranslate(), 0.05f);
-    SpawnMeshEffectAtSafe(kLandingRingEffectPath, position, { 0.0f, 0.0f, 0.0f }, { 1.85f, 0.95f, 1.85f });
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
+    const char* impactVfx = attack.impactVfx.empty() ? kLandingRingEffectPath : attack.impactVfx.c_str();
+    SpawnMeshEffectAtSafe(impactVfx, position, { 0.0f, 0.0f, 0.0f }, { 1.85f, 0.95f, 1.85f });
     Vector3 flashPosition = position;
     flashPosition.y += 0.34f;
     SpawnMeshEffectAtSafe(kLandingCoreEffectPath, flashPosition, MakeDiveEffectRotation(diveDirection_, -0.42f), { 1.10f, 1.10f, 1.10f });
@@ -521,80 +610,138 @@ void EnemySlime::SpawnLandingEffect() {
 }
 
 void EnemySlime::ApplySlimeAnimation(float deltaTime) {
-    Vector3 targetScale = baseScale_;
+    Vector3 targetVisualScale = { 1.0f, 1.0f, 1.0f };
+    Vector3 targetVisualRotation = { 0.0f, 0.0f, 0.0f };
     SlimeBounceAnimator::Params bounceParams;
     bounceParams.speedForFullBounce = 2.2f;
-    bounceParams.idleAmplitude = 0.09f;
-    bounceParams.moveAmplitude = 0.34f;
+    bounceParams.idleAmplitude = 0.055f;
+    bounceParams.moveAmplitude = 0.22f;
     bounceParams.hopFrequency = 11.2f;
-    bounceParams.horizontalSquash = 0.34f;
-    bounceParams.verticalStretch = 0.40f;
-    bounceParams.airborneStretch = 0.42f;
+    bounceParams.horizontalSquash = 0.24f;
+    bounceParams.verticalStretch = 0.31f;
+    bounceParams.airborneStretch = 0.30f;
 
-    if (moveState_ == MoveState::Charge) {
-        const float chargeRate = Clamp01(chargeTimer_ / kChargeDuration);
-        targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 2.2f);
-        const float tremble = std::sin(idleTimer_ * 34.0f) * 0.045f * chargeRate;
-        targetScale.x *= 1.0f + tremble;
-        targetScale.y *= 1.0f - chargeRate * 0.10f;
-        targetScale.z *= 1.0f - tremble * 0.75f;
-    } else if (moveState_ == MoveState::Rise) {
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, false, bounceParams);
-        const float risePose = Clamp01(riseTimer_ / 0.20f);
-        targetScale.x *= 1.0f - risePose * 0.20f;
-        targetScale.y *= 1.0f + risePose * 0.42f;
-        targetScale.z *= 1.0f - risePose * 0.14f;
-    } else if (moveState_ == MoveState::Recover && landingSquashTimer_ > 0.0f) {
-        const float squashRate = SmoothStep01(landingSquashTimer_ / kLandingSquashDuration);
-        targetScale = {
-            baseScale_.x * (1.0f + squashRate * 0.34f),
-            baseScale_.y * (1.0f - squashRate * 0.30f),
-            baseScale_.z * (1.0f + squashRate * 0.26f)
+    const auto toVisualScale = [this](const Vector3& absoluteScale) {
+        return Vector3{
+            std::abs(baseScale_.x) > 0.0001f ? absoluteScale.x / baseScale_.x : 1.0f,
+            std::abs(baseScale_.y) > 0.0001f ? absoluteScale.y / baseScale_.y : 1.0f,
+            std::abs(baseScale_.z) > 0.0001f ? absoluteScale.z / baseScale_.z : 1.0f
         };
-    } else if (!isGrounded_) {
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, false, bounceParams);
-        if (moveState_ == MoveState::Dive) {
-            const float divePose = Clamp01(diveTimer_ / 0.24f);
-            targetScale.x *= 1.0f - divePose * 0.14f;
-            targetScale.y *= 1.0f + divePose * 0.18f;
-            targetScale.z *= 1.0f + divePose * 0.34f;
-        }
-    } else {
-        targetScale = SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, true, bounceParams);
-    }
+    };
 
-    SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 16.0f)));
-
-    Vector3 currentRotation = GetRotation();
-    Vector3 targetRotation = { 0.0f, currentRotation.y, 0.0f };
     if (moveState_ == MoveState::Charge) {
-        const float chargeRate = Clamp01(chargeTimer_ / kChargeDuration);
-        const float wobble = std::sin(idleTimer_ * 30.0f) * chargeRate * 0.09f;
-        targetRotation.x = -diveDirection_.z * wobble;
-        targetRotation.z = diveDirection_.x * wobble;
+        const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).windupDuration);
+        const float chargeRate = SmoothStep01(chargeTimer_ / windupDuration);
+        const float finalCompression = SmoothStep01((chargeRate - 0.76f) / 0.24f);
+        const float tremble = std::sin(idleTimer_ * 31.0f) * 0.018f * chargeRate;
+        targetVisualScale = {
+            1.0f + chargeRate * 0.25f + finalCompression * 0.08f + tremble,
+            1.0f - chargeRate * 0.24f - finalCompression * 0.12f,
+            1.0f + chargeRate * 0.21f + finalCompression * 0.07f - tremble * 0.70f
+        };
+        const float wobble = std::sin(idleTimer_ * 27.0f) * chargeRate * 0.055f;
+        targetVisualRotation.x = -diveDirection_.z * wobble;
+        targetVisualRotation.z = diveDirection_.x * wobble;
     } else if (moveState_ == MoveState::Rise) {
-        const float risePose = Clamp01(riseTimer_ / 0.24f);
-        targetRotation.x = -diveDirection_.z * 0.18f * risePose;
-        targetRotation.z = diveDirection_.x * 0.18f * risePose;
+        const float release = 1.0f - SmoothStep01(riseTimer_ / 0.30f);
+        const float verticalSpeedRate = Clamp01(std::abs(velocity_.y) / kRiseJumpSpeed);
+        const float riseStretch = 0.34f + verticalSpeedRate * 0.16f + release * 0.10f;
+        targetVisualScale = {
+            1.0f - riseStretch * 0.42f,
+            1.0f + riseStretch,
+            1.0f - riseStretch * 0.34f
+        };
+        targetVisualRotation.x = -0.08f * release;
     } else if (moveState_ == MoveState::Dive) {
-        const float divePose = SmoothStep01(diveTimer_ / kDiveMaxDuration);
-        const float flutter = std::sin(diveTimer_ * 48.0f) * 0.045f;
-        const float lean = 0.28f + divePose * 0.18f + flutter;
-        targetRotation.x = -diveDirection_.z * lean;
-        targetRotation.z = diveDirection_.x * lean;
+        const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).activeDuration);
+        const float divePose = SmoothStep01(diveTimer_ / activeDuration);
+        const float planarSpeed = PlanarLength(velocity_);
+        const float totalSpeed = std::sqrt(planarSpeed * planarSpeed + velocity_.y * velocity_.y);
+        const float speedRate = Clamp01((totalSpeed - 18.0f) / 38.0f);
+        const float stretchRate = 0.52f + divePose * 0.48f;
+        const float longitudinalScale = 1.38f + stretchRate * 0.38f + speedRate * 0.16f;
+        const float crossScale = 1.0f / std::sqrt(longitudinalScale);
+        const float flutter = std::sin(diveTimer_ * 42.0f) * 0.025f * divePose;
+        targetVisualScale = {
+            crossScale + flutter,
+            crossScale * 0.94f - flutter * 0.45f,
+            longitudinalScale
+        };
+        const float flightPitch = std::atan2(velocity_.y, (std::max)(planarSpeed, 0.001f));
+        targetVisualRotation.x = std::clamp(flightPitch, -1.10f, 0.30f);
+        targetVisualRotation.z = flutter * 1.8f;
     } else if (moveState_ == MoveState::Recover) {
-        const float recoverRate = recoverTimer_ / (std::max)(kLandingRecoverDuration, 0.01f);
-        const float shake = std::sin(idleTimer_ * 38.0f) * recoverRate * 0.10f;
-        targetRotation.x = -diveDirection_.z * shake;
-        targetRotation.z = diveDirection_.x * shake;
+        const float recoveryDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).recoveryDuration);
+        const float recoveryProgress = Clamp01((recoveryDuration - recoverTimer_) / recoveryDuration);
+        if (recoveryProgress < 0.30f) {
+            const float phase = SmoothStep01(recoveryProgress / 0.30f);
+            targetVisualScale = {
+                LerpFloat(1.40f, 1.23f, phase),
+                LerpFloat(0.56f, 0.72f, phase),
+                LerpFloat(1.32f, 1.18f, phase)
+            };
+        } else if (recoveryProgress < 0.64f) {
+            const float phase = SmoothStep01((recoveryProgress - 0.30f) / 0.34f);
+            targetVisualScale = {
+                LerpFloat(1.23f, 0.92f, phase),
+                LerpFloat(0.72f, 1.24f, phase),
+                LerpFloat(1.18f, 0.94f, phase)
+            };
+        } else {
+            const float phase = SmoothStep01((recoveryProgress - 0.64f) / 0.36f);
+            targetVisualScale = {
+                LerpFloat(0.92f, 1.0f, phase),
+                LerpFloat(1.24f, 1.0f, phase),
+                LerpFloat(0.94f, 1.0f, phase)
+            };
+        }
+        const float shake = std::sin(idleTimer_ * 34.0f) * (1.0f - recoveryProgress) * 0.055f;
+        targetVisualRotation.x = -diveDirection_.z * shake;
+        targetVisualRotation.z = diveDirection_.x * shake;
+    } else if (!isGrounded_) {
+        targetVisualScale = toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, false, bounceParams));
+    } else {
+        targetVisualScale = toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, velocity_, idleTimer_, true, bounceParams));
     }
 
-    const float rotationRate = (std::min)(1.0f, deltaTime * 17.0f);
-    SetRotation({
-        LerpFloat(currentRotation.x, targetRotation.x, rotationRate),
-        currentRotation.y,
-        LerpFloat(currentRotation.z, targetRotation.z, rotationRate)
-    });
+    targetVisualScale.x = std::clamp(targetVisualScale.x, 0.58f, 1.45f);
+    targetVisualScale.y = std::clamp(targetVisualScale.y, 0.48f, 1.55f);
+    targetVisualScale.z = std::clamp(targetVisualScale.z, 0.62f, 1.96f);
+
+    SlimeBounceAnimator::StepDampedSpring(
+        visualScale_, visualScaleVelocity_, targetVisualScale, deltaTime, 23.0f, 0.58f);
+    SlimeBounceAnimator::StepDampedSpring(
+        visualRotation_, visualRotationVelocity_, targetVisualRotation, deltaTime, 21.0f, 0.68f);
+
+    visualScale_.x = std::clamp(visualScale_.x, 0.58f, 1.50f);
+    visualScale_.y = std::clamp(visualScale_.y, 0.44f, 1.60f);
+    visualScale_.z = std::clamp(visualScale_.z, 0.58f, 2.02f);
+
+    Vector3 renderedScale = visualScale_;
+    Vector3 renderedRotation = visualRotation_;
+    Vector3 reactionOffset = { 0.0f, 0.0f, 0.0f };
+    ApplyDamageReactionPose(renderedScale, renderedRotation, &reactionOffset);
+    renderedScale.x = std::clamp(renderedScale.x, 0.52f, 1.58f);
+    renderedScale.y = std::clamp(renderedScale.y, 0.40f, 1.68f);
+    renderedScale.z = std::clamp(renderedScale.z, 0.52f, 2.10f);
+
+    SetScale(baseScale_);
+    const float yaw = GetRotation().y;
+    SetRotation({ 0.0f, yaw, 0.0f });
+
+    if (MeshRenderer* renderer = GetMeshRenderer()) {
+        const bool keepGroundContact = isGrounded_ || moveState_ == MoveState::Charge || moveState_ == MoveState::Recover;
+        Vector3 visualOffset = { 0.0f, 0.0f, 0.0f };
+        if (moveState_ == MoveState::Dive) {
+            visualOffset = CalculateDiveVisualOffset(renderedScale, renderedRotation);
+        } else if (keepGroundContact) {
+            visualOffset = CalculateGroundedVisualOffset(renderedScale);
+        }
+        visualOffset.x += reactionOffset.x;
+        visualOffset.y += reactionOffset.y;
+        visualOffset.z += reactionOffset.z;
+        renderer->SetVisualTransform(renderedScale, renderedRotation, visualOffset);
+    }
 }
 
 std::unique_ptr<Object3d> EnemySlime::Clone() const {

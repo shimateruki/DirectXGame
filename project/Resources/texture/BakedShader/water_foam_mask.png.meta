@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "528c5ad51477133432287d126ccd8ab3",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/water_foam_mask.png",
+  "version": 1
+}

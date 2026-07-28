@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d9cf469a16c84bdf957f1bc8fd00397f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/scenario/tutorial_exit_reveal.json",
+  "version": 1
+}

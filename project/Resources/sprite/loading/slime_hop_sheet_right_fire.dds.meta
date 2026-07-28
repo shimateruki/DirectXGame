@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6b60fdfd9e5b182671cc05daf91bed81",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/loading/slime_hop_sheet_right_fire.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b8e09543abbd7c7b349b4567189088ff",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/spark_star.dds",
+  "version": 1
+}

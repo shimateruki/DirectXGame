@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7031c0f6f034e92d626acf9bfbca3255",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/soft_grass_patch/soft_grass_patch.obj",
+  "version": 1
+}

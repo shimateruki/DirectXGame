@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ae2cac6f733cdf113b1007fff9d9d897",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/prism_slime_frame/prism_slime_frame.obj",
+  "version": 1
+}

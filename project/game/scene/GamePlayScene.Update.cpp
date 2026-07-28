@@ -11,6 +11,7 @@
 #include "GPUParticleManager.h"
 #include "GameDataManager.h"
 #include "GameSettingsManager.h"
+#include "GameRule.h"
 #include "InputManager.h"
 #include "LightEditor.h"
 #include "LockOnSystem.h"
@@ -267,6 +268,10 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    if (HandleControlsGuideOverlay(deltaTime)) {
+        return;
+    }
+
     if (HandlePauseOverlay(deltaTime)) {
         return;
     }
@@ -358,6 +363,45 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         goalCrownSparkleTimer_ += kSparkleInterval;
         ++goalCrownSparklePatternIndex_;
     }
+}
+
+bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
+    if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
+        controlsGuideOverlay_->SetPlayer(player_);
+        controlsGuideOverlay_->Update(deltaTime);
+        return true;
+    }
+
+    if (IsControlsGuideOpenTriggered()) {
+        if (controlsGuideOverlay_) {
+            controlsGuideOverlay_->SetPlayer(player_);
+            controlsGuideOverlay_->SetActive(true);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+bool GamePlayScene::IsControlsGuideOpenTriggered() const {
+    if (!inputManager_) {
+        return false;
+    }
+
+#ifdef USE_IMGUI
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        return false;
+    }
+#endif
+
+    if (lifeLostPresentationActive_ || lifeLostBlackHold_ || isGoal_ ||
+        (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) ||
+        (settingsOverlay_ && settingsOverlay_->IsActive())) {
+        return false;
+    }
+
+    return inputManager_->IsKeyTriggered(DIK_TAB);
 }
 
 bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
@@ -1037,6 +1081,9 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
     objectManager_->Update(deltaTime);
+    if (gameRule_) {
+        gameRule_->Update(deltaTime);
+    }
     GPUParticleManager::GetInstance()->Update(deltaTime);
 
     for (auto& sprite : sprites_) {

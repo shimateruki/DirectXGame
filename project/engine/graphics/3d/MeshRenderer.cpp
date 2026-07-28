@@ -283,6 +283,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->waveFrequency = 1.5f;
     waterParamData_->flowSpeedX = 0.1f; // 緩やかに流れる
     waterParamData_->flowSpeedY = 0.1f;
+    waterParamData_->uvOffsetX = 0.0f;
+    waterParamData_->uvOffsetY = 0.0f;
     waterParamData_->effectType = 0.0f;
     waterParamData_->effectScale = 1.0f;
     waterParamData_->effectSoftness = 0.55f;
@@ -307,6 +309,40 @@ bool MeshRenderer::HasRequiredBuffers() const {
         materialResource_ && materialData_;
 }
 
+void MeshRenderer::SetVisualTransform(const Vector3& scale, const Vector3& rotation, const Vector3& offset) {
+    visualScale_ = scale;
+    visualRotation_ = rotation;
+    visualOffset_ = offset;
+    worldInverseTransposeCacheValid_ = false;
+}
+
+void MeshRenderer::SetVisualShear(const Vector3& horizontalShear, float pivotY) {
+    visualShear_ = { horizontalShear.x, 0.0f, horizontalShear.z };
+    visualShearPivotY_ = pivotY;
+    worldInverseTransposeCacheValid_ = false;
+}
+
+void MeshRenderer::ResetVisualTransform() {
+    SetVisualTransform({ 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
+    SetVisualShear({ 0.0f, 0.0f, 0.0f }, 0.0f);
+}
+
+Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
+    if (!transform_) {
+        return Math::MakeIdentity4x4();
+    }
+
+    Matrix4x4 shearLocal = Math::MakeIdentity4x4();
+    shearLocal.m[1][0] = visualShear_.x;
+    shearLocal.m[1][2] = visualShear_.z;
+    shearLocal.m[3][0] = -visualShearPivotY_ * visualShear_.x;
+    shearLocal.m[3][2] = -visualShearPivotY_ * visualShear_.z;
+
+    const Matrix4x4 visualAffine = Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
+    const Matrix4x4 visualLocal = Math::Multiply(shearLocal, visualAffine);
+    return Math::Multiply(visualLocal, transform_->matWorld);
+}
+
 const Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix) {
     if (!worldInverseTransposeCacheValid_ ||
         std::memcmp(&cachedWorldMatrix_, &worldMatrix, sizeof(Matrix4x4)) != 0) {
@@ -327,7 +363,7 @@ void MeshRenderer::RefreshCameraDependentData() {
 
     if (camera) {
         const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
-        const Matrix4x4& worldMatrix = transform_->matWorld;
+        const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
         wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
         wvpData_->world = worldMatrix;
@@ -349,8 +385,9 @@ void MeshRenderer::RefreshCameraDependentData() {
 
     const Matrix4x4& lightVP =
         LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
-    shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
-    shadowWvpData_->world = transform_->matWorld;
+    const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
+    shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
+    shadowWvpData_->world = shadowWorld;
 }
 
 void MeshRenderer::Update() {
@@ -401,7 +438,7 @@ void MeshRenderer::Update() {
             const Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
 
             // Transform側ですでに計算されたワールド行列を使う
-            const Matrix4x4& worldMatrix = transform_->matWorld;
+            const Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
 
             wvpData_->WVP = math.Multiply(worldMatrix, viewProj);
             wvpData_->world = worldMatrix;
@@ -427,8 +464,9 @@ void MeshRenderer::Update() {
         if (shadowWvpData_ && transform_) {
             const Matrix4x4& lightVP =
                 LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
-            shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
-            shadowWvpData_->world = transform_->matWorld;
+            const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
+            shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
+            shadowWvpData_->world = shadowWorld;
         }
     }
 }

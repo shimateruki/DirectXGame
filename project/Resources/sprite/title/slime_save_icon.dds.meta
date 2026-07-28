@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e50d62174966d49672779acbb29f3a8c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/title/slime_save_icon.dds",
+  "version": 1
+}

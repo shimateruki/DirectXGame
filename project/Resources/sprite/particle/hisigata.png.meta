@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "de362c358dad388e2c7b116c0b215d2e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/hisigata.png",
+  "version": 1
+}

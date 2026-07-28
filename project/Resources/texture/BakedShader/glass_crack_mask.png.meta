@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6ae472a399f2e8b2634dabfc3a346f90",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/glass_crack_mask.png",
+  "version": 1
+}

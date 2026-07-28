@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "56e75e2fb018771a3e8e6599360f245c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/controller/pad_dpad_left.png",
+  "version": 1
+}

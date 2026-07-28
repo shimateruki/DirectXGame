@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "11ad29afe0ec4f3fec244c7dc78e8006",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/poseText.dds",
+  "version": 1
+}

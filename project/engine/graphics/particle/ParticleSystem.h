@@ -3,7 +3,9 @@
 #include "ParticleCommon.h" 
 #include <d3d12.h>
 #include <wrl.h>
+#include <algorithm>
 #include <cstdint>
+#include <cstddef>
 #include <vector>
 #include <random>
 #include <string>
@@ -60,6 +62,7 @@ public:
         Vector3 initialVelocity = { 0.0f, 1.0f, 0.0f };    // 初速
         Vector3 velocityRandomness = { 0.5f, 0.5f, 0.5f }; // 初速のランダム幅
         Vector3 acceleration = { 0.0f, 0.0f, 0.0f };
+        int emitCount = 1;                 // 単発発生1回あたりの粒子数
         float particlesPerSecond = 10.0f; // 毎秒の発生数
         float particleLifetime = 2.0f;    // パーティクルの生存期間
 
@@ -105,6 +108,15 @@ void Draw();
         float endSize = 0.1f);            
 
     void Clear();
+    // エディタの巻き戻し用に粒子・発生端数・乱数系列を初期状態へ戻します。
+    void ResetSimulation(uint32_t randomSeed = 0xC0D3u);
+    void SetEditorPreviewOffset(const Vector3& offset) { editorPreviewOffset_ = offset; }
+    void SetSimulationTimeScale(float timeScale) { simulationTimeScale_ = (std::max)(0.0f, timeScale); }
+    size_t GetActiveParticleCount() const { return particles_.size(); }
+    float GetLastUpdateCpuTimeMs() const { return lastUpdateCpuTimeMs_; }
+    float GetLastDrawCpuTimeMs() const { return lastDrawCpuTimeMs_; }
+    size_t GetEstimatedMemoryBytes() const;
+    static constexpr int GetMaxParticles() { return kMaxParticles; }
 
     EmitterParams params_;
     void EmitOneShot(const EmitterParams& params, const Vector3& position);
@@ -129,6 +141,7 @@ private:
 
     // 自動エミッターが呼ぶ内部ヘルパー
     void SpawnFromEmitter();
+    void SpawnFromParams(const EmitterParams& params, const Vector3& origin);
 
 private:
     static const int kMaxParticles = 1024;
@@ -154,4 +167,8 @@ private:
     UINT particleCount_ = 0;
 
     float spawnTimer_ = 0.0f;
+    float simulationTimeScale_ = 1.0f;
+    Vector3 editorPreviewOffset_ = { 0.0f, 0.0f, 0.0f };
+    float lastUpdateCpuTimeMs_ = 0.0f;
+    float lastDrawCpuTimeMs_ = 0.0f;
 };

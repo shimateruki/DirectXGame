@@ -542,8 +542,6 @@ void GameSelectScene::Initialize() {
 	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/stageSelect.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
 	InitializeStageSelectHUD();
-	LightManager::GetInstance()->LoadState(
-		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
@@ -563,6 +561,13 @@ void GameSelectScene::Initialize() {
 	ApplyStageGateStates();
 	UpdateStageSelectDecorations(0.0f);
     
+}
+
+void GameSelectScene::OnActivated() {
+	// 共有ライト状態は先読み中ではなく、ステージセレクトが有効になった時点で適用する。
+	LightManager::GetInstance()->LoadState(
+		ResolveSceneLightPath("Resources/json/light/stageSelect.json"));
+	BaseScene::OnActivated();
 }
 
 void GameSelectScene::Finalize() {
@@ -712,7 +717,7 @@ void GameSelectScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 

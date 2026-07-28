@@ -3,6 +3,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -36,12 +37,15 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "guid": "d4c57acc-54d3-4197-bb51-f02e22df2061",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -68,6 +72,7 @@
             "name": "Stages/block_1",
             "normalMapPath": "",
             "ormMapPath": "",
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -110,6 +115,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -141,14 +147,25 @@
                 0.5799999833106995,
                 1.0
             ],
+            "components": {
+                "MeshEffect": {
+                    "_editorPresent": true,
+                    "primary": "Resources/json/effect/effect_crown_idle_shell.json",
+                    "secondary": "",
+                    "version": 1
+                }
+            },
             "emissive": 1.3900001049041748,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 5,
             "gimmickType": "",
             "gpuParticleName": "",
+            "guid": "79080d52-9c45-40dd-a195-24e298df6d0b",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -190,6 +207,7 @@
             "name": "goal",
             "normalMapPath": "",
             "ormMapPath": "",
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -232,6 +250,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -265,12 +284,15 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "Slime",
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "guid": "d57f4776-c3c8-4064-8ccb-a7143f01d555",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -299,6 +321,7 @@
             "param": {
                 "enemyType": "Slime"
             },
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -307,10 +330,10 @@
                 22.005020141601563
             ],
             "quaternion": [
-                0.7007248401641846,
-                0.12807819247245789,
-                -0.13013091683387756,
-                0.6896713972091675
+                0.0,
+                0.1825871765613556,
+                0.0,
+                0.9831896424293518
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -318,7 +341,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                1.586695671081543,
+                0.0,
                 0.3672344386577606,
                 0.0
             ],
@@ -336,6 +359,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -369,12 +393,15 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.628999948501587,
             "eventID": 0,
             "gimmickType": "Coin",
             "gpuParticleName": "",
+            "guid": "8a7000c9-3ba1-4d58-a4cb-9f93fcfc3de5",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -427,6 +454,7 @@
                 "switchMode": 0,
                 "targetScene": "SELECT"
             },
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -469,6 +497,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -502,12 +531,15 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.628999948501587,
             "eventID": 0,
             "gimmickType": "Coin",
             "gpuParticleName": "",
+            "guid": "b309296d-b938-4c51-b9b8-a79e64090708",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -560,6 +592,7 @@
                 "switchMode": 0,
                 "targetScene": "SELECT"
             },
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -602,6 +635,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -635,12 +669,15 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
+            "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.628999948501587,
             "eventID": 0,
             "gimmickType": "Coin",
             "gpuParticleName": "",
+            "guid": "f3f0dc5b-3f3c-43bb-b821-52606d00179e",
+            "isStatic": false,
             "itemType": "",
             "layer": "Default",
             "localFog": {
@@ -693,6 +730,7 @@
                 "switchMode": 0,
                 "targetScene": "SELECT"
             },
+            "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -731,6 +769,115 @@
                 1.0
             ],
             "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4099999964237213,
+                    0.4099999964237213,
+                    0.4099999964237213
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "ThunderSlime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3f76c8cd-6c16-4019-a0d6-6f2f151c79f7",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "ThunderSlime",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "ThunderSlime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                3.1192665100097656,
+                1.8200008869171143,
+                9.502948760986328
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Object",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
         }
     ]
 }

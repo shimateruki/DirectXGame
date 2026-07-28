@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "99e0163b2c7eef28d353b72079757ee6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_plus.png",
+  "version": 1
+}

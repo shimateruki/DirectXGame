@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "10d531c75eb7e3dac8f10ac75aeaacd4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/flore/flore.dds",
+  "version": 1
+}

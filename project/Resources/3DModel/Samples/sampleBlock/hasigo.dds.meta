@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ef15ff2a04d02a641087ceae81ecfac7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Samples/sampleBlock/hasigo.dds",
+  "version": 1
+}

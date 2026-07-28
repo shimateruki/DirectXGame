@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "947525e6795ad6542851bdbcb1e5889a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/heimen/heimen.obj",
+  "version": 1
+}

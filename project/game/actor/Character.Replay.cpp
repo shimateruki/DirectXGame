@@ -17,6 +17,10 @@ void Character::CaptureReplayCustomState(json& state) const {
     Object3d::CaptureReplayCustomState(state);
     state["characterVelocity"] = ToJson(velocity_);
     state["characterGrounded"] = isGrounded_;
+    state["externalImpulseVelocity"] = ToJson(externalImpulseVelocity_);
+    state["externalImpulseTimer"] = externalImpulseTimer_;
+    state["externalImpulseDuration"] = externalImpulseDuration_;
+    state["externalImpulseVerticalPending"] = externalImpulseVerticalPending_;
 }
 
 void Character::RestoreReplayCustomState(const json& state) {
@@ -25,4 +29,10 @@ void Character::RestoreReplayCustomState(const json& state) {
         velocity_ = ReadVector3(state["characterVelocity"], velocity_);
     }
     isGrounded_ = state.value("characterGrounded", isGrounded_);
+    if (state.contains("externalImpulseVelocity")) {
+        externalImpulseVelocity_ = ReadVector3(state["externalImpulseVelocity"], externalImpulseVelocity_);
+    }
+    externalImpulseTimer_ = state.value("externalImpulseTimer", externalImpulseTimer_);
+    externalImpulseDuration_ = state.value("externalImpulseDuration", externalImpulseDuration_);
+    externalImpulseVerticalPending_ = state.value("externalImpulseVerticalPending", externalImpulseVerticalPending_);
 }

@@ -41,6 +41,7 @@ public:
     ~GameSelectScene() override;
 
     void Initialize() override;
+    void OnActivated() override;
     SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
     void Update(float deltaTime) override;
@@ -57,7 +58,8 @@ public:
 
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+	Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 

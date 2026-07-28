@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d7e8a06643ed2d502ba7702b22458b07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/fade_star_blob.png",
+  "version": 1
+}

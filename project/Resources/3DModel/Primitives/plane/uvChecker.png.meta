@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5be772bffc35a7cac2ddb1b3d2bfe9e1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Primitives/plane/uvChecker.png",
+  "version": 1
+}

@@ -7,12 +7,11 @@
 #include "SRVManager.h"
 #include "engine/utility/math/Math.h" 
 #include <cassert>
+#include <chrono>
 #include <string>
 #include <numbers>
 
 // 乱数とMathインスタンス
-static std::random_device rd;
-static std::mt19937 gen(rd());
 static std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
 static Math math;
 
@@ -45,28 +44,32 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
 /// 自動エミッターが内部で呼ぶSpawn
 /// </summary>
 void ParticleSystem::SpawnFromEmitter() {
+    SpawnFromParams(params_, params_.spawnPosition + editorPreviewOffset_);
+}
+
+void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3& origin) {
     if (particles_.size() >= kMaxParticles) return;
 
     // ---------------------------------------------------
     // ★形状ごとの計算分岐
     // ---------------------------------------------------
-    Vector3 pos = params_.spawnPosition;
-    Vector3 vel = params_.initialVelocity; // 基準速度
+    Vector3 pos = origin;
+    Vector3 vel = params.initialVelocity; // 基準速度
 
-    if (params_.emitterType == EmitterType::Box) {
+    if (params.emitterType == EmitterType::Box) {
         // --- 1. Box (従来通り) ---
-        pos.x += params_.spawnArea.x * dis(gen);
-        pos.y += params_.spawnArea.y * dis(gen);
-        pos.z += params_.spawnArea.z * dis(gen);
+        pos.x += params.spawnArea.x * dis(randomEngine_);
+        pos.y += params.spawnArea.y * dis(randomEngine_);
+        pos.z += params.spawnArea.z * dis(randomEngine_);
 
         // 速度にはランダム性を足す
-        vel.x += params_.velocityRandomness.x * dis(gen);
-        vel.y += params_.velocityRandomness.y * dis(gen);
-        vel.z += params_.velocityRandomness.z * dis(gen);
-    } else if (params_.emitterType == EmitterType::Sphere) {
+        vel.x += params.velocityRandomness.x * dis(randomEngine_);
+        vel.y += params.velocityRandomness.y * dis(randomEngine_);
+        vel.z += params.velocityRandomness.z * dis(randomEngine_);
+    } else if (params.emitterType == EmitterType::Sphere) {
         // --- 2. Sphere (球体) ---
         // ランダムな方向ベクトルを作成
-        Vector3 dir = { dis(gen), dis(gen), dis(gen) };
+        Vector3 dir = { dis(randomEngine_), dis(randomEngine_), dis(randomEngine_) };
 
         // 長さが0にならないようにチェックして正規化
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
@@ -74,7 +77,7 @@ void ParticleSystem::SpawnFromEmitter() {
         else dir = { 0, 1, 0 }; // ゼロなら上へ
 
         // 位置: 中心から半径分ずらす (中身を埋めるなら * dis(gen) ではなく * abs(dis(gen)) など工夫)
-        pos += dir * params_.spawnRadius;
+        pos += dir * params.spawnRadius;
 
         // 速度: 中心から外側に向かって飛ぶ (爆発)
         // initialVelocity.z を「スピード」として扱うと使いやすいです
@@ -82,17 +85,17 @@ void ParticleSystem::SpawnFromEmitter() {
         if (speed == 0) speed = 1.0f; // デフォルトスピード
 
         vel = dir * speed;
-    } else if (params_.emitterType == EmitterType::Cone) {
+    } else if (params.emitterType == EmitterType::Cone) {
         // --- 3. Cone (円錐) ---
         // Y軸(上)向きを基準に、角度分だけランダムに傾ける計算が必要
         // 簡易実装: XとZをランダムにずらして正規化
 
-        float angleRad = params_.coneAngle * (3.14159f / 180.0f);
+        float angleRad = params.coneAngle * (3.14159f / 180.0f);
         float r = std::tan(angleRad); // 広がり具合
 
         Vector3 dir;
-        dir.x = dis(gen) * r;
-        dir.z = dis(gen) * r;
+        dir.x = dis(randomEngine_) * r;
+        dir.z = dis(randomEngine_) * r;
         dir.y = 1.0f; // 上向き
 
         // 正規化
@@ -100,7 +103,7 @@ void ParticleSystem::SpawnFromEmitter() {
         if (len != 0) dir = dir / len;
 
         // 位置: 原点から出るか、少し円状に広げるか
-        pos += dir * (dis(gen) * 0.5f + 0.5f); // 少しばらつかせる
+        pos += dir * (dis(randomEngine_) * 0.5f + 0.5f); // 少しばらつかせる
 
         // 速度: 方向 * スピード
         float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
@@ -113,17 +116,17 @@ void ParticleSystem::SpawnFromEmitter() {
     Particle p;
     p.position = pos;
     p.velocity = vel;
-    p.lifeTime = params_.particleLifetime;
+    p.lifeTime = params.particleLifetime;
     p.currentTime = 0.0f;
-    p.startColor = params_.startColor;
-    p.endColor = params_.endColor;
-    p.startSize = params_.startSize;
-    p.endSize = params_.endSize;
-    p.acceleration = params_.acceleration;
-    p.hdrIntensity = params_.hdrIntensity;
+    p.startColor = params.startColor;
+    p.endColor = params.endColor;
+    p.startSize = params.startSize;
+    p.endSize = params.endSize;
+    p.acceleration = params.acceleration;
+    p.hdrIntensity = params.hdrIntensity;
     // 回転初期化 (前回の実装分)
     p.rotation = 0.0f;
-    float rotSpeedDeg = params_.initialRotationSpeed + dis(gen) * params_.rotationSpeedRandomness;
+    float rotSpeedDeg = params.initialRotationSpeed + dis(randomEngine_) * params.rotationSpeedRandomness;
     p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
 
     particles_.push_back(p);
@@ -179,50 +182,16 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         p.acceleration = params_.acceleration;
         p.hdrIntensity = params_.hdrIntensity;
     // 回転スピード決定 (度数法 -> ラジアン変換)
-    float rotSpeedDeg = params_.initialRotationSpeed + dis(gen) * params_.rotationSpeedRandomness;
+    float rotSpeedDeg = params_.initialRotationSpeed + dis(randomEngine_) * params_.rotationSpeedRandomness;
     p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
         particles_.push_back(p);
     }
 }
 void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& position) {
-    // 上限チェック
-    if (particles_.size() >= kMaxParticles) return;
-
-    Particle p;
-    // 初期状態
-    p.currentTime = 0.0f;
-
-    // 寿命計算
-    // float lifeRandom = dis(gen) * params.lifeTimeRandomness; 
-    p.lifeTime = params.particleLifetime; // 単純化
-
-    // 位置計算
-    Vector3 offset;
-    offset.x = dis(gen) * params.spawnArea.x;
-    offset.y = dis(gen) * params.spawnArea.y;
-    offset.z = dis(gen) * params.spawnArea.z;
-    p.position = position + offset; // 引数のpositionを基準にする
-    
-    // 速度計算
-    p.velocity.x = params.initialVelocity.x + dis(gen) * params.velocityRandomness.x;
-    p.velocity.y = params.initialVelocity.y + dis(gen) * params.velocityRandomness.y;
-    p.velocity.z = params.initialVelocity.z + dis(gen) * params.velocityRandomness.z;
-
-    // 色とサイズ
-    p.startColor = params.startColor;
-    p.endColor = params.endColor;
-    p.startSize = params.startSize;
-    p.endSize = params.endSize;
-    p.rotation = 0.0f; // 最初は0度から (ランダムにしてもOK)
-    p.acceleration = params_.acceleration;
-    p.hdrIntensity = params_.hdrIntensity;
-    // 回転スピード決定 (度数法 -> ラジアン変換して保存)
-    // 3.1415... / 180.0f = 0.01745...
-    float rotSpeedDeg = params.initialRotationSpeed + dis(gen) * params.rotationSpeedRandomness;
-    p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
-
-    // リストに追加
-    particles_.push_back(p);
+    const int count = std::clamp(params.emitCount, 1, kMaxParticles);
+    for (int i = 0; i < count && particles_.size() < kMaxParticles; ++i) {
+        SpawnFromParams(params, position);
+    }
 }
 
 
@@ -232,6 +201,8 @@ void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& pos
 /// パーティクル全体の更新
 /// </summary>
 void ParticleSystem::Update(float deltaTime) {
+    const auto cpuStart = std::chrono::high_resolution_clock::now();
+    deltaTime *= simulationTimeScale_;
 
     // --- 1. エミッター（自動発生）の処理 ---
     if (params_.isEmitting && params_.particlesPerSecond > 0.0f) {
@@ -251,7 +222,11 @@ void ParticleSystem::Update(float deltaTime) {
     // カメラ情報取得
     const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     // カメラが無い場合の安全対策 (必要に応じて)
-    if (!camera) return;
+    if (!camera) {
+        const auto cpuEnd = std::chrono::high_resolution_clock::now();
+        lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
+        return;
+    }
 
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
@@ -353,11 +328,20 @@ void ParticleSystem::Update(float deltaTime) {
 
         ++it;
     }
+    const auto cpuEnd = std::chrono::high_resolution_clock::now();
+    lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 void ParticleSystem::Draw() {
-    if (particleCount_ == 0) return;
+    if (particleCount_ == 0) {
+        lastDrawCpuTimeMs_ = 0.0f;
+        return;
+    }
+
+    const auto cpuStart = std::chrono::high_resolution_clock::now();
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    DirectXCommon* dxCommon = common_->GetDxCommon();
+    dxCommon->StartGpuProfile("Particle CPU pass");
     common_->SetPipeline(commandList, params_.blendMode);
 
     D3D12_VERTEX_BUFFER_VIEW vbvs[] = { vertexBufferView_, instancingBufferView_ };
@@ -368,8 +352,12 @@ void ParticleSystem::Draw() {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
 
     commandList->DrawIndexedInstanced(6, particleCount_, 0, 0, 0);
+    dxCommon->EndGpuProfile("Particle CPU pass");
     RenderStats::GetInstance()->RecordIndexedDraw(6, particleCount_, 2);
     RenderStats::GetInstance()->RecordCpuParticles(particleCount_);
+
+    const auto cpuEnd = std::chrono::high_resolution_clock::now();
+    lastDrawCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
 void ParticleSystem::CreateResources() {
@@ -408,6 +396,28 @@ void ParticleSystem::CreateResources() {
 void ParticleSystem::Clear() {
     particles_.clear();
     particleCount_ = 0;
+    spawnTimer_ = 0.0f;
+}
+
+void ParticleSystem::ResetSimulation(uint32_t randomSeed) {
+    Clear();
+    randomEngine_.seed(randomSeed);
+}
+
+size_t ParticleSystem::GetEstimatedMemoryBytes() const {
+    size_t bytes = particles_.capacity() * sizeof(Particle);
+    ID3D12Resource* resources[] = {
+        vertexResource_.Get(),
+        indexResource_.Get(),
+        instancingResource_.Get(),
+        matrixResource_.Get()
+    };
+    for (ID3D12Resource* resource : resources) {
+        if (resource) {
+            bytes += static_cast<size_t>(resource->GetDesc().Width);
+        }
+    }
+    return bytes;
 }
 
 void ParticleSystem::SetTexture(const std::string& texturePath) {

@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "36013f43ad06049bc4f4c66cc5167d7a",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/GroundShockwave.VS.hlsl",
+  "version": 1
+}

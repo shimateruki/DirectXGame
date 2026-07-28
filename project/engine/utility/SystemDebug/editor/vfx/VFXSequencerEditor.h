@@ -40,4 +40,6 @@ void DrawTimelinePreview();
     float previewRootScale_ = 1.0f;
     float previewPlaybackSpeed_ = 1.0f;
     int lastStagePlayRequestSerial_ = 0;
+    int lastStageStopRequestSerial_ = 0;
+    int lastStageSeekRequestSerial_ = 0;
 };

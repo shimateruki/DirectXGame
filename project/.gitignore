@@ -6,6 +6,7 @@ Resources/json/user_config.json
 /output/
 /docs/
 Resources/.backup/
+!Resources/**/*.meta
 .git.vs-invalid-backup_*
 .git.vs-invalid-backup_*/
 

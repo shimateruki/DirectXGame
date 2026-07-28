@@ -305,7 +305,13 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         const float chargeRate = GetThrowProgress();
         targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 0.92f);
     } else if (throwState_ == ThrowState::LeapThrow) {
-        targetScale = baseScale_;
+        const float progress = GetThrowLeapProgress();
+        const float arc = std::sin(progress * kPi);
+        const float release = SmoothStep01((progress - kThrowReleaseProgress) / (1.0f - kThrowReleaseProgress));
+        const float recoil = std::sin(release * kPi);
+        targetScale.x = baseScale_.x * (1.0f - arc * 0.12f + recoil * 0.08f);
+        targetScale.y = baseScale_.y * (1.0f + arc * 0.24f - recoil * 0.12f);
+        targetScale.z = baseScale_.z * (1.0f + arc * 0.30f + recoil * 0.16f);
     } else if (throwState_ == ThrowState::Landing) {
         const float remainRate = Saturate(throwLandingTimer_ / kThrowLandingDuration);
         const float impact = SmoothStep01(remainRate);
@@ -361,7 +367,9 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         const float remainingRate = Saturate(throwRecoverPoseTimer_ / kThrowRecoverPoseDuration);
         roll += std::sin((1.0f - remainingRate) * kPi * 2.0f) * remainingRate * 0.10f;
     }
-    SetRotation({ pitch, yaw, roll });
+    Vector3 targetRotation = { pitch, yaw, roll };
+    ApplyDamageReactionPose(targetScale, targetRotation);
+    SetRotation(targetRotation);
     SetScale(Math::Lerp(GetScale(), targetScale, (std::min)(1.0f, deltaTime * 12.0f)));
 }
 void EnemyBomber::UpdateHeldBombVisual(float deltaTime) {

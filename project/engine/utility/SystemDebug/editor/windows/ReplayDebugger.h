@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <vector>
 
 class BaseScene;
@@ -39,6 +40,11 @@ public:
     Mode GetMode() const { return mode_; }
     // Main Menu Barから、実行を停止または選択時点から分岐再開します。
     void ToggleSimulationPause();
+
+    // Play開始直前の編集状態を保持し、Stop時に同じSceneインスタンスへ復元します。
+    bool BeginPlayInEditorSnapshot();
+    bool RestorePlayInEditorSnapshot();
+    bool HasPlayInEditorSnapshot() const { return playInEditorSnapshot_.has_value(); }
 
     // 再生停止やシーン再読み込みの直前に、保持オブジェクトを通常管理へ戻します。
     void ResetForSceneChange();
@@ -132,6 +138,7 @@ private:
     BaseScene* activeScene_ = nullptr;
     uint64_t activeSceneGeneration_ = 0;
     std::deque<FrameSnapshot> frames_;
+    std::optional<FrameSnapshot> playInEditorSnapshot_;
     std::size_t cursor_ = 0;
     Mode mode_ = Mode::Idle;
 

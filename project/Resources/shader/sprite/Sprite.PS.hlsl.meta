@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "c5c982f8fced886d77543b40f8334de0",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/sprite/Sprite.PS.hlsl",
+  "version": 1
+}

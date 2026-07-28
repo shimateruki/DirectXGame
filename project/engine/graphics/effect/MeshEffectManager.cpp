@@ -60,6 +60,7 @@ MeshEffectManager* MeshEffectManager::GetInstance() {
 
 void MeshEffectManager::Initialize(Object3dCommon* common) {
     common_ = common;
+    timeScale_ = 1.0f;
 }
 
 void MeshEffectManager::BeginFrame() {
@@ -172,6 +173,7 @@ void MeshEffectManager::Update(float deltaTime) {
         return;
     }
     updatedThisFrame_ = true;
+    deltaTime *= timeScale_;
 
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
@@ -193,6 +195,11 @@ void MeshEffectManager::Update(float deltaTime) {
             ++it;
         }
     }
+}
+
+void MeshEffectManager::UpdateEditorPreviewStep(float deltaTime) {
+    updatedThisFrame_ = false;
+    Update(deltaTime);
 }
 
 void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {

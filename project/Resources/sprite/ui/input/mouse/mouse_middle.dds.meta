@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1fa825436307d62ccaf480814ce15b07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/mouse/mouse_middle.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6d6ccdee2ba1fa30f057805c36e87c75",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/soft_grass/soft_grass_leaf.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "53b04cc8c51903e9b6a3f50f37c18023",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/garasu/material_specularGlossiness-1.dds",
+  "version": 1
+}

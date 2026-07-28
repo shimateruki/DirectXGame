@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d7d28b433afbe9506f90876036974271",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_run.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "82f7df15d40c1dff385d837dca05dede",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/GeneratedTerrain/terrain_test/terrain_test_paint.dds",
+  "version": 1
+}

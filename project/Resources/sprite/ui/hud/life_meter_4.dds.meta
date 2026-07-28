@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9d25e8ae47f78dd7be7be14887fa659b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/life_meter_4.dds",
+  "version": 1
+}

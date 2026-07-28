@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "86a5e3bdd83adbdae100df7eea84174d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/big8.png",
+  "version": 1
+}

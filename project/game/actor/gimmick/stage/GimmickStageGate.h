@@ -17,6 +17,7 @@ public:
     bool IsStageSelectNodeMode() const;
     void SetGateState(bool selected, bool unlocked, bool cleared, bool unlocking = false);
     void SetGateActivation(float activation);
+    void SetTransitionEnabled(bool enabled);
     void TriggerEntryReaction();
     bool IsUnlocked() const { return isUnlocked_; }
 

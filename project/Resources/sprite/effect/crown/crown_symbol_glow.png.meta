@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "842f18102575e72e9000ce17b8956731",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_symbol_glow.png",
+  "version": 1
+}

@@ -2,7 +2,9 @@
 
 #include "IEditable.h"
 #include "engine/utility/math/Math.h"
+#include <cstddef>
 #include <string>
+#include <vector>
 
 class DirectXCommon;
 class Object3d;
@@ -11,6 +13,33 @@ class SceneManager;
 /// パーティクルやメッシュエフェクトを安全に確認するための隔離プレビュー空間を管理する。
 class EffectPreviewStage : public IEditable {
 public:
+    enum class ToolKind {
+        None,
+        CpuParticle,
+        GpuParticle,
+        MeshEffect,
+        VfxSequence,
+        Debris,
+        Trail
+    };
+
+    struct TimelineEvent {
+        std::string label;
+        float startTime = 0.0f;
+        float endTime = 0.0f;
+        Vector4 color = { 0.35f, 0.75f, 1.0f, 1.0f };
+    };
+
+    struct PerformanceMetrics {
+        bool available = false;
+        int particleCount = 0;
+        float cpuTimeMs = 0.0f;
+        float gpuTimeMs = 0.0f;
+        float frameDeltaSeconds = 0.0f;
+        float fps = 0.0f;
+        size_t memoryBytes = 0;
+    };
+
     /// 各エフェクトツールから共有して使うプレビューStageのシングルトンを返す。
     static EffectPreviewStage* GetInstance();
 
@@ -18,16 +47,31 @@ public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void DrawImGui() override;
+    void DrawTimelineWindow();
     std::string GetName() override { return "Effect Preview Stage"; }
 
     bool IsEnabled() const { return enabled_; }
     bool IsLoopEnabled() const { return loopPreview_; }
-    float GetPlaybackSpeed() const { return playbackSpeed_; }
+    float GetPlaybackSpeed() const { return transportPlaying_ ? playbackSpeed_ : 0.0f; }
+    float GetConfiguredPlaybackSpeed() const { return playbackSpeed_; }
+    bool IsTransportPlaying() const { return transportPlaying_; }
     /// 床、グリッド、接地型プレビューが共有する基準位置を返す。
     Vector3 GetGroundPosition() const;
     /// Mesh EffectやParticleを半分埋めずに確認するため、床から中心高さを加えた位置を返す。
     Vector3 GetPreviewPosition() const;
     int GetPlayRequestSerial() const { return playRequestSerial_; }
+    int GetStopRequestSerial() const { return stopRequestSerial_; }
+    int GetSeekRequestSerial() const { return seekRequestSerial_; }
+    float GetSeekTargetTime() const { return seekTargetTime_; }
+    void ReportToolState(
+        ToolKind toolKind,
+        const std::string& title,
+        float currentTime,
+        float duration,
+        bool isPlaying,
+        int activeCount,
+        const std::vector<TimelineEvent>& events = {},
+        const PerformanceMetrics& performance = {});
     /// プレビュー中だけカメラを見やすい位置へ移動し、終了時に戻せるようにする。
     void ApplyCameraOverride();
     void RequestCameraRecenter() { recenterCameraRequested_ = true; }
@@ -56,6 +100,8 @@ private:
     /// プレビュー開始前に保存したカメラ状態へ戻す。
     void RestoreCameraState();
     void PlaceCameraAtPreview();
+    void UpdatePerformanceMeasurement(const PerformanceMetrics& performance);
+    void ResetPerformanceMeasurement(bool clearResult);
 
 private:
     SceneManager* sceneManager_ = nullptr;
@@ -75,6 +121,7 @@ private:
     bool recenterCameraRequested_ = false;
     bool studioLightingApplied_ = false;
     bool hasCapturedLighting_ = false;
+    bool transportPlaying_ = true;
     float playbackSpeed_ = 1.0f;
     float floorSize_ = 20.0f;
     float gridSpacing_ = 1.0f;
@@ -109,5 +156,33 @@ private:
     bool storedSkyboxEnabled_ = false;
     int studioPresetIndex_ = 0;
     int playRequestSerial_ = 0;
+    int stopRequestSerial_ = 0;
+    int seekRequestSerial_ = 0;
     int storedCameraMode_ = 0;
+    ToolKind activeToolKind_ = ToolKind::None;
+    std::string activeToolTitle_ = "プレビュー未選択";
+    float reportedCurrentTime_ = 0.0f;
+    float reportedDuration_ = 1.0f;
+    float seekTargetTime_ = 0.0f;
+    float timelineScrubTime_ = 0.0f;
+    bool reportedPlaying_ = false;
+    bool timelineScrubbing_ = false;
+    float lastDispatchedSeekTarget_ = -1.0f;
+    double lastSeekDispatchTimestamp_ = -1.0;
+    int reportedActiveCount_ = 0;
+    float timelinePixelsPerSecond_ = 220.0f;
+    std::vector<TimelineEvent> reportedEvents_;
+    PerformanceMetrics reportedPerformance_{};
+    PerformanceMetrics measuredPerformance_{};
+    bool performanceMeasurementRunning_ = false;
+    bool performanceMeasurementValid_ = false;
+    int performanceWarmupFrames_ = 30;
+    int performanceSampleFrames_ = 120;
+    int performanceWarmupProgress_ = 0;
+    int performanceSampleProgress_ = 0;
+    double performanceCpuTimeAccumMs_ = 0.0;
+    double performanceGpuTimeAccumMs_ = 0.0;
+    double performanceElapsedSeconds_ = 0.0;
+    double performanceParticleCountAccum_ = 0.0;
+    ToolKind performanceMeasurementTool_ = ToolKind::None;
 };

@@ -6,13 +6,36 @@
 #include "Camera.h"
 #include "GPUParticleManager.h"
 #include "LightManager.h"
+#include "PostEffect.h"
 #include "SceneManager.h"
 #include "ScenePreloader.h"
+#include "Skybox.h"
 #include <algorithm>
 #include <unordered_set>
 
 SceneLoadManifest BaseScene::BuildAsyncLoadManifest() const {
     return {};
+}
+
+void BaseScene::OnActivated() {
+    // 非同期準備中ではなく、現在シーンへ切り替わった時点で描画背景を確定します。
+    LightManager::GetInstance()->ApplySceneClearColor();
+}
+
+void BaseScene::FixedUpdate(float fixedDeltaTime) {
+    auto& objects = GetObjects();
+    Player* player = GetPlayer();
+    bool playerWasUpdated = false;
+
+    for (auto& object : objects) {
+        if (!object || object->IsReplayRemoved()) continue;
+        object->FixedUpdate(fixedDeltaTime);
+        playerWasUpdated = playerWasUpdated || object.get() == player;
+    }
+
+    if (player && !playerWasUpdated && !player->IsReplayRemoved()) {
+        player->FixedUpdate(fixedDeltaTime);
+    }
 }
 
 bool BaseScene::TakePreparedJson(const std::string& path, json& destination) {
@@ -108,6 +131,11 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
     auto& objects = GetObjects();
 
+    if (Skybox* skybox = GetSkybox(); skybox && LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+        skybox->Draw(camera->GetConstantBuffer());
+    }
+
     auto drawObject = [&](Object3d* object, bool transparentPass) {
         if (!object || !object->GetIsVisible()) {
             return;
@@ -115,7 +143,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
 
         const int materialType = object->GetMaterialType();
         const bool isTransparent = (materialType == 1);
-        const bool isSpecialMaterial = (materialType == 7 || (materialType >= 8 && materialType <= 22));
+        const bool isSpecialMaterial = (materialType == 7 || IsSpecialMaterialType(materialType));
         if (isSpecialMaterial || isTransparent != transparentPass) {
             return;
         }
@@ -131,6 +159,42 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     for (auto& object : objects) {
         drawObject(object.get(), true);
     }
+
+    bool hasSpecialMaterial = false;
+    for (const auto& object : objects) {
+        if (object && object->GetIsVisible() && IsSpecialMaterialType(object->GetMaterialType())) {
+            hasSpecialMaterial = true;
+            break;
+        }
+    }
+    if (!hasSpecialMaterial) {
+        return;
+    }
+
+    PostEffect* postEffect = PostEffect::GetInstance();
+    DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+    ID3D12GraphicsCommandList* commandList = dxCommon ? dxCommon->GetCommandList() : nullptr;
+    const int targetTextureIndex = previewBufferIndex == 0
+        ? PostEffect::kCameraPreviewTextureIndex
+        : PostEffect::kCinematicCameraPreviewTextureIndex;
+    if (!postEffect || !commandList ||
+        !postEffect->BeginCameraPreviewSpecialPass(commandList, targetTextureIndex)) {
+        return;
+    }
+
+    const uint32_t depthSrvHandle = postEffect->GetDepthSRVHandle(targetTextureIndex);
+    const uint32_t grabSrvHandle = postEffect->GetGrabSRVHandle(targetTextureIndex);
+    for (auto& object : objects) {
+        if (!object || !object->GetIsVisible() || !IsSpecialMaterialType(object->GetMaterialType())) {
+            continue;
+        }
+        object->DrawSpecialMaterialForCamera(
+            camera,
+            depthSrvHandle,
+            grabSrvHandle,
+            previewBufferIndex);
+    }
+    postEffect->EndCameraPreviewSpecialPass(commandList, targetTextureIndex);
 }
 
 bool BaseScene::DestroyObject(Object3d* object) {
@@ -200,7 +264,7 @@ bool BaseScene::IsAlive(Sprite* sprite) {
 }
 
 bool BaseScene::IsSpecialMaterialType(int materialType) const {
-    return materialType >= 8 && materialType <= 22;
+    return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
 bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const {
@@ -257,7 +321,9 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
 
     bool hasSpecialObjects = false;
     for (auto& obj : objects) {
-        if (obj && obj->GetIsVisible() && IsSpecialMaterialType(obj->GetMaterialType()) && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsVisible() &&
+            (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) &&
+            !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
             hasSpecialObjects = true;
             break;
         }
@@ -268,6 +334,8 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
     }
 
     dxCommon->UpdateGrabTexture();
+    // 特殊マテリアルはScene深度をSRVとして読むため、描画中だけDSVを読み取り状態へ切り替えます。
+    dxCommon->PreDrawLocalFog();
     if (hasSpecialObjects) {
         const uint32_t depthSrvHandle = dxCommon->GetDepthSrvHandle();
         const uint32_t grabSrvHandle = dxCommon->GetGrabSrvHandle();
@@ -322,15 +390,20 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
             case 22:
                 obj->DrawGatePortal(depthSrvHandle, grabSrvHandle);
                 break;
+            case 26:
+                obj->DrawWindOrb(depthSrvHandle, grabSrvHandle);
+                break;
             default:
                 break;
             }
+            obj->DrawOwnedSpecialMaterialVisuals(depthSrvHandle, grabSrvHandle);
         }
     }
 
     if (hasSpecialBullets) {
         bulletManager->DrawSpecial(dxCommon->GetDepthSrvHandle(), dxCommon->GetGrabSrvHandle());
     }
+    dxCommon->PostDrawLocalFog();
     return true;
 }
 

@@ -20,7 +20,8 @@ cbuffer CameraData : register(b0)
     float spriteSheetFps;
     uint spriteSheetLoop;
     uint spriteSheetRandomStart;
-    float2 spriteSheetPadding;
+    uint alignToVelocity;
+    float velocityStretch;
 };
 
 Texture2D tex : register(t1);

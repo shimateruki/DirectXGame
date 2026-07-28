@@ -21,6 +21,19 @@ class BaseEnemy;
 class Player : public Character
 {
 public:
+    enum class EnemyMorphType {
+        None,
+        Slime,
+        Bomber,
+        Bat,
+        BeamDrone,
+        Mushroom,
+        GiantSlime,
+        FireSlime,
+        ThunderSlime,
+        WindSlime
+    };
+
     // ==================================================
     // 基本サイクル
     // ==================================================
@@ -100,6 +113,8 @@ public:
     bool IsLockingOn() const { return isLockingOn_; }
     void SetIsControlActive(bool active) { isControlActive_ = active; }
     bool IsControlActive() const { return isControlActive_; }
+    void SetTutorialSafetyEnabled(bool enabled);
+    bool IsTutorialSafetyEnabled() const { return tutorialSafetyEnabled_; }
 
     uint32_t GetJumpCount() const { return jumpCount_; }
     void IncrementJumpCount() { jumpCount_++; }
@@ -137,10 +152,12 @@ public:
     // ==================================================
     void SetDamageInvincible(bool inv); // ダメージ被弾後の無敵フラグ。
     void SetDashInvincible(bool inv);   // 回避ダッシュ中の無敵フラグ。
+    void StartEvasionInvincibility(float duration); // 能力回避用。攻撃判定を伴わない無敵時間を開始します。
+    void StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration = 1.0f);
     void StartElectricShockFeedback(float duration = 0.78f, float invincibleDuration = 1.0f);
 
-    // どちらか一方でも有効なら、ダメージを受けない状態として扱う
-    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
+    // いずれかの無敵状態が有効なら、ダメージを受けない状態として扱う
+    bool IsInvincible() const { return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_; }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
@@ -149,9 +166,12 @@ public:
     void ReleaseCarriedEnemy(bool restorePose = true);
     Object3d* GetCarriedEnemy() const { return carriedEnemy_; }
     bool IsEnemyMorphed() const { return isEnemyMorphed_; }
+    EnemyMorphType GetEnemyMorphType() const { return enemyMorphType_; }
     bool HasEnemyMorphTimeLimit() const { return isEnemyMorphed_ && enemyMorphHasTimeLimit_; }
     bool IsPinkSlimeMorphed() const;
     float GetEnemyMorphRate() const;
+    bool IsEnemyMorphReleasing() const { return enemyMorphReleaseActive_; }
+    float GetEnemyMorphReleaseRate() const;
 
 protected:
     void CaptureReplayCustomState(json& state) const override;
@@ -179,6 +199,7 @@ private:
     bool cinematicSavedControlActive_ = true;
     uint32_t cinematicSavedCollisionAttribute_ = 0;
     uint32_t cinematicSavedCollisionMask_ = 0;
+    bool tutorialSafetyEnabled_ = false;
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;
@@ -200,6 +221,8 @@ private:
     float damageCooldownTimer_ = 0.0f;
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
+    float evasionInvincibleTimer_ = 0.0f;
+    bool isEvasionInvincible_ = false;
     float invincibleBlinkTimer_ = 0.0f;
     bool damageBlinkVisibilityApplied_ = false;
     bool damageBlinkBodyVisible_ = true;
@@ -233,18 +256,6 @@ private:
     Object3d* aimTargetObject_ = nullptr;
     float carryGlideEffectTimer_ = 0.0f;
 
-    enum class EnemyMorphType {
-        None,
-        Slime,
-        Bomber,
-        Bat,
-        BeamDrone,
-        Mushroom,
-        GiantSlime,
-        FireSlime,
-        ThunderSlime
-    };
-
     EnemyMorphType enemyMorphType_ = EnemyMorphType::None;
     BaseEnemy* enemyMorphSource_ = nullptr;
     bool isEnemyMorphed_ = false;
@@ -253,6 +264,19 @@ private:
     float enemyMorphDuration_ = 5.0f;
     float enemyMorphEffectTimer_ = 0.0f;
     float enemyMorphVisualTimer_ = 0.0f;
+    bool enemyMorphReleaseActive_ = false;
+    bool enemyMorphReleaseBurstStarted_ = false;
+    bool enemyMorphReleaseExpired_ = false;
+    float enemyMorphReleaseTimer_ = 0.0f;
+    float enemyMorphReleaseDuration_ = 0.42f;
+    float enemyMorphReleaseBurstTime_ = 0.11f;
+    float enemyMorphReleaseParticleTimer_ = 0.0f;
+    Vector3 enemyMorphReleasePlayerScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 enemyMorphReleaseVisualScale_ = { 0.5f, 0.5f, 0.5f };
+    Vector3 enemyMorphReleaseStartPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 enemyMorphReleaseDirection_ = { 0.0f, 0.0f, -1.0f };
+    Vector4 enemyMorphReleaseTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    std::unique_ptr<Object3d> enemyMorphReleaseVisual_;
     float electricShockFeedbackTimer_ = 0.0f;
     float electricShockFeedbackEmitTimer_ = 0.0f;
     float electricShockFeedbackTotalDuration_ = 0.0f;
@@ -286,6 +310,11 @@ private:
 
     void StartEnemyMorph(BaseEnemy* enemy);
     void UpdateEnemyMorph(float deltaTime);
+    void BeginEnemyMorphRelease(bool expired);
+    void UpdateEnemyMorphRelease(float deltaTime);
+    void EmitEnemyMorphReleaseBurst();
+    void RestoreEnemyMorphAppearance();
+    void ResetEnemyMorphRelease();
     void CancelEnemyMorph();
     bool ShouldPlayAbsorbEffect(BaseEnemy* enemy) const;
     void BeginAbsorbEffect(BaseEnemy* enemy);

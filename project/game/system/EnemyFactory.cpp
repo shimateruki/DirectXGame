@@ -4,7 +4,9 @@
 #include "EnemyMushroom.h"
 #include "EnemyFireSlime.h"
 #include "EnemyThunderSlime.h"
+#include "EnemyWindSlime.h"
 #include "EnemyGiantSlime.h"
+#include "EnemyPrismSlime.h"
 #include "EnemyBat.h"
 #include "EnemyBeamDrone.h"
 #include <BossCore.h>
@@ -16,20 +18,25 @@
 
 namespace {
 constexpr int kSlimeSoftMaterialType = 25;
+constexpr int kPrismCrystalMaterialType = 27;
 
 bool IsSlimeEnemyType(const std::string& enemyType) {
     return enemyType == "Slime" ||
         enemyType == "Bomber" ||
         enemyType == "FireSlime" ||
         enemyType == "ThunderSlime" ||
-        enemyType == "GiantSlime";
+        enemyType == "WindSlime" ||
+        enemyType == "GiantSlime" ||
+        enemyType == "PrismSlime";
 }
 
 void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
     if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
         return;
     }
-    enemy->SetMaterialType(kSlimeSoftMaterialType);
+    enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime"
+        ? kPrismCrystalMaterialType
+        : kSlimeSoftMaterialType);
 }
 }
 
@@ -97,12 +104,26 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(thunderSlime);
     }
+    else if (enemyName == "WindSlime")
+    {
+        auto windSlime = std::make_unique<EnemyWindSlime>();
+        windSlime->Initialize(common, "Characters/slime_wind");
+
+        newEnemy = std::move(windSlime);
+    }
     else if (enemyName == "GiantSlime")
     {
         auto giantSlime = std::make_unique<EnemyGiantSlime>();
         giantSlime->Initialize(common, "Characters/slime");
 
         newEnemy = std::move(giantSlime);
+    }
+    else if (enemyName == "PrismSlime")
+    {
+        auto prismSlime = std::make_unique<EnemyPrismSlime>();
+        prismSlime->Initialize(common, "Characters/prism_slime");
+
+        newEnemy = std::move(prismSlime);
     }
     else if (enemyName == "Bat")
     {

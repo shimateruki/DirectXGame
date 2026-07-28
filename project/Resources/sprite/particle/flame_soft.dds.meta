@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "461425d113be8deb0fc5a93bcd4da07e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/flame_soft.dds",
+  "version": 1
+}

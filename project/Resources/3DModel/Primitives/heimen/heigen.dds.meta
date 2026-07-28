@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8ec4e469a86fc491af68035d8a670c6b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Primitives/heimen/heigen.dds",
+  "version": 1
+}

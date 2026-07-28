@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "da548beb2ffd9ae225ceef1bf27d5339",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/brazier/brazier_stone.png",
+  "version": 1
+}

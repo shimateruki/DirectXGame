@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b8fe030f9260ad23ebacb481d62bfc12",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/spark_streak.png",
+  "version": 1
+}

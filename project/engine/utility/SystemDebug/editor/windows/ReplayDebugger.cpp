@@ -45,6 +45,105 @@ bool ReplayDebugger::HasFrames() const {
     return !frames_.empty() && GetValidatedActiveScene() != nullptr;
 }
 
+bool ReplayDebugger::BeginPlayInEditorSnapshot() {
+    if (!sceneManager_ || sceneManager_->IsTransitioning()) {
+        return false;
+    }
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    if (!scene) {
+        return false;
+    }
+
+    ResetForSceneChange();
+    activeScene_ = scene;
+    activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
+    cursor_ = 0;
+    timelineTime_ = 0.0;
+    captureAccumulator_ = 0.0f;
+    playbackTime_ = 0.0f;
+    mode_ = Mode::Idle;
+    CaptureFrame(0.0);
+    if (frames_.empty()) {
+        ResetForSceneChange();
+        return false;
+    }
+
+    // 通常のReplay履歴をユーザーが消してもStop復元に影響しないよう、基準フレームを分離保持します。
+    playInEditorSnapshot_ = frames_.front();
+    mode_ = autoRecord_ ? Mode::Recording : Mode::Idle;
+    statusMessage_ = "Play開始直前の編集状態を保持しました。";
+    return true;
+}
+
+bool ReplayDebugger::RestorePlayInEditorSnapshot() {
+    BaseScene* scene = GetValidatedActiveScene();
+    if (!scene || !playInEditorSnapshot_) {
+        return false;
+    }
+
+    // ApplyFrameの既存復元経路を利用するため、独立保持した基準フレームを履歴先頭へ戻します。
+    const FrameSnapshot baseline = *playInEditorSnapshot_;
+    frames_.push_front(baseline);
+    ApplyFrame(0);
+
+    std::unordered_set<uint64_t> baselineObjectIds;
+    baselineObjectIds.reserve(baseline.objects.size());
+    for (const ObjectSnapshot& snapshot : baseline.objects) {
+        baselineObjectIds.insert(snapshot.replayId);
+    }
+
+    std::vector<Object3d*> runtimeObjects;
+    for (auto& object : scene->GetObjects()) {
+        if (!object || object->IsEditorInternal()) {
+            continue;
+        }
+        if (!baselineObjectIds.contains(object->EnsureReplayId())) {
+            runtimeObjects.push_back(object.get());
+        }
+    }
+    for (Object3d* object : runtimeObjects) {
+        if (!object->IsReplayRetained()) {
+            scene->DestroyObject(object);
+        }
+    }
+
+    std::unordered_set<uint64_t> baselineSpriteIds;
+    baselineSpriteIds.reserve(baseline.sprites.size());
+    for (const SpriteSnapshot& snapshot : baseline.sprites) {
+        baselineSpriteIds.insert(snapshot.replayId);
+    }
+
+    std::vector<Sprite*> currentSprites;
+    scene->CollectReplaySprites(currentSprites);
+    std::unordered_set<Sprite*> uniqueSprites;
+    std::vector<Sprite*> runtimeSprites;
+    for (Sprite* sprite : currentSprites) {
+        if (!sprite || !uniqueSprites.insert(sprite).second) {
+            continue;
+        }
+        if (!baselineSpriteIds.contains(sprite->EnsureReplayId())) {
+            runtimeSprites.push_back(sprite);
+        }
+    }
+    for (Sprite* sprite : runtimeSprites) {
+        if (sprite->IsReplayRetained()) {
+            continue;
+        }
+        if (!scene->DestroySprite(sprite)) {
+            // 派生Sceneが個別unique_ptrで持つSpriteは共通配列から削除できないため、無効状態へ戻します。
+            sprite->SetParent(nullptr, false);
+            sprite->SetReplayRemoved(true);
+            sprite->SetVisible(false);
+        }
+    }
+
+    ClearTransientRuntime();
+    ReleaseRetainedObjects();
+    ResetForSceneChange();
+    return true;
+}
+
 void ReplayDebugger::ToggleSimulationPause() {
     if (!HasFrames()) {
         if (!frames_.empty()) {
@@ -463,7 +562,7 @@ void ReplayDebugger::StepCursor(int direction) {
 }
 
 void ReplayDebugger::ClearHistory(bool continueRecording) {
-    if (!continueRecording) {
+    if (!continueRecording && !playInEditorSnapshot_) {
         ReleaseRetainedObjects();
     }
     frames_.clear();
@@ -477,6 +576,10 @@ void ReplayDebugger::ClearHistory(bool continueRecording) {
     selectedReplayId_ = 0;
     selectedSpriteReplayId_ = 0;
     statusMessage_ = "リプレイ履歴をクリアしました。";
+    if (playInEditorSnapshot_) {
+        frames_.push_back(*playInEditorSnapshot_);
+        estimatedMemoryBytes_ = playInEditorSnapshot_->estimatedBytes;
+    }
     mode_ = continueRecording && GetValidatedActiveScene() ? Mode::Recording : Mode::Idle;
     if (mode_ == Mode::Recording) {
         CaptureFrame(0.0);
@@ -532,6 +635,7 @@ void ReplayDebugger::ClearTransientRuntime() {
 void ReplayDebugger::ResetForSceneChange() {
     ReleaseRetainedObjects();
     frames_.clear();
+    playInEditorSnapshot_.reset();
     activeScene_ = nullptr;
     activeSceneGeneration_ = 0;
     cursor_ = 0;

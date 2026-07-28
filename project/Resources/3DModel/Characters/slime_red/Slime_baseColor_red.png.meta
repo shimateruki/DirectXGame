@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7ce8035a9e40b9e153124d033f588b3d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slime_red/Slime_baseColor_red.png",
+  "version": 1
+}

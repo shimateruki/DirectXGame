@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c3e19d6fd7053ee29561980bf8ad27a2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/fade_slime_blob.png",
+  "version": 1
+}

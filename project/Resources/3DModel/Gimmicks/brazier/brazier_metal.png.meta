@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e3aec87f6ced0fd7437243fc59c5dbdb",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/brazier/brazier_metal.png",
+  "version": 1
+}

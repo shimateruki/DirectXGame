@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <MeshEffectManager.h>
 #include "EffectPreviewStage.h"
+#include "EditorManager.h"
 
 using json = nlohmann::json;
 static const char* kEasingNames[] = {
@@ -153,10 +154,27 @@ void MeshEffectEditor::Update(float deltaTime) {
     }
 
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
-    bool usePreviewStage = previewStage && previewStage->IsEnabled();
+    const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
     if (usePreviewStage && previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
         lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
         forcePlayRequest_ = true;
+    }
+    if (usePreviewStage && previewStage->GetStopRequestSerial() != lastStageStopRequestSerial_) {
+        lastStageStopRequestSerial_ = previewStage->GetStopRequestSerial();
+        for (auto* fx : activePreviews) {
+            fx->Play(editLifetime_);
+            fx->Update(editLifetime_);
+        }
+        forcePlayRequest_ = false;
+    }
+    if (usePreviewStage && previewStage->GetSeekRequestSerial() != lastStageSeekRequestSerial_) {
+        lastStageSeekRequestSerial_ = previewStage->GetSeekRequestSerial();
+        const float seekTime = std::clamp(previewStage->GetSeekTargetTime(), 0.0f, (std::max)(editLifetime_, 0.01f));
+        for (auto* fx : activePreviews) {
+            fx->Play(editLifetime_);
+            fx->Update(seekTime);
+        }
     }
 
     Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
@@ -196,7 +214,8 @@ void MeshEffectEditor::Update(float deltaTime) {
         baseRot.y += targetWorldY;
     }
     // 再生リクエストまたは自動ループの同期
-    bool loopPreview = isAutoLoop_ || (usePreviewStage && previewStage->IsLoopEnabled());
+    bool loopPreview = isAutoLoop_ ||
+        (usePreviewStage && previewStage->IsLoopEnabled() && previewStage->IsTransportPlaying());
     if (forcePlayRequest_ || (loopPreview && !activePreviews.empty() && !activePreviews[0]->IsPlaying())) {
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
@@ -270,6 +289,23 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->Update(timeStep);
         fx->UpdateLocalMatrix();
         fx->UpdateWorldMatrix();
+    }
+
+    if (usePreviewStage) {
+        const float duration = (std::max)(editLifetime_, 0.01f);
+        const float currentTime = previewEffect_ ?
+            std::clamp(previewEffect_->GetCurrentTime(), 0.0f, duration) : 0.0f;
+        std::vector<EffectPreviewStage::TimelineEvent> events;
+        events.push_back({ "Scale / color", 0.0f, duration, Vector4{ 0.9f, 0.45f, 1.0f, 1.0f } });
+        events.push_back({ "Reveal", 0.0f, duration, Vector4{ 0.35f, 0.8f, 1.0f, 1.0f } });
+        previewStage->ReportToolState(
+            EffectPreviewStage::ToolKind::MeshEffect,
+            "Mesh Effect",
+            currentTime,
+            duration,
+            previewStage->IsTransportPlaying(),
+            static_cast<int>(activePreviews.size()),
+            events);
     }
 }
 void MeshEffectEditor::Draw() {

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "83f550c9a559347d9c0b8a501a5b9367",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/death_spotlight.dds",
+  "version": 1
+}

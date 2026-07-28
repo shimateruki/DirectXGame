@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f83ffe145811530362cf17043413b45b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/particle.png",
+  "version": 1
+}

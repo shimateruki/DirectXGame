@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cbd9252c85334f78e09a2a3a055c4619",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/water_flow_noise.png",
+  "version": 1
+}

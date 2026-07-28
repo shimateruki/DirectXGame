@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e0fe36e9e1028c4ff93790bc3e16416e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/Semicircle/Semicircle.gltf",
+  "version": 1
+}

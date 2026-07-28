@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e0f5bca8adf9c484bc8276fd685502e0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/crown_stage_gate/crown_stage_gate_v2_shadow.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c09e99913ee450e434136f88365defd1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Samples/sample/monsterBall.dds",
+  "version": 1
+}

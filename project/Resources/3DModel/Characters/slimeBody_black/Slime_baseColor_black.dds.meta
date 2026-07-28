@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cf9cdd39166de9be81a90d144c13346f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_black/Slime_baseColor_black.dds",
+  "version": 1
+}

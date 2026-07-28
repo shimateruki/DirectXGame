@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "enemyType": "Slime",
+  "displayName": "通常スライム",
+  "attacks": [
+    {
+      "id": "dive_slam",
+      "displayName": "溜めジャンプ急降下",
+      "targeting": { "minRange": 0.35, "maxRange": 20.0, "radius": 1.35 },
+      "timing": { "windup": 1.35, "active": 0.46, "recovery": 0.24, "cooldown": 0.0, "warningLead": 0.18 },
+      "combat": { "damage": 1.0 },
+      "movement": { "minSpeed": 22.0, "maxSpeed": 40.0, "lifetime": 0.0 },
+      "preview": { "targetDistance": 6.0, "duration": 4.6 },
+      "presentation": {
+        "animation": "",
+        "windupVfx": "Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+        "activeVfx": "Resources/json/effect/effect_pink_slime_dive_streak.json",
+        "impactVfx": "Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
+        "audioCue": ""
+      }
+    }
+  ]
+}

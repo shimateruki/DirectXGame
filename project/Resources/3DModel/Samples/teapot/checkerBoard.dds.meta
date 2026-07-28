@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "da7c112203226b7eef24c3f748f90d72",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Samples/teapot/checkerBoard.dds",
+  "version": 1
+}

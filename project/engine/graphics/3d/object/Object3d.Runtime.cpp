@@ -338,6 +338,29 @@ const GameplayLinkComponent* Object3d::GetGameplayLinkComponent() const {
     return gameplayLinkComponent_ ? &*gameplayLinkComponent_ : nullptr;
 }
 
+NavAgentComponent* Object3d::EnsureNavAgentComponent() {
+    if (!navAgentComponent_) {
+        navAgentComponent_.emplace();
+    }
+    SetComponentPresenceMarker(std::string(kNavAgentComponentType), true);
+    return &*navAgentComponent_;
+}
+
+bool Object3d::RemoveNavAgentComponent() {
+    if (!navAgentComponent_) return false;
+    navAgentComponent_.reset();
+    SetComponentPresenceMarker(std::string(kNavAgentComponentType), false);
+    return true;
+}
+
+NavAgentComponent* Object3d::GetNavAgentComponent() {
+    return navAgentComponent_ ? &*navAgentComponent_ : nullptr;
+}
+
+const NavAgentComponent* Object3d::GetNavAgentComponent() const {
+    return navAgentComponent_ ? &*navAgentComponent_ : nullptr;
+}
+
 void Object3d::SetEventID(int id) {
     if (!gameplayLinkComponent_ && id < 0) return;
     EnsureGameplayLinkComponent()->SetEventId(id);
@@ -365,6 +388,7 @@ std::vector<Object3d::BuiltInComponentInfo> Object3d::GetBuiltInComponentInfos()
         { kMeshEffectComponentType, "Mesh Effect", meshEffectComponent_.has_value(), true },
         { kPathMoverComponentType, "Path Mover", pathMoverComponent_.has_value(), true },
         { kGameplayLinkComponentType, "Gameplay Link", gameplayLinkComponent_.has_value(), true },
+        { kNavAgentComponentType, "Nav Agent", navAgentComponent_.has_value(), true },
     };
 }
 
@@ -384,6 +408,7 @@ const void* Object3d::FindBuiltInComponent(std::string_view typeId) const {
     if (typeId == kMeshEffectComponentType) return GetMeshEffectComponent();
     if (typeId == kPathMoverComponentType) return GetPathMoverComponent();
     if (typeId == kGameplayLinkComponentType) return GetGameplayLinkComponent();
+    if (typeId == kNavAgentComponentType) return GetNavAgentComponent();
     return nullptr;
 }
 
@@ -459,6 +484,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 4. イベント関連
     this->eventType_ = other->eventType_;
     this->gameplayLinkComponent_ = other->gameplayLinkComponent_;
+    this->navAgentComponent_ = other->navAgentComponent_;
 
     // 5. Stats (Param)
     this->param_ = other->param_;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0b8a37e59ae743953f7eab03f2791a5e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/crown/Crown_baseColor.png",
+  "version": 1
+}

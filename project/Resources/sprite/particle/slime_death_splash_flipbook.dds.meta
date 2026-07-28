@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "52ef33a666caaaf181af75d790837569",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/slime_death_splash_flipbook.dds",
+  "version": 1
+}

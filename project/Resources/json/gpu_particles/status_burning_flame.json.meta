@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "7206b1a3b7a21db559ae9f31b3887e40",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/status_burning_flame.json",
+  "version": 1
+}

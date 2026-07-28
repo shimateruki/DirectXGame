@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "881b65680a0d3ff7ad822ad4e8e57686",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/fade/fade_slime_ring.png",
+  "version": 1
+}

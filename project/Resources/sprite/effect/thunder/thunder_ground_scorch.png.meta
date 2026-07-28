@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5ef1030a80b84a5e97c3ed3cce3b0ee0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/thunder/thunder_ground_scorch.png",
+  "version": 1
+}

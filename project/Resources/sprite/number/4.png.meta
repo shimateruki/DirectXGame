@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3e39bc4880e958ca44a5dd28b60951f4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/4.png",
+  "version": 1
+}

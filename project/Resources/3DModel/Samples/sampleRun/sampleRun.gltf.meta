@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9529dc634cd83172826fd3fef8f5480f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Samples/sampleRun/sampleRun.gltf",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "4b61d27a68554448a8a6d404853451e5",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/WindOrb.PS.hlsl",
+  "version": 1
+}

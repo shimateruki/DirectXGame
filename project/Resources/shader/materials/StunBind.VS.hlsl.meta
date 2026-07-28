@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "f2896a41f4b7e2cde4cc1c83bda30ccb",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/StunBind.VS.hlsl",
+  "version": 1
+}

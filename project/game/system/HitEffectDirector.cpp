@@ -24,6 +24,11 @@ constexpr const char* kBombSmokePreset = "hit_bomb_black_smoke";
 constexpr const char* kBombDebrisPreset = "bomb_hit_fragment_burst";
 constexpr const char* kEnemyAbilityPreset = "hit_enemy_ability";
 constexpr const char* kThunderShockPreset = "thunder_slime_idle_spark";
+constexpr const char* kPlayerFireFlamePreset = "hit_player_fire_flame";
+constexpr const char* kPlayerFireEmberPreset = "hit_player_fire_embers";
+constexpr const char* kPlayerExplosionCorePreset = "hit_player_explosion_core";
+constexpr const char* kPlayerExplosionSparkPreset = "hit_player_explosion_sparks";
+constexpr const char* kPlayerExplosionSmokePreset = "hit_player_explosion_smoke";
 constexpr const char* kDamagePuniBurstSequence = "damage_puni_burst_cue";
 constexpr const char* kSlimeElasticSequence = "slime_elastic_hit_cue";
 constexpr const char* kPullBindSequence = "pull_bind_cue";
@@ -32,6 +37,9 @@ constexpr const char* kThrowSlamSequence = "throw_slam_cue";
 constexpr const char* kBombExplosionSequence = "bomb_explosion_cue";
 constexpr const char* kEnemyAbilitySequence = "enemy_ability_hit_cue";
 constexpr float kGroundEffectLift = 0.035f;
+
+bool IsTinyPlanar(const Vector3& value);
+Vector3 NormalizePlanar(Vector3 value);
 
 void SpawnThunderShockHitBurst(Object3d* target) {
     auto* manager = GPUParticleManager::GetInstance();
@@ -59,6 +67,56 @@ void SpawnThunderShockHitBurst(Object3d* target) {
         pos.y += std::sin(angle * 1.37f) * verticalRadius;
         manager->Emit(kThunderShockPreset, pos);
     }
+}
+
+Vector3 ResolveBodyHitPosition(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    Vector3 awayDirection = knockbackVelocity;
+    awayDirection.y = 0.0f;
+    if (IsTinyPlanar(awayDirection) && target && attacker) {
+        awayDirection = target->GetWorldPosition() - attacker->GetWorldPosition();
+        awayDirection.y = 0.0f;
+    }
+    awayDirection = NormalizePlanar(awayDirection);
+
+    const Vector3 scale = target ? target->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
+    const float bodyScale = (std::max)({ 1.0f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    Vector3 position = target ? target->GetWorldPosition() : Vector3{};
+    position += awayDirection * bodyScale * 0.34f;
+    position.y += (std::max)(0.56f, std::abs(scale.y) * 0.44f);
+    return position;
+}
+
+void SpawnFireDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    auto* manager = GPUParticleManager::GetInstance();
+    if (!target || !manager || !manager->IsInitialized()) {
+        return;
+    }
+
+    const Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
+    Vector3 direction = knockbackVelocity;
+    direction.y = (std::max)(direction.y, 0.55f);
+    if (Math::Length(direction) <= 0.001f) {
+        direction = { 0.0f, 1.0f, 0.0f };
+    }
+    manager->EmitDirected(kPlayerFireFlamePreset, position, direction, 1.0f);
+    manager->EmitDirected(kPlayerFireEmberPreset, position, direction, 1.0f);
+}
+
+void SpawnExplosionDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    auto* manager = GPUParticleManager::GetInstance();
+    if (!target || !manager || !manager->IsInitialized()) {
+        return;
+    }
+
+    const Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
+    Vector3 direction = knockbackVelocity;
+    direction.y = (std::max)(direction.y, 0.42f);
+    if (Math::Length(direction) <= 0.001f) {
+        direction = { 0.0f, 1.0f, 0.0f };
+    }
+    manager->EmitDirected(kPlayerExplosionCorePreset, position, direction, 1.0f);
+    manager->EmitDirected(kPlayerExplosionSparkPreset, position, direction, 1.0f);
+    manager->EmitDirected(kPlayerExplosionSmokePreset, position, { 0.0f, 1.0f, 0.0f }, 1.0f);
 }
 
 bool IsTinyPlanar(const Vector3& value) {
@@ -146,15 +204,27 @@ void HitEffectDirector::SpawnEnemyAbilityHit(const Vector3& position) {
     VFXSequencer::PlayOneShot(kEnemyAbilitySequence, position);
 }
 
-void HitEffectDirector::SpawnDamageEventHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+void HitEffectDirector::SpawnDamageEventHit(
+    Object3d* target,
+    Object3d* attacker,
+    const Vector3& knockbackVelocity,
+    DamageType damageType) {
     if (!target || !attacker) {
         return;
     }
 
     const std::string attackerClass = attacker->GetClassName();
     const std::string targetClass = target->GetClassName();
-    if (attacker->GetEnemyType() == "ThunderSlime" && targetClass == "Player") {
+    if (damageType == DamageType::Fire) {
+        SpawnFireDamageHit(target, attacker, knockbackVelocity);
+        return;
+    }
+    if (damageType == DamageType::Electric) {
         SpawnThunderShockHitBurst(target);
+        return;
+    }
+    if (damageType == DamageType::Explosion) {
+        SpawnExplosionDamageHit(target, attacker, knockbackVelocity);
         return;
     }
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "739578fa37b878e6608004329f0feab1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/wind_slime_hurt.png",
+  "version": 1
+}

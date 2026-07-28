@@ -14,12 +14,19 @@ struct BulletVisualConfig {
     Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     float emissive = 1.0f;
     float visualScale = 1.0f;
+    float waveSpeed = 2.0f;
+    float waveHeight = 0.5f;
+    float waveFrequency = 1.5f;
     float effectType = 0.0f;
     float effectScale = 1.0f;
     float effectSoftness = 0.55f;
     float effectIntensity = 1.0f;
     float billboardScale = 0.55f;
     std::string texturePath = "";
+    std::string trailPreset = "";
+    std::string impactPreset = "";
+    float trailInterval = 0.05f;
+    float trailSpeedScale = 1.0f;
 };
 
 /// <summary>
@@ -60,7 +67,9 @@ public:
     void Fire(const Vector3& pos, const Vector3& vel,
         uint32_t attr, uint32_t mask,
         const std::string& model = "Primitives/sphere", float radius = 0.2f, float life = 120,
-        const BulletVisualConfig& visualConfig = {});
+        const BulletVisualConfig& visualConfig = {}, float damage = 1.0f,
+        const StatusEffectApplication& statusEffect = {},
+        DamageType damageType = DamageType::Physical);
 
     const std::list<std::unique_ptr<Bullet>>& GetBullets() const { return bullets_; }
 

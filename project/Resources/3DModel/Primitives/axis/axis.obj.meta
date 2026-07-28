@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a43f00d33e00c9fbeb7ecb1702514c17",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Primitives/axis/axis.obj",
+  "version": 1
+}

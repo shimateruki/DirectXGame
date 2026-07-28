@@ -3,6 +3,7 @@
         {
             "animation": {
                 "animName": "",
+                "animatorController": "",
                 "isAnimLoop": true
             },
             "camera": {
@@ -42,20 +43,22 @@
             },
             "enemyType": "",
             "gimmickType": "",
+            "guid": "8f34c232-0a4e-41d0-b70e-eec6e8b40dd6",
             "itemType": "",
             "layer": "Default",
             "name": "Cinematic_Camera_01",
+            "parentGuid": "",
             "parentName": "",
             "position": [
                 -2.1330907344818115,
                 10.221175193786621,
-                -10.0
+                -3.397515296936035
             ],
             "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0.1099008321762085,
+                -0.6298637390136719,
+                0.13216210901737213,
+                0.7574474811553955
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -63,15 +66,15 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
-                -0.0,
-                0.0
+                -1.634016086882184e-07,
+                -1.3873826265335083,
+                0.3454892337322235
             ],
             "saveCategory": "Camera",
             "scale": [
-                1.0,
-                1.0,
-                1.0
+                0.9999995231628418,
+                0.9999997615814209,
+                0.9999995827674866
             ],
             "tag": "",
             "type": "Camera"

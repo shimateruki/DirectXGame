@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "30ceb50ea00e41fcaba44d736bbce3b0",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/particle/GPUParticlePS.hlsl",
+  "version": 1
+}

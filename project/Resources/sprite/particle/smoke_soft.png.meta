@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dab31d6b225ca8eef1f352b73c64fd38",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/smoke_soft.png",
+  "version": 1
+}

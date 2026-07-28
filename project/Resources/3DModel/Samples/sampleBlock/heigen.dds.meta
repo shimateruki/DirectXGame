@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "69b32ce30fec6da1d3330c5e32175cf0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Samples/sampleBlock/heigen.dds",
+  "version": 1
+}

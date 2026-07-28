@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9467eadb0332f2e09c9fef93c82704b7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/crown/crown_twinkle.dds",
+  "version": 1
+}

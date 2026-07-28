@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "18c9986a9f085fe2b45e63797472f573",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/giant_slime_hurt.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "197cdc49f7f7a26d64ee8caa415c149f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/glow_core.dds",
+  "version": 1
+}

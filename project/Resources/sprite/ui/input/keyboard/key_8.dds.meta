@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bf24f0c845f1eb4cc04f7850fd528c14",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/input/keyboard/key_8.dds",
+  "version": 1
+}

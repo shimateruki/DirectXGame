@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "29ce9f8fe18c8614a5212a807b775ffe",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/wind_slime.png",
+  "version": 1
+}

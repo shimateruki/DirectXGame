@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "e7c34eaeb8b9a5203d7401e97477097a",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/LaserBeam.VS.hlsl",
+  "version": 1
+}

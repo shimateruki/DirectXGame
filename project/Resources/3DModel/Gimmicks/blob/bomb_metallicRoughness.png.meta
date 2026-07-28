@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5e460ee7a52a8b6a25480eced4115d12",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/blob/bomb_metallicRoughness.png",
+  "version": 1
+}

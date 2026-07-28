@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "20a6739977a85a23e91ed25fe9ec95e2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/PBR/Albedo/bomb_break_block_albedo.dds",
+  "version": 1
+}

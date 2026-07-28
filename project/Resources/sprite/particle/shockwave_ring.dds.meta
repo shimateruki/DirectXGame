@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "23417611501f33fc5e7283e865565337",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/particle/shockwave_ring.dds",
+  "version": 1
+}

@@ -11,8 +11,10 @@
 #include "GPUParticleManager.h"
 #include "VFXSequencer.h"
 #include "HitEffectDirector.h"
+#include "BaseEnemy.h"
 #include <PlayerState.h>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 void PlayCrownGetPresentation(Object3d* crownObject) {
@@ -22,10 +24,29 @@ void PlayCrownGetPresentation(Object3d* crownObject) {
 
     VFXSequencer::PlayOneShot("crown_get_cue", crownObject->GetWorldPosition());
 }
+
+DamageType ResolveDamageType(const DamageEvent& event) {
+    if (event.damageType != DamageType::Physical || !event.attacker) {
+        return event.damageType;
+    }
+
+    const std::string& enemyType = event.attacker->GetEnemyType();
+    if (enemyType == "FireSlime") {
+        return DamageType::Fire;
+    }
+    if (enemyType == "ThunderSlime") {
+        return DamageType::Electric;
+    }
+    if (enemyType == "Bomb") {
+        return DamageType::Explosion;
+    }
+    return DamageType::Physical;
+}
 }
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
+    activeStatusEffects_.clear();
 
     // --------------------------------------------------------
     // ① プレイヤーがギミック等に触れたときのイベント (既存のまま)
@@ -165,10 +186,8 @@ void GameRule::Initialize(BaseScene* scene) {
         if (playerTarget && playerTarget->IsCinematicLocked()) {
             return;
         }
-        const bool isThunderSlimePlayerHit =
-            playerTarget && event.attacker && event.attacker->GetEnemyType() == "ThunderSlime";
-
-        HitEffectDirector::SpawnDamageEventHit(event.target, event.attacker, event.knockbackVelocity);
+        const DamageType damageType = ResolveDamageType(event);
+        const bool isElectricPlayerHit = playerTarget && damageType == DamageType::Electric;
 
         float finalDamage = event.damageAmount;
         if (event.attacker && event.attacker->param_.has_value()) {
@@ -176,14 +195,49 @@ void GameRule::Initialize(BaseScene* scene) {
         }
 
         // 汎用関数 ApplyDamage を呼ぶ！
-        ApplyDamage(event.target, finalDamage);
+        const bool damageApplied = ApplyDamage(event.target, finalDamage);
+        if (!damageApplied) {
+            return;
+        }
 
-        if (isThunderSlimePlayerHit) {
+        HitEffectDirector::SpawnDamageEventHit(
+            event.target,
+            event.attacker,
+            event.knockbackVelocity,
+            damageType);
+
+        if (BaseEnemy* enemyTarget = dynamic_cast<BaseEnemy*>(event.target)) {
+            enemyTarget->PlayDamageReaction(event.attacker, event.knockbackVelocity, event.damageAmount);
+        }
+
+        if (event.statusEffect.IsValid()) {
+            ApplyStatusEffect(event.target, event.statusEffect,
+                event.attacker && event.attacker->param_.has_value()
+                    ? (std::max)(0.0f, event.attacker->param_->attackPower)
+                    : 1.0f);
+        }
+
+        if (isElectricPlayerHit) {
             playerTarget->StartElectricShockFeedback(0.78f, 1.0f);
+        }
+        else if (playerTarget) {
+            const bool hasKnockback =
+                std::abs(event.knockbackVelocity.x) > 0.001f ||
+                std::abs(event.knockbackVelocity.y) > 0.001f ||
+                std::abs(event.knockbackVelocity.z) > 0.001f;
+            if (hasKnockback || damageType != DamageType::Physical) {
+                Vector3 reactionDirection = event.knockbackVelocity;
+                reactionDirection.y = 0.0f;
+                if (Math::Length(reactionDirection) <= 0.001f && event.attacker) {
+                    reactionDirection = event.target->GetWorldPosition() - event.attacker->GetWorldPosition();
+                    reactionDirection.y = 0.0f;
+                }
+                playerTarget->StartDamageFeedback(reactionDirection, 1.0f);
+            }
         }
 
         // ノックバック（吹き飛ばし）があれば適用
-        if (!isThunderSlimePlayerHit &&
+        if (!isElectricPlayerHit &&
             (std::abs(event.knockbackVelocity.x) > 0.001f ||
             std::abs(event.knockbackVelocity.y) > 0.001f ||
             std::abs(event.knockbackVelocity.z) > 0.001f))
@@ -213,13 +267,114 @@ void GameRule::Initialize(BaseScene* scene) {
     });
 }
 
+void GameRule::Update(float deltaTime) {
+    if (!scene_ || deltaTime <= 0.0f) {
+        return;
+    }
+
+    for (auto it = activeStatusEffects_.begin(); it != activeStatusEffects_.end();) {
+        ActiveStatusEffect& status = *it;
+        if (!IsStatusTargetAlive(status.target)) {
+            it = activeStatusEffects_.erase(it);
+            continue;
+        }
+
+        status.remainingTime -= deltaTime;
+        status.tickTimer -= deltaTime;
+        status.visualTimer -= deltaTime;
+
+        if (status.visualTimer <= 0.0f && !status.vfxPreset.empty()) {
+            EmitStatusVisual(status.target, status.vfxPreset);
+            status.visualTimer += 0.12f;
+        }
+
+        int processedTicks = 0;
+        while (status.tickTimer <= 0.0f && status.remainingTime > 0.0f && processedTicks < 4) {
+            ApplyDamage(status.target, status.tickDamage);
+            status.tickTimer += status.tickInterval;
+            ++processedTicks;
+        }
+
+        if (status.remainingTime <= 0.0f || !IsStatusTargetAlive(status.target)) {
+            it = activeStatusEffects_.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale) {
+    if (!target || !application.IsValid()) {
+        return;
+    }
+
+    const float interval = (std::max)(0.05f, application.tickInterval);
+    const float tickDamage = (std::max)(0.0f, application.tickDamage * damageScale);
+    const auto existing = std::find_if(activeStatusEffects_.begin(), activeStatusEffects_.end(),
+        [target, &application](const ActiveStatusEffect& status) {
+            return status.target == target && status.type == application.type;
+        });
+
+    if (existing != activeStatusEffects_.end()) {
+        existing->remainingTime = (std::max)(existing->remainingTime, application.duration);
+        existing->tickInterval = interval;
+        existing->tickTimer = (std::min)(existing->tickTimer, interval);
+        existing->tickDamage = (std::max)(existing->tickDamage, tickDamage);
+        if (!application.vfxPreset.empty()) {
+            existing->vfxPreset = application.vfxPreset;
+        }
+        return;
+    }
+
+    ActiveStatusEffect status;
+    status.target = target;
+    status.type = application.type;
+    status.remainingTime = application.duration;
+    status.tickTimer = interval;
+    status.tickInterval = interval;
+    status.tickDamage = tickDamage;
+    status.visualTimer = 0.0f;
+    status.vfxPreset = application.vfxPreset;
+    activeStatusEffects_.push_back(std::move(status));
+}
+
+bool GameRule::IsStatusTargetAlive(Object3d* target) const {
+    if (!target || !scene_) {
+        return false;
+    }
+    if (target != scene_->GetPlayer() && !scene_->IsAlive(target)) {
+        return false;
+    }
+    if (target->isDead || !target->GetIsVisible()) {
+        return false;
+    }
+    return !target->param_.has_value() || target->param_->hp > 0.0f;
+}
+
+void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName) const {
+    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    if (!target || !particles || !particles->IsInitialized()) {
+        return;
+    }
+
+    const AABB aabb = target->GetAABB();
+    Vector3 position = target->GetWorldPosition();
+    const float height = (std::max)(0.25f, aabb.max.y - aabb.min.y);
+    position.y = aabb.min.y + height * 0.48f;
+    particles->EmitDirected(presetName, position, { 0.0f, 1.0f, 0.0f }, 1.0f);
+}
+
 // ▼ 汎用ダメージ関数 
-void GameRule::ApplyDamage(Object3d* target, float damage) {
+bool GameRule::ApplyDamage(Object3d* target, float damage) {
+    if (!target) {
+        return false;
+    }
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);
         // 被弾無敵または回避ダッシュ中ならダメージを無効化
         if (player->IsInvincible() || player->IsCinematicLocked()) {
-            return;
+            return false;
         }
     }
     if (target->param_.has_value()) {
@@ -239,5 +394,7 @@ void GameRule::ApplyDamage(Object3d* target, float damage) {
                 scene_->RequestRemoveObject(target);
             }*/
         }
+        return true;
     }
+    return false;
 }

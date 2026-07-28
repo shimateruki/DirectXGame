@@ -12,6 +12,7 @@
 #include "GPUParticleManager.h"
 #include "GroundEffectLocator.h"
 #include "MeshEffectManager.h"
+#include "engine/utility/math/AnimationInterpolation.h"
 
 PlayerMover::PlayerMover() {}
 
@@ -28,6 +29,28 @@ PlayerMover::~PlayerMover()
         }
         childOriginalAttributes_.clear();
     }
+}
+
+void PlayerMover::StopDashOnImpact()
+{
+    if (!isDashing_) {
+        return;
+    }
+
+    isDashing_ = false;
+    dashTimer_ = 0.0f;
+    if (player_) {
+        player_->SetDashInvincible(false);
+    }
+
+    for (auto& kv : childOriginalAttributes_)
+    {
+        Object3d* child = kv.first;
+        if (child) {
+            child->SetCollisionAttribute(kv.second);
+        }
+    }
+    childOriginalAttributes_.clear();
 }
 
 void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem)
@@ -92,20 +115,7 @@ void PlayerMover::Update(float deltaTime)
         dashTimer_ -= deltaTime;
         if (dashTimer_ <= 0.0f)
         {
-            isDashing_ = false;
-
-            if (player_) {
-                player_->SetDashInvincible(false); // 無敵解除
-            }
-
-            // 子パーツの衝突属性を復元
-            for (auto& kv : childOriginalAttributes_)
-            {
-                Object3d* child = kv.first;
-                uint32_t attr = kv.second;
-                if (child) child->SetCollisionAttribute(attr);
-            }
-            childOriginalAttributes_.clear();
+            StopDashOnImpact();
         }
     }
     else
@@ -133,23 +143,15 @@ void PlayerMover::Update(float deltaTime)
     // --- 6. 回転処理 (移動方向へ滑らかに向ける) ---
     if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
     {
-        float targetAngle = std::atan2(velocity.x, velocity.z);
-        float currentY = player_->GetMoveYaw();
-
-        auto NormalizeAngle = [](float a) {
-            while (a > 3.1415926535f) a -= 6.2831853071f;
-            while (a < -3.1415926535f) a += 6.2831853071f;
-            return a;
-            };
-
-        float diff = NormalizeAngle(targetAngle - currentY);
-
+        const float targetAngle = std::atan2(velocity.x, velocity.z);
+        const float currentY = player_->GetMoveYaw();
         const float iceTurnMultiplier = isIceActive ? (std::max)(0.25f, iceSteering_) : 1.0f;
-        const float turnSpeed = 12.0f * turnMultiplier * iceTurnMultiplier;
-        float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
-        float newY = currentY + diff * alpha;
-
-        player_->SetMoveYaw(NormalizeAngle(newY));
+        const float turnResponse = 6.5f * turnMultiplier * iceTurnMultiplier;
+        player_->SetMoveYaw(AnimationInterpolation::DampAngle(
+            currentY,
+            targetAngle,
+            turnResponse,
+            deltaTime));
     }
 
     // --- 7. ジャンプ・溜め攻撃処理 ---

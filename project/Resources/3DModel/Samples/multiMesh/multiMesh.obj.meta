@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5964c364f1a62fe66762a6a987638477",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Samples/multiMesh/multiMesh.obj",
+  "version": 1
+}

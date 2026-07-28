@@ -15,7 +15,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -50,6 +52,30 @@ std::string MakeOuterMajorZName(int index) {
 bool IsPreviewEnvironmentName(const std::string& name) {
     return name.rfind(kEnvironmentPrefix, 0) == 0;
 }
+
+const char* GetToolKindName(EffectPreviewStage::ToolKind kind) {
+    switch (kind) {
+    case EffectPreviewStage::ToolKind::CpuParticle:
+        return "CPU Particle";
+    case EffectPreviewStage::ToolKind::GpuParticle:
+        return "GPU Particle";
+    case EffectPreviewStage::ToolKind::MeshEffect:
+        return "Mesh Effect";
+    case EffectPreviewStage::ToolKind::VfxSequence:
+        return "VFX Sequence";
+    case EffectPreviewStage::ToolKind::Debris:
+        return "Debris";
+    case EffectPreviewStage::ToolKind::Trail:
+        return "Trail";
+    case EffectPreviewStage::ToolKind::None:
+    default:
+        return "None";
+    }
+}
+
+ImU32 ToImU32(const Vector4& color) {
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w));
+}
 }
 
 EffectPreviewStage* EffectPreviewStage::GetInstance() {
@@ -63,6 +89,7 @@ void EffectPreviewStage::Initialize(SceneManager* sceneManager, DirectXCommon* d
 }
 
 void EffectPreviewStage::EnableForToolPreview() {
+    const bool isEnteringPreview = !enabled_;
     enabled_ = true;
     isolatedSpace_ = true;
     showFloor_ = true;
@@ -70,7 +97,404 @@ void EffectPreviewStage::EnableForToolPreview() {
     stageRadius_ = (std::max)(stageRadius_, 35.0f);
     cameraDistance_ = (std::max)(cameraDistance_, 14.0f);
     cameraHeight_ = (std::max)(cameraHeight_, 5.5f);
-    recenterCameraRequested_ = true;
+    // 再生位置の変更やループ再生成では、ユーザーが動かしたカメラを維持する。
+    // 自動配置はプレビュー空間へ入った最初の1回だけ行う。
+    if (isEnteringPreview) {
+        recenterCameraRequested_ = true;
+    }
+}
+
+void EffectPreviewStage::ReportToolState(
+    ToolKind toolKind,
+    const std::string& title,
+    float currentTime,
+    float duration,
+    bool isPlaying,
+    int activeCount,
+    const std::vector<TimelineEvent>& events,
+    const PerformanceMetrics& performance) {
+    const bool changedTool = activeToolKind_ != toolKind || activeToolTitle_ != title;
+    if (changedTool) {
+        ResetPerformanceMeasurement(true);
+    }
+    activeToolKind_ = toolKind;
+    activeToolTitle_ = title.empty() ? GetToolKindName(toolKind) : title;
+    reportedCurrentTime_ = (std::max)(0.0f, currentTime);
+    reportedDuration_ = (std::max)(0.05f, duration);
+    reportedPlaying_ = isPlaying;
+    reportedActiveCount_ = (std::max)(0, activeCount);
+    reportedEvents_ = events;
+    reportedPerformance_ = performance;
+    UpdatePerformanceMeasurement(performance);
+    if (changedTool) {
+        lastDispatchedSeekTarget_ = -1.0f;
+        lastSeekDispatchTimestamp_ = -1.0;
+    }
+    if (changedTool || !timelineScrubbing_) {
+        timelineScrubTime_ = std::clamp(reportedCurrentTime_, 0.0f, reportedDuration_);
+    }
+}
+
+void EffectPreviewStage::UpdatePerformanceMeasurement(const PerformanceMetrics& performance) {
+    if (!performanceMeasurementRunning_ ||
+        !performance.available ||
+        performanceMeasurementTool_ != activeToolKind_) {
+        return;
+    }
+
+    if (performanceWarmupProgress_ < performanceWarmupFrames_) {
+        ++performanceWarmupProgress_;
+        return;
+    }
+
+    performanceCpuTimeAccumMs_ += performance.cpuTimeMs;
+    performanceGpuTimeAccumMs_ += performance.gpuTimeMs;
+    performanceParticleCountAccum_ += static_cast<double>(performance.particleCount);
+    if (performance.frameDeltaSeconds > 0.0f) {
+        performanceElapsedSeconds_ += performance.frameDeltaSeconds;
+    }
+    ++performanceSampleProgress_;
+
+    if (performanceSampleProgress_ < performanceSampleFrames_) {
+        return;
+    }
+
+    const double sampleCount = static_cast<double>(performanceSampleProgress_);
+    measuredPerformance_.available = true;
+    measuredPerformance_.particleCount = static_cast<int>(
+        std::lround(performanceParticleCountAccum_ / sampleCount));
+    measuredPerformance_.cpuTimeMs = static_cast<float>(performanceCpuTimeAccumMs_ / sampleCount);
+    measuredPerformance_.gpuTimeMs = static_cast<float>(performanceGpuTimeAccumMs_ / sampleCount);
+    measuredPerformance_.fps = performanceElapsedSeconds_ > 0.0 ?
+        static_cast<float>(sampleCount / performanceElapsedSeconds_) : 0.0f;
+    measuredPerformance_.memoryBytes = performance.memoryBytes;
+    performanceMeasurementRunning_ = false;
+    performanceMeasurementValid_ = true;
+}
+
+void EffectPreviewStage::ResetPerformanceMeasurement(bool clearResult) {
+    performanceMeasurementRunning_ = false;
+    performanceMeasurementTool_ = ToolKind::None;
+    performanceWarmupProgress_ = 0;
+    performanceSampleProgress_ = 0;
+    performanceCpuTimeAccumMs_ = 0.0;
+    performanceGpuTimeAccumMs_ = 0.0;
+    performanceElapsedSeconds_ = 0.0;
+    performanceParticleCountAccum_ = 0.0;
+    if (clearResult) {
+        performanceMeasurementValid_ = false;
+        measuredPerformance_ = {};
+    }
+}
+
+void EffectPreviewStage::DrawTimelineWindow() {
+#ifdef USE_IMGUI
+    constexpr const char* kWindowName = "エフェクトプレビュー - Timeline";
+    ImGui::Begin(kWindowName, nullptr, ImGuiWindowFlags_NoCollapse);
+
+    ImGui::Text(ICON_FA_MAGIC " %s", activeToolTitle_.c_str());
+    ImGui::SameLine();
+    ImGui::TextDisabled("[%s]", GetToolKindName(activeToolKind_));
+
+    if (ImGui::Button(ICON_FA_PLAY " 先頭から")) {
+        transportPlaying_ = true;
+        timelineScrubTime_ = 0.0f;
+        ++playRequestSerial_;
+    }
+    ImGui::SameLine();
+    if (transportPlaying_) {
+        if (ImGui::Button(ICON_FA_PAUSE " 一時停止")) {
+            transportPlaying_ = false;
+        }
+    } else if (ImGui::Button(ICON_FA_PLAY " 再開")) {
+        transportPlaying_ = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_STOP " 停止")) {
+        transportPlaying_ = false;
+        timelineScrubTime_ = 0.0f;
+        seekTargetTime_ = 0.0f;
+        ++stopRequestSerial_;
+    }
+
+    const auto requestStep = [this](float seconds) {
+        transportPlaying_ = false;
+        seekTargetTime_ = std::clamp(reportedCurrentTime_ + seconds, 0.0f, reportedDuration_);
+        timelineScrubTime_ = seekTargetTime_;
+        ++seekRequestSerial_;
+    };
+    ImGui::SameLine();
+    if (ImGui::SmallButton("-10F")) requestStep(-10.0f / 60.0f);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("-1F")) requestStep(-1.0f / 60.0f);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("+1F")) requestStep(1.0f / 60.0f);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("+10F")) requestStep(10.0f / 60.0f);
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_CROSSHAIRS " カメラを戻す")) {
+        RequestCameraRecenter();
+    }
+
+    ImGui::SetNextItemWidth(150.0f);
+    ImGui::DragFloat("再生速度", &playbackSpeed_, 0.05f, 0.05f, 4.0f, "%.2fx");
+    ImGui::SameLine();
+    ImGui::Checkbox("ループ", &loopPreview_);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(130.0f);
+    ImGui::DragFloat("表示倍率", &timelinePixelsPerSecond_, 5.0f, 80.0f, 600.0f, "%.0f px/s");
+
+    if (ImGui::BeginTable("EffectTimelineSummary", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchSame)) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("時間 %.2f / %.2f s", reportedCurrentTime_, reportedDuration_);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text("状態 %s", reportedPlaying_ ? "再生中" : (transportPlaying_ ? "待機" : "停止中"));
+        ImGui::TableSetColumnIndex(2);
+        ImGui::Text("Active %d", reportedActiveCount_);
+        ImGui::TableSetColumnIndex(3);
+        ImGui::Text("イベント %d", static_cast<int>(reportedEvents_.size()));
+        ImGui::EndTable();
+    }
+
+    const auto dispatchSeek = [this](float targetTime, bool force) {
+        const float clampedTime = std::clamp(targetTime, 0.0f, reportedDuration_);
+        const double now = ImGui::GetTime();
+        const float minimumChange = (std::max)(1.0f / 240.0f, reportedDuration_ / 1200.0f);
+        const bool changedEnough =
+            lastDispatchedSeekTarget_ < 0.0f ||
+            std::abs(clampedTime - lastDispatchedSeekTarget_) >= minimumChange;
+        const bool intervalElapsed =
+            lastSeekDispatchTimestamp_ < 0.0 ||
+            now - lastSeekDispatchTimestamp_ >= (1.0 / 30.0);
+        if (!force && (!changedEnough || !intervalElapsed)) {
+            return;
+        }
+
+        transportPlaying_ = false;
+        seekTargetTime_ = clampedTime;
+        timelineScrubTime_ = clampedTime;
+        lastDispatchedSeekTarget_ = clampedTime;
+        lastSeekDispatchTimestamp_ = now;
+        ++seekRequestSerial_;
+    };
+
+    if (ImGui::SliderFloat("再生位置", &timelineScrubTime_, 0.0f, reportedDuration_, "%.3f s")) {
+        timelineScrubTime_ = std::clamp(timelineScrubTime_, 0.0f, reportedDuration_);
+        timelineScrubbing_ = true;
+        dispatchSeek(timelineScrubTime_, false);
+    }
+    if (ImGui::IsItemActivated()) {
+        timelineScrubbing_ = true;
+    }
+    if (ImGui::IsItemDeactivated()) {
+        timelineScrubbing_ = false;
+        dispatchSeek(timelineScrubTime_, true);
+    }
+
+    constexpr float kLabelWidth = 132.0f;
+    constexpr float kHeaderHeight = 24.0f;
+    constexpr float kLaneHeight = 28.0f;
+    const int laneCount = (std::max)(1, static_cast<int>(reportedEvents_.size()));
+    const float contentWidth = (std::max)(
+        ImGui::GetContentRegionAvail().x,
+        kLabelWidth + reportedDuration_ * timelinePixelsPerSecond_ + 24.0f);
+    const float canvasHeight = kHeaderHeight + laneCount * kLaneHeight + 10.0f;
+
+    ImGui::BeginChild("##EffectTimelineScroll", ImVec2(0.0f, canvasHeight + 18.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImGui::InvisibleButton("##EffectTimelineCanvas", ImVec2(contentWidth, canvasHeight));
+    drawList->AddRectFilled(origin, ImVec2(origin.x + contentWidth, origin.y + canvasHeight), IM_COL32(31, 35, 42, 255));
+    drawList->AddLine(
+        ImVec2(origin.x + kLabelWidth, origin.y),
+        ImVec2(origin.x + kLabelWidth, origin.y + canvasHeight),
+        IM_COL32(120, 128, 142, 220));
+
+    const int wholeSeconds = static_cast<int>(std::ceil(reportedDuration_));
+    for (int second = 0; second <= wholeSeconds; ++second) {
+        const float x = origin.x + kLabelWidth + static_cast<float>(second) * timelinePixelsPerSecond_;
+        drawList->AddLine(
+            ImVec2(x, origin.y + kHeaderHeight),
+            ImVec2(x, origin.y + canvasHeight),
+            IM_COL32(88, 96, 108, 150));
+        char timeLabel[24];
+        sprintf_s(timeLabel, "%ds", second);
+        drawList->AddText(ImVec2(x + 4.0f, origin.y + 4.0f), IM_COL32(210, 216, 226, 255), timeLabel);
+    }
+
+    if (reportedEvents_.empty()) {
+        const float laneY = origin.y + kHeaderHeight;
+        drawList->AddText(ImVec2(origin.x + 8.0f, laneY + 7.0f), IM_COL32(220, 224, 232, 255), "Playback");
+        drawList->AddRectFilled(
+            ImVec2(origin.x + kLabelWidth, laneY + 5.0f),
+            ImVec2(origin.x + kLabelWidth + reportedDuration_ * timelinePixelsPerSecond_, laneY + kLaneHeight - 5.0f),
+            IM_COL32(70, 150, 205, 190),
+            4.0f);
+    } else {
+        for (int index = 0; index < static_cast<int>(reportedEvents_.size()); ++index) {
+            const TimelineEvent& event = reportedEvents_[index];
+            const float laneY = origin.y + kHeaderHeight + static_cast<float>(index) * kLaneHeight;
+            const float startX = origin.x + kLabelWidth + std::clamp(event.startTime, 0.0f, reportedDuration_) * timelinePixelsPerSecond_;
+            const float endX = origin.x + kLabelWidth + std::clamp((std::max)(event.endTime, event.startTime + 0.02f), 0.0f, reportedDuration_) * timelinePixelsPerSecond_;
+            drawList->AddText(ImVec2(origin.x + 8.0f, laneY + 7.0f), IM_COL32(220, 224, 232, 255), event.label.c_str());
+            drawList->AddRectFilled(
+                ImVec2(startX, laneY + 5.0f),
+                ImVec2((std::max)(startX + 5.0f, endX), laneY + kLaneHeight - 5.0f),
+                ToImU32(event.color),
+                4.0f);
+        }
+    }
+
+    const float playheadX = origin.x + kLabelWidth + std::clamp(reportedCurrentTime_, 0.0f, reportedDuration_) * timelinePixelsPerSecond_;
+    drawList->AddLine(
+        ImVec2(playheadX, origin.y),
+        ImVec2(playheadX, origin.y + canvasHeight),
+        IM_COL32(255, 88, 96, 255),
+        2.0f);
+
+    const bool timelinePointerActive =
+        ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if ((ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) || timelinePointerActive) {
+        const float mouseX = ImGui::GetIO().MousePos.x;
+        timelineScrubbing_ = true;
+        dispatchSeek((mouseX - origin.x - kLabelWidth) / timelinePixelsPerSecond_, false);
+    }
+    if (ImGui::IsItemDeactivated() && timelineScrubbing_) {
+        timelineScrubbing_ = false;
+        dispatchSeek(timelineScrubTime_, true);
+    }
+    ImGui::EndChild();
+
+    if (reportedPerformance_.available) {
+        ImGui::SeparatorText(ICON_FA_CHART_BAR " Performance Measurement");
+        ImGui::TextDisabled(
+            "選択中の%sだけを計測します。CPU/GPUの自動比較や設定変更は行いません。",
+            activeToolKind_ == ToolKind::CpuParticle ? "通常Particle" : "GPU Particle");
+
+        const float liveFps = reportedPerformance_.frameDeltaSeconds > 0.0f ?
+            1.0f / reportedPerformance_.frameDeltaSeconds : 0.0f;
+        if (ImGui::BeginTable(
+            "EffectPerformanceLive", 6,
+            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
+            ImGui::TableSetupColumn("表示");
+            ImGui::TableSetupColumn("粒子数");
+            ImGui::TableSetupColumn("CPU時間");
+            ImGui::TableSetupColumn("GPU時間");
+            ImGui::TableSetupColumn("FPS");
+            ImGui::TableSetupColumn("使用メモリ");
+            ImGui::TableHeadersRow();
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::TextUnformatted("現在値");
+            ImGui::TableNextColumn(); ImGui::Text("%d", reportedPerformance_.particleCount);
+            ImGui::TableNextColumn(); ImGui::Text("%.3f ms", reportedPerformance_.cpuTimeMs);
+            ImGui::TableNextColumn(); ImGui::Text("%.3f ms", reportedPerformance_.gpuTimeMs);
+            ImGui::TableNextColumn(); ImGui::Text("%.1f", liveFps);
+            ImGui::TableNextColumn(); ImGui::Text(
+                "%.2f MB",
+                static_cast<double>(reportedPerformance_.memoryBytes) / (1024.0 * 1024.0));
+            ImGui::EndTable();
+        }
+
+        ImGui::BeginDisabled(performanceMeasurementRunning_);
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragInt("ウォームアップ", &performanceWarmupFrames_, 1.0f, 1, 300, "%d frames");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragInt("平均計測", &performanceSampleFrames_, 1.0f, 30, 600, "%d frames");
+        performanceWarmupFrames_ = std::clamp(performanceWarmupFrames_, 1, 300);
+        performanceSampleFrames_ = std::clamp(performanceSampleFrames_, 30, 600);
+        if (ImGui::Button(ICON_FA_STOPWATCH " このParticleを計測", ImVec2(180.0f, 0.0f))) {
+            ResetPerformanceMeasurement(true);
+            performanceMeasurementRunning_ = true;
+            performanceMeasurementTool_ = activeToolKind_;
+        }
+        ImGui::EndDisabled();
+
+        if (performanceMeasurementRunning_) {
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_STOP " 中止")) {
+                ResetPerformanceMeasurement(false);
+            }
+            const int completedFrames = performanceWarmupProgress_ + performanceSampleProgress_;
+            const int totalFrames = performanceWarmupFrames_ + performanceSampleFrames_;
+            const float progress = totalFrames > 0 ?
+                static_cast<float>(completedFrames) / static_cast<float>(totalFrames) : 0.0f;
+            const char* phase = performanceWarmupProgress_ < performanceWarmupFrames_ ?
+                "ウォームアップ中" : "平均計測中";
+            ImGui::ProgressBar(
+                std::clamp(progress, 0.0f, 1.0f),
+                ImVec2(-1.0f, 0.0f),
+                phase);
+        }
+
+        if (performanceMeasurementValid_) {
+            if (ImGui::BeginTable(
+                "EffectPerformanceMeasured", 6,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
+                ImGui::TableSetupColumn("計測結果");
+                ImGui::TableSetupColumn("粒子数");
+                ImGui::TableSetupColumn("CPU時間");
+                ImGui::TableSetupColumn("GPU時間");
+                ImGui::TableSetupColumn("FPS");
+                ImGui::TableSetupColumn("使用メモリ");
+                ImGui::TableHeadersRow();
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("%dF平均", performanceSampleFrames_);
+                ImGui::TableNextColumn(); ImGui::Text("%d", measuredPerformance_.particleCount);
+                ImGui::TableNextColumn(); ImGui::Text("%.3f ms", measuredPerformance_.cpuTimeMs);
+                ImGui::TableNextColumn(); ImGui::Text("%.3f ms", measuredPerformance_.gpuTimeMs);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f", measuredPerformance_.fps);
+                ImGui::TableNextColumn(); ImGui::Text(
+                    "%.2f MB",
+                    static_cast<double>(measuredPerformance_.memoryBytes) / (1024.0 * 1024.0));
+                ImGui::EndTable();
+            }
+
+            const char* methodLabel = activeToolKind_ == ToolKind::CpuParticle ? "CPU更新" : "GPU更新";
+            const auto buildResultText = [&](bool markdown) {
+                std::ostringstream stream;
+                stream << std::fixed;
+                if (markdown) {
+                    stream << "| 方式 | 粒子数 | CPU時間 | GPU時間 | FPS | 使用メモリ |\n"
+                        << "|---|---:|---:|---:|---:|---:|\n"
+                        << "| " << methodLabel << " | " << measuredPerformance_.particleCount
+                        << " | " << std::setprecision(3) << measuredPerformance_.cpuTimeMs << "ms"
+                        << " | " << measuredPerformance_.gpuTimeMs << "ms"
+                        << " | " << std::setprecision(1) << measuredPerformance_.fps
+                        << " | " << std::setprecision(2)
+                        << static_cast<double>(measuredPerformance_.memoryBytes) / (1024.0 * 1024.0)
+                        << "MB |\n";
+                }
+                else {
+                    stream << "方式\t粒子数\tCPU時間\tGPU時間\tFPS\t使用メモリ\n"
+                        << methodLabel << '\t' << measuredPerformance_.particleCount << '\t'
+                        << std::setprecision(3) << measuredPerformance_.cpuTimeMs << "ms\t"
+                        << measuredPerformance_.gpuTimeMs << "ms\t"
+                        << std::setprecision(1) << measuredPerformance_.fps << '\t'
+                        << std::setprecision(2)
+                        << static_cast<double>(measuredPerformance_.memoryBytes) / (1024.0 * 1024.0)
+                        << "MB\n";
+                }
+                return stream.str();
+            };
+
+            if (ImGui::Button("Markdown行をコピー")) {
+                ImGui::SetClipboardText(buildResultText(true).c_str());
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("PowerPoint用TSVをコピー")) {
+                ImGui::SetClipboardText(buildResultText(false).c_str());
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_TRASH_ALT " 結果を消去")) {
+                ResetPerformanceMeasurement(true);
+            }
+        }
+    }
+
+    ImGui::End();
+#endif
 }
 
 void EffectPreviewStage::Update() {

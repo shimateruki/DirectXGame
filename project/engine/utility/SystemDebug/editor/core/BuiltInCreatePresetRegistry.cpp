@@ -96,11 +96,13 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
     const std::vector<std::pair<std::string, std::string>> enemies = {
         { "FireSlime", "ファイアスライム" },
         { "ThunderSlime", "サンダースライム" },
+        { "WindSlime", "風スライム" },
         { "Slime", "ピンクスライム" },
         { "Bomb", "ボム" },
         { "Bomber", "ボムスライム" },
         { "Mushroom", "キノコ" },
         { "GiantSlime", "巨大スライム" },
+        { "PrismSlime", "プリズムスライム（中ボス）" },
         { "Bat", "コウモリ" },
         { "BeamDrone", "ビームドローン" },
         { "BossCore", "ボスコア" },

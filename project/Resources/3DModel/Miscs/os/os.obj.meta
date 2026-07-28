@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b20ec7f7605bcd2948bbc75b1fa4fdca",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Miscs/os/os.obj",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "a347a23a52001b47b10746e6d46f8c57",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/CrownUnlock.PS.hlsl",
+  "version": 1
+}

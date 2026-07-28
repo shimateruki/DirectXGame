@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "604d417b9e774bcd1a8632bfef1174aa",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_yellow/Slime_baseColor_yellow.dds",
+  "version": 1
+}

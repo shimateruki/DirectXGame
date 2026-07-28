@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "846a9237ac2e40a9234ef33e6eb00229",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/slimeBody_pink/Slime_baseColor_pink.png",
+  "version": 1
+}

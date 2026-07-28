@@ -38,6 +38,7 @@
 #include "VFXSequencerEditor.h"
 #include "LightEditor.h"      
 #include "IconsFontAwesome5.h"
+#include "AssetDatabase.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -416,6 +417,13 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     lastUpdatedScene_ = nullptr;
     EditorPropertyRegistry::GetInstance()->InitializeBuiltInProperties();
     EditorTransactionManager::GetInstance()->Clear();
+    AssetDatabase* assetDatabase = AssetDatabase::GetInstance();
+    if (!assetDatabase->Initialize("Resources", true)) {
+        DebugConsole::GetInstance()->AddLog("Asset Database Error: Resourcesを初期化できませんでした。");
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog("Asset Database: 初期索引を開始しました。");
+    }
     PresetManager::GetInstance()->Initialize();
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
@@ -451,6 +459,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     sceneValidator_.Initialize(sceneManager);
     materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
+    enemyAttackPreviewWindow_.Initialize(sceneManager);
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     animatorControllerEditor_.Initialize(sceneManager, this);
     eventLinkGraph_.Initialize(sceneManager, this);
@@ -654,9 +663,11 @@ void DebugEditor::ResetPrefabEditSessionForSceneChange() {
 // ========================================================================
 void DebugEditor::Update() {
 #ifdef USE_IMGUI
+    AssetDatabase::GetInstance()->Update();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     EffectPreviewStage::GetInstance()->Update();
+    enemyAttackPreviewWindow_.Update(1.0f / 60.0f);
     animationWorkbench_.Update(1.0f / 60.0f);
     textSpriteGenerator_.Update();
     text3DGenerator_.Update();
@@ -1046,6 +1057,7 @@ void DebugEditor::Finalize() {
         EndPrefabEditSession(true);
     }
     FinalizeCrashRecovery();
+    enemyAttackPreviewWindow_.Finalize();
     animationWorkbench_.Finalize();
     primitiveDrawer_.Finalize();
     EditorTransactionManager::GetInstance()->Clear();
@@ -1255,6 +1267,38 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             }
         }
 
+    }
+
+    // 選択中のNav Agentが計算した経路を、Scene上で確認できるようにします。
+    Object3d* navObject = GetSelectedObject3D();
+    if (navObject) {
+        if (const NavAgentComponent* navAgent = navObject->GetNavAgentComponent()) {
+            const std::vector<Vector3>& path = navAgent->GetCurrentPath();
+            for (std::size_t index = 0; index < path.size() && instanceCount < kMaxDrawLimit; ++index) {
+                const bool isCurrent = index == navAgent->GetCurrentWaypointIndex();
+                const Vector4 pointColor = isCurrent
+                    ? Vector4{ 1.0f, 0.85f, 0.15f, 1.0f }
+                    : Vector4{ 0.10f, 0.95f, 1.0f, 1.0f };
+                const Vector3 point = path[index] + Vector3{ 0.0f, 0.12f, 0.0f };
+                const Matrix4x4 pointWorld = math.Multiply(
+                    math.MakeScaleMatrix({ 0.20f, 0.20f, 0.20f }),
+                    math.MakeTranslateMatrix(point));
+                primitiveDrawer_.DrawWireSphere(commandList, pointWorld, pointColor, instanceCount++);
+
+                if (index == 0 || instanceCount >= kMaxDrawLimit) continue;
+                const Vector3 previous = path[index - 1] + Vector3{ 0.0f, 0.12f, 0.0f };
+                const Vector3 difference = point - previous;
+                const float length = std::sqrt(difference.x * difference.x + difference.z * difference.z);
+                if (length <= 0.001f) continue;
+                const float yaw = std::atan2(difference.x, difference.z);
+                const Vector3 center = (previous + point) * 0.5f;
+                const Matrix4x4 lineWorld = math.Multiply(
+                    math.MakeScaleMatrix({ 0.05f, 0.05f, length }),
+                    math.Multiply(math.MakeRotateYMatrix(yaw), math.MakeTranslateMatrix(center)));
+                primitiveDrawer_.DrawWireCube(
+                    commandList, lineWorld, { 0.10f, 0.95f, 1.0f, 1.0f }, instanceCount++);
+            }
+        }
     }
 
     // =========================================================

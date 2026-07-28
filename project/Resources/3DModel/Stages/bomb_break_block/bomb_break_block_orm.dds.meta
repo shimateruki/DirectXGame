@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3e76a748e362d199029894034f91a572",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.dds",
+  "version": 1
+}

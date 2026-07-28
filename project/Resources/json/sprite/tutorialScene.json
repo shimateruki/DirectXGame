@@ -1,0 +1,46 @@
+{
+  "designResolution": [1920.0, 1080.0],
+  "scaleToWindow": true,
+  "sprites": [
+    {
+      "name": "tutorial_prompt_panel",
+      "texture": "ui/gate/gate_prompt_panel.png",
+      "position": [960.0, 132.0],
+      "size": [690.0, 148.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 0.96],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "tutorial_prompt_icon_0",
+      "texture": "ui/input/combo/combo_wasd.png",
+      "position": [790.0, 132.0],
+      "size": [132.0, 94.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "tutorial_prompt_icon_1",
+      "texture": "ui/input/mouse/mouse_move.png",
+      "position": [960.0, 132.0],
+      "size": [104.0, 104.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0,
+      "parentName": ""
+    },
+    {
+      "name": "tutorial_prompt_icon_2",
+      "texture": "ui/input/keyboard/key_tab.png",
+      "position": [1130.0, 132.0],
+      "size": [104.0, 104.0],
+      "anchor": [0.5, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0,
+      "parentName": ""
+    }
+  ]
+}

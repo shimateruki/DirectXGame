@@ -1,0 +1,153 @@
+{
+  "version": 2,
+  "exitGateObject": "Gimmick_StageGate",
+  "spawnEnemyObject": "Tutorial_PinkSlime_Throw",
+  "spawnEnemyObjects": [
+    "Tutorial_PinkSlime_Throw",
+    "Tutorial_PinkSlime_Absorb"
+  ],
+  "steps": [
+    {
+      "id": "intro",
+      "condition": "timer",
+      "threshold": 0.1,
+      "showPrompt": false,
+      "checkpoint": [-42.0, -0.54, -16.0],
+      "minimumDisplayTime": 0.1
+    },
+    {
+      "id": "move",
+      "condition": "move_distance",
+      "threshold": 8.0,
+      "promptIcons": [
+        "ui/input/combo/combo_wasd.png"
+      ],
+      "minimumDisplayTime": 0.35
+    },
+    {
+      "id": "look",
+      "condition": "action_triggered",
+      "action": "MouseMove",
+      "promptIcons": [
+        "ui/input/mouse/mouse_move.png"
+      ],
+      "minimumDisplayTime": 0.35
+    },
+    {
+      "id": "jump",
+      "condition": "action_triggered",
+      "action": "Jump",
+      "promptIcons": [
+        "ui/input/keyboard/key_space.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "throw_enemy_spawn",
+      "condition": "timer",
+      "threshold": 0.5,
+      "spawnEnemyObject": "Tutorial_PinkSlime_Throw",
+      "showPrompt": false,
+      "checkpoint": [-17.0, -0.54, -5.0],
+      "minimumDisplayTime": 0.5
+    },
+    {
+      "id": "reach_throw_slime",
+      "condition": "reach_position",
+      "targetPosition": [20.0, -0.62, 4.0],
+      "radius": 11.0,
+      "checkpoint": [10.0, -0.54, 1.0],
+      "promptIcons": [
+        "ui/input/combo/combo_wasd.png"
+      ]
+    },
+    {
+      "id": "pull_throw_slime",
+      "condition": "carry_enemy",
+      "promptIcons": [
+        "ui/input/mouse/mouse_right.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "throw_slime",
+      "condition": "enemy_thrown",
+      "promptIcons": [
+        "ui/input/mouse/mouse_left.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "absorb_enemy_spawn",
+      "condition": "timer",
+      "threshold": 0.5,
+      "despawnEnemyObject": "Tutorial_PinkSlime_Throw",
+      "spawnEnemyObject": "Tutorial_PinkSlime_Absorb",
+      "showPrompt": false,
+      "checkpoint": [10.0, -0.54, 1.0],
+      "minimumDisplayTime": 0.5
+    },
+    {
+      "id": "reach_absorb_slime",
+      "condition": "reach_position",
+      "targetPosition": [24.0, -0.62, 8.0],
+      "radius": 11.0,
+      "checkpoint": [14.0, -0.54, 3.0],
+      "promptIcons": [
+        "ui/input/combo/combo_wasd.png"
+      ]
+    },
+    {
+      "id": "pull_absorb_slime",
+      "condition": "carry_enemy",
+      "promptIcons": [
+        "ui/input/mouse/mouse_right.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "absorb_slime",
+      "condition": "morph_active",
+      "promptIcons": [
+        "ui/input/keyboard/key_e.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "use_ability",
+      "condition": "action_triggered",
+      "action": "Ability",
+      "requireMorph": true,
+      "promptIcons": [
+        "ui/input/keyboard/key_e.png"
+      ],
+      "minimumDisplayTime": 0.35
+    },
+    {
+      "id": "release_morph",
+      "condition": "morph_released",
+      "promptIcons": [
+        "ui/input/keyboard/key_r.png"
+      ],
+      "minimumDisplayTime": 0.35
+    },
+    {
+      "id": "open_controls_guide",
+      "condition": "controls_guide_opened",
+      "promptIcons": [
+        "ui/input/keyboard/key_tab.png"
+      ],
+      "minimumDisplayTime": 0.25
+    },
+    {
+      "id": "exit_unlock",
+      "condition": "timer",
+      "threshold": 0.45,
+      "showPrompt": false,
+      "checkpoint": [34.0, -0.54, 13.0],
+      "previewGateUnlock": true,
+      "unlockGateOnComplete": true,
+      "minimumDisplayTime": 0.45
+    }
+  ]
+}

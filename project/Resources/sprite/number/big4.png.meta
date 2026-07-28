@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b3b7447c1224344b28be3361002f5167",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/number/big4.png",
+  "version": 1
+}
