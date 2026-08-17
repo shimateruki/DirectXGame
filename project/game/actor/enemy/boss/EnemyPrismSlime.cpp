@@ -498,34 +498,55 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
         }
         break;
     }
-    case AttackKind::CrystalLanceVolley:
-        ShowAttackTelegraphLine(center, lockedDirection_, attack.maxRange, attack.radius,
-            progress, { 0.50f, 0.78f, 1.0f, 0.72f });
+    case AttackKind::CrystalLanceVolley: {
+        const float predictedDistance = std::clamp(
+            lockedTargetDistance_ + attack.radius,
+            attack.minRange,
+            attack.maxRange);
+        ShowAttackTelegraphLaneFan(
+            center,
+            lockedDirection_,
+            predictedDistance,
+            attack.radius * 1.20f,
+            kCrystalLanceCount,
+            1.08f,
+            -0.060f,
+            progress,
+            { 0.50f, 0.78f, 1.0f, 0.72f });
         if (effectTimer_ <= 0.0f) {
             EmitPreset(kPrismChargePreset,
                 GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.66f, 0.0f });
             effectTimer_ += 0.10f - progress * 0.03f;
         }
         break;
-    case AttackKind::FireFan:
-        ShowAttackTelegraphLine(center, lockedDirection_, attack.maxRange, attack.radius * 4.2f,
-            progress, { 1.0f, 0.27f, 0.055f, 0.80f });
+    }
+    case AttackKind::FireFan: {
+        const float fanHalfAngle = static_cast<float>(kFireFanProjectileCount - 1) * 0.5f * 0.13f;
+        const float fanEndWidth = attack.maxRange * std::tan(fanHalfAngle) * 2.0f + attack.radius * 2.0f;
+        ShowAttackTelegraphCone(center, lockedDirection_, attack.maxRange,
+            attack.radius * 1.35f, fanEndWidth, progress, { 1.0f, 0.27f, 0.055f, 0.80f });
         if (effectTimer_ <= 0.0f) {
             const Vector3 corePosition = GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.48f, 0.0f };
             EmitDirectedPreset(kFireCastPreset, corePosition, lockedDirection_, 0.72f + progress * 0.55f);
             effectTimer_ += 0.085f;
         }
         break;
+    }
     case AttackKind::ThunderChain:
-        ShowAttackTelegraphLine(center, lockedDirection_, attack.maxRange, attack.radius,
-            progress, { 1.0f, 0.92f, 0.14f, 0.84f });
+        ShowAttackTelegraphImpactAreas(
+            thunderStrikePositions_.data(),
+            thunderStrikePositions_.size(),
+            attack.radius,
+            progress,
+            { 1.0f, 0.92f, 0.14f, 0.84f });
         if (effectTimer_ <= 0.0f) {
             EmitPreset(kThunderChargePreset, GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.58f, 0.0f });
             effectTimer_ += 0.065f - progress * 0.025f;
         }
         break;
     case AttackKind::WindWave:
-        ShowAttackTelegraphLine(center, lockedDirection_, attack.maxRange, attack.radius,
+        ShowAttackTelegraphCone(center, lockedDirection_, attack.maxRange,
+            attack.radius * 0.46f, attack.radius * 2.0f,
             progress, { 0.45f, 1.0f, 0.82f, 0.80f });
         if (effectTimer_ <= 0.0f) {
             EmitDirectedPreset(kWindChargePreset,
@@ -600,6 +621,20 @@ void EnemyPrismSlime::UpdateActive(float deltaTime, float targetDistance) {
             StrikeNextThunderPoint();
             ++actionIndex_;
             actionTimer_ += kThunderStrikeInterval;
+        }
+        if (actionIndex_ < static_cast<int>(thunderStrikePositions_.size())) {
+            const std::size_t remainingCount = thunderStrikePositions_.size() -
+                static_cast<std::size_t>(actionIndex_);
+            const float strikeProgress = 1.0f - std::clamp(
+                actionTimer_ / kThunderStrikeInterval,
+                0.0f,
+                1.0f);
+            ShowAttackTelegraphImpactAreas(
+                thunderStrikePositions_.data() + actionIndex_,
+                remainingCount,
+                attack.radius,
+                strikeProgress,
+                { 1.0f, 0.92f, 0.14f, 0.78f });
         }
         break;
     case AttackKind::WindWave:

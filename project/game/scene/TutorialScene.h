@@ -45,6 +45,9 @@ public:
     ~TutorialScene() override;
 
 	void Initialize() override;
+	void BeginLoadingInitialize() override;
+	bool InitializeLoadingStep() override;
+	float GetLoadingInitializeProgress() const override;
 	SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
     void Update(float deltaTime) override;
@@ -69,6 +72,9 @@ public:
 
     // スプライトはシーンで保持 (ObjectManagerを拡張すれば移動可能)
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    void CollectReplaySprites(std::vector<Sprite*>& sprites) override;
+    void CaptureReplaySceneState(json& state) const override;
+    void RestoreReplaySceneState(const json& state) override;
 
     // 各種コモンクラス
 	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
@@ -147,15 +153,17 @@ private:
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
 
-    // アニメーションモデルのテスト用変数
-    std::unique_ptr<Object3d> animatedCube_;
-
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
     std::unique_ptr<TutorialDirector> tutorialDirector_;
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
+
+    int loadingInitializePhase_ = 0;
+    size_t loadingInitializeItemIndex_ = 0;
+    size_t loadingInitializeCompletedUnits_ = 0;
+    size_t loadingInitializeTotalUnits_ = 1;
 
     // フラスタムカリング判定
     bool IsVisible(Object3d* obj);

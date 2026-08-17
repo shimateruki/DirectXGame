@@ -50,6 +50,14 @@ struct AssetDatabaseRefreshResult {
     bool filesystemChanged = false;
 };
 
+enum class DDSCacheBuildState {
+    Idle,
+    Queued,
+    Running,
+    Succeeded,
+    Failed,
+};
+
 /// Resources配下のAssetと.metaを索引化し、GUIDとPathを相互解決します。
 /// 実行時の既存Path参照は維持し、Editor側から段階的にGUID参照へ移行するための基盤です。
 class AssetDatabase {
@@ -60,6 +68,7 @@ public:
     bool Initialize(const std::string& resourcesRoot = "Resources", bool createMissingMeta = true);
     AssetDatabaseRefreshResult Refresh(bool createMissingMeta = true);
     void RequestRefresh(bool createMissingMeta = true);
+    void RequestDDSCacheBuild();
     bool Update();
 
     bool IsInitialized() const { return initialized_; }
@@ -73,6 +82,9 @@ public:
     const AssetDatabaseRefreshResult& GetLastRefreshResult() const { return lastRefreshResult_; }
     const std::vector<EditorAssetRecord>& GetAssets() const { return assets_; }
     const std::vector<AssetDatabaseIssue>& GetIssues() const { return issues_; }
+    DDSCacheBuildState GetDDSCacheBuildState() const { return ddsCacheBuildState_; }
+    const std::string& GetDDSCacheBuildMessage() const { return ddsCacheBuildMessage_; }
+    std::uint32_t GetLastDDSCacheBuildExitCode() const { return lastDDSCacheBuildExitCode_; }
 
     const EditorAssetRecord* FindByGuid(const std::string& guid) const;
     const EditorAssetRecord* FindByPath(const std::string& sourcePath) const;
@@ -122,9 +134,12 @@ private:
     void StopFilesystemWatcher();
     void RestartFilesystemWatcher();
     std::vector<std::filesystem::path> CollectSourcePaths();
-    void BeginInitialIndexBuild(bool createMissingMeta);
+    void BeginInitialIndexBuild(bool createMissingMeta, bool buildDDSCacheAfterCompletion);
     bool ProcessInitialIndexBuild();
     void CompleteInitialIndexBuild();
+    bool StartDDSCacheBuild();
+    bool PollDDSCacheBuild();
+    void CloseDDSCacheProcessHandle();
     void RebuildLookupTables();
     void AddIssue(AssetDatabaseIssueSeverity severity, std::string path, std::string message);
 
@@ -157,4 +172,10 @@ private:
     bool filesystemChangePending_ = false;
     std::chrono::steady_clock::time_point filesystemChangeReadyAt_{};
     AssetDatabaseRefreshResult lastRefreshResult_;
+    DDSCacheBuildState ddsCacheBuildState_ = DDSCacheBuildState::Idle;
+    std::string ddsCacheBuildMessage_;
+    std::uint32_t lastDDSCacheBuildExitCode_ = 0;
+    void* ddsCacheProcessHandle_ = nullptr;
+    bool buildDDSCacheAfterIndex_ = false;
+    bool refreshAfterDDSCacheBuild_ = false;
 };

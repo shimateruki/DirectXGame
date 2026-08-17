@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "d6abc12c7f5f46e5b3a5717fc6278e4e",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/charged_discharge.dds",
+    "version":  1
+}

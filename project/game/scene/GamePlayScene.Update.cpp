@@ -24,6 +24,7 @@
 #include "StageManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
+#include "game/actor/gimmick/stage/GimmickStageGate.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #ifdef USE_IMGUI
 #include "imgui.h"
@@ -36,6 +37,17 @@ namespace {
 constexpr float kPi = 3.1415926535f;
 constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
+constexpr float kStageEntryCameraIntroDuration = 0.24f;
+constexpr float kStageEntryGateOpenLeadTime = 0.42f;
+constexpr float kStageEntryCameraRestoreStartTime = 1.72f;
+constexpr float kStageEntryCameraRestoreDuration = 1.05f;
+constexpr float kStageEntryPresentationDuration =
+    kStageEntryCameraRestoreStartTime + kStageEntryCameraRestoreDuration;
+constexpr float kStageEntryCameraBackDistance = 13.0f;
+constexpr float kStageEntryCameraSideOffset = 3.6f;
+constexpr float kStageEntryCameraHeight = 3.0f;
+constexpr float kStageEntryCinemaBarHeight = 0.105f;
+constexpr float kStageEntryCinemaBarOpenDuration = 0.22f;
 
 struct GoalCrownPhysicsTuning {
     float positionStiffness = 76.0f;
@@ -264,6 +276,13 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
 }
 
 void GamePlayScene::Update(float deltaTime) {
+    if (stageEntryPresentationActive_) {
+        UpdatePostEffectState(deltaTime);
+        UpdateStageEntryPresentation(deltaTime);
+        UpdateUI(deltaTime);
+        return;
+    }
+
     if (HandleGoalClear(deltaTime)) {
         return;
     }
@@ -294,6 +313,212 @@ void GamePlayScene::Update(float deltaTime) {
 
     if (animatedCube_) {
         animatedCube_->Update(deltaTime);
+    }
+}
+
+Object3d* GamePlayScene::FindStageEntryGate() const {
+    if (!objectManager_) {
+        return nullptr;
+    }
+
+    for (const auto& object : objectManager_->GetObjects()) {
+        if (!object || object->GetGimmickType() != "StageGate") {
+            continue;
+        }
+        if (object->GetName().find("_EntranceGate") != std::string::npos) {
+            return object.get();
+        }
+    }
+    return nullptr;
+}
+
+void GamePlayScene::StartStageEntryPresentation() {
+    stageEntryGate_ = FindStageEntryGate();
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!stageEntryGate_ || !player_ || !camera) {
+        stageEntryGate_ = nullptr;
+        return;
+    }
+
+    // 初期スポーン地点をリスポーン地点として確定させてから、演出用の位置へ移動します。
+    player_->Update(0.0f);
+    const Vector3 playerSpawn = player_->GetWorldPosition();
+    player_->SetRespawnPosition(playerSpawn);
+    camera->SetFollowTarget(player_);
+    camera->Update(0.0f);
+    stageEntryCameraStartEye_ = camera->GetEye();
+    stageEntryCameraStartTarget_ = camera->GetTargetPoint();
+    stageEntryCameraRestoreEye_ = stageEntryCameraStartEye_;
+    stageEntryCameraRestoreTarget_ = stageEntryCameraStartTarget_;
+
+    const Vector3 gatePosition = stageEntryGate_->GetWorldPosition();
+    stageEntryDirection_ = NormalizePlanarDirection(playerSpawn - gatePosition, { 1.0f, 0.0f, 0.0f });
+    const Vector3 side = { stageEntryDirection_.z, 0.0f, -stageEntryDirection_.x };
+
+    PlayerGateReturnAnimation::Route route;
+    route.start = gatePosition - stageEntryDirection_ * 1.45f;
+    route.gateCenter = gatePosition;
+    route.end = playerSpawn;
+    route.direction = stageEntryDirection_;
+    route.baseScale = player_->GetScale();
+    stageEntryHadPlayerControl_ = player_->IsControlActive();
+    player_->StartGateReturnAnimation(route);
+    // ゲートの反応を先に見せ、内部から出始める瞬間までプレイヤーを隠します。
+    player_->SetIsVisible(false);
+    stageEntryPlayerEmergenceStarted_ = false;
+
+    if (auto* gate = dynamic_cast<GimmickStageGate*>(stageEntryGate_)) {
+        // 登場中に入口ゲートへ触れて、即座にステージ選択へ戻らないようにします。
+        gate->SetTransitionEnabled(false);
+        gate->TriggerEntryReaction();
+    }
+
+    if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+        stageEntryCinemaBarBaseHeight_ = params->cinemaBarHeight;
+        stageEntryCinemaBarOverrideActive_ = true;
+    }
+
+    const Vector3 gateFocus = gatePosition + Vector3{ 0.0f, -1.55f, 0.0f };
+    const Vector3 landingFocus = playerSpawn + Vector3{ 0.0f, 1.15f, 0.0f };
+    stageEntryCameraFocusTarget_ = AnimationInterpolation::Lerp(gateFocus, landingFocus, 0.72f);
+    stageEntryCameraFocusEye_ = stageEntryCameraFocusTarget_
+        + stageEntryDirection_ * kStageEntryCameraBackDistance
+        + side * kStageEntryCameraSideOffset
+        + Vector3{ 0.0f, kStageEntryCameraHeight, 0.0f };
+    camera->SetInputEnabled(false);
+    camera->SetFollowTarget(nullptr);
+    camera->SetLockOnTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->ConfigFixedPoint(
+        stageEntryCameraStartEye_,
+        MakeLookAtEuler(stageEntryCameraStartEye_, stageEntryCameraStartTarget_));
+    camera->Update(0.0f);
+
+    stageEntryPresentationTimer_ = 0.0f;
+    stageEntryPresentationActive_ = true;
+}
+
+void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
+    if (!stageEntryPresentationActive_ || !player_) {
+        FinishStageEntryPresentation();
+        return;
+    }
+
+    stageEntryPresentationTimer_ += std::max(deltaTime, 0.0f);
+    if (!stageEntryPlayerEmergenceStarted_
+        && stageEntryPresentationTimer_ >= kStageEntryGateOpenLeadTime) {
+        stageEntryPlayerEmergenceStarted_ = true;
+        player_->SetIsVisible(true);
+    }
+    if (stageEntryPlayerEmergenceStarted_) {
+        player_->Update(deltaTime);
+    } else {
+        player_->SetIsVisible(false);
+        player_->SetIsControlActive(false);
+        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    }
+    if (stageEntryGate_) {
+        stageEntryGate_->Update(deltaTime);
+    }
+    if (particleSystem_) {
+        particleSystem_->Update(deltaTime);
+    }
+    GPUParticleManager::GetInstance()->Update(deltaTime);
+
+    if (stageEntryCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            const float openRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    stageEntryPresentationTimer_, 0.0f, kStageEntryCinemaBarOpenDuration),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float closeRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    stageEntryPresentationTimer_,
+                    kStageEntryCameraRestoreStartTime,
+                    kStageEntryPresentationDuration),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float blend = openRate * (1.0f - closeRate);
+            const float targetHeight = std::max(stageEntryCinemaBarBaseHeight_, kStageEntryCinemaBarHeight);
+            params->cinemaBarHeight = stageEntryCinemaBarBaseHeight_
+                + (targetHeight - stageEntryCinemaBarBaseHeight_) * blend;
+        }
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        Vector3 eye = stageEntryCameraFocusEye_;
+        Vector3 target = stageEntryCameraFocusTarget_;
+        if (stageEntryPresentationTimer_ < kStageEntryCameraRestoreStartTime) {
+            const float introRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    stageEntryPresentationTimer_, 0.0f, kStageEntryCameraIntroDuration),
+                AnimationInterpolation::EasingType::EaseOut);
+            eye = AnimationInterpolation::Lerp(stageEntryCameraStartEye_, stageEntryCameraFocusEye_, introRate);
+            target = AnimationInterpolation::Lerp(stageEntryCameraStartTarget_, stageEntryCameraFocusTarget_, introRate);
+        } else {
+            const float restoreRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    stageEntryPresentationTimer_,
+                    kStageEntryCameraRestoreStartTime,
+                    kStageEntryPresentationDuration),
+                AnimationInterpolation::EasingType::SmootherStep);
+            eye = AnimationInterpolation::Lerp(stageEntryCameraFocusEye_, stageEntryCameraRestoreEye_, restoreRate);
+            target = AnimationInterpolation::Lerp(stageEntryCameraFocusTarget_, stageEntryCameraRestoreTarget_, restoreRate);
+        }
+
+        camera->SetInputEnabled(false);
+        camera->SetFollowTarget(nullptr);
+        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+        camera->ConfigFixedPoint(eye, MakeLookAtEuler(eye, target));
+        camera->Update(deltaTime);
+    }
+
+    if (stageEntryPresentationTimer_ >= kStageEntryPresentationDuration) {
+        FinishStageEntryPresentation();
+    }
+}
+
+void GamePlayScene::FinishStageEntryPresentation() {
+    if (!stageEntryPresentationActive_) {
+        return;
+    }
+
+    stageEntryPresentationActive_ = false;
+    stageEntryPlayerEmergenceStarted_ = false;
+    stageEntryPresentationTimer_ = 0.0f;
+    if (auto* gate = dynamic_cast<GimmickStageGate*>(stageEntryGate_)) {
+        gate->SetTransitionEnabled(true);
+    }
+    stageEntryGate_ = nullptr;
+    if (stageEntryCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            params->cinemaBarHeight = stageEntryCinemaBarBaseHeight_;
+        }
+        stageEntryCinemaBarOverrideActive_ = false;
+        stageEntryCinemaBarBaseHeight_ = 0.0f;
+    }
+    if (player_) {
+        player_->StopGateReturnAnimation(stageEntryHadPlayerControl_);
+        player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
+        player_->TriggerSlimeImpulse({ 0.96f, 1.08f, 0.96f }, 0.18f);
+    }
+
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+#ifdef USE_IMGUI
+        if (CameraEditor::GetInstance()->IsEditorMode()) {
+            camera->SetInputEnabled(true);
+            CameraEditor::GetInstance()->Update(player_, false);
+        } else
+#endif
+        {
+            if (player_) {
+                camera->SetFollowTarget(player_);
+                camera->SetFollowMode(Camera::FollowMode::kAimable);
+                camera->SyncRotationToCurrentView();
+                camera->ResetFollowSmoothing();
+            }
+            camera->SetInputEnabled(true);
+        }
     }
 }
 

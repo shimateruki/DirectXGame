@@ -128,6 +128,8 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "HookPullBlock", "フック可動ブロック" },
         { "OneWayFloor", "一方通行床" },
         { "LiquidLevel", "水位/マグマ上下" },
+        { "MagmaHazard", "マグマダメージ床" },
+        { "MagmaGeyser", "周期式マグマ噴出口" },
         { "ChainCollapseFloor", "連鎖崩れ床" },
         { "RotatingFloor", "回転床" },
         { "RotatingPillar", "回転柱" },

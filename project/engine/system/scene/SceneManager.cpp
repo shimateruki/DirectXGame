@@ -507,16 +507,22 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
         // 非同期にし、Scene本体の構築は描画と競合しないこのスレッドで確定します。
         asyncUploadBatchStarted_ = TextureManager::GetInstance()->BeginAsyncUploadBatch();
         sceneInitializationStarted_ = true;
+        preparedScene_->BeginLoadingInitialize();
+    }
+
+    if (!sceneInitializationFinished_) {
         TextureManager::GetInstance()->SetAsyncUploadRecording(asyncUploadBatchStarted_);
         try {
-            preparedScene_->Initialize();
+            sceneInitializationFinished_ = preparedScene_->InitializeLoadingStep();
         }
         catch (...) {
             TextureManager::GetInstance()->SetAsyncUploadRecording(false);
             throw;
         }
         TextureManager::GetInstance()->SetAsyncUploadRecording(false);
-        sceneInitializationFinished_ = true;
+        if (!sceneInitializationFinished_) {
+            return;
+        }
     }
 
     if (asyncUploadBatchStarted_ && !asyncUploadBatchSubmitted_) {
@@ -595,7 +601,10 @@ float SceneManager::CalculateLoadingProgress() const {
         : static_cast<float>(completedAssets) / static_cast<float>(totalAssets);
     const float assetProgress = 0.60f + (std::min)(1.0f, assetRatio) * 0.36f;
     if (sceneInitializationStarted_ && !sceneInitializationFinished_) {
-        return 0.98f;
+        const float initializeRatio = preparedScene_
+            ? std::clamp(preparedScene_->GetLoadingInitializeProgress(), 0.0f, 1.0f)
+            : 0.0f;
+        return 0.96f + initializeRatio * 0.025f;
     }
     if (sceneInitializationFinished_ &&
         TextureManager::GetInstance()->IsAsyncUploadBatchPending()) {
@@ -619,7 +628,10 @@ void SceneManager::SwapToPreparedScene() {
     currentScene_ = std::move(preparedScene_);
     ++sceneGeneration_;
 #ifdef USE_IMGUI
-    CameraEditor::GetInstance()->InvalidatePreviewForSceneChange();
+    CameraEditor* cameraEditor = CameraEditor::GetInstance();
+    cameraEditor->InvalidatePreviewForSceneChange();
+    cameraEditor->SetObject3dCommon(
+        currentScene_ ? currentScene_->GetObject3dCommon() : nullptr);
 #endif
     preparedSceneInitialized_ = false;
     preparedLoadData_.reset();
@@ -675,6 +687,9 @@ void SceneManager::SwapToDirectNextScene() {
             currentScene_->SetDebugEditor(debugEditor_);
         }
         currentScene_->Initialize();
+#ifdef USE_IMGUI
+        CameraEditor::GetInstance()->SetObject3dCommon(currentScene_->GetObject3dCommon());
+#endif
         currentScene_->OnActivated();
     }
 }

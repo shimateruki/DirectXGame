@@ -139,6 +139,9 @@ struct MaterialData {
         uint32_t materialIndex;
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> computeSkinnedVertexResource;
+        D3D12_VERTEX_BUFFER_VIEW computeSkinnedVertexBufferView{};
+        D3D12_RESOURCE_STATES computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         Microsoft::WRL::ComPtr<ID3D12Resource> indexResource; //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝舌ャ繝輔ぃ
         D3D12_INDEX_BUFFER_VIEW indexBufferView{};            //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝薙Η繝ｼ
     };
@@ -188,6 +191,12 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
         int meshDrawIndex = -1
     );
     void DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex = -1);
+    /// <summary>
+    /// 現在のボーン行列からスキニング済み頂点をCompute Shaderで生成します。
+    /// 利用できない場合はfalseを返し、従来のVertex Shader版へフォールバックします。
+    /// </summary>
+    bool PrepareComputeSkinning();
+    bool UsesComputeSkinning() const { return computeSkinningAvailable_; }
     /// <summary>
     /// 繝槭ユ繝ｪ繧｢繝ｫ諠・ｱ縺ｮ蜿門ｾ・(ImGui縺ｧ縺ｮ謫堺ｽ懃畑)
     /// </summary>
@@ -253,6 +262,8 @@ private: // 蜀・Κ蜃ｦ逅・未謨ｰ
     // 繝懊・繝ｳ繝舌ャ繝輔ぃ髢｢騾｣
     void CreateBoneBuffer();
     void UpdateBoneBuffer();
+    void CreateComputeSkinningResources();
+    const D3D12_VERTEX_BUFFER_VIEW& GetActiveVertexBufferView(const Mesh& mesh) const;
 
 
 
@@ -271,6 +282,9 @@ private: // 繝｡繝ｳ繝仙､画焚
     BoneForGPU* boneMappedData_ = nullptr;
     uint32_t boneSrvIndex_ = 0; //  繝懊・繝ｳ諠・ｱSRV縺ｮ繧､繝ｳ繝・ャ繧ｯ繧ｹ
     uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 笘・ｿｽ蜉・壽怙蠕後↓譖ｴ譁ｰ縺励◆繝輔Ξ繝ｼ繝逡ｪ蜿ｷ
+    bool computeSkinningAvailable_ = false;
+    bool computeSkinningDirty_ = true;
+    bool computeSkinningOutputReady_ = false;
 
     Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
     Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };

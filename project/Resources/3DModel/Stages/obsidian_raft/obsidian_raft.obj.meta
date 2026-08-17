@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "7739a5232f404b35be9ff7c1a9dcf66a",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Stages/obsidian_raft/obsidian_raft.obj",
+    "version":  1
+}

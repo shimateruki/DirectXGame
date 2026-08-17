@@ -50,6 +50,8 @@ private:
     void BeginRecover(const struct EnemyAttackDefinition& attack);
     void BeginVolleyLanding(const struct EnemyAttackDefinition& attack);
     void FireAerialWindOrb(int orbIndex);
+    void UpdateVolleyImpactCenters();
+    void ShowVolleyImpactTelegraphs(float progress);
     float ResolveVolleyHoverY();
     void HoldVolleyAltitude(float height, float deltaTime, Vector3& velocity);
     void EnsureHeldWindOrbs();
@@ -102,5 +104,6 @@ private:
     bool hasBaseScale_ = false;
     bool warningTriggered_ = false;
     std::string debugPreviewAttackId_;
+    std::array<Vector3, 3> volleyImpactCenters_{};
     std::array<std::unique_ptr<Object3d>, 3> heldWindOrbVisuals_;
 };

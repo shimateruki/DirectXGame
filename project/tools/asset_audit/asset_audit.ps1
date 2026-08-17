@@ -770,6 +770,10 @@ param(
                 foreach ($match in $matches) {
                     Add-Reference $UsedFiles $MissingReferences $source $match.Groups[1].Value
                 }
+                $shortPathMatches = [regex]::Matches($text, '"([A-Za-z0-9_\-]+(?:[\\/][A-Za-z0-9_\-]+)+)"')
+                foreach ($shortPathMatch in $shortPathMatches) {
+                    Add-Reference $UsedFiles $MissingReferences $source $shortPathMatch.Groups[1].Value
+                }
             } catch {
             }
         }

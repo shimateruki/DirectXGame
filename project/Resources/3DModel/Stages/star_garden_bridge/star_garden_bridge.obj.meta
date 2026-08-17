@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ffde8d3f3c265c97a194d561dade0a38",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_bridge/star_garden_bridge.obj",
+  "version": 1
+}

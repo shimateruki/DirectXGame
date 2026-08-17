@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "664122ef53fd410a8036a31a18e4861c",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/slime_dive.dds",
+    "version":  1
+}

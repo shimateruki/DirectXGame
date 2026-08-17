@@ -969,10 +969,16 @@ void PreviewScene::DrawImGui() {
 void PreviewScene::StartBridgeDropMovie() {}
 
 bool PreviewScene::IsVisible(Object3d* obj) {
-    if (!obj) return false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!obj || !obj->GetIsVisible()) return false;
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return true;
     AABB worldAabb = obj->GetModelWorldAABB();
+    constexpr float kNearObjectCullBypassDistance = 24.0f;
+    const Vector3& cameraPosition = camera->GetEye();
+    if (Math::DistanceSquaredPointAABB(cameraPosition, worldAabb.min, worldAabb.max) <=
+        kNearObjectCullBypassDistance * kNearObjectCullBypassDistance) {
+        return true;
+    }
     const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
     if (!visible) {
         RenderStats::GetInstance()->RecordCulledObject();

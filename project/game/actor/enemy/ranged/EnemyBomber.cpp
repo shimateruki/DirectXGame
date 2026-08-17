@@ -1,8 +1,10 @@
 ﻿#include "EnemyBomber.h"
 #include "SlimeBounceAnimator.h"
 #include "CollisionConfig.h"
+#include "CollisionManager.h"
 #include "EnemyBomb.h"
 #include "EnemyFactory.h"
+#include "EventManager.h"
 #include "Player.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
@@ -10,6 +12,7 @@
 #include "BaseScene.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 namespace {
 // ボマーの距離維持、予備動作、投げ演出に関する調整値。
@@ -34,6 +37,19 @@ constexpr float kBomberModelYawOffset = 3.1415926535f;
 constexpr const char* kHeldBombModelName = "Gimmicks/blob";
 constexpr const char* kCarryBomberThrowEffect = "Resources/json/effect/effect_carry_bomber_throw_burst.json";
 constexpr const char* kCarryBomberSparkPreset = "carry_bomber_throw_sparks";
+constexpr float kCarryPlaceCooldown = 0.85f;
+constexpr float kCarryBlastJumpCooldown = 1.10f;
+constexpr float kCarryBlastJumpForwardSpeed = 8.5f;
+constexpr float kCarryBlastJumpUpSpeed = 18.0f;
+constexpr float kCarryBlastJumpInvincibleDuration = 0.32f;
+constexpr float kCarryBlastJumpRadius = 3.2f;
+constexpr float kCarryBlastJumpDamage = 1.0f;
+constexpr float kCarryBlastTrailDuration = 0.28f;
+constexpr float kCarryBlastTrailInterval = 0.055f;
+constexpr const char* kCarryBombPlaceEffect = "Resources/json/effect/effect_player_bomb_place.json";
+constexpr const char* kCarryBombBlastJumpEffect = "Resources/json/effect/effect_player_bomb_blast_jump.json";
+constexpr const char* kCarryBombPlacePreset = "player_bomb_place_fuse";
+constexpr const char* kCarryBombBlastJumpPreset = "player_bomb_blast_jump";
 constexpr float kPi = 3.14159265f;
 constexpr float kTwoPi = kPi * 2.0f;
 
@@ -48,6 +64,15 @@ float SmoothStep01(float value) {
 
 float LerpFloat(float start, float end, float rate) {
     return start + (end - start) * rate;
+}
+
+Object3d* FindEnemyDamageTarget(Object3d* object) {
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        if (dynamic_cast<BaseEnemy*>(current)) {
+            return current;
+        }
+    }
+    return nullptr;
 }
 }
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -230,6 +255,10 @@ void EnemyBomber::SetCarried(bool isCarried) {
     BaseEnemy::SetCarried(isCarried);
     carriedThrowCooldown_ = 0.0f;
     carriedEffectTimer_ = 0.0f;
+    carriedPlaceCooldown_ = 0.0f;
+    carriedBlastJumpCooldown_ = 0.0f;
+    carriedBlastTrailTimer_ = 0.0f;
+    carriedBlastEffectTimer_ = 0.0f;
     throwState_ = ThrowState::Idle;
     windupTimer_ = 0.0f;
     throwLeapTimer_ = 0.0f;
@@ -247,14 +276,77 @@ void EnemyBomber::ExecuteAbility(Player* player) {
     carriedEffectTimer_ = 0.18f;
 }
 
+void EnemyBomber::ExecutePlaceAbility(Player* player) {
+    if (!player || !isCarried_ || carriedPlaceCooldown_ > 0.0f || !common_) {
+        return;
+    }
+
+    PlaceCarryBomb(player);
+    carriedPlaceCooldown_ = kCarryPlaceCooldown;
+}
+
+void EnemyBomber::ExecuteBlastJumpAbility(Player* player) {
+    if (!player || !isCarried_ || carriedBlastJumpCooldown_ > 0.0f) {
+        return;
+    }
+
+    const Vector3 forward = GetPlayerForward(player);
+    const Vector3 center = player->GetWorldPosition();
+    player->SetVelocity({
+        forward.x * kCarryBlastJumpForwardSpeed,
+        kCarryBlastJumpUpSpeed,
+        forward.z * kCarryBlastJumpForwardSpeed,
+    });
+    player->StartEvasionInvincibility(kCarryBlastJumpInvincibleDuration);
+    player->SetMoveYaw(std::atan2(forward.x, forward.z));
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, forward);
+    player->TriggerSlimeImpulse({ 2.55f, 0.62f, 2.55f }, 0.17f);
+
+    DamageEnemiesWithBlastJump(player, center);
+    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
+        meshEffects->SpawnEffectAt(
+            kCarryBombBlastJumpEffect,
+            center + Vector3{ 0.0f, 0.10f, 0.0f },
+            { 0.0f, std::atan2(forward.x, forward.z), 0.0f },
+            { 1.0f, 1.0f, 1.0f });
+    }
+    if (GPUParticleManager* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+        particles->EmitDirected(
+            kCarryBombBlastJumpPreset,
+            center + Vector3{ 0.0f, 0.18f, 0.0f },
+            { 0.0f, 1.0f, 0.0f },
+            1.0f);
+    }
+
+    carriedBlastJumpCooldown_ = kCarryBlastJumpCooldown;
+    carriedBlastTrailTimer_ = 0.0f;
+    carriedBlastEffectTimer_ = kCarryBlastTrailDuration;
+}
+
 void EnemyBomber::UpdateCarriedAbility(Player* player, float deltaTime) {
-    (void)player;
     if (!isCarried_) {
         return;
     }
 
     carriedThrowCooldown_ = std::max(0.0f, carriedThrowCooldown_ - deltaTime);
     carriedEffectTimer_ = std::max(0.0f, carriedEffectTimer_ - deltaTime);
+    carriedPlaceCooldown_ = std::max(0.0f, carriedPlaceCooldown_ - deltaTime);
+    carriedBlastJumpCooldown_ = std::max(0.0f, carriedBlastJumpCooldown_ - deltaTime);
+    carriedBlastEffectTimer_ = std::max(0.0f, carriedBlastEffectTimer_ - deltaTime);
+    carriedBlastTrailTimer_ -= deltaTime;
+
+    if (player && carriedBlastEffectTimer_ > 0.0f && carriedBlastTrailTimer_ <= 0.0f) {
+        Vector3 trailPosition = player->GetWorldPosition();
+        trailPosition.y -= 0.10f;
+        if (GPUParticleManager* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+            particles->EmitDirected(
+                kCarryBombBlastJumpPreset,
+                trailPosition,
+                { 0.0f, -1.0f, 0.0f },
+                0.62f);
+        }
+        carriedBlastTrailTimer_ = kCarryBlastTrailInterval;
+    }
     HideAttackTelegraph();
 }
 bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
@@ -655,6 +747,9 @@ void EnemyBomber::ThrowCarryBomb(Player* player) {
     bomb->SetTranslate(spawnPos);
     bomb->SetRotationY(std::atan2(forward.x, forward.z));
     bomb->SetTarget(target_ ? target_ : player);
+    if (auto* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
+        enemyBomb->SetPlayerOwned(true);
+    }
     bomb->SetCarried(false);
     bomb->SetVelocity({
         forward.x * kCarryBombForwardSpeed,
@@ -681,6 +776,82 @@ void EnemyBomber::ThrowCarryBomb(Player* player) {
     }
 
     SpawnBombObject(std::move(bomb));
+}
+
+void EnemyBomber::PlaceCarryBomb(Player* player) {
+    if (!player || !common_) {
+        return;
+    }
+
+    auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", common_);
+    if (!bomb) {
+        return;
+    }
+
+    const Vector3 forward = GetPlayerForward(player);
+    Vector3 spawnPosition = player->GetWorldPosition() + forward * 1.55f;
+    spawnPosition.y += 0.42f;
+    bomb->SetTranslate(spawnPosition);
+    bomb->SetRotationY(std::atan2(forward.x, forward.z));
+    bomb->SetTarget(target_ ? target_ : player);
+    if (auto* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
+        enemyBomb->SetPlayerOwned(true);
+    }
+    bomb->SetCarried(false);
+    bomb->SetVelocity({ 0.0f, 1.8f, 0.0f });
+    if (auto* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
+        enemyBomb->Ignite(1.35f);
+    }
+
+    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
+        meshEffects->SpawnEffectAt(
+            kCarryBombPlaceEffect,
+            spawnPosition,
+            { 0.0f, std::atan2(forward.x, forward.z), 0.0f },
+            { 1.0f, 1.0f, 1.0f });
+    }
+    if (GPUParticleManager* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+        particles->Emit(kCarryBombPlacePreset, spawnPosition + Vector3{ 0.0f, 0.34f, 0.0f });
+    }
+
+    player->TriggerSlimeImpulse({ 1.62f, 0.78f, 1.62f }, 0.13f);
+    SpawnBombObject(std::move(bomb));
+}
+
+void EnemyBomber::DamageEnemiesWithBlastJump(Player* player, const Vector3& center) {
+    if (!player) {
+        return;
+    }
+
+    PhysicsQueryFilter filter;
+    filter.mask = kEnemy;
+    filter.ignoredObject = player;
+    std::unordered_set<Object3d*> damagedTargets;
+    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
+        center + Vector3{ 0.0f, 0.58f, 0.0f }, kCarryBlastJumpRadius, filter)) {
+        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
+        if (!damageTarget || !damagedTargets.insert(damageTarget).second) {
+            continue;
+        }
+
+        Vector3 direction = damageTarget->GetWorldPosition() - center;
+        direction.y = 0.0f;
+        const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+        if (length > 0.001f) {
+            direction.x /= length;
+            direction.z /= length;
+        } else {
+            direction = { 0.0f, 0.0f, 1.0f };
+        }
+
+        DamageEvent damageEvent;
+        damageEvent.target = damageTarget;
+        damageEvent.attacker = player;
+        damageEvent.damageAmount = kCarryBlastJumpDamage;
+        damageEvent.damageType = DamageType::Explosion;
+        damageEvent.knockbackVelocity = { direction.x * 13.0f, 9.5f, direction.z * 13.0f };
+        EventManager::GetInstance()->Dispatch(damageEvent);
+    }
 }
 
 void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {

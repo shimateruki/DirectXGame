@@ -1,4 +1,4 @@
-# 元画像からDDSキャッシュを作成し、起動後の重いテクスチャ読み込みを次回以降軽くするツール。
+﻿# 元画像からDDSキャッシュを作成し、起動後の重いテクスチャ読み込みを次回以降軽くするツール。
 param(
     [string[]]$Root = @("Resources"),
     [string]$Texconv = "Resources\tools\Texconv.exe",
@@ -145,15 +145,23 @@ function New-TextureEntry([System.IO.FileInfo]$File, [object]$Request = $null, [
     $ddsExists = Test-Path -LiteralPath $ddsPath
     $ddsInfo = if ($ddsExists) { Get-Item -LiteralPath $ddsPath } else { $null }
     $format = Get-DDSFormat $File $Request
-    $sourceHash = Get-SourceHash $File
+    # 最新DDSの再確認では大きな元画像を毎回読まず、前回のhashを再利用する。
+    $sourceHash = if ($ManifestEntry -and $ManifestEntry.sourceHash) {
+        ([string]$ManifestEntry.sourceHash).ToLowerInvariant()
+    }
+    else {
+        ""
+    }
     $status = "latest"
     $message = "DDS is up to date."
 
     if (-not $ddsExists) {
+        $sourceHash = Get-SourceHash $File
         $status = "missing"
         $message = "DDS is missing."
     }
     elseif ($File.LastWriteTimeUtc -gt $ddsInfo.LastWriteTimeUtc) {
+        $sourceHash = Get-SourceHash $File
         $manifestHash = if ($ManifestEntry -and $ManifestEntry.sourceHash) { ([string]$ManifestEntry.sourceHash).ToLowerInvariant() } else { "" }
         $manifestFormat = if ($ManifestEntry -and $ManifestEntry.format) { [string]$ManifestEntry.format } else { "" }
         $manifestDdsSize = if ($ManifestEntry -and $ManifestEntry.ddsSize) { [int64]$ManifestEntry.ddsSize } else { [int64]-1 }
@@ -389,7 +397,7 @@ function Write-Summary($Entries) {
 }
 
 # DDSが無い/古い/強制指定された対象だけをtexconvへ流し、最新のものはスキップする。
-function Invoke-DDSCacheBuild {
+function Invoke-DDSCacheBuildCore {
     $entries = @(Get-TextureEntries)
     Write-Summary $entries
 
@@ -419,7 +427,35 @@ function Invoke-DDSCacheBuild {
     if (-not $DryRun) {
         Save-Manifest $entries
     }
+    $errorCount = @($targets | Where-Object { $_.status -eq "error" }).Count
+    if ($errorCount -gt 0) {
+        throw "DDS cache conversion failed for $errorCount texture(s)."
+    }
     return $entries
+}
+
+# Editor更新とRuntime要求が重なってもmanifestやDDSを同時更新しないよう、変換処理を直列化する。
+function Invoke-DDSCacheBuild {
+    $mutex = [System.Threading.Mutex]::new($false, "Global\GE3_DDSCacheBuilder_Build")
+    $ownsMutex = $false
+    try {
+        try {
+            $ownsMutex = $mutex.WaitOne()
+        }
+        catch [System.Threading.AbandonedMutexException] {
+            $ownsMutex = $true
+        }
+        if (-not $ownsMutex) {
+            throw "DDS cache build mutex could not be acquired."
+        }
+        return @(Invoke-DDSCacheBuildCore)
+    }
+    finally {
+        if ($ownsMutex) {
+            $mutex.ReleaseMutex() | Out-Null
+        }
+        $mutex.Dispose()
+    }
 }
 
 # 監視モードでは多重起動をMutexで防ぎ、要求キューや元画像の変化に応じてビルドする。

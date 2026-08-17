@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.003,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 14,
+  "EdgeFadeStrength": 0.42,
+  "EndColor": [1.0, 0.08, 0.01, 0.0],
+  "EndScale": [0.30, 0.30, 0.55],
+  "Intensity": 5.8,
+  "Lifetime": 0.22,
+  "MeshSegments": 36,
+  "Position": [0.0, 0.0, 0.0],
+  "ProceduralType": 3,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [0.0, -5.5],
+  "StartColor": [3.6, 0.86, 0.10, 0.92],
+  "StartScale": [0.78, 0.78, 1.28],
+  "TexturePath": "Resources/sprite/particle/flame_soft.png",
+  "ThrustLength": 2.6,
+  "ThrustRadius": 0.72,
+  "UvTiling": [1.0, 2.4],
+  "VolumeMode": 2
+}

@@ -4,6 +4,7 @@
 #include "EnemyAttackProfile.h"
 #include <cstdint>
 #include <memory>
+#include <cstddef>
 
 // 敵固有の移動・攻撃姿勢へ最後に重ねる、短い被弾リアクションの見た目です。
 // scaleは倍率、rotationとoffsetはローカル空間の加算値です。
@@ -81,6 +82,9 @@ Vector3 CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusSc
 void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color);
     void ShowAttackTelegraphDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color, const std::string& texturePath);
     void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
+    void ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth, float endWidth, float progress, const Vector4& color);
+    void ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color);
+    void ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color);
     void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
     void HideAttackTelegraph();
     bool UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection);

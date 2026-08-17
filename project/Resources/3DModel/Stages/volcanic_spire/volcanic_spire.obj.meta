@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "f73666f928444d43b19e28dee7775039",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Stages/volcanic_spire/volcanic_spire.obj",
+    "version":  1
+}

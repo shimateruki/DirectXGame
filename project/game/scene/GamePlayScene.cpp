@@ -1374,12 +1374,20 @@ void GamePlayScene::StartBridgeDropMovie() {
 
 }
 bool GamePlayScene::IsVisible(Object3d* obj) {
-    if (!obj) return false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!obj || !obj->GetIsVisible()) return false;
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return true;
 
     // モデルデータに基づいた正確なワールド空間AABBを取得
     AABB worldAabb = obj->GetModelWorldAABB();
+
+    // 近距離では視錐台境界の数値誤差より描画の安定性を優先する。
+    constexpr float kNearObjectCullBypassDistance = 24.0f;
+    const Vector3& cameraPosition = camera->GetEye();
+    if (Math::DistanceSquaredPointAABB(cameraPosition, worldAabb.min, worldAabb.max) <=
+        kNearObjectCullBypassDistance * kNearObjectCullBypassDistance) {
+        return true;
+    }
 
     const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
     if (!visible) {

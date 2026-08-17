@@ -29,8 +29,10 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
-#include"MeshEffectManager.h"
-#include"WinApp.h"
+#include "DebrisEffectManager.h"
+#include "MeshEffectManager.h"
+#include "VFXSequencer.h"
+#include "WinApp.h"
 #include "IconsFontAwesome5.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -55,6 +57,95 @@
 #include "GameSettingsManager.h"
 #include "TutorialDirector.h"
 
+#include <algorithm>
+#include <iterator>
+
+namespace {
+constexpr const char* kControlsGuidePortraitsToPreload[] = {
+	"Resources/sprite/ui/control_guide/portraits/pink_slime.png",
+	"Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
+	"Resources/sprite/ui/control_guide/portraits/wind_slime.png",
+	"Resources/sprite/ui/control_guide/portraits/fire_slime.png",
+	"Resources/sprite/ui/control_guide/portraits/thunder_slime.png"
+};
+
+constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
+	"Resources/sprite/ui/control_guide/labels/absorb.png",
+	"Resources/sprite/ui/control_guide/labels/throw.png",
+	"Resources/sprite/ui/control_guide/labels/slime_dive.png",
+	"Resources/sprite/ui/control_guide/labels/puni_straight.png",
+	"Resources/sprite/ui/control_guide/labels/bounce_evade.png",
+	"Resources/sprite/ui/control_guide/labels/bomb_throw.png",
+	"Resources/sprite/ui/control_guide/labels/bomb_place.png",
+	"Resources/sprite/ui/control_guide/labels/blast_jump.png",
+	"Resources/sprite/ui/control_guide/labels/fireball.png",
+	"Resources/sprite/ui/control_guide/labels/flame_breath.png",
+	"Resources/sprite/ui/control_guide/labels/blaze_step.png",
+	"Resources/sprite/ui/control_guide/labels/thunder_chain.png",
+	"Resources/sprite/ui/control_guide/labels/charged_discharge.png",
+	"Resources/sprite/ui/control_guide/labels/thunder_step.png",
+	"Resources/sprite/ui/control_guide/labels/updraft.png",
+	"Resources/sprite/ui/control_guide/labels/wind_breath.png",
+	"Resources/sprite/ui/control_guide/labels/wind_dash.png"
+};
+
+constexpr const char* kTutorialMeshEffectsToPreload[] = {
+	"Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+	"Resources/json/effect/effect_pink_slime_charge_core_flash.json",
+	"Resources/json/effect/effect_pink_slime_charge_vortex_streak.json",
+	"Resources/json/effect/effect_pink_slime_launch_kick_ring.json",
+	"Resources/json/effect/effect_pink_slime_apex_focus_flash.json",
+	"Resources/json/effect/effect_pink_slime_dive_streak.json",
+	"Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
+	"Resources/json/effect/effect_pink_slime_landing_core_flash.json",
+	"Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
+	"Resources/json/effect/effect_player_pink_straight_arc.json",
+	"Resources/json/effect/effect_player_pink_straight_impact.json",
+	"Resources/json/effect/effect_player_pink_bounce_launch.json",
+	"Resources/json/effect/effect_player_pink_bounce_land.json"
+};
+
+constexpr const char* kTutorialGpuParticlePresetsToPreload[] = {
+	"hit_pull_bind",
+	"hit_pull_catch",
+	"hit_slime_elastic",
+	"hit_throw_slam_dust",
+	"hit_enemy_ability",
+	"player_jump_dust",
+	"player_land_dust",
+	"player_pink_straight_splash",
+	"player_pink_bounce_droplets"
+};
+
+constexpr const char* kTutorialVfxSequencesToPreload[] = {
+	"slime_elastic_hit_cue",
+	"pull_bind_cue",
+	"pull_catch_cue",
+	"throw_slam_cue",
+	"enemy_ability_hit_cue"
+};
+
+constexpr const char* kTutorialDebrisPresetsToPreload[] = {
+	"throw_slam_pebble_burst",
+	"pink_slime_charge_pebble_pull",
+	"pink_slime_landing_pebble_burst"
+};
+
+constexpr const char* kTutorialPromptTexturesToPreload[] = {
+	"Resources/sprite/ui/tutorial/tutorial_move.png",
+	"Resources/sprite/ui/tutorial/tutorial_look.png",
+	"Resources/sprite/ui/tutorial/tutorial_jump.png",
+	"Resources/sprite/ui/tutorial/tutorial_pull.png",
+	"Resources/sprite/ui/tutorial/tutorial_throw.png",
+	"Resources/sprite/ui/tutorial/tutorial_absorb.png",
+	"Resources/sprite/ui/tutorial/tutorial_ability.png",
+	"Resources/sprite/ui/tutorial/tutorial_release.png",
+	"Resources/sprite/ui/tutorial/tutorial_controls.png",
+	"Resources/sprite/ui/tutorial/tutorial_exit.png",
+	"Resources/sprite/ui/tutorial/tutorial_objective_marker.png"
+};
+}
+
 TutorialScene::TutorialScene() {}
 TutorialScene::~TutorialScene() {}
 
@@ -69,6 +160,90 @@ void TutorialScene::SetIsGoal(bool isGoal) {
 	}
 }
 
+void TutorialScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+	BaseScene::CollectReplaySprites(replaySprites);
+	if (lockOnSprite_) {
+		replaySprites.push_back(lockOnSprite_.get());
+	}
+	if (controlsGuideOverlay_) {
+		controlsGuideOverlay_->CollectReplaySprites(replaySprites);
+	}
+	if (saveIndicatorOverlay_) {
+		saveIndicatorOverlay_->CollectReplaySprites(replaySprites);
+	}
+}
+
+void TutorialScene::CaptureReplaySceneState(json& state) const {
+	json tutorialState = json::object();
+	json controlsGuideState = json::object();
+	json saveIndicatorState = json::object();
+	if (tutorialDirector_) tutorialDirector_->CaptureReplayState(tutorialState);
+	if (controlsGuideOverlay_) controlsGuideOverlay_->CaptureReplayState(controlsGuideState);
+	if (saveIndicatorOverlay_) saveIndicatorOverlay_->CaptureReplayState(saveIndicatorState);
+
+	state = {
+		{ "goal", {
+			{ "active", isGoal_ },
+			{ "savePerformed", goalSavePerformed_ }
+		} },
+		{ "movie", {
+			{ "state", static_cast<int>(movieState_) },
+			{ "timer", movieTimer_ },
+			{ "startCameraEye", { movieStartCameraEye_.x, movieStartCameraEye_.y, movieStartCameraEye_.z } },
+			{ "startCameraTarget", { movieStartCameraTarget_.x, movieStartCameraTarget_.y, movieStartCameraTarget_.z } },
+			{ "bridgeDropped", hasBridgeDropped_ }
+		} },
+		{ "sessionStarCoins", { sessionStarCoins_[0], sessionStarCoins_[1], sessionStarCoins_[2] } },
+		{ "tutorial", std::move(tutorialState) },
+		{ "overlays", {
+			{ "controlsGuide", std::move(controlsGuideState) },
+			{ "saveIndicator", std::move(saveIndicatorState) }
+		} }
+	};
+}
+
+void TutorialScene::RestoreReplaySceneState(const json& state) {
+	if (!state.is_object()) {
+		return;
+	}
+
+	auto restoreVector3 = [](const json& object, const char* key, Vector3& value) {
+		const auto found = object.find(key);
+		if (found != object.end() && found->is_array() && found->size() >= 3) {
+			value = { (*found)[0].get<float>(), (*found)[1].get<float>(), (*found)[2].get<float>() };
+		}
+	};
+
+	if (const auto found = state.find("goal"); found != state.end() && found->is_object()) {
+		isGoal_ = found->value("active", false);
+		goalSavePerformed_ = found->value("savePerformed", false);
+	}
+	if (const auto found = state.find("movie"); found != state.end() && found->is_object()) {
+		const int movieState = (std::clamp)(found->value("state", 0), 0, 1);
+		movieState_ = static_cast<MovieState>(movieState);
+		movieTimer_ = (std::max)(0.0f, found->value("timer", 0.0f));
+		restoreVector3(*found, "startCameraEye", movieStartCameraEye_);
+		restoreVector3(*found, "startCameraTarget", movieStartCameraTarget_);
+		hasBridgeDropped_ = found->value("bridgeDropped", false);
+	}
+	if (const auto found = state.find("sessionStarCoins"); found != state.end() && found->is_array()) {
+		for (size_t index = 0; index < 3 && index < found->size(); ++index) {
+			sessionStarCoins_[index] = (*found)[index].get<bool>();
+		}
+	}
+	if (tutorialDirector_ && state.contains("tutorial")) {
+		tutorialDirector_->RestoreReplayState(state["tutorial"]);
+	}
+	if (const auto found = state.find("overlays"); found != state.end() && found->is_object()) {
+		if (controlsGuideOverlay_ && found->contains("controlsGuide")) {
+			controlsGuideOverlay_->RestoreReplayState((*found)["controlsGuide"]);
+		}
+		if (saveIndicatorOverlay_ && found->contains("saveIndicator")) {
+			saveIndicatorOverlay_->RestoreReplayState((*found)["saveIndicator"]);
+		}
+	}
+}
+
 SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 	SceneLoadManifest manifest;
 	manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
@@ -77,10 +252,19 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 	manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
 		? GetSceneLoadContext().spriteLayoutPath
 		: "Resources/json/sprite/tutorialScene.json");
-	manifest.AddModel("Samples/walk");
+	manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
+	for (const char* path : kControlsGuidePortraitsToPreload) {
+		manifest.AddTexture(path);
+	}
+	for (const char* path : kControlsGuideAbilityLabelsToPreload) {
+		manifest.AddTexture(path);
+	}
 	manifest.AddTexture("Resources/sprite/common/circle2.png");
 	manifest.AddTexture("Resources/sprite/common/white.png");
 	manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
+	for (const char* path : kTutorialPromptTexturesToPreload) {
+		manifest.AddTexture(path);
+	}
 	manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
 		? "Resources/output_skybox.dds"
 		: GetSceneLoadContext().skyboxPath);
@@ -88,119 +272,192 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 }
 
 void TutorialScene::Initialize() {
-	using json = nlohmann::json;
-
-	// --- 1. エンジン基盤・リソース初期化 ---
-	dxCommon_ = DirectXCommon::GetInstance();
-	inputManager_ = InputManager::GetInstance();
-	audioPlayer_ = AudioPlayer::GetInstance();
-
-
-	LOG("Tutorial Scene Initialized!");
-
-	// チュートリアル用の設定 (StageManagerがチュートリアル(-1)に対応している前提)
-	const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-	bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
-
-	// --- 2. 各種マネージャ初期化 ---
-	EventManager::GetInstance()->ClearAllListeners();
-	CameraManager::GetInstance()->Initialize();
-	CameraManager::GetInstance()->SetInputManager(inputManager_);
-
-	spriteCommon_ = std::make_unique<SpriteCommon>();
-	spriteCommon_->Initialize(dxCommon_);
-
-	object3dCommon_ = std::make_unique<Object3dCommon>();
-	object3dCommon_->Initialize(dxCommon_);
-
-	particleCommon_ = std::make_unique<ParticleCommon>();
-	particleCommon_->Initialize(dxCommon_);
-
-	particleSystem_ = std::make_unique<ParticleSystem>();
-	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
-
-	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
-
-	gameRule_ = std::make_unique<GameRule>();
-	gameRule_->Initialize(this);
-
-	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
-
-	// --- 3. サブシステム初期化 ---
-	objectManager_ = std::make_unique<ObjectManager>();
-
-	lockOnSystem_ = std::make_unique<LockOnSystem>();
-	lockOnSystem_->Initialize(inputManager_);
-	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png"); 
-	lockOnSprite_ = std::make_unique<Sprite>();
-	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
-	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
-	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
-	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
-
-	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-
-	// 1. キューブマップ（DDS）の読み込み
-	skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
-		ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
-
-	// 2. スカイボックスの生成と初期化
-	skybox_ = std::make_unique<Skybox>();
-	skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
-
-	// --- 5. レベルデータ読み込み (JSON) ---
-	levelLoader_ = std::make_unique<LevelLoader>();
-	
-	// チュートリアル用のパスがあればそちらを、なければ現在の設定に従う
-	std::string objectPath = "Resources/json/3Dobject/tutorial.json";
-	std::string spritePath = "Resources/json/sprite/tutorialScene.json";
-
-	// ファイルが存在しない場合は代替パス (GamePlayと同じものなど) を検討
-	levelLoader_->LoadObjectLayout(this, objectPath);
-	levelLoader_->LoadSpriteLayout(this, spritePath);
-	if (player_) {
-		player_->SetTutorialSafetyEnabled(true);
+	BeginLoadingInitialize();
+	while (!InitializeLoadingStep()) {
 	}
+}
 
-	controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
-	controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
+void TutorialScene::BeginLoadingInitialize() {
+	loadingInitializePhase_ = 0;
+	loadingInitializeItemIndex_ = 0;
+	loadingInitializeCompletedUnits_ = 0;
+	loadingInitializeTotalUnits_ =
+		10 +
+		std::size(kTutorialGpuParticlePresetsToPreload) +
+		std::size(kTutorialMeshEffectsToPreload) +
+		std::size(kTutorialDebrisPresetsToPreload) +
+		std::size(kTutorialVfxSequencesToPreload);
+}
 
-	saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
-	saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+bool TutorialScene::InitializeLoadingStep() {
+	auto completeUnit = [this]() {
+		++loadingInitializeCompletedUnits_;
+	};
 
-	tutorialDirector_ = std::make_unique<TutorialDirector>();
-	if (tutorialDirector_->Initialize(this, player_, inputManager_)) {
-		tutorialDirector_->SetCompletionCallback([this]() {
-			HandleTutorialFlowCompleted();
-		});
+	for (;;) {
+		switch (loadingInitializePhase_) {
+		case 0: {
+			dxCommon_ = DirectXCommon::GetInstance();
+			inputManager_ = InputManager::GetInstance();
+			audioPlayer_ = AudioPlayer::GetInstance();
+			LOG("Tutorial Scene Initialized!");
+			const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
+			bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
+			EventManager::GetInstance()->ClearAllListeners();
+			CameraManager::GetInstance()->Initialize();
+			CameraManager::GetInstance()->SetInputManager(inputManager_);
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		}
+		case 1:
+			spriteCommon_ = std::make_unique<SpriteCommon>();
+			spriteCommon_->Initialize(dxCommon_);
+			object3dCommon_ = std::make_unique<Object3dCommon>();
+			object3dCommon_->Initialize(dxCommon_);
+			MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+			particleCommon_ = std::make_unique<ParticleCommon>();
+			particleCommon_->Initialize(dxCommon_);
+			particleSystem_ = std::make_unique<ParticleSystem>();
+			particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
+			ParticleManager::GetInstance()->Initialize(particleSystem_.get());
+			gameRule_ = std::make_unique<GameRule>();
+			gameRule_->Initialize(this);
+			LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		case 2: {
+			objectManager_ = std::make_unique<ObjectManager>();
+			lockOnSystem_ = std::make_unique<LockOnSystem>();
+			lockOnSystem_->Initialize(inputManager_);
+			const uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png");
+			lockOnSprite_ = std::make_unique<Sprite>();
+			lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+			lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+			lockOnSprite_->SetSize({ 64.0f, 64.0f });
+			BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		}
+		case 3:
+			GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+			GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+			gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
+			++loadingInitializePhase_;
+			loadingInitializeItemIndex_ = 0;
+			completeUnit();
+			return false;
+		case 4:
+			if (loadingInitializeItemIndex_ < std::size(kTutorialGpuParticlePresetsToPreload)) {
+				GPUParticleManager::GetInstance()->PreloadPresetSystem(
+					kTutorialGpuParticlePresetsToPreload[loadingInitializeItemIndex_++]);
+				completeUnit();
+				return false;
+			}
+			++loadingInitializePhase_;
+			loadingInitializeItemIndex_ = 0;
+			continue;
+		case 5:
+			if (loadingInitializeItemIndex_ < std::size(kTutorialMeshEffectsToPreload)) {
+				MeshEffectManager::GetInstance()->PreloadEffect(
+					kTutorialMeshEffectsToPreload[loadingInitializeItemIndex_++]);
+				completeUnit();
+				return false;
+			}
+			++loadingInitializePhase_;
+			loadingInitializeItemIndex_ = 0;
+			continue;
+		case 6:
+			DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+			DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
+			++loadingInitializePhase_;
+			loadingInitializeItemIndex_ = 0;
+			completeUnit();
+			return false;
+		case 7:
+			if (loadingInitializeItemIndex_ < std::size(kTutorialDebrisPresetsToPreload)) {
+				DebrisEffectManager::GetInstance()->PrewarmPreset(
+					kTutorialDebrisPresetsToPreload[loadingInitializeItemIndex_++]);
+				completeUnit();
+				return false;
+			}
+			++loadingInitializePhase_;
+			loadingInitializeItemIndex_ = 0;
+			continue;
+		case 8:
+			if (loadingInitializeItemIndex_ < std::size(kTutorialVfxSequencesToPreload)) {
+				VFXSequencer sequence;
+				sequence.Load(kTutorialVfxSequencesToPreload[loadingInitializeItemIndex_++]);
+				completeUnit();
+				return false;
+			}
+			++loadingInitializePhase_;
+			continue;
+		case 9:
+			skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
+				ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
+			skybox_ = std::make_unique<Skybox>();
+			skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		case 10:
+			levelLoader_ = std::make_unique<LevelLoader>();
+			levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/tutorial.json");
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		case 11:
+			levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/tutorialScene.json");
+			if (player_) {
+				player_->SetTutorialSafetyEnabled(true);
+			}
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		case 12:
+			controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
+			controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
+			saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
+			saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+			tutorialDirector_ = std::make_unique<TutorialDirector>();
+			if (tutorialDirector_->Initialize(this, player_, inputManager_)) {
+				tutorialDirector_->SetCompletionCallback([this]() {
+					HandleTutorialFlowCompleted();
+				});
+			}
+			++loadingInitializePhase_;
+			completeUnit();
+			return false;
+		case 13:
+			LightManager::GetInstance()->LoadState(
+				ResolveSceneLightPath("Resources/json/light/light_layout.json"));
+			CameraEditor::GetInstance()->Initialize();
+			// 本編と同じ三人称カメラ設定を共有します。
+			CameraEditor::GetInstance()->LoadFile("game_camera.json");
+			CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+			if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+				camera->ResetFollowSmoothing();
+			}
+			++loadingInitializePhase_;
+			completeUnit();
+			return true;
+		default:
+			return true;
+		}
 	}
+}
 
-	LightManager::GetInstance()->LoadState(
-		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
-	CameraEditor::GetInstance()->Initialize();
-	// チュートリアルだけ別の距離・高さにすると、通常シーンで覚えた視点感覚と一致しません。
-	// セレクト・ゲーム本編と同じ三人称設定を共有します。
-	CameraEditor::GetInstance()->LoadFile("game_camera.json");
-	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
-	if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-		camera->ResetFollowSmoothing();
-	}
-
-	// 課題用アニメーションモデルの生成
-	animatedCube_ = std::make_unique<Object3d>();
-	animatedCube_->Initialize(object3dCommon_.get());
-	animatedCube_->SetModel("Samples/walk"); 
-	
-	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
-		animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
-	}
-	
-	animatedCube_->isAnimLoop_ = true;
-	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f});
-	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
-
+float TutorialScene::GetLoadingInitializeProgress() const {
+	return loadingInitializeTotalUnits_ == 0
+		? 1.0f
+		: std::clamp(
+			static_cast<float>(loadingInitializeCompletedUnits_) /
+				static_cast<float>(loadingInitializeTotalUnits_),
+			0.0f,
+			1.0f);
 }
 
 void TutorialScene::Finalize() {
@@ -212,6 +469,10 @@ void TutorialScene::Finalize() {
 		controlsGuideOverlay_->Finalize();
 	}
 	controlsGuideOverlay_.reset();
+	MeshEffectManager::GetInstance()->Clear();
+	VFXSequencer::ClearOneShots();
+	GPUParticleManager::GetInstance()->ClearSceneRuntime();
+	DebrisEffectManager::GetInstance()->Clear();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	saveIndicatorOverlay_.reset();
@@ -352,9 +613,6 @@ void TutorialScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
 
-	if (animatedCube_) {
-		animatedCube_->Update(deltaTime);
-	}
 }
 
 void TutorialScene::Draw() {
@@ -406,10 +664,6 @@ void TutorialScene::Draw() {
 	
 	if (player_ && player_->GetHookMarker()) {
 		player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
-	}
-
-	if (animatedCube_) {
-		animatedCube_->Draw(pointLightRes, spotLightRes);
 	}
 
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
@@ -532,10 +786,16 @@ void TutorialScene::HandleTutorialFlowCompleted() {
 }
 
 bool TutorialScene::IsVisible(Object3d* obj) {
-    if (!obj) return false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!obj || !obj->GetIsVisible()) return false;
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return true;
     AABB worldAabb = obj->GetModelWorldAABB();
+    constexpr float kNearObjectCullBypassDistance = 24.0f;
+    const Vector3& cameraPosition = camera->GetEye();
+    if (Math::DistanceSquaredPointAABB(cameraPosition, worldAabb.min, worldAabb.max) <=
+        kNearObjectCullBypassDistance * kNearObjectCullBypassDistance) {
+        return true;
+    }
     const bool visible = Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
     if (!visible) {
         RenderStats::GetInstance()->RecordCulledObject();

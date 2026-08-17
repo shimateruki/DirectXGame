@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "156dd87b97bb49848dea838394d281c5",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/fireball.dds",
+    "version":  1
+}

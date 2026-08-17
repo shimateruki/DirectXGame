@@ -2,6 +2,7 @@
 #include "GamePlayScene.h"
 #include "ScenePreloader.h"
 #include "SceneController.h"
+#include "SceneManager.h"
 
 #include "AudioPlayer.h"
 #include "BulletManager.h"
@@ -35,9 +36,38 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 namespace {
 constexpr const char* kExplosionSePath = "Resources/audio/se/generated/explosion.wav";
+
+constexpr const char* kControlsGuidePortraitsToPreload[] = {
+    "Resources/sprite/ui/control_guide/portraits/pink_slime.png",
+    "Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
+    "Resources/sprite/ui/control_guide/portraits/wind_slime.png",
+    "Resources/sprite/ui/control_guide/portraits/fire_slime.png",
+    "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"
+};
+
+constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
+    "Resources/sprite/ui/control_guide/labels/absorb.png",
+    "Resources/sprite/ui/control_guide/labels/throw.png",
+    "Resources/sprite/ui/control_guide/labels/slime_dive.png",
+    "Resources/sprite/ui/control_guide/labels/puni_straight.png",
+    "Resources/sprite/ui/control_guide/labels/bounce_evade.png",
+    "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
+    "Resources/sprite/ui/control_guide/labels/bomb_place.png",
+    "Resources/sprite/ui/control_guide/labels/blast_jump.png",
+    "Resources/sprite/ui/control_guide/labels/fireball.png",
+    "Resources/sprite/ui/control_guide/labels/flame_breath.png",
+    "Resources/sprite/ui/control_guide/labels/blaze_step.png",
+    "Resources/sprite/ui/control_guide/labels/thunder_chain.png",
+    "Resources/sprite/ui/control_guide/labels/charged_discharge.png",
+    "Resources/sprite/ui/control_guide/labels/thunder_step.png",
+    "Resources/sprite/ui/control_guide/labels/updraft.png",
+    "Resources/sprite/ui/control_guide/labels/wind_breath.png",
+    "Resources/sprite/ui/control_guide/labels/wind_dash.png"
+};
 
 constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_bakuhatu.json",
@@ -81,7 +111,17 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_warp_gate_floor.json",
     "Resources/json/effect/effect_warp_gate_pillar.json",
     "Resources/json/effect/effect_crown_idle_shell.json",
-    "Resources/json/effect/effect_crown_get_flash_ring.json"
+    "Resources/json/effect/effect_crown_get_flash_ring.json",
+    "Resources/json/effect/effect_player_thunder_discharge_charge.json",
+    "Resources/json/effect/effect_player_thunder_discharge_burst.json",
+    "Resources/json/effect/effect_player_fire_blaze_trail.json",
+    "Resources/json/effect/effect_player_fire_blaze_burst.json",
+    "Resources/json/effect/effect_player_pink_straight_arc.json",
+    "Resources/json/effect/effect_player_pink_straight_impact.json",
+    "Resources/json/effect/effect_player_pink_bounce_launch.json",
+    "Resources/json/effect/effect_player_pink_bounce_land.json",
+    "Resources/json/effect/effect_player_bomb_place.json",
+    "Resources/json/effect/effect_player_bomb_blast_jump.json"
 };
 
 constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
@@ -145,7 +185,15 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "crown_get_afterglow",
     "crown_idle_twinkle",
     "crown_idle_sparkle",
-    "crown_goal_idle_sparkle"
+    "crown_goal_idle_sparkle",
+    "player_thunder_discharge_charge",
+    "player_thunder_discharge_burst",
+    "player_fire_blaze_trail",
+    "player_fire_blaze_burst",
+    "player_pink_straight_splash",
+    "player_pink_bounce_droplets",
+    "player_bomb_place_fuse",
+    "player_bomb_blast_jump"
 };
 
 constexpr const char* kGameplayVfxSequencesToPreload[] = {
@@ -179,6 +227,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
 
     std::string objectLayoutPath = "Resources/json/3Dobject/stage1.json";
     std::string spriteLayoutPath = "Resources/json/sprite/stage1_sprite.json";
+    std::string skyboxPath = GetSceneLoadContext().skyboxPath;
     if (HasSceneAssetContext()) {
         if (!GetSceneLoadContext().objectLayoutPath.empty()) {
             objectLayoutPath = GetSceneLoadContext().objectLayoutPath;
@@ -193,18 +242,28 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
             objectLayoutPath = stages[stageIndex].levelPath;
             spriteLayoutPath = stages[stageIndex].spritePath;
+            if (skyboxPath.empty()) {
+                skyboxPath = stages[stageIndex].skyboxPath;
+            }
         }
     }
 
     manifest.AddObjectLayout(objectLayoutPath);
     manifest.AddSpriteLayout(spriteLayoutPath);
     manifest.AddSpriteLayout("Resources/json/sprite/gameplayHUD.json");
+    manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
+    for (const char* path : kControlsGuidePortraitsToPreload) {
+        manifest.AddTexture(path);
+    }
+    for (const char* path : kControlsGuideAbilityLabelsToPreload) {
+        manifest.AddTexture(path);
+    }
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
-    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
+    manifest.AddTexture(skyboxPath.empty()
         ? "Resources/output_skybox.dds"
-        : GetSceneLoadContext().skyboxPath);
+        : skyboxPath);
     manifest.AddTexture("Resources/sprite/particle/glow_core.png");
     manifest.AddTexture("Resources/sprite/particle/diamond_shard.png");
     manifest.AddTexture("Resources/sprite/effect/prism/prism_spell_circle.dds");
@@ -220,34 +279,201 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
 }
 
 void GamePlayScene::Initialize() {
-    if (HasSceneAssetContext()) {
-        StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
+    BeginLoadingInitialize();
+    while (!InitializeLoadingStep()) {
     }
-    const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
+}
 
-    LoadGoalPresentationTuning();
-    InitializeCoreSystems(currentStage);
-    InitializeRenderCommons();
-    InitializeGameplaySystems();
-    LoadCurrentStageContent(currentStage);
-    const std::string controllerName = GetSceneLoadContext().controllerName.empty()
-        ? "DEFAULT"
-        : GetSceneLoadContext().controllerName;
-    sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
-    if (!sceneController_) {
-        LOG("Scene Controller not registered: " + controllerName + ". Falling back to DEFAULT.");
-        sceneController_ = SceneControllerFactory::GetInstance()->Create("DEFAULT");
+void GamePlayScene::BeginLoadingInitialize() {
+    loadingInitializePhase_ = 0;
+    loadingInitializeItemIndex_ = 0;
+    loadingInitializeCompletedUnits_ = 0;
+    loadingInitializeTotalUnits_ =
+        13 +
+        std::size(kGameplayGpuParticlePresetsToPreload) +
+        std::size(kGameplayMeshEffectsToPreload) +
+        std::size(kGameplayDebrisPresetsToPreload) +
+        std::size(kGameplayVfxSequencesToPreload);
+}
+
+bool GamePlayScene::InitializeLoadingStep() {
+    auto completeUnit = [this]() {
+        ++loadingInitializeCompletedUnits_;
+    };
+
+    for (;;) {
+        switch (loadingInitializePhase_) {
+        case 0:
+            if (HasSceneAssetContext()) {
+                StageManager::GetInstance()->SetCurrentStageById(GetSceneLoadContext().sceneAssetId);
+            }
+            LoadGoalPresentationTuning();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 1:
+            InitializeCoreSystems(StageManager::GetInstance()->GetCurrentStage());
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 2:
+            InitializeRenderCommons();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 3:
+            InitializeGameplayObjectSystems();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 4:
+            InitializeGameplayParticleRuntime();
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            completeUnit();
+            return false;
+        case 5:
+            if (loadingInitializeItemIndex_ < std::size(kGameplayGpuParticlePresetsToPreload)) {
+                GPUParticleManager::GetInstance()->PreloadPresetSystem(
+                    kGameplayGpuParticlePresetsToPreload[loadingInitializeItemIndex_++]);
+                completeUnit();
+                return false;
+            }
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            continue;
+        case 6:
+            if (loadingInitializeItemIndex_ < std::size(kGameplayMeshEffectsToPreload)) {
+                MeshEffectManager::GetInstance()->PreloadEffect(
+                    kGameplayMeshEffectsToPreload[loadingInitializeItemIndex_++]);
+                completeUnit();
+                return false;
+            }
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            continue;
+        case 7:
+            InitializeGameplayDebrisRuntime();
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            completeUnit();
+            return false;
+        case 8:
+            if (loadingInitializeItemIndex_ < std::size(kGameplayDebrisPresetsToPreload)) {
+                DebrisEffectManager::GetInstance()->PrewarmPreset(
+                    kGameplayDebrisPresetsToPreload[loadingInitializeItemIndex_++]);
+                completeUnit();
+                return false;
+            }
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            continue;
+        case 9:
+            if (loadingInitializeItemIndex_ < std::size(kGameplayVfxSequencesToPreload)) {
+                VFXSequencer sequence;
+                sequence.Load(kGameplayVfxSequencesToPreload[loadingInitializeItemIndex_++]);
+                completeUnit();
+                return false;
+            }
+            ++loadingInitializePhase_;
+            loadingInitializeItemIndex_ = 0;
+            continue;
+        case 10:
+            audioPlayer_->LoadSoundFile(kExplosionSePath);
+            InitializeGameplaySkybox();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 11:
+            LoadCurrentStageObjects(StageManager::GetInstance()->GetCurrentStage());
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 12:
+            LoadCurrentStageSpritesAndView(StageManager::GetInstance()->GetCurrentStage());
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 13:
+            InitializeGameplayHUD();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 14:
+            InitializeGameplayOverlays();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        case 15: {
+            const std::string controllerName = GetSceneLoadContext().controllerName.empty()
+                ? "DEFAULT"
+                : GetSceneLoadContext().controllerName;
+            sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
+            if (!sceneController_) {
+                LOG("Scene Controller not registered: " + controllerName + ". Falling back to DEFAULT.");
+                sceneController_ = SceneControllerFactory::GetInstance()->Create("DEFAULT");
+            }
+            if (sceneController_) {
+                sceneController_->OnInitialize(*this);
+            }
+            ++loadingInitializePhase_;
+            completeUnit();
+            return false;
+        }
+        case 16:
+            InitializeGoalCinematicTimeline();
+            InitializeDebugAnimationPreview();
+            ++loadingInitializePhase_;
+            completeUnit();
+            return true;
+        default:
+            return true;
+        }
     }
-    if (sceneController_) {
-        sceneController_->OnInitialize(*this);
-    }
-    InitializeGoalCinematicTimeline();
-    InitializeDebugAnimationPreview();
+}
+
+float GamePlayScene::GetLoadingInitializeProgress() const {
+    return loadingInitializeTotalUnits_ == 0
+        ? 1.0f
+        : std::clamp(
+            static_cast<float>(loadingInitializeCompletedUnits_) /
+                static_cast<float>(loadingInitializeTotalUnits_),
+            0.0f,
+            1.0f);
 }
 
 void GamePlayScene::OnActivated() {
+    // 非同期ロード中はLoadingSceneも共有のライト状態を使用するため、
+    // 現在シーンへ切り替わった時点でゲーム用の状態をもう一度確定します。
+    ApplyGameplayRenderState(StageManager::GetInstance()->GetCurrentStage());
     BaseScene::OnActivated();
-    StartRespawnIrisInIfNeeded();
+
+#ifdef USE_IMGUI
+    // 編集停止中はdeltaTimeが0になるため、開始演出を再生するとカメラ固定が解除されません。
+    // 残っている演出カメラも解除し、保存済みの自由カメラへ確実に戻します。
+    SceneManager* sceneManager = GetSceneManager();
+    if (sceneManager && !sceneManager->IsPlaying()) {
+        if (stageEntryPresentationActive_) {
+            FinishStageEntryPresentation();
+        }
+
+        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+            camera->EndOverride(0.0f);
+            camera->SetInputEnabled(true);
+            camera->SetFollowTarget(nullptr);
+            camera->SetLockOnTarget(nullptr);
+        }
+
+        CameraEditor* cameraEditor = CameraEditor::GetInstance();
+        cameraEditor->SetMode(CameraEditor::Mode::Editor);
+        cameraEditor->Update(player_, false);
+        return;
+    }
+#endif
+
+    if (!StartRespawnIrisInIfNeeded()) {
+        StartStageEntryPresentation();
+    }
 }
 
 void GamePlayScene::Finalize() {
@@ -294,6 +520,27 @@ void GamePlayScene::InitializeRenderCommons() {
 }
 
 void GamePlayScene::InitializeGameplaySystems() {
+    InitializeGameplayObjectSystems();
+    InitializeGameplayParticleRuntime();
+    for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
+        GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
+    }
+    for (const char* path : kGameplayMeshEffectsToPreload) {
+        MeshEffectManager::GetInstance()->PreloadEffect(path);
+    }
+    InitializeGameplayDebrisRuntime();
+    for (const char* presetName : kGameplayDebrisPresetsToPreload) {
+        DebrisEffectManager::GetInstance()->PrewarmPreset(presetName);
+    }
+    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
+        VFXSequencer sequence;
+        sequence.Load(sequenceName);
+    }
+    audioPlayer_->LoadSoundFile(kExplosionSePath);
+    InitializeGameplaySkybox();
+}
+
+void GamePlayScene::InitializeGameplayObjectSystems() {
     objectManager_ = std::make_unique<ObjectManager>();
 
     lockOnSystem_ = std::make_unique<LockOnSystem>();
@@ -307,47 +554,77 @@ void GamePlayScene::InitializeGameplaySystems() {
     lockOnSprite_->SetSize({ 64.0f, 64.0f });
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+}
 
+void GamePlayScene::InitializeGameplayParticleRuntime() {
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-    for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
-        GPUParticleManager::GetInstance()->PreloadPresetSystem(presetName);
-    }
+}
 
-    for (const char* path : kGameplayMeshEffectsToPreload) {
-        MeshEffectManager::GetInstance()->PreloadEffect(path);
-    }
+void GamePlayScene::InitializeGameplayDebrisRuntime() {
     DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
     DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
-    for (const char* presetName : kGameplayDebrisPresetsToPreload) {
-        DebrisEffectManager::GetInstance()->PrewarmPreset(presetName);
+}
+
+void GamePlayScene::InitializeGameplaySkybox() {
+    std::string skyboxPath = GetSceneLoadContext().skyboxPath;
+    if (skyboxPath.empty()) {
+        const StageData& stage = StageManager::GetInstance()->GetCurrentStage();
+        skyboxPath = stage.skyboxPath;
     }
-    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
-        VFXSequencer sequence;
-        sequence.Load(sequenceName);
+    if (skyboxPath.empty()) {
+        skyboxPath = "Resources/output_skybox.dds";
     }
-    audioPlayer_->LoadSoundFile(kExplosionSePath);
 
     skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
-        ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
+        skyboxPath, TextureManager::TextureColorSpace::SRGB);
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 }
 
+void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
+    const std::string defaultLightPath = currentStage.lightPath.empty()
+        ? "Resources/json/light/light_layout.json"
+        : currentStage.lightPath;
+
+    LightManager* lightManager = LightManager::GetInstance();
+    lightManager->LoadState(ResolveSceneLightPath(defaultLightPath));
+
+    std::string skyboxPath = ResolveSceneSkyboxPath(currentStage.skyboxPath);
+    if (!skyboxPath.empty() && !lightManager->SetSkyboxTexturePath(skyboxPath)) {
+        lightManager->SetSkyboxTexturePath("Resources/output_skybox.dds");
+    }
+
+    skyboxTextureHandle_ = lightManager->GetSkyboxTextureHandle();
+    if (skybox_) {
+        skybox_->SetTextureHandle(skyboxTextureHandle_);
+    }
+}
+
 void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
+    LoadCurrentStageObjects(currentStage);
+    LoadCurrentStageSpritesAndView(currentStage);
+    InitializeGameplayHUD();
+    InitializeGameplayOverlays();
+}
+
+void GamePlayScene::LoadCurrentStageObjects(const StageData& currentStage) {
     levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, currentStage.levelPath);
     ApplyGoalCrownState();
+    ApplyStageStarCoinState();
+}
+
+void GamePlayScene::LoadCurrentStageSpritesAndView(const StageData& currentStage) {
     levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
 
-    LightManager::GetInstance()->LoadState(
-        ResolveSceneLightPath("Resources/json/light/light_layout.json"));
+    ApplyGameplayRenderState(currentStage);
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
+}
 
-    InitializeGameplayHUD();
-
+void GamePlayScene::InitializeGameplayOverlays() {
     controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
     controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
 
@@ -393,9 +670,33 @@ void GamePlayScene::ApplyGoalCrownState() {
     }
 }
 
-void GamePlayScene::StartRespawnIrisInIfNeeded() {
-    if (!GameDataManager::GetInstance()->ConsumeRespawnIrisInRequest()) {
+void GamePlayScene::ApplyStageStarCoinState() {
+    if (!objectManager_) {
         return;
+    }
+
+    const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+    for (auto& object : objectManager_->GetObjects()) {
+        if (!object || object->GetEventType() != EventType::StarCoin) {
+            continue;
+        }
+
+        object->SetLodEnabled(false);
+        const int starCoinIndex = object->GetTargetID();
+        if (!GameDataManager::GetInstance()->IsStarCoinCollected(stageIndex, starCoinIndex)) {
+            continue;
+        }
+
+        // 保存済みのスターコインは再配置せず、当たり判定も同時に無効化します。
+        object->SetIsVisible(false);
+        object->SetCollisionAttribute(0);
+        object->SetCollisionMask(0);
+    }
+}
+
+bool GamePlayScene::StartRespawnIrisInIfNeeded() {
+    if (!GameDataManager::GetInstance()->ConsumeRespawnIrisInRequest()) {
+        return false;
     }
 
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
@@ -421,6 +722,7 @@ void GamePlayScene::StartRespawnIrisInIfNeeded() {
     }
 
     Fade::GetInstance()->StartIrisIn(1.25f, irisCenter);
+    return true;
 }
 
 void GamePlayScene::InitializeDebugAnimationPreview() {
@@ -428,6 +730,12 @@ void GamePlayScene::InitializeDebugAnimationPreview() {
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
+    if (stageEntryPresentationActive_) {
+        FinishStageEntryPresentation();
+    }
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        camera->SetInputEnabled(true);
+    }
     goalCinematicPlayer_.Stop(false);
     goalCinematicTimelineLoaded_ = false;
     RestoreGoalPresentationCameraInput();
@@ -435,6 +743,8 @@ void GamePlayScene::FinalizeGameplayResources() {
     goalCameraSnapshotValid_ = false;
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
     MeshEffectManager::GetInstance()->Clear();
+    VFXSequencer::ClearOneShots();
+    GPUParticleManager::GetInstance()->ClearSceneRuntime();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     saveIndicatorOverlay_.reset();

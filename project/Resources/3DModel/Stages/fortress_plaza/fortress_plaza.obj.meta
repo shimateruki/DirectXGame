@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "f8d129e081105ca08f449868ace22c3b",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/fortress_plaza/fortress_plaza.obj",
+    "version": 1
+}

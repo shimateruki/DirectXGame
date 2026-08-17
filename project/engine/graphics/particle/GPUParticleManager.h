@@ -51,6 +51,8 @@ uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position)
     void ClearAllAutoEmitters();
     // エディターの時間シーク時に、保持中のGPU粒子を安全に初期状態へ戻します。
     void ResetSimulation();
+    // シーン切り替え時に、GPUバッファを再利用しつつ実行中の粒子と参照だけを初期化します。
+    void ClearSceneRuntime();
     bool IsEmpty() const;
     int GetActiveSystemCount() const;
     float GetLastUpdateCpuTimeMs() const { return lastUpdateCpuTimeMs_; }

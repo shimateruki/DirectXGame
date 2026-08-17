@@ -156,4 +156,6 @@ public:
 	static Frustum ExtractFrustumPlanes(const Matrix4x4& vp);
 	//  フラスタムとAABB（箱）の交差判定
 	static bool IntersectFrustumAABB(const Frustum& frustum, const Vector3& minBox, const Vector3& maxBox);
+	// 点からAABBまでの最短距離の二乗
+	static float DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox);
 };

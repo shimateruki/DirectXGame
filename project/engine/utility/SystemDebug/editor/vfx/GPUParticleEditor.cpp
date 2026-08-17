@@ -285,6 +285,15 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("空気抵抗 (Air Drag)", &config_.envDrag, 0.001f, 0.8f, 1.0f);
         ImGui::DragFloat3(ICON_FA_WIND " 風 (Wind)", &config_.envWind.x, 0.1f);
         ImGui::DragFloat("乱流・ノイズ (Turbulence)", &config_.envTurbulence, 0.1f, 0.0f, 100.0f);
+        const char* fieldTypes[] = { "なし", "吸引 (Attract)", "渦 (Vortex)", "反発 (Repulse)" };
+        ImGui::Combo("Fieldタイプ", &config_.fieldType, fieldTypes, IM_ARRAYSIZE(fieldTypes));
+        if (config_.fieldType != 0) {
+            ImGui::DragFloat3("Field位置（発生位置からの相対）", &config_.fieldPosition.x, 0.05f);
+            ImGui::DragFloat("Field強度", &config_.fieldStrength, 0.1f, -100.0f, 100.0f);
+            ImGui::DragFloat("Field半径", &config_.fieldRadius, 0.05f, 0.05f, 100.0f);
+            ImGui::DragFloat("Field減衰", &config_.fieldFalloff, 0.05f, 0.05f, 8.0f);
+            ImGui::TextDisabled("吸引・渦・反発をGPU上で各粒子へ適用します。");
+        }
         ImGui::DragFloat(ICON_FA_FEATHER " 地形との馴染み (Soft Fade)", &config_.softParticleFade, 0.1f, 0.1f, 20.0f);
     }
     ImGui::Separator();
@@ -499,6 +508,24 @@ void GPUParticleEditor::DrawImGui() {
     }
     ImGui::Separator();
     if (ImGui::CollapsingHeader("Sprite Sheet Animation")) {
+        const char* particleTypes[] = { "Billboard", "Trail" };
+        ImGui::Combo("Particle Type", &config_.particleType, particleTypes, IM_ARRAYSIZE(particleTypes));
+        if (config_.particleType == 1) {
+            ImGui::DragFloat("Trail Length", &config_.trailLength, 0.005f, 0.0f, 1.0f, "%.3f");
+            ImGui::TextDisabled("速度方向へ自動整列し、移動量に応じて軌跡を伸ばします。");
+        }
+
+        bool receiveLighting = config_.receiveLighting != 0;
+        if (ImGui::Checkbox("ライトの影響を受ける", &receiveLighting)) {
+            config_.receiveLighting = receiveLighting ? 1 : 0;
+        }
+        if (receiveLighting) {
+            ImGui::DragFloat3("ライト方向", &config_.lightDirection.x, 0.01f, -1.0f, 1.0f);
+            ImGui::ColorEdit3("ライト色", &config_.lightColor.x);
+            ImGui::SliderFloat("ライティング反映率", &config_.lightingStrength, 0.0f, 1.0f);
+        }
+
+        ImGui::Separator();
         ImGui::DragInt("Columns", &config_.spriteSheetColumns, 1.0f, 1, 16);
         ImGui::DragInt("Rows", &config_.spriteSheetRows, 1.0f, 1, 16);
         ImGui::DragInt("Frame Count", &config_.spriteSheetFrameCount, 1.0f, 1, 256);
@@ -565,6 +592,11 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["envDrag"] = config_.envDrag;
     j["envWind"] = { config_.envWind.x, config_.envWind.y, config_.envWind.z };
     j["envTurbulence"] = config_.envTurbulence;
+    j["fieldType"] = config_.fieldType;
+    j["fieldPosition"] = { config_.fieldPosition.x, config_.fieldPosition.y, config_.fieldPosition.z };
+    j["fieldStrength"] = config_.fieldStrength;
+    j["fieldRadius"] = config_.fieldRadius;
+    j["fieldFalloff"] = config_.fieldFalloff;
     j["baseSize"] = config_.baseSize;
     j["endSize"] = config_.endSize;
     j["rotSpeed"] = config_.rotSpeed;
@@ -588,6 +620,12 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["texturePath"] = config_.texturePath;
     j["alignToVelocity"] = config_.alignToVelocity != 0;
     j["velocityStretch"] = config_.velocityStretch;
+    j["particleType"] = config_.particleType;
+    j["trailLength"] = config_.trailLength;
+    j["receiveLighting"] = config_.receiveLighting != 0;
+    j["lightDirection"] = { config_.lightDirection.x, config_.lightDirection.y, config_.lightDirection.z };
+    j["lightColor"] = { config_.lightColor.x, config_.lightColor.y, config_.lightColor.z };
+    j["lightingStrength"] = config_.lightingStrength;
     j["spriteAnimation"] = {
         { "columns", config_.spriteSheetColumns },
         { "rows", config_.spriteSheetRows },
@@ -623,6 +661,17 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         config_.spriteSheetRandomStart = 0;
         config_.alignToVelocity = 0;
         config_.velocityStretch = 0.0f;
+        config_.particleType = 0;
+        config_.trailLength = 0.15f;
+        config_.receiveLighting = 0;
+        config_.lightDirection = { -0.4f, -1.0f, 0.3f };
+        config_.lightColor = { 1.0f, 1.0f, 1.0f };
+        config_.lightingStrength = 1.0f;
+        config_.fieldType = 0;
+        config_.fieldPosition = { 0.0f, 0.0f, 0.0f };
+        config_.fieldStrength = 0.0f;
+        config_.fieldRadius = 5.0f;
+        config_.fieldFalloff = 1.0f;
         config_.maxParticles = 0;
 
         if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
@@ -635,6 +684,11 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("envDrag")) config_.envDrag = j["envDrag"];
         if (j.contains("envWind")) { config_.envWind.x = j["envWind"][0]; config_.envWind.y = j["envWind"][1]; config_.envWind.z = j["envWind"][2]; }
         if (j.contains("envTurbulence")) config_.envTurbulence = j["envTurbulence"];
+        if (j.contains("fieldType")) config_.fieldType = j["fieldType"];
+        if (j.contains("fieldPosition")) { config_.fieldPosition.x = j["fieldPosition"][0]; config_.fieldPosition.y = j["fieldPosition"][1]; config_.fieldPosition.z = j["fieldPosition"][2]; }
+        if (j.contains("fieldStrength")) config_.fieldStrength = j["fieldStrength"];
+        if (j.contains("fieldRadius")) config_.fieldRadius = j["fieldRadius"];
+        if (j.contains("fieldFalloff")) config_.fieldFalloff = j["fieldFalloff"];
         if (j.contains("velocityVariance")) config_.velocityVariance = j["velocityVariance"];
 
         if (j.contains("baseColor")) { config_.baseColor.x = j["baseColor"][0]; config_.baseColor.y = j["baseColor"][1]; config_.baseColor.z = j["baseColor"][2]; config_.baseColor.w = j["baseColor"][3]; }
@@ -676,6 +730,14 @@ void GPUParticleEditor::Load(const std::string& presetName) {
             config_.alignToVelocity = j["alignToVelocity"].is_boolean() ? (j["alignToVelocity"].get<bool>() ? 1 : 0) : j["alignToVelocity"].get<int>();
         }
         if (j.contains("velocityStretch")) config_.velocityStretch = j["velocityStretch"];
+        if (j.contains("particleType")) config_.particleType = j["particleType"];
+        if (j.contains("trailLength")) config_.trailLength = j["trailLength"];
+        if (j.contains("receiveLighting")) {
+            config_.receiveLighting = j["receiveLighting"].is_boolean() ? (j["receiveLighting"].get<bool>() ? 1 : 0) : j["receiveLighting"].get<int>();
+        }
+        if (j.contains("lightDirection")) { config_.lightDirection.x = j["lightDirection"][0]; config_.lightDirection.y = j["lightDirection"][1]; config_.lightDirection.z = j["lightDirection"][2]; }
+        if (j.contains("lightColor")) { config_.lightColor.x = j["lightColor"][0]; config_.lightColor.y = j["lightColor"][1]; config_.lightColor.z = j["lightColor"][2]; }
+        if (j.contains("lightingStrength")) config_.lightingStrength = j["lightingStrength"];
         if (j.contains("spriteAnimation")) {
             const auto& anim = j["spriteAnimation"];
             if (anim.contains("columns")) config_.spriteSheetColumns = anim["columns"];

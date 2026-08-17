@@ -739,3 +739,10 @@ bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const V
 	}
 	return true;
 }
+
+float Math::DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox) {
+	const float dx = point.x < minBox.x ? minBox.x - point.x : (point.x > maxBox.x ? point.x - maxBox.x : 0.0f);
+	const float dy = point.y < minBox.y ? minBox.y - point.y : (point.y > maxBox.y ? point.y - maxBox.y : 0.0f);
+	const float dz = point.z < minBox.z ? minBox.z - point.z : (point.z > maxBox.z ? point.z - maxBox.z : 0.0f);
+	return dx * dx + dy * dy + dz * dz;
+}

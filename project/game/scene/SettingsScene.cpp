@@ -113,57 +113,16 @@ void SettingsScene::BindLayoutSprites() {
     footerTexts_[static_cast<size_t>(FooterAction::Apply)] = FindSprite("settings_footer_apply_text");
     categoryTabs_[0] = FindSprite("settings_category_sound_tab");
     categoryTabs_[1] = FindSprite("settings_category_control_tab");
+    categoryIcons_[0] = FindSprite("settings_category_sound_icon");
+    categoryIcons_[1] = FindSprite("settings_category_control_icon");
     categoryLabels_[0] = FindSprite("settings_category_sound_label");
     categoryLabels_[1] = FindSprite("settings_category_control_label");
-    categoryPointer_ = FindSprite("settings_category_pointer");
 
     constexpr std::array<const char*, static_cast<size_t>(Item::Count)> rowPrefixes = {
         "settings_bgm",
         "settings_se",
         "settings_camera"
     };
-
-    const std::array<std::string, 3> hiddenPrefixes = {
-        "settings_brightness",
-        "settings_resolution",
-        "settings_fullscreen"
-    };
-    const std::array<std::string, 9> hiddenParts = {
-        "_row",
-        "_label",
-        "_track",
-        "_fill",
-        "_knob",
-        "_arrow_left",
-        "_arrow_right",
-        "_value_label",
-        "_value0"
-    };
-
-    if (Sprite* screenTab = FindSprite("settings_category_screen_tab")) {
-        if (Sprite* controlTab = categoryTabs_[static_cast<size_t>(Category::Control)]) {
-            controlTab->SetPosition(screenTab->GetPosition());
-        }
-        screenTab->SetVisible(false);
-    }
-    if (Sprite* screenLabel = FindSprite("settings_category_screen_label")) {
-        if (Sprite* controlLabel = categoryLabels_[static_cast<size_t>(Category::Control)]) {
-            controlLabel->SetPosition(screenLabel->GetPosition());
-        }
-        screenLabel->SetVisible(false);
-    }
-    for (const std::string& prefix : hiddenPrefixes) {
-        for (const std::string& part : hiddenParts) {
-            if (Sprite* sprite = FindSprite(prefix + part)) {
-                sprite->SetVisible(false);
-            }
-        }
-        for (int digit = 1; digit < 3; ++digit) {
-            if (Sprite* sprite = FindSprite(prefix + "_value" + std::to_string(digit))) {
-                sprite->SetVisible(false);
-            }
-        }
-    }
 
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {
         const std::string prefix = rowPrefixes[static_cast<size_t>(i)];
@@ -438,40 +397,36 @@ void SettingsScene::UpdateCategorySprites() {
                 ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }
                 : Vector4{ 0.11f, 0.18f, 0.22f, 0.98f });
         }
+        Sprite* icon = categoryIcons_[static_cast<size_t>(i)];
+        if (icon) {
+            icon->SetColor(active
+                ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }
+                : Vector4{ 0.52f, 0.63f, 0.68f, 0.72f });
+        }
     }
 
-    if (categoryPointer_) {
-        Sprite* activeTab = categoryTabs_[static_cast<size_t>(activeCategory)];
-        if (activeTab) {
-            const Vector2 tabPosition = activeTab->GetPosition();
-            const Vector2 tabSize = activeTab->GetSize();
-            categoryPointer_->SetPosition({ tabPosition.x - tabSize.x * 0.72f, tabPosition.y });
-            if (slimeCursor_) {
-                const float bob = std::sin(sceneTime_ * 7.0f) * 4.0f;
-                const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 5.5f);
-                const float squash = 1.0f + pulse * 0.05f;
-                slimeCursor_->SetPosition({ tabPosition.x - tabSize.x * 0.94f, tabPosition.y + bob });
-                slimeCursor_->SetSize({
-                    slimeCursorBaseSize_.x * squash,
-                    slimeCursorBaseSize_.y * (1.04f - pulse * 0.04f)
-                });
-                slimeCursor_->SetColor({
-                    1.0f,
-                    1.0f,
-                    1.0f,
-                    focusArea_ == FocusArea::Items ? 0.96f : 0.55f
-                });
-            }
-        }
-        categoryPointer_->SetColor({
+    Sprite* activeTab = categoryTabs_[static_cast<size_t>(activeCategory)];
+    if (activeTab && slimeCursor_) {
+        const Vector2 tabPosition = activeTab->GetPosition();
+        const Vector2 tabSize = activeTab->GetSize();
+        const float bob = std::sin(sceneTime_ * 7.0f) * 4.0f;
+        const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 5.5f);
+        const float squash = 1.0f + pulse * 0.05f;
+        slimeCursor_->SetPosition({ tabPosition.x - tabSize.x * 0.83f, tabPosition.y + bob });
+        slimeCursor_->SetSize({
+            slimeCursorBaseSize_.x * squash,
+            slimeCursorBaseSize_.y * (1.04f - pulse * 0.04f)
+        });
+        slimeCursor_->SetColor({
             1.0f,
             1.0f,
             1.0f,
-            focusArea_ == FocusArea::Items ? 1.0f : 0.55f
+            focusArea_ == FocusArea::Items ? 0.96f : 0.55f
         });
     } else if (slimeCursor_) {
         slimeCursor_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
     }
+
 }
 
 void SettingsScene::SetRowVisible(OptionRow& row, bool visible) {

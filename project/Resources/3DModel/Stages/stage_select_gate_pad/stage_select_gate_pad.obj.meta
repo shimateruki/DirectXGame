@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8e91ffbe9c4c5ea597e7081741812333",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_gate_pad/stage_select_gate_pad.obj",
+  "version": 1
+}

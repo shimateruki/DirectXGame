@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "d4d44250c371460f8d6a7608c6c8ba12",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Stages/galaxy_orbit_platform/galaxy_orbit_platform.obj",
+    "version":  1
+}

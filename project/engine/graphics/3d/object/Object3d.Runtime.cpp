@@ -338,6 +338,12 @@ const GameplayLinkComponent* Object3d::GetGameplayLinkComponent() const {
     return gameplayLinkComponent_ ? &*gameplayLinkComponent_ : nullptr;
 }
 
+void Object3d::ApplyWorldMatrix(const Matrix4x4& worldMatrix) {
+    ApplyMatrixToTransform(transform_, worldMatrix);
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+}
+
 NavAgentComponent* Object3d::EnsureNavAgentComponent() {
     if (!navAgentComponent_) {
         navAgentComponent_.emplace();

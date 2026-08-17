@@ -82,17 +82,19 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
         return;
     }
 
-    std::ifstream file(jsonFilePath);
-    if (!file.is_open()) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[MeshEffectManager] PreloadEffect: failed to open " + jsonFilePath);
+    json j;
+    try {
+        if (!LoadEffectJsonCached(jsonFilePath, j)) {
+            DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[MeshEffectManager] PreloadEffect: failed to open " + jsonFilePath);
+            return;
+        }
+    } catch (const std::exception& e) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] PreloadEffect JSON error: " + jsonFilePath + " / " + e.what());
         return;
     }
 
-    json j;
-    try {
-        file >> j;
-    } catch (const std::exception& e) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] PreloadEffect JSON error: " + jsonFilePath + " / " + e.what());
+    if (j.empty()) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "[MeshEffectManager] PreloadEffect: failed to open " + jsonFilePath);
         return;
     }
 

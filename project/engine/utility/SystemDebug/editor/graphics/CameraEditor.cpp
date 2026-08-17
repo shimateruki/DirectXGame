@@ -14,6 +14,7 @@
 #include <cmath>
 #include <filesystem> 
 #include <DebugConsole.h>
+#include "EditorManager.h"
 #include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 namespace fs = std::filesystem; // 短縮用
@@ -197,6 +198,15 @@ void CameraEditor::ApplyCameraModelGizmo(Object3d* gizmo, const Vector3& eye, co
 
 void CameraEditor::DrawCameraModelGizmos(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!settings_.cameraGuideVisible || !settings_.cameraBodyVisible || !object3dCommon_) {
+        return;
+    }
+
+    const bool isCameraEditorSelected =
+        EditorManager::GetInstance()->GetSelectedObject() == this;
+    if (!isCameraEditorSelected && GetSelectedCameraObject() == nullptr) {
+        if (gameCameraModelGizmo_) {
+            gameCameraModelGizmo_->SetIsVisible(false);
+        }
         return;
     }
 
@@ -1407,8 +1417,10 @@ void CameraEditor::LoadFile(const std::string& fileName) {
 
     // 3. ファイルが存在するかチェック
     if (!fs::exists(filePath)) {
+        const Mode selectedMode = settings_.currentMode;
         settings_ = Settings(); // デフォルトコンストラクタで初期化
-        settings_.currentMode = Mode::Game; // 基本はゲームモード
+        // シーン固有ファイルが未作成でも、利用中の自由カメラを解除しません。
+        settings_.currentMode = selectedMode;
 
         // ログ出し (任意)
         DebugConsole::GetInstance()->AddLog("New Camera Setting Created: " + fileName);
@@ -1874,6 +1886,9 @@ void CameraEditor::DrawOrbitCenterGizmo(const Vector2& gameViewOffset, const Vec
 void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
 #ifdef USE_IMGUI
     if (!settings_.cameraGuideVisible) return;
+    const bool isCameraEditorSelected =
+        EditorManager::GetInstance()->GetSelectedObject() == this;
+    if (!isCameraEditorSelected && GetSelectedCameraObject() == nullptr) return;
     if (instanceCount >= maxDrawLimit) return;
 
     Math math;

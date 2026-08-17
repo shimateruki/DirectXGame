@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "2925443f80f649bca99fb8420e5a338e",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/scenario/tutorial_gate_unlock.json",
+  "version": 1
+}

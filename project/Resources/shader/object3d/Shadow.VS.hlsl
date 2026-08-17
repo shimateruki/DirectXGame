@@ -13,38 +13,42 @@ struct VSOutput
     float4 position : SV_POSITION;
 };
 
-// =========================================================
-// ★注意：registerの番号(b1, t0など)は、
-// メインの Object3d.VS.hlsl と全く同じ番号に合わせてください！
-// =========================================================
 struct TransformationMatrix
 {
     float4x4 WVP;
     float4x4 world;
     float4x4 WorldInverseTranspose;
 };
-ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+
 struct Bone
 {
     float4x4 finalMatrix;
 };
-StructuredBuffer<Bone> gBones : register(t0); // ← ボーンデータの番号
+
+ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+StructuredBuffer<Bone> gBones : register(t0);
 
 VSOutput main(VSInput input)
 {
     VSOutput output;
+    float4 localPosition = input.position;
 
-    // 1. ボーンアニメーションの計算（キャラクターを走らせる）
-    float4x4 boneMatrix =
-        gBones[input.boneIndices.x].finalMatrix * input.boneWeights.x +
-        gBones[input.boneIndices.y].finalMatrix * input.boneWeights.y +
-        gBones[input.boneIndices.z].finalMatrix * input.boneWeights.z +
-        gBones[input.boneIndices.w].finalMatrix * input.boneWeights.w;
+    // Zero weights identify vertices already transformed by the compute skinning pass.
+    const float weightSum = dot(
+        abs(input.boneWeights),
+        float4(1.0f, 1.0f, 1.0f, 1.0f));
+    if (weightSum > 1.0e-6f)
+    {
+        const uint4 indices = uint4(input.boneIndices);
+        const float4 normalizedWeights = input.boneWeights / weightSum;
+        const float4x4 boneMatrix =
+            gBones[indices.x].finalMatrix * normalizedWeights.x +
+            gBones[indices.y].finalMatrix * normalizedWeights.y +
+            gBones[indices.z].finalMatrix * normalizedWeights.z +
+            gBones[indices.w].finalMatrix * normalizedWeights.w;
+        localPosition = mul(input.position, boneMatrix);
+    }
 
-    float4 localPos = mul(input.position, boneMatrix);
-
-    // 2. 太陽目線のWVP行列で座標変換して「影の形」を作る
-    output.position = mul(localPos, gTransformationMatrix.WVP);
-    
+    output.position = mul(localPosition, gTransformationMatrix.WVP);
     return output;
 }

@@ -132,6 +132,31 @@ void Object3d::RestoreAnimationPlayback(const std::string& animationName, float 
     }
 }
 
+bool Object3d::TryGetJointWorldMatrix(const std::string& jointName, Matrix4x4& outMatrix) const {
+    Model* model = GetModel();
+    if (!model || jointName.empty()) {
+        return false;
+    }
+
+    const int jointIndex = model->FindJointIndex(jointName);
+    const auto& joints = model->GetJoints();
+    if (jointIndex < 0 || jointIndex >= static_cast<int>(joints.size())) {
+        return false;
+    }
+
+    outMatrix = Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, GetWorldMatrix());
+    return true;
+}
+
+bool Object3d::TryGetJointWorldPosition(const std::string& jointName, Vector3& outPosition) const {
+    Matrix4x4 jointWorld = Math::MakeIdentity4x4();
+    if (!TryGetJointWorldMatrix(jointName, jointWorld)) {
+        return false;
+    }
+    outPosition = { jointWorld.m[3][0], jointWorld.m[3][1], jointWorld.m[3][2] };
+    return true;
+}
+
 bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
     if (!animatorControllerLoaded_ || !model) {
         return false;

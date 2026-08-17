@@ -107,8 +107,8 @@ private:
     Vector2 slimeCursorBaseSize_ = { 0.0f, 0.0f };
     std::array<OptionRow, static_cast<size_t>(Item::Count)> rows_{};
     std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryTabs_ = {};
+    std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryIcons_ = {};
     std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryLabels_ = {};
-    Sprite* categoryPointer_ = nullptr;
     std::array<Sprite*, static_cast<size_t>(FooterAction::Count)> footerButtons_ = { nullptr, nullptr, nullptr };
     std::array<Sprite*, static_cast<size_t>(FooterAction::Count)> footerTexts_ = { nullptr, nullptr, nullptr };
 

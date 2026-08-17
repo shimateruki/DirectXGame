@@ -345,9 +345,21 @@ private:
             if (type == "Trampoline") {
                 changed |= DrawParamFloat(param, "ジャンプ力", "jumpPower", 18.0f, 0.5f);
             }
+            else if (type == "LaunchStar") {
+                changed |= DrawParamFloat(param, "発射距離", "moveAmount", 52.0f, 1.0f);
+                changed |= DrawParamFloat(param, "軌道の高さ", "jumpPower", 14.0f, 0.5f);
+                changed |= DrawParamFloat(param, "飛行速度", "speed", 38.0f, 0.5f);
+            }
             else if (type == "MovingFloor") {
                 changed |= DrawParamFloat(param, "移動速度", "speed", 3.0f, 0.1f);
-                changed |= DrawParamFloat(param, "移動量", "moveAmount", 10.0f, 0.1f);
+                changed |= DrawParamIntCombo(param, "移動方式", "actionMode", 0,
+                    { "従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復" });
+                if (param.value("actionMode", 0) == 1) {
+                    changed |= DrawParamFloat(param, "浮き沈み幅", "moveAmount", 0.35f, 0.01f);
+                }
+                else if (param.value("actionMode", 0) >= 2) {
+                    changed |= DrawParamFloat(param, "往復幅", "moveAmount", 8.0f, 0.1f);
+                }
             }
             else if (type == "ChikuwaBlock") {
                 changed |= DrawParamFloat(param, "震え時間", "shakeDuration", 1.0f, 0.05f);
@@ -379,6 +391,10 @@ private:
                 changed |= DrawParamFloat(param, "上下速度", "moveSpeed", 3.0f, 0.05f);
                 changed |= DrawParamBool(param, "開始時に上昇", "startActive", false);
                 changed |= DrawParamBool(param, "OFFで元に戻す", "returnOnOff", true);
+            }
+            else if (type == "MagmaHazard") {
+                changed |= DrawParamFloat(param, "接触ダメージ", "speed", 12.0f, 0.5f);
+                changed |= DrawParamFloat(param, "ダメージ間隔", "interval", 0.8f, 0.05f);
             }
             else if (type == "ChainCollapseFloor") {
                 changed |= DrawParamFloat(param, "揺れ時間", "shakeDuration", 0.8f, 0.05f);
@@ -924,6 +940,7 @@ private:
             { "Default", "通常" },
             { "MovingFloor", "移動床" },
             { "Trampoline", "トランポリン" },
+            { "LaunchStar", "スターランチャー" },
             { "ChikuwaBlock", "ちくわブロック" },
             { "BlinkBlock", "点滅ブロック" },
             { "BreakableBlock", "破壊ブロック" },
@@ -940,6 +957,7 @@ private:
             { "HookPullBlock", "フック可動ブロック" },
             { "OneWayFloor", "一方通行床" },
             { "LiquidLevel", "水位・マグマ上下" },
+            { "MagmaHazard", "マグマダメージ床" },
             { "ChainCollapseFloor", "連鎖崩れ床" },
             { "RotatingFloor", "回転床" },
             { "RotatingPillar", "回転柱" },

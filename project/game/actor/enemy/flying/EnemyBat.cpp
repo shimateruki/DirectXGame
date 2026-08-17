@@ -5,20 +5,20 @@
 
 namespace {
 // コウモリの旋回、予兆、急降下に関する調整値
-constexpr float kHoverHeight = 5.2f;
-constexpr float kOrbitRadius = 9.0f;
-constexpr float kOrbitBobHeight = 0.55f;
-constexpr float kOrbitAngularSpeed = 0.85f;
-constexpr float kTelegraphDuration = 0.55f;
-constexpr float kDiveDuration = 0.95f;
-constexpr float kRecoverDuration = 1.0f;
-constexpr float kDiveCooldown = 3.8f;
-constexpr float kDiveStartRange = 15.0f;
-constexpr float kDiveHitHeight = 0.75f;
-constexpr float kOrbitSpeed = 2.4f;
-constexpr float kTelegraphSpeed = 2.0f;
-constexpr float kDiveSpeed = 7.2f;
-constexpr float kRecoverSpeed = 3.0f;
+constexpr float kHoverHeight = 2.8f;
+constexpr float kOrbitRadius = 5.8f;
+constexpr float kOrbitBobHeight = 0.32f;
+constexpr float kOrbitAngularSpeed = 0.45f;
+constexpr float kTelegraphDuration = 0.85f;
+constexpr float kDiveDuration = 1.25f;
+constexpr float kRecoverDuration = 1.3f;
+constexpr float kDiveCooldown = 5.4f;
+constexpr float kDiveStartRange = 11.0f;
+constexpr float kDiveHitHeight = 0.55f;
+constexpr float kOrbitSpeed = 1.4f;
+constexpr float kTelegraphSpeed = 1.0f;
+constexpr float kDiveSpeed = 4.2f;
+constexpr float kRecoverSpeed = 1.8f;
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -37,7 +37,7 @@ void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) 
     SetEnemyType("Bat");
     SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     defaultColor_ = GetColor();
-    SetScale({ 0.6f, 0.6f, 0.6f });
+    SetScale({ 0.72f, 0.72f, 0.72f });
     animName_ = "ArmatureAction";
     isAnimLoop_ = true;
     animationTime_ = 0.0f;
@@ -46,7 +46,7 @@ void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) 
     SetCollisionAttribute(kEnemy);
     SetPlayerContactEnabled(false);
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(0.85f);
+    SetCollisionRadius(1.25f);
 }
 
 // 旋回から急降下までのステート制御
@@ -129,7 +129,7 @@ void EnemyBat::UpdateTargetBehavior(float deltaTime, Vector3& desired, float& mo
         break;
     case BatState::Telegraph:
         desired = CalcOrbitPosition();
-        desired.y += 1.0f;
+        desired.y += 0.55f;
         moveSpeed = kTelegraphSpeed;
         if (stateTimer_ <= 0.0f) {
             diveTarget_ = target_->GetTranslate();
@@ -142,7 +142,7 @@ void EnemyBat::UpdateTargetBehavior(float deltaTime, Vector3& desired, float& mo
     case BatState::Dive:
         desired = diveTarget_;
         moveSpeed = kDiveSpeed;
-        if (stateTimer_ <= 0.0f || Math::Length(GetTranslate() - diveTarget_) < 1.2f) {
+        if (stateTimer_ <= 0.0f || Math::Length(GetTranslate() - diveTarget_) < 1.45f) {
             state_ = BatState::Recover;
             stateTimer_ = kRecoverDuration;
             diveCooldown_ = kDiveCooldown;
@@ -161,8 +161,8 @@ void EnemyBat::UpdateTargetBehavior(float deltaTime, Vector3& desired, float& mo
 }
 
 void EnemyBat::UpdateWanderBehavior(float deltaTime, Vector3& desired, float& moveSpeed) {
-    desired = GetWanderTargetPosition(deltaTime, 0.55f);
-    desired.y += std::sin(hoverTimer_ * 2.6f) * 0.55f;
+    desired = GetWanderTargetPosition(deltaTime, 0.36f);
+    desired.y += std::sin(hoverTimer_ * 2.2f) * 0.32f;
     moveSpeed = kOrbitSpeed * 0.75f;
     SetPlayerContactEnabled(false);
     UpdateFacing(NormalizePlanar(desired - GetTranslate()));

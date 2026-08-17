@@ -41,6 +41,11 @@ public:
     // --- 必須オーバーライド ---
         // シーン固有のオブジェクト、カメラ、UI、管理クラスを初期化します。
 virtual void Initialize() = 0;
+        // ロード画面を更新しながら初期化するための段階実行インターフェースです。
+        // 既定実装は従来の Initialize() を1回だけ呼ぶため、既存Sceneとの互換性を保ちます。
+virtual void BeginLoadingInitialize();
+virtual bool InitializeLoadingStep();
+virtual float GetLoadingInitializeProgress() const;
         // 非同期初期化完了後、現在Sceneへ切り替える直前にメインスレッドで呼ばれます。
 virtual void OnActivated();
         // ワーカースレッドで先読みするScene Assetと依存リソースを列挙します。

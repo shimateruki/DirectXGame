@@ -215,8 +215,8 @@ void GameplayStatusManager::ResetToDefaults() {
         Vector3{ 3.6f, 3.6f, 3.6f }, "Characters/slime_pink", true, 5.0f));
     enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 30.0f,
         Vector3{ 4.2f, 4.2f, 4.2f }, "Characters/prism_slime", true, 5.0f));
-    enemyStatuses_.emplace("Bat", MakeStatus(25.0f, 0.8f, 2.6f, 0.0f, 60.0f, 10.0f, 24.0f,
-        Vector3{ 0.6f, 0.6f, 0.6f }, "Characters/bat", true, 5.0f));
+    enemyStatuses_.emplace("Bat", MakeStatus(16.0f, 0.45f, 1.8f, 0.0f, 60.0f, 10.0f, 17.0f,
+        Vector3{ 0.72f, 0.72f, 0.72f }, "Characters/bat", true, 5.0f));
     enemyStatuses_.emplace("BeamDrone", MakeStatus(45.0f, 1.0f, 4.0f, 0.0f, 60.0f, 10.0f, 30.0f,
         Vector3{ 0.85f, 0.85f, 0.85f }, "Characters/eye", true, 5.0f));
     enemyStatuses_.emplace("BossCore", MakeStatus(1000.0f, 1.5f, 0.05f, 0.0f, 60.0f, 10.0f, 20.0f,

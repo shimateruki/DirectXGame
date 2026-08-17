@@ -100,6 +100,17 @@ ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<PointLightConstData> gPointLights : register(b3);
 ConstantBuffer<SpotLightConstData> gSpotLights : register(b4);
 
+cbuffer MeshMaterialConstants : register(b5)
+{
+    float4 gMeshBaseColorMultiplier;
+    float gMeshRoughnessMultiplier;
+    float gMeshMetallicOffset;
+};
+
+#define MATERIAL_COLOR (gMaterial.color * gMeshBaseColorMultiplier)
+#define MATERIAL_ROUGHNESS saturate(gMaterial.roughness * gMeshRoughnessMultiplier)
+#define MATERIAL_METALLIC saturate(gMaterial.metallic + gMeshMetallicOffset)
+
 Texture2D<float32_t4> gTexture : register(t0);
 TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
@@ -231,8 +242,8 @@ float3 BuildSlimeSoftTexture(float2 uv, float3 textureBase)
 
 float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 N, float3 V, float3 worldPosition, float shadowFactor)
 {
-    float textureBlend = lerp(0.02f, 0.34f, saturate(gMaterial.roughness));
-    float paintStrength = saturate(gMaterial.metallic);
+    float textureBlend = lerp(0.02f, 0.34f, MATERIAL_ROUGHNESS);
+    float paintStrength = MATERIAL_METALLIC;
     float reliefStrength = saturate(gMaterial.envIntensity * 0.5f);
 
     float slope = saturate(N.y);
@@ -260,9 +271,67 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
     palette = lerp(palette, grassShadow, shadePatch * lerp(0.25f, 0.42f, reliefStrength));
     palette = lerp(palette, grassLight, dappleMask * 0.08f * reliefStrength);
 
+    // Dark warm tints select volcanic rock, while brighter warm tints keep the
+    // sand palette. The two palettes share the same editor-facing material.
+    float warmDelta = terrainTint.r - terrainTint.g;
+    float tintMaximum = max(max(terrainTint.r, terrainTint.g), terrainTint.b);
+    float volcanicMask = smoothstep(0.018f, 0.085f, warmDelta)
+        * (1.0f - smoothstep(0.30f, 0.52f, tintMaximum));
+    float sandMask = smoothstep(0.04f, 0.18f, warmDelta) * (1.0f - volcanicMask);
+    float3 terrainRimColor = grassLight;
+    [branch]
+    if (volcanicMask > 0.001f)
+    {
+        float rockMacro = ValueNoise2D(worldPosition.xz * 0.038f + float2(3.7f, 8.9f));
+        float rockDetail = ValueNoise2D(worldPosition.xz * 0.16f + rockMacro * 3.1f);
+        float broadBand = floor(saturate(rockMacro * 0.72f + rockDetail * 0.28f) * 4.0f) / 3.0f;
+        float heightBand = 0.5f + 0.5f * sin(worldPosition.y * 0.31f + rockMacro * 2.8f);
+
+        float3 volcanicTint = max(terrainTint, float3(0.075f, 0.030f, 0.025f));
+        float3 volcanicBase = lerp(float3(0.17f, 0.060f, 0.040f), volcanicTint * 1.18f, 0.42f);
+        float3 volcanicShadow = volcanicBase * float3(0.43f, 0.48f, 0.54f);
+        float3 volcanicLight = saturate(volcanicBase * 1.46f + float3(0.055f, 0.018f, 0.008f));
+        float3 volcanicPalette = lerp(volcanicShadow, volcanicBase, 0.35f + broadBand * 0.48f);
+        volcanicPalette = lerp(volcanicPalette, volcanicLight, heightBand * steepMask * 0.12f);
+        volcanicPalette = lerp(volcanicPalette, volcanicLight, flatMask * smoothstep(0.58f, 0.92f, rockMacro) * 0.10f);
+
+        float emberVein = smoothstep(0.955f, 0.995f, rockDetail)
+            * smoothstep(0.45f, 0.88f, rockMacro)
+            * lerp(0.40f, 1.0f, flatMask);
+        volcanicPalette = lerp(volcanicPalette, float3(0.72f, 0.12f, 0.018f), emberVein * 0.12f);
+
+        palette = lerp(palette, volcanicPalette, volcanicMask);
+        terrainRimColor = lerp(grassLight, volcanicLight, volcanicMask);
+    }
+    else if (sandMask > 0.001f)
+    {
+        float sandMacro = ValueNoise2D(worldPosition.xz * 0.045f + float2(7.3f, 2.1f));
+        float sandDetail = ValueNoise2D(worldPosition.xz * 0.34f + sandMacro * 4.0f);
+        float sandGrain = ValueNoise2D(worldPosition.xz * 1.45f + sandDetail * 5.2f);
+        float windRipple = 0.5f + 0.5f * sin(
+            worldPosition.x * 0.58f +
+            worldPosition.z * 0.19f +
+            sandMacro * 3.2f);
+        windRipple = smoothstep(0.28f, 0.82f, windRipple);
+
+        float3 sandTint = saturate(max(terrainTint, float3(0.18f, 0.11f, 0.045f)));
+        float3 sandBase = lerp(float3(0.56f, 0.36f, 0.16f), sandTint, 0.72f);
+        float3 sandShadow = sandBase * float3(0.70f, 0.64f, 0.54f);
+        float3 sandLight = saturate(sandBase * 1.17f + float3(0.075f, 0.058f, 0.026f));
+        float sandValue = saturate(0.28f + sandMacro * 0.54f + sandDetail * 0.18f);
+        float3 sandPalette = lerp(sandShadow, sandBase, sandValue);
+        sandPalette = lerp(sandPalette, sandLight, windRipple * 0.13f * flatMask);
+        sandPalette += (sandGrain - 0.5f) * 0.055f * flatMask;
+        sandPalette = lerp(sandPalette, sandShadow, steepMask * 0.45f);
+
+        palette = lerp(palette, sandPalette, sandMask);
+        terrainRimColor = lerp(grassLight, sandLight, sandMask);
+    }
+
     float3 accentColor = saturate(max(terrainTint, float3(0.02f, 0.02f, 0.02f)));
     float accentDelta = max(max(abs(accentColor.r - 1.0f), abs(accentColor.g - 1.0f)), abs(accentColor.b - 1.0f));
     float accentWeight = smoothstep(0.08f, 0.42f, accentDelta) * paintStrength;
+    accentWeight *= 1.0f - volcanicMask * 0.78f;
     float accentPatch = saturate(dryMask * 0.45f + shadePatch * 0.42f + smoothstep(0.58f, 1.0f, tinyNoise) * 0.34f);
     palette = lerp(palette, lerp(palette, accentColor, 0.48f), accentWeight * accentPatch);
 
@@ -331,7 +400,7 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
     }
 
     float rim = pow(1.0f - saturate(dot(N, V)), 3.0f) * slope * 0.026f;
-    float3 rimColor = grassLight * rim;
+    float3 rimColor = terrainRimColor * rim;
 
     return saturate(color + localLight + rimColor);
 }
@@ -362,8 +431,8 @@ float BuildDashArrow(float2 uv, float time, float speed, float density)
 float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float shadowFactor)
 {
     float2 panelUv = frac(uv);
-    float speed = lerp(0.9f, 3.8f, saturate(gMaterial.roughness));
-    float density = lerp(1.35f, 3.2f, saturate(gMaterial.metallic));
+    float speed = lerp(0.9f, 3.8f, MATERIAL_ROUGHNESS);
+    float density = lerp(1.35f, 3.2f, MATERIAL_METALLIC);
 
     float topMask = smoothstep(0.18f, 0.58f, abs(normal.y));
     float lane = 1.0f - smoothstep(0.36f, 0.50f, abs(panelUv.x - 0.5f));
@@ -379,7 +448,7 @@ float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float s
     float3 base = lerp(float3(0.018f, 0.12f, 0.16f), float3(0.035f, 0.38f, 0.46f), lane);
     base *= lerp(0.82f, 1.12f, dot(saturate(textureBase), float3(0.299f, 0.587f, 0.114f)));
 
-    float3 accent = lerp(float3(0.08f, 0.95f, 1.0f), saturate(gMaterial.color.rgb * 1.35f), 0.35f);
+    float3 accent = lerp(float3(0.08f, 0.95f, 1.0f), saturate(MATERIAL_COLOR.rgb * 1.35f), 0.35f);
     float glow = arrow * 2.45f + trailA * 0.72f + trailB * 0.45f + sideRail * 0.75f + border * 0.55f;
     float3 topColor = base + accent * glow * pulse;
     topColor *= lerp(0.72f, 1.0f, shadowFactor);
@@ -473,13 +542,13 @@ PixelShaderOutput main(VertexShaderOutput input)
     switch (gMaterial.selectedLighting)
     {
         case 0: // None
-            output.color = gMaterial.color * textureColor;
+            output.color = MATERIAL_COLOR * textureColor;
             break;
 
         case 1: // Lambert (Directional Only)
             cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
-            output.color.rgb = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
-            output.color.a = gMaterial.color.a * textureColor.a;
+            output.color.rgb = MATERIAL_COLOR.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
+            output.color.a = MATERIAL_COLOR.a * textureColor.a;
             break;
 
         case 2: // PBR (Cook-Torrance BRDF)
@@ -555,7 +624,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 
                     float3 refractionColor = float3(envR.r, envG.g, envB.b) * gMaterial.envIntensity;
                 
-                    float3 iceBaseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 iceBaseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     refractionColor = lerp(refractionColor, iceBaseColor, 0.4f);
 
                     float F0_ice = 0.02f;
@@ -579,20 +648,20 @@ PixelShaderOutput main(VertexShaderOutput input)
                 {
                     float NdotV = saturate(dot(N, V));
                     float rimLight = pow(1.0f - NdotV, 3.0f);
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float3 emission = baseColor * rimLight * 3.0f;
                     float3 frontColor = baseColor * 0.2f;
                 
                     output.color.rgb = emission + frontColor;
-                    output.color.a = saturate(rimLight * 2.0f + 0.1f) * gMaterial.color.a * textureColor.a;
+                    output.color.a = saturate(rimLight * 2.0f + 0.1f) * MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // 消滅 (Dissolve)
             // ===========================================================
                 else if (gMaterial.materialType == 4)
                 {
-                    float progress = saturate(1.0f - gMaterial.color.a);
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float progress = saturate(1.0f - MATERIAL_COLOR.a);
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float3 L = normalize(-gDirectionalLight.direction);
                     float direct = saturate(dot(N, L));
                     float3 litBase = baseColor * (gDirectionalLight.ambientColor + gDirectionalLight.color.rgb * direct * gDirectionalLight.intenssity);
@@ -647,7 +716,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         float largeNoise = ValueNoise2D(flowUv);
                         float fineNoise = Hash21(flowUv * 5.7f + input.texcoord * 11.0f);
                         float dissolveNoise = saturate(largeNoise * 0.70f + fineNoise * 0.30f);
-                        float threshold = saturate(gMaterial.color.a);
+                        float threshold = saturate(MATERIAL_COLOR.a);
 
                         if (dissolveNoise > threshold)
                         {
@@ -675,17 +744,17 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
                 else if (gMaterial.materialType == 5)
                 {
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                 
                     float luminance = dot(baseColor, float3(0.299f, 0.587f, 0.114f));
                     float glowFactor = smoothstep(0.4f, 0.0f, luminance);
-                    float3 glowColor = float3(2.5f, 0.8f, 0.0f) * gMaterial.color.rgb;
+                    float3 glowColor = float3(2.5f, 0.8f, 0.0f) * MATERIAL_COLOR.rgb;
 
                     float NdotL = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
                     float3 litColor = baseColor * gDirectionalLight.color.rgb * NdotL;
                 
                     output.color.rgb = litColor + (glowColor * glowFactor);
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // トゥーン調 (Cel Shaded)
@@ -702,11 +771,11 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float NdotV = saturate(dot(N, V));
                     float outline = (NdotV < 0.25f) ? 0.0f : 1.0f;
                 
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float3 finalColor = baseColor * gDirectionalLight.color.rgb * celFactor;
                 
                     output.color.rgb = finalColor * outline;
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // Slime Soft
@@ -718,7 +787,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float3 V = normalize(gCamera.worldPosition - input.worldPosition);
                     float3 H = normalize(L + V);
 
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float NdotL = saturate(dot(N, L));
                     float NdotV = saturate(dot(N, V));
                     float NdotH = saturate(dot(N, H));
@@ -728,7 +797,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     directStrength *= lerp(0.72f, 1.0f, shadowFactor);
 
                     float rim = pow(1.0f - NdotV, 2.4f) * 0.14f;
-                    float softSpecPower = lerp(42.0f, 96.0f, saturate(1.0f - gMaterial.roughness));
+                    float softSpecPower = lerp(42.0f, 96.0f, saturate(1.0f - MATERIAL_ROUGHNESS));
                     float softSpec = pow(NdotH, softSpecPower) * 0.20f;
 
                     float3 slimeLight = baseColor * (ambientStrength + directStrength);
@@ -737,7 +806,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     slimeLight += float3(0.82f, 0.96f, 1.0f) * softSpec;
 
                     output.color.rgb = saturate(slimeLight);
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // Prism Crystal
@@ -762,12 +831,12 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float lightFacing = saturate(dot(prismNormal, lightDirection));
                     float fresnel = pow(1.0f - viewFacing, 2.35f);
 
-                    float dispersion = lerp(0.010f, 0.034f, saturate(gMaterial.metallic));
+                    float dispersion = lerp(0.010f, 0.034f, MATERIAL_METALLIC);
                     float eta = 1.0f / 1.48f;
                     float3 refractR = refract(-viewDirection, prismNormal, eta - dispersion);
                     float3 refractG = refract(-viewDirection, prismNormal, eta);
                     float3 refractB = refract(-viewDirection, prismNormal, eta + dispersion);
-                    float mipLevel = lerp(0.0f, 4.5f, saturate(gMaterial.roughness));
+                    float mipLevel = lerp(0.0f, 4.5f, MATERIAL_ROUGHNESS);
                     float3 envR = gEnvTexture.SampleLevel(gSampler, refractR, mipLevel).rgb;
                     float3 envG = gEnvTexture.SampleLevel(gSampler, refractG, mipLevel).rgb;
                     float3 envB = gEnvTexture.SampleLevel(gSampler, refractB, mipLevel).rgb;
@@ -783,7 +852,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float3 spectrum = BuildPrismSpectrum(spectrumPhase);
                     float facetBand = pow(saturate(0.5f + 0.5f * sin(facetCoordinate * 11.0f + gMaterial.time * 0.24f)), 7.0f);
 
-                    float3 baseTint = saturate(gMaterial.color.rgb * textureColor.rgb);
+                    float3 baseTint = saturate(MATERIAL_COLOR.rgb * textureColor.rgb);
                     float3 spectralBody = spectrum * (0.36f + baseTint * 0.82f);
                     float facetColorWeight = 0.20f + facetBand * 0.34f + fresnel * 0.08f;
                     float3 jewelTint = lerp(baseTint, spectralBody, saturate(facetColorWeight));
@@ -796,17 +865,17 @@ PixelShaderOutput main(VertexShaderOutput input)
                         dispersedRefraction * (0.30f + baseTint * 0.74f),
                         0.10f + fresnel * 0.18f);
 
-                    float specularPower = lerp(180.0f, 42.0f, saturate(gMaterial.roughness));
+                    float specularPower = lerp(180.0f, 42.0f, MATERIAL_ROUGHNESS);
                     float sharpSpecular = pow(saturate(dot(prismNormal, halfDirection)), specularPower);
                     float3 spectralRim = spectrum * (fresnel * 0.92f + facetBand * (0.15f + fresnel * 0.30f));
                     float3 whiteGlint = float3(1.0f, 1.04f, 1.10f) * sharpSpecular * 0.82f;
 
                     output.color.rgb = crystalBody;
                     output.color.rgb += reflection * (0.04f + fresnel * 0.34f);
-                    output.color.rgb += spectralRim * lerp(0.48f, 0.88f, saturate(gMaterial.metallic));
+                    output.color.rgb += spectralRim * lerp(0.48f, 0.88f, MATERIAL_METALLIC);
                     output.color.rgb += whiteGlint;
                     output.color.rgb *= lerp(0.96f, 1.14f, saturate((gMaterial.emissive - 0.6f) * 0.72f));
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // Stylized terrain
@@ -830,8 +899,8 @@ PixelShaderOutput main(VertexShaderOutput input)
 
                     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
                     float3 textureBase = saturate(textureColor.rgb);
-                    output.color.rgb = BuildStylizedTerrainColor(textureBase, gMaterial.color.rgb, terrainNormal, viewDir, input.worldPosition, shadowFactor);
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.rgb = BuildStylizedTerrainColor(textureBase, MATERIAL_COLOR.rgb, terrainNormal, viewDir, input.worldPosition, shadowFactor);
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // Dash panel
@@ -840,7 +909,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 {
                     float3 dashNormal = normalize(input.normal);
                     output.color.rgb = BuildDashPanelColor(transformedUV.xy, textureColor.rgb, dashNormal, shadowFactor);
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
             // Laser beam
@@ -856,11 +925,11 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float strandB = 0.5f + 0.5f * sin(uv.y * 31.0f - radial * 13.0f);
                     float shell = smoothstep(0.34f, 0.62f, radial) * (1.0f - smoothstep(0.78f, 1.0f, radial));
                     shell *= strandA * 0.65f + strandB * 0.45f;
-                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float3 hotCore = lerp(float3(1.9f, 2.35f, 2.8f), baseColor * 2.2f, 0.38f);
 
                     output.color.rgb = (hotCore * core * 3.6f + baseColor * innerGlow * 2.6f + baseColor * outerGlow * 1.25f + baseColor * shell * 2.0f) * gMaterial.emissive;
-                    output.color.a = saturate(gMaterial.color.a * (core + innerGlow * 0.55f + outerGlow * 0.28f + shell * 0.45f));
+                    output.color.a = saturate(MATERIAL_COLOR.a * (core + innerGlow * 0.55f + outerGlow * 0.28f + shell * 0.45f));
                 }
             // ===========================================================
             // 通常のPBRマテリアル
@@ -868,8 +937,8 @@ PixelShaderOutput main(VertexShaderOutput input)
                 else
                 {
                     float3 ormColor = gOrmMap.Sample(gSampler, transformedUV.xy).rgb;
-                    float roughness = gMaterial.roughness * ormColor.g;
-                    float metallic = gMaterial.metallic * ormColor.b;
+                    float roughness = MATERIAL_ROUGHNESS * ormColor.g;
+                    float metallic = MATERIAL_METALLIC * ormColor.b;
                 
                     float3 N = normalize(input.normal);
 
@@ -884,7 +953,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                         N = normalize(mul(normalMap, TBN));
                     }
 
-                    float3 albedo = gMaterial.color.rgb * textureColor.rgb;
+                    float3 albedo = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float3 F0 = float3(0.04f, 0.04f, 0.04f);
                     F0 = lerp(F0, albedo, metallic);
 
@@ -962,7 +1031,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     }
 
                     output.color.rgb = Lo + ambient;
-                    output.color.a = gMaterial.color.a * textureColor.a;
+                    output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             
                 if (gDirectionalLight.enableFog != 0 && output.color.a > 0.0f)
@@ -1057,7 +1126,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 if (gMaterial.emissive > 1.0f)
                 {
                 // オブジェクト本来の色（光の影響なし）
-                    float3 emissiveColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 emissiveColor = MATERIAL_COLOR.rgb * textureColor.rgb;
     
                 // 発光強度分だけ、最終出力カラーに加算する
                     output.color.rgb += emissiveColor * (gMaterial.emissive - 1.0f);

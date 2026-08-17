@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "894c524ed6914fa98f820ab2cc269783",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/launch_star_burst.json",
+  "version": 1
+}

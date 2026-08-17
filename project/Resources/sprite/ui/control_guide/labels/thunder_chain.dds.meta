@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "4660fbd22e284927b02be36edd076b7e",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/thunder_chain.dds",
+    "version":  1
+}

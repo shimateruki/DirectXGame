@@ -444,7 +444,7 @@ struct PreviewVisualState {
     std::unordered_map<Object3d*, bool> prefabEditPreviousVisibility_;
 
     bool drawColliders_ = false;
-    bool drawEventIDs_ = true;
+    bool drawEventIDs_ = false;
     bool isPathEditMode_ = false;
     bool projectWindowVisible_ = true;
 

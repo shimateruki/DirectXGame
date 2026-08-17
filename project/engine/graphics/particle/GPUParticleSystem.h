@@ -41,6 +41,12 @@ public:
         float memDrag;
         Vector3 memWind;
         float memTurbulence;
+        uint32_t memFieldType;
+        float memFieldStrength;
+        float memFieldRadius;
+        float memFieldFalloff;
+        Vector3 memFieldPosition;
+        float memFieldPadding;
     };
 
     struct alignas(256) CSConfig {
@@ -99,6 +105,13 @@ public:
         uint32_t currentConfigIndex;
         uint32_t maxParticles;
         float initialAge;
+
+        uint32_t fieldType;
+        float fieldStrength;
+        float fieldRadius;
+        float fieldFalloff;
+        Vector3 fieldPosition;
+        float fieldPadding;
     };
 
     struct EmitRequest {
@@ -124,6 +137,14 @@ public:
         uint32_t spriteSheetRandomStart;
         uint32_t alignToVelocity;
         float velocityStretch;
+        uint32_t particleType;
+        float trailLength;
+        uint32_t receiveLighting;
+        float lightingStrength;
+        Vector3 lightDirection;
+        float cameraPadding0;
+        Vector3 lightColor;
+        float cameraPadding1;
     };
 
     GPUParticleSystem() = default;
@@ -150,6 +171,8 @@ void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, c
     void RequestWarmup() { warmupRequested_ = true; lastEmitTimer_ = 0.0f; }
     // GPUバッファを解放せず、次の描画時にInitCSで粒子状態だけを初期化します。
     void RequestSimulationReset();
+    // シーン切り替えでは描画を止め、次に発生要求が来た時だけGPU状態を初期化します。
+    void ResetForSceneTransition();
     bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= activeLifetimeWindow_; }
     bool RequiresSceneColorCopy() const { return IsActive() && blendModeIndex_ == 2; }
     uint32_t GetParticleCapacity() const { return maxParticles_; }
@@ -228,6 +251,12 @@ private:
     uint32_t spriteSheetRandomStart_ = 0;
     uint32_t alignToVelocity_ = 0;
     float velocityStretch_ = 0.0f;
+    uint32_t particleType_ = 0;
+    float trailLength_ = 0.15f;
+    uint32_t receiveLighting_ = 0;
+    float lightingStrength_ = 1.0f;
+    Vector3 lightDirection_ = { -0.4f, -1.0f, 0.3f };
+    Vector3 lightColor_ = { 1.0f, 1.0f, 1.0f };
 
     uint32_t currentTextureHandle_ = 0;
 

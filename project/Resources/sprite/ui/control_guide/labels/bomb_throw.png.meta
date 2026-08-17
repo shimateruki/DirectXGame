@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "3afbfeca54ad47cb864bef76047595cc",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
+    "version":  1
+}

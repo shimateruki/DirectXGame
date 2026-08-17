@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b8be81d488225be851c7b3faf17e4b8d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/mushroom_hurt.dds",
+  "version": 1
+}

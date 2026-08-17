@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "8c2a6946aa5d5d00a6242fb8a8834873",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/magma_fortress_foundation/magma_fortress_foundation.obj",
+    "version": 1
+}

@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "54a3534c6f654ee6ae441fde2c68a955",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/wind_dash.png",
+    "version":  1
+}

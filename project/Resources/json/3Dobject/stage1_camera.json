@@ -1,83 +1,83 @@
 {
-    "objects": [
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "camera": {
-                "blendInDuration": 0.30000001192092896,
-                "blendOutDuration": 0.30000001192092896,
-                "easing": 4,
-                "enabled": true,
-                "eyeFollowMode": 0,
-                "eyeFollowResponse": 12.0,
-                "eyeObjectName": "",
-                "eyeOffset": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "eyeSource": 0,
-                "farClip": 1000.0,
-                "fixedTarget": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "forwardDistance": 10.0,
-                "fovY": 0.44999998807907104,
-                "nearClip": 0.10000000149011612,
-                "role": 1,
-                "targetFollowMode": 0,
-                "targetFollowResponse": 14.0,
-                "targetMode": 2,
-                "targetObjectName": "",
-                "targetOffset": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "version": 1
-            },
-            "enemyType": "",
-            "gimmickType": "",
-            "guid": "8f34c232-0a4e-41d0-b70e-eec6e8b40dd6",
-            "itemType": "",
-            "layer": "Default",
-            "name": "Cinematic_Camera_01",
-            "parentGuid": "",
-            "parentName": "",
-            "position": [
-                -2.1330907344818115,
-                10.221175193786621,
-                -3.397515296936035
-            ],
-            "quaternion": [
-                0.1099008321762085,
-                -0.6298637390136719,
-                0.13216210901737213,
-                0.7574474811553955
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                -1.634016086882184e-07,
-                -1.3873826265335083,
-                0.3454892337322235
-            ],
-            "saveCategory": "Camera",
-            "scale": [
-                0.9999995231628418,
-                0.9999997615814209,
-                0.9999995827674866
-            ],
-            "tag": "",
-            "type": "Camera"
-        }
-    ]
+    "objects":  [
+                    {
+                        "animation":  {
+                                          "animName":  "",
+                                          "animatorController":  "",
+                                          "isAnimLoop":  true
+                                      },
+                        "camera":  {
+                                       "blendInDuration":  0.30000001192092896,
+                                       "blendOutDuration":  0.30000001192092896,
+                                       "easing":  4,
+                                       "enabled":  true,
+                                       "eyeFollowMode":  0,
+                                       "eyeFollowResponse":  12.0,
+                                       "eyeObjectName":  "",
+                                       "eyeOffset":  [
+                                                         0.0,
+                                                         0.0,
+                                                         0.0
+                                                     ],
+                                       "eyeSource":  0,
+                                       "farClip":  1000.0,
+                                       "fixedTarget":  [
+                                                           0.0,
+                                                           0.0,
+                                                           0.0
+                                                       ],
+                                       "forwardDistance":  10.0,
+                                       "fovY":  0.44999998807907104,
+                                       "nearClip":  0.10000000149011612,
+                                       "role":  1,
+                                       "targetFollowMode":  0,
+                                       "targetFollowResponse":  14.0,
+                                       "targetMode":  2,
+                                       "targetObjectName":  "",
+                                       "targetOffset":  [
+                                                            0.0,
+                                                            0.0,
+                                                            0.0
+                                                        ],
+                                       "version":  1
+                                   },
+                        "enemyType":  "",
+                        "gimmickType":  "",
+                        "guid":  "8f34c232-0a4e-41d0-b70e-eec6e8b40dd6",
+                        "itemType":  "",
+                        "layer":  "Default",
+                        "name":  "Cinematic_Camera_01",
+                        "parentGuid":  "",
+                        "parentName":  "",
+                        "position":  [
+                                         -226,
+                                         13,
+                                         -58
+                                     ],
+                        "quaternion":  [
+                                           -0.10739106119519172,
+                                           0.34994738598376374,
+                                           0.040422301674733582,
+                                           0.92971502329790168
+                                       ],
+                        "recorder":  {
+                                         "isRecordLoop":  false,
+                                         "isRecordRelative":  false,
+                                         "recordPathName":  ""
+                                     },
+                        "rotation":  [
+                                         -0.23,
+                                         0.72,
+                                         0
+                                     ],
+                        "saveCategory":  "Camera",
+                        "scale":  [
+                                      1,
+                                      1,
+                                      1
+                                  ],
+                        "tag":  "",
+                        "type":  "Camera"
+                    }
+                ]
 }

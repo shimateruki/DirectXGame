@@ -20,6 +20,11 @@ constexpr float kWildStrikeInterval = 0.13f;
 constexpr float kWildStrikeStartDistance = 2.8f;
 constexpr float kWildStrikeSpacing = 2.7f;
 constexpr float kCarriedShockCooldown = 1.65f;
+constexpr float kCarriedDischargeCooldown = 1.35f;
+constexpr float kCarriedDischargeChargeDuration = 0.48f;
+constexpr float kCarriedDischargeRadius = 4.6f;
+constexpr float kCarriedDischargeDamage = 1.0f;
+constexpr float kCarriedDischargeEffectInterval = 0.060f;
 constexpr float kCarriedChargeDuration = 0.50f;
 constexpr float kCarriedStrikeInterval = 0.115f;
 constexpr float kCarriedStrikeStartDistance = 2.8f;
@@ -49,6 +54,10 @@ constexpr const char* kCarriedImpactEffectPath = "Resources/json/effect/effect_p
 constexpr const char* kCarriedEvadeTrailEffectPath = "Resources/json/effect/effect_player_thunder_evade_trail.json";
 constexpr const char* kCarriedEvadeBurstEffectPath = "Resources/json/effect/effect_player_thunder_evade_burst.json";
 constexpr const char* kCarriedEvadeParticlePreset = "player_thunder_evade_sparks";
+constexpr const char* kCarriedDischargeChargePreset = "player_thunder_discharge_charge";
+constexpr const char* kCarriedDischargeBurstPreset = "player_thunder_discharge_burst";
+constexpr const char* kCarriedDischargeChargeEffectPath = "Resources/json/effect/effect_player_thunder_discharge_charge.json";
+constexpr const char* kCarriedDischargeBurstEffectPath = "Resources/json/effect/effect_player_thunder_discharge_burst.json";
 constexpr const char* kChargeGroundEffectPath = "Resources/json/effect/effect_thunder_charge_ground.json";
 constexpr const char* kScorchMarkEffectPath = "Resources/json/effect/effect_thunder_scorch_mark.json";
 constexpr float kIdleSparkInterval = 0.095f;
@@ -295,6 +304,12 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
     if (wildLightningState_ == WildLightningState::Charging) {
         const float windupDuration = (std::max)(0.01f, attack.windupDuration);
         const float progress = 1.0f - std::clamp(wildLightningTimer_ / windupDuration, 0.0f, 1.0f);
+        ShowAttackTelegraphImpactAreas(
+            wildStrikePositions_.data(),
+            wildStrikePositions_.size(),
+            attack.radius,
+            progress,
+            { 1.0f, 0.94f, 0.16f, 0.84f });
         if (wildLightningEffectTimer_ <= 0.0f) {
             EmitLineChargeEffect(
                 attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(),
@@ -319,7 +334,22 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
         wildLightningTimer_ += kWildStrikeInterval;
     }
 
+    if (wildStrikeIndex_ < static_cast<int>(wildStrikePositions_.size())) {
+        const std::size_t remainingCount = wildStrikePositions_.size() - static_cast<std::size_t>(wildStrikeIndex_);
+        const float strikeProgress = 1.0f - std::clamp(
+            wildLightningTimer_ / kWildStrikeInterval,
+            0.0f,
+            1.0f);
+        ShowAttackTelegraphImpactAreas(
+            wildStrikePositions_.data() + wildStrikeIndex_,
+            remainingCount,
+            attack.radius,
+            strikeProgress,
+            { 1.0f, 0.94f, 0.16f, 0.76f });
+    }
+
     if (wildStrikeIndex_ >= static_cast<int>(wildStrikePositions_.size())) {
+        HideAttackTelegraph();
         wildLightningState_ = WildLightningState::Idle;
         wildLightningTimer_ = 0.0f;
         wildLightningEffectTimer_ = 0.0f;
@@ -427,7 +457,9 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     shockSquashTimer_ = 0.0f;
     ResetWildLightning();
     ResetCarriedLightning();
+    ResetCarriedDischarge();
     carriedShockCooldown_ = 0.0f;
+    carriedDischargeCooldown_ = 0.0f;
     carriedEvadeCooldown_ = 0.0f;
     HideAttackTelegraph();
     SetScale(baseScale_);
@@ -438,12 +470,41 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
 // 持ち運び中に蓄電し、プレイヤー前方へ連続落雷を発生させる能力
 void EnemyThunderSlime::ExecuteAbility(Player* player) {
     if (!player || !isCarried_ || carriedShockCooldown_ > 0.0f ||
-        carriedLightningState_ != CarriedLightningState::Idle) {
+        carriedLightningState_ != CarriedLightningState::Idle ||
+        carriedDischargeState_ != CarriedDischargeState::Idle) {
         return;
     }
 
     PrepareCarriedLightning(player);
     carriedShockCooldown_ = kCarriedShockCooldown;
+}
+
+void EnemyThunderSlime::ExecuteDischargeAbility(Player* player) {
+    if (!player || !isCarried_ || carriedDischargeCooldown_ > 0.0f ||
+        carriedDischargeState_ != CarriedDischargeState::Idle ||
+        carriedLightningState_ != CarriedLightningState::Idle) {
+        return;
+    }
+
+    carriedDischargeState_ = CarriedDischargeState::Charging;
+    carriedDischargeTimer_ = kCarriedDischargeChargeDuration;
+    carriedDischargeEffectTimer_ = 0.0f;
+    carriedDischargeCooldown_ = kCarriedDischargeCooldown;
+
+    const Vector3 groundPosition = FindStrikeGround(
+        player->GetWorldPosition(), player, player->GetWorldPosition().y);
+    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
+        Vector3 effectPosition = groundPosition;
+        effectPosition.y += 0.04f;
+        meshEffects->SpawnEffectAt(
+            kCarriedDischargeChargeEffectPath,
+            effectPosition,
+            { 0.0f, 0.0f, 0.0f },
+            { 1.0f, 1.0f, 1.0f });
+    }
+    EmitThunderPreset(kCarriedDischargeChargePreset, player->GetWorldPosition() + Vector3{ 0.0f, 0.85f, 0.0f });
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, player->GetForwardDirection());
+    player->TriggerSlimeImpulse({ 2.65f, 1.08f, 2.65f }, 0.20f);
 }
 
 // 右クリックで入力方向へ雷化し、壁と崖を避けながら瞬間的に回避します。
@@ -474,16 +535,106 @@ void EnemyThunderSlime::ExecuteEvadeAbility(Player* player) {
 void EnemyThunderSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
     if (!isCarried_ || !player) {
         ResetCarriedLightning();
+        ResetCarriedDischarge();
         return;
     }
 
     carriedShockCooldown_ = (std::max)(0.0f, carriedShockCooldown_ - deltaTime);
+    carriedDischargeCooldown_ = (std::max)(0.0f, carriedDischargeCooldown_ - deltaTime);
     carriedEvadeCooldown_ = (std::max)(0.0f, carriedEvadeCooldown_ - deltaTime);
     UpdateCarriedLightning(player, deltaTime);
+    UpdateCarriedDischarge(player, deltaTime);
 
     const float charge = 1.0f - (std::clamp)(carriedShockCooldown_ / kCarriedShockCooldown, 0.0f, 1.0f);
     const float flicker = std::sin(idleTimer_ * 36.0f) * 0.07f;
     SetColor({ 1.0f, (std::clamp)(0.94f + flicker, 0.0f, 1.0f), 0.72f + charge * 0.14f, 1.0f });
+}
+
+void EnemyThunderSlime::UpdateCarriedDischarge(Player* player, float deltaTime) {
+    if (!player || carriedDischargeState_ != CarriedDischargeState::Charging) {
+        return;
+    }
+
+    carriedDischargeTimer_ = (std::max)(0.0f, carriedDischargeTimer_ - deltaTime);
+    carriedDischargeEffectTimer_ -= deltaTime;
+    const float progress = 1.0f - std::clamp(
+        carriedDischargeTimer_ / kCarriedDischargeChargeDuration,
+        0.0f,
+        1.0f);
+
+    if (carriedDischargeEffectTimer_ <= 0.0f) {
+        Vector3 effectPosition = player->GetWorldPosition();
+        effectPosition.y += 0.72f + progress * 0.28f;
+        EmitThunderPreset(kCarriedDischargeChargePreset, effectPosition);
+        carriedDischargeEffectTimer_ = kCarriedDischargeEffectInterval - progress * 0.022f;
+    }
+
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, player->GetForwardDirection());
+    if (carriedDischargeTimer_ <= 0.0f) {
+        ReleaseCarriedDischarge(player);
+    }
+}
+
+void EnemyThunderSlime::ReleaseCarriedDischarge(Player* player) {
+    if (!player) {
+        ResetCarriedDischarge();
+        return;
+    }
+
+    Vector3 center = FindStrikeGround(
+        player->GetWorldPosition(), player, player->GetWorldPosition().y);
+    Vector3 effectPosition = center;
+    effectPosition.y += 0.06f;
+    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
+        meshEffects->SpawnEffectAt(
+            kCarriedDischargeBurstEffectPath,
+            effectPosition,
+            { 0.0f, 0.0f, 0.0f },
+            { 1.0f, 1.0f, 1.0f });
+        meshEffects->SpawnEffectAt(
+            kCarriedImpactEffectPath,
+            effectPosition + Vector3{ 0.0f, 0.025f, 0.0f },
+            { 0.0f, idleTimer_ * 0.75f, 0.0f },
+            { 2.25f, 1.0f, 2.25f });
+    }
+    EmitThunderPreset(kCarriedDischargeBurstPreset, center + Vector3{ 0.0f, 0.28f, 0.0f });
+    EmitThunderPreset(kDischargePreset, center + Vector3{ 0.0f, 0.52f, 0.0f });
+
+    PhysicsQueryFilter filter;
+    filter.mask = kEnemy;
+    filter.ignoredObject = player;
+    std::unordered_set<Object3d*> damagedTargets;
+    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
+        center + Vector3{ 0.0f, 0.75f, 0.0f },
+        kCarriedDischargeRadius,
+        filter)) {
+        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
+        if (!damageTarget || !damagedTargets.insert(damageTarget).second) {
+            continue;
+        }
+
+        Vector3 knockbackDirection = NormalizePlanar(damageTarget->GetWorldPosition() - center);
+        DamageEvent damageEvent;
+        damageEvent.target = damageTarget;
+        damageEvent.attacker = player;
+        damageEvent.damageAmount = kCarriedDischargeDamage;
+        damageEvent.damageType = DamageType::Electric;
+        damageEvent.knockbackVelocity = {
+            knockbackDirection.x * 10.5f,
+            8.0f,
+            knockbackDirection.z * 10.5f,
+        };
+        EventManager::GetInstance()->Dispatch(damageEvent);
+    }
+
+    player->TriggerSlimeImpulse({ 3.15f, 0.72f, 3.15f }, 0.22f);
+    ResetCarriedDischarge();
+}
+
+void EnemyThunderSlime::ResetCarriedDischarge() {
+    carriedDischargeState_ = CarriedDischargeState::Idle;
+    carriedDischargeTimer_ = 0.0f;
+    carriedDischargeEffectTimer_ = 0.0f;
 }
 
 bool EnemyThunderSlime::ResolveCarriedEvadeDestination(

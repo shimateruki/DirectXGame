@@ -1,0 +1,8 @@
+{
+  "assetType": "Texture",
+  "guid": "3bd4d6a03f8c4275b745716b7401b210",
+  "importSettings": { "colorSpace": "Auto", "generateMipmaps": true },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/tutorial/tutorial_release.png",
+  "version": 1
+}

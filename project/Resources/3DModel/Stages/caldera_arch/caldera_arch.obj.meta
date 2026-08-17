@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "29704707e0ab4ec9af13e27a5702f350",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Stages/caldera_arch/caldera_arch.obj",
+    "version":  1
+}

@@ -34,6 +34,7 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     state["enemyDamageReactionDirection"] = ToJson(damageReactionLocalDirection_);
     state["enemyDefaultColor"] = ToJson(defaultColor_);
     state["enemyCarried"] = isCarried_;
+    state["enemyDormant"] = isDormant_;
     state["enemyThrowRecoveryTimer"] = throwRecoveryTimer_;
     state["enemyThrownPhysics"] = isThrownPhysics_;
     state["enemyWanderOrigin"] = ToJson(wanderOrigin_);
@@ -78,6 +79,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     }
     if (state.contains("enemyDefaultColor")) defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
     isCarried_ = state.value("enemyCarried", isCarried_);
+    isDormant_ = state.value("enemyDormant", isDormant_);
     throwRecoveryTimer_ = state.value("enemyThrowRecoveryTimer", throwRecoveryTimer_);
     isThrownPhysics_ = state.value("enemyThrownPhysics", isThrownPhysics_);
     if (state.contains("enemyWanderOrigin")) wanderOrigin_ = ReadVector3(state["enemyWanderOrigin"], wanderOrigin_);

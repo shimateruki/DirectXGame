@@ -24,6 +24,12 @@ struct Particle
     float memDrag;
     float3 memWind;
     float memTurbulence;
+    uint memFieldType;
+    float memFieldStrength;
+    float memFieldRadius;
+    float memFieldFalloff;
+    float3 memFieldPosition;
+    float memFieldPadding;
 };
 
 RWStructuredBuffer<Particle> particles : register(u0);
@@ -67,12 +73,12 @@ cbuffer Config : register(b0)
     
     float colorMidTime;
     float rotSpeedVariance;
-    float2 padding2; // 8バイトの隙間埋め
+    float2 padding2; // Eight-byte alignment padding.
     
     float4 endColor;
 
     // ===================================
-    // 形状データ
+    // Emitter shape data.
     // ===================================
     uint shapeType;
     float shapeRadius;
@@ -80,12 +86,12 @@ cbuffer Config : register(b0)
     float padding3;
 
     // ===================================
-    // : カーブ（イージング）データ
+    // Curve and easing data.
     // ===================================
     uint sizeEaseType;
     uint colorEaseType;
-    uint meshVertexCount; // 頂点の総数
-    uint meshVertexStride; // 1頂点あたりのバイト数 (例: sizeof(Vertex))
+    uint meshVertexCount; // Total vertex count.
+    uint meshVertexStride; // Byte stride for one source vertex.
     row_major matrix emitterWorldMatrix;
     
     row_major matrix viewProj;
@@ -97,6 +103,12 @@ cbuffer Config : register(b0)
     uint currentConfigIndex;
     uint maxParticles;
     float initialAge;
+    uint fieldType;
+    float fieldStrength;
+    float fieldRadius;
+    float fieldFalloff;
+    float3 fieldPosition;
+    float fieldPadding;
 };
 struct BoneData
 {
@@ -273,7 +285,7 @@ float EaseInOutBounce(float t)
     return t < 0.5f ? (1.0f - EaseOutBounce(1.0f - 2.0f * t)) / 2.0f : (1.0f + EaseOutBounce(2.0f * t - 1.0f)) / 2.0f;
 }
 
-// 指定された番号のイージングを適用する統合関数
+// Apply the easing function selected by its numeric identifier.
 float ApplyEasing(uint type, float t)
 {
     if (t <= 0.0f)
@@ -350,7 +362,7 @@ float ApplyEasing(uint type, float t)
 }
 
 
-// HLSLで超高速に乱数を生成する魔法の関数
+// Lightweight pseudo-random number generator for the compute shader.
 float rand(float2 seed)
 {
     return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
@@ -412,7 +424,7 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
         uint pIndex = gFreeList[freeListPos];
         Particle p = particles[pIndex];
 
-        // 共通で使う乱数
+        // Random values shared by all emitter shapes.
         float rX = rand(float2(pIndex * 1.34f, time)) * 2.0f - 1.0f;
         float rY = rand(float2(time * 1.57f, pIndex)) * 2.0f - 1.0f;
         float rZ = rand(float2(pIndex * 1.89f, time * 2.13f)) * 2.0f - 1.0f;
@@ -424,16 +436,16 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
         p.maxLife = emitLife;
 
         // ========================================================
-        // ★ 形状ごとの発生アルゴリズム
+        // Shape-specific spawn algorithm.
         // ========================================================
-        if (shapeType == 1) // 🟢 Sphere (球体)
+        if (shapeType == 1) // Sphere
         {
             float3 dir = normalize(float3(rX, rY, rZ));
             float dist = rand(float2(pIndex, time * 0.5f)) * shapeRadius;
             p.position = emitPos + dir * dist;
             p.velocity = emitVelocity + (dir * velocityVariance);
         }
-        else if (shapeType == 2) // 🔺 Cone (円錐)
+        else if (shapeType == 2) // Cone
         {
             float theta = rand(float2(time, pIndex * 2.1f)) * 6.28318f;
             float rad = sqrt(rand(float2(pIndex, time * 3.4f)));
@@ -451,7 +463,7 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
             float speed = length(emitVelocity) + r1 * velocityVariance;
             p.velocity = worldDir * speed;
         }
-        else if (shapeType == 3) // 🔷 Mesh (3Dモデルの表面)
+        else if (shapeType == 3) // Mesh surface
         {
             uint vIndex = (uint) (rand(float2(pIndex, time)) * meshVertexCount) % max(meshVertexCount, 1);
             uint byteOffset = vIndex * meshVertexStride;
@@ -472,7 +484,7 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
             p.position = worldPos;
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
-        else if (shapeType == 4) // ハート
+        else if (shapeType == 4) // Heart
         {
             float theta = rand(float2(pIndex, time)) * 6.28318f;
             float hx = 16.0f * pow(sin(theta), 3.0f);
@@ -491,7 +503,7 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
             p.position = emitPos + float3(hx + noiseX, hy + noiseY, noiseZ);
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
-        else // 🟦 Box (四角形 - デフォルト)
+        else // Box (default)
         {
             p.position = emitPos + float3(rX, rY, rZ) * emitArea;
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
@@ -516,9 +528,9 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
         p.velocity *= exp(-max(drag, 0.0f) * restoredAge);
 
         // ========================================================
-        // その他の初期化
+        // Initialize the remaining particle state.
         p.color = baseColor;
-        p.color.a = 0.0f; // フェードイン準備
+        p.color.a = 0.0f; // Start from transparent for fade-in.
         
         p.rotation = rand(float2(pIndex, time)) * 6.28318f;
         p.rotSpeed = (rand(float2(time, pIndex)) * 2.0f - 1.0f) * rotSpeedVariance;
@@ -538,6 +550,12 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
         p.memDrag = drag;
         p.memWind = wind;
         p.memTurbulence = turbulence;
+        p.memFieldType = fieldType;
+        p.memFieldStrength = fieldStrength;
+        p.memFieldRadius = fieldRadius;
+        p.memFieldFalloff = fieldFalloff;
+        p.memFieldPosition = fieldPosition;
+        p.memFieldPadding = 0.0f;
 
         particles[pIndex] = p;
         if (p.life > 0.0f)
@@ -547,7 +565,7 @@ void EmitCS(uint3 DTid : SV_DispatchThreadID)
     }
     else
     {
-        // 取れるパーティクルが無かった場合は、デクリメントをキャンセル（元に戻す）
+        // Restore the counter if no free particle was available.
         InterlockedAdd(gFreeListIndex[0], 1);
     }
 }
@@ -576,11 +594,43 @@ void UpdateCS(uint3 DTid : SV_DispatchThreadID)
         );
         p.rotation += p.rotSpeed * deltaTime;
         p.velocity += noiseVec * p.memTurbulence * deltaTime;
+
+        if (p.memFieldType != 0 && abs(p.memFieldStrength) > 0.0001f && p.memFieldRadius > 0.0001f)
+        {
+            float3 toField = p.memFieldPosition - p.position;
+            float fieldDistance = length(toField);
+            if (fieldDistance > 0.0001f && fieldDistance < p.memFieldRadius)
+            {
+                float3 radialDirection = toField / fieldDistance;
+                float attenuation = pow(
+                    saturate(1.0f - fieldDistance / p.memFieldRadius),
+                    max(p.memFieldFalloff, 0.01f));
+                float3 fieldDirection = radialDirection;
+                if (p.memFieldType == 2)
+                {
+                    fieldDirection = cross(float3(0.0f, 1.0f, 0.0f), radialDirection);
+                    if (dot(fieldDirection, fieldDirection) < 0.0001f)
+                    {
+                        fieldDirection = float3(1.0f, 0.0f, 0.0f);
+                    }
+                    else
+                    {
+                        fieldDirection = normalize(fieldDirection);
+                    }
+                    fieldDirection = normalize(fieldDirection + radialDirection * 0.18f);
+                }
+                else if (p.memFieldType == 3)
+                {
+                    fieldDirection = -radialDirection;
+                }
+                p.velocity += fieldDirection * p.memFieldStrength * attenuation * deltaTime;
+            }
+        }
         
         p.velocity *= saturate(1.0f - p.memDrag * deltaTime);
         p.position += p.velocity * deltaTime;
 
-        // 深度バッファ・コリジョン
+        // Depth-buffer collision.
         if (enableCollision > 0)
         {
             float4 clipPos = mul(float4(p.position, 1.0f), viewProj);
@@ -619,7 +669,7 @@ void UpdateCS(uint3 DTid : SV_DispatchThreadID)
 
         float ageRatio = saturate(1.0f - (p.life / p.maxLife));
         
-        // 1. サイズのイージングカーブ適用
+        // Apply the size easing curve.
         float sizeRatio = ApplyEasing(p.memSizeEaseType, ageRatio);
         if (sizeRatio < p.memSizeMidTime)
         {
@@ -632,7 +682,7 @@ void UpdateCS(uint3 DTid : SV_DispatchThreadID)
             p.scale = lerp(p.memMidSize, p.memEndSize, t);
         }
         
-        // 2. カラー＆透明度（Alpha）のイージングカーブ適用
+        // Apply the color and alpha easing curve.
         float colorRatio = ApplyEasing(p.memColorEaseType, ageRatio);
         if (colorRatio < p.memColorMidTime)
         {

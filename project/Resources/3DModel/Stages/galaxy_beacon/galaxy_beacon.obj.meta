@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "90130fe0b9954a29a6bd00619feca534",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Stages/galaxy_beacon/galaxy_beacon.obj",
+    "version":  1
+}

@@ -8,11 +8,12 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
         "トランポリン",
+        "スターランチャー",
         "ちくわブロック",
         "点滅ブロック",
         "破壊ブロック",
@@ -29,6 +30,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "フックで引っ張るブロック",
         "一方通行床",
         "水位・マグマ上下",
+        "マグマダメージ床",
+        "周期式マグマ噴出口",
         "連鎖崩れ床",
         "回転床",
         "回転柱",
@@ -111,6 +114,27 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.size = { 2.5f, 2.5f, 2.5f };
             selectedObject->SetColliderConfig(colConfig);
             selectedObject->SetCollisionRadius(2.5f);
+        }
+        else if (selectedGimmickType == "LaunchStar") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_LaunchStar");
+            selectedObject->SetModel("Gimmicks/star_launch");
+            selectedObject->SetColor({ 1.0f, 0.92f, 0.28f, 1.0f });
+            selectedObject->SetEmissive(2.2f);
+            selectedObject->SetRoughness(0.34f);
+            selectedObject->SetMetallic(0.12f);
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            selectedObject->param_->moveAmount = 52.0f;
+            selectedObject->param_->jumpPower = 14.0f;
+            selectedObject->param_->speed = 38.0f;
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.35f, 0.35f, 1.35f };
+            selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "SinkingFloor") {
             selectedObject->SetClassName("Gimmick");
@@ -307,6 +331,63 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "MagmaHazard") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_MagmaHazard");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 1.0f, 0.24f, 0.015f, 1.0f });
+            selectedObject->SetMaterialType(9);
+            selectedObject->SetEmissive(1.8f);
+            selectedObject->SetRoughness(0.38f);
+            selectedObject->SetMetallic(0.0f);
+            selectedObject->SetScale({ 4.0f, 0.2f, 4.0f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(true);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 12.0f;
+            selectedObject->param_->interval = 0.8f;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "MagmaGeyser") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_MagmaGeyser");
+            selectedObject->SetModel("Stages/magma_vent");
+            selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            selectedObject->SetMaterialType(0);
+            selectedObject->SetEmissive(1.0f);
+            selectedObject->SetRoughness(0.72f);
+            selectedObject->SetMetallic(0.08f);
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            selectedObject->SetCollisionAttribute(0);
+            selectedObject->SetCollisionMask(0);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 4.0f;
+            selectedObject->param_->interval = 2.6f;
+            selectedObject->param_->shakeDuration = 1.35f;
+            selectedObject->param_->fallDuration = 1.15f;
+            selectedObject->param_->moveAmount = 9.5f;
+            selectedObject->param_->detectionRange = 2.15f;
+            selectedObject->param_->gravity = 5.5f;
+            selectedObject->param_->jumpPower = 15.0f;
+            selectedObject->param_->maxFallSpeed = 110.0f;
+            selectedObject->param_->moveSpeed = 0.0f;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kCylinder;
+            colConfig.center = { 0.0f, 5.47f, 0.0f };
+            colConfig.size = { 2.15f, 4.75f, 2.15f };
             selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "ChainCollapseFloor") {

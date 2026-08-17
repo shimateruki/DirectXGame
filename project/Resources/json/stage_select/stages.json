@@ -12,11 +12,13 @@
         },
         {
             "id": "stage2",
-            "name": "Stage 2 - Crown Bridge",
-            "description": "Stage 1クリア後に解放されるステージ",
+            "name": "Stage 2 - Magma Caldera",
+            "description": "崩れる黒曜石の道と上昇マグマを越える火山ステージ",
             "levelPath": "Resources/json/3Dobject/stage2.json",
             "spritePath": "Resources/json/sprite/stage2_sprite.json",
             "bgmPath": "Resources/bgm/Alarm02.mp3",
+            "lightPath": "Resources/json/light/stage2_magma.json",
+            "skyboxPath": "Resources/skybox/stage2_magma_fortress.dds",
             "defaultUnlocked": false,
             "unlockStageIndex": 0
         },

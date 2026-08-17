@@ -1,5 +1,7 @@
 #include "../common/Water.hlsli"
 
+Texture2D<float> depthTex : register(t0);
+
 float randomValue(float2 st)
 {
     return frac(sin(dot(st.xy, float2(12.9898f, 78.233f))) * 43758.5453123f);
@@ -38,6 +40,24 @@ float2 GetFaceUV(VSOutput input)
 
 float4 main(VSOutput input) : SV_TARGET
 {
+    float2 screenUV = input.screenPos.xy / input.screenPos.w;
+    screenUV = float2(screenUV.x * 0.5f + 0.5f, -screenUV.y * 0.5f + 0.5f);
+    screenUV = saturate(screenUV);
+
+    uint depthWidth = 1;
+    uint depthHeight = 1;
+    depthTex.GetDimensions(depthWidth, depthHeight);
+    uint2 depthCoord = min(
+        uint2(screenUV * float2(depthWidth, depthHeight)),
+        uint2(depthWidth - 1, depthHeight - 1));
+
+    float rawSceneDepth = depthTex.Load(int3(depthCoord, 0));
+    float rawSurfaceDepth = saturate(input.screenPos.z / input.screenPos.w);
+
+    // The DSV is unbound while special materials sample scene depth, so reject
+    // magma fragments hidden behind opaque geometry explicitly.
+    clip(rawSceneDepth - rawSurfaceDepth + 0.00001f);
+
     float3 dx = ddx(input.worldPos);
     float3 dy = ddy(input.worldPos);
     float3 flatNormal = abs(normalize(cross(dx, dy)));

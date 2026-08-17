@@ -39,12 +39,23 @@ struct GPUParticleConfig {
     int spriteSheetRandomStart = 0;
     int alignToVelocity = 0;
     float velocityStretch = 0.0f;
+    int particleType = 0;       // 0: Billboard, 1: Trail
+    float trailLength = 0.15f;
+    int receiveLighting = 0;
+    Vector3 lightDirection = { -0.4f, -1.0f, 0.3f };
+    Vector3 lightColor = { 1.0f, 1.0f, 1.0f };
+    float lightingStrength = 1.0f;
 
     // --- 環境パラメータ ---
     Vector3 envGravity = { 0.0f, -9.8f, 0.0f };
     float envDrag = 0.0f;
     Vector3 envWind = { 0.0f, 0.0f, 0.0f };
     float envTurbulence = 0.0f;
+    int fieldType = 0;         // 0: None, 1: Attract, 2: Vortex, 3: Repulse
+    Vector3 fieldPosition = { 0.0f, 0.0f, 0.0f }; // エミッター基準の相対位置
+    float fieldStrength = 0.0f;
+    float fieldRadius = 5.0f;
+    float fieldFalloff = 1.0f;
 
     // --- エディタ・プレビュー用設定 ---
     bool isLooping = false;

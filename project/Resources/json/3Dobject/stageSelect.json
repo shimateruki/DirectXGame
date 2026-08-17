@@ -1,3 +1,17 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json"
+    "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
+    "_sceneAsset": {
+        "controller": "DEFAULT",
+        "displayName": "stageSelect",
+        "id": "stageSelect",
+        "resources": {
+            "bgm": "",
+            "camera": "",
+            "light": "",
+            "skybox": ""
+        },
+        "runtimeScene": "SCENE_EDITOR",
+        "spriteLayout": "Resources/json/sprite/stageSelect_sprite.json",
+        "version": 3
+    }
 }

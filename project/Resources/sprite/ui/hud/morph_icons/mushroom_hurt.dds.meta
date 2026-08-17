@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "625be387d8196fff202f792c4995b934",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/mushroom_hurt.dds",
+  "version": 1
+}

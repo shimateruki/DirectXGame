@@ -285,6 +285,7 @@ private:
     const Matrix4x4& GetCachedWorldInverseTranspose(const Matrix4x4& worldMatrix);
     void InitializeWaterProxyModel();
     void InitializeFireProxyModel();
+    void InitializeVolumetricFireProxyModel();
     void InitializeGatePortalProxyModel();
         // 特殊マテリアル描画の共通処理をまとめます。
 void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
@@ -351,6 +352,7 @@ Model* ResolveDrawModel() const;
     WaterParamForGPU* waterParamData_ = nullptr;
     std::unique_ptr<Model> waterProxyModel_;
     std::unique_ptr<Model> fireProxyModel_;
+    std::unique_ptr<Model> volumetricFireProxyModel_;
     std::unique_ptr<Model> gatePortalProxyModel_;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;

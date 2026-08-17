@@ -78,7 +78,7 @@ void GimmickStageGate::Update(float deltaTime) {
         gateColor.w = Lerp(gateColor.w, 1.0f, burstTint);
     }
     SetColor(gateColor);
-    float emissive = isUnlocked_ ? Lerp(0.25f, 1.55f, visibleActivation) : 0.18f;
+    float emissive = isUnlocked_ ? Lerp(0.62f, 1.65f, visibleActivation) : 0.34f;
     if (isSelected_ && isUnlocked_) emissive = Lerp(emissive, 2.7f, visibleActivation);
     if (isCleared_) emissive = Lerp(emissive, 1.9f, visibleActivation);
     if (isUnlocking_) emissive = 4.0f + std::sin(pulseTimer_ * 10.0f) * 0.9f;
@@ -87,10 +87,6 @@ void GimmickStageGate::Update(float deltaTime) {
     }
     SetEmissive(emissive);
     UpdatePortalMaterial();
-
-    Transform* transform = GetTransform();
-    transform->rotate.y += Lerp(0.10f, isSelected_ ? 1.8f : 0.45f, visibleActivation) * deltaTime;
-    transform->isQuaternionMaster = false;
 
     BaseGimmick::Update(deltaTime);
 }
@@ -180,7 +176,9 @@ void GimmickStageGate::UpdatePortalMaterial() {
     portal->waveHeight = Lerp(0.18f, 1.35f, active) + entryBurst * 0.72f;
     portal->waveFrequency = Lerp(4.0f, 22.0f, active) + entryBurst * 9.0f;
     portal->effectSoftness = Lerp(0.28f, 0.66f, active) + entryBurst * 0.10f;
-    portal->effectIntensity = Lerp(0.07f, 1.58f + selectedBoost * 0.44f, active) + entryBurst * 1.85f;
+    portal->effectIntensity = isUnlocked_
+        ? Lerp(0.34f, 1.58f + selectedBoost * 0.44f, active) + entryBurst * 1.85f
+        : 0.12f;
     portal->effectScale = Lerp(0.78f, 1.18f, active) + entryBurst * 0.18f;
     portal->effectType = isCleared_ ? 2.0f : 1.0f;
     portal->flowSpeedX = 0.0f;
@@ -222,21 +220,22 @@ void GimmickStageGate::CaptureBaseScale() {
 
 Vector4 GimmickStageGate::GetTargetColor() const {
     if (!isUnlocked_) {
-        return { 0.20f, 0.12f, 0.08f, 0.38f };
+        // 未解放でもゲートの輪郭は残し、鎖と南京錠で封鎖状態を示します。
+        return { 0.30f, 0.54f, 0.64f, 0.92f };
     }
     const float active = isUnlocking_ ? 1.0f : activation_;
     if (isUnlocking_) {
         return { 1.0f, 0.72f, 0.28f, 1.0f };
     }
     if (isCleared_) {
-        const float alpha = Lerp(0.32f, 0.96f, active);
+        const float alpha = Lerp(0.70f, 0.98f, active);
         if (isSelected_) {
             return { 0.48f, 0.96f, 1.0f, alpha };
         }
         return { 0.28f, 0.82f, 1.0f, alpha };
     }
     if (isSelected_) {
-        return { 1.0f, 0.62f, 0.24f, Lerp(0.36f, 1.0f, active) };
+        return { 1.0f, 0.62f, 0.24f, Lerp(0.78f, 1.0f, active) };
     }
-    return { 1.0f, 0.52f, 0.20f, Lerp(0.24f, 0.86f, active) };
+    return { 1.0f, 0.52f, 0.20f, Lerp(0.68f, 0.94f, active) };
 }

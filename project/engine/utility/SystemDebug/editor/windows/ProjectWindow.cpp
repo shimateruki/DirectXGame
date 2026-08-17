@@ -665,11 +665,43 @@ void ProjectWindow::Draw() {
             databaseStatus.createdMetaCount,
             databaseStatus.errorCount);
     }
-    ImGui::BeginDisabled(assetDatabase->IsInitialIndexBuildInProgress());
+    const DDSCacheBuildState ddsState = assetDatabase->GetDDSCacheBuildState();
+    const bool ddsProcessBusy = ddsState == DDSCacheBuildState::Queued ||
+        ddsState == DDSCacheBuildState::Running;
+    ImGui::BeginDisabled(assetDatabase->IsInitialIndexBuildInProgress() || ddsProcessBusy);
     if (ImGui::Button(ICON_FA_SYNC " Asset Databaseを更新")) {
         assetDatabase->RequestRefresh(true);
     }
     ImGui::EndDisabled();
+
+    if (ddsState == DDSCacheBuildState::Running || ddsState == DDSCacheBuildState::Queued) {
+        ImGui::TextUnformatted(assetDatabase->GetDDSCacheBuildMessage().c_str());
+        const float animation = static_cast<float>(std::fmod(ImGui::GetTime() * 0.35, 1.0));
+        ImGui::ProgressBar(animation, ImVec2(-1.0f, 0.0f), "DDS Cache");
+    }
+    else if (ddsState == DDSCacheBuildState::Succeeded) {
+        ImGui::TextColored(
+            ImVec4(0.45f, 0.9f, 0.55f, 1.0f),
+            "%s",
+            assetDatabase->GetDDSCacheBuildMessage().c_str());
+    }
+    else if (ddsState == DDSCacheBuildState::Failed) {
+        ImGui::TextColored(
+            ImVec4(1.0f, 0.35f, 0.35f, 1.0f),
+            "%s",
+            assetDatabase->GetDDSCacheBuildMessage().c_str());
+    }
+
+    const bool ddsBusy = ddsProcessBusy ||
+        assetDatabase->IsInitialIndexBuildInProgress();
+    ImGui::BeginDisabled(ddsBusy);
+    if (ImGui::Button(ICON_FA_IMAGE " 未変換DDSを生成")) {
+        assetDatabase->RequestDDSCacheBuild();
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("未変換または元画像より古いDDSだけを非同期で生成します。");
+    }
     if (!assetDatabase->GetIssues().empty() && ImGui::TreeNode("Asset Database Issues")) {
         for (const AssetDatabaseIssue& issue : assetDatabase->GetIssues()) {
             const ImVec4 color = issue.severity == AssetDatabaseIssueSeverity::Error

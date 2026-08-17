@@ -69,6 +69,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     flashState_ = false;
     isThrown_ = false;
     isAbilityExecuted_ = false;
+    playerOwned_ = false;
 
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(kBombCollisionRadius);
@@ -392,8 +393,13 @@ void EnemyBomb::Explode() {
 
     // 繝励Ξ繧､繝､繝ｼ・・Player・峨♀繧医・莉悶・謨ｵ・・Enemy・峨・蜿梧婿縺ｫ辷・匱縺悟ｽ薙◆繧九ｈ縺・↓螻樊ｧ繝ｻ繝槭せ繧ｯ繧堤┌蟾ｮ蛻･蛹厄ｼ・
     // 縺薙ｌ縺ｫ繧医ｊ縲∬・辷・〒繧よ雰縺ｫ蠖薙◆繧翫∵兜縺偵ｉ繧後◆辷・ｼｾ縺ｧ繧りｿ代☆縺弱ｋ縺ｨ繝励Ξ繧､繝､繝ｼ縺ｫ繝繝｡繝ｼ繧ｸ縺悟・繧九せ繝ｪ繝ｪ繝ｳ繧ｰ縺ｪ莉墓ｧ倥↓縺ｪ繧翫∪縺吶・
-    SetCollisionAttribute(kPlayerAttack | kEnemyAttack);
-    SetCollisionMask(kPlayer | kEnemy | kAllSolid);
+    if (playerOwned_) {
+        SetCollisionAttribute(kPlayerAttack);
+        SetCollisionMask(kEnemy | kAllSolid);
+    } else {
+        SetCollisionAttribute(kPlayerAttack | kEnemyAttack);
+        SetCollisionMask(kPlayer | kEnemy | kAllSolid);
+    }
 
     // --- 譁ｰ縺励＞鄒朱ｺ励↑縲檎・逋ｺ逕ｨ繧ｨ繝輔ぉ繧ｯ繝医阪・逋ｺ逕・---
     Vector3 myPos = GetTranslate();
@@ -425,6 +431,22 @@ void EnemyBomb::SetCarried(bool isCarried) {
         // 謚輔￡繧峨ｌ縺滂ｼ・sCarried_ 縺・false 縺ｫ縺ｪ繧翫√・繝ｬ繧､繝､繝ｼ縺九ｉ騾溷ｺｦ繧剃ｸ弱∴繧峨ｌ縺溽憾諷具ｼ・
         isThrown_ = true;
         throwRecoveryTimer_ = 0.0f;
+        if (playerOwned_) {
+            SetCollisionAttribute(kPlayerAttack);
+            SetCollisionMask(kEnemy | kAllSolid);
+        } else {
+            SetCollisionAttribute(kEnemy);
+            SetCollisionMask(kPlayer | kAllSolid | kPlayerAttack | kAttributePlayerBullet);
+        }
+    }
+}
+
+void EnemyBomb::SetPlayerOwned(bool playerOwned) {
+    playerOwned_ = playerOwned;
+    if (playerOwned_) {
+        SetCollisionAttribute(kPlayerAttack);
+        SetCollisionMask(kEnemy | kAllSolid);
+    } else {
         SetCollisionAttribute(kEnemy);
         SetCollisionMask(kPlayer | kAllSolid | kPlayerAttack | kAttributePlayerBullet);
     }

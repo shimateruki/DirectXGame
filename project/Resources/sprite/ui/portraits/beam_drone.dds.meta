@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0c6ab2c48b06581acff235b40739a38b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/beam_drone.dds",
+  "version": 1
+}

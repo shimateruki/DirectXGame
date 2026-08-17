@@ -50,6 +50,9 @@ public:
     ~GamePlayScene() override;
 
     void Initialize() override;
+    void BeginLoadingInitialize() override;
+    bool InitializeLoadingStep() override;
+    float GetLoadingInitializeProgress() const override;
     void OnActivated() override;
     SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
@@ -184,6 +187,23 @@ private:
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+
+    // --- ステージ開始時のゲート登場演出 ---
+    bool stageEntryPresentationActive_ = false;
+    bool stageEntryPlayerEmergenceStarted_ = false;
+    bool stageEntryHadPlayerControl_ = true;
+    bool stageEntryCinemaBarOverrideActive_ = false;
+    float stageEntryPresentationTimer_ = 0.0f;
+    float stageEntryCinemaBarBaseHeight_ = 0.0f;
+    Object3d* stageEntryGate_ = nullptr;
+    Vector3 stageEntryDirection_ = { 1.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraStartEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraStartTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraFocusEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraFocusTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraRestoreEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stageEntryCameraRestoreTarget_ = { 0.0f, 0.0f, 0.0f };
+
     enum class GoalPresentationState {
         Inactive,
         Celebrating,
@@ -333,12 +353,30 @@ private:
     void InitializeCoreSystems(const StageData& currentStage);
     void InitializeRenderCommons();
     void InitializeGameplaySystems();
+    void InitializeGameplayObjectSystems();
+    void InitializeGameplayParticleRuntime();
+    void InitializeGameplayDebrisRuntime();
+    void InitializeGameplaySkybox();
+    void ApplyGameplayRenderState(const StageData& currentStage);
     void LoadCurrentStageContent(const StageData& currentStage);
+    void LoadCurrentStageObjects(const StageData& currentStage);
+    void LoadCurrentStageSpritesAndView(const StageData& currentStage);
+    void InitializeGameplayOverlays();
     void ApplyGoalCrownState();
+    void ApplyStageStarCoinState();
     void UpdateGoalCrownIdleAnimation(float deltaTime);
-    void StartRespawnIrisInIfNeeded();
+    bool StartRespawnIrisInIfNeeded();
+    void StartStageEntryPresentation();
+    void UpdateStageEntryPresentation(float deltaTime);
+    void FinishStageEntryPresentation();
+    Object3d* FindStageEntryGate() const;
     void InitializeDebugAnimationPreview();
     void FinalizeGameplayResources();
+
+    int loadingInitializePhase_ = 0;
+    size_t loadingInitializeItemIndex_ = 0;
+    size_t loadingInitializeCompletedUnits_ = 0;
+    size_t loadingInitializeTotalUnits_ = 1;
 
     // フレーム更新
     bool HandleGoalClear(float& deltaTime);

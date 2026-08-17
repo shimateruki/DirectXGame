@@ -102,6 +102,33 @@
       "emissive": 1.0
     },
     {
+      "name": "controls_guide_page_1_action_label_0",
+      "texture": "ui/control_guide/labels/absorb.png",
+      "position": [930.0, 397.0],
+      "size": [460.0, 86.0],
+      "anchor": [0.0, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_action_label_1",
+      "texture": "ui/control_guide/labels/throw.png",
+      "position": [930.0, 570.0],
+      "size": [460.0, 86.0],
+      "anchor": [0.0, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
+      "name": "controls_guide_page_1_action_label_2",
+      "texture": "ui/control_guide/labels/absorb.png",
+      "position": [930.0, 737.0],
+      "size": [460.0, 86.0],
+      "anchor": [0.0, 0.5],
+      "color": [1.0, 1.0, 1.0, 1.0],
+      "emissive": 1.0
+    },
+    {
       "name": "controls_guide_left_arrow",
       "texture": "ui/settings/settings_arrow_left.png",
       "position": [124.0, 540.0],

@@ -416,6 +416,11 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot);
     float GetAnimationTime() const { return animationTime_; }
     void RestoreAnimationPlayback(const std::string& animationName, float timeSeconds, bool loop);
+    // 現在のスケルトン姿勢から、指定ジョイントのワールド行列を取得します。
+    bool TryGetJointWorldMatrix(const std::string& jointName, Matrix4x4& outMatrix) const;
+    bool TryGetJointWorldPosition(const std::string& jointName, Vector3& outPosition) const;
+    // ボーンソケットなど、外部で求めたワールド行列をTransformへ反映します。
+    void ApplyWorldMatrix(const Matrix4x4& worldMatrix);
 
     json ExportToJson();
     void ImportFromJson(const json& j);

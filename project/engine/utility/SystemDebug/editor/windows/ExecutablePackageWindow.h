@@ -24,6 +24,7 @@ private:
         bool createZip = true;
         bool includeProject = true;
         bool includeReadMe = true;
+        bool excludeUnusedResources = false;
     };
 
     /// パッケージ作成タスクの成功可否と表示メッセージを返す結果情報。
@@ -47,6 +48,7 @@ private:
     bool createZip_ = true;
     bool includeProject_ = true;
     bool includeReadMe_ = true;
+    bool excludeUnusedResources_ = false;
     std::future<PackageResult> task_;
     std::string statusText_ = "設定を選んで作成してください。";
 };

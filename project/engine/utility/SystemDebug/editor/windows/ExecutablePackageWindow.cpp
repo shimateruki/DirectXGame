@@ -17,8 +17,10 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 #include <system_error>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -54,6 +56,8 @@ struct ResourceCopyStats {
     uint64_t texturePairs = 0;
     uint64_t omittedTextureFiles = 0;
     uint64_t omittedTextureBytes = 0;
+    uint64_t omittedUnusedFiles = 0;
+    uint64_t omittedUnusedBytes = 0;
 };
 
 struct ProjectCopyStats {
@@ -492,10 +496,74 @@ std::wstring GetTexturePairKey(const fs::path& relative) {
     return ToLowerWide(base.generic_wstring());
 }
 
+bool LoadUnusedResourcePaths(
+    const fs::path& projectRoot,
+    std::unordered_set<std::wstring>& unusedPaths,
+    std::string& errorMessage) {
+    const fs::path reportPath = projectRoot / "Resources" / ".cache" / "asset_audit" / "latest_report.json";
+    std::ifstream file(reportPath, std::ios::binary);
+    if (!file) {
+        errorMessage = "Asset Auditの結果が見つかりません: " + PathToUtf8(reportPath);
+        return false;
+    }
+
+    nlohmann::json report;
+    try {
+        file >> report;
+    } catch (const std::exception& e) {
+        errorMessage = std::string("Asset Auditの結果を読み込めません: ") + e.what();
+        return false;
+    }
+
+    const auto unusedIt = report.find("unusedAssets");
+    if (unusedIt == report.end() || !unusedIt->is_array()) {
+        errorMessage = "Asset Auditの結果にunusedAssetsがありません。";
+        return false;
+    }
+
+    auto registerPath = [&unusedPaths](const std::string& utf8Path) {
+        fs::path path = PathFromUtf8(utf8Path);
+        std::wstring normalized = ToLowerWide(path.generic_wstring());
+        constexpr std::wstring_view prefix = L"resources/";
+        if (normalized.rfind(prefix, 0) != 0) {
+            return;
+        }
+
+        normalized.erase(0, prefix.size());
+        if (normalized.empty() || normalized.find(L"..") != std::wstring::npos) {
+            return;
+        }
+        unusedPaths.insert(normalized);
+        unusedPaths.insert(normalized + L".meta");
+    };
+
+    for (const nlohmann::json& item : *unusedIt) {
+        if (!item.is_object()) {
+            continue;
+        }
+        const auto pathIt = item.find("path");
+        if (pathIt != item.end() && pathIt->is_string()) {
+            registerPath(pathIt->get<std::string>());
+        }
+        const auto pairedIt = item.find("pairedFiles");
+        if (pairedIt == item.end() || !pairedIt->is_array()) {
+            continue;
+        }
+        for (const nlohmann::json& paired : *pairedIt) {
+            if (paired.is_string()) {
+                registerPath(paired.get<std::string>());
+            }
+        }
+    }
+
+    return true;
+}
+
 bool CopyDirectoryFiltered(
     const fs::path& source,
     const fs::path& destination,
     TexturePackageMode textureMode,
+    const std::unordered_set<std::wstring>& unusedResourcePaths,
     ResourceCopyStats& stats,
     std::string& errorMessage) {
     std::error_code ec;
@@ -575,6 +643,15 @@ bool CopyDirectoryFiltered(
     }
 
     for (const ResourceFile& file : files) {
+        const std::wstring normalizedRelative = ToLowerWide(file.relative.generic_wstring());
+        if (unusedResourcePaths.find(normalizedRelative) != unusedResourcePaths.end()) {
+            ++stats.skippedFiles;
+            stats.skippedBytes += file.bytes;
+            ++stats.omittedUnusedFiles;
+            stats.omittedUnusedBytes += file.bytes;
+            continue;
+        }
+
         const std::wstring extension = ToLowerWide(file.relative.extension().wstring());
         const auto pairIt = texturePairs.find(GetTexturePairKey(file.relative));
         const uint8_t pairFlags = pairIt == texturePairs.end() ? 0 : pairIt->second;
@@ -627,6 +704,52 @@ fs::path FindMSBuildPath() {
 
 std::wstring Quote(const std::wstring& value) {
     return L"\"" + value + L"\"";
+}
+
+bool RunAssetAudit(const fs::path& projectRoot, std::string& errorMessage) {
+    const fs::path scriptPath = projectRoot / "tools" / "asset_audit" / "asset_audit.ps1";
+    std::error_code ec;
+    if (!fs::exists(scriptPath, ec) || !fs::is_regular_file(scriptPath, ec)) {
+        errorMessage = "Asset Auditスクリプトが見つかりません: " + PathToUtf8(scriptPath);
+        return false;
+    }
+
+    const std::wstring command =
+        L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
+        Quote(scriptPath.wstring()) + L" -Root Resources -Top 200";
+    std::vector<wchar_t> mutableCommand(command.begin(), command.end());
+    mutableCommand.push_back(L'\0');
+
+    STARTUPINFOW startupInfo{};
+    startupInfo.cb = sizeof(startupInfo);
+    PROCESS_INFORMATION processInfo{};
+    const std::wstring workingDirectory = projectRoot.wstring();
+    const BOOL created = CreateProcessW(
+        nullptr,
+        mutableCommand.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_NO_WINDOW,
+        nullptr,
+        workingDirectory.c_str(),
+        &startupInfo,
+        &processInfo);
+    if (!created) {
+        errorMessage = "Asset Auditを起動できませんでした。";
+        return false;
+    }
+
+    WaitForSingleObject(processInfo.hProcess, INFINITE);
+    DWORD exitCode = 1;
+    GetExitCodeProcess(processInfo.hProcess, &exitCode);
+    CloseHandle(processInfo.hThread);
+    CloseHandle(processInfo.hProcess);
+    if (exitCode != 0) {
+        errorMessage = "Asset Auditが失敗しました。ExitCode: " + std::to_string(exitCode);
+        return false;
+    }
+    return true;
 }
 
 bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, std::string& errorMessage) {
@@ -723,6 +846,7 @@ bool WritePackageManifest(
     const std::string& configuration,
     bool builtBeforePackage,
     TexturePackageMode textureMode,
+    bool excludeUnusedResources,
     bool zipRequested,
     const std::string& exeName,
     int copiedDlls,
@@ -738,6 +862,7 @@ bool WritePackageManifest(
     manifest["dllCount"] = copiedDlls;
     manifest["zipRequested"] = zipRequested;
     manifest["textureMode"] = GetTextureModeId(textureMode);
+    manifest["excludeUnusedResources"] = excludeUnusedResources;
     manifest["resources"] = {
         { "sourceFiles", stats.sourceFiles },
         { "sourceBytes", stats.sourceBytes },
@@ -748,7 +873,9 @@ bool WritePackageManifest(
         { "skippedDirectories", stats.skippedDirectories },
         { "texturePairs", stats.texturePairs },
         { "omittedTextureFiles", stats.omittedTextureFiles },
-        { "omittedTextureBytes", stats.omittedTextureBytes }
+        { "omittedTextureBytes", stats.omittedTextureBytes },
+        { "omittedUnusedFiles", stats.omittedUnusedFiles },
+        { "omittedUnusedBytes", stats.omittedUnusedBytes }
     };
     manifest["resourceExclusions"] = {
         "Resources/.cache",
@@ -760,7 +887,8 @@ bool WritePackageManifest(
     manifest["notes"] = {
         "元のResourcesは変更していません。",
         "DDSとPNGは同一フォルダ・同一ファイル名のペアだけを整理しています。",
-        "片方しか存在しないテクスチャは保持しています。"
+        "片方しか存在しないテクスチャは保持しています。",
+        "未使用候補の除外を選んだ場合は、作成直前のAsset Audit結果を使用しています。"
     };
 
     const fs::path manifestPath = destination / "package_manifest.json";
@@ -886,6 +1014,7 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
     request.createZip = createZip_;
     request.includeProject = includeProject_;
     request.includeReadMe = includeProject_ && includeReadMe_;
+    request.excludeUnusedResources = excludeUnusedResources_;
 
     const char* packageKind = includeProject_ ? "提出パッケージ" : "実行ファイルセット";
     statusText_ = buildBeforePackage
@@ -913,6 +1042,12 @@ void ExecutablePackageWindow::DrawImGui() {
         ImGui::TextDisabled("同名DDS/PNGペアはDDSだけを残し、起動時の画像デコード負荷を抑えます。");
     } else {
         ImGui::TextDisabled("DDSとPNGを両方コピーします。容量は最大ですが、素材確認用に安全です。");
+    }
+    ImGui::Checkbox("Asset Auditの未使用候補を実行ファイルセットから除外", &excludeUnusedResources_);
+    if (excludeUnusedResources_) {
+        ImGui::TextColored(
+            ImVec4(1.0f, 0.78f, 0.28f, 1.0f),
+            "作成直前に監査します。動的なパスは判定できない場合があるため、完成後に全シーンを確認してください。");
     }
     ImGui::Checkbox("project一式も含める（提出形式）", &includeProject_);
     if (includeProject_) {
@@ -965,6 +1100,9 @@ void ExecutablePackageWindow::DrawImGui() {
         ImGui::BulletText("コピー対象: exe / dll / Runtime Resources / package_manifest.json");
         ImGui::BulletText("除外対象: .cache / .backup / .trash / tools / generated/editor");
     }
+    if (excludeUnusedResources_) {
+        ImGui::BulletText("追加除外: Asset Auditが未使用候補と判定したRuntime Resources");
+    }
     ImGui::BulletText("DDS/PNGは同一フォルダ・同一名のペアだけを安全に整理します。");
     ImGui::BulletText("作成失敗時は既存の完成済みSetを残し、一時フォルダだけを削除します。");
 #endif
@@ -989,6 +1127,17 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             std::string buildError;
             if (!RunMSBuild(projectRoot, request.configuration, buildError)) {
                 return makeResult(false, buildError);
+            }
+        }
+
+        std::unordered_set<std::wstring> unusedResourcePaths;
+        if (request.excludeUnusedResources) {
+            std::string auditError;
+            if (!RunAssetAudit(projectRoot, auditError)) {
+                return makeResult(false, auditError);
+            }
+            if (!LoadUnusedResourcePaths(projectRoot, unusedResourcePaths, auditError)) {
+                return makeResult(false, auditError);
             }
         }
 
@@ -1076,7 +1225,13 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         ResourceCopyStats resourceStats;
         std::string copyError;
-        if (!CopyDirectoryFiltered(projectRoot / "Resources", runtimeDestination / "Resources", textureMode, resourceStats, copyError)) {
+        if (!CopyDirectoryFiltered(
+                projectRoot / "Resources",
+                runtimeDestination / "Resources",
+                textureMode,
+                unusedResourcePaths,
+                resourceStats,
+                copyError)) {
             return makeResult(false, copyError);
         }
 
@@ -1092,6 +1247,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             request.configuration,
             request.buildBeforePackage,
             textureMode,
+            request.excludeUnusedResources,
             request.createZip,
             exeFileName,
             copiedDlls,
@@ -1160,6 +1316,10 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             << "件 / Resources " << resourceStats.copiedFiles << "件 (" << FormatMiB(resourceStats.copiedBytes) << ")"
             << " / 除外 " << resourceStats.skippedFiles << "件 (" << FormatMiB(resourceStats.skippedBytes) << ")"
             << " / Texture Pair " << resourceStats.texturePairs << "組";
+        if (request.excludeUnusedResources) {
+            message << " / 未使用候補除外 " << resourceStats.omittedUnusedFiles
+                << "件 (" << FormatMiB(resourceStats.omittedUnusedBytes) << ")";
+        }
         if (request.includeProject) {
             message << " / project " << projectStats.copiedFiles << "件 (" << FormatMiB(projectStats.copiedBytes) << ")"
                 << " / project除外 " << projectStats.skippedFiles << "件・" << projectStats.skippedDirectories << "フォルダ";

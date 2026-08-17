@@ -68,6 +68,7 @@ AssetDatabase* AssetDatabase::GetInstance() {
 
 AssetDatabase::~AssetDatabase() {
     StopFilesystemWatcher();
+    CloseDDSCacheProcessHandle();
 }
 
 bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMissingMeta) {
@@ -86,7 +87,7 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
     resourcesRootPath_ = NormalizeProjectPath(resourcesRoot_);
     createMissingMeta_ = createMissingMeta;
     initialized_ = true;
-    BeginInitialIndexBuild(createMissingMeta_);
+    BeginInitialIndexBuild(createMissingMeta_, true);
     return true;
 }
 
@@ -155,6 +156,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     if (!changeNotificationHandles_.empty()) {
         RestartFilesystemWatcher();
     }
+    RequestDDSCacheBuild();
     return result;
 }
 
@@ -162,18 +164,44 @@ void AssetDatabase::RequestRefresh(bool createMissingMeta) {
     if (!initialized_) {
         return;
     }
-    BeginInitialIndexBuild(createMissingMeta);
+    BeginInitialIndexBuild(createMissingMeta, true);
+}
+
+void AssetDatabase::RequestDDSCacheBuild() {
+    if (!initialized_ || ddsCacheBuildState_ == DDSCacheBuildState::Running) {
+        return;
+    }
+    ddsCacheBuildState_ = DDSCacheBuildState::Queued;
+    ddsCacheBuildMessage_ = "Asset Database更新後のDDS変換を待機しています。";
 }
 
 bool AssetDatabase::Update() {
     if (!initialized_) {
         return false;
     }
+
+    const bool ddsStateChanged = PollDDSCacheBuild();
     if (initialIndexBuildInProgress_) {
-        return ProcessInitialIndexBuild();
+        return ProcessInitialIndexBuild() || ddsStateChanged;
+    }
+
+    if (refreshAfterDDSCacheBuild_) {
+        refreshAfterDDSCacheBuild_ = false;
+        BeginInitialIndexBuild(createMissingMeta_, false);
+        return true;
+    }
+
+    if (ddsCacheBuildState_ == DDSCacheBuildState::Queued) {
+        StartDDSCacheBuild();
+        return true;
+    }
+
+    // DDS生成中に作られるファイル通知は完了後の一括更新で取り込むため、ここでは索引を開始しません。
+    if (ddsCacheBuildState_ == DDSCacheBuildState::Running) {
+        return ddsStateChanged;
     }
     if (changeNotificationHandles_.empty()) {
-        return false;
+        return ddsStateChanged;
     }
 
     const auto now = std::chrono::steady_clock::now();
@@ -196,14 +224,14 @@ bool AssetDatabase::Update() {
     }
     if (watcherFailed) {
         RestartFilesystemWatcher();
-        return false;
+        return ddsStateChanged;
     }
 
     if (!filesystemChangePending_ || now < filesystemChangeReadyAt_) {
-        return false;
+        return ddsStateChanged;
     }
 
-    RequestRefresh(createMissingMeta_);
+    BeginInitialIndexBuild(createMissingMeta_, false);
     pendingRefreshResult_.filesystemChanged = true;
     return true;
 }
@@ -747,7 +775,7 @@ std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
     return sourcePaths;
 }
 
-void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta) {
+void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDSCacheAfterCompletion) {
     StopFilesystemWatcher();
     assets_.clear();
     issues_.clear();
@@ -760,6 +788,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta) {
     pendingCreateMissingMeta_ = createMissingMeta;
     pendingSourcePaths_.clear();
     pendingSourcePathIndex_ = 0;
+    buildDDSCacheAfterIndex_ = buildDDSCacheAfterIndex_ || buildDDSCacheAfterCompletion;
     initialIndexBuildInProgress_ = true;
     initialDirectoryScanInProgress_ = true;
 
@@ -879,6 +908,102 @@ void AssetDatabase::CompleteInitialIndexBuild() {
     pendingGuidOwners_.clear();
     ++generation_;
     StartFilesystemWatcher();
+
+    if (buildDDSCacheAfterIndex_) {
+        buildDDSCacheAfterIndex_ = false;
+        RequestDDSCacheBuild();
+    }
+}
+
+bool AssetDatabase::StartDDSCacheBuild() {
+    CloseDDSCacheProcessHandle();
+
+    const fs::path scriptPath = (projectRoot_ / "tools/dds_cache/dds_cache_builder.ps1").lexically_normal();
+    std::error_code error;
+    if (!fs::exists(scriptPath, error) || error) {
+        ddsCacheBuildState_ = DDSCacheBuildState::Failed;
+        ddsCacheBuildMessage_ = "DDS変換スクリプトが見つかりません。";
+        lastDDSCacheBuildExitCode_ = ERROR_FILE_NOT_FOUND;
+        return false;
+    }
+
+    std::wstring commandLine =
+        L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" +
+        scriptPath.wstring() + L"\" -Root \"" + resourcesRoot_.wstring() + L"\"";
+
+    STARTUPINFOW startupInfo{};
+    startupInfo.cb = sizeof(startupInfo);
+    startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+    startupInfo.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION processInfo{};
+    std::vector<wchar_t> mutableCommand(commandLine.begin(), commandLine.end());
+    mutableCommand.push_back(L'\0');
+    const BOOL created = CreateProcessW(
+        nullptr,
+        mutableCommand.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_NO_WINDOW,
+        nullptr,
+        projectRoot_.c_str(),
+        &startupInfo,
+        &processInfo);
+    if (!created) {
+        lastDDSCacheBuildExitCode_ = GetLastError();
+        ddsCacheBuildState_ = DDSCacheBuildState::Failed;
+        ddsCacheBuildMessage_ = "DDS変換プロセスを開始できませんでした。";
+        return false;
+    }
+
+    CloseHandle(processInfo.hThread);
+    ddsCacheProcessHandle_ = processInfo.hProcess;
+    lastDDSCacheBuildExitCode_ = STILL_ACTIVE;
+    ddsCacheBuildState_ = DDSCacheBuildState::Running;
+    ddsCacheBuildMessage_ = "未変換・更新済みでない画像をバックグラウンドで確認しています。";
+    return true;
+}
+
+bool AssetDatabase::PollDDSCacheBuild() {
+    if (ddsCacheBuildState_ != DDSCacheBuildState::Running || !ddsCacheProcessHandle_) {
+        return false;
+    }
+
+    HANDLE process = static_cast<HANDLE>(ddsCacheProcessHandle_);
+    const DWORD waitResult = WaitForSingleObject(process, 0);
+    if (waitResult == WAIT_TIMEOUT) {
+        return false;
+    }
+
+    DWORD exitCode = 1;
+    if (waitResult == WAIT_OBJECT_0) {
+        GetExitCodeProcess(process, &exitCode);
+    }
+    else {
+        exitCode = GetLastError();
+    }
+    lastDDSCacheBuildExitCode_ = exitCode;
+    CloseDDSCacheProcessHandle();
+    refreshAfterDDSCacheBuild_ = true;
+
+    if (waitResult == WAIT_OBJECT_0 && exitCode == 0) {
+        ddsCacheBuildState_ = DDSCacheBuildState::Succeeded;
+        ddsCacheBuildMessage_ = "DDSキャッシュの確認・変換が完了しました。";
+    }
+    else {
+        ddsCacheBuildState_ = DDSCacheBuildState::Failed;
+        ddsCacheBuildMessage_ = "DDS変換に失敗しました。Exit Code: " + std::to_string(exitCode);
+    }
+    return true;
+}
+
+void AssetDatabase::CloseDDSCacheProcessHandle() {
+    if (!ddsCacheProcessHandle_) {
+        return;
+    }
+    CloseHandle(static_cast<HANDLE>(ddsCacheProcessHandle_));
+    ddsCacheProcessHandle_ = nullptr;
 }
 
 void AssetDatabase::RebuildLookupTables() {

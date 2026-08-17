@@ -48,6 +48,15 @@
         0.0,
         0.0
     ],
+    "fieldType": 2,
+    "fieldPosition": [
+        0.0,
+        0.35,
+        0.0
+    ],
+    "fieldStrength": 7.5,
+    "fieldRadius": 2.2,
+    "fieldFalloff": 1.25,
     "isLooping": false,
     "midColor": [
         1.0,
@@ -65,5 +74,20 @@
     "sizeMidTime": 0.18,
     "softParticleFade": 5.0,
     "texturePath": "Resources/sprite/particle.png",
+    "particleType": 1,
+    "trailLength": 0.08,
+    "alignToVelocity": true,
+    "receiveLighting": true,
+    "lightDirection": [
+        -0.35,
+        -1.0,
+        0.25
+    ],
+    "lightColor": [
+        0.72,
+        0.9,
+        1.0
+    ],
+    "lightingStrength": 0.55,
     "velocityVariance": 1.6
 }

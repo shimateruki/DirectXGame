@@ -15,6 +15,8 @@ struct StageData {
     std::string description;
     int unlockStageIndex = -1;
     bool defaultUnlocked = false;
+    std::string lightPath;
+    std::string skyboxPath;
 };
 
 class StageManager {
@@ -69,6 +71,8 @@ public:
             data.description = stageJson.value("description", "");
             data.unlockStageIndex = stageJson.value("unlockStageIndex", -1);
             data.defaultUnlocked = stageJson.value("defaultUnlocked", false);
+            data.lightPath = stageJson.value("lightPath", "");
+            data.skyboxPath = stageJson.value("skyboxPath", "");
 
             if (data.id.empty() || data.levelPath.empty()) {
                 continue;

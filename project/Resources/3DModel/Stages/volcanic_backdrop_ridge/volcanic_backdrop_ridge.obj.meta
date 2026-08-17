@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "f0bfa5d6108c52829e6ea43602886e4e",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/volcanic_backdrop_ridge/volcanic_backdrop_ridge.obj",
+    "version": 1
+}

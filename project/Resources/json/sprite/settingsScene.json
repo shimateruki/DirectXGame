@@ -34,11 +34,11 @@
             "texture": "ui/settings/settings_panel.png",
             "position": [
                 960.0,
-                550.0
+                540.0
             ],
             "size": [
-                1660.0,
-                920.0
+                1520.0,
+                860.0
             ],
             "anchor": [
                 0.5,
@@ -58,11 +58,11 @@
             "texture": "ui/settings/settings_title_plate.png",
             "position": [
                 960.0,
-                107.0
+                122.0
             ],
             "size": [
-                720.0,
-                142.0
+                620.0,
+                122.0
             ],
             "anchor": [
                 0.5,
@@ -82,11 +82,11 @@
             "texture": "generated/text/settings/settings_text_title.png",
             "position": [
                 960.0,
-                106.0
+                121.0
             ],
             "size": [
-                470.0,
-                100.0
+                410.0,
+                86.0
             ],
             "anchor": [
                 0.5,
@@ -106,11 +106,11 @@
             "texture": "ui/settings/settings_hint_line.png",
             "position": [
                 960.0,
-                165.0
+                176.0
             ],
             "size": [
-                720.0,
-                10.0
+                620.0,
+                8.0
             ],
             "anchor": [
                 0.5,
@@ -129,36 +129,12 @@
             "name": "settings_category_panel",
             "texture": "ui/settings/settings_category_panel.png",
             "position": [
-                378.0,
-                540.0
+                440.0,
+                520.0
             ],
             "size": [
-                330.0,
-                690.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_pointer",
-            "texture": "ui/settings/settings_category_pointer.png",
-            "position": [
-                185.0,
-                300.0
-            ],
-            "size": [
-                92.0,
-                82.0
+                310.0,
+                560.0
             ],
             "anchor": [
                 0.5,
@@ -177,12 +153,12 @@
             "name": "settings_content_panel",
             "texture": "ui/settings/settings_content_panel.png",
             "position": [
-                1048.0,
-                540.0
+                1100.0,
+                520.0
             ],
             "size": [
-                1080.0,
-                690.0
+                960.0,
+                560.0
             ],
             "anchor": [
                 0.5,
@@ -198,39 +174,15 @@
             "parentName": ""
         },
         {
-            "name": "settings_content_divider",
-            "texture": "ui/settings/settings_divider_line.png",
-            "position": [
-                1048.0,
-                212.0
-            ],
-            "size": [
-                900.0,
-                7.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
             "name": "settings_category_sound_tab",
             "texture": "ui/settings/settings_category_tab_selected.png",
             "position": [
-                378.0,
-                300.0
+                440.0,
+                385.0
             ],
             "size": [
-                270.0,
-                122.0
+                250.0,
+                110.0
             ],
             "anchor": [
                 0.5,
@@ -249,12 +201,12 @@
             "name": "settings_category_sound_icon",
             "texture": "ui/settings/settings_icon_sound.png",
             "position": [
-                304.0,
-                300.0
+                372.0,
+                385.0
             ],
             "size": [
-                62.0,
-                62.0
+                56.0,
+                56.0
             ],
             "anchor": [
                 0.5,
@@ -273,1232 +225,8 @@
             "name": "settings_category_sound_label",
             "texture": "generated/text/settings/settings_text_sound.png",
             "position": [
-                432.0,
-                300.0
-            ],
-            "size": [
-                162.0,
-                58.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1,
-                1,
-                1,
-                1
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_screen_tab",
-            "texture": "ui/settings/settings_category_tab.png",
-            "position": [
-                378.0,
-                465.0
-            ],
-            "size": [
-                270.0,
-                122.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_screen_icon",
-            "texture": "ui/settings/settings_icon_screen.png",
-            "position": [
-                304.0,
-                465.0
-            ],
-            "size": [
-                62.0,
-                62.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_screen_label",
-            "texture": "generated/text/settings/settings_text_screen.png",
-            "position": [
-                432.0,
-                465.0
-            ],
-            "size": [
-                112.0,
-                58.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1,
-                1,
-                1,
-                1
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_control_tab",
-            "texture": "ui/settings/settings_category_tab.png",
-            "position": [
-                378.0,
-                630.0
-            ],
-            "size": [
-                270.0,
-                122.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_control_icon",
-            "texture": "ui/settings/settings_icon_control.png",
-            "position": [
-                304.0,
-                630.0
-            ],
-            "size": [
-                62.0,
-                62.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_category_control_label",
-            "texture": "generated/text/settings/settings_text_control.png",
-            "position": [
-                432.0,
-                630.0
-            ],
-            "size": [
-                112.0,
-                58.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1,
-                1,
-                1,
-                1
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                290.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_label",
-            "texture": "generated/text/settings/settings_text_bgm.png",
-            "position": [
-                705.0,
-                290.0
-            ],
-            "size": [
-                112.0,
-                56.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                850.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                292.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                292.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                292.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1540.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_value0",
-            "texture": "number/0.png",
-            "position": [
-                1360.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_value1",
-            "texture": "number/0.png",
-            "position": [
-                1394.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_bgm_value2",
-            "texture": "number/0.png",
-            "position": [
-                1428.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                430.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_label",
-            "texture": "generated/text/settings/settings_text_se.png",
-            "position": [
-                705.0,
-                430.0
-            ],
-            "size": [
-                82.0,
-                56.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                850.0,
-                430.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                432.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                432.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                432.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1540.0,
-                430.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_value0",
-            "texture": "number/0.png",
-            "position": [
-                1360.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_value1",
-            "texture": "number/0.png",
-            "position": [
-                1394.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_se_value2",
-            "texture": "number/0.png",
-            "position": [
-                1428.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                290.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_label",
-            "texture": "generated/text/settings/settings_text_camera.png",
-            "position": [
-                735.0,
-                290.0
-            ],
-            "size": [
-                245.0,
-                56.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                850.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                292.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                292.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                292.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1540.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_value0",
-            "texture": "number/0.png",
-            "position": [
-                1360.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_value1",
-            "texture": "number/0.png",
-            "position": [
-                1394.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_camera_value2",
-            "texture": "number/0.png",
-            "position": [
-                1428.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                290.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_label",
-            "texture": "generated/text/settings/settings_text_brightness.png",
-            "position": [
-                690.0,
-                290.0
-            ],
-            "size": [
-                165.0,
-                56.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                850.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                292.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                292.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                292.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1540.0,
-                290.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_empty_hint",
-            "texture": "generated/text/settings/settings_text_empty.png",
-            "position": [
-                1055.0,
-                790.0
-            ],
-            "size": [
-                420.0,
-                40.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1,
-                1,
-                1,
-                0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_value0",
-            "texture": "number/0.png",
-            "position": [
-                1360.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_value1",
-            "texture": "number/0.png",
-            "position": [
-                1394.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_brightness_value2",
-            "texture": "number/0.png",
-            "position": [
-                1428.0,
-                292.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_footer_back_button",
-            "texture": "ui/settings/settings_footer_button.png",
-            "position": [
-                755.0,
-                920.0
-            ],
-            "size": [
-                280.0,
-                92.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_footer_back_text",
-            "texture": "generated/text/settings/settings_text_back.png",
-            "position": [
-                778.0,
-                920.0
-            ],
-            "size": [
-                105.0,
-                54.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1,
-                1,
-                1,
-                1
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_footer_reset_button",
-            "texture": "ui/settings/settings_footer_button.png",
-            "position": [
-                1035.0,
-                920.0
-            ],
-            "size": [
-                280.0,
-                92.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_footer_reset_text",
-            "texture": "generated/text/settings/settings_text_reset.png",
-            "position": [
-                1065.0,
-                920.0
+                492.0,
+                385.0
             ],
             "size": [
                 150.0,
@@ -1518,15 +246,15 @@
             "parentName": ""
         },
         {
-            "name": "settings_footer_apply_button",
-            "texture": "ui/settings/settings_footer_button_selected.png",
+            "name": "settings_category_control_tab",
+            "texture": "ui/settings/settings_category_tab.png",
             "position": [
-                1315.0,
-                920.0
+                440.0,
+                555.0
             ],
             "size": [
-                280.0,
-                92.0
+                250.0,
+                110.0
             ],
             "anchor": [
                 0.5,
@@ -1542,11 +270,35 @@
             "parentName": ""
         },
         {
-            "name": "settings_footer_apply_text",
-            "texture": "generated/text/settings/settings_text_apply.png",
+            "name": "settings_category_control_icon",
+            "texture": "ui/settings/settings_icon_control.png",
             "position": [
-                1343.0,
-                920.0
+                372.0,
+                555.0
+            ],
+            "size": [
+                56.0,
+                56.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_category_control_label",
+            "texture": "generated/text/settings/settings_text_control.png",
+            "position": [
+                492.0,
+                555.0
             ],
             "size": [
                 110.0,
@@ -1566,15 +318,879 @@
             "parentName": ""
         },
         {
+            "name": "settings_bgm_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [
+                1100.0,
+                380.0
+            ],
+            "size": [
+                900.0,
+                116.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_label",
+            "texture": "generated/text/settings/settings_text_bgm.png",
+            "position": [
+                760.0,
+                380.0
+            ],
+            "size": [
+                112.0,
+                54.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_arrow_left",
+            "texture": "ui/settings/settings_arrow_left.png",
+            "position": [
+                925.0,
+                380.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [
+                1150.0,
+                382.0
+            ],
+            "size": [
+                360.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [
+                970.0,
+                382.0
+            ],
+            "size": [
+                288.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [
+                1258.0,
+                382.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_arrow_right",
+            "texture": "ui/settings/settings_arrow_right.png",
+            "position": [
+                1395.0,
+                380.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value0",
+            "texture": "number/0.png",
+            "position": [
+                1405.0,
+                382.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value1",
+            "texture": "number/0.png",
+            "position": [
+                1439.0,
+                382.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value2",
+            "texture": "number/0.png",
+            "position": [
+                1473.0,
+                382.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [
+                1100.0,
+                545.0
+            ],
+            "size": [
+                900.0,
+                116.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_label",
+            "texture": "generated/text/settings/settings_text_se.png",
+            "position": [
+                760.0,
+                545.0
+            ],
+            "size": [
+                82.0,
+                54.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_arrow_left",
+            "texture": "ui/settings/settings_arrow_left.png",
+            "position": [
+                925.0,
+                545.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [
+                1150.0,
+                547.0
+            ],
+            "size": [
+                360.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [
+                970.0,
+                547.0
+            ],
+            "size": [
+                288.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [
+                1258.0,
+                547.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_arrow_right",
+            "texture": "ui/settings/settings_arrow_right.png",
+            "position": [
+                1395.0,
+                545.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value0",
+            "texture": "number/0.png",
+            "position": [
+                1405.0,
+                547.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value1",
+            "texture": "number/0.png",
+            "position": [
+                1439.0,
+                547.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value2",
+            "texture": "number/0.png",
+            "position": [
+                1473.0,
+                547.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [
+                1100.0,
+                462.0
+            ],
+            "size": [
+                900.0,
+                116.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_label",
+            "texture": "generated/text/settings/settings_text_camera.png",
+            "position": [
+                760.0,
+                462.0
+            ],
+            "size": [
+                232.0,
+                54.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_arrow_left",
+            "texture": "ui/settings/settings_arrow_left.png",
+            "position": [
+                925.0,
+                462.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [
+                1150.0,
+                464.0
+            ],
+            "size": [
+                360.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [
+                970.0,
+                464.0
+            ],
+            "size": [
+                288.0,
+                28.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [
+                1258.0,
+                464.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_arrow_right",
+            "texture": "ui/settings/settings_arrow_right.png",
+            "position": [
+                1395.0,
+                462.0
+            ],
+            "size": [
+                62.0,
+                62.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value0",
+            "texture": "number/0.png",
+            "position": [
+                1405.0,
+                464.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value1",
+            "texture": "number/0.png",
+            "position": [
+                1439.0,
+                464.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value2",
+            "texture": "number/0.png",
+            "position": [
+                1473.0,
+                464.0
+            ],
+            "size": [
+                35.0,
+                50.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_back_button",
+            "texture": "ui/settings/settings_footer_button.png",
+            "position": [
+                700.0,
+                860.0
+            ],
+            "size": [
+                240.0,
+                78.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_back_text",
+            "texture": "generated/text/settings/settings_text_back.png",
+            "position": [
+                700.0,
+                860.0
+            ],
+            "size": [
+                96.0,
+                48.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_reset_button",
+            "texture": "ui/settings/settings_footer_button.png",
+            "position": [
+                960.0,
+                860.0
+            ],
+            "size": [
+                240.0,
+                78.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_reset_text",
+            "texture": "generated/text/settings/settings_text_reset.png",
+            "position": [
+                960.0,
+                860.0
+            ],
+            "size": [
+                136.0,
+                48.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_apply_button",
+            "texture": "ui/settings/settings_footer_button_selected.png",
+            "position": [
+                1220.0,
+                860.0
+            ],
+            "size": [
+                240.0,
+                78.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_footer_apply_text",
+            "texture": "generated/text/settings/settings_text_apply.png",
+            "position": [
+                1220.0,
+                860.0
+            ],
+            "size": [
+                100.0,
+                48.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
             "name": "settings_footer_hint",
             "texture": "generated/text/settings/settings_text_hint.png",
             "position": [
                 960.0,
-                1010.0
+                928.0
             ],
             "size": [
-                800.0,
-                38.0
+                720.0,
+                34.0
             ],
             "anchor": [
                 0.5,
@@ -1593,12 +1209,12 @@
             "name": "settings_slime_cursor",
             "texture": "title/slime_save_icon.png",
             "position": [
-                120.0,
-                290.0
+                225.0,
+                385.0
             ],
             "size": [
-                82.0,
-                66.0
+                74.0,
+                60.0
             ],
             "anchor": [
                 0.5,
@@ -1609,534 +1225,6 @@
                 1.0,
                 1.0,
                 0.96
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                430.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_label",
-            "texture": "generated/text/settings/settings_text_resolution.png",
-            "position": [
-                690.0,
-                430.0
-            ],
-            "size": [
-                150.0,
-                54.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                965.0,
-                430.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                432.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                432.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                432.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1375.0,
-                430.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_value0",
-            "texture": "number/0.png",
-            "position": [
-                1450.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_value1",
-            "texture": "number/0.png",
-            "position": [
-                1484.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_value2",
-            "texture": "number/0.png",
-            "position": [
-                1518.0,
-                432.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_resolution_value_label",
-            "texture": "generated/text/settings/settings_text_resolution_1.png",
-            "position": [
-                1170.0,
-                432.0
-            ],
-            "size": [
-                230.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_row",
-            "texture": "ui/settings/settings_row.png",
-            "position": [
-                1055.0,
-                570.0
-            ],
-            "size": [
-                1040.0,
-                112.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_label",
-            "texture": "generated/text/settings/settings_text_fullscreen.png",
-            "position": [
-                685.0,
-                570.0
-            ],
-            "size": [
-                210.0,
-                48.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_arrow_left",
-            "texture": "ui/settings/settings_arrow_left.png",
-            "position": [
-                965.0,
-                570.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_track",
-            "texture": "ui/settings/settings_slider_track.png",
-            "position": [
-                1120.0,
-                572.0
-            ],
-            "size": [
-                455.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_fill",
-            "texture": "ui/settings/settings_slider_fill.png",
-            "position": [
-                892.0,
-                572.0
-            ],
-            "size": [
-                318.0,
-                30.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_knob",
-            "texture": "ui/settings/settings_slider_knob.png",
-            "position": [
-                1210.0,
-                572.0
-            ],
-            "size": [
-                68.0,
-                68.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_arrow_right",
-            "texture": "ui/settings/settings_arrow_right.png",
-            "position": [
-                1375.0,
-                570.0
-            ],
-            "size": [
-                66.0,
-                66.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_value0",
-            "texture": "number/0.png",
-            "position": [
-                1450.0,
-                572.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_value1",
-            "texture": "number/0.png",
-            "position": [
-                1484.0,
-                572.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_value2",
-            "texture": "number/0.png",
-            "position": [
-                1518.0,
-                572.0
-            ],
-            "size": [
-                35.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "parentName": ""
-        },
-        {
-            "name": "settings_fullscreen_value_label",
-            "texture": "generated/text/settings/settings_text_off.png",
-            "position": [
-                1170.0,
-                572.0
-            ],
-            "size": [
-                150.0,
-                52.0
-            ],
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
             ],
             "emissive": 1.0,
             "parentName": ""

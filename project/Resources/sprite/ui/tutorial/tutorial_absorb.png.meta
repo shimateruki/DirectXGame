@@ -1,0 +1,8 @@
+{
+  "assetType": "Texture",
+  "guid": "19d6035ad62443ccabce2c4c4d263208",
+  "importSettings": { "colorSpace": "Auto", "generateMipmaps": true },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/tutorial/tutorial_absorb.png",
+  "version": 1
+}

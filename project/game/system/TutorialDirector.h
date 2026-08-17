@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -42,6 +43,9 @@ public:
     int GetCurrentStepIndex() const { return currentStepIndex_; }
     const std::string& GetCurrentStepId() const;
 
+    void CaptureReplayState(nlohmann::json& state) const;
+    void RestoreReplayState(const nlohmann::json& state);
+
     void Restart();
     bool JumpToStep(const std::string& stepId);
 
@@ -58,6 +62,7 @@ private:
         kReachPosition,
         kCarryEnemy,
         kEnemyThrown,
+        kEnemiesDefeated,
         kMorphActive,
         kMorphReleased,
         kControlsGuideOpened,
@@ -68,12 +73,20 @@ private:
         CompletionCondition condition = CompletionCondition::kTimer;
         std::string action;
         std::string cinematicPath;
+        std::string promptLabel;
+        std::string objectiveTarget;
         std::vector<std::string> promptIcons;
+        std::vector<std::string> objectiveTargets;
+        std::vector<std::string> targetEnemyObjects;
+        std::vector<std::string> spawnEnemyObjects;
+        std::vector<std::string> despawnEnemyObjects;
         Vector3 targetPosition = { 0.0f, 0.0f, 0.0f };
         Vector3 checkpointPosition = { 0.0f, 0.0f, 0.0f };
         float threshold = 0.0f;
         float radius = 3.0f;
+        float objectiveOffsetY = 0.75f;
         float minimumDisplayTime = 0.12f;
+        float completionDelay = 0.0f;
         bool hasTargetPosition = false;
         bool hasCheckpoint = false;
         bool showPrompt = true;
@@ -81,8 +94,12 @@ private:
         bool previewGateUnlock = false;
         bool unlockGateOnComplete = false;
         bool spawnEnemy = false;
+        bool spawnEnemiesDormant = false;
+        bool allowCarriedThrow = true;
+        bool allowCarriedAbsorb = true;
         std::string spawnEnemyObject;
         std::string despawnEnemyObject;
+        std::string wrongActionRetryStep;
     };
 
     struct SpawnEnemySlot {
@@ -91,6 +108,8 @@ private:
         Vector3 initialPosition = { 0.0f, 0.0f, 0.0f };
         uint32_t collisionAttribute = 0;
         uint32_t collisionMask = 0;
+        float maxHpOverride = -1.0f;
+        float detectionRangeOverride = -1.0f;
         bool active = false;
     };
 
@@ -111,6 +130,8 @@ private:
     void LeaveCurrentStep();
     void AdvanceStep();
     bool EvaluateCurrentStep() const;
+    bool AreTargetEnemiesDefeated(const Step& step) const;
+    bool RecoverFromWrongCarriedAction(const Step& step);
     bool IsActionTriggered(const std::string& action) const;
     void CompleteFlow();
 
@@ -120,6 +141,8 @@ private:
     void UpdateGateStateForStep(const Step& step);
     void SetGateTransitionEnabled(bool enabled);
     void SetSpawnEnemyActive(const std::string& objectName, bool active);
+    void SetSpawnEnemyDormant(const std::string& objectName, bool dormant);
+    void SetStepSpawnEnemiesDormant(const Step& step, bool dormant);
     void SetAllSpawnEnemiesActive(bool active);
     void RestoreSpawnEnemyStateBeforeStep(int stepIndex);
     Object3d* FindObjectByName(const std::string& name) const;
@@ -128,6 +151,9 @@ private:
     void ApplyStepPrompt(const Step* step);
     void UpdatePrompt(float deltaTime);
     void SetPromptVisible(bool visible);
+    void ApplyStepObjective(const Step* step);
+    void UpdateObjectiveMarker(float deltaTime);
+    void SetObjectiveMarkerVisible(bool visible);
 
 private:
     BaseScene* scene_ = nullptr;
@@ -139,16 +165,20 @@ private:
     std::string exitGateObjectName_ = "Gimmick_StageGate";
     std::string spawnEnemyObjectName_ = "Tutorial_PinkSlime";
     std::vector<std::string> spawnEnemyObjectNames_;
+    std::unordered_map<std::string, float> spawnEnemyMaxHpOverrides_;
+    std::unordered_map<std::string, float> spawnEnemyDetectionRangeOverrides_;
     std::vector<SpawnEnemySlot> spawnEnemies_;
     std::vector<Step> steps_;
     int currentStepIndex_ = -1;
     float stepTimer_ = 0.0f;
+    float conditionSatisfiedTimer_ = 0.0f;
     Vector3 stepStartPosition_ = { 0.0f, 0.0f, 0.0f };
     bool started_ = false;
     bool loaded_ = false;
     bool completed_ = false;
     bool cinematicActive_ = false;
     bool controlsGuideOpened_ = false;
+    bool stepConditionSatisfied_ = false;
     bool morphWasActiveOnStepEntry_ = false;
     Object3d* carriedEnemyOnStepEntry_ = nullptr;
 
@@ -156,10 +186,17 @@ private:
     CinematicPlayer cinematicPlayer_;
 
     PromptVisual promptPanel_;
+    PromptVisual promptLabel_;
     std::array<PromptVisual, 3> promptIcons_{};
-    float promptTime_ = 0.0f;
     float promptAlpha_ = 0.0f;
     bool promptRequestedVisible_ = false;
+
+    std::array<PromptVisual, 3> objectiveMarkers_{};
+    std::array<std::string, 3> objectiveTargetNames_{};
+    float objectiveOffsetY_ = 0.75f;
+    std::array<float, 3> objectiveAlphas_{};
+    float objectiveAnimationTime_ = 0.0f;
+    bool objectiveRequestedVisible_ = false;
 
     CompletionCallback completionCallback_;
 };

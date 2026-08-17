@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "be83368bb9575ac2b5d547fb1bcb15b5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/star_hook_anchor/star_hook_anchor.obj",
+  "version": 1
+}

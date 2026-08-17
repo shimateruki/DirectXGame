@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8fa63efebd4f5f148c416829566afd0f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_hub_island/stage_select_hub_island.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "856039f7c25345a3b9d9e5f6213d55b0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/portraits/thunder_slime.dds",
+  "version": 1
+}

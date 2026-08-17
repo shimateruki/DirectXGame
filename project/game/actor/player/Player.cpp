@@ -21,6 +21,7 @@
 #include "EnemyThunderSlime.h"
 #include "EnemyWindSlime.h"
 #include "EnemySlime.h"
+#include "EnemyBomber.h"
 #include "Bullet.h"
 #include "GimmickHookPullBlock.h"
 #include "MeshEffectManager.h"
@@ -206,6 +207,12 @@ void Player::Update(float deltaTime)
         baseRotation_ = ResolveTransformEuler(transform_);
         SetRotation(baseRotation_);
         isFirstUpdate_ = false;
+    }
+
+    if (launchStarActive_) {
+        UpdateLaunchStar(deltaTime);
+        Object3d::Update(deltaTime);
+        return;
     }
 
     if (isCinematicLocked_) {
@@ -458,13 +465,15 @@ void Player::Update(float deltaTime)
 
     UpdateElectricShockFeedback(deltaTime);
 
-    if (IsInvincible() && deltaTime > 0.0f) {
+    const bool hasVisibleInvincibility =
+        isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_;
+    if (hasVisibleInvincibility && deltaTime > 0.0f) {
         invincibleBlinkTimer_ += deltaTime;
     }
 
     UpdateDamageInvincibleBlinkVisibility();
 
-    if (electricShockFeedbackTimer_ <= 0.0f && IsInvincible() && deltaTime > 0.0f) {
+    if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
         const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
         const Vector4 flash = (isDashInvincible_ || isEvasionInvincible_)
@@ -485,7 +494,7 @@ void Player::Update(float deltaTime)
                 }
             }
         }
-    } else if (!IsInvincible()) {
+    } else if (!hasVisibleInvincibility) {
         invincibleBlinkTimer_ = 0.0f;
     }
 
@@ -540,6 +549,9 @@ void Player::Update(float deltaTime)
     const bool morphRightAbilityTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsMouseButtonTriggered(1);
+    const bool morphLeftAbilityTriggered =
+        deltaTime > 0.0f &&
+        inputManager_->IsMouseButtonTriggered(0);
     const bool morphReleaseTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsActionTriggered("MorphRelease");
@@ -549,7 +561,9 @@ void Player::Update(float deltaTime)
         BeginEnemyMorphRelease(false);
     }
 
-    if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && !isEnemyMorphed_ && inputManager_->IsMouseButtonPressed(0)) {
+    if (tutorialCarryThrowEnabled_ &&
+        !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && !isEnemyMorphed_ &&
+        inputManager_->IsMouseButtonPressed(0)) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             CancelEnemyMorph();
@@ -622,6 +636,24 @@ void Player::Update(float deltaTime)
         }
     }
     else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::FireSlime && morphRightAbilityTriggered) {
+        if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(activeMorphSource)) {
+            fireSlime->ExecuteDashAbility(this);
+        }
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::Slime && morphRightAbilityTriggered) {
+        if (auto* slime = dynamic_cast<EnemySlime*>(activeMorphSource)) {
+            slime->ExecuteBounceEvadeAbility(this);
+        }
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::Bomber && morphRightAbilityTriggered) {
+        if (auto* bomber = dynamic_cast<EnemyBomber*>(activeMorphSource)) {
+            bomber->ExecuteBlastJumpAbility(this);
+        }
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
         enemyMorphType_ == EnemyMorphType::WindSlime && morphRightAbilityTriggered) {
         if (auto* windSlime = dynamic_cast<EnemyWindSlime*>(activeMorphSource)) {
             windSlime->ExecuteDashAbility(this);
@@ -629,6 +661,24 @@ void Player::Update(float deltaTime)
     }
     else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && carryAbilityTriggered) {
         activeMorphSource->ExecuteAbility(this);
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::ThunderSlime && morphLeftAbilityTriggered) {
+        if (auto* thunderSlime = dynamic_cast<EnemyThunderSlime*>(activeMorphSource)) {
+            thunderSlime->ExecuteDischargeAbility(this);
+        }
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::Slime && morphLeftAbilityTriggered) {
+        if (auto* slime = dynamic_cast<EnemySlime*>(activeMorphSource)) {
+            slime->ExecuteStraightAbility(this);
+        }
+    }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
+        enemyMorphType_ == EnemyMorphType::Bomber && morphLeftAbilityTriggered) {
+        if (auto* bomber = dynamic_cast<EnemyBomber*>(activeMorphSource)) {
+            bomber->ExecutePlaceAbility(this);
+        }
     }
     else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && enemyMorphType_ == EnemyMorphType::FireSlime && inputManager_->IsMouseButtonPressed(0)) {
         if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(activeMorphSource)) {
@@ -641,7 +691,8 @@ void Player::Update(float deltaTime)
             windSlime->ExecutePrimaryAbility(this);
         }
     }
-	else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && carriedEnemyBase && carryAbilityTriggered) {
+	else if (tutorialCarryAbsorbEnabled_ &&
+        !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && carriedEnemyBase && carryAbilityTriggered) {
 		BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
 		if (enemyBase) {
 			if (!isEnemyMorphed_) {
@@ -720,7 +771,7 @@ void Player::Update(float deltaTime)
             carriedBase->UpdateCarriedAbility(this, deltaTime);
         }
     }
-    if (activeMorphSource && !enemyMorphReleaseActive_) {
+    if (activeMorphSource && activeMorphSource != carriedEnemy_ && !enemyMorphReleaseActive_) {
         activeMorphSource->SetIsVisible(false);
         activeMorphSource->SetCollisionAttribute(0);
         activeMorphSource->SetCollisionMask(0);
@@ -1264,6 +1315,97 @@ float Player::GetEnemyMorphRate() const
         return 0.0f;
     }
     return std::clamp(enemyMorphTimer_ / enemyMorphDuration_, 0.0f, 1.0f);
+}
+
+void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float duration)
+{
+    if (launchStarActive_ || isDead || isCinematicLocked_) {
+        return;
+    }
+
+    launchStarActive_ = true;
+    launchStarSavedControlActive_ = isControlActive_;
+    launchStarSavedCollisionAttribute_ = GetCollisionAttribute();
+    launchStarSavedCollisionMask_ = GetCollisionMask();
+    launchStarStart_ = GetWorldPosition();
+    launchStarDestination_ = destination;
+    launchStarArcHeight_ = (std::max)(2.0f, arcHeight);
+    launchStarDuration_ = (std::max)(0.35f, duration);
+    launchStarTimer_ = 0.0f;
+    launchStarTrailTimer_ = 0.0f;
+
+    SetIsControlActive(false);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetCollisionMask(0);
+
+    Vector3 direction = launchStarDestination_ - launchStarStart_;
+    direction.y = 0.0f;
+    if (Math::Length(direction) > 0.001f) {
+        direction = Math::Normalize(direction);
+        SetMoveYaw(std::atan2(direction.x, direction.z));
+        slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Jump);
+        slimeAnimator_.SetMotionDirection(direction);
+    }
+    TriggerSlimeImpulse({ 0.78f, 1.28f, 0.78f }, 0.2f);
+    StartEvasionInvincibility(launchStarDuration_ + 0.2f);
+
+    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+        gpuParticleManager->Emit("launch_star_burst", launchStarStart_ + Vector3{ 0.0f, 0.7f, 0.0f });
+    }
+}
+
+void Player::UpdateLaunchStar(float deltaTime)
+{
+    if (!launchStarActive_) {
+        return;
+    }
+
+    launchStarTimer_ += (std::max)(0.0f, deltaTime);
+    const float t = std::clamp(launchStarTimer_ / launchStarDuration_, 0.0f, 1.0f);
+    const float eased = t * t * (3.0f - 2.0f * t);
+
+    Vector3 position = launchStarStart_ + (launchStarDestination_ - launchStarStart_) * eased;
+    position.y += std::sin(t * 3.14159265f) * launchStarArcHeight_;
+    SetTranslate(position);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetIsControlActive(false);
+
+    Vector3 direction = launchStarDestination_ - launchStarStart_;
+    direction.y = 0.0f;
+    if (Math::Length(direction) > 0.001f) {
+        direction = Math::Normalize(direction);
+        slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Jump);
+        slimeAnimator_.SetMotionDirection(direction);
+    }
+
+    if (!absorbEffectActive_ && !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead) {
+        slimeAnimator_.Update(this, deltaTime);
+    }
+
+    launchStarTrailTimer_ -= deltaTime;
+    if (launchStarTrailTimer_ <= 0.0f) {
+        if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+            gpuParticleManager->Emit("launch_star_trail", position);
+        }
+        launchStarTrailTimer_ = 0.045f;
+    }
+
+    if (t < 1.0f) {
+        return;
+    }
+
+    launchStarActive_ = false;
+    SetTranslate(launchStarDestination_);
+    SetRespawnPosition(launchStarDestination_);
+    SetVelocity({ 0.0f, -1.0f, 0.0f });
+    SetCollisionAttribute(launchStarSavedCollisionAttribute_);
+    SetCollisionMask(launchStarSavedCollisionMask_);
+    SetIsControlActive(launchStarSavedControlActive_);
+    TriggerSlimeImpulse({ 1.18f, 0.82f, 1.18f }, 0.18f);
+
+    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+        gpuParticleManager->Emit("launch_star_burst", launchStarDestination_ + Vector3{ 0.0f, 0.45f, 0.0f });
+    }
 }
 
 float Player::GetEnemyMorphReleaseRate() const
@@ -2226,6 +2368,24 @@ void Player::SetTutorialSafetyEnabled(bool enabled)
         deathTimer_ = 0.0f;
         SetDamageInvincible(false);
     }
+}
+
+void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb)
+{
+    tutorialCarryThrowEnabled_ = allowThrow;
+    tutorialCarryAbsorbEnabled_ = allowAbsorb;
+
+    // 吸収演出の途中で投擲専用工程へ切り替わった場合は、拘束状態へ戻します。
+    if (!allowAbsorb && absorbEffectActive_) {
+        CancelAbsorbEffect(true);
+    }
+}
+
+void Player::ResetTutorialCarryActionState()
+{
+    // 誤操作済みの編集再開や工程ジャンプでも再試行できる状態へ戻します。
+    CancelEnemyMorph();
+    ReleaseCarriedEnemy(true);
 }
 
 void Player::StartEvasionInvincibility(float duration) {

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4135205947e5518a86ee1f46676a2fe0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_hub_plaza/stage_select_hub_plaza.obj",
+  "version": 1
+}

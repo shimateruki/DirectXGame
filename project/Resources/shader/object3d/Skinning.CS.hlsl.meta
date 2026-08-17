@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "b18f7e2a0d354a1c9f3b62e8c7415d90",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Skinning.CS.hlsl",
+  "version": 1
+}

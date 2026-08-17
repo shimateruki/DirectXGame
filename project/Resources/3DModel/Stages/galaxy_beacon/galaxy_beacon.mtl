@@ -1,0 +1,34 @@
+newmtl pearl
+Ka 0.24 0.27 0.34
+Kd 0.78 0.84 0.94
+Ks 0.56 0.64 0.78
+Ns 88
+illum 2
+
+newmtl gold
+Ka 0.34 0.22 0.04
+Kd 0.98 0.69 0.14
+Ks 0.78 0.58 0.18
+Ns 112
+illum 2
+
+newmtl aqua
+Ka 0.05 0.30 0.40
+Kd 0.18 0.82 0.96
+Ks 0.72 0.92 1.00
+Ns 128
+illum 2
+
+newmtl violet
+Ka 0.18 0.08 0.30
+Kd 0.50 0.28 0.76
+Ks 0.45 0.34 0.70
+Ns 72
+illum 2
+
+newmtl grass
+Ka 0.12 0.30 0.07
+Kd 0.40 0.78 0.22
+Ks 0.06 0.10 0.04
+Ns 18
+illum 2

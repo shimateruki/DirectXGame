@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "08a407f3a73a6fb348a9c0eae94aa6da",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/giant_slime.dds",
+  "version": 1
+}

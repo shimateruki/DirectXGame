@@ -268,6 +268,17 @@ void GPUParticleSystem::RequestSimulationReset() {
     warmupRequested_ = true;
 }
 
+void GPUParticleSystem::ResetForSceneTransition() {
+    emitRequests_.clear();
+    emitCountThisFrame_ = 0;
+    lastConfig_ = {};
+    totalTime_ = 0.0f;
+    frameDeltaTime_ = 0.0f;
+    lastEmitTimer_ = activeLifetimeWindow_ + 0.001f;
+    isInitialized_ = false;
+    warmupRequested_ = false;
+}
+
 void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
     if (!commandList) return;
 
@@ -438,6 +449,12 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     cameraData_->spriteSheetRandomStart = spriteSheetRandomStart_;
     cameraData_->alignToVelocity = alignToVelocity_;
     cameraData_->velocityStretch = velocityStretch_;
+    cameraData_->particleType = particleType_;
+    cameraData_->trailLength = trailLength_;
+    cameraData_->receiveLighting = receiveLighting_;
+    cameraData_->lightingStrength = lightingStrength_;
+    cameraData_->lightDirection = lightDirection_;
+    cameraData_->lightColor = lightColor_;
 
     D3D12_RESOURCE_BARRIER drawBarriers[3] = {};
     drawBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -559,6 +576,11 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     reqConfig.restitution = config.restitution;
     reqConfig.colorIntensity = config.colorIntensity;
     reqConfig.maxParticles = maxParticles_;
+    reqConfig.fieldType = static_cast<uint32_t>(std::clamp(config.fieldType, 0, 3));
+    reqConfig.fieldStrength = config.fieldStrength;
+    reqConfig.fieldRadius = (std::max)(config.fieldRadius, 0.001f);
+    reqConfig.fieldFalloff = (std::max)(config.fieldFalloff, 0.01f);
+    reqConfig.fieldPosition = config.emitPos + config.fieldPosition;
 
     EmitRequest request;
     request.config = reqConfig;
@@ -579,6 +601,12 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     spriteSheetRandomStart_ = config.spriteSheetRandomStart != 0 ? 1u : 0u;
     alignToVelocity_ = config.alignToVelocity != 0 ? 1u : 0u;
     velocityStretch_ = (std::max)(config.velocityStretch, 0.0f);
+    particleType_ = config.particleType == 1 ? 1u : 0u;
+    trailLength_ = (std::max)(config.trailLength, 0.0f);
+    receiveLighting_ = config.receiveLighting != 0 ? 1u : 0u;
+    lightingStrength_ = std::clamp(config.lightingStrength, 0.0f, 1.0f);
+    lightDirection_ = config.lightDirection;
+    lightColor_ = config.lightColor;
 }
 
 size_t GPUParticleSystem::GetEstimatedMemoryBytes() const {

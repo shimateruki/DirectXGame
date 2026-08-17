@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "8859f47851e440be84de6f3240d81e65",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/throw.png",
+    "version":  1
+}

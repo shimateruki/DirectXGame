@@ -2,6 +2,10 @@
 #include "SlimeBounceAnimator.h"
 #include "DebrisEffectManager.h"
 #include "HitEffectDirector.h"
+#include "CollisionConfig.h"
+#include "CollisionManager.h"
+#include "EventManager.h"
+#include "GPUParticleManager.h"
 #include "MeshEffectManager.h"
 #include "engine/utility/math/Math.h"
 
@@ -52,6 +56,25 @@ constexpr float kCarriedRecoverDuration = 0.18f;
 constexpr float kCarriedDiveTrailInterval = 0.085f;
 constexpr float kCarriedThrustSpeed = 58.0f;
 constexpr float kCarriedThrustDuration = 0.24f;
+constexpr float kCarriedStraightCooldown = 0.58f;
+constexpr float kCarriedStraightDuration = 0.24f;
+constexpr float kCarriedStraightSpeed = 24.0f;
+constexpr float kCarriedStraightRadius = 1.15f;
+constexpr float kCarriedStraightDamage = 1.0f;
+constexpr float kCarriedStraightEffectInterval = 0.055f;
+constexpr float kCarriedBounceCooldown = 0.78f;
+constexpr float kCarriedBounceDuration = 0.44f;
+constexpr float kCarriedBounceControlLockDuration = 0.16f;
+constexpr float kCarriedBounceForwardSpeed = 11.0f;
+constexpr float kCarriedBounceUpSpeed = 15.0f;
+constexpr float kCarriedBounceInvincibleDuration = 0.30f;
+constexpr float kCarriedBounceEffectInterval = 0.065f;
+constexpr const char* kCarriedStraightArcEffectPath = "Resources/json/effect/effect_player_pink_straight_arc.json";
+constexpr const char* kCarriedStraightImpactEffectPath = "Resources/json/effect/effect_player_pink_straight_impact.json";
+constexpr const char* kCarriedBounceLaunchEffectPath = "Resources/json/effect/effect_player_pink_bounce_launch.json";
+constexpr const char* kCarriedBounceLandEffectPath = "Resources/json/effect/effect_player_pink_bounce_land.json";
+constexpr const char* kCarriedStraightParticlePreset = "player_pink_straight_splash";
+constexpr const char* kCarriedBounceParticlePreset = "player_pink_bounce_droplets";
 
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
@@ -103,6 +126,22 @@ void SpawnDebrisOnGroundSafe(const char* presetName, const Vector3& position, fl
     }
 }
 
+}
+
+void EmitGpuPresetSafe(const char* presetName, const Vector3& position) {
+    GPUParticleManager* particles = GPUParticleManager::GetInstance();
+    if (particles && particles->IsInitialized()) {
+        particles->Emit(presetName, position);
+    }
+}
+
+Object3d* FindEnemyDamageTarget(Object3d* object) {
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        if (dynamic_cast<BaseEnemy*>(current)) {
+            return current;
+        }
+    }
+    return nullptr;
 }
 
 void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -335,7 +374,6 @@ void EnemySlime::UpdateWander(float deltaTime) {
 }
 
 void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float distance) {
-    (void)distance;
     moveState_ = MoveState::Charge;
     jumpTimer_ = 0.0f;
     diveDirection_ = NormalizePlanarOr(direction, diveDirection_);
@@ -343,12 +381,17 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const float chargeDuration = (std::max)(0.01f, attack.windupDuration);
     const float chargeRate = Clamp01(chargeTimer_ / chargeDuration);
-    const float ringPulse = std::sin(idleTimer_ * 14.0f) * 0.06f * (0.35f + chargeRate);
     const Vector3 telegraphCenter = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.05f);
-    ShowAttackTelegraphCircle(
+    const float predictedDistance = std::clamp(
+        distance + attack.radius,
+        (std::max)(2.4f, attack.minRange),
+        attack.maxRange);
+    ShowAttackTelegraphLine(
         telegraphCenter,
-        attack.radius + chargeRate * 0.24f + ringPulse,
-        (std::max)(0.20f, chargeRate),
+        diveDirection_,
+        predictedDistance,
+        attack.radius * 2.0f,
+        chargeRate,
         { 1.0f, 0.24f, 0.76f, 0.84f });
     SpawnChargePulseEffect(deltaTime, chargeRate);
     SpawnChargeDebrisEffect(deltaTime, chargeRate);
@@ -757,6 +800,81 @@ void EnemySlime::ExecuteAbility(Player* player) {
     BeginCarriedThrust(player);
 }
 
+void EnemySlime::ExecuteStraightAbility(Player* player) {
+    if (!player || !player->IsPinkSlimeMorphed() ||
+        carriedAbilityState_ != CarriedAbilityState::Idle || carriedStraightCooldown_ > 0.0f) {
+        return;
+    }
+
+    // 空中では既存の急降下へつなぎ、地上だけを短い打撃にします。
+    if (!player->IsGrounded()) {
+        carriedDiveDirection_ = GetPlayerDiveDirection(player);
+        BeginCarriedDive(player);
+        return;
+    }
+
+    carriedAbilityState_ = CarriedAbilityState::Straight;
+    carriedStraightCooldown_ = kCarriedStraightCooldown;
+    carriedStraightTimer_ = kCarriedStraightDuration;
+    carriedStraightEffectTimer_ = 0.0f;
+    carriedStraightHitTargets_.clear();
+    carriedDiveDirection_ = GetPlayerDiveDirection(player);
+
+    player->SetIsControlActive(false);
+    player->SetMoveYaw(std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z));
+    player->SetVelocity({
+        carriedDiveDirection_.x * kCarriedStraightSpeed,
+        (std::max)(0.0f, player->GetVelocity().y),
+        carriedDiveDirection_.z * kCarriedStraightSpeed,
+    });
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, carriedDiveDirection_);
+    player->TriggerSlimeImpulse({ 2.25f, 0.72f, 1.32f }, 0.13f);
+
+    Vector3 effectPosition = player->GetWorldPosition() + carriedDiveDirection_ * 0.82f;
+    effectPosition.y += 0.52f;
+    SpawnMeshEffectAtSafe(
+        kCarriedStraightArcEffectPath,
+        effectPosition,
+        MakeDiveEffectRotation(carriedDiveDirection_, -0.12f),
+        { 0.88f, 0.88f, 1.22f });
+    EmitGpuPresetSafe(kCarriedStraightParticlePreset, effectPosition);
+    DebugConsole::GetInstance()->AddLog("Ability Activated: Puni Straight!");
+}
+
+void EnemySlime::ExecuteBounceEvadeAbility(Player* player) {
+    if (!player || !player->IsPinkSlimeMorphed() ||
+        carriedAbilityState_ != CarriedAbilityState::Idle || carriedBounceCooldown_ > 0.0f) {
+        return;
+    }
+
+    carriedAbilityState_ = CarriedAbilityState::Bounce;
+    carriedBounceCooldown_ = kCarriedBounceCooldown;
+    carriedBounceTimer_ = kCarriedBounceDuration;
+    carriedBounceEffectTimer_ = 0.0f;
+    carriedDiveDirection_ = GetPlayerDiveDirection(player);
+
+    // 初速だけを与え、以後のY速度は通常の重力更新に任せます。
+    player->SetVelocity({
+        carriedDiveDirection_.x * kCarriedBounceForwardSpeed,
+        kCarriedBounceUpSpeed,
+        carriedDiveDirection_.z * kCarriedBounceForwardSpeed,
+    });
+    player->SetMoveYaw(std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z));
+    player->SetIsControlActive(false);
+    player->StartEvasionInvincibility(kCarriedBounceInvincibleDuration);
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, carriedDiveDirection_);
+    player->TriggerSlimeImpulse({ 2.35f, 0.66f, 2.35f }, 0.16f);
+
+    const Vector3 effectPosition = ResolveSlimeGroundEffectPosition(player->GetWorldPosition(), 0.06f);
+    SpawnMeshEffectAtSafe(
+        kCarriedBounceLaunchEffectPath,
+        effectPosition,
+        { 0.0f, std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z), 0.0f },
+        { 1.0f, 1.0f, 1.0f });
+    EmitGpuPresetSafe(kCarriedBounceParticlePreset, effectPosition + Vector3{ 0.0f, 0.18f, 0.0f });
+    DebugConsole::GetInstance()->AddLog("Ability Activated: Bounce Evade!");
+}
+
 void EnemySlime::UpdateCarriedAbility(Player* player, float deltaTime) {
     if (!player || deltaTime <= 0.0f) {
         return;
@@ -767,6 +885,8 @@ void EnemySlime::UpdateCarriedAbility(Player* player, float deltaTime) {
     }
 
     idleTimer_ += deltaTime;
+    carriedStraightCooldown_ = (std::max)(0.0f, carriedStraightCooldown_ - deltaTime);
+    carriedBounceCooldown_ = (std::max)(0.0f, carriedBounceCooldown_ - deltaTime);
 
     switch (carriedAbilityState_) {
     case CarriedAbilityState::Charge:
@@ -780,6 +900,12 @@ void EnemySlime::UpdateCarriedAbility(Player* player, float deltaTime) {
         break;
     case CarriedAbilityState::Thrust:
         UpdateCarriedThrust(player, deltaTime);
+        break;
+    case CarriedAbilityState::Straight:
+        UpdateCarriedStraight(player, deltaTime);
+        break;
+    case CarriedAbilityState::Bounce:
+        UpdateCarriedBounce(player, deltaTime);
         break;
     case CarriedAbilityState::Recover:
         carriedRecoverTimer_ = (std::max)(0.0f, carriedRecoverTimer_ - deltaTime);
@@ -1059,6 +1185,143 @@ void EnemySlime::UpdateCarriedThrust(Player* player, float deltaTime) {
     }
 }
 
+void EnemySlime::UpdateCarriedStraight(Player* player, float deltaTime) {
+    if (!player) {
+        return;
+    }
+
+    carriedStraightTimer_ = (std::max)(0.0f, carriedStraightTimer_ - deltaTime);
+    carriedStraightEffectTimer_ -= deltaTime;
+    const float progress = 1.0f - std::clamp(
+        carriedStraightTimer_ / kCarriedStraightDuration, 0.0f, 1.0f);
+    const float speed = LerpFloat(kCarriedStraightSpeed, kCarriedStraightSpeed * 0.24f, SmoothStep01(progress));
+
+    PhysicsQueryFilter solidFilter;
+    solidFilter.mask = kAllSolid;
+    solidFilter.ignoredObject = player;
+    const RaycastHit wallHit = CollisionManager::GetInstance()->SphereCast(
+        player->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f },
+        0.48f,
+        carriedDiveDirection_,
+        speed * deltaTime + 0.20f,
+        solidFilter);
+    if (wallHit.isHit && wallHit.distance <= speed * deltaTime + 0.16f) {
+        carriedStraightTimer_ = 0.0f;
+    }
+
+    Vector3 velocity = player->GetVelocity();
+    velocity.x = carriedDiveDirection_.x * speed;
+    velocity.z = carriedDiveDirection_.z * speed;
+    if (player->IsGrounded() && velocity.y < 0.0f) {
+        velocity.y = 0.0f;
+    }
+    player->SetVelocity(velocity);
+    player->SetIsControlActive(false);
+    player->SetMoveYaw(std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z));
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, carriedDiveDirection_);
+
+    DamageEnemiesWithStraight(player);
+    if (carriedStraightEffectTimer_ <= 0.0f) {
+        Vector3 effectPosition = player->GetWorldPosition() + carriedDiveDirection_ * 0.76f;
+        effectPosition.y += 0.50f;
+        SpawnMeshEffectAtSafe(
+            kCarriedStraightArcEffectPath,
+            effectPosition,
+            MakeDiveEffectRotation(carriedDiveDirection_, -0.12f),
+            { 0.66f, 0.66f, 0.92f });
+        EmitGpuPresetSafe(kCarriedStraightParticlePreset, effectPosition);
+        carriedStraightEffectTimer_ = kCarriedStraightEffectInterval;
+    }
+
+    if (carriedStraightTimer_ <= 0.0f) {
+        const Vector3 impactPosition = player->GetWorldPosition() + carriedDiveDirection_ * 1.18f +
+            Vector3{ 0.0f, 0.34f, 0.0f };
+        SpawnMeshEffectAtSafe(
+            kCarriedStraightImpactEffectPath,
+            impactPosition,
+            MakeDiveEffectRotation(carriedDiveDirection_, -0.08f),
+            { 0.92f, 0.92f, 0.92f });
+
+        velocity.x *= 0.28f;
+        velocity.z *= 0.28f;
+        player->SetVelocity(velocity);
+        ResetCarriedAbility(player, true);
+        player->ForceSlimeAnimationModeForNextUpdate(
+            player->IsGrounded() ? PlayerSlimeAnimator::Mode::Idle : PlayerSlimeAnimator::Mode::Jump,
+            carriedDiveDirection_);
+    }
+}
+
+void EnemySlime::UpdateCarriedBounce(Player* player, float deltaTime) {
+    if (!player) {
+        return;
+    }
+
+    carriedBounceTimer_ = (std::max)(0.0f, carriedBounceTimer_ - deltaTime);
+    carriedBounceEffectTimer_ -= deltaTime;
+    const float elapsed = kCarriedBounceDuration - carriedBounceTimer_;
+
+    // Y速度は上書きせず、Player側の通常重力と接地判定をそのまま利用します。
+    player->SetIsControlActive(elapsed >= kCarriedBounceControlLockDuration);
+    player->SetMoveYaw(std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z));
+    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, carriedDiveDirection_);
+
+    if (carriedBounceEffectTimer_ <= 0.0f) {
+        Vector3 effectPosition = player->GetWorldPosition() - carriedDiveDirection_ * 0.38f;
+        effectPosition.y += 0.24f;
+        EmitGpuPresetSafe(kCarriedBounceParticlePreset, effectPosition);
+        carriedBounceEffectTimer_ = kCarriedBounceEffectInterval;
+    }
+
+    const bool landed = elapsed > 0.12f && player->IsGrounded() && player->GetVelocity().y <= 0.0f;
+    if (landed || carriedBounceTimer_ <= 0.0f) {
+        const Vector3 effectPosition = ResolveSlimeGroundEffectPosition(player->GetWorldPosition(), 0.06f);
+        SpawnMeshEffectAtSafe(
+            kCarriedBounceLandEffectPath,
+            effectPosition,
+            { 0.0f, std::atan2(carriedDiveDirection_.x, carriedDiveDirection_.z), 0.0f },
+            { 1.0f, 1.0f, 1.0f });
+        EmitGpuPresetSafe(kCarriedBounceParticlePreset, effectPosition + Vector3{ 0.0f, 0.16f, 0.0f });
+        player->TriggerSlimeImpulse({ 1.46f, 0.72f, 1.46f }, 0.13f);
+        ResetCarriedAbility(player, true);
+        player->ForceSlimeAnimationModeForNextUpdate(
+            player->IsGrounded() ? PlayerSlimeAnimator::Mode::Idle : PlayerSlimeAnimator::Mode::Jump,
+            carriedDiveDirection_);
+    }
+}
+
+void EnemySlime::DamageEnemiesWithStraight(Player* player) {
+    if (!player) {
+        return;
+    }
+
+    PhysicsQueryFilter filter;
+    filter.mask = kEnemy;
+    filter.ignoredObject = player;
+    const Vector3 center = player->GetWorldPosition() + Vector3{ 0.0f, 0.70f, 0.0f };
+    const Vector3 pointA = center - carriedDiveDirection_ * 0.25f;
+    const Vector3 pointB = center + carriedDiveDirection_ * 1.40f;
+    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapCapsule(
+        pointA, pointB, kCarriedStraightRadius, filter)) {
+        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
+        if (!damageTarget || !carriedStraightHitTargets_.insert(damageTarget).second) {
+            continue;
+        }
+
+        DamageEvent damageEvent;
+        damageEvent.target = damageTarget;
+        damageEvent.attacker = player;
+        damageEvent.damageAmount = kCarriedStraightDamage;
+        damageEvent.damageType = DamageType::Physical;
+        damageEvent.knockbackVelocity = {
+            carriedDiveDirection_.x * 12.5f,
+            5.0f,
+            carriedDiveDirection_.z * 12.5f,
+        };
+        EventManager::GetInstance()->Dispatch(damageEvent);
+    }
+}
+
 void EnemySlime::ResetCarriedAbility(Player* player, bool restoreControl) {
     carriedAbilityState_ = CarriedAbilityState::Idle;
     carriedChargeTimer_ = 0.0f;
@@ -1067,6 +1330,11 @@ void EnemySlime::ResetCarriedAbility(Player* player, bool restoreControl) {
     carriedRecoverTimer_ = 0.0f;
     carriedChargeEffectTimer_ = 0.0f;
     carriedDiveTrailTimer_ = 0.0f;
+    carriedStraightTimer_ = 0.0f;
+    carriedBounceTimer_ = 0.0f;
+    carriedStraightEffectTimer_ = 0.0f;
+    carriedBounceEffectTimer_ = 0.0f;
+    carriedStraightHitTargets_.clear();
 
     if (player) {
         player->SetSlimeJumpCharge(0.0f);

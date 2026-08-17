@@ -116,6 +116,7 @@ private:
     bool useBaseAnimation_ = true;
     bool showBoneOverlay_ = true;
     bool showBoneNames_ = false;
+    bool showBoneAxes_ = true;
     bool enableBoneGizmo_ = true;
     bool autoKeyOnGizmo_ = false;
     bool enableBodyGizmo_ = true;
@@ -131,6 +132,7 @@ private:
     float duration_ = 2.0f;
     float playbackSpeed_ = 1.0f;
     float bonePointRadius_ = 5.0f;
+    float boneLineThickness_ = 3.0f;
     float eventPreviewTimer_ = 0.0f;
     float cameraDistance_ = 8.0f;
     float cameraHeight_ = 3.0f;

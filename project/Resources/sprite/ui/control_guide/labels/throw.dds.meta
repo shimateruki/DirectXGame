@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "6848d9b5e4fe4dff90148492444c1452",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/throw.dds",
+    "version":  1
+}

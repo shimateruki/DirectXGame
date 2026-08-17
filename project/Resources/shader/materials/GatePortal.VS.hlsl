@@ -11,17 +11,17 @@ VSOutput main(VSInput input)
     float axisYLength = max(length(axisY), 0.0001f);
     float axisZLength = max(length(axisZ), 0.0001f);
     float proxyRadius = max(max(axisXLength, axisYLength), axisZLength);
-    proxyRadius *= max(billboardScale, 0.05f) * max(effectScale, 0.05f);
+    proxyRadius *= max(billboardScale, 0.05f);
 
     float2 quad = input.pos.xy;
     float layerDepth = input.pos.z;
     float2 portalScale = float2(max(effectScaleX, 0.05f), max(effectScaleY, 0.05f));
     float portalDepthScale = max(effectScaleZ, 0.0f);
-    float3 axisYNormal = axisY / axisYLength;
-    float3 portalLocalPos = float3(
+    float3 axisZNormal = axisZ / axisZLength;
+    float3 portalLocalPos = float3(0.0f, 0.53f, 0.0f) + float3(
         quad.x * proxyRadius * portalScale.x / axisXLength,
-        layerDepth * proxyRadius * portalDepthScale * 0.18f / axisYLength,
-        quad.y * proxyRadius * portalScale.y / axisZLength
+        quad.y * proxyRadius * portalScale.y / axisYLength,
+        layerDepth * proxyRadius * portalDepthScale * 0.18f / axisZLength
     );
     float3 portalWorldPos = mul(float4(portalLocalPos, 1.0f), world).xyz;
 
@@ -29,7 +29,7 @@ VSOutput main(VSInput input)
     output.worldPos = portalWorldPos;
     output.screenPos = output.pos;
     output.localPos = float3(quad, layerDepth);
-    output.normal = axisYNormal;
+    output.normal = axisZNormal;
     output.uv = input.uv;
 
     return output;

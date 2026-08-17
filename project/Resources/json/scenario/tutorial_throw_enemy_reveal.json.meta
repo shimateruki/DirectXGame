@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "763cbab69a414be2878b3ffb1f1e667f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/scenario/tutorial_throw_enemy_reveal.json",
+  "version": 1
+}

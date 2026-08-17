@@ -552,7 +552,8 @@ void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
-        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
+        commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
         RenderStats::GetInstance()->RecordIndexedDraw(static_cast<uint32_t>(mesh.indices.size()));
@@ -574,7 +575,8 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
             continue;
         }
         // 頂点バッファをセット
-        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
+        commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
         RenderStats::GetInstance()->RecordIndexedDraw(static_cast<uint32_t>(mesh.indices.size()));
@@ -585,6 +587,9 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
 
 // 頂点配列から一時的なモデルデータを構築し、プリミティブやデバッグ表示に使える形へ変換する。
 void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices) {
+    computeSkinningAvailable_ = false;
+    computeSkinningDirty_ = true;
+    computeSkinningOutputReady_ = false;
     if (!common || vertices.empty() || indices.empty()) {
         modelData_.meshes.clear();
         return;

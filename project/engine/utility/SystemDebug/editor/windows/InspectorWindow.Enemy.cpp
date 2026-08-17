@@ -30,13 +30,13 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                 if (std::string(enemyTypes[i]) == "Bat") {
                     selectedObject->SetModel("Characters/bat");
                     selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetScale({ 0.6f, 0.6f, 0.6f });
+                    selectedObject->SetScale({ 0.72f, 0.72f, 0.72f });
                     selectedObject->animName_ = "ArmatureAction";
                     selectedObject->isAnimLoop_ = true;
                     selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
                     selectedObject->SetCollisionMask(CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
                     selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(0.85f);
+                    selectedObject->SetCollisionRadius(1.25f);
                 }
                 else if (std::string(enemyTypes[i]) == "BeamDrone") {
                     selectedObject->SetModel("Characters/eye");

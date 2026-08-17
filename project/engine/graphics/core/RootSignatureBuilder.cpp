@@ -35,6 +35,18 @@ void RootSignatureBuilder::AddUAV(uint32_t shaderRegister, uint32_t registerSpac
     parameters_.push_back(param);
 }
 
+// ルートシグネチャへ32bit定数列を追加する。
+void RootSignatureBuilder::AddConstants(uint32_t shaderRegister, uint32_t valueCount, uint32_t registerSpace, D3D12_SHADER_VISIBILITY visibility) {
+    assert(valueCount > 0);
+    D3D12_ROOT_PARAMETER param{};
+    param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    param.Constants.ShaderRegister = shaderRegister;
+    param.Constants.RegisterSpace = registerSpace;
+    param.Constants.Num32BitValues = valueCount;
+    param.ShaderVisibility = visibility;
+    parameters_.push_back(param);
+}
+
 // =================================================================================
 // 2. テーブル系 (Descriptor Table)
 // =================================================================================

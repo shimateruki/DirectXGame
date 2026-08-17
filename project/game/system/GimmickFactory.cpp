@@ -2,6 +2,7 @@
 #include "SceneManager.h"
 #include "GimmickMovingFloor.h"
 #include "GimmickTrampoline.h"
+#include "GimmickLaunchStar.h"
 #include "GimmickChikuwaBlock.h"
 #include "GimmickBlinkBlock.h"
 #include "GimmickBreakableBlock.h"
@@ -25,6 +26,8 @@
 #include "GimmickLaserNode.h"
 #include "GimmickStageGate.h"
 #include "GimmickFireCannon.h"
+#include "GimmickMagmaHazard.h"
+#include "GimmickMagmaGeyser.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -50,6 +53,11 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto trampoline = std::make_unique<GimmickTrampoline>();
         trampoline->Initialize(common, "Primitives/cube"); // とりあえず立方体
         newGimmick = std::move(trampoline);
+    }
+    else if (gimmickName == "LaunchStar") {
+        auto launcher = std::make_unique<GimmickLaunchStar>();
+        launcher->Initialize(common, "Gimmicks/star_launch");
+        newGimmick = std::move(launcher);
     }
     else if (gimmickName == "ChikuwaBlock") {
         auto chikuwa = std::make_unique<GimmickChikuwaBlock>();
@@ -180,6 +188,16 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto cannon = std::make_unique<GimmickFireCannon>();
         cannon->Initialize(common, "Primitives/cube");
         newGimmick = std::move(cannon);
+    }
+    else if (gimmickName == "MagmaHazard") {
+        auto magma = std::make_unique<GimmickMagmaHazard>();
+        magma->Initialize(common, "Stages/block");
+        newGimmick = std::move(magma);
+    }
+    else if (gimmickName == "MagmaGeyser") {
+        auto geyser = std::make_unique<GimmickMagmaGeyser>();
+        geyser->Initialize(common, "Stages/magma_vent");
+        newGimmick = std::move(geyser);
     }
     else if (gimmickName == "StageGate") {
         auto gate = std::make_unique<GimmickStageGate>();

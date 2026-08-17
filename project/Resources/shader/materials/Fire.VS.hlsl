@@ -42,6 +42,46 @@ VSOutput main(VSInput input)
     VSOutput output;
 
     float3 centerWorld = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), world).xyz;
+
+    // Type 4 keeps the crossed fire cards in object space so the flame has real depth.
+    if (effectType >= 3.5f && effectType < 4.5f)
+    {
+        float cardIndex = floor(max(input.uv.x, 0.0f) * 0.5f + 0.001f);
+        float2 cardUV = float2(input.uv.x - cardIndex * 2.0f, input.uv.y);
+        float height01 = saturate(1.0f - cardUV.y);
+        float topWeight = height01 * height01;
+        float baseScale = max(billboardScale, 0.05f) * max(effectScale, 0.05f);
+        float motion = saturate(abs(flowSpeedY));
+        float wind = clamp(flowSpeedX, -1.0f, 1.0f);
+        float phase = cardIndex * 2.37f + centerWorld.x * 0.11f + centerWorld.z * 0.17f;
+        float curl = Fbm2(float2(height01 * 2.1f + phase, time * 0.72f + phase * 0.31f));
+        float gust = sin(time * (3.6f + motion * 1.8f) + phase) * 0.5f + 0.5f;
+
+        float3 localPosition = input.pos.xyz;
+        localPosition.x *= baseScale * max(effectScaleX, 0.12f);
+        localPosition.y *= baseScale * max(effectScaleY, 0.12f);
+        localPosition.z *= baseScale * max(effectScaleZ, 0.12f);
+
+        float lateralSway = wind * (0.055f + motion * 0.10f);
+        lateralSway += (curl - 0.5f) * (0.075f + motion * 0.055f);
+        lateralSway += (gust - 0.5f) * 0.035f;
+        localPosition.x += lateralSway * baseScale * topWeight;
+        localPosition.z += sin(time * 2.75f + phase * 1.43f) * 0.038f * baseScale * topWeight;
+
+        float breathing = 1.0f + (curl - 0.5f) * (0.075f + motion * 0.035f) * topWeight;
+        localPosition.x *= breathing;
+        localPosition.z *= breathing;
+
+        float4 localPosition4 = float4(localPosition, 1.0f);
+        output.pos = mul(localPosition4, WVP);
+        output.worldPos = mul(localPosition4, world).xyz;
+        output.screenPos = output.pos;
+        output.localPos = float3(cardUV.x * 2.0f - 1.0f, height01, cardIndex);
+        output.normal = normalize(mul(input.normal, (float3x3)WorldInverseTranspose));
+        output.uv = cardUV;
+        return output;
+    }
+
     float3 cameraToCenter = centerWorld - cameraWorldPosition;
     float cameraDistance = max(length(cameraToCenter), 0.0001f);
     float3 viewForward = cameraToCenter / cameraDistance;

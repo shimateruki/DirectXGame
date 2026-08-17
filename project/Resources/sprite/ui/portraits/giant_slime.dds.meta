@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5c15fdb6263cb39b3c030ca5af425913",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/giant_slime.dds",
+  "version": 1
+}

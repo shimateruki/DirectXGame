@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "3f161b39d377e860778d2d95b93e11dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/slime_hurt.dds",
+  "version": 1
+}

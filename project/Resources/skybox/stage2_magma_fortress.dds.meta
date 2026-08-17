@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e8ae8849941d4a1bb8770cf571b765fd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/skybox/stage2_magma_fortress.dds",
+  "version": 1
+}

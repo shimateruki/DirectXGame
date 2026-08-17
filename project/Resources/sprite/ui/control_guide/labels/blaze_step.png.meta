@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "6be28ec155544a1db1ae49e6227caec6",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/blaze_step.png",
+    "version":  1
+}

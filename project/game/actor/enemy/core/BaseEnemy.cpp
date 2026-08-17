@@ -946,6 +946,10 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
         isDead = true;
         SetIsVisible(false);
         if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
+            const int defeatEventID = GetTargetID();
+            if (defeatEventID > 0) {
+                scene->TriggerEvent(defeatEventID);
+            }
             scene->RequestRemoveObject(this);
         }
     }
@@ -1199,6 +1203,36 @@ void BaseEnemy::TriggerAttackTelegraphCue(const Vector4& color) {
             bodyOffset,
             (std::clamp)(bodyScale * 1.18f, 1.0f, 5.2f),
             color);
+    }
+}
+
+void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth, float endWidth, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowCone(origin, direction, length, startWidth, endWidth, progress, color);
+    }
+}
+
+void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowImpactAreas(centers, centerCount, radius, progress, color);
+    }
+}
+
+void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowLaneFan(origin, direction, length, width, laneCount, lateralSpacing, angleStep, progress, color);
     }
 }
 

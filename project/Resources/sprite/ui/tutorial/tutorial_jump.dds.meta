@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "05bcfe9fd2e4015a84a4c44082092d7a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/tutorial/tutorial_jump.dds",
+  "version": 1
+}

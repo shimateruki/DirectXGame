@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "1e7e7d4ce3064756892869b0316258e4",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/absorb.png",
+    "version":  1
+}

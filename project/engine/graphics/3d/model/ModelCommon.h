@@ -1,26 +1,36 @@
 #pragma once
 
+#include <d3d12.h>
+#include <wrl.h>
+
 class DirectXCommon;
 
 /// <summary>
-/// 3Dモデル描画で共有するDirectX基盤参照を保持する。
+/// 3Dモデル描画で共有するDirectX基盤と共通パイプラインを保持します。
 /// </summary>
-// ModelCommonは、Model読み込みと描画に必要なDirectX共通参照を保持します。
 class ModelCommon {
 public:
     /// <summary>
-    /// DirectX基盤を登録する。
+    /// DirectX基盤とCompute Skinning用パイプラインを初期化します。
     /// </summary>
-        // モデル関連クラスが使うDirectXCommonを設定します。
-void Initialize(DirectXCommon* dxCommon);
+    void Initialize(DirectXCommon* dxCommon);
 
-    /// <summary>
-    /// DirectX基盤を取得する。
-    /// </summary>
-        // モデル描画やリソース作成で使うDirectXCommonを取得します。
-DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+
+    bool IsComputeSkinningAvailable() const {
+        return computeSkinningRootSignature_ && computeSkinningPipelineState_;
+    }
+    ID3D12RootSignature* GetComputeSkinningRootSignature() const {
+        return computeSkinningRootSignature_.Get();
+    }
+    ID3D12PipelineState* GetComputeSkinningPipelineState() const {
+        return computeSkinningPipelineState_.Get();
+    }
 
 private:
-    // DirectX基盤への参照。ModelCommonは所有しない。
+    void CreateComputeSkinningPipeline();
+
     DirectXCommon* dxCommon_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> computeSkinningRootSignature_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computeSkinningPipelineState_;
 };

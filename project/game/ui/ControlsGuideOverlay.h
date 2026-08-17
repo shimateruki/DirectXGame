@@ -48,6 +48,7 @@ private:
         Element panel;
         Element portrait;
         std::array<Element, kActionCount> actionGlyphs{};
+        std::array<Element, kActionCount> actionLabels{};
     };
 
     void LoadLayout(const std::string& layoutPath);
@@ -61,7 +62,7 @@ private:
     void StartSlide(int direction);
     void UpdateSlide(float deltaTime);
     void UpdateStaticVisuals();
-    void RefreshAbilityPortrait();
+    void RefreshAbilityVisuals();
     bool IsToggleHeld() const;
 
     SpriteCommon* spriteCommon_ = nullptr;
@@ -86,4 +87,6 @@ private:
     float slideDuration_ = 0.34f;
     float time_ = 0.0f;
     std::string portraitTexturePath_;
+    std::array<std::string, kActionCount> abilityLabelTexturePaths_{};
+    std::array<bool, kActionCount> abilityActionAvailable_{};
 };

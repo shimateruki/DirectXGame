@@ -1,3 +1,17 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json"
+    "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
+    "_sceneAsset": {
+        "controller": "DEFAULT",
+        "displayName": "stage2",
+        "id": "stage2",
+        "resources": {
+            "bgm": "",
+            "camera": "",
+            "light": "Resources/json/light/stage2_magma.json",
+            "skybox": "Resources/skybox/stage2_magma_fortress.dds"
+        },
+        "runtimeScene": "GAMEPLAY",
+        "spriteLayout": "Resources/json/sprite/stage2_sprite.json",
+        "version": 3
+    }
 }

@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "7f8375eb39394d66980def8b320130a1",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/puni_straight.dds",
+    "version":  1
+}

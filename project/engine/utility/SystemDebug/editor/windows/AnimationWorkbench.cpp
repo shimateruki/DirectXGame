@@ -22,6 +22,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 
 namespace {
 constexpr const char* kPreviewObjectName = "__Editor_AnimationWorkbenchPreview";
@@ -405,10 +406,13 @@ void AnimationWorkbench::DrawJointControls() {
     ImGui::Checkbox("ボーン表示", &showBoneOverlay_);
     ImGui::SameLine();
     ImGui::Checkbox("名前表示", &showBoneNames_);
+    ImGui::SameLine();
+    ImGui::Checkbox("選択軸表示", &showBoneAxes_);
     ImGui::Checkbox("ボーンギズモ", &enableBoneGizmo_);
     ImGui::SameLine();
     ImGui::Checkbox("ギズモ操作で自動キー", &autoKeyOnGizmo_);
     ImGui::DragFloat("ボーン点サイズ", &bonePointRadius_, 0.1f, 2.0f, 16.0f);
+    ImGui::DragFloat("ボーン線の太さ", &boneLineThickness_, 0.1f, 1.0f, 8.0f);
 
     if (ImGui::RadioButton("移動", gizmoOperation_ == 0)) gizmoOperation_ = 0;
     ImGui::SameLine();
@@ -424,12 +428,20 @@ void AnimationWorkbench::DrawJointControls() {
         if (jointSearchBuffer_[0] != '\0' && joint.name.find(jointSearchBuffer_) == std::string::npos) {
             continue;
         }
-        std::string label = std::string(joint.parent ? "  " : "") + joint.name + "##joint" + std::to_string(joint.index);
+        int depth = 0;
+        std::optional<int> parent = joint.parent;
+        while (parent && *parent >= 0 && *parent < static_cast<int>(joints.size()) && depth < static_cast<int>(joints.size())) {
+            ++depth;
+            parent = joints[*parent].parent;
+        }
+        ImGui::Indent(static_cast<float>(depth) * 12.0f);
+        const std::string label = joint.name + "##joint" + std::to_string(joint.index);
         bool selected = (selectedJointIndex_ == joint.index);
         if (ImGui::Selectable(label.c_str(), selected)) {
             selectedJointIndex_ = joint.index;
             SyncUiFromJoint(selectedJointIndex_);
         }
+        ImGui::Unindent(static_cast<float>(depth) * 12.0f);
     }
     ImGui::EndChild();
 
@@ -1274,49 +1286,145 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
     if (joints.empty()) return;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
-    ImVec2 mouseScreen = ImGui::GetIO().MousePos;
-    int clickedJoint = -1;
-    float bestClickDistance = bonePointRadius_ + 3.0f;
+    const ImVec2 clipMin(gameViewOffset_.x, gameViewOffset_.y);
+    const ImVec2 clipMax(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y);
+    drawList->PushClipRect(clipMin, clipMax, true);
 
+    const ImVec2 mouseScreen = ImGui::GetIO().MousePos;
+    int hoveredJoint = -1;
+    float bestHoverDistance = (std::max)(bonePointRadius_ + 4.0f, boneLineThickness_ + 4.0f);
+
+    auto distanceToSegment = [](const ImVec2& point, const ImVec2& start, const ImVec2& end) {
+        const float segmentX = end.x - start.x;
+        const float segmentY = end.y - start.y;
+        const float lengthSquared = segmentX * segmentX + segmentY * segmentY;
+        if (lengthSquared <= 0.0001f) {
+            const float dx = point.x - start.x;
+            const float dy = point.y - start.y;
+            return std::sqrt(dx * dx + dy * dy);
+        }
+        const float projection = std::clamp(
+            ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared,
+            0.0f,
+            1.0f);
+        const float closestX = start.x + segmentX * projection;
+        const float closestY = start.y + segmentY * projection;
+        const float dx = point.x - closestX;
+        const float dy = point.y - closestY;
+        return std::sqrt(dx * dx + dy * dy);
+    };
+
+    auto isSelectedAncestor = [&](int jointIndex) {
+        if (selectedJointIndex_ < 0 || selectedJointIndex_ >= static_cast<int>(joints.size())) return false;
+        int current = selectedJointIndex_;
+        for (size_t guard = 0; guard < joints.size(); ++guard) {
+            if (current == jointIndex) return true;
+            if (!joints[current].parent) break;
+            current = *joints[current].parent;
+            if (current < 0 || current >= static_cast<int>(joints.size())) break;
+        }
+        return false;
+    };
+
+    // ボーン線を先に描き、ジョイント点が常に手前に見えるようにする。
     for (const auto& joint : joints) {
-        Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
-        Vector2 jointScreen;
-        if (!ProjectWorldToGameView(jointWorld, jointScreen)) continue;
+        if (!joint.parent || *joint.parent < 0 || *joint.parent >= static_cast<int>(joints.size())) continue;
 
-        if (joint.parent) {
-            Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
-            Vector2 parentScreen;
-            if (ProjectWorldToGameView(parentWorld, parentScreen)) {
-                drawList->AddLine(
-                    ImVec2(parentScreen.x, parentScreen.y),
-                    ImVec2(jointScreen.x, jointScreen.y),
-                    IM_COL32(70, 220, 255, 160),
-                    1.5f);
+        const Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        const Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joint.parent));
+        Vector2 jointScreen{};
+        Vector2 parentScreen{};
+        if (!ProjectWorldToGameView(jointWorld, jointScreen) || !ProjectWorldToGameView(parentWorld, parentScreen)) continue;
+
+        const bool selectedChain = joint.index == selectedJointIndex_ ||
+            *joint.parent == selectedJointIndex_ || isSelectedAncestor(joint.index);
+        const ImU32 lineColor = selectedChain
+            ? IM_COL32(255, 205, 64, 245)
+            : IM_COL32(90, 215, 255, 215);
+        const ImVec2 start(parentScreen.x, parentScreen.y);
+        const ImVec2 end(jointScreen.x, jointScreen.y);
+        drawList->AddLine(start, end, IM_COL32(5, 18, 28, 235), boneLineThickness_ + 3.0f);
+        drawList->AddLine(start, end, lineColor, boneLineThickness_);
+
+        if (isGameViewHovered_) {
+            const float distance = distanceToSegment(mouseScreen, start, end);
+            if (distance < bestHoverDistance) {
+                bestHoverDistance = distance;
+                hoveredJoint = joint.index;
             }
-        }
-
-        bool selected = (joint.index == selectedJointIndex_);
-        ImU32 fillColor = selected ? IM_COL32(255, 210, 40, 255) : IM_COL32(90, 190, 255, 220);
-        ImU32 outlineColor = selected ? IM_COL32(255, 255, 255, 255) : IM_COL32(10, 30, 40, 230);
-        float radius = selected ? bonePointRadius_ + 2.0f : bonePointRadius_;
-
-        drawList->AddCircleFilled(ImVec2(jointScreen.x, jointScreen.y), radius, fillColor, 16);
-        drawList->AddCircle(ImVec2(jointScreen.x, jointScreen.y), radius + 1.0f, outlineColor, 16, 1.5f);
-        if (showBoneNames_) {
-            drawList->AddText(ImVec2(jointScreen.x + radius + 4.0f, jointScreen.y - 7.0f), IM_COL32(255, 255, 255, 220), joint.name.c_str());
-        }
-
-        float dx = mouseScreen.x - jointScreen.x;
-        float dy = mouseScreen.y - jointScreen.y;
-        float distance = std::sqrt(dx * dx + dy * dy);
-        if (isGameViewHovered_ && distance < bestClickDistance) {
-            bestClickDistance = distance;
-            clickedJoint = joint.index;
         }
     }
 
-    if (clickedJoint >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing()) {
-        selectedJointIndex_ = clickedJoint;
+    for (const auto& joint : joints) {
+        const Vector3 jointWorld = GetMatrixTranslation(GetJointWorldMatrix(joint.index));
+        Vector2 jointScreen{};
+        if (!ProjectWorldToGameView(jointWorld, jointScreen)) continue;
+
+        const float dx = mouseScreen.x - jointScreen.x;
+        const float dy = mouseScreen.y - jointScreen.y;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        if (isGameViewHovered_ && distance < bestHoverDistance) {
+            bestHoverDistance = distance;
+            hoveredJoint = joint.index;
+        }
+
+        const bool selected = joint.index == selectedJointIndex_;
+        const bool hovered = joint.index == hoveredJoint;
+        const ImU32 fillColor = selected
+            ? IM_COL32(255, 210, 40, 255)
+            : (hovered ? IM_COL32(150, 245, 255, 255) : IM_COL32(75, 185, 255, 235));
+        const ImU32 outlineColor = selected || hovered
+            ? IM_COL32(255, 255, 255, 255)
+            : IM_COL32(6, 24, 36, 240);
+        const float radius = selected ? bonePointRadius_ + 2.0f : (hovered ? bonePointRadius_ + 1.0f : bonePointRadius_);
+
+        drawList->AddCircleFilled(ImVec2(jointScreen.x, jointScreen.y), radius, fillColor, 18);
+        drawList->AddCircle(ImVec2(jointScreen.x, jointScreen.y), radius + 1.0f, outlineColor, 18, 1.5f);
+        if (showBoneNames_ || hovered) {
+            drawList->AddText(
+                ImVec2(jointScreen.x + radius + 5.0f, jointScreen.y - 8.0f),
+                hovered ? IM_COL32(255, 240, 150, 255) : IM_COL32(255, 255, 255, 225),
+                joint.name.c_str());
+        }
+    }
+
+    if (showBoneAxes_ && selectedJointIndex_ >= 0 && selectedJointIndex_ < static_cast<int>(joints.size())) {
+        const Matrix4x4 selectedWorld = GetJointWorldMatrix(selectedJointIndex_);
+        const Vector3 originWorld = GetMatrixTranslation(selectedWorld);
+        Vector2 originScreen{};
+        if (ProjectWorldToGameView(originWorld, originScreen)) {
+            float axisLength = 0.5f;
+            if (joints[selectedJointIndex_].parent) {
+                const Vector3 parentWorld = GetMatrixTranslation(GetJointWorldMatrix(*joints[selectedJointIndex_].parent));
+                axisLength = std::clamp(Math::Length(originWorld - parentWorld) * 0.45f, 0.2f, 0.85f);
+            }
+            const Vector3 axes[] = {
+                Math::Normalize(Math::TransformNormal({ 1.0f, 0.0f, 0.0f }, selectedWorld)),
+                Math::Normalize(Math::TransformNormal({ 0.0f, 1.0f, 0.0f }, selectedWorld)),
+                Math::Normalize(Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, selectedWorld)),
+            };
+            const ImU32 axisColors[] = {
+                IM_COL32(255, 82, 82, 255),
+                IM_COL32(92, 235, 112, 255),
+                IM_COL32(84, 145, 255, 255),
+            };
+            for (int axisIndex = 0; axisIndex < 3; ++axisIndex) {
+                Vector2 axisScreen{};
+                if (ProjectWorldToGameView(originWorld + axes[axisIndex] * axisLength, axisScreen)) {
+                    drawList->AddLine(
+                        ImVec2(originScreen.x, originScreen.y),
+                        ImVec2(axisScreen.x, axisScreen.y),
+                        axisColors[axisIndex],
+                        2.5f);
+                }
+            }
+        }
+    }
+
+    drawList->PopClipRect();
+
+    if (hoveredJoint >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing()) {
+        selectedJointIndex_ = hoveredJoint;
         SyncUiFromJoint(selectedJointIndex_);
     }
 

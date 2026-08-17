@@ -41,6 +41,9 @@ public:
     ~GameSelectScene() override;
 
     void Initialize() override;
+    void BeginLoadingInitialize() override;
+    bool InitializeLoadingStep() override;
+    float GetLoadingInitializeProgress() const override;
     void OnActivated() override;
     SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
@@ -91,7 +94,12 @@ private:
     Object3d* FindNearestStageGate(float* outDistance) const;
     bool IsPlayerTouchingStageGate(Object3d* gate) const;
     int FindPendingUnlockStage() const;
+    void BeginUnlockPresentation();
     void UpdateUnlockPresentation(float deltaTime);
+    void FinishUnlockPresentation();
+#ifdef USE_IMGUI
+    void StartDebugUnlockPresentation(int stageIndex);
+#endif
 
     // セレクト画面の装飾と収集状況表示
     void UpdateStageSelectDecorations(float deltaTime);
@@ -237,6 +245,28 @@ private:
     int unlockingStageIndex_ = -1;
     float unlockPresentationTimer_ = 0.0f;
     float unlockParticleTimer_ = 0.0f;
+    bool unlockPresentationInitialized_ = false;
+    bool unlockKeyAppearImpactPlayed_ = false;
+    bool unlockTurnImpactPlayed_ = false;
+    bool unlockReleaseImpactPlayed_ = false;
+    bool unlockGateActivationImpactPlayed_ = false;
+    bool unlockPresentationDebugReplay_ = false;
+    bool unlockHadPlayerControl_ = true;
+    int unlockDebugPreviousSelectedStageIndex_ = -1;
+    Object3d* unlockTargetGate_ = nullptr;
+    Object3d* unlockKeyObject_ = nullptr;
+    Object3d* unlockLockObject_ = nullptr;
+    Vector3 unlockKeyBasePosition_{};
+    Vector3 unlockKeyBaseRotation_{};
+    Vector3 unlockKeyBaseScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 unlockLockBasePosition_{};
+    Vector3 unlockLockBaseRotation_{};
+    Vector3 unlockLockBaseScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 unlockGateDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 unlockCameraStartEye_{};
+    Vector3 unlockCameraStartTarget_{};
+    Vector3 unlockCameraCinematicEye_{};
+    Vector3 unlockCameraCinematicTarget_{};
     float stageSelectTime_ = 0.0f;
 
     // --- 王冠獲得数の加算演出 ---
@@ -258,4 +288,8 @@ private:
     StageSelectHudSprite stageSelectCoinIcon_;
     StageSelectHudSprite stageSelectCoinXIcon_;
     std::array<StageSelectHudSprite, 3> stageSelectCoinDigits_;
+
+    int loadingInitializePhase_ = 0;
+    size_t loadingInitializeCompletedUnits_ = 0;
+    size_t loadingInitializeTotalUnits_ = 9;
 };

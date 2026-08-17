@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "6608788b6ec157bd802b15232f448b60",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/fortress_grate_drum/fortress_grate_drum.obj",
+    "version": 1
+}

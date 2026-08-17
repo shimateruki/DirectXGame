@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0a55af4eb24e83c11d7f91103a0bf25d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/tutorial/tutorial_reach_enemy.dds",
+  "version": 1
+}

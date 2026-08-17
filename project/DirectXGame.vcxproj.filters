@@ -640,6 +640,9 @@
     <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\gimmick\movement\GimmickLaunchStar.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\gimmick\block\GimmickChikuwaBlock.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -704,6 +707,12 @@
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\combat\GimmickFireCannon.cpp">
+      <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaHazard.cpp">
+      <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp">
       <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\stage\GimmickStageGate.cpp">
@@ -1870,6 +1879,9 @@
     <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\gimmick\movement\GimmickLaunchStar.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\gimmick\block\GimmickChikuwaBlock.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1934,6 +1946,12 @@
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h">
+      <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h">
+      <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h">
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h">

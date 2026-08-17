@@ -6,6 +6,7 @@
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "GPUParticleManager.h"
+#include "GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "Player.h"
 #include "SceneManager.h"
@@ -40,6 +41,8 @@ constexpr float kVolleyPreferredHoverHeight = 3.10f;
 constexpr float kVolleyCeilingClearance = 2.25f;
 constexpr float kVolleyOrbVisualScale = 0.46f;
 constexpr int kVolleyOrbCount = 3;
+constexpr float kVolleyImpactLateralSpacing = 1.05f;
+constexpr float kVolleyImpactForwardSpacing = 0.38f;
 constexpr const char* kIdlePreset = "wind_slime_idle_wisp";
 constexpr const char* kChargePreset = "wind_slime_charge";
 constexpr const char* kBreathStreamPreset = "wind_slime_breath_stream";
@@ -286,9 +289,12 @@ void EnemyWindSlime::UpdateAttackState(
         breathParticleTimer_ -= deltaTime;
         breathPushTimer_ -= deltaTime;
         const Vector3 origin = GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
+        const float pushProgress = breathPushTimer_ <= 0.0f
+            ? 1.0f
+            : 1.0f - std::clamp(breathPushTimer_ / kBreathPushInterval, 0.0f, 1.0f);
 
-        ShowAttackTelegraphLine(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-            attack.radius, 1.0f, { 0.46f, 1.0f, 0.84f, 0.72f });
+        ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
+            0.72f, attack.radius * 2.0f, pushProgress, { 0.46f, 1.0f, 0.84f, 0.72f });
         if (breathParticleTimer_ <= 0.0f) {
             EmitWindBreathParticles(origin, lockedAttackDirection_, attack.maxRange);
             breathParticleTimer_ += kBreathParticleInterval;
@@ -313,12 +319,12 @@ void EnemyWindSlime::UpdateAttackState(
         if (progress < 0.64f) {
             lockedAttackDirection_ = direction;
             lockedTargetDistance_ = distance;
+            UpdateVolleyImpactCenters();
         }
         UpdateFacing(lockedAttackDirection_);
         const float height = volleyGroundY_ + (volleyHoverY_ - volleyGroundY_) * SmoothStep01(progress);
         HoldVolleyAltitude(height, deltaTime, velocity);
-        ShowAttackTelegraphLine(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-            attack.radius, progress, { 0.52f, 1.0f, 0.84f, 0.78f });
+        ShowVolleyImpactTelegraphs(progress);
         UpdateHeldWindOrbs(deltaTime, SmoothStep01((progress - 0.38f) / 0.52f));
 
         if (breathParticleTimer_ <= 0.0f) {
@@ -355,8 +361,15 @@ void EnemyWindSlime::UpdateAttackState(
         UpdateFacing(direction);
         lockedAttackDirection_ = direction;
         lockedTargetDistance_ = distance;
-        ShowAttackTelegraphLine(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-            attack.radius, 1.0f, { 0.54f, 1.0f, 0.88f, 0.68f });
+        if (volleyShotCount_ < kVolleyOrbCount) {
+            const float shotInterval = volleyShotCount_ == 0
+                ? (std::max)(kVolleyFirstShotDelay, 0.01f)
+                : (std::max)(kVolleyShotInterval, 0.01f);
+            const float shotProgress = 1.0f - std::clamp(volleyShotTimer_ / shotInterval, 0.0f, 1.0f);
+            ShowVolleyImpactTelegraphs(shotProgress);
+        } else {
+            HideAttackTelegraph();
+        }
         UpdateHeldWindOrbs(deltaTime);
 
         while (volleyShotCount_ < kVolleyOrbCount && volleyShotTimer_ <= 0.0f) {
@@ -409,8 +422,8 @@ void EnemyWindSlime::UpdateAttackState(
         lockedTargetDistance_ = distance;
         UpdateFacing(direction);
     }
-    ShowAttackTelegraphLine(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-        attack.radius, progress, { 0.42f, 1.0f, 0.86f, 0.82f });
+    ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
+        0.72f, attack.radius * 2.0f, progress, { 0.42f, 1.0f, 0.86f, 0.82f });
     if (!warningTriggered_ && attackStateTimer_ <= attack.warningLeadTime) {
         TriggerAttackTelegraphCue({ 0.70f, 1.0f, 0.94f, 1.0f });
         warningTriggered_ = true;
@@ -455,6 +468,7 @@ void EnemyWindSlime::StartAerialWindVolley(const Vector3& direction, float dista
     volleyShotCount_ = 0;
     warningTriggered_ = false;
     breathParticleTimer_ = 0.0f;
+    UpdateVolleyImpactCenters();
     SetGrounded(false);
     EnsureHeldWindOrbs();
     HideHeldWindOrbs();
@@ -485,8 +499,9 @@ void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
     const Vector3 spawnPosition = ComputeHeldWindOrbPosition(orbIndex);
     Vector3 aim = lockedAttackDirection_ + Vector3{ 0.0f, -0.08f, 0.0f };
     float targetDistance = lockedTargetDistance_;
-    if (target_) {
-        aim = target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f } - spawnPosition;
+    if (orbIndex >= 0 && orbIndex < static_cast<int>(volleyImpactCenters_.size())) {
+        // 地上の予告円と実際の弾着点を一致させます。
+        aim = volleyImpactCenters_[orbIndex] + Vector3{ 0.0f, 0.24f, 0.0f } - spawnPosition;
         targetDistance = Math::Length(aim);
     }
     if (Math::Length(aim) <= 0.001f) {
@@ -516,6 +531,54 @@ void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
     if (orbIndex >= 0 && orbIndex < static_cast<int>(heldWindOrbVisuals_.size()) && heldWindOrbVisuals_[orbIndex]) {
         heldWindOrbVisuals_[orbIndex]->SetIsVisible(false);
     }
+}
+
+void EnemyWindSlime::UpdateVolleyImpactCenters() {
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
+    const Vector3 forward = NormalizePlanar(lockedAttackDirection_);
+    const Vector3 right = { forward.z, 0.0f, -forward.x };
+
+    Vector3 targetPosition = GetWorldPosition() + forward * std::clamp(
+        lockedTargetDistance_,
+        attack.minRange,
+        attack.maxRange);
+    Vector3 targetVelocity = {};
+    if (const Character* targetCharacter = dynamic_cast<const Character*>(target_)) {
+        targetPosition = targetCharacter->GetWorldPosition();
+        targetVelocity = targetCharacter->GetVelocity();
+        targetVelocity.y = 0.0f;
+
+        const float speed = Math::Length(targetVelocity);
+        constexpr float kMaximumPredictionSpeed = 6.0f;
+        if (speed > kMaximumPredictionSpeed && speed > 0.001f) {
+            targetVelocity = targetVelocity * (kMaximumPredictionSpeed / speed);
+        }
+    }
+
+    for (int index = 0; index < kVolleyOrbCount; ++index) {
+        const float centeredIndex = static_cast<float>(index - 1);
+        const float leadTime = kVolleyFirstShotDelay + kVolleyShotInterval * static_cast<float>(index);
+        Vector3 impact = targetPosition + targetVelocity * (leadTime * 0.42f);
+        impact += right * (centeredIndex * kVolleyImpactLateralSpacing);
+        impact += forward * (-centeredIndex * kVolleyImpactForwardSpacing);
+        volleyImpactCenters_[index] = GroundEffectLocator::ResolveGroundPosition(impact);
+    }
+}
+
+void EnemyWindSlime::ShowVolleyImpactTelegraphs(float progress) {
+    if (volleyShotCount_ >= kVolleyOrbCount) {
+        HideAttackTelegraph();
+        return;
+    }
+
+    const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
+    const std::size_t firstIndex = static_cast<std::size_t>((std::max)(0, volleyShotCount_));
+    ShowAttackTelegraphImpactAreas(
+        volleyImpactCenters_.data() + firstIndex,
+        volleyImpactCenters_.size() - firstIndex,
+        attack.radius * 1.48f,
+        progress,
+        { 0.48f, 1.0f, 0.82f, 0.80f });
 }
 
 float EnemyWindSlime::ResolveVolleyHoverY() {

@@ -3,8 +3,10 @@
 #include "EffectObject3d.h"
 #include "engine/utility/math/Math.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 // 敵の攻撃前に出す共通予告表示。敵側は位置・範囲・進行度だけを渡す。
 // AttackTelegraphは、敵の攻撃予兆を円形や線形のメッシュエフェクトとして表示します。
@@ -25,6 +27,12 @@ void ShowCircle(const Vector3& center, float radius, float progress, const Vecto
     void ShowDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color, const std::string& texturePath);
         // 直線範囲攻撃の予兆を表示します。
 void ShowLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
+        // ブレスや扇状弾など、先端へ向かって広がる攻撃範囲を表示します。
+void ShowCone(const Vector3& origin, const Vector3& direction, float length, float startWidth, float endWidth, float progress, const Vector4& color);
+        // 連続落雷など、実際に攻撃が発生する複数地点をまとめて表示します。
+void ShowImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color);
+        // 複数の飛び道具が通るレーンを、本数と間隔に合わせて表示します。
+void ShowLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color);
         // 攻撃直前の強調表示を直近の予兆位置で再生します。
     void TriggerCue(const Vector4& color);
     void TriggerCueAt(const Vector3& center, float radius, const Vector4& color);
@@ -41,25 +49,41 @@ private:
     void EnsureEffect(Object3dCommon* common);
     void EnsureCueEffect(Object3dCommon* common);
     void EnsureWarningEffect(Object3dCommon* common);
+    void EnsurePatternEffects(std::size_t count);
+    void EnsureTimingEffects(std::size_t count);
+    void BeginPattern(Shape shape, std::size_t count);
+    void BeginTiming(Shape shape, std::size_t count);
+    void HidePatternEffects();
+    void HideTimingEffects();
     void UpdateWarningEffect(float deltaTime);
     void ConfigureShape(Shape shape);
     void ConfigureCueShape(Shape shape);
         // EffectObject3dの手続き生成形状を予兆用に設定します。
 void ConfigureEffectShape(EffectObject3d* effect, Shape shape);
+    // 発動タイミング表示は範囲本体より細く明るい形状に設定します。
+    void ConfigureTimingEffectShape(EffectObject3d* effect, Shape shape);
     void ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress, const Vector4& color, float scaleMultiplier) const;
     void ApplyDecalCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress, const Vector4& color, float scaleMultiplier) const;
     void ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color, float scaleMultiplier) const;
+    void ApplyLineTimingMarker(EffectObject3d* effect, const Vector3& origin, const Vector3& direction, float length, float width, float progress, const Vector4& color) const;
+    void ShowCircleTiming(const Vector3& center, float radius, float progress, const Vector4& color);
+    void ShowLineTiming(const Vector3& origin, const Vector3& direction, float length, float width, float progress, const Vector4& color);
     Vector4 MakeDisplayColor(const Vector4& color, float progress) const;
     Vector4 MakeDecalColor(const Vector4& color, float progress) const;
     Vector4 MakeCueColor(const Vector4& color, float progress) const;
+    Vector4 MakeTimingColor(const Vector4& color, float progress) const;
 
     std::unique_ptr<EffectObject3d> effect_;
     std::unique_ptr<EffectObject3d> cueEffect_;
     std::unique_ptr<EffectObject3d> warningEffect_;
+    std::vector<std::unique_ptr<EffectObject3d>> patternEffects_;
+    std::vector<std::unique_ptr<EffectObject3d>> timingEffects_;
     Object3dCommon* common_ = nullptr;
     Shape shape_ = Shape::Circle;
     Shape cueShape_ = Shape::Circle;
     Shape lastShape_ = Shape::Circle;
+    Shape patternShape_ = Shape::Line;
+    Shape timingShape_ = Shape::Circle;
     Vector3 lastCenter_ = { 0.0f, 0.0f, 0.0f };
     Vector3 lastDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector4 lastColor_ = { 1.0f, 0.1f, 0.04f, 1.0f };
@@ -72,9 +96,15 @@ void ConfigureEffectShape(EffectObject3d* effect, Shape shape);
     bool hasLastShape_ = false;
     bool isShapeConfigured_ = false;
     bool isCueShapeConfigured_ = false;
+    bool isPatternShapeConfigured_ = false;
+    bool isTimingShapeConfigured_ = false;
+    std::size_t patternActiveCount_ = 0;
+    std::size_t timingActiveCount_ = 0;
     float pulseTimer_ = 0.0f;
     float cueTimer_ = 0.0f;
     float cueDuration_ = 0.18f;
+    float patternCueTimer_ = 0.0f;
+    Vector4 patternCueColor_ = { 1.0f, 0.05f, 0.02f, 1.0f };
     Vector3 warningCenter_ = { 0.0f, 0.0f, 0.0f };
     Vector3 warningOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector4 warningAccentColor_ = { 1.0f, 0.45f, 0.08f, 1.0f };

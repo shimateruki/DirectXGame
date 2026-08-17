@@ -35,6 +35,59 @@ float SmoothStep(float value) {
     return value * value * (3.0f - 2.0f * value);
 }
 
+struct AbilityGuideVisual {
+    std::array<const char*, 3> labelTextures{};
+};
+
+AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
+    if (!player) {
+        return {};
+    }
+
+    if (!player->IsEnemyMorphed()) {
+        return { {
+            "ui/control_guide/labels/absorb.png",
+            "ui/control_guide/labels/throw.png",
+            nullptr
+        } };
+    }
+
+    switch (player->GetEnemyMorphType()) {
+    case Player::EnemyMorphType::Slime:
+        return { {
+            "ui/control_guide/labels/slime_dive.png",
+            "ui/control_guide/labels/puni_straight.png",
+            "ui/control_guide/labels/bounce_evade.png"
+        } };
+    case Player::EnemyMorphType::Bomber:
+        return { {
+            "ui/control_guide/labels/bomb_throw.png",
+            "ui/control_guide/labels/bomb_place.png",
+            "ui/control_guide/labels/blast_jump.png"
+        } };
+    case Player::EnemyMorphType::FireSlime:
+        return { {
+            "ui/control_guide/labels/fireball.png",
+            "ui/control_guide/labels/flame_breath.png",
+            "ui/control_guide/labels/blaze_step.png"
+        } };
+    case Player::EnemyMorphType::ThunderSlime:
+        return { {
+            "ui/control_guide/labels/thunder_chain.png",
+            "ui/control_guide/labels/charged_discharge.png",
+            "ui/control_guide/labels/thunder_step.png"
+        } };
+    case Player::EnemyMorphType::WindSlime:
+        return { {
+            "ui/control_guide/labels/updraft.png",
+            "ui/control_guide/labels/wind_breath.png",
+            "ui/control_guide/labels/wind_dash.png"
+        } };
+    default:
+        return {};
+    }
+}
+
 const char* ResolvePortraitTexture(const Player* player) {
     if (!player || !player->IsEnemyMorphed()) {
         return "ui/portraits/player.png";
@@ -42,9 +95,9 @@ const char* ResolvePortraitTexture(const Player* player) {
 
     switch (player->GetEnemyMorphType()) {
     case Player::EnemyMorphType::Slime:
-        return "ui/portraits/slime.png";
+        return "ui/control_guide/portraits/pink_slime.png";
     case Player::EnemyMorphType::Bomber:
-        return "ui/portraits/bomber.png";
+        return "ui/control_guide/portraits/bomb_slime.png";
     case Player::EnemyMorphType::Bat:
         return "ui/portraits/bat.png";
     case Player::EnemyMorphType::BeamDrone:
@@ -54,11 +107,11 @@ const char* ResolvePortraitTexture(const Player* player) {
     case Player::EnemyMorphType::GiantSlime:
         return "ui/portraits/giant_slime.png";
     case Player::EnemyMorphType::FireSlime:
-        return "ui/portraits/fire_slime.png";
+        return "ui/control_guide/portraits/fire_slime.png";
     case Player::EnemyMorphType::ThunderSlime:
-        return "ui/portraits/thunder_slime.png";
+        return "ui/control_guide/portraits/thunder_slime.png";
     case Player::EnemyMorphType::WindSlime:
-        return "ui/portraits/wind_slime.png";
+        return "ui/control_guide/portraits/wind_slime.png";
     case Player::EnemyMorphType::None:
     default:
         return "ui/portraits/player.png";
@@ -87,7 +140,7 @@ void ControlsGuideOverlay::Initialize(
     player_ = player;
     LoadLayout(layoutPath);
     BindLayoutSprites();
-    RefreshAbilityPortrait();
+    RefreshAbilityVisuals();
     SetAllVisible(false);
 }
 
@@ -104,6 +157,8 @@ void ControlsGuideOverlay::Finalize() {
     isActive_ = false;
     isSliding_ = false;
     portraitTexturePath_.clear();
+    abilityLabelTexturePaths_ = {};
+    abilityActionAvailable_ = {};
 }
 
 void ControlsGuideOverlay::SetActive(bool active) {
@@ -117,7 +172,7 @@ void ControlsGuideOverlay::SetActive(bool active) {
     slideTimer_ = 0.0f;
     outgoingPage_ = currentPage_;
     incomingPage_ = currentPage_;
-    RefreshAbilityPortrait();
+    RefreshAbilityVisuals();
     SetAllVisible(active);
     if (active) {
         SetPageVisible(currentPage_, true);
@@ -132,7 +187,7 @@ void ControlsGuideOverlay::Update(float deltaTime) {
     }
 
     time_ += deltaTime;
-    RefreshAbilityPortrait();
+    RefreshAbilityVisuals();
 
     if (suppressToggleInput_) {
         if (!IsToggleHeld()) {
@@ -223,7 +278,7 @@ void ControlsGuideOverlay::RestoreReplayState(const json& state) {
     slideTimer_ = std::max(0.0f, state.value("slideTimer", slideTimer_));
     time_ = state.value("time", time_);
 
-    RefreshAbilityPortrait();
+    RefreshAbilityVisuals();
     SetAllVisible(isActive_);
     if (isActive_) {
         UpdateSlide(0.0f);
@@ -291,6 +346,8 @@ void ControlsGuideOverlay::BindLayoutSprites() {
         for (int action = 0; action < kActionCount; ++action) {
             pages_[static_cast<size_t>(page)].actionGlyphs[static_cast<size_t>(action)] =
                 BindElement(prefix + "_action_" + std::to_string(action));
+            pages_[static_cast<size_t>(page)].actionLabels[static_cast<size_t>(action)] =
+                BindElement(prefix + "_action_label_" + std::to_string(action));
         }
         pageDots_[static_cast<size_t>(page)] =
             BindElement("controls_guide_page_dot_" + std::to_string(page));
@@ -341,8 +398,13 @@ void ControlsGuideOverlay::SetPageVisible(int pageIndex, bool visible) {
     PageVisual& page = pages_[static_cast<size_t>(pageIndex)];
     if (page.panel.sprite) page.panel.sprite->SetVisible(visible);
     if (page.portrait.sprite) page.portrait.sprite->SetVisible(visible);
-    for (Element& glyph : page.actionGlyphs) {
-        if (glyph.sprite) glyph.sprite->SetVisible(visible);
+    for (int action = 0; action < kActionCount; ++action) {
+        const bool actionVisible = visible &&
+            (pageIndex != 1 || abilityActionAvailable_[static_cast<size_t>(action)]);
+        Element& glyph = page.actionGlyphs[static_cast<size_t>(action)];
+        Element& label = page.actionLabels[static_cast<size_t>(action)];
+        if (glyph.sprite) glyph.sprite->SetVisible(actionVisible);
+        if (label.sprite) label.sprite->SetVisible(actionVisible);
     }
 }
 
@@ -362,6 +424,9 @@ void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
     applyOffset(page.portrait);
     for (Element& glyph : page.actionGlyphs) {
         applyOffset(glyph);
+    }
+    for (Element& label : page.actionLabels) {
+        applyOffset(label);
     }
 }
 
@@ -440,21 +505,50 @@ void ControlsGuideOverlay::UpdateStaticVisuals() {
     }
 }
 
-void ControlsGuideOverlay::RefreshAbilityPortrait() {
+void ControlsGuideOverlay::RefreshAbilityVisuals() {
     const std::string nextPath = ResolvePortraitTexture(player_);
-    if (nextPath == portraitTexturePath_) {
+    if (nextPath != portraitTexturePath_) {
+        portraitTexturePath_ = nextPath;
+        Sprite* portrait = pages_[1].portrait.sprite;
+        if (portrait) {
+            const uint32_t textureHandle = Sprite::LoadTexture(nextPath);
+            SetFullTextureRect(portrait, textureHandle);
+            portrait->SetTextureName(nextPath);
+        }
+    }
+
+    const AbilityGuideVisual guide = ResolveAbilityGuide(player_);
+    bool guideChanged = false;
+    for (int action = 0; action < kActionCount; ++action) {
+        const char* texturePath = guide.labelTextures[static_cast<size_t>(action)];
+        const std::string nextLabelPath = texturePath ? texturePath : "";
+        const bool available = !nextLabelPath.empty();
+
+        guideChanged |= abilityActionAvailable_[static_cast<size_t>(action)] != available;
+        abilityActionAvailable_[static_cast<size_t>(action)] = available;
+
+        if (abilityLabelTexturePaths_[static_cast<size_t>(action)] == nextLabelPath) {
+            continue;
+        }
+
+        guideChanged = true;
+        abilityLabelTexturePaths_[static_cast<size_t>(action)] = nextLabelPath;
+        Sprite* label = pages_[1].actionLabels[static_cast<size_t>(action)].sprite;
+        if (label && available) {
+            const uint32_t textureHandle = Sprite::LoadTexture(nextLabelPath);
+            SetFullTextureRect(label, textureHandle);
+            label->SetTextureName(nextLabelPath);
+        }
+    }
+
+    if (!guideChanged || !isActive_) {
         return;
     }
 
-    portraitTexturePath_ = nextPath;
-    Sprite* portrait = pages_[1].portrait.sprite;
-    if (!portrait) {
-        return;
-    }
-
-    const uint32_t textureHandle = Sprite::LoadTexture(nextPath);
-    SetFullTextureRect(portrait, textureHandle);
-    portrait->SetTextureName(nextPath);
+    const bool abilityPageVisible = isSliding_
+        ? (outgoingPage_ == 1 || incomingPage_ == 1)
+        : currentPage_ == 1;
+    SetPageVisible(1, abilityPageVisible);
 }
 
 bool ControlsGuideOverlay::IsToggleHeld() const {

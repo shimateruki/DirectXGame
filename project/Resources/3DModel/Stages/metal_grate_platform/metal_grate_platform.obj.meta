@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "730efbd5220a55f5b9591af6af91f269",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/metal_grate_platform/metal_grate_platform.obj",
+    "version": 1
+}

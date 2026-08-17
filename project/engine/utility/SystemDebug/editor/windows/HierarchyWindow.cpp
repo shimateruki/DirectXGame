@@ -352,6 +352,7 @@ namespace {
             if (ImGui::MenuItem("動く床")) CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
             if (ImGui::MenuItem("破壊ブロック")) CreateGimmick(editor, scene, "BreakableBlock", useGameViewCursor);
             if (ImGui::MenuItem("ジャンプ台")) CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
+            if (ImGui::MenuItem("スターランチャー")) CreateGimmick(editor, scene, "LaunchStar", useGameViewCursor);
             if (ImGui::MenuItem("沈む床")) CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
             if (ImGui::MenuItem("シーソー床")) CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
             if (ImGui::MenuItem("ダッシュパネル")) CreateGimmick(editor, scene, "DashPanel", useGameViewCursor);
@@ -364,6 +365,7 @@ namespace {
             if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
             if (ImGui::MenuItem("一方通行床")) CreateGimmick(editor, scene, "OneWayFloor", useGameViewCursor);
             if (ImGui::MenuItem("水位/マグマ上下")) CreateGimmick(editor, scene, "LiquidLevel", useGameViewCursor);
+            if (ImGui::MenuItem("マグマダメージ床")) CreateGimmick(editor, scene, "MagmaHazard", useGameViewCursor);
             if (ImGui::MenuItem("連鎖崩れ床")) CreateGimmick(editor, scene, "ChainCollapseFloor", useGameViewCursor);
             if (ImGui::MenuItem("回転床")) CreateGimmick(editor, scene, "RotatingFloor", useGameViewCursor);
             if (ImGui::MenuItem("回転柱")) CreateGimmick(editor, scene, "RotatingPillar", useGameViewCursor);

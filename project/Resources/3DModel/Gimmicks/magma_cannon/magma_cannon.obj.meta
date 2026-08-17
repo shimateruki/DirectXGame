@@ -1,0 +1,11 @@
+{
+    "assetType":  "Model",
+    "guid":  "8563a1d47d914c559ef55cd952f00e57",
+    "importSettings":  {
+                           "generateTangents":  true,
+                           "scale":  1
+                       },
+    "importer":  "ModelImporter",
+    "source":  "Resources/3DModel/Gimmicks/magma_cannon/magma_cannon.obj",
+    "version":  1
+}

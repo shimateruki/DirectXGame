@@ -1,5 +1,6 @@
 #include "GimmickBreakableBlock.h"
 #include "CollisionConfig.h"
+#include "EnemyBomb.h"
 #include <MeshEffectManager.h>
 #include <GPUParticleManager.h>
 #include <DebugConsole.h>
@@ -48,11 +49,13 @@ void GimmickBreakableBlock::Update(float deltaTime) {
 bool GimmickBreakableBlock::OnCollision(Object3d* other) {
     if (isBroken_) return false;
 
-    uint32_t attribute = other->GetCollisionAttribute();
+    const uint32_t attribute = other->GetCollisionAttribute();
+    const auto* bomb = dynamic_cast<const EnemyBomb*>(other);
 
-    // ボムの爆風（属性：kPlayerAttack | kEnemyAttack ＆ コライダー形状：kSphere）に当たった場合
-    if ((attribute & (kPlayerAttack | kEnemyAttack)) && 
-        (other->GetColliderType() == ColliderType::kSphere)) {
+    // プレイヤーが生成したボムの爆風だけを破壊条件にする。
+    if (bomb && bomb->IsPlayerOwned() &&
+        (attribute & kPlayerAttack) &&
+        other->GetColliderType() == ColliderType::kSphere) {
         
         Break();
         return true;

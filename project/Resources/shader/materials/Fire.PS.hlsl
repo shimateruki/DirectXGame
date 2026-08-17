@@ -46,6 +46,12 @@ float Fbm2(float2 p)
     return value;
 }
 
+float BakedFireMask(float4 texel)
+{
+    // Baked fire textures store their silhouette in RGB while alpha can stay opaque.
+    return saturate(dot(max(texel.rgb, 0.0f), float3(0.299f, 0.587f, 0.114f)));
+}
+
 float LinearizeDepth(float z)
 {
     z = saturate(z);
@@ -112,6 +118,7 @@ float4 main(VSOutput input) : SV_TARGET
     float proxyMask = 1.0f;
     float2 proceduralUV = billboard * 0.5f + 0.5f;
     float2 surfaceUV = proceduralUV * 2.0f - 1.0f;
+    float2 distortionSurfaceUV = surfaceUV;
     float2 phaseSeed = float2(uvOffsetX, uvOffsetY) * float2(0.37f, 0.23f);
 
     float heat = 0.0f;
@@ -121,21 +128,85 @@ float4 main(VSOutput input) : SV_TARGET
     float smoke = 0.0f;
     float alpha = 0.0f;
 
-    if (effectType < 0.5f)
+    if (effectType >= 3.5f && effectType < 4.5f)
     {
-        float height01 = saturate(proceduralUV.y);
+        // Each crossed card gets a different flow phase while sharing one coherent flame body.
+        float horizontal = input.localPos.x;
+        float height01 = saturate(input.localPos.y);
+        float cardIndex = input.localPos.z;
+        float fromBase = 1.0f - height01;
+        float cardPhase = cardIndex * 2.37f + centerWorld.x * 0.11f + centerWorld.z * 0.17f;
+        float wind = clamp(flowSpeedX, -1.0f, 1.0f);
+        float motion = saturate(abs(flowSpeedY));
+
+        float2 volumeUV = float2(
+            horizontal * (3.0f + detail * 0.62f) + cardPhase + wind * time * 0.18f,
+            height01 * (4.2f + detail * 1.05f) - time * animSpeed * (1.12f + motion * 0.34f)
+        );
+        float bodyNoise = Fbm2(volumeUV + phaseSeed);
+        float tongueNoise = Fbm2(volumeUV * 1.72f + float2(cardPhase * 0.47f + time * 0.19f, -time * animSpeed * 0.76f));
+        float broadNoise = Fbm2(volumeUV * 0.46f + float2(-time * 0.08f, time * 0.11f + cardPhase));
+        float emberNoise = Fbm2(volumeUV * 3.15f + float2(time * 0.51f, -time * 1.18f));
+
+        float2 bakedUV = saturate(float2(horizontal * 0.5f + 0.5f, 1.0f - height01));
+        bakedUV.x = saturate(bakedUV.x + (bodyNoise - 0.5f) * 0.045f + wind * height01 * 0.035f);
+        float4 bakedFlame = bakedFireFlameTex.Sample(smp, bakedUV);
+        float bakedMask = BakedFireMask(bakedFlame);
+
+        float width = lerp(0.95f, 0.105f, pow(height01, 1.16f));
+        width += fromBase * 0.08f;
+        width += (broadNoise - 0.5f) * lerp(0.13f, 0.24f, height01);
+        float horizontalDisplacement = horizontal;
+        horizontalDisplacement += (tongueNoise - 0.5f) * lerp(0.08f, 0.25f, height01);
+        horizontalDisplacement += wind * 0.10f * height01 * height01;
+
+        float edgeSoft = lerp(0.045f, 0.17f, softness);
+        float flameMask = smoothstep(width + edgeSoft, width - edgeSoft, abs(horizontalDisplacement));
+
+        float forkCenter = sin(time * (2.15f + motion) + cardPhase) * 0.15f;
+        forkCenter += (bodyNoise - 0.5f) * 0.16f;
+        float forkWidth = lerp(0.31f, 0.045f, smoothstep(0.36f, 1.0f, height01));
+        float forkMask = smoothstep(forkWidth + edgeSoft, forkWidth - edgeSoft, abs(horizontal - forkCenter));
+        forkMask *= smoothstep(0.38f, 0.68f, height01);
+        flameMask = max(flameMask, forkMask * 0.78f);
+
+        float bottomFade = smoothstep(-0.04f, 0.035f, height01);
+        float topFade = 1.0f - smoothstep(0.925f, 1.0f, height01);
+        float sideFade = 1.0f - smoothstep(0.91f, 1.0f, abs(horizontal));
+        flameMask *= bottomFade * topFade * sideFade;
+        flameMask = saturate(flameMask * 0.82f + bakedMask * flameMask * 0.26f);
+
+        float inner = saturate(1.0f - abs(horizontalDisplacement) / max(width, 0.08f));
+        heat = saturate(0.16f + fromBase * 0.18f + inner * 0.25f + bodyNoise * 0.25f + tongueNoise * 0.20f + bakedFlame.r * 0.18f);
+        core = smoothstep(0.61f, 0.91f, heat + inner * 0.20f + bakedFlame.g * 0.12f - height01 * 0.07f) * flameMask;
+        edgeGlow = smoothstep(0.48f, 0.92f, tongueNoise + bodyNoise * 0.24f + bakedFlame.r * 0.18f) * flameMask;
+        ember = smoothstep(0.79f, 0.97f, emberNoise + fromBase * 0.10f + bakedFlame.b * 0.18f) * flameMask;
+        smoke = smoothstep(0.70f, 0.97f, height01) * smoothstep(0.52f, 0.91f, 1.0f - broadNoise) * flameMask;
+
+        // Lower per-card opacity lets the intersections create a brighter inner volume.
+        alpha = saturate(flameMask * (0.16f + heat * 0.25f + core * 0.14f));
+        distortionSurfaceUV = float2(horizontal, height01 * 2.0f - 1.0f) + cardPhase * 0.071f;
+    }
+    else if (effectType < 0.5f)
+    {
+        float sx = max(effectScaleX, 0.12f);
+        float sy = max(effectScaleY, 0.12f);
+        float2 flameBillboard = float2(billboard.x / sx, billboard.y / sy);
+        float2 flameProceduralUV = flameBillboard * 0.5f + 0.5f;
+        float height01 = saturate(flameProceduralUV.y);
         float fromBase = 1.0f - height01;
 
-        float side = abs(billboard.x);
+        float side = abs(flameBillboard.x);
 
         float2 flameUV = float2(
-            (billboard.x * 0.5f + 0.5f) * (3.2f + detail * 0.8f),
+            flameProceduralUV.x * (3.2f + detail * 0.8f),
             height01 * (4.0f + detail * 1.4f) - time * animSpeed * 1.15f
         );
         float bodyNoise = Fbm2(flameUV + phaseSeed + float2(time * 0.10f, 0.0f));
         float tongueNoise = Fbm2(float2(side * 5.8f + bodyNoise * 2.2f, height01 * 8.5f - time * animSpeed * 2.0f));
-        float emberNoise = Fbm2(float2(proceduralUV.x * 19.0f + time * 0.35f, height01 * 18.0f - time * animSpeed * 3.0f));
-        float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.04f, 0.0f)));
+        float emberNoise = Fbm2(float2(flameProceduralUV.x * 19.0f + time * 0.35f, height01 * 18.0f - time * animSpeed * 3.0f));
+        float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(flameProceduralUV + float2((bodyNoise - 0.5f) * 0.04f, 0.0f)));
+        float bakedMask = BakedFireMask(bakedFlame);
 
         float width = lerp(0.92f, 0.14f, smoothstep(0.06f, 1.0f, height01));
         width += fromBase * 0.12f;
@@ -145,8 +216,9 @@ float4 main(VSOutput input) : SV_TARGET
         float edgeSoft = lerp(0.055f, 0.22f, softness);
         float flameMask = smoothstep(width + edgeSoft, width - edgeSoft, edge);
         flameMask *= smoothstep(0.00f, 0.08f, height01);
-        flameMask *= lerp(1.0f, 0.58f, smoothstep(0.88f, 1.0f, height01));
-        flameMask = saturate(flameMask * 0.72f + bakedFlame.a * 0.42f);
+        flameMask *= 1.0f - smoothstep(0.91f, 1.0f, height01);
+        flameMask *= 1.0f - smoothstep(0.92f, 1.0f, side);
+        flameMask = saturate(flameMask * 0.78f + bakedMask * 0.34f);
 
         float inner = saturate(1.0f - side);
         heat = saturate(0.20f + fromBase * 0.20f + inner * 0.18f + bodyNoise * 0.28f + tongueNoise * 0.30f + bakedFlame.r * 0.24f);
@@ -166,8 +238,9 @@ float4 main(VSOutput input) : SV_TARGET
         float pulse = sin(time * animSpeed * 2.4f + bodyNoise * 5.2f) * 0.5f + 0.5f;
         float edgeSoft = lerp(0.035f, 0.20f, softness);
         float4 bakedOrb = bakedFireOrbTex.Sample(smp, saturate(proceduralUV + (bodyNoise - 0.5f) * 0.035f));
+        float bakedMask = BakedFireMask(bakedOrb);
         float sphereMask = smoothstep(1.0f + edgeSoft, 1.0f - edgeSoft, radial + (bodyNoise - 0.5f) * 0.10f);
-        sphereMask = saturate(sphereMask * 0.76f + bakedOrb.a * 0.34f);
+        sphereMask = saturate(sphereMask * 0.76f + bakedMask * 0.34f);
 
         float patch = smoothstep(0.30f, 0.84f, bodyNoise + crackNoise * 0.28f);
         heat = saturate(0.18f + broadNoise * 0.18f + bodyNoise * 0.24f + crackNoise * 0.18f + pulse * 0.10f + bakedOrb.r * 0.28f);
@@ -198,6 +271,7 @@ float4 main(VSOutput input) : SV_TARGET
         float tongueNoise = Fbm2(float2(abs(wrapBillboard.x) * 5.6f + bodyNoise * 1.8f, height01 * 7.4f - time * animSpeed * (1.55f + move * 0.65f)));
         float emberNoise = Fbm2(float2(proceduralUV.x * 15.0f + time * 0.28f, height01 * 13.0f - time * animSpeed * 2.1f));
         float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.035f + lean * 0.08f, 0.0f)));
+        float bakedMask = BakedFireMask(bakedFlame);
 
         float bodyShell = smoothstep(1.10f, 0.58f, oval + (bodyNoise - 0.5f) * 0.11f);
         float topFade = smoothstep(1.08f, 0.54f, height01 + (tongueNoise - 0.5f) * 0.10f);
@@ -205,7 +279,7 @@ float4 main(VSOutput input) : SV_TARGET
         float sideLick = smoothstep(0.88f, 0.45f, abs(wrapBillboard.x) + (tongueNoise - 0.5f) * 0.22f);
         float proxyBoundary = smoothstep(1.08f, 0.82f, oval);
         float flameMask = saturate(bodyShell * bottomFade * topFade);
-        flameMask = saturate(flameMask * (0.46f + sideLick * 0.34f) + bakedFlame.a * 0.18f);
+        flameMask = saturate(flameMask * (0.46f + sideLick * 0.34f) + bakedMask * 0.18f);
         flameMask *= proxyBoundary;
 
         float inner = saturate(1.0f - oval);
@@ -234,10 +308,11 @@ float4 main(VSOutput input) : SV_TARGET
         float lickNoise = Fbm2(plumeUV * 1.85f + float2(time * 0.22f, -time * animSpeed * 0.70f));
         float emberNoise = Fbm2(plumeUV * 3.2f + float2(time * 0.55f, -time * 0.80f));
         float4 bakedFlame = bakedFireFlameTex.Sample(smp, saturate(proceduralUV + float2((bodyNoise - 0.5f) * 0.05f + wind * 0.04f, (lickNoise - 0.5f) * 0.035f)));
+        float bakedMask = BakedFireMask(bakedFlame);
 
         float shell = smoothstep(1.18f, 0.56f, radial + (bodyNoise - 0.5f) * 0.18f);
         float tornEdge = smoothstep(0.40f, 0.92f, lickNoise + centerBand * 0.20f + bakedFlame.r * 0.18f);
-        float flameMask = saturate(shell * (0.54f + tornEdge * 0.42f) + bakedFlame.a * 0.20f);
+        float flameMask = saturate(shell * (0.54f + tornEdge * 0.42f) + bakedMask * 0.20f);
         float borderFade = smoothstep(0.00f, 0.10f, proceduralUV.x) * smoothstep(0.00f, 0.10f, 1.0f - proceduralUV.x);
         borderFade *= smoothstep(0.00f, 0.08f, proceduralUV.y) * smoothstep(0.00f, 0.08f, 1.0f - proceduralUV.y);
         flameMask *= borderFade;
@@ -258,8 +333,8 @@ float4 main(VSOutput input) : SV_TARGET
     softFactor = (bgDepth >= 0.999f) ? 1.0f : softFactor;
 
     float2 distortionNoise;
-    distortionNoise.x = Fbm2(surfaceUV * 2.1f + float2(time * 0.23f, -time * 1.25f));
-    distortionNoise.y = Fbm2(surfaceUV * 2.4f + float2(4.3f - time * 0.18f, -time * 1.05f));
+    distortionNoise.x = Fbm2(distortionSurfaceUV * 2.1f + float2(time * 0.23f, -time * 1.25f));
+    distortionNoise.y = Fbm2(distortionSurfaceUV * 2.4f + float2(4.3f - time * 0.18f, -time * 1.05f));
     distortionNoise = distortionNoise * 2.0f - 1.0f;
 
     float heatDistortion = (0.004f + 0.010f * heat) * saturate(0.35f + core + edgeGlow * 0.45f);

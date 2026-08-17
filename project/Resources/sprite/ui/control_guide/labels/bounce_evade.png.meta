@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "57a567ed10484f14a9538c0a9770fcc1",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/bounce_evade.png",
+    "version":  1
+}

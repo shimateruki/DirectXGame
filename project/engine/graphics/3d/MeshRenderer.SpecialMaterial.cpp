@@ -188,6 +188,7 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers()) return;
+    drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -221,6 +222,7 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
         return;
     }
 
+    drawModel->PrepareComputeSkinning();
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -406,7 +408,14 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
-    if (!fireProxyModel_) {
+    // かがり火だけは交差する複数面で厚みを作り、それ以外の炎は従来のビルボードを維持します。
+    const bool useVolumetricProxy = waterParamData_ &&
+        waterParamData_->effectType >= 3.5f && waterParamData_->effectType < 4.5f;
+    if (useVolumetricProxy) {
+        if (!volumetricFireProxyModel_) {
+            InitializeVolumetricFireProxyModel();
+        }
+    } else if (!fireProxyModel_) {
         InitializeFireProxyModel();
     }
 
@@ -418,8 +427,9 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetFireBakedShaderTextures());
-    drawModel = fireProxyModel_ ? fireProxyModel_.get() : drawModel;
-    drawModel->DrawMeshOnly(fireProxyModel_ ? -1 : meshDrawIndex_);
+    Model* proxyModel = useVolumetricProxy ? volumetricFireProxyModel_.get() : fireProxyModel_.get();
+    drawModel = proxyModel ? proxyModel : drawModel;
+    drawModel->DrawMeshOnly(proxyModel ? -1 : meshDrawIndex_);
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
@@ -578,6 +588,55 @@ void MeshRenderer::InitializeFireProxyModel() {
 
     const std::vector<uint32_t> indices = { 0, 1, 2, 0, 2, 3 };
     fireProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
+}
+
+void MeshRenderer::InitializeVolumetricFireProxyModel() {
+    ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
+    if (!modelCommon) {
+        return;
+    }
+
+    volumetricFireProxyModel_ = std::make_unique<Model>();
+
+    constexpr int kCardCount = 3;
+    constexpr float kPi = 3.14159265358979323846f;
+    std::vector<Model::VertexData> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve(kCardCount * 4);
+    indices.reserve(kCardCount * 6);
+
+    // 三方向の炎面を交差させます。UVの2単位ごとの帯はシェーダーで面番号を復元するために使います。
+    for (int cardIndex = 0; cardIndex < kCardCount; ++cardIndex) {
+        const float angle = static_cast<float>(cardIndex) * (kPi / 3.0f);
+        const float directionX = std::cos(angle);
+        const float directionZ = std::sin(angle);
+        const Vector3 normal = { -directionZ, 0.0f, directionX };
+        const Vector3 tangent = { directionX, 0.0f, directionZ };
+        const float encodedU = static_cast<float>(cardIndex * 2);
+        const uint32_t firstVertex = static_cast<uint32_t>(vertices.size());
+
+        auto addVertex = [&](float horizontal, float y, float u, float v) {
+            Model::VertexData vertex{};
+            vertex.position = { directionX * horizontal, y, directionZ * horizontal, 1.0f };
+            vertex.texcoord = { encodedU + u, v };
+            vertex.normal = normal;
+            vertex.tangent = tangent;
+            vertex.boneWeights = { 0.0f, 0.0f, 0.0f, 0.0f };
+            vertex.boneIndices = { 0.0f, 0.0f, 0.0f, 0.0f };
+            vertices.push_back(vertex);
+        };
+
+        addVertex(-1.0f, -1.0f, 0.0f, 1.0f);
+        addVertex(-1.0f,  1.0f, 0.0f, 0.0f);
+        addVertex( 1.0f,  1.0f, 1.0f, 0.0f);
+        addVertex( 1.0f, -1.0f, 1.0f, 1.0f);
+        indices.insert(indices.end(), {
+            firstVertex, firstVertex + 1, firstVertex + 2,
+            firstVertex, firstVertex + 2, firstVertex + 3
+        });
+    }
+
+    volumetricFireProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 
 void MeshRenderer::InitializeGatePortalProxyModel() {

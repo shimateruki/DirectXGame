@@ -1,0 +1,340 @@
+mtllib star_garden_island.mtl
+o star_garden_island
+v 0.000000 0.030000 0.000000
+v 0.000000 -4.250000 0.000000
+v 1.000000 0.020000 0.000000
+v 1.035000 -0.100000 0.000000
+v 0.910000 -1.180000 0.000000
+v 0.560000 -4.150000 0.000000
+v 0.936948 0.020000 0.251054
+v 0.969741 -0.100000 0.259841
+v 0.852623 -1.180000 0.228460
+v 0.524691 -4.150000 0.140591
+v 0.900666 0.020000 0.520000
+v 0.932190 -0.100000 0.538200
+v 0.819606 -1.180000 0.473200
+v 0.504373 -4.150000 0.291200
+v 0.707107 0.020000 0.707107
+v 0.731856 -0.100000 0.731856
+v 0.643467 -1.180000 0.643467
+v 0.395980 -4.150000 0.395980
+v 0.470000 0.020000 0.814064
+v 0.486450 -0.100000 0.842556
+v 0.427700 -1.180000 0.740798
+v 0.263200 -4.150000 0.455876
+v 0.263995 0.020000 0.985244
+v 0.273235 -0.100000 1.019728
+v 0.240236 -1.180000 0.896572
+v 0.147837 -4.150000 0.551737
+v 0.000000 0.020000 0.990000
+v 0.000000 -0.100000 1.024650
+v 0.000000 -1.180000 0.900900
+v 0.000000 -4.150000 0.554400
+v -0.274348 0.020000 1.023881
+v -0.283950 -0.100000 1.059717
+v -0.249657 -1.180000 0.931732
+v -0.153635 -4.150000 0.573374
+v -0.485000 0.020000 0.840045
+v -0.501975 -0.100000 0.869446
+v -0.441350 -1.180000 0.764441
+v -0.271600 -4.150000 0.470425
+v -0.714178 0.020000 0.714178
+v -0.739174 -0.100000 0.739174
+v -0.649902 -1.180000 0.649902
+v -0.399940 -4.150000 0.399940
+v -0.822724 0.020000 0.475000
+v -0.851519 -0.100000 0.491625
+v -0.748679 -1.180000 0.432250
+v -0.460726 -4.150000 0.266000
+v -1.004563 0.020000 0.269172
+v -1.039723 -0.100000 0.278593
+v -0.914152 -1.180000 0.244946
+v -0.562555 -4.150000 0.150736
+v -1.000000 0.020000 0.000000
+v -1.035000 -0.100000 0.000000
+v -0.910000 -1.180000 0.000000
+v -0.560000 -4.150000 0.000000
+v -0.927289 0.020000 -0.248466
+v -0.959744 -0.100000 -0.257163
+v -0.843833 -1.180000 -0.226104
+v -0.519282 -4.150000 -0.139141
+v -0.909327 0.020000 -0.525000
+v -0.941153 -0.100000 -0.543375
+v -0.827487 -1.180000 -0.477750
+v -0.509223 -4.150000 -0.294000
+v -0.692965 0.020000 -0.692965
+v -0.717218 -0.100000 -0.717218
+v -0.630598 -1.180000 -0.630598
+v -0.388060 -4.150000 -0.388060
+v -0.510000 0.020000 -0.883346
+v -0.527850 -0.100000 -0.914263
+v -0.464100 -1.180000 -0.803845
+v -0.285600 -4.150000 -0.494674
+v -0.245878 0.020000 -0.917630
+v -0.254484 -0.100000 -0.949747
+v -0.223749 -1.180000 -0.835043
+v -0.137692 -4.150000 -0.513873
+v -0.000000 0.020000 -1.030000
+v -0.000000 -0.100000 -1.066050
+v -0.000000 -1.180000 -0.937300
+v -0.000000 -4.150000 -0.576800
+v 0.258819 0.020000 -0.965926
+v 0.267878 -0.100000 -0.999733
+v 0.235525 -1.180000 -0.878993
+v 0.144939 -4.150000 -0.540918
+v 0.485000 0.020000 -0.840045
+v 0.501975 -0.100000 -0.869446
+v 0.441350 -1.180000 -0.764441
+v 0.271600 -4.150000 -0.470425
+v 0.735391 0.020000 -0.735391
+v 0.761130 -0.100000 -0.761130
+v 0.669206 -1.180000 -0.669206
+v 0.411819 -4.150000 -0.411819
+v 0.831384 0.020000 -0.480000
+v 0.860483 -0.100000 -0.496800
+v 0.756560 -1.180000 -0.436800
+v 0.465575 -4.150000 -0.268800
+v 0.975585 0.020000 -0.261407
+v 1.009731 -0.100000 -0.270556
+v 0.887782 -1.180000 -0.237881
+v 0.546328 -4.150000 -0.146388
+usemtl grass_top
+f 1 3 7
+usemtl sand_rim
+f 3 4 8 7
+usemtl cliff_warm
+f 4 5 9 8
+usemtl cliff_shadow
+f 5 6 10 9
+usemtl underside
+f 2 10 6
+usemtl grass_top
+f 1 7 11
+usemtl sand_rim
+f 7 8 12 11
+usemtl cliff_rose
+f 8 9 13 12
+usemtl cliff_shadow
+f 9 10 14 13
+usemtl underside
+f 2 14 10
+usemtl grass_top
+f 1 11 15
+usemtl sand_rim
+f 11 12 16 15
+usemtl cliff_warm
+f 12 13 17 16
+usemtl cliff_shadow
+f 13 14 18 17
+usemtl underside
+f 2 18 14
+usemtl grass_top
+f 1 15 19
+usemtl sand_rim
+f 15 16 20 19
+usemtl cliff_rose
+f 16 17 21 20
+usemtl cliff_shadow
+f 17 18 22 21
+usemtl underside
+f 2 22 18
+usemtl grass_top
+f 1 19 23
+usemtl sand_rim
+f 19 20 24 23
+usemtl cliff_warm
+f 20 21 25 24
+usemtl cliff_shadow
+f 21 22 26 25
+usemtl underside
+f 2 26 22
+usemtl grass_top
+f 1 23 27
+usemtl sand_rim
+f 23 24 28 27
+usemtl cliff_rose
+f 24 25 29 28
+usemtl cliff_shadow
+f 25 26 30 29
+usemtl underside
+f 2 30 26
+usemtl grass_top
+f 1 27 31
+usemtl sand_rim
+f 27 28 32 31
+usemtl cliff_warm
+f 28 29 33 32
+usemtl cliff_shadow
+f 29 30 34 33
+usemtl underside
+f 2 34 30
+usemtl grass_top
+f 1 31 35
+usemtl sand_rim
+f 31 32 36 35
+usemtl cliff_rose
+f 32 33 37 36
+usemtl cliff_shadow
+f 33 34 38 37
+usemtl underside
+f 2 38 34
+usemtl grass_top
+f 1 35 39
+usemtl sand_rim
+f 35 36 40 39
+usemtl cliff_warm
+f 36 37 41 40
+usemtl cliff_shadow
+f 37 38 42 41
+usemtl underside
+f 2 42 38
+usemtl grass_top
+f 1 39 43
+usemtl sand_rim
+f 39 40 44 43
+usemtl cliff_rose
+f 40 41 45 44
+usemtl cliff_shadow
+f 41 42 46 45
+usemtl underside
+f 2 46 42
+usemtl grass_top
+f 1 43 47
+usemtl sand_rim
+f 43 44 48 47
+usemtl cliff_warm
+f 44 45 49 48
+usemtl cliff_shadow
+f 45 46 50 49
+usemtl underside
+f 2 50 46
+usemtl grass_top
+f 1 47 51
+usemtl sand_rim
+f 47 48 52 51
+usemtl cliff_rose
+f 48 49 53 52
+usemtl cliff_shadow
+f 49 50 54 53
+usemtl underside
+f 2 54 50
+usemtl grass_top
+f 1 51 55
+usemtl sand_rim
+f 51 52 56 55
+usemtl cliff_warm
+f 52 53 57 56
+usemtl cliff_shadow
+f 53 54 58 57
+usemtl underside
+f 2 58 54
+usemtl grass_top
+f 1 55 59
+usemtl sand_rim
+f 55 56 60 59
+usemtl cliff_rose
+f 56 57 61 60
+usemtl cliff_shadow
+f 57 58 62 61
+usemtl underside
+f 2 62 58
+usemtl grass_top
+f 1 59 63
+usemtl sand_rim
+f 59 60 64 63
+usemtl cliff_warm
+f 60 61 65 64
+usemtl cliff_shadow
+f 61 62 66 65
+usemtl underside
+f 2 66 62
+usemtl grass_top
+f 1 63 67
+usemtl sand_rim
+f 63 64 68 67
+usemtl cliff_rose
+f 64 65 69 68
+usemtl cliff_shadow
+f 65 66 70 69
+usemtl underside
+f 2 70 66
+usemtl grass_top
+f 1 67 71
+usemtl sand_rim
+f 67 68 72 71
+usemtl cliff_warm
+f 68 69 73 72
+usemtl cliff_shadow
+f 69 70 74 73
+usemtl underside
+f 2 74 70
+usemtl grass_top
+f 1 71 75
+usemtl sand_rim
+f 71 72 76 75
+usemtl cliff_rose
+f 72 73 77 76
+usemtl cliff_shadow
+f 73 74 78 77
+usemtl underside
+f 2 78 74
+usemtl grass_top
+f 1 75 79
+usemtl sand_rim
+f 75 76 80 79
+usemtl cliff_warm
+f 76 77 81 80
+usemtl cliff_shadow
+f 77 78 82 81
+usemtl underside
+f 2 82 78
+usemtl grass_top
+f 1 79 83
+usemtl sand_rim
+f 79 80 84 83
+usemtl cliff_rose
+f 80 81 85 84
+usemtl cliff_shadow
+f 81 82 86 85
+usemtl underside
+f 2 86 82
+usemtl grass_top
+f 1 83 87
+usemtl sand_rim
+f 83 84 88 87
+usemtl cliff_warm
+f 84 85 89 88
+usemtl cliff_shadow
+f 85 86 90 89
+usemtl underside
+f 2 90 86
+usemtl grass_top
+f 1 87 91
+usemtl sand_rim
+f 87 88 92 91
+usemtl cliff_rose
+f 88 89 93 92
+usemtl cliff_shadow
+f 89 90 94 93
+usemtl underside
+f 2 94 90
+usemtl grass_top
+f 1 91 95
+usemtl sand_rim
+f 91 92 96 95
+usemtl cliff_warm
+f 92 93 97 96
+usemtl cliff_shadow
+f 93 94 98 97
+usemtl underside
+f 2 98 94
+usemtl grass_top
+f 1 95 3
+usemtl sand_rim
+f 95 96 4 3
+usemtl cliff_rose
+f 96 97 5 4
+usemtl cliff_shadow
+f 97 98 6 5
+usemtl underside
+f 2 6 98

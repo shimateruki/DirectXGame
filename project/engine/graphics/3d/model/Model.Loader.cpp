@@ -547,6 +547,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
 
     const aiScene* scene = importer.ReadFile(filePath,
         aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_ConvertToLeftHanded |
+        aiProcess_GenSmoothNormals |
         aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_OptimizeMeshes);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {

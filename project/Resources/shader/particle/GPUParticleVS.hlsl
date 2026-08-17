@@ -1,5 +1,5 @@
 // ==========================================================
-// GPUParticleVS.hlsl : GPUパーティクル描画用 頂点シェーダー
+// GPUParticleVS.hlsl: GPU particle vertex shader
 // ==========================================================
 
 struct Particle
@@ -28,6 +28,12 @@ struct Particle
     float memDrag;
     float3 memWind;
     float memTurbulence;
+    uint memFieldType;
+    float memFieldStrength;
+    float memFieldRadius;
+    float memFieldFalloff;
+    float3 memFieldPosition;
+    float memFieldPadding;
 };
 
 StructuredBuffer<Particle> particles : register(t0);
@@ -37,7 +43,7 @@ cbuffer ViewProj : register(b0)
 {
     row_major matrix viewProj;
     row_major matrix billboardMatrix;
-    // ★追加: PSと構造を合わせるため projection も追加しておく
+    // Keep the layout identical to the pixel shader camera buffer.
     row_major matrix projection;
     float softParticleFade;
     int blendMode;
@@ -50,6 +56,14 @@ cbuffer ViewProj : register(b0)
     uint spriteSheetRandomStart;
     uint alignToVelocity;
     float velocityStretch;
+    uint particleType;
+    float trailLength;
+    uint receiveLighting;
+    float lightingStrength;
+    float3 lightDirection;
+    float cameraPadding0;
+    float3 lightColor;
+    float cameraPadding1;
 };
 
 struct VSOutput
@@ -57,7 +71,7 @@ struct VSOutput
     float4 pos : SV_POSITION;
     float2 uv : TEXCOORD;
     float4 color : COLOR;
-    float4 projPos : TEXCOORD1; // ★追加：ソフトパーティクル用
+    float4 projPos : TEXCOORD1; // Projection position for soft particles.
 };
 
 static const float3 positions[4] =
@@ -114,10 +128,16 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 
     float3 localPos = positions[vertexID] * p.scale;
     float velocityLength = length(p.velocity);
-    localPos.x *= 1.0f + min(velocityLength * max(velocityStretch, 0.0f), 2.5f);
+    float stretchAmount = max(velocityStretch, 0.0f);
+    if (particleType == uint(1))
+    {
+        stretchAmount = max(stretchAmount, max(trailLength, 0.0f));
+    }
+    float maxStretch = particleType == uint(1) ? 8.0f : 2.5f;
+    localPos.x *= 1.0f + min(velocityLength * stretchAmount, maxStretch);
 
     float rotation = p.rotation;
-    if (alignToVelocity != uint(0) && velocityLength > 0.0001f)
+    if ((alignToVelocity != uint(0) || particleType == uint(1)) && velocityLength > 0.0001f)
     {
         float3 cameraRight = normalize(float3(billboardMatrix._11, billboardMatrix._12, billboardMatrix._13));
         float3 cameraUp = normalize(float3(billboardMatrix._21, billboardMatrix._22, billboardMatrix._23));
@@ -142,7 +162,7 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     output.color = p.color;
     
     // =======================================================
-    // ：これが無いとPSで計算できず透明になって消えます！
+    // The pixel shader uses this value for soft-particle depth fading.
     // =======================================================
     output.projPos = output.pos;
     

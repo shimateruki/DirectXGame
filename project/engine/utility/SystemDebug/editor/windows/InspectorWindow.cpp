@@ -1704,8 +1704,14 @@ void InspectorWindow::Draw() {
                         auto* waterData = selectedObject->GetMeshRenderer()->GetWaterParamData();
                         if (currentMatType == 11) {
                             ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.08f, 1.0f), ICON_FA_FIRE " --- Fire Settings ---");
-                            const char* fireTypes[] = { "炎の形 (Flame Shape)", "炎の球 (Fire Ball)" };
-                            int fireType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 1);
+                            const char* fireTypes[] = {
+                                "炎の形 (Flame Shape)",
+                                "炎の球 (Fire Ball)",
+                                "まとい炎 (Wrapped Flame)",
+                                "炎の流れ (Flame Stream)",
+                                "立体かがり火 (Volumetric Brazier)"
+                            };
+                            int fireType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 4);
                             if (ImGui::Combo("炎タイプ (Fire Type)", &fireType, fireTypes, IM_ARRAYSIZE(fireTypes))) {
                                 waterData->effectType = static_cast<float>(fireType);
                                 isGraphicsChanged = true;
@@ -1714,6 +1720,9 @@ void InspectorWindow::Draw() {
                             if (ImGui::DragFloat("炎の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 20.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 5.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("描画サイズ (Billboard Size)", &waterData->billboardScale, 0.01f, 0.05f, 3.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("炎の横幅 (Width)", &waterData->effectScaleX, 0.01f, 0.12f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("炎の高さ (Height)", &waterData->effectScaleY, 0.01f, 0.12f, 4.0f)) isGraphicsChanged = true;
+                            if (fireType == 4 && ImGui::DragFloat("炎の奥行き (Depth)", &waterData->effectScaleZ, 0.01f, 0.12f, 4.0f)) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("炎の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
                         }
@@ -2654,8 +2663,23 @@ void InspectorWindow::Draw() {
                 if (gType == "Trampoline") {
                     ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力 (Jump Power)", &p.jumpPower, 1.0f, 0.0f, 100.0f);
                 }
+                else if (gType == "LaunchStar") {
+                    ImGui::DragFloat(ICON_FA_RULER_HORIZONTAL " 発射距離", &p.moveAmount, 1.0f, 8.0f, 300.0f, "%.1f m");
+                    ImGui::DragFloat(ICON_FA_ARROW_UP " 軌道の高さ", &p.jumpPower, 0.5f, 2.0f, 100.0f, "%.1f m");
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 飛行速度", &p.speed, 0.5f, 8.0f, 160.0f, "%.1f m/s");
+                    ImGui::TextDisabled("回転X/Yが発射方向になります");
+                }
                 else if (gType == "MovingFloor") {
                     ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
+                    const char* moveModes[] = { "従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復" };
+                    p.actionMode = (std::clamp)(p.actionMode, 0, 4);
+                    ImGui::Combo("移動方式", &p.actionMode, moveModes, IM_ARRAYSIZE(moveModes));
+                    if (p.actionMode == 1) {
+                        ImGui::DragFloat("浮き沈み幅", &p.moveAmount, 0.01f, 0.0f, 2.0f, "%.2f m");
+                    }
+                    else if (p.actionMode >= 2) {
+                        ImGui::DragFloat("往復幅", &p.moveAmount, 0.1f, 0.0f, 100.0f, "%.1f m");
+                    }
                 }
                 else if (gType == "ChikuwaBlock") {
                     ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 震え時間 (Shake)", &p.shakeDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
@@ -2706,6 +2730,26 @@ void InspectorWindow::Draw() {
                     ImGui::Checkbox("開始時に上昇", &p.startActive);
                     ImGui::Checkbox("OFFで元に戻す", &p.returnOnOff);
                     ImGui::TextDisabled("スイッチの Target ID とこの My Event ID を合わせてください");
+                }
+                else if (gType == "MagmaHazard") {
+                    ImGui::DragFloat(ICON_FA_FIRE " 接触ダメージ", &p.speed, 0.5f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.1f, 10.0f, "%.2f s");
+                    ImGui::TextDisabled("触れたプレイヤーを炎上させ、上方向へ弾き返します");
+                }
+                else if (gType == "MagmaGeyser") {
+                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 警告時間", &p.shakeDuration, 0.05f, 0.2f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_FIRE " 噴出時間", &p.fallDuration, 0.05f, 0.2f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_CLOCK " 休止時間", &p.interval, 0.05f, 0.2f, 30.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_STOPWATCH " 初回ディレイ", &p.moveSpeed, 0.05f, 0.0f, 30.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 噴出高", &p.moveAmount, 0.25f, 0.5f, 60.0f, "%.1f m");
+                    ImGui::DragFloat(ICON_FA_EYE " シミュレーション距離", &p.maxFallSpeed, 1.0f, 20.0f, 500.0f, "%.0f m");
+                    ImGui::DragFloat(ICON_FA_CIRCLE " 危険半径", &p.detectionRange, 0.05f, 0.25f, 20.0f, "%.2f m");
+                    ImGui::DragFloat(ICON_FA_HEART_BROKEN " ダメージ", &p.speed, 0.5f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " 横吹き飛ばし", &p.gravity, 0.25f, 0.0f, 80.0f);
+                    ImGui::DragFloat(ICON_FA_ARROW_UP " 上吹き飛ばし", &p.jumpPower, 0.5f, 0.0f, 100.0f);
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+                    ImGui::TextDisabled("警告リングが消えている噴出中だけダメージ判定が有効です");
                 }
                 else if (gType == "ChainCollapseFloor") {
                     ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 揺れ時間", &p.shakeDuration, 0.05f, 0.0f, 10.0f, "%.2f s");

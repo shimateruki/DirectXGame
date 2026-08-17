@@ -1,28 +1,47 @@
 {
   "asset": {
-    "generator": "CG2 Wind Slime shared-mesh model",
+    "generator": "CG2 Wind Slime decorated shared-mesh model",
     "version": "2.0"
   },
   "scene": 0,
   "scenes": [
     {
       "name": "WindSlimeScene",
-      "nodes": [1, 2]
+      "nodes": [
+        1,
+        2,
+        3
+      ]
     }
   ],
   "nodes": [
     {
       "name": "WindSlime",
-      "rotation": [-0.70710688829422, 0.0, 0.0, 0.7071066498756409],
-      "scale": [100.0, 99.99999237060547, 99.99999237060547]
+      "rotation": [
+        -0.70710688829422,
+        0.0,
+        0.0,
+        0.7071066498756409
+      ],
+      "scale": [
+        100.0,
+        99.99999237060547,
+        99.99999237060547
+      ]
     },
     {
-      "children": [0],
+      "children": [
+        0
+      ],
       "name": "RootNode"
     },
     {
       "mesh": 0,
       "name": "WindSlime_Mesh"
+    },
+    {
+      "mesh": 1,
+      "name": "WindSlimeDecoration"
     }
   ],
   "materials": [
@@ -32,10 +51,55 @@
       "doubleSided": true,
       "name": "WindSlimeMint",
       "pbrMetallicRoughness": {
-        "baseColorFactor": [0.42, 1.0, 0.82, 1.0],
-        "baseColorTexture": { "index": 0 },
+        "baseColorFactor": [
+          0.42,
+          1.0,
+          0.82,
+          1.0
+        ],
+        "baseColorTexture": {
+          "index": 0
+        },
         "metallicFactor": 0.0,
         "roughnessFactor": 0.52
+      }
+    },
+    {
+      "doubleSided": true,
+      "emissiveFactor": [
+        0.04,
+        0.18,
+        0.12
+      ],
+      "name": "WindSlimeFins",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.32,
+          0.96,
+          0.73,
+          1.0
+        ],
+        "metallicFactor": 0.04,
+        "roughnessFactor": 0.3
+      }
+    },
+    {
+      "doubleSided": true,
+      "emissiveFactor": [
+        0.1,
+        0.32,
+        0.24
+      ],
+      "name": "WindSlimeSwirl",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.72,
+          1.0,
+          0.9,
+          1.0
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.22
       }
     }
   ],
@@ -53,9 +117,37 @@
           "material": 0
         }
       ]
+    },
+    {
+      "name": "WindSlimeDecorationMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 4,
+            "NORMAL": 5,
+            "TEXCOORD_0": 6
+          },
+          "material": 1,
+          "mode": 4
+        },
+        {
+          "attributes": {
+            "POSITION": 7,
+            "NORMAL": 8,
+            "TEXCOORD_0": 9
+          },
+          "material": 2,
+          "mode": 4
+        }
+      ]
     }
   ],
-  "textures": [{ "sampler": 0, "source": 0 }],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    }
+  ],
   "images": [
     {
       "mimeType": "image/png",
@@ -68,25 +160,175 @@
       "bufferView": 0,
       "componentType": 5126,
       "count": 465,
-      "max": [0.5119686722755432, 0.7366077899932861, 0.5145934820175171],
-      "min": [-0.5154838562011719, -0.005467218346893787, -0.5132371783256531],
+      "max": [
+        0.5119686722755432,
+        0.7366077899932861,
+        0.5145934820175171
+      ],
+      "min": [
+        -0.5154838562011719,
+        -0.005467218346893787,
+        -0.5132371783256531
+      ],
       "type": "VEC3"
     },
-    { "bufferView": 1, "componentType": 5126, "count": 465, "type": "VEC3" },
-    { "bufferView": 2, "componentType": 5126, "count": 465, "type": "VEC2" },
-    { "bufferView": 3, "componentType": 5123, "count": 2310, "type": "SCALAR" }
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 465,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 465,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5123,
+      "count": 2310,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5126,
+      "count": 288,
+      "type": "VEC3",
+      "min": [
+        -0.77,
+        0.23,
+        -0.018
+      ],
+      "max": [
+        0.77,
+        0.65,
+        0.057999999999999996
+      ]
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5126,
+      "count": 288,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 6,
+      "componentType": 5126,
+      "count": 288,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 7,
+      "componentType": 5126,
+      "count": 1872,
+      "type": "VEC3",
+      "min": [
+        -0.5954772067389196,
+        0.22181346652052678,
+        -0.5947352319879485
+      ],
+      "max": [
+        0.5668296837119114,
+        0.49472243186433545,
+        0.5958967200775823
+      ]
+    },
+    {
+      "bufferView": 8,
+      "componentType": 5126,
+      "count": 1872,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "componentType": 5126,
+      "count": 1872,
+      "type": "VEC2"
+    }
   ],
   "bufferViews": [
-    { "buffer": 0, "byteLength": 5580, "byteOffset": 0, "target": 34962 },
-    { "buffer": 0, "byteLength": 5580, "byteOffset": 5580, "target": 34962 },
-    { "buffer": 0, "byteLength": 3720, "byteOffset": 11160, "target": 34962 },
-    { "buffer": 0, "byteLength": 4620, "byteOffset": 14880, "target": 34963 }
+    {
+      "buffer": 0,
+      "byteLength": 5580,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 5580,
+      "byteOffset": 5580,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3720,
+      "byteOffset": 11160,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 4620,
+      "byteOffset": 14880,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3456,
+      "byteOffset": 19500,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 3456,
+      "byteOffset": 22956,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 2304,
+      "byteOffset": 26412,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 22464,
+      "byteOffset": 28716,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 22464,
+      "byteOffset": 51180,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 14976,
+      "byteOffset": 73644,
+      "target": 34962
+    }
   ],
-  "samplers": [{ "magFilter": 9729, "minFilter": 9987 }],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
   "buffers": [
     {
-      "byteLength": 19500,
+      "byteLength": 88620,
       "uri": "slime_wind.bin"
     }
-  ]
+  ],
+  "extras": {
+    "cg2WindSlimeDecoration": {
+      "byteLength": 19500,
+      "accessors": 4,
+      "bufferViews": 4,
+      "materials": 1,
+      "meshes": 1,
+      "nodes": 3
+    }
+  }
 }

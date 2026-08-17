@@ -26,6 +26,12 @@ std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
         << "_rand" << config.spriteSheetRandomStart
         << "_align" << config.alignToVelocity
         << "_stretch" << config.velocityStretch
+        << "_type" << config.particleType
+        << "_trail" << config.trailLength
+        << "_light" << config.receiveLighting
+        << "_lightStrength" << config.lightingStrength
+        << "_lightDir" << config.lightDirection.x << ',' << config.lightDirection.y << ',' << config.lightDirection.z
+        << "_lightColor" << config.lightColor.x << ',' << config.lightColor.y << ',' << config.lightColor.z
         << "_capacity" << GPUParticleManager::ResolveParticleCapacity(config);
     return key.str();
 }
@@ -294,6 +300,11 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("envDrag")) config.envDrag = j["envDrag"];
                 if (j.contains("envWind")) { config.envWind.x = j["envWind"][0]; config.envWind.y = j["envWind"][1]; config.envWind.z = j["envWind"][2]; }
                 if (j.contains("envTurbulence")) config.envTurbulence = j["envTurbulence"];
+                if (j.contains("fieldType")) config.fieldType = j["fieldType"];
+                if (j.contains("fieldPosition")) { config.fieldPosition.x = j["fieldPosition"][0]; config.fieldPosition.y = j["fieldPosition"][1]; config.fieldPosition.z = j["fieldPosition"][2]; }
+                if (j.contains("fieldStrength")) config.fieldStrength = j["fieldStrength"];
+                if (j.contains("fieldRadius")) config.fieldRadius = j["fieldRadius"];
+                if (j.contains("fieldFalloff")) config.fieldFalloff = j["fieldFalloff"];
                 if (j.contains("isLooping")) config.isLooping = j["isLooping"];
                 if (j.contains("emitInterval")) config.emitInterval = j["emitInterval"];
                 if (j.contains("shapeType")) config.shapeType = j["shapeType"];
@@ -324,6 +335,14 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                     config.alignToVelocity = j["alignToVelocity"].is_boolean() ? (j["alignToVelocity"].get<bool>() ? 1 : 0) : j["alignToVelocity"].get<int>();
                 }
                 if (j.contains("velocityStretch")) config.velocityStretch = j["velocityStretch"];
+                if (j.contains("particleType")) config.particleType = j["particleType"];
+                if (j.contains("trailLength")) config.trailLength = j["trailLength"];
+                if (j.contains("receiveLighting")) {
+                    config.receiveLighting = j["receiveLighting"].is_boolean() ? (j["receiveLighting"].get<bool>() ? 1 : 0) : j["receiveLighting"].get<int>();
+                }
+                if (j.contains("lightDirection")) { config.lightDirection.x = j["lightDirection"][0]; config.lightDirection.y = j["lightDirection"][1]; config.lightDirection.z = j["lightDirection"][2]; }
+                if (j.contains("lightColor")) { config.lightColor.x = j["lightColor"][0]; config.lightColor.y = j["lightColor"][1]; config.lightColor.z = j["lightColor"][2]; }
+                if (j.contains("lightingStrength")) config.lightingStrength = j["lightingStrength"];
                 if (j.contains("spriteAnimation") && j["spriteAnimation"].is_object()) {
                     const auto& anim = j["spriteAnimation"];
                     if (anim.contains("columns")) config.spriteSheetColumns = anim["columns"];
@@ -376,4 +395,25 @@ void GPUParticleManager::ResetSimulation() {
         }
     }
     updatedThisFrame_ = false;
+}
+
+void GPUParticleManager::ClearSceneRuntime() {
+    autoEmitters_.clear();
+    for (auto& [key, system] : systems_) {
+        (void)key;
+        if (system) {
+            // 旧シーンのModelバッファを次のシーンへ持ち越さない。
+            system->SetEmitterMesh(nullptr, 0, 0, 0);
+            system->ResetForSceneTransition();
+        }
+    }
+    nextAutoEmitterId_ = 0;
+    timeScale_ = 1.0f;
+    updatedThisFrame_ = false;
+    lastUpdateCpuTimeMs_ = 0.0f;
+    lastDrawCpuTimeMs_ = 0.0f;
+    meshVb_ = nullptr;
+    meshVCount_ = 0;
+    meshVStride_ = 0;
+    meshBoneSrv_ = 0;
 }

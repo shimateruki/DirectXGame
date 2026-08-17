@@ -1,0 +1,11 @@
+{
+    "assetType":  "Texture",
+    "guid":  "c325cb4e73d849baafe4d239bddb7931",
+    "importSettings":  {
+                           "colorSpace":  "Auto",
+                           "generateMipmaps":  false
+                       },
+    "importer":  "TextureImporter",
+    "source":  "Resources/sprite/ui/control_guide/labels/bomb_place.dds",
+    "version":  1
+}

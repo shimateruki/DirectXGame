@@ -188,6 +188,7 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 void MeshRenderer::DrawShadow() {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !shadowWvpResource_) return;
+    drawModel->PrepareComputeSkinning();
     common_->SetShadowGraphicsCommand();
     // 影用のパイプラインに変更
     common_->SetShadowPipelineState();
@@ -204,7 +205,11 @@ void MeshRenderer::SetShadowCommonState() {
 
 void MeshRenderer::DrawShadowOnly() {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !shadowWvpResource_) return;
+    if (!drawModel || !common_ || !shadowWvpResource_) return;
+    drawModel->PrepareComputeSkinning();
+    // Compute実行でルートシグネチャとPSOが変わるため、影描画の状態を復元します。
+    common_->SetShadowGraphicsCommand();
+    common_->SetShadowPipelineState();
     drawModel->DrawShadow(shadowWvpResource_.Get(), meshDrawIndex_);
 }
 

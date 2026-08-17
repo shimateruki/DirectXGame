@@ -8,6 +8,10 @@ public:
     bool OnCollision(Object3d* other) override;
 
 private:
-    float startY_ = 0.0f;
+    Vector3 startPosition_{};
+    Vector3 startRotation_{};
+    Vector3 frameDelta_{};
     float time_ = 0.0f;
+    float phaseOffset_ = 0.0f;
+    bool hasCapturedStartTransform_ = false;
 };

@@ -19,6 +19,8 @@ void AddCBV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VI
 void AddSRV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
         // 指定レジスタの書き込み可能リソースビューをRootParameterへ追加します。
 void AddUAV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
+        // 少量の頻繁に変わる値を、定数バッファを作らずRoot Constantsとして追加します。
+void AddConstants(uint32_t shaderRegister, uint32_t valueCount, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
     // =======================================================
     // 2. テーブル系 (汎用性と簡略化の両立)

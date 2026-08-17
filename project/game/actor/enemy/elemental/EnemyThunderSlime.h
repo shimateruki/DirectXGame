@@ -19,6 +19,7 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
     void ExecuteAbility(class Player* player) override;
+    void ExecuteDischargeAbility(class Player* player);
     void ExecuteEvadeAbility(class Player* player);
     void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     // 敵攻撃プレビューで選択した攻撃だけを確認できるよう、AIの攻撃候補を限定します。
@@ -69,6 +70,9 @@ void UpdateAuraEffect(float deltaTime);
     void SpawnCarriedLightningStrike(const Vector3& groundPosition, Player* player);
     void DispatchCarriedLightningDamage(const Vector3& groundPosition, Player* player);
     void ResetCarriedLightning();
+    void UpdateCarriedDischarge(Player* player, float deltaTime);
+    void ReleaseCarriedDischarge(Player* player);
+    void ResetCarriedDischarge();
     bool ResolveCarriedEvadeDestination(Player* player, Vector3& start, Vector3& destination, Vector3& direction) const;
     void SpawnCarriedEvadeEffects(const Vector3& start, const Vector3& destination, const Vector3& direction);
     void ApplySlimeAnimation(float deltaTime);
@@ -96,6 +100,7 @@ void UpdateAuraEffect(float deltaTime);
     int wildStrikeIndex_ = 0;
     bool wildLightningHitTarget_ = false;
     float carriedShockCooldown_ = 0.0f;  // 持ち運び能力の再使用待ち。
+    float carriedDischargeCooldown_ = 0.0f; // 円形放電の再使用待ち。
     float carriedEvadeCooldown_ = 0.0f;  // 雷回避の再使用待ち。
     float carriedEffectTimer_ = 0.0f;    // 持ち運び中の蓄電火花間隔。
     enum class CarriedLightningState {
@@ -109,6 +114,13 @@ void UpdateAuraEffect(float deltaTime);
     Vector3 carriedLightningDirection_ = { 0.0f, 0.0f, 1.0f };
     float carriedLightningTimer_ = 0.0f;
     int carriedStrikeIndex_ = 0;
+    enum class CarriedDischargeState {
+        Idle,
+        Charging,
+    };
+    CarriedDischargeState carriedDischargeState_ = CarriedDischargeState::Idle;
+    float carriedDischargeTimer_ = 0.0f;
+    float carriedDischargeEffectTimer_ = 0.0f;
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 lastShockDirection_ = { 0.0f, 0.0f, 1.0f };
     std::unique_ptr<EffectObject3d> auraEffect_;

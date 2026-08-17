@@ -68,6 +68,9 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerMorphReleaseTint"] = ToJson(enemyMorphReleaseTint_);
     state["playerElectricShockTimer"] = electricShockFeedbackTimer_;
     state["playerElectricShockLocked"] = electricShockControlLocked_;
+    state["playerTutorialSafety"] = tutorialSafetyEnabled_;
+    state["playerTutorialCarryThrowEnabled"] = tutorialCarryThrowEnabled_;
+    state["playerTutorialCarryAbsorbEnabled"] = tutorialCarryAbsorbEnabled_;
 }
 
 void Player::RestoreReplayCustomState(const json& state) {
@@ -140,4 +143,7 @@ void Player::RestoreReplayCustomState(const json& state) {
     }
     electricShockFeedbackTimer_ = state.value("playerElectricShockTimer", electricShockFeedbackTimer_);
     electricShockControlLocked_ = state.value("playerElectricShockLocked", electricShockControlLocked_);
+    tutorialSafetyEnabled_ = state.value("playerTutorialSafety", tutorialSafetyEnabled_);
+    tutorialCarryThrowEnabled_ = state.value("playerTutorialCarryThrowEnabled", tutorialCarryThrowEnabled_);
+    tutorialCarryAbsorbEnabled_ = state.value("playerTutorialCarryAbsorbEnabled", tutorialCarryAbsorbEnabled_);
 }

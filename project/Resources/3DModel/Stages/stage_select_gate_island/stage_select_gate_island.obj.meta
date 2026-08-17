@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "64c9903d9a6950fbb4586ab207ba4c8b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_gate_island/stage_select_gate_island.obj",
+  "version": 1
+}

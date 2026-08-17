@@ -76,6 +76,8 @@ public:
     void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
     void ApplyIceSurface(float duration, float friction, float steering);
+    void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
+    bool IsLaunchStarActive() const { return launchStarActive_; }
 
     // ==================================================
     // アクセス
@@ -115,6 +117,8 @@ public:
     bool IsControlActive() const { return isControlActive_; }
     void SetTutorialSafetyEnabled(bool enabled);
     bool IsTutorialSafetyEnabled() const { return tutorialSafetyEnabled_; }
+    void SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb);
+    void ResetTutorialCarryActionState();
 
     uint32_t GetJumpCount() const { return jumpCount_; }
     void IncrementJumpCount() { jumpCount_++; }
@@ -200,6 +204,21 @@ private:
     uint32_t cinematicSavedCollisionAttribute_ = 0;
     uint32_t cinematicSavedCollisionMask_ = 0;
     bool tutorialSafetyEnabled_ = false;
+    bool tutorialCarryThrowEnabled_ = true;
+    bool tutorialCarryAbsorbEnabled_ = true;
+
+    // スターランチャーによる区画間移動。移動中は入力と通常衝突を一時停止します。
+    bool launchStarActive_ = false;
+    bool launchStarSavedControlActive_ = true;
+    uint32_t launchStarSavedCollisionAttribute_ = 0;
+    uint32_t launchStarSavedCollisionMask_ = 0;
+    Vector3 launchStarStart_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 launchStarDestination_ = { 0.0f, 0.0f, 0.0f };
+    float launchStarArcHeight_ = 12.0f;
+    float launchStarDuration_ = 1.2f;
+    float launchStarTimer_ = 0.0f;
+    float launchStarTrailTimer_ = 0.0f;
+    void UpdateLaunchStar(float deltaTime);
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;

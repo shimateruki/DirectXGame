@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8dc5a598dcf65304905b3e3211f0d503",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/stage_gate_lock/stage_gate_lock.obj",
+  "version": 1
+}

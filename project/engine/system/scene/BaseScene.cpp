@@ -17,6 +17,18 @@ SceneLoadManifest BaseScene::BuildAsyncLoadManifest() const {
     return {};
 }
 
+void BaseScene::BeginLoadingInitialize() {
+}
+
+bool BaseScene::InitializeLoadingStep() {
+    Initialize();
+    return true;
+}
+
+float BaseScene::GetLoadingInitializeProgress() const {
+    return 0.0f;
+}
+
 void BaseScene::OnActivated() {
     // 非同期準備中ではなく、現在シーンへ切り替わった時点で描画背景を確定します。
     LightManager::GetInstance()->ApplySceneClearColor();

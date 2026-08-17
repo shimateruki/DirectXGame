@@ -96,6 +96,9 @@ void Object3dCommon::CreateRootSignature() {
     // [12] Shadow Map (DescriptorTable t5 - Pixel)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
+    // [13] Mesh Material Factors (Root Constants b5 - Pixel)
+    builder.AddConstants(5, 6, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
     // =================================================================
     // 2. サンプラーの設定 (s0, s1)
     // =================================================================

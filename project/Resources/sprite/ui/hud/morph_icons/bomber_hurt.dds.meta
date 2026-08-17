@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ed7958b16f65285c6275b49328d9dddf",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/bomber_hurt.dds",
+  "version": 1
+}

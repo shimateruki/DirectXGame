@@ -184,6 +184,7 @@
     <ClCompile Include="game\actor\gimmick\core\BaseGimmick.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickMovingFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp" />
+    <ClCompile Include="game\actor\gimmick\movement\GimmickLaunchStar.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickChikuwaBlock.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickBlinkBlock.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickBreakableBlock.cpp" />
@@ -207,6 +208,8 @@
     <ClCompile Include="game\actor\gimmick\combat\GimmickLaserNode.cpp" />
     <ClCompile Include="game\actor\gimmick\stage\GimmickStageGate.cpp" />
     <ClCompile Include="game\actor\gimmick\combat\GimmickFireCannon.cpp" />
+    <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaHazard.cpp" />
+    <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
@@ -607,6 +610,7 @@
     <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h" />
+    <ClInclude Include="game\actor\gimmick\movement\GimmickLaunchStar.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickChikuwaBlock.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickBlinkBlock.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickBreakableBlock.h" />
@@ -630,6 +634,8 @@
     <ClInclude Include="game\actor\gimmick\combat\GimmickLaserNode.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h" />
+    <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h" />
+    <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />

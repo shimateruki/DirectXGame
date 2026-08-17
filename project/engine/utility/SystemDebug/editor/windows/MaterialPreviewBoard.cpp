@@ -303,7 +303,13 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 8, "水 (Water)", "Water", {} },
         { 9, "新マグマ (Magma)", "Magma", {} },
         { 10, "分厚い氷 (Ice)", "ThickIce", {} },
-        { 11, "炎 (Fire)", "Fire", {{ 0.0f, "炎の形", "Flame" }, { 1.0f, "炎の球", "Ball" }} },
+        { 11, "炎 (Fire)", "Fire", {
+            { 0.0f, "炎の形", "Flame" },
+            { 1.0f, "炎の球", "Ball" },
+            { 2.0f, "まとい炎", "Wrapped" },
+            { 3.0f, "炎の流れ", "Stream" },
+            { 4.0f, "立体かがり火", "Brazier" }
+        } },
         { 12, "レーザー (Laser)", "Laser", {} },
         { 13, "スライムジェル (Slime Gel)", "SlimeGel", {} },
         { 14, "地面衝撃波 (Shockwave)", "Shockwave", {} },

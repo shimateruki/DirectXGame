@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c05b0cb8a5413d409ad868383184bd8b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/portraits/bat.dds",
+  "version": 1
+}

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -24,6 +25,14 @@ constexpr uint32_t kModelCacheVersion = 2;
 constexpr uint32_t kMaxCacheStringSize = 1024 * 1024;
 constexpr uint32_t kMaxCacheVectorCount = 10'000'000;
 constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
+
+float CalculateMaterialMultiplier(float value, float reference) {
+    constexpr float kEpsilon = 1.0e-5f;
+    if (std::abs(reference) > kEpsilon) {
+        return value / reference;
+    }
+    return std::abs(value) <= kEpsilon ? 1.0f : value;
+}
 
 // 描画中に同じフォールバック画像のファイル確認を繰り返さないよう、SRVを一度だけ解決します。
 uint32_t GetDefaultWhiteTextureHandle() {
@@ -708,6 +717,7 @@ void Model::InitializeFromCpuData(
 
     // 5. ボーン用バッファの作成 
     CreateBoneBuffer();
+    CreateComputeSkinningResources();
 }
 // ==========================================
 // ボーンバッファの作成とSRV登録 
@@ -778,6 +788,7 @@ void Model::UpdateBoneBuffer() {
         for (size_t i = 0; i < modelData_.bones.size(); ++i) {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
+        computeSkinningDirty_ = true;
         return;
     }
     // ボーンごとに計算
@@ -796,9 +807,157 @@ void Model::UpdateBoneBuffer() {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
     }
+    computeSkinningDirty_ = true;
 }
 
 // モデルの描画処理
+void Model::CreateComputeSkinningResources() {
+    computeSkinningAvailable_ = false;
+    computeSkinningDirty_ = true;
+    computeSkinningOutputReady_ = false;
+
+    for (auto& mesh : modelData_.meshes) {
+        mesh.computeSkinnedVertexResource.Reset();
+        mesh.computeSkinnedVertexBufferView = {};
+        mesh.computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+
+    if (!common_ || !common_->IsComputeSkinningAvailable() ||
+        !modelData_.hasSkinning || !boneResource_ || modelData_.bones.empty()) {
+        return;
+    }
+
+    ID3D12Device* device = common_->GetDxCommon()->GetDevice();
+    bool hasSkinnedMesh = false;
+
+    for (auto& mesh : modelData_.meshes) {
+        if (!mesh.vertexResource || mesh.vertices.empty()) {
+            continue;
+        }
+
+        D3D12_HEAP_PROPERTIES heapProperties{};
+        heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+        heapProperties.CreationNodeMask = 1;
+        heapProperties.VisibleNodeMask = 1;
+
+        D3D12_RESOURCE_DESC resourceDesc{};
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Width = sizeof(VertexData) * mesh.vertices.size();
+        resourceDesc.Height = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.SampleDesc.Count = 1;
+        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        const HRESULT result = device->CreateCommittedResource(
+            &heapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr,
+            IID_PPV_ARGS(mesh.computeSkinnedVertexResource.GetAddressOf()));
+        if (FAILED(result)) {
+            DebugConsole::GetInstance()->AddLog("Compute skinning output buffer creation failed.");
+            for (auto& resetMesh : modelData_.meshes) {
+                resetMesh.computeSkinnedVertexResource.Reset();
+                resetMesh.computeSkinnedVertexBufferView = {};
+                resetMesh.computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            }
+            return;
+        }
+
+        mesh.computeSkinnedVertexBufferView.BufferLocation =
+            mesh.computeSkinnedVertexResource->GetGPUVirtualAddress();
+        mesh.computeSkinnedVertexBufferView.SizeInBytes =
+            static_cast<UINT>(sizeof(VertexData) * mesh.vertices.size());
+        mesh.computeSkinnedVertexBufferView.StrideInBytes = sizeof(VertexData);
+        hasSkinnedMesh = true;
+    }
+
+    computeSkinningAvailable_ = hasSkinnedMesh;
+}
+
+bool Model::PrepareComputeSkinning() {
+    if (!computeSkinningAvailable_ || !common_ ||
+        !common_->IsComputeSkinningAvailable() || !boneResource_) {
+        return false;
+    }
+    if (!computeSkinningDirty_ && computeSkinningOutputReady_) {
+        return true;
+    }
+
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetComputeRootSignature(common_->GetComputeSkinningRootSignature());
+    commandList->SetPipelineState(common_->GetComputeSkinningPipelineState());
+    commandList->SetComputeRootShaderResourceView(1, boneResource_->GetGPUVirtualAddress());
+
+    bool dispatched = false;
+    for (auto& mesh : modelData_.meshes) {
+        if (!mesh.vertexResource || !mesh.computeSkinnedVertexResource || mesh.vertices.empty()) {
+            continue;
+        }
+
+        if (mesh.computeSkinnedVertexState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+            D3D12_RESOURCE_BARRIER toUnorderedAccess{};
+            toUnorderedAccess.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            toUnorderedAccess.Transition.pResource = mesh.computeSkinnedVertexResource.Get();
+            toUnorderedAccess.Transition.StateBefore = mesh.computeSkinnedVertexState;
+            toUnorderedAccess.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            toUnorderedAccess.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            commandList->ResourceBarrier(1, &toUnorderedAccess);
+            mesh.computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        }
+
+        commandList->SetComputeRootShaderResourceView(0, mesh.vertexResource->GetGPUVirtualAddress());
+        commandList->SetComputeRootUnorderedAccessView(
+            2,
+            mesh.computeSkinnedVertexResource->GetGPUVirtualAddress());
+
+        const uint32_t dispatchConstants[2] = {
+            static_cast<uint32_t>(mesh.vertices.size()),
+            static_cast<uint32_t>(modelData_.bones.size())
+        };
+        commandList->SetComputeRoot32BitConstants(
+            3,
+            static_cast<UINT>(std::size(dispatchConstants)),
+            dispatchConstants,
+            0);
+
+        const uint32_t groupCount =
+            (static_cast<uint32_t>(mesh.vertices.size()) + 63u) / 64u;
+        commandList->Dispatch(groupCount, 1, 1);
+        RenderStats::GetInstance()->RecordComputeDispatch(groupCount);
+
+        D3D12_RESOURCE_BARRIER unorderedAccessBarrier{};
+        unorderedAccessBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        unorderedAccessBarrier.UAV.pResource = mesh.computeSkinnedVertexResource.Get();
+        commandList->ResourceBarrier(1, &unorderedAccessBarrier);
+
+        D3D12_RESOURCE_BARRIER toVertexBuffer{};
+        toVertexBuffer.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        toVertexBuffer.Transition.pResource = mesh.computeSkinnedVertexResource.Get();
+        toVertexBuffer.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        toVertexBuffer.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        toVertexBuffer.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        commandList->ResourceBarrier(1, &toVertexBuffer);
+        mesh.computeSkinnedVertexState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        dispatched = true;
+    }
+
+    computeSkinningOutputReady_ = dispatched;
+    computeSkinningDirty_ = !dispatched;
+    return dispatched;
+}
+
+const D3D12_VERTEX_BUFFER_VIEW& Model::GetActiveVertexBufferView(const Mesh& mesh) const {
+    if (computeSkinningAvailable_ && computeSkinningOutputReady_ && !computeSkinningDirty_ &&
+        mesh.computeSkinnedVertexResource) {
+        return mesh.computeSkinnedVertexBufferView;
+    }
+    return mesh.vertexBufferView;
+}
+
 void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -843,6 +1002,33 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             meshMaterial = &modelData_.materials[mesh.materialIndex];
         }
 
+        std::array<float, 6> meshMaterialFactors = {
+            1.0f, 1.0f, 1.0f, 1.0f,
+            1.0f,
+            0.0f
+        };
+        const MaterialData* primaryMaterial = GetPrimaryMaterialData();
+        const bool usesModelTexture =
+            overrideTextureHandle == 0 || overrideTextureHandle >= DirectXCommon::kMaxSRVCount;
+        if (usesModelTexture && meshMaterial && primaryMaterial) {
+            meshMaterialFactors[0] = CalculateMaterialMultiplier(
+                meshMaterial->baseColorFactor.x, primaryMaterial->baseColorFactor.x);
+            meshMaterialFactors[1] = CalculateMaterialMultiplier(
+                meshMaterial->baseColorFactor.y, primaryMaterial->baseColorFactor.y);
+            meshMaterialFactors[2] = CalculateMaterialMultiplier(
+                meshMaterial->baseColorFactor.z, primaryMaterial->baseColorFactor.z);
+            meshMaterialFactors[3] = CalculateMaterialMultiplier(
+                meshMaterial->baseColorFactor.w, primaryMaterial->baseColorFactor.w);
+            meshMaterialFactors[4] = CalculateMaterialMultiplier(
+                meshMaterial->roughness, primaryMaterial->roughness);
+            meshMaterialFactors[5] = meshMaterial->metallic - primaryMaterial->metallic;
+        }
+        commandList->SetGraphicsRoot32BitConstants(
+            13,
+            static_cast<UINT>(meshMaterialFactors.size()),
+            meshMaterialFactors.data(),
+            0);
+
         uint32_t meshNormalHandle = normalMapHandle;
         if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSRVCount) &&
             meshMaterial && meshMaterial->hasNormalMap &&
@@ -865,7 +1051,8 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         }
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, meshOrmHandle);
 
-        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        const D3D12_VERTEX_BUFFER_VIEW& activeVertexBufferView = GetActiveVertexBufferView(mesh);
+        commandList->IASetVertexBuffers(0, 1, &activeVertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
         if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
