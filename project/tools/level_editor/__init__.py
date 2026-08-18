@@ -18,6 +18,8 @@ bl_info = {
 from .stretch_vertex import MYADDON_OT_stretch_vertex
 from .create_ico_sphere import MYADDON_OT_create_ico_sphere
 from .export_scene import MYADDON_OT_export_scene
+from .import_scene import MYADDON_OT_import_scene
+from .model_preview import MYADDON_OT_refresh_model_previews
 from .properties import (
     DrawCollider,
     MYADDON_OT_add_filename,
@@ -45,8 +47,8 @@ from .create_spawn_symbols import (
 
 # --- トップメニュークラス ---
 class TOPBAR_MT_my_menu(bpy.types.Menu):
-    bl_idname = "myaddon.topbar_mt_my_menu"
-    bl_label = "MyMenu"
+    bl_idname = "MYADDON_MT_level_editor"
+    bl_label = "CG2レベルエディタ"
     def draw(self, context):
         layout = self.layout
         layout.operator(MYADDON_OT_stretch_vertex.bl_idname, text=MYADDON_OT_stretch_vertex.bl_label)
@@ -60,6 +62,7 @@ class TOPBAR_MT_my_menu(bpy.types.Menu):
 
         layout.separator()
 
+        layout.operator(MYADDON_OT_import_scene.bl_idname, text=MYADDON_OT_import_scene.bl_label)
         layout.operator(MYADDON_OT_export_scene.bl_idname, text=MYADDON_OT_export_scene.bl_label)
 
 def submenu(self, context):
@@ -70,6 +73,8 @@ classes = (
     MYADDON_OT_stretch_vertex,
     MYADDON_OT_create_ico_sphere,
     MYADDON_OT_export_scene,
+    MYADDON_OT_import_scene,
+    MYADDON_OT_refresh_model_previews,
     MYADDON_OT_add_filename,
     OBJECT_PT_file_name,
     MYADDON_OT_add_collider,
@@ -97,7 +102,7 @@ def unregister():
     if DrawCollider.handle is not None:
         bpy.types.SpaceView3D.draw_handler_remove(DrawCollider.handle, "WINDOW")
         DrawCollider.handle = None
-    for cls in classes:
+    for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     print("レベルエディタが無効化されました。")
 

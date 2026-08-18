@@ -103,7 +103,7 @@ class MYADDON_OT_add_filename(bpy.types.Operator):
     bl_label = "FileName 追加"
     bl_options = {"REGISTER", "UNDO"}
     def execute(self, context):
-        context.object["file_name"] = "cube"
+        context.object["file_name"] = "Primitives/cube"
         return {"FINISHED"}
 
 class OBJECT_PT_file_name(bpy.types.Panel):
@@ -113,10 +113,12 @@ class OBJECT_PT_file_name(bpy.types.Panel):
     bl_region_type = "WINDOW"
     bl_context = "object"
     def draw(self, context):
-        if "file_name" in context.object:
+        if context.object is not None and "file_name" in context.object:
             self.layout.prop(context.object, '["file_name"]', text="Model Name")
         else:
             self.layout.operator(MYADDON_OT_add_filename.bl_idname)
+        if context.object is not None:
+            self.layout.operator("myaddon.myaddon_ot_refresh_model_previews", text="実モデル表示を更新")
 
 class MYADDON_OT_add_collider(bpy.types.Operator):
     bl_idname = "myaddon.myaddon_ot_add_collider"
@@ -135,7 +137,7 @@ class OBJECT_PT_collider(bpy.types.Panel):
     bl_region_type = "WINDOW"
     bl_context = "object"
     def draw(self, context):
-        if "collider" in context.object:
+        if context.object is not None and "collider" in context.object:
             self.layout.prop(context.object, '["collider"]', text="Type")
             self.layout.prop(context.object, '["collider_center"]', text="Center")
             self.layout.prop(context.object, '["collider_size"]', text="Size")

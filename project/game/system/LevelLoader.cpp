@@ -166,6 +166,153 @@ void ApplyLodConfig(Object3d* object, const json& objData) {
     }
     object->SetLodEnabled(lodJson.value("enabled", true));
 }
+
+bool TryReadVector3(const json& value, float& x, float& y, float& z) {
+    if (!value.is_array() || value.size() < 3 ||
+        !value[0].is_number() || !value[1].is_number() || !value[2].is_number()) {
+        return false;
+    }
+
+    x = value[0].get<float>();
+    y = value[1].get<float>();
+    z = value[2].get<float>();
+    return true;
+}
+
+json ConvertBlenderVector(const json& value, bool negate) {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    if (!TryReadVector3(value, x, y, z)) {
+        return value;
+    }
+
+    if (negate) {
+        return json::array({ -x, -z, -y });
+    }
+    return json::array({ x, z, y });
+}
+
+json NormalizeLevelObject(const json& source, const std::string& inheritedParentName) {
+    json normalized = source;
+    const bool hasLegacyTransform = source.contains("transform") && source["transform"].is_object();
+
+    if (hasLegacyTransform) {
+        const json& transform = source["transform"];
+        if (!normalized.contains("position") && transform.contains("translation")) {
+            normalized["position"] = ConvertBlenderVector(transform["translation"], false);
+        }
+        if (!normalized.contains("rotation") && transform.contains("rotation")) {
+            normalized["rotation"] = ConvertBlenderVector(transform["rotation"], true);
+        }
+        if (!normalized.contains("scale") && transform.contains("scaling")) {
+            normalized["scale"] = ConvertBlenderVector(transform["scaling"], false);
+        }
+
+        if (normalized.contains("collider") && normalized["collider"].is_object()) {
+            auto& collider = normalized["collider"];
+            if (collider.contains("center")) {
+                collider["center"] = ConvertBlenderVector(collider["center"], false);
+            }
+            if (collider.contains("rotation")) {
+                collider["rotation"] = ConvertBlenderVector(collider["rotation"], true);
+            }
+            if (collider.contains("size")) {
+                collider["size"] = ConvertBlenderVector(collider["size"], false);
+            }
+        }
+    }
+
+    if (!normalized.contains("modelName") && source.contains("file_name") && source["file_name"].is_string()) {
+        normalized["modelName"] = source["file_name"];
+    }
+
+    const bool isPlayerSpawn = source.value("spawn", false);
+    const bool isEnemySpawn = source.value("enemy", false);
+    const std::string sourceType = source.value("type", "Model");
+    if (isPlayerSpawn) {
+        normalized["type"] = "Player";
+        normalized["saveCategory"] = "Player";
+    } else if (isEnemySpawn) {
+        normalized["type"] = "Enemy";
+        normalized["saveCategory"] = "Enemy";
+        std::string enemyType = source.value("enemyType", "");
+        if (enemyType.empty()) {
+            enemyType = source.value("enemy_type", "Slime");
+        }
+        normalized["enemyType"] = enemyType.empty() ? "Slime" : enemyType;
+    } else if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" ||
+        sourceType == "SURFACE" || sourceType == "META" || sourceType == "FONT") {
+        normalized["type"] = "Model";
+        if (!normalized.contains("saveCategory")) {
+            normalized["saveCategory"] = "Object";
+        }
+    }
+
+    if (!inheritedParentName.empty() &&
+        (!normalized.contains("parentName") || !normalized["parentName"].is_string() || normalized["parentName"].get<std::string>().empty())) {
+        normalized["parentName"] = inheritedParentName;
+    }
+
+    normalized.erase("transform");
+    normalized.erase("children");
+    normalized.erase("file_name");
+    normalized.erase("spawn");
+    normalized.erase("enemy");
+    normalized.erase("enemy_type");
+    return normalized;
+}
+
+void AppendNormalizedLevelObjects(
+    const json& sourceObjects,
+    json& destination,
+    const std::string& inheritedParentName = "") {
+    if (!sourceObjects.is_array()) {
+        return;
+    }
+
+    for (const auto& source : sourceObjects) {
+        if (!source.is_object()) {
+            continue;
+        }
+
+        json normalized = NormalizeLevelObject(source, inheritedParentName);
+        const std::string childParentName = normalized.value("name", inheritedParentName);
+        destination.push_back(std::move(normalized));
+
+        if (source.contains("children")) {
+            AppendNormalizedLevelObjects(source["children"], destination, childParentName);
+        }
+    }
+}
+
+bool RequiresLevelObjectNormalization(const json& sourceObjects) {
+    if (!sourceObjects.is_array()) {
+        return false;
+    }
+
+    for (const auto& source : sourceObjects) {
+        if (!source.is_object()) {
+            continue;
+        }
+
+        if (source.contains("transform") || source.contains("file_name") ||
+            source.contains("spawn") || source.contains("enemy")) {
+            return true;
+        }
+
+        const std::string sourceType = source.value("type", "Model");
+        if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" ||
+            sourceType == "SURFACE" || sourceType == "META" || sourceType == "FONT") {
+            return true;
+        }
+
+        if (source.contains("children") && source["children"].is_array() && !source["children"].empty()) {
+            return true;
+        }
+    }
+    return false;
+}
 }
 
 
@@ -273,8 +420,14 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
         }
 
         if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+            const json* objectsToLoad = &sceneData["objects"];
+            json normalizedObjects = json::array();
+            if (RequiresLevelObjectNormalization(sceneData["objects"])) {
+                AppendNormalizedLevelObjects(sceneData["objects"], normalizedObjects);
+                objectsToLoad = &normalizedObjects;
+            }
 
-            for (const auto& objData : sceneData["objects"]) {
+            for (const auto& objData : *objectsToLoad) {
                 if (!objData.contains("name") || !objData["name"].is_string()) continue;
                 std::string name = objData["name"].get<std::string>();
 

@@ -25,12 +25,46 @@ PNG生成、DDS変換、LOD生成、アセット監査などは、Editor操作�
 | `tools/model_lod/` | モデルLOD生成ツール。Blenderまたはnative簡易生成を使います。 |
 | `tools/shader_texture/` | シェーダー用の補助テクスチャを生成するツール。水、ゲート、炎、ガラスなどのマスクを作ります。 |
 | `tools/terrain/` | 地形メッシュ、ペイントマップ、衝突用メタ情報を生成します。 |
+| `tools/level_editor/` | BlenderでCG2のレベルJSONを読み込み、配置とスポーン地点を編集して書き戻すアドオンです。 |
 | `tools/json_backup/` | JSON変更をバックアップするウォッチャーです。 |
 | `tools/deps/` | SDL2など外部依存関係の復元ツールです。 |
 | `tools/model_generation/` | 制作用モデルを生成する補助スクリプト群です。 |
 | `tools/sprite_generation/` | UIや演出用Sprite素材を生成する補助スクリプト群です。 |
 | `tools/docs/` | 仕様書などのドキュメント生成補助です。 |
 | `tools/effect_previews/` | エフェクト案の確認用画像/GIF置き場です。 |
+
+## Blender Level Editor
+
+### 目的
+
+現行CG2のレベルJSONをBlenderへ読み込み、オブジェクトの位置、回転、拡縮、プレイヤー開始位置、敵の初期配置を編集して、`LevelLoader`が読める形式で書き戻します。
+
+### 基本操作
+
+1. Blenderへ `tools/level_editor/` をアドオンとして導入し、有効化します。
+2. 上部メニューの「CG2レベルエディタ」から「CG2シーン読込 (JSON)」を選びます。
+3. `stage1.json` または `stage1_player.json` などを選びます。分割ファイルが存在する場合は、`LevelLoader`と同じ規則で4カテゴリをまとめて読み込みます。
+4. Blender上に表示された実モデルを見ながら、名前、位置、回転、拡縮、親子関係を編集します。モデルを持たないPlayer／Enemy／Spawner等には色付きシンボルも表示されます。
+5. 「出現ポイントシンボルの作成」または「敵出現ポイントシンボルの作成」で新しいスポーン地点を追加できます。敵はObjectプロパティの `Enemy Type` で種類を指定します。
+6. モデルを変更する場合はObjectプロパティの `Model Name` を編集し、「実モデル表示を更新」を押します。
+7. 「CG2シーン出力 (JSON)」を選びます。既定では `_player.json`、`_enemy.json`、`_object.json`、`_camera.json` の4ファイルへ分割出力します。
+
+### 対応仕様
+
+- CG2のY-up座標系とBlenderのZ-up座標系を入出力時に相互変換します。
+- 現行形式の名前、`position`、`rotation`、`scale`、`modelName`、`type`、`enemyType`、`parentName`、`parentGuid` に対応します。
+- `ModelManager`と同じ探索順でOBJ、glTF、GLBを読み込みます。同一モデルはBlender内の共有Collectionへ1回だけ読み込み、各配置はCollection Instanceとして表示します。
+- Player／Enemyに `modelName` が無い場合は、`Resources/json/gameplay/status_settings.json` の実行時モデルを表示します。
+- 新規作成や複製でGUIDが無い、または重複した場合は、出力時に一意なGUIDを割り当てて親子関係を安定させます。
+- 読み込んだオブジェクトは元のJSONを内部保持するため、配置編集後もマテリアル、アニメーション、ゲーム固有パラメータを維持します。
+- 旧Blender形式の `transform.translation`、`file_name`、`spawn`、`enemy`、`children` は、アドオンと `LevelLoader` の両方で後方互換対応しています。
+
+### 注意点
+
+- 新規の通常オブジェクトはObjectプロパティの `Model Name` に、`Resources/3DModel/` からの相対モデル名を設定してください。
+- モデルのメッシュ、マテリアル、テクスチャは配置確認用に読み込みますが、ゲーム側のシェーダー、アニメーション再生、エフェクトまではBlenderで完全再現しません。
+- モデルファイルを外部で更新した場合は、JSON読込画面の「モデルキャッシュを再構築」を有効にして読み直してください。
+- 出力前にPlayerが1つだけ存在することと、Enemyの `Enemy Type` が `EnemyFactory` の対応名になっていることを確認してください。
 
 ## Text PNG Generator
 
