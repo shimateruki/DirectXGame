@@ -382,3 +382,9 @@ project_submit_removed_*/
 
 # Local runtime save data
 project/Resources/json/save/
+
+# Runtime shader sources are not Visual Studio build-output folders.
+!project/Resources/shader/debug/
+!project/Resources/shader/debug/*.hlsl
+!project/Resources/shader/debug/*.hlsli
+!project/Resources/shader/debug/*.meta

@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "75d314a655df3b28033e401f01446a19",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/debug/DebugPrimitive.hlsli",
+  "version": 1
+}
