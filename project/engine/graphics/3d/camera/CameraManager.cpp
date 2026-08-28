@@ -23,3 +23,21 @@ void CameraManager::SetInputManager(InputManager* inputManager) {
         mainCamera_->SetInputManager(inputManager);
     }
 }
+
+void CameraManager::PlayShake(float duration, float amplitude, float frequency, const Vector3& axisWeight) {
+    if (Camera* camera = GetActiveCamera()) {
+        camera->StartShake(duration, amplitude, frequency, axisWeight);
+    }
+}
+
+void CameraManager::PlayFovPulse(float duration, float amountRadians, float attackRatio) {
+    if (Camera* camera = GetActiveCamera()) {
+        camera->StartFovPulse(duration, amountRadians, attackRatio);
+    }
+}
+
+void CameraManager::ClearPresentationLayers() {
+    if (Camera* camera = GetActiveCamera()) {
+        camera->ClearPresentationLayers();
+    }
+}

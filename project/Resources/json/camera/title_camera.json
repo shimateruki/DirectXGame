@@ -6,6 +6,14 @@
         0.0
     ],
     "boostSpeed": 2.0,
+    "cameraBodyVisible": true,
+    "cameraFrustumLength": 6.0,
+    "cameraGuideSize": 0.6499999761581421,
+    "cameraGuideVisible": true,
+    "cameraPreviewFps": 15,
+    "cameraPreviewHeight": 180.0,
+    "cameraPreviewResolutionScale": 0.5,
+    "cameraPreviewVisible": false,
     "cameraSensitivity": 0,
     "distance": 15.0,
     "fixedPointAngle": [
@@ -18,7 +26,7 @@
         25.39353370666504,
         -81.83000946044922
     ],
-    "gameFollowMode": 5,
+    "gameFollowMode": 4,
     "height": 5.0,
     "lockOnOffset": [
         0.0,
@@ -27,17 +35,17 @@
     ],
     "mouseSensitivity": 0.003000000026077032,
     "moveSpeed": 0.5,
-    "orbitCenterGizmoVisible": true,
-    "orbitCenterHeight": 5.0,
+    "orbitCenterGizmoVisible": false,
+    "orbitCenterHeight": 1.0,
     "orbitCenterOffset": [
         0.0,
         0.0,
         0.0
     ],
     "orbitGuideMarkerSize": 0.44999998807907104,
-    "orbitGuideVisible": true,
-    "orbitHeight": -29.922401428222656,
-    "orbitRadius": 232.26377868652344,
-    "orbitSpeed": 0.004999999888241291,
-    "orbitStartAngleDeg": 7.927742004394531
+    "orbitGuideVisible": false,
+    "orbitHeight": 33.099998474121094,
+    "orbitRadius": 70.69999694824219,
+    "orbitSpeed": 0.0024999999441206455,
+    "orbitStartAngleDeg": -65.0
 }

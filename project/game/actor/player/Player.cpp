@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Player.h"
+#include "PlayerCopyAbilityController.h"
 #include "Model.h"
 #include "CollisionConfig.h"
 #include "engine/utility/math/Math.h"
@@ -17,16 +18,13 @@
 #include <CollisionManager.h>
 #include "DirectXCommon.h"
 #include"BaseEnemy.h"
-#include "EnemyFireSlime.h"
-#include "EnemyThunderSlime.h"
-#include "EnemyWindSlime.h"
-#include "EnemySlime.h"
-#include "EnemyBomber.h"
 #include "Bullet.h"
 #include "GimmickHookPullBlock.h"
+#include "GimmickBreakableBlock.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
 #include <cmath>
+#include <unordered_set>
 
 namespace {
     constexpr float kPi = 3.1415926535f;
@@ -42,6 +40,12 @@ namespace {
     constexpr float kPlayerModelYawOffset = kPi;
     constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
     constexpr float kPinkSlimeMorphParticleInterval = 0.18f;
+    constexpr const char* kBomberMorphAuraPreset = "player_bomb_morph_aura";
+    constexpr const char* kFireMorphAuraPreset = "player_fire_morph_aura";
+    constexpr const char* kWindMorphAuraPreset = "player_wind_morph_aura";
+    constexpr const char* kBomberMorphPulseEffectPath = "Resources/json/effect/effect_player_bomb_morph_pulse.json";
+    constexpr const char* kFireMorphPulseEffectPath = "Resources/json/effect/effect_player_fire_morph_pulse.json";
+    constexpr const char* kWindMorphPulseEffectPath = "Resources/json/effect/effect_player_wind_morph_pulse.json";
     constexpr float kElectricShockShakeAmount = 0.045f;
     constexpr const char* kElectricShockAuraEffectPath = "Resources/json/effect/effect_thunder_slime_constant_aura.json";
 
@@ -121,11 +125,32 @@ namespace {
         EmitOuterThunderParticles(position, scale, 0.35f, 4);
     }
 
+    void EmitCopyMorphPreset(const char* presetName, const Vector3& position) {
+        auto* gpuParticleManager = GPUParticleManager::GetInstance();
+        if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
+            gpuParticleManager->Emit(presetName, position);
+        }
+    }
+
+    void SpawnCopyMorphPulse(const char* effectPath, const Vector3& position, const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+        auto* meshEffects = MeshEffectManager::GetInstance();
+        if (meshEffects) {
+            meshEffects->SpawnEffectAt(effectPath, position, { 0.0f, 0.0f, 0.0f }, scale);
+        }
+    }
+
 }
 
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
+
+Player::~Player() = default;
+
+bool Player::IsGiantSlimeRushActive() const
+{
+    return copyAbilityController_ && copyAbilityController_->IsGiantRushActive();
+}
 
 void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon)
 {
@@ -135,6 +160,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 外部システムの依存注入
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
+    copyAbilityController_ = std::make_unique<PlayerCopyAbilityController>();
 
     // 自機としての基本設定
     SetClassName("Player");
@@ -196,7 +222,7 @@ void Player::ApplyManagedScale(const Vector3& scale) {
     if (GetCollider()) {
         GetCollider()->SetScaleOverride(scale);
     }
-    slimeAnimator_.Reset(scale);
+    slimeAnimator_.Reset(scale, this);
 }
 
 void Player::Update(float deltaTime)
@@ -227,17 +253,19 @@ void Player::Update(float deltaTime)
         return;
     }
 
-    const bool elementalEvadeInputMode =
+    const bool copyAbilityInputMode =
         isEnemyMorphed_ &&
-        (enemyMorphType_ == EnemyMorphType::ThunderSlime || enemyMorphType_ == EnemyMorphType::WindSlime) &&
+        enemyMorphType_ != EnemyMorphType::None &&
         !enemyMorphReleaseActive_ &&
         !absorbEffectActive_;
     const bool hookAimHeld =
-        inputManager_ && inputManager_->IsMouseButtonPressed(1) && !elementalEvadeInputMode;
+        inputManager_ && inputManager_->IsMouseButtonPressed(1) && !copyAbilityInputMode;
 
-    if (elementalEvadeInputMode && hookMarker_) {
-        // 属性形態の右クリックは回避能力専用です。以前のフック照準を持ち越しません。
-        hookMarker_->SetIsVisible(false);
+    if (copyAbilityInputMode) {
+        // コピー中の右クリックは能力専用です。通常形態のフック照準を持ち越しません。
+        if (hookMarker_) {
+            hookMarker_->SetIsVisible(false);
+        }
         aimTargetObject_ = nullptr;
     }
 
@@ -466,7 +494,7 @@ void Player::Update(float deltaTime)
     UpdateElectricShockFeedback(deltaTime);
 
     const bool hasVisibleInvincibility =
-        isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_;
+        isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ || isGuardInvincible_;
     if (hasVisibleInvincibility && deltaTime > 0.0f) {
         invincibleBlinkTimer_ += deltaTime;
     }
@@ -476,9 +504,11 @@ void Player::Update(float deltaTime)
     if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
         const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
-        const Vector4 flash = (isDashInvincible_ || isEvasionInvincible_)
-            ? Vector4{ 0.34f, 0.74f, 1.0f, 1.0f }
-            : Vector4{ 1.0f, 0.78f, 0.32f, 1.0f };
+        const Vector4 flash = isGuardInvincible_
+            ? Vector4{ 1.0f, 0.42f, 0.84f, 1.0f }
+            : ((isDashInvincible_ || isEvasionInvincible_)
+                ? Vector4{ 0.34f, 0.74f, 1.0f, 1.0f }
+                : Vector4{ 1.0f, 0.78f, 0.32f, 1.0f });
         const float flashRate = blink > 0.48f ? 0.72f : 0.12f;
         const Vector4 color = {
             base.x * (1.0f - flashRate) + flash.x * flashRate,
@@ -549,9 +579,15 @@ void Player::Update(float deltaTime)
     const bool morphRightAbilityTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsMouseButtonTriggered(1);
+    const bool morphRightAbilityHeld =
+        deltaTime > 0.0f &&
+        inputManager_->IsMouseButtonPressed(1);
     const bool morphLeftAbilityTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsMouseButtonTriggered(0);
+    const bool morphLeftAbilityHeld =
+        deltaTime > 0.0f &&
+        inputManager_->IsMouseButtonPressed(0);
     const bool morphReleaseTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsActionTriggered("MorphRelease");
@@ -629,69 +665,21 @@ void Player::Update(float deltaTime)
         SetCarriedEnemy(nullptr);
         DebugConsole::GetInstance()->AddLog("Throw Enemy!");
     }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::ThunderSlime && morphRightAbilityTriggered) {
-        if (auto* thunderSlime = dynamic_cast<EnemyThunderSlime*>(activeMorphSource)) {
-            thunderSlime->ExecuteEvadeAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::FireSlime && morphRightAbilityTriggered) {
-        if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(activeMorphSource)) {
-            fireSlime->ExecuteDashAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::Slime && morphRightAbilityTriggered) {
-        if (auto* slime = dynamic_cast<EnemySlime*>(activeMorphSource)) {
-            slime->ExecuteBounceEvadeAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::Bomber && morphRightAbilityTriggered) {
-        if (auto* bomber = dynamic_cast<EnemyBomber*>(activeMorphSource)) {
-            bomber->ExecuteBlastJumpAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::WindSlime && morphRightAbilityTriggered) {
-        if (auto* windSlime = dynamic_cast<EnemyWindSlime*>(activeMorphSource)) {
-            windSlime->ExecuteDashAbility(this);
-        }
+    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && copyAbilityController_ &&
+        copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
+        PlayerCopyAbilityInput abilityInput;
+        abilityInput.specialTriggered = carryAbilityTriggered;
+        abilityInput.primaryTriggered = morphLeftAbilityTriggered;
+        abilityInput.primaryHeld = morphLeftAbilityHeld;
+        abilityInput.secondaryTriggered = morphRightAbilityTriggered;
+        abilityInput.secondaryHeld = morphRightAbilityHeld;
+        copyAbilityController_->ProcessInput(*this, abilityInput);
     }
     else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && carryAbilityTriggered) {
+        // 非スライム系の旧コピー能力は、専用セッションへ移行するまで従来経路を維持します。
         activeMorphSource->ExecuteAbility(this);
     }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::ThunderSlime && morphLeftAbilityTriggered) {
-        if (auto* thunderSlime = dynamic_cast<EnemyThunderSlime*>(activeMorphSource)) {
-            thunderSlime->ExecuteDischargeAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::Slime && morphLeftAbilityTriggered) {
-        if (auto* slime = dynamic_cast<EnemySlime*>(activeMorphSource)) {
-            slime->ExecuteStraightAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::Bomber && morphLeftAbilityTriggered) {
-        if (auto* bomber = dynamic_cast<EnemyBomber*>(activeMorphSource)) {
-            bomber->ExecutePlaceAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && enemyMorphType_ == EnemyMorphType::FireSlime && inputManager_->IsMouseButtonPressed(0)) {
-        if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(activeMorphSource)) {
-            fireSlime->ExecuteBreathAbility(this);
-        }
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource &&
-        enemyMorphType_ == EnemyMorphType::WindSlime && inputManager_->IsMouseButtonPressed(0)) {
-        if (auto* windSlime = dynamic_cast<EnemyWindSlime*>(activeMorphSource)) {
-            windSlime->ExecutePrimaryAbility(this);
-        }
-    }
-	else if (tutorialCarryAbsorbEnabled_ &&
+    else if (tutorialCarryAbsorbEnabled_ &&
         !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && carriedEnemyBase && carryAbilityTriggered) {
 		BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
 		if (enemyBase) {
@@ -771,7 +759,12 @@ void Player::Update(float deltaTime)
             carriedBase->UpdateCarriedAbility(this, deltaTime);
         }
     }
-    if (activeMorphSource && activeMorphSource != carriedEnemy_ && !enemyMorphReleaseActive_) {
+    if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_)) &&
+        !enemyMorphReleaseActive_) {
+        copyAbilityController_->Update(*this, deltaTime);
+    }
+    else if (activeMorphSource && activeMorphSource != carriedEnemy_ && !enemyMorphReleaseActive_) {
+        // 非スライム系だけは旧能力経路を維持します。
         activeMorphSource->SetIsVisible(false);
         activeMorphSource->SetCollisionAttribute(0);
         activeMorphSource->SetCollisionMask(0);
@@ -1160,8 +1153,19 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
+    if (copyAbilityController_) {
+        copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), enemy->GetAttackProfile());
+    }
     enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
     isEnemyMorphed_ = true;
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
+        camera->SetAimCameraSuppressed(true);
+    }
+    if (hookMarker_) {
+        hookMarker_->SetIsVisible(false);
+    }
+    aimTargetObject_ = nullptr;
     SetMoveYaw(currentMoveYaw);
     enemy->SetCarried(true);
     if (enemy->param_.has_value()) {
@@ -1199,11 +1203,26 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
         EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f }, managedBaseScale_);
     }
     else if (enemyMorphType_ == EnemyMorphType::Slime) {
-        auto* gpuParticleManager = GPUParticleManager::GetInstance();
-        if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
-            gpuParticleManager->Emit(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
-        }
+        EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
         enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
+    }
+    else if (enemyMorphType_ == EnemyMorphType::Bomber) {
+        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
+        SpawnCopyMorphPulse(kBomberMorphPulseEffectPath, effectPosition, { 1.12f, 1.12f, 1.12f });
+        EmitCopyMorphPreset(kBomberMorphAuraPreset, effectPosition);
+        enemyMorphEffectTimer_ = 0.34f;
+    }
+    else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
+        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f };
+        SpawnCopyMorphPulse(kFireMorphPulseEffectPath, effectPosition, { 1.18f, 1.18f, 1.18f });
+        EmitCopyMorphPreset(kFireMorphAuraPreset, effectPosition);
+        enemyMorphEffectTimer_ = 0.22f;
+    }
+    else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
+        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
+        SpawnCopyMorphPulse(kWindMorphPulseEffectPath, effectPosition, { 1.22f, 1.0f, 1.22f });
+        EmitCopyMorphPreset(kWindMorphAuraPreset, effectPosition);
+        enemyMorphEffectTimer_ = 0.28f;
     }
     else if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime && enemyMorphType_ != EnemyMorphType::GiantSlime) {
         Vector3 up = { 0.0f, 1.0f, 0.0f };
@@ -1225,6 +1244,12 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     DebugConsole::GetInstance()->AddLog("Enemy morph start: " + enemy->GetEnemyType());
     if (carriedEnemy_ == enemy) {
         SetCarriedEnemy(nullptr);
+    }
+
+    // スライム系のコピー能力は元敵の寿命から完全に切り離します。
+    // 以降の更新・解除はPlayerCopyAbilityControllerだけが担当します。
+    if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
+        enemyMorphSource_ = nullptr;
     }
 }
 
@@ -1276,11 +1301,23 @@ void Player::UpdateEnemyMorph(float deltaTime)
             return;
         }
         else if (enemyMorphType_ == EnemyMorphType::Slime) {
-            auto* gpuParticleManager = GPUParticleManager::GetInstance();
-            if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
-                gpuParticleManager->Emit(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
-            }
+            EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
             enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
+            return;
+        }
+        else if (enemyMorphType_ == EnemyMorphType::Bomber) {
+            EmitCopyMorphPreset(kBomberMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f });
+            enemyMorphEffectTimer_ = 0.34f;
+            return;
+        }
+        else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
+            EmitCopyMorphPreset(kFireMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f });
+            enemyMorphEffectTimer_ = 0.22f;
+            return;
+        }
+        else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
+            EmitCopyMorphPreset(kWindMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f });
+            enemyMorphEffectTimer_ = 0.28f;
             return;
         }
         else if (particleSystem_) {
@@ -1427,14 +1464,8 @@ void Player::BeginEnemyMorphRelease(bool expired)
         return;
     }
 
-    if (auto* slime = dynamic_cast<EnemySlime*>(enemyMorphSource_)) {
-        slime->CancelCarriedAbility(this);
-    }
-    if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(enemyMorphSource_)) {
-        fireSlime->ReleaseCarriedAbilityVisuals();
-    }
-    if (auto* windSlime = dynamic_cast<EnemyWindSlime*>(enemyMorphSource_)) {
-        windSlime->ReleaseCarriedAbilityVisuals();
+    if (copyAbilityController_) {
+        copyAbilityController_->Cancel(*this);
     }
     evasionInvincibleTimer_ = 0.0f;
     isEvasionInvincible_ = false;
@@ -1527,10 +1558,19 @@ void Player::EmitEnemyMorphReleaseBurst()
         EmitThunderMorphBurst(enemyMorphReleaseStartPosition_, enemyMorphReleaseVisualScale_);
     }
     else if (enemyMorphType_ == EnemyMorphType::Slime) {
-        auto* gpuParticleManager = GPUParticleManager::GetInstance();
-        if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
-            gpuParticleManager->Emit(kPinkSlimeMorphBurstPreset, enemyMorphReleaseStartPosition_);
-        }
+        EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, enemyMorphReleaseStartPosition_);
+    }
+    else if (enemyMorphType_ == EnemyMorphType::Bomber) {
+        SpawnCopyMorphPulse(kBomberMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.24f, 1.24f, 1.24f });
+        EmitCopyMorphPreset(kBomberMorphAuraPreset, enemyMorphReleaseStartPosition_);
+    }
+    else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
+        SpawnCopyMorphPulse(kFireMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.28f, 1.28f, 1.28f });
+        EmitCopyMorphPreset(kFireMorphAuraPreset, enemyMorphReleaseStartPosition_);
+    }
+    else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
+        SpawnCopyMorphPulse(kWindMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.32f, 1.08f, 1.32f });
+        EmitCopyMorphPreset(kWindMorphAuraPreset, enemyMorphReleaseStartPosition_);
     }
 
     RestoreEnemyMorphAppearance();
@@ -1659,8 +1699,8 @@ void Player::RestoreEnemyMorphAppearance()
     const float currentMoveYaw = GetMoveYaw();
     BaseEnemy* morphSource = enemyMorphSource_;
 
-    if (auto* slime = dynamic_cast<EnemySlime*>(morphSource)) {
-        slime->CancelCarriedAbility(this);
+    if (copyAbilityController_) {
+        copyAbilityController_->Cancel(*this);
     }
 
     if (!savedMorphModelName_.empty()) {
@@ -1695,12 +1735,6 @@ void Player::RestoreEnemyMorphAppearance()
     if (morphSource && !morphSource->isDead && !morphSource->IsDefeatEffectPlaying()) {
         morphSource->SetIsVisible(savedMorphSourceVisible_);
     }
-    if (auto* fireSlime = dynamic_cast<EnemyFireSlime*>(morphSource)) {
-        fireSlime->ReleaseCarriedAbilityVisuals();
-    }
-    if (auto* windSlime = dynamic_cast<EnemyWindSlime*>(morphSource)) {
-        windSlime->ReleaseCarriedAbilityVisuals();
-    }
     if (carriedEnemy_ == morphSource) {
         SetCarriedEnemy(nullptr);
     }
@@ -1714,6 +1748,9 @@ void Player::RestoreEnemyMorphAppearance()
     enemyMorphVisualTimer_ = 0.0f;
     savedMorphChildVisible_.clear();
     savedMorphSourceVisible_ = true;
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        camera->SetAimCameraSuppressed(false);
+    }
     SetMoveYaw(currentMoveYaw);
     DebugConsole::GetInstance()->AddLog("Enemy morph end.");
 }
@@ -1744,10 +1781,39 @@ void Player::CancelEnemyMorph()
     }
     ResetEnemyMorphRelease();
     RestoreEnemyMorphAppearance();
+    if (hookMarker_) {
+        hookMarker_->SetIsVisible(false);
+    }
+    aimTargetObject_ = nullptr;
     evasionInvincibleTimer_ = 0.0f;
     isEvasionInvincible_ = false;
     UpdateColor();
 }
+
+#ifdef USE_IMGUI
+void Player::DebugForceEnemyMorph(BaseEnemy* enemy)
+{
+    if (!enemy || isDead || isCinematicLocked_) {
+        return;
+    }
+
+    // 通常の吸収・運搬状態を先に解消し、能力側に古い敵参照を残さないようにします。
+    CancelEnemyMorph();
+    ReleaseCarriedEnemy(true);
+    StartEnemyMorph(enemy);
+
+    // デバッグ中は時間切れで解除されないようにし、任意の能力を継続して確認できます。
+    if (isEnemyMorphed_) {
+        enemyMorphHasTimeLimit_ = false;
+        enemyMorphTimer_ = 0.0f;
+    }
+}
+
+void Player::DebugClearEnemyMorph()
+{
+    CancelEnemyMorph();
+}
+#endif
 
 void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration)
 {
@@ -2075,6 +2141,12 @@ bool Player::OnCollision(Object3d* other)
     // =======================================================
     if (attribute & (kEnemy | kEnemyAttack))
     {
+        // リングバーナーは固定足場でもあるため、上面へ着地した時だけ接触ダメージを発生させません。
+        // 側面接触と、砲台から放たれる熱輪のダメージは通常どおり有効です。
+        if ((attribute & kEnemy) && other->GetEnemyType() == "RingBurner" && info.normal.y > 0.55f) {
+            return true;
+        }
+
         // 突進（タックル）判定
         const bool isDashAttack = (mover_ && mover_->IsDashing()) || isDashInvincible_;
         if ((attribute & kEnemy) && isDashAttack)
@@ -2106,8 +2178,8 @@ bool Player::OnCollision(Object3d* other)
             if (mover_) {
                 mover_->StopDashOnImpact();
             }
-            if (auto* slimeMorph = dynamic_cast<EnemySlime*>(enemyMorphSource_)) {
-                slimeMorph->CancelCarriedAbility(this);
+            if (copyAbilityController_ && copyAbilityController_->IsActive()) {
+                copyAbilityController_->Cancel(*this);
             }
 
             DebugConsole::GetInstance()->AddLog("Slime Tackle! Enemy Blasted.");
@@ -2248,9 +2320,31 @@ void Player::SetSlimeJumpCharge(float chargeRate)
     slimeAnimator_.SetJumpCharge(chargeRate);
 }
 
+void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength)
+{
+    slimeAnimator_.SetAbilityPose(pose, strength);
+}
+
 void Player::TriggerSlimeImpulse(const Vector3& scale, float duration)
 {
     slimeAnimator_.TriggerImpulse(scale, duration);
+}
+
+bool Player::PlaySlimeAbilityMotion(const std::string& clipName, bool loop,
+    float playbackSpeed, float blendInDuration, float blendOutDuration)
+{
+    return slimeAnimator_.PlayAbilityMotion(
+        clipName, loop, playbackSpeed, blendInDuration, blendOutDuration);
+}
+
+void Player::StopSlimeAbilityMotion(float blendOutDuration)
+{
+    slimeAnimator_.StopAbilityMotion(blendOutDuration);
+}
+
+void Player::ClearSlimeAbilityMotion()
+{
+    slimeAnimator_.ClearAbilityMotion(this);
 }
 
 void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction)
@@ -2313,7 +2407,7 @@ void Player::BeginCinematicLock()
 
     // Damage Stateなどの終了処理で基準姿勢へ戻してから、演出側が姿勢を取得します。
     ChangeState(std::make_unique<PlayerStateIdle>());
-    slimeAnimator_.Reset(managedBaseScale_);
+    slimeAnimator_.Reset(managedBaseScale_, this);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
 
     Vector3 stableRotation = GetRotation();
@@ -2340,7 +2434,7 @@ void Player::EndCinematicLock(bool restoreControl)
     SetCollisionAttribute(cinematicSavedCollisionAttribute_);
     SetCollisionMask(cinematicSavedCollisionMask_);
     SetVelocity({ 0.0f, 0.0f, 0.0f });
-    slimeAnimator_.Reset(managedBaseScale_);
+    slimeAnimator_.Reset(managedBaseScale_, this);
     ChangeState(std::make_unique<PlayerStateIdle>());
     SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !isDead);
 }
@@ -2356,6 +2450,11 @@ void Player::SetDamageInvincible(bool inv) {
 void Player::SetDashInvincible(bool inv) {
     isDashInvincible_ = inv;
     UpdateColor(); // 状態が変わったら色を更新
+}
+
+void Player::SetGuardInvincible(bool inv) {
+    isGuardInvincible_ = inv;
+    UpdateColor();
 }
 
 void Player::SetTutorialSafetyEnabled(bool enabled)
@@ -2468,7 +2567,10 @@ void Player::UpdateColor() {
         ? GetEnemyMorphTint(enemyMorphType_)
         : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
 
-    if (isDashInvincible_ || isEvasionInvincible_) {
+    if (isGuardInvincible_) {
+        targetColor = { 1.0f, 0.36f, 0.80f, 1.0f };
+    }
+    else if (isDashInvincible_ || isEvasionInvincible_) {
         targetColor = { 0.18f, 0.82f, 1.0f, 1.0f }; // 回避中は雷を思わせる水色を設定
     }
 

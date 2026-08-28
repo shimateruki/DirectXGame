@@ -180,13 +180,16 @@ void MeshEffectManager::Update(float deltaTime) {
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
         if (!(*it)->IsPlaying()) {
-
-
+            EffectObject3d* finishedEffect = it->get();
             if ((*it)->editHasCollision_) {
                 CollisionManager::GetInstance()->RemoveObject(it->get());
             }
 
-            // 再生が終了していたらリストから削除（メモリも自動解放される）
+            // 再生が終了したエフェクトは、所有スコープの追跡情報も同時に破棄します。
+            effectScopes_.erase(finishedEffect);
+            if (previewEffectForDebug_ == finishedEffect) {
+                previewEffectForDebug_ = nullptr;
+            }
             it = activeEffects_.erase(it);
         }
         else {
@@ -210,6 +213,46 @@ void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {
     }
 }
 
+bool MeshEffectManager::RequiresSceneColorCopy() const {
+    return std::any_of(
+        activeEffects_.begin(),
+        activeEffects_.end(),
+        [](const std::unique_ptr<EffectObject3d>& effect) {
+            return effect && effect->IsPlaying() && effect->IsDistortionEnabled();
+        });
+}
+
+MeshEffectManager::EffectScopeId MeshEffectManager::CreateEffectScope() {
+    EffectScopeId scopeId = nextEffectScopeId_++;
+    if (scopeId == kInvalidEffectScope) {
+        scopeId = nextEffectScopeId_++;
+    }
+    return scopeId;
+}
+
+void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
+    if (scopeId == kInvalidEffectScope) {
+        return;
+    }
+
+    for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
+        EffectObject3d* effect = it->get();
+        const auto scopeIt = effectScopes_.find(effect);
+        if (scopeIt == effectScopes_.end() || scopeIt->second != scopeId) {
+            ++it;
+            continue;
+        }
+
+        if (effect && effect->editHasCollision_) {
+            CollisionManager::GetInstance()->RemoveObject(effect);
+        }
+        if (previewEffectForDebug_ == effect) {
+            previewEffectForDebug_ = nullptr;
+        }
+        effectScopes_.erase(scopeIt);
+        it = activeEffects_.erase(it);
+    }
+}
 void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale) {
     // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
     if (!common_) {
@@ -570,6 +613,23 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
         effect->UpdateWorldMatrix();
 
         activeEffects_.push_back(std::move(effect));
+    }
+}
+
+void MeshEffectManager::SpawnEffectAtScoped(
+    EffectScopeId scopeId,
+    const std::string& jsonFilePath,
+    const Vector3& worldPos,
+    const Vector3& worldRot,
+    const Vector3& scale) {
+    const size_t firstNewEffect = activeEffects_.size();
+    SpawnEffectAt(jsonFilePath, worldPos, worldRot, scale);
+
+    if (scopeId == kInvalidEffectScope) {
+        return;
+    }
+    for (size_t index = firstNewEffect; index < activeEffects_.size(); ++index) {
+        effectScopes_[activeEffects_[index].get()] = scopeId;
     }
 }
 

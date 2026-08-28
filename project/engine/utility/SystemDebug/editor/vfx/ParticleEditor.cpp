@@ -8,6 +8,7 @@
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
 #include "ProfilerManager.h"
+#include "VFXAuthoringEditor.h"
 #include <algorithm>
 #include <vector>
 namespace fs = std::filesystem;
@@ -28,13 +29,12 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     const bool isSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
-    if (!isSelected || !previewStage) {
+    if (!isSelected || !previewStage || !previewStage->IsEnabled()) {
         targetSystem_->SetEditorPreviewOffset({ 0.0f, 0.0f, 0.0f });
         targetSystem_->SetSimulationTimeScale(1.0f);
         return;
     }
 
-    previewStage->EnableForToolPreview();
     targetSystem_->SetEditorPreviewOffset(previewStage->GetPreviewPosition());
     ParticleSystem::EmitterParams& params = targetSystem_->params_;
     const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
@@ -259,6 +259,47 @@ void ParticleEditor::DrawImGui() {
             for (int i = 0; i < 10; i++) params.sizeCurve[i] = 1.0f;
         }
 
+        ImGui::SeparatorText("共通Curve / Gradient");
+        const ParticleSystem::EmitterParams beforeAuthoringToggle = params;
+        if (ImGui::Checkbox("Authoring Curveを使用", &params.useAuthoringCurves)) {
+            if (params.useAuthoringCurves) {
+                if (params.sizeOverLife.keys.empty()) {
+                    params.sizeOverLife = VFXFloatCurve::FromLegacySamples(params.sizeCurve, 10);
+                }
+                if (params.colorOverLife.keys.empty()) {
+                    params.colorOverLife = VFXColorGradient::FromTwoColors(params.startColor, params.endColor);
+                }
+            }
+            const auto applyParams = [targetSystem](const ParticleSystem::EmitterParams& value) {
+                if (targetSystem) targetSystem->params_ = value;
+            };
+            EditorPropertyTransaction::RegisterDiscrete(
+                "CPU Particle: Authoring Curve",
+                beforeAuthoringToggle,
+                params,
+                applyParams);
+        }
+        ImGui::TextDisabled("旧JSONは従来の10点Curveで同じ見た目を維持します。有効化後だけ新Curveを使用します。");
+
+        if (params.useAuthoringCurves) {
+            VFXAuthoringEditor::DrawFloatCurve(
+                "CpuParticleSize",
+                params.sizeOverLife,
+                0.0f,
+                8.0f,
+                12,
+                [targetSystem](const VFXFloatCurve& value) {
+                    if (targetSystem) targetSystem->params_.sizeOverLife = value;
+                });
+            VFXAuthoringEditor::DrawColorGradient(
+                "CpuParticleColor",
+                params.colorOverLife,
+                8,
+                [targetSystem](const VFXColorGradient& value) {
+                    if (targetSystem) targetSystem->params_.colorOverLife = value;
+                });
+        }
+
         ImGui::Spacing();
         ImGui::Text(ICON_FA_IMAGE " テクスチャ (Texture)");
         std::string directoryPath = "Resources/sprite/";
@@ -291,6 +332,21 @@ void ParticleEditor::DrawImGui() {
                 targetSystem->SetTexture(fullPath);
             }
         }
+    }
+
+    if (ImGui::CollapsingHeader("距離LOD / Budget", ImGuiTreeNodeFlags_DefaultOpen)) {
+        VFXAuthoringEditor::DrawLodSettings(
+            "CpuParticleLod",
+            params.lod,
+            [targetSystem](const VFXLodSettings& value) {
+                if (targetSystem) targetSystem->params_.lod = value;
+            },
+            1,
+            ParticleSystem::GetMaxParticles());
+        const std::size_t limit = params.lod.enabled && params.lod.maxAliveParticles > 0
+            ? static_cast<std::size_t>(params.lod.maxAliveParticles)
+            : static_cast<std::size_t>(ParticleSystem::GetMaxParticles());
+        ImGui::TextDisabled("現在 %zu / 上限 %zu particles", targetSystem->GetActiveParticleCount(), limit);
     }
 
     // -------------------------------------------------------------

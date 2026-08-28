@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "41a08b99cebc040f94b77db1d782e3c6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_body.png",
+  "version": 1
+}

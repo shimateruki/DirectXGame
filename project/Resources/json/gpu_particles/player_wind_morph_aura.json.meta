@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0c49a0c657d54922b755b34bad11e8c3",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_wind_morph_aura.json",
+  "version": 1
+}

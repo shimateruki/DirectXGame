@@ -2,6 +2,9 @@
 #include "GamePlayScene.h"
 
 #include "CameraManager.h"
+#include "EnemyFalseKingSlime.h"
+#include "EnemyMagmaSlime.h"
+#include "EnemyPrismSlime.h"
 #include "GameDataManager.h"
 #include "LevelLoader.h"
 #include "Sprite.h"
@@ -217,6 +220,141 @@ void GamePlayScene::InitializeGameplayHUD() {
         { 0.5f, 0.5f },
         { 1.0f, 1.0f, 1.0f, 0.0f }
     );
+    prismBossHudGlow_ = BindGameplayHUDSprite(
+        "hud_boss_prism_glow",
+        "Resources/sprite/common/white.png",
+        { 960.0f, 152.0f },
+        { 800.0f, 54.0f },
+        { 0.5f, 0.5f },
+        { 0.36f, 0.64f, 1.0f, 0.34f }
+    );
+    prismBossHudBack_ = BindGameplayHUDSprite(
+        "hud_boss_prism_back",
+        "Resources/sprite/common/white.png",
+        { 960.0f, 152.0f },
+        { 770.0f, 40.0f },
+        { 0.5f, 0.5f },
+        { 0.015f, 0.012f, 0.055f, 0.94f }
+    );
+    prismBossHudTrack_ = BindGameplayHUDSprite(
+        "hud_boss_prism_track",
+        "Resources/sprite/common/white.png",
+        { 960.0f, 152.0f },
+        { 730.0f, 20.0f },
+        { 0.5f, 0.5f },
+        { 0.025f, 0.055f, 0.12f, 0.98f }
+    );
+    prismBossHudDamageFill_ = BindGameplayHUDSprite(
+        "hud_boss_prism_damage_fill",
+        "Resources/sprite/common/white.png",
+        { 595.0f, 152.0f },
+        { 730.0f, 18.0f },
+        { 0.0f, 0.5f },
+        { 1.0f, 0.28f, 0.90f, 0.90f }
+    );
+    prismBossHudFill_ = BindGameplayHUDSprite(
+        "hud_boss_prism_fill",
+        "Resources/sprite/common/white.png",
+        { 595.0f, 152.0f },
+        { 730.0f, 18.0f },
+        { 0.0f, 0.5f },
+        { 0.18f, 0.86f, 1.0f, 1.0f }
+    );
+    prismBossHudHighlight_ = BindGameplayHUDSprite(
+        "hud_boss_prism_highlight",
+        "Resources/sprite/common/white.png",
+        { 595.0f, 148.0f },
+        { 730.0f, 5.0f },
+        { 0.0f, 0.5f },
+        { 0.88f, 1.0f, 1.0f, 0.70f }
+    );
+    prismBossHudFrameTop_ = BindGameplayHUDSprite(
+        "hud_boss_prism_frame_top",
+        "Resources/sprite/common/white.png",
+        { 960.0f, 139.0f },
+        { 770.0f, 4.0f },
+        { 0.5f, 0.5f },
+        { 0.58f, 0.94f, 1.0f, 1.0f }
+    );
+    prismBossHudFrameBottom_ = BindGameplayHUDSprite(
+        "hud_boss_prism_frame_bottom",
+        "Resources/sprite/common/white.png",
+        { 960.0f, 165.0f },
+        { 770.0f, 4.0f },
+        { 0.5f, 0.5f },
+        { 0.66f, 0.48f, 1.0f, 1.0f }
+    );
+    prismBossHudShardLeft_ = BindGameplayHUDSprite(
+        "hud_boss_prism_shard_left",
+        "Resources/sprite/particle/diamond_shard.png",
+        { 566.0f, 152.0f },
+        { 68.0f, 80.0f },
+        { 0.5f, 0.5f },
+        { 0.48f, 0.92f, 1.0f, 0.96f }
+    );
+    prismBossHudShardRight_ = BindGameplayHUDSprite(
+        "hud_boss_prism_shard_right",
+        "Resources/sprite/particle/diamond_shard.png",
+        { 1354.0f, 152.0f },
+        { 68.0f, 80.0f },
+        { 0.5f, 0.5f },
+        { 0.78f, 0.48f, 1.0f, 0.96f }
+    );
+    prismBossHudName_ = BindGameplayHUDSprite(
+        "hud_boss_prism_name",
+        "Resources/sprite/ui/hud/boss/prism_slime_name.png",
+        { 960.0f, 84.0f },
+        { 400.0f, 84.0f },
+        { 0.5f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 1.0f }
+    );
+    const std::array<Vector2, 6> bossGlintPositions = {
+        Vector2{ 742.0f, 76.0f },
+        Vector2{ 1178.0f, 76.0f },
+        Vector2{ 568.0f, 132.0f },
+        Vector2{ 1352.0f, 132.0f },
+        Vector2{ 960.0f, 118.0f },
+        Vector2{ 595.0f, 152.0f },
+    };
+    for (size_t i = 0; i < prismBossHudGlints_.size(); ++i) {
+        prismBossHudGlints_[i] = BindGameplayHUDSprite(
+            "hud_boss_prism_glint_" + std::to_string(i),
+            "Resources/sprite/particle/spark_star.png",
+            bossGlintPositions[i],
+            { i == 4 ? 24.0f : 20.0f, i == 4 ? 24.0f : 20.0f },
+            { 0.5f, 0.5f },
+            { 0.82f, 0.98f, 1.0f, 1.0f }
+        );
+    }
+    const std::array<Vector2, 3> falseKingPhaseCrownPositions = {
+        Vector2{ 716.0f, 194.0f },
+        Vector2{ 960.0f, 194.0f },
+        Vector2{ 1204.0f, 194.0f },
+    };
+    for (size_t i = 0; i < falseKingBossHudPhaseCrowns_.size(); ++i) {
+        falseKingBossHudPhaseCrowns_[i] = BindGameplayHUDSprite(
+            "hud_boss_false_king_phase_crown_" + std::to_string(i),
+            "Resources/sprite/ui/title/crown_progress_icon.png",
+            falseKingPhaseCrownPositions[i],
+            { 38.0f, 38.0f },
+            { 0.5f, 0.5f },
+            { 1.0f, 0.78f, 0.20f, 0.0f }
+        );
+    }
+    const std::array<Vector2, 2> falseKingPhaseDividerPositions = {
+        Vector2{ 838.0f, 152.0f },
+        Vector2{ 1082.0f, 152.0f },
+    };
+    for (size_t i = 0; i < falseKingBossHudPhaseDividers_.size(); ++i) {
+        falseKingBossHudPhaseDividers_[i] = BindGameplayHUDSprite(
+            "hud_boss_false_king_phase_divider_" + std::to_string(i),
+            "Resources/sprite/common/white.png",
+            falseKingPhaseDividerPositions[i],
+            { 5.0f, 28.0f },
+            { 0.5f, 0.5f },
+            { 1.0f, 0.84f, 0.28f, 0.0f }
+        );
+    }
     hudLifeIcon_ = BindGameplayHUDSprite(
         "hud_life_icon",
         "Resources/sprite/title/slime_save_icon.png",
@@ -344,6 +482,17 @@ void GamePlayScene::InitializeGameplayHUD() {
     hudHpAnimationTimer_ = 0.0f;
     hudMorphGaugeTimer_ = 0.0f;
     hudMorphGaugeVisibleTimer_ = 0.0f;
+    prismBossHudPhase_ = PrismBossHudPhase::Hidden;
+    prismBossHudTimer_ = 0.0f;
+    prismBossHudDisplayedRate_ = 0.0f;
+    prismBossHudDelayedRate_ = 0.0f;
+    prismBossHudPreviousHp_ = 0.0f;
+    prismBossHudDamagePulseTimer_ = 0.0f;
+    prismBossHudDamageHoldTimer_ = 0.0f;
+    prismBossHudAnimationTimer_ = 0.0f;
+    prismBossHudTheme_ = BossHudTheme::Prism;
+    falseKingBossHudPreviousPhase_ = 1;
+    falseKingBossHudPhasePulseTimer_ = 0.0f;
     UpdateGameplayHUD(0.0f);
 }
 
@@ -810,6 +959,379 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
         visible
     );
     UpdateStageStarHUD(deltaTime, visible);
+    UpdatePrismBossHUD(deltaTime);
+}
+
+EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
+    if (!objectManager_) {
+        return nullptr;
+    }
+
+    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+        auto* boss = dynamic_cast<EnemyPrismSlime*>(object.get());
+        if (boss && boss->IsEncounterHudActive()) {
+            return boss;
+        }
+    }
+    return nullptr;
+}
+
+EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
+    if (!objectManager_) {
+        return nullptr;
+    }
+
+    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+        auto* boss = dynamic_cast<EnemyMagmaSlime*>(object.get());
+        if (boss && boss->IsEncounterHudActive()) {
+            return boss;
+        }
+    }
+    return nullptr;
+}
+
+EnemyFalseKingSlime* GamePlayScene::FindFalseKingBossForHUD() {
+    if (!objectManager_) {
+        return nullptr;
+    }
+
+    for (const std::unique_ptr<Object3d>& object : objectManager_->GetObjects()) {
+        auto* boss = dynamic_cast<EnemyFalseKingSlime*>(object.get());
+        if (boss && boss->IsEncounterHudActive()) {
+            return boss;
+        }
+    }
+    return nullptr;
+}
+
+void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
+    constexpr float kIntroDuration = 1.62f;
+    constexpr float kDismissDuration = 0.38f;
+    deltaTime = (std::max)(0.0f, deltaTime);
+    prismBossHudAnimationTimer_ = std::fmod(prismBossHudAnimationTimer_ + deltaTime, 1000.0f);
+
+    EnemyPrismSlime* prismBoss = FindPrismBossForHUD();
+    EnemyMagmaSlime* magmaBoss = prismBoss ? nullptr : FindMagmaBossForHUD();
+    EnemyFalseKingSlime* falseKingBoss = (prismBoss || magmaBoss) ? nullptr : FindFalseKingBossForHUD();
+    const BossHudTheme requestedTheme = falseKingBoss
+        ? BossHudTheme::FalseKing
+        : (magmaBoss ? BossHudTheme::Magma : BossHudTheme::Prism);
+    const bool usesMagmaTheme = requestedTheme == BossHudTheme::Magma;
+    const bool usesFalseKingTheme = requestedTheme == BossHudTheme::FalseKing;
+    const bool requestedVisible = prismBoss != nullptr || magmaBoss != nullptr || falseKingBoss != nullptr;
+    const float maximumHp = prismBoss
+        ? prismBoss->GetEncounterMaximumHp()
+        : (magmaBoss
+            ? magmaBoss->GetEncounterMaximumHp()
+            : (falseKingBoss ? falseKingBoss->GetEncounterMaximumHp() : 1.0f));
+    const float currentHp = prismBoss
+        ? (std::clamp)(prismBoss->GetEncounterCurrentHp(), 0.0f, maximumHp)
+        : (magmaBoss
+            ? (std::clamp)(magmaBoss->GetEncounterCurrentHp(), 0.0f, maximumHp)
+            : (falseKingBoss ? (std::clamp)(falseKingBoss->GetEncounterCurrentHp(), 0.0f, maximumHp) : 0.0f));
+    const float actualRate = (std::clamp)(currentHp / maximumHp, 0.0f, 1.0f);
+    const int falseKingPhase = falseKingBoss
+        ? (std::clamp)(falseKingBoss->GetBattlePhase(), 1, 3)
+        : 1;
+    const float falseKingPhaseTransition = falseKingBoss
+        ? falseKingBoss->GetPhaseTransitionProgress()
+        : 1.0f;
+
+    if (requestedVisible && prismBossHudTheme_ != requestedTheme) {
+        prismBossHudTheme_ = requestedTheme;
+        const char* nameTexture = usesFalseKingTheme
+            ? "ui/hud/boss/false_king_slime_name.png"
+            : (usesMagmaTheme
+                ? "ui/hud/boss/magma_slime_name.png"
+                : "ui/hud/boss/prism_slime_name.png");
+        const char* sideDecorationTexture = usesMagmaTheme
+            ? "particle/flame_soft.png"
+            : "particle/diamond_shard.png";
+        SetFullTextureRect(prismBossHudName_.sprite, Sprite::LoadTexture(nameTexture));
+        const uint32_t sideDecorationHandle = Sprite::LoadTexture(sideDecorationTexture);
+        SetFullTextureRect(prismBossHudShardLeft_.sprite, sideDecorationHandle);
+        SetFullTextureRect(prismBossHudShardRight_.sprite, sideDecorationHandle);
+    }
+
+    if (requestedVisible &&
+        (prismBossHudPhase_ == PrismBossHudPhase::Hidden || prismBossHudPhase_ == PrismBossHudPhase::Dismissing)) {
+        prismBossHudPhase_ = PrismBossHudPhase::Introducing;
+        prismBossHudTimer_ = 0.0f;
+        prismBossHudDisplayedRate_ = 0.0f;
+        prismBossHudDelayedRate_ = 0.0f;
+        prismBossHudPreviousHp_ = currentHp;
+        prismBossHudDamagePulseTimer_ = 0.0f;
+        prismBossHudDamageHoldTimer_ = 0.0f;
+        falseKingBossHudPreviousPhase_ = falseKingPhase;
+        falseKingBossHudPhasePulseTimer_ = 0.0f;
+    } else if (!requestedVisible &&
+        prismBossHudPhase_ != PrismBossHudPhase::Hidden &&
+        prismBossHudPhase_ != PrismBossHudPhase::Dismissing) {
+        prismBossHudPhase_ = PrismBossHudPhase::Dismissing;
+        prismBossHudTimer_ = 0.0f;
+    }
+
+    float frameReveal = 0.0f;
+    float nameReveal = 0.0f;
+    float visualAlpha = 0.0f;
+    switch (prismBossHudPhase_) {
+    case PrismBossHudPhase::Hidden:
+        break;
+    case PrismBossHudPhase::Introducing: {
+        prismBossHudTimer_ += deltaTime;
+        const float appearanceProgress = prismBoss
+            ? prismBoss->GetEncounterAppearanceProgress()
+            : (magmaBoss
+                ? magmaBoss->GetEncounterAppearanceProgress()
+                : (falseKingBoss ? falseKingBoss->GetEncounterAppearanceProgress() : 1.0f));
+        frameReveal = (std::max)(SmoothStep(prismBossHudTimer_ / 0.34f), SmoothStep(appearanceProgress * 1.25f));
+        nameReveal = SmoothStep((prismBossHudTimer_ - 0.08f) / 0.32f);
+        prismBossHudDisplayedRate_ = SmoothStep((prismBossHudTimer_ - 0.42f) / 1.06f);
+        prismBossHudDelayedRate_ = prismBossHudDisplayedRate_;
+        prismBossHudPreviousHp_ = currentHp;
+        visualAlpha = 1.0f;
+        if (prismBossHudTimer_ >= kIntroDuration) {
+            prismBossHudPhase_ = PrismBossHudPhase::Active;
+            prismBossHudTimer_ = 0.0f;
+            prismBossHudDisplayedRate_ = actualRate;
+            prismBossHudDelayedRate_ = actualRate;
+        }
+        break;
+    }
+    case PrismBossHudPhase::Active: {
+        frameReveal = 1.0f;
+        nameReveal = 1.0f;
+        visualAlpha = 1.0f;
+
+        const bool tookDamage = currentHp < prismBossHudPreviousHp_ - 0.01f;
+        if (tookDamage) {
+            const float previousRate = (std::clamp)(prismBossHudPreviousHp_ / maximumHp, 0.0f, 1.0f);
+            prismBossHudDamagePulseTimer_ = 0.44f;
+            prismBossHudDamageHoldTimer_ = 0.20f;
+            prismBossHudDelayedRate_ = (std::max)(prismBossHudDelayedRate_, previousRate);
+        }
+        prismBossHudPreviousHp_ = currentHp;
+        const float follow = 1.0f - std::exp(-deltaTime * 13.0f);
+        prismBossHudDisplayedRate_ += (actualRate - prismBossHudDisplayedRate_) * follow;
+        if (actualRate >= prismBossHudDelayedRate_) {
+            prismBossHudDelayedRate_ = actualRate;
+            prismBossHudDamageHoldTimer_ = 0.0f;
+        } else if (prismBossHudDamageHoldTimer_ > 0.0f) {
+            prismBossHudDamageHoldTimer_ = (std::max)(0.0f, prismBossHudDamageHoldTimer_ - deltaTime);
+        } else {
+            prismBossHudDelayedRate_ = (std::max)(actualRate, prismBossHudDelayedRate_ - deltaTime * 0.36f);
+        }
+        break;
+    }
+    case PrismBossHudPhase::Dismissing:
+        prismBossHudTimer_ += deltaTime;
+        frameReveal = 1.0f;
+        nameReveal = 1.0f;
+        visualAlpha = 1.0f - SmoothStep(prismBossHudTimer_ / kDismissDuration);
+        if (prismBossHudTimer_ >= kDismissDuration) {
+            prismBossHudPhase_ = PrismBossHudPhase::Hidden;
+            visualAlpha = 0.0f;
+        }
+        break;
+    }
+
+    prismBossHudDamagePulseTimer_ = (std::max)(0.0f, prismBossHudDamagePulseTimer_ - deltaTime);
+    falseKingBossHudPhasePulseTimer_ = (std::max)(0.0f, falseKingBossHudPhasePulseTimer_ - deltaTime);
+    if (usesFalseKingTheme && falseKingPhase != falseKingBossHudPreviousPhase_) {
+        falseKingBossHudPreviousPhase_ = falseKingPhase;
+        falseKingBossHudPhasePulseTimer_ = 0.82f;
+    }
+    const bool hudVisible = visualAlpha > 0.001f && prismBossHudPhase_ != PrismBossHudPhase::Hidden;
+    const float damagePulseRate = (std::clamp)(prismBossHudDamagePulseTimer_ / 0.44f, 0.0f, 1.0f);
+    const float damageImpact = std::sin((1.0f - damagePulseRate) * kPi) * damagePulseRate;
+    const float barShake = damagePulseRate > 0.0f
+        ? std::sin(prismBossHudDamagePulseTimer_ * 96.0f) * SpriteLayoutScaler::ScaleDesignX(4.0f) * damagePulseRate
+        : 0.0f;
+    const float barScale = 0.12f + frameReveal * 0.88f;
+    const float displayedRate = (std::clamp)(prismBossHudDisplayedRate_, 0.0f, 1.0f);
+    const float delayedRate = (std::clamp)(prismBossHudDelayedRate_, displayedRate, 1.0f);
+    const float lowHpRate = (std::clamp)((0.34f - displayedRate) / 0.34f, 0.0f, 1.0f);
+    const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(prismBossHudAnimationTimer_ * 7.0f));
+
+    auto updateSprite = [](HudSpriteState& state, bool visible, const Vector2& position, const Vector2& size, const Vector4& color, float rotation = 0.0f) {
+        if (!state.sprite) {
+            return;
+        }
+        state.sprite->SetVisible(visible);
+        state.sprite->SetPosition(position);
+        state.sprite->SetSize(size);
+        state.sprite->SetRotation(rotation);
+        state.sprite->SetColor(color);
+        state.sprite->Update();
+    };
+
+    const float phasePulseRate = (std::clamp)(falseKingBossHudPhasePulseTimer_ / 0.82f, 0.0f, 1.0f);
+    const float phaseImpact = std::sin((1.0f - phasePulseRate) * kPi) * phasePulseRate;
+    const float glowPulse = 0.82f + std::sin(prismBossHudAnimationTimer_ * 3.6f) * 0.18f + phaseImpact * 0.34f;
+    const Vector3 glowColor = usesFalseKingTheme
+        ? (falseKingPhase >= 3
+            ? Vector3{ 0.72f, 0.22f + phaseImpact * 0.28f, 1.0f }
+            : (falseKingPhase == 2
+                ? Vector3{ 1.0f, 0.28f + phaseImpact * 0.22f, 0.72f }
+                : Vector3{ 1.0f, 0.54f + lowHpPulse * 0.22f, 0.18f }))
+        : (usesMagmaTheme
+            ? Vector3{ 1.0f, 0.26f + lowHpPulse * 0.14f, 0.025f }
+            : Vector3{ 0.34f + lowHpPulse * 0.30f, 0.58f, 1.0f });
+    const Vector3 fillColor = usesFalseKingTheme
+        ? (falseKingPhase >= 3
+            ? Vector3{ 0.72f + phaseImpact * 0.22f, 0.16f, 1.0f }
+            : (falseKingPhase == 2
+                ? Vector3{ 1.0f, 0.34f, 0.72f + phaseImpact * 0.20f }
+                : Vector3{ 1.0f, 0.72f - lowHpPulse * 0.32f, 0.12f + lowHpPulse * 0.18f }))
+        : (usesMagmaTheme
+            ? Vector3{ 1.0f, 0.48f - lowHpPulse * 0.30f, 0.035f }
+            : Vector3{ 0.16f + lowHpPulse * 0.58f, 0.84f - lowHpPulse * 0.34f, 1.0f });
+    const Vector3 frameTopColor = usesFalseKingTheme
+        ? (falseKingPhase >= 3
+            ? Vector3{ 0.88f, 0.52f, 1.0f }
+            : (falseKingPhase == 2 ? Vector3{ 1.0f, 0.54f, 0.86f } : Vector3{ 1.0f, 0.90f, 0.42f }))
+        : (usesMagmaTheme
+            ? Vector3{ 1.0f, 0.88f, 0.32f }
+            : Vector3{ 0.54f + lowHpPulse * 0.30f, 0.94f, 1.0f });
+    const Vector3 frameBottomColor = usesFalseKingTheme
+        ? (falseKingPhase >= 3
+            ? Vector3{ 0.32f, 0.72f, 1.0f }
+            : (falseKingPhase == 2 ? Vector3{ 0.72f, 0.20f, 1.0f } : Vector3{ 0.62f + lowHpPulse * 0.20f, 0.22f, 0.92f }))
+        : (usesMagmaTheme
+            ? Vector3{ 0.62f + lowHpPulse * 0.30f, 0.045f, 0.015f }
+            : Vector3{ 0.66f + lowHpPulse * 0.24f, 0.44f, 1.0f });
+    updateSprite(
+        prismBossHudGlow_, hudVisible,
+        { prismBossHudGlow_.basePosition.x + barShake, prismBossHudGlow_.basePosition.y },
+        { prismBossHudGlow_.baseSize.x * barScale * (1.0f + damageImpact * 0.025f), prismBossHudGlow_.baseSize.y * (0.78f + frameReveal * 0.22f) },
+        { glowColor.x, glowColor.y, glowColor.z, prismBossHudGlow_.baseColor.w * visualAlpha * glowPulse });
+    updateSprite(
+        prismBossHudBack_, hudVisible,
+        { prismBossHudBack_.basePosition.x + barShake, prismBossHudBack_.basePosition.y },
+        { prismBossHudBack_.baseSize.x * barScale, prismBossHudBack_.baseSize.y },
+        { prismBossHudBack_.baseColor.x, prismBossHudBack_.baseColor.y, prismBossHudBack_.baseColor.z, prismBossHudBack_.baseColor.w * visualAlpha });
+    updateSprite(
+        prismBossHudTrack_, hudVisible,
+        { prismBossHudTrack_.basePosition.x + barShake, prismBossHudTrack_.basePosition.y },
+        { prismBossHudTrack_.baseSize.x * barScale, prismBossHudTrack_.baseSize.y },
+        { prismBossHudTrack_.baseColor.x, prismBossHudTrack_.baseColor.y, prismBossHudTrack_.baseColor.z, prismBossHudTrack_.baseColor.w * visualAlpha });
+
+    const float fullFillWidth = prismBossHudFill_.baseSize.x * barScale;
+    const float fullFillLeft = prismBossHudFill_.basePosition.x + (prismBossHudFill_.baseSize.x - fullFillWidth) * 0.5f + barShake;
+    const float damageFillWidth = prismBossHudDamageFill_.baseSize.x * barScale;
+    const float damageFillLeft = prismBossHudDamageFill_.basePosition.x + (prismBossHudDamageFill_.baseSize.x - damageFillWidth) * 0.5f + barShake;
+    const float highlightWidth = prismBossHudHighlight_.baseSize.x * barScale;
+    const float highlightLeft = prismBossHudHighlight_.basePosition.x + (prismBossHudHighlight_.baseSize.x - highlightWidth) * 0.5f + barShake;
+    updateSprite(
+        prismBossHudDamageFill_, hudVisible && delayedRate > 0.001f,
+        { damageFillLeft, prismBossHudDamageFill_.basePosition.y },
+        { damageFillWidth * delayedRate, prismBossHudDamageFill_.baseSize.y },
+        { 1.0f, usesFalseKingTheme ? 0.28f : (usesMagmaTheme ? 0.10f : 0.24f + lowHpPulse * 0.12f), usesFalseKingTheme ? 0.52f : (usesMagmaTheme ? 0.025f : 0.88f), prismBossHudDamageFill_.baseColor.w * visualAlpha });
+    updateSprite(
+        prismBossHudFill_, hudVisible && displayedRate > 0.001f,
+        { fullFillLeft, prismBossHudFill_.basePosition.y },
+        { fullFillWidth * displayedRate, prismBossHudFill_.baseSize.y * (1.0f + damageImpact * 0.09f) },
+        { fillColor.x, fillColor.y, fillColor.z, prismBossHudFill_.baseColor.w * visualAlpha });
+    updateSprite(
+        prismBossHudHighlight_, hudVisible && displayedRate > 0.001f,
+        { highlightLeft, prismBossHudHighlight_.basePosition.y },
+        { highlightWidth * displayedRate, prismBossHudHighlight_.baseSize.y },
+        { 1.0f, usesFalseKingTheme ? 0.96f : (usesMagmaTheme ? 0.86f : 1.0f), usesFalseKingTheme ? 0.72f : (usesMagmaTheme ? 0.36f : 1.0f), prismBossHudHighlight_.baseColor.w * visualAlpha * (0.74f + glowPulse * 0.26f) });
+    updateSprite(
+        prismBossHudFrameTop_, hudVisible,
+        { prismBossHudFrameTop_.basePosition.x + barShake, prismBossHudFrameTop_.basePosition.y },
+        { prismBossHudFrameTop_.baseSize.x * barScale, prismBossHudFrameTop_.baseSize.y },
+        { frameTopColor.x, frameTopColor.y, frameTopColor.z, prismBossHudFrameTop_.baseColor.w * visualAlpha });
+    updateSprite(
+        prismBossHudFrameBottom_, hudVisible,
+        { prismBossHudFrameBottom_.basePosition.x + barShake, prismBossHudFrameBottom_.basePosition.y },
+        { prismBossHudFrameBottom_.baseSize.x * barScale, prismBossHudFrameBottom_.baseSize.y },
+        { frameBottomColor.x, frameBottomColor.y, frameBottomColor.z, prismBossHudFrameBottom_.baseColor.w * visualAlpha });
+
+    const float shardScale = (0.55f + frameReveal * 0.45f) * (1.0f + damageImpact * 0.13f);
+    const float shardAlpha = visualAlpha * frameReveal;
+    updateSprite(
+        prismBossHudShardLeft_, hudVisible,
+        { prismBossHudShardLeft_.basePosition.x + barShake, prismBossHudShardLeft_.basePosition.y },
+        { prismBossHudShardLeft_.baseSize.x * shardScale, prismBossHudShardLeft_.baseSize.y * shardScale },
+        { usesFalseKingTheme ? 1.0f : (usesMagmaTheme ? 1.0f : 0.42f + lowHpPulse * 0.35f), usesFalseKingTheme ? 0.68f : (usesMagmaTheme ? 0.31f : 0.90f), usesFalseKingTheme ? 0.18f : (usesMagmaTheme ? 0.025f : 1.0f), prismBossHudShardLeft_.baseColor.w * shardAlpha },
+        -0.18f + std::sin(prismBossHudAnimationTimer_ * 2.8f) * 0.025f);
+    updateSprite(
+        prismBossHudShardRight_, hudVisible,
+        { prismBossHudShardRight_.basePosition.x + barShake, prismBossHudShardRight_.basePosition.y },
+        { prismBossHudShardRight_.baseSize.x * shardScale, prismBossHudShardRight_.baseSize.y * shardScale },
+        { usesFalseKingTheme ? 0.72f : (usesMagmaTheme ? 1.0f : 0.76f + lowHpPulse * 0.20f), usesFalseKingTheme ? 0.24f : (usesMagmaTheme ? 0.66f : 0.42f), usesFalseKingTheme ? 1.0f : (usesMagmaTheme ? 0.08f : 1.0f), prismBossHudShardRight_.baseColor.w * shardAlpha },
+        0.18f - std::sin(prismBossHudAnimationTimer_ * 2.8f) * 0.025f);
+
+    const float nameScale = 0.82f + nameReveal * 0.18f + damageImpact * 0.035f;
+    updateSprite(
+        prismBossHudName_, hudVisible && nameReveal > 0.001f,
+        { prismBossHudName_.basePosition.x + barShake * 0.45f, prismBossHudName_.basePosition.y - SpriteLayoutScaler::ScaleDesignY((1.0f - nameReveal) * 11.0f) },
+        { prismBossHudName_.baseSize.x * nameScale, prismBossHudName_.baseSize.y * nameScale },
+        { 1.0f, usesFalseKingTheme ? 0.96f : (usesMagmaTheme ? 0.96f : 1.0f), usesFalseKingTheme ? 0.84f : (usesMagmaTheme ? 0.78f : 1.0f), prismBossHudName_.baseColor.w * visualAlpha * nameReveal });
+
+    const bool showFalseKingPhases = hudVisible && usesFalseKingTheme && frameReveal > 0.10f;
+    for (HudSpriteState& divider : falseKingBossHudPhaseDividers_) {
+        const float dividerGlow = 0.72f + std::sin(prismBossHudAnimationTimer_ * 4.2f) * 0.18f;
+        updateSprite(
+            divider,
+            showFalseKingPhases,
+            { divider.basePosition.x + barShake, divider.basePosition.y },
+            { divider.baseSize.x * (1.0f + phaseImpact * 0.42f), divider.baseSize.y * frameReveal },
+            { 1.0f, falseKingPhase >= 3 ? 0.54f : 0.84f, falseKingPhase >= 3 ? 1.0f : 0.28f,
+              visualAlpha * frameReveal * dividerGlow });
+    }
+    for (size_t i = 0; i < falseKingBossHudPhaseCrowns_.size(); ++i) {
+        HudSpriteState& crown = falseKingBossHudPhaseCrowns_[i];
+        const int markerPhase = static_cast<int>(i) + 1;
+        const bool currentPhase = markerPhase == falseKingPhase;
+        const bool clearedPhase = markerPhase < falseKingPhase;
+        const float markerPulse = currentPhase
+            ? 0.5f + 0.5f * std::sin(prismBossHudAnimationTimer_ * 5.6f)
+            : 0.0f;
+        const float transitionPulse = currentPhase
+            ? phaseImpact + (1.0f - falseKingPhaseTransition) * 0.12f
+            : 0.0f;
+        const float markerScale = (currentPhase ? 1.0f + markerPulse * 0.10f + transitionPulse * 0.26f : 0.76f) *
+            (0.72f + nameReveal * 0.28f);
+        Vector4 markerColor;
+        if (currentPhase) {
+            markerColor = falseKingPhase >= 3
+                ? Vector4{ 0.88f, 0.48f, 1.0f, visualAlpha * (0.86f + markerPulse * 0.14f) }
+                : Vector4{ 1.0f, 0.82f, 0.24f, visualAlpha * (0.86f + markerPulse * 0.14f) };
+        } else if (clearedPhase) {
+            markerColor = { 0.72f, 0.44f, 0.92f, visualAlpha * 0.54f };
+        } else {
+            markerColor = { 0.22f, 0.10f, 0.34f, visualAlpha * 0.46f };
+        }
+        updateSprite(
+            crown,
+            showFalseKingPhases,
+            { crown.basePosition.x + barShake, crown.basePosition.y - markerPulse * SpriteLayoutScaler::ScaleDesignY(2.5f) },
+            { crown.baseSize.x * markerScale, crown.baseSize.y * markerScale },
+            markerColor,
+            currentPhase ? std::sin(prismBossHudAnimationTimer_ * 4.2f) * 0.035f : 0.0f);
+    }
+
+    for (size_t i = 0; i < prismBossHudGlints_.size(); ++i) {
+        HudSpriteState& glint = prismBossHudGlints_[i];
+        const float phase = prismBossHudAnimationTimer_ * (3.2f + static_cast<float>(i) * 0.17f) + static_cast<float>(i) * 1.31f;
+        const float sparkle = std::pow((std::max)(0.0f, std::sin(phase)), 7.0f);
+        Vector2 position = glint.basePosition;
+        if (i == prismBossHudGlints_.size() - 1) {
+            position.x = fullFillLeft + fullFillWidth * displayedRate;
+            position.y = prismBossHudFill_.basePosition.y;
+        }
+        position.x += barShake;
+        const float glintScale = 0.55f + sparkle * 1.15f + (i == prismBossHudGlints_.size() - 1 ? 0.30f : 0.0f);
+        const float glintAlpha = visualAlpha * frameReveal * (0.08f + sparkle * 0.92f);
+        updateSprite(
+            glint, hudVisible && frameReveal > 0.1f,
+            position,
+            { glint.baseSize.x * glintScale, glint.baseSize.y * glintScale },
+            { usesFalseKingTheme ? 1.0f : (usesMagmaTheme ? 1.0f : 0.72f + lowHpPulse * 0.20f), usesFalseKingTheme ? 0.78f : (usesMagmaTheme ? 0.58f : 0.96f), usesFalseKingTheme ? 0.28f : (usesMagmaTheme ? 0.12f : 1.0f), glint.baseColor.w * glintAlpha },
+            phase * 0.18f);
+    }
 }
 
 void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
@@ -998,6 +1520,7 @@ void GamePlayScene::DrawGameplayHUD() {
         DrawGameplayHUDSprite(digit);
     }
     DrawStageStarHUD();
+    DrawPrismBossHUD();
     DrawGameplayHUDSprite(hudHpFrame_);
     DrawGameplayHUDSprite(hudHpDamageFill_);
     DrawGameplayHUDSprite(hudHpFill_);
@@ -1008,6 +1531,29 @@ void GamePlayScene::DrawGameplayHUD() {
     DrawGameplayHUDSprite(hudMorphGaugeIcon_);
     DrawGameplayHUDSprite(hudMorphGaugeFrame_);
     DrawLifeLostPresentation();
+}
+
+void GamePlayScene::DrawPrismBossHUD() {
+    DrawGameplayHUDSprite(prismBossHudGlow_);
+    DrawGameplayHUDSprite(prismBossHudBack_);
+    DrawGameplayHUDSprite(prismBossHudTrack_);
+    DrawGameplayHUDSprite(prismBossHudDamageFill_);
+    DrawGameplayHUDSprite(prismBossHudFill_);
+    DrawGameplayHUDSprite(prismBossHudHighlight_);
+    DrawGameplayHUDSprite(prismBossHudFrameTop_);
+    DrawGameplayHUDSprite(prismBossHudFrameBottom_);
+    DrawGameplayHUDSprite(prismBossHudShardLeft_);
+    DrawGameplayHUDSprite(prismBossHudShardRight_);
+    DrawGameplayHUDSprite(prismBossHudName_);
+    for (const HudSpriteState& divider : falseKingBossHudPhaseDividers_) {
+        DrawGameplayHUDSprite(divider);
+    }
+    for (const HudSpriteState& crown : falseKingBossHudPhaseCrowns_) {
+        DrawGameplayHUDSprite(crown);
+    }
+    for (const HudSpriteState& glint : prismBossHudGlints_) {
+        DrawGameplayHUDSprite(glint);
+    }
 }
 
 void GamePlayScene::DrawStageStarHUD() {

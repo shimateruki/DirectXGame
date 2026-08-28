@@ -7,6 +7,7 @@ DebugConsole* DebugConsole::GetInstance() {
 }
 
 void DebugConsole::Initialize() {
+    errorCount_.store(0, std::memory_order_relaxed);
 #ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
     logs_.clear();
@@ -34,6 +35,10 @@ void DebugConsole::AddLog(const std::string& log) {
 void DebugConsole::AddLog(LogLevel level, const std::string& log) {
 #ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
+    if (level == LogLevel::Error) {
+        errorCount_.fetch_add(1, std::memory_order_relaxed);
+    }
+
 
     const size_t maxLogs = 200;
 

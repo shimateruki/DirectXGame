@@ -14,12 +14,18 @@ public:
     /// <summary>
     /// 3D オブジェクト配置データを読み込む。
     /// </summary>
-    void LoadObjectLayout(BaseScene* scene, const std::string& filename);
+    void LoadObjectLayout(
+        BaseScene* scene,
+        const std::string& filename,
+        bool resolveSceneAssetPath = true);
 
     /// <summary>
     /// スプライト配置データを読み込む。
     /// </summary>
     void LoadSpriteLayout(BaseScene* scene, const std::string& filename);
+
+    // Replayから敵を再生成した後、Player参照と派生敵のSpawn callbackを接続し直します。
+    static void ConfigureEnemyRuntimeReferences(BaseScene* scene);
 
 private:
     void LoadSingleJson(BaseScene* scene, const std::string& filename);

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "1960ba5481e24585ae65a9e8ef744dfa",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/magma_slime_geyser_burst.json",
+  "version": 1
+}

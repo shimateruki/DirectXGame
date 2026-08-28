@@ -1,6 +1,13 @@
 #include "AudioPlayer.h"
 #include <algorithm>
 #include <string>
+#include "CameraManager.h"
+#include "json.hpp"
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <limits>
+#include <utility>
 
 AudioPlayer* AudioPlayer::GetInstance() {
 	static AudioPlayer instance;
@@ -17,6 +24,11 @@ void AudioPlayer::Initialize() {
 }
 
 void AudioPlayer::Finalize() {
+	for (auto& [handle, data] : transientSoundDatas_) {
+		DestroyStreamingData(data.get());
+	}
+	transientSoundDatas_.clear();
+
 
 
 	for (auto const& [handle, dataPtr] : streamingSoundDatas_) {
@@ -58,45 +70,88 @@ void AudioPlayer::Finalize() {
 	// xAudio2_ は ComPtr なので、この関数の後デストラクタで自動解放される
 }
 
-AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
-	// 既に読み込み済みの場合は、既存のハンドルを返す
-	auto it = audioHandleMap_.find(filename);
-	if (it != audioHandleMap_.end()) {
-		return it->second;
-	}
-
-	// --- 新規読み込み処理 ---
+std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
+	const std::string& filename) const {
 	auto data = std::make_unique<SoundDataStreaming>();
-	HRESULT result;
 
-	std::wstring wFilename;
-	int strSize = MultiByteToWideChar(CP_UTF8, 0, filename.c_str(), -1, nullptr, 0);
-	wFilename.resize(strSize);
-	MultiByteToWideChar(CP_UTF8, 0, filename.c_str(), -1, &wFilename[0], strSize);
+	const int stringSize =
+		MultiByteToWideChar(CP_UTF8, 0, filename.c_str(), -1, nullptr, 0);
+	if (stringSize <= 0) {
+		return nullptr;
+	}
+	std::wstring wideFilename(static_cast<std::size_t>(stringSize), L'\0');
+	MultiByteToWideChar(
+		CP_UTF8, 0, filename.c_str(), -1, wideFilename.data(), stringSize);
 
-	result = MFCreateSourceReaderFromURL(wFilename.c_str(), NULL, &data->sourceReader);
+	HRESULT result = MFCreateSourceReaderFromURL(
+		wideFilename.c_str(), nullptr, &data->sourceReader);
 	if (FAILED(result)) {
-		return kInvalidAudioHandle; // 読み込み失敗
+		return nullptr;
 	}
 
-	// (デコーダー設定などは変更なし)
 	Microsoft::WRL::ComPtr<IMFMediaType> mediaType;
-	MFCreateMediaType(&mediaType);
+	result = MFCreateMediaType(&mediaType);
+	if (FAILED(result)) {
+		return nullptr;
+	}
 	mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 	mediaType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
-	result = data->sourceReader->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, NULL, mediaType.Get());
-	assert(SUCCEEDED(result));
-	Microsoft::WRL::ComPtr<IMFMediaType> outputMediaType;
-	data->sourceReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, &outputMediaType);
-	UINT32 waveFormatSize = 0;
-	MFCreateWaveFormatExFromMFMediaType(outputMediaType.Get(), &data->waveFormat, &waveFormatSize);
-	assert(data->waveFormat != nullptr);
+	result = data->sourceReader->SetCurrentMediaType(
+		static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM),
+		nullptr,
+		mediaType.Get());
+	if (FAILED(result)) {
+		return nullptr;
+	}
 
-	// ★★★ 新しいハンドルを生成して、各種マップに登録 ★★★
-	AudioHandle newHandle = nextHandle_++;
+	Microsoft::WRL::ComPtr<IMFMediaType> outputMediaType;
+	result = data->sourceReader->GetCurrentMediaType(
+		static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM),
+		&outputMediaType);
+	if (FAILED(result)) {
+		return nullptr;
+	}
+	UINT32 waveFormatSize = 0;
+	result = MFCreateWaveFormatExFromMFMediaType(
+		outputMediaType.Get(), &data->waveFormat, &waveFormatSize);
+	if (FAILED(result) || !data->waveFormat) {
+		return nullptr;
+	}
+	return data;
+}
+
+void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
+	if (!data) {
+		return;
+	}
+	data->isPlaying = false;
+	data->cv.notify_one();
+	if (data->decodeThread.joinable()) {
+		data->decodeThread.join();
+	}
+	if (data->sourceVoice) {
+		data->sourceVoice->Stop(0);
+		data->sourceVoice->FlushSourceBuffers();
+		data->sourceVoice->DestroyVoice();
+		data->sourceVoice = nullptr;
+	}
+	data->sourceReader.Reset();
+}
+AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
+	std::lock_guard<std::mutex> lock(audioDataMutex_);
+	auto existing = audioHandleMap_.find(filename);
+	if (existing != audioHandleMap_.end()) {
+		return existing->second;
+	}
+
+	auto data = CreateStreamingData(filename);
+	if (!data) {
+		return kInvalidAudioHandle;
+	}
+
+	const AudioHandle newHandle = nextHandle_++;
 	audioHandleMap_[filename] = newHandle;
 	streamingSoundDatas_[newHandle] = std::move(data);
-
 	return newHandle;
 }
 
@@ -259,7 +314,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 		} else {
 			// バッファが一杯なら、コールバックからの通知を待つ
 			std::unique_lock<std::mutex> lock(data->mtx);
-			data->cv.wait(lock);
+			data->cv.wait_for(lock, std::chrono::milliseconds(10));
 		}
 	}
 	// isPlayingがfalseになったらループを抜けてスレッド終了
@@ -372,4 +427,415 @@ void AudioPlayer::ApplyCurrentBGMVolume() {
 	}
 
 	it->second->sourceVoice->SetVolume(currentBgmBaseVolume_ * bgmMasterVolume_);
+}
+AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
+	const std::string& filename,
+	float volume,
+	float pitch) {
+	Update();
+	if (!xAudio2_) {
+		return kInvalidPlaybackHandle;
+	}
+
+	auto data = CreateStreamingData(filename);
+	if (!data || !data->waveFormat) {
+		return kInvalidPlaybackHandle;
+	}
+
+	HRESULT result = xAudio2_->CreateSourceVoice(
+		&data->sourceVoice,
+		data->waveFormat,
+		0,
+		XAUDIO2_DEFAULT_FREQ_RATIO,
+		&data->voiceCallback,
+		nullptr,
+		nullptr);
+	if (FAILED(result) || !data->sourceVoice) {
+		return kInvalidPlaybackHandle;
+	}
+
+	data->sourceVoice->SetVolume(
+		std::clamp(volume, 0.0f, 1.0f) * seMasterVolume_);
+	data->sourceVoice->SetFrequencyRatio(std::clamp(pitch, 0.5f, 2.0f));
+	data->isEndOfStream = false;
+	data->loop = false;
+	data->currentBufferIndex = 0;
+	data->isPlaying = true;
+	data->sourceVoice->Start(0);
+
+	const PlaybackHandle handle = nextPlaybackHandle_++;
+	SoundDataStreaming* rawData = data.get();
+	transientSoundDatas_.emplace(handle, std::move(data));
+	rawData->decodeThread = std::thread(&AudioPlayer::DecodeThread, this, rawData);
+	return handle;
+}
+
+bool AudioPlayer::IsTransientPlaying(PlaybackHandle handle) const {
+	const auto found = transientSoundDatas_.find(handle);
+	return found != transientSoundDatas_.end() &&
+		found->second &&
+		found->second->isPlaying.load();
+}
+
+void AudioPlayer::StopTransient(PlaybackHandle handle) {
+	auto found = transientSoundDatas_.find(handle);
+	if (found == transientSoundDatas_.end()) {
+		return;
+	}
+	DestroyStreamingData(found->second.get());
+	transientSoundDatas_.erase(found);
+}
+
+void AudioPlayer::Update() {
+	for (auto iterator = transientSoundDatas_.begin();
+		iterator != transientSoundDatas_.end();) {
+		if (iterator->second && iterator->second->isPlaying.load()) {
+			++iterator;
+			continue;
+		}
+		DestroyStreamingData(iterator->second.get());
+		iterator = transientSoundDatas_.erase(iterator);
+	}
+}
+
+namespace {
+std::string NormalizeAudioPath(std::string path) {
+	std::replace(path.begin(), path.end(), '\\', '/');
+	while (path.rfind("./", 0) == 0) {
+		path.erase(0, 2);
+	}
+	return path;
+}
+
+bool IsAudioFilePath(const std::filesystem::path& path) {
+	std::string extension = path.extension().string();
+	std::transform(
+		extension.begin(),
+		extension.end(),
+		extension.begin(),
+		[](unsigned char character) {
+			return static_cast<char>(std::tolower(character));
+		});
+	return extension == ".wav" || extension == ".mp3" ||
+		extension == ".ogg" || extension == ".flac";
+}
+
+void SetAudioEventError(std::string* destination, const std::string& message) {
+	if (destination) {
+		*destination = message;
+	}
+}
+}
+
+AudioEventSystem* AudioEventSystem::GetInstance() {
+	static AudioEventSystem instance;
+	return &instance;
+}
+
+bool AudioEventSystem::LoadEvent(
+	const std::string& eventPath,
+	AudioEventDefinition& definition,
+	std::string* errorMessage) const {
+	const std::string normalizedPath = NormalizeAudioPath(eventPath);
+	std::ifstream file(normalizedPath, std::ios::binary);
+	if (!file) {
+		SetAudioEventError(errorMessage, "Audio Eventを開けません: " + normalizedPath);
+		return false;
+	}
+
+	try {
+		nlohmann::json root;
+		file >> root;
+		AudioEventDefinition loaded;
+
+		if (!root.contains("clips") || !root["clips"].is_array()) {
+			SetAudioEventError(errorMessage, "clips配列がありません: " + normalizedPath);
+			return false;
+		}
+		const std::filesystem::path parent =
+			std::filesystem::path(normalizedPath).parent_path();
+		for (const auto& value : root["clips"]) {
+			if (!value.is_string()) {
+				continue;
+			}
+			std::string clip = NormalizeAudioPath(value.get<std::string>());
+			if (clip.empty()) {
+				continue;
+			}
+			std::filesystem::path clipPath(clip);
+			if (!clipPath.is_absolute() && clip.rfind("Resources/", 0) != 0) {
+				const std::filesystem::path besideEvent = parent / clipPath;
+				const std::filesystem::path underSe =
+					std::filesystem::path("Resources/audio/se") / clipPath;
+				if (std::filesystem::exists(besideEvent)) {
+					clip = NormalizeAudioPath(besideEvent.generic_string());
+				}
+				else {
+					clip = NormalizeAudioPath(underSe.generic_string());
+				}
+			}
+			if (IsAudioFilePath(std::filesystem::path(clip))) {
+				loaded.clips.push_back(std::move(clip));
+			}
+		}
+		if (loaded.clips.empty()) {
+			SetAudioEventError(errorMessage, "再生可能なclipがありません: " + normalizedPath);
+			return false;
+		}
+
+		const auto readRange = [&root](
+			const char* key,
+			float& minimum,
+			float& maximum) {
+			if (!root.contains(key) || !root[key].is_array() ||
+				root[key].size() < 2) {
+				return;
+			}
+			minimum = root[key][0].get<float>();
+			maximum = root[key][1].get<float>();
+			if (minimum > maximum) {
+				std::swap(minimum, maximum);
+			}
+		};
+		readRange("volumeRange", loaded.volumeMin, loaded.volumeMax);
+		readRange("pitchRange", loaded.pitchMin, loaded.pitchMax);
+		loaded.volumeMin = std::clamp(loaded.volumeMin, 0.0f, 1.0f);
+		loaded.volumeMax = std::clamp(loaded.volumeMax, 0.0f, 1.0f);
+		loaded.pitchMin = std::clamp(loaded.pitchMin, 0.5f, 2.0f);
+		loaded.pitchMax = std::clamp(loaded.pitchMax, 0.5f, 2.0f);
+		loaded.maxInstances =
+			std::clamp(root.value("maxInstances", loaded.maxInstances), 1, 64);
+		loaded.spatial = root.value("spatial", loaded.spatial);
+		loaded.minDistance =
+			(std::max)(0.0f, root.value("minDistance", loaded.minDistance));
+		loaded.maxDistance =
+			(std::max)(loaded.minDistance + 0.01f,
+				root.value("maxDistance", loaded.maxDistance));
+
+		definition = std::move(loaded);
+		SetAudioEventError(errorMessage, "");
+		return true;
+	}
+	catch (const std::exception& exception) {
+		SetAudioEventError(
+			errorMessage,
+			"Audio Eventの解析に失敗しました: " + std::string(exception.what()));
+		return false;
+	}
+}
+
+bool AudioEventSystem::SaveEvent(
+	const std::string& eventPath,
+	const AudioEventDefinition& definition,
+	std::string* errorMessage) {
+	if (definition.clips.empty()) {
+		SetAudioEventError(errorMessage, "1つ以上のclipが必要です。");
+		return false;
+	}
+
+	const std::filesystem::path path(NormalizeAudioPath(eventPath));
+	std::error_code error;
+	if (!path.parent_path().empty()) {
+		std::filesystem::create_directories(path.parent_path(), error);
+		if (error) {
+			SetAudioEventError(errorMessage, "保存フォルダを作成できません。");
+			return false;
+		}
+	}
+
+	AudioEventDefinition sanitized = definition;
+	if (sanitized.volumeMin > sanitized.volumeMax) {
+		std::swap(sanitized.volumeMin, sanitized.volumeMax);
+	}
+	if (sanitized.pitchMin > sanitized.pitchMax) {
+		std::swap(sanitized.pitchMin, sanitized.pitchMax);
+	}
+	sanitized.volumeMin = std::clamp(sanitized.volumeMin, 0.0f, 1.0f);
+	sanitized.volumeMax = std::clamp(sanitized.volumeMax, 0.0f, 1.0f);
+	sanitized.pitchMin = std::clamp(sanitized.pitchMin, 0.5f, 2.0f);
+	sanitized.pitchMax = std::clamp(sanitized.pitchMax, 0.5f, 2.0f);
+	sanitized.maxInstances = std::clamp(sanitized.maxInstances, 1, 64);
+	sanitized.minDistance = (std::max)(0.0f, sanitized.minDistance);
+	sanitized.maxDistance =
+		(std::max)(sanitized.minDistance + 0.01f, sanitized.maxDistance);
+
+	nlohmann::json root = {
+		{ "schemaVersion", 1 },
+		{ "clips", sanitized.clips },
+		{ "volumeRange", { sanitized.volumeMin, sanitized.volumeMax } },
+		{ "pitchRange", { sanitized.pitchMin, sanitized.pitchMax } },
+		{ "maxInstances", sanitized.maxInstances },
+		{ "spatial", sanitized.spatial },
+		{ "minDistance", sanitized.minDistance },
+		{ "maxDistance", sanitized.maxDistance }
+	};
+
+	std::ofstream file(path, std::ios::binary);
+	if (!file) {
+		SetAudioEventError(errorMessage, "Audio Eventを保存できません。");
+		return false;
+	}
+	file << root.dump(2);
+	if (!file.good()) {
+		SetAudioEventError(errorMessage, "Audio Eventの書き込みに失敗しました。");
+		return false;
+	}
+
+	eventCache_[NormalizeAudioPath(path.generic_string())] = std::move(sanitized);
+	SetAudioEventError(errorMessage, "");
+	return true;
+}
+
+bool AudioEventSystem::Prewarm(
+	const std::string& eventPath,
+	std::string* errorMessage) {
+	AudioEventDefinition definition;
+	if (!LoadEvent(eventPath, definition, errorMessage)) {
+		return false;
+	}
+
+	bool succeeded = true;
+	for (const std::string& clip : definition.clips) {
+		if (AudioPlayer::GetInstance()->LoadSoundFile(clip) ==
+			AudioPlayer::kInvalidAudioHandle) {
+			succeeded = false;
+			SetAudioEventError(errorMessage, "音声を準備できません: " + clip);
+		}
+	}
+	if (succeeded) {
+		eventCache_[NormalizeAudioPath(eventPath)] = std::move(definition);
+	}
+	return succeeded;
+}
+
+AudioPlayer::PlaybackHandle AudioEventSystem::Play(
+	const std::string& eventPath,
+	const Vector3* worldPosition,
+	float volumeScale) {
+	Update();
+	const std::string normalizedPath = NormalizeAudioPath(eventPath);
+
+	auto cached = eventCache_.find(normalizedPath);
+	if (cached == eventCache_.end()) {
+		AudioEventDefinition definition;
+		if (!LoadEvent(normalizedPath, definition, nullptr)) {
+			return AudioPlayer::kInvalidPlaybackHandle;
+		}
+		cached = eventCache_.emplace(normalizedPath, std::move(definition)).first;
+	}
+	const AudioEventDefinition& definition = cached->second;
+
+	const std::size_t activeCount = static_cast<std::size_t>(std::count_if(
+		activeInstances_.begin(),
+		activeInstances_.end(),
+		[&](const ActiveInstance& instance) {
+			return instance.eventPath == normalizedPath;
+		}));
+	if (activeCount >= static_cast<std::size_t>(definition.maxInstances)) {
+		return AudioPlayer::kInvalidPlaybackHandle;
+	}
+
+	std::uniform_int_distribution<std::size_t> clipDistribution(
+		0, definition.clips.size() - 1);
+	std::size_t clipIndex = clipDistribution(randomEngine_);
+	const auto last = lastClipByEvent_.find(normalizedPath);
+	if (definition.clips.size() > 1 &&
+		last != lastClipByEvent_.end() &&
+		clipIndex == last->second) {
+		clipIndex = (clipIndex + 1) % definition.clips.size();
+	}
+	lastClipByEvent_[normalizedPath] = clipIndex;
+
+	std::uniform_real_distribution<float> volumeDistribution(
+		definition.volumeMin, definition.volumeMax);
+	std::uniform_real_distribution<float> pitchDistribution(
+		definition.pitchMin, definition.pitchMax);
+	float volume = volumeDistribution(randomEngine_) *
+		std::clamp(volumeScale, 0.0f, 1.0f);
+
+	if (definition.spatial && worldPosition) {
+		if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+			const float distance = Math::Length(*worldPosition - camera->GetEye());
+			const float attenuation = 1.0f - std::clamp(
+				(distance - definition.minDistance) /
+					(definition.maxDistance - definition.minDistance),
+				0.0f,
+				1.0f);
+			volume *= attenuation;
+		}
+	}
+
+	const AudioPlayer::PlaybackHandle handle =
+		AudioPlayer::GetInstance()->PlayTransientSE(
+			definition.clips[clipIndex],
+			volume,
+			pitchDistribution(randomEngine_));
+	if (handle != AudioPlayer::kInvalidPlaybackHandle) {
+		activeInstances_.push_back({ normalizedPath, handle });
+	}
+	return handle;
+}
+
+AudioPlayer::PlaybackHandle AudioEventSystem::PlayReference(
+	const std::string& reference,
+	const Vector3* worldPosition,
+	float volumeScale) {
+	const std::string eventPath = ResolveEventPath(reference);
+	if (!eventPath.empty()) {
+		return Play(eventPath, worldPosition, volumeScale);
+	}
+
+	std::string audioPath = NormalizeAudioPath(reference);
+	if (audioPath.rfind("Resources/", 0) != 0) {
+		audioPath = NormalizeAudioPath(
+			(std::filesystem::path("Resources/audio/se") / audioPath)
+				.generic_string());
+	}
+	if (!IsAudioFilePath(std::filesystem::path(audioPath))) {
+		return AudioPlayer::kInvalidPlaybackHandle;
+	}
+	return AudioPlayer::GetInstance()->PlayTransientSE(
+		audioPath,
+		std::clamp(volumeScale, 0.0f, 1.0f),
+		1.0f);
+}
+
+void AudioEventSystem::Update() {
+	AudioPlayer* audioPlayer = AudioPlayer::GetInstance();
+	audioPlayer->Update();
+	activeInstances_.erase(
+		std::remove_if(
+			activeInstances_.begin(),
+			activeInstances_.end(),
+			[audioPlayer](const ActiveInstance& instance) {
+				return !audioPlayer->IsTransientPlaying(instance.handle);
+			}),
+		activeInstances_.end());
+}
+
+std::string AudioEventSystem::ResolveEventPath(
+	const std::string& reference) const {
+	std::string normalized = NormalizeAudioPath(reference);
+	if (normalized.empty()) {
+		return {};
+	}
+
+	std::filesystem::path direct(normalized);
+	if (direct.extension() == ".json" && std::filesystem::exists(direct)) {
+		return NormalizeAudioPath(direct.generic_string());
+	}
+
+	std::filesystem::path fileName = direct.filename();
+	if (fileName.extension().empty()) {
+		fileName.replace_extension(".json");
+	}
+	for (const std::filesystem::path& directory : {
+		std::filesystem::path("Resources/json/audio_events"),
+		std::filesystem::path("Resources/json/audio") }) {
+		const std::filesystem::path candidate = directory / fileName;
+		if (std::filesystem::exists(candidate)) {
+			return NormalizeAudioPath(candidate.generic_string());
+		}
+	}
+	return {};
 }

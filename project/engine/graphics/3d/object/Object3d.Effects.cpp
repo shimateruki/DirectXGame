@@ -224,7 +224,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
     }
 }
 void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (!isVisible_) return;
+    if (!GetIsRenderVisible()) return;
 
     // 配列内のすべてのエフェクトを描画
     for (auto& effect : attachedEffects1_) {

@@ -456,7 +456,8 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
-    sceneValidator_.Initialize(sceneManager);
+    sceneInventoryWindow_.Initialize(sceneManager, this);
+    sceneValidator_.Initialize(sceneManager, this);
     materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
     enemyAttackPreviewWindow_.Initialize(sceneManager);
@@ -798,14 +799,7 @@ void DebugEditor::Update() {
                 CameraEditor::GetInstance()->FocusSelectedCameraObject();
             }
             else if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
-                Vector3 targetPos = { selectedObject_->GetWorldMatrix().m[3][0],
-                                      selectedObject_->GetWorldMatrix().m[3][1],
-                                      selectedObject_->GetWorldMatrix().m[3][2] };
-
-                // オブジェクトの少し手前・斜め上にカメラをワープさせる
-                Vector3 newCamPos = { targetPos.x, targetPos.y + 5.0f, targetPos.z - 10.0f };
-                Vector3 newCamRot = { ToRadians(20.0f), 0.0f, 0.0f };
-                CameraEditor::GetInstance()->SetEditorCameraTransform(newCamPos, newCamRot);
+                FocusSceneObject(selectedObject_);
             }
         }
 
@@ -1087,7 +1081,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     for (const auto& obj : objects) {
         if (!obj) continue;
-        if (!obj->GetIsVisible()) continue;
+        if (!obj->GetIsRenderVisible()) continue;
         // インスタンス描画の上限チェック
         if (instanceCount >= kMaxDrawLimit) break;
 
@@ -1510,6 +1504,9 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         }
     }
 
+    // シーン視覚監査で選択した問題ペアは、通常のコライダー表示設定に関係なく強調する。
+    sceneValidator_.DrawDebug(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
+
 }
 
 // ==========================================================================================
@@ -1539,15 +1536,16 @@ void DebugEditor::DrawImGui() {
 
             ImGui::SeparatorText("選択表示");
             int overlayMode = static_cast<int>(selectionOverlayMode_);
-            const char* overlayModes[] = { "簡易", "詳細", "非表示" };
-            if (ImGui::Combo("複数選択の可視化", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
+            const char* overlayModes[] = { "スマート", "詳細", "非表示" };
+            if (ImGui::Combo("選択オブジェクトの可視化", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
                 selectionOverlayMode_ = static_cast<SelectionOverlayMode>(overlayMode);
             }
 
             const std::string activeName = selectedObject_->GetName().empty() ? "Selected" : selectedObject_->GetName();
             ImGui::Text("選択: %zu個 / 操作対象: %s", selectedObjects_.size(), activeName.c_str());
-            if (selectionOverlayMode_ == SelectionOverlayMode::Compact && selectedObjects_.size() > 1) {
-                ImGui::TextDisabled("副選択は小さいマーカーで表示します。Altを押している間は外枠を表示します。");
+            if (selectionOverlayMode_ == SelectionOverlayMode::Compact) {
+                ImGui::TextDisabled("四隅だけを表示し、巨大物や画面外の物体はマーカーへ自動で切り替えます。");
+                ImGui::TextDisabled("Altを押している間は回転に追従した詳細境界を表示します。");
             } else if (selectionOverlayMode_ == SelectionOverlayMode::Hidden) {
                 ImGui::TextDisabled("選択枠を隠し、ImGuizmoだけを表示します。");
             }

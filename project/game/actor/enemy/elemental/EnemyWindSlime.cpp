@@ -8,7 +8,6 @@
 #include "GPUParticleManager.h"
 #include "GroundEffectLocator.h"
 #include "MeshEffectManager.h"
-#include "Player.h"
 #include "SceneManager.h"
 #include "SlimeBounceAnimator.h"
 
@@ -26,13 +25,15 @@ constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.24f;
 constexpr float kMoveHopPower = 5.25f;
 constexpr float kUpdraftCooldown = 1.85f;
-constexpr float kDashCooldown = 0.62f;
-constexpr float kDashDistance = 6.6f;
-constexpr float kDashMinimumDistance = 1.0f;
-constexpr float kDashInvincibleDuration = 0.14f;
+constexpr float kSoarCooldown = 0.92f;
+constexpr float kSoarLaunchSpeed = 27.0f;
+constexpr float kSoarForwardSpeed = 8.0f;
+constexpr float kSoarSlowFallSpeed = -6.2f;
+constexpr float kSoarInvincibleDuration = 0.22f;
+constexpr float kSoarSafetyDuration = 8.0f;
+constexpr float kSoarEffectInterval = 0.10f;
 constexpr float kUpdraftRadius = 3.8f;
 constexpr float kUpdraftLiftSpeed = 18.0f;
-constexpr float kCarriedBreathRefreshTime = 0.16f;
 constexpr float kBreathPushInterval = 0.13f;
 constexpr float kBreathParticleInterval = 0.045f;
 constexpr float kVolleyShotInterval = 0.34f;
@@ -53,9 +54,13 @@ constexpr const char* kOrbHoldPreset = "wind_slime_orb_hold";
 constexpr const char* kOrbTrailPreset = "wind_slime_orb_trail";
 constexpr const char* kOrbImpactPreset = "wind_slime_orb_impact";
 constexpr const char* kUpdraftPreset = "player_wind_updraft";
-constexpr const char* kDashPreset = "player_wind_dash";
+constexpr const char* kSoarTrailPreset = "player_wind_dash";
 constexpr const char* kBurstRingEffectPath = "Resources/json/effect/effect_wind_gust_ring.json";
-constexpr const char* kDashTrailEffectPath = "Resources/json/effect/effect_wind_dash_trail.json";
+constexpr const char* kUpdraftSpiralEffectPath = "Resources/json/effect/effect_player_wind_updraft_spiral.json";
+constexpr const char* kUpdraftCounterSpiralEffectPath = "Resources/json/effect/effect_player_wind_updraft_spiral_counter.json";
+constexpr const char* kSoarLaunchEffectPath = "Resources/json/effect/effect_player_wind_soar_launch.json";
+constexpr const char* kSlowFallEffectPath = "Resources/json/effect/effect_player_wind_slow_fall.json";
+constexpr const char* kSoarLandEffectPath = "Resources/json/effect/effect_player_wind_soar_land.json";
 
 float SmoothStep01(float value) {
     value = std::clamp(value, 0.0f, 1.0f);
@@ -162,13 +167,6 @@ void EnemyWindSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, ui
         if (orb && orb->GetIsVisible()) {
             orb->DrawWindOrb(depthSrvHandle, grabSrvHandle);
         }
-    }
-}
-
-void EnemyWindSlime::SetCarried(bool isCarried) {
-    BaseEnemy::SetCarried(isCarried);
-    if (!isCarried) {
-        ReleaseCarriedAbilityVisuals();
     }
 }
 
@@ -742,216 +740,6 @@ std::unique_ptr<Object3d> EnemyWindSlime::Clone() const {
     clone->SetTarget(target_);
     clone->SetDetectionRange(detectionRange_);
     return clone;
-}
-
-void EnemyWindSlime::ExecutePrimaryAbility(Player* player) {
-    if (!player || !isCarried_) {
-        return;
-    }
-    if (carriedBreathTimer_ <= 0.0f) {
-        carriedBreathParticleTimer_ = 0.0f;
-        carriedBreathPushTimer_ = 0.0f;
-        breathParticleCursor_ = 0;
-        player->TriggerSlimeImpulse({ 1.18f, 0.82f, 1.42f }, 0.14f);
-    }
-    carriedBreathTimer_ = kCarriedBreathRefreshTime;
-}
-
-void EnemyWindSlime::ExecuteAbility(Player* player) {
-    if (!player || !isCarried_ || carriedUpdraftCooldown_ > 0.0f) {
-        return;
-    }
-    Vector3 velocity = player->GetVelocity();
-    velocity.y = (std::max)(velocity.y, kUpdraftLiftSpeed);
-    player->SetVelocity(velocity);
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, player->GetForwardDirection());
-    player->TriggerSlimeImpulse({ 0.74f, 1.62f, 0.74f }, 0.22f);
-
-    const Vector3 center = player->GetWorldPosition();
-    DispatchUpdraftPush(player, center);
-    for (int index = 0; index < 10; ++index) {
-        const float angle = static_cast<float>(index) * 0.62831853f;
-        const float radius = 0.28f + static_cast<float>(index) * 0.19f;
-        const Vector3 position = center + Vector3{
-            std::cos(angle) * radius,
-            0.10f + static_cast<float>(index) * 0.18f,
-            std::sin(angle) * radius };
-        EmitDirectedWindPreset(kUpdraftPreset, position, { -std::sin(angle) * 0.25f, 1.0f, std::cos(angle) * 0.25f },
-            1.0f + static_cast<float>(index) * 0.045f);
-    }
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(kBurstRingEffectPath, center + Vector3{ 0.0f, 0.06f, 0.0f },
-            { 0.0f, idleTimer_, 0.0f }, { kUpdraftRadius, 1.0f, kUpdraftRadius });
-    }
-    carriedUpdraftCooldown_ = kUpdraftCooldown;
-}
-
-void EnemyWindSlime::DispatchUpdraftPush(Player* player, const Vector3& center) {
-    PhysicsQueryFilter filter;
-    filter.mask = kEnemy;
-    filter.ignoredObject = player;
-    std::unordered_set<Object3d*> pushed;
-    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, kUpdraftRadius, filter)) {
-        Object3d* target = FindEnemyRoot(hit.object);
-        Character* character = dynamic_cast<Character*>(target);
-        if (!character || !pushed.insert(target).second) {
-            continue;
-        }
-        const Vector3 away = NormalizePlanar(target->GetWorldPosition() - center);
-        character->ApplyExternalImpulse({ away.x * 5.0f, 16.5f, away.z * 5.0f }, 0.28f);
-    }
-}
-
-void EnemyWindSlime::ExecuteDashAbility(Player* player) {
-    if (!player || !isCarried_ || carriedDashCooldown_ > 0.0f) {
-        return;
-    }
-    Vector3 start{};
-    Vector3 destination{};
-    Vector3 direction{};
-    if (!ResolveDashDestination(player, start, destination, direction)) {
-        return;
-    }
-    SpawnDashEffects(start, destination, direction);
-    player->SetTranslate(destination);
-    Vector3 velocity = player->GetVelocity();
-    velocity.x = direction.x * 15.0f;
-    velocity.z = direction.z * 15.0f;
-    velocity.y = (std::max)(velocity.y, 2.8f);
-    player->SetVelocity(velocity);
-    player->SetMoveYaw(std::atan2(direction.x, direction.z));
-    player->StartEvasionInvincibility(kDashInvincibleDuration);
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction);
-    player->TriggerSlimeImpulse({ 0.76f, 0.88f, 1.62f }, 0.17f);
-    player->UpdateLocalMatrix();
-    player->UpdateWorldMatrix();
-    carriedDashCooldown_ = kDashCooldown;
-}
-
-bool EnemyWindSlime::ResolveDashDestination(
-    Player* player,
-    Vector3& start,
-    Vector3& destination,
-    Vector3& direction) const {
-    start = player->GetWorldPosition();
-    Vector3 movement = player->GetVelocity();
-    movement.y = 0.0f;
-    direction = Math::Length(movement) > 1.2f ? Math::Normalize(movement) : NormalizePlanar(player->GetForwardDirection());
-
-    PhysicsQueryFilter filter;
-    filter.mask = kAllSolid;
-    filter.ignoredObject = player;
-    float distance = kDashDistance;
-    const RaycastHit low = CollisionManager::GetInstance()->SphereCast(
-        start + Vector3{ 0.0f, 0.72f, 0.0f }, 0.48f, direction, kDashDistance, filter);
-    const RaycastHit high = CollisionManager::GetInstance()->SphereCast(
-        start + Vector3{ 0.0f, 1.42f, 0.0f }, 0.42f, direction, kDashDistance, filter);
-    if (low.isHit) distance = (std::min)(distance, low.distance - 0.30f);
-    if (high.isHit) distance = (std::min)(distance, high.distance - 0.30f);
-    distance = (std::max)(0.0f, distance);
-    if (distance < kDashMinimumDistance) {
-        return false;
-    }
-    destination = start + direction * distance;
-    destination.y += 0.12f;
-    return true;
-}
-
-void EnemyWindSlime::SpawnDashEffects(
-    const Vector3& start,
-    const Vector3& destination,
-    const Vector3& direction) {
-    const Vector3 offset = destination - start;
-    const float distance = (std::max)(0.001f, Math::Length(Vector3{ offset.x, 0.0f, offset.z }));
-    const float yaw = std::atan2(direction.x, direction.z);
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(kDashTrailEffectPath,
-            (start + destination) * 0.5f + Vector3{ 0.0f, 0.62f, 0.0f },
-            { 0.0f, yaw, 0.0f }, { 0.85f, 1.0f, distance });
-    }
-    for (int index = 0; index <= 8; ++index) {
-        const float t = static_cast<float>(index) / 8.0f;
-        EmitDirectedWindPreset(kDashPreset,
-            start + offset * t + Vector3{ 0.0f, 0.48f + std::sin(t * 3.14159265f) * 0.18f, 0.0f },
-            direction, 1.15f + t * 0.55f);
-    }
-}
-
-void EnemyWindSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
-    if (!isCarried_ || !player) {
-        return;
-    }
-    idleTimer_ += deltaTime;
-    carriedUpdraftCooldown_ = (std::max)(0.0f, carriedUpdraftCooldown_ - deltaTime);
-    carriedDashCooldown_ = (std::max)(0.0f, carriedDashCooldown_ - deltaTime);
-    carriedAuraTimer_ -= deltaTime;
-
-    if (carriedBreathTimer_ > 0.0f) {
-        carriedBreathTimer_ = (std::max)(0.0f, carriedBreathTimer_ - deltaTime);
-        carriedBreathParticleTimer_ -= deltaTime;
-        carriedBreathPushTimer_ -= deltaTime;
-        const Vector3 direction = NormalizePlanar(player->GetForwardDirection());
-        const Vector3 origin = player->GetWorldPosition() + Vector3{ 0.0f, 0.74f, 0.0f };
-        const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
-        if (carriedBreathParticleTimer_ <= 0.0f) {
-            EmitWindBreathParticles(origin, direction, attack.maxRange);
-            carriedBreathParticleTimer_ += kBreathParticleInterval;
-        }
-        if (carriedBreathPushTimer_ <= 0.0f) {
-            DispatchCarriedBreathPush(player, direction);
-            carriedBreathPushTimer_ += kBreathPushInterval;
-        }
-        player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction);
-    }
-
-    if (carriedAuraTimer_ <= 0.0f) {
-        EmitDirectedWindPreset(kIdlePreset, player->GetWorldPosition() + Vector3{ 0.0f, 0.65f, 0.0f },
-            { 0.12f, 1.0f, 0.04f }, 0.52f);
-        carriedAuraTimer_ = 0.18f;
-    }
-}
-
-void EnemyWindSlime::DispatchCarriedBreathPush(Player* player, const Vector3& direction) {
-    SceneManager* sceneManager = SceneManager::GetInstance();
-    BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
-    if (!scene || !player) {
-        return;
-    }
-
-    const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
-    const Vector3 origin = player->GetWorldPosition();
-    for (const auto& object : scene->GetObjects()) {
-        BaseEnemy* enemy = dynamic_cast<BaseEnemy*>(object.get());
-        if (!enemy || enemy == this || enemy->IsCarried() || enemy->IsDefeatEffectPlaying() ||
-            enemy->isDead || !enemy->GetIsVisible()) {
-            continue;
-        }
-
-        Vector3 toTarget = enemy->GetWorldPosition() - origin;
-        toTarget.y = 0.0f;
-        const float distance = Math::Length(toTarget);
-        if (distance <= 0.001f || distance > attack.maxRange + 0.9f) {
-            continue;
-        }
-        const Vector3 targetDirection = Math::Normalize(toTarget);
-        if (Math::Dot(direction, targetDirection) < 0.20f) {
-            continue;
-        }
-
-        const float falloff = 1.0f - std::clamp(distance / (attack.maxRange + 0.9f), 0.0f, 1.0f);
-        const float planarForce = 21.0f + falloff * 10.0f;
-        enemy->ApplyExternalImpulse(
-            { direction.x * planarForce, 5.5f + falloff * 3.5f, direction.z * planarForce }, 0.24f);
-        EmitDirectedWindPreset(kImpactPreset, enemy->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f },
-            direction, 1.0f + falloff * 0.42f);
-    }
-}
-
-void EnemyWindSlime::ReleaseCarriedAbilityVisuals() {
-    carriedBreathTimer_ = 0.0f;
-    carriedBreathParticleTimer_ = 0.0f;
-    carriedBreathPushTimer_ = 0.0f;
-    HideHeldWindOrbs();
 }
 
 void EnemyWindSlime::SetDebugPreviewAttackId(const std::string& attackId) {

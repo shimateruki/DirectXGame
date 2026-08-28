@@ -4,6 +4,9 @@
 #ifdef USE_IMGUI
 
 #include "BaseScene.h"
+#include "AssetReferenceExplorer.h"
+#include "PlayModeChangeTracker.h"
+#include "Player.h"
 #include "Camera.h"
 #include "CameraEditor.h"
 #include "CaptureToolWindow.h"
@@ -12,8 +15,10 @@
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DebugEditor.h"
+#include "GameplayEventTrace.h"
 #include "DirectXCommon.h"
 #include "EditorCommandRegistry.h"
+#include "EditorQuickSearch.h"
 #include "EditorAssetDragPayload.h"
 #include "EditorManager.h"
 #include "EditorTransactionManager.h"
@@ -37,6 +42,7 @@
 #include "ReplayDebugger.h"
 #include "ProjectWindow.h"
 #include "SceneManager.h"
+#include "SceneWorkspace.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
 #include "SpriteDebugEditor.h"
@@ -52,6 +58,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 
 namespace {
 constexpr float kEditorViewportAspect = 16.0f / 9.0f;
@@ -310,6 +317,9 @@ void GameEditorController::StopPlay() {
 		return;
 	}
 
+	if (playModeChangeTracker_) {
+		playModeChangeTracker_->CaptureRuntimeChanges();
+	}
 	const bool restored = replayDebugger_ && replayDebugger_->RestorePlayInEditorSnapshot();
 	*activePlayState_ = false;
 	if (sceneManager_) {
@@ -319,6 +329,9 @@ void GameEditorController::StopPlay() {
 	MeshEffectManager::GetInstance()->Clear();
 	DebrisEffectManager::GetInstance()->Clear();
 	ClearSceneBoundEditorState();
+	if (playModeChangeTracker_) {
+		playModeChangeTracker_->OnSceneRestored(restored);
+	}
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 
 	if (restored) {
@@ -437,6 +450,58 @@ void GameEditorController::RegisterEditorCommands() {
 		[this]() { return CanEditSelectedObject(); },
 		[this]() { debugEditor_->DropToFloor(); }, this });
 
+
+    registry->Register({
+        EditorCommandId::ViewQuickSearch, "統合コマンドパレット", "View", "Ctrl+K",
+        "操作、Scene Object、Asset、Scene、Preset、Editorウィンドウを横断検索します。",
+        { "search", "command", "object", "asset", "検索" }, {},
+        [this]() { if (editorQuickSearch_) editorQuickSearch_->Open(); }, this });
+
+    registry->Register({
+        EditorCommandId::ViewAssetReferences, "Asset参照エクスプローラー", "View", "",
+        "Assetの参照元、動的参照候補、Missing参照を横断表示します。",
+        { "asset", "reference", "missing", "参照" },
+        [this]() { return assetReferenceExplorer_ != nullptr; },
+        [this]() { assetReferenceExplorer_->Open(); }, this });
+
+    registry->Register({
+        EditorCommandId::ViewIsolateSelection, "選択Objectのみ表示", "View", "",
+        "選択Objectとその子だけを作業用に表示します。Sceneデータは変更しません。",
+        { "isolate", "selection", "隔離", "一時表示" },
+        [this]() { return sceneWorkspace_ && CanEditSelectedObject(); },
+        [this]() { sceneWorkspace_->IsolateSelection(); }, this });
+
+    registry->Register({
+        EditorCommandId::ViewRestoreTemporaryVisibility, "一時非表示をすべて復元", "View", "",
+        "隔離表示、Layer表示、個別の一時非表示をすべて解除します。",
+        { "show", "restore", "visibility", "全表示" },
+        [this]() { return sceneWorkspace_ && sceneWorkspace_->GetTemporaryHiddenCount() > 0; },
+        [this]() { sceneWorkspace_->RestoreAllTemporaryVisibility(); }, this });
+
+    registry->Register({
+        EditorCommandId::WorkspaceTerrain, "地形編集ワークスペース", "Workspace", "",
+        "地形生成Editorを開き、保存済みの地形編集レイアウトを適用します。",
+        { "terrain", "layout", "workspace", "地形" },
+        [this]() { return CanEditScene(); },
+        [this]() { ApplyWorkspacePreset(WorkspacePreset::Terrain); }, this });
+    registry->Register({
+        EditorCommandId::WorkspaceVfx, "VFX編集ワークスペース", "Workspace", "",
+        "VFX Sequencerを開き、保存済みのVFX編集レイアウトを適用します。",
+        { "vfx", "effect", "layout", "エフェクト" },
+        [this]() { return CanEditScene(); },
+        [this]() { ApplyWorkspacePreset(WorkspacePreset::Vfx); }, this });
+    registry->Register({
+        EditorCommandId::WorkspaceAnimation, "アニメーション編集ワークスペース", "Workspace", "",
+        "Animation Workbenchを開き、保存済みのアニメーション編集レイアウトを適用します。",
+        { "animation", "motion", "layout", "アニメーション" },
+        [this]() { return CanEditScene(); },
+        [this]() { ApplyWorkspacePreset(WorkspacePreset::Animation); }, this });
+    registry->Register({
+        EditorCommandId::WorkspaceReplay, "リプレイ解析ワークスペース", "Workspace", "",
+        "Replay Debuggerを開き、保存済みのリプレイ解析レイアウトを適用します。",
+        { "replay", "timeline", "layout", "リプレイ" },
+        [this]() { return replayDebugger_ != nullptr; },
+        [this]() { ApplyWorkspacePreset(WorkspacePreset::Replay); }, this });
 	registry->Register({
 		EditorCommandId::ViewEditorPanels, "Hierarchy / Inspector表示", "View", "",
 		"主要Editorパネルの表示を切り替えます。", { "hierarchy", "inspector", "window" }, {},
@@ -471,6 +536,11 @@ void GameEditorController::RegisterEditorCommands() {
 		EditorCommandId::HelpProfiler, "システムプロファイラ", "Help", "",
 		"CPU/GPUシステムプロファイラを開きます。", { "profiler", "performance", "性能" }, {},
 		[]() { ProfilerManager::GetInstance()->Open(); }, this });
+    registry->Register({
+        EditorCommandId::HelpGameplayEventTrace, "Gameplay Event Trace", "Help", "",
+        "Animation EventからVFX・Audio・Camera・HitStopまでの発火経路を表示します。",
+        { "event", "trace", "feedback", "vfx", "animation", "演出" }, {},
+        []() { GameplayEventTrace::GetInstance()->Open(); }, this });
 }
 // ゲームエディタで使う各種ツールとウィンドウを生成し、SceneManagerへ接続する。
 
@@ -540,6 +610,26 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 			trailEmitterEditor_.get());
 	}
 
+
+    sceneWorkspace_ = std::make_unique<SceneWorkspace>();
+    sceneWorkspace_->Initialize(sceneManager_, debugEditor_.get());
+    debugEditor_->SetSceneWorkspace(sceneWorkspace_.get());
+
+    editorQuickSearch_ = std::make_unique<EditorQuickSearch>();
+    editorQuickSearch_->Initialize(
+        sceneManager_,
+        debugEditor_.get(),
+        [this]() { showDebugWindows_ = true; });
+
+    assetReferenceExplorer_ = std::make_unique<AssetReferenceExplorer>();
+    assetReferenceExplorer_->Initialize(debugEditor_.get());
+    playModeChangeTracker_ = std::make_unique<PlayModeChangeTracker>();
+    playModeChangeTracker_->Initialize(sceneManager_, debugEditor_.get());
+    debugEditor_->SetPlayFromPositionCallback(
+        [this](const Vector3& position, const std::string& label) {
+            RequestPlayFromPosition(position, label);
+        });
+
 	RegisterEditorCommands();
 }
 // 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
@@ -548,6 +638,22 @@ void GameEditorController::Finalize() {
 	EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
 	activePlayState_ = nullptr;
 	activeSceneName_.clear();
+    if (editorQuickSearch_) {
+        editorQuickSearch_->Finalize();
+    }
+    editorQuickSearch_.reset();
+    if (debugEditor_) {
+        debugEditor_->SetSceneWorkspace(nullptr);
+    }
+    if (sceneWorkspace_) {
+        sceneWorkspace_->Finalize();
+    }
+    sceneWorkspace_.reset();
+    if (debugEditor_) debugEditor_->SetPlayFromPositionCallback({});
+    if (playModeChangeTracker_) playModeChangeTracker_->Finalize();
+    playModeChangeTracker_.reset();
+    if (assetReferenceExplorer_) assetReferenceExplorer_->Finalize();
+    assetReferenceExplorer_.reset();
 	sceneManager_ = nullptr;
 	if (replayDebugger_) {
 		replayDebugger_->Finalize();
@@ -573,6 +679,13 @@ void GameEditorController::BeginFrame() {
 	ImGuiManager::GetInstance()->BeginFrame();
 	ImGuizmo::BeginFrame();
 	CameraEditor::GetInstance()->BeginPreviewUiFrame();
+    if (sceneWorkspace_) {
+        sceneWorkspace_->Update();
+        sceneWorkspace_->HandleHotkeys();
+    }
+    if (editorQuickSearch_) {
+        editorQuickSearch_->HandleShortcut();
+    }
 	IEditable* selectedObject = EditorManager::GetInstance()->GetSelectedObject();
 	const bool wantsEnemyAttackTimeline =
 		!showReplayDebugger_ &&
@@ -587,8 +700,11 @@ void GameEditorController::BeginFrame() {
 		 selectedObject == meshEffectEditor_.get() ||
 		 selectedObject == debrisEffectEditor_.get() ||
 		 selectedObject == trailEmitterEditor_.get());
-	if (wantsEffectPreviewTimeline) {
-		EffectPreviewStage::GetInstance()->EnableForToolPreview();
+	EffectPreviewStage* effectPreviewStage = EffectPreviewStage::GetInstance();
+	if (wantsEffectPreviewTimeline && !showEffectPreviewTimeline_) {
+		effectPreviewStage->EnableForToolPreview();
+	} else if (!wantsEffectPreviewTimeline && showEffectPreviewTimeline_) {
+		effectPreviewStage->ReturnToScene();
 	}
 	if (showEnemyAttackTimeline_ != wantsEnemyAttackTimeline ||
 		showEffectPreviewTimeline_ != wantsEffectPreviewTimeline) {
@@ -597,6 +713,7 @@ void GameEditorController::BeginFrame() {
 		dockspaceInitialized_ = false;
 	}
 	SetupDefaultDockspace();
+    ProcessPendingWorkspaceLayout();
 }
 // ポートフォリオ撮影用に、エディタUIを隠すモードのON/OFFを切り替える。
 
@@ -622,6 +739,138 @@ void GameEditorController::SetReplayDebuggerVisible(bool visible) {
 	dockspaceInitialized_ = false;
 }
 // 初回起動時にHierarchy、Inspector、Project、GameViewなどの既定ドック配置を作る。
+
+void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
+    if (!debugEditor_) {
+        return;
+    }
+
+    showDebugWindows_ = true;
+    debugEditor_->SetSelectedObject(nullptr);
+    EditorManager::GetInstance()->ClearSelection();
+
+    IEditable* target = nullptr;
+    switch (preset) {
+    case WorkspacePreset::Terrain:
+        SetReplayDebuggerVisible(false);
+        target = debugEditor_->GetTerrainEditorWindow();
+        break;
+    case WorkspacePreset::Vfx:
+        SetReplayDebuggerVisible(false);
+        target = vfxSequencerEditor_.get();
+        break;
+    case WorkspacePreset::Animation:
+        SetReplayDebuggerVisible(false);
+        target = debugEditor_->GetAnimationWorkbench();
+        break;
+    case WorkspacePreset::Replay:
+        SetReplayDebuggerVisible(true);
+        break;
+    }
+
+    if (target) {
+        EditorManager::GetInstance()->SetSelectedObject(target);
+    }
+
+    activeWorkspacePreset_ = static_cast<int>(preset);
+    const char* key = "terrain";
+    const char* displayName = "地形編集";
+    switch (preset) {
+    case WorkspacePreset::Vfx: key = "vfx"; displayName = "VFX編集"; break;
+    case WorkspacePreset::Animation: key = "animation"; displayName = "アニメーション編集"; break;
+    case WorkspacePreset::Replay: key = "replay"; displayName = "リプレイ解析"; break;
+    default: break;
+    }
+
+    const std::filesystem::path layoutPath =
+        std::filesystem::path("output/editor_state/workspaces") / (std::string(key) + ".ini");
+    std::error_code error;
+    pendingWorkspaceLayout_ = std::filesystem::exists(layoutPath, error)
+        ? static_cast<int>(preset)
+        : -1;
+    dockspaceInitialized_ = false;
+    workspaceStatus_ = std::string(displayName) +
+        (pendingWorkspaceLayout_ >= 0 ? "レイアウトを復元します。" : "を既定配置で開きました。");
+    DebugConsole::GetInstance()->AddLog("Workspace: " + workspaceStatus_);
+}
+
+void GameEditorController::SaveWorkspacePreset(WorkspacePreset preset) {
+    const char* key = "terrain";
+    const char* displayName = "地形編集";
+    switch (preset) {
+    case WorkspacePreset::Vfx: key = "vfx"; displayName = "VFX編集"; break;
+    case WorkspacePreset::Animation: key = "animation"; displayName = "アニメーション編集"; break;
+    case WorkspacePreset::Replay: key = "replay"; displayName = "リプレイ解析"; break;
+    default: break;
+    }
+
+    const std::filesystem::path directory("output/editor_state/workspaces");
+    std::error_code error;
+    std::filesystem::create_directories(directory, error);
+    if (error) {
+        workspaceStatus_ = "レイアウト保存先を作成できませんでした。";
+        DebugConsole::GetInstance()->AddLog("Workspace Error: " + workspaceStatus_);
+        return;
+    }
+
+    const std::filesystem::path layoutPath = directory / (std::string(key) + ".ini");
+    ImGui::SaveIniSettingsToDisk(layoutPath.string().c_str());
+    workspaceStatus_ = std::string(displayName) + "の現在レイアウトを保存しました。";
+    DebugConsole::GetInstance()->AddLog("Workspace: " + workspaceStatus_);
+}
+
+void GameEditorController::ProcessPendingWorkspaceLayout() {
+    if (pendingWorkspaceLayout_ < 0) {
+        return;
+    }
+
+    const WorkspacePreset preset = static_cast<WorkspacePreset>(pendingWorkspaceLayout_);
+    pendingWorkspaceLayout_ = -1;
+    const char* key = "terrain";
+    switch (preset) {
+    case WorkspacePreset::Vfx: key = "vfx"; break;
+    case WorkspacePreset::Animation: key = "animation"; break;
+    case WorkspacePreset::Replay: key = "replay"; break;
+    default: break;
+    }
+
+    const std::filesystem::path layoutPath =
+        std::filesystem::path("output/editor_state/workspaces") / (std::string(key) + ".ini");
+    std::error_code error;
+    if (std::filesystem::exists(layoutPath, error) && !error) {
+        ImGui::LoadIniSettingsFromDisk(layoutPath.string().c_str());
+    }
+}
+
+void GameEditorController::DrawWorkspaceMenu() {
+    if (!ImGui::BeginMenu(ICON_FA_COLUMNS " ワークスペース")) {
+        return;
+    }
+
+    DrawEditorCommandMenuItem(
+        EditorCommandId::WorkspaceTerrain, nullptr,
+        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Terrain));
+    DrawEditorCommandMenuItem(
+        EditorCommandId::WorkspaceVfx, nullptr,
+        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Vfx));
+    DrawEditorCommandMenuItem(
+        EditorCommandId::WorkspaceAnimation, nullptr,
+        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Animation));
+    DrawEditorCommandMenuItem(
+        EditorCommandId::WorkspaceReplay, nullptr,
+        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Replay));
+
+    ImGui::Separator();
+    ImGui::BeginDisabled(activeWorkspacePreset_ < 0);
+    if (ImGui::MenuItem(ICON_FA_SAVE " 現在の配置をこのワークスペースへ保存")) {
+        SaveWorkspacePreset(static_cast<WorkspacePreset>(activeWorkspacePreset_));
+    }
+    ImGui::EndDisabled();
+    if (!workspaceStatus_.empty()) {
+        ImGui::TextDisabled("%s", workspaceStatus_.c_str());
+    }
+    ImGui::EndMenu();
+}
 void GameEditorController::SetupDefaultDockspace() {
 	ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
 		0,
@@ -722,7 +971,9 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 					debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 					debugEditor_->SetGameViewHovered(canEditViewport && imageHovered);
 					debugEditor_->Update();
-					if (canEditViewport && imageHovered && !ImGuizmo::IsOver() && ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+					const bool openCreateMenu = ImGui::IsKeyPressed(ImGuiKey_Tab, false) ||
+						ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+					if (canEditViewport && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
 						debugEditor_->OpenGameViewCreateContextMenu();
 					}
 					if (canEditViewport) {
@@ -1016,6 +1267,8 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 	}
 
 	if (ImGui::BeginMenu("編集")) {
+        DrawEditorCommandMenuItem(EditorCommandId::ViewQuickSearch, ICON_FA_SEARCH " 統合コマンドパレット");
+        ImGui::Separator();
 		const std::string undoLabel = EditorTransactionManager::GetInstance()->CanUndo()
 			? "元に戻す: " + EditorTransactionManager::GetInstance()->GetUndoLabel()
 			: "元に戻す";
@@ -1038,6 +1291,12 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		}
 		ImGui::Separator();
 		DrawEditorCommandMenuItem(EditorCommandId::ViewEditorPanels, nullptr, showDebugWindows_);
+        DrawEditorCommandMenuItem(EditorCommandId::ViewAssetReferences);
+        DrawEditorCommandMenuItem(
+            EditorCommandId::ViewIsolateSelection, nullptr,
+            sceneWorkspace_ && sceneWorkspace_->IsIsolationActive());
+        DrawEditorCommandMenuItem(EditorCommandId::ViewRestoreTemporaryVisibility);
+        ImGui::Separator();
 		ImGui::Separator();
 		DrawEditorCommandMenuItem(EditorCommandId::ViewConsole, nullptr, showDebugConsole_);
 		DrawEditorCommandMenuItem(EditorCommandId::ViewStatus, nullptr, showTimeController_);
@@ -1045,6 +1304,8 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		DrawEditorCommandMenuItem(EditorCommandId::ViewBossDebug, nullptr, showBossDebug_);
 		ImGui::EndMenu();
 	}
+
+    DrawWorkspaceMenu();
 
 	if (ImGui::BeginMenu(ICON_FA_HISTORY " リプレイ")) {
 		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, "下段Replay Editorを表示", showReplayDebugger_);
@@ -1106,6 +1367,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		DrawEditorCommandMenuItem(EditorCommandId::HelpProfiler, ICON_FA_CHART_BAR " システムプロファイラ");
 		ImGui::EndMenu();
 	}
+		DrawEditorCommandMenuItem(EditorCommandId::HelpGameplayEventTrace, ICON_FA_PROJECT_DIAGRAM " Gameplay Event Trace");
 
 	ImGui::EndMainMenuBar();
 	DrawUnsavedExitConfirmPopup();
@@ -1133,6 +1395,9 @@ void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlayi
 // Scene再読み込みは行わず、Play開始直前の状態を保持してゲームモードへ切り替える。
 
 void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	if (playModeChangeTracker_) {
+		playModeChangeTracker_->CaptureBaseline();
+	}
 	ClearSceneBoundEditorState();
 	playOriginSceneName_ = sceneManager ? sceneManager->GetCurrentSceneName() : currentSceneName;
 	playOriginSceneGeneration_ = sceneManager ? sceneManager->GetSceneGeneration() : 0;
@@ -1145,6 +1410,7 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 			"Play In Editor Warning: 編集状態を保持できなかったため、停止時はScene再ロードを使用します。");
 	}
 
+	ApplyPendingPlayStartPosition();
 	MeshEffectManager::GetInstance()->Clear();
 	DebrisEffectManager::GetInstance()->Clear();
 	isPlaying = true;
@@ -1153,9 +1419,53 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 	}
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 }
-// シーンに紐づく選択状態やゴースト対象をクリアし、Play前後の参照不整合を防ぐ。
+// GameView等で指定された地点を保持し、そのままPlayを開始します。
 
+
+void GameEditorController::RequestPlayFromPosition(const Vector3& position, const std::string& label) {
+	if (!activePlayState_ || *activePlayState_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
+		return;
+	}
+	hasPendingPlayStartPosition_ = true;
+	pendingPlayStartPosition_ = position;
+	pendingPlayStartLabel_ = label;
+	RequestPlay(sceneManager_, *activePlayState_, activeSceneName_);
+}
+
+void GameEditorController::ApplyPendingPlayStartPosition() {
+	if (!hasPendingPlayStartPosition_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+	Player* player = nullptr;
+	for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+		if (!object || object->GetClassName() != "Player") continue;
+		player = dynamic_cast<Player*>(object.get());
+		if (player) break;
+	}
+	if (!player) {
+		DebugConsole::GetInstance()->AddLog("Play開始位置を適用できません: Playerが見つかりません。");
+		hasPendingPlayStartPosition_ = false;
+		pendingPlayStartLabel_.clear();
+		return;
+	}
+	player->SetTranslate(pendingPlayStartPosition_);
+	player->SetRespawnPosition(pendingPlayStartPosition_);
+	player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+	player->SetIsControlActive(true);
+	player->UpdateLocalMatrix();
+	player->UpdateWorldMatrix();
+	DebugConsole::GetInstance()->AddLog(
+		"Play開始位置: " + pendingPlayStartLabel_ + " (" +
+		std::to_string(pendingPlayStartPosition_.x) + ", " +
+		std::to_string(pendingPlayStartPosition_.y) + ", " +
+		std::to_string(pendingPlayStartPosition_.z) + ")");
+	hasPendingPlayStartPosition_ = false;
+	pendingPlayStartLabel_.clear();
+}
+
+// シーンに紐づく選択状態やゴースト対象をクリアし、Play前後の参照不整合を防ぐ。
 void GameEditorController::ClearSceneBoundEditorState() {
+    if (sceneWorkspace_) {
+        sceneWorkspace_->RestoreAllTemporaryVisibility();
+    }
 	if (replayDebugger_) {
 		replayDebugger_->ResetForSceneChange();
 	}
@@ -1327,10 +1637,26 @@ void GameEditorController::DrawToolWindows(
 		engineManualWindow_->Draw();
 	}
 	ProfilerManager::GetInstance()->DrawImGui();
+    if (editorQuickSearch_) {
+        editorQuickSearch_->Draw();
+	GameplayEventTrace::GetInstance()->DrawImGui();
+    }
+    if (assetReferenceExplorer_) {
+        assetReferenceExplorer_->Draw();
+    }
+    if (playModeChangeTracker_) {
+        playModeChangeTracker_->Draw();
+    }
 }
 
 bool GameEditorController::ShouldFreezeSimulationForReplay() const {
 	return replayDebugger_ && replayDebugger_->ShouldFreezeSimulation();
+}
+
+float GameEditorController::ResolveReplaySimulationDeltaTime(float defaultDeltaTime) const {
+    return replayDebugger_
+        ? replayDebugger_->ResolveSimulationDeltaTime(defaultDeltaTime)
+        : defaultDeltaTime;
 }
 
 void GameEditorController::CaptureReplayFrame(float simulationDeltaTime, bool isPlaying) {
@@ -1569,6 +1895,10 @@ void GameEditorController::DrawBackBufferUi() {
 
 void GameEditorController::EndFrame() {
 	ImGuiManager::GetInstance()->EndFrame();
+	if (replayDebugger_ && debugEditor_ && debugEditor_->GetCaptureToolWindow()) {
+		replayDebugger_->CapturePendingRegressionScreenshot(
+			debugEditor_->GetCaptureToolWindow());
+	}
 }
 // ギズモやSprite編集中はカメラ入力を止め、操作の競合を防ぐ。
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "56cba90f9c6457d785acddb20beaf7e0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_lift_platform/star_garden_lift_platform.obj",
+  "version": 1
+}

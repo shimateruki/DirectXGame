@@ -89,10 +89,15 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_player_thunder_core.json",
     "Resources/json/effect/effect_player_thunder_impact_ring.json",
     "Resources/json/effect/effect_player_thunder_evade_trail.json",
+    "Resources/json/effect/effect_player_thunder_evade_cross.json",
+    "Resources/json/effect/effect_player_thunder_evade_seal.json",
     "Resources/json/effect/effect_player_thunder_evade_burst.json",
     "Resources/json/effect/effect_thunder_charge_ground.json",
     "Resources/json/effect/effect_thunder_scorch_mark.json",
     "Resources/json/effect/effect_prism_spike_ground_flash.json",
+    "Resources/json/effect/effect_prism_arena_seal_ring.json",
+    "Resources/json/effect/effect_prism_midboss_summon_pillar.json",
+    "Resources/json/effect/effect_prism_arena_release_wave.json",
     "Resources/json/effect/effect_enemy_defeat_core_flash.json",
     "Resources/json/effect/effect_enemy_defeat_pop_ring.json",
     "Resources/json/effect/effect_carry_bomber_throw_burst.json",
@@ -112,16 +117,38 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_warp_gate_pillar.json",
     "Resources/json/effect/effect_crown_idle_shell.json",
     "Resources/json/effect/effect_crown_get_flash_ring.json",
+    "Resources/json/effect/effect_goal_clear_gold_ring.json",
+    "Resources/json/effect/effect_goal_clear_gold_pillar.json",
+    "Resources/json/effect/effect_goal_clear_silver_ring.json",
+    "Resources/json/effect/effect_goal_clear_silver_pillar.json",
     "Resources/json/effect/effect_player_thunder_discharge_charge.json",
     "Resources/json/effect/effect_player_thunder_discharge_burst.json",
     "Resources/json/effect/effect_player_fire_blaze_trail.json",
+    "Resources/json/effect/effect_player_fire_blaze_core.json",
     "Resources/json/effect/effect_player_fire_blaze_burst.json",
+    "Resources/json/effect/effect_player_fire_blaze_body.json",
+    "Resources/json/effect/effect_player_fire_blaze_ground_wake.json",
     "Resources/json/effect/effect_player_pink_straight_arc.json",
     "Resources/json/effect/effect_player_pink_straight_impact.json",
-    "Resources/json/effect/effect_player_pink_bounce_launch.json",
-    "Resources/json/effect/effect_player_pink_bounce_land.json",
+    "Resources/json/effect/effect_player_pink_guard_start.json",
+    "Resources/json/effect/effect_player_pink_guard_shell.json",
+    "Resources/json/effect/effect_player_pink_guard_release.json",
     "Resources/json/effect/effect_player_bomb_place.json",
-    "Resources/json/effect/effect_player_bomb_blast_jump.json"
+    "Resources/json/effect/effect_player_bomb_blast_jump.json",
+    "Resources/json/effect/effect_player_bomb_blast_jump_trail.json",
+    "Resources/json/effect/effect_player_bomb_blast_jump_land.json",
+    "Resources/json/effect/effect_player_bomb_morph_pulse.json",
+    "Resources/json/effect/effect_player_fire_morph_pulse.json",
+    "Resources/json/effect/effect_player_wind_morph_pulse.json",
+    "Resources/json/effect/effect_wind_gust_ring.json",
+    "Resources/json/effect/effect_player_wind_updraft_spiral.json",
+    "Resources/json/effect/effect_player_wind_updraft_spiral_counter.json",
+    "Resources/json/effect/effect_player_wind_soar_launch.json",
+    "Resources/json/effect/effect_player_wind_slow_fall.json",
+    "Resources/json/effect/effect_player_wind_soar_land.json",
+    "Resources/json/effect/effect_ring_burner_charge.json",
+    "Resources/json/effect/effect_ring_burner_wave.json",
+    "Resources/json/effect/effect_ring_burner_wave_heat.json"
 };
 
 constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
@@ -186,14 +213,41 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "crown_idle_twinkle",
     "crown_idle_sparkle",
     "crown_goal_idle_sparkle",
+    "goal_clear_gold_burst",
+    "goal_clear_gold_motes",
+    "goal_clear_silver_burst",
+    "goal_clear_silver_motes",
     "player_thunder_discharge_charge",
     "player_thunder_discharge_burst",
     "player_fire_blaze_trail",
     "player_fire_blaze_burst",
     "player_pink_straight_splash",
-    "player_pink_bounce_droplets",
     "player_bomb_place_fuse",
-    "player_bomb_blast_jump"
+    "player_bomb_blast_jump",
+    "player_bomb_morph_aura",
+    "player_fire_morph_aura",
+    "player_wind_morph_aura",
+    "player_wind_updraft",
+    "player_wind_dash",
+    "ring_burner_charge_sparks",
+    "ring_burner_discharge_embers",
+    "magma_slime_core_embers",
+    "magma_slime_charge",
+    "magma_slime_mortar_trail",
+    "magma_slime_impact",
+    "magma_slime_rush_wake",
+    "magma_slime_rush_splash",
+    "magma_slime_slam_burst",
+    "magma_slime_geyser_burst",
+    "magma_slime_geyser_stream",
+    "magma_slime_spiral_surge",
+    "magma_slime_spiral_trail",
+    "false_king_charge",
+    "false_king_lance_trail",
+    "false_king_lance_impact",
+    "false_king_rush_wake",
+    "false_king_shockwave",
+    "false_king_dominion"
 };
 
 constexpr const char* kGameplayVfxSequencesToPreload[] = {
@@ -207,7 +261,21 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
     "enemy_ability_hit_cue",
     "crown_get_cue",
     "crown_focus_cue",
-    "crown_result_cue"
+    "crown_result_cue",
+    "crown_victory_land_cue",
+    "crown_focus_silver_cue",
+    "crown_get_silver_cue",
+    "crown_result_silver_cue",
+    "crown_victory_land_silver_cue",
+    "prism_arena_seal_cue",
+    "prism_midboss_appear_cue",
+    "prism_arena_release_cue",
+    "magma_arena_seal_cue",
+    "magma_midboss_appear_cue",
+    "magma_arena_release_cue",
+    "false_king_appear_cue",
+    "false_king_phase_shift_cue",
+    "false_king_dominion_cue"
 };
 
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {
@@ -252,6 +320,29 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddSpriteLayout(spriteLayoutPath);
     manifest.AddSpriteLayout("Resources/json/sprite/gameplayHUD.json");
     manifest.AddSpriteLayout("Resources/json/sprite/controlsGuide.json");
+    manifest.AddJson("Resources/json/animator/player_slime.json");
+    manifest.AddJson("Resources/json/cinematic/goal_clear.json");
+    for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
+        manifest.AddJson(
+            "Resources/json/gpu_particles/" +
+            std::string(presetName) +
+            ".json");
+    }
+    for (const char* path : kGameplayMeshEffectsToPreload) {
+        manifest.AddJson(path);
+    }
+    for (const char* presetName : kGameplayDebrisPresetsToPreload) {
+        manifest.AddJson(
+            "Resources/json/debris/" +
+            std::string(presetName) +
+            ".json");
+    }
+    for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
+        manifest.AddJson(
+            "Resources/json/vfx_sequence/" +
+            std::string(sequenceName) +
+            ".json");
+    }
     for (const char* path : kControlsGuidePortraitsToPreload) {
         manifest.AddTexture(path);
     }
@@ -273,8 +364,27 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddModel("Effects/prism_crystal_fragment_b");
     manifest.AddModel("Effects/prism_crystal_fragment_c");
     manifest.AddTexture("Resources/sprite/fade/fade_sparkle.png");
-    manifest.AddTexture("Resources/sprite/ui/result/clear/stage_clear_text.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_s.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_t.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_a.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_g.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_e.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_c.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_l.png");
+    manifest.AddTexture("Resources/sprite/ui/result/clear/slime_letters/letter_r.png");
     manifest.AddTexture("Resources/sprite/ui/result/clear/returning_select_text.png");
+    std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
+    if (preloadBgmPath.empty()) {
+        const auto& preloadStages = StageManager::GetInstance()->GetStages();
+        const int preloadStageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+        if (preloadStageIndex >= 0 &&
+            preloadStageIndex < static_cast<int>(preloadStages.size())) {
+            preloadBgmPath = preloadStages[preloadStageIndex].bgmPath;
+        }
+    }
+    if (!preloadBgmPath.empty()) {
+        manifest.AddAudio(preloadBgmPath);
+    }
     return manifest;
 }
 
@@ -288,6 +398,14 @@ void GamePlayScene::BeginLoadingInitialize() {
     loadingInitializePhase_ = 0;
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
+    stageEntryPresentationActive_ = false;
+    stageEntryPresentationPending_ = true;
+    stageEntryPresentationCompleted_ = false;
+    stageEntryRuntimeWasPlaying_ = false;
+    stageEntryPlayerEmergenceStarted_ = false;
+    stageEntryPresentationTimer_ = 0.0f;
+    stageEntryPresentationRetryTimer_ = 0.0f;
+    stageEntryGate_ = nullptr;
     loadingInitializeTotalUnits_ =
         13 +
         std::size(kGameplayGpuParticlePresetsToPreload) +
@@ -467,12 +585,20 @@ void GamePlayScene::OnActivated() {
         CameraEditor* cameraEditor = CameraEditor::GetInstance();
         cameraEditor->SetMode(CameraEditor::Mode::Editor);
         cameraEditor->Update(player_, false);
+        stageEntryPresentationPending_ = true;
+        stageEntryRuntimeWasPlaying_ = false;
+        stageEntryPresentationRetryTimer_ = 0.0f;
         return;
     }
 #endif
 
-    if (!StartRespawnIrisInIfNeeded()) {
-        StartStageEntryPresentation();
+    stageEntryRuntimeWasPlaying_ = true;
+    if (StartRespawnIrisInIfNeeded()) {
+        stageEntryPresentationPending_ = false;
+    } else {
+        stageEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
+        stageEntryPresentationPending_ = true;
+        stageEntryPresentationRetryTimer_ = 0.0f;
     }
 }
 
@@ -730,9 +856,21 @@ void GamePlayScene::InitializeDebugAnimationPreview() {
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
+#ifdef USE_IMGUI
+    ClearDebugPlayerMorph();
+#endif
     if (stageEntryPresentationActive_) {
         FinishStageEntryPresentation();
     }
+    if (arenaBossIntroActive_) {
+        FinishArenaBossIntro();
+    }
+    if (arenaBossRewardActive_) {
+        FinishArenaBossDefeatReward();
+    }
+    stageEntryPresentationPending_ = false;
+    stageEntryRuntimeWasPlaying_ = false;
+    stageEntryPresentationRetryTimer_ = 0.0f;
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetInputEnabled(true);
     }
@@ -748,17 +886,16 @@ void GamePlayScene::FinalizeGameplayResources() {
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     saveIndicatorOverlay_.reset();
-    goalOverlayBackdrop_.reset();
     goalOverlayFlash_.reset();
-    goalOverlayGlow_.reset();
-    goalOverlayTopLine_.reset();
-    goalOverlayBottomLine_.reset();
-    goalOverlayStageClearText_.reset();
     goalOverlayReturnText_.reset();
+    for (auto& letter : goalOverlayStageClearLetters_) {
+        letter.reset();
+    }
     for (auto& sparkle : goalOverlaySparkles_) {
         sparkle.reset();
     }
     goalPresentationState_ = GoalPresentationState::Inactive;
+    goalWasStageCleared_ = false;
     goalPresentationTimer_ = 0.0f;
     goalStarEmitTimer_ = 0.0f;
     goalBurstEmitTimer_ = 0.0f;

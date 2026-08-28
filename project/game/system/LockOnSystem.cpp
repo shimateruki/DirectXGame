@@ -34,6 +34,17 @@ LockOnSystem::~LockOnSystem() {
     // ポインタは外部管理なのでdeleteしない
 }
 
+void LockOnSystem::ResetLockOn(Camera* camera) {
+    isLockingOn_ = false;
+    lockOnTarget_ = nullptr;
+    lostSightTimer_ = 0.0f;
+
+    if (camera) {
+        camera->SetLockOnTarget(nullptr);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+    }
+}
+
 void LockOnSystem::Initialize(InputManager* inputManager) {
     inputManager_ = inputManager;
 }

@@ -31,9 +31,12 @@ private:
     void SyncCurrentFileNameFromManager();
     void DrawLightFileList();
     void DrawSkyboxTextureList();
+    void DrawEnvironmentProfilePanel();
     std::string BuildFullPathFromFileName() const;
 
     LightManager* lightManager_ = nullptr;
+    char environmentProfileFileName_[128] = "environment_profile.json";
+    float environmentProfileBlendDuration_ = 0.75f;
     char currentFileName_[128] = "light_layout.json";
     std::string syncedLightPath_;
     std::string statusMessage_;

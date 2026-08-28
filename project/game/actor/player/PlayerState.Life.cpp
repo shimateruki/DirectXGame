@@ -79,6 +79,26 @@ void PlayerStateDead::Enter(Player* player) {
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
         if (cam) {
             cam->SetFreezeEye(true);
+            if (finalDeath_) {
+                const Vector3 focus = player->GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
+                Vector3 focusEye = Math::Lerp(cam->GetEye(), focus, 0.16f);
+                focusEye.y += 0.10f;
+
+                Camera::CameraOverrideParams cameraOverride;
+                cameraOverride.duration = 0.24f;
+                cameraOverride.exitDuration = 0.0f;
+                cameraOverride.easing = Camera::OverrideEasing::kEaseOut;
+                cameraOverride.fixedEyePos = focusEye;
+                cameraOverride.fixedTargetPos = focus;
+                cameraOverride.trackEyeX = false;
+                cameraOverride.trackEyeY = false;
+                cameraOverride.trackEyeZ = false;
+                cameraOverride.trackTargetX = false;
+                cameraOverride.trackTargetY = false;
+                cameraOverride.trackTargetZ = false;
+                cam->StartOverride(cameraOverride);
+                cam->StartShake(0.22f, 0.085f, 30.0f, { 0.85f, 0.60f, 0.35f });
+            }
         }
         irisCenter_ = CalculatePlayerIrisCenter(player);
     }
@@ -116,6 +136,9 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
     sceneChangeRequested_ = true;
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (cam) {
+        if (cam->IsOverridden()) {
+            cam->EndOverride(0.0f);
+        }
         cam->SetFreezeEye(false);
     }
 
@@ -134,6 +157,9 @@ void PlayerStateDead::Exit(Player* player) {
     }
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (cam) {
+        if (cam->IsOverridden()) {
+            cam->EndOverride(0.0f);
+        }
         cam->SetFreezeEye(false);
     }
 }

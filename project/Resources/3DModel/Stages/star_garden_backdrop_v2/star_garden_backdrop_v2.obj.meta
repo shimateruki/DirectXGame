@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b23602162b39588bb66b58b31912283d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_backdrop_v2/star_garden_backdrop_v2.obj",
+  "version": 1
+}

@@ -8,10 +8,11 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "ArenaEncounter", "GameplayVolume", "PrismBarrier", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "FallingSpike", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
+        "妨害付き輸送床",
         "トランポリン",
         "スターランチャー",
         "ちくわブロック",
@@ -27,11 +28,15 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "出現床",
         "汎用スイッチ",
         "イベント受信ギミック",
+        "中ボス遭遇管理",
+        "ゲームプレイボリューム",
+        "プリズム障壁",
         "フックで引っ張るブロック",
         "一方通行床",
         "水位・マグマ上下",
         "マグマダメージ床",
         "周期式マグマ噴出口",
+        "落下する棘",
         "連鎖崩れ床",
         "回転床",
         "回転柱",
@@ -59,7 +64,35 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         selectedObject->param_->gimmickType = selectedGimmickType;
         
         // 各ギミックに合わせた初期状態（エディタ上のデフォルト初期値）を設定
-        if (selectedGimmickType == "BreakableBlock") {
+        if (selectedGimmickType == "HazardRideFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_HazardRideFloor");
+            selectedObject->SetModel("Stages/star_garden_ride_platform");
+            selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            selectedObject->SetEmissive(1.08f);
+            selectedObject->SetRoughness(0.48f);
+            selectedObject->SetMetallic(0.12f);
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->speed = 7.5f;
+            selectedObject->param_->moveAmount = 46.0f;
+            selectedObject->param_->shakeDuration = 0.55f;
+            selectedObject->param_->interval = 0.7f;
+            selectedObject->param_->fallDuration = 2.0f;
+            selectedObject->param_->gravity = 38.0f;
+            selectedObject->param_->maxCount = 4;
+            selectedObject->param_->actionMode = 0;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, -0.55f, 0.0f };
+            colConfig.size = { 6.8f, 0.65f, 5.6f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "BreakableBlock") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_BreakableBlock");
             selectedObject->SetModel("Stages/bomb_break_block");
@@ -388,6 +421,113 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.type = ColliderType::kCylinder;
             colConfig.center = { 0.0f, 5.47f, 0.0f };
             colConfig.size = { 2.15f, 4.75f, 2.15f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "ArenaEncounter") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_ArenaEncounter");
+            selectedObject->SetModel("Primitives/cube");
+            selectedObject->SetColor({ 0.42f, 0.24f, 1.0f, 0.22f });
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            selectedObject->SetCastShadow(false);
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->maxCount = 4;
+            selectedObject->param_->shakeDuration = 0.72f;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = false;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, 1.5f, 0.0f };
+            colConfig.size = { 3.0f, 3.0f, 8.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "GameplayVolume") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_GameplayVolume");
+            selectedObject->SetModel("Primitives/cube");
+            selectedObject->SetColor({ 0.15f, 0.75f, 1.0f, 0.3f });
+            selectedObject->SetScale({ 3.0f, 3.0f, 3.0f });
+            selectedObject->SetBlendMode(BlendMode::kNormal);
+            selectedObject->SetCastShadow(false);
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->volumeMode = 0;
+            selectedObject->param_->volumePayload.clear();
+            selectedObject->param_->volumeTriggerOnce = true;
+            selectedObject->param_->volumeTriggerOnExit = false;
+            selectedObject->param_->volumeRearmDelay = 0.0f;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = false;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, 0.0f, 0.0f };
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "PrismBarrier") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_PrismBarrier");
+            selectedObject->SetModel("Gimmicks/portal_surface");
+            selectedObject->SetMaterialType(22);
+            selectedObject->SetBlendMode(BlendMode::kNormal);
+            selectedObject->SetColor({ 0.30f, 0.86f, 1.0f, 0.84f });
+            selectedObject->SetEmissive(2.4f);
+            selectedObject->SetScale({ 8.0f, 3.0f, 1.0f });
+            selectedObject->SetCastShadow(false);
+            selectedObject->SetEnableEnvMap(false);
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0xffffffffu);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->moveSpeed = 0.42f;
+            selectedObject->param_->interval = 2.4f;
+            selectedObject->param_->startActive = false;
+            selectedObject->param_->returnOnOff = true;
+
+            if (auto* renderer = selectedObject->GetMeshRenderer(); renderer && renderer->GetWaterParamData()) {
+                renderer->GetWaterParamData()->effectType = 3.0f;
+                renderer->GetWaterParamData()->effectIntensity = 1.78f;
+            }
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, 0.0f, 0.0f };
+            colConfig.size = { 1.0f, 1.0f, 0.45f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "FallingSpike") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_FallingSpike");
+            selectedObject->SetModel("Effects/prism_crystal_spike");
+            selectedObject->SetMaterialType(27);
+            selectedObject->SetColor({ 0.62f, 0.95f, 1.0f, 1.0f });
+            selectedObject->SetEmissive(1.25f);
+            selectedObject->SetRoughness(0.26f);
+            selectedObject->SetMetallic(0.18f);
+            selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
+            selectedObject->SetCollisionAttribute(0);
+            selectedObject->SetCollisionMask(0);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->shakeDuration = 0.55f;
+            selectedObject->param_->moveAmount = 16.0f;
+            selectedObject->param_->gravity = 55.0f;
+            selectedObject->param_->speed = 8.0f;
+            selectedObject->param_->moveSpeed = 7.0f;
+            selectedObject->param_->jumpPower = 9.0f;
+            selectedObject->param_->startActive = false;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, 0.0f, 0.0f };
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "ChainCollapseFloor") {

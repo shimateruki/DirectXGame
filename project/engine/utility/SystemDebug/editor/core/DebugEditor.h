@@ -5,6 +5,7 @@
 #include <d3d12.h>
 #include <deque>
 #include <memory>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -42,6 +43,7 @@
 #include "PropertyMatrixWindow.h"
 #include "SceneSavePreview.h"
 #include "SceneSerializer.h"
+#include "SceneInventoryWindow.h"
 #include "SceneValidator.h"
 #include "StatusTuningWindow.h"
 #include "TerrainEditorWindow.h"
@@ -52,6 +54,7 @@ class Object3d;
 class DebrisEffectEditor;
 class DirectXCommon;
 class SceneManager;
+class SceneWorkspace;
 class GhostRecorder;
 class Model;
 class PostEffectEditor;
@@ -168,6 +171,10 @@ void PerformRedo();
     void StopPresetBrush();
     void OpenGameViewCreateContextMenu();
     void DrawGameViewCreateContextMenu();
+    // GameView右クリックから、指定地点をPlay開始位置としてControllerへ通知します。
+    void SetPlayFromPositionCallback(std::function<void(const Vector3&, const std::string&)> callback) {
+        playFromPositionCallback_ = callback;
+    }
     Vector3 CalculateGameViewCreatePosition(const Object3d* object);
     void StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label);
     void StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
@@ -229,6 +236,7 @@ void PerformRedo();
 
     void SetSelectedObject(Object3d* obj);
     void SyncObjectSelectionToInspector();
+    bool FocusSceneObject(Object3d* object);
     void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
 
@@ -273,6 +281,8 @@ void PerformRedo();
     void AddSelectedObject(Object3d* object);
     void ToggleSelectedObject(Object3d* object);
     SceneManager* GetSceneManager() const { return sceneManager_; }
+    void SetSceneWorkspace(SceneWorkspace* workspace) { sceneWorkspace_ = workspace; }
+    SceneWorkspace* GetSceneWorkspace() const { return sceneWorkspace_; }
 
     LightEditor* GetLightEditor() const { return lightEditor_; }
     PostEffectEditor* GetPostEffectEditor() const { return postEffectEditor_; }
@@ -295,6 +305,7 @@ void PerformRedo();
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
     DebrisEffectEditor* GetDebrisEffectEditor() const { return debrisEffectEditor_; }
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
+    SceneInventoryWindow* GetSceneInventoryWindow() { return &sceneInventoryWindow_; }
     SceneValidator* GetSceneValidator() { return &sceneValidator_; }
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
@@ -472,6 +483,7 @@ struct PreviewVisualState {
     bool requestGameViewCreateMenu_ = false;
 
     // 保存対象ごとのDirty状態。
+    std::function<void(const Vector3&, const std::string&)> playFromPositionCallback_;
     bool dirtyPlayer_ = false;
     bool dirtyEnemy_ = false;
     bool dirtyObject_ = false;
@@ -539,12 +551,14 @@ enum class EditorCommandType {
     GhostDirector* ghostDirector_ = nullptr;
     LightEditor* lightEditor_ = nullptr;
 
+    SceneWorkspace* sceneWorkspace_ = nullptr;
     // DebugEditorが所有するサブウィンドウ。
     HierarchyWindow hierarchyWindow_;
     ProjectWindow projectWindow_;
     InspectorWindow inspectorWindow_;
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_;
+    SceneInventoryWindow sceneInventoryWindow_;
     SceneValidator sceneValidator_;
     MaterialPreviewBoard materialPreviewBoard_;
     EnemyAttackPreviewWindow enemyAttackPreviewWindow_;

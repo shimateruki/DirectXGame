@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "fd8a2e8f246a55538b027dac30ca7037",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_seesaw_platform/star_garden_seesaw_platform.obj",
+  "version": 1
+}

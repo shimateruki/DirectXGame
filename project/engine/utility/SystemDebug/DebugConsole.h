@@ -1,4 +1,6 @@
 #pragma once
+#include <atomic>
+#include <cstdint>
 #include <string>
 #include <deque> 
 #include <mutex>
@@ -16,6 +18,7 @@ public:
     void AddLog(const std::string& log);
     void AddLog(LogLevel level, const std::string& log);
     void DrawImGui();
+    uint64_t GetErrorCount() const { return errorCount_.load(std::memory_order_relaxed); }
 
 private:
     DebugConsole() = default;
@@ -32,6 +35,7 @@ private:
     std::mutex logMutex_;
 
     bool scrollToBottom_ = true;
+    std::atomic<uint64_t> errorCount_{ 0 };
     bool autoScroll_ = true;
 #ifdef USE_IMGUI
     ImGuiTextFilter filter_;

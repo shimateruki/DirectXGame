@@ -37,6 +37,11 @@ void Update(float deltaTime = 1.0f / 60.0f);
     Camera* GetActiveCameraOverride() const { return activeCamera_; }
     void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
 
+    // Gameplay Feedback Cueからカメラ演出を共通呼び出しします。
+    void PlayShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
+    void PlayFovPulse(float duration, float amountRadians, float attackRatio = 0.12f);
+    void ClearPresentationLayers();
+
 private:
     CameraManager() = default;
     ~CameraManager() = default;

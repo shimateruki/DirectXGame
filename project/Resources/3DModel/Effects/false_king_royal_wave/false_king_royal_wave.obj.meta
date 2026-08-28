@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8c85ae6f72b44a4cfdc2ff3a75152dc1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_royal_wave/false_king_royal_wave.obj",
+  "version": 1
+}

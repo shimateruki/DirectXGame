@@ -34,6 +34,23 @@
             ],
             "speed": 4.0
         },
+        "RingBurner": {
+            "attackPower": 1.0,
+            "detectionRange": 30.0,
+            "gravity": 0.0,
+            "jumpPower": 10.0,
+            "maxFallSpeed": 60.0,
+            "maxHp": 180.0,
+            "modelName": "Characters/ring_burner",
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "speed": 0.0
+        },
         "Bomb": {
             "attackPower": 1.0,
             "detectionRange": 20.0,
@@ -102,6 +119,23 @@
             ],
             "speed": 2.3499999046325684
         },
+        "FalseKingSlime": {
+            "attackPower": 1.6,
+            "detectionRange": 36.0,
+            "gravity": 68.0,
+            "jumpPower": 24.0,
+            "maxFallSpeed": 62.0,
+            "maxHp": 720.0,
+            "modelName": "Characters/false_king_slime",
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "scale": [
+                1.3,
+                1.3,
+                1.3
+            ],
+            "speed": 2.1
+        },
         "GiantSlime": {
             "attackPower": 1.25,
             "detectionRange": 26.0,
@@ -135,6 +169,23 @@
                 1.0
             ],
             "speed": 2.0999999046325684
+        },
+        "MagmaSlime": {
+            "attackPower": 1.45,
+            "detectionRange": 30.0,
+            "gravity": 72.0,
+            "jumpPower": 22.0,
+            "maxFallSpeed": 62.0,
+            "maxHp": 360.0,
+            "modelName": "Characters/magma_slime",
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "scale": [
+                3.8,
+                3.8,
+                3.8
+            ],
+            "speed": 1.45
         },
         "PrismSlime": {
             "attackPower": 1.350000023841858,

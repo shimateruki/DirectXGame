@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.003,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "CylinderHeight": 4.8,
+  "CylinderRadius": 1.1,
+  "EasingType": 12,
+  "EdgeFadeStrength": 1.8,
+  "EndColor": [0.58, 0.58, 0.58, 0.0],
+  "EndScale": [1.45, 1.18, 1.45],
+  "Intensity": 3.5,
+  "Lifetime": 0.94,
+  "MeshSegments": 48,
+  "Position": [0.0, 2.25, 0.0],
+  "ProceduralType": 5,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [0.55, 2.8],
+  "StartColor": [4.8, 4.8, 4.8, 0.72],
+  "StartScale": [0.20, 0.12, 0.20],
+  "TexturePath": "Resources/sprite/effect/gradationLine.png",
+  "UvTiling": [4.0, 2.0],
+  "VolumeMode": 2
+}

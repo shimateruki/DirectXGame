@@ -11,20 +11,21 @@
 class GoalClearPlayerAnimator {
 public:
     struct Tuning {
-        float crownLandTime = 2.30f;
+        float crownLandTime = 2.28f;
         float anticipationStartTime = 2.48f;
-        float jumpStartTime = 2.82f;
-        float apexTime = 3.72f;
-        float resultUiTime = 3.80f;
-        float readyTime = 5.35f;
-        float jumpHeight = 4.10f;
-        float forwardDistance = 0.60f;
-        float anticipationDepth = 0.30f;
-        float landingSquash = 0.20f;
-        float anticipationSquash = 0.34f;
-        float takeoffStretch = 0.38f;
-        float resultStretch = 0.10f;
-        float resultYawBias = 0.10f;
+        float jumpStartTime = 2.72f;
+        float apexTime = 3.08f;
+        float resultUiTime = 3.10f;
+        float victoryLandTime = 3.46f;
+        float readyTime = 5.55f;
+        float jumpHeight = 2.20f;
+        float forwardDistance = 0.35f;
+        float anticipationDepth = 0.28f;
+        float landingSquash = 0.26f;
+        float anticipationSquash = 0.42f;
+        float takeoffStretch = 0.45f;
+        float resultStretch = 0.12f;
+        float resultYawBias = 0.12f;
     };
 
     bool Start(Player* player, const Vector3& crownPosition, const Vector3& preferredForward = Vector3{}) {
@@ -103,10 +104,15 @@ public:
         Vector3 rotation = baseRotation_;
 
         if (time < c.crownLandTime) {
-            // 王冠へ注目している間は、プレイヤーを安定した待機姿勢に固定します。
+            // 王冠へ注目している間も、ごく弱い呼吸で静止画に見えないようにします。
+            const float breathe = std::sin(time * 3.8f) * 0.5f + 0.5f;
+            scale.x = baseScale_.x * (1.0f + breathe * 0.012f);
+            scale.y = baseScale_.y * (1.0f - breathe * 0.009f);
+            scale.z = baseScale_.z * (1.0f + breathe * 0.012f);
         } else if (time < c.anticipationStartTime) {
             const float p = AnimationInterpolation::SegmentRate(time, c.crownLandTime, c.anticipationStartTime);
             const float impact = std::sin(p * kPi) * (1.0f - p * 0.45f);
+            position.y -= c.landingSquash * 0.10f * impact;
             scale.x = baseScale_.x * (1.0f + c.landingSquash * impact);
             scale.y = baseScale_.y * (1.0f - c.landingSquash * 0.78f * impact);
             scale.z = baseScale_.z * (1.0f + c.landingSquash * impact);
@@ -118,11 +124,16 @@ public:
             scale.x = baseScale_.x * (1.0f + c.anticipationSquash * p);
             scale.y = baseScale_.y * (1.0f - c.anticipationSquash * 0.92f * p);
             scale.z = baseScale_.z * (1.0f + c.anticipationSquash * p);
+            rotation.x += moveForward_.z * 0.070f * p;
+            rotation.z -= moveForward_.x * 0.070f * p;
         } else if (time < c.apexTime) {
             const float raw = AnimationInterpolation::SegmentRate(time, c.jumpStartTime, c.apexTime);
             const float travel = AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
             position.x += moveForward_.x * c.forwardDistance * travel;
             position.z += moveForward_.z * c.forwardDistance * travel;
+            const float sideArc = std::sin(raw * kPi * 0.5f) * c.forwardDistance * 0.18f;
+            position.x += moveRight_.x * sideArc;
+            position.z += moveRight_.z * sideArc;
             position.y += AnimationInterpolation::Lerp(-c.anticipationDepth, c.jumpHeight, travel);
 
             Vector3 squashScale = {
@@ -150,19 +161,62 @@ public:
             }
 
             rotation = AnimationInterpolation::SlerpEuler(baseRotation_, resultRotation_, travel);
+            const float takeoffLean = (1.0f - travel) * 0.070f;
+            rotation.x += moveForward_.z * takeoffLean;
+            rotation.z -= moveForward_.x * takeoffLean;
             const float airLean = std::sin(raw * kPi) * 0.075f;
             rotation.x -= moveForward_.z * airLean;
             rotation.z += moveForward_.x * airLean;
-        } else {
+            rotation.y = NormalizeYaw(rotation.y + std::sin(raw * kPi) * 0.20f);
+        } else if (time < c.victoryLandTime) {
+            const float raw = AnimationInterpolation::SegmentRate(time, c.apexTime, c.victoryLandTime);
+            const float fall = AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
             position.x += moveForward_.x * c.forwardDistance;
             position.z += moveForward_.z * c.forwardDistance;
-            position.y += c.jumpHeight;
-            scale = {
+            const float sideArc = (1.0f - fall) * c.forwardDistance * 0.18f;
+            position.x += moveRight_.x * sideArc;
+            position.z += moveRight_.z * sideArc;
+            position.y += AnimationInterpolation::Lerp(c.jumpHeight, 0.0f, fall);
+            position.y -= c.landingSquash * 0.08f * fall;
+
+            const Vector3 resultScale = {
                 baseScale_.x * (1.0f - c.resultStretch * 0.36f),
                 baseScale_.y * (1.0f + c.resultStretch),
                 baseScale_.z * (1.0f - c.resultStretch * 0.36f)
             };
+            const Vector3 landingScale = {
+                baseScale_.x * (1.0f + c.landingSquash * 0.45f),
+                baseScale_.y * (1.0f - c.landingSquash * 0.40f),
+                baseScale_.z * (1.0f + c.landingSquash * 0.45f)
+            };
+            scale = AnimationInterpolation::Lerp(resultScale, landingScale, fall);
             rotation = resultRotation_;
+            const float descentLean = std::sin(raw * kPi) * 0.055f;
+            rotation.x += moveForward_.z * descentLean;
+            rotation.z -= moveForward_.x * descentLean;
+        } else {
+            position.x += moveForward_.x * c.forwardDistance;
+            position.z += moveForward_.z * c.forwardDistance;
+            const float holdTime = time - c.victoryLandTime;
+            constexpr float kBounceCycle = 0.68f;
+            const float cyclePosition = std::fmod((std::max)(holdTime, 0.0f), kBounceCycle) / kBounceCycle;
+            const int cycleIndex = static_cast<int>(std::floor((std::max)(holdTime, 0.0f) / kBounceCycle));
+            const float bounceArc = std::sin(cyclePosition * kPi);
+            const float bounceHeight = std::clamp(c.jumpHeight * 0.38f, 0.72f, 0.92f);
+            position.y += bounceHeight * bounceArc;
+
+            // 接地の潰れと離陸中の伸びを毎周期つなぎ、王冠装着後もスライムらしく跳ね続けます。
+            const float contactDistance = (std::min)(cyclePosition, 1.0f - cyclePosition);
+            const float contact = std::exp(-contactDistance * 24.0f);
+            const float airStretch = std::pow((std::max)(0.0f, bounceArc), 0.72f);
+            scale.x = baseScale_.x * (1.0f + c.landingSquash * 0.46f * contact - c.takeoffStretch * 0.10f * airStretch);
+            scale.y = baseScale_.y * (1.0f - c.landingSquash * 0.42f * contact + c.takeoffStretch * 0.18f * airStretch);
+            scale.z = baseScale_.z * (1.0f + c.landingSquash * 0.46f * contact - c.takeoffStretch * 0.10f * airStretch);
+            rotation = resultRotation_;
+            const float bounceSide = (cycleIndex % 2 == 0) ? 1.0f : -1.0f;
+            const float bounceLean = bounceSide * bounceArc * 0.050f;
+            rotation.x += moveRight_.x * bounceLean;
+            rotation.z += moveRight_.z * bounceLean;
         }
 
         posePosition_ = position;

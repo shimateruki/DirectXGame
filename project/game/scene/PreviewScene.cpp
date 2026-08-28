@@ -155,6 +155,12 @@ SceneLoadManifest PreviewScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
         ? "Resources/output_skybox.dds"
         : GetSceneLoadContext().skyboxPath);
+    if (!GetSceneLoadContext().bgmPath.empty()) {
+        manifest.AddAudio(GetSceneLoadContext().bgmPath);
+    }
+    else if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
+        manifest.AddAudio(stages[stageIndex].bgmPath);
+    }
     return manifest;
 }
 

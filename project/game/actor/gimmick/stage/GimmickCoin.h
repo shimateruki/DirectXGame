@@ -12,6 +12,10 @@ public:
     std::unique_ptr<Object3d> Clone() const override;
     void ConfigureTemporaryDrop(const Vector3& initialVelocity, float lifetime, float blinkStartTime, float groundY);
 
+protected:
+    void CaptureReplayCustomState(json& state) const override;
+    void RestoreReplayCustomState(const json& state) override;
+
 private:
     void Collect();
     void UpdateTemporaryDrop(float deltaTime);

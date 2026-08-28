@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "name": "player_ability_pink_guard",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.52,
+  "loop": true,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.1,
+      "translate": [
+        0,
+        -0.1,
+        -0.08
+      ],
+      "rotate": [
+        0.1,
+        0,
+        0
+      ],
+      "scale": [
+        1.16,
+        0.82,
+        1.14
+      ],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.28,
+      "translate": [
+        0,
+        0.035,
+        0.04
+      ],
+      "rotate": [
+        -0.035,
+        0,
+        0.025
+      ],
+      "scale": [
+        0.94,
+        1.13,
+        0.96
+      ],
+      "easingToNext": 4
+    },
+    {
+      "time": 0.52,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

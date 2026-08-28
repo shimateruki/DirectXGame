@@ -11,6 +11,7 @@
 #include "EditorManager.h"
 #include "ProfilerManager.h"
 #include <algorithm>
+#include "VFXAuthoringEditor.h"
 #include <vector>
 
 using json = nlohmann::json;
@@ -277,6 +278,74 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("サイズがMidになる時間(割合)", &config_.sizeMidTime, 0.01f, 0.01f, 0.99f);
         ImGui::DragFloat("発生時の大きさ (Base Size)", &config_.baseSize, 0.1f, 0.1f, 50.0f);
         ImGui::DragFloat("消滅時の大きさ (End Size)", &config_.endSize, 0.1f, 0.1f, 50.0f);
+    }
+
+    if (ImGui::CollapsingHeader("共通Curve / Gradient / LOD", ImGuiTreeNodeFlags_DefaultOpen)) {
+        VFXFloatCurve sizeCurve = VFXFloatCurve::FromThreePoints(
+            config_.baseSize,
+            config_.sizeMidTime,
+            config_.midSize,
+            config_.endSize,
+            static_cast<VFXCurveEasing>(std::clamp(config_.sizeEaseType, 0, 4)));
+        VFXAuthoringEditor::DrawFloatCurve(
+            "GpuParticleSize",
+            sizeCurve,
+            0.0f,
+            50.0f,
+            3,
+            [this](const VFXFloatCurve& value) {
+                if (value.keys.empty()) return;
+                config_.baseSize = value.keys.front().value;
+                config_.endSize = value.keys.back().value;
+                if (value.keys.size() >= 3) {
+                    config_.sizeMidTime = value.keys[1].time;
+                    config_.midSize = value.keys[1].value;
+                } else {
+                    config_.sizeMidTime = 0.5f;
+                    config_.midSize = value.Evaluate(0.5f, config_.baseSize);
+                }
+                config_.sizeEaseType = static_cast<int>(value.keys.front().easing);
+            },
+            false,
+            false);
+
+        VFXColorGradient colorGradient = VFXColorGradient::FromThreeColors(
+            config_.baseColor,
+            config_.colorMidTime,
+            config_.midColor,
+            config_.endColor,
+            static_cast<VFXCurveEasing>(std::clamp(config_.colorEaseType, 0, 4)));
+        VFXAuthoringEditor::DrawColorGradient(
+            "GpuParticleColor",
+            colorGradient,
+            3,
+            [this](const VFXColorGradient& value) {
+                if (value.keys.empty()) return;
+                config_.baseColor = value.keys.front().color;
+                config_.endColor = value.keys.back().color;
+                if (value.keys.size() >= 3) {
+                    config_.colorMidTime = value.keys[1].time;
+                    config_.midColor = value.keys[1].color;
+                } else {
+                    config_.colorMidTime = 0.5f;
+                    config_.midColor = value.Evaluate(0.5f, config_.baseColor);
+                }
+                config_.colorEaseType = static_cast<int>(value.keys.front().easing);
+            },
+            false);
+
+        ImGui::SeparatorText("距離LOD / Budget");
+        VFXAuthoringEditor::DrawLodSettings(
+            "GpuParticleLod",
+            config_.lod,
+            [this](const VFXLodSettings& value) { config_.lod = value; },
+            static_cast<int>(GPUParticleSystem::kMinParticles),
+            static_cast<int>(GPUParticleSystem::kMaxParticles));
+        const float previewScale = config_.lod.EvaluateEmissionScale(previewDistance_);
+        ImGui::TextDisabled(
+            "Preview距離 %.1f では発生数 %.0f%%",
+            previewDistance_,
+            previewScale * 100.0f);
     }
 
     // 🌍 環境変化
@@ -636,6 +705,13 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     };
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
+    j["lod"] = {
+        { "enabled", config_.lod.enabled },
+        { "nearDistance", config_.lod.nearDistance },
+        { "farDistance", config_.lod.farDistance },
+        { "farEmissionScale", config_.lod.farEmissionScale },
+        { "maxAliveParticles", config_.lod.maxAliveParticles }
+    };
     if (file.is_open()) {
         file << j.dump(4);
         file.close();
@@ -676,6 +752,7 @@ void GPUParticleEditor::Load(const std::string& presetName) {
 
         if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
         if (j.contains("emitArea")) { config_.emitArea.x = j["emitArea"][0]; config_.emitArea.y = j["emitArea"][1]; config_.emitArea.z = j["emitArea"][2]; }
+        config_.lod = {};
         if (j.contains("emitVelocity")) { config_.emitVelocity.x = j["emitVelocity"][0]; config_.emitVelocity.y = j["emitVelocity"][1]; config_.emitVelocity.z = j["emitVelocity"][2]; }
         if (j.contains("emitCount")) config_.emitCount = j["emitCount"];
         if (j.contains("emitLife")) config_.emitLife = j["emitLife"];
@@ -738,6 +815,15 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("lightDirection")) { config_.lightDirection.x = j["lightDirection"][0]; config_.lightDirection.y = j["lightDirection"][1]; config_.lightDirection.z = j["lightDirection"][2]; }
         if (j.contains("lightColor")) { config_.lightColor.x = j["lightColor"][0]; config_.lightColor.y = j["lightColor"][1]; config_.lightColor.z = j["lightColor"][2]; }
         if (j.contains("lightingStrength")) config_.lightingStrength = j["lightingStrength"];
+        if (j.contains("lod") && j["lod"].is_object()) {
+            const json& lod = j["lod"];
+            config_.lod.enabled = lod.value("enabled", false);
+            config_.lod.nearDistance = lod.value("nearDistance", 12.0f);
+            config_.lod.farDistance = lod.value("farDistance", 45.0f);
+            config_.lod.farEmissionScale = lod.value("farEmissionScale", 0.25f);
+            config_.lod.maxAliveParticles = lod.value("maxAliveParticles", 0);
+            config_.lod.Sanitize();
+        }
         if (j.contains("spriteAnimation")) {
             const auto& anim = j["spriteAnimation"];
             if (anim.contains("columns")) config_.spriteSheetColumns = anim["columns"];

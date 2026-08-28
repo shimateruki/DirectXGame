@@ -1,6 +1,8 @@
 #pragma once
 #include "BaseGimmick.h"
 
+class Player;
+
 // 爆発のみで破壊可能なブロックギミック
 class GimmickBreakableBlock : public BaseGimmick {
 public:
@@ -14,6 +16,9 @@ public:
 
     // 衝突判定
     bool OnCollision(Object3d* other) override;
+
+    // 大型スライムの装甲突進専用ゲートなら、その場で破壊して通過可能にする。
+    bool TryBreakByGiantRush(const Player* player);
 
     std::unique_ptr<Object3d> Clone() const override;
 

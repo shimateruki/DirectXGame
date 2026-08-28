@@ -6,11 +6,13 @@
 #include "ParticleSystem.h"
 #include "PlayerGateReturnAnimation.h"
 #include "PlayerMover.h"
+#include "PlayerCopyAbilityController.h"
 #include "PlayerSlimeAnimator.h"
 #include "engine/utility/math/Math.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class IMoveStrategy; // 前方宣言
@@ -37,6 +39,7 @@ public:
     // ==================================================
     // 基本サイクル
     // ==================================================
+    ~Player() override;
     void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon = nullptr);
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
@@ -60,7 +63,13 @@ public:
     void SetSlimePullDirection(const Vector3& direction);
     void SetSlimePullProgress(float progress);
     void SetSlimeJumpCharge(float chargeRate);
+    void SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength = 1.0f);
     void TriggerSlimeImpulse(const Vector3& scale, float duration);
+    bool PlaySlimeAbilityMotion(const std::string& clipName, bool loop = false,
+        float playbackSpeed = 1.0f, float blendInDuration = 0.06f,
+        float blendOutDuration = 0.10f);
+    void StopSlimeAbilityMotion(float blendOutDuration = 0.08f);
+    void ClearSlimeAbilityMotion();
     void ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction);
     void StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route);
     bool IsGateReturnAnimationActive() const;
@@ -78,6 +87,7 @@ public:
     void ApplyIceSurface(float duration, float friction, float steering);
     void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
     bool IsLaunchStarActive() const { return launchStarActive_; }
+    bool IsGiantSlimeRushActive() const;
 
     // ==================================================
     // アクセス
@@ -156,12 +166,13 @@ public:
     // ==================================================
     void SetDamageInvincible(bool inv); // ダメージ被弾後の無敵フラグ。
     void SetDashInvincible(bool inv);   // 回避ダッシュ中の無敵フラグ。
+    void SetGuardInvincible(bool inv);  // ガード中だけ有効な、防御専用の無敵フラグ。
     void StartEvasionInvincibility(float duration); // 能力回避用。攻撃判定を伴わない無敵時間を開始します。
     void StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration = 1.0f);
     void StartElectricShockFeedback(float duration = 0.78f, float invincibleDuration = 1.0f);
 
     // いずれかの無敵状態が有効なら、ダメージを受けない状態として扱う
-    bool IsInvincible() const { return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_; }
+    bool IsInvincible() const { return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ || isGuardInvincible_; }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
@@ -177,6 +188,12 @@ public:
     bool IsEnemyMorphReleasing() const { return enemyMorphReleaseActive_; }
     float GetEnemyMorphReleaseRate() const;
 
+#ifdef USE_IMGUI
+    // デバッグUIから実際の敵能力を保ったまま、任意の変身状態へ直接切り替えます。
+    void DebugForceEnemyMorph(BaseEnemy* enemy);
+    void DebugClearEnemyMorph();
+#endif
+
 protected:
     void CaptureReplayCustomState(json& state) const override;
     void RestoreReplayCustomState(const json& state) override;
@@ -187,6 +204,7 @@ private:
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
     PlayerGateReturnAnimation gateReturnAnimation_;
+    std::unique_ptr<PlayerCopyAbilityController> copyAbilityController_;
     Vector3 managedBaseScale_ = { 2.0f, 2.0f, 2.0f };
 
     // --- 外部システム参照 ---
@@ -240,6 +258,7 @@ private:
     float damageCooldownTimer_ = 0.0f;
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
+    bool isGuardInvincible_ = false;
     float evasionInvincibleTimer_ = 0.0f;
     bool isEvasionInvincible_ = false;
     float invincibleBlinkTimer_ = 0.0f;

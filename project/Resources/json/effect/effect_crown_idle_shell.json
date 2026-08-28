@@ -17,19 +17,19 @@
     "EnableDistortion": false,
     "EnableReveal": false,
     "EndColor": [
-        1.0,
-        0.72,
-        0.22,
-        0.04
+        0.48,
+        0.96,
+        1.28,
+        0.07
     ],
     "EndScale": [
-        1.12,
-        1.10,
-        1.12
+        1.18,
+        1.14,
+        1.18
     ],
     "InnerRadius": 0.25,
-    "Intensity": 1.35,
-    "Lifetime": 1.20,
+    "Intensity": 1.68,
+    "Lifetime": 1.35,
     "MeshSegments": 32,
     "ModelName": "Stages/crown",
     "NoiseTexturePath": "Resources/sprite/common/white.png",
@@ -62,14 +62,14 @@
     "SpiralPitch": 0.0,
     "StartColor": [
         1.0,
-        0.52,
-        0.10,
-        0.18
+        0.62,
+        0.12,
+        0.24
     ],
     "StartScale": [
-        1.035,
-        1.030,
-        1.035
+        1.045,
+        1.040,
+        1.045
     ],
     "TargetName": "",
     "TexturePath": "Resources/sprite/common/white.png",

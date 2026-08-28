@@ -25,7 +25,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 5,
+            "collisionAttribute": 1,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -78,7 +78,7 @@
             "metallic": 0.0,
             "modelName": "Characters/slime",
             "myEventID": -1,
-            "name": "Characters/slime_3",
+            "name": "Stage3_HighCrown_Player",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
@@ -110,15 +110,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -69.05058288574219,
-                49.57403564453125,
-                -43.77138900756836
+                0.0,
+                -1.48,
+                63.5
             ],
             "quaternion": [
                 0.0,
                 1.0,
                 0.0,
-                -4.371138828673793e-08
+                6.123233995736766e-17
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -126,16 +126,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                3.1415927410125732,
-                -8.74227694680485e-08,
-                3.1415927410125732
+                0.0,
+                3.141592653589793,
+                0.0
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Player",
             "scale": [
-                2.0,
-                2.0,
-                2.0
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -143,7 +143,9 @@
                 1.0,
                 1.0
             ],
-            "type": "Player"
+            "type": "Player",
+            "guid": "b4b12ae7-dd23-5253-abc7-d07626a62b46",
+            "parentGuid": ""
         }
     ]
 }

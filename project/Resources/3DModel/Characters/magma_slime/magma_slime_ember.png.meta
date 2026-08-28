@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b3b83fc77279cfeefee81e919b3ec071",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_ember.png",
+  "version": 1
+}

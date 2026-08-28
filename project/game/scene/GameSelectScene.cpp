@@ -453,6 +453,7 @@ SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
         ? "Resources/output_skybox.dds"
         : GetSceneLoadContext().skyboxPath);
+    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
 }
 

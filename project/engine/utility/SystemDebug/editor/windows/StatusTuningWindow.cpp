@@ -49,6 +49,7 @@ std::string GetModelDisplayName(const std::string& modelName) {
     if (shortName == "slime") return "スライム";
     if (shortName == "bat") return "コウモリ";
     if (shortName == "eye") return "アイ";
+    if (shortName == "ring_burner") return "リングバーナー";
     return shortName;
 }
 }
@@ -155,6 +156,19 @@ bool StatusTuningWindow::DrawStatusEditor(GameplayStatusManager::CharacterStatus
     changed |= ImGui::DragFloat("感知範囲", &status.detectionRange, 0.5f, 0.0f, 500.0f);
     changed |= ImGui::DragFloat3("タイプ共通スケール", &status.scale.x, 0.005f, 0.001f, 20.0f, "%.3f");
 
+    if (ImGui::TreeNodeEx("Character Motor", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("標準OFF時は従来の移動結果を維持します。タイプごとに段階導入できます。");
+        changed |= ImGui::Checkbox("高速移動をSweep判定", &status.motorContinuousCollision);
+        ImGui::BeginDisabled(!status.motorContinuousCollision);
+        changed |= ImGui::Checkbox("接地面へ吸着", &status.motorSnapToGround);
+        changed |= ImGui::DragFloat("最大登坂角度", &status.motorMaxSlopeDegrees, 0.1f, 0.0f, 89.9f, "%.1f deg");
+        changed |= ImGui::DragFloat("自動段差", &status.motorStepHeight, 0.01f, 0.0f, 5.0f, "%.2f m");
+        changed |= ImGui::DragFloat("接地探索距離", &status.motorGroundProbeDistance, 0.005f, 0.0f, 2.0f, "%.3f m");
+        changed |= ImGui::DragFloat("Skin幅", &status.motorSkinWidth, 0.001f, 0.0f, 0.25f, "%.3f m");
+        ImGui::EndDisabled();
+        ImGui::TreePop();
+    }
+
     status.attackPower = (std::max)(status.attackPower, 0.0f);
     status.speed = (std::max)(status.speed, 0.0f);
     status.maxFallSpeed = (std::max)(status.maxFallSpeed, 0.0f);
@@ -163,6 +177,10 @@ bool StatusTuningWindow::DrawStatusEditor(GameplayStatusManager::CharacterStatus
     status.scale.x = (std::max)(status.scale.x, 0.001f);
     status.scale.y = (std::max)(status.scale.y, 0.001f);
     status.scale.z = (std::max)(status.scale.z, 0.001f);
+    status.motorMaxSlopeDegrees = std::clamp(status.motorMaxSlopeDegrees, 0.0f, 89.9f);
+    status.motorStepHeight = (std::max)(status.motorStepHeight, 0.0f);
+    status.motorGroundProbeDistance = (std::max)(status.motorGroundProbeDistance, 0.0f);
+    status.motorSkinWidth = std::clamp(status.motorSkinWidth, 0.0f, 0.25f);
 
     changed |= ImGui::Checkbox("変身に制限時間を使う", &status.morphLimited);
     ImGui::BeginDisabled(!status.morphLimited);

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e76403b928f147679612b9bf665700ba",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_fireball.json",
+  "version": 1
+}

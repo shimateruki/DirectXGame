@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "725395888632f9b8a19cfa8b92fcc3bc",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/ring_burner_charge_sparks.json",
+  "version": 1
+}

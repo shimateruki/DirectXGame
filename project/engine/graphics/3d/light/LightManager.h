@@ -16,6 +16,36 @@ class Camera;
 // LightManagerは、ライト情報のGPUバッファ生成と描画側への共有を担当します。
 class LightManager {
 public:
+    struct EnvironmentPostSettings {
+        bool bloomEnabled = true;
+        int bloomQuality = 2;
+        float threshold = 1.0f;
+        float bloomIntensity = 0.0f;
+        float spread = 1.0f;
+        int enableToneMapping = 0;
+        float vignetteIntensity = 0.0f;
+        float vignettePower = 1.0f;
+        float chromaticAberration = 0.0f;
+        float filmGrainIntensity = 0.0f;
+        float lutIntensity = 0.0f;
+        std::string lutTexturePath = "Resources/texture/lut/soft_adventure_lut.png";
+        float colorExposure = 0.0f;
+        float colorContrast = 1.0f;
+        float colorSaturation = 1.0f;
+        float colorTemperature = 0.0f;
+        float colorTint = 0.0f;
+    };
+
+    // ライト、空、フォグ、色調補正をひとまとまりで保存・補間する設定です。
+    struct EnvironmentProfileState {
+        DirectionalLight directionalLight{};
+        Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
+        int shadowMapResolution = 2048;
+        float shadowAreaSize = 80.0f;
+        bool skyboxEnabled = true;
+        std::string skyboxTexturePath = "Resources/output_skybox.dds";
+        EnvironmentPostSettings post{};
+    };
     // シェーダーで定義されている最大数と合わせる定数
     static const int kMaxPointLights = 100;
     static const int kMaxSpotLights = 100;
@@ -102,6 +132,16 @@ void Initialize(DirectXCommon* dxCommon);
     /// 毎フレーム更新（追従処理やGPUへのデータ転送を行う）
     /// </summary>
         // CPU側ライト設定をGPUバッファへ反映します。
+
+    EnvironmentProfileState CaptureEnvironmentProfile() const;
+    bool SaveEnvironmentProfile(const std::string& filename) const;
+    bool LoadEnvironmentProfile(const std::string& filename, EnvironmentProfileState& profile) const;
+    bool ApplyEnvironmentProfile(const std::string& filename, float blendDuration = 0.0f);
+    void ApplyEnvironmentProfile(const EnvironmentProfileState& profile, float blendDuration = 0.0f);
+    void UpdateEnvironmentProfile(float deltaTime);
+    bool IsEnvironmentProfileBlending() const { return environmentBlendActive_; }
+    float GetEnvironmentProfileBlendProgress() const;
+    const std::string& GetCurrentEnvironmentProfileFile() const { return currentEnvironmentProfileFile_; }
 void Update();
 
     // --- ゲッター（リソース） ---
@@ -155,6 +195,14 @@ void Update();
 
 
 private:
+
+    EnvironmentProfileState environmentBlendFrom_{};
+    EnvironmentProfileState environmentBlendTo_{};
+    float environmentBlendElapsed_ = 0.0f;
+    float environmentBlendDuration_ = 0.0f;
+    bool environmentBlendActive_ = false;
+    bool environmentBlendDiscreteApplied_ = false;
+    std::string currentEnvironmentProfileFile_;
     LightManager() = default;
     ~LightManager() = default;
     LightManager(const LightManager&) = delete;

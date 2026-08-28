@@ -591,7 +591,7 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
 
     emitRequests_.push_back(request);
 
-    blendModeIndex_ = (config.blendModeIndex >= 2) ? 1 : config.blendModeIndex;
+    blendModeIndex_ = static_cast<uint32_t>(std::clamp(config.blendModeIndex, 0, 2));
     softParticleFade_ = config.softParticleFade;
     spriteSheetColumns_ = config.spriteSheetColumns > 0 ? static_cast<uint32_t>(config.spriteSheetColumns) : 1u;
     spriteSheetRows_ = config.spriteSheetRows > 0 ? static_cast<uint32_t>(config.spriteSheetRows) : 1u;

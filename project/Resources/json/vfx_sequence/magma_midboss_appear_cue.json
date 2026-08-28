@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 0,
+      "presetName": "magma_slime_slam_burst",
+      "triggerTime": 0.0,
+      "offset": [0.0, 0.10, 0.0],
+      "scale": [1.35, 1.20, 1.35]
+    },
+    {
+      "type": 0,
+      "presetName": "magma_slime_charge",
+      "triggerTime": 0.06,
+      "offset": [0.0, 0.70, 0.0],
+      "scale": [1.35, 1.35, 1.35]
+    },
+    {
+      "type": 0,
+      "presetName": "magma_slime_core_embers",
+      "triggerTime": 0.38,
+      "offset": [0.0, 1.00, 0.0],
+      "scale": [1.55, 1.55, 1.55]
+    },
+    {
+      "type": 0,
+      "presetName": "magma_slime_impact",
+      "triggerTime": 0.84,
+      "offset": [0.0, 0.10, 0.0],
+      "scale": [1.50, 1.25, 1.50]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.78,
+      "duration": 0.30,
+      "intensity": 0.075,
+      "frequency": 28.0,
+      "scale": [0.82, 0.36, 0.76]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 1.12,
+      "intensity": 5.4,
+      "lightRadius": 18.0,
+      "lightDecay": 1.40,
+      "lightColor": [1.0, 0.24, 0.025, 1.0]
+    }
+  ]
+}

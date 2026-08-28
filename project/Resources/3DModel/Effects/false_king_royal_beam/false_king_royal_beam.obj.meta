@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0fd68d044c95a9ebda992b2ad8c20d9d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_royal_beam/false_king_royal_beam.obj",
+  "version": 1
+}

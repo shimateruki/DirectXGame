@@ -98,6 +98,15 @@ void JsonToStatus(const json& source, GameplayStatusManager::CharacterStatus& st
     ReadString(source, "modelName", status.modelName);
     ReadBool(source, "morphLimited", status.morphLimited);
     ReadFloat(source, "morphDuration", status.morphDuration);
+    if (source.contains("characterMotor") && source.at("characterMotor").is_object()) {
+        const json& motor = source.at("characterMotor");
+        ReadBool(motor, "continuousCollision", status.motorContinuousCollision);
+        ReadBool(motor, "snapToGround", status.motorSnapToGround);
+        ReadFloat(motor, "maxSlopeDegrees", status.motorMaxSlopeDegrees);
+        ReadFloat(motor, "stepHeight", status.motorStepHeight);
+        ReadFloat(motor, "groundProbeDistance", status.motorGroundProbeDistance);
+        ReadFloat(motor, "skinWidth", status.motorSkinWidth);
+    }
 }
 
 json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
@@ -112,7 +121,15 @@ json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
         { "scale", json::array({ status.scale.x, status.scale.y, status.scale.z }) },
         { "modelName", status.modelName },
         { "morphLimited", status.morphLimited },
-        { "morphDuration", status.morphDuration }
+        { "morphDuration", status.morphDuration },
+        { "characterMotor", {
+            { "continuousCollision", status.motorContinuousCollision },
+            { "snapToGround", status.motorSnapToGround },
+            { "maxSlopeDegrees", status.motorMaxSlopeDegrees },
+            { "stepHeight", status.motorStepHeight },
+            { "groundProbeDistance", status.motorGroundProbeDistance },
+            { "skinWidth", status.motorSkinWidth }
+        } }
     };
 }
 
@@ -171,7 +188,7 @@ bool GameplayStatusManager::Save() {
     Initialize();
 
     json root;
-    root["schemaVersion"] = 4;
+    root["schemaVersion"] = 5;
     root["player"] = StatusToJson(playerStatus_);
     root["enemies"] = json::object();
     for (const auto& [enemyType, status] : enemyStatuses_) {
@@ -215,10 +232,16 @@ void GameplayStatusManager::ResetToDefaults() {
         Vector3{ 3.6f, 3.6f, 3.6f }, "Characters/slime_pink", true, 5.0f));
     enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 30.0f,
         Vector3{ 4.2f, 4.2f, 4.2f }, "Characters/prism_slime", true, 5.0f));
+    enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 30.0f,
+        Vector3{ 3.8f, 3.8f, 3.8f }, "Characters/magma_slime", true, 5.0f));
+    enemyStatuses_.emplace("FalseKingSlime", MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 36.0f,
+        Vector3{ 1.3f, 1.3f, 1.3f }, "Characters/false_king_slime", true, 5.0f));
     enemyStatuses_.emplace("Bat", MakeStatus(16.0f, 0.45f, 1.8f, 0.0f, 60.0f, 10.0f, 17.0f,
         Vector3{ 0.72f, 0.72f, 0.72f }, "Characters/bat", true, 5.0f));
     enemyStatuses_.emplace("BeamDrone", MakeStatus(45.0f, 1.0f, 4.0f, 0.0f, 60.0f, 10.0f, 30.0f,
         Vector3{ 0.85f, 0.85f, 0.85f }, "Characters/eye", true, 5.0f));
+    enemyStatuses_.emplace("RingBurner", MakeStatus(180.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
+        Vector3{ 1.0f, 1.0f, 1.0f }, "Characters/ring_burner", true, 5.0f));
     enemyStatuses_.emplace("BossCore", MakeStatus(1000.0f, 1.5f, 0.05f, 0.0f, 60.0f, 10.0f, 20.0f,
         Vector3{ 1.0f, 1.0f, 1.0f }, "Stages/block", true, 5.0f));
 
@@ -340,6 +363,10 @@ void GameplayStatusManager::Normalize(CharacterStatus& status) {
     status.scale.y = (std::max)(status.scale.y, 0.001f);
     status.scale.z = (std::max)(status.scale.z, 0.001f);
     status.morphDuration = (std::max)(status.morphDuration, 0.1f);
+    status.motorMaxSlopeDegrees = std::clamp(status.motorMaxSlopeDegrees, 0.0f, 89.9f);
+    status.motorStepHeight = (std::max)(status.motorStepHeight, 0.0f);
+    status.motorGroundProbeDistance = (std::max)(status.motorGroundProbeDistance, 0.0f);
+    status.motorSkinWidth = std::clamp(status.motorSkinWidth, 0.0f, 0.25f);
 }
 
 void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus& source, bool resetCurrentHp) {
@@ -374,6 +401,12 @@ void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus&
     param.detectionRange = status.detectionRange;
     param.morphLimited = status.morphLimited;
     param.morphDuration = status.morphDuration;
+    param.motorContinuousCollision = status.motorContinuousCollision;
+    param.motorSnapToGround = status.motorSnapToGround;
+    param.motorMaxSlopeDegrees = status.motorMaxSlopeDegrees;
+    param.motorStepHeight = status.motorStepHeight;
+    param.motorGroundProbeDistance = status.motorGroundProbeDistance;
+    param.motorSkinWidth = status.motorSkinWidth;
 
     if (!status.modelName.empty() && object->GetModelName() != status.modelName) {
         object->SetModel(status.modelName);

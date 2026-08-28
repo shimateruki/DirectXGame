@@ -1,6 +1,7 @@
 #include "ScenePreloader.h"
 
 #include "ModelManager.h"
+#include "AudioPlayer.h"
 #include "TextureManager.h"
 
 #include <algorithm>
@@ -67,6 +68,56 @@ bool IsTextureFile(const std::filesystem::path& path) {
     const std::string extension = ToLower(path.extension().string());
     return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
         extension == ".tga" || extension == ".dds" || extension == ".hdr";
+}
+bool IsAudioFile(const std::filesystem::path& path) {
+    const std::string extension = ToLower(path.extension().string());
+    return extension == ".wav" || extension == ".mp3" ||
+        extension == ".ogg" || extension == ".flac";
+}
+
+void RecordDependency(
+    ScenePreloadData& data,
+    SceneDependencyType type,
+    const std::string& rawPath,
+    bool validateExists = true) {
+    const std::string path = NormalizePath(rawPath);
+    if (path.empty()) {
+        return;
+    }
+
+    const auto found = std::find_if(
+        data.dependencyReport.assets.begin(),
+        data.dependencyReport.assets.end(),
+        [&](const SceneDependencyRecord& dependency) {
+            return dependency.type == type && dependency.path == path;
+        });
+    if (found != data.dependencyReport.assets.end()) {
+        return;
+    }
+
+    const bool exists = !validateExists || std::filesystem::exists(path);
+    data.dependencyReport.assets.push_back({ type, path, exists });
+    if (!exists &&
+        std::find(
+            data.dependencyReport.missingPaths.begin(),
+            data.dependencyReport.missingPaths.end(),
+            path) == data.dependencyReport.missingPaths.end()) {
+        data.dependencyReport.missingPaths.push_back(path);
+    }
+}
+
+void AddJsonDependency(ScenePreloadData& data, const std::string& path) {
+    RecordDependency(data, SceneDependencyType::Json, path);
+}
+
+void AddAudioDependency(ScenePreloadData& data, std::string path) {
+    path = NormalizePath(std::move(path));
+    if (path.rfind("Resources/", 0) != 0) {
+        path = NormalizePath(
+            (std::filesystem::path("Resources/audio/se") / path).generic_string());
+    }
+    AddUniquePath(data.audioPaths, path);
+    RecordDependency(data, SceneDependencyType::Audio, path);
 }
 
 void CollectSharedParticleTextures(ScenePreloadData& data) {
@@ -144,6 +195,38 @@ void CollectDependencies(
     const std::string& propertyName,
     ScenePreloadData& data) {
     if (value.is_object()) {
+        if (value.contains("type") && value["type"].is_number_integer() &&
+            value.contains("presetName") && value["presetName"].is_string() &&
+            value.contains("triggerTime")) {
+            const int eventType = value["type"].get<int>();
+            const std::string presetName =
+                NormalizePath(value["presetName"].get<std::string>());
+            if (!presetName.empty()) {
+                if (eventType == 0) {
+                    AddJsonDependency(
+                        data,
+                        "Resources/json/gpu_particles/" + presetName + ".json");
+                }
+                else if (eventType == 1) {
+                    AddJsonDependency(
+                        data,
+                        "Resources/json/effect/" + presetName + ".json");
+                }
+                else if (eventType == 2) {
+                    const std::filesystem::path presetPath(presetName);
+                    if (ToLower(presetPath.extension().string()) == ".json") {
+                        std::filesystem::path eventPath =
+                            std::filesystem::path("Resources/json/audio_events") /
+                            presetPath.filename();
+                        AddJsonDependency(data, eventPath.generic_string());
+                    }
+                    else {
+                        AddAudioDependency(data, presetName);
+                    }
+                }
+            }
+        }
+
         for (auto iterator = value.begin(); iterator != value.end(); ++iterator) {
             CollectDependencies(iterator.value(), iterator.key(), data);
         }
@@ -159,7 +242,7 @@ void CollectDependencies(
         return;
     }
 
-    const std::string stringValue = value.get<std::string>();
+    std::string stringValue = NormalizePath(value.get<std::string>());
     if (stringValue.empty()) {
         return;
     }
@@ -167,16 +250,70 @@ void CollectDependencies(
     const std::string lowerKey = ToLower(propertyName);
     if (lowerKey == "modelname") {
         AddUniquePath(data.modelNames, stringValue);
+        RecordDependency(data, SceneDependencyType::Model, stringValue, false);
         return;
     }
 
-    if (IsTextureKey(lowerKey)) {
+    std::filesystem::path path(stringValue);
+    const std::string extension = ToLower(path.extension().string());
+    if (extension == ".json") {
+        if ((lowerKey.find("animator") != std::string::npos ||
+             lowerKey.find("controller") != std::string::npos) &&
+            stringValue.rfind("Resources/", 0) != 0) {
+            path = std::filesystem::path("Resources/json/animator") / path.filename();
+        }
+        else if (lowerKey.find("cinematic") != std::string::npos &&
+            stringValue.rfind("Resources/", 0) != 0) {
+            path = std::filesystem::path("Resources/json/cinematic") / path.filename();
+        }
+        AddJsonDependency(data, path.generic_string());
+        return;
+    }
+    if (IsAudioFile(path)) {
+        AddAudioDependency(data, stringValue);
+        return;
+    }
+    if (IsTextureFile(path) || IsTextureKey(lowerKey)) {
         SceneLoadManifest::TextureRequest request;
-        request.path = NormalizePath(stringValue);
+        request.path = stringValue;
         request.linear = IsLinearTextureKey(lowerKey);
-        AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
+        AddUnique(data.textures, request, [](const SceneLoadManifest::TextureRequest& item) {
             return item.path + (item.linear ? "|linear" : "|color");
         });
+        RecordDependency(data, SceneDependencyType::Texture, request.path);
+        return;
+    }
+
+    if (lowerKey.find("animator") != std::string::npos ||
+        lowerKey.find("controller") != std::string::npos) {
+        std::filesystem::path controllerPath(stringValue);
+        if (controllerPath.extension().empty()) {
+            controllerPath.replace_extension(".json");
+        }
+        if (NormalizePath(controllerPath.generic_string()).rfind("Resources/", 0) != 0) {
+            controllerPath =
+                std::filesystem::path("Resources/json/animator") /
+                controllerPath.filename();
+        }
+        AddJsonDependency(data, controllerPath.generic_string());
+        return;
+    }
+    if (lowerKey.find("cinematic") != std::string::npos) {
+        std::filesystem::path cinematicPath(stringValue);
+        if (cinematicPath.extension().empty()) {
+            cinematicPath.replace_extension(".json");
+        }
+        if (NormalizePath(cinematicPath.generic_string()).rfind("Resources/", 0) != 0) {
+            cinematicPath =
+                std::filesystem::path("Resources/json/cinematic") /
+                cinematicPath.filename();
+        }
+        AddJsonDependency(data, cinematicPath.generic_string());
+        return;
+    }
+
+    if (stringValue.rfind("Resources/", 0) == 0 && path.has_extension()) {
+        RecordDependency(data, SceneDependencyType::Other, stringValue);
     }
 }
 
@@ -253,6 +390,18 @@ void SceneLoadManifest::AddTexture(const std::string& path, bool linear) {
         return item.path + (item.linear ? "|linear" : "|color");
     });
 }
+void SceneLoadManifest::AddAudio(const std::string& path) {
+    AddUniquePath(audioPaths, path);
+}
+
+std::size_t SceneDependencyReport::Count(SceneDependencyType type) const {
+    return static_cast<std::size_t>(std::count_if(
+        assets.begin(),
+        assets.end(),
+        [type](const SceneDependencyRecord& dependency) {
+            return dependency.type == type;
+        }));
+}
 
 void ScenePreloadProgress::Begin(std::size_t totalTasks) {
     completedTasks_.store(0, std::memory_order_relaxed);
@@ -319,12 +468,27 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         progress->Begin(jsonPaths.size());
     }
 
-    for (const std::string& path : jsonPaths) {
+    std::size_t jsonIndex = 0;
+    while (jsonIndex < jsonPaths.size()) {
+        const std::string path = jsonPaths[jsonIndex++];
+        RecordDependency(*result, SceneDependencyType::Json, path);
+
         nlohmann::json document;
         std::string warning;
         if (LoadJsonDocument(path, document, warning)) {
             CollectDependencies(document, "", *result);
             result->jsonDocuments.emplace(NormalizePath(path), std::move(document));
+
+            const std::size_t previousCount = jsonPaths.size();
+            for (const SceneDependencyRecord& dependency :
+                result->dependencyReport.assets) {
+                if (dependency.type == SceneDependencyType::Json) {
+                    AddUniquePath(jsonPaths, dependency.path);
+                }
+            }
+            if (progress && jsonPaths.size() > previousCount) {
+                progress->AddTasks(jsonPaths.size() - previousCount);
+            }
         }
         else if (!warning.empty()) {
             result->warnings.push_back(std::move(warning));
@@ -343,6 +507,15 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
             return NormalizePath(item.path) + (item.linear ? "|linear" : "|color");
         });
     }
+    for (const std::string& audioPath : manifest.audioPaths) {
+        AddAudioDependency(*result, audioPath);
+    }
+    for (const std::string& modelName : result->modelNames) {
+        RecordDependency(*result, SceneDependencyType::Model, modelName, false);
+    }
+    for (const SceneLoadManifest::TextureRequest& texture : result->textures) {
+        RecordDependency(*result, SceneDependencyType::Texture, texture.path);
+    }
     CollectSharedParticleTextures(*result);
     CollectSharedFadeTextures(*result);
     AddSharedTexture(*result, "Resources/sprite/effect/noise0.png", true);
@@ -356,8 +529,15 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         return left.path < right.path;
     });
 
+    std::sort(result->audioPaths.begin(), result->audioPaths.end());
+    std::sort(
+        result->dependencyReport.missingPaths.begin(),
+        result->dependencyReport.missingPaths.end());
+    for (const std::string& missing : result->dependencyReport.missingPaths) {
+        result->warnings.push_back("Scene dependency is missing: " + missing);
+    }
     if (progress) {
-        progress->AddTasks(result->textures.size() + result->modelNames.size());
+        progress->AddTasks(result->textures.size() + result->modelNames.size() + result->audioPaths.size());
     }
 
     // WIC画像デコードを行うため、ワーカースレッド側でCOMを初期化します。
@@ -377,6 +557,12 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
             progress->Advance(modelName);
         }
     }
+    for (const std::string& audioPath : result->audioPaths) {
+        AudioPlayer::GetInstance()->LoadSoundFile(audioPath);
+        if (progress) {
+            progress->Advance(audioPath);
+        }
+    }
     if (SUCCEEDED(comResult)) {
         CoUninitialize();
     }
@@ -385,4 +571,10 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         progress->Finish();
     }
     return result;
+}
+
+SceneDependencyReport ScenePreloader::Inspect(
+    const SceneLoadManifest& manifest) {
+    const std::shared_ptr<ScenePreloadData> data = Prepare(manifest, nullptr);
+    return data ? data->dependencyReport : SceneDependencyReport{};
 }

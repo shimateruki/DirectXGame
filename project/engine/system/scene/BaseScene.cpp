@@ -149,7 +149,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     }
 
     auto drawObject = [&](Object3d* object, bool transparentPass) {
-        if (!object || !object->GetIsVisible()) {
+        if (!object || !object->GetIsRenderVisible()) {
             return;
         }
 
@@ -174,7 +174,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
 
     bool hasSpecialMaterial = false;
     for (const auto& object : objects) {
-        if (object && object->GetIsVisible() && IsSpecialMaterialType(object->GetMaterialType())) {
+        if (object && object->GetIsRenderVisible() && IsSpecialMaterialType(object->GetMaterialType())) {
             hasSpecialMaterial = true;
             break;
         }
@@ -197,7 +197,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     const uint32_t depthSrvHandle = postEffect->GetDepthSRVHandle(targetTextureIndex);
     const uint32_t grabSrvHandle = postEffect->GetGrabSRVHandle(targetTextureIndex);
     for (auto& object : objects) {
-        if (!object || !object->GetIsVisible() || !IsSpecialMaterialType(object->GetMaterialType())) {
+        if (!object || !object->GetIsRenderVisible() || !IsSpecialMaterialType(object->GetMaterialType())) {
             continue;
         }
         object->DrawSpecialMaterialForCamera(
@@ -304,7 +304,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
 
     bool hasFog = false;
     for (auto& obj : objects) {
-        if (obj && obj->GetIsVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
             hasFog = true;
             break;
         }
@@ -315,7 +315,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
 
     dxCommon->PreDrawLocalFog();
     for (auto& obj : objects) {
-        if (obj && obj->GetIsVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
             obj->DrawLocalFog(dxCommon->GetDepthSrvHandle());
         }
     }
@@ -333,7 +333,7 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
 
     bool hasSpecialObjects = false;
     for (auto& obj : objects) {
-        if (obj && obj->GetIsVisible() &&
+        if (obj && obj->GetIsRenderVisible() &&
             (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) &&
             !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
             hasSpecialObjects = true;
@@ -352,7 +352,7 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
         const uint32_t depthSrvHandle = dxCommon->GetDepthSrvHandle();
         const uint32_t grabSrvHandle = dxCommon->GetGrabSrvHandle();
         for (auto& obj : objects) {
-            if (!obj || !obj->GetIsVisible() || IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+            if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
                 continue;
             }
 

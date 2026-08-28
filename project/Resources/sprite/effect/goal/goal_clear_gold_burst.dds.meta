@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "28d84183131497cba0fe30fe76940da4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/goal/goal_clear_gold_burst.dds",
+  "version": 1
+}

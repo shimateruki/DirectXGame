@@ -153,6 +153,9 @@ void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoInd
     int GetCameraPreviewHeight() const { return cameraPreviewHeight_; }
     void SetCameraPreviewResolutionScale(float scale);
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
+    bool SetLUTTexturePath(const std::string& path);
+    const std::string& GetLUTTexturePath() const { return lutTexturePath_; }
+
     void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
         // 画面効果をニュートラルな初期状態へ戻します。
 void ResetToNeutral();
@@ -206,6 +209,7 @@ struct RenderTexture {
 
     // カラーグレーディング用LUTのSRVハンドル
     uint32_t lutSrvHandle_ = 0;
+    std::string lutTexturePath_ = "Resources/texture/lut/soft_adventure_lut.png";
     uint32_t noiseSrvHandle_ = 0;
     bool bloomEnabled_ = true;
     BloomQuality bloomQuality_ = BloomQuality::High;

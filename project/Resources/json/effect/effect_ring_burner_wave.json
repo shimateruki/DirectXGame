@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.002,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 14,
+  "EdgeFadeStrength": 0.34,
+  "EndColor": [3.2, 0.11, 0.004, 0.0],
+  "EndScale": [11.0, 1.0, 11.0],
+  "Intensity": 7.2,
+  "Lifetime": 1.08,
+  "MeshSegments": 96,
+  "Position": [0.0, 0.32, 0.0],
+  "ProceduralType": 8,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [3.4, -5.2],
+  "StartColor": [4.4, 0.86, 0.035, 1.0],
+  "StartScale": [1.60, 1.0, 1.60],
+  "TexturePath": "Resources/sprite/effect/gradationLine.png",
+  "TorusMajorRadius": 1.0,
+  "TorusMinorRadius": 0.105,
+  "UvTiling": [7.0, 1.0],
+  "VolumeMode": 2
+}

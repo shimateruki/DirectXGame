@@ -29,6 +29,84 @@ void from_json(const json& j, Vector3& v) { j.at("x").get_to(v.x); j.at("y").get
 void to_json(json& j, const Vector4& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z}, {"w", v.w} }; }
 void from_json(const json& j, Vector4& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); j.at("w").get_to(v.w); }
 
+namespace {
+json WriteFloatCurve(const VFXFloatCurve& curve) {
+    json result = json::array();
+    for (const VFXFloatCurveKey& key : curve.keys) {
+        result.push_back({
+            { "time", key.time },
+            { "value", key.value },
+            { "easing", static_cast<int>(key.easing) },
+        });
+    }
+    return result;
+}
+
+json WriteColorGradient(const VFXColorGradient& gradient) {
+    json result = json::array();
+    for (const VFXColorGradientKey& key : gradient.keys) {
+        result.push_back({
+            { "time", key.time },
+            { "color", key.color },
+            { "easing", static_cast<int>(key.easing) },
+        });
+    }
+    return result;
+}
+
+void ReadFloatCurve(const json& source, VFXFloatCurve& curve) {
+    if (!source.is_array()) return;
+    curve.keys.clear();
+    for (const json& item : source) {
+        if (!item.is_object()) continue;
+        VFXFloatCurveKey key;
+        key.time = item.value("time", 0.0f);
+        key.value = item.value("value", 1.0f);
+        key.easing = static_cast<VFXCurveEasing>(
+            std::clamp(item.value("easing", 0), 0, 4));
+        curve.keys.push_back(key);
+    }
+    curve.Normalize();
+}
+
+void ReadColorGradient(const json& source, VFXColorGradient& gradient) {
+    if (!source.is_array()) return;
+    gradient.keys.clear();
+    for (const json& item : source) {
+        if (!item.is_object()) continue;
+        VFXColorGradientKey key;
+        key.time = item.value("time", 0.0f);
+        if (item.contains("color")) {
+            item.at("color").get_to(key.color);
+        }
+        key.easing = static_cast<VFXCurveEasing>(
+            std::clamp(item.value("easing", 0), 0, 4));
+        gradient.keys.push_back(key);
+    }
+    gradient.Normalize();
+}
+
+json WriteLod(const VFXLodSettings& lod) {
+    return {
+        { "enabled", lod.enabled },
+        { "nearDistance", lod.nearDistance },
+        { "farDistance", lod.farDistance },
+        { "farEmissionScale", lod.farEmissionScale },
+        { "maxAliveParticles", lod.maxAliveParticles },
+    };
+}
+
+void ReadLod(const json& source, VFXLodSettings& lod) {
+    if (!source.is_object()) return;
+    lod.enabled = source.value("enabled", false);
+    lod.nearDistance = source.value("nearDistance", 12.0f);
+    lod.farDistance = source.value("farDistance", 45.0f);
+    lod.farEmissionScale = source.value("farEmissionScale", 0.25f);
+    lod.maxAliveParticles = source.value("maxAliveParticles", 0);
+    lod.Sanitize();
+}
+}
+
 // EmitterParams のシリアライズ
 void to_json(json& j, const ParticleSystem::EmitterParams& p) {
     j = json{
@@ -53,6 +131,18 @@ void to_json(json& j, const ParticleSystem::EmitterParams& p) {
         {"blendMode", (int)p.blendMode}
         // 必要に応じて他のパラメータも追加
     };
+
+    json legacyCurve = json::array();
+    for (float value : p.sizeCurve) {
+        legacyCurve.push_back(value);
+    }
+    j["legacySizeCurve"] = std::move(legacyCurve);
+    j["authoring"] = {
+        { "enabled", p.useAuthoringCurves },
+        { "sizeOverLife", WriteFloatCurve(p.sizeOverLife) },
+        { "colorOverLife", WriteColorGradient(p.colorOverLife) },
+    };
+    j["lod"] = WriteLod(p.lod);
 }
 
 void from_json(const json& j, ParticleSystem::EmitterParams& p) {
@@ -77,6 +167,30 @@ void from_json(const json& j, ParticleSystem::EmitterParams& p) {
     p.coneAngle = j.value("coneAngle", 30.0f);
     if (j.contains("acceleration")) j.at("acceleration").get_to(p.acceleration);
     p.blendMode = (ParticleBlendMode)j.value("blendMode", (int)ParticleBlendMode::kAlpha);
+
+    if (j.contains("legacySizeCurve") && j["legacySizeCurve"].is_array()) {
+        const json& values = j["legacySizeCurve"];
+        const std::size_t count = (std::min)(values.size(), static_cast<std::size_t>(10));
+        for (std::size_t index = 0; index < count; ++index) {
+            p.sizeCurve[index] = values[index].get<float>();
+        }
+    }
+    if (j.contains("authoring") && j["authoring"].is_object()) {
+        const json& authoring = j["authoring"];
+        p.useAuthoringCurves = authoring.value("enabled", false);
+        if (authoring.contains("sizeOverLife")) {
+            ReadFloatCurve(authoring["sizeOverLife"], p.sizeOverLife);
+        }
+        if (authoring.contains("colorOverLife")) {
+            ReadColorGradient(authoring["colorOverLife"], p.colorOverLife);
+        }
+        if (p.sizeOverLife.keys.empty() || p.colorOverLife.keys.empty()) {
+            p.useAuthoringCurves = false;
+        }
+    }
+    if (j.contains("lod")) {
+        ReadLod(j["lod"], p.lod);
+    }
 }
 
 // ---------------------------------------------------------

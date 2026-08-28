@@ -8,44 +8,60 @@
         },
         {
             "type": 1,
-            "presetName": "effect_crown_get_flash_ring",
+            "presetName": "effect_goal_clear_gold_ring",
             "triggerTime": 0.0,
+            "offset": [0.0, -0.20, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.58, 0.58, 0.58]
+        },
+        {
+            "type": 1,
+            "presetName": "effect_goal_clear_gold_pillar",
+            "triggerTime": 0.02,
             "offset": [0.0, -0.18, 0.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [0.55, 0.55, 0.55]
+            "scale": [0.58, 0.58, 0.58]
         },
         {
             "type": 0,
-            "presetName": "crown_get_burst",
-            "triggerTime": 0.02,
+            "presetName": "goal_clear_gold_burst",
+            "triggerTime": 0.025,
             "offset": [0.0, 0.08, 0.0],
-            "scale": [1.0, 1.0, 1.0]
+            "scale": [0.58, 0.58, 0.58]
         },
         {
             "type": 0,
-            "presetName": "crown_get_twinkle_fountain",
-            "triggerTime": 0.06,
-            "offset": [0.0, 0.16, 0.0],
-            "scale": [1.0, 1.0, 1.0]
+            "presetName": "goal_clear_gold_motes",
+            "triggerTime": 0.07,
+            "offset": [0.0, 0.12, 0.0],
+            "scale": [0.76, 0.76, 0.76]
+        },
+        {
+            "type": 1,
+            "presetName": "effect_goal_clear_gold_ring",
+            "triggerTime": 0.18,
+            "offset": [0.0, -0.18, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [0.30, 0.30, 0.30]
         },
         {
             "type": 4,
             "presetName": "",
             "triggerTime": 0.0,
-            "duration": 0.18,
-            "intensity": 0.07,
+            "duration": 0.20,
+            "intensity": 0.060,
             "frequency": 22.0,
-            "scale": [1.0, 0.35, 1.0]
+            "scale": [0.75, 0.32, 0.75]
         },
         {
             "type": 6,
             "presetName": "",
             "triggerTime": 0.0,
-            "duration": 0.34,
-            "intensity": 2.0,
-            "lightRadius": 5.5,
+            "duration": 0.56,
+            "intensity": 2.15,
+            "lightRadius": 6.8,
             "lightDecay": 1.8,
-            "lightColor": [1.0, 0.72, 0.22, 1.0]
+            "lightColor": [1.0, 0.76, 0.24, 1.0]
         }
     ]
 }

@@ -11,6 +11,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <memory>
+#include <atomic>
+#include <cstdint>
+#include <random>
+#include <unordered_map>
+#include "engine/utility/math/Math.h"
 
 // Media Foundation
 #include <mfapi.h>
@@ -53,7 +58,7 @@ struct SoundDataStreaming {
 	std::thread decodeThread;
 	std::mutex mtx;
 	std::condition_variable cv;
-	bool isPlaying = false;
+	std::atomic_bool isPlaying = false;
 	bool isEndOfStream = false;
 	bool loop = false;
 	static const int kNumBuffers = 3;
@@ -78,6 +83,8 @@ public:
 	// サウンドハンドル用の型エイリアスを定義
 	using AudioHandle = uint32_t;
 	static const AudioHandle kInvalidAudioHandle = (std::numeric_limits<uint32_t>::max)();
+	using PlaybackHandle = uint64_t;
+	static constexpr PlaybackHandle kInvalidPlaybackHandle = 0;
 
 public:
 		// エンジン全体で共有する音声管理インスタンスを取得します。
@@ -121,6 +128,14 @@ void PlayBGM(AudioHandle handle, bool loop, float volume = 1.0f);
 	/// 指定したハンドルが現在再生中か確認します。
 	/// </summary>
 	bool IsPlaying(AudioHandle handle) const;
+	// 同じSEを重ねて鳴らすための独立したワンショット再生です。
+	PlaybackHandle PlayTransientSE(
+		const std::string& filename,
+		float volume = 1.0f,
+		float pitch = 1.0f);
+	bool IsTransientPlaying(PlaybackHandle handle) const;
+	void StopTransient(PlaybackHandle handle);
+	void Update();
 
 private:
 	AudioPlayer() = default;
@@ -131,6 +146,8 @@ private:
 		// ストリーミング音声を別スレッドでデコードし、XAudio2へ供給します。
 void DecodeThread(SoundDataStreaming* data);
 	void PlayStreaming(AudioHandle handle, bool loop, float volume);
+	std::unique_ptr<SoundDataStreaming> CreateStreamingData(const std::string& filename) const;
+	void DestroyStreamingData(SoundDataStreaming* data);
 	void ApplyCurrentBGMVolume();
 
 private:
@@ -143,8 +160,61 @@ private:
 	std::map<AudioHandle, std::unique_ptr<SoundDataStreaming>> streamingSoundDatas_;
 	std::map<std::string, AudioHandle> audioHandleMap_; // ファイルパスからハンドルを引くためのマップ
 	AudioHandle nextHandle_ = 0; // 次に割り当てるハンドル番号
+	std::unordered_map<PlaybackHandle, std::unique_ptr<SoundDataStreaming>> transientSoundDatas_;
+	PlaybackHandle nextPlaybackHandle_ = 1;
+	mutable std::mutex audioDataMutex_;
 	AudioHandle currentBgmHandle_ = kInvalidAudioHandle;
 	float seMasterVolume_ = 1.0f;
 	float bgmMasterVolume_ = 1.0f;
 	float currentBgmBaseVolume_ = 1.0f;
+};
+
+struct AudioEventDefinition {
+    std::vector<std::string> clips;
+    float volumeMin = 1.0f;
+    float volumeMax = 1.0f;
+    float pitchMin = 1.0f;
+    float pitchMax = 1.0f;
+    int maxInstances = 4;
+    bool spatial = false;
+    float minDistance = 2.0f;
+    float maxDistance = 30.0f;
+};
+
+// 効果音のバリエーション、音量・Pitch揺らぎ、多重数、距離減衰をJSONから再生します。
+class AudioEventSystem {
+public:
+    static AudioEventSystem* GetInstance();
+
+    bool LoadEvent(
+        const std::string& eventPath,
+        AudioEventDefinition& definition,
+        std::string* errorMessage = nullptr) const;
+    bool SaveEvent(
+        const std::string& eventPath,
+        const AudioEventDefinition& definition,
+        std::string* errorMessage = nullptr);
+    bool Prewarm(const std::string& eventPath, std::string* errorMessage = nullptr);
+    AudioPlayer::PlaybackHandle Play(
+        const std::string& eventPath,
+        const Vector3* worldPosition = nullptr,
+        float volumeScale = 1.0f);
+    AudioPlayer::PlaybackHandle PlayReference(
+        const std::string& reference,
+        const Vector3* worldPosition = nullptr,
+        float volumeScale = 1.0f);
+    void Update();
+
+    std::string ResolveEventPath(const std::string& reference) const;
+
+private:
+    struct ActiveInstance {
+        std::string eventPath;
+        AudioPlayer::PlaybackHandle handle = AudioPlayer::kInvalidPlaybackHandle;
+    };
+
+    std::unordered_map<std::string, AudioEventDefinition> eventCache_;
+    std::unordered_map<std::string, std::size_t> lastClipByEvent_;
+    std::vector<ActiveInstance> activeInstances_;
+    std::mt19937 randomEngine_{ std::random_device{}() };
 };

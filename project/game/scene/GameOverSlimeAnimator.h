@@ -44,44 +44,71 @@ public:
         }
 
         timer_ += deltaTime;
-        constexpr float kFallSettleDuration = 1.42f;
-        const float settle = EaseOutCubic(timer_ / kFallSettleDuration);
-        const float sleepBob = std::sin(timer_ * 0.92f) * 0.012f;
-        const float faintPulse = 0.5f + 0.5f * std::sin(timer_ * 1.25f);
-        const float impact = ImpactPulse(timer_);
+        const float faintPulse = 0.5f + 0.5f * std::sin(timer_ * 1.35f);
 
         const Vector3 startPosition = {
             basePosition_.x,
-            basePosition_.y + kPresentationYOffset + 0.16f,
+            basePosition_.y + kPresentationYOffset + 1.05f,
             basePosition_.z
         };
-        const Vector3 downedPosition = {
+        const Vector3 impactPosition = {
             basePosition_.x,
-            basePosition_.y + kPresentationYOffset + sleepBob - impact * 0.025f,
+            basePosition_.y + kPresentationYOffset,
             basePosition_.z
         };
-
-        const Vector3 startScale = baseScale_;
-        const Vector3 downedScale = {
-            baseScale_.x * (1.18f + impact * 0.10f - faintPulse * 0.025f),
-            baseScale_.y * (0.58f - impact * 0.045f + faintPulse * 0.018f),
-            baseScale_.z * (1.06f + impact * 0.06f)
+        const Vector3 startScale = {
+            baseScale_.x * 0.82f,
+            baseScale_.y * 1.34f,
+            baseScale_.z * 0.82f
+        };
+        const Vector3 impactScale = {
+            baseScale_.x * 1.34f,
+            baseScale_.y * 0.54f,
+            baseScale_.z * 1.20f
+        };
+        const Vector3 settledScale = {
+            baseScale_.x * (1.13f - faintPulse * 0.018f),
+            baseScale_.y * (0.72f + faintPulse * 0.016f),
+            baseScale_.z * (1.07f - faintPulse * 0.010f)
         };
 
-        const Vector3 startRotation = {
-            baseRotation_.x + 0.08f,
-            baseRotation_.y,
-            baseRotation_.z
-        };
-        const Vector3 downedRotation = {
-            baseRotation_.x + 3.14159265f + std::sin(timer_ * 0.55f) * 0.035f + impact * 0.06f,
-            baseRotation_.y + std::sin(timer_ * 0.35f) * 0.02f,
-            baseRotation_.z + 0.08f + std::sin(timer_ * 0.80f) * 0.025f + impact * 0.04f
-        };
+        if (timer_ < kImpactTime) {
+            const float fallRate = Clamp01(timer_ / kImpactTime);
+            const float fallEase = fallRate * fallRate * fallRate;
+            currentPosition_ = Math::Lerp(startPosition, impactPosition, fallEase);
+            currentScale_ = Math::Lerp(startScale, impactScale, EaseOutCubic(fallRate));
+            currentRotation_ = Math::Lerp(
+                Vector3{ baseRotation_.x - 0.10f, baseRotation_.y, baseRotation_.z - 0.04f },
+                Vector3{ baseRotation_.x + 0.08f, baseRotation_.y, baseRotation_.z - 0.22f },
+                fallEase);
+        }
+        else {
+            const float recoverRate = EaseOutCubic((timer_ - kImpactTime) / kRecoveryDuration);
+            const float sleepBob = std::sin((timer_ - kImpactTime) * 1.05f) * 0.010f * recoverRate;
+            const Vector3 settledPosition = {
+                basePosition_.x,
+                basePosition_.y + kPresentationYOffset + 0.09f + sleepBob,
+                basePosition_.z
+            };
 
-        currentPosition_ = Math::Lerp(startPosition, downedPosition, settle);
-        currentScale_ = Math::Lerp(startScale, downedScale, settle);
-        currentRotation_ = Math::Lerp(startRotation, downedRotation, settle);
+            currentScale_ = Math::Lerp(impactScale, settledScale, recoverRate);
+            currentPosition_ = Math::Lerp(impactPosition, settledPosition, recoverRate);
+            currentPosition_.y = GroundedCenterY(
+                impactPosition,
+                impactScale,
+                settledPosition,
+                settledScale,
+                currentScale_,
+                recoverRate) + sleepBob;
+            currentRotation_ = Math::Lerp(
+                Vector3{ baseRotation_.x + 0.08f, baseRotation_.y, baseRotation_.z - 0.22f },
+                Vector3{
+                    baseRotation_.x + 0.04f + std::sin(timer_ * 0.62f) * 0.018f,
+                    baseRotation_.y + std::sin(timer_ * 0.36f) * 0.018f,
+                    baseRotation_.z - 0.14f + std::sin(timer_ * 0.78f) * 0.020f
+                },
+                recoverRate);
+        }
 
         slime->SetTranslate(currentPosition_);
         slime->SetScale(currentScale_);
@@ -108,7 +135,6 @@ public:
         exitStartRotation_ = currentRotation_;
         exitDirection_ = direction;
         exitDirection_.y = 0.0f;
-        exitDirection_.z = 0.0f;
 
         const float length = std::sqrt(exitDirection_.x * exitDirection_.x + exitDirection_.z * exitDirection_.z);
         if (length > 0.001f) {
@@ -151,10 +177,13 @@ public:
     }
 
     float GetTimer() const { return timer_; }
+    static constexpr float GetImpactTime() { return kImpactTime; }
     bool HasBaseTransform() const { return hasBaseTransform_; }
 
 private:
     static constexpr float kPresentationYOffset = 0.34f;
+    static constexpr float kImpactTime = 0.30f;
+    static constexpr float kRecoveryDuration = 0.66f;
 
     enum class Phase {
         Downed,
@@ -170,13 +199,6 @@ private:
         t = Clamp01(t);
         const float inv = 1.0f - t;
         return 1.0f - inv * inv * inv;
-    }
-
-    static float ImpactPulse(float time) {
-        const float center = 0.88f;
-        const float width = 0.36f;
-        const float rate = 1.0f - Clamp01(std::abs(time - center) / width);
-        return rate * rate;
     }
 
     static float EaseInOutCubic(float t) {

@@ -24,9 +24,10 @@ namespace {
 
 constexpr int kAssetMetaVersion = 1;
 constexpr auto kFilesystemChangeDebounce = std::chrono::milliseconds(250);
-constexpr auto kInitialIndexFrameBudget = std::chrono::milliseconds(2);
-constexpr std::size_t kInitialDirectoryMaxEntriesPerFrame = 128;
-constexpr std::size_t kInitialIndexMaxAssetsPerFrame = 32;
+constexpr auto kInitialIndexFrameBudget = std::chrono::milliseconds(4);
+constexpr std::size_t kInitialDirectoryMaxEntriesPerFrame = 512;
+constexpr std::size_t kInitialIndexMaxAssetsPerFrame = 128;
+std::uintmax_t gDDSNotificationSizeBeforeBuild = 0;
 
 std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char value) {
@@ -87,7 +88,8 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
     resourcesRootPath_ = NormalizeProjectPath(resourcesRoot_);
     createMissingMeta_ = createMissingMeta;
     initialized_ = true;
-    BeginInitialIndexBuild(createMissingMeta_, true);
+    // 起動時は索引だけを作る。DDS全走査はProject Windowの明示操作や更新要求時に限定する。
+    BeginInitialIndexBuild(createMissingMeta_, false);
     return true;
 }
 
@@ -927,6 +929,16 @@ bool AssetDatabase::StartDDSCacheBuild() {
         return false;
     }
 
+    const fs::path notificationPath = resourcesRoot_ / ".cache/dds_cache_notifications.jsonl";
+    gDDSNotificationSizeBeforeBuild = 0;
+    if (fs::exists(notificationPath, error) && !error) {
+        gDDSNotificationSizeBeforeBuild = fs::file_size(notificationPath, error);
+        if (error) {
+            gDDSNotificationSizeBeforeBuild = 0;
+            error.clear();
+        }
+    }
+
     std::wstring commandLine =
         L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" +
         scriptPath.wstring() + L"\" -Root \"" + resourcesRoot_.wstring() + L"\"";
@@ -985,11 +997,26 @@ bool AssetDatabase::PollDDSCacheBuild() {
     }
     lastDDSCacheBuildExitCode_ = exitCode;
     CloseDDSCacheProcessHandle();
-    refreshAfterDDSCacheBuild_ = true;
+
+    // 変換通知が増えた場合だけ、追加されたDDSをAsset Databaseへ取り込む。
+    // 全DDSが最新だった場合の無駄な二回目の全索引を避ける。
+    const fs::path notificationPath = resourcesRoot_ / ".cache/dds_cache_notifications.jsonl";
+    std::error_code error;
+    std::uintmax_t notificationSizeAfterBuild = 0;
+    if (fs::exists(notificationPath, error) && !error) {
+        notificationSizeAfterBuild = fs::file_size(notificationPath, error);
+        if (error) {
+            notificationSizeAfterBuild = 0;
+        }
+    }
+    const bool generatedDDS = notificationSizeAfterBuild > gDDSNotificationSizeBeforeBuild;
+    refreshAfterDDSCacheBuild_ = generatedDDS;
 
     if (waitResult == WAIT_OBJECT_0 && exitCode == 0) {
         ddsCacheBuildState_ = DDSCacheBuildState::Succeeded;
-        ddsCacheBuildMessage_ = "DDSキャッシュの確認・変換が完了しました。";
+        ddsCacheBuildMessage_ = generatedDDS
+            ? "DDSキャッシュの確認・変換が完了しました。"
+            : "DDSキャッシュは最新です。再索引は不要です。";
     }
     else {
         ddsCacheBuildState_ = DDSCacheBuildState::Failed;

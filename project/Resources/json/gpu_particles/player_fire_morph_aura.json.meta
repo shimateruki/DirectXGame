@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "bd665391cd8548f9a754a45763550394",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_fire_morph_aura.json",
+  "version": 1
+}

@@ -8,7 +8,9 @@
 #include "EffectPreviewStage.h"
 #include "EnemyBomber.h"
 #include "EnemyFactory.h"
+#include "EnemyFalseKingSlime.h"
 #include "EnemyGiantSlime.h"
+#include "EnemyMagmaSlime.h"
 #include "EnemyPrismSlime.h"
 #include "EnemySlime.h"
 #include "EnemyThunderSlime.h"
@@ -51,8 +53,10 @@ constexpr const char* kEnemyTypes[] = {
     "ThunderSlime",
     "GiantSlime",
     "PrismSlime",
+    "MagmaSlime",
     "Bomber",
     "WindSlime",
+    "FalseKingSlime",
 };
 
 constexpr const char* kEnemyLabels[] = {
@@ -61,8 +65,10 @@ constexpr const char* kEnemyLabels[] = {
     "雷スライム（近距離放電／連続落雷）",
     "巨大スライム（ジャンププレス）",
     "プリズムスライム（無属性／炎／雷／風）",
+    "マグマスライム（三連砲／突進／火山プレス）",
     "ボマースライム（爆弾投げ）",
     "風スライム（暴風ブレス／空中三連風弾）",
+    "偽王スライム（最終ボス・3形態）",
 };
 
 bool HasPreviewPrefix(const Object3d* object) {
@@ -82,6 +88,9 @@ bool DrawProfileString(const char* label, std::string& value) {
 }
 
 ImU32 GetPhaseColor(const std::string& phase, int alpha = 230) {
+    if (phase == "予兆") return IM_COL32(255, 158, 52, alpha);
+    if (phase == "攻撃") return IM_COL32(255, 74, 28, alpha);
+    if (phase == "硬直") return IM_COL32(212, 126, 92, alpha);
     if (phase == "溜め") return IM_COL32(255, 188, 64, alpha);
     if (phase == "近距離放電・溜め" || phase == "連続落雷・溜め") return IM_COL32(247, 210, 73, alpha);
     if (phase == "連続落雷・落雷中") return IM_COL32(103, 218, 255, alpha);
@@ -574,7 +583,19 @@ void EnemyAttackPreviewWindow::TriggerPreviewPlayerDamage() {
     event.damageAmount = attack ? attack->damage : 1.0f;
     event.damageType = GetPreviewDamageType();
     event.statusEffect = GetPreviewStatusEffect();
-    event.knockbackVelocity = { direction.x * 9.5f, 4.2f, direction.z * 9.5f };
+    if (attack && Math::Length(attack->knockbackVelocity) > 0.001f) {
+        const Vector3 right = { direction.z, 0.0f, -direction.x };
+        event.knockbackVelocity =
+            right * attack->knockbackVelocity.x +
+            Vector3{ 0.0f, attack->knockbackVelocity.y, 0.0f } +
+            direction * attack->knockbackVelocity.z;
+    } else {
+        // Existing profiles keep the legacy preview knockback.
+        event.knockbackVelocity = { direction.x * 9.5f, 4.2f, direction.z * 9.5f };
+    }
+    event.invincibilityDuration = attack && attack->invincibilityDuration > 0.0f
+        ? attack->invincibilityDuration
+        : 1.0f;
     EventManager::GetInstance()->Dispatch(event);
 }
 
@@ -585,6 +606,7 @@ DamageType EnemyAttackPreviewWindow::GetPreviewDamageType() const {
     case 2:
         return DamageType::Electric;
     case 4:
+    case 8:
         return DamageType::Explosion;
     default:
         return DamageType::Physical;
@@ -678,6 +700,12 @@ const char* EnemyAttackPreviewWindow::GetCurrentPhaseName() const {
     }
     if (const auto* prismSlime = dynamic_cast<const EnemyPrismSlime*>(previewEnemy_)) {
         return prismSlime->GetDebugAttackPhaseName();
+    }
+    if (const auto* magmaSlime = dynamic_cast<const EnemyMagmaSlime*>(previewEnemy_)) {
+        return magmaSlime->GetDebugAttackPhaseName();
+    }
+    if (const auto* falseKingSlime = dynamic_cast<const EnemyFalseKingSlime*>(previewEnemy_)) {
+        return falseKingSlime->GetDebugAttackPhaseName();
     }
     return previewEnemy_ ? "攻撃シミュレーション" : "未生成";
 }
@@ -805,6 +833,14 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
             spawnedPreviewObjects_.push_back(rawObject);
             previewScene_->AddObject(std::move(spawnedEnemy));
         });
+    }
+    if (auto* magmaSlime = dynamic_cast<EnemyMagmaSlime*>(enemy)) {
+        const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
+        magmaSlime->SetDebugPreviewAttackId(selectedAttack ? selectedAttack->id : std::string{});
+    }
+    if (auto* falseKingSlime = dynamic_cast<EnemyFalseKingSlime*>(enemy)) {
+        const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
+        falseKingSlime->SetDebugPreviewAttackId(selectedAttack ? selectedAttack->id : std::string{});
     }
 
     if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(enemy); giantSlime && IsGiantHookSplitPreview()) {
@@ -972,9 +1008,8 @@ void EnemyAttackPreviewWindow::DrawImGui() {
     }
 
     ImGui::SeparatorText("攻撃対象");
-    const char* currentLabel = enemyTypeIndex_ == 5
-        ? "Wind Slime"
-        : kEnemyLabels[std::clamp(enemyTypeIndex_, 0, static_cast<int>(std::size(kEnemyLabels)) - 1)];
+    const char* currentLabel = kEnemyLabels[
+        std::clamp(enemyTypeIndex_, 0, static_cast<int>(std::size(kEnemyLabels)) - 1)];
     if (ImGui::BeginCombo("敵タイプ", currentLabel)) {
         for (int index = 0; index < static_cast<int>(std::size(kEnemyTypes)); ++index) {
             const bool selected = enemyTypeIndex_ == index;
@@ -1080,6 +1115,19 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             changed |= ImGui::DragFloat("最小発動距離", &editedAttack->minRange, 0.05f, 0.0f, 50.0f, "%.2f m");
             changed |= ImGui::DragFloat("最大発動距離", &editedAttack->maxRange, 0.05f, 0.0f, 50.0f, "%.2f m");
             changed |= ImGui::DragFloat("攻撃半径・幅", &editedAttack->radius, 0.05f, 0.01f, 50.0f, "%.2f m");
+            const char* hitShapes[] = { "Sphere", "Capsule", "Box", "Cone" };
+            int hitShapeIndex = 0;
+            if (editedAttack->hitShape == "capsule") hitShapeIndex = 1;
+            else if (editedAttack->hitShape == "box") hitShapeIndex = 2;
+            else if (editedAttack->hitShape == "cone") hitShapeIndex = 3;
+            if (ImGui::Combo("判定形状", &hitShapeIndex, hitShapes, IM_ARRAYSIZE(hitShapes))) {
+                constexpr const char* kHitShapeIds[] = { "sphere", "capsule", "box", "cone" };
+                editedAttack->hitShape = kHitShapeIds[hitShapeIndex];
+                changed = true;
+            }
+            changed |= ImGui::DragFloat3("判定ローカル位置", &editedAttack->hitOffset.x, 0.05f, -50.0f, 50.0f, "%.2f m");
+            changed |= ImGui::DragFloat3("判定サイズ", &editedAttack->hitSize.x, 0.05f, 0.01f, 50.0f, "%.2f m");
+            ImGui::TextDisabled("サイズは形状に応じて半径・高さ・奥行きとして利用できます。");
             ImGui::TreePop();
         }
 
@@ -1089,6 +1137,9 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             changed |= ImGui::DragFloat("硬直", &editedAttack->recoveryDuration, 0.01f, 0.0f, 20.0f, "%.2f sec");
             changed |= ImGui::DragFloat("再使用間隔", &editedAttack->cooldown, 0.01f, 0.0f, 30.0f, "%.2f sec");
             changed |= ImGui::DragFloat("警告先行時間", &editedAttack->warningLeadTime, 0.01f, 0.0f, 5.0f, "%.2f sec");
+            changed |= ImGui::DragFloat("キャンセル開始", &editedAttack->cancelWindowStart, 0.01f, 0.0f, 60.0f, "%.2f sec");
+            changed |= ImGui::DragFloat("キャンセル終了", &editedAttack->cancelWindowEnd, 0.01f, 0.0f, 60.0f, "%.2f sec");
+            ImGui::TextDisabled("開始からの秒数。0 / 0 の場合はキャンセル不可です。");
             ImGui::TreePop();
         }
 
@@ -1097,6 +1148,9 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             changed |= ImGui::DragFloat("最低速度", &editedAttack->minSpeed, 0.1f, 0.0f, 200.0f, "%.1f");
             changed |= ImGui::DragFloat("最高速度", &editedAttack->maxSpeed, 0.1f, 0.0f, 200.0f, "%.1f");
             changed |= ImGui::DragFloat("寿命", &editedAttack->lifetime, 0.05f, 0.0f, 30.0f, "%.2f sec");
+            changed |= ImGui::DragFloat3("吹き飛ばし (右・上・前)", &editedAttack->knockbackVelocity.x, 0.1f, -100.0f, 100.0f, "%.1f");
+            changed |= ImGui::DragFloat("被弾無敵時間", &editedAttack->invincibilityDuration, 0.01f, 0.0f, 10.0f, "%.2f sec");
+            ImGui::TextDisabled("吹き飛ばしが 0,0,0 の既存データは従来値を使います。");
             ImGui::TreePop();
         }
 
@@ -1135,6 +1189,7 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             changed |= DrawProfileString("攻撃中VFX", editedAttack->activeVfx);
             changed |= DrawProfileString("命中・着地VFX", editedAttack->impactVfx);
             changed |= DrawProfileString("SEキュー", editedAttack->audioCue);
+            changed |= DrawProfileString("Feedback Cue", editedAttack->feedbackCue);
             ImGui::TreePop();
         }
 
@@ -1208,6 +1263,18 @@ void EnemyAttackPreviewWindow::DrawImGui() {
     ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), progressLabel);
     if (previewEnemy_) {
         ImGui::Text("現在フェーズ: %s", GetCurrentPhaseName());
+        if (const auto* falseKingSlime = dynamic_cast<const EnemyFalseKingSlime*>(previewEnemy_)) {
+            const size_t visibleVisuals = falseKingSlime->GetDebugVisibleAttackVisualCount();
+            ImGui::Text("Attack body: %s", falseKingSlime->GetDebugAttackBodyName());
+            if (visibleVisuals > 0) {
+                ImGui::TextColored(
+                    ImVec4(0.48f, 1.0f, 0.82f, 1.0f),
+                    "攻撃本体モデル: %zu 個を描画中",
+                    visibleVisuals);
+            } else {
+                ImGui::TextDisabled("攻撃本体モデル: 予兆・硬直中は0個");
+            }
+        }
     }
     ImGui::EndDisabled();
 

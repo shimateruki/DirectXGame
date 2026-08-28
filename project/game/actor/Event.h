@@ -54,6 +54,7 @@ struct DamageEvent {
     Object3d* attacker = nullptr; // 攻撃した人
     float damageAmount = 0.0f;    // ダメージ量
     Vector3 knockbackVelocity = { 0,0,0 }; // 追加：吹き飛ばしベクトル
+    float invincibilityDuration = 1.0f; // 被弾後に操作を守る無敵時間
     DamageType damageType = DamageType::Physical;
     StatusEffectApplication statusEffect;
 };

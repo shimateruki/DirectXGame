@@ -30,8 +30,16 @@ namespace {
             return ImVec4(0.32f, 1.0f, 0.45f, 1.0f);
         case VFXEventType::CameraShake:
             return ImVec4(0.92f, 0.92f, 0.30f, 1.0f);
+        case VFXEventType::PostEffectPulse:
+            return ImVec4(0.92f, 0.35f, 1.0f, 1.0f);
         case VFXEventType::LightPulse:
             return ImVec4(1.0f, 0.82f, 0.28f, 1.0f);
+        case VFXEventType::HitStop:
+            return ImVec4(1.0f, 0.30f, 0.30f, 1.0f);
+        case VFXEventType::ControllerRumble:
+            return ImVec4(0.35f, 0.85f, 1.0f, 1.0f);
+        case VFXEventType::CameraFovPulse:
+            return ImVec4(0.75f, 0.58f, 1.0f, 1.0f);
         default:
             return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
         }
@@ -44,7 +52,11 @@ namespace {
     float GetEventEndTime(const VFXEvent& event) {
         if (event.type == VFXEventType::MovingParticle ||
             event.type == VFXEventType::CameraShake ||
-            event.type == VFXEventType::LightPulse) {
+            event.type == VFXEventType::PostEffectPulse ||
+            event.type == VFXEventType::LightPulse ||
+            event.type == VFXEventType::HitStop ||
+            event.type == VFXEventType::ControllerRumble ||
+            event.type == VFXEventType::CameraFovPulse) {
             return event.triggerTime + (std::max)(event.duration, 0.01f);
         }
         return event.triggerTime + 0.08f;
@@ -246,6 +258,14 @@ void VFXSequencerEditor::RefreshFileList() {
 
     std::sort(particlePresetList_.begin(), particlePresetList_.end());
     std::sort(sequenceFileList_.begin(), sequenceFileList_.end());
+    const std::string audioEventDir = "Resources/json/audio_events/";
+    if (fs::exists(audioEventDir)) {
+        for (const auto& entry : fs::directory_iterator(audioEventDir)) {
+            if (entry.path().extension() == ".json") {
+                seFileList_.push_back(entry.path().filename().string());
+            }
+        }
+    }
     std::sort(meshEffectList_.begin(), meshEffectList_.end());
     std::sort(seFileList_.begin(), seFileList_.end());
 }
@@ -336,10 +356,25 @@ void VFXSequencerEditor::DrawImGui() {
     if (ImGui::Button(ICON_FA_CAMERA " カメラ揺れ", ImVec2(buttonWidth, 32))) {
         AddDefaultEvent(VFXEventType::CameraShake);
     }
+    ImGui::SameLine();
+    if (ImGui::Button("FOV Pulse", ImVec2(buttonWidth, 32))) {
+        AddDefaultEvent(VFXEventType::CameraFovPulse);
+    }
     if (ImGui::Button("Light", ImVec2(buttonWidth, 32))) {
         AddDefaultEvent(VFXEventType::LightPulse);
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Post FX", ImVec2(buttonWidth, 32))) {
+        AddDefaultEvent(VFXEventType::PostEffectPulse);
+    }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Hit Stop", ImVec2(buttonWidth, 32))) {
+        AddDefaultEvent(VFXEventType::HitStop);
+    }
+    if (ImGui::Button("Controller Rumble", ImVec2(buttonWidth, 32))) {
+        AddDefaultEvent(VFXEventType::ControllerRumble);
+    }
     ImGui::SeparatorText("イベント一覧");
     auto& events = previewSequencer_.GetEvents();
     for (int i = 0; i < static_cast<int>(events.size()); ++i) {
@@ -468,6 +503,15 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
             ImGui::DragFloat3(ICON_FA_SLIDERS_H " 軸ごとの重み", &event.scale.x, 0.02f, 0.0f, 2.0f);
             ImGui::TextDisabled("軸重みは X/Y/Z の揺れやすさです。Zを低めにすると画面酔いしにくくなります。");
         }
+        else if (event.type == VFXEventType::PostEffectPulse) {
+            ImGui::DragFloat(ICON_FA_STOPWATCH " 継続時間", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
+            ImGui::DragInt(ICON_FA_SLIDERS_H " 減衰カーブ", &event.easingType, 1.0f, 0, 4);
+            ImGui::DragFloat("放射ブラー", &event.radialIntensity, 0.001f, 0.0f, 1.0f, "%.3f");
+            ImGui::DragFloat("ダメージフラッシュ", &event.damageFlash, 0.01f, 0.0f, 5.0f, "%.2f");
+            ImGui::DragFloat("色収差", &event.chromaticAberration, 0.001f, 0.0f, 0.2f, "%.3f");
+            ImGui::DragFloat("波打ち", &event.wobbleIntensity, 0.001f, 0.0f, 1.0f, "%.3f");
+            ImGui::DragFloat("ブルーム加算", &event.bloomIntensity, 0.01f, 0.0f, 10.0f, "%.2f");
+        }
         else if (event.type == VFXEventType::LightPulse) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " Duration", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " Offset", &event.offset.x, 0.1f);
@@ -475,6 +519,21 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
             ImGui::DragFloat("Radius", &event.lightRadius, 0.1f, 0.1f, 80.0f, "%.1f");
             ImGui::DragFloat("Decay", &event.lightDecay, 0.05f, 0.1f, 8.0f, "%.2f");
             ImGui::ColorEdit4("Color", &event.lightColor.x);
+        }
+        else if (event.type == VFXEventType::CameraFovPulse) {
+            ImGui::DragFloat(ICON_FA_STOPWATCH " 継続時間", &event.duration, 0.01f, 0.03f, 3.0f, "%.2f s");
+            ImGui::DragFloat("FOV変化量", &event.intensity, 0.1f, -30.0f, 30.0f, "%.1f deg");
+            ImGui::DragFloat("立ち上がり比率", &event.attackRatio, 0.01f, 0.01f, 0.95f, "%.2f");
+            ImGui::TextDisabled("正の値で広角、負の値で望遠へ振ってから元へ戻ります。");
+        }
+        else if (event.type == VFXEventType::HitStop) {
+            ImGui::DragFloat(ICON_FA_STOPWATCH " 停止時間", &event.duration, 0.005f, 0.01f, 1.0f, "%.3f s");
+            ImGui::DragFloat("時間倍率", &event.intensity, 0.01f, 0.0f, 1.0f, "%.2f");
+        }
+        else if (event.type == VFXEventType::ControllerRumble) {
+            ImGui::DragFloat(ICON_FA_STOPWATCH " 振動時間", &event.duration, 0.01f, 0.01f, 5.0f, "%.2f s");
+            ImGui::DragFloat("低周波モーター", &event.intensity, 0.01f, 0.0f, 1.0f, "%.2f");
+            ImGui::DragFloat("高周波モーター", &event.secondaryIntensity, 0.01f, 0.0f, 1.0f, "%.2f");
         }
 
         ImGui::TreePop();
@@ -536,6 +595,27 @@ void VFXSequencerEditor::AddDefaultEvent(VFXEventType type) {
         event.lightDecay = 1.35f;
         event.lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
     }
+    else if (type == VFXEventType::PostEffectPulse) {
+        event.duration = 0.28f;
+        event.easingType = 2;
+        event.radialIntensity = 0.035f;
+        event.chromaticAberration = 0.012f;
+        event.bloomIntensity = 0.35f;
+    }
+    else if (type == VFXEventType::CameraFovPulse) {
+        event.duration = 0.24f;
+        event.intensity = 4.0f;
+        event.attackRatio = 0.12f;
+    }
+    else if (type == VFXEventType::HitStop) {
+        event.duration = 0.065f;
+        event.intensity = 0.0f;
+    }
+    else if (type == VFXEventType::ControllerRumble) {
+        event.duration = 0.18f;
+        event.intensity = 0.45f;
+        event.secondaryIntensity = 0.72f;
+    }
 
     previewSequencer_.GetEvents().push_back(event);
 }
@@ -556,6 +636,12 @@ const char* VFXSequencerEditor::GetEventTypeName(VFXEventType type) const {
         return "Post Effect Pulse";
     case VFXEventType::LightPulse:
         return "Light Pulse";
+    case VFXEventType::HitStop:
+        return "Hit Stop";
+    case VFXEventType::ControllerRumble:
+        return "Controller Rumble";
+    case VFXEventType::CameraFovPulse:
+        return "Camera FOV Pulse";
     default:
         return "Unknown";
     }

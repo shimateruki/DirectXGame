@@ -75,10 +75,13 @@ void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLigh
     void SetEndScale(const Vector3& s) { endScale_ = s; }
     void SetStartColor(const Vector4& c) { startColor_ = c; }
     void SetEndColor(const Vector4& c) { endColor_ = c; }
-    void SetDistortionStrength(float) { if (materialData_) materialData_->distortionStrength = 0.0f; }
+    void SetDistortionStrength(float strength) { if (materialData_) materialData_->distortionStrength = (std::max)(0.0f, strength); }
     void SetDistortionSpeed(float s) { if (materialData_) materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { if (materialData_) materialData_->edgeFadeStrength = s; }
-    void SetEnableDistortion(bool) { if (materialData_) materialData_->enableDistortion = 0; }
+    void SetEnableDistortion(bool enable) { if (materialData_) materialData_->enableDistortion = enable ? 1 : 0; }
+    bool IsDistortionEnabled() const {
+        return materialData_ && materialData_->enableDistortion != 0 && materialData_->distortionStrength > 0.0f;
+    }
     void SetAlphaReference(float ref) { if (materialData_) materialData_->alphaReference = ref; }
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }

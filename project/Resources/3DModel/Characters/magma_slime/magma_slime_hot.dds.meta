@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "06b67f64ccb59b5aba9e3562ea685bd7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_hot.dds",
+  "version": 1
+}

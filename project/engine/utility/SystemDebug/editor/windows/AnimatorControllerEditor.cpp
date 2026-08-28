@@ -271,6 +271,41 @@ void AnimatorControllerEditor::DrawStateEditor() {
         ImGui::Checkbox("Loop", &state.loop);
         ImGui::DragFloat("Default Blend", &state.blendDuration, 0.01f, 0.0f, 5.0f, "%.3f sec");
         ImGui::Combo("Default Easing", &state.blendEasing, kEasingNames, IM_ARRAYSIZE(kEasingNames));
+        ImGui::DragFloat("Event Timeline Duration", &state.eventTimelineDuration, 0.01f, 0.01f, 120.0f, "%.2f sec");
+        ImGui::TextDisabled("Model/Body Clipに長さがある場合はそちらを優先します。");
+
+        ImGui::SeparatorText("Animation Events");
+        if (ImGui::Button(ICON_FA_PLUS " Event追加")) {
+            state.events.push_back({});
+        }
+        int removeEventIndex = -1;
+        for (int eventIndex = 0; eventIndex < static_cast<int>(state.events.size()); ++eventIndex) {
+            AnimatorEventDefinition& event = state.events[eventIndex];
+            ImGui::PushID(eventIndex);
+            char eventName[128]{};
+            char eventPayload[256]{};
+            strncpy_s(eventName, sizeof(eventName), event.name.c_str(), _TRUNCATE);
+            strncpy_s(eventPayload, sizeof(eventPayload), event.payload.c_str(), _TRUNCATE);
+            ImGui::Text("Event %02d", eventIndex + 1);
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_TRASH)) {
+                removeEventIndex = eventIndex;
+            }
+            if (ImGui::InputText("名前", eventName, sizeof(eventName))) {
+                event.name = eventName;
+            }
+            if (ImGui::InputText("Payload", eventPayload, sizeof(eventPayload))) {
+                event.payload = eventPayload;
+            }
+            ImGui::SliderFloat("正規化時刻", &event.normalizedTime, 0.0f, 1.0f, "%.3f");
+            ImGui::TextDisabled("FeedbackCue + VFX Cue名で、VFX/SE/カメラ/振動を自動再生します。");
+            ImGui::Separator();
+            ImGui::PopID();
+        }
+        if (removeEventIndex >= 0) {
+            state.events.erase(state.events.begin() + removeEventIndex);
+        }
+
         if (ImGui::Button("Entry Stateに設定", ImVec2(-1.0f, 0.0f))) controller_.entryState = state.name;
         ImGui::BeginDisabled(controller_.states.size() <= 1);
         if (ImGui::Button(ICON_FA_TRASH " State削除", ImVec2(-1.0f, 0.0f))) {

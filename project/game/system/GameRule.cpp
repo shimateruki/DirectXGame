@@ -146,6 +146,11 @@ void GameRule::Initialize(BaseScene* scene) {
 
         case EventType::None:
         default:
+            // 敵のTargetIDは接触時の汎用イベントではなく、撃破完了通知として使います。
+            // プレイヤーの攻撃が当たっただけでボス部屋の完了イベントを発火させません。
+            if (dynamic_cast<BaseEnemy*>(objectHit)) {
+                break;
+            }
             int tID = objectHit->GetTargetID();
             if (tID != -1 && scene_) {
                 scene_->TriggerEvent(tID);
@@ -232,7 +237,9 @@ void GameRule::Initialize(BaseScene* scene) {
                     reactionDirection = event.target->GetWorldPosition() - event.attacker->GetWorldPosition();
                     reactionDirection.y = 0.0f;
                 }
-                playerTarget->StartDamageFeedback(reactionDirection, 1.0f);
+                playerTarget->StartDamageFeedback(
+                    reactionDirection,
+                    (std::max)(0.0f, event.invincibilityDuration));
             }
         }
 

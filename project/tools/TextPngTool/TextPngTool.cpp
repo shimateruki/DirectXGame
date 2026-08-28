@@ -143,6 +143,11 @@ struct RenderConfig {
     int canvasHeight = 256;
     bool bold = true;
     D2D1_COLOR_F textColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
+    bool textGradientEnabled = false;
+    D2D1_COLOR_F textGradientTopColor = D2D1::ColorF(0.95f, 1.0f, 1.0f, 1.0f);
+    D2D1_COLOR_F textGradientMiddleColor = D2D1::ColorF(0.30f, 0.88f, 1.0f, 1.0f);
+    D2D1_COLOR_F textGradientBottomColor = D2D1::ColorF(0.62f, 0.34f, 1.0f, 1.0f);
+    float textGradientRidgePosition = 0.46f;
     bool outlineEnabled = false;
     float outlineWidth = 0.0f;
     D2D1_COLOR_F outlineColor = D2D1::ColorF(0.08f, 0.08f, 0.08f, 1.0f);
@@ -267,6 +272,15 @@ RenderConfig LoadConfig(const fs::path& configPath) {
     cfg.canvasHeight = std::clamp(ReadInt(json, "canvasHeight", 256), 1, 8192);
     cfg.bold = ReadBool(json, "bold", true);
     cfg.textColor = ReadColor(json, "textColor", cfg.textColor);
+
+    if (json.contains("textGradient") && json["textGradient"].is_object()) {
+        const nlohmann::json& gradient = json["textGradient"];
+        cfg.textGradientEnabled = ReadBool(gradient, "enabled", false);
+        cfg.textGradientTopColor = ReadColor(gradient, "topColor", cfg.textGradientTopColor);
+        cfg.textGradientMiddleColor = ReadColor(gradient, "middleColor", cfg.textGradientMiddleColor);
+        cfg.textGradientBottomColor = ReadColor(gradient, "bottomColor", cfg.textGradientBottomColor);
+        cfg.textGradientRidgePosition = std::clamp(ReadFloat(gradient, "ridgePosition", 0.46f), 0.15f, 0.85f);
+    }
 
     if (json.contains("outline") && json["outline"].is_object()) {
         const nlohmann::json& outline = json["outline"];
@@ -528,6 +542,36 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
         edgePadding - metrics.left + negativeShadowX,
         edgePadding - metrics.top + negativeShadowY);
 
+    ComPtr<ID2D1GradientStopCollection> textGradientStops;
+    ComPtr<ID2D1LinearGradientBrush> textGradientBrush;
+    ID2D1Brush* textFillBrush = textBrush.Get();
+    if (cfg.textGradientEnabled) {
+        const float ridge = cfg.textGradientRidgePosition;
+        const D2D1_GRADIENT_STOP stops[] = {
+            { 0.00f, cfg.textGradientTopColor },
+            { (std::max)(0.0f, ridge - 0.09f), cfg.textGradientMiddleColor },
+            { ridge, cfg.textGradientTopColor },
+            { (std::min)(1.0f, ridge + 0.08f), cfg.textGradientMiddleColor },
+            { 1.00f, cfg.textGradientBottomColor },
+        };
+        hr = renderTarget->CreateGradientStopCollection(
+            stops,
+            static_cast<UINT32>(std::size(stops)),
+            D2D1_GAMMA_2_2,
+            D2D1_EXTEND_MODE_CLAMP,
+            textGradientStops.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("text gradient stops create failed");
+
+        hr = renderTarget->CreateLinearGradientBrush(
+            D2D1::LinearGradientBrushProperties(
+                D2D1::Point2F(origin.x, origin.y),
+                D2D1::Point2F(origin.x, origin.y + measuredHeight)),
+            textGradientStops.Get(),
+            textGradientBrush.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("text gradient brush create failed");
+        textFillBrush = textGradientBrush.Get();
+    }
+
     renderTarget->BeginDraw();
     renderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
 
@@ -546,7 +590,7 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
         }
     }
 
-    DrawTextLayoutWithOffset(renderTarget.Get(), textLayout.Get(), textBrush.Get(), origin, 0.0f, 0.0f);
+    DrawTextLayoutWithOffset(renderTarget.Get(), textLayout.Get(), textFillBrush, origin, 0.0f, 0.0f);
 
     hr = renderTarget->EndDraw();
     if (FAILED(hr)) throw std::runtime_error("render target draw failed");
@@ -555,6 +599,8 @@ RenderResult RenderToPng(const RenderConfig& cfg, const fs::path& outputPath) {
 
     // DirectWrite/D2D/WIC のCOMオブジェクトを明示的に解放してから、
     // フォントローダー解除とCOM終了を行う。順序が逆だと終了処理中に落ちることがある。
+    textGradientBrush.Reset();
+    textGradientStops.Reset();
     textBrush.Reset();
     outlineBrush.Reset();
     shadowBrush.Reset();

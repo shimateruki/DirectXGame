@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "007303342cacd553b76710fef2cbc312",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/ring_burner/ring_burner_core.dds",
+  "version": 1
+}

@@ -5,6 +5,7 @@
 #include "DebugConsole.h"
 #include "SRVManager.h"
 #include <TextureManager.h>
+#include "CameraManager.h"
 #include <d3d12.h>
 #include <algorithm>
 #include <chrono>
@@ -43,11 +44,22 @@ GPUParticleManager* GPUParticleManager::GetInstance() {
 }
 
 uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& config) {
-    if (config.maxParticles > 0) {
-        return static_cast<uint32_t>(std::clamp(
-            config.maxParticles,
+    const auto applyLodLimit = [&config](uint32_t capacity) {
+        if (!config.lod.enabled || config.lod.maxAliveParticles <= 0) {
+            return capacity;
+        }
+        const uint32_t lodCapacity = static_cast<uint32_t>(std::clamp(
+            config.lod.maxAliveParticles,
             static_cast<int>(GPUParticleSystem::kMinParticles),
             static_cast<int>(GPUParticleSystem::kMaxParticles)));
+        return (std::min)(capacity, lodCapacity);
+    };
+
+    if (config.maxParticles > 0) {
+        return applyLodLimit(static_cast<uint32_t>(std::clamp(
+            config.maxParticles,
+            static_cast<int>(GPUParticleSystem::kMinParticles),
+            static_cast<int>(GPUParticleSystem::kMaxParticles))));
     }
 
     const uint64_t emitCount = static_cast<uint64_t>((std::max)(config.emitCount, 1));
@@ -67,14 +79,14 @@ uint32_t GPUParticleManager::ResolveParticleCapacity(const GPUParticleConfig& co
         requiredCapacity,
         static_cast<uint64_t>(GPUParticleSystem::kMinParticles));
     if (requiredCapacity >= GPUParticleSystem::kMaxParticles) {
-        return GPUParticleSystem::kMaxParticles;
+        return applyLodLimit(GPUParticleSystem::kMaxParticles);
     }
 
     uint32_t capacity = GPUParticleSystem::kMinParticles;
     while (capacity < requiredCapacity && capacity < GPUParticleSystem::kMaxParticles) {
         capacity *= 2u;
     }
-    return (std::min)(capacity, GPUParticleSystem::kMaxParticles);
+    return applyLodLimit((std::min)(capacity, GPUParticleSystem::kMaxParticles));
 }
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
@@ -221,13 +233,35 @@ bool GPUParticleManager::RequiresSceneColorCopy() const {
 }
 
 void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
+    GPUParticleConfig resolvedConfig = config;
+    if (config.lod.enabled) {
+        if (const Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+            const Vector3 eye = camera->GetEye();
+            const float x = config.emitPos.x - eye.x;
+            const float y = config.emitPos.y - eye.y;
+            const float z = config.emitPos.z - eye.z;
+            const float emissionScale = config.lod.EvaluateEmissionScale(std::sqrt(x * x + y * y + z * z));
+            if (emissionScale <= 0.0001f) {
+                return;
+            }
+            resolvedConfig.emitCount = (std::max)(
+                1,
+                static_cast<int>(std::lround(static_cast<float>(config.emitCount) * emissionScale)));
+        }
+        if (config.lod.maxAliveParticles > 0) {
+            resolvedConfig.emitCount = (std::min)(
+                resolvedConfig.emitCount,
+                config.lod.maxAliveParticles);
+        }
+    }
+
     // どの部隊に所属するかを自動判定！
     GPUParticleSystem* targetSystem = GetOrCreateSystem(config);
 
     // メッシュ情報をその部隊に渡してから発生させる
     targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
     targetSystem->SetCurrentTexture(config.texturePath);
-    targetSystem->EmitFromConfig(config);
+    targetSystem->EmitFromConfig(resolvedConfig);
 }
 
 void GPUParticleManager::Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix) {
@@ -286,6 +320,15 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("emitArea")) { config.emitArea.x = j["emitArea"][0]; config.emitArea.y = j["emitArea"][1]; config.emitArea.z = j["emitArea"][2]; }
                 if (j.contains("emitVelocity")) { config.emitVelocity.x = j["emitVelocity"][0]; config.emitVelocity.y = j["emitVelocity"][1]; config.emitVelocity.z = j["emitVelocity"][2]; }
                 if (j.contains("emitCount")) config.emitCount = j["emitCount"];
+                if (j.contains("lod") && j["lod"].is_object()) {
+                    const json& lod = j["lod"];
+                    config.lod.enabled = lod.value("enabled", false);
+                    config.lod.nearDistance = lod.value("nearDistance", 12.0f);
+                    config.lod.farDistance = lod.value("farDistance", 45.0f);
+                    config.lod.farEmissionScale = lod.value("farEmissionScale", 0.25f);
+                    config.lod.maxAliveParticles = lod.value("maxAliveParticles", 0);
+                    config.lod.Sanitize();
+                }
                 if (j.contains("emitLife")) config.emitLife = j["emitLife"];
                 if (j.contains("maxParticles")) config.maxParticles = j["maxParticles"];
                 if (j.contains("velocityVariance")) config.velocityVariance = j["velocityVariance"];

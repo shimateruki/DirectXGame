@@ -430,6 +430,9 @@ json Object3d::ExportToJson() {
     }
 
     // 6. グラフィックス・マテリアル
+    if (!materialInstancePath_.empty()) {
+        d["materialInstance"] = materialInstancePath_;
+    }
     Vector4 col = GetColor();
     d["color"] = { col.x, col.y, col.z, col.w };
     d["blendMode"] = static_cast<int>(GetBlendMode());
@@ -456,6 +459,17 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
+    if (decalSettings_.enabled) {
+        d["decal"] = {
+            { "enabled", true },
+            { "size", { decalSettings_.size.x, decalSettings_.size.y } },
+            { "depthOffset", decalSettings_.depthOffset },
+            { "lifetime", decalSettings_.lifetime },
+            { "fadeIn", decalSettings_.fadeIn },
+            { "fadeOut", decalSettings_.fadeOut },
+            { "transient", decalSettings_.transient }
+        };
+    }
     if (HasLodLevels()) {
         json lodJson;
         lodJson["enabled"] = IsLodEnabled();
@@ -701,6 +715,29 @@ void Object3d::ImportFromJson(const json& j) {
         }
     }
 
+    if (j.contains("materialInstance") && j["materialInstance"].is_string()) {
+        const std::string assetPath = j["materialInstance"].get<std::string>();
+        std::string materialError;
+        if (!ApplyMaterialInstance(assetPath, &materialError)) {
+            // Assetが一時的に見つからなくても、Scene内の解決済み値とリンク先は保持します。
+            materialInstancePath_ = assetPath;
+        }
+    }
+    if (j.contains("decal") && j["decal"].is_object()) {
+        const auto& decal = j["decal"];
+        DecalSettings settings;
+        settings.enabled = decal.value("enabled", true);
+        if (decal.contains("size") && decal["size"].is_array() && decal["size"].size() >= 2) {
+            settings.size = { decal["size"][0].get<float>(), decal["size"][1].get<float>() };
+        }
+        settings.depthOffset = decal.value("depthOffset", 0.012f);
+        settings.lifetime = decal.value("lifetime", 0.0f);
+        settings.fadeIn = decal.value("fadeIn", 0.0f);
+        settings.fadeOut = decal.value("fadeOut", 0.35f);
+        settings.transient = decal.value("transient", false);
+        SetDecalSettings(settings);
+        RestartDecalPlayback();
+    }
     // 7. アニメーション
     if (j.contains("animation")) {
         const auto& anim = j["animation"];

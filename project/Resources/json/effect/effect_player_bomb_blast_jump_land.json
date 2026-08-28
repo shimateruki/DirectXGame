@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.003,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 11,
+  "EdgeFadeStrength": 0.30,
+  "EndColor": [0.90, 0.12, 0.03, 0.0],
+  "EndScale": [4.4, 1.0, 4.4],
+  "Intensity": 6.6,
+  "Lifetime": 0.38,
+  "MeshSegments": 56,
+  "Position": [0.0, 0.0, 0.0],
+  "ProceduralType": 10,
+  "RingInnerRadius": 0.34,
+  "RingOuterRadius": 1.04,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [2.5, -5.2],
+  "StartColor": [4.2, 1.35, 0.16, 1.0],
+  "StartScale": [0.32, 1.0, 0.32],
+  "TexturePath": "Resources/sprite/particle/shockwave_ring.png",
+  "UvTiling": [2.0, 1.0],
+  "VolumeMode": 0
+}

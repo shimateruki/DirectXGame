@@ -31,9 +31,9 @@
         },
         {
             "name": "gameover_letter_g",
-            "texture": "generated/text/text_text_ge.png",
+            "texture": "ui/result/gameover/gameover_G.png",
             "position": [
-                540.0,
+                520.0,
                 205.0
             ],
             "size": [
@@ -55,9 +55,9 @@
         },
         {
             "name": "gameover_letter_a",
-            "texture": "generated/text/text_text_-png.png",
+            "texture": "ui/result/gameover/gameover_A.png",
             "position": [
-                680.0,
+                645.0,
                 205.0
             ],
             "size": [
@@ -79,9 +79,9 @@
         },
         {
             "name": "gameover_letter_m",
-            "texture": "generated/text/text_text_mupng.png",
+            "texture": "ui/result/gameover/gameover_M.png",
             "position": [
-                820.0,
+                770.0,
                 205.0
             ],
             "size": [
@@ -103,9 +103,9 @@
         },
         {
             "name": "gameover_letter_e1",
-            "texture": "generated/text/text_text_o.png",
+            "texture": "ui/result/gameover/gameover_E.png",
             "position": [
-                960.0,
+                895.0,
                 205.0
             ],
             "size": [
@@ -127,9 +127,9 @@
         },
         {
             "name": "gameover_letter_o",
-            "texture": "generated/text/text_text_-png.png",
+            "texture": "ui/result/gameover/gameover_O.png",
             "position": [
-                1100.0,
+                1025.0,
                 205.0
             ],
             "size": [
@@ -151,9 +151,9 @@
         },
         {
             "name": "gameover_letter_v",
-            "texture": "generated/text/text_text_ba.png",
+            "texture": "ui/result/gameover/gameover_V.png",
             "position": [
-                1240.0,
+                1150.0,
                 205.0
             ],
             "size": [
@@ -175,9 +175,33 @@
         },
         {
             "name": "gameover_letter_e2",
-            "texture": "generated/text/text_text_-png.png",
+            "texture": "ui/result/gameover/gameover_E.png",
             "position": [
-                1380.0,
+                1275.0,
+                205.0
+            ],
+            "size": [
+                122.0,
+                156.0
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_r",
+            "texture": "ui/result/gameover/gameover_R.png",
+            "position": [
+                1400.0,
                 205.0
             ],
             "size": [
@@ -201,11 +225,11 @@
             "name": "gameover_retry_row",
             "texture": "ui/gameover/gameover_button_normal.png",
             "position": [
-                960.0,
-                455.0
+                650.0,
+                470.0
             ],
             "size": [
-                680.0,
+                610.0,
                 112.0
             ],
             "anchor": [
@@ -225,12 +249,12 @@
             "name": "gameover_retry_label",
             "texture": "ui/gameover/gameover_label_continue.png",
             "position": [
-                960.0,
-                455.0
+                650.0,
+                470.0
             ],
             "size": [
-                430.0,
-                80.0
+                390.0,
+                76.0
             ],
             "anchor": [
                 0.5,
@@ -249,11 +273,11 @@
             "name": "gameover_title_row",
             "texture": "ui/gameover/gameover_button_normal.png",
             "position": [
-                960.0,
-                585.0
+                650.0,
+                605.0
             ],
             "size": [
-                680.0,
+                610.0,
                 112.0
             ],
             "anchor": [
@@ -273,12 +297,12 @@
             "name": "gameover_title_label",
             "texture": "ui/gameover/gameover_label_title.png",
             "position": [
-                960.0,
-                585.0
+                650.0,
+                605.0
             ],
             "size": [
-                440.0,
-                76.0
+                400.0,
+                72.0
             ],
             "anchor": [
                 0.5,

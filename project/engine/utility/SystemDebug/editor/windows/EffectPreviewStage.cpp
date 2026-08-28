@@ -100,8 +100,40 @@ void EffectPreviewStage::EnableForToolPreview() {
     // 再生位置の変更やループ再生成では、ユーザーが動かしたカメラを維持する。
     // 自動配置はプレビュー空間へ入った最初の1回だけ行う。
     if (isEnteringPreview) {
+        // UIから再入場したフレームはUpdateより先にCamera Overrideが走る場合があるため、
+        // 入場要求を受けた時点で通常Sceneの視点を確保する。
+        CaptureCameraState();
         recenterCameraRequested_ = true;
     }
+}
+
+void EffectPreviewStage::ReturnToScene() {
+    enabled_ = false;
+    RestoreStudioLighting();
+    RestoreCameraState();
+    hasPlacedCamera_ = false;
+    recenterCameraRequested_ = false;
+    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 0, false);
+
+    if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+        for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+            if (object && IsPreviewEnvironmentName(object->GetName())) {
+                object->SetIsVisible(false);
+            }
+        }
+    }
+
+    if (dxCommon_) {
+        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        dxCommon_->SetRenderClearColor(
+            sceneClearColor.x,
+            sceneClearColor.y,
+            sceneClearColor.z,
+            sceneClearColor.w);
+    }
+
+    // 復元をこの場で完了したため、次フレームに同じ終了処理を繰り返さない。
+    wasEnabled_ = false;
 }
 
 void EffectPreviewStage::ReportToolState(
@@ -196,6 +228,24 @@ void EffectPreviewStage::DrawTimelineWindow() {
     ImGui::SameLine();
     ImGui::TextDisabled("[%s]", GetToolKindName(activeToolKind_));
 
+    if (enabled_) {
+        ImGui::TextColored(
+            ImVec4(0.42f, 0.90f, 0.68f, 1.0f),
+            "隔離プレビュー空間を表示中");
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_UNDO " 元のSceneへ戻る")) {
+            ReturnToScene();
+        }
+    } else {
+        ImGui::TextColored(
+            ImVec4(1.0f, 0.78f, 0.32f, 1.0f),
+            "通常Sceneへ復帰済み");
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_PLAY " プレビュー空間へ入る")) {
+            EnableForToolPreview();
+        }
+    }
+
     if (ImGui::Button(ICON_FA_PLAY " 先頭から")) {
         transportPlaying_ = true;
         timelineScrubTime_ = 0.0f;
@@ -232,7 +282,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
     ImGui::SameLine();
     if (ImGui::SmallButton("+10F")) requestStep(10.0f / 60.0f);
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_CROSSHAIRS " カメラを戻す")) {
+    if (ImGui::Button(ICON_FA_CROSSHAIRS " プレビュー中心へ")) {
         RequestCameraRecenter();
     }
 
@@ -600,7 +650,13 @@ void EffectPreviewStage::DrawImGui() {
     ImGui::Text(ICON_FA_MAGIC " Effect Preview Stage");
     ImGui::Separator();
 
-    ImGui::Checkbox("ステージを有効化", &enabled_);
+    if (enabled_) {
+        if (ImGui::Button(ICON_FA_UNDO " 元のSceneへ戻る")) {
+            ReturnToScene();
+        }
+    } else if (ImGui::Button(ICON_FA_PLAY " プレビュー空間へ入る")) {
+        EnableForToolPreview();
+    }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_PLAY " 1回再生")) {
         ++playRequestSerial_;

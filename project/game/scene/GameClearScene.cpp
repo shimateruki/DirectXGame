@@ -34,6 +34,7 @@ SceneLoadManifest GameClearScene::BuildAsyncLoadManifest() const {
         ? GetSceneLoadContext().spriteLayoutPath
         : "Resources/json/sprite/gameClearScene.json");
     manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
 }
 

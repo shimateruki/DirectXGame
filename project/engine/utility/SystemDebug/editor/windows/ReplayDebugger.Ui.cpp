@@ -134,7 +134,11 @@ void ReplayDebugger::Draw(bool* open) {
             if (ImGui::MenuItem("履歴を再生", "Space", false, mode_ == Mode::Paused && hasFrames)) {
                 StartPlayback();
             }
-            if (ImGui::MenuItem("この時点から分岐再開", "Ctrl+Enter", false, mode_ == Mode::Paused && hasFrames)) {
+            const bool canBranchFromMenu =
+                mode_ == Mode::Paused && hasFrames &&
+                (!loadedArchiveReadOnly_ || CanResumeLoadedArchive());
+            if (ImGui::MenuItem("この時点から分岐再開", "Ctrl+Enter", false,
+                canBranchFromMenu)) {
                 ResumeFromCursor();
             }
             ImGui::Separator();
@@ -154,6 +158,8 @@ void ReplayDebugger::Draw(bool* open) {
 
     HandleEditorShortcuts();
     DrawToolbar();
+    DrawArchivePanel();
+    DrawRegressionPanel();
     DrawSummaryCards();
     DrawTimelineEditor();
 
@@ -185,7 +191,9 @@ void ReplayDebugger::Draw(bool* open) {
 void ReplayDebugger::DrawToolbar() {
     const ImVec4 modeColor = mode_ == Mode::Recording
         ? ImVec4(1.0f, 0.28f, 0.24f, 1.0f)
-        : (mode_ == Mode::Playback ? ImVec4(0.30f, 0.78f, 1.0f, 1.0f) : ImVec4(1.0f, 0.78f, 0.25f, 1.0f));
+        : (mode_ == Mode::Regression
+            ? ImVec4(0.72f, 0.48f, 1.0f, 1.0f)
+            : (mode_ == Mode::Playback ? ImVec4(0.30f, 0.78f, 1.0f, 1.0f) : ImVec4(1.0f, 0.78f, 0.25f, 1.0f)));
     ImGui::TextColored(modeColor, "● %s", GetModeLabel());
     ImGui::SameLine();
     ImGui::TextDisabled("| Space: 再生/停止  ←/→: 1 frame  Shift+←/→: 10 frames");
@@ -204,6 +212,11 @@ void ReplayDebugger::DrawToolbar() {
             PauseAt(frames_.size() - 1);
             statusMessage_ = "シーンを停止し、最新フレームを選択しました。";
         }
+    } else if (mode_ == Mode::Regression) {
+        if (ImGui::Button("■ テスト中止", ImVec2(116.0f, 0.0f))) {
+            regressionResult_.failures.push_back("ユーザー操作で自動回帰テストを中止しました。");
+            FinishRegression();
+        }
     } else if (mode_ == Mode::Playback) {
         if (ImGui::Button("■ 履歴停止", ImVec2(116.0f, 0.0f))) {
             PauseAt(cursor_);
@@ -215,7 +228,7 @@ void ReplayDebugger::DrawToolbar() {
     }
 
     ImGui::SameLine();
-    ImGui::BeginDisabled(!hasFrames);
+    ImGui::BeginDisabled(!hasFrames || mode_ == Mode::Regression);
     if (ImGui::Button("|<")) PauseAt(0);
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("記録先頭へ (Home)");
     ImGui::SameLine();
@@ -236,12 +249,23 @@ void ReplayDebugger::DrawToolbar() {
 
     ImGui::SameLine();
     const std::size_t futureFrames = cursor_ < frames_.size() ? frames_.size() - cursor_ - 1 : 0;
-    ImGui::BeginDisabled(mode_ == Mode::Recording);
+    std::string archiveResumeBlockReason;
+    const bool archiveResumeReady =
+        !loadedArchiveReadOnly_ || CanResumeLoadedArchive(&archiveResumeBlockReason);
+    ImGui::BeginDisabled(mode_ == Mode::Recording || mode_ == Mode::Regression || !archiveResumeReady);
     if (ImGui::Button("この時点から分岐再開", ImVec2(188.0f, 0.0f))) {
         ResumeFromCursor();
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("選択位置より後ろの %zu フレームを破棄してゲームを再開します。", futureFrames);
+        if (loadedArchiveReadOnly_) {
+            if (archiveResumeReady) {
+                ImGui::SetTooltip("保存リプレイの選択位置からゲームを再開し、以後を新しい履歴として記録します。");
+            } else {
+                ImGui::SetTooltip("分岐再開できません: %s", archiveResumeBlockReason.c_str());
+            }
+        } else {
+            ImGui::SetTooltip("選択位置より後ろの %zu フレームを破棄してゲームを再開します。", futureFrames);
+        }
     }
     ImGui::EndDisabled();
 
@@ -256,6 +280,194 @@ void ReplayDebugger::DrawToolbar() {
     }
 }
 
+void ReplayDebugger::DrawArchivePanel() {
+    if (!ImGui::CollapsingHeader("保存リプレイ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+
+    const bool canSave = HasFrames() && !loadedArchiveReadOnly_;
+    ImGui::BeginDisabled(!canSave);
+    if (ImGui::Button("現在の履歴を保存", ImVec2(164.0f, 0.0f))) {
+        SaveCurrentReplayArchive();
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip(canSave
+            ? "現在保持している履歴を Saved/Replays に保存します。"
+            : "実行中に記録した履歴だけ保存できます。");
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    if (ImGui::Button("一覧を更新")) {
+        RefreshReplayArchiveList();
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("保存先: Saved/Replays");
+
+    if (replayArchiveEntries_.empty()) {
+        ImGui::TextDisabled("保存済みのリプレイはありません。");
+    } else {
+        if (selectedArchiveIndex_ < 0 || selectedArchiveIndex_ >= static_cast<int>(replayArchiveEntries_.size())) {
+            selectedArchiveIndex_ = 0;
+        }
+        const ReplayArchiveEntry& selected = replayArchiveEntries_[selectedArchiveIndex_];
+        ImGui::SetNextItemWidth((std::max)(360.0f, ImGui::GetContentRegionAvail().x * 0.48f));
+        if (ImGui::BeginCombo("保存データ", selected.fileName.c_str())) {
+            for (int index = 0; index < static_cast<int>(replayArchiveEntries_.size()); ++index) {
+                const ReplayArchiveEntry& entry = replayArchiveEntries_[index];
+                const bool isSelected = index == selectedArchiveIndex_;
+                const std::string label = entry.valid
+                    ? entry.fileName + "  |  " + entry.sceneLabel
+                    : entry.fileName + "  |  読込不可";
+                if (ImGui::Selectable(label.c_str(), isSelected)) selectedArchiveIndex_ = index;
+                if (isSelected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        const ReplayArchiveEntry& current = replayArchiveEntries_[selectedArchiveIndex_];
+        if (current.valid) {
+            ImGui::TextDisabled("%s  |  %s  |  %.2f秒 / %zu状態 / %zu入力",
+                current.createdAt.c_str(), current.sceneLabel.c_str(),
+                current.durationSeconds, current.frameCount, current.inputSampleCount);
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.42f, 0.32f, 1.0f), "読込不可: %s", current.error.c_str());
+        }
+
+        ImGui::BeginDisabled(!current.valid || pendingReplayArchive_.has_value());
+        if (ImGui::Button("元シーンを開いて読込", ImVec2(188.0f, 0.0f))) {
+            if (HasFrames() && !loadedArchiveReadOnly_) {
+                ImGui::OpenPopup("現行リプレイ履歴を置き換えますか？");
+            } else {
+                RequestLoadReplayArchive(static_cast<std::size_t>(selectedArchiveIndex_));
+            }
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        const bool canStartRegression = current.valid && current.regressionReady &&
+            !pendingReplayArchive_.has_value() && mode_ != Mode::Regression;
+        ImGui::BeginDisabled(!canStartRegression);
+        if (ImGui::Button("自動回帰テスト", ImVec2(164.0f, 0.0f))) {
+            RequestStartRegression(static_cast<std::size_t>(selectedArchiveIndex_));
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(current.regressionReady
+                ? "元シーンを開き、記録入力で実シミュレーションを再実行します。"
+                : "旧形式または入力列なしのReplayです。新しく記録・保存すると実行できます。");
+        }
+        ImGui::EndDisabled();
+
+        if (ImGui::BeginPopupModal("現行リプレイ履歴を置き換えますか？", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextWrapped("現在のメモリ内リプレイ履歴は破棄されます。必要なら先に保存してください。");
+            if (ImGui::Button("読込を続行", ImVec2(132.0f, 0.0f))) {
+                RequestLoadReplayArchive(static_cast<std::size_t>(selectedArchiveIndex_));
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("キャンセル", ImVec2(112.0f, 0.0f))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+    }
+
+    if (pendingReplayArchive_) {
+        ImGui::TextColored(ImVec4(1.0f, 0.76f, 0.28f, 1.0f),
+            "元シーンの準備中です。Scene読込後、Play中に履歴を適用します。");
+    }
+    if (loadedArchiveReadOnly_) {
+        std::string resumeBlockReason;
+        if (CanResumeLoadedArchive(&resumeBlockReason)) {
+            ImGui::TextColored(ImVec4(0.36f, 0.92f, 0.58f, 1.0f),
+                "分岐再開可能: %s（任意フレームでゲームへ復帰できます）", loadedArchiveName_.c_str());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.28f, 1.0f),
+                "閲覧中: %s（分岐停止理由: %s）",
+                loadedArchiveName_.c_str(), resumeBlockReason.c_str());
+        }
+        if (recreatedArchiveObjectCount_ > 0) {
+            ImGui::TextDisabled("Archiveから動的Objectを %zu 件再生成しました。",
+                recreatedArchiveObjectCount_);
+        }
+    }
+}
+
+
+void ReplayDebugger::DrawRegressionPanel() {
+    if (!ImGui::CollapsingHeader("自動回帰テスト", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+
+    const bool settingsLocked = mode_ == Mode::Regression || pendingRegressionStart_ || pendingReplayArchive_.has_value();
+    ImGui::BeginDisabled(settingsLocked);
+    ImGui::SetNextItemWidth(150.0f);
+    ImGui::DragFloat("軌跡の許容誤差", &regressionSettings_.maxPositionError, 0.05f, 0.01f, 100.0f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150.0f);
+    ImGui::DragFloat("座標上限", &regressionSettings_.worldPositionLimit, 10.0f, 10.0f, 100000.0f, "%.0f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(120.0f);
+    ImGui::SliderInt("撮影枚数", &regressionSettings_.screenshotCount, 0, 8);
+
+    ImGui::Checkbox("性能Budget超過を失敗にする", &regressionSettings_.failOnPerformanceBudget);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(110.0f);
+    ImGui::DragFloat("CPU ms", &regressionSettings_.cpuBudgetMs, 0.25f, 0.1f, 1000.0f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(110.0f);
+    ImGui::DragFloat("GPU ms", &regressionSettings_.gpuBudgetMs, 0.25f, 0.1f, 1000.0f, "%.2f");
+    ImGui::EndDisabled();
+
+    ImGui::TextDisabled(
+        "新形式Replayの入力を先頭状態から再実行し、プレイヤー軌跡・ゴール・Errorログ・CPU/GPUを検証します。");
+    if (!regressionResult_.available) {
+        ImGui::TextDisabled("保存リプレイを選び、上の『自動回帰テスト』から開始してください。");
+        return;
+    }
+
+    if (regressionResult_.running) {
+        const float progress = inputSamples_.empty()
+            ? 0.0f
+            : static_cast<float>(regressionInputIndex_) / static_cast<float>(inputSamples_.size());
+        ImGui::ProgressBar((std::clamp)(progress, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), "実シミュレーション再実行中");
+    } else {
+        const ImVec4 resultColor = regressionResult_.passed
+            ? ImVec4(0.36f, 0.92f, 0.58f, 1.0f)
+            : ImVec4(1.0f, 0.38f, 0.30f, 1.0f);
+        ImGui::TextColored(resultColor, "%s", regressionResult_.passed ? "PASS" : "FAIL");
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", regressionResult_.archiveName.c_str());
+    }
+
+    if (ImGui::BeginTable("ReplayRegressionMetrics", 6,
+        ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame)) {
+        const char* labels[] = { "再実行", "比較", "最大軌跡誤差", "CPU 平均/最大", "GPU 平均/最大", "Error" };
+        for (const char* label : labels) {
+            ImGui::TableSetupColumn(label);
+        }
+        ImGui::TableHeadersRow();
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn(); ImGui::Text("%zu", regressionResult_.simulatedFrames);
+        ImGui::TableNextColumn(); ImGui::Text("%zu", regressionResult_.comparedFrames);
+        ImGui::TableNextColumn(); ImGui::Text("%.3f", regressionResult_.maxPositionError);
+        ImGui::TableNextColumn(); ImGui::Text("%.2f / %.2f", regressionResult_.averageCpuMs, regressionResult_.maximumCpuMs);
+        ImGui::TableNextColumn(); ImGui::Text("%.2f / %.2f", regressionResult_.averageGpuMs, regressionResult_.maximumGpuMs);
+        ImGui::TableNextColumn(); ImGui::Text("%llu", static_cast<unsigned long long>(regressionResult_.newErrorLogs));
+        ImGui::EndTable();
+    }
+
+    ImGui::Text("ゴール: 基準 %s / 再実行 %s",
+        regressionResult_.expectedGoal ? "到達" : "未到達",
+        regressionResult_.observedGoal ? "到達" : "未到達");
+    for (const std::string& failure : regressionResult_.failures) {
+        ImGui::BulletText("%s", failure.c_str());
+    }
+    if (!regressionResult_.reportPath.empty()) {
+        ImGui::TextWrapped("Report: %s", regressionResult_.reportPath.c_str());
+    }
+}
 void ReplayDebugger::DrawSummaryCards() {
     if (!ImGui::BeginTable("ReplaySummaryCards", 4, ImGuiTableFlags_SizingStretchSame)) {
         return;
@@ -734,12 +946,16 @@ void ReplayDebugger::DrawSettingsPanel() {
 
     ImGui::Separator();
     ImGui::TextWrapped("停止中と履歴再生中はScene Updateを完全停止します。分岐再開時は選択位置より未来の履歴を捨て、Collisionを復元して新しい時間軸を記録します。");
-    ImGui::TextDisabled("対応: Scene Object / Transform / HP / Player主要状態 / Camera / Sprite・UI / UI制御タイマー");
-    ImGui::TextDisabled("破棄: 一時Particle / Bullet / Audio。動的に直接破棄されるSpriteと敵固有AI状態は個別対応が必要です。");
+    ImGui::TextWrapped("保存リプレイは元のScene Assetを開き直し、永続GUIDで対応付けます。復元が完全なフレームは、その時点からゲームへ戻って新しい時間軸を記録できます。");
+    ImGui::TextDisabled("対応: Scene Object / 動的Enemy・Gimmick・Item / Transform / HP / Player主要状態 / Camera / Sprite・UI / UI制御タイマー");
+    ImGui::TextDisabled("分岐時に破棄: 一時Particle / Bullet / Audio。敵固有AI状態は各クラスのReplay state対応範囲で復元します。");
 }
 
 void ReplayDebugger::HandleEditorShortcuts() {
     if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || ImGui::GetIO().WantTextInput) {
+        return;
+    }
+    if (mode_ == Mode::Regression) {
         return;
     }
 
@@ -756,7 +972,9 @@ void ReplayDebugger::HandleEditorShortcuts() {
     if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) StepCursor(step);
     if (ImGui::IsKeyPressed(ImGuiKey_Home)) PauseAt(0);
     if (ImGui::IsKeyPressed(ImGuiKey_End)) PauseAt(frames_.size() - 1);
-    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter) && mode_ == Mode::Paused) {
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter) &&
+        mode_ == Mode::Paused &&
+        (!loadedArchiveReadOnly_ || CanResumeLoadedArchive())) {
         ResumeFromCursor();
     }
 }

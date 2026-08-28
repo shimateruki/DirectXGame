@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include <string>
+#include "VFXAuthoring.h"
 
 
 // GPUParticleConfigは、GPUパーティクルの発生形状、色、サイズ、環境影響、衝突をまとめた設定です。
@@ -18,6 +19,7 @@ struct GPUParticleConfig {
     // 0は発生数・寿命・間隔から安全な容量を自動計算します。
     int maxParticles = 0;
 
+    VFXLodSettings lod;
     // --- 見た目パラメータ ---
     Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 midColor = { 1.0f, 0.5f, 0.0f, 1.0f }; // 途中の色

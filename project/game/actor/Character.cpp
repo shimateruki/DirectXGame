@@ -6,8 +6,6 @@
 #include <cmath>
 #include "GhostRecorder.h"
 
-static Math math;
-
 // =================================================================
 // 更新・描画処理
 // =================================================================
@@ -19,13 +17,9 @@ void Character::Update(float deltaTime) {
         return;
     }
 
-    // 重力と落下速度の計算
-    isGrounded_ = false;
-    velocity_.y -= param_->gravity * deltaTime;
-
-    if (velocity_.y < -param_->maxFallSpeed) {
-        velocity_.y = -param_->maxFallSpeed;
-    }
+    SyncCharacterMotorSettings();
+    characterMotor_.BeginFrame(isGrounded_);
+    characterMotor_.ApplyGravity(velocity_, param_->gravity, param_->maxFallSpeed, deltaTime);
 
     if (externalImpulseTimer_ > 0.0f) {
         const float duration = (std::max)(externalImpulseDuration_, 0.001f);
@@ -45,8 +39,23 @@ void Character::Update(float deltaTime) {
         isDead = true;
     }
 
-    // 速度を座標に適用
-    transform_.translate += velocity_ * deltaTime;
+    characterMotor_.Move(*this, transform_.translate, velocity_, isGrounded_, deltaTime);
+}
+
+void Character::SyncCharacterMotorSettings() {
+    if (!param_.has_value()) {
+        return;
+    }
+
+    CharacterMotorSettings settings;
+    settings.continuousCollision = param_->motorContinuousCollision;
+    settings.snapToGround = param_->motorSnapToGround;
+    settings.maxSlopeDegrees = param_->motorMaxSlopeDegrees;
+    settings.stepHeight = param_->motorStepHeight;
+    settings.groundProbeDistance = param_->motorGroundProbeDistance;
+    settings.skinWidth = param_->motorSkinWidth;
+    settings.collisionMask = kAllSolid;
+    characterMotor_.SetSettings(settings);
 }
 
 void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
@@ -101,29 +110,13 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
         return;
     }
 
-    Vector3 pushNormal = info.normal;
-
-    // 1. 座標の押し戻し (めり込み解消)
-    transform_.translate += (pushNormal * info.penetration);
-
-    // 2. 速度の補正 (壁ずり・床滑り)
-    float dot = math.Dot(velocity_, pushNormal);
-    if (dot < 0.0f) {
-        // 壁に向かって進んでいる成分を打ち消し、表面に沿って滑らせる
-        velocity_ = velocity_ - (pushNormal * dot);
-    }
-
-    // 3. 接地判定と重力リセット (坂道対応)
-    const float kSlopeThreshold = 0.7f; // 法線のY成分が約45度以上なら地面と判定
-
-    if (pushNormal.y > kSlopeThreshold) {
-        isGrounded_ = true;
-
-        // 坂を登る際に重力でずり落ちないよう、下方向の速度をリセット
-        if (velocity_.y < 0.0f) {
-            velocity_.y = 0.0f;
-        }
-    }
+    SyncCharacterMotorSettings();
+    characterMotor_.ResolveCollision(
+        transform_.translate,
+        velocity_,
+        isGrounded_,
+        info,
+        attribute);
 }
 
 // =================================================================
@@ -158,6 +151,7 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->velocity_ = velocity_;
     newObj->isGrounded_ = isGrounded_;
 
+    newObj->characterMotor_ = characterMotor_;
     // 4. アニメーション設定のコピー
     newObj->animName_ = animName_;
     newObj->isAnimLoop_ = isAnimLoop_;

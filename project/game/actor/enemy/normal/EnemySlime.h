@@ -1,6 +1,5 @@
 #pragma once
 #include "BaseEnemy.h"
-#include <unordered_set>
 
 // 基礎変身の見本になる、溜めジャンプから急降下を行うピンクスライム。
 class EnemySlime : public BaseEnemy {
@@ -8,11 +7,6 @@ public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
-    void ExecuteAbility(class Player* player) override;
-    void ExecuteStraightAbility(class Player* player);
-    void ExecuteBounceEvadeAbility(class Player* player);
-    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
-    void CancelCarriedAbility(class Player* player);
     void ApplyManagedScale(const Vector3& scale) override;
     const char* GetDebugMoveStateName() const;
 
@@ -22,17 +16,6 @@ private:
         Charge,
         Rise,
         Dive,
-        Recover,
-    };
-
-    enum class CarriedAbilityState {
-        Idle,
-        Charge,
-        Rise,
-        Dive,
-        Thrust,
-        Straight,
-        Bounce,
         Recover,
     };
 
@@ -59,27 +42,9 @@ private:
     void ResetVisualPose();
     Vector3 CalculateGroundedVisualOffset(const Vector3& visualScale) const;
     Vector3 CalculateDiveVisualOffset(const Vector3& visualScale, const Vector3& visualRotation) const;
-    void BeginCarriedCharge(class Player* player);
-    void UpdateCarriedCharge(class Player* player, float deltaTime);
-    void BeginCarriedRise(class Player* player);
-    void UpdateCarriedRise(class Player* player, float deltaTime);
-    void BeginCarriedDive(class Player* player);
-    void UpdateCarriedDive(class Player* player, float deltaTime);
-    void EndCarriedDive(class Player* player);
-    void BeginCarriedThrust(class Player* player);
-    void UpdateCarriedThrust(class Player* player, float deltaTime);
-    void UpdateCarriedStraight(class Player* player, float deltaTime);
-    void UpdateCarriedBounce(class Player* player, float deltaTime);
-    void DamageEnemiesWithStraight(class Player* player);
-    void ResetCarriedAbility(class Player* player, bool restoreControl);
-    Vector3 GetPlayerDiveDirection(class Player* player) const;
-    void SpawnCarriedChargeEffect(class Player* player, float deltaTime, float chargeRate);
-    void SpawnCarriedDiveTrailEffect(class Player* player, float deltaTime);
-    void SpawnCarriedLandingEffect(class Player* player);
 
 private:
     MoveState moveState_ = MoveState::Wander;
-    CarriedAbilityState carriedAbilityState_ = CarriedAbilityState::Idle;
     float jumpTimer_ = 0.0f;
     float idleTimer_ = 0.0f;
     float chargeTimer_ = 0.0f;
@@ -91,22 +56,8 @@ private:
     float diveTrailTimer_ = 0.0f;
     float recoverTimer_ = 0.0f;
     float landingSquashTimer_ = 0.0f;
-    float carriedChargeTimer_ = 0.0f;
-    float carriedRiseTimer_ = 0.0f;
-    float carriedDiveTimer_ = 0.0f;
-    float carriedRecoverTimer_ = 0.0f;
-    float carriedChargeEffectTimer_ = 0.0f;
-    float carriedDiveTrailTimer_ = 0.0f;
-    float carriedStraightCooldown_ = 0.0f;
-    float carriedBounceCooldown_ = 0.0f;
-    float carriedStraightTimer_ = 0.0f;
-    float carriedBounceTimer_ = 0.0f;
-    float carriedStraightEffectTimer_ = 0.0f;
-    float carriedBounceEffectTimer_ = 0.0f;
     float diveSpeed_ = 0.0f;
     Vector3 diveDirection_ = { 0.0f, 0.0f, 1.0f };
-    Vector3 carriedDiveDirection_ = { 0.0f, 0.0f, 1.0f };
-    std::unordered_set<Object3d*> carriedStraightHitTargets_;
     Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f };
     Vector3 visualScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 visualScaleVelocity_ = { 0.0f, 0.0f, 0.0f };

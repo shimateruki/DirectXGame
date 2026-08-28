@@ -76,6 +76,8 @@ public:
     void ApplyCameraOverride();
     void RequestCameraRecenter() { recenterCameraRequested_ = true; }
     void EnableForToolPreview();
+    /// 隔離プレビューを終了し、開始前のカメラ・照明・Skyboxへ直ちに戻す。
+    void ReturnToScene();
 
 private:
     EffectPreviewStage() = default;

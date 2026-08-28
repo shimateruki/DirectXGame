@@ -2,6 +2,7 @@
 #include "DebugEditor.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
+#include "engine/graphics/effect/DecalSystem.h"
 #include "Object3d.h"
 #include "imgui.h"
 #include <fstream>
@@ -265,6 +266,9 @@ namespace {
     }
 
     float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
+        if (object && object->IsDecal()) {
+            return object->GetDecalSettings().depthOffset;
+        }
         Vector3 extents = GetPlacementExtents(object);
         Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
         float extentOnNormal = extents.x * absNormal.x + extents.y * absNormal.y + extents.z * absNormal.z;
@@ -527,6 +531,34 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
 
     if (ImGui::BeginPopup(popupName)) {
         hierarchyWindow_.DrawCreateContextMenu(sceneManager_->GetCurrentScene(), true);
+        if (playFromPositionCallback_) {
+            ImGui::Separator();
+            if (ImGui::MenuItem("プレイヤーをここから開始")) {
+                Vector3 position = CalculateGameViewCreatePosition(nullptr);
+                position.y += 1.0f;
+                playFromPositionCallback_(position, "GameView指定位置");
+            }
+            if (selectedObject_ && ImGui::MenuItem("選択Object付近から開始")) {
+                Vector3 position = selectedObject_->GetWorldPosition();
+                position.y += 1.0f;
+                position.z += 2.0f;
+                playFromPositionCallback_(position, "選択Object: " + selectedObject_->GetName());
+            }
+            if (ImGui::BeginMenu("チェックポイントから開始")) {
+                bool found = false;
+                for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+                    if (!object || object->GetEventType() != EventType::Checkpoint) continue;
+                    found = true;
+                    Vector3 position = object->GetWorldPosition();
+                    position.y += 1.0f;
+                    if (ImGui::MenuItem(object->GetName().c_str())) {
+                        playFromPositionCallback_(position, "Checkpoint: " + object->GetName());
+                    }
+                }
+                if (!found) ImGui::TextDisabled("Checkpoint EventのObjectがありません");
+                ImGui::EndMenu();
+            }
+        }
         ImGui::EndPopup();
     }
 #endif
@@ -606,6 +638,17 @@ void DebugEditor::ApplyGameViewPlacement(Object3d* object, const PlacementResult
     if (!object || !placement.found) return;
 
     object->SetTranslate(placement.position);
+    if (alignToSurface && placement.hasSurface && object->IsDecal()) {
+        DecalSystem::AlignToSurface(
+            *object, placement.contactPosition, placement.normal, 0.0f,
+            object->GetDecalSettings().depthOffset);
+        if (object == previewObject_.get()) {
+            previewPlacementContactPosition_ = placement.contactPosition;
+            hasPreviewPlacementContact_ = placement.found;
+        }
+        return;
+    }
+
     if (alignToSurface && placement.hasSurface) {
         object->SetRotation(GetSurfaceAlignedRotation(object->GetTransform()->rotate, placement.normal));
     }

@@ -15,6 +15,17 @@ constexpr float kDropGravity = 22.0f;
 constexpr float kDropBounceRate = 0.42f;
 constexpr float kDropGroundFriction = 0.86f;
 constexpr float kDropStopSpeed = 0.45f;
+
+json Vector3ToReplayJson(const Vector3& value) {
+    return json::array({ value.x, value.y, value.z });
+}
+
+Vector3 ReplayJsonToVector3(const json& value, const Vector3& fallback) {
+    if (!value.is_array() || value.size() < 3) {
+        return fallback;
+    }
+    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+}
 }
 
 void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -197,6 +208,44 @@ void GimmickCoin::RequestSelfRemove() {
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (scene) {
         scene->RequestRemoveObject(this);
+    }
+}
+
+void GimmickCoin::CaptureReplayCustomState(json& state) const {
+    BaseGimmick::CaptureReplayCustomState(state);
+    state["coinCollected"] = isCollected_;
+    state["coinTemporaryDrop"] = isTemporaryDrop_;
+    state["coinRotationSpeed"] = rotationSpeed_;
+    state["coinCollectAnimationTimer"] = collectAnimationTimer_;
+    state["coinDropAge"] = dropAge_;
+    state["coinDropLifetime"] = dropLifetime_;
+    state["coinDropBlinkStartTime"] = dropBlinkStartTime_;
+    state["coinDropGroundY"] = dropGroundY_;
+    state["coinDropSettleTimer"] = dropSettleTimer_;
+    state["coinDropVelocity"] = Vector3ToReplayJson(dropVelocity_);
+    state["coinCollectStartPosition"] = Vector3ToReplayJson(collectStartPosition_);
+    state["coinCollectStartScale"] = Vector3ToReplayJson(collectStartScale_);
+}
+
+void GimmickCoin::RestoreReplayCustomState(const json& state) {
+    BaseGimmick::RestoreReplayCustomState(state);
+    isCollected_ = state.value("coinCollected", isCollected_);
+    isTemporaryDrop_ = state.value("coinTemporaryDrop", isTemporaryDrop_);
+    rotationSpeed_ = state.value("coinRotationSpeed", rotationSpeed_);
+    collectAnimationTimer_ = state.value("coinCollectAnimationTimer", collectAnimationTimer_);
+    dropAge_ = state.value("coinDropAge", dropAge_);
+    dropLifetime_ = state.value("coinDropLifetime", dropLifetime_);
+    dropBlinkStartTime_ = state.value("coinDropBlinkStartTime", dropBlinkStartTime_);
+    dropGroundY_ = state.value("coinDropGroundY", dropGroundY_);
+    dropSettleTimer_ = state.value("coinDropSettleTimer", dropSettleTimer_);
+    if (state.contains("coinDropVelocity")) {
+        dropVelocity_ = ReplayJsonToVector3(state["coinDropVelocity"], dropVelocity_);
+    }
+    if (state.contains("coinCollectStartPosition")) {
+        collectStartPosition_ = ReplayJsonToVector3(state["coinCollectStartPosition"], collectStartPosition_);
+    }
+    if (state.contains("coinCollectStartScale")) {
+        collectStartScale_ = ReplayJsonToVector3(state["coinCollectStartScale"], collectStartScale_);
     }
 }
 

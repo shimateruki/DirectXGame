@@ -18,8 +18,14 @@ private:
 
     Vector3 basePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 targetPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
     uint32_t originalCollisionAttribute_ = 0;
     uint32_t originalCollisionMask_ = 0;
+    Vector4 originalColor_ = { 0.65f, 1.0f, 0.65f, 1.0f };
+    float activationTimer_ = 0.0f;
     bool initializedForPlay_ = false;
     bool active_ = false;
+    bool hasPendingActive_ = false;
+    bool pendingActive_ = false;
 };

@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_prism_arena_release_wave",
+      "triggerTime": 0.0,
+      "offset": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "type": 0,
+      "presetName": "prism_spike_shatter",
+      "triggerTime": 0.0,
+      "offset": [0.0, 0.18, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "type": 0,
+      "presetName": "prism_slime_pulse",
+      "triggerTime": 0.12,
+      "offset": [0.0, 0.12, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.04,
+      "duration": 0.26,
+      "intensity": 0.034,
+      "frequency": 22.0,
+      "scale": [0.62, 0.24, 0.58]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.52,
+      "intensity": 2.6,
+      "lightRadius": 18.0,
+      "lightDecay": 1.7,
+      "lightColor": [0.72, 0.30, 1.0, 1.0]
+    }
+  ]
+}

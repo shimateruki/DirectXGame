@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 0,
+      "presetName": "false_king_dominion",
+      "triggerTime": 0.0,
+      "offset": [0.0, 1.4, 0.0],
+      "scale": [2.5, 2.5, 2.5]
+    },
+    {
+      "type": 1,
+      "presetName": "effect_goal_clear_gold_ring",
+      "triggerTime": 0.12,
+      "offset": [0.0, 0.04, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [2.25, 1.0, 2.25]
+    },
+    {
+      "type": 0,
+      "presetName": "false_king_shockwave",
+      "triggerTime": 0.40,
+      "offset": [0.0, 0.1, 0.0],
+      "scale": [2.0, 2.0, 2.0]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.34,
+      "duration": 0.64,
+      "intensity": 0.15,
+      "frequency": 31.0,
+      "scale": [1.0, 0.52, 0.94]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 2.20,
+      "intensity": 8.5,
+      "lightRadius": 31.0,
+      "lightDecay": 1.28,
+      "lightColor": [0.92, 0.28, 1.0, 1.0]
+    }
+  ]
+}

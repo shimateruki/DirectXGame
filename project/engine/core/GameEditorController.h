@@ -3,12 +3,15 @@
 #ifdef USE_IMGUI
 
 #include "SceneLoadContext.h"
+#include "Transform.h"
 
 #include <memory>
 #include <cstdint>
 #include <string>
 
+class AssetReferenceExplorer;
 class DebugEditor;
+class EditorQuickSearch;
 class DebrisEffectEditor;
 class DirectXCommon;
 class EngineManualWindow;
@@ -22,6 +25,8 @@ class ParticleEditor;
 class PostEffectEditor;
 class ReplayDebugger;
 class SceneManager;
+class SceneWorkspace;
+class PlayModeChangeTracker;
 class SpriteDebugEditor;
 class TrailEmitterEditor;
 class VFXSequencerEditor;
@@ -59,6 +64,8 @@ void DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::str
 void UpdateTools(float deltaTime, bool isPlaying, float timeScale);
     // リプレイ停止中はGame側のシーン更新を完全に止めます。
     bool ShouldFreezeSimulationForReplay() const;
+    // 自動回帰テスト中だけ、記録時のsimulation deltaTimeへ差し替えます。
+    float ResolveReplaySimulationDeltaTime(float defaultDeltaTime) const;
     // 通常のシーン更新後に、リプレイ用スナップショットを記録します。
     void CaptureReplayFrame(float simulationDeltaTime, bool isPlaying);
 	    // Inspector、Project、VFX、ステータスなどのツールウィンドウを描画します。
@@ -90,6 +97,17 @@ void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	
 
 	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 private:
+    enum class WorkspacePreset : int {
+        Terrain = 0,
+        Vfx,
+        Animation,
+        Replay,
+    };
+
+    void ApplyWorkspacePreset(WorkspacePreset preset);
+    void SaveWorkspacePreset(WorkspacePreset preset);
+    void ProcessPendingWorkspaceLayout();
+    void DrawWorkspaceMenu();
 	void RegisterEditorCommands();
 	bool DrawEditorCommandMenuItem(const char* commandId, const char* labelOverride = nullptr, bool selected = false);
 	bool CanEditScene() const;
@@ -102,6 +120,8 @@ private:
 	void DrawGhostPreview(bool isPlaying, const GameViewArea& area);
 	void RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
 	void StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	void RequestPlayFromPosition(const Vector3& position, const std::string& label);
+	void ApplyPendingPlayStartPosition();
 	void DrawUnsavedExitConfirmPopup();
 	    // 再生や終了前に確認すべき未保存変更があるか調べます。
 bool HasUnsavedEditorChanges() const;
@@ -121,7 +141,11 @@ private:
 	std::string activeSceneName_;
 	std::unique_ptr<PostEffectEditor> postEffectEditor_;
 	std::unique_ptr<DebugEditor> debugEditor_;
+    std::unique_ptr<EditorQuickSearch> editorQuickSearch_;
+    std::unique_ptr<SceneWorkspace> sceneWorkspace_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
+    std::unique_ptr<AssetReferenceExplorer> assetReferenceExplorer_;
+    std::unique_ptr<PlayModeChangeTracker> playModeChangeTracker_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
 	std::unique_ptr<GhostRecorder> ghostRecorder_;
 	std::unique_ptr<GhostDirector> ghostDirector_;
@@ -146,6 +170,12 @@ private:
 	SceneLoadContext playOriginSceneLoadContext_;
 	bool dockspaceInitialized_ = false;
 	bool openUnsavedExitConfirm_ = false;
+    int activeWorkspacePreset_ = -1;
+    int pendingWorkspaceLayout_ = -1;
+    std::string workspaceStatus_;
+    bool hasPendingPlayStartPosition_ = false;
+    Vector3 pendingPlayStartPosition_ = { 0.0f, 0.0f, 0.0f };
+    std::string pendingPlayStartLabel_;
 };
 
 #endif

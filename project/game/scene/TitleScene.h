@@ -153,10 +153,12 @@ private:
     Vector2 mainMenuCursorOffset_ = { 0.0f, 0.0f };
     Vector2 mainMenuPromptBasePosition_ = { 0.0f, 0.0f };
     Object3d* titleHeroSlime_ = nullptr;
+    std::unique_ptr<Object3d> titleCameraAnchor_ = nullptr;
     Vector3 titleHeroBasePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 titleHeroBaseScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 titleHeroBaseRotation_ = { 0.0f, 0.0f, 0.0f };
     bool titleHeroBaseCaptured_ = false;
+    float titleHeroSequenceTime_ = 0.0f;
     struct TitleLogoGlyph {
         Sprite* sprite = nullptr;
         Vector2 basePosition = { 0.0f, 0.0f };

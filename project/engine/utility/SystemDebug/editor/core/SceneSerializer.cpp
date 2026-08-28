@@ -560,6 +560,12 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
             d["param"]["moveSpeed"] = p.moveSpeed;
             d["param"]["startActive"] = p.startActive;
             d["param"]["returnOnOff"] = p.returnOnOff;
+            d["param"]["volumeMode"] = p.volumeMode;
+            d["param"]["volumePayload"] = p.volumePayload;
+            d["param"]["volumeTriggerOnce"] = p.volumeTriggerOnce;
+            d["param"]["volumeTriggerOnExit"] = p.volumeTriggerOnExit;
+            d["param"]["volumeRearmDelay"] = p.volumeRearmDelay;
+            d["param"]["volumeBlendDuration"] = p.volumeBlendDuration;
         }
     }
 

@@ -1,8 +1,10 @@
 #include "InspectorWindow.h"
+#include "InspectorTextureCatalog.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "Object3d.h"
+#include "engine/graphics/3d/material/MaterialInstance.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "IconsFontAwesome5.h"
@@ -24,8 +26,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <map>
-#include <set>
 #include <vector>
 
 #ifndef M_PI
@@ -43,188 +43,6 @@ std::string ToLowerAscii(std::string text) {
         return static_cast<char>(std::tolower(c));
     });
     return text;
-}
-
-std::string NormalizeAssetPath(const fs::path& path) {
-    return path.generic_string();
-}
-
-bool IsSupportedTextureFile(const fs::path& path) {
-    const std::string ext = ToLowerAscii(path.extension().string());
-    return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds";
-}
-
-struct PbrTexturePreset {
-    std::string name;
-    std::string albedoPath;
-    std::string normalPath;
-    std::string ormPath;
-
-    bool IsComplete() const {
-        return !albedoPath.empty() && !normalPath.empty() && !ormPath.empty();
-    }
-};
-
-bool IsDdsTexture(const std::string& path) {
-    return ToLowerAscii(fs::path(path).extension().string()) == ".dds";
-}
-
-void AssignPreferredTexture(std::string& slot, const std::string& candidate) {
-    if (slot.empty() || (!IsDdsTexture(slot) && IsDdsTexture(candidate))) {
-        slot = candidate;
-    }
-}
-
-std::string BuildPbrPresetKey(const fs::path& path) {
-    std::string stem = ToLowerAscii(path.stem().string());
-    for (char& c : stem) {
-        if (c == '-' || c == ' ') {
-            c = '_';
-        }
-    }
-
-    static const std::set<std::string> ignoredTokens = {
-        "1k", "2k", "4k", "8k", "dx", "gl", "directx", "opengl",
-        "diff", "diffuse", "albedo", "basecolor", "base", "color", "colour",
-        "nor", "normal", "arm", "orm", "ao", "roughness", "metallic", "metalness"
-    };
-
-    std::string key;
-    size_t start = 0;
-    while (start <= stem.size()) {
-        const size_t end = stem.find('_', start);
-        const std::string token = stem.substr(start, end == std::string::npos ? std::string::npos : end - start);
-        if (!token.empty() && ignoredTokens.count(token) == 0) {
-            if (!key.empty()) {
-                key += "_";
-            }
-            key += token;
-        }
-        if (end == std::string::npos) {
-            break;
-        }
-        start = end + 1;
-    }
-
-    if (key.empty()) {
-        key = stem;
-    }
-    return key;
-}
-
-std::string BuildPbrPresetName(const std::string& key) {
-    std::string name = key;
-    for (char& c : name) {
-        if (c == '_') {
-            c = ' ';
-        }
-    }
-    if (!name.empty()) {
-        name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
-    }
-    return name;
-}
-
-void RefreshTextureLists(
-    std::vector<std::string>& albedoPaths,
-    std::vector<std::string>& normalPaths,
-    std::vector<std::string>& armPaths,
-    std::vector<std::string>& spritePaths,
-    std::vector<PbrTexturePreset>& pbrPresets) {
-    albedoPaths.clear();
-    normalPaths.clear();
-    armPaths.clear();
-    spritePaths.clear();
-    pbrPresets.clear();
-
-    const std::string pbrDir = "Resources/texture/PBR/";
-    if (fs::exists(pbrDir)) {
-        std::vector<std::string> allFiles;
-        std::set<std::string> ddsBaseNames;
-        std::map<std::string, PbrTexturePreset> presetMap;
-
-        for (const auto& entry : fs::recursive_directory_iterator(pbrDir)) {
-            if (!entry.is_regular_file()) {
-                continue;
-            }
-            const fs::path path = entry.path();
-            if (!IsSupportedTextureFile(path)) {
-                continue;
-            }
-
-            const std::string normalized = NormalizeAssetPath(path);
-            allFiles.push_back(normalized);
-            if (ToLowerAscii(path.extension().string()) == ".dds") {
-                ddsBaseNames.insert(NormalizeAssetPath(path.parent_path() / path.stem()));
-            }
-        }
-
-        for (const std::string& pathString : allFiles) {
-            const fs::path p(pathString);
-            const std::string ext = ToLowerAscii(p.extension().string());
-            const std::string base = NormalizeAssetPath(p.parent_path() / p.stem());
-            if (ext != ".dds" && ddsBaseNames.count(base) != 0) {
-                continue;
-            }
-
-            if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
-            else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
-            else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
-
-            const std::string key = BuildPbrPresetKey(p);
-            PbrTexturePreset& preset = presetMap[key];
-            preset.name = BuildPbrPresetName(key);
-
-            if (pathString.find("/Albedo/") != std::string::npos) {
-                AssignPreferredTexture(preset.albedoPath, pathString);
-            }
-            else if (pathString.find("/Normal/") != std::string::npos) {
-                AssignPreferredTexture(preset.normalPath, pathString);
-            }
-            else if (pathString.find("/ARM/") != std::string::npos) {
-                AssignPreferredTexture(preset.ormPath, pathString);
-            }
-            else if (pathString.find("/Default/") != std::string::npos) {
-                const std::string stem = ToLowerAscii(p.stem().string());
-                if (stem.find("albedo") != std::string::npos || stem.find("diff") != std::string::npos) {
-                    AssignPreferredTexture(preset.albedoPath, pathString);
-                }
-                else if (stem.find("normal") != std::string::npos || stem.find("nor") != std::string::npos) {
-                    AssignPreferredTexture(preset.normalPath, pathString);
-                }
-                else if (stem.find("arm") != std::string::npos || stem.find("orm") != std::string::npos) {
-                    AssignPreferredTexture(preset.ormPath, pathString);
-                }
-            }
-        }
-
-        for (const auto& [key, preset] : presetMap) {
-            if (preset.IsComplete()) {
-                pbrPresets.push_back(preset);
-            }
-        }
-    }
-
-    const std::string spriteDir = "Resources/sprite/";
-    if (fs::exists(spriteDir)) {
-        for (const auto& entry : fs::recursive_directory_iterator(spriteDir)) {
-            if (!entry.is_regular_file() || !IsSupportedTextureFile(entry.path())) {
-                continue;
-            }
-            spritePaths.push_back(NormalizeAssetPath(entry.path()));
-        }
-    }
-
-    auto sortPaths = [](std::vector<std::string>& paths) {
-        std::sort(paths.begin(), paths.end());
-    };
-    sortPaths(albedoPaths);
-    sortPaths(normalPaths);
-    sortPaths(armPaths);
-    sortPaths(spritePaths);
-    std::sort(pbrPresets.begin(), pbrPresets.end(), [](const PbrTexturePreset& a, const PbrTexturePreset& b) {
-        return a.name < b.name;
-    });
 }
 
 std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary) {
@@ -1125,6 +943,133 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, Object3d* ob
     ImGui::Separator();
 }
 
+std::string NormalizeMaterialInstanceSavePath(const char* text) {
+    fs::path path = text ? fs::path(text) : fs::path();
+    if (path.empty()) return {};
+    if (path.extension() != ".json") path.replace_extension(".json");
+    if (!path.has_parent_path()) path = fs::path("Resources/json/material_instances") / path;
+    return path.lexically_normal().generic_string();
+}
+
+void DrawMaterialInstancePanel(
+    DebugEditor* editor,
+    Object3d* selectedObject,
+    const std::vector<Object3d*>& targets) {
+    if (!editor || !selectedObject) return;
+
+    ImGui::SeparatorText("Material Instance");
+    const std::string& linkedPath = selectedObject->GetMaterialInstancePath();
+    ImGui::Text("リンク: %s", linkedPath.empty() ? "未設定" : linkedPath.c_str());
+    ImGui::TextDisabled("リンク中はScene読込時にAssetの設定一式を再適用します。");
+
+    static std::vector<std::string> assets;
+    static bool assetsLoaded = false;
+    if (!assetsLoaded) {
+        assets = MaterialInstanceAsset::Discover();
+        assetsLoaded = true;
+    }
+    if (ImGui::BeginCombo("共有Materialを選択", linkedPath.empty() ? "未設定" : linkedPath.c_str())) {
+        for (const std::string& asset : assets) {
+            const bool selected = asset == linkedPath;
+            if (ImGui::Selectable(asset.c_str(), selected)) {
+                std::string error;
+                bool applied = false;
+                for (Object3d* target : targets) {
+                    applied |= target && target->ApplyMaterialInstance(asset, &error);
+                }
+                if (applied) {
+                    MarkInspectorTargetsDirty(editor, targets);
+                    DebugConsole::GetInstance()->AddLog("Material Instance applied: " + asset);
+                } else if (!error.empty()) {
+                    DebugConsole::GetInstance()->AddLog("Material Instance error: " + error);
+                }
+            }
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        if (assets.empty()) ImGui::TextDisabled("保存済みAssetはまだありません。");
+        ImGui::EndCombo();
+    }
+
+    if (!linkedPath.empty()) {
+        if (ImGui::Button(ICON_FA_SYNC " 再読込##MaterialInstance")) {
+            std::string error;
+            bool applied = false;
+            for (Object3d* target : targets) {
+                if (!target) continue;
+                const std::string path = target->GetMaterialInstancePath().empty()
+                    ? linkedPath : target->GetMaterialInstancePath();
+                applied |= target->ApplyMaterialInstance(path, &error);
+            }
+            if (applied) MarkInspectorTargetsDirty(editor, targets);
+            if (!error.empty()) DebugConsole::GetInstance()->AddLog("Material Instance error: " + error);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_UNLINK " リンク解除##MaterialInstance")) {
+            for (Object3d* target : targets) if (target) target->ClearMaterialInstanceLink();
+            MarkInspectorTargetsDirty(editor, targets);
+        }
+    }
+
+    static char savePath[260] = "NewMaterial.json";
+    ImGui::SetNextItemWidth(-130.0f);
+    ImGui::InputText("##MaterialInstanceSavePath", savePath, sizeof(savePath));
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_SAVE " 現在値を保存")) {
+        const std::string path = NormalizeMaterialInstanceSavePath(savePath);
+        std::string error;
+        if (selectedObject->SaveMaterialInstance(path, &error)) {
+            for (Object3d* target : targets) {
+                if (target && target != selectedObject) target->ApplyMaterialInstance(path, nullptr);
+            }
+            assets = MaterialInstanceAsset::Discover();
+            MarkInspectorTargetsDirty(editor, targets);
+            DebugConsole::GetInstance()->AddLog("Material Instance saved: " + path);
+        } else {
+            DebugConsole::GetInstance()->AddLog("Material Instance error: " + error);
+        }
+    }
+}
+
+void DrawDecalPanel(
+    DebugEditor* editor,
+    Object3d* selectedObject,
+    const std::vector<Object3d*>& targets) {
+    if (!editor || !selectedObject || !selectedObject->IsDecal()) return;
+    if (!ImGui::CollapsingHeader("Surface Decal", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+    Object3d::DecalSettings settings = selectedObject->GetDecalSettings();
+    bool changed = false;
+    changed |= ImGui::DragFloat2("投影サイズ", &settings.size.x, 0.05f, 0.01f, 100.0f);
+    changed |= ImGui::DragFloat("面オフセット", &settings.depthOffset, 0.001f, 0.0001f, 0.2f, "%.4f");
+    changed |= ImGui::DragFloat("寿命 (0=永続)", &settings.lifetime, 0.05f, 0.0f, 120.0f);
+    changed |= ImGui::DragFloat("Fade In", &settings.fadeIn, 0.02f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("Fade Out", &settings.fadeOut, 0.02f, 0.0f, 10.0f);
+    changed |= ImGui::Checkbox("寿命後に削除対象", &settings.transient);
+
+    if (changed) {
+        for (Object3d* target : targets) {
+            if (!target || !target->IsDecal()) continue;
+            const Object3d::DecalSettings oldSettings = target->GetDecalSettings();
+            target->SetDecalSettings(settings);
+            Transform* transform = target->GetTransform();
+            const Matrix4x4 rotation = transform->isQuaternionMaster
+                ? Math::MakeRotateQuaternionMatrix(transform->quaternion)
+                : Math::MakeRotateMatrix(transform->rotate);
+            const Vector3 normal = { -rotation.m[2][0], -rotation.m[2][1], -rotation.m[2][2] };
+            transform->translate += normal * (settings.depthOffset - oldSettings.depthOffset);
+            transform->scale = { settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f };
+            target->UpdateLocalMatrix();
+            target->UpdateWorldMatrix();
+        }
+        MarkInspectorTargetsDirty(editor, targets);
+    }
+
+    if (ImGui::Button(ICON_FA_PLAY " Fadeを最初から確認")) {
+        for (Object3d* target : targets) if (target && target->IsDecal()) target->RestartDecalPlayback();
+    }
+    ImGui::TextDisabled("Game View配置では地面・壁の法線へ自動整列します。回転はTransformで調整できます。");
+}
+
 }
 
 void InspectorWindow::Initialize(DebugEditor* editor) {
@@ -1540,6 +1485,8 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
+                DrawMaterialInstancePanel(editor_, selectedObject, inspectorTargets);
+                DrawDecalPanel(editor_, selectedObject, inspectorTargets);
                 const char* matTypes[] = {
                                          "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
                                          "ホログラム (Hologram)", "消滅 (Dissolve)", "旧マグマ (Emissive)",
@@ -1555,11 +1502,12 @@ void InspectorWindow::Draw() {
                                          "ダッシュパネル (Dash Panel)",
                                          "スライム補正 (Slime Soft)",
                                          "風弾 (Wind Orb)",
-                                         "プリズム結晶 (Prism Crystal)"
+                                         "プリズム結晶 (Prism Crystal)",
+                                         "デカール (Surface Decal)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 27) currentMatType = 0;
+                if (currentMatType > 28) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     for (Object3d* object : inspectorTargets) {
                         if (!object) continue;
@@ -2009,17 +1957,13 @@ void InspectorWindow::Draw() {
                     ImGui::TextDisabled("影マップ描画だけを無効化します。ライト影響は別設定です。");
                 }
 
-                static std::vector<std::string> albedoPaths;
-                static std::vector<std::string> normalPaths;
-                static std::vector<std::string> armPaths;
-                static std::vector<std::string> spriteTexturePaths;
-                static std::vector<PbrTexturePreset> pbrPresets;
-                static bool isTextureListInitialized = false;
-
-                if (!isTextureListInitialized) {
-                    RefreshTextureLists(albedoPaths, normalPaths, armPaths, spriteTexturePaths, pbrPresets);
-                    isTextureListInitialized = true;
-                }
+                static InspectorTextureCatalog textureCatalog;
+                textureCatalog.EnsureLoaded();
+                const auto& albedoPaths = textureCatalog.GetAlbedoPaths();
+                const auto& normalPaths = textureCatalog.GetNormalPaths();
+                const auto& armPaths = textureCatalog.GetOrmPaths();
+                const auto& spriteTexturePaths = textureCatalog.GetSpritePaths();
+                const auto& pbrPresets = textureCatalog.GetPbrPresets();
 
                 ImGui::Separator();
                 std::string currentTexturePath = selectedObject->GetTexturePath();
@@ -2027,7 +1971,7 @@ void InspectorWindow::Draw() {
                 std::string currentOrmPathForPreset = selectedObject->GetOrmMapPath();
 
                 std::string currentPresetName = "未設定 (3枚セットを選択)";
-                for (const PbrTexturePreset& preset : pbrPresets) {
+                for (const InspectorTextureCatalog::PbrPreset& preset : pbrPresets) {
                     if (preset.albedoPath == currentTexturePath &&
                         preset.normalPath == currentNormalPath &&
                         preset.ormPath == currentOrmPathForPreset) {
@@ -2040,7 +1984,7 @@ void InspectorWindow::Draw() {
                     if (pbrPresets.empty()) {
                         ImGui::TextDisabled("同名の3枚セットが見つかりません。");
                     }
-                    for (const PbrTexturePreset& preset : pbrPresets) {
+                    for (const InspectorTextureCatalog::PbrPreset& preset : pbrPresets) {
                         const bool isSelected =
                             preset.albedoPath == currentTexturePath &&
                             preset.normalPath == currentNormalPath &&
@@ -2109,7 +2053,7 @@ void InspectorWindow::Draw() {
 
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_SYNC_ALT " 更新##TextureList")) {
-                    isTextureListInitialized = false;
+                    textureCatalog.Refresh();
                 }
 
                 if (IsSpriteCardObject(selectedObject)) {
@@ -2473,404 +2417,10 @@ void InspectorWindow::Draw() {
         }
 
         if (HasRegisteredComponent(selectedObject, "PathMover")) {
-            // ==========================================
-            // 2. パス移動 (GhostRecorder) 設定
-            // ==========================================
-            ImGui::Separator();
-            ImGui::Text(ICON_FA_GHOST " 【パス移動 (GhostRecorder)】");
-            std::string currentRecordPreview = selectedObject->GetRecordPathName().empty() ? "(なし)" : selectedObject->GetRecordPathName();
-
-        if (ImGui::BeginCombo("パスデータ", currentRecordPreview.c_str())) {
-            bool isNoneSelected = selectedObject->GetRecordPathName().empty();
-            if (ImGui::Selectable("(なし)", isNoneSelected)) {
-                selectedObject->SetRecordPathName("");
-                if (selectedObject->recorder_) selectedObject->recorder_->Stop();
-            }
-            if (isNoneSelected) ImGui::SetItemDefaultFocus();
-
-            std::string dirPath = "Resources/json/animation/";
-            if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
-                for (const auto& entry : fs::directory_iterator(dirPath)) {
-                    if (entry.path().extension() == ".json") {
-                        std::string fileName = entry.path().stem().string();
-                        bool isSelected = (selectedObject->GetRecordPathName() == fileName);
-
-                        if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                            selectedObject->SetRecordPathName(fileName);
-                            if (selectedObject->recorder_) {
-                                bool isCinematic = selectedObject->IsCameraObject();
-                                selectedObject->recorder_->Play(
-                                    selectedObject->GetRecordPathName(),
-                                    selectedObject->IsRecordLoop(),
-                                    selectedObject->IsRecordRelative(),
-                                    isCinematic);
-                            }
-                        }
-                        if (isSelected) ImGui::SetItemDefaultFocus();
-                    }
-                }
-            }
-            ImGui::EndCombo();
+            DrawPathMoverSection(selectedObject);
         }
 
-        bool pathLoop = selectedObject->IsRecordLoop();
-        if (ImGui::Checkbox("ループ再生##Record", &pathLoop)) {
-            selectedObject->SetRecordLoop(pathLoop);
-            if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
-                bool isCinematic = selectedObject->IsCameraObject();
-                selectedObject->recorder_->Play(
-                    selectedObject->GetRecordPathName(),
-                    selectedObject->IsRecordLoop(),
-                    selectedObject->IsRecordRelative(),
-                    isCinematic);
-            }
-        }
-        bool pathRelative = selectedObject->IsRecordRelative();
-        if (ImGui::Checkbox("相対座標モード##Record", &pathRelative)) {
-            selectedObject->SetRecordRelative(pathRelative);
-            if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
-                bool isCinematic = selectedObject->IsCameraObject();
-                selectedObject->recorder_->Play(
-                    selectedObject->GetRecordPathName(),
-                    selectedObject->IsRecordLoop(),
-                    selectedObject->IsRecordRelative(),
-                    isCinematic);
-            }
-        }
-            if (ImGui::Button("テスト再生##Record")) {
-                if (selectedObject->recorder_ && !selectedObject->GetRecordPathName().empty()) {
-                    bool isCinematic = selectedObject->IsCameraObject();
-                    selectedObject->recorder_->Play(
-                        selectedObject->GetRecordPathName(),
-                        selectedObject->IsRecordLoop(),
-                        selectedObject->IsRecordRelative(),
-                        isCinematic);
-                }
-            }
-        }
-
-        // --- Game Data (Stats) ---
-        ImGui::Separator();
-        if (ImGui::CollapsingHeader(ICON_FA_GAMEPAD " ゲームデータ (Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            EventType currentType = selectedObject->GetEventType();
-            int currentItemIndex = static_cast<int>(currentType);
-            const char* eventNames[] = { "なし", "ダメージ", "ワープ", "映像演出 (橋落ち)", "中間地点 (Checkpoint)", "ゴール", "ステージセレクト", "スターコイン (StarCoin)" };
-            if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
-                const EventType selectedEventType = static_cast<EventType>(currentItemIndex);
-                selectedObject->SetEventType(selectedEventType);
-                if (selectedEventType == EventType::Goal) {
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
-
-                    if (selectedObject->GetColliderType() == ColliderType::kNone) {
-                        Object3d::ColliderConfig colConfig;
-                        colConfig.type = ColliderType::kSphere;
-                        colConfig.size = { 1.2f, 1.2f, 1.2f };
-                        selectedObject->SetColliderConfig(colConfig);
-                        selectedObject->SetCollisionRadius(1.2f);
-                    }
-                }
-            }
-
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "--- Object Type Settings ---");
-            const char* classItems[] = { "Model", "Spawner", "Player", "Enemy", "Gimmick", "Item", "InvisibleBox", "Block" };
-            std::string currentClass = selectedObject->GetClassName();
-            int currentClassIndex = 0;
-            for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
-                if (currentClass == classItems[i]) { currentClassIndex = i; break; }
-            }
-
-            if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex, classItems, IM_ARRAYSIZE(classItems))) {
-                selectedObject->SetClassName(classItems[currentClassIndex]);
-                if (std::string(classItems[currentClassIndex]) == "Spawner") {
-                    if (selectedObject->GetName().find("Object") != std::string::npos) selectedObject->SetName("Spawner_New");
-                    if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-                }
-                else if (std::string(classItems[currentClassIndex]) == "Item") {
-                    if (selectedObject->GetName().find("Object") != std::string::npos) selectedObject->SetName("Item_Heal");
-                    if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-                    selectedObject->SetItemType("Heal");
-                    selectedObject->param_->itemType = "Heal";
-                    selectedObject->param_->healAmount = 1.0f;
-                    selectedObject->SetModel("Item/heart.gltf");
-                    selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
-                    selectedObject->SetEmissive(1.8f);
-                    selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
-                    selectedObject->SetStatic(false);
-
-                    Object3d::ColliderConfig colConfig;
-                    colConfig.type = ColliderType::kSphere;
-                    colConfig.size = { 1.2f, 1.2f, 1.2f };
-                    selectedObject->SetColliderConfig(colConfig);
-                    selectedObject->SetCollisionRadius(1.2f);
-                }
-            }
-
-            if (selectedObject->GetClassName() == "Spawner") DrawSpawnerSettings();
-
-            ImGui::Spacing();
-            if (selectedObject->GetClassName() == "Enemy") {
-                ImGui::Indent(); DrawEnemyTypeSelector(); ImGui::Unindent();
-            }
-            if (selectedObject->GetClassName() == "Gimmick") {
-                ImGui::Indent(); DrawGimmickTypeSelector(); ImGui::Unindent();
-            }
-            if (selectedObject->GetClassName() == "Item") {
-                ImGui::Indent(); DrawItemTypeSelector(); ImGui::Unindent();
-            }
-
-            if (selectedObject->GetClassName() == "Enemy" || selectedObject->GetClassName() == "Player") {
-                ImGui::SeparatorText("キャラクター・ステータス（表示のみ）");
-                ImGui::TextDisabled("共通値の編集はステータス管理で行います。現在HPだけは実行中に変動します。");
-                if (selectedObject->param_.has_value()) {
-                    const auto& p = selectedObject->param_.value();
-                    if (ImGui::BeginTable("ManagedCharacterStatus", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
-                        auto drawValue = [](const char* name, const char* format, float value) {
-                            ImGui::TableNextRow();
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::TextUnformatted(name);
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::Text(format, value);
-                        };
-                        drawValue("現在HP", "%.1f", p.hp);
-                        drawValue("最大HP", "%.1f", p.maxHp);
-                        drawValue("攻撃力倍率", "%.2f", p.attackPower);
-                        drawValue("移動速度", "%.2f", p.speed);
-                        drawValue("重力", "%.2f", p.gravity);
-                        drawValue("最大落下速度", "%.2f", p.maxFallSpeed);
-                        drawValue("ジャンプ力", "%.2f", p.jumpPower);
-                        drawValue("感知範囲", "%.2f", p.detectionRange);
-                        ImGui::EndTable();
-                    }
-                } else {
-                    ImGui::TextDisabled("ステータスは次回の生成・ロード時に自動設定されます。");
-                }
-                if (ImGui::Button(ICON_FA_SLIDERS_H " ステータス管理を開く##CharacterStatus", ImVec2(-1, 0)) && editor_->GetStatusTuningWindow()) {
-                    EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
-                }
-            }
-            else if (selectedObject->GetClassName() == "Gimmick") {
-                if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-                auto& p = selectedObject->param_.value();
-                
-                ImGui::Text(ICON_FA_TOOLS " ギミック設定:");
-                ImGui::Indent();
-                
-                std::string gType = selectedObject->GetGimmickType();
-                if (gType == "Trampoline") {
-                    ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力 (Jump Power)", &p.jumpPower, 1.0f, 0.0f, 100.0f);
-                }
-                else if (gType == "LaunchStar") {
-                    ImGui::DragFloat(ICON_FA_RULER_HORIZONTAL " 発射距離", &p.moveAmount, 1.0f, 8.0f, 300.0f, "%.1f m");
-                    ImGui::DragFloat(ICON_FA_ARROW_UP " 軌道の高さ", &p.jumpPower, 0.5f, 2.0f, 100.0f, "%.1f m");
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 飛行速度", &p.speed, 0.5f, 8.0f, 160.0f, "%.1f m/s");
-                    ImGui::TextDisabled("回転X/Yが発射方向になります");
-                }
-                else if (gType == "MovingFloor") {
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
-                    const char* moveModes[] = { "従来の上下移動", "浮遊", "X方向に往復", "Z方向に往復", "Y方向に往復" };
-                    p.actionMode = (std::clamp)(p.actionMode, 0, 4);
-                    ImGui::Combo("移動方式", &p.actionMode, moveModes, IM_ARRAYSIZE(moveModes));
-                    if (p.actionMode == 1) {
-                        ImGui::DragFloat("浮き沈み幅", &p.moveAmount, 0.01f, 0.0f, 2.0f, "%.2f m");
-                    }
-                    else if (p.actionMode >= 2) {
-                        ImGui::DragFloat("往復幅", &p.moveAmount, 0.1f, 0.0f, 100.0f, "%.1f m");
-                    }
-                }
-                else if (gType == "ChikuwaBlock") {
-                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 震え時間 (Shake)", &p.shakeDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
-                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 落下時間 (Fall)", &p.fallDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
-                    ImGui::DragFloat(ICON_FA_RECYCLE " リスポーン間隔", &p.interval, 0.1f, 0.0f, 10.0f, "%.1f s");
-                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 落下速度 (Gravity)", &p.gravity, 1.0f, 0.0f, 200.0f);
-                }
-                else if (gType == "BlinkBlock") {
-                    ImGui::Text(ICON_FA_PALETTE " ブロックの色設定:");
-                    ImGui::RadioButton("青 (Blue: Jump Even)", &p.colorType, 0);
-                    ImGui::SameLine();
-                    ImGui::RadioButton("赤 (Red: Jump Odd)", &p.colorType, 1);
-                }
-                else if (gType == "Switch") {
-                    const char* switchModes[] = { "押している間だけ", "押すたび切替", "一定時間だけ" };
-                    ImGui::Combo("スイッチ方式", &p.switchMode, switchModes, IM_ARRAYSIZE(switchModes));
-                    if (p.switchMode == 2) {
-                        ImGui::DragFloat(ICON_FA_CLOCK " 有効時間", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
-                    }
-                    ImGui::TextDisabled("Target ID と受信側の My Event ID を合わせてください");
-                }
-                else if (gType == "EventReceiver") {
-                    const char* actionModes[] = { "出現", "Y方向に移動", "X方向に移動", "Z方向に移動", "有効化", "無効化" };
-                    ImGui::Combo("動作モード", &p.actionMode, actionModes, IM_ARRAYSIZE(actionModes));
-
-                    if (p.actionMode >= 1 && p.actionMode <= 3) {
-                        ImGui::DragFloat(ICON_FA_ARROWS_ALT " 移動量", &p.moveAmount, 0.1f, -500.0f, 500.0f);
-                        ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
-                    }
-
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-                    ImGui::Checkbox("OFFで元に戻す", &p.returnOnOff);
-                    ImGui::TextDisabled("My Event ID とスイッチの Target ID を合わせてください");
-                }
-                else if (gType == "HookPullBlock") {
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 引っ張り速度", &p.speed, 0.5f, 1.0f, 120.0f);
-                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 重力", &p.gravity, 1.0f, 0.0f, 200.0f);
-                    ImGui::TextDisabled("フックを当てるとプレイヤー側へ引き寄せます");
-                }
-                else if (gType == "OneWayFloor") {
-                    ImGui::TextDisabled("上から着地した時だけ足場になります");
-                }
-                else if (gType == "LiquidLevel") {
-                    const char* liquidTypes[] = { "水", "マグマ" };
-                    ImGui::Combo("液体の種類", &p.colorType, liquidTypes, IM_ARRAYSIZE(liquidTypes));
-                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 上下量", &p.moveAmount, 0.1f, -500.0f, 500.0f);
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 上下速度", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
-                    ImGui::Checkbox("開始時に上昇", &p.startActive);
-                    ImGui::Checkbox("OFFで元に戻す", &p.returnOnOff);
-                    ImGui::TextDisabled("スイッチの Target ID とこの My Event ID を合わせてください");
-                }
-                else if (gType == "MagmaHazard") {
-                    ImGui::DragFloat(ICON_FA_FIRE " 接触ダメージ", &p.speed, 0.5f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.1f, 10.0f, "%.2f s");
-                    ImGui::TextDisabled("触れたプレイヤーを炎上させ、上方向へ弾き返します");
-                }
-                else if (gType == "MagmaGeyser") {
-                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 警告時間", &p.shakeDuration, 0.05f, 0.2f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_FIRE " 噴出時間", &p.fallDuration, 0.05f, 0.2f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_CLOCK " 休止時間", &p.interval, 0.05f, 0.2f, 30.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_STOPWATCH " 初回ディレイ", &p.moveSpeed, 0.05f, 0.0f, 30.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 噴出高", &p.moveAmount, 0.25f, 0.5f, 60.0f, "%.1f m");
-                    ImGui::DragFloat(ICON_FA_EYE " シミュレーション距離", &p.maxFallSpeed, 1.0f, 20.0f, 500.0f, "%.0f m");
-                    ImGui::DragFloat(ICON_FA_CIRCLE " 危険半径", &p.detectionRange, 0.05f, 0.25f, 20.0f, "%.2f m");
-                    ImGui::DragFloat(ICON_FA_HEART_BROKEN " ダメージ", &p.speed, 0.5f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " 横吹き飛ばし", &p.gravity, 0.25f, 0.0f, 80.0f);
-                    ImGui::DragFloat(ICON_FA_ARROW_UP " 上吹き飛ばし", &p.jumpPower, 0.5f, 0.0f, 100.0f);
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-                    ImGui::TextDisabled("警告リングが消えている噴出中だけダメージ判定が有効です");
-                }
-                else if (gType == "ChainCollapseFloor") {
-                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 揺れ時間", &p.shakeDuration, 0.05f, 0.0f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_LINK " 連鎖までの時間", &p.interval, 0.01f, 0.0f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 落下時間", &p.fallDuration, 0.05f, 0.1f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 重力", &p.gravity, 1.0f, 0.0f, 200.0f);
-                    ImGui::TextDisabled("Target ID に次の床の My Event ID を入れると連鎖します");
-                }
-                else if (gType == "RotatingFloor" || gType == "RotatingPillar") {
-                    const char* axes[] = { "X", "Y", "Z" };
-                    ImGui::Combo("回転軸", &p.actionMode, axes, IM_ARRAYSIZE(axes));
-                    ImGui::DragFloat(ICON_FA_SYNC_ALT " 回転速度 (度/秒)", &p.speed, 1.0f, -720.0f, 720.0f);
-                    ImGui::Checkbox("開始時に回転", &p.startActive);
-                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-                    ImGui::TextDisabled("スイッチ連動で回転の開始/停止ができます");
-                }
-                else if (gType == "PhaseFlipFloor") {
-                    int floorNumber = p.colorType + 1;
-                    int phaseCount = (std::max)(1, p.maxCount);
-                    ImGui::DragInt("床番号", &floorNumber, 1, 1, phaseCount);
-                    p.colorType = (std::clamp)(floorNumber, 1, phaseCount) - 1;
-
-                    ImGui::DragInt("全体の床数", &p.maxCount, 1, 1, 16);
-                    if (p.colorType >= p.maxCount) p.colorType = p.maxCount - 1;
-
-                    ImGui::DragFloat(ICON_FA_CLOCK " 1フェーズの時間", &p.interval, 0.05f, 0.1f, 30.0f, "%.2f s");
-                    ImGui::Checkbox("正方向に回転", &p.startActive);
-                    ImGui::TextDisabled("床番号 1 -> 2 -> 3 ... の順に、当たり判定を残したまま180度回転します");
-                }
-                else if (gType == "FireCannon") {
-                    const char* aimModes[] = { "前方固定", "プレイヤーを狙う" };
-                    ImGui::Combo("発射方向", &p.actionMode, aimModes, IM_ARRAYSIZE(aimModes));
-                    ImGui::DragFloat(ICON_FA_FIRE " 火球速度", &p.speed, 0.5f, 1.0f, 120.0f);
-                    ImGui::DragFloat(ICON_FA_CLOCK " 発射間隔", &p.interval, 0.05f, 0.08f, 20.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_CIRCLE " 火球サイズ", &p.moveAmount, 0.01f, 0.1f, 5.0f);
-                    ImGui::DragFloat(ICON_FA_SEARCH " 索敵範囲", &p.detectionRange, 0.5f, 0.0f, 300.0f);
-                    ImGui::DragFloat(ICON_FA_SYNC_ALT " 旋回速度 (度/秒)", &p.moveSpeed, 1.0f, 1.0f, 720.0f);
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-                    ImGui::TextDisabled("前方固定はローカルZ+方向に火球を撃ちます");
-                }
-                else if (gType == "LaserEmitter") {
-                    ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.05f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount, 0.01f, 0.03f, 5.0f);
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-                    ImGui::TextDisabled("Target ID に終点ノードの My Event ID を入れると接続します");
-                }
-                else if (gType == "LaserNode") {
-                    ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f, 100.0f);
-                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.05f, 10.0f, "%.2f s");
-                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount, 0.01f, 0.03f, 5.0f);
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-                    ImGui::TextDisabled("Target ID に次の LaserNode の My Event ID を入れると、その間にレーザーが出ます");
-                }
-                else if (gType == "StageGate") {
-                    const char* gateModes[] = { "ステージセレクト用ノード", "シーン転移ゲート", "ステージ開始ゲート" };
-                    p.actionMode = (std::clamp)(p.actionMode, 0, 2);
-                    ImGui::Combo("ゲートモード", &p.actionMode, gateModes, IM_ARRAYSIZE(gateModes));
-                    ImGui::Checkbox("開始時に有効", &p.startActive);
-
-                    if (p.actionMode == 0) {
-                        int stageIndex = selectedObject->GetTargetID();
-                        if (ImGui::InputInt("ステージ番号 (Target ID)", &stageIndex)) {
-                            selectedObject->SetTargetID(stageIndex);
-                        }
-                        ImGui::TextDisabled("ステージセレクトで近づいて決定した時だけ使われます");
-                    }
-                    else if (p.actionMode == 1) {
-                        const char* sceneValues[] = { "TITLE", "TUTORIAL", "SELECT", "GAMEPLAY", "GAMECLEAR", "GAMEOVER", "SETTING", "PREVIEW" };
-                        const char* sceneLabels[] = { "タイトル", "チュートリアル", "ステージセレクト", "ゲーム本編", "ゲームクリア", "ゲームオーバー", "設定", "プレビュー" };
-                        int sceneIndex = 2;
-                        for (int i = 0; i < IM_ARRAYSIZE(sceneValues); ++i) {
-                            if (p.targetScene == sceneValues[i]) {
-                                sceneIndex = i;
-                                break;
-                            }
-                        }
-                        if (ImGui::Combo("転移先シーン", &sceneIndex, sceneLabels, IM_ARRAYSIZE(sceneLabels))) {
-                            p.targetScene = sceneValues[sceneIndex];
-                        }
-                        if (p.targetScene.empty()) {
-                            p.targetScene = "SELECT";
-                        }
-                        ImGui::TextDisabled("プレイヤーが触れると指定シーンへ遷移します");
-                    }
-                    else if (p.actionMode == 2) {
-                        int stageIndex = selectedObject->GetTargetID();
-                        if (ImGui::InputInt("開始ステージ番号 (Target ID)", &stageIndex)) {
-                            selectedObject->SetTargetID(stageIndex);
-                        }
-                        ImGui::TextDisabled("プレイヤーが触れると指定ステージをセットしてゲーム本編へ遷移します");
-                    }
-                }
-                else {
-                    ImGui::TextDisabled("(この種類には個別設定がありません)");
-                }
-                ImGui::Unindent();
-            }
-            else if (selectedObject->GetClassName() == "Item") {
-                if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-                auto& p = selectedObject->param_.value();
-
-                ImGui::Text(ICON_FA_HEART " アイテム設定:");
-                ImGui::Indent();
-
-                std::string itemType = selectedObject->GetItemType();
-                if (itemType == "Heal") {
-                    ImGui::DragFloat(ICON_FA_HEARTBEAT " 回復量", &p.healAmount, 0.1f, 0.0f, 999.0f);
-                    ImGui::TextDisabled("プレイヤーが触れるとHPを回復して消えます");
-                }
-                else {
-                    ImGui::TextDisabled("(この種類には個別設定がありません)");
-                }
-
-                ImGui::Unindent();
-            }
-        }
-
+        DrawGameplayDataSection(selectedObject);
         ImGui::EndDisabled();
         ImGui::Separator();
 

@@ -23,8 +23,10 @@ private:
 
     void StartCollapse();
     void QueueCollapse();
+    void ResetForRetry();
     void ChangeState(State state);
     void TriggerNextFloor();
+    bool ShouldReturnAfterCollapse() const;
     float GetShakeDuration() const;
     float GetFallDuration() const;
     float GetChainDelay() const;
@@ -36,6 +38,7 @@ private:
     float timer_ = 0.0f;
     float pendingTimer_ = 0.0f;
     float velocityY_ = 0.0f;
+    float returnTimer_ = 0.0f;
     bool initializedStart_ = false;
     bool triggeredNext_ = false;
 };

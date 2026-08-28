@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "055871f16d13fefffb1b2987b127271b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/result/clear/slime_letters/letter_g.dds",
+  "version": 1
+}

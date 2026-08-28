@@ -22,8 +22,16 @@ VSOutput main(VSInput input)
     proxyRadius *= max(billboardScale, 0.05f) * max(effectScale, 0.05f);
 
     float2 quad = input.pos.xy;
-    float drift = sin(time * max(waveSpeed, 0.05f) + quad.x * 1.7f + quad.y * 2.1f) * 0.045f;
-    float3 worldOffset = viewRight * (quad.x + drift) * proxyRadius + viewUp * quad.y * proxyRadius;
+    float speed = max(waveSpeed, 0.12f);
+    float objectPhase = dot(centerWorld.xz, float2(0.071f, 0.113f));
+    float motionPhase = time * (0.32f + speed * 0.70f) + objectPhase;
+
+    // Move the whole cloud mass slowly while keeping a smaller independent edge wobble.
+    float horizontalDrift = sin(motionPhase) * proxyRadius * 0.055f;
+    float verticalBob = sin(motionPhase * 0.73f + objectPhase * 0.61f) * proxyRadius * 0.018f;
+    float edgeWobble = sin(motionPhase * 1.35f + quad.x * 1.7f + quad.y * 2.1f) * 0.032f;
+    float3 worldOffset = viewRight * (quad.x + edgeWobble) * proxyRadius + viewUp * quad.y * proxyRadius;
+    worldOffset += viewRight * horizontalDrift + viewUp * verticalBob;
     float3 billboardWorldPos = centerWorld + worldOffset;
 
     float3 axisXNormal = axisX / axisXLength;

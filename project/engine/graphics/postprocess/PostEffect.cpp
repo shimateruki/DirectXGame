@@ -6,6 +6,7 @@
 #include "engine/graphics/core/ColorSpace.h"
 #include "LightManager.h"
 #include "RenderStats.h"
+#include "TextureManager.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -91,12 +92,27 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 }
 
 void PostEffect::Update(float deltaTime) {
+    LightManager::GetInstance()->UpdateEnvironmentProfile(deltaTime);
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
     paramsData_->linearWorkflowEnabled =
         ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
 }
 
+bool PostEffect::SetLUTTexturePath(const std::string& path) {
+    if (path.empty()) {
+        return false;
+    }
+    const uint32_t handle = TextureManager::GetInstance()->Load(
+        path,
+        TextureManager::TextureColorSpace::SRGB);
+    if (handle == 0) {
+        return false;
+    }
+    lutSrvHandle_ = handle;
+    lutTexturePath_ = path;
+    return true;
+}
 void PostEffect::ResetToNeutral() {
     if (!paramsData_) {
         return;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5176e042b1b45026a367c0d18a9dd7d4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_giant_gate/star_garden_giant_gate.obj",
+  "version": 1
+}

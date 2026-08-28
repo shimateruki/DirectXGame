@@ -7,7 +7,6 @@
 #include "EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshEffectManager.h"
-#include "Player.h"
 #include <algorithm>
 #include <cmath>
 
@@ -19,23 +18,7 @@ constexpr float kMoveSpeedScale = 1.12f;
 constexpr float kWildStrikeInterval = 0.13f;
 constexpr float kWildStrikeStartDistance = 2.8f;
 constexpr float kWildStrikeSpacing = 2.7f;
-constexpr float kCarriedShockCooldown = 1.65f;
-constexpr float kCarriedDischargeCooldown = 1.35f;
-constexpr float kCarriedDischargeChargeDuration = 0.48f;
-constexpr float kCarriedDischargeRadius = 4.6f;
-constexpr float kCarriedDischargeDamage = 1.0f;
-constexpr float kCarriedDischargeEffectInterval = 0.060f;
-constexpr float kCarriedChargeDuration = 0.50f;
-constexpr float kCarriedStrikeInterval = 0.115f;
-constexpr float kCarriedStrikeStartDistance = 2.8f;
-constexpr float kCarriedStrikeSpacing = 2.2f;
-constexpr float kCarriedStrikeRadius = 1.18f;
-constexpr float kCarriedStrikeHeight = 9.5f;
-constexpr float kCarriedStrikeDamage = 1.0f;
-constexpr float kCarriedEvadeCooldown = 0.72f;
-constexpr float kCarriedEvadeDistance = 8.2f;
-constexpr float kCarriedEvadeInvincibleDuration = 0.18f;
-constexpr float kCarriedEvadeMinimumDistance = 1.15f;
+constexpr float kLightningStrikeHeight = 9.5f;
 constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.25f;
@@ -45,19 +28,12 @@ constexpr const char* kDischargePreset = "thunder_slime_discharge";
 constexpr const char* kIdleSparkPreset = "thunder_slime_idle_spark";
 constexpr const char* kRadialChargePreset = "thunder_slime_radial_charge";
 constexpr const char* kLineChargePreset = "thunder_slime_charge";
-constexpr const char* kCarriedStrikeParticlePreset = "player_thunder_strike_impact";
+constexpr const char* kLightningStrikeParticlePreset = "player_thunder_strike_impact";
 constexpr const char* kConstantAuraEffectPath = "Resources/json/effect/effect_thunder_slime_constant_aura.json";
-constexpr const char* kCarriedWarningEffectPath = "Resources/json/effect/effect_player_thunder_warning.json";
-constexpr const char* kCarriedBoltEffectPath = "Resources/json/effect/effect_player_thunder_bolt.json";
-constexpr const char* kCarriedCoreEffectPath = "Resources/json/effect/effect_player_thunder_core.json";
-constexpr const char* kCarriedImpactEffectPath = "Resources/json/effect/effect_player_thunder_impact_ring.json";
-constexpr const char* kCarriedEvadeTrailEffectPath = "Resources/json/effect/effect_player_thunder_evade_trail.json";
-constexpr const char* kCarriedEvadeBurstEffectPath = "Resources/json/effect/effect_player_thunder_evade_burst.json";
-constexpr const char* kCarriedEvadeParticlePreset = "player_thunder_evade_sparks";
-constexpr const char* kCarriedDischargeChargePreset = "player_thunder_discharge_charge";
-constexpr const char* kCarriedDischargeBurstPreset = "player_thunder_discharge_burst";
-constexpr const char* kCarriedDischargeChargeEffectPath = "Resources/json/effect/effect_player_thunder_discharge_charge.json";
-constexpr const char* kCarriedDischargeBurstEffectPath = "Resources/json/effect/effect_player_thunder_discharge_burst.json";
+constexpr const char* kLightningWarningEffectPath = "Resources/json/effect/effect_player_thunder_warning.json";
+constexpr const char* kLightningBoltEffectPath = "Resources/json/effect/effect_player_thunder_bolt.json";
+constexpr const char* kLightningCoreEffectPath = "Resources/json/effect/effect_player_thunder_core.json";
+constexpr const char* kLightningImpactEffectPath = "Resources/json/effect/effect_player_thunder_impact_ring.json";
 constexpr const char* kChargeGroundEffectPath = "Resources/json/effect/effect_thunder_charge_ground.json";
 constexpr const char* kScorchMarkEffectPath = "Resources/json/effect/effect_thunder_scorch_mark.json";
 constexpr float kIdleSparkInterval = 0.095f;
@@ -281,7 +257,7 @@ void EnemyThunderSlime::StartWildLightning(const Vector3& direction) {
         if (meshEffects) {
             Vector3 warningPosition = wildStrikePositions_[index];
             warningPosition.y += 0.045f;
-            meshEffects->SpawnEffectAt(kCarriedWarningEffectPath, warningPosition, { 0.0f, 0.0f, 0.0f });
+            meshEffects->SpawnEffectAt(kLightningWarningEffectPath, warningPosition, { 0.0f, 0.0f, 0.0f });
         }
     }
 
@@ -378,7 +354,7 @@ void EnemyThunderSlime::DispatchWildLightningDamage(const Vector3& groundPositio
     };
     const float verticalDistance = targetPosition.y - groundPosition.y;
     if (Math::Length(horizontal) > attack.radius ||
-        verticalDistance < -0.65f || verticalDistance > kCarriedStrikeHeight) {
+        verticalDistance < -0.65f || verticalDistance > kLightningStrikeHeight) {
         return;
     }
 
@@ -456,367 +432,10 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     chargeParticleTimer_ = 0.0f;
     shockSquashTimer_ = 0.0f;
     ResetWildLightning();
-    ResetCarriedLightning();
-    ResetCarriedDischarge();
-    carriedShockCooldown_ = 0.0f;
-    carriedDischargeCooldown_ = 0.0f;
-    carriedEvadeCooldown_ = 0.0f;
     HideAttackTelegraph();
     SetScale(baseScale_);
     SyncThrownCollisionRadius();
     BaseEnemy::BeginThrown(initialVelocity);
-}
-
-// 持ち運び中に蓄電し、プレイヤー前方へ連続落雷を発生させる能力
-void EnemyThunderSlime::ExecuteAbility(Player* player) {
-    if (!player || !isCarried_ || carriedShockCooldown_ > 0.0f ||
-        carriedLightningState_ != CarriedLightningState::Idle ||
-        carriedDischargeState_ != CarriedDischargeState::Idle) {
-        return;
-    }
-
-    PrepareCarriedLightning(player);
-    carriedShockCooldown_ = kCarriedShockCooldown;
-}
-
-void EnemyThunderSlime::ExecuteDischargeAbility(Player* player) {
-    if (!player || !isCarried_ || carriedDischargeCooldown_ > 0.0f ||
-        carriedDischargeState_ != CarriedDischargeState::Idle ||
-        carriedLightningState_ != CarriedLightningState::Idle) {
-        return;
-    }
-
-    carriedDischargeState_ = CarriedDischargeState::Charging;
-    carriedDischargeTimer_ = kCarriedDischargeChargeDuration;
-    carriedDischargeEffectTimer_ = 0.0f;
-    carriedDischargeCooldown_ = kCarriedDischargeCooldown;
-
-    const Vector3 groundPosition = FindStrikeGround(
-        player->GetWorldPosition(), player, player->GetWorldPosition().y);
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        Vector3 effectPosition = groundPosition;
-        effectPosition.y += 0.04f;
-        meshEffects->SpawnEffectAt(
-            kCarriedDischargeChargeEffectPath,
-            effectPosition,
-            { 0.0f, 0.0f, 0.0f },
-            { 1.0f, 1.0f, 1.0f });
-    }
-    EmitThunderPreset(kCarriedDischargeChargePreset, player->GetWorldPosition() + Vector3{ 0.0f, 0.85f, 0.0f });
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, player->GetForwardDirection());
-    player->TriggerSlimeImpulse({ 2.65f, 1.08f, 2.65f }, 0.20f);
-}
-
-// 右クリックで入力方向へ雷化し、壁と崖を避けながら瞬間的に回避します。
-void EnemyThunderSlime::ExecuteEvadeAbility(Player* player) {
-    if (!player || !isCarried_ || carriedEvadeCooldown_ > 0.0f) {
-        return;
-    }
-
-    Vector3 start{};
-    Vector3 destination{};
-    Vector3 direction{};
-    if (!ResolveCarriedEvadeDestination(player, start, destination, direction)) {
-        return;
-    }
-
-    SpawnCarriedEvadeEffects(start, destination, direction);
-    player->SetTranslate(destination);
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
-    player->SetMoveYaw(std::atan2(direction.x, direction.z));
-    player->StartEvasionInvincibility(kCarriedEvadeInvincibleDuration);
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction);
-    player->TriggerSlimeImpulse({ 1.30f, 2.75f, 1.30f }, 0.16f);
-    player->UpdateLocalMatrix();
-    player->UpdateWorldMatrix();
-    carriedEvadeCooldown_ = kCarriedEvadeCooldown;
-}
-
-void EnemyThunderSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
-    if (!isCarried_ || !player) {
-        ResetCarriedLightning();
-        ResetCarriedDischarge();
-        return;
-    }
-
-    carriedShockCooldown_ = (std::max)(0.0f, carriedShockCooldown_ - deltaTime);
-    carriedDischargeCooldown_ = (std::max)(0.0f, carriedDischargeCooldown_ - deltaTime);
-    carriedEvadeCooldown_ = (std::max)(0.0f, carriedEvadeCooldown_ - deltaTime);
-    UpdateCarriedLightning(player, deltaTime);
-    UpdateCarriedDischarge(player, deltaTime);
-
-    const float charge = 1.0f - (std::clamp)(carriedShockCooldown_ / kCarriedShockCooldown, 0.0f, 1.0f);
-    const float flicker = std::sin(idleTimer_ * 36.0f) * 0.07f;
-    SetColor({ 1.0f, (std::clamp)(0.94f + flicker, 0.0f, 1.0f), 0.72f + charge * 0.14f, 1.0f });
-}
-
-void EnemyThunderSlime::UpdateCarriedDischarge(Player* player, float deltaTime) {
-    if (!player || carriedDischargeState_ != CarriedDischargeState::Charging) {
-        return;
-    }
-
-    carriedDischargeTimer_ = (std::max)(0.0f, carriedDischargeTimer_ - deltaTime);
-    carriedDischargeEffectTimer_ -= deltaTime;
-    const float progress = 1.0f - std::clamp(
-        carriedDischargeTimer_ / kCarriedDischargeChargeDuration,
-        0.0f,
-        1.0f);
-
-    if (carriedDischargeEffectTimer_ <= 0.0f) {
-        Vector3 effectPosition = player->GetWorldPosition();
-        effectPosition.y += 0.72f + progress * 0.28f;
-        EmitThunderPreset(kCarriedDischargeChargePreset, effectPosition);
-        carriedDischargeEffectTimer_ = kCarriedDischargeEffectInterval - progress * 0.022f;
-    }
-
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, player->GetForwardDirection());
-    if (carriedDischargeTimer_ <= 0.0f) {
-        ReleaseCarriedDischarge(player);
-    }
-}
-
-void EnemyThunderSlime::ReleaseCarriedDischarge(Player* player) {
-    if (!player) {
-        ResetCarriedDischarge();
-        return;
-    }
-
-    Vector3 center = FindStrikeGround(
-        player->GetWorldPosition(), player, player->GetWorldPosition().y);
-    Vector3 effectPosition = center;
-    effectPosition.y += 0.06f;
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(
-            kCarriedDischargeBurstEffectPath,
-            effectPosition,
-            { 0.0f, 0.0f, 0.0f },
-            { 1.0f, 1.0f, 1.0f });
-        meshEffects->SpawnEffectAt(
-            kCarriedImpactEffectPath,
-            effectPosition + Vector3{ 0.0f, 0.025f, 0.0f },
-            { 0.0f, idleTimer_ * 0.75f, 0.0f },
-            { 2.25f, 1.0f, 2.25f });
-    }
-    EmitThunderPreset(kCarriedDischargeBurstPreset, center + Vector3{ 0.0f, 0.28f, 0.0f });
-    EmitThunderPreset(kDischargePreset, center + Vector3{ 0.0f, 0.52f, 0.0f });
-
-    PhysicsQueryFilter filter;
-    filter.mask = kEnemy;
-    filter.ignoredObject = player;
-    std::unordered_set<Object3d*> damagedTargets;
-    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
-        center + Vector3{ 0.0f, 0.75f, 0.0f },
-        kCarriedDischargeRadius,
-        filter)) {
-        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
-        if (!damageTarget || !damagedTargets.insert(damageTarget).second) {
-            continue;
-        }
-
-        Vector3 knockbackDirection = NormalizePlanar(damageTarget->GetWorldPosition() - center);
-        DamageEvent damageEvent;
-        damageEvent.target = damageTarget;
-        damageEvent.attacker = player;
-        damageEvent.damageAmount = kCarriedDischargeDamage;
-        damageEvent.damageType = DamageType::Electric;
-        damageEvent.knockbackVelocity = {
-            knockbackDirection.x * 10.5f,
-            8.0f,
-            knockbackDirection.z * 10.5f,
-        };
-        EventManager::GetInstance()->Dispatch(damageEvent);
-    }
-
-    player->TriggerSlimeImpulse({ 3.15f, 0.72f, 3.15f }, 0.22f);
-    ResetCarriedDischarge();
-}
-
-void EnemyThunderSlime::ResetCarriedDischarge() {
-    carriedDischargeState_ = CarriedDischargeState::Idle;
-    carriedDischargeTimer_ = 0.0f;
-    carriedDischargeEffectTimer_ = 0.0f;
-}
-
-bool EnemyThunderSlime::ResolveCarriedEvadeDestination(
-    Player* player,
-    Vector3& start,
-    Vector3& destination,
-    Vector3& direction) const {
-    start = player->GetWorldPosition();
-
-    Vector3 movement = player->GetVelocity();
-    movement.y = 0.0f;
-    const float movementLength = Math::Length(movement);
-    direction = movementLength > 1.25f
-        ? movement / movementLength
-        : NormalizePlanar(player->GetForwardDirection());
-
-    PhysicsQueryFilter solidFilter;
-    solidFilter.mask = kAllSolid;
-    solidFilter.ignoredObject = player;
-
-    CollisionManager* collisions = CollisionManager::GetInstance();
-    float travelDistance = kCarriedEvadeDistance;
-    const RaycastHit lowerHit = collisions->SphereCast(
-        start + Vector3{ 0.0f, 0.78f, 0.0f }, 0.50f,
-        direction, kCarriedEvadeDistance, solidFilter);
-    const RaycastHit upperHit = collisions->SphereCast(
-        start + Vector3{ 0.0f, 1.48f, 0.0f }, 0.46f,
-        direction, kCarriedEvadeDistance, solidFilter);
-    if (lowerHit.isHit) {
-        travelDistance = (std::min)(travelDistance, lowerHit.distance - 0.34f);
-    }
-    if (upperHit.isHit) {
-        travelDistance = (std::min)(travelDistance, upperHit.distance - 0.34f);
-    }
-    travelDistance = (std::max)(0.0f, travelDistance);
-    if (travelDistance < kCarriedEvadeMinimumDistance) {
-        return false;
-    }
-
-    PhysicsQueryFilter groundFilter;
-    groundFilter.mask = kAllGround;
-    groundFilter.ignoredObject = player;
-    const RaycastHit startGround = collisions->Raycast(
-        start + Vector3{ 0.0f, 1.35f, 0.0f },
-        { 0.0f, -1.0f, 0.0f },
-        2.35f,
-        groundFilter);
-    const bool followsGround =
-        startGround.isHit &&
-        startGround.normal.y >= 0.55f &&
-        std::abs(player->GetVelocity().y) <= 4.0f;
-
-    if (!followsGround) {
-        destination = start + direction * travelDistance;
-        return true;
-    }
-
-    // 崖際では距離を少しずつ戻し、安全に接地できる最後の地点を選びます。
-    for (float distance = travelDistance;
-        distance >= kCarriedEvadeMinimumDistance;
-        distance -= 0.45f) {
-        const Vector3 candidate = start + direction * distance;
-        const RaycastHit groundHit = collisions->Raycast(
-            candidate + Vector3{ 0.0f, 3.2f, 0.0f },
-            { 0.0f, -1.0f, 0.0f },
-            6.2f,
-            groundFilter);
-        if (!groundHit.isHit || groundHit.normal.y < 0.55f) {
-            continue;
-        }
-
-        destination = groundHit.hitPoint;
-        return true;
-    }
-
-    return false;
-}
-
-void EnemyThunderSlime::SpawnCarriedEvadeEffects(
-    const Vector3& start,
-    const Vector3& destination,
-    const Vector3& direction) {
-    const Vector3 offset = destination - start;
-    const float distance = (std::max)(Math::Length(Vector3{ offset.x, 0.0f, offset.z }), 0.001f);
-    const float yaw = std::atan2(direction.x, direction.z);
-    Vector3 center = (start + destination) * 0.5f;
-    center.y += 0.10f;
-    const Vector3 side = { direction.z, 0.0f, -direction.x };
-
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(
-            kCarriedEvadeTrailEffectPath,
-            center,
-            { 0.0f, yaw, 0.0f },
-            { 1.0f, 1.0f, distance });
-        meshEffects->SpawnEffectAt(
-            kCarriedEvadeTrailEffectPath,
-            center + side * 0.24f + Vector3{ 0.0f, 0.035f, 0.0f },
-            { 0.0f, yaw, 0.0f },
-            { 0.58f, 1.0f, distance * 0.96f });
-
-        Vector3 startBurst = start;
-        Vector3 endBurst = destination;
-        startBurst.y += 0.07f;
-        endBurst.y += 0.07f;
-        meshEffects->SpawnEffectAt(kCarriedEvadeBurstEffectPath, startBurst, { 0.0f, yaw, 0.0f }, { 0.92f, 1.0f, 0.92f });
-        meshEffects->SpawnEffectAt(kCarriedEvadeBurstEffectPath, endBurst, { 0.0f, yaw, 0.0f }, { 1.18f, 1.0f, 1.18f });
-    }
-
-    for (int index = 0; index <= 4; ++index) {
-        const float t = static_cast<float>(index) / 4.0f;
-        Vector3 particlePosition = start + offset * t;
-        particlePosition.y += 0.28f + std::sin(t * 3.14159265f) * 0.24f;
-        EmitThunderPreset(kCarriedEvadeParticlePreset, particlePosition);
-    }
-    EmitThunderPreset(kDischargePreset, start + Vector3{ 0.0f, 0.32f, 0.0f });
-    EmitThunderPreset(kDischargePreset, destination + Vector3{ 0.0f, 0.32f, 0.0f });
-}
-
-void EnemyThunderSlime::PrepareCarriedLightning(Player* player) {
-    carriedLightningDirection_ = NormalizePlanar(player->GetForwardDirection());
-    carriedLightningHitTargets_.clear();
-    carriedStrikeIndex_ = 0;
-    carriedLightningTimer_ = kCarriedChargeDuration;
-    carriedEffectTimer_ = 0.0f;
-    carriedLightningState_ = CarriedLightningState::Charging;
-
-    const Vector3 playerPosition = player->GetWorldPosition();
-    MeshEffectManager* meshEffects = MeshEffectManager::GetInstance();
-    for (std::size_t index = 0; index < carriedStrikePositions_.size(); ++index) {
-        const float distance = kCarriedStrikeStartDistance + kCarriedStrikeSpacing * static_cast<float>(index);
-        const Vector3 samplePosition = playerPosition + carriedLightningDirection_ * distance;
-        carriedStrikePositions_[index] = FindStrikeGround(samplePosition, player, playerPosition.y);
-        if (meshEffects) {
-            Vector3 warningPosition = carriedStrikePositions_[index];
-            warningPosition.y += 0.045f;
-            meshEffects->SpawnEffectAt(kCarriedWarningEffectPath, warningPosition, { 0.0f, 0.0f, 0.0f });
-        }
-    }
-
-    const Vector3 chargeGround = FindStrikeGround(playerPosition, player, playerPosition.y);
-    SpawnChargeGroundEffect(chargeGround, 1.0f);
-    EmitThunderPreset(kIdleSparkPreset, playerPosition + Vector3{ 0.0f, 1.0f, 0.0f });
-    player->TriggerSlimeImpulse({ 2.45f, 1.25f, 2.45f }, 0.24f);
-}
-
-void EnemyThunderSlime::UpdateCarriedLightning(Player* player, float deltaTime) {
-    if (carriedLightningState_ == CarriedLightningState::Idle) {
-        return;
-    }
-
-    carriedLightningTimer_ -= deltaTime;
-    carriedEffectTimer_ -= deltaTime;
-
-    if (carriedLightningState_ == CarriedLightningState::Charging) {
-        if (carriedEffectTimer_ <= 0.0f) {
-            Vector3 chargePosition = player->GetWorldPosition();
-            chargePosition.y += 0.95f;
-            EmitThunderPreset(kLineChargePreset, chargePosition);
-            carriedEffectTimer_ = 0.055f;
-        }
-        if (carriedLightningTimer_ <= 0.0f) {
-            carriedLightningState_ = CarriedLightningState::Striking;
-            carriedLightningTimer_ = 0.0f;
-            player->TriggerSlimeImpulse({ 1.55f, 2.90f, 1.55f }, 0.18f);
-        }
-        return;
-    }
-
-    while (carriedLightningTimer_ <= 0.0f &&
-        carriedStrikeIndex_ < static_cast<int>(carriedStrikePositions_.size())) {
-        SpawnCarriedLightningStrike(carriedStrikePositions_[carriedStrikeIndex_], player);
-        ++carriedStrikeIndex_;
-        carriedLightningTimer_ += kCarriedStrikeInterval;
-    }
-
-    if (carriedStrikeIndex_ >= static_cast<int>(carriedStrikePositions_.size())) {
-        carriedLightningState_ = CarriedLightningState::Idle;
-        carriedLightningTimer_ = 0.0f;
-        carriedEffectTimer_ = 0.0f;
-        carriedLightningHitTargets_.clear();
-    }
 }
 
 Vector3 EnemyThunderSlime::FindStrikeGround(
@@ -840,41 +459,36 @@ Vector3 EnemyThunderSlime::FindStrikeGround(
     return fallback;
 }
 
-void EnemyThunderSlime::SpawnCarriedLightningStrike(const Vector3& groundPosition, Player* player) {
-    SpawnLightningStrikeVisual(groundPosition, carriedLightningDirection_);
-    DispatchCarriedLightningDamage(groundPosition, player);
-}
-
 void EnemyThunderSlime::SpawnLightningStrikeVisual(const Vector3& groundPosition, const Vector3& direction) {
     Vector3 strikeCenter = groundPosition;
-    strikeCenter.y += kCarriedStrikeHeight * 0.5f;
+    strikeCenter.y += kLightningStrikeHeight * 0.5f;
     const float strikeYaw = std::atan2(direction.x, direction.z);
 
     if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(kCarriedBoltEffectPath, strikeCenter, { kHalfPi, strikeYaw, 0.0f });
+        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, { kHalfPi, strikeYaw, 0.0f });
         meshEffects->SpawnEffectAt(
-            kCarriedBoltEffectPath,
+            kLightningBoltEffectPath,
             strikeCenter,
             { kHalfPi, strikeYaw + kHalfPi, 0.0f },
             { 0.82f, 1.0f, 0.94f });
         const Vector3 branchSide = { direction.z, 0.0f, -direction.x };
         meshEffects->SpawnEffectAt(
-            kCarriedBoltEffectPath,
+            kLightningBoltEffectPath,
             strikeCenter + branchSide * 0.34f + direction * 0.18f,
             { kHalfPi, strikeYaw + 0.31f, 0.0f },
             { 0.46f, 1.0f, 0.76f });
         meshEffects->SpawnEffectAt(
-            kCarriedBoltEffectPath,
+            kLightningBoltEffectPath,
             strikeCenter - branchSide * 0.30f - direction * 0.14f,
             { kHalfPi, strikeYaw - 0.27f, 0.0f },
             { 0.38f, 1.0f, 0.68f });
-        meshEffects->SpawnEffectAt(kCarriedCoreEffectPath, strikeCenter, { 0.0f, 0.0f, 0.0f });
+        meshEffects->SpawnEffectAt(kLightningCoreEffectPath, strikeCenter, { 0.0f, 0.0f, 0.0f });
 
         Vector3 impactPosition = groundPosition;
         impactPosition.y += 0.055f;
-        meshEffects->SpawnEffectAt(kCarriedImpactEffectPath, impactPosition, { 0.0f, 0.0f, 0.0f });
+        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition, { 0.0f, 0.0f, 0.0f });
         meshEffects->SpawnEffectAt(
-            kCarriedImpactEffectPath,
+            kLightningImpactEffectPath,
             impactPosition + Vector3{ 0.0f, 0.025f, 0.0f },
             { 0.0f, strikeYaw + 0.35f, 0.0f },
             { 1.32f, 1.0f, 1.32f });
@@ -886,8 +500,8 @@ void EnemyThunderSlime::SpawnLightningStrikeVisual(const Vector3& groundPosition
 
     Vector3 particlePosition = groundPosition;
     particlePosition.y += 0.22f;
-    EmitThunderPreset(kCarriedStrikeParticlePreset, particlePosition);
-    EmitThunderPreset(kCarriedStrikeParticlePreset, particlePosition + Vector3{ 0.22f, 0.08f, -0.18f });
+    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition);
+    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition + Vector3{ 0.22f, 0.08f, -0.18f });
     EmitThunderPreset(kDischargePreset, particlePosition);
 }
 
@@ -901,44 +515,6 @@ void EnemyThunderSlime::SpawnChargeGroundEffect(const Vector3& groundPosition, f
             { 0.0f, idleTimer_ * 0.8f, 0.0f },
             { scale, 1.0f, scale });
     }
-}
-
-void EnemyThunderSlime::DispatchCarriedLightningDamage(const Vector3& groundPosition, Player* player) {
-    PhysicsQueryFilter filter;
-    filter.mask = kEnemy;
-    filter.ignoredObject = player;
-
-    const Vector3 capsuleBottom = groundPosition + Vector3{ 0.0f, 0.18f, 0.0f };
-    const Vector3 capsuleTop = groundPosition + Vector3{ 0.0f, kCarriedStrikeHeight, 0.0f };
-    const auto hits = CollisionManager::GetInstance()->OverlapCapsule(
-        capsuleBottom, capsuleTop, kCarriedStrikeRadius, filter);
-
-    for (const PhysicsOverlapHit& hit : hits) {
-        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
-        if (!damageTarget || !carriedLightningHitTargets_.insert(damageTarget).second) {
-            continue;
-        }
-
-        DamageEvent damageEvent;
-        damageEvent.target = damageTarget;
-        damageEvent.attacker = player;
-        damageEvent.damageAmount = kCarriedStrikeDamage;
-        damageEvent.damageType = DamageType::Electric;
-        damageEvent.knockbackVelocity = {
-            carriedLightningDirection_.x * 6.5f,
-            7.0f,
-            carriedLightningDirection_.z * 6.5f,
-        };
-        EventManager::GetInstance()->Dispatch(damageEvent);
-    }
-}
-
-void EnemyThunderSlime::ResetCarriedLightning() {
-    carriedLightningState_ = CarriedLightningState::Idle;
-    carriedLightningTimer_ = 0.0f;
-    carriedEffectTimer_ = 0.0f;
-    carriedStrikeIndex_ = 0;
-    carriedLightningHitTargets_.clear();
 }
 
 // 放電攻撃と火花演出

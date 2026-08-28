@@ -12,18 +12,9 @@ public:
     void Update(float deltaTime) override;
     bool HasOwnedSpecialMaterialVisuals() const override;
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
-    void SetCarried(bool isCarried) override;
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
 
-    // E: 周囲へ上昇気流を起こし、プレイヤーと敵を浮かせます。
-    void ExecuteAbility(class Player* player) override;
-    // 左クリック: 前方へ持続する風ブレスを放ちます。
-    void ExecutePrimaryAbility(class Player* player);
-    // 右クリック: 壁を貫通しない短距離の風ダッシュです。
-    void ExecuteDashAbility(class Player* player);
-    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
-    void ReleaseCarriedAbilityVisuals();
 
     void SetDebugPreviewAttackId(const std::string& attackId);
     const char* GetDebugAttackPhaseName() const;
@@ -59,10 +50,6 @@ private:
     void HideHeldWindOrbs();
     Vector3 ComputeHeldWindOrbPosition(int orbIndex) const;
     void DispatchEnemyBreathPush(const Vector3& direction, float distance);
-    void DispatchCarriedBreathPush(class Player* player, const Vector3& direction);
-    void DispatchUpdraftPush(class Player* player, const Vector3& center);
-    bool ResolveDashDestination(class Player* player, Vector3& start, Vector3& destination, Vector3& direction) const;
-    void SpawnDashEffects(const Vector3& start, const Vector3& destination, const Vector3& direction);
     void UpdateFacing(const Vector3& direction);
     void ApplySlimeAnimation(float deltaTime);
 
@@ -84,12 +71,6 @@ private:
     float ambientParticleTimer_ = 0.0f;
     float breathParticleTimer_ = 0.0f;
     float breathPushTimer_ = 0.0f;
-    float carriedBreathTimer_ = 0.0f;
-    float carriedBreathParticleTimer_ = 0.0f;
-    float carriedBreathPushTimer_ = 0.0f;
-    float carriedUpdraftCooldown_ = 0.0f;
-    float carriedDashCooldown_ = 0.0f;
-    float carriedAuraTimer_ = 0.0f;
     float lockedTargetDistance_ = 0.0f;
     float volleyGroundY_ = 0.0f;
     float volleyHoverY_ = 0.0f;

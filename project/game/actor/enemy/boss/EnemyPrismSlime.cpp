@@ -15,6 +15,7 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "SlimeBounceAnimator.h"
+#include "VFXSequencer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -71,6 +72,16 @@ constexpr float kSummonInterval = 0.17f;
 constexpr float kSummonPortalFadeDuration = 0.34f;
 constexpr int kSummonPortalCount = 3;
 constexpr int kMaxSummonWaves = 2;
+constexpr int kEncounterControlledActionMode = 1;
+constexpr float kDefaultEncounterAppearanceDuration = 1.08f;
+constexpr float kEncounterAppearanceRise = 1.85f;
+constexpr const char* kEncounterAppearanceSequence = "prism_midboss_appear_cue";
+constexpr float kRepositionMinimumDistance = 4.5f;
+constexpr float kRepositionMaximumDistance = 8.0f;
+constexpr float kRepositionMoveSpeed = 5.8f;
+constexpr float kRepositionJumpSpeed = 6.2f;
+constexpr float kRepositionArenaHalfExtentX = 21.0f;
+constexpr float kRepositionArenaHalfExtentZ = 18.0f;
 
 float NextSummonRandom01(std::uint32_t& state) {
     state ^= state << 13;
@@ -183,6 +194,11 @@ void EnemyPrismSlime::Initialize(Object3dCommon* common, const std::string& mode
 }
 
 void EnemyPrismSlime::Update(float deltaTime) {
+    if (UpdateEncounterState(deltaTime)) {
+        UpdateFaceParts(deltaTime);
+        return;
+    }
+
     if (UpdateInactiveState(deltaTime)) {
         UpdateFaceParts(deltaTime);
         return;
@@ -267,6 +283,26 @@ std::unique_ptr<Object3d> EnemyPrismSlime::Clone() const {
     return clone;
 }
 
+void EnemyPrismSlime::OnSwitchEvent(bool active) {
+    if (!IsEncounterControlled()) {
+        BaseEnemy::OnSwitchEvent(active);
+        return;
+    }
+
+    encounterRequestedActive_ = active;
+    if (!encounterInitializedForPlay_) {
+        InitializeEncounterState();
+    }
+
+    if (active) {
+        if (encounterState_ == EncounterState::Dormant) {
+            BeginEncounterAppearance();
+        }
+    } else if (encounterState_ != EncounterState::Dormant) {
+        ApplyDormantEncounterState();
+    }
+}
+
 void EnemyPrismSlime::SetDebugPreviewAttackId(const std::string& attackId) {
     debugPreviewAttackId_ = attackId;
     attackState_ = AttackState::Idle;
@@ -275,6 +311,9 @@ void EnemyPrismSlime::SetDebugPreviewAttackId(const std::string& attackId) {
     attackTimer_ = 0.0f;
     actionTimer_ = 0.0f;
     actionIndex_ = 0;
+    repositionTimer_ = 0.0f;
+    repositionDuration_ = 0.0f;
+    repositionJumpPending_ = false;
     ClearPrismAttackVisuals();
     HideAttackTelegraph();
 }
@@ -285,6 +324,9 @@ const char* EnemyPrismSlime::GetDebugAttackPhaseName() const {
     }
     if (attackState_ == AttackState::Recovery) {
         return "プリズム・反発／回復";
+    }
+    if (attackState_ == AttackState::Reposition) {
+        return "プリズム・跳躍移動";
     }
 
     switch (currentAttack_) {
@@ -310,6 +352,238 @@ void EnemyPrismSlime::ApplyManagedScale(const Vector3& scale) {
     hasBaseScale_ = true;
     SetScale(scale);
     SyncCollisionRadius();
+}
+
+bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
+    if (!IsEncounterControlled()) {
+        encounterState_ = EncounterState::Normal;
+        encounterInitializedForPlay_ = false;
+        return false;
+    }
+
+    SceneManager* sceneManager = SceneManager::GetInstance();
+    const bool isPlaying = sceneManager && sceneManager->IsPlaying();
+    if (!isPlaying) {
+        ResetEncounterStateForEditor();
+        return true;
+    }
+
+    if (!encounterInitializedForPlay_) {
+        InitializeEncounterState();
+    }
+
+    if (encounterState_ == EncounterState::Dormant) {
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        ClearPrismAttackVisuals();
+        HideAttackTelegraph();
+        return true;
+    }
+
+    if (encounterState_ != EncounterState::Appearing) {
+        return false;
+    }
+
+    encounterTimer_ += (std::max)(0.0f, deltaTime);
+    idleTimer_ += (std::max)(0.0f, deltaTime);
+    const float duration = GetEncounterAppearanceDuration();
+    const float progress = std::clamp(encounterTimer_ / duration, 0.0f, 1.0f);
+    const float eased = SmoothStep01(progress);
+    const float settlePulse = std::sin(progress * kPi) * 0.13f;
+
+    SetIsVisible(true);
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetMaterialType(4);
+    SetTranslate({
+        encounterBasePosition_.x,
+        encounterBasePosition_.y + (1.0f - eased) * kEncounterAppearanceRise,
+        encounterBasePosition_.z,
+    });
+    const float scaleRate = 0.28f + eased * 0.72f + settlePulse;
+    SetScale({
+        encounterBaseScale_.x * scaleRate,
+        encounterBaseScale_.y * (0.18f + eased * 0.82f + settlePulse * 0.72f),
+        encounterBaseScale_.z * scaleRate,
+    });
+    SetColor({
+        encounterBaseColor_.x,
+        encounterBaseColor_.y,
+        encounterBaseColor_.z,
+        (std::max)(0.015f, eased),
+    });
+    SetEmissive(1.35f + (1.0f - std::abs(progress * 2.0f - 1.0f)) * 2.7f);
+    SyncCollisionRadius();
+
+    if (progress >= 1.0f) {
+        FinishEncounterAppearance();
+    }
+    return true;
+}
+
+void EnemyPrismSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform) {
+    if (encounterAuthoredStateCaptured_ && !refreshVisualTransform) {
+        return;
+    }
+
+    encounterBasePosition_ = GetTransform()->translate;
+    encounterBaseScale_ = GetScale();
+    encounterBaseColor_ = GetColor();
+    encounterBaseEmissive_ = GetEmissive();
+    encounterMaterialType_ = GetMaterialType();
+
+    const uint32_t collisionAttribute = GetCollisionAttribute();
+    const uint32_t collisionMask = GetCollisionMask();
+    if (collisionAttribute != 0 || !encounterAuthoredStateCaptured_) {
+        encounterCollisionAttribute_ = collisionAttribute;
+    }
+    if (collisionMask != 0 || !encounterAuthoredStateCaptured_) {
+        encounterCollisionMask_ = collisionMask;
+    }
+
+    baseScale_ = encounterBaseScale_;
+    hasBaseScale_ = true;
+    encounterAuthoredStateCaptured_ = true;
+}
+
+void EnemyPrismSlime::InitializeEncounterState() {
+    encounterInitializedForPlay_ = true;
+    CaptureEncounterAuthoredState();
+
+    const bool startActive = param_.has_value() && param_->startActive;
+    if (startActive || encounterRequestedActive_) {
+        BeginEncounterAppearance();
+    } else {
+        ApplyDormantEncounterState();
+    }
+}
+
+void EnemyPrismSlime::ResetEncounterStateForEditor() {
+    if (encounterInitializedForPlay_) {
+        SetTranslate(encounterBasePosition_);
+        SetScale(encounterBaseScale_);
+        SetColor(encounterBaseColor_);
+        SetMaterialType(encounterMaterialType_);
+        SetEmissive(encounterBaseEmissive_);
+        SyncCollisionRadius();
+    }
+
+    // 非再生中も配置値は更新できるよう保持しつつ、ゲーム画面には待機中ボスを出しません。
+    CaptureEncounterAuthoredState(true);
+    encounterState_ = EncounterState::Dormant;
+    encounterTimer_ = 0.0f;
+    encounterInitializedForPlay_ = false;
+    encounterRequestedActive_ = false;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetIsVisible(false);
+    ClearPrismAttackVisuals();
+    HideAttackTelegraph();
+}
+
+void EnemyPrismSlime::BeginEncounterAppearance() {
+    encounterState_ = EncounterState::Appearing;
+    encounterTimer_ = 0.0f;
+    attackCooldown_ = 1.0f;
+    SetIsVisible(true);
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    ClearPrismAttackVisuals();
+    HideAttackTelegraph();
+
+    Vector3 effectPosition = encounterBasePosition_;
+    effectPosition.y += 0.15f;
+    VFXSequencer::PlayOneShot(
+        kEncounterAppearanceSequence,
+        effectPosition,
+        { 1.65f, 1.65f, 1.65f });
+}
+
+void EnemyPrismSlime::ApplyDormantEncounterState() {
+    encounterState_ = EncounterState::Dormant;
+    encounterTimer_ = 0.0f;
+    SetTranslate(encounterBasePosition_);
+    SetScale(encounterBaseScale_);
+    SetColor(encounterBaseColor_);
+    SetMaterialType(encounterMaterialType_);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    repositionTimer_ = 0.0f;
+    repositionDuration_ = 0.0f;
+    repositionJumpPending_ = false;
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetIsVisible(false);
+    ClearPrismAttackVisuals();
+    HideAttackTelegraph();
+}
+
+void EnemyPrismSlime::FinishEncounterAppearance() {
+    encounterState_ = EncounterState::Active;
+    encounterTimer_ = 0.0f;
+    SetTranslate(encounterBasePosition_);
+    SetScale(encounterBaseScale_);
+    SetColor(encounterBaseColor_);
+    SetMaterialType(encounterMaterialType_);
+    SetEmissive(encounterBaseEmissive_);
+    SetCollisionAttribute(encounterCollisionAttribute_);
+    SetCollisionMask(encounterCollisionMask_);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetIsVisible(true);
+    SyncCollisionRadius();
+}
+
+bool EnemyPrismSlime::IsEncounterControlled() const {
+    return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
+}
+
+float EnemyPrismSlime::GetEncounterAppearanceDuration() const {
+    return param_.has_value()
+        ? (std::clamp)(param_->shakeDuration, 0.35f, 3.0f)
+        : kDefaultEncounterAppearanceDuration;
+}
+
+bool EnemyPrismSlime::IsEncounterHudActive() const {
+    if (!IsEncounterControlled() || isDead) {
+        return false;
+    }
+    return encounterState_ == EncounterState::Appearing || encounterState_ == EncounterState::Active;
+}
+
+float EnemyPrismSlime::GetEncounterCurrentHp() const {
+    return param_.has_value() ? (std::max)(0.0f, param_->hp) : 0.0f;
+}
+
+float EnemyPrismSlime::GetEncounterMaximumHp() const {
+    return param_.has_value() ? (std::max)(1.0f, param_->maxHp) : 1.0f;
+}
+
+float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
+    if (encounterState_ == EncounterState::Active) {
+        return 1.0f;
+    }
+    if (encounterState_ != EncounterState::Appearing) {
+        return 0.0f;
+    }
+    return std::clamp(encounterTimer_ / GetEncounterAppearanceDuration(), 0.0f, 1.0f);
+}
+
+void EnemyPrismSlime::TriggerDebugDefeat() {
+    if (!param_.has_value() || isDead || IsDefeatEffectPlaying()) {
+        return;
+    }
+
+    param_->hp = 0.0f;
+    attackState_ = AttackState::Idle;
+    currentAttack_ = AttackKind::None;
+    attackTimer_ = 0.0f;
+    repositionTimer_ = 0.0f;
+    repositionDuration_ = 0.0f;
+    repositionJumpPending_ = false;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    ClearPrismAttackVisuals();
+    HideAttackTelegraph();
 }
 
 bool EnemyPrismSlime::UpdateInactiveState(float deltaTime) {
@@ -374,6 +648,10 @@ void EnemyPrismSlime::UpdateBehavior(
     const Vector3& direction,
     float distance,
     Vector3& velocity) {
+    if (attackState_ == AttackState::Reposition) {
+        UpdateReposition(deltaTime, velocity);
+        return;
+    }
     if (attackState_ != AttackState::Idle) {
         UpdateAttack(deltaTime, direction, distance);
         return;
@@ -682,13 +960,100 @@ void EnemyPrismSlime::FinishAttack() {
     if (currentAttack_ == AttackKind::SlimeSummon) {
         summonPortalVisuals_.clear();
     }
-    attackState_ = AttackState::Idle;
     currentAttack_ = AttackKind::None;
     attackTimer_ = 0.0f;
     actionTimer_ = 0.0f;
     actionIndex_ = 0;
     warningTriggered_ = false;
     damageApplied_ = false;
+    BeginReposition();
+}
+
+void EnemyPrismSlime::BeginReposition() {
+    attackState_ = AttackState::Reposition;
+
+    const float angle = NextSummonRandom01(repositionRandomState_) * kPi * 2.0f;
+    const float moveDistance = Math::Lerp(
+        kRepositionMinimumDistance,
+        kRepositionMaximumDistance,
+        NextSummonRandom01(repositionRandomState_));
+    const Vector3 current = GetTranslate();
+    const Vector3 arenaCenter = IsEncounterControlled() ? encounterBasePosition_ : current;
+    Vector3 candidate = {
+        current.x + std::sin(angle) * moveDistance,
+        current.y,
+        current.z + std::cos(angle) * moveDistance,
+    };
+    candidate.x = std::clamp(
+        candidate.x,
+        arenaCenter.x - kRepositionArenaHalfExtentX,
+        arenaCenter.x + kRepositionArenaHalfExtentX);
+    candidate.z = std::clamp(
+        candidate.z,
+        arenaCenter.z - kRepositionArenaHalfExtentZ,
+        arenaCenter.z + kRepositionArenaHalfExtentZ);
+
+    Vector3 displacement = candidate - current;
+    displacement.y = 0.0f;
+    float actualDistance = std::sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
+    if (actualDistance < 2.0f) {
+        displacement = arenaCenter - current;
+        displacement.y = 0.0f;
+        const float centerDistance = std::sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
+        const Vector3 fallbackDirection = centerDistance > 0.001f
+            ? displacement * (1.0f / centerDistance)
+            : Vector3{ 1.0f, 0.0f, 0.0f };
+        candidate = current + fallbackDirection * kRepositionMinimumDistance;
+        candidate.x = std::clamp(candidate.x,
+            arenaCenter.x - kRepositionArenaHalfExtentX,
+            arenaCenter.x + kRepositionArenaHalfExtentX);
+        candidate.z = std::clamp(candidate.z,
+            arenaCenter.z - kRepositionArenaHalfExtentZ,
+            arenaCenter.z + kRepositionArenaHalfExtentZ);
+        displacement = candidate - current;
+        displacement.y = 0.0f;
+        actualDistance = std::sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
+    }
+
+    repositionDestination_ = candidate;
+    repositionDuration_ = std::clamp(actualDistance / kRepositionMoveSpeed, 0.72f, 1.38f);
+    repositionTimer_ = repositionDuration_;
+    attackStateDuration_ = repositionDuration_;
+    repositionJumpPending_ = true;
+}
+
+void EnemyPrismSlime::UpdateReposition(float deltaTime, Vector3& velocity) {
+    repositionTimer_ = (std::max)(0.0f, repositionTimer_ - deltaTime);
+    Vector3 toDestination = repositionDestination_ - GetTranslate();
+    toDestination.y = 0.0f;
+    const float distance = std::sqrt(
+        toDestination.x * toDestination.x + toDestination.z * toDestination.z);
+    if (repositionTimer_ <= 0.0f || distance <= 0.35f) {
+        FinishReposition(velocity);
+        return;
+    }
+
+    const Vector3 moveDirection = toDestination * (1.0f / (std::max)(distance, 0.001f));
+    const float progress = 1.0f - std::clamp(
+        repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
+    const float stride = 0.82f + std::sin(progress * kPi) * 0.18f;
+    velocity.x = moveDirection.x * kRepositionMoveSpeed * stride;
+    velocity.z = moveDirection.z * kRepositionMoveSpeed * stride;
+    if (repositionJumpPending_) {
+        velocity.y = (std::max)(velocity.y, kRepositionJumpSpeed);
+        SetGrounded(false);
+        repositionJumpPending_ = false;
+    }
+    UpdateFacing(moveDirection);
+}
+
+void EnemyPrismSlime::FinishReposition(Vector3& velocity) {
+    attackState_ = AttackState::Idle;
+    repositionTimer_ = 0.0f;
+    repositionDuration_ = 0.0f;
+    repositionJumpPending_ = false;
+    velocity.x = 0.0f;
+    velocity.z = 0.0f;
 }
 
 EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveAutomaticAttack() const {
@@ -1660,6 +2025,18 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
             targetScale = { baseScale_.x * (1.06f + pulse * 0.04f), baseScale_.y * 0.86f, baseScale_.z * (1.30f - pulse * 0.05f) };
             targetRotation.x = -0.10f;
         }
+    } else if (attackState_ == AttackState::Reposition) {
+        const float progress = 1.0f - std::clamp(
+            repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
+        const float hop = std::sin(progress * kPi);
+        const float landingSquash = std::pow((std::max)(0.0f, (progress - 0.78f) / 0.22f), 2.0f);
+        targetScale = {
+            baseScale_.x * (1.0f - hop * 0.10f + landingSquash * 0.13f),
+            baseScale_.y * (1.0f + hop * 0.20f - landingSquash * 0.18f),
+            baseScale_.z * (1.0f - hop * 0.07f + landingSquash * 0.10f),
+        };
+        targetRotation.x = -0.055f * hop;
+        targetRotation.z = std::sin(progress * kPi * 2.0f) * 0.025f;
     } else if (attackState_ == AttackState::Recovery || impactPulseTimer_ > 0.0f) {
         const float remaining = attackState_ == AttackState::Recovery
             ? std::clamp(attackTimer_ / (std::max)(0.01f, attackStateDuration_), 0.0f, 1.0f)

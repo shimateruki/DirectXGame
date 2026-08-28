@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6ffd2f079858f0274b35cdc1263a6c81",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_obsidian.png",
+  "version": 1
+}

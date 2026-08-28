@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "fd95f8858034480a8f7920c4444754e1",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_bomb_morph_aura.json",
+  "version": 1
+}

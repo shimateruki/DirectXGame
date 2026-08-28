@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IEditable.h"
+#include "AudioPlayer.h"
 
 #include <string>
 
@@ -18,8 +19,13 @@ public:
 private:
     /// 入力中の検索文字列に一致する音声項目だけを表示するための判定。
     bool MatchesSearch(const std::string& text) const;
+    void DrawAudioEventEditor();
 
     DebugEditor* editor_ = nullptr;
     char searchBuffer_[128] = "";
     std::string statusText_ = "SE/BGMの音量を調整できます。";
+    char audioEventFileName_[128] = "new_audio_event.json";
+    char audioEventClipPath_[260] = "Resources/audio/se/generated/explosion.wav";
+    AudioEventDefinition audioEventDefinition_{};
+    bool audioEventInitialized_ = false;
 };

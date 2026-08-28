@@ -41,7 +41,10 @@ virtual bool OnCollision(Object3d* other) override;
     void SetDormant(bool dormant);
     bool IsDormant() const { return isDormant_; }
 
-    void SetDetectionRange(float range) { detectionRange_ = range; }
+    void SetDetectionRange(float range) {
+        detectionRange_ = range;
+        noticeDetectionRange_ = range;
+    }
     float GetDetectionRange() const { return detectionRange_; }
         // プレイヤーに持たれている状態を切り替えます。
 virtual void SetCarried(bool isCarried);
@@ -112,6 +115,12 @@ void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progre
     bool isThrownPhysics_ = false;
 
 private:
+    enum class NoticeReactionKind : uint8_t {
+        None = 0,
+        Detected,
+        Lost,
+    };
+
     // 徘徊の基準位置と次の目標地点を管理する
     void CaptureWanderOrigin();
     void PickWanderTarget(float radiusScale, float verticalOffset);
@@ -128,9 +137,12 @@ private:
     // 高速で地面へ叩きつけられた時の範囲ダメージと演出
     void SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed);
     void DamageSlamTargets(const Vector3& impactPosition, float impactSpeed);
-    void BeginNoticeReaction();
+    void BeginNoticeReaction(NoticeReactionKind kind);
     void EndNoticeReaction(bool restoreVisual = true);
     void EnsureNoticeMarkObject();
+    void ConfigureNoticeMarkForReaction();
+    void UpdateNoticeAwareness(float deltaTime);
+    void UpdateNoticeReactionAnimation(float deltaTime);
     void UpdateNoticeMark(float deltaTime, float progress);
 
     // 撃破時の消滅アニメーションとパーティクル
@@ -163,10 +175,13 @@ void BeginDefeatEffect();
     std::unique_ptr<Object3d> noticeMarkObject_;
     bool wasTargetDetected_ = false;
     bool isNoticeReactionActive_ = false;
+    NoticeReactionKind noticeReactionKind_ = NoticeReactionKind::None;
     float noticeReactionTimer_ = 0.0f;
     float noticeReactionCooldown_ = 0.0f;
+    float noticeDetectionRange_ = 20.0f;
     float noticeMarkYaw_ = 0.0f;
     Vector3 noticeBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 noticeBaseRotation_ = { 0.0f, 0.0f, 0.0f };
     Vector4 noticeBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "608dc386f31c5679a747867e8f71754f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_checkpoint/star_garden_checkpoint.obj",
+  "version": 1
+}

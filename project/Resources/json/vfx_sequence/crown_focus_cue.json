@@ -2,35 +2,35 @@
     "version": 2,
     "events": [
         {
-            "type": 0,
-            "presetName": "crown_get_afterglow",
+            "type": 1,
+            "presetName": "effect_goal_clear_gold_ring",
             "triggerTime": 0.0,
-            "offset": [0.0, 0.0, 0.0],
-            "scale": [0.55, 0.55, 0.55]
+            "offset": [0.0, -0.12, 0.0],
+            "scale": [0.34, 0.34, 0.34]
+        },
+        {
+            "type": 1,
+            "presetName": "effect_goal_clear_gold_pillar",
+            "triggerTime": 0.04,
+            "offset": [0.0, -0.12, 0.0],
+            "scale": [0.36, 0.36, 0.36]
         },
         {
             "type": 0,
-            "presetName": "crown_idle_twinkle",
+            "presetName": "goal_clear_gold_motes",
             "triggerTime": 0.08,
-            "offset": [-0.32, 0.30, 0.0],
-            "scale": [0.75, 0.75, 0.75]
-        },
-        {
-            "type": 0,
-            "presetName": "crown_idle_twinkle",
-            "triggerTime": 0.34,
-            "offset": [0.34, 0.48, 0.0],
-            "scale": [0.70, 0.70, 0.70]
+            "offset": [0.0, 0.12, 0.0],
+            "scale": [0.46, 0.46, 0.46]
         },
         {
             "type": 6,
             "presetName": "",
             "triggerTime": 0.0,
-            "duration": 1.2,
-            "intensity": 0.55,
-            "lightRadius": 4.5,
+            "duration": 1.1,
+            "intensity": 0.78,
+            "lightRadius": 5.0,
             "lightDecay": 1.8,
-            "lightColor": [1.0, 0.78, 0.30, 1.0]
+            "lightColor": [1.0, 0.72, 0.20, 1.0]
         }
     ]
 }

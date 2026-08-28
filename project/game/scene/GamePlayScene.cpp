@@ -42,8 +42,12 @@
 #include <numbers>
 #include <CameraEditor.h>
 #include <BaseEnemy.h>
+#include <EnemyPrismSlime.h>
+#include <EnemyFalseKingSlime.h>
 #include <EnemyFactory.h>
 #include <EnemySpawner.h>
+#include <GimmickFactory.h>
+#include <ItemFactory.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
 #include <GPUParticleManager.h>
@@ -52,9 +56,57 @@
 #include "Fade.h"
 #include "StageManager.h"
 #include "GameDataManager.h"
+#include "PlayerState.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+
+std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
+    Object3dCommon* common = GetObject3dCommon();
+    if (!common || !descriptor.is_object()) {
+        return nullptr;
+    }
+
+    const std::string className = descriptor.value("className", std::string{});
+    const std::string enemyType = descriptor.value("enemyType", std::string{});
+    const std::string gimmickType = descriptor.value("gimmickType", std::string{});
+    const std::string itemType = descriptor.value("itemType", std::string{});
+    std::unique_ptr<Object3d> object;
+
+    if (!enemyType.empty()) {
+        object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
+        if (!object || object->GetEnemyType() != enemyType) {
+            return nullptr;
+        }
+    } else if (!gimmickType.empty()) {
+        object = GimmickFactory::GetInstance()->CreateGimmick(gimmickType, common);
+    } else if (!itemType.empty()) {
+        object = ItemFactory::GetInstance()->CreateItem(itemType, common);
+        if (!object || object->GetItemType() != itemType) {
+            return nullptr;
+        }
+    } else if (className == "Model" || className == "Object") {
+        object = std::make_unique<Object3d>();
+        object->Initialize(common);
+    }
+
+    if (!object) {
+        return nullptr;
+    }
+
+    object->SetName(descriptor.value("name", object->GetName()));
+    object->SetClassName(className.empty() ? object->GetClassName() : className);
+    object->SetSaveCategory(descriptor.value("saveCategory", object->GetSaveCategory()));
+    if (!enemyType.empty()) object->SetEnemyType(enemyType);
+    if (!gimmickType.empty()) object->SetGimmickType(gimmickType);
+    if (!itemType.empty()) object->SetItemType(itemType);
+    return object;
+}
+
+void GamePlayScene::OnReplayObjectsRecreated() {
+    LevelLoader::ConfigureEnemyRuntimeReferences(this);
+}
 
 namespace {
 constexpr const char* kGoalPresentationTuningPath = "Resources/json/cinematic/goal_clear.json";
@@ -74,6 +126,38 @@ float GoalEaseInOut(float value) {
 	value = GoalClamp01(value);
 	return value * value * (3.0f - 2.0f * value);
 }
+
+#ifdef USE_IMGUI
+constexpr const char* kDebugPrismArenaAnchorName = "Stage1_Collision_V4_PreBossCheckpoint";
+constexpr const char* kDebugPrismSlimeName = "Stage1_V4_PrismArena_Boss";
+constexpr const char* kDebugGoalEntryAnchorName = "Stage1_Collision_V4_GoalApproach";
+constexpr const char* kDebugGoalName = "goal";
+constexpr float kDebugTeleportPlayerFloorClearance = 0.78f;
+constexpr float kDebugTeleportCameraDistance = 16.0f;
+constexpr float kDebugTeleportCameraHeight = 3.2f;
+constexpr float kDebugTeleportCameraPitch = 0.32f;
+
+const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
+    switch (type) {
+    case Player::EnemyMorphType::Slime:
+        return "ピンクスライム";
+    case Player::EnemyMorphType::Bomber:
+        return "ボムスライム";
+    case Player::EnemyMorphType::GiantSlime:
+        return "巨大スライム";
+    case Player::EnemyMorphType::FireSlime:
+        return "炎スライム";
+    case Player::EnemyMorphType::ThunderSlime:
+        return "雷スライム";
+    case Player::EnemyMorphType::WindSlime:
+        return "風スライム";
+    case Player::EnemyMorphType::None:
+        return "通常スライム";
+    default:
+        return "その他";
+    }
+}
+#endif
 }
 
 void GamePlayScene::InitializeGoalCinematicTimeline() {
@@ -121,6 +205,8 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
             animation.apexTime = marker.time;
         } else if (marker.signal == "goal.result") {
             animation.resultUiTime = marker.time;
+        } else if (marker.signal == "goal.victory_land") {
+            animation.victoryLandTime = marker.time;
         } else if (marker.signal == "goal.ready") {
             animation.readyTime = marker.time;
         }
@@ -150,9 +236,10 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     SetSignalTime("goal.crown_move_start", "Crown Move Start", goalPresentationTuning_.crownMoveStartTime);
     SetSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
     SetSignalTime("goal.anticipation", "Anticipation", animation.anticipationStartTime);
-    SetSignalTime("goal.jump", "Big Jump", animation.jumpStartTime);
-    SetSignalTime("goal.apex", "Jump Apex", animation.apexTime);
+    SetSignalTime("goal.jump", "Celebration Bounce", animation.jumpStartTime);
+    SetSignalTime("goal.apex", "First Bounce Apex", animation.apexTime);
     SetSignalTime("goal.result", "Result UI", animation.resultUiTime);
+    SetSignalTime("goal.victory_land", "First Bounce Landing", animation.victoryLandTime);
     SetSignalTime("goal.ready", "Ready To Return", animation.readyTime);
 
     bool hasAnimationDriver = false;
@@ -179,16 +266,20 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     bool hasCrownFocusVfx = false;
     bool hasCrownVfx = false;
     bool hasResultVfx = false;
+    bool hasVictoryLandVfx = false;
     for (auto& track : goalCinematicSequence_.vfxTracks) {
-        if (track.sequenceName == "crown_focus_cue") {
+        if (track.sequenceName.rfind("crown_focus", 0) == 0) {
             track.startTime = std::max(0.05f, goalPresentationTuning_.crownFocusEndTime - 0.22f);
             hasCrownFocusVfx = true;
-        } else if (track.sequenceName == "crown_get_cue") {
+        } else if (track.sequenceName.rfind("crown_get", 0) == 0) {
             track.startTime = animation.crownLandTime;
             hasCrownVfx = true;
-        } else if (track.sequenceName == "crown_result_cue") {
+        } else if (track.sequenceName.rfind("crown_result", 0) == 0) {
             track.startTime = animation.apexTime;
             hasResultVfx = true;
+        } else if (track.sequenceName.rfind("crown_victory_land", 0) == 0) {
+            track.startTime = animation.victoryLandTime;
+            hasVictoryLandVfx = true;
         }
     }
     Object3d* crown = FindGoalCrownObject();
@@ -215,6 +306,15 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         track.name = "Result Burst VFX";
         track.sequenceName = "crown_result_cue";
         track.startTime = animation.apexTime;
+        track.binding.targetName = player_ ? player_->GetName() : "player";
+        track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
+        goalCinematicSequence_.vfxTracks.push_back(track);
+    }
+    if (!hasVictoryLandVfx) {
+        CinematicVFXTrackData track;
+        track.name = "Victory Landing VFX";
+        track.sequenceName = "crown_victory_land_cue";
+        track.startTime = animation.victoryLandTime;
         track.binding.targetName = player_ ? player_->GetName() : "player";
         track.binding.targetEventId = player_ ? player_->GetEventID() : -1;
         goalCinematicSequence_.vfxTracks.push_back(track);
@@ -571,13 +671,11 @@ void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 	};
 
 	add(lockOnSprite_.get());
-	add(goalOverlayBackdrop_.get());
 	add(goalOverlayFlash_.get());
-	add(goalOverlayGlow_.get());
-	add(goalOverlayTopLine_.get());
-	add(goalOverlayBottomLine_.get());
-	add(goalOverlayStageClearText_.get());
 	add(goalOverlayReturnText_.get());
+	for (const auto& letter : goalOverlayStageClearLetters_) {
+		add(letter.get());
+	}
 	for (const auto& sparkle : goalOverlaySparkles_) {
 		add(sparkle.get());
 	}
@@ -608,6 +706,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
 	state = {
 		{ "goal", {
 			{ "active", isGoal_ },
+			{ "wasStageCleared", goalWasStageCleared_ },
 			{ "state", static_cast<int>(goalPresentationState_) },
 			{ "timer", goalPresentationTimer_ },
 			{ "starEmitTimer", goalStarEmitTimer_ },
@@ -675,6 +774,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
 	if (const auto found = state.find("goal"); found != state.end() && found->is_object()) {
 		const json& goal = *found;
 		isGoal_ = goal.value("active", isGoal_);
+		goalWasStageCleared_ = goal.value("wasStageCleared", goalWasStageCleared_);
 		const int stateValue = std::clamp(goal.value("state", static_cast<int>(goalPresentationState_)), 0, 3);
 		goalPresentationState_ = static_cast<GoalPresentationState>(stateValue);
 		goalPresentationTimer_ = goal.value("timer", goalPresentationTimer_);
@@ -764,40 +864,33 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
 	}
 
 	const uint32_t whiteHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
-	const uint32_t glowHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle/glow_core.png");
-	const uint32_t sparkleHandle = TextureManager::GetInstance()->Load("Resources/sprite/fade/fade_sparkle.png");
-	const uint32_t clearTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/stage_clear_text.png");
+	const uint32_t splashHandle = TextureManager::GetInstance()->Load("Resources/sprite/common/circle2.png");
 	const uint32_t returnTextHandle = TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
-
-	goalOverlayBackdrop_ = std::make_unique<Sprite>();
-	goalOverlayBackdrop_->Initialize(spriteCommon_.get(), whiteHandle);
-	goalOverlayBackdrop_->SetName("GoalClear_Backdrop");
-	goalOverlayBackdrop_->SetAnchorPoint({ 0.5f, 0.5f });
 
 	goalOverlayFlash_ = std::make_unique<Sprite>();
 	goalOverlayFlash_->Initialize(spriteCommon_.get(), whiteHandle);
 	goalOverlayFlash_->SetName("GoalClear_Flash");
 	goalOverlayFlash_->SetAnchorPoint({ 0.5f, 0.5f });
 
-	goalOverlayGlow_ = std::make_unique<Sprite>();
-	goalOverlayGlow_->Initialize(spriteCommon_.get(), glowHandle);
-	goalOverlayGlow_->SetName("GoalClear_Glow");
-	goalOverlayGlow_->SetAnchorPoint({ 0.5f, 0.5f });
-
-	goalOverlayTopLine_ = std::make_unique<Sprite>();
-	goalOverlayTopLine_->Initialize(spriteCommon_.get(), whiteHandle);
-	goalOverlayTopLine_->SetName("GoalClear_TopLine");
-	goalOverlayTopLine_->SetAnchorPoint({ 0.5f, 0.5f });
-
-	goalOverlayBottomLine_ = std::make_unique<Sprite>();
-	goalOverlayBottomLine_->Initialize(spriteCommon_.get(), whiteHandle);
-	goalOverlayBottomLine_->SetName("GoalClear_BottomLine");
-	goalOverlayBottomLine_->SetAnchorPoint({ 0.5f, 0.5f });
-
-	goalOverlayStageClearText_ = std::make_unique<Sprite>();
-	goalOverlayStageClearText_->Initialize(spriteCommon_.get(), clearTextHandle);
-	goalOverlayStageClearText_->SetName("GoalClear_Title");
-	goalOverlayStageClearText_->SetAnchorPoint({ 0.5f, 0.5f });
+	static constexpr std::array<const char*, 10> kLetterTexturePaths = {
+		"Resources/sprite/ui/result/clear/slime_letters/letter_s.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_t.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_a.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_g.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_e.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_c.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_l.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_e.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_a.png",
+		"Resources/sprite/ui/result/clear/slime_letters/letter_r.png"
+	};
+	for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
+		auto& letter = goalOverlayStageClearLetters_[i];
+		letter = std::make_unique<Sprite>();
+		letter->Initialize(spriteCommon_.get(), TextureManager::GetInstance()->Load(kLetterTexturePaths[i]));
+		letter->SetName("GoalClear_Letter_" + std::to_string(i));
+		letter->SetAnchorPoint({ 0.5f, 0.5f });
+	}
 
 	goalOverlayReturnText_ = std::make_unique<Sprite>();
 	goalOverlayReturnText_->Initialize(spriteCommon_.get(), returnTextHandle);
@@ -807,8 +900,8 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
 	for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
 		auto& sparkle = goalOverlaySparkles_[i];
 		sparkle = std::make_unique<Sprite>();
-		sparkle->Initialize(spriteCommon_.get(), sparkleHandle);
-		sparkle->SetName("GoalClear_Sparkle_" + std::to_string(i));
+		sparkle->Initialize(spriteCommon_.get(), splashHandle);
+		sparkle->SetName("GoalClear_LetterSplash_" + std::to_string(i));
 		sparkle->SetAnchorPoint({ 0.5f, 0.5f });
 	}
 
@@ -822,93 +915,133 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
 	const float t = goalPresentationTimer_;
 	const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
 	const GoalPresentationTuning& presentation = goalPresentationTuning_;
-	const float baseScale = std::min(screenW / 1280.0f, screenH / 720.0f);
+	const bool replayClear = goalWasStageCleared_;
+	const Vector3 themePrimary = replayClear
+		? Vector3{ 0.90f, 0.92f, 0.96f }
+		: Vector3{ 1.0f, 0.72f, 0.12f };
+	const Vector3 themeSecondary = replayClear
+		? Vector3{ 0.58f, 0.64f, 0.74f }
+		: Vector3{ 1.0f, 0.34f, 0.06f };
+	const float baseScale = (std::min)(screenW / 1280.0f, screenH / 720.0f);
 	const float uiScale = baseScale * presentation.resultUiScale;
 	const float centerX = screenW * presentation.resultUiCenterX;
-	const float centerY = screenH * presentation.resultUiCenterY;
-	const float backdropIn = GoalEaseInOut((t - animation.resultUiTime + 0.28f) / 0.28f);
-	const float resultIn = GoalEaseOut((t - animation.resultUiTime) / 0.34f);
-	const float titlePhase = GoalClamp01((t - animation.resultUiTime) / 0.36f);
-	const float titleScale = 0.72f + 0.28f * resultIn + std::sin(titlePhase * std::numbers::pi_v<float>) * 0.10f;
+	const float baselineY = screenH * presentation.resultUiCenterY;
 	const float returnStartTime = std::max(animation.resultUiTime + 0.52f, animation.readyTime - 0.48f);
 	const float returnIn = GoalEaseInOut((t - returnStartTime) / 0.34f);
 	const float flashIn = GoalEaseOut((t - animation.resultUiTime) / 0.04f);
-	const float flashOut = 1.0f - GoalEaseOut((t - animation.resultUiTime - 0.06f) / 0.30f);
+	const float flashOut = 1.0f - GoalEaseOut((t - animation.resultUiTime - 0.04f) / 0.20f);
 	const float flash = visible ? flashIn * flashOut : 0.0f;
-	const float textFloat = std::sin((t - animation.resultUiTime) * 3.2f) * 2.0f * resultIn * uiScale;
-
-	if (goalOverlayBackdrop_) {
-		goalOverlayBackdrop_->SetPosition({ screenW * 0.5f, screenH * 0.5f });
-		goalOverlayBackdrop_->SetSize({ screenW + 8.0f, screenH + 8.0f });
-		goalOverlayBackdrop_->SetColor({ 0.005f, 0.008f, 0.025f, visible ? presentation.resultBackdropAlpha * backdropIn : 0.0f });
-		goalOverlayBackdrop_->Update();
-	}
 	if (goalOverlayFlash_) {
 		goalOverlayFlash_->SetPosition({ screenW * 0.5f, screenH * 0.5f });
 		goalOverlayFlash_->SetSize({ screenW + 8.0f, screenH + 8.0f });
-		goalOverlayFlash_->SetColor({ 1.0f, 0.82f, 0.38f, flash * 0.20f });
+		goalOverlayFlash_->SetColor({ themePrimary.x, themePrimary.y, themePrimary.z, flash * 0.075f });
 		goalOverlayFlash_->Update();
 	}
-	if (goalOverlayGlow_) {
-		const float glowScale = 0.78f + 0.22f * resultIn;
-		goalOverlayGlow_->SetPosition({ centerX, centerY });
-		goalOverlayGlow_->SetSize({ 980.0f * uiScale * glowScale, 300.0f * uiScale * glowScale });
-		goalOverlayGlow_->SetColor({ 1.0f, 0.64f, 0.18f, visible ? presentation.resultGlowAlpha * backdropIn : 0.0f });
-		goalOverlayGlow_->Update();
+
+	static constexpr std::array<float, 10> kAdvanceWidths = {
+		62.0f, 60.0f, 66.0f, 68.0f, 56.0f, 68.0f, 54.0f, 56.0f, 66.0f, 64.0f
+	};
+	static constexpr std::array<float, 10> kSpriteWidths = {
+		88.0f, 90.0f, 96.0f, 100.0f, 84.0f, 96.0f, 82.0f, 84.0f, 96.0f, 92.0f
+	};
+	static constexpr std::array<float, 10> kInitialTilts = {
+		-0.10f, 0.075f, -0.055f, 0.095f, -0.070f, 0.060f, -0.085f, 0.050f, -0.060f, 0.080f
+	};
+	constexpr float kLetterGap = 6.0f;
+	constexpr float kWordGap = 28.0f;
+	float totalWidth = kWordGap + kLetterGap * 9.0f;
+	for (float advance : kAdvanceWidths) {
+		totalWidth += advance;
 	}
-	const float lineWidth = 760.0f * uiScale * resultIn;
-	if (goalOverlayTopLine_) {
-		goalOverlayTopLine_->SetPosition({ centerX, centerY - 76.0f * uiScale });
-		goalOverlayTopLine_->SetSize({ lineWidth, 2.0f * uiScale });
-		goalOverlayTopLine_->SetColor({ 1.0f, 0.86f, 0.38f, visible ? 0.62f * resultIn : 0.0f });
-		goalOverlayTopLine_->Update();
-	}
-	if (goalOverlayBottomLine_) {
-		goalOverlayBottomLine_->SetPosition({ centerX, centerY + 72.0f * uiScale });
-		goalOverlayBottomLine_->SetSize({ lineWidth * 0.82f, 2.0f * uiScale });
-		goalOverlayBottomLine_->SetColor({ 1.0f, 0.76f, 0.22f, visible ? 0.44f * resultIn : 0.0f });
-		goalOverlayBottomLine_->Update();
-	}
-	if (goalOverlayStageClearText_) {
-		goalOverlayStageClearText_->SetPosition({ centerX, centerY + 20.0f * (1.0f - resultIn) * uiScale + textFloat });
-		goalOverlayStageClearText_->SetSize({ 780.0f * uiScale * titleScale, 140.0f * uiScale * titleScale });
-		goalOverlayStageClearText_->SetRotation(0.0f);
-		goalOverlayStageClearText_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? resultIn : 0.0f });
-		goalOverlayStageClearText_->Update();
-	}
-	if (goalOverlayReturnText_) {
-		goalOverlayReturnText_->SetPosition({ centerX, centerY + (112.0f + 12.0f * (1.0f - returnIn)) * uiScale });
-		goalOverlayReturnText_->SetSize({ 358.0f * uiScale, 43.0f * uiScale });
-		goalOverlayReturnText_->SetRotation(0.0f);
-		goalOverlayReturnText_->SetColor({ 1.0f, 0.96f, 0.80f, visible ? returnIn * 0.86f : 0.0f });
-		goalOverlayReturnText_->Update();
+	float cursorX = centerX - totalWidth * 0.5f * uiScale;
+
+	for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
+		Sprite* letter = goalOverlayStageClearLetters_[i].get();
+		Sprite* splash = goalOverlaySparkles_[i].get();
+		const float letterCenterX = cursorX + kAdvanceWidths[i] * 0.5f * uiScale;
+		const float localTime = t - animation.resultUiTime - static_cast<float>(i) * presentation.resultLetterStagger;
+		float letterY = baselineY - presentation.resultLetterDropHeight * uiScale;
+		float scaleX = 0.82f;
+		float scaleY = 1.18f;
+		float rotation = kInitialTilts[i];
+		float letterAlpha = 0.0f;
+
+		if (localTime >= 0.0f) {
+			letterAlpha = GoalEaseOut(localTime / 0.10f);
+			if (localTime < presentation.resultLetterFallDuration) {
+				const float fallRate = GoalClamp01(localTime / presentation.resultLetterFallDuration);
+				const float acceleratedFall = fallRate * fallRate;
+				letterY = baselineY - presentation.resultLetterDropHeight * (1.0f - acceleratedFall) * uiScale;
+				const float approach = GoalEaseInOut(fallRate);
+				scaleX = 0.82f + 0.18f * approach;
+				scaleY = 1.18f - 0.18f * approach;
+				rotation = kInitialTilts[i] * (1.0f - approach);
+			} else {
+				const float bounceTime = localTime - presentation.resultLetterFallDuration;
+				const float damping = std::exp(-bounceTime * presentation.resultLetterBounceDamping);
+				const float bouncePhase = bounceTime * presentation.resultLetterBounceFrequency;
+				const float rebound = std::abs(std::sin(bouncePhase)) * damping;
+				const float contactWave = (std::max)(0.0f, std::cos(bouncePhase));
+				const float contact = std::pow(contactWave, 7.0f) * damping;
+				letterY = baselineY - presentation.resultLetterBounceHeight * rebound * uiScale;
+				scaleX = 1.0f + contact * 0.34f - rebound * 0.075f;
+				scaleY = 1.0f - contact * 0.26f + rebound * 0.11f;
+				rotation = kInitialTilts[i] * std::cos(bouncePhase) * damping * 0.70f;
+
+				const float idleBlend = GoalEaseInOut((bounceTime - 1.15f) / 0.45f);
+				const float idleWobble = std::sin(bounceTime * 2.7f + static_cast<float>(i) * 0.62f);
+				scaleX += idleWobble * 0.018f * idleBlend;
+				scaleY -= idleWobble * 0.014f * idleBlend;
+				letterY += std::sin(bounceTime * 2.2f + static_cast<float>(i) * 0.35f) * 1.4f * idleBlend * uiScale;
+			}
+		}
+
+		if (letter) {
+			letter->SetPosition({ letterCenterX, letterY });
+			letter->SetSize({ kSpriteWidths[i] * scaleX * uiScale, 176.0f * scaleY * uiScale });
+			letter->SetRotation(rotation);
+			letter->SetColor({
+				themePrimary.x,
+				themePrimary.y,
+				themePrimary.z,
+				visible ? letterAlpha * presentation.resultBackdropAlpha : 0.0f
+			});
+			letter->Update();
+		}
+
+		if (splash) {
+			const float impactAge = localTime - presentation.resultLetterFallDuration;
+			const float splashRate = GoalClamp01(impactAge / 0.30f);
+			const float splashAlpha = impactAge >= 0.0f
+				? std::sin(splashRate * 3.1415926535f) * presentation.resultGlowAlpha
+				: 0.0f;
+			splash->SetPosition({ letterCenterX, baselineY + 45.0f * uiScale });
+			splash->SetSize({
+				(20.0f + 48.0f * splashRate) * uiScale,
+				(13.0f - 9.0f * splashRate) * uiScale
+			});
+			splash->SetRotation(0.0f);
+			splash->SetColor({
+				themeSecondary.x,
+				themeSecondary.y,
+				themeSecondary.z,
+				visible ? splashAlpha : 0.0f
+			});
+			splash->Update();
+		}
+
+		cursorX += (kAdvanceWidths[i] + kLetterGap) * uiScale;
+		if (i == 4) {
+			cursorX += kWordGap * uiScale;
+		}
 	}
 
-	static const std::array<Vector2, 8> kSparkOffsets = {
-		Vector2{ -420.0f, -64.0f }, Vector2{ -342.0f, 72.0f }, Vector2{ -236.0f, -96.0f },
-		Vector2{ 242.0f, -92.0f }, Vector2{ 346.0f, 70.0f }, Vector2{ 424.0f, -58.0f },
-		Vector2{ -116.0f, 92.0f }, Vector2{ 126.0f, 96.0f }
-	};
-	for (size_t i = 0; i < goalOverlaySparkles_.size(); ++i) {
-		Sprite* sparkle = goalOverlaySparkles_[i].get();
-		if (!sparkle) {
-			continue;
-		}
-		const float localTime = std::max(0.0f, t - animation.resultUiTime - static_cast<float>(i) * 0.035f);
-		const float sparkleIn = GoalEaseOut(localTime / 0.18f) * resultIn;
-		const float wave = 0.5f + 0.5f * std::sin(localTime * (5.2f + static_cast<float>(i) * 0.23f) + static_cast<float>(i) * 0.9f);
-		const float shimmer = 0.28f + 0.72f * std::pow(wave, 3.0f);
-		const float baseSize = (i % 3 == 0) ? 42.0f : 28.0f;
-		const float drift = std::sin(localTime * 1.8f + static_cast<float>(i)) * 4.0f * uiScale;
-		sparkle->SetPosition({
-			centerX + kSparkOffsets[i].x * uiScale + drift,
-			centerY + kSparkOffsets[i].y * uiScale - localTime * 3.0f * uiScale
-		});
-		sparkle->SetSize({ baseSize * uiScale * (0.76f + 0.30f * shimmer), baseSize * uiScale * (0.76f + 0.30f * shimmer) });
-		sparkle->SetRotation(localTime * (0.25f + static_cast<float>(i) * 0.035f));
-		const bool coolSparkle = (i % 3) == 1;
-		sparkle->SetColor({ coolSparkle ? 0.72f : 1.0f, coolSparkle ? 0.92f : 0.86f, 1.0f, visible ? sparkleIn * shimmer * 0.92f : 0.0f });
-		sparkle->Update();
+	if (goalOverlayReturnText_) {
+		goalOverlayReturnText_->SetPosition({ centerX, baselineY + (100.0f + 8.0f * (1.0f - returnIn)) * uiScale });
+		goalOverlayReturnText_->SetSize({ 278.0f * uiScale, 33.0f * uiScale });
+		goalOverlayReturnText_->SetRotation(0.0f);
+		goalOverlayReturnText_->SetColor({ 0.92f, 0.98f, 1.0f, visible ? returnIn * 0.90f : 0.0f });
+		goalOverlayReturnText_->Update();
 	}
 }
 
@@ -917,28 +1050,18 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
 		return;
 	}
 
-	if (goalOverlayBackdrop_) {
-		goalOverlayBackdrop_->Draw();
-	}
 	if (goalOverlayFlash_) {
 		goalOverlayFlash_->Draw();
-	}
-	if (goalOverlayGlow_) {
-		goalOverlayGlow_->Draw();
-	}
-	if (goalOverlayTopLine_) {
-		goalOverlayTopLine_->Draw();
-	}
-	if (goalOverlayBottomLine_) {
-		goalOverlayBottomLine_->Draw();
 	}
 	for (auto& sparkle : goalOverlaySparkles_) {
 		if (sparkle) {
 			sparkle->Draw();
 		}
 	}
-	if (goalOverlayStageClearText_) {
-		goalOverlayStageClearText_->Draw();
+	for (auto& letter : goalOverlayStageClearLetters_) {
+		if (letter) {
+			letter->Draw();
+		}
 	}
 	if (goalOverlayReturnText_) {
 		goalOverlayReturnText_->Draw();
@@ -1063,9 +1186,131 @@ void GamePlayScene::DrawImGui() {
             if (ImGui::Button("Reset Coins")) {
                 GameDataManager::GetInstance()->ResetCoins();
             }
+
+            ImGui::Separator();
+            ImGui::Text("デバッグ移動");
+            const bool teleportStateReady =
+                !player_->isDead &&
+                player_->IsControlActive() &&
+                !player_->IsCinematicLocked() &&
+                !player_->IsLaunchStarActive() &&
+                !stageEntryPresentationActive_ &&
+                !isGoal_;
+            const bool hasPrismAnchor = FindDebugObjectByName(kDebugPrismArenaAnchorName) != nullptr;
+            const bool hasGoalAnchor = FindDebugObjectByName(kDebugGoalEntryAnchorName) != nullptr;
+            const float teleportSpacing = ImGui::GetStyle().ItemSpacing.x;
+            const float teleportButtonWidth =
+                (std::max)(130.0f, (ImGui::GetContentRegionAvail().x - teleportSpacing) * 0.5f);
+
+            if (!teleportStateReady || !hasPrismAnchor) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button(ICON_FA_GEM " 中ボス前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
+                TeleportPlayerToDebugTarget(
+                    kDebugPrismArenaAnchorName,
+                    { -20.0f, 0.0f, 0.0f },
+                    kDebugPrismSlimeName,
+                    "中ボス前");
+            }
+            if (!teleportStateReady || !hasPrismAnchor) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::SameLine();
+            if (!teleportStateReady || !hasGoalAnchor) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button(ICON_FA_FLAG_CHECKERED " ゴール前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
+                TeleportPlayerToDebugTarget(
+                    kDebugGoalEntryAnchorName,
+                    { 0.0f, 0.0f, 0.0f },
+                    kDebugGoalName,
+                    "ゴール前");
+            }
+            if (!teleportStateReady || !hasGoalAnchor) {
+                ImGui::EndDisabled();
+            }
+            ImGui::TextDisabled("ステージ1専用。移動時は運搬・変身・ロックオン状態を解除します。");
+
+            ImGui::Separator();
+            ImGui::Text("デバッグ変身（時間制限なし）");
+            ImGui::TextDisabled("現在: %s", GetDebugMorphDisplayName(player_->GetEnemyMorphType()));
+
+            const float spacing = ImGui::GetStyle().ItemSpacing.x;
+            const float buttonWidth = (std::max)(90.0f, (ImGui::GetContentRegionAvail().x - spacing * 2.0f) / 3.0f);
+            auto drawMorphButton = [this, buttonWidth](const char* label, const char* enemyType) {
+                if (ImGui::Button(label, ImVec2(buttonWidth, 30.0f))) {
+                    ApplyDebugPlayerMorph(enemyType);
+                }
+            };
+
+            drawMorphButton("ピンク##DebugMorph", "Slime");
+            ImGui::SameLine();
+            drawMorphButton("ボム##DebugMorph", "Bomber");
+            ImGui::SameLine();
+            drawMorphButton("炎##DebugMorph", "FireSlime");
+
+            drawMorphButton("雷##DebugMorph", "ThunderSlime");
+            ImGui::SameLine();
+            drawMorphButton("風##DebugMorph", "WindSlime");
+            ImGui::SameLine();
+            drawMorphButton("巨大##DebugMorph", "GiantSlime");
+
+            const bool hasMorph = player_->IsEnemyMorphed();
+            if (!hasMorph) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button("通常スライムへ戻す##DebugMorph", ImVec2(-1.0f, 30.0f))) {
+                ClearDebugPlayerMorph();
+            }
+            if (!hasMorph) {
+                ImGui::EndDisabled();
+            }
+            ImGui::TextDisabled("吸収演出を省略し、能力実装済みのスライムは固有技まで直接確認できます。");
         }
         else {
             ImGui::TextDisabled("Player not found");
+        }
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_GEM " クリスタルスライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        EnemyPrismSlime* prismBoss = FindPrismBossForHUD();
+        if (prismBoss) {
+            const float bossHp = prismBoss->GetEncounterCurrentHp();
+            const float bossMaxHp = prismBoss->GetEncounterMaximumHp();
+            char bossHpLabel[64]{};
+            std::snprintf(bossHpLabel, sizeof(bossHpLabel), "HP %.0f / %.0f", bossHp, bossMaxHp);
+            ImGui::ProgressBar(
+                std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f),
+                ImVec2(-1.0f, 0.0f),
+                bossHpLabel);
+
+            if (ImGui::Button(ICON_FA_SKULL " 撃破演出を確認##DebugDefeatPrismSlime", ImVec2(-1.0f, 32.0f))) {
+                prismBoss->TriggerDebugDefeat();
+            }
+            ImGui::TextDisabled("実際のHPを0にして、撃破演出からバリア解除までを通して再生します。");
+        } else {
+            ImGui::TextDisabled("中ボス戦の開始後に使用できます。");
+        }
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_CROWN " 偽王スライム Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        EnemyFalseKingSlime* falseKing = FindFalseKingBossForHUD();
+        if (falseKing) {
+            const float bossHp = falseKing->GetEncounterCurrentHp();
+            const float bossMaxHp = falseKing->GetEncounterMaximumHp();
+            char bossHpLabel[64]{};
+            std::snprintf(bossHpLabel, sizeof(bossHpLabel), "HP %.0f / %.0f", bossHp, bossMaxHp);
+            ImGui::ProgressBar(
+                std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f),
+                ImVec2(-1.0f, 0.0f),
+                bossHpLabel);
+            if (ImGui::Button(ICON_FA_SKULL " 撃破から王冠取得を確認##DebugDefeatFalseKing", ImVec2(-1.0f, 32.0f))) {
+                falseKing->TriggerDebugDefeat();
+            }
+            ImGui::TextDisabled("撃破演出後に報酬王冠が出現し、接触するとクリア演出へ移ります。");
+        } else {
+            ImGui::TextDisabled("ステージ3のボス登場後に使用できます。");
         }
     }
 
@@ -1085,6 +1330,146 @@ void GamePlayScene::DrawImGui() {
     ImGui::TextDisabled("※この項目は GamePlayScene::DrawImGui() で編集可能です");
 #endif
 }
+
+#ifdef USE_IMGUI
+void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
+    if (!player_ || !object3dCommon_ || !enemyType || enemyType[0] == '\0') {
+        return;
+    }
+    if (player_->isDead || player_->IsCinematicLocked()) {
+        DebugConsole::GetInstance()->AddLog("Debug morph skipped: player is unavailable.");
+        return;
+    }
+
+    // 先にプレイヤー側の参照を解除してから、以前のデバッグ用変身元を破棄します。
+    ClearDebugPlayerMorph();
+
+    std::unique_ptr<BaseEnemy> source = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
+    if (!source || source->GetEnemyType().empty()) {
+        DebugConsole::GetInstance()->AddLog(std::string("Debug morph create failed: ") + enemyType);
+        return;
+    }
+
+    source->SetTarget(player_);
+    source->SetTranslate(player_->GetWorldPosition());
+    source->SetIsVisible(false);
+    source->SetCollisionAttribute(0);
+    source->SetCollisionMask(0);
+
+    BaseEnemy* sourcePointer = source.get();
+    debugPlayerMorphSource_ = std::move(source);
+    player_->DebugForceEnemyMorph(sourcePointer);
+
+    if (!player_->IsEnemyMorphed()) {
+        debugPlayerMorphSource_.reset();
+        DebugConsole::GetInstance()->AddLog(std::string("Debug morph start failed: ") + enemyType);
+        return;
+    }
+
+    DebugConsole::GetInstance()->AddLog(std::string("Debug morph selected: ") + enemyType);
+}
+
+void GamePlayScene::ClearDebugPlayerMorph() {
+    if (player_) {
+        player_->DebugClearEnemyMorph();
+    }
+    debugPlayerMorphSource_.reset();
+}
+
+Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
+    if (!objectManager_ || !objectName || objectName[0] == '\0') {
+        return nullptr;
+    }
+
+    for (const auto& object : objectManager_->GetObjects()) {
+        if (object && object->GetName() == objectName) {
+            return object.get();
+        }
+    }
+    return nullptr;
+}
+
+bool GamePlayScene::TeleportPlayerToDebugTarget(
+    const char* anchorName,
+    const Vector3& anchorOffset,
+    const char* facingObjectName,
+    const char* destinationLabel) {
+    if (!player_ || player_->isDead || !player_->IsControlActive() ||
+        player_->IsCinematicLocked() || player_->IsLaunchStarActive() ||
+        stageEntryPresentationActive_ || isGoal_) {
+        DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
+        return false;
+    }
+
+    Object3d* anchor = FindDebugObjectByName(anchorName);
+    if (!anchor) {
+        DebugConsole::GetInstance()->AddLog(
+            std::string("Debug teleport anchor not found: ") + (anchorName ? anchorName : "(null)"));
+        return false;
+    }
+
+    // 編集側で床の高さを変えても追従できるよう、配置座標ではなくコライダー上面を着地点にします。
+    Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
+    const AABB anchorBounds = anchor->GetAABB();
+    if (anchorBounds.max.y > anchorBounds.min.y) {
+        destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
+    }
+
+    Vector3 facingDirection = { 1.0f, 0.0f, 0.0f };
+    if (Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
+        facingDirection = facingObject->GetWorldPosition() - destination;
+        facingDirection.y = 0.0f;
+        const float facingLength = std::sqrt(
+            facingDirection.x * facingDirection.x + facingDirection.z * facingDirection.z);
+        if (facingLength > 0.001f) {
+            facingDirection.x /= facingLength;
+            facingDirection.z /= facingLength;
+        } else {
+            facingDirection = { 1.0f, 0.0f, 0.0f };
+        }
+    }
+
+    // 移動前の能力や運搬対象を残すと、次フレームに旧座標へ引き戻されるため先に解消します。
+    ClearDebugPlayerMorph();
+    player_->ReleaseCarriedEnemy(true);
+    player_->ChangeState(std::make_unique<PlayerStateIdle>());
+    player_->SetVelocity({ 0.0f, -1.0f, 0.0f });
+    player_->SetGrounded(false);
+    player_->SetTranslate(destination);
+    player_->SetRespawnPosition(destination);
+    player_->SetMoveYaw(std::atan2(facingDirection.x, facingDirection.z));
+    player_->SetIsVisible(true);
+    player_->SetIsControlActive(true);
+    player_->UpdateLocalMatrix();
+    player_->UpdateWorldMatrix();
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (lockOnSystem_) {
+        lockOnSystem_->ResetLockOn(camera);
+    }
+    player_->SetLockOn(false);
+    if (camera) {
+        CameraManager::GetInstance()->SetActiveCamera(camera);
+        camera->SetInputEnabled(true);
+        camera->SetFollowTarget(player_);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SetRotation({
+            kDebugTeleportCameraPitch,
+            std::atan2(facingDirection.x, facingDirection.z),
+            0.0f });
+        camera->SnapToThirdPerson(
+            kDebugTeleportCameraDistance,
+            kDebugTeleportCameraHeight,
+            kDebugTeleportCameraPitch);
+        camera->Update(0.0f);
+    }
+
+    DebugConsole::GetInstance()->AddLog(
+        std::string("Debug teleport completed: ") +
+        (destinationLabel ? destinationLabel : "unknown"));
+    return true;
+}
+#endif
 
 void GamePlayScene::LoadGoalPresentationTuning() {
     std::ifstream file(kGoalPresentationTuningPath, std::ios::binary);
@@ -1107,6 +1492,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             animation.jumpStartTime = j.value("jumpStartTime", animation.jumpStartTime);
             animation.apexTime = j.value("apexTime", animation.apexTime);
             animation.resultUiTime = j.value("resultUiTime", animation.resultUiTime);
+            animation.victoryLandTime = j.value("victoryLandTime", animation.victoryLandTime);
             animation.readyTime = j.value("readyTime", animation.readyTime);
         }
         if (const auto it = root.find("player"); it != root.end() && it->is_object()) {
@@ -1152,6 +1538,12 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             goalPresentationTuning_.resultUiScale = j.value("scale", goalPresentationTuning_.resultUiScale);
             goalPresentationTuning_.resultBackdropAlpha = j.value("backdropAlpha", goalPresentationTuning_.resultBackdropAlpha);
             goalPresentationTuning_.resultGlowAlpha = j.value("glowAlpha", goalPresentationTuning_.resultGlowAlpha);
+            goalPresentationTuning_.resultLetterStagger = j.value("letterStagger", goalPresentationTuning_.resultLetterStagger);
+            goalPresentationTuning_.resultLetterFallDuration = j.value("letterFallDuration", goalPresentationTuning_.resultLetterFallDuration);
+            goalPresentationTuning_.resultLetterDropHeight = j.value("letterDropHeight", goalPresentationTuning_.resultLetterDropHeight);
+            goalPresentationTuning_.resultLetterBounceHeight = j.value("letterBounceHeight", goalPresentationTuning_.resultLetterBounceHeight);
+            goalPresentationTuning_.resultLetterBounceDamping = j.value("letterBounceDamping", goalPresentationTuning_.resultLetterBounceDamping);
+            goalPresentationTuning_.resultLetterBounceFrequency = j.value("letterBounceFrequency", goalPresentationTuning_.resultLetterBounceFrequency);
         }
 
         goalClearPlayerAnimator_.SetTuning(animation);
@@ -1171,7 +1563,8 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
         {"crownFocusEndTime", g.crownFocusEndTime}, {"crownMoveStartTime", g.crownMoveStartTime},
         {"crownLandTime", a.crownLandTime},
         {"anticipationStartTime", a.anticipationStartTime}, {"jumpStartTime", a.jumpStartTime},
-        {"apexTime", a.apexTime}, {"resultUiTime", a.resultUiTime}, {"readyTime", a.readyTime}
+        {"apexTime", a.apexTime}, {"resultUiTime", a.resultUiTime},
+        {"victoryLandTime", a.victoryLandTime}, {"readyTime", a.readyTime}
     };
     root["player"] = {
         {"jumpHeight", a.jumpHeight}, {"forwardDistance", a.forwardDistance},
@@ -1195,7 +1588,13 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
     root["ui"] = {
         {"centerX", g.resultUiCenterX}, {"centerY", g.resultUiCenterY},
         {"scale", g.resultUiScale}, {"backdropAlpha", g.resultBackdropAlpha},
-        {"glowAlpha", g.resultGlowAlpha}
+        {"glowAlpha", g.resultGlowAlpha},
+        {"letterStagger", g.resultLetterStagger},
+        {"letterFallDuration", g.resultLetterFallDuration},
+        {"letterDropHeight", g.resultLetterDropHeight},
+        {"letterBounceHeight", g.resultLetterBounceHeight},
+        {"letterBounceDamping", g.resultLetterBounceDamping},
+        {"letterBounceFrequency", g.resultLetterBounceFrequency}
     };
 
     std::ofstream file(kGoalPresentationTuningPath, std::ios::binary);
@@ -1214,7 +1613,8 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     a.jumpStartTime = std::max(a.jumpStartTime, a.anticipationStartTime + 0.10f);
     a.apexTime = std::max(a.apexTime, a.jumpStartTime + 0.36f);
     a.resultUiTime = std::max(a.resultUiTime, a.apexTime + 0.02f);
-    a.readyTime = std::max(a.readyTime, a.resultUiTime + 0.50f);
+    a.victoryLandTime = std::max(a.victoryLandTime, a.apexTime + 0.36f);
+    a.readyTime = std::max(a.readyTime, a.victoryLandTime + 0.55f);
     a.jumpHeight = std::clamp(a.jumpHeight, 1.0f, 7.0f);
     a.forwardDistance = std::clamp(a.forwardDistance, 0.0f, 3.0f);
     a.anticipationDepth = std::clamp(a.anticipationDepth, 0.02f, 0.65f);
@@ -1229,10 +1629,16 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     g.jumpFov = std::clamp(g.jumpFov, 0.30f, 1.10f);
     g.resultFov = std::clamp(g.resultFov, 0.30f, 1.10f);
     g.resultUiCenterX = std::clamp(g.resultUiCenterX, 0.30f, 0.70f);
-    g.resultUiCenterY = std::clamp(g.resultUiCenterY, 0.45f, 0.82f);
+    g.resultUiCenterY = std::clamp(g.resultUiCenterY, 0.12f, 0.82f);
     g.resultUiScale = std::clamp(g.resultUiScale, 0.60f, 1.35f);
-    g.resultBackdropAlpha = std::clamp(g.resultBackdropAlpha, 0.0f, 0.65f);
-    g.resultGlowAlpha = std::clamp(g.resultGlowAlpha, 0.0f, 0.45f);
+    g.resultBackdropAlpha = std::clamp(g.resultBackdropAlpha, 0.0f, 1.0f);
+    g.resultGlowAlpha = std::clamp(g.resultGlowAlpha, 0.0f, 1.0f);
+    g.resultLetterStagger = std::clamp(g.resultLetterStagger, 0.02f, 0.20f);
+    g.resultLetterFallDuration = std::clamp(g.resultLetterFallDuration, 0.18f, 0.75f);
+    g.resultLetterDropHeight = std::clamp(g.resultLetterDropHeight, 80.0f, 520.0f);
+    g.resultLetterBounceHeight = std::clamp(g.resultLetterBounceHeight, 8.0f, 120.0f);
+    g.resultLetterBounceDamping = std::clamp(g.resultLetterBounceDamping, 1.0f, 8.0f);
+    g.resultLetterBounceFrequency = std::clamp(g.resultLetterBounceFrequency, 4.0f, 18.0f);
     goalClearPlayerAnimator_.SetTuning(a);
 }
 
@@ -1251,8 +1657,9 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     changed |= ImGui::DragFloat("王冠着地", &a.crownLandTime, 0.01f, 1.00f, 4.00f, "%.2f 秒");
     changed |= ImGui::DragFloat("溜め開始", &a.anticipationStartTime, 0.01f, 1.10f, 4.50f, "%.2f 秒");
     changed |= ImGui::DragFloat("大ジャンプ開始", &a.jumpStartTime, 0.01f, 1.20f, 5.00f, "%.2f 秒");
-    changed |= ImGui::DragFloat("頂点・静止", &a.apexTime, 0.01f, 1.60f, 6.50f, "%.2f 秒");
+    changed |= ImGui::DragFloat("ジャンプ頂点", &a.apexTime, 0.01f, 1.60f, 6.50f, "%.2f 秒");
     changed |= ImGui::DragFloat("リザルト表示", &a.resultUiTime, 0.01f, 1.70f, 7.00f, "%.2f 秒");
+    changed |= ImGui::DragFloat("勝利着地", &a.victoryLandTime, 0.01f, 2.00f, 7.50f, "%.2f 秒");
     changed |= ImGui::DragFloat("帰還案内開始", &a.readyTime, 0.01f, 2.20f, 8.00f, "%.2f 秒");
 
     ImGui::Separator();
@@ -1282,10 +1689,16 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     ImGui::Separator();
     ImGui::TextUnformatted("クリアUI");
     changed |= ImGui::DragFloat("表示位置 X", &g.resultUiCenterX, 0.005f, 0.30f, 0.70f, "%.3f");
-    changed |= ImGui::DragFloat("表示位置 Y", &g.resultUiCenterY, 0.005f, 0.45f, 0.82f, "%.3f");
+    changed |= ImGui::DragFloat("表示位置 Y", &g.resultUiCenterY, 0.005f, 0.12f, 0.82f, "%.3f");
     changed |= ImGui::DragFloat("UIスケール", &g.resultUiScale, 0.005f, 0.60f, 1.35f, "%.3f");
-    changed |= ImGui::DragFloat("背景暗転", &g.resultBackdropAlpha, 0.005f, 0.0f, 0.65f, "%.3f");
-    changed |= ImGui::DragFloat("中央グロー", &g.resultGlowAlpha, 0.005f, 0.0f, 0.45f, "%.3f");
+    changed |= ImGui::DragFloat("文字不透明度", &g.resultBackdropAlpha, 0.005f, 0.0f, 1.0f, "%.3f");
+    changed |= ImGui::DragFloat("着地しぶき", &g.resultGlowAlpha, 0.005f, 0.0f, 1.0f, "%.3f");
+    changed |= ImGui::DragFloat("文字間ディレイ", &g.resultLetterStagger, 0.001f, 0.02f, 0.20f, "%.3f 秒");
+    changed |= ImGui::DragFloat("落下時間", &g.resultLetterFallDuration, 0.005f, 0.18f, 0.75f, "%.3f 秒");
+    changed |= ImGui::DragFloat("落下距離", &g.resultLetterDropHeight, 1.0f, 80.0f, 520.0f, "%.0f px");
+    changed |= ImGui::DragFloat("跳ね返り高さ", &g.resultLetterBounceHeight, 0.5f, 8.0f, 120.0f, "%.1f px");
+    changed |= ImGui::DragFloat("跳ね減衰", &g.resultLetterBounceDamping, 0.05f, 1.0f, 8.0f, "%.2f");
+    changed |= ImGui::DragFloat("跳ね速度", &g.resultLetterBounceFrequency, 0.05f, 4.0f, 18.0f, "%.2f");
 
     if (changed) {
         SanitizeGoalPresentationTuning();

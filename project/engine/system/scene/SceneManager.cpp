@@ -224,6 +224,14 @@ BaseScene* SceneManager::GetCurrentScene() const {
 }
 
 void SceneManager::ChangeScene(const std::string& sceneName) {
+    QueueSceneChange(sceneName, true);
+}
+
+void SceneManager::ChangeSceneAfterFade(const std::string& sceneName) {
+    QueueSceneChange(sceneName, false);
+}
+
+void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFadeOut) {
     if (sceneFactory_ == nullptr) {
         assert(false && "SceneFactory is not set in SceneManager.");
         return;
@@ -246,7 +254,9 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
     nextSceneName_ = sceneName;
     pendingSceneNameForSwap_ = sceneName;
     transitionPhase_ = TransitionPhase::FadingOutCurrent;
-    Fade::GetInstance()->StartFadeOut(1.0f);
+    if (startFadeOut) {
+        Fade::GetInstance()->StartFadeOut(1.0f);
+    }
 
 #ifdef USE_IMGUI
     // Editor専用Sceneは起動時のゲームSceneとして復元しません。
@@ -384,7 +394,10 @@ void SceneManager::StartAsyncSceneCreate() {
         preparedScene_->SetDebugEditor(debugEditor_);
     }
 
-    const SceneLoadManifest manifest = preparedScene_->BuildAsyncLoadManifest();
+    SceneLoadManifest manifest = preparedScene_->BuildAsyncLoadManifest();
+    if (!activeSceneLoadContext_.bgmPath.empty()) {
+        manifest.AddAudio(activeSceneLoadContext_.bgmPath);
+    }
     preloadProgress_ = std::make_shared<ScenePreloadProgress>();
     const std::shared_ptr<ScenePreloadProgress> progress = preloadProgress_;
 

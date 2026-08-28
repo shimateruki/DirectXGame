@@ -3,15 +3,19 @@
 #ifdef USE_IMGUI
 
 #include "Object3d.h"
+#include "InputManager.h"
+#include "SceneLoadContext.h"
 #include "Sprite.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 class BaseScene;
+class CaptureToolWindow;
 class DebugEditor;
 class SceneManager;
 
@@ -23,6 +27,7 @@ public:
         Recording,
         Paused,
         Playback,
+        Regression,
     };
 
     void Initialize(SceneManager* sceneManager, DebugEditor* debugEditor);
@@ -49,16 +54,29 @@ public:
     // 再生停止やシーン再読み込みの直前に、保持オブジェクトを通常管理へ戻します。
     void ResetForSceneChange();
 
+    // 回帰テスト中は記録時のフレーム時間をGame更新へ渡します。
+    float ResolveSimulationDeltaTime(float defaultDeltaTime) const;
+    // 描画完了後に、回帰テストで予約されたGame View画像を保存します。
+    void CapturePendingRegressionScreenshot(CaptureToolWindow* captureTool);
+
 private:
     struct ObjectSnapshot {
         uint64_t replayId = 0;
+        std::string persistentGuid;
         std::string name;
         std::string className;
+        bool runtimeSpawned = false;
+        std::string saveCategory;
+        std::string enemyType;
+        std::string gimmickType;
+        std::string itemType;
         Object3d::ReplayState state;
     };
 
     struct SpriteSnapshot {
         uint64_t replayId = 0;
+        std::string bindingKey;
+        std::string textureName;
         std::string name;
         Sprite::ReplayState state;
     };
@@ -94,6 +112,66 @@ private:
         std::size_t estimatedBytes = 0;
     };
 
+
+    struct InputSample {
+        double time = 0.0;
+        float deltaTime = 0.0f;
+        InputManager::ReplayState state;
+    };
+
+    struct RegressionSettings {
+        float maxPositionError = 1.0f;
+        float worldPositionLimit = 10000.0f;
+        float cpuBudgetMs = 33.33f;
+        float gpuBudgetMs = 33.33f;
+        bool failOnPerformanceBudget = false;
+        int screenshotCount = 4;
+    };
+
+    struct RegressionResult {
+        bool available = false;
+        bool passed = false;
+        bool running = false;
+        std::string archiveName;
+        std::string reportPath;
+        double durationSeconds = 0.0;
+        std::size_t simulatedFrames = 0;
+        std::size_t comparedFrames = 0;
+        float maxPositionError = 0.0f;
+        float averageCpuMs = 0.0f;
+        float maximumCpuMs = 0.0f;
+        float averageGpuMs = 0.0f;
+        float maximumGpuMs = 0.0f;
+        uint64_t newErrorLogs = 0;
+        bool expectedGoal = false;
+        bool observedGoal = false;
+        std::vector<std::string> failures;
+        std::vector<std::string> screenshotPaths;
+    };
+    struct ReplayArchiveEntry {
+
+        std::string fileName;
+        std::string filePath;
+        std::string createdAt;
+        std::string sceneLabel;
+        std::size_t frameCount = 0;
+        std::size_t inputSampleCount = 0;
+        bool regressionReady = false;
+        double durationSeconds = 0.0;
+        bool valid = false;
+        std::string error;
+    };
+
+    struct PendingReplayArchive {
+        std::string filePath;
+        std::string createdAt;
+        std::string sceneName;
+        SceneLoadContext sceneContext;
+        float captureRate = 15.0f;
+        std::deque<FrameSnapshot> frames;
+        std::vector<InputSample> inputSamples;
+    };
+
     void BeginRecording(BaseScene* scene);
     void CaptureFrame(double time);
     void ApplyFrame(std::size_t index);
@@ -108,9 +186,36 @@ private:
     void TrimToCapacity();
     void BuildFrameDiagnostics(FrameSnapshot& frame) const;
     void RecalculateMemoryEstimate();
+    std::size_t EstimateFrameBytes(const FrameSnapshot& frame) const;
     std::size_t GetMaxFrameCount() const;
     const char* GetModeLabel() const;
 
+    bool SaveCurrentReplayArchive();
+    void RefreshReplayArchiveList();
+    bool RequestLoadReplayArchive(std::size_t archiveIndex);
+    bool RequestPendingArchiveScene();
+    bool TryCompletePendingArchiveLoad(bool isPlaying);
+    bool IsPendingArchiveSceneCurrent() const;
+    void RebindPendingArchiveToCurrentScene(BaseScene* scene);
+    bool CanResumeLoadedArchive(std::string* reason = nullptr) const;
+    json SerializeFrame(const FrameSnapshot& frame, double firstFrameTime) const;
+    bool DeserializeFrame(const json& data, FrameSnapshot& frame, std::string& error) const;
+
+    json SerializeInputState(const InputManager::ReplayState& state) const;
+    bool DeserializeInputState(const json& data, InputManager::ReplayState& state, std::string& error) const;
+    json SerializeInputSample(const InputSample& sample, double firstFrameTime) const;
+    bool DeserializeInputSample(const json& data, InputSample& sample, std::string& error) const;
+
+    bool RequestStartRegression(std::size_t archiveIndex);
+    bool StartRegression();
+    void UpdateRegressionBeforeSimulation();
+    void CaptureRegressionAfterSimulation();
+    void CompareRegressionFrame(const FrameSnapshot& expected);
+    void FinishRegression();
+    void FinalizeRegressionReport();
+    void QueueRegressionScreenshots();
+    const ObjectSnapshot* FindPlayerSnapshot(const FrameSnapshot& frame) const;
+    static bool IsGoalReached(const json& sceneState);
     // ReplayDebugger.Ui.cpp
     void DrawToolbar();
     void DrawSummaryCards();
@@ -120,8 +225,10 @@ private:
     void DrawSpriteBrowser();
     void DrawSpriteInspector();
     void DrawSettingsPanel();
+    void DrawArchivePanel();
     void HandleEditorShortcuts();
     void SelectFrameFromTimeline(double time);
+    void DrawRegressionPanel();
     void SelectSceneObject(uint64_t replayId);
     void JumpToObjectChange(int direction);
     bool HasMeaningfulChange(const ObjectSnapshot& lhs, const ObjectSnapshot& rhs) const;
@@ -139,6 +246,8 @@ private:
     uint64_t activeSceneGeneration_ = 0;
     std::deque<FrameSnapshot> frames_;
     std::optional<FrameSnapshot> playInEditorSnapshot_;
+    std::unordered_set<std::string> playBaselinePersistentGuids_;
+    std::vector<InputSample> inputSamples_;
     std::size_t cursor_ = 0;
     Mode mode_ = Mode::Idle;
 
@@ -153,8 +262,15 @@ private:
     std::size_t lastMissingObjectCount_ = 0;
     std::size_t lastMissingSpriteCount_ = 0;
     std::size_t estimatedMemoryBytes_ = 0;
+    std::size_t recreatedArchiveObjectCount_ = 0;
+    bool loadedArchiveReadOnly_ = false;
+    std::string loadedArchiveName_;
+    std::optional<PendingReplayArchive> pendingReplayArchive_;
+    std::vector<ReplayArchiveEntry> replayArchiveEntries_;
+    int selectedArchiveIndex_ = -1;
 
     uint64_t selectedReplayId_ = 0;
+
     uint64_t selectedSpriteReplayId_ = 0;
     bool inspectSprites_ = false;
     float timelinePixelsPerSecond_ = 110.0f;
@@ -163,6 +279,24 @@ private:
     bool showRemovedObjects_ = true;
     char objectFilter_[128] = {};
     std::string statusMessage_;
+
+    RegressionSettings regressionSettings_;
+    RegressionResult regressionResult_;
+    bool pendingRegressionStart_ = false;
+    bool regressionStepPrepared_ = false;
+    bool regressionReportPending_ = false;
+    std::size_t regressionInputIndex_ = 0;
+    std::size_t regressionExpectedFrameIndex_ = 0;
+    std::size_t regressionNextScreenshotIndex_ = 0;
+    float regressionStepDeltaTime_ = 0.0f;
+    double regressionElapsedTime_ = 0.0;
+    double regressionCpuTotalMs_ = 0.0;
+    double regressionGpuTotalMs_ = 0.0;
+    std::size_t regressionPerformanceSamples_ = 0;
+    uint64_t regressionErrorBaseline_ = 0;
+    std::string regressionOutputDirectory_;
+    std::vector<double> regressionScreenshotTimes_;
+    std::deque<std::string> pendingRegressionScreenshotPaths_;
 };
 
 #endif

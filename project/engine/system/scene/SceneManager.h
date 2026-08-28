@@ -57,6 +57,8 @@ void Draw();
     /// </summary>
         // シーン名を指定して次のシーンへの遷移を開始します。
 void ChangeScene(const std::string& sceneName);
+    // 呼び出し元でフェードアウトを完了済みの場合に、暗転を再開せず遷移します。
+    void ChangeSceneAfterFade(const std::string& sceneName);
 
     bool ReloadCurrentScene();
     std::vector<std::string> GetRegisteredSceneNames() const;
@@ -103,6 +105,7 @@ enum class TransitionPhase {
 
         // ローディング画面を表示し、次シーン読み込みへの準備を始めます。
 void BeginLoadingTransition();
+    void QueueSceneChange(const std::string& sceneName, bool startFadeOut);
         // 別スレッドで次シーン生成を開始します。
 void StartAsyncSceneCreate();
     bool IsAsyncSceneReady() const;

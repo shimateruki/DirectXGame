@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "6f459bc3fc264b798d0735cf15bc12c0",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_wind_slow_fall.json",
+  "version": 1
+}

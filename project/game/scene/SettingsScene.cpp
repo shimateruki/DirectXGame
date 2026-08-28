@@ -38,6 +38,7 @@ SceneLoadManifest SettingsScene::BuildAsyncLoadManifest() const {
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
         ? GetSceneLoadContext().spriteLayoutPath
         : kSettingsSpriteLayoutPath);
+    manifest.AddAudio(ResolveSceneBgmPath("Resources/audio/Alarm02.mp3"));
     return manifest;
 }
 

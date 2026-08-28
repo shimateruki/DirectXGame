@@ -3,11 +3,13 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "Object3d.h"
+#include "engine/graphics/effect/DecalSystem.h"
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "EditorCommandRegistry.h"
+#include "SceneWorkspace.h"
 #include "EditorAssetDragPayload.h"
 #include "CameraEditor.h"
 #include "CameraManager.h"
@@ -301,6 +303,18 @@ namespace {
         AddCreatedObject(editor, scene, std::move(object), "Cinematic_Camera", "Create Cinematic Camera", useGameViewCursor);
     }
 
+    void CreateDecal(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        DecalSpawnDesc desc;
+        desc.name = "Surface_Decal";
+        desc.lifetime = 0.0f;
+        desc.transient = false;
+        std::unique_ptr<Object3d> decal = DecalSystem::Create(
+            scene->GetObject3dCommon(), { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, desc);
+        AddCreatedObject(editor, scene, std::move(decal), "Surface_Decal", "Create Surface Decal", useGameViewCursor);
+    }
+
     void CreateGimmick(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
         if (!scene || !scene->GetObject3dCommon()) return;
 
@@ -345,6 +359,7 @@ namespace {
             if (ImGui::MenuItem("トリガーボックス")) CreateTriggerBox(editor, scene, useGameViewCursor);
             if (ImGui::MenuItem("当たり判定ボックス")) CreateCollisionBox(editor, scene, useGameViewCursor);
             if (ImGui::MenuItem("演出用カメラ")) CreateCinematicCamera(editor, scene, useGameViewCursor);
+            if (ImGui::MenuItem("サーフェスデカール")) CreateDecal(editor, scene, useGameViewCursor);
             ImGui::EndMenu();
         }
 
@@ -361,6 +376,9 @@ namespace {
             if (ImGui::MenuItem("出現床")) CreateGimmick(editor, scene, "AppearingFloor", useGameViewCursor);
             if (ImGui::MenuItem("汎用スイッチ")) CreateGimmick(editor, scene, "Switch", useGameViewCursor);
             if (ImGui::MenuItem("イベント受信")) CreateGimmick(editor, scene, "EventReceiver", useGameViewCursor);
+            if (ImGui::MenuItem("中ボス遭遇管理")) CreateGimmick(editor, scene, "ArenaEncounter", useGameViewCursor);
+            if (ImGui::MenuItem("ゲームプレイボリューム")) CreateGimmick(editor, scene, "GameplayVolume", useGameViewCursor);
+            if (ImGui::MenuItem("プリズム障壁")) CreateGimmick(editor, scene, "PrismBarrier", useGameViewCursor);
             if (ImGui::MenuItem("フックアンカー")) CreateGimmick(editor, scene, "HookAnchor", useGameViewCursor);
             if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
             if (ImGui::MenuItem("一方通行床")) CreateGimmick(editor, scene, "OneWayFloor", useGameViewCursor);
@@ -386,8 +404,10 @@ namespace {
             if (ImGui::MenuItem("キノコ")) CreateEnemy(editor, scene, "Mushroom", useGameViewCursor);
             if (ImGui::MenuItem("巨大スライム")) CreateEnemy(editor, scene, "GiantSlime", useGameViewCursor);
             if (ImGui::MenuItem("プリズムスライム（中ボス）")) CreateEnemy(editor, scene, "PrismSlime", useGameViewCursor);
+            if (ImGui::MenuItem("マグマスライム（中ボス）")) CreateEnemy(editor, scene, "MagmaSlime", useGameViewCursor);
             if (ImGui::MenuItem("コウモリ")) CreateEnemy(editor, scene, "Bat", useGameViewCursor);
             if (ImGui::MenuItem("目玉ビーム")) CreateEnemy(editor, scene, "BeamDrone", useGameViewCursor);
+            if (ImGui::MenuItem("リングバーナー")) CreateEnemy(editor, scene, "RingBurner", useGameViewCursor);
             if (ImGui::MenuItem("ボスコア")) CreateEnemy(editor, scene, "BossCore", useGameViewCursor);
             ImGui::EndMenu();
         }
@@ -505,9 +525,13 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
         }
-        if (editor_->GetSceneValidator() && ImGui::Selectable("  " ICON_FA_CHECK_CIRCLE " シーン検証 (Scene Validator)", currentObj == editor_->GetSceneValidator())) {
+        if (editor_->GetSceneValidator() && ImGui::Selectable("  " ICON_FA_CHECK_CIRCLE " シーン視覚監査 (Scene Visual Audit)", currentObj == editor_->GetSceneValidator())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneValidator());
+        }
+        if (editor_->GetSceneInventoryWindow() && ImGui::Selectable("  " ICON_FA_CHART_BAR " 配置物集計 (Scene Inventory)", currentObj == editor_->GetSceneInventoryWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneInventoryWindow());
         }
         if (editor_->GetMaterialPreviewBoard() && ImGui::Selectable("  " ICON_FA_TH_LARGE " マテリアル確認 (Material Preview)", currentObj == editor_->GetMaterialPreviewBoard())) {
             editor_->SetSelectedObject(nullptr);
@@ -595,6 +619,10 @@ void HierarchyWindow::Draw() {
 
     ImGui::Separator();
     DrawSceneAssetManager();
+    if (SceneWorkspace* workspace = editor_->GetSceneWorkspace()) {
+        ImGui::Separator();
+        workspace->DrawHierarchyPanel();
+    }
 
     ImGui::Separator();
     ImGui::Separator();
@@ -1440,6 +1468,9 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         name += " [" + layerName + "]";
     }
 
+    if (obj->IsEditorTemporarilyHidden()) {
+        name += " [一時非表示]";
+    }
     // 左側にツリーノードを描画
     bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
 

@@ -57,6 +57,7 @@ public:
     /// </summary>
     void Draw() override;
     void DrawUI() override;
+    void DrawImGui() override;
 
     //  シャドウマップ描画のオーバーライド
     void DrawShadow() override;
@@ -111,6 +112,20 @@ private:
         float depthOffset = 0.0f;
     };
 
+    struct PresentationTuning {
+        float cameraSettleTime = 1.55f;
+        float titleRevealStartTime = 1.20f;
+        Vector3 introEyeOffset = { 0.75f, 1.28f, -5.10f };
+        Vector3 impactEyeOffset = { 0.34f, 1.04f, -4.25f };
+        Vector3 settleEyeOffset = { 1.45f, 1.62f, -8.10f };
+        Vector3 introTargetOffset = { 0.0f, 0.50f, 0.0f };
+        Vector3 settleTargetOffset = { -1.35f, 0.40f, 0.0f };
+        float introFov = 0.50f;
+        float impactFov = 0.43f;
+        float settleFov = 0.58f;
+        float impactShake = 0.085f;
+    };
+
     void BindLayoutSprites();
     void RefreshLayoutSpritePointers();
     Sprite* FindSprite(const std::string& name) const;
@@ -128,6 +143,10 @@ private:
     void InitializeGameOverPresentation();
     void FindGameOverSlimeObject();
     void UpdateGameOverPresentation(float deltaTime);
+    void UpdateGameOverCamera();
+    void UpdateGameOverPostEffects();
+    void EmitGameOverImpactCue();
+    void ResetGameOverPostEffects();
     void DrawBackgroundSprite();
 
     // --- エンジン基盤 ---
@@ -152,6 +171,8 @@ private:
     Vector3 gameOverSlimeBasePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 gameOverSlimeBaseScale_ = { 1.0f, 1.0f, 1.0f };
     float gameOverPresentationTimer_ = 0.0f;
+    PresentationTuning presentationTuning_;
+    bool gameOverImpactCuePlayed_ = false;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     Player* player_ = nullptr;
 
@@ -166,9 +187,9 @@ private:
     uint32_t gpuParticleTexHandle_ = 0;
 
     Sprite* backgroundSprite_ = nullptr;
-    std::array<Sprite*, 7> titleLetters_ = {};
-    std::array<Vector2, 7> titleLetterBasePositions_ = {};
-    std::array<Vector2, 7> titleLetterBaseSizes_ = {};
+    std::array<Sprite*, 8> titleLetters_ = {};
+    std::array<Vector2, 8> titleLetterBasePositions_ = {};
+    std::array<Vector2, 8> titleLetterBaseSizes_ = {};
     std::array<MenuRow, static_cast<size_t>(MenuItem::Count)> menuRows_ = {};
     std::vector<FallingCrown> fallingCrowns_;
     std::vector<DizzyStar> dizzyStars_;

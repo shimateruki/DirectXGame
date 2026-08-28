@@ -64,7 +64,7 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
 	
 	// 不透明描画
 	for (auto& obj : objects_) {
-		if (!obj->GetIsVisible()) continue;
+		if (!obj->GetIsVisible() || obj->IsCameraObject()) continue;
 		const int materialType = obj->GetMaterialType();
 		const bool drawStageGateFrame = ShouldDrawStageGateFrame(obj);
 		if (drawStageGateFrame || (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24))) {
@@ -73,7 +73,7 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
 	}
 	// 透明描画
 	for (auto& obj : objects_) {
-		if (!obj->GetIsVisible()) continue;
+		if (!obj->GetIsVisible() || obj->IsCameraObject()) continue;
 		if (obj->GetMaterialType() == 1) {
 			obj->Draw(pointLight, spotLight);
 		}
@@ -165,7 +165,7 @@ void ObjectManager::DrawShadow() {
 
 	// 管理している全オブジェクトの影を描画する
 	for (auto& obj : objects_) {
-		if (!obj->GetIsVisible()) continue;
+		if (!obj->GetIsVisible() || obj->IsCameraObject()) continue;
 		if (!obj->GetCastShadow()) continue;
 		if (obj->GetMaterialType() == 7) continue;
 

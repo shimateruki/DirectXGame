@@ -70,7 +70,7 @@ void ConfigurePrismSpawnCallback(BaseScene* scene, EnemyPrismSlime* prismSlime) 
     });
 }
 
-void ConfigureEnemyRuntimeReferences(BaseScene* scene) {
+void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
     if (!scene) {
         return;
     }
@@ -100,7 +100,8 @@ bool IsSlimeEnemyType(const std::string& enemyType) {
         enemyType == "ThunderSlime" ||
         enemyType == "WindSlime" ||
         enemyType == "GiantSlime" ||
-        enemyType == "PrismSlime";
+        enemyType == "PrismSlime" ||
+        enemyType == "MagmaSlime";
 }
 
 bool IsSlimeModelName(std::string modelName) {
@@ -126,6 +127,11 @@ void ApplySlimeMaterialDefault(Object3d* object) {
 
     const std::string enemyType = object->GetEnemyType();
     if (!IsSlimeEnemyType(enemyType)) {
+        return;
+    }
+
+    // マグマスライムはモデル内の溶岩・黒曜石PBR材質を維持します。
+    if (enemyType == "MagmaSlime") {
         return;
     }
 
@@ -319,12 +325,19 @@ bool RequiresLevelObjectNormalization(const json& sourceObjects) {
 // ========================================================================
 // 1. 自動で3つのファイルを読み込み、無ければ旧仕様で読み込み、最後に親子関係を解決する
 // ========================================================================
-void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename) {
+void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) {
+    ConfigureEnemyRuntimeReferencesInternal(scene);
+}
+
+void LevelLoader::LoadObjectLayout(
+    BaseScene* scene,
+    const std::string& filename,
+    bool resolveSceneAssetPath) {
     // ロード前にプリセットを最新の状態にする
     PresetManager::GetInstance()->Initialize();
     GameplayStatusManager::GetInstance()->Initialize();
 
-    const std::string resolvedFilename = scene
+    const std::string resolvedFilename = scene && resolveSceneAssetPath
         ? scene->ResolvePrimaryObjectLayoutPath(filename)
         : filename;
     std::string justName = resolvedFilename;
@@ -332,7 +345,9 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     if (slashPos != std::string::npos) {
         justName = justName.substr(slashPos + 1);
     }
-    scene->SetLoadedFilename(justName);
+    if (scene && resolveSceneAssetPath) {
+        scene->SetLoadedFilename(justName);
+    }
     // filename は "Resources/json/3Dobject/scene_layout.json" のようになっている
     std::string baseFilename = resolvedFilename;
 
@@ -811,6 +826,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
                     if (p.contains("startActive")) param.startActive = p["startActive"];
                     if (p.contains("returnOnOff")) param.returnOnOff = p["returnOnOff"];
+                    if (p.contains("volumeMode")) param.volumeMode = p["volumeMode"];
+                    if (p.contains("volumePayload") && p["volumePayload"].is_string()) param.volumePayload = p["volumePayload"].get<std::string>();
+                    if (p.contains("volumeTriggerOnce")) param.volumeTriggerOnce = p["volumeTriggerOnce"];
+                    if (p.contains("volumeTriggerOnExit")) param.volumeTriggerOnExit = p["volumeTriggerOnExit"];
+                    if (p.contains("volumeRearmDelay")) param.volumeRearmDelay = (std::max)(0.0f, p["volumeRearmDelay"].get<float>());
+                    if (p.contains("volumeBlendDuration")) param.volumeBlendDuration = (std::max)(0.0f, p["volumeBlendDuration"].get<float>());
                     if (!isManagedCharacter) {
                         param.maxHp = (std::max)(param.maxHp, 1.0f);
                         if (hasMaxHp && !hasHp) {

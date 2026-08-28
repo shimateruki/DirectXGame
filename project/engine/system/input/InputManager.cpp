@@ -1,6 +1,7 @@
 #include "InputManager.h" // 対応するヘッダーファイルをインクルード
 #include <cassert>        // assertマクロを使用するためにインクルード
 #include "math.h"         // abs()関数などを使用するためにインクルード
+#include <algorithm>
 #include"DebugConsole.h"
 
 
@@ -302,6 +303,81 @@ void InputManager::Update()
         isGamepadMode_ = true;
     }
 }
+
+InputManager::ReplayState InputManager::CaptureReplayState() const {
+    ReplayState result;
+    std::copy(std::begin(keyState), std::end(keyState), result.keys.begin());
+    std::copy(std::begin(prevKeyState), std::end(prevKeyState), result.previousKeys.begin());
+    std::copy(std::begin(mouseState.rgbButtons), std::end(mouseState.rgbButtons), result.mouseButtons.begin());
+    std::copy(std::begin(prevMouseState.rgbButtons), std::end(prevMouseState.rgbButtons), result.previousMouseButtons.begin());
+    result.mouseX = mouseState.lX;
+    result.mouseY = mouseState.lY;
+    result.mouseWheel = mouseState.lZ;
+    result.previousMouseX = prevMouseState.lX;
+    result.previousMouseY = prevMouseState.lY;
+    result.previousMouseWheel = prevMouseState.lZ;
+
+    const XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
+    const XINPUT_GAMEPAD& previousPad = prevGamepadState.Gamepad;
+    result.gamepadButtons = pad.wButtons;
+    result.previousGamepadButtons = previousPad.wButtons;
+    result.leftTrigger = pad.bLeftTrigger;
+    result.rightTrigger = pad.bRightTrigger;
+    result.previousLeftTrigger = previousPad.bLeftTrigger;
+    result.previousRightTrigger = previousPad.bRightTrigger;
+    result.leftX = pad.sThumbLX;
+    result.leftY = pad.sThumbLY;
+    result.rightX = pad.sThumbRX;
+    result.rightY = pad.sThumbRY;
+    result.previousLeftX = previousPad.sThumbLX;
+    result.previousLeftY = previousPad.sThumbLY;
+    result.previousRightX = previousPad.sThumbRX;
+    result.previousRightY = previousPad.sThumbRY;
+    result.gamepadMode = isGamepadMode_;
+    result.accelerometer = accelData_;
+    result.gyroscope = gyroData_;
+    result.baseAccelerometer = baseAccel_;
+    return result;
+}
+
+void InputManager::ApplyReplayState(const ReplayState& state) {
+    std::copy(state.keys.begin(), state.keys.end(), std::begin(keyState));
+    std::copy(state.previousKeys.begin(), state.previousKeys.end(), std::begin(prevKeyState));
+
+    mouseState = {};
+    prevMouseState = {};
+    std::copy(state.mouseButtons.begin(), state.mouseButtons.end(), std::begin(mouseState.rgbButtons));
+    std::copy(state.previousMouseButtons.begin(), state.previousMouseButtons.end(), std::begin(prevMouseState.rgbButtons));
+    mouseState.lX = state.mouseX;
+    mouseState.lY = state.mouseY;
+    mouseState.lZ = state.mouseWheel;
+    prevMouseState.lX = state.previousMouseX;
+    prevMouseState.lY = state.previousMouseY;
+    prevMouseState.lZ = state.previousMouseWheel;
+
+    gamepadState = {};
+    prevGamepadState = {};
+    XINPUT_GAMEPAD& pad = gamepadState.Gamepad;
+    XINPUT_GAMEPAD& previousPad = prevGamepadState.Gamepad;
+    pad.wButtons = state.gamepadButtons;
+    previousPad.wButtons = state.previousGamepadButtons;
+    pad.bLeftTrigger = state.leftTrigger;
+    pad.bRightTrigger = state.rightTrigger;
+    previousPad.bLeftTrigger = state.previousLeftTrigger;
+    previousPad.bRightTrigger = state.previousRightTrigger;
+    pad.sThumbLX = state.leftX;
+    pad.sThumbLY = state.leftY;
+    pad.sThumbRX = state.rightX;
+    pad.sThumbRY = state.rightY;
+    previousPad.sThumbLX = state.previousLeftX;
+    previousPad.sThumbLY = state.previousLeftY;
+    previousPad.sThumbRX = state.previousRightX;
+    previousPad.sThumbRY = state.previousRightY;
+    isGamepadMode_ = state.gamepadMode;
+    accelData_ = state.accelerometer;
+    gyroData_ = state.gyroscope;
+    baseAccel_ = state.baseAccelerometer;
+}
 // 指定されたキーが押されているか
 bool InputManager::IsKeyPressed(BYTE keyCode) const {
     // キーの状態の最上位ビットが1であれば、キーは押されている
@@ -407,7 +483,72 @@ bool InputManager::IsMouseButtonReleased(int button) const {
     return !(mouseState.rgbButtons[button] & 0x80) && (prevMouseState.rgbButtons[button] & 0x80);
 }
 
+void InputManager::PlayRumble(float lowFrequency, float highFrequency, float duration) {
+    if (duration <= 0.0f) {
+        return;
+    }
+
+    RumbleRequest request;
+    request.lowFrequency = std::clamp(lowFrequency, 0.0f, 1.0f);
+    request.highFrequency = std::clamp(highFrequency, 0.0f, 1.0f);
+    request.remaining = duration;
+    rumbleRequests_.push_back(request);
+    // 同じ強さの要求でも継続時間が延びるため、SDL側の終了時刻を更新します。
+    appliedLowFrequency_ = -1.0f;
+    RefreshRumbleOutput();
+}
+
+void InputManager::UpdateRumble(float unscaledDeltaTime) {
+    const float timeStep = std::max(unscaledDeltaTime, 0.0f);
+    for (RumbleRequest& request : rumbleRequests_) {
+        request.remaining -= timeStep;
+    }
+    rumbleRequests_.erase(
+        std::remove_if(rumbleRequests_.begin(), rumbleRequests_.end(), [](const RumbleRequest& request) {
+            return request.remaining <= 0.0f;
+        }),
+        rumbleRequests_.end());
+    RefreshRumbleOutput();
+}
+
+void InputManager::StopRumble() {
+    rumbleRequests_.clear();
+    RefreshRumbleOutput();
+}
+
+void InputManager::RefreshRumbleOutput() {
+    float lowFrequency = 0.0f;
+    float highFrequency = 0.0f;
+    float longestRemaining = 0.0f;
+    for (const RumbleRequest& request : rumbleRequests_) {
+        lowFrequency = std::max(lowFrequency, request.lowFrequency);
+        highFrequency = std::max(highFrequency, request.highFrequency);
+        longestRemaining = std::max(longestRemaining, request.remaining);
+    }
+
+    if (lowFrequency == appliedLowFrequency_ && highFrequency == appliedHighFrequency_) {
+        return;
+    }
+
+    XINPUT_VIBRATION vibration{};
+    vibration.wLeftMotorSpeed = static_cast<WORD>(lowFrequency * 65535.0f);
+    vibration.wRightMotorSpeed = static_cast<WORD>(highFrequency * 65535.0f);
+    XInputSetState(0, &vibration);
+
+    if (sdlController_) {
+        const Uint16 low = static_cast<Uint16>(lowFrequency * 65535.0f);
+        const Uint16 high = static_cast<Uint16>(highFrequency * 65535.0f);
+        const Uint32 durationMs = static_cast<Uint32>(std::clamp(longestRemaining * 1000.0f, 0.0f, 60000.0f));
+        SDL_GameControllerRumble(sdlController_, low, high, durationMs);
+    }
+
+    appliedLowFrequency_ = lowFrequency;
+    appliedHighFrequency_ = highFrequency;
+}
+
 void InputManager::Finalize() {
+    StopRumble();
+
     // コントローラーを閉じる
     if (sdlController_) {
         SDL_GameControllerClose(sdlController_);

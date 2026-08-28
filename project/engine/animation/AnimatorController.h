@@ -30,6 +30,12 @@ struct AnimatorParameterDefinition {
     bool defaultBool = false;
 };
 
+struct AnimatorEventDefinition {
+    std::string name = "FeedbackCue";
+    std::string payload;
+    float normalizedTime = 0.0f;
+};
+
 struct AnimatorStateDefinition {
     std::string name;
     // Model内のSkeletal Animation名です。
@@ -40,8 +46,17 @@ struct AnimatorStateDefinition {
     bool loop = true;
     float blendDuration = 0.12f;
     int blendEasing = 4;
+    float eventTimelineDuration = 1.0f;
+    std::vector<AnimatorEventDefinition> events;
 };
 
+
+struct AnimatorEventInstance {
+    std::string stateName;
+    std::string name;
+    std::string payload;
+    float normalizedTime = 0.0f;
+};
 struct AnimatorConditionDefinition {
     std::string parameter;
     AnimatorConditionMode mode = AnimatorConditionMode::Greater;
@@ -60,7 +75,7 @@ struct AnimatorTransitionDefinition {
 
 class AnimatorControllerAsset {
 public:
-    static constexpr int kCurrentVersion = 1;
+    static constexpr int kCurrentVersion = 2;
 
     void Clear();
     int FindStateIndex(const std::string& stateName) const;
@@ -78,7 +93,7 @@ public:
 
 class AnimatorControllerRuntime {
 public:
-    using DurationResolver = std::function<float(const std::string& clipName)>;
+    using DurationResolver = std::function<float(const AnimatorStateDefinition& state)>;
 
     struct Snapshot {
         std::string currentState;
@@ -106,7 +121,8 @@ public:
     float GetStateTime() const { return currentTime_; }
     float GetPreviousTime() const { return previousTime_; }
     float GetTransitionWeight() const;
-    void SetCurrentTime(float timeSeconds) { currentTime_ = timeSeconds < 0.0f ? 0.0f : timeSeconds; }
+    void SetCurrentTime(float timeSeconds);
+    std::vector<AnimatorEventInstance> ConsumeEvents();
 
     void SetFloat(const std::string& name, float value);
     void SetInt(const std::string& name, int value);
@@ -125,6 +141,9 @@ private:
     void InitializeParameters();
     void AdvanceStateTime(float& time, const AnimatorStateDefinition* state, float deltaTime, const DurationResolver& durationResolver) const;
     float GetNormalizedTime(const AnimatorStateDefinition* state, float time, const DurationResolver& durationResolver) const;
+    float ResolveStateDuration(const AnimatorStateDefinition* state, const DurationResolver& durationResolver) const;
+    void QueueEntryEvents(const AnimatorStateDefinition* state);
+    void CollectCrossedEvents(const AnimatorStateDefinition* state, float previousTime, float rawNewTime, float duration);
     const AnimatorTransitionDefinition* FindRequestedTransition(int fromIndex, int toIndex) const;
     const AnimatorTransitionDefinition* FindAutomaticTransition(float normalizedTime) const;
     bool AreConditionsMet(const AnimatorTransitionDefinition& transition) const;
@@ -143,4 +162,5 @@ private:
     std::unordered_map<std::string, int> intParameters_;
     std::unordered_map<std::string, bool> boolParameters_;
     std::unordered_map<std::string, bool> triggerParameters_;
+    std::vector<AnimatorEventInstance> pendingEvents_;
 };

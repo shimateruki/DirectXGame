@@ -21,6 +21,12 @@ public:
         std::string modelName;
         bool morphLimited = true;
         float morphDuration = 5.0f;
+        bool motorContinuousCollision = false;
+        bool motorSnapToGround = false;
+        float motorMaxSlopeDegrees = 45.573f;
+        float motorStepHeight = 0.0f;
+        float motorGroundProbeDistance = 0.18f;
+        float motorSkinWidth = 0.025f;
     };
 
     static GameplayStatusManager* GetInstance();

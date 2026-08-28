@@ -25,6 +25,7 @@
 #include "VFXSequencer.h"
 #include "WinApp.h"
 #include "game/actor/gimmick/stage/GimmickStageGate.h"
+#include "game/actor/gimmick/trigger/GimmickBossGate.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #ifdef USE_IMGUI
 #include "imgui.h"
@@ -32,22 +33,45 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace {
 constexpr float kPi = 3.1415926535f;
 constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
+constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
 constexpr float kStageEntryCameraIntroDuration = 0.24f;
 constexpr float kStageEntryGateOpenLeadTime = 0.42f;
-constexpr float kStageEntryCameraRestoreStartTime = 1.72f;
+constexpr float kStageEntryCameraRestoreStartTime = 1.62f;
 constexpr float kStageEntryCameraRestoreDuration = 1.05f;
 constexpr float kStageEntryPresentationDuration =
     kStageEntryCameraRestoreStartTime + kStageEntryCameraRestoreDuration;
-constexpr float kStageEntryCameraBackDistance = 13.0f;
-constexpr float kStageEntryCameraSideOffset = 3.6f;
-constexpr float kStageEntryCameraHeight = 3.0f;
+constexpr float kStageEntrySetupRetryTimeout = 2.0f;
+constexpr float kStageEntryCameraBackDistance = 15.0f;
+constexpr float kStageEntryCameraHeight = 3.4f;
+constexpr float kStageEntryCameraYawOffset = -0.48f;
+constexpr float kStageEntryCameraFocusHeight = 1.15f;
+constexpr float kStageEntryCameraLandingFocusRate = 0.72f;
+constexpr float kStageEntryThirdPersonDistance = 16.0f;
+constexpr float kStageEntryThirdPersonHeight = 3.2f;
+constexpr float kStageEntryThirdPersonPitch = 0.32f;
 constexpr float kStageEntryCinemaBarHeight = 0.105f;
 constexpr float kStageEntryCinemaBarOpenDuration = 0.22f;
+constexpr const char* kStageEntryCameraObjectName = "Stage1_EntryCamera";
+constexpr const char* kStageEntryCameraFallbackObjectName = "Cinematic_Camera_01";
+constexpr float kArenaBossIntroGateShotEnd = 0.74f;
+constexpr float kArenaBossIntroGateHoldEnd = 1.05f;
+constexpr float kArenaBossIntroBossFocusEnd = 1.55f;
+constexpr float kArenaBossIntroBossHoldEnd = 3.55f;
+constexpr float kArenaBossIntroDuration = 4.55f;
+constexpr float kArenaBossIntroCinemaBarHeight = 0.115f;
+constexpr float kArenaBossGameplayCameraDistance = 11.5f;
+constexpr float kArenaBossGameplayCameraHeight = 3.8f;
+constexpr float kArenaBossGameplayCameraPitch = 0.31415927f;
+constexpr float kArenaBossRewardFocusInEnd = 0.32f;
+constexpr float kArenaBossRewardTrackEnd = 1.82f;
+constexpr float kArenaBossRewardDuration = 2.78f;
+constexpr float kArenaBossRewardCinemaBarHeight = 0.115f;
 
 struct GoalCrownPhysicsTuning {
     float positionStiffness = 76.0f;
@@ -159,6 +183,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
             player_->EndCinematicLock(true);
         }
         goalSavePerformed_ = false;
+        goalWasStageCleared_ = false;
         goalPresentationState_ = GoalPresentationState::Inactive;
         goalPresentationTimer_ = 0.0f;
         goalStarEmitTimer_ = 0.0f;
@@ -195,6 +220,9 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     if (!player_ || player_->isDead || player_->GetHp() <= 0.0f) {
         return;
     }
+
+    const int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
+    goalWasStageCleared_ = GameDataManager::GetInstance()->IsStageCleared(currentStage);
 
     player_->BeginCinematicLock();
     SetIsGoal(true);
@@ -258,9 +286,18 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
             }
         }
         for (auto& track : goalCinematicSequence_.vfxTracks) {
+            if (track.sequenceName.rfind("crown_focus", 0) == 0) {
+                track.sequenceName = goalWasStageCleared_ ? "crown_focus_silver_cue" : "crown_focus_cue";
+            } else if (track.sequenceName.rfind("crown_get", 0) == 0) {
+                track.sequenceName = goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue";
+            } else if (track.sequenceName.rfind("crown_result", 0) == 0) {
+                track.sequenceName = goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue";
+            } else if (track.sequenceName.rfind("crown_victory_land", 0) == 0) {
+                track.sequenceName = goalWasStageCleared_ ? "crown_victory_land_silver_cue" : "crown_victory_land_cue";
+            }
             const bool followsCrown =
-                track.sequenceName == "crown_focus_cue" ||
-                track.sequenceName == "crown_get_cue";
+                track.sequenceName.rfind("crown_focus", 0) == 0 ||
+                track.sequenceName.rfind("crown_get", 0) == 0;
             Object3d* target = followsCrown ? crownObject : player_;
             if (target) {
                 track.binding.targetName = target->GetName();
@@ -276,6 +313,60 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
 }
 
 void GamePlayScene::Update(float deltaTime) {
+    bool runtimePlaying = true;
+#ifdef USE_IMGUI
+    if (SceneManager* sceneManager = GetSceneManager()) {
+        runtimePlaying = sceneManager->IsPlaying();
+    }
+#endif
+
+    if (!runtimePlaying) {
+        stageEntryRuntimeWasPlaying_ = false;
+        if (stageEntryPresentationActive_) {
+            FinishStageEntryPresentation();
+        }
+    } else {
+        // Play In Editor はSceneを再読み込みしないため、停止状態から再生へ変わった瞬間も
+        // OnActivatedと同じ入口演出を明示的に要求します。
+        if (!stageEntryRuntimeWasPlaying_) {
+            stageEntryRuntimeWasPlaying_ = true;
+            stageEntryPresentationCompleted_ = false;
+            stageEntryHadPlayerControl_ = player_ ? player_->IsControlActive() : true;
+            stageEntryPresentationPending_ = true;
+            stageEntryPresentationRetryTimer_ = 0.0f;
+        }
+
+        if (stageEntryPresentationPending_ &&
+            !stageEntryPresentationActive_ &&
+            !stageEntryPresentationCompleted_) {
+            if (!StartStageEntryPresentation()) {
+                stageEntryPresentationRetryTimer_ += std::max(deltaTime, 0.0f);
+                if (player_) {
+                    player_->SetIsVisible(false);
+                    player_->SetIsControlActive(false);
+                    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                }
+
+                if (stageEntryPresentationRetryTimer_ < kStageEntrySetupRetryTimeout) {
+                    UpdatePostEffectState(deltaTime);
+                    UpdateUI(deltaTime);
+                    return;
+                }
+
+                // 入口ゲートを持たない検証Sceneまで停止させないため、一定時間後は通常開始へ戻します。
+                stageEntryPresentationPending_ = false;
+                stageEntryPresentationCompleted_ = true;
+                stageEntryPresentationRetryTimer_ = 0.0f;
+                if (player_) {
+                    player_->SetIsVisible(true);
+                    player_->SetIsControlActive(stageEntryHadPlayerControl_);
+                }
+                DebugConsole::GetInstance()->AddLog(
+                    "Stage Entry Warning: entrance gate presentation could not be prepared.");
+            }
+        }
+    }
+
     if (stageEntryPresentationActive_) {
         UpdatePostEffectState(deltaTime);
         UpdateStageEntryPresentation(deltaTime);
@@ -284,6 +375,22 @@ void GamePlayScene::Update(float deltaTime) {
     }
 
     if (HandleGoalClear(deltaTime)) {
+        return;
+    }
+
+    if (arenaBossIntroActive_) {
+        UpdatePostEffectState(deltaTime);
+        UpdateArenaBossIntro(deltaTime);
+        UpdateSceneSystems(deltaTime);
+        UpdateUI(deltaTime);
+        return;
+    }
+
+    if (arenaBossRewardActive_) {
+        UpdatePostEffectState(deltaTime);
+        UpdateArenaBossDefeatReward(deltaTime);
+        UpdateSceneSystems(deltaTime);
+        UpdateUI(deltaTime);
         return;
     }
 
@@ -321,47 +428,54 @@ Object3d* GamePlayScene::FindStageEntryGate() const {
         return nullptr;
     }
 
+    Object3d* nameMatchedGate = nullptr;
     for (const auto& object : objectManager_->GetObjects()) {
-        if (!object || object->GetGimmickType() != "StageGate") {
+        if (!object || object->GetName().find("_EntranceGate") == std::string::npos) {
             continue;
         }
-        if (object->GetName().find("_EntranceGate") != std::string::npos) {
+        if (object->GetGimmickType() == "StageGate") {
             return object.get();
         }
+        if (!nameMatchedGate && dynamic_cast<GimmickStageGate*>(object.get())) {
+            nameMatchedGate = object.get();
+        }
     }
-    return nullptr;
+    return nameMatchedGate;
 }
 
-void GamePlayScene::StartStageEntryPresentation() {
+bool GamePlayScene::StartStageEntryPresentation() {
+    if (stageEntryPresentationActive_) {
+        return true;
+    }
+
     stageEntryGate_ = FindStageEntryGate();
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!stageEntryGate_ || !player_ || !camera) {
         stageEntryGate_ = nullptr;
-        return;
+        return false;
     }
+
+    // OnActivated直後は、ロードしたTransformのワールド行列がまだ更新されていない場合があります。
+    // 親階層を含めて確定してから入口演出の基準座標を取得します。
+    Object3d* gateTransformRoot = stageEntryGate_;
+    while (gateTransformRoot->GetParent()) {
+        gateTransformRoot = gateTransformRoot->GetParent();
+    }
+    gateTransformRoot->UpdateWorldMatrix(false);
 
     // 初期スポーン地点をリスポーン地点として確定させてから、演出用の位置へ移動します。
     player_->Update(0.0f);
     const Vector3 playerSpawn = player_->GetWorldPosition();
     player_->SetRespawnPosition(playerSpawn);
-    camera->SetFollowTarget(player_);
-    camera->Update(0.0f);
-    stageEntryCameraStartEye_ = camera->GetEye();
-    stageEntryCameraStartTarget_ = camera->GetTargetPoint();
-    stageEntryCameraRestoreEye_ = stageEntryCameraStartEye_;
-    stageEntryCameraRestoreTarget_ = stageEntryCameraStartTarget_;
-
     const Vector3 gatePosition = stageEntryGate_->GetWorldPosition();
     stageEntryDirection_ = NormalizePlanarDirection(playerSpawn - gatePosition, { 1.0f, 0.0f, 0.0f });
-    const Vector3 side = { stageEntryDirection_.z, 0.0f, -stageEntryDirection_.x };
 
     PlayerGateReturnAnimation::Route route;
-    route.start = gatePosition - stageEntryDirection_ * 1.45f;
+    route.start = gatePosition - stageEntryDirection_ * 1.38f;
     route.gateCenter = gatePosition;
     route.end = playerSpawn;
     route.direction = stageEntryDirection_;
     route.baseScale = player_->GetScale();
-    stageEntryHadPlayerControl_ = player_->IsControlActive();
     player_->StartGateReturnAnimation(route);
     // ゲートの反応を先に見せ、内部から出始める瞬間までプレイヤーを隠します。
     player_->SetIsVisible(false);
@@ -378,24 +492,120 @@ void GamePlayScene::StartStageEntryPresentation() {
         stageEntryCinemaBarOverrideActive_ = true;
     }
 
-    const Vector3 gateFocus = gatePosition + Vector3{ 0.0f, -1.55f, 0.0f };
-    const Vector3 landingFocus = playerSpawn + Vector3{ 0.0f, 1.15f, 0.0f };
-    stageEntryCameraFocusTarget_ = AnimationInterpolation::Lerp(gateFocus, landingFocus, 0.72f);
+    const Vector3 gateFocus = {
+        gatePosition.x,
+        playerSpawn.y + kStageEntryCameraFocusHeight,
+        gatePosition.z
+    };
+    const Vector3 landingFocus = playerSpawn + Vector3{ 0.0f, kStageEntryCameraFocusHeight, 0.0f };
+    stageEntryCameraFocusTarget_ = AnimationInterpolation::Lerp(
+        gateFocus, landingFocus, kStageEntryCameraLandingFocusRate);
+    // ステージ内部の中庭へ直進すると地形内へ入るため、入口の外側から斜めに見ます。
+    const float thirdPersonYaw =
+        std::atan2(stageEntryDirection_.x, stageEntryDirection_.z)
+        + kStageEntryCameraYawOffset;
+    const Matrix4x4 cinematicYawRotation = Math::MakeRotateYMatrix(thirdPersonYaw);
     stageEntryCameraFocusEye_ = stageEntryCameraFocusTarget_
-        + stageEntryDirection_ * kStageEntryCameraBackDistance
-        + side * kStageEntryCameraSideOffset
+        + Math::TransformNormal(
+            { 0.0f, 0.0f, -kStageEntryCameraBackDistance },
+            cinematicYawRotation)
         + Vector3{ 0.0f, kStageEntryCameraHeight, 0.0f };
+    // 編集中の自由カメラ位置を引き継がず、毎回ゲートを読める決定的な導入ショットから始めます。
+    const Vector3 cinematicBackDirection = NormalizePlanarDirection(
+        stageEntryCameraFocusEye_ - stageEntryCameraFocusTarget_,
+        { -stageEntryDirection_.x, 0.0f, -stageEntryDirection_.z });
+    stageEntryCameraStartTarget_ = gateFocus;
+    stageEntryCameraStartEye_ = stageEntryCameraFocusEye_
+        + cinematicBackDirection * 2.0f
+        + Vector3{ 0.0f, 0.6f, 0.0f };
+    // 復帰先はSnapToThirdPersonと同じ式で作り、演出終了フレームの段差をなくします。
+    const Matrix4x4 thirdPersonRotation =
+        Math::MakeRotateXMatrix(kStageEntryThirdPersonPitch)
+        * Math::MakeRotateYMatrix(thirdPersonYaw);
+    stageEntryCameraRestoreTarget_ = playerSpawn
+        + Vector3{ 0.0f, kStageEntryThirdPersonHeight, 0.0f };
+    stageEntryCameraRestoreEye_ = stageEntryCameraRestoreTarget_
+        + Math::TransformNormal(
+            { 0.0f, 0.0f, -kStageEntryThirdPersonDistance },
+            thirdPersonRotation);
+
+    // 入口専用名を最優先し、旧データでは入口ゲートに最も近い汎用カメラを採用します。
+    // 名前を分けることで、JSON読込時に同名Objectとして上書きされることも防ぎます。
+    Object3d* authoredEntryCamera = nullptr;
+    Object3d* fallbackEntryCamera = nullptr;
+    float nearestCameraDistanceSq = (std::numeric_limits<float>::max)();
+    if (objectManager_) {
+        for (const auto& object : objectManager_->GetObjects()) {
+            if (!object || !object->IsCameraObject()) {
+                continue;
+            }
+            if (object->GetName() == kStageEntryCameraObjectName) {
+                authoredEntryCamera = object.get();
+                break;
+            }
+            if (object->GetName() != kStageEntryCameraFallbackObjectName) {
+                continue;
+            }
+            Object3d* candidateTransformRoot = object.get();
+            while (candidateTransformRoot->GetParent()) {
+                candidateTransformRoot = candidateTransformRoot->GetParent();
+            }
+            candidateTransformRoot->UpdateWorldMatrix(false);
+            const Vector3 offset = object->GetWorldPosition() - gatePosition;
+            const float distanceSq = offset.x * offset.x + offset.y * offset.y + offset.z * offset.z;
+            if (distanceSq < nearestCameraDistanceSq) {
+                nearestCameraDistanceSq = distanceSq;
+                fallbackEntryCamera = object.get();
+            }
+        }
+    }
+    if (!authoredEntryCamera) {
+        authoredEntryCamera = fallbackEntryCamera;
+    }
+
+    stageEntryCameraBaseFov_ = camera->GetFovY();
+    stageEntryCameraFocusFov_ = stageEntryCameraBaseFov_;
+    if (authoredEntryCamera) {
+        Object3d* cameraTransformRoot = authoredEntryCamera;
+        while (cameraTransformRoot->GetParent()) {
+            cameraTransformRoot = cameraTransformRoot->GetParent();
+        }
+        cameraTransformRoot->UpdateWorldMatrix(false);
+
+        Vector3 authoredEye{};
+        Vector3 authoredTarget{};
+        if (CameraEditor::GetInstance()->ResolveSceneCameraPose(
+                authoredEntryCamera, authoredEye, authoredTarget)) {
+            stageEntryCameraStartEye_ = authoredEye;
+            stageEntryCameraStartTarget_ = authoredTarget;
+            stageEntryCameraFocusEye_ = authoredEye;
+            stageEntryCameraFocusTarget_ = authoredTarget;
+            stageEntryCameraFocusFov_ = authoredEntryCamera->GetSceneCameraSettings().fovY;
+            DebugConsole::GetInstance()->AddLog(
+                "Stage Entry: using authored camera for Stage1_EntranceGate.");
+        }
+    }
+    // Game Viewが別の一時カメラを参照していても、入口演出中は必ずこのメインカメラを描画します。
+    CameraManager::GetInstance()->SetActiveCamera(camera);
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetLockOnTarget(nullptr);
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-    camera->ConfigFixedPoint(
-        stageEntryCameraStartEye_,
-        MakeLookAtEuler(stageEntryCameraStartEye_, stageEntryCameraStartTarget_));
+    camera->SetEye(stageEntryCameraStartEye_);
+    camera->SetTarget(stageEntryCameraStartTarget_);
+    const Vector3 startRotation = MakeLookAtEuler(
+        stageEntryCameraStartEye_, stageEntryCameraStartTarget_);
+    camera->SetRotation(startRotation);
+    camera->ConfigFixedPoint(stageEntryCameraStartEye_, startRotation);
+    camera->SetFovY(stageEntryCameraFocusFov_);
     camera->Update(0.0f);
 
     stageEntryPresentationTimer_ = 0.0f;
+    stageEntryPresentationRetryTimer_ = 0.0f;
+    stageEntryPresentationPending_ = false;
     stageEntryPresentationActive_ = true;
+    DebugConsole::GetInstance()->AddLog("Stage Entry: gate presentation start.");
+    return true;
 }
 
 void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
@@ -420,10 +630,6 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     if (stageEntryGate_) {
         stageEntryGate_->Update(deltaTime);
     }
-    if (particleSystem_) {
-        particleSystem_->Update(deltaTime);
-    }
-    GPUParticleManager::GetInstance()->Update(deltaTime);
 
     if (stageEntryCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
@@ -446,8 +652,10 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
+        CameraManager::GetInstance()->SetActiveCamera(camera);
         Vector3 eye = stageEntryCameraFocusEye_;
         Vector3 target = stageEntryCameraFocusTarget_;
+        float fov = stageEntryCameraFocusFov_;
         if (stageEntryPresentationTimer_ < kStageEntryCameraRestoreStartTime) {
             const float introRate = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(
@@ -464,14 +672,32 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
                 AnimationInterpolation::EasingType::SmootherStep);
             eye = AnimationInterpolation::Lerp(stageEntryCameraFocusEye_, stageEntryCameraRestoreEye_, restoreRate);
             target = AnimationInterpolation::Lerp(stageEntryCameraFocusTarget_, stageEntryCameraRestoreTarget_, restoreRate);
+            fov = AnimationInterpolation::Lerp(
+                stageEntryCameraFocusFov_, stageEntryCameraBaseFov_, restoreRate);
         }
 
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
         camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
-        camera->ConfigFixedPoint(eye, MakeLookAtEuler(eye, target));
+        // 追従対象がない演出カメラでは、固定点設定ではなく実際の視点を直接更新します。
+        camera->SetEye(eye);
+        camera->SetTarget(target);
+        const Vector3 rotation = MakeLookAtEuler(eye, target);
+        camera->SetRotation(rotation);
+        camera->ConfigFixedPoint(eye, rotation);
+        camera->SetFovY(fov);
         camera->Update(deltaTime);
     }
+
+    // 通常更新へ入る前に入口演出が始まるため、全Objectの描画TransformとLODを
+    // 演出カメラ確定後に更新します。deltaTimeは進めず、敵やギミックの時間は停止させます。
+    if (objectManager_) {
+        objectManager_->Update(0.0f);
+    }
+    if (particleSystem_) {
+        particleSystem_->Update(deltaTime);
+    }
+    GPUParticleManager::GetInstance()->Update(deltaTime);
 
     if (stageEntryPresentationTimer_ >= kStageEntryPresentationDuration) {
         FinishStageEntryPresentation();
@@ -484,8 +710,11 @@ void GamePlayScene::FinishStageEntryPresentation() {
     }
 
     stageEntryPresentationActive_ = false;
+    stageEntryPresentationPending_ = false;
+    stageEntryPresentationCompleted_ = true;
     stageEntryPlayerEmergenceStarted_ = false;
     stageEntryPresentationTimer_ = 0.0f;
+    stageEntryPresentationRetryTimer_ = 0.0f;
     if (auto* gate = dynamic_cast<GimmickStageGate*>(stageEntryGate_)) {
         gate->SetTransitionEnabled(true);
     }
@@ -504,6 +733,7 @@ void GamePlayScene::FinishStageEntryPresentation() {
     }
 
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        camera->SetFovY(stageEntryCameraBaseFov_);
 #ifdef USE_IMGUI
         if (CameraEditor::GetInstance()->IsEditorMode()) {
             camera->SetInputEnabled(true);
@@ -514,12 +744,395 @@ void GamePlayScene::FinishStageEntryPresentation() {
             if (player_) {
                 camera->SetFollowTarget(player_);
                 camera->SetFollowMode(Camera::FollowMode::kAimable);
-                camera->SyncRotationToCurrentView();
-                camera->ResetFollowSmoothing();
+                camera->SetRotation({
+                    kStageEntryThirdPersonPitch,
+                    std::atan2(stageEntryDirection_.x, stageEntryDirection_.z)
+                        + kStageEntryCameraYawOffset,
+                    0.0f
+                });
+                camera->SnapToThirdPerson(
+                    kStageEntryThirdPersonDistance,
+                    kStageEntryThirdPersonHeight,
+                    kStageEntryThirdPersonPitch);
             }
             camera->SetInputEnabled(true);
         }
     }
+    CameraManager::GetInstance()->SetActiveCamera(nullptr);
+}
+
+void GamePlayScene::StartArenaBossIntro(
+    Object3d* bossObject,
+    Object3d* gateObject,
+    float bossRevealDelay) {
+    if (arenaBossIntroActive_ || isGoal_ || !player_ || !bossObject || !gateObject) {
+        return;
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) {
+        return;
+    }
+
+    arenaBossIntroActive_ = true;
+    arenaBossIntroTimer_ = 0.0f;
+    arenaBossIntroRevealDelay_ = std::clamp(bossRevealDelay, 0.20f, 1.40f);
+    arenaBossIntroBoss_ = bossObject;
+    arenaBossIntroGate_ = gateObject;
+    arenaBossIntroHadPlayerControl_ = player_->IsControlActive();
+    arenaBossIntroGameplayEye_ = camera->GetEye();
+    arenaBossIntroGameplayTarget_ = camera->GetTargetPoint();
+    arenaBossIntroBaseFov_ = camera->GetFovY();
+
+    const Vector3 playerPosition = player_->GetWorldPosition();
+    const Vector3 bossPosition = bossObject->GetWorldPosition();
+    Vector3 gatePosition = gateObject->GetWorldPosition();
+    if (auto* bossGate = dynamic_cast<GimmickBossGate*>(gateObject)) {
+        gatePosition = bossGate->GetClosedPosition();
+    }
+    const Vector3 bossToPlayer = NormalizePlanarDirection(
+        playerPosition - bossPosition,
+        { 0.0f, 0.0f, 1.0f });
+    const Vector3 right = { bossToPlayer.z, 0.0f, -bossToPlayer.x };
+
+    // 閉じた格子より内側へ収まる戦闘用構図を別に保持し、入口直前の
+    // カメラ衝突状態へ戻してしまわないようにします。
+    arenaBossIntroRestoreTarget_ = playerPosition
+        + Vector3{ 0.0f, kArenaBossGameplayCameraHeight, 0.0f };
+    arenaBossIntroRestoreEye_ = arenaBossIntroRestoreTarget_
+        + bossToPlayer * kArenaBossGameplayCameraDistance
+        + Vector3{ 0.0f, 3.7f, 0.0f };
+
+    // 最初に背後の格子ゲートを見せ、封鎖されたことを一目で理解できる構図にします。
+    arenaBossIntroGateTarget_ = gatePosition + Vector3{ 0.0f, 3.85f, 0.0f };
+    arenaBossIntroGateEye_ = gatePosition
+        - bossToPlayer * 22.0f
+        + right * 2.6f
+        + Vector3{ 0.0f, 5.35f, 0.0f };
+
+    // 正面全身を画面中央へ収め、登場時の落下、潰れ、跳ね返りを見せます。
+    arenaBossIntroBossTarget_ = bossPosition + Vector3{ 0.0f, 4.70f, 0.0f };
+    arenaBossIntroBossEye_ = bossPosition
+        + bossToPlayer * 31.0f
+        + right * 2.6f
+        + Vector3{ 0.0f, 9.2f, 0.0f };
+
+    player_->BeginCinematicLock();
+    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    camera->SetInputEnabled(false);
+    camera->SetFollowTarget(nullptr);
+    camera->SetLockOnTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    CameraManager::GetInstance()->SetActiveCamera(camera);
+
+    if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+        arenaBossIntroCinemaBarBaseHeight_ = params->cinemaBarHeight;
+        arenaBossIntroCinemaBarOverrideActive_ = true;
+    }
+
+    DebugConsole::GetInstance()->AddLog("Stage 3: False King boss introduction started.");
+}
+
+void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
+    if (!arenaBossIntroActive_ || !player_ || !arenaBossIntroBoss_ || !arenaBossIntroGate_) {
+        FinishArenaBossIntro();
+        return;
+    }
+
+    arenaBossIntroTimer_ += std::max(deltaTime, 0.0f);
+    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    if (arenaBossIntroCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            const float openRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(arenaBossIntroTimer_, 0.0f, 0.24f),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float closeRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    arenaBossIntroTimer_, kArenaBossIntroBossHoldEnd, kArenaBossIntroDuration),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float blend = openRate * (1.0f - closeRate);
+            params->cinemaBarHeight = arenaBossIntroCinemaBarBaseHeight_
+                + (std::max(arenaBossIntroCinemaBarBaseHeight_, kArenaBossIntroCinemaBarHeight)
+                    - arenaBossIntroCinemaBarBaseHeight_) * blend;
+        }
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) {
+        FinishArenaBossIntro();
+        return;
+    }
+
+    const Vector3 currentBossPosition = arenaBossIntroBoss_->GetWorldPosition();
+    const float authoredBossY = arenaBossIntroBossTarget_.y - 4.70f;
+    const float bossRise = std::clamp(currentBossPosition.y - authoredBossY, -0.4f, 3.6f);
+    const Vector3 trackedBossTarget = arenaBossIntroBossTarget_
+        + Vector3{ 0.0f, bossRise * 0.35f, 0.0f };
+
+    Vector3 eye = arenaBossIntroGameplayEye_;
+    Vector3 target = arenaBossIntroGameplayTarget_;
+    float fov = arenaBossIntroBaseFov_;
+    if (arenaBossIntroTimer_ < kArenaBossIntroGateShotEnd) {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossIntroTimer_, 0.0f, kArenaBossIntroGateShotEnd),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const Vector3 gateRetreatDirection = NormalizePlanarDirection(
+            arenaBossIntroGateEye_ - arenaBossIntroGateTarget_,
+            { 0.0f, 0.0f, -1.0f });
+        const Vector3 gateDollyStartEye = arenaBossIntroGateEye_ + gateRetreatDirection * 2.8f;
+        eye = AnimationInterpolation::Lerp(gateDollyStartEye, arenaBossIntroGateEye_, rate);
+        target = arenaBossIntroGateTarget_;
+        fov = AnimationInterpolation::Lerp(0.55f, 0.52f, rate);
+    } else if (arenaBossIntroTimer_ < kArenaBossIntroGateHoldEnd) {
+        eye = arenaBossIntroGateEye_;
+        target = arenaBossIntroGateTarget_;
+        fov = 0.52f;
+    } else if (arenaBossIntroTimer_ < kArenaBossIntroBossFocusEnd) {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossIntroTimer_, kArenaBossIntroGateHoldEnd, kArenaBossIntroBossFocusEnd),
+            AnimationInterpolation::EasingType::SmootherStep);
+        eye = AnimationInterpolation::Lerp(arenaBossIntroGateEye_, arenaBossIntroBossEye_, rate);
+        target = AnimationInterpolation::Lerp(arenaBossIntroGateTarget_, trackedBossTarget, rate);
+        fov = AnimationInterpolation::Lerp(0.52f, 0.51f, rate);
+    } else if (arenaBossIntroTimer_ < kArenaBossIntroBossHoldEnd) {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossIntroTimer_, kArenaBossIntroBossFocusEnd, kArenaBossIntroBossHoldEnd),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const Vector3 heroEye = arenaBossIntroBossEye_ + Vector3{ -1.10f * rate, 0.24f * rate, 0.0f };
+        eye = heroEye;
+        target = trackedBossTarget;
+        fov = AnimationInterpolation::Lerp(0.51f, 0.48f, rate);
+    } else {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossIntroTimer_, kArenaBossIntroBossHoldEnd, kArenaBossIntroDuration),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const Vector3 heroEye = arenaBossIntroBossEye_ + Vector3{ -1.10f, 0.24f, 0.0f };
+        eye = AnimationInterpolation::Lerp(heroEye, arenaBossIntroRestoreEye_, rate);
+        target = AnimationInterpolation::Lerp(trackedBossTarget, arenaBossIntroRestoreTarget_, rate);
+        fov = AnimationInterpolation::Lerp(0.48f, arenaBossIntroBaseFov_, rate);
+    }
+
+    camera->SetInputEnabled(false);
+    camera->SetFollowTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetEye(eye);
+    camera->SetTarget(target);
+    const Vector3 rotation = MakeLookAtEuler(eye, target);
+    camera->SetRotation(rotation);
+    camera->ConfigFixedPoint(eye, rotation);
+    camera->SetFovY(fov);
+    camera->Update(deltaTime);
+    CameraManager::GetInstance()->SetActiveCamera(camera);
+
+    if (arenaBossIntroTimer_ >= kArenaBossIntroDuration) {
+        FinishArenaBossIntro();
+    }
+}
+
+void GamePlayScene::FinishArenaBossIntro() {
+    if (!arenaBossIntroActive_) {
+        return;
+    }
+
+    arenaBossIntroActive_ = false;
+    arenaBossIntroTimer_ = 0.0f;
+    arenaBossIntroBoss_ = nullptr;
+    arenaBossIntroGate_ = nullptr;
+
+    if (arenaBossIntroCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            params->cinemaBarHeight = arenaBossIntroCinemaBarBaseHeight_;
+        }
+        arenaBossIntroCinemaBarOverrideActive_ = false;
+        arenaBossIntroCinemaBarBaseHeight_ = 0.0f;
+    }
+
+    if (player_ && player_->IsCinematicLocked()) {
+        player_->EndCinematicLock(arenaBossIntroHadPlayerControl_);
+        player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
+    }
+
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        camera->SetEye(arenaBossIntroRestoreEye_);
+        camera->SetTarget(arenaBossIntroRestoreTarget_);
+        camera->SetFovY(arenaBossIntroBaseFov_);
+        camera->SetRotation(MakeLookAtEuler(arenaBossIntroRestoreEye_, arenaBossIntroRestoreTarget_));
+        camera->SetFollowTarget(player_);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SnapToThirdPerson(
+            kArenaBossGameplayCameraDistance,
+            kArenaBossGameplayCameraHeight,
+            kArenaBossGameplayCameraPitch);
+        camera->SetInputEnabled(true);
+    }
+    CameraManager::GetInstance()->SetActiveCamera(nullptr);
+}
+
+void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
+    if (arenaBossRewardActive_ || isGoal_ || !player_ || !rewardObject) {
+        return;
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) {
+        return;
+    }
+
+    arenaBossRewardActive_ = true;
+    arenaBossRewardTimer_ = 0.0f;
+    arenaBossRewardObject_ = rewardObject;
+    arenaBossRewardHadPlayerControl_ = player_->IsControlActive();
+    arenaBossRewardGameplayEye_ = camera->GetEye();
+    arenaBossRewardGameplayTarget_ = camera->GetTargetPoint();
+    arenaBossRewardBaseFov_ = camera->GetFovY();
+
+    // EventReceiverの起動直後はWorld行列更新前なので、親を持たない報酬王冠の編集値を直接使います。
+    const Vector3 crownPosition = rewardObject->GetTranslate();
+    const Vector3 playerPosition = player_->GetWorldPosition();
+    const Vector3 crownToPlayer = NormalizePlanarDirection(
+        playerPosition - crownPosition,
+        { 0.0f, 0.0f, 1.0f });
+    const Vector3 right = { crownToPlayer.z, 0.0f, -crownToPlayer.x };
+    arenaBossRewardFocusTarget_ = crownPosition + Vector3{ 0.0f, 1.15f, 0.0f };
+    arenaBossRewardFocusEye_ = crownPosition
+        + crownToPlayer * 7.4f
+        + right * 2.9f
+        + Vector3{ 0.0f, 3.4f, 0.0f };
+
+    player_->BeginCinematicLock();
+    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    camera->SetInputEnabled(false);
+    camera->SetFollowTarget(nullptr);
+    camera->SetLockOnTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    CameraManager::GetInstance()->SetActiveCamera(camera);
+
+    if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+        arenaBossRewardCinemaBarBaseHeight_ = params->cinemaBarHeight;
+        arenaBossRewardCinemaBarOverrideActive_ = true;
+    }
+    DebugConsole::GetInstance()->AddLog("Stage 3: boss crown reward cinematic started.");
+}
+
+void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
+    if (!arenaBossRewardActive_ || !player_ || !arenaBossRewardObject_) {
+        FinishArenaBossDefeatReward();
+        return;
+    }
+
+    arenaBossRewardTimer_ += (std::max)(0.0f, deltaTime);
+    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    if (arenaBossRewardCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            const float openRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(arenaBossRewardTimer_, 0.0f, 0.20f),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float closeRate = AnimationInterpolation::ApplyEasing(
+                AnimationInterpolation::SegmentRate(
+                    arenaBossRewardTimer_, kArenaBossRewardTrackEnd, kArenaBossRewardDuration),
+                AnimationInterpolation::EasingType::SmootherStep);
+            const float blend = openRate * (1.0f - closeRate);
+            params->cinemaBarHeight = arenaBossRewardCinemaBarBaseHeight_
+                + ((std::max)(arenaBossRewardCinemaBarBaseHeight_, kArenaBossRewardCinemaBarHeight)
+                    - arenaBossRewardCinemaBarBaseHeight_) * blend;
+        }
+    }
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) {
+        FinishArenaBossDefeatReward();
+        return;
+    }
+
+    const Vector3 crownPosition = arenaBossRewardObject_->GetTranslate();
+    Vector3 eye = arenaBossRewardGameplayEye_;
+    Vector3 target = arenaBossRewardGameplayTarget_;
+    float fov = arenaBossRewardBaseFov_;
+    if (arenaBossRewardTimer_ < kArenaBossRewardFocusInEnd) {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossRewardTimer_, 0.0f, kArenaBossRewardFocusInEnd),
+            AnimationInterpolation::EasingType::SmootherStep);
+        eye = AnimationInterpolation::Lerp(arenaBossRewardGameplayEye_, arenaBossRewardFocusEye_, rate);
+        target = AnimationInterpolation::Lerp(arenaBossRewardGameplayTarget_, arenaBossRewardFocusTarget_, rate);
+        fov = AnimationInterpolation::Lerp(arenaBossRewardBaseFov_, 0.42f, rate);
+    } else if (arenaBossRewardTimer_ < kArenaBossRewardTrackEnd) {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossRewardTimer_, kArenaBossRewardFocusInEnd, kArenaBossRewardTrackEnd),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const Vector3 trackedTarget = crownPosition + Vector3{ 0.0f, 1.0f, 0.0f };
+        const Vector3 trackedEye = crownPosition + Vector3{ 6.2f, 3.3f, 7.4f };
+        eye = AnimationInterpolation::Lerp(arenaBossRewardFocusEye_, trackedEye, rate);
+        target = AnimationInterpolation::Lerp(arenaBossRewardFocusTarget_, trackedTarget, rate);
+        fov = AnimationInterpolation::Lerp(0.42f, 0.47f, rate);
+    } else {
+        const float rate = AnimationInterpolation::ApplyEasing(
+            AnimationInterpolation::SegmentRate(
+                arenaBossRewardTimer_, kArenaBossRewardTrackEnd, kArenaBossRewardDuration),
+            AnimationInterpolation::EasingType::SmootherStep);
+        const Vector3 settleTarget = crownPosition + Vector3{ 0.0f, 1.0f, 0.0f };
+        const Vector3 settleEye = crownPosition + Vector3{ 6.2f, 3.3f, 7.4f };
+        eye = AnimationInterpolation::Lerp(settleEye, arenaBossRewardGameplayEye_, rate);
+        target = AnimationInterpolation::Lerp(settleTarget, arenaBossRewardGameplayTarget_, rate);
+        fov = AnimationInterpolation::Lerp(0.47f, arenaBossRewardBaseFov_, rate);
+    }
+
+    camera->SetInputEnabled(false);
+    camera->SetFollowTarget(nullptr);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->SetEye(eye);
+    camera->SetTarget(target);
+    const Vector3 rotation = MakeLookAtEuler(eye, target);
+    camera->SetRotation(rotation);
+    camera->ConfigFixedPoint(eye, rotation);
+    camera->SetFovY(fov);
+    camera->Update(deltaTime);
+    CameraManager::GetInstance()->SetActiveCamera(camera);
+
+    if (arenaBossRewardTimer_ >= kArenaBossRewardDuration) {
+        FinishArenaBossDefeatReward();
+    }
+}
+
+void GamePlayScene::FinishArenaBossDefeatReward() {
+    if (!arenaBossRewardActive_) {
+        return;
+    }
+
+    arenaBossRewardActive_ = false;
+    arenaBossRewardTimer_ = 0.0f;
+    arenaBossRewardObject_ = nullptr;
+
+    if (arenaBossRewardCinemaBarOverrideActive_) {
+        if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+            params->cinemaBarHeight = arenaBossRewardCinemaBarBaseHeight_;
+        }
+        arenaBossRewardCinemaBarOverrideActive_ = false;
+        arenaBossRewardCinemaBarBaseHeight_ = 0.0f;
+    }
+
+    if (player_ && player_->IsCinematicLocked()) {
+        player_->EndCinematicLock(arenaBossRewardHadPlayerControl_);
+        player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
+    }
+
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        camera->SetEye(arenaBossRewardGameplayEye_);
+        camera->SetTarget(arenaBossRewardGameplayTarget_);
+        camera->SetFovY(arenaBossRewardBaseFov_);
+        camera->SetRotation(MakeLookAtEuler(arenaBossRewardGameplayEye_, arenaBossRewardGameplayTarget_));
+        camera->SetFollowTarget(player_);
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SetInputEnabled(true);
+    }
+    CameraManager::GetInstance()->SetActiveCamera(nullptr);
 }
 
 void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
@@ -530,7 +1143,10 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     constexpr float kRotationSpeed = 0.62f;
     constexpr float kBobAngularSpeed = 1.75f;
     constexpr float kBobAmplitude = 0.14f;
-    constexpr float kSparkleInterval = 0.28f;
+    constexpr float kFarSparkleInterval = 0.34f;
+    constexpr float kNearSparkleInterval = 0.18f;
+    constexpr float kNearDistance = 6.0f;
+    constexpr float kFarDistance = 18.0f;
     constexpr std::array<Vector3, 8> kSparkleOffsets = {
         Vector3{ 0.00f, 0.52f, -0.05f },
         Vector3{ -0.58f, 0.39f, -0.08f },
@@ -554,12 +1170,27 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     const bool isCleared = GameDataManager::GetInstance()->IsStageCleared(
         StageManager::GetInstance()->GetCurrentStageIndex());
     bool foundGoalCrown = false;
+    float strongestNearRate = 0.0f;
 
     for (auto& object : objectManager_->GetObjects()) {
         if (!object || object->GetEventType() != EventType::Goal) {
             continue;
         }
         foundGoalCrown = true;
+
+        float nearRate = 0.0f;
+        if (player_) {
+            const Vector3 toCrown = object->GetWorldPosition() - player_->GetWorldPosition();
+            const float distance = std::sqrt(
+                toCrown.x * toCrown.x +
+                toCrown.y * toCrown.y +
+                toCrown.z * toCrown.z);
+            nearRate = 1.0f - std::clamp(
+                (distance - kNearDistance) / (kFarDistance - kNearDistance),
+                0.0f,
+                1.0f);
+            strongestNearRate = std::max(strongestNearRate, nearRate);
+        }
 
         Vector3 position = object->GetTranslate();
         position.y += bobDelta;
@@ -569,8 +1200,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         rotation.y += kRotationSpeed * deltaTime;
         object->SetRotation(rotation);
         object->SetEmissive(isCleared
-            ? 1.20f + emissivePulse * 0.38f
-            : 1.65f + emissivePulse * 0.62f);
+            ? 1.20f + emissivePulse * 0.38f + nearRate * 0.14f
+            : 1.62f + emissivePulse * 0.62f + nearRate * 0.48f);
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
 
@@ -578,6 +1209,17 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         if (emitSparkle) {
             const Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
             GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, Math::Transform(localOffset, crownWorld));
+
+            const bool emitHeroTwinkle =
+                goalCrownSparklePatternIndex_ % 4 == 0 ||
+                (nearRate >= 0.55f && goalCrownSparklePatternIndex_ % 2 == 0);
+            if (emitHeroTwinkle) {
+                const Vector3& twinkleOffset = kSparkleOffsets[
+                    (goalCrownSparklePatternIndex_ + 3) % kSparkleOffsets.size()];
+                GPUParticleManager::GetInstance()->Emit(
+                    kGoalCrownTwinklePreset,
+                    Math::Transform(twinkleOffset, crownWorld));
+            }
         }
     }
 
@@ -585,7 +1227,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         return;
     }
     if (emitSparkle) {
-        goalCrownSparkleTimer_ += kSparkleInterval;
+        goalCrownSparkleTimer_ += kFarSparkleInterval +
+            (kNearSparkleInterval - kFarSparkleInterval) * strongestNearRate;
         ++goalCrownSparklePatternIndex_;
     }
 }
@@ -752,7 +1395,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
 
     if (goalPresentationState_ == GoalPresentationState::Returning) {
         if (!goalReturnFadeStarted_ || Fade::GetInstance()->IsFinished()) {
-            SceneManager::GetInstance()->ChangeScene("SELECT");
+            SceneManager::GetInstance()->ChangeSceneAfterFade("SELECT");
         }
         return true;
     }
@@ -894,8 +1537,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     } else {
         Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
-        if (t >= animation.jumpStartTime && t < animation.apexTime) {
-            const float jumpRate = AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.apexTime);
+        if (t >= animation.jumpStartTime && t < animation.victoryLandTime) {
+            const float jumpRate = AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
             motionEnergy = std::sin(jumpRate * kPi);
         }
 
@@ -994,7 +1637,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
             0.80f,
             1.80f);
         VFXSequencer::PlayOneShot(
-            "crown_get_cue",
+            goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue",
             goalCrownPosition_,
             { crownScale, crownScale, crownScale });
         goalLandingCuePlayed_ = true;
@@ -1003,7 +1646,9 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
         Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
-        VFXSequencer::PlayOneShot("crown_result_cue", resultPosition);
+        VFXSequencer::PlayOneShot(
+            goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
+            resultPosition);
         goalResultCuePlayed_ = true;
     }
 }
@@ -1048,8 +1693,7 @@ void GamePlayScene::SetupGoalPresentationCamera() {
         + Vector3{ 0.0f, camera.jumpCameraHeight, 0.0f };
 
     const Vector3 finalPosePosition = goalPlayerBasePosition_
-        + goalMoveForward_ * animation.forwardDistance
-        + Vector3{ 0.0f, animation.jumpHeight, 0.0f };
+        + goalMoveForward_ * animation.forwardDistance;
     goalCameraResultTarget_ = finalPosePosition
         + goalMoveRight_ * camera.resultTargetSide
         + Vector3{ 0.0f, std::max(0.72f, goalPlayerBaseScale_.y * 0.46f), 0.0f };
@@ -1108,36 +1752,55 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(goalCameraGameplayTarget_, movingCrownTarget, p);
         fov = AnimationInterpolation::Lerp(goalCameraGameplayFov_, camera.crownFocusFov, p);
     } else if (t < animation.crownLandTime) {
-        // 王冠の移動中も専用ショットを維持し、常に王冠を画面の主役にします。
-        eye = movingCrownEye;
-        target = movingCrownTarget;
-        fov = camera.crownFocusFov;
-    } else if (t < animation.anticipationStartTime) {
-        const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, animation.crownLandTime, animation.anticipationStartTime),
+        // 王冠の弧に小さなパララックスを与え、着地前から次の構図へ受け渡します。
+        const float moveRate = AnimationInterpolation::SegmentRate(
+            t,
+            camera.crownMoveStartTime,
+            animation.crownLandTime);
+        const float orbit = std::sin(moveRate * kPi);
+        movingCrownEye = movingCrownEye
+            + goalMoveRight_ * (orbit * 0.35f)
+            + Vector3{ 0.0f, orbit * 0.12f, 0.0f };
+        const float handoffRaw = std::clamp((moveRate - 0.52f) / 0.48f, 0.0f, 1.0f);
+        const float handoff = AnimationInterpolation::ApplyEasing(
+            handoffRaw,
             AnimationInterpolation::EasingType::SmootherStep);
-        eye = AnimationInterpolation::Lerp(movingCrownEye, goalCameraLandingEye_, p);
-        target = AnimationInterpolation::Lerp(movingCrownTarget, goalCameraLandingTarget_, p);
-        fov = AnimationInterpolation::Lerp(camera.crownFocusFov, camera.landingFov, p);
+        eye = AnimationInterpolation::Lerp(movingCrownEye, goalCameraLandingEye_, handoff);
+        target = AnimationInterpolation::Lerp(movingCrownTarget, goalCameraLandingTarget_, handoff);
+        fov = AnimationInterpolation::Lerp(camera.crownFocusFov, camera.landingFov, handoff);
     } else if (t < animation.jumpStartTime) {
         const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, animation.anticipationStartTime, animation.jumpStartTime),
+            AnimationInterpolation::SegmentRate(t, animation.crownLandTime, animation.jumpStartTime),
             AnimationInterpolation::EasingType::SmootherStep);
         eye = AnimationInterpolation::Lerp(goalCameraLandingEye_, goalCameraJumpEye_, p);
         target = AnimationInterpolation::Lerp(goalCameraLandingTarget_, goalCameraJumpTarget_, p);
         fov = AnimationInterpolation::Lerp(camera.landingFov, camera.jumpFov, p);
-    } else if (t < animation.apexTime) {
-        const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.apexTime),
-            AnimationInterpolation::EasingType::SmootherStep);
+    } else if (t < animation.victoryLandTime) {
         Vector3 jumpTarget = goalPlayerPosePosition_ + Vector3{ 0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f };
+        const float airborneRate = AnimationInterpolation::SegmentRate(
+            t,
+            animation.jumpStartTime,
+            animation.victoryLandTime);
+        const float cameraArc = std::sin(airborneRate * kPi);
         Vector3 jumpEye = jumpTarget
             + goalMoveForward_ * camera.jumpCameraDistance
-            + goalMoveRight_ * camera.jumpCameraSide
-            + Vector3{ 0.0f, camera.jumpCameraHeight, 0.0f };
-        eye = AnimationInterpolation::Lerp(jumpEye, goalCameraResultEye_, p);
-        target = AnimationInterpolation::Lerp(jumpTarget, goalCameraResultTarget_, p);
-        fov = AnimationInterpolation::Lerp(camera.jumpFov, camera.resultFov, p);
+            + goalMoveRight_ * (camera.jumpCameraSide + cameraArc * 0.55f)
+            + Vector3{ 0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f };
+
+        float settle = 0.0f;
+        if (t >= animation.apexTime) {
+            const float fallRate = AnimationInterpolation::SegmentRate(
+                t,
+                animation.apexTime,
+                animation.victoryLandTime);
+            const float settleRaw = std::clamp((fallRate - 0.28f) / 0.72f, 0.0f, 1.0f);
+            settle = AnimationInterpolation::ApplyEasing(
+                settleRaw,
+                AnimationInterpolation::EasingType::SmootherStep);
+        }
+        eye = AnimationInterpolation::Lerp(jumpEye, goalCameraResultEye_, settle);
+        target = AnimationInterpolation::Lerp(jumpTarget, goalCameraResultTarget_, settle);
+        fov = AnimationInterpolation::Lerp(camera.jumpFov, camera.resultFov, settle);
     } else {
         eye = goalCameraResultEye_;
         target = goalCameraResultTarget_;

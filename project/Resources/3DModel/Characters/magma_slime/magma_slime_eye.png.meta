@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7c389f51166f6e3262c05473d8cd2865",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/magma_slime/magma_slime_eye.png",
+  "version": 1
+}

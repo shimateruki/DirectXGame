@@ -49,7 +49,19 @@ float4 main(VSOutput input) : SV_TARGET
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
     screenUV = saturate(screenUV);
 
-    float speed = max(waveSpeed, 0.05f);
+    uint depthWidth = 1;
+    uint depthHeight = 1;
+    depthTex.GetDimensions(depthWidth, depthHeight);
+    uint2 depthCoord = min(
+        uint2(screenUV * float2(depthWidth, depthHeight)),
+        uint2(depthWidth - 1, depthHeight - 1));
+    float rawSceneDepth = depthTex.Load(int3(depthCoord, 0));
+    float rawCloudDepth = saturate(input.screenPos.z / input.screenPos.w);
+
+    // Reject cloud pixels hidden by opaque geometry because this pass samples the scene depth buffer.
+    clip(rawSceneDepth - rawCloudDepth + 0.00001f);
+
+    float speed = max(waveSpeed, 0.12f);
     float density = max(waveHeight, 0.0f);
     float detail = max(waveFrequency, 0.1f);
     float softness = saturate(effectSoftness);
@@ -57,8 +69,8 @@ float4 main(VSOutput input) : SV_TARGET
     float mode = effectType;
 
     float2 p = input.localPos.xy;
-    float t = time * speed;
-    float2 drift = float2(t * 0.055f + flowSpeedX * time * 0.01f, -t * 0.025f + flowSpeedY * time * 0.01f);
+    float t = time * (0.18f + speed * 0.85f);
+    float2 drift = float2(t * 0.12f + flowSpeedX * time * 0.035f, -t * 0.055f + flowSpeedY * time * 0.035f);
     float cloudNoise = Fbm2(p * (1.8f + detail * 0.15f) + drift);
     float fineNoise = Fbm2(p * (4.0f + detail * 0.28f) - drift * 1.6f);
 
@@ -91,7 +103,8 @@ float4 main(VSOutput input) : SV_TARGET
     body *= edge;
 
     float holes = smoothstep(0.16f, 0.72f, cloudNoise + fineNoise * 0.35f);
-    float alpha = saturate(color.a * body * holes * (0.18f + density * 0.24f) * intensity);
+    float densityPulse = 0.94f + sin(t * 0.72f + p.x * 0.35f) * 0.06f;
+    float alpha = saturate(color.a * body * holes * (0.18f + density * 0.24f) * intensity * densityPulse);
     float rim = pow(saturate(1.0f - length(p) * 0.72f), 1.6f) * 0.25f;
 
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b42f67f982183040499eae5a0de5823a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_crown_lance/false_king_crown_lance.obj",
+  "version": 1
+}

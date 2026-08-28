@@ -101,11 +101,18 @@ virtual void Finalize() = 0;
     virtual void RestoreReplaySceneState(const json& state);
     void ReleaseReplaySprites();
 
-        // エディタやロード処理からObject3dを追加するための入口です。
-virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
+    // エディタやロード処理からObject3dを追加するための入口です。
+    virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
-        // Object3dを安全に削除予約または削除します。
-bool Destroy(Object3d* object);
+    // Replay archiveに記録された動的ObjectをScene固有のFactoryで再生成します。
+    virtual std::unique_ptr<Object3d> CreateReplayObject(const json& descriptor) {
+        (void)descriptor;
+        return nullptr;
+    }
+    // 動的Objectをまとめて再生成した後、Scene固有の参照を再接続します。
+    virtual void OnReplayObjectsRecreated() {}
+    // Object3dを安全に削除予約または削除します。
+    bool Destroy(Object3d* object);
     bool Destroy(Sprite* sprite);
     bool DestroyObject(Object3d* object);
     bool DestroySprite(Sprite* sprite);

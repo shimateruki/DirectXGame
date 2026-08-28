@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0eca326a024f5b50a726ee5c1bd67621",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_horizon_islet/stage_select_horizon_islet.obj",
+  "version": 1
+}

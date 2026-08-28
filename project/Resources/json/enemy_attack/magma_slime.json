@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "enemyType": "MagmaSlime",
+  "displayName": "マグマスライム",
+  "attacks": [
+    {
+      "id": "magma_mortar",
+      "displayName": "マグマ豪雨・三波",
+      "targeting": { "minRange": 5.0, "maxRange": 22.0, "radius": 1.85 },
+      "timing": { "windup": 1.12, "active": 1.72, "recovery": 0.70, "cooldown": 3.45, "warningLead": 0.34 },
+      "combat": {
+        "damage": 0.62,
+        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.14, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.6 },
+      "preview": { "targetDistance": 10.0, "duration": 6.4 },
+      "presentation": { "animation": "magma_mortar_recoil", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    },
+    {
+      "id": "lava_rush",
+      "displayName": "灼熱溶岩突進",
+      "targeting": { "minRange": 3.5, "maxRange": 16.0, "radius": 2.05 },
+      "timing": { "windup": 0.88, "active": 0.82, "recovery": 0.82, "cooldown": 3.35, "warningLead": 0.28 },
+      "combat": {
+        "damage": 1.35,
+        "statusEffect": { "type": "burning", "duration": 2.5, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 16.0, "maxSpeed": 24.0, "lifetime": 0.82 },
+      "preview": { "targetDistance": 9.0, "duration": 5.2 },
+      "presentation": { "animation": "lava_rush_squash", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_rush_wake", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    },
+    {
+      "id": "volcanic_slam",
+      "displayName": "火山大噴火プレス",
+      "targeting": { "minRange": 0.0, "maxRange": 12.0, "radius": 5.6 },
+      "timing": { "windup": 1.05, "active": 0.98, "recovery": 0.96, "cooldown": 4.2, "warningLead": 0.34 },
+      "combat": {
+        "damage": 1.55,
+        "statusEffect": { "type": "burning", "duration": 3.0, "tickInterval": 0.55, "tickDamage": 0.20, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.0 },
+      "preview": { "targetDistance": 6.5, "duration": 5.2 },
+      "presentation": { "animation": "volcanic_slam", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_mortar_trail", "impactVfx": "magma_slime_slam_burst", "audioCue": "" }
+    },
+    {
+      "id": "eruption_field",
+      "displayName": "追尾マグマ間欠泉",
+      "targeting": { "minRange": 3.0, "maxRange": 18.0, "radius": 1.65 },
+      "timing": { "windup": 1.08, "active": 1.48, "recovery": 0.76, "cooldown": 3.85, "warningLead": 0.36 },
+      "combat": {
+        "damage": 1.05,
+        "statusEffect": { "type": "burning", "duration": 2.9, "tickInterval": 0.55, "tickDamage": 0.18, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.5 },
+      "preview": { "targetDistance": 9.0, "duration": 5.8 },
+      "presentation": { "animation": "eruption_field_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_geyser_burst", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    },
+    {
+      "id": "lava_spiral",
+      "displayName": "螺旋溶岩大波",
+      "targeting": { "minRange": 0.0, "maxRange": 13.0, "radius": 1.35 },
+      "timing": { "windup": 1.02, "active": 1.62, "recovery": 0.88, "cooldown": 4.0, "warningLead": 0.34 },
+      "combat": {
+        "damage": 0.75,
+        "statusEffect": { "type": "burning", "duration": 2.6, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 8.0, "maxSpeed": 15.0, "lifetime": 1.6 },
+      "preview": { "targetDistance": 7.0, "duration": 5.9 },
+      "presentation": { "animation": "lava_spiral_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_spiral_surge", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    }
+  ]
+}

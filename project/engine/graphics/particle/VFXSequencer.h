@@ -12,7 +12,10 @@ enum class VFXEventType {
     MovingParticle = 3,
     CameraShake = 4,
     PostEffectPulse = 5,
-    LightPulse = 6
+    LightPulse = 6,
+    HitStop = 7,
+    ControllerRumble = 8,
+    CameraFovPulse = 9
 };
 
 struct VFXEvent {
@@ -30,7 +33,9 @@ struct VFXEvent {
     bool isFinished = false;
 
     float intensity = 0.2f;
+    float secondaryIntensity = 0.7f;
     float frequency = 24.0f;
+    float attackRatio = 0.12f;
     float radialIntensity = 0.0f;
     float damageFlash = 0.0f;
     float chromaticAberration = 0.0f;
@@ -40,12 +45,12 @@ struct VFXEvent {
     float lightDecay = 1.4f;
     Vector4 lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
 
-    bool hasCapturedPostBase = false;
-    float baseRadialIntensity = 0.0f;
-    float baseDamageFlash = 0.0f;
-    float baseChromaticAberration = 0.0f;
-    float baseWobbleIntensity = 0.0f;
-    float baseBloomIntensity = 0.0f;
+    bool hasAppliedPostPulse = false;
+    float appliedRadialIntensity = 0.0f;
+    float appliedDamageFlash = 0.0f;
+    float appliedChromaticAberration = 0.0f;
+    float appliedWobbleIntensity = 0.0f;
+    float appliedBloomIntensity = 0.0f;
 };
 
 class VFXSequencer {
@@ -92,6 +97,9 @@ void Play();
     static void PlayOneShotOnTarget(const std::string& sequenceName, Object3d* targetObject, const Vector3& localOffset, const Vector3& scale, const Vector3& rotation);
     static void UpdateOneShots(float deltaTime);
     static void ClearOneShots();
+    static void RequestHitStop(float duration, float timeScale = 0.0f);
+    static void UpdateFeedbackRuntime(float unscaledDeltaTime);
+    static float GetGameplayTimeScale();
 
 private:
     std::vector<VFXEvent> events_;
@@ -103,4 +111,5 @@ private:
     float currentTime_ = 0.0f;
     bool isPlaying_ = false;
     bool useRootPosition_ = false;
+    std::string sequenceName_;
 };

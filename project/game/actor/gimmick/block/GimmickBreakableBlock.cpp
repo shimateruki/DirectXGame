@@ -1,6 +1,8 @@
 #include "GimmickBreakableBlock.h"
 #include "CollisionConfig.h"
 #include "EnemyBomb.h"
+#include "Player.h"
+#include <DebrisEffectManager.h>
 #include <MeshEffectManager.h>
 #include <GPUParticleManager.h>
 #include <DebugConsole.h>
@@ -65,23 +67,52 @@ bool GimmickBreakableBlock::OnCollision(Object3d* other) {
     return BaseGimmick::OnCollision(other);
 }
 
+bool GimmickBreakableBlock::TryBreakByGiantRush(const Player* player) {
+    if (isBroken_ || !player || !player->IsGiantSlimeRushActive()) {
+        return false;
+    }
+
+    // actionMode=6は大型スライム能力でのみ開くStage用の能力ゲートとして扱う。
+    if (!param_.has_value() || param_->actionMode != 6) {
+        return false;
+    }
+
+    Break();
+    return true;
+}
+
 void GimmickBreakableBlock::Break() {
     isBroken_ = true;
 
-    // 破壊時の豪華なビジュアルエフェクトの発生
+    // 突進のSphereCastと同じフレームで通過できるよう、破壊時点で判定を外す。
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetIsVisible(false);
+    isDead = true;
+
     Vector3 myPos = GetTranslate();
-    
-    // 1. 火花や煙のエフェクト (effect_bakuhatu.json を少し小さめに出す、あるいは破片エフェクト)
+
+    // 屈折マテリアルのガラスは、炎を残さず透明破片と短い閃光で割れた瞬間を見せる。
+    if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {
+        DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
+        if (GPUParticleManager::GetInstance()) {
+            GPUParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
+            GPUParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);
+        }
+        return;
+    }
+
+    // 石ブロックは従来どおり小規模な爆発と火花で破壊する。
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(
             "Resources/json/effect/effect_bakuhatu.json", 
             myPos, 
             { 0.0f, 0.0f, 0.0f }, 
-            { 0.5f, 0.5f, 0.5f } // 少し小規模な爆発破片として演出
+            { 0.5f, 0.5f, 0.5f }
         );
     }
 
-    // 2. GPUパーティクルで破片をまき散らす (プレミアム演出！)
+    DebrisEffectManager::GetInstance()->Spawn("bomb_hit_fragment_burst", myPos);
     if (GPUParticleManager::GetInstance()) {
         GPUParticleManager::GetInstance()->Emit("star_sparkleGet", myPos);
     }

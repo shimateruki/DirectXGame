@@ -39,6 +39,11 @@ public:
 	/// </summary>
 	Object3d* GetTarget() const { return lockOnTarget_; }
 
+	/// <summary>
+	/// デバッグ移動や演出復帰時に、保持中のロックオン状態を即座に解除します。
+	/// </summary>
+	void ResetLockOn(Camera* camera);
+
 private:
 	/// <summary>
 	/// 最も適したターゲットを検索する内部関数

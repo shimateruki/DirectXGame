@@ -2,6 +2,7 @@
 #include "Game.h"
 
 #include "CameraEditor.h"
+#include "AudioPlayer.h"
 #include "CameraManager.h"
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
@@ -162,10 +163,8 @@ void Game::InitializePostProcess() {
 	LoadColorWorkflowSetting();
 	LightManager::GetInstance()->ApplySceneClearColor();
 	PostEffect::GetInstance()->Initialize(dxCommon_);
-	uint32_t lutHandle = TextureManager::GetInstance()->Load(
-		"Resources/texture/lut/soft_adventure_lut.png",
-		TextureManager::TextureColorSpace::SRGB);
-	PostEffect::GetInstance()->SetLUTTexture(lutHandle);
+	PostEffect::GetInstance()->SetLUTTexturePath(
+		"Resources/texture/lut/soft_adventure_lut.png");
 
 	Fade::GetInstance()->Initialize();
 #ifndef USE_IMGUI
@@ -237,7 +236,10 @@ void Game::Update() {
 		dxCommon_->ProcessPendingResize();
 	}
 
+	AudioEventSystem::GetInstance()->Update();
 	float deltaTime = CalculateDeltaTime();
+	InputManager::GetInstance()->UpdateRumble(deltaTime);
+	VFXSequencer::UpdateFeedbackRuntime(deltaTime);
 	const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
 	if (!sceneTransitioning) {
 		GPUParticleManager::GetInstance()->BeginFrame();
@@ -251,7 +253,13 @@ void Game::Update() {
 	UpdateEditorFrame(deltaTime);
 #endif
 
-	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ : 0.0f;
+	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
+	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
+#ifdef USE_IMGUI
+	if (editorController_) {
+		finalDeltaTime = editorController_->ResolveReplaySimulationDeltaTime(finalDeltaTime);
+	}
+#endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
 	ApplyInitialSceneOverrides();
 }
@@ -527,6 +535,9 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			}
 			if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 				DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+				if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
+					dxCommon_->UpdateGrabTexture();
+				}
 				MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 			}
 		}
@@ -562,6 +573,9 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 					pointLight = LightManager::GetInstance()->GetPointLightResource();
 					spotLight = LightManager::GetInstance()->GetSpotLightResource();
 					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
+					if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
+						dxCommon_->UpdateGrabTexture();
+					}
 					MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 				}
 			}

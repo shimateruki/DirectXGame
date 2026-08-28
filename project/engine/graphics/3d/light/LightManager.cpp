@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include "TextureManager.h"
 #include "engine/graphics/core/ColorSpace.h"
+#include "PostEffect.h"
 
 using json = nlohmann::json;
 
@@ -640,4 +641,356 @@ bool LightManager::LoadState(const std::string& filename) {
     }
     lastLoadSucceeded_ = true;
     return true;
+}
+LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() const {
+    EnvironmentProfileState profile;
+    profile.directionalLight = directionalLightData_;
+    profile.clearColor = sceneClearColor_;
+    profile.shadowMapResolution = GetShadowMapResolution();
+    profile.shadowAreaSize = shadowAreaSize_;
+    profile.skyboxEnabled = skyboxEnabled_;
+    profile.skyboxTexturePath = skyboxTexturePath_;
+
+    PostEffect* postEffect = PostEffect::GetInstance();
+    if (const PostEffect::Params* params = postEffect->GetParams()) {
+        profile.post.bloomEnabled = postEffect->IsBloomEnabled();
+        profile.post.bloomQuality = static_cast<int>(postEffect->GetBloomQuality());
+        profile.post.threshold = params->threshold;
+        profile.post.bloomIntensity = params->bloomIntensity;
+        profile.post.spread = params->spread;
+        profile.post.enableToneMapping = params->enableToneMapping;
+        profile.post.vignetteIntensity = params->vignetteIntensity;
+        profile.post.vignettePower = params->vignettePower;
+        profile.post.chromaticAberration = params->chromaticAberration;
+        profile.post.filmGrainIntensity = params->filmGrainIntensity;
+        profile.post.lutIntensity = params->lutIntensity;
+        profile.post.lutTexturePath = postEffect->GetLUTTexturePath();
+        profile.post.colorExposure = params->colorExposure;
+        profile.post.colorContrast = params->colorContrast;
+        profile.post.colorSaturation = params->colorSaturation;
+        profile.post.colorTemperature = params->colorTemperature;
+        profile.post.colorTint = params->colorTint;
+    }
+    return profile;
+}
+
+bool LightManager::SaveEnvironmentProfile(const std::string& filename) const {
+    if (filename.empty()) {
+        return false;
+    }
+
+    const EnvironmentProfileState profile = CaptureEnvironmentProfile();
+    const DirectionalLight& light = profile.directionalLight;
+    const EnvironmentPostSettings& post = profile.post;
+
+    json root;
+    root["schemaVersion"] = 1;
+    root["directionalLight"] = {
+        { "color", { light.color.x, light.color.y, light.color.z, light.color.w } },
+        { "direction", { light.direction.x, light.direction.y, light.direction.z } },
+        { "intensity", light.intensity },
+        { "ambientColor", { light.ambientColor.x, light.ambientColor.y, light.ambientColor.z } },
+        { "fogStart", light.fogStart },
+        { "fogEnd", light.fogEnd },
+        { "fogColor", { light.fogColor.x, light.fogColor.y, light.fogColor.z } },
+        { "fogHeightMin", light.fogHeightMin },
+        { "fogHeightMax", light.fogHeightMax },
+        { "volumetricIntensity", light.volumetricIntensity },
+        { "volumetricSteps", light.volumetricSteps },
+        { "enableFog", light.enableFog }
+    };
+    root["clearColor"] = {
+        profile.clearColor.x, profile.clearColor.y,
+        profile.clearColor.z, profile.clearColor.w
+    };
+    root["shadow"] = {
+        { "resolution", profile.shadowMapResolution },
+        { "areaSize", profile.shadowAreaSize }
+    };
+    root["skybox"] = {
+        { "enabled", profile.skyboxEnabled },
+        { "texture", profile.skyboxTexturePath }
+    };
+    root["postEffect"] = {
+        { "bloomEnabled", post.bloomEnabled },
+        { "bloomQuality", post.bloomQuality },
+        { "threshold", post.threshold },
+        { "bloomIntensity", post.bloomIntensity },
+        { "spread", post.spread },
+        { "enableToneMapping", post.enableToneMapping },
+        { "vignetteIntensity", post.vignetteIntensity },
+        { "vignettePower", post.vignettePower },
+        { "chromaticAberration", post.chromaticAberration },
+        { "filmGrainIntensity", post.filmGrainIntensity },
+        { "lutIntensity", post.lutIntensity },
+        { "lutTexture", post.lutTexturePath },
+        { "colorExposure", post.colorExposure },
+        { "colorContrast", post.colorContrast },
+        { "colorSaturation", post.colorSaturation },
+        { "colorTemperature", post.colorTemperature },
+        { "colorTint", post.colorTint }
+    };
+
+    const std::filesystem::path path(filename);
+    std::error_code error;
+    if (!path.parent_path().empty()) {
+        std::filesystem::create_directories(path.parent_path(), error);
+        if (error) {
+            return false;
+        }
+    }
+
+    std::ofstream file(path, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    file << root.dump(2);
+    return file.good();
+}
+
+bool LightManager::LoadEnvironmentProfile(
+    const std::string& filename,
+    EnvironmentProfileState& profile) const {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+
+    try {
+        json root;
+        file >> root;
+        profile = CaptureEnvironmentProfile();
+
+        const auto readVector3 = [](const json& value, Vector3& destination) {
+            if (value.is_array() && value.size() >= 3) {
+                destination = { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+            }
+        };
+        const auto readVector4 = [](const json& value, Vector4& destination) {
+            if (value.is_array() && value.size() >= 4) {
+                destination = {
+                    value[0].get<float>(), value[1].get<float>(),
+                    value[2].get<float>(), value[3].get<float>()
+                };
+            }
+        };
+
+        if (root.contains("directionalLight") && root["directionalLight"].is_object()) {
+            const json& source = root["directionalLight"];
+            DirectionalLight& light = profile.directionalLight;
+            if (source.contains("color")) readVector4(source["color"], light.color);
+            if (source.contains("direction")) readVector3(source["direction"], light.direction);
+            light.intensity = source.value("intensity", light.intensity);
+            if (source.contains("ambientColor")) readVector3(source["ambientColor"], light.ambientColor);
+            light.fogStart = source.value("fogStart", light.fogStart);
+            light.fogEnd = source.value("fogEnd", light.fogEnd);
+            if (source.contains("fogColor")) readVector3(source["fogColor"], light.fogColor);
+            light.fogHeightMin = source.value("fogHeightMin", light.fogHeightMin);
+            light.fogHeightMax = source.value("fogHeightMax", light.fogHeightMax);
+            light.volumetricIntensity = source.value("volumetricIntensity", light.volumetricIntensity);
+            light.volumetricSteps = source.value("volumetricSteps", light.volumetricSteps);
+            light.enableFog = source.value("enableFog", light.enableFog);
+        }
+        if (root.contains("clearColor")) {
+            readVector4(root["clearColor"], profile.clearColor);
+        }
+        if (root.contains("shadow") && root["shadow"].is_object()) {
+            const json& source = root["shadow"];
+            profile.shadowMapResolution = source.value("resolution", profile.shadowMapResolution);
+            profile.shadowAreaSize = source.value("areaSize", profile.shadowAreaSize);
+        }
+        if (root.contains("skybox") && root["skybox"].is_object()) {
+            const json& source = root["skybox"];
+            profile.skyboxEnabled = source.value("enabled", profile.skyboxEnabled);
+            profile.skyboxTexturePath = source.value("texture", profile.skyboxTexturePath);
+        }
+        if (root.contains("postEffect") && root["postEffect"].is_object()) {
+            const json& source = root["postEffect"];
+            EnvironmentPostSettings& post = profile.post;
+            post.bloomEnabled = source.value("bloomEnabled", post.bloomEnabled);
+            post.bloomQuality = source.value("bloomQuality", post.bloomQuality);
+            post.threshold = source.value("threshold", post.threshold);
+            post.bloomIntensity = source.value("bloomIntensity", post.bloomIntensity);
+            post.spread = source.value("spread", post.spread);
+            post.enableToneMapping = source.value("enableToneMapping", post.enableToneMapping);
+            post.vignetteIntensity = source.value("vignetteIntensity", post.vignetteIntensity);
+            post.vignettePower = source.value("vignettePower", post.vignettePower);
+            post.chromaticAberration = source.value("chromaticAberration", post.chromaticAberration);
+            post.filmGrainIntensity = source.value("filmGrainIntensity", post.filmGrainIntensity);
+            post.lutIntensity = source.value("lutIntensity", post.lutIntensity);
+            post.lutTexturePath = source.value("lutTexture", post.lutTexturePath);
+            post.colorExposure = source.value("colorExposure", post.colorExposure);
+            post.colorContrast = source.value("colorContrast", post.colorContrast);
+            post.colorSaturation = source.value("colorSaturation", post.colorSaturation);
+            post.colorTemperature = source.value("colorTemperature", post.colorTemperature);
+            post.colorTint = source.value("colorTint", post.colorTint);
+        }
+
+        profile.shadowMapResolution =
+            profile.shadowMapResolution <= 1024 ? 1024 :
+            (profile.shadowMapResolution <= 2048 ? 2048 : 4096);
+        profile.shadowAreaSize = std::clamp(profile.shadowAreaSize, 20.0f, 240.0f);
+        profile.post.bloomQuality = std::clamp(profile.post.bloomQuality, 0, 2);
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
+}
+
+bool LightManager::ApplyEnvironmentProfile(const std::string& filename, float blendDuration) {
+    EnvironmentProfileState profile;
+    if (!LoadEnvironmentProfile(filename, profile)) {
+        return false;
+    }
+    ApplyEnvironmentProfile(profile, blendDuration);
+    currentEnvironmentProfileFile_ = filename;
+    return true;
+}
+
+void LightManager::ApplyEnvironmentProfile(
+    const EnvironmentProfileState& profile,
+    float blendDuration) {
+    currentEnvironmentProfileFile_.clear();
+    environmentBlendFrom_ = CaptureEnvironmentProfile();
+    environmentBlendTo_ = profile;
+    environmentBlendElapsed_ = 0.0f;
+    environmentBlendDuration_ = (std::max)(0.0f, blendDuration);
+    environmentBlendActive_ = environmentBlendDuration_ > 0.0001f;
+    environmentBlendDiscreteApplied_ = false;
+
+    if (!environmentBlendActive_) {
+        directionalLightData_ = profile.directionalLight;
+        sceneClearColor_ = profile.clearColor;
+        SetShadowMapResolution(profile.shadowMapResolution);
+        SetShadowAreaSize(profile.shadowAreaSize);
+        skyboxEnabled_ = profile.skyboxEnabled;
+        if (!profile.skyboxTexturePath.empty()) {
+            SetSkyboxTexturePath(profile.skyboxTexturePath);
+        }
+        ApplySceneClearColor();
+
+        PostEffect* postEffect = PostEffect::GetInstance();
+        if (PostEffect::Params* params = postEffect->GetParams()) {
+            const EnvironmentPostSettings& post = profile.post;
+            postEffect->SetBloomEnabled(post.bloomEnabled);
+            postEffect->SetBloomQuality(static_cast<PostEffect::BloomQuality>(post.bloomQuality));
+            if (!post.lutTexturePath.empty()) {
+                postEffect->SetLUTTexturePath(post.lutTexturePath);
+            }
+            params->threshold = post.threshold;
+            params->bloomIntensity = post.bloomIntensity;
+            params->spread = post.spread;
+            params->enableToneMapping = post.enableToneMapping;
+            params->vignetteIntensity = post.vignetteIntensity;
+            params->vignettePower = post.vignettePower;
+            params->chromaticAberration = post.chromaticAberration;
+            params->filmGrainIntensity = post.filmGrainIntensity;
+            params->lutIntensity = post.lutIntensity;
+            params->colorExposure = post.colorExposure;
+            params->colorContrast = post.colorContrast;
+            params->colorSaturation = post.colorSaturation;
+            params->colorTemperature = post.colorTemperature;
+            params->colorTint = post.colorTint;
+        }
+    }
+}
+
+void LightManager::UpdateEnvironmentProfile(float deltaTime) {
+    if (!environmentBlendActive_) {
+        return;
+    }
+
+    environmentBlendElapsed_ += (std::max)(0.0f, deltaTime);
+    const float linearT = std::clamp(
+        environmentBlendElapsed_ / (std::max)(environmentBlendDuration_, 0.0001f),
+        0.0f,
+        1.0f);
+    const float t = linearT * linearT * (3.0f - 2.0f * linearT);
+    const auto lerp = [t](float from, float to) { return from + (to - from) * t; };
+    const auto lerp3 = [&](const Vector3& from, const Vector3& to) {
+        return Vector3{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z) };
+    };
+    const auto lerp4 = [&](const Vector4& from, const Vector4& to) {
+        return Vector4{ lerp(from.x, to.x), lerp(from.y, to.y), lerp(from.z, to.z), lerp(from.w, to.w) };
+    };
+
+    const DirectionalLight& fromLight = environmentBlendFrom_.directionalLight;
+    const DirectionalLight& toLight = environmentBlendTo_.directionalLight;
+    directionalLightData_.color = lerp4(fromLight.color, toLight.color);
+    directionalLightData_.direction = lerp3(fromLight.direction, toLight.direction);
+    if (Math::Length(directionalLightData_.direction) > 0.0001f) {
+        directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
+    }
+    directionalLightData_.intensity = lerp(fromLight.intensity, toLight.intensity);
+    directionalLightData_.ambientColor = lerp3(fromLight.ambientColor, toLight.ambientColor);
+    directionalLightData_.fogStart = lerp(fromLight.fogStart, toLight.fogStart);
+    directionalLightData_.fogEnd = lerp(fromLight.fogEnd, toLight.fogEnd);
+    directionalLightData_.fogColor = lerp3(fromLight.fogColor, toLight.fogColor);
+    directionalLightData_.fogHeightMin = lerp(fromLight.fogHeightMin, toLight.fogHeightMin);
+    directionalLightData_.fogHeightMax = lerp(fromLight.fogHeightMax, toLight.fogHeightMax);
+    directionalLightData_.volumetricIntensity =
+        lerp(fromLight.volumetricIntensity, toLight.volumetricIntensity);
+    directionalLightData_.volumetricSteps = linearT < 0.5f
+        ? fromLight.volumetricSteps
+        : toLight.volumetricSteps;
+    directionalLightData_.enableFog = linearT < 0.5f ? fromLight.enableFog : toLight.enableFog;
+
+    sceneClearColor_ = lerp4(environmentBlendFrom_.clearColor, environmentBlendTo_.clearColor);
+    shadowAreaSize_ = lerp(environmentBlendFrom_.shadowAreaSize, environmentBlendTo_.shadowAreaSize);
+    ApplySceneClearColor();
+
+    PostEffect* postEffect = PostEffect::GetInstance();
+    if (PostEffect::Params* params = postEffect->GetParams()) {
+        const EnvironmentPostSettings& from = environmentBlendFrom_.post;
+        const EnvironmentPostSettings& to = environmentBlendTo_.post;
+        params->threshold = lerp(from.threshold, to.threshold);
+        params->bloomIntensity = lerp(from.bloomIntensity, to.bloomIntensity);
+        params->spread = lerp(from.spread, to.spread);
+        params->vignetteIntensity = lerp(from.vignetteIntensity, to.vignetteIntensity);
+        params->vignettePower = lerp(from.vignettePower, to.vignettePower);
+        params->chromaticAberration = lerp(from.chromaticAberration, to.chromaticAberration);
+        params->filmGrainIntensity = lerp(from.filmGrainIntensity, to.filmGrainIntensity);
+        params->lutIntensity = lerp(from.lutIntensity, to.lutIntensity);
+        params->colorExposure = lerp(from.colorExposure, to.colorExposure);
+        params->colorContrast = lerp(from.colorContrast, to.colorContrast);
+        params->colorSaturation = lerp(from.colorSaturation, to.colorSaturation);
+        params->colorTemperature = lerp(from.colorTemperature, to.colorTemperature);
+        params->colorTint = lerp(from.colorTint, to.colorTint);
+    }
+
+    if (!environmentBlendDiscreteApplied_ && linearT >= 0.5f) {
+        environmentBlendDiscreteApplied_ = true;
+        skyboxEnabled_ = environmentBlendTo_.skyboxEnabled;
+        if (!environmentBlendTo_.skyboxTexturePath.empty()) {
+            SetSkyboxTexturePath(environmentBlendTo_.skyboxTexturePath);
+        }
+        SetShadowMapResolution(environmentBlendTo_.shadowMapResolution);
+        if (!environmentBlendTo_.post.lutTexturePath.empty()) {
+            postEffect->SetLUTTexturePath(environmentBlendTo_.post.lutTexturePath);
+        }
+        postEffect->SetBloomEnabled(environmentBlendTo_.post.bloomEnabled);
+        postEffect->SetBloomQuality(
+            static_cast<PostEffect::BloomQuality>(environmentBlendTo_.post.bloomQuality));
+        if (PostEffect::Params* params = postEffect->GetParams()) {
+            params->enableToneMapping = environmentBlendTo_.post.enableToneMapping;
+        }
+    }
+
+    if (linearT >= 1.0f) {
+        const std::string completedProfileFile =
+            currentEnvironmentProfileFile_;
+        ApplyEnvironmentProfile(environmentBlendTo_, 0.0f);
+        currentEnvironmentProfileFile_ = completedProfileFile;
+    }
+}
+
+float LightManager::GetEnvironmentProfileBlendProgress() const {
+    if (!environmentBlendActive_) {
+        return 1.0f;
+    }
+    return std::clamp(
+        environmentBlendElapsed_ / (std::max)(environmentBlendDuration_, 0.0001f),
+        0.0f,
+        1.0f);
 }

@@ -7,9 +7,10 @@
 #include "CollisionManager.h"
 #include "EventManager.h"
 #include "GPUParticleManager.h"
+#include "HitEffectDirector.h"
 #include "MeshEffectManager.h"
-#include "Player.h"
 #include "SceneManager.h"
+#include "VFXSequencer.h"
 #include <algorithm>
 #include <cmath>
 
@@ -17,16 +18,6 @@ namespace {
 // ブレス、火球、頭上炎の発生間隔をまとめる調整値
 constexpr const char* kBreathAttackId = "flame_breath";
 constexpr const char* kFireballAttackId = "fireball";
-constexpr float kCarriedFireCooldown = 0.58f;
-constexpr float kCarriedBreathDamageInterval = 0.22f;
-constexpr float kCarriedFireballSpeed = 31.0f;
-constexpr float kCarriedDashCooldown = 0.92f;
-constexpr float kCarriedDashDuration = 0.32f;
-constexpr float kCarriedDashSpeed = 28.0f;
-constexpr float kCarriedDashRadius = 1.15f;
-constexpr float kCarriedDashDamage = 0.75f;
-constexpr float kCarriedDashEffectInterval = 0.045f;
-constexpr float kCarriedDashInvincibleDuration = 0.24f;
 constexpr float kGroundCollisionWorldRadius = 0.82f;
 constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.28f;
@@ -43,10 +34,6 @@ constexpr const char* kBreathEmberPreset = "fire_slime_breath_embers";
 constexpr const char* kCastPreset = "fire_slime_cast";
 constexpr const char* kHeadFlamePreset = "fire_slime_head_flame";
 constexpr const char* kHeadEmberPreset = "fire_slime_head_embers";
-constexpr const char* kCarriedDashTrailPreset = "player_fire_blaze_trail";
-constexpr const char* kCarriedDashBurstPreset = "player_fire_blaze_burst";
-constexpr const char* kCarriedDashTrailEffectPath = "Resources/json/effect/effect_player_fire_blaze_trail.json";
-constexpr const char* kCarriedDashBurstEffectPath = "Resources/json/effect/effect_player_fire_blaze_burst.json";
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -269,10 +256,6 @@ void EnemyFireSlime::BeginThrown(const Vector3& initialVelocity) {
     breathWarningTriggered_ = false;
     fireballWarningTriggered_ = false;
     fireballAimLocked_ = false;
-    carriedDashActive_ = false;
-    carriedDashTimer_ = 0.0f;
-    carriedDashEffectTimer_ = 0.0f;
-    carriedDashHitTargets_.clear();
     HideAttackTelegraph();
     HideBreathFlameVisuals();
     SetColor(defaultColor_);
@@ -289,273 +272,6 @@ std::unique_ptr<Object3d> EnemyFireSlime::Clone() const {
     clone->SetTarget(target_);
     clone->SetDetectionRange(detectionRange_);
     return clone;
-}
-
-// 持ち運び中にプレイヤー前方へ火球を撃つ能力
-void EnemyFireSlime::ExecuteAbility(Player* player) {
-    if (!player || !isCarried_ || carriedFireCooldown_ > 0.0f || carriedDashActive_) {
-        return;
-    }
-
-    Vector3 direction = player->GetForwardDirection();
-    if (Math::Length(direction) <= 0.001f) {
-        direction = { 0.0f, 0.0f, 1.0f };
-    }
-    direction = Math::Normalize(direction);
-
-    Vector3 spawnPos = player->GetWorldPosition() + direction * 1.75f;
-    spawnPos.y += 1.35f;
-
-    const EnemyAttackDefinition& fireballAttack = GetAttackDefinition(kFireballAttackId);
-    const float carriedSpeed = fireballAttack.maxSpeed > 0.0f ? fireballAttack.maxSpeed : kCarriedFireballSpeed;
-    BulletManager::GetInstance()->Fire(
-        spawnPos,
-        direction * carriedSpeed + Vector3{ 0.0f, 1.4f, 0.0f },
-        kPlayerAttack,
-        kEnemy | kAllSolid,
-        "Primitives/sphere",
-        0.52f,
-        fireballAttack.lifetime,
-        MakeFireVisual(1.28f),
-        fireballAttack.damage,
-        MakeStatusEffect(fireballAttack),
-        DamageType::Fire);
-
-    EmitFirePreset(fireballAttack.activeVfx.empty() ? kCastPreset : fireballAttack.activeVfx.c_str(), spawnPos);
-    carriedFireCooldown_ = kCarriedFireCooldown;
-    carriedEffectTimer_ = 0.22f;
-}
-
-void EnemyFireSlime::ExecuteBreathAbility(Player* player) {
-    if (!player || !isCarried_ || carriedDashActive_) {
-        return;
-    }
-
-    const float activeDuration = GetAttackDefinition(kBreathAttackId).activeDuration;
-    breathTimer_ = (std::max)(breathTimer_, activeDuration);
-    breathParticleTimer_ = 0.0f;
-    breathEmberTimer_ = 0.0f;
-    breathParticleCursor_ = 0;
-    carriedEffectTimer_ = 0.12f;
-    attackTimer_ = activeDuration;
-    SetColor({ 1.0f, 0.76f, 0.54f, 1.0f });
-}
-
-void EnemyFireSlime::ExecuteDashAbility(Player* player) {
-    if (!player || !isCarried_ || carriedDashActive_ || carriedDashCooldown_ > 0.0f) {
-        return;
-    }
-
-    carriedDashDirection_ = NormalizePlanar(player->GetForwardDirection());
-    carriedDashActive_ = true;
-    carriedDashTimer_ = kCarriedDashDuration;
-    carriedDashEffectTimer_ = 0.0f;
-    carriedDashCooldown_ = kCarriedDashCooldown;
-    carriedDashHitTargets_.clear();
-    breathTimer_ = 0.0f;
-    HideBreathFlameVisuals();
-
-    const Vector3 start = player->GetWorldPosition();
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(
-            kCarriedDashBurstEffectPath,
-            start + Vector3{ 0.0f, 0.18f, 0.0f },
-            { 0.0f, std::atan2(carriedDashDirection_.x, carriedDashDirection_.z), 0.0f },
-            { 0.88f, 0.88f, 0.88f });
-    }
-    EmitFirePreset(kCarriedDashBurstPreset, start + Vector3{ 0.0f, 0.42f, 0.0f });
-
-    Vector3 velocity = player->GetVelocity();
-    velocity.x = carriedDashDirection_.x * kCarriedDashSpeed;
-    velocity.z = carriedDashDirection_.z * kCarriedDashSpeed;
-    velocity.y = (std::max)(velocity.y, 0.0f);
-    player->SetVelocity(velocity);
-    player->SetMoveYaw(std::atan2(carriedDashDirection_.x, carriedDashDirection_.z));
-    player->StartEvasionInvincibility(kCarriedDashInvincibleDuration);
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, carriedDashDirection_);
-    player->TriggerSlimeImpulse({ 1.0f, 1.55f, 2.65f }, 0.17f);
-}
-
-void EnemyFireSlime::UpdateCarriedAbility(Player* player, float deltaTime) {
-    if (!isCarried_) {
-        return;
-    }
-
-    idleTimer_ += deltaTime;
-    carriedFireCooldown_ = (std::max)(0.0f, carriedFireCooldown_ - deltaTime);
-    carriedDashCooldown_ = (std::max)(0.0f, carriedDashCooldown_ - deltaTime);
-    carriedEffectTimer_ = (std::max)(0.0f, carriedEffectTimer_ - deltaTime);
-    carriedBreathDamageTimer_ = (std::max)(0.0f, carriedBreathDamageTimer_ - deltaTime);
-
-    if (player) {
-        UpdateCarriedDash(player, deltaTime);
-        Vector3 direction = player->GetForwardDirection();
-        if (Math::Length(direction) <= 0.001f) {
-            direction = { 0.0f, 0.0f, 1.0f };
-        }
-        direction = Math::Normalize(direction);
-
-        SetVelocity(player->GetVelocity());
-        SetRotationY(std::atan2(direction.x, direction.z) + kFireSlimeModelYawOffset);
-        UpdateHeadFlameVisual(deltaTime);
-
-        if (breathTimer_ > 0.0f) {
-            breathTimer_ = (std::max)(0.0f, breathTimer_ - deltaTime);
-            breathParticleTimer_ -= deltaTime;
-            breathEmberTimer_ -= deltaTime;
-            UpdateBreathFlameVisuals(direction, deltaTime);
-
-            if (carriedBreathDamageTimer_ <= 0.0f) {
-                DispatchCarriedBreathDamage(player, direction);
-                carriedBreathDamageTimer_ = kCarriedBreathDamageInterval;
-            }
-
-            if (breathParticleTimer_ <= 0.0f) {
-                Vector3 origin = player->GetWorldPosition();
-                origin.y += 0.78f;
-                EmitBreathParticles(origin, direction);
-                breathParticleTimer_ += 0.065f;
-            }
-
-            if (breathTimer_ <= 0.0f) {
-                HideBreathFlameVisuals();
-            }
-        } else {
-            HideBreathFlameVisuals();
-        }
-    }
-
-    const float ready = 1.0f - (std::clamp)(carriedFireCooldown_ / kCarriedFireCooldown, 0.0f, 1.0f);
-    const float pulse = carriedEffectTimer_ > 0.0f ? std::sin(carriedEffectTimer_ * 50.0f) * 0.08f : 0.0f;
-    SetColor({ 1.0f, 0.82f + ready * 0.10f + pulse, 0.72f, 1.0f });
-}
-
-void EnemyFireSlime::UpdateCarriedDash(Player* player, float deltaTime) {
-    if (!player || !carriedDashActive_) {
-        return;
-    }
-
-    carriedDashTimer_ = (std::max)(0.0f, carriedDashTimer_ - deltaTime);
-    carriedDashEffectTimer_ -= deltaTime;
-    const float progress = 1.0f - std::clamp(carriedDashTimer_ / kCarriedDashDuration, 0.0f, 1.0f);
-    const float speed = kCarriedDashSpeed * (1.0f - progress * 0.36f);
-
-    PhysicsQueryFilter solidFilter;
-    solidFilter.mask = kAllSolid;
-    solidFilter.ignoredObject = player;
-    const RaycastHit wallHit = CollisionManager::GetInstance()->SphereCast(
-        player->GetWorldPosition() + Vector3{ 0.0f, 0.78f, 0.0f },
-        0.48f,
-        carriedDashDirection_,
-        speed * deltaTime + 0.22f,
-        solidFilter);
-    if (wallHit.isHit && wallHit.distance <= speed * deltaTime + 0.18f) {
-        FinishCarriedDash(player);
-        return;
-    }
-
-    Vector3 velocity = player->GetVelocity();
-    velocity.x = carriedDashDirection_.x * speed;
-    velocity.z = carriedDashDirection_.z * speed;
-    if (player->IsGrounded() && velocity.y < 0.0f) {
-        velocity.y = 0.0f;
-    }
-    player->SetVelocity(velocity);
-    player->SetMoveYaw(std::atan2(carriedDashDirection_.x, carriedDashDirection_.z));
-    player->ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, carriedDashDirection_);
-
-    DamageEnemiesAlongCarriedDash(player);
-    if (carriedDashEffectTimer_ <= 0.0f) {
-        Vector3 trailPosition = player->GetWorldPosition() - carriedDashDirection_ * 0.72f;
-        trailPosition.y += 0.12f;
-        if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-            meshEffects->SpawnEffectAt(
-                kCarriedDashTrailEffectPath,
-                trailPosition,
-                { 0.0f, std::atan2(carriedDashDirection_.x, carriedDashDirection_.z), 0.0f },
-                { 0.92f, 0.92f, 1.18f });
-        }
-        EmitDirectedFirePreset(kCarriedDashTrailPreset, trailPosition, carriedDashDirection_ * -1.0f, 0.85f);
-        carriedDashEffectTimer_ = kCarriedDashEffectInterval;
-    }
-
-    if (carriedDashTimer_ <= 0.0f) {
-        FinishCarriedDash(player);
-    }
-}
-
-void EnemyFireSlime::DamageEnemiesAlongCarriedDash(Player* player) {
-    PhysicsQueryFilter filter;
-    filter.mask = kEnemy;
-    filter.ignoredObject = player;
-
-    const Vector3 center = player->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
-    const Vector3 pointA = center - carriedDashDirection_ * 0.78f;
-    const Vector3 pointB = center + carriedDashDirection_ * 1.25f;
-    const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
-    for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapCapsule(
-        pointA, pointB, kCarriedDashRadius, filter)) {
-        Object3d* damageTarget = FindEnemyDamageTarget(hit.object);
-        if (!damageTarget || !carriedDashHitTargets_.insert(damageTarget).second) {
-            continue;
-        }
-
-        DamageEvent damageEvent;
-        damageEvent.target = damageTarget;
-        damageEvent.attacker = player;
-        damageEvent.damageAmount = kCarriedDashDamage;
-        damageEvent.damageType = DamageType::Fire;
-        damageEvent.statusEffect = MakeStatusEffect(attack);
-        damageEvent.knockbackVelocity = {
-            carriedDashDirection_.x * 11.0f,
-            5.5f,
-            carriedDashDirection_.z * 11.0f,
-        };
-        EventManager::GetInstance()->Dispatch(damageEvent);
-    }
-}
-
-void EnemyFireSlime::FinishCarriedDash(Player* player) {
-    if (!carriedDashActive_) {
-        return;
-    }
-
-    carriedDashActive_ = false;
-    carriedDashTimer_ = 0.0f;
-    carriedDashEffectTimer_ = 0.0f;
-    carriedDashHitTargets_.clear();
-    if (!player) {
-        return;
-    }
-
-    Vector3 velocity = player->GetVelocity();
-    velocity.x *= 0.30f;
-    velocity.z *= 0.30f;
-    player->SetVelocity(velocity);
-    player->ForceSlimeAnimationModeForNextUpdate(
-        player->IsGrounded() ? PlayerSlimeAnimator::Mode::Idle : PlayerSlimeAnimator::Mode::Jump,
-        carriedDashDirection_);
-
-    const Vector3 finishPosition = player->GetWorldPosition() + Vector3{ 0.0f, 0.20f, 0.0f };
-    if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(
-            kCarriedDashBurstEffectPath,
-            finishPosition,
-            { 0.0f, std::atan2(carriedDashDirection_.x, carriedDashDirection_.z), 0.0f },
-            { 0.62f, 0.62f, 0.62f });
-    }
-    EmitFirePreset(kCarriedDashBurstPreset, finishPosition);
-}
-
-void EnemyFireSlime::ReleaseCarriedAbilityVisuals() {
-    HideAttackTelegraph();
-    HideBreathFlameVisuals();
-    RequestRemoveBreathFlameVisuals();
-    RequestRemoveHeadFlameVisual();
-    carriedDashActive_ = false;
-    carriedDashTimer_ = 0.0f;
-    carriedDashEffectTimer_ = 0.0f;
-    carriedDashHitTargets_.clear();
 }
 
 // ブレス攻撃、火球、炎演出の補助処理
@@ -585,7 +301,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, flo
     breathTimer_ = (std::max)(0.0f, breathTimer_ - deltaTime);
     breathParticleTimer_ -= deltaTime;
     breathEmberTimer_ -= deltaTime;
-    const float progress = 1.0f - (std::clamp)(breathTimer_ / activeDuration, 0.0f, 1.0f);
+    const float progress = attack.GetPhaseProgressFromRemaining(AttackAbilityPhase::Active, breathTimer_);
     const float damageTriggerTime = activeDuration * 0.62f;
     const float damageTriggerProgress = 1.0f - damageTriggerTime / activeDuration;
     const float timingProgress = std::clamp(
@@ -655,7 +371,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, Vector3& velocity, co
 
     fireballWindupTimer_ = (std::max)(0.0f, fireballWindupTimer_ - deltaTime);
     const float windupDuration = (std::max)(0.01f, attack.windupDuration);
-    const float progress = 1.0f - std::clamp(fireballWindupTimer_ / windupDuration, 0.0f, 1.0f);
+    const float progress = attack.GetPhaseProgressFromRemaining(AttackAbilityPhase::Windup, fireballWindupTimer_);
     const float predictedDistance = std::clamp(
         pendingFireballDistance_ + attack.radius,
         attack.minRange,
@@ -701,57 +417,13 @@ void EnemyFireSlime::DispatchBreathDamage(const Vector3& direction, float distan
     damageEvent.target = target_;
     damageEvent.attacker = this;
     damageEvent.damageAmount = attack.damage;
-    damageEvent.knockbackVelocity = { direction.x * 9.5f, 4.4f, direction.z * 9.5f };
+    damageEvent.knockbackVelocity = attack.ResolveKnockback(direction, { direction.x * 9.5f, 4.4f, direction.z * 9.5f });
     damageEvent.damageType = DamageType::Fire;
     damageEvent.statusEffect = MakeStatusEffect(attack);
+    damageEvent.invincibilityDuration = attack.ResolveInvincibilityDuration();
     EventManager::GetInstance()->Dispatch(damageEvent);
-}
-
-void EnemyFireSlime::DispatchCarriedBreathDamage(Player* player, const Vector3& direction) {
-    if (!player) {
-        return;
-    }
-
-    SceneManager* sceneManager = SceneManager::GetInstance();
-    BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
-    if (!scene) {
-        return;
-    }
-
-    const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
-    const Vector3 origin = player->GetWorldPosition();
-    for (const auto& object : scene->GetObjects()) {
-        Object3d* target = object.get();
-        if (!target || target == this || target == player || target->isDead || !target->GetIsVisible()) {
-            continue;
-        }
-
-        BaseEnemy* enemy = dynamic_cast<BaseEnemy*>(target);
-        if (!enemy || enemy->IsCarried() || enemy->IsDefeatEffectPlaying()) {
-            continue;
-        }
-
-        Vector3 toTarget = target->GetTranslate() - origin;
-        toTarget.y = 0.0f;
-        const float distance = Math::Length(toTarget);
-        if (distance > attack.maxRange + 0.85f || distance <= 0.001f) {
-            continue;
-        }
-
-        const Vector3 targetDirection = Math::Normalize(toTarget);
-        const float facingDot = direction.x * targetDirection.x + direction.z * targetDirection.z;
-        if (facingDot < 0.28f) {
-            continue;
-        }
-
-        DamageEvent damageEvent;
-        damageEvent.target = target;
-        damageEvent.attacker = player;
-        damageEvent.damageAmount = attack.damage;
-        damageEvent.knockbackVelocity = { direction.x * 8.2f, 3.8f, direction.z * 8.2f };
-        damageEvent.damageType = DamageType::Fire;
-        damageEvent.statusEffect = MakeStatusEffect(attack);
-        EventManager::GetInstance()->Dispatch(damageEvent);
+    if (!attack.feedbackCue.empty()) {
+        VFXSequencer::PlayOneShot(attack.feedbackCue, target_->GetWorldPosition());
     }
 }
 
@@ -875,7 +547,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     const float width = kHeadFlameBaseScale * (0.94f + pulse + speedRate * 0.06f) * bodyScale;
     const float height = kHeadFlameBaseScale * (0.82f - pulse * 0.16f + speedRate * 0.08f) * bodyScale;
 
-    headFlameVisual_->SetIsVisible((GetIsVisible() && !isDead) || isCarried_);
+    headFlameVisual_->SetIsVisible(GetIsVisible() && !isDead);
     headFlameVisual_->SetTranslate(pos);
     headFlameVisual_->SetRotation({ 0.0f, yaw, 0.0f });
     headFlameVisual_->SetScale({ width, height, width });
@@ -1012,6 +684,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
     const float activeDuration = (std::max)(0.01f, attack.activeDuration);
     const Vector3 scale = GetScale();
+    const Vector3 origin = GetTranslate();
     const float bodyScale = (std::max)({ 0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
     const float progress = 1.0f - (std::clamp)(breathTimer_ / activeDuration, 0.0f, 1.0f);
     const float fadeIn = (std::clamp)(progress / 0.16f, 0.0f, 1.0f);
@@ -1030,7 +703,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
         const float step = (static_cast<float>(i) + 0.5f) / static_cast<float>(kBreathFlameVisualCount);
         const float distance = 0.50f + step * (attack.maxRange * 0.84f);
         const float wobble = std::sin(idleTimer_ * (6.2f + step * 1.4f) + step * 8.3f) * (0.025f + step * 0.07f);
-        Vector3 pos = GetTranslate() + direction * distance + side * wobble;
+        Vector3 pos = origin + direction * distance + side * wobble;
         pos.y += (0.62f + step * 0.12f) * (std::max)(0.7f, std::abs(scale.y));
 
         float yaw = GetRotation().y;

@@ -8,7 +8,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "PrismSlime", "FireSlime", "ThunderSlime", "WindSlime", "Bat", "BeamDrone" };
+    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime", "Bat", "BeamDrone" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
@@ -73,6 +73,19 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.78f);
+                }
+                else if (std::string(enemyTypes[i]) == "MagmaSlime") {
+                    selectedObject->SetModel("Characters/magma_slime");
+                    selectedObject->SetMaterialType(0);
+                    selectedObject->SetColor({ 1.0f, 0.94f, 0.86f, 1.0f });
+                    selectedObject->SetEmissive(1.18f);
+                    selectedObject->SetScale({ 3.8f, 3.8f, 3.8f });
+                    selectedObject->animName_.clear();
+                    selectedObject->isAnimLoop_ = false;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(0.96f);
                 }
                 else if (std::string(enemyTypes[i]) == "FireSlime") {
                     selectedObject->SetModel("Characters/slime_red");

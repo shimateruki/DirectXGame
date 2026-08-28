@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "PlayerCopyAbilityController.h"
 
 namespace {
 json ToJson(const Vector3& value) {
@@ -38,6 +39,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerDamageCooldownTimer"] = damageCooldownTimer_;
     state["playerDamageInvincible"] = isDamageInvincible_;
     state["playerDashInvincible"] = isDashInvincible_;
+    state["playerGuardInvincible"] = isGuardInvincible_;
     state["playerEvasionInvincibleTimer"] = evasionInvincibleTimer_;
     state["playerEvasionInvincible"] = isEvasionInvincible_;
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
@@ -54,6 +56,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerMorphDuration"] = enemyMorphDuration_;
     state["playerMorphEffectTimer"] = enemyMorphEffectTimer_;
     state["playerMorphVisualTimer"] = enemyMorphVisualTimer_;
+    state["playerGiantRushActive"] = IsGiantSlimeRushActive();
     state["playerMorphReleaseActive"] = enemyMorphReleaseActive_;
     state["playerMorphReleaseBurstStarted"] = enemyMorphReleaseBurstStarted_;
     state["playerMorphReleaseExpired"] = enemyMorphReleaseExpired_;
@@ -86,6 +89,7 @@ void Player::RestoreReplayCustomState(const json& state) {
     damageCooldownTimer_ = state.value("playerDamageCooldownTimer", damageCooldownTimer_);
     isDamageInvincible_ = state.value("playerDamageInvincible", isDamageInvincible_);
     isDashInvincible_ = state.value("playerDashInvincible", isDashInvincible_);
+    isGuardInvincible_ = state.value("playerGuardInvincible", isGuardInvincible_);
     evasionInvincibleTimer_ = state.value("playerEvasionInvincibleTimer", evasionInvincibleTimer_);
     isEvasionInvincible_ = state.value("playerEvasionInvincible", isEvasionInvincible_);
     invincibleBlinkTimer_ = state.value("playerInvincibleBlinkTimer", invincibleBlinkTimer_);
@@ -113,6 +117,18 @@ void Player::RestoreReplayCustomState(const json& state) {
     enemyMorphDuration_ = state.value("playerMorphDuration", enemyMorphDuration_);
     enemyMorphEffectTimer_ = state.value("playerMorphEffectTimer", enemyMorphEffectTimer_);
     enemyMorphVisualTimer_ = state.value("playerMorphVisualTimer", enemyMorphVisualTimer_);
+    if (copyAbilityController_) {
+        if (isEnemyMorphed_) {
+            // リプレイの時間軸では元敵参照を復元せず、能力セッションを設定値から再構築します。
+            copyAbilityController_->ActivateDefault(static_cast<int>(enemyMorphType_));
+            if (copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
+                enemyMorphSource_ = nullptr;
+            }
+        }
+        else {
+            copyAbilityController_->Cancel(*this);
+        }
+    }
     enemyMorphReleaseActive_ = state.value("playerMorphReleaseActive", false);
     enemyMorphReleaseBurstStarted_ = state.value("playerMorphReleaseBurstStarted", false);
     enemyMorphReleaseExpired_ = state.value("playerMorphReleaseExpired", false);

@@ -13,7 +13,6 @@
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "ParticleSystem.h"
-#include "imgui.h"
 #include "LightManager.h"
 #include "SceneManager.h"
 #include "DebugConsole.h"
@@ -24,21 +23,26 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include "VFXSequencer.h"
 #include "Fade.h"
 #include "PostEffect.h"
 #include "GameDataManager.h"
 #include "WinApp.h"
+#ifdef USE_IMGUI
+#include "imgui.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
 #include <string>
 
 namespace {
-constexpr float kTitleLetterInterval = 0.24f;
-constexpr float kTitleLetterPopDuration = 0.34f;
-constexpr float kMenuRevealDelay = 2.05f;
+constexpr float kTitleLetterInterval = 0.11f;
+constexpr float kTitleLetterPopDuration = 0.28f;
+constexpr float kMenuRevealDelay = 0.62f;
 constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
+constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
 
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
@@ -56,6 +60,29 @@ float EaseOutBack(float t) {
     constexpr float c3 = c1 + 1.0f;
     const float shifted = t - 1.0f;
     return 1.0f + c3 * shifted * shifted * shifted + c1 * shifted * shifted;
+}
+
+float EaseInOutCubic(float t) {
+    t = Clamp01(t);
+    if (t < 0.5f) {
+        return 4.0f * t * t * t;
+    }
+    const float inv = -2.0f * t + 2.0f;
+    return 1.0f - inv * inv * inv * 0.5f;
+}
+
+float LerpFloat(float start, float end, float t) {
+    return start + (end - start) * Clamp01(t);
+}
+
+Vector3 MakeLookAtEuler(const Vector3& eye, const Vector3& target) {
+    const Vector3 direction = target - eye;
+    const float planarLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+    return {
+        std::atan2(-direction.y, planarLength),
+        std::atan2(direction.x, direction.z),
+        0.0f
+    };
 }
 
 bool IsFadePlayingForSceneIntro() {
@@ -77,6 +104,7 @@ SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
         : "Resources/json/sprite/gameOverScene.json");
     manifest.AddModel("Characters/player");
     manifest.AddTexture("Resources/sprite/common/white.png");
+    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
     return manifest;
 }
 
@@ -133,24 +161,32 @@ void GameOverScene::Initialize() {
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
     CameraEditor::GetInstance()->Update(nullptr, false);
     CameraManager::GetInstance()->Update();
-    InitializeGameOverPresentation();
 
 }
 
 void GameOverScene::OnActivated() {
     BaseScene::OnActivated();
-    PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
-    if (postParams) {
-        postParams->slimeFadeIntensity = 0.0f;
-        postParams->irisFadeIntensity = 0.0f;
-        postParams->blackout = 0.0f;
-        postParams->dangerVignette = 0.0f;
-        postParams->damageFlash = 0.0f;
+    sceneTime_ = 0.0f;
+    titleRevealTimer_ = 0.0f;
+    selectedIndex_ = 0;
+    retryExitActive_ = false;
+    retrySceneChangeRequested_ = false;
+    retryExitTimer_ = 0.0f;
+    VFXSequencer::ClearOneShots();
+    ResetGameOverPostEffects();
+    if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
+        params->slimeFadeIntensity = 0.0f;
+        params->irisFadeIntensity = 0.0f;
+        params->blackout = 0.0f;
+        params->dangerVignette = 0.0f;
     }
+    InitializeGameOverPresentation();
     dxCommon_->SetRenderClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void GameOverScene::Finalize() {
+    ResetGameOverPostEffects();
+    VFXSequencer::ClearOneShots();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
 
@@ -175,7 +211,7 @@ void GameOverScene::Update(float deltaTime) {
     const bool canAdvanceIntro = !IsFadePlayingForSceneIntro();
     const float introDeltaTime = canAdvanceIntro ? deltaTime : 0.0f;
     sceneTime_ += introDeltaTime;
-    titleRevealTimer_ += introDeltaTime;
+    titleRevealTimer_ = std::max(0.0f, sceneTime_ - presentationTuning_.titleRevealStartTime);
 
     if (!retryExitActive_ && IsTitleRevealComplete()) {
         UpdateMenuInput();
@@ -183,15 +219,17 @@ void GameOverScene::Update(float deltaTime) {
 
     UpdateMenuSprites(introDeltaTime);
     UpdateFallingCrowns(introDeltaTime);
-    UpdateDizzyStars(introDeltaTime);
+
+    objectManager_->Update(deltaTime);
+    UpdateGameOverPresentation(introDeltaTime);
 
     LightEditor::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
+    UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(deltaTime);
+    UpdateDizzyStars(introDeltaTime);
 
-    objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
-    UpdateGameOverPresentation(deltaTime);
     UpdateRetryExit(deltaTime);
 
     for (auto& sprite : sprites_) {
@@ -276,17 +314,40 @@ void GameOverScene::DrawUI() {
     }
 }
 
+void GameOverScene::DrawImGui() {
+#ifdef USE_IMGUI
+    if (ImGui::Begin("ゲームオーバー演出調整")) {
+        ImGui::SliderFloat("カメラが引き終わる時間", &presentationTuning_.cameraSettleTime, 0.80f, 2.80f, "%.2f 秒");
+        ImGui::SliderFloat("タイトル表示開始", &presentationTuning_.titleRevealStartTime, 0.40f, 3.00f, "%.2f 秒");
+        ImGui::DragFloat3("開始カメラ位置", &presentationTuning_.introEyeOffset.x, 0.05f);
+        ImGui::DragFloat3("衝撃時カメラ位置", &presentationTuning_.impactEyeOffset.x, 0.05f);
+        ImGui::DragFloat3("落ち着きカメラ位置", &presentationTuning_.settleEyeOffset.x, 0.05f);
+        ImGui::DragFloat3("開始注視位置", &presentationTuning_.introTargetOffset.x, 0.03f);
+        ImGui::DragFloat3("落ち着き注視位置", &presentationTuning_.settleTargetOffset.x, 0.03f);
+        ImGui::SliderFloat("開始FOV", &presentationTuning_.introFov, 0.30f, 1.00f, "%.3f");
+        ImGui::SliderFloat("衝撃FOV", &presentationTuning_.impactFov, 0.30f, 1.00f, "%.3f");
+        ImGui::SliderFloat("落ち着きFOV", &presentationTuning_.settleFov, 0.30f, 1.00f, "%.3f");
+        ImGui::SliderFloat("衝撃時の揺れ", &presentationTuning_.impactShake, 0.0f, 0.20f, "%.3f");
+        if (ImGui::Button("演出調整を既定値に戻す")) {
+            presentationTuning_ = PresentationTuning{};
+        }
+    }
+    ImGui::End();
+#endif
+}
+
 void GameOverScene::BindLayoutSprites() {
     backgroundSprite_ = FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 7> titleNames = {
+    constexpr std::array<const char*, 8> titleNames = {
         "gameover_letter_g",
         "gameover_letter_a",
         "gameover_letter_m",
         "gameover_letter_e1",
         "gameover_letter_o",
         "gameover_letter_v",
-        "gameover_letter_e2"
+        "gameover_letter_e2",
+        "gameover_letter_r"
     };
 
     for (size_t i = 0; i < titleNames.size(); ++i) {
@@ -319,14 +380,15 @@ void GameOverScene::BindLayoutSprites() {
 void GameOverScene::RefreshLayoutSpritePointers() {
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 7> titleNames = {
+    constexpr std::array<const char*, 8> titleNames = {
         "gameover_letter_g",
         "gameover_letter_a",
         "gameover_letter_m",
         "gameover_letter_e1",
         "gameover_letter_o",
         "gameover_letter_v",
-        "gameover_letter_e2"
+        "gameover_letter_e2",
+        "gameover_letter_r"
     };
 
     for (size_t i = 0; i < titleNames.size(); ++i) {
@@ -436,6 +498,7 @@ void GameOverScene::InitializeFallingCrowns() {
 
 void GameOverScene::UpdateFallingCrowns(float deltaTime) {
     (void)deltaTime;
+    const float presentationAlpha = EaseOutCubic((sceneTime_ - 0.48f) / 0.82f);
 
     for (FallingCrown& crown : fallingCrowns_) {
         if (!crown.sprite || !IsAlive(crown.sprite)) {
@@ -453,7 +516,7 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
         const float x = crown.basePosition.x + std::sin(localTime * crown.driftSpeed + crown.phase) * crown.driftAmplitude;
         const float fadeIn = Clamp01((y + 120.0f) / 220.0f);
         const float fadeOut = Clamp01((1180.0f - y) / 260.0f);
-        const float alpha = std::min(fadeIn, fadeOut) * crown.alpha;
+        const float alpha = std::min(fadeIn, fadeOut) * crown.alpha * presentationAlpha;
         const float slowTilt = std::sin(localTime * 0.42f + crown.phase) * 0.16f;
 
         crown.sprite->SetVisible(alpha > 0.02f);
@@ -615,6 +678,10 @@ void GameOverScene::StartRetryExit() {
     }
 
     if (gameOverSlimeObject_) {
+        VFXSequencer::PlayOneShot(
+            "crown_focus_cue",
+            gameOverSlimeAnimator_.GetDizzyAnchorWorld(),
+            { 0.62f, 0.62f, 0.62f });
         gameOverSlimeAnimator_.StartExitRight(gameOverSlimeObject_, exitDirection, 11.5f);
     }
     else {
@@ -647,7 +714,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         backgroundSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     }
 
-    const Vector4 hiddenTitleColor = { 1.0f, 0.16f, 0.10f, 0.0f };
+    const Vector4 hiddenTitleColor = { 0.72f, 0.94f, 1.0f, 0.0f };
 
     for (size_t i = 0; i < titleLetters_.size(); ++i) {
         Sprite* letter = titleLetters_[i];
@@ -662,7 +729,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         const Vector2 basePos = titleLetterBasePositions_[i];
         const Vector2 baseSize = titleLetterBaseSizes_[i];
 
-        if (revealElapsed < 0.0f) {
+        if (revealElapsed <= 0.0f) {
             letter->SetVisible(false);
             letter->SetPosition(basePos);
             letter->SetSize({ baseSize.x * 0.65f, baseSize.y * 0.65f });
@@ -682,9 +749,9 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         letter->SetPosition({ basePos.x, basePos.y + dropOffset + wave * 4.0f * revealEase });
         letter->SetSize({ baseSize.x * scale, baseSize.y * scale });
         letter->SetColor({
-            0.92f + pulse * 0.08f,
-            0.10f + pulse * 0.10f,
-            0.08f + pulse * 0.08f,
+            0.84f + pulse * 0.16f,
+            0.95f + pulse * 0.05f,
+            1.0f,
             revealEase
         });
     }
@@ -735,10 +802,18 @@ bool GameOverScene::IsTitleRevealComplete() const {
 void GameOverScene::InitializeGameOverPresentation() {
     FindGameOverSlimeObject();
     gameOverSlimeAnimator_.Reset(gameOverSlimeObject_);
+    gameOverPresentationTimer_ = 0.0f;
+    gameOverImpactCuePlayed_ = false;
+
+    if (gameOverSlimeObject_) {
+        gameOverSlimeBasePosition_ = gameOverSlimeObject_->GetWorldPosition();
+        gameOverSlimeBaseScale_ = gameOverSlimeObject_->GetScale();
+    }
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
         camera->SetInputEnabled(false);
+        camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
     }
 
     UpdateGameOverPresentation(0.0f);
@@ -779,7 +854,117 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
         return;
     }
 
+    gameOverPresentationTimer_ += std::max(0.0f, deltaTime);
     gameOverSlimeAnimator_.Update(gameOverSlimeObject_, deltaTime);
+
+    if (!gameOverImpactCuePlayed_ &&
+        gameOverPresentationTimer_ >= GameOverSlimeAnimator::GetImpactTime()) {
+        EmitGameOverImpactCue();
+        gameOverImpactCuePlayed_ = true;
+    }
+
+    UpdateGameOverPostEffects();
+}
+
+void GameOverScene::UpdateGameOverCamera() {
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera || !gameOverSlimeObject_) {
+        return;
+    }
+
+    const float impactTime = GameOverSlimeAnimator::GetImpactTime();
+    const float settleTime = std::max(presentationTuning_.cameraSettleTime, impactTime + 0.10f);
+    const Vector3 introEye = gameOverSlimeBasePosition_ + presentationTuning_.introEyeOffset;
+    const Vector3 impactEye = gameOverSlimeBasePosition_ + presentationTuning_.impactEyeOffset;
+    const Vector3 settleEye = gameOverSlimeBasePosition_ + presentationTuning_.settleEyeOffset;
+    const Vector3 introTarget = gameOverSlimeBasePosition_ + presentationTuning_.introTargetOffset;
+    const Vector3 settleTarget = gameOverSlimeBasePosition_ + presentationTuning_.settleTargetOffset;
+
+    Vector3 eye = introEye;
+    Vector3 target = introTarget;
+    float fov = presentationTuning_.introFov;
+    if (gameOverPresentationTimer_ < impactTime) {
+        const float rate = EaseInOutCubic(gameOverPresentationTimer_ / impactTime);
+        eye = Math::Lerp(introEye, impactEye, rate);
+        target = Math::Lerp(introTarget, gameOverSlimeBasePosition_ + Vector3{ 0.0f, 0.34f, 0.0f }, rate);
+        fov = LerpFloat(presentationTuning_.introFov, presentationTuning_.impactFov, rate);
+    }
+    else {
+        const float rate = EaseInOutCubic(
+            (gameOverPresentationTimer_ - impactTime) / (settleTime - impactTime));
+        eye = Math::Lerp(impactEye, settleEye, rate);
+        target = Math::Lerp(gameOverSlimeBasePosition_ + Vector3{ 0.0f, 0.34f, 0.0f }, settleTarget, rate);
+        fov = LerpFloat(presentationTuning_.impactFov, presentationTuning_.settleFov, rate);
+    }
+
+    camera->SetInputEnabled(false);
+    camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
+    camera->ConfigFixedPoint(eye, MakeLookAtEuler(eye, target));
+    camera->SetFovY(fov);
+}
+
+void GameOverScene::UpdateGameOverPostEffects() {
+    PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+    if (!params) {
+        return;
+    }
+
+    const float impactTime = GameOverSlimeAnimator::GetImpactTime();
+    const float settleTime = std::max(presentationTuning_.cameraSettleTime, impactTime + 0.10f);
+    const float settle = EaseInOutCubic((gameOverPresentationTimer_ - impactTime) / (settleTime - impactTime));
+    const float impactPulse = 1.0f - Clamp01(std::abs(gameOverPresentationTimer_ - impactTime) / 0.18f);
+    const float opening = EaseOutCubic(gameOverPresentationTimer_ / 0.62f);
+
+    params->vignetteIntensity = LerpFloat(0.92f, 0.24f, settle) + impactPulse * 0.18f;
+    params->vignettePower = LerpFloat(1.52f, 1.18f, settle);
+    params->chromaticAberration = (1.0f - settle) * 0.012f + impactPulse * 0.018f;
+    params->filmGrainIntensity = (1.0f - settle) * 0.018f;
+    params->radialCenterX = 0.5f;
+    params->radialCenterY = 0.57f;
+    params->radialIntensity = impactPulse * 0.032f;
+    params->colorExposure = LerpFloat(-0.12f, 0.0f, opening);
+    params->colorContrast = LerpFloat(1.16f, 1.05f, settle);
+    params->colorSaturation = LerpFloat(0.62f, 0.90f, settle);
+    params->colorTemperature = LerpFloat(-0.12f, -0.03f, settle);
+    params->damageFlash = impactPulse * 0.075f;
+    params->cinemaBarHeight = (1.0f - EaseOutCubic(gameOverPresentationTimer_ / 1.30f)) * 0.055f;
+    params->bloomIntensity = 0.18f + impactPulse * 0.42f;
+}
+
+void GameOverScene::EmitGameOverImpactCue() {
+    if (!gameOverSlimeObject_) {
+        return;
+    }
+
+    VFXSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        camera->StartShake(
+            0.24f,
+            presentationTuning_.impactShake,
+            28.0f,
+            { 0.85f, 0.55f, 0.35f });
+    }
+}
+
+void GameOverScene::ResetGameOverPostEffects() {
+    PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+    if (!params) {
+        return;
+    }
+
+    params->vignetteIntensity = 0.0f;
+    params->vignettePower = 1.0f;
+    params->chromaticAberration = 0.0f;
+    params->filmGrainIntensity = 0.0f;
+    params->radialIntensity = 0.0f;
+    params->colorExposure = 0.0f;
+    params->colorContrast = 1.0f;
+    params->colorSaturation = 1.0f;
+    params->colorTemperature = 0.0f;
+    params->damageFlash = 0.0f;
+    params->cinemaBarHeight = 0.0f;
+    params->bloomIntensity = 0.0f;
 }
 
 void GameOverScene::DrawBackgroundSprite() {

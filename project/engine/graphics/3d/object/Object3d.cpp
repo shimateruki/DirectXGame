@@ -118,6 +118,10 @@ void Object3d::Initialize(Object3dCommon* common) {
     meshEffectComponent_.reset();
     pathMoverComponent_.reset();
     gameplayLinkComponent_.reset();
+    materialInstancePath_.clear();
+    decalSettings_ = DecalSettings{};
+    decalElapsedTime_ = 0.0f;
+    decalAuthoredAlpha_ = 1.0f;
 
     // Transform初期化
     transform_.scale = { 1.0f, 1.0f, 1.0f };
@@ -157,9 +161,33 @@ void Object3d::Update(float deltaTime) {
     cpuAnimTimeMs_ = 0.0f;
     cpuMatrixTimeMs_ = 0.0f;
 
+    // 一時Decalだけ寿命を進めます。lifetimeが0の配置Decalは永続表示です。
+    if (decalSettings_.enabled && decalSettings_.lifetime > 0.0f && isVisible_) {
+        decalElapsedTime_ += std::max(deltaTime, 0.0f);
+        float alphaFactor = 1.0f;
+        if (decalSettings_.fadeIn > 0.0f) {
+            alphaFactor = std::min(alphaFactor, decalElapsedTime_ / decalSettings_.fadeIn);
+        }
+        const float remaining = decalSettings_.lifetime - decalElapsedTime_;
+        if (decalSettings_.fadeOut > 0.0f) {
+            alphaFactor = std::min(alphaFactor, remaining / decalSettings_.fadeOut);
+        }
+        Vector4 color = GetColor();
+        color.w = decalAuthoredAlpha_ * std::clamp(alphaFactor, 0.0f, 1.0f);
+        SetColor(color);
+        if (decalElapsedTime_ >= decalSettings_.lifetime) {
+            SetIsVisible(false);
+            if (decalSettings_.transient) {
+                isDead = true;
+            }
+        }
+    }
+
     // 収集アニメーション
     if (isCollecting_) {
         collectTimer_ += deltaTime;
+        // 収集中だけ回転アニメーションへ切り替えます。
+        transform_.isQuaternionMaster = false;
         transform_.translate.y += 10.0f * deltaTime; // 上昇
         transform_.rotate.y += 15.0f * deltaTime;    // 回転
         if (collectTimer_ >= 0.5f) {
@@ -170,8 +198,9 @@ void Object3d::Update(float deltaTime) {
     }
     else if (eventType_ == EventType::StarCoin && isVisible_) {
         // --- スターコインの常駐演出 ---
-        transform_.rotate.y += 3.0f * deltaTime;
-        transform_.isQuaternionMaster = false;
+        // 常駐中にTransformを回し続けると、保存した向きが毎フレーム壊れて
+        // エディター表示とゲーム中の見え方が一致しなくなります。
+        // 保存された向きは変更せず、きらめきパーティクルだけで動きを出します。
 
         if (!gpuEmitter_) {
             gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
@@ -272,7 +301,7 @@ void Object3d::UpdateParticle() {
 }
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (!isVisible_) return;
+    if (!GetIsRenderVisible()) return;
     if (IsCameraObject()) {
         SceneManager* sceneManager = SceneManager::GetInstance();
         if ((sceneManager && sceneManager->IsPlaying()) || DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
@@ -306,7 +335,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 // ========================================================================
 
 void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
-    if (!isVisible_) return;
+    if (!GetIsRenderVisible()) return;
     if (IsCameraObject() && DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
         return;
     }
@@ -440,85 +469,85 @@ void Object3d::SetModel(const std::string& modelName) {
     }
 }
 void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawMagma(depthSrvHandle, colorSrvHandle);
     }
 }
 void Object3d::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawIce(depthSrvHandle, colorSrvHandle);
     }
 }
 void Object3d::DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawFire(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLaser(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawShockwave(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawUpdraft(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawStunBind(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
     }
 }
 void Object3d::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawCloud(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawGatePortal(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
-    if (!isVisible_ || !meshRenderer_) {
+    if (!GetIsRenderVisible() || !meshRenderer_) {
         return;
     }
     meshRenderer_->DrawSpecialMaterialForCamera(
@@ -530,7 +559,7 @@ void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHan
 }
 
 void Object3d::DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawWindOrb(depthSrvHandle, grabSrvHandle);
     }
 }

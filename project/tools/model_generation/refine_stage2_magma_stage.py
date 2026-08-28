@@ -25,6 +25,9 @@ PLAYER_PATH = RESOURCE_ROOT / "json/3Dobject/stage2_player.json"
 CAMERA_PATH = RESOURCE_ROOT / "json/3Dobject/stage2_camera.json"
 MODEL_ROOT = RESOURCE_ROOT / "3DModel/Stages"
 GUID_NAMESPACE = uuid.UUID("65767fc8-6689-45b0-bcb9-434a7e26b59b")
+MAGMA_DEFEAT_EVENT_ID = 8501
+MAGMA_BOSS_EVENT_ID = 8502
+MAGMA_BARRIER_COUNT = 4
 
 Vec2 = tuple[float, float]
 Vec3 = tuple[float, float, float]
@@ -1049,6 +1052,96 @@ def build_volcanic_backdrop_ridge() -> ObjBuilder:
     return builder
 
 
+def build_magma_horizon_island() -> ObjBuilder:
+    """マグマ海の中景に置く、低く横へ広がった火口島。"""
+
+    builder = ObjBuilder("magma_horizon_island")
+    segments = 28
+    outer_base = ring_points(segments, 25.0, -7.5, x_scale=1.18, z_scale=0.86, phase=0.08, noise=0.075)
+    lower_shelf = ring_points(segments, 23.0, -2.8, x_scale=1.16, z_scale=0.88, phase=0.04, noise=0.070)
+    upper_shelf = ring_points(segments, 19.0, 1.2, x_scale=1.12, z_scale=0.92, phase=-0.03, noise=0.060)
+    crater_rim = ring_points(segments, 15.2, 4.0, x_scale=1.08, z_scale=0.94, phase=0.06, noise=0.052)
+    crater_inner = ring_points(segments, 7.2, 3.35, x_scale=1.16, z_scale=0.86, phase=0.06, noise=0.035)
+    magma_pool = ring_points(segments, 5.0, 1.45, x_scale=1.12, z_scale=0.90, phase=0.06, noise=0.020)
+
+    connect_rings(builder, lower_shelf, outer_base, "backdrop_near", alternate_material="obsidian")
+    connect_rings(builder, upper_shelf, lower_shelf, "backdrop_mid", alternate_material="backdrop_near")
+    connect_rings(builder, crater_rim, upper_shelf, "backdrop_near", alternate_material="backdrop_mid")
+    connect_rings(builder, crater_rim, crater_inner, "backdrop_far", center_xz=(0.0, 0.0))
+    connect_rings(builder, crater_inner, magma_pool, "obsidian", inward=True, alternate_material="ember")
+    add_top_fan(builder, magma_pool, 1.47, "backdrop_lava")
+    add_bottom_fan(builder, outer_base, (0.0, -8.4, 0.0), "backdrop_near")
+
+    # 大きさと高さの異なる不規則な岩塔を足し、同一モデルの反復感を弱める。
+    rock_specs = (
+        (-15.0, -2.0, 2.4, 8.4, -0.20),
+        (13.5, 3.4, 2.1, 9.6, 0.27),
+        (5.5, -9.0, 1.7, 6.8, -0.08),
+    )
+    for x, z, radius, height, phase in rock_specs:
+        def shifted_rock_ring(ring_radius: float, y: float, ring_phase: float, noise: float) -> list[Vec3]:
+            return [
+                (point_x + x, point_y, point_z + z)
+                for point_x, point_y, point_z in ring_points(
+                    11,
+                    ring_radius,
+                    y,
+                    x_scale=0.86,
+                    z_scale=1.12,
+                    phase=ring_phase,
+                    noise=noise,
+                )
+            ]
+
+        rock_base = shifted_rock_ring(radius, 2.6, phase, 0.11)
+        rock_mid = shifted_rock_ring(radius * 0.66, 2.6 + height * 0.58, phase + 0.09, 0.09)
+        rock_tip = shifted_rock_ring(radius * 0.18, 2.6 + height, phase - 0.07, 0.04)
+        connect_rings(builder, rock_mid, rock_base, "backdrop_mid", alternate_material="backdrop_near")
+        connect_rings(builder, rock_tip, rock_mid, "backdrop_far", alternate_material="obsidian")
+        add_top_fan(builder, rock_tip, 2.6 + height + 0.08, "backdrop_far")
+    return builder
+
+
+def build_magma_horizon_spire() -> ObjBuilder:
+    """遠景の高さ方向へ変化を作る、複数火口を持つ火山塔。"""
+
+    builder = ObjBuilder("magma_horizon_spire")
+    segments = 20
+    cone_specs = (
+        (0.0, 0.0, 10.5, 30.0, 0.04),
+        (-12.0, 4.0, 6.4, 20.0, -0.11),
+        (10.5, 6.0, 7.2, 23.0, 0.17),
+    )
+    for center_x, center_z, radius, height, phase in cone_specs:
+        def shifted_ring(ring_radius: float, y: float, ring_phase: float, noise: float) -> list[Vec3]:
+            return [
+                (x + center_x, point_y, z + center_z)
+                for x, point_y, z in ring_points(
+                    segments,
+                    ring_radius,
+                    y,
+                    x_scale=1.0,
+                    z_scale=0.92,
+                    phase=ring_phase,
+                    noise=noise,
+                )
+            ]
+
+        base = shifted_ring(radius, 0.0, phase, 0.070)
+        shoulder = shifted_ring(radius * 0.72, height * 0.46, phase + 0.05, 0.060)
+        upper = shifted_ring(radius * 0.46, height * 0.76, phase - 0.04, 0.050)
+        rim = shifted_ring(radius * 0.34, height * 0.90, phase + 0.03, 0.040)
+        inner = shifted_ring(radius * 0.17, height * 0.86, phase + 0.03, 0.020)
+
+        connect_rings(builder, shoulder, base, "backdrop_near", alternate_material="obsidian")
+        connect_rings(builder, upper, shoulder, "backdrop_mid", alternate_material="backdrop_near")
+        connect_rings(builder, rim, upper, "backdrop_far", alternate_material="backdrop_mid")
+        connect_rings(builder, rim, inner, "obsidian", center_xz=(center_x, center_z))
+        add_top_fan(builder, inner, height * 0.865, "backdrop_lava")
+        add_bottom_fan(builder, base, (center_x, -0.8, center_z), "backdrop_near")
+    return builder
+
+
 def build_magma_vent() -> ObjBuilder:
     builder = ObjBuilder("magma_vent")
     add_annulus(builder, 3.4, 2.05, 0.0, 0.72, "basalt_side", 16)
@@ -1097,6 +1190,8 @@ MODEL_BUILDERS = {
     "obsidian_raft": build_obsidian_raft,
     "volcanic_spire": build_volcanic_spire,
     "volcanic_backdrop_ridge": build_volcanic_backdrop_ridge,
+    "magma_horizon_island": build_magma_horizon_island,
+    "magma_horizon_spire": build_magma_horizon_spire,
     "magma_vent": build_magma_vent,
     "caldera_arch": build_caldera_arch,
     "forge_temple": build_forge_temple,
@@ -1142,6 +1237,20 @@ def set_collider(obj: dict, size: Sequence[float], center: Sequence[float], coll
     collider["size"] = [float(value) for value in size]
     collider["center"] = [float(value) for value in center]
     collider["rotation"] = [0.0, 0.0, 0.0]
+
+
+def set_gameplay_link(obj: dict, event_id: int, target_id: int) -> None:
+    """イベントIDを旧フィールドとComponentの両方へ同期します。"""
+
+    obj["myEventID"] = int(event_id)
+    obj["targetID"] = int(target_id)
+    components = obj.setdefault("components", {})
+    components["GameplayLink"] = {
+        "_editorPresent": True,
+        "eventId": int(event_id),
+        "targetId": int(target_id),
+        "version": 1,
+    }
 
 
 class SceneBuilder:
@@ -1254,21 +1363,49 @@ class SceneBuilder:
     ) -> dict:
         """プレイ領域に干渉しない遠景用岩山を追加する。"""
 
-        obj = self.add_fortress_model(
+        return self.add_magma_backdrop(
             name,
             "volcanic_backdrop_ridge",
+            position,
+            scale,
+            yaw,
+            tint,
+            1.62,
+        )
+
+    def add_magma_backdrop(
+        self,
+        name: str,
+        model: str,
+        position: Sequence[float],
+        scale: Sequence[float],
+        yaw: float,
+        tint: Sequence[float],
+        emissive: float,
+    ) -> dict:
+        """当たり判定や影を持たないマグマ海の背景ランドマークを追加する。"""
+
+        obj = self.add_fortress_model(
+            name,
+            model,
             position,
             scale,
             (0.0, yaw, 0.0),
             collide=False,
             cast_shadow=False,
         )
+        bright_tint = [
+            min(1.0, 0.58 + float(tint[0]) * 0.38),
+            min(1.0, 0.10 + float(tint[1]) * 0.50),
+            min(1.0, 0.06 + float(tint[2]) * 0.35),
+            float(tint[3]),
+        ]
         obj.update({
-            "color": list(tint),
-            "emissive": 0.28,
-            "roughness": 0.96,
-            "metallic": 0.02,
-            "envIntensity": 0.18,
+            "color": bright_tint,
+            "emissive": float(emissive),
+            "roughness": 0.86,
+            "metallic": 0.04,
+            "envIntensity": 0.62,
         })
         return obj
 
@@ -1838,6 +1975,120 @@ class SceneBuilder:
         set_transform(obj, position, (1.0, 1.0, 1.0), (0.0, yaw, 0.0))
         return obj
 
+    def add_magma_boss_encounter(self) -> None:
+        """上層鍛冶場へ、進入封鎖と出現制御を持つマグマ中ボス戦を配置します。"""
+
+        encounter = self.clone("Stage2_MagmaSea", "Stage2_MagmaArena_Encounter")
+        encounter.update({
+            "type": "Gimmick",
+            "gimmickType": "ArenaEncounter",
+            "enemyType": "",
+            "itemType": "",
+            "modelName": "",
+            "isStatic": False,
+            "castShadow": False,
+            "materialType": 0,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+        })
+        encounter.pop("waterParam", None)
+        set_transform(encounter, (228.0, 33.0, -146.0), (1.0, 1.0, 1.0), (0.0, -0.12, 0.0))
+        set_collider(encounter, (5.0, 4.0, 20.0), (0.0, 3.0, 0.0), 3)
+        encounter["param"] = {
+            "actionMode": 0,
+            "gimmickType": "ArenaEncounter",
+            "maxCount": MAGMA_BARRIER_COUNT,
+            "shakeDuration": 0.74,
+            "startActive": True,
+            "returnOnOff": False,
+        }
+        set_gameplay_link(encounter, MAGMA_DEFEAT_EVENT_ID, MAGMA_BOSS_EVENT_ID)
+
+        boss = self.clone("Stage2_Final_FireGuard_A", "Stage2_MagmaArena_Boss")
+        boss.update({
+            "type": "Enemy",
+            "enemyType": "MagmaSlime",
+            "gimmickType": "",
+            "itemType": "",
+            "modelName": "Characters/magma_slime",
+            "isStatic": False,
+            "castShadow": True,
+            "blendMode": 0,
+            "materialType": 0,
+            "color": [1.0, 0.94, 0.86, 1.0],
+            "emissive": 1.18,
+            "metallic": 0.12,
+            "roughness": 0.26,
+            "enableEnvMap": True,
+            "envIntensity": 0.42,
+            "collisionAttribute": 8,
+            "collisionMask": 4294967295,
+        })
+        boss.pop("waterParam", None)
+        set_transform(boss, (270.0, 33.05, -165.0), (1.0, 1.0, 1.0), (0.0, -1.45, 0.0))
+        set_collider(boss, (0.96, 0.96, 0.96), (0.0, 0.88, 0.0), 1)
+        boss["param"] = {
+            "enemyType": "MagmaSlime",
+            "actionMode": 1,
+            "shakeDuration": 1.16,
+            "startActive": False,
+        }
+        set_gameplay_link(boss, MAGMA_BOSS_EVENT_ID, MAGMA_DEFEAT_EVENT_ID)
+
+        barrier_specs = (
+            ("West", (222.0, 37.4, -165.0), (34.0, 6.4, 1.0), math.pi * 0.5),
+            ("East", (318.0, 37.4, -165.0), (34.0, 6.4, 1.0), math.pi * 0.5),
+            ("North", (270.0, 37.4, -199.0), (48.0, 6.4, 1.0), 0.0),
+            ("South", (270.0, 37.4, -131.0), (48.0, 6.4, 1.0), 0.0),
+        )
+        for index, (side, position, scale, yaw) in enumerate(barrier_specs, start=1):
+            barrier = self.clone("Stage2_MagmaSea", f"Stage2_MagmaBarrier_{side}")
+            barrier.update({
+                "type": "Gimmick",
+                "gimmickType": "PrismBarrier",
+                "enemyType": "",
+                "itemType": "",
+                "modelName": "Gimmicks/portal_surface",
+                "isStatic": False,
+                "castShadow": False,
+                "blendMode": 1,
+                "materialType": 22,
+                "color": [1.0, 0.20, 0.02, 0.86],
+                "emissive": 2.65,
+                "metallic": 0.0,
+                "roughness": 0.22,
+                "enableEnvMap": False,
+                "collisionAttribute": 0,
+                "collisionMask": 0,
+            })
+            set_transform(barrier, position, scale, (0.0, yaw, 0.0))
+            set_collider(barrier, (1.0, 1.0, 0.45), (0.0, 0.0, 0.0), 3)
+            barrier["param"] = {
+                "gimmickType": "PrismBarrier",
+                "moveSpeed": 0.42,
+                "interval": 2.7,
+                "startActive": False,
+                "returnOnOff": True,
+            }
+            barrier["waterParam"] = {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.82,
+                "effectScale": 1.0,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 0.08,
+                "effectSoftness": 0.46,
+                "effectType": 3.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "waveFrequency": 18.0,
+                "waveHeight": 0.72,
+                "waveSpeed": 1.25,
+            }
+            set_gameplay_link(barrier, MAGMA_BOSS_EVENT_ID + index, -1)
+
     def add_coin(self, name: str, position: Sequence[float]) -> dict:
         obj = self.clone("Stage2_RiverCoin_A_01", name)
         obj["castShadow"] = False
@@ -1864,27 +2115,83 @@ def build_scene() -> None:
     builder = SceneBuilder(scene)
 
     magma = builder.clone("Stage2_MagmaSea", "Stage2_MagmaSea")
-    set_transform(magma, (20.0, -10.0, 0.0), (600.0, 2.0, 255.0))
-    magma["color"] = [1.0, 0.20, 0.01, 1.0]
-    magma["emissive"] = 1.55
+    set_transform(magma, (20.0, -10.0, 0.0), (900.0, 2.0, 700.0))
+    magma["color"] = [1.0, 0.16, 0.008, 1.0]
+    magma["emissive"] = 1.62
     magma["roughness"] = 0.42
     magma["isStatic"] = True
     magma["castShadow"] = False
+    magma["textureTiling"] = [32.0, 24.0]
+    magma["autoTextureTiling"] = False
+    magma["waterParam"] = {
+        "billboardScale": 1.0,
+        "effectIntensity": 1.48,
+        "effectScale": 1.52,
+        "effectScaleX": 1.0,
+        "effectScaleY": 1.0,
+        "effectScaleZ": 1.0,
+        "effectSoftness": 0.60,
+        "effectType": 0.0,
+        "flowSpeedX": 0.072,
+        "flowSpeedY": 0.027,
+        "waveFrequency": 2.75,
+        "waveHeight": 0.46,
+        "waveSpeed": 0.68,
+    }
 
-    # スカイボックスより手前に視差を持つ岩山を置き、火山盆地の奥行きを作る。
-    # 当たり判定と影を無効化し、同一メッシュを共有して描画負荷を抑える。
+    # 低い火口島、中景の火山塔、遠景の稜線を分けて置き、四方向に視差を作る。
+    # 背景はすべて当たり判定と影を無効化し、プレイ経路の読みやすさを保つ。
     backdrop_ridges = (
-        ("Stage2_Backdrop_NorthWest", (-405.0, -9.2, 490.0), (1.92, 1.08, 1.82), 0.16, (0.66, 0.39, 0.27, 1.0)),
-        ("Stage2_Backdrop_NorthMidA", (-105.0, -9.4, 515.0), (1.72, 0.94, 1.68), -0.10, (0.57, 0.31, 0.23, 1.0)),
-        ("Stage2_Backdrop_NorthMidB", (205.0, -9.1, 500.0), (2.02, 1.14, 1.90), 0.24, (0.64, 0.36, 0.25, 1.0)),
-        ("Stage2_Backdrop_NorthEast", (510.0, -9.3, 470.0), (1.80, 0.99, 1.72), -0.20, (0.54, 0.29, 0.22, 1.0)),
-        ("Stage2_Backdrop_SouthWest", (-430.0, -9.1, -485.0), (1.86, 1.02, 1.78), -0.18, (0.60, 0.33, 0.23, 1.0)),
-        ("Stage2_Backdrop_SouthMidA", (-120.0, -9.4, -520.0), (1.68, 0.92, 1.64), 0.12, (0.51, 0.27, 0.21, 1.0)),
-        ("Stage2_Backdrop_SouthMidB", (195.0, -9.2, -510.0), (1.98, 1.11, 1.88), -0.25, (0.63, 0.35, 0.24, 1.0)),
-        ("Stage2_Backdrop_SouthEast", (515.0, -9.3, -475.0), (1.78, 0.97, 1.70), 0.20, (0.56, 0.30, 0.22, 1.0)),
+        ("Stage2_Backdrop_Ridge_NorthWest", (-650.0, -9.5, 620.0), (2.20, 1.30, 2.06), 0.18, (0.66, 0.38, 0.27, 1.0)),
+        ("Stage2_Backdrop_Ridge_NorthMidA", (-315.0, -9.6, 660.0), (1.92, 1.08, 1.84), -0.11, (0.56, 0.30, 0.23, 1.0)),
+        ("Stage2_Backdrop_Ridge_NorthMidB", (70.0, -9.4, 675.0), (2.16, 1.24, 2.02), 0.23, (0.64, 0.35, 0.25, 1.0)),
+        ("Stage2_Backdrop_Ridge_NorthEast", (485.0, -9.6, 635.0), (2.02, 1.12, 1.92), -0.20, (0.55, 0.29, 0.22, 1.0)),
+        ("Stage2_Backdrop_Ridge_SouthWest", (-640.0, -9.4, -630.0), (2.12, 1.20, 2.00), -0.17, (0.61, 0.33, 0.24, 1.0)),
+        ("Stage2_Backdrop_Ridge_SouthMidA", (-285.0, -9.6, -680.0), (1.86, 1.04, 1.80), 0.12, (0.52, 0.28, 0.21, 1.0)),
+        ("Stage2_Backdrop_Ridge_SouthMidB", (105.0, -9.4, -670.0), (2.18, 1.27, 2.06), -0.25, (0.63, 0.34, 0.24, 1.0)),
+        ("Stage2_Backdrop_Ridge_SouthEast", (520.0, -9.5, -625.0), (2.00, 1.10, 1.90), 0.21, (0.56, 0.30, 0.22, 1.0)),
+        ("Stage2_Backdrop_Ridge_WestSouth", (-810.0, -9.6, -330.0), (1.88, 1.06, 1.82), 1.34, (0.55, 0.29, 0.22, 1.0)),
+        ("Stage2_Backdrop_Ridge_WestMid", (-835.0, -9.5, 25.0), (2.10, 1.21, 1.98), 1.57, (0.64, 0.35, 0.25, 1.0)),
+        ("Stage2_Backdrop_Ridge_WestNorth", (-800.0, -9.6, 390.0), (1.84, 1.02, 1.78), 1.78, (0.53, 0.28, 0.21, 1.0)),
+        ("Stage2_Backdrop_Ridge_EastSouth", (845.0, -9.5, -360.0), (1.96, 1.12, 1.88), -1.35, (0.58, 0.31, 0.23, 1.0)),
+        ("Stage2_Backdrop_Ridge_EastMid", (875.0, -9.6, -5.0), (2.14, 1.24, 2.00), -1.57, (0.65, 0.36, 0.25, 1.0)),
+        ("Stage2_Backdrop_Ridge_EastNorth", (830.0, -9.4, 365.0), (1.88, 1.08, 1.82), -1.80, (0.54, 0.29, 0.22, 1.0)),
     )
     for name, position, scale, yaw, tint in backdrop_ridges:
         builder.add_backdrop_ridge(name, position, scale, yaw, tint)
+
+    backdrop_islands = (
+        ("Stage2_Backdrop_Island_NorthWest", (-555.0, -8.8, 330.0), (1.75, 1.32, 1.55), 0.18),
+        ("Stage2_Backdrop_Island_NorthMidA", (-225.0, -8.9, 395.0), (1.48, 1.16, 1.35), -0.22),
+        ("Stage2_Backdrop_Island_NorthMidB", (145.0, -8.8, 375.0), (1.66, 1.28, 1.48), 0.27),
+        ("Stage2_Backdrop_Island_NorthEast", (520.0, -8.9, 315.0), (1.55, 1.20, 1.42), -0.17),
+        ("Stage2_Backdrop_Island_SouthWest", (-545.0, -8.8, -335.0), (1.62, 1.24, 1.48), -0.20),
+        ("Stage2_Backdrop_Island_SouthMidA", (-175.0, -8.9, -405.0), (1.42, 1.12, 1.34), 0.16),
+        ("Stage2_Backdrop_Island_SouthMidB", (220.0, -8.8, -385.0), (1.70, 1.30, 1.52), -0.28),
+        ("Stage2_Backdrop_Island_SouthEast", (575.0, -8.9, -305.0), (1.50, 1.18, 1.38), 0.21),
+        ("Stage2_Backdrop_Island_West", (-690.0, -8.9, 70.0), (1.58, 1.22, 1.42), 1.48),
+        ("Stage2_Backdrop_Island_East", (700.0, -8.8, 105.0), (1.74, 1.34, 1.56), -1.52),
+    )
+    for name, position, scale, yaw in backdrop_islands:
+        builder.add_magma_backdrop(
+            name, "magma_horizon_island", position, scale, yaw,
+            (0.86, 0.50, 0.34, 1.0), 1.48,
+        )
+
+    backdrop_spires = (
+        ("Stage2_Backdrop_Spire_NorthWest", (-620.0, -9.0, 455.0), (1.50, 1.46, 1.50), 0.22),
+        ("Stage2_Backdrop_Spire_NorthMid", (-65.0, -9.1, 485.0), (1.72, 1.66, 1.72), -0.18),
+        ("Stage2_Backdrop_Spire_NorthEast", (500.0, -9.0, 430.0), (1.46, 1.42, 1.46), 0.28),
+        ("Stage2_Backdrop_Spire_SouthWest", (-570.0, -9.0, -455.0), (1.58, 1.54, 1.58), -0.24),
+        ("Stage2_Backdrop_Spire_SouthMid", (55.0, -9.1, -505.0), (1.78, 1.72, 1.78), 0.20),
+        ("Stage2_Backdrop_Spire_SouthEast", (610.0, -9.0, -420.0), (1.48, 1.44, 1.48), -0.30),
+        ("Stage2_Backdrop_Spire_East", (735.0, -9.0, 155.0), (1.62, 1.58, 1.62), -1.38),
+    )
+    for name, position, scale, yaw in backdrop_spires:
+        builder.add_magma_backdrop(
+            name, "magma_horizon_spire", position, scale, yaw,
+            (0.72, 0.38, 0.28, 1.0), 1.82,
+        )
 
     # 主経路を大きく蛇行させ、同じ形の広場が一直線に並ばない火山城塞にする。
     builder.add_keep(
@@ -1980,6 +2287,7 @@ def build_scene() -> None:
     builder.add_ramp("Stage2_ForgeRise", (183.0, 21.0, -120.0), (222.0, 31.0, -145.0), 18.0)
     builder.add_keep("Stage2_UpperForge", "magma_fortress_foundation", (270.0, 31.0, -165.0), (96.0, 68.0), -0.12)
     builder.add_gate("Stage2_UpperForgeGate", (226.0, 31.0, -146.0), (2.1, 1.55, 1.25))
+    builder.add_magma_boss_encounter()
 
     # 三本の回転ドラムを斜めに連ね、北側の塔へ上がる。
     drum_route = (
@@ -2041,8 +2349,6 @@ def build_scene() -> None:
     builder.add_enemy("Stage2_Rim_FireGuard", "Stage2_RimFireGuard", (39.0, 20.0, 50.0), 0.8)
     builder.add_enemy("Stage2_Ridge_BomberGuard", "Stage2_EmberLandingBomber", (118.0, 23.0, -98.0), -1.5)
     builder.add_enemy("Stage2_Rim_BomberGuard", "Stage2_RimBomberGuard", (160.0, 23.0, -112.0), -2.2)
-    builder.add_enemy("Stage2_Final_ThunderGuard", "Stage2_FinalThunderGuard", (258.0, 33.0, -160.0), -2.4)
-    builder.add_enemy("Stage2_Final_BomberGuard", "Stage2_FinalBomberGuard", (292.0, 33.0, -174.0), 2.7)
     builder.add_enemy("Stage2_Final_FireGuard_A", "Stage2_FinalFireGuard", (390.0, 41.0, -5.0), 0.9)
 
     gatehouse_cannon = builder.clone("Stage2_Cannon_EmberLanding_A", "Stage2_EmberLandingCannon")
@@ -2123,6 +2429,7 @@ def build_scene() -> None:
     required_gimmicks = {
         "SinkingFloor", "MovingFloor", "RotatingFloor", "SeesawFloor",
         "TimedSwitch", "EventReceiver", "BreakableBlock", "DashPanel", "MagmaGeyser",
+        "ArenaEncounter", "PrismBarrier",
     }
     gimmick_names = {obj.get("gimmickType", "") for obj in builder.objects}
     missing_gimmicks = sorted(required_gimmicks - gimmick_names)
@@ -2154,10 +2461,12 @@ def build_scene() -> None:
         "Stages/magma_fortress_foundation", "Stages/basalt_causeway",
         "Stages/metal_grate_platform", "Stages/fortress_plaza", "Stages/fortress_gate",
         "Stages/fortress_pillar", "Stages/fortress_ramp", "Stages/fortress_grate_drum",
-        "Stages/volcanic_backdrop_ridge", "Stages/magma_vent",
+        "Stages/volcanic_backdrop_ridge", "Stages/magma_horizon_island",
+        "Stages/magma_horizon_spire", "Stages/magma_vent",
         "Stages/bomb_break_block", "Gimmicks/star", "Gimmicks/crown_stage_gate",
         "Gimmicks/star_dash_panel", "Stages/stage_select_gate_pad", "Stages/gate",
-        "Gimmicks/brazier", "Effects/flame",
+        "Gimmicks/brazier", "Effects/flame", "Characters/magma_slime",
+        "Gimmicks/portal_surface",
     }
     model_names = {obj.get("modelName", "") for obj in builder.objects}
     missing_models = sorted(required_models - model_names)
@@ -2191,12 +2500,50 @@ def build_scene() -> None:
         if objects_by_name.get(name, {}).get("modelName") != model_name:
             raise ValueError(f"{name} の入口ゲート外装が不足または不正です")
 
+    magma_encounter = objects_by_name.get("Stage2_MagmaArena_Encounter", {})
+    magma_boss = objects_by_name.get("Stage2_MagmaArena_Boss", {})
+    magma_barriers = [
+        objects_by_name.get(f"Stage2_MagmaBarrier_{side}", {})
+        for side in ("West", "East", "North", "South")
+    ]
+    if (
+        magma_encounter.get("gimmickType") != "ArenaEncounter"
+        or magma_encounter.get("myEventID") != MAGMA_DEFEAT_EVENT_ID
+        or magma_encounter.get("targetID") != MAGMA_BOSS_EVENT_ID
+        or magma_encounter.get("param", {}).get("maxCount") != MAGMA_BARRIER_COUNT
+        or magma_boss.get("enemyType") != "MagmaSlime"
+        or magma_boss.get("myEventID") != MAGMA_BOSS_EVENT_ID
+        or magma_boss.get("targetID") != MAGMA_DEFEAT_EVENT_ID
+        or magma_boss.get("param", {}).get("actionMode") != 1
+        or magma_boss.get("param", {}).get("startActive") is not False
+        or any(barrier.get("gimmickType") != "PrismBarrier" for barrier in magma_barriers)
+    ):
+        raise ValueError("Stage 2 のマグマ中ボス遭遇リンクが不正です")
+
+    magma_sea = objects_by_name.get("Stage2_MagmaSea", {})
+    magma_scale = magma_sea.get("scale", [0.0, 0.0, 0.0])
+    magma_param = magma_sea.get("waterParam", {})
+    if (
+        magma_sea.get("materialType") != 9
+        or len(magma_scale) != 3
+        or magma_scale[0] < 850.0
+        or magma_scale[2] < 650.0
+        or magma_param.get("waveFrequency", 0.0) < 2.0
+        or magma_param.get("effectIntensity", 0.0) < 1.2
+    ):
+        raise ValueError("Stage 2 のマグマ海の範囲またはシェーダー設定が不足しています")
+
     backdrop_objects = [
         obj for obj in builder.objects
         if obj.get("name", "").startswith("Stage2_Backdrop_")
     ]
-    if len(backdrop_objects) != 8:
-        raise ValueError("Stage 2 の遠景岩山は外周8か所に配置してください")
+    backdrop_counts = {
+        "ridge": sum(obj.get("name", "").startswith("Stage2_Backdrop_Ridge_") for obj in backdrop_objects),
+        "island": sum(obj.get("name", "").startswith("Stage2_Backdrop_Island_") for obj in backdrop_objects),
+        "spire": sum(obj.get("name", "").startswith("Stage2_Backdrop_Spire_") for obj in backdrop_objects),
+    }
+    if backdrop_counts != {"ridge": 14, "island": 10, "spire": 7}:
+        raise ValueError(f"Stage 2 の三層遠景数が不正です: {backdrop_counts}")
     if any(
         obj.get("collider", {}).get("type") != 0
         or obj.get("collisionAttribute") != 0
@@ -2204,7 +2551,7 @@ def build_scene() -> None:
         or obj.get("castShadow") is not False
         for obj in backdrop_objects
     ):
-        raise ValueError("Stage 2 の遠景岩山に当たり判定または影が設定されています")
+        raise ValueError("Stage 2 の遠景に当たり判定または影が設定されています")
 
     scene["objects"] = builder.objects
     SCENE_PATH.write_text(

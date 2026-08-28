@@ -5,6 +5,7 @@ Resources/json/user_config.json
 # Local/temporary output
 /output/
 /docs/
+/Saved/
 Resources/.backup/
 !Resources/**/*.meta
 .git.vs-invalid-backup_*

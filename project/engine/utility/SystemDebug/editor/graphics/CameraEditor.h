@@ -76,18 +76,25 @@ public:
     void DrawImGui() override;
     std::string GetName() override { return "Camera Editor"; }
 
+    /// 現在のゲームカメラ設定と演出用OverrideをJSONへ保存する。
     void SaveSettings();
+    /// 選択中のJSONからカメラ設定と演出用Overrideを復元する。
     void LoadSettings();
+    /// ファイル名を切り替え、未作成なら既定値で新規保存する。
     void LoadFile(const std::string& fileName);
+    /// カメラ設定フォルダ内のJSON一覧を再収集する。
     void RefreshFileList();
 
+    /// 自由カメラの位置・角度だけをEditor専用ファイルへ保存する。
     void SaveEditorState();
+    /// Editor専用ファイルから自由カメラの位置・角度を復元する。
     void LoadEditorState();
 
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
     void SetMode(Mode mode);
     Mode GetMode() const { return settings_.currentMode; }
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+    bool FocusSceneObject(Object3d* object);
     bool FocusSelectedCameraObject();
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetEditorStateSaveBlocker(uint32_t blocker, bool enabled);
@@ -108,6 +115,8 @@ public:
     void StopSceneObjectCamera(Camera* camera);
     void SetSelectedCameraObject(Object3d* cameraObject);
     Object3d* GetSelectedCameraObject() const;
+    // Camera Objectの保存済み設定から、実際の視点と注視点を解決します。
+    bool ResolveSceneCameraPose(const Object3d* cameraObject, Vector3& eye, Vector3& target) const;
 
     int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
     void SetCameraSensitivity(int val) {
@@ -150,7 +159,6 @@ private:
         const Camera::CameraOverrideParams& params,
         Object3d* fallbackEyeObject = nullptr) const;
     bool ResolveCinematicPreviewPose(Vector3& eye, Vector3& target) const;
-    bool ResolveSceneCameraPose(const Object3d* cameraObject, Vector3& eye, Vector3& target) const;
     Camera::CameraOverrideParams MakeRuntimeOverrideParams(const Object3d* cameraObject) const;
     Vector3 ResolveOverrideEye(const Camera::CameraOverrideParams& params) const;
     Vector3 ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const;

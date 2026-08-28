@@ -40,6 +40,28 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
     params_.isEmitting = false;
 }
 
+float ParticleSystem::ResolveEmissionScale(const EmitterParams& params, const Vector3& origin) const {
+    if (!params.lod.enabled) {
+        return 1.0f;
+    }
+    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera) {
+        return 1.0f;
+    }
+    const Vector3 eye = camera->GetEye();
+    const float x = origin.x - eye.x;
+    const float y = origin.y - eye.y;
+    const float z = origin.z - eye.z;
+    return params.lod.EvaluateEmissionScale(std::sqrt(x * x + y * y + z * z));
+}
+
+std::size_t ParticleSystem::ResolveParticleLimit(const EmitterParams& params) const {
+    if (!params.lod.enabled || params.lod.maxAliveParticles <= 0) {
+        return static_cast<std::size_t>(kMaxParticles);
+    }
+    return static_cast<std::size_t>(std::clamp(params.lod.maxAliveParticles, 1, kMaxParticles));
+}
+
 /// <summary>
 /// 自動エミッターが内部で呼ぶSpawn
 /// </summary>
@@ -48,7 +70,7 @@ void ParticleSystem::SpawnFromEmitter() {
 }
 
 void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3& origin) {
-    if (particles_.size() >= kMaxParticles) return;
+    if (particles_.size() >= ResolveParticleLimit(params)) return;
 
     // ---------------------------------------------------
     // ★形状ごとの計算分岐
@@ -125,6 +147,12 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3&
     p.acceleration = params.acceleration;
     p.hdrIntensity = params.hdrIntensity;
     // 回転初期化 (前回の実装分)
+    p.useAuthoringCurves =
+        params.useAuthoringCurves &&
+        !params.sizeOverLife.keys.empty() &&
+        !params.colorOverLife.keys.empty();
+    p.sizeOverLife = BakeVFXCurve(params.sizeOverLife, params.startSize);
+    p.colorOverLife = BakeVFXGradient(params.colorOverLife, params.startColor);
     p.rotation = 0.0f;
     float rotSpeedDeg = params.initialRotationSpeed + dis(randomEngine_) * params.rotationSpeedRandomness;
     p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
@@ -141,10 +169,17 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
     float lifeTimeMin, float lifeTimeMax,
     float startSize, float endSize)       
 {
+    const float emissionScale = ResolveEmissionScale(params_, position);
+    if (emissionScale <= 0.0001f) {
+        return;
+    }
+    const int scaledCount = (std::max)(
+        1, static_cast<int>(std::lround(static_cast<float>(count) * emissionScale)));
+    const std::size_t particleLimit = ResolveParticleLimit(params_);
     std::uniform_real_distribution<float> lifeDist(lifeTimeMin, lifeTimeMax);
 
-    for (int i = 0; i < count; ++i) {
-        if (particles_.size() >= kMaxParticles) {
+    for (int i = 0; i < scaledCount; ++i) {
+        if (particles_.size() >= particleLimit) {
             break; // 最大数
         }
 
@@ -183,13 +218,25 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         p.hdrIntensity = params_.hdrIntensity;
     // 回転スピード決定 (度数法 -> ラジアン変換)
     float rotSpeedDeg = params_.initialRotationSpeed + dis(randomEngine_) * params_.rotationSpeedRandomness;
+        p.useAuthoringCurves =
+            params_.useAuthoringCurves &&
+            !params_.sizeOverLife.keys.empty() &&
+            !params_.colorOverLife.keys.empty();
+        p.sizeOverLife = BakeVFXCurve(params_.sizeOverLife, startSize);
+        p.colorOverLife = BakeVFXGradient(params_.colorOverLife, initialColor);
     p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
         particles_.push_back(p);
     }
 }
 void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& position) {
-    const int count = std::clamp(params.emitCount, 1, kMaxParticles);
-    for (int i = 0; i < count && particles_.size() < kMaxParticles; ++i) {
+    const float emissionScale = ResolveEmissionScale(params, position);
+    if (emissionScale <= 0.0001f) {
+        return;
+    }
+    const int scaledCount = static_cast<int>(std::lround(static_cast<float>(params.emitCount) * emissionScale));
+    const int count = std::clamp(scaledCount, 1, static_cast<int>(ResolveParticleLimit(params)));
+    const std::size_t particleLimit = ResolveParticleLimit(params);
+    for (int i = 0; i < count && particles_.size() < particleLimit; ++i) {
         SpawnFromParams(params, position);
     }
 }
@@ -207,7 +254,9 @@ void ParticleSystem::Update(float deltaTime) {
     // --- 1. エミッター（自動発生）の処理 ---
     if (params_.isEmitting && params_.particlesPerSecond > 0.0f) {
         // 1フレームでの発生数を計算
-        float particlesToSpawn = params_.particlesPerSecond * deltaTime;
+        const Vector3 emitterPosition = params_.spawnPosition + editorPreviewOffset_;
+        const float emissionScale = ResolveEmissionScale(params_, emitterPosition);
+        float particlesToSpawn = params_.particlesPerSecond * emissionScale * deltaTime;
         spawnTimer_ += particlesToSpawn;
 
         // 整数個分だけ発生させる
@@ -265,11 +314,14 @@ void ParticleSystem::Update(float deltaTime) {
 
         // --- カラーの更新 ---
         // Lerpで開始色～終了色を補間
-        Vector4 currentColor;
-        currentColor.x = std::lerp(p.startColor.x, p.endColor.x, lifeRatio);
-        currentColor.y = std::lerp(p.startColor.y, p.endColor.y, lifeRatio);
-        currentColor.z = std::lerp(p.startColor.z, p.endColor.z, lifeRatio);
-        currentColor.w = std::lerp(p.startColor.w, p.endColor.w, lifeRatio);
+        Vector4 currentColor = p.useAuthoringCurves
+            ? p.colorOverLife.Evaluate(lifeRatio)
+            : Vector4{
+                std::lerp(p.startColor.x, p.endColor.x, lifeRatio),
+                std::lerp(p.startColor.y, p.endColor.y, lifeRatio),
+                std::lerp(p.startColor.z, p.endColor.z, lifeRatio),
+                std::lerp(p.startColor.w, p.endColor.w, lifeRatio)
+            };
 
         currentColor.x *= p.hdrIntensity;
         currentColor.y *= p.hdrIntensity;
@@ -283,7 +335,9 @@ void ParticleSystem::Update(float deltaTime) {
 
         // エディタで編集したカーブの値をサイズとして採用
         // ※ params_.sizeCurve が float配列[10] である前提
-        float currentSize = params_.sizeCurve[graphIndex];
+        float currentSize = p.useAuthoringCurves
+            ? p.sizeOverLife.Evaluate(lifeRatio)
+            : params_.sizeCurve[graphIndex];
         p.velocity.x += p.acceleration.x * deltaTime;
         p.velocity.y += p.acceleration.y * deltaTime;
         p.velocity.z += p.acceleration.z * deltaTime;

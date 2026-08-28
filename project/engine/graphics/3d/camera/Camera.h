@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <map>
 #include <string>
+#include <vector>
 #include <wrl.h>
 
 /// <summary>
@@ -139,7 +140,7 @@ void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
         // カメラ位置だけを固定し、ターゲット計算と切り離します。
 void SetFreezeEye(bool freeze);
-    void SetAimCameraSuppressed(bool suppressed) { isAimCameraSuppressed_ = suppressed; }
+    void SetAimCameraSuppressed(bool suppressed);
 
     void SetFovY(float fov) { fovY_ = fov; }
     float GetFovY() const { return fovY_; }
@@ -186,7 +187,9 @@ void SetFreezeEye(bool freeze);
     float GetOverrideWeight() const { return overrideWeight_; }
     const Frustum& GetFrustum() const { return frustum_; }
     void StartShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
-    bool IsShaking() const { return shakeTimer_ > 0.0f; }
+    void StartFovPulse(float duration, float amountRadians, float attackRatio = 0.12f);
+    void ClearPresentationLayers();
+    bool IsShaking() const { return !shakeLayers_.empty(); }
 
     ID3D12Resource* GetConstantBuffer() const { return constBuffer_.Get(); }
 
@@ -269,12 +272,22 @@ private:
     Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
     Frustum frustum_;
 
-    // 画面揺れの状態。
-    float shakeTimer_ = 0.0f;
-    float shakeDuration_ = 0.0f;
-    float shakeAmplitude_ = 0.0f;
-    float shakeFrequency_ = 24.0f;
-    Vector3 shakeAxisWeight_ = { 1.0f, 1.0f, 0.5f };
+    // 複数の演出要求を加算し、同時発火でも後から来た要求で上書きしません。
+    struct ShakeLayer {
+        float elapsed = 0.0f;
+        float duration = 0.01f;
+        float amplitude = 0.0f;
+        float frequency = 24.0f;
+        Vector3 axisWeight = { 1.0f, 1.0f, 0.5f };
+    };
+    struct FovPulseLayer {
+        float elapsed = 0.0f;
+        float duration = 0.01f;
+        float amountRadians = 0.0f;
+        float attackRatio = 0.12f;
+    };
+    std::vector<ShakeLayer> shakeLayers_;
+    std::vector<FovPulseLayer> fovPulseLayers_;
 
     // GPUへ送るView/Projection行列。
     Microsoft::WRL::ComPtr<ID3D12Resource> constBuffer_;

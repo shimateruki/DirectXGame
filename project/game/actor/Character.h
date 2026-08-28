@@ -1,6 +1,7 @@
 #pragma once
 #include "InputManager.h"
 #include "Object3d.h"
+#include "CharacterMotor.h"
 
 /// <summary>
 /// 速度、重力、接地判定など、物理的に動くキャラクターの基底クラス。
@@ -29,6 +30,8 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 
     bool IsGrounded() const { return isGrounded_; }
     void SetGrounded(bool grounded) { isGrounded_ = grounded; }
+    CharacterMotor& GetCharacterMotor() { return characterMotor_; }
+    const CharacterMotor& GetCharacterMotor() const { return characterMotor_; }
 
     /// <summary>
     /// このキャラクターに適用する重力を設定する。
@@ -57,6 +60,7 @@ void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
 protected:
     void CaptureReplayCustomState(json& state) const override;
+    void SyncCharacterMotorSettings();
     void RestoreReplayCustomState(const json& state) override;
 
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 現在速度。
@@ -64,5 +68,6 @@ protected:
     Vector3 externalImpulseVelocity_ = { 0.0f, 0.0f, 0.0f };
     float externalImpulseTimer_ = 0.0f;
     float externalImpulseDuration_ = 0.0f;
+    CharacterMotor characterMotor_;
     bool externalImpulseVerticalPending_ = false;
 };

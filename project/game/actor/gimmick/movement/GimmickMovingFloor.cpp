@@ -24,6 +24,16 @@ void GimmickMovingFloor::Initialize(Object3dCommon* common, const std::string& m
 }
 
 void GimmickMovingFloor::Update(float deltaTime) {
+    // Ghost RecorderのPathが割り当てられている床は、記録済みの軌道を唯一の移動元にする。
+    // 手続き的な往復移動を先に重ねると、Editorで調整したPathと乗り移り判定がずれる。
+    if (!GetRecordPathName().empty()) {
+        const Vector3 previousPosition = GetTransform()->translate;
+        BaseGimmick::Update(deltaTime);
+        frameDelta_ = GetTransform()->translate - previousPosition;
+        hasCapturedStartTransform_ = true;
+        return;
+    }
+
     // JSONのTransformはInitialize後に反映されるため、最初のUpdateで実際の配置を記録する。
     if (!hasCapturedStartTransform_) {
         startPosition_ = GetTransform()->translate;

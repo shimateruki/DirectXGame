@@ -2,6 +2,7 @@
 #include "engine/utility/math/Math.h"
 #include "Object3dCommon.h"
 #include "Model.h"
+#include <functional>
 #include <wrl.h>
 #include <cstdint>
 #include <string>
@@ -34,6 +35,17 @@ class EffectObject3d;
 // Object3dは、Transform、階層、描画、衝突、エフェクト連携を持つ3Dオブジェクトの基本クラスです。
 class Object3d {
 public:
+    // DecalSettingsは、通常のObject3dを地面・壁へ沿う永続/一時Decalとして扱う設定です。
+    struct DecalSettings {
+        bool enabled = false;
+        Vector2 size = { 2.0f, 2.0f };
+        float depthOffset = 0.012f;
+        float lifetime = 0.0f;
+        float fadeIn = 0.0f;
+        float fadeOut = 0.35f;
+        bool transient = false;
+    };
+
     /// 既存機能をComponentとして公開するための軽量な型情報です。
     /// 実データの所有場所は移さず、Editorと将来のRegistryから共通参照できます。
     struct BuiltInComponentInfo {
@@ -81,12 +93,24 @@ public:
         float fallDuration = 2.0f;
         int colorType = 0; // 0: Blue, 1: Red
         int switchMode = 0; // 0: Momentary, 1: Toggle, 2: Timed
-        int actionMode = 0; // 0: Appear, 1: MoveY, 2: MoveX, 3: MoveZ, 4: Enable, 5: Disable
+        int actionMode = 0; // 0: Appear, 1: MoveY, 2: MoveX, 3: MoveZ, 4: Enable, 5: Disable, 6: BossCrownDrop
         std::string targetScene = "SELECT";
         float moveAmount = 10.0f;
         float moveSpeed = 6.0f;
         bool startActive = false;
         bool returnOnOff = true;
+        bool motorContinuousCollision = false;
+        bool motorSnapToGround = false;
+        float motorMaxSlopeDegrees = 45.573f;
+        float motorStepHeight = 0.0f;
+        float motorGroundProbeDistance = 0.18f;
+        float motorSkinWidth = 0.025f;
+        int volumeMode = 0; // 0: Event, 1: Checkpoint, 2: FallDeath, 3: FeedbackCue, 4: BGM, 5: Environment
+        std::string volumePayload = "";
+        bool volumeTriggerOnce = true;
+        bool volumeTriggerOnExit = false;
+        float volumeRearmDelay = 0.0f;
+        float volumeBlendDuration = 0.75f;
         EntityParameter() = default;
     };
 
@@ -255,6 +279,18 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     void SetBlendMode(BlendMode blendMode);
     BlendMode GetBlendMode() const;
 
+    // 共有Material Instanceを適用し、Scene再読込時にも同じAssetへ追従させます。
+    bool ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage = nullptr);
+    bool SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage = nullptr);
+    void ClearMaterialInstanceLink() { materialInstancePath_.clear(); }
+    const std::string& GetMaterialInstancePath() const { return materialInstancePath_; }
+
+    void SetDecalSettings(const DecalSettings& settings);
+    const DecalSettings& GetDecalSettings() const { return decalSettings_; }
+    bool IsDecal() const { return decalSettings_.enabled || className_ == "Decal"; }
+    void RestartDecalPlayback();
+    float GetDecalElapsedTime() const { return decalElapsedTime_; }
+
     void SetIntensity(float intensity);
     float GetIntensity() const;
 
@@ -339,6 +375,18 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     bool IsLayer(const std::string& layer) const { return layer_ == layer; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
+    // Editorの隔離表示はScene保存値と分離し、複数の一時非表示理由を合成します。
+    void SetEditorHiddenReason(std::uint32_t reasonMask, bool hidden) {
+        if (hidden) {
+            editorHiddenReasonMask_ |= reasonMask;
+        }
+        else {
+            editorHiddenReasonMask_ &= ~reasonMask;
+        }
+    }
+    void ClearEditorHiddenReasons() { editorHiddenReasonMask_ = 0; }
+    bool IsEditorTemporarilyHidden() const { return editorHiddenReasonMask_ != 0; }
+    bool GetIsRenderVisible() const { return isVisible_ && !IsEditorTemporarilyHidden(); }
     void SetCastShadow(bool enabled) { castShadow_ = enabled; }
     bool GetCastShadow() const { return castShadow_; }
 
@@ -396,6 +444,7 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
     bool IsCollecting() const { return isCollecting_; }
 
     // Animator Controllerは状態、条件、補間を管理し、Model Animationを滑らかに切り替えます。
+    using AnimatorEventCallback = std::function<void(const AnimatorEventInstance&)>;
     bool SetAnimatorController(const std::string& assetPath);
     void ClearAnimatorController();
     const std::string& GetAnimatorControllerPath() const { return animatorControllerPath_; }
@@ -412,6 +461,7 @@ MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
         int easing,
         bool exactPreview);
     std::string GetAnimatorCurrentStateName() const;
+    void SetAnimatorEventCallback(const AnimatorEventCallback& callback) { animatorEventCallback_ = callback; }
     AnimatorControllerRuntime::Snapshot CaptureAnimatorSnapshot() const;
     void RestoreAnimatorSnapshot(const AnimatorControllerRuntime::Snapshot& snapshot);
     float GetAnimationTime() const { return animationTime_; }
@@ -527,6 +577,7 @@ protected:
     std::string animatorControllerPath_;
     AnimatorControllerAsset animatorControllerAsset_;
     AnimatorControllerRuntime animatorControllerRuntime_;
+    AnimatorEventCallback animatorEventCallback_;
     bool animatorControllerLoaded_ = false;
 
     bool UpdateAnimatorController(float deltaTime, Model* model);
@@ -544,12 +595,17 @@ protected:
     std::string tag_;
     std::string layer_ = "Default";
     bool isVisible_ = true;
+    std::uint32_t editorHiddenReasonMask_ = 0;
     bool castShadow_ = true;
     PrefabInstanceInfo prefabInstanceInfo_;
     std::string enemyType_ = "";
     std::string gimmickType_ = "";
     std::string itemType_ = "";
 
+    std::string materialInstancePath_;
+    DecalSettings decalSettings_;
+    float decalElapsedTime_ = 0.0f;
+    float decalAuthoredAlpha_ = 1.0f;
     std::optional<ParticleEmitterComponent> particleEmitterComponent_;
     std::optional<MeshEffectComponent> meshEffectComponent_;
     std::optional<PathMoverComponent> pathMoverComponent_;

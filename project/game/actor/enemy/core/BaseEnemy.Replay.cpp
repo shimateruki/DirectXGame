@@ -55,10 +55,13 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     state["enemyCoinDropsSpawned"] = hasSpawnedDefeatCoinDrops_;
     state["enemyTargetDetected"] = wasTargetDetected_;
     state["enemyNoticeActive"] = isNoticeReactionActive_;
+    state["enemyNoticeKind"] = static_cast<int>(noticeReactionKind_);
     state["enemyNoticeTimer"] = noticeReactionTimer_;
     state["enemyNoticeCooldown"] = noticeReactionCooldown_;
+    state["enemyNoticeDetectionRange"] = noticeDetectionRange_;
     state["enemyNoticeYaw"] = noticeMarkYaw_;
     state["enemyNoticeBaseScale"] = ToJson(noticeBaseScale_);
+    state["enemyNoticeBaseRotation"] = ToJson(noticeBaseRotation_);
     state["enemyNoticeBaseColor"] = ToJson(noticeBaseColor_);
     state["enemyDefeatTimer"] = defeatEffectTimer_;
     state["enemyDefeatParticleTimer"] = defeatEffectParticleTimer_;
@@ -100,10 +103,24 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     hasSpawnedDefeatCoinDrops_ = state.value("enemyCoinDropsSpawned", hasSpawnedDefeatCoinDrops_);
     wasTargetDetected_ = state.value("enemyTargetDetected", wasTargetDetected_);
     isNoticeReactionActive_ = state.value("enemyNoticeActive", isNoticeReactionActive_);
+    const int noticeKindValue = state.value("enemyNoticeKind", isNoticeReactionActive_ ? 1 : 0);
+    switch (noticeKindValue) {
+    case 1:
+        noticeReactionKind_ = NoticeReactionKind::Detected;
+        break;
+    case 2:
+        noticeReactionKind_ = NoticeReactionKind::Lost;
+        break;
+    default:
+        noticeReactionKind_ = NoticeReactionKind::None;
+        break;
+    }
     noticeReactionTimer_ = state.value("enemyNoticeTimer", noticeReactionTimer_);
     noticeReactionCooldown_ = state.value("enemyNoticeCooldown", noticeReactionCooldown_);
+    noticeDetectionRange_ = state.value("enemyNoticeDetectionRange", noticeDetectionRange_);
     noticeMarkYaw_ = state.value("enemyNoticeYaw", noticeMarkYaw_);
     if (state.contains("enemyNoticeBaseScale")) noticeBaseScale_ = ReadVector3(state["enemyNoticeBaseScale"], noticeBaseScale_);
+    if (state.contains("enemyNoticeBaseRotation")) noticeBaseRotation_ = ReadVector3(state["enemyNoticeBaseRotation"], noticeBaseRotation_);
     if (state.contains("enemyNoticeBaseColor")) noticeBaseColor_ = ReadVector4(state["enemyNoticeBaseColor"], noticeBaseColor_);
     defeatEffectTimer_ = state.value("enemyDefeatTimer", defeatEffectTimer_);
     defeatEffectParticleTimer_ = state.value("enemyDefeatParticleTimer", defeatEffectParticleTimer_);
@@ -111,6 +128,9 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     if (state.contains("enemyDefeatBaseScale")) defeatBaseScale_ = ReadVector3(state["enemyDefeatBaseScale"], defeatBaseScale_);
     if (state.contains("enemyDefeatBaseColor")) defeatBaseColor_ = ReadVector4(state["enemyDefeatBaseColor"], defeatBaseColor_);
 
+    if (isNoticeReactionActive_) {
+        ConfigureNoticeMarkForReaction();
+    }
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(isNoticeReactionActive_ && !IsReplayRemoved());
     }

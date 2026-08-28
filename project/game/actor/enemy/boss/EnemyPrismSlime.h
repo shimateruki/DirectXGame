@@ -21,6 +21,7 @@ public:
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     std::unique_ptr<Object3d> Clone() const override;
+    void OnSwitchEvent(bool active) override;
     bool IsPullImmune() const override { return true; }
 
     // 敵攻撃プレビューで選択中の技だけを繰り返し確認します。
@@ -30,6 +31,13 @@ public:
     }
     const char* GetDebugAttackPhaseName() const;
     void ApplyManagedScale(const Vector3& scale) override;
+
+    // 中ボス戦HUDから、出現演出と実HPを安全に参照します。
+    bool IsEncounterHudActive() const;
+    float GetEncounterCurrentHp() const;
+    float GetEncounterMaximumHp() const;
+    float GetEncounterAppearanceProgress() const;
+    void TriggerDebugDefeat();
 
 private:
     enum class ElementPhase {
@@ -54,6 +62,7 @@ private:
         Windup,
         Active,
         Recovery,
+        Reposition,
     };
 
     struct PrismSpikeVisual {
@@ -90,6 +99,22 @@ private:
         bool spawned = false;
     };
 
+    enum class EncounterState {
+        Normal,
+        Dormant,
+        Appearing,
+        Active,
+    };
+
+    bool UpdateEncounterState(float deltaTime);
+    void CaptureEncounterAuthoredState(bool refreshVisualTransform = false);
+    void InitializeEncounterState();
+    void ResetEncounterStateForEditor();
+    void BeginEncounterAppearance();
+    void ApplyDormantEncounterState();
+    void FinishEncounterAppearance();
+    bool IsEncounterControlled() const;
+    float GetEncounterAppearanceDuration() const;
     bool UpdateInactiveState(float deltaTime);
     void EnsureBaseScale();
     void UpdateElementPhase();
@@ -100,6 +125,9 @@ private:
     void UpdateActive(float deltaTime, float targetDistance);
     void BeginRecovery();
     void FinishAttack();
+    void BeginReposition();
+    void UpdateReposition(float deltaTime, Vector3& velocity);
+    void FinishReposition(Vector3& velocity);
 
     AttackKind ResolveAutomaticAttack() const;
     AttackKind ResolveDebugAttack() const;
@@ -157,6 +185,11 @@ private:
     float effectTimer_ = 0.0f;
     float actionTimer_ = 0.0f;
     float impactPulseTimer_ = 0.0f;
+    Vector3 repositionDestination_{};
+    float repositionTimer_ = 0.0f;
+    float repositionDuration_ = 0.0f;
+    std::uint32_t repositionRandomState_ = 0x51A7C39Du;
+    bool repositionJumpPending_ = false;
     int actionIndex_ = 0;
     bool hasBaseScale_ = false;
     bool warningTriggered_ = false;
@@ -176,4 +209,16 @@ private:
     std::array<std::unique_ptr<Object3d>, 2> eyeParts_;
     std::unique_ptr<Object3d> corePart_;
     std::unique_ptr<Object3d> coreFramePart_;
+    EncounterState encounterState_ = EncounterState::Normal;
+    Vector3 encounterBasePosition_{};
+    Vector3 encounterBaseScale_{ 1.0f, 1.0f, 1.0f };
+    Vector4 encounterBaseColor_{ 1.0f, 1.0f, 1.0f, 1.0f };
+    float encounterBaseEmissive_ = 1.08f;
+    uint32_t encounterCollisionAttribute_ = 0;
+    uint32_t encounterCollisionMask_ = 0;
+    int encounterMaterialType_ = 27;
+    float encounterTimer_ = 0.0f;
+    bool encounterInitializedForPlay_ = false;
+    bool encounterAuthoredStateCaptured_ = false;
+    bool encounterRequestedActive_ = false;
 };

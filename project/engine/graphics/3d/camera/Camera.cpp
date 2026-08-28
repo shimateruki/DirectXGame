@@ -133,6 +133,16 @@ void Camera::SetFreezeEye(bool freeze) {
     }
 }
 
+void Camera::SetAimCameraSuppressed(bool suppressed) {
+    if (isAimCameraSuppressed_ == suppressed) {
+        return;
+    }
+
+    isAimCameraSuppressed_ = suppressed;
+    // 右クリック視点の途中座標を次の状態へ持ち越さず、そのフレームの正しい視点へ戻します。
+    isCameraInitialized_ = false;
+}
+
 void Camera::Initialize() {
     // デフォルトの視点、注視点、上方向を設定
     eye_ = { 0.0f, 5.0f, -20.0f };
@@ -567,22 +577,45 @@ void Camera::Update(float deltaTime) {
     // =================================================================
     Vector3 viewEye = eye_;
     Vector3 viewTarget = target_;
-    if (shakeTimer_ > 0.0f && shakeDuration_ > 0.0f && shakeAmplitude_ > 0.0f) {
-        float elapsed = shakeDuration_ - shakeTimer_;
-        float progress = std::clamp(elapsed / shakeDuration_, 0.0f, 1.0f);
-        float envelope = (1.0f - progress) * (1.0f - progress);
-        float phase = elapsed * shakeFrequency_ * 2.0f * PI;
-        float amp = shakeAmplitude_ * envelope;
-
-        Vector3 offset = {
-            std::sin(phase * 1.13f) * amp * shakeAxisWeight_.x,
-            std::cos(phase * 1.37f) * amp * shakeAxisWeight_.y,
-            std::sin(phase * 0.79f + 0.7f) * amp * shakeAxisWeight_.z
-        };
-        viewEye = viewEye + offset;
-        viewTarget = viewTarget + offset * 0.25f;
-        shakeTimer_ = std::max(0.0f, shakeTimer_ - frameDelta);
+    Vector3 mixedShakeOffset = { 0.0f, 0.0f, 0.0f };
+    for (ShakeLayer& layer : shakeLayers_) {
+        const float progress = std::clamp(layer.elapsed / layer.duration, 0.0f, 1.0f);
+        const float envelope = (1.0f - progress) * (1.0f - progress);
+        const float phase = layer.elapsed * layer.frequency * 2.0f * PI;
+        const float amplitude = layer.amplitude * envelope;
+        mixedShakeOffset.x += std::sin(phase * 1.13f) * amplitude * layer.axisWeight.x;
+        mixedShakeOffset.y += std::cos(phase * 1.37f) * amplitude * layer.axisWeight.y;
+        mixedShakeOffset.z += std::sin(phase * 0.79f + 0.7f) * amplitude * layer.axisWeight.z;
+        layer.elapsed += frameDelta;
     }
+    shakeLayers_.erase(
+        std::remove_if(shakeLayers_.begin(), shakeLayers_.end(), [](const ShakeLayer& layer) {
+            return layer.elapsed >= layer.duration;
+        }),
+        shakeLayers_.end());
+    viewEye = viewEye + mixedShakeOffset;
+    viewTarget = viewTarget + mixedShakeOffset * 0.25f;
+
+    float mixedFovOffset = 0.0f;
+    for (FovPulseLayer& layer : fovPulseLayers_) {
+        const float progress = std::clamp(layer.elapsed / layer.duration, 0.0f, 1.0f);
+        float envelope = 0.0f;
+        if (progress < layer.attackRatio) {
+            const float attack = progress / layer.attackRatio;
+            envelope = attack * attack * (3.0f - 2.0f * attack);
+        } else {
+            const float release = (progress - layer.attackRatio) / (1.0f - layer.attackRatio);
+            const float inverse = 1.0f - release;
+            envelope = inverse * inverse;
+        }
+        mixedFovOffset += layer.amountRadians * envelope;
+        layer.elapsed += frameDelta;
+    }
+    fovPulseLayers_.erase(
+        std::remove_if(fovPulseLayers_.begin(), fovPulseLayers_.end(), [](const FovPulseLayer& layer) {
+            return layer.elapsed >= layer.duration;
+        }),
+        fovPulseLayers_.end());
 
     Vector3 forward = { viewTarget.x - viewEye.x, viewTarget.y - viewEye.y, viewTarget.z - viewEye.z };
     Vector3 currentUp = up_;
@@ -597,7 +630,8 @@ void Camera::Update(float deltaTime) {
     }
 
     viewMatrix_ = math.MakeLookAtMatrix(viewEye, viewTarget, currentUp);
-    projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    const float renderFov = std::clamp(fovY_ + mixedFovOffset, 5.0f * PI / 180.0f, 170.0f * PI / 180.0f);
+    projectionMatrix_ = math.MakePerspectiveFovMatrix(renderFov, aspectRatio_, nearClip_, farClip_);
     RefreshDerivedMatrices();
 }
 void Camera::ConfigFixed(const Vector3& offset) {
@@ -689,11 +723,25 @@ void Camera::SyncRotationToCurrentView() {
     aimDistance_ = dist;
 }
 void Camera::StartShake(float duration, float amplitude, float frequency, const Vector3& axisWeight) {
-    shakeDuration_ = std::max(duration, 0.01f);
-    shakeTimer_ = shakeDuration_;
-    shakeAmplitude_ = std::max(amplitude, 0.0f);
-    shakeFrequency_ = std::max(frequency, 1.0f);
-    shakeAxisWeight_ = axisWeight;
+    ShakeLayer layer;
+    layer.duration = std::max(duration, 0.01f);
+    layer.amplitude = std::max(amplitude, 0.0f);
+    layer.frequency = std::max(frequency, 1.0f);
+    layer.axisWeight = axisWeight;
+    shakeLayers_.push_back(layer);
+}
+
+void Camera::StartFovPulse(float duration, float amountRadians, float attackRatio) {
+    FovPulseLayer layer;
+    layer.duration = std::max(duration, 0.01f);
+    layer.amountRadians = amountRadians;
+    layer.attackRatio = std::clamp(attackRatio, 0.01f, 0.95f);
+    fovPulseLayers_.push_back(layer);
+}
+
+void Camera::ClearPresentationLayers() {
+    shakeLayers_.clear();
+    fovPulseLayers_.clear();
 }
 
 void Camera::StartOverride(const CameraOverrideParams& params) {

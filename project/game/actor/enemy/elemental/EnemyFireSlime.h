@@ -1,6 +1,5 @@
 #pragma once
 #include "BaseEnemy.h"
-#include <unordered_set>
 
 // 近距離では炎ブレス、距離がある時は火球で攻撃する属性スライム
 // EnemyFireSlimeは、炎ブレス、火球、頭上炎エフェクトを使う属性スライム敵です。
@@ -12,12 +11,6 @@ void Initialize(Object3dCommon* common, const std::string& modelName) override;
 void Update(float deltaTime) override;
     void BeginThrown(const Vector3& initialVelocity) override;
     std::unique_ptr<Object3d> Clone() const override;
-        // プレイヤーが利用する炎スライム固有能力を発動します。
-void ExecuteAbility(class Player* player) override;
-    void ExecuteBreathAbility(class Player* player);
-    void ExecuteDashAbility(class Player* player);
-    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
-    void ReleaseCarriedAbilityVisuals();
     void ApplyManagedScale(const Vector3& scale) override {
         baseScale_ = scale;
         hasBaseScale_ = true;
@@ -42,12 +35,11 @@ void StartBreath();
     void UpdateFireballWindup(float deltaTime, Vector3& velocity, const Vector3& direction, float distance);
         // ブレス範囲内の対象へダメージを通知します。
 void DispatchBreathDamage(const Vector3& direction, float distance);
-    void DispatchCarriedBreathDamage(class Player* player, const Vector3& direction);
     void FireFireball(const Vector3& direction, float distance);
     void UpdateHeadFlame(float deltaTime);
     void EnsureHeadFlameVisual();
         // 頭上の炎エフェクトを本体位置と状態へ同期します。
-void UpdateHeadFlameVisual(float deltaTime);
+    void UpdateHeadFlameVisual(float deltaTime);
     void RequestRemoveHeadFlameVisual();
     void EnsureBreathFlameVisuals();
     void UpdateBreathFlameVisuals(const Vector3& direction, float deltaTime);
@@ -56,9 +48,6 @@ void UpdateHeadFlameVisual(float deltaTime);
     void EmitBreathParticles(const Vector3& origin, const Vector3& direction);
     void EmitFirePreset(const char* presetName, const Vector3& position);
     void EmitDirectedFirePreset(const char* presetName, const Vector3& position, const Vector3& direction, float speedScale = 1.0f);
-    void UpdateCarriedDash(class Player* player, float deltaTime);
-    void DamageEnemiesAlongCarriedDash(class Player* player);
-    void FinishCarriedDash(class Player* player);
     void ApplySlimeAnimation(float deltaTime);
     void SyncWorldCollisionRadius(float worldRadius);
     void SyncGroundCollisionRadius();
@@ -74,14 +63,6 @@ void UpdateHeadFlameVisual(float deltaTime);
     float attackTimer_ = 0.0f;           // 攻撃中の伸縮演出。
     float idleTimer_ = 0.0f;             // 待機呼吸アニメーション用。
     float groundHopTimer_ = 0.0f;        // 通常移動中の小ホップ周期。
-    float carriedFireCooldown_ = 0.0f;   // 持ち運び能力の再使用待ち。
-    float carriedEffectTimer_ = 0.0f;    // 発射直後の発光演出。
-    float carriedBreathDamageTimer_ = 0.0f; // 吸収中ブレスの連続ヒット間隔。
-    float carriedDashCooldown_ = 0.0f;
-    float carriedDashTimer_ = 0.0f;
-    float carriedDashEffectTimer_ = 0.0f;
-    Vector3 carriedDashDirection_ = { 0.0f, 0.0f, 1.0f };
-    std::unordered_set<Object3d*> carriedDashHitTargets_;
     float pendingFireballDistance_ = 0.0f;
     Vector3 pendingFireballDirection_ = { 0.0f, 0.0f, 1.0f };
     Vector3 smoothedFlameVelocity_ = { 0.0f, 0.0f, 0.0f };
@@ -97,5 +78,4 @@ void UpdateHeadFlameVisual(float deltaTime);
     bool fireballAimLocked_ = false;
     bool headFlameRemoveRequested_ = false;
     bool breathFlameRemoveRequested_ = false;
-    bool carriedDashActive_ = false;
 };

@@ -431,6 +431,13 @@ void DebugEditor::SyncObjectSelectionToInspector() {
     }
 }
 
+bool DebugEditor::FocusSceneObject(Object3d* object) {
+    if (!object || !IsObjectInCurrentScene(object)) {
+        return false;
+    }
+    return CameraEditor::GetInstance()->FocusSceneObject(object);
+}
+
 bool DebugEditor::IsObjectSelected(const Object3d* object) const {
     if (!object || !IsObjectInCurrentScene(object)) return false;
 
@@ -525,7 +532,7 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
     for (auto& obj : objects) {
         if (!obj || obj->IsEditorInternal()) continue;
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-        if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
+        if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
 
         Matrix4x4 worldMatrix = obj->GetWorldMatrix();
         Vector3 worldPosition = { worldMatrix.m[3][0], worldMatrix.m[3][1], worldMatrix.m[3][2] };
@@ -580,7 +587,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector
     for (auto& obj : objects) {
         if (!obj || obj->IsEditorInternal()) continue;
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-        if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
+        if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
 
         Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
         if (screenPosition.z < 0.0f) continue;
@@ -618,107 +625,293 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 #ifdef USE_IMGUI
     PruneInvalidSelectedObjects();
     if (selectedObjects_.empty() || selectionOverlayMode_ == SelectionOverlayMode::Hidden) return;
+    if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     const std::size_t selectedCount = selectedObjects_.size();
     const bool showTemporaryDetails =
         selectionOverlayMode_ == SelectionOverlayMode::Compact && ImGui::GetIO().KeyAlt;
+    const ImVec2 viewMin = ImVec2(gameViewOffset_.x, gameViewOffset_.y);
+    const ImVec2 viewMax = ImVec2(
+        gameViewOffset_.x + gameViewSize_.x,
+        gameViewOffset_.y + gameViewSize_.y);
+
+    auto clampFloat = [](float value, float minimum, float maximum) {
+        return (std::max)(minimum, (std::min)(value, maximum));
+    };
+    auto drawPivotMarker = [&](const ImVec2& center, ImU32 color, bool primary) {
+        const float radius = primary ? 5.0f : 4.5f;
+        drawList->AddCircleFilled(center, radius + 2.0f, IM_COL32(10, 24, 36, 190), 16);
+        drawList->AddCircle(center, radius, color, 16, primary ? 2.0f : 1.7f);
+        drawList->AddLine(
+            ImVec2(center.x - 2.5f, center.y),
+            ImVec2(center.x + 2.5f, center.y),
+            color,
+            1.3f);
+        drawList->AddLine(
+            ImVec2(center.x, center.y - 2.5f),
+            ImVec2(center.x, center.y + 2.5f),
+            color,
+            1.3f);
+    };
+    auto drawCornerBrackets = [&](const ImVec2& minimum, const ImVec2& maximum, ImU32 color, float thickness) {
+        const float width = maximum.x - minimum.x;
+        const float height = maximum.y - minimum.y;
+        const float bracketLength = clampFloat((std::min)(width, height) * 0.22f, 8.0f, 18.0f);
+        const ImU32 shadowColor = IM_COL32(8, 18, 28, 210);
+        const float shadowThickness = thickness + 2.0f;
+        const ImVec2 starts[8] = {
+            { minimum.x, minimum.y }, { minimum.x, minimum.y },
+            { maximum.x, minimum.y }, { maximum.x, minimum.y },
+            { minimum.x, maximum.y }, { minimum.x, maximum.y },
+            { maximum.x, maximum.y }, { maximum.x, maximum.y }
+        };
+        const ImVec2 ends[8] = {
+            { minimum.x + bracketLength, minimum.y }, { minimum.x, minimum.y + bracketLength },
+            { maximum.x - bracketLength, minimum.y }, { maximum.x, minimum.y + bracketLength },
+            { minimum.x + bracketLength, maximum.y }, { minimum.x, maximum.y - bracketLength },
+            { maximum.x - bracketLength, maximum.y }, { maximum.x, maximum.y - bracketLength }
+        };
+
+        for (int i = 0; i < 8; ++i) {
+            drawList->AddLine(starts[i], ends[i], shadowColor, shadowThickness);
+        }
+        for (int i = 0; i < 8; ++i) {
+            drawList->AddLine(starts[i], ends[i], color, thickness);
+        }
+    };
+
+    drawList->PushClipRect(viewMin, viewMax, true);
 
     for (Object3d* object : selectedObjects_) {
         if (!object || !IsObjectInCurrentScene(object)) continue;
 
-        AABB aabb = object->GetModelWorldAABB();
-        Vector3 minPos;
-        Vector3 maxPos;
-        if (IsValidAabb(aabb)) {
-            minPos = aabb.min;
-            maxPos = aabb.max;
-        } else {
-            Vector3 center = GetObjectWorldPositionForSelection(object);
-            Vector3 scale = object->GetTransform()->scale;
-            minPos = center - scale;
-            maxPos = center + scale;
+        Vector3 corners[8] = {};
+        Vector3 center = GetObjectWorldPositionForSelection(object);
+        bool hasOrientedModelBounds = false;
+
+        // ワールドAABBを再投影せず、ローカル境界を直接変換して回転物の過剰な膨らみを防ぐ。
+        if (Model* model = object->GetModel()) {
+            const Vector3 localMin = model->GetLocalAabbMin();
+            const Vector3 localMax = model->GetLocalAabbMax();
+            const bool isFiniteBounds =
+                std::isfinite(localMin.x) && std::isfinite(localMin.y) && std::isfinite(localMin.z) &&
+                std::isfinite(localMax.x) && std::isfinite(localMax.y) && std::isfinite(localMax.z);
+            if (isFiniteBounds &&
+                localMax.x >= localMin.x && localMax.y >= localMin.y && localMax.z >= localMin.z) {
+                const Vector3 localCorners[8] = {
+                    { localMin.x, localMin.y, localMin.z },
+                    { localMax.x, localMin.y, localMin.z },
+                    { localMin.x, localMax.y, localMin.z },
+                    { localMax.x, localMax.y, localMin.z },
+                    { localMin.x, localMin.y, localMax.z },
+                    { localMax.x, localMin.y, localMax.z },
+                    { localMin.x, localMax.y, localMax.z },
+                    { localMax.x, localMax.y, localMax.z }
+                };
+                const Matrix4x4 worldMatrix = object->GetWorldMatrix();
+                for (int i = 0; i < 8; ++i) {
+                    corners[i] = Math::Transform(localCorners[i], worldMatrix);
+                }
+                const Vector3 localCenter = {
+                    (localMin.x + localMax.x) * 0.5f,
+                    (localMin.y + localMax.y) * 0.5f,
+                    (localMin.z + localMax.z) * 0.5f
+                };
+                center = Math::Transform(localCenter, worldMatrix);
+                hasOrientedModelBounds = true;
+            }
+        }
+
+        if (!hasOrientedModelBounds) {
+            AABB aabb = object->GetModelWorldAABB();
+            if (!IsValidAabb(aabb)) {
+                const Vector3 scale = object->GetTransform()->scale;
+                const Vector3 halfSize = {
+                    (std::max)(std::abs(scale.x), 0.5f),
+                    (std::max)(std::abs(scale.y), 0.5f),
+                    (std::max)(std::abs(scale.z), 0.5f)
+                };
+                aabb.min = center - halfSize;
+                aabb.max = center + halfSize;
+            }
+            corners[0] = { aabb.min.x, aabb.min.y, aabb.min.z };
+            corners[1] = { aabb.max.x, aabb.min.y, aabb.min.z };
+            corners[2] = { aabb.min.x, aabb.max.y, aabb.min.z };
+            corners[3] = { aabb.max.x, aabb.max.y, aabb.min.z };
+            corners[4] = { aabb.min.x, aabb.min.y, aabb.max.z };
+            corners[5] = { aabb.max.x, aabb.min.y, aabb.max.z };
+            corners[6] = { aabb.min.x, aabb.max.y, aabb.max.z };
+            corners[7] = { aabb.max.x, aabb.max.y, aabb.max.z };
+            center = GetAabbCenter(aabb);
         }
 
         const bool isPrimary = object == selectedObject_;
+        const ImU32 frameColor =
+            isPrimary ? IM_COL32(255, 226, 72, 255) : IM_COL32(80, 210, 255, 235);
         const bool showBounds = isPrimary ||
             selectionOverlayMode_ == SelectionOverlayMode::Detailed ||
             showTemporaryDetails;
 
         if (!showBounds) {
-            const Vector3 center = {
-                (minPos.x + maxPos.x) * 0.5f,
-                (minPos.y + maxPos.y) * 0.5f,
-                (minPos.z + maxPos.z) * 0.5f
-            };
             const Vector3 screen = WorldToScreen(center);
-            if (screen.z < 0.0f) continue;
+            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
 
-            const ImVec2 markerCenter = ImVec2(screen.x, screen.y);
-            constexpr float markerRadius = 4.5f;
-            drawList->AddCircleFilled(markerCenter, markerRadius + 1.5f, IM_COL32(10, 24, 36, 170));
-            drawList->AddCircle(markerCenter, markerRadius, IM_COL32(80, 210, 255, 235), 0, 1.8f);
-            drawList->AddLine(
-                ImVec2(markerCenter.x - 2.0f, markerCenter.y),
-                ImVec2(markerCenter.x + 2.0f, markerCenter.y),
-                IM_COL32(180, 240, 255, 235), 1.2f);
-            drawList->AddLine(
-                ImVec2(markerCenter.x, markerCenter.y - 2.0f),
-                ImVec2(markerCenter.x, markerCenter.y + 2.0f),
-                IM_COL32(180, 240, 255, 235), 1.2f);
+            const ImVec2 markerCenter = ImVec2(
+                clampFloat(screen.x, viewMin.x + 7.0f, viewMax.x - 7.0f),
+                clampFloat(screen.y, viewMin.y + 7.0f, viewMax.y - 7.0f));
+            drawPivotMarker(markerCenter, frameColor, false);
             continue;
         }
 
-        Vector3 corners[8] = {
-            { minPos.x, minPos.y, minPos.z },
-            { maxPos.x, minPos.y, minPos.z },
-            { minPos.x, maxPos.y, minPos.z },
-            { maxPos.x, maxPos.y, minPos.z },
-            { minPos.x, minPos.y, maxPos.z },
-            { maxPos.x, minPos.y, maxPos.z },
-            { minPos.x, maxPos.y, maxPos.z },
-            { maxPos.x, maxPos.y, maxPos.z },
-        };
-
         bool hasScreenPoint = false;
+        int visibleCornerCount = 0;
+        Vector3 projectedCorners[8] = {};
+        bool cornerVisible[8] = {};
         ImVec2 rectMin = ImVec2(0.0f, 0.0f);
         ImVec2 rectMax = ImVec2(0.0f, 0.0f);
 
-        for (const Vector3& corner : corners) {
-            Vector3 screen = WorldToScreen(corner);
-            if (screen.z < 0.0f) continue;
+        for (int i = 0; i < 8; ++i) {
+            projectedCorners[i] = WorldToScreen(corners[i]);
+            const Vector3& screen = projectedCorners[i];
+            if (screen.z < 0.0f || !std::isfinite(screen.x) || !std::isfinite(screen.y)) continue;
 
+            cornerVisible[i] = true;
+            ++visibleCornerCount;
             if (!hasScreenPoint) {
                 rectMin = ImVec2(screen.x, screen.y);
                 rectMax = rectMin;
                 hasScreenPoint = true;
             } else {
-                if (screen.x < rectMin.x) rectMin.x = screen.x;
-                if (screen.y < rectMin.y) rectMin.y = screen.y;
-                if (screen.x > rectMax.x) rectMax.x = screen.x;
-                if (screen.y > rectMax.y) rectMax.y = screen.y;
+                rectMin.x = (std::min)(rectMin.x, screen.x);
+                rectMin.y = (std::min)(rectMin.y, screen.y);
+                rectMax.x = (std::max)(rectMax.x, screen.x);
+                rectMax.y = (std::max)(rectMax.y, screen.y);
             }
         }
 
-        if (!hasScreenPoint) continue;
+        const Vector3 centerScreen = WorldToScreen(center);
+        const bool hasCenterScreen = centerScreen.z >= 0.0f &&
+            std::isfinite(centerScreen.x) && std::isfinite(centerScreen.y);
+        if (!hasScreenPoint && !hasCenterScreen) continue;
 
-        ImU32 frameColor = isPrimary ? IM_COL32(255, 235, 80, 255) : IM_COL32(80, 210, 255, 235);
-        ImU32 fillColor = isPrimary ? IM_COL32(255, 235, 80, 22) : IM_COL32(80, 210, 255, 18);
-        const float thickness = isPrimary ? 2.4f : 1.7f;
+        const bool intersectsView = hasScreenPoint &&
+            rectMax.x >= viewMin.x && rectMin.x <= viewMax.x &&
+            rectMax.y >= viewMin.y && rectMin.y <= viewMax.y;
+        const float rawWidth = hasScreenPoint ? (std::max)(rectMax.x - rectMin.x, 0.0f) : 0.0f;
+        const float rawHeight = hasScreenPoint ? (std::max)(rectMax.y - rectMin.y, 0.0f) : 0.0f;
+        const float widthCoverage = rawWidth / gameViewSize_.x;
+        const float heightCoverage = rawHeight / gameViewSize_.y;
+        const float areaCoverage = widthCoverage * heightCoverage;
+        const bool projectionIsUnstable = visibleCornerCount < 8;
+        const bool isOversized =
+            widthCoverage > 0.70f || heightCoverage > 0.70f || areaCoverage > 0.32f;
+        const bool useCompactMarker =
+            selectionOverlayMode_ == SelectionOverlayMode::Compact &&
+            !showTemporaryDetails &&
+            (projectionIsUnstable || isOversized || !intersectsView);
 
-        drawList->AddRectFilled(rectMin, rectMax, fillColor, 3.0f);
-        drawList->AddRect(rectMin, rectMax, frameColor, 3.0f, 0, thickness);
+        if (useCompactMarker) {
+            if (!hasCenterScreen) continue;
+
+            const ImVec2 markerCenter = ImVec2(
+                clampFloat(centerScreen.x, viewMin.x + 9.0f, viewMax.x - 9.0f),
+                clampFloat(centerScreen.y, viewMin.y + 9.0f, viewMax.y - 9.0f));
+            drawPivotMarker(markerCenter, frameColor, true);
+
+            std::string label = object->GetName().empty() ? "Selected" : object->GetName();
+            if (selectedCount > 1) {
+                label += " (+" + std::to_string(selectedCount - 1) + ")";
+            }
+            const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
+            ImVec2 labelPos = ImVec2(markerCenter.x + 10.0f, markerCenter.y - textSize.y * 0.5f);
+            labelPos.x = clampFloat(labelPos.x, viewMin.x + 4.0f, viewMax.x - textSize.x - 4.0f);
+            labelPos.y = clampFloat(labelPos.y, viewMin.y + 4.0f, viewMax.y - textSize.y - 4.0f);
+            drawList->AddText(
+                ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f),
+                IM_COL32(0, 0, 0, 220),
+                label.c_str());
+            drawList->AddText(labelPos, IM_COL32(255, 245, 150, 255), label.c_str());
+            continue;
+        }
+
+        if (!hasScreenPoint || !intersectsView) continue;
+
+        rectMin.x = clampFloat(rectMin.x, viewMin.x + 2.0f, viewMax.x - 2.0f);
+        rectMin.y = clampFloat(rectMin.y, viewMin.y + 2.0f, viewMax.y - 2.0f);
+        rectMax.x = clampFloat(rectMax.x, viewMin.x + 2.0f, viewMax.x - 2.0f);
+        rectMax.y = clampFloat(rectMax.y, viewMin.y + 2.0f, viewMax.y - 2.0f);
+        if (rectMax.x <= rectMin.x || rectMax.y <= rectMin.y) continue;
+
+        // 遠距離の小さい物体でも選択表示が潰れない最低サイズを確保する。
+        constexpr float minimumDisplaySize = 16.0f;
+        const ImVec2 rectCenter = ImVec2(
+            (rectMin.x + rectMax.x) * 0.5f,
+            (rectMin.y + rectMax.y) * 0.5f);
+        if (rectMax.x - rectMin.x < minimumDisplaySize) {
+            rectMin.x = clampFloat(
+                rectCenter.x - minimumDisplaySize * 0.5f,
+                viewMin.x + 2.0f,
+                viewMax.x - 2.0f);
+            rectMax.x = clampFloat(
+                rectCenter.x + minimumDisplaySize * 0.5f,
+                viewMin.x + 2.0f,
+                viewMax.x - 2.0f);
+        }
+        if (rectMax.y - rectMin.y < minimumDisplaySize) {
+            rectMin.y = clampFloat(
+                rectCenter.y - minimumDisplaySize * 0.5f,
+                viewMin.y + 2.0f,
+                viewMax.y - 2.0f);
+            rectMax.y = clampFloat(
+                rectCenter.y + minimumDisplaySize * 0.5f,
+                viewMin.y + 2.0f,
+                viewMax.y - 2.0f);
+        }
+
+        const bool showDetailedBounds =
+            selectionOverlayMode_ == SelectionOverlayMode::Detailed || showTemporaryDetails;
+        if (showDetailedBounds) {
+            constexpr int edges[12][2] = {
+                { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },
+                { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },
+                { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 }
+            };
+            const float thickness = isPrimary ? 2.0f : 1.5f;
+            for (const auto& edge : edges) {
+                if (!cornerVisible[edge[0]] || !cornerVisible[edge[1]]) continue;
+                const ImVec2 start =
+                    ImVec2(projectedCorners[edge[0]].x, projectedCorners[edge[0]].y);
+                const ImVec2 end =
+                    ImVec2(projectedCorners[edge[1]].x, projectedCorners[edge[1]].y);
+                drawList->AddLine(start, end, IM_COL32(8, 18, 28, 210), thickness + 2.0f);
+                drawList->AddLine(start, end, frameColor, thickness);
+            }
+        } else {
+            drawCornerBrackets(rectMin, rectMax, frameColor, isPrimary ? 2.2f : 1.7f);
+        }
 
         if (isPrimary) {
             std::string label = object->GetName().empty() ? "Selected" : object->GetName();
             if (selectedCount > 1) {
                 label += " (+" + std::to_string(selectedCount - 1) + ")";
             }
-            ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - ImGui::GetFontSize() - 4.0f);
-            drawList->AddText(ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f), IM_COL32(0, 0, 0, 220), label.c_str());
+            const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
+            ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - textSize.y - 4.0f);
+            if (labelPos.y < viewMin.y + 3.0f) {
+                labelPos.y = rectMin.y + 4.0f;
+            }
+            labelPos.x = clampFloat(labelPos.x, viewMin.x + 4.0f, viewMax.x - textSize.x - 4.0f);
+            labelPos.y = clampFloat(labelPos.y, viewMin.y + 3.0f, viewMax.y - textSize.y - 3.0f);
+            drawList->AddText(
+                ImVec2(labelPos.x + 1.0f, labelPos.y + 1.0f),
+                IM_COL32(0, 0, 0, 220),
+                label.c_str());
             drawList->AddText(labelPos, IM_COL32(255, 245, 150, 255), label.c_str());
         }
     }
+
+    drawList->PopClipRect();
 #endif
 }
 

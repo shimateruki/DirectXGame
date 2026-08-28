@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "BaseEnemy.h"
 #include <functional>
 #include <memory>
@@ -10,10 +10,6 @@ public:
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     void SetCarried(bool isCarried) override;
-    void ExecuteAbility(class Player* player) override;
-    void ExecutePlaceAbility(class Player* player);
-    void ExecuteBlastJumpAbility(class Player* player);
-    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
     void ApplyManagedScale(const Vector3& scale) override {
         baseScale_ = scale;
         hasBaseScale_ = true;
@@ -53,11 +49,7 @@ private:
     void UpdateThrowLeap(float deltaTime);
     void BeginThrowLanding();
     void ThrowBomb();
-    void ThrowCarryBomb(class Player* player);
-    void PlaceCarryBomb(class Player* player);
-    void DamageEnemiesWithBlastJump(class Player* player, const Vector3& center);
     void SpawnBombObject(std::unique_ptr<BaseEnemy> bomb);
-    Vector3 GetPlayerForward(class Player* player) const;
 
     float throwTimer_ = 0.0f;
     float throwInterval_ = 2.45f;
@@ -66,12 +58,6 @@ private:
     float initialThrowDelay_ = 0.55f;
     float footworkTimer_ = 0.0f;
     float footworkDirection_ = 1.0f;
-    float carriedThrowCooldown_ = 0.0f;
-    float carriedEffectTimer_ = 0.0f;
-    float carriedPlaceCooldown_ = 0.0f;
-    float carriedBlastJumpCooldown_ = 0.0f;
-    float carriedBlastTrailTimer_ = 0.0f;
-    float carriedBlastEffectTimer_ = 0.0f;
     float idleTimer_ = 0.0f;
     ThrowState throwState_ = ThrowState::Idle;
     float throwRecoilTimer_ = 0.0f;

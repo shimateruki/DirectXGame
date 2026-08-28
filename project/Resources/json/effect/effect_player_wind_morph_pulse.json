@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.006,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 14,
+  "EdgeFadeStrength": 0.42,
+  "EndColor": [0.20, 0.96, 0.76, 0.0],
+  "EndScale": [1.72, 0.34, 1.72],
+  "Intensity": 4.2,
+  "Lifetime": 0.38,
+  "MeshSegments": 56,
+  "Position": [0.0, -0.18, 0.0],
+  "ProceduralType": 10,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [4.8, 0.0],
+  "StartColor": [1.8, 4.2, 3.1, 0.94],
+  "StartScale": [0.24, 0.18, 0.24],
+  "TexturePath": "Resources/sprite/particle/wind_gust_sheet.png",
+  "TorusMajorRadius": 0.88,
+  "TorusMinorRadius": 0.10,
+  "UvTiling": [3.0, 1.0],
+  "VolumeMode": 2
+}

@@ -54,6 +54,9 @@ constexpr const char* kSaveSlotCardEmpty = "ui/title/save_slot_card_empty.png";
 constexpr const char* kSaveDeleteButton = "ui/title/save_delete_button.png";
 constexpr const char* kSaveDeleteButtonSelected = "ui/title/save_delete_button_selected.png";
 constexpr const char* kTitleHeroSlimeName = "TitleHeroSlime";
+constexpr const char* kTitleBackgroundLayoutPath = "Resources/json/3Dobject/stageSelect_object.json";
+constexpr const char* kTitleSkyboxPath = "Resources/output_skybox.dds";
+constexpr const char* kTitleLightPath = "Resources/json/light/stageSelect.json";
 constexpr float kTitleIntroLastDelay = 0.385f;
 constexpr float kTitleIntroGlyphDuration = 0.45f;
 constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
@@ -67,8 +70,20 @@ const Vector2 kMenuSettingTextureLeftTop = { 5.0f, 3.0f };
 const Vector2 kMenuSettingTextureSize = { 75.0f, 37.0f };
 const Vector2 kMenuCursorTextureLeftTop = { 115.0f, 218.0f };
 const Vector2 kMenuCursorTextureSize = { 1024.0f, 827.0f };
-const Vector3 kTitleHeroDefaultPosition = { -2.2f, -1.95f, 4.8f };
+const Vector3 kTitleHeroDefaultPosition = { 0.0f, -0.42f, 5.5f };
 const Vector3 kTitleHeroDefaultScale = { 3.0f, 3.0f, 3.0f };
+constexpr float kTitleHeroSequenceDuration = 22.0f;
+constexpr float kTitleHeroPatrolStart = 4.8f;
+constexpr float kTitleHeroPatrolEnd = 17.6f;
+const std::array<Vector3, 7> kTitleHeroPatrolOffsets = {
+    Vector3{ 0.0f, 0.0f, 0.0f },
+    Vector3{ -4.8f, 0.0f, -1.2f },
+    Vector3{ -5.6f, 0.0f, 4.1f },
+    Vector3{ -1.4f, 0.0f, 6.4f },
+    Vector3{ 4.6f, 0.0f, 4.6f },
+    Vector3{ 5.2f, 0.0f, -1.8f },
+    Vector3{ 0.0f, 0.0f, 0.0f }
+};
 
 const std::array<const char*, 3> kFileTextPaths = {
     kTextFile1,
@@ -100,6 +115,15 @@ float SmoothStep(float t) {
     return t * t * (3.0f - 2.0f * t);
 }
 
+Vector3 LerpTitleVector3(const Vector3& from, const Vector3& to, float t) {
+    const float clamped = std::clamp(t, 0.0f, 1.0f);
+    return {
+        from.x + (to.x - from.x) * clamped,
+        from.y + (to.y - from.y) * clamped,
+        from.z + (to.z - from.z) * clamped
+    };
+}
+
 bool IsFadePlayingForSceneIntro() {
     const Fade::Status status = Fade::GetInstance()->GetStatus();
     return status == Fade::Status::FadeIn ||
@@ -122,9 +146,7 @@ Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
 
 SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
-    manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
-        ? GetSceneLoadContext().objectLayoutPath
-        : "Resources/json/3Dobject/titleScene.json");
+    manifest.AddObjectLayout(kTitleBackgroundLayoutPath);
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
         ? GetSceneLoadContext().spriteLayoutPath
         : "Resources/json/sprite/titleScene.json");
@@ -132,9 +154,8 @@ SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
     manifest.AddModel("Characters/slime");
     manifest.AddModel("Samples/teapot");
     manifest.AddTexture("Resources/sprite/common/white.png");
-    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
-        ? "Resources/output_skybox.dds"
-        : GetSceneLoadContext().skyboxPath);
+    manifest.AddTexture(kTitleSkyboxPath);
+    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
 }
 
@@ -169,8 +190,7 @@ void TitleScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
-    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
-        ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
+    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(kTitleSkyboxPath);
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 
@@ -195,13 +215,14 @@ void TitleScene::Initialize() {
 
 
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
-    levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/titleScene.json");
+    // タイトルUIは維持し、3D背景だけをステージセレクトと共有する。
+    levelLoader_->LoadObjectLayout(this, kTitleBackgroundLayoutPath, false);
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
 
-    LightManager::GetInstance()->LoadState(
-        ResolveSceneLightPath("Resources/json/light/titleScene.json"));
+    LightManager::GetInstance()->LoadState(kTitleLightPath);
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("title_camera.json"));
+    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
     
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
@@ -229,7 +250,15 @@ void TitleScene::Initialize() {
         titleHeroBaseScale_ = titleHeroSlime_->GetScale();
         titleHeroBaseRotation_ = titleHeroSlime_->GetRotation();
         titleHeroBaseCaptured_ = true;
+
+        titleCameraAnchor_ = std::make_unique<Object3d>();
+        titleCameraAnchor_->Initialize(object3dCommon_.get());
+        titleCameraAnchor_->SetName("TitleCameraAnchor");
+        titleCameraAnchor_->SetTranslate(titleHeroBasePosition_);
+        titleCameraAnchor_->UpdateLocalMatrix();
+        titleCameraAnchor_->UpdateWorldMatrix();
     }
+    titleHeroSequenceTime_ = 0.0f;
     titleIntroTime_ = 0.0f;
     titleIntroComplete_ = false;
     InitializeMainMenuUI();
@@ -300,7 +329,9 @@ void TitleScene::Finalize() {
     mainMenuCursorSprite_ = nullptr;
     mainMenuPromptSprite_ = nullptr;
     titleHeroSlime_ = nullptr;
+    titleCameraAnchor_.reset();
     titleHeroBaseCaptured_ = false;
+    titleHeroSequenceTime_ = 0.0f;
     for (auto& glyph : titleLogoGlyphs_) {
         glyph = {};
     }
@@ -328,11 +359,11 @@ void TitleScene::Update(float deltaTime) {
         if (!titleIntroComplete_) {
             UpdateSaveSlotUI();
             LightEditor::GetInstance()->Update();
-            CameraEditor::GetInstance()->Update(player_, false);
-            CameraManager::GetInstance()->Update(deltaTime);
             objectManager_->Update(deltaTime);
-            particleSystem_->Update(deltaTime);
             UpdateTitleHeroAnimation(deltaTime);
+            CameraEditor::GetInstance()->Update(titleCameraAnchor_ ? titleCameraAnchor_.get() : titleHeroSlime_, false);
+            CameraManager::GetInstance()->Update(deltaTime);
+            particleSystem_->Update(deltaTime);
             for (auto& sprite : sprites_) {
                 sprite->Update();
             }
@@ -357,12 +388,12 @@ void TitleScene::Update(float deltaTime) {
 
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
-    CameraEditor::GetInstance()->Update(player_, false);
-    CameraManager::GetInstance()->Update(deltaTime);
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
-    UpdateTitleHeroAnimation(deltaTime);
     objectManager_->Update(deltaTime);
+    UpdateTitleHeroAnimation(deltaTime);
+    CameraEditor::GetInstance()->Update(titleCameraAnchor_ ? titleCameraAnchor_.get() : titleHeroSlime_, false);
+    CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
@@ -513,8 +544,6 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
 }
 
 void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
-    (void)deltaTime;
-
     if (!titleHeroSlime_) {
         titleHeroSlime_ = FindObjectByName(this, kTitleHeroSlimeName);
         if (titleHeroSlime_ && !titleHeroBaseCaptured_) {
@@ -528,25 +557,80 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         return;
     }
 
-    const float phase = std::fmod(titleUiTime_ * 0.82f, 1.0f);
-    const float jumpT = phase < 0.56f ? phase / 0.56f : 1.0f;
-    const float jumpHeight = phase < 0.56f ? std::sin(jumpT * kTitleIntroPi) * 0.46f : 0.0f;
-    const float landT = phase >= 0.56f ? std::clamp((phase - 0.56f) / 0.18f, 0.0f, 1.0f) : 0.0f;
-    const float squash = std::sin(landT * kTitleIntroPi) * (1.0f - landT * 0.25f);
-    const float wobble = std::sin(titleUiTime_ * 3.2f);
+    titleHeroSequenceTime_ = std::fmod(
+        titleHeroSequenceTime_ + std::max(0.0f, deltaTime),
+        kTitleHeroSequenceDuration
+    );
+    const float time = titleHeroSequenceTime_;
 
     Vector3 position = titleHeroBasePosition_;
-    position.y += jumpHeight;
-
     Vector3 scale = titleHeroBaseScale_;
-    scale.x *= 1.0f + squash * 0.16f + std::sin(titleUiTime_ * 4.4f) * 0.018f;
-    scale.y *= 1.0f - squash * 0.18f + jumpHeight * 0.045f;
-    scale.z *= 1.0f + squash * 0.16f - std::sin(titleUiTime_ * 3.9f) * 0.014f;
-
     Vector3 rotation = titleHeroBaseRotation_;
-    rotation.y += std::sin(titleUiTime_ * 0.8f) * 0.16f;
-    rotation.z += wobble * 0.045f;
+    float squash = 0.0f;
+    float airborneStretch = 0.0f;
 
+    if (time < kTitleHeroPatrolStart) {
+        const float idleCycle = std::fmod(time, 2.85f);
+        if (idleCycle < 1.08f) {
+            const float jumpT = idleCycle / 1.08f;
+            const float jump = std::sin(jumpT * kTitleIntroPi);
+            position.y += jump * 0.48f;
+            airborneStretch = jump * 0.045f;
+            squash = std::sin(
+                std::clamp((jumpT - 0.78f) / 0.22f, 0.0f, 1.0f) * kTitleIntroPi
+            ) * 0.16f;
+        }
+        rotation.y += std::sin(time * 0.85f) * 0.15f;
+        rotation.z += std::sin(time * 2.9f) * 0.035f;
+    } else if (time < kTitleHeroPatrolEnd) {
+        const float patrolT = std::clamp(
+            (time - kTitleHeroPatrolStart) /
+            (kTitleHeroPatrolEnd - kTitleHeroPatrolStart),
+            0.0f,
+            1.0f
+        );
+        constexpr size_t kSegmentCount = kTitleHeroPatrolOffsets.size() - 1;
+        const float segmentProgress = patrolT * static_cast<float>(kSegmentCount);
+        const size_t segmentIndex = std::min(
+            static_cast<size_t>(segmentProgress),
+            kSegmentCount - 1
+        );
+        const float localT = segmentProgress - static_cast<float>(segmentIndex);
+        const Vector3& fromOffset = kTitleHeroPatrolOffsets[segmentIndex];
+        const Vector3& toOffset = kTitleHeroPatrolOffsets[segmentIndex + 1];
+        const Vector3 routeOffset = LerpTitleVector3(fromOffset, toOffset, SmoothStep(localT));
+
+        position.x += routeOffset.x;
+        position.z += routeOffset.z;
+
+        const float hopPhase = localT * kTitleIntroPi * 2.0f;
+        const float hop = std::abs(std::sin(hopPhase));
+        position.y += hop * 0.58f;
+        airborneStretch = hop * 0.055f;
+        squash = std::pow(1.0f - hop, 6.0f) * 0.14f;
+
+        const float directionX = toOffset.x - fromOffset.x;
+        const float directionZ = toOffset.z - fromOffset.z;
+        rotation.y += std::atan2(directionX, directionZ);
+        rotation.z += std::sin(hopPhase) * 0.072f;
+    } else {
+        const float settleTime = time - kTitleHeroPatrolEnd;
+        const float settleT = std::clamp(settleTime / 1.05f, 0.0f, 1.0f);
+        const float settleJump = std::sin(settleT * kTitleIntroPi) * (1.0f - settleT * 0.32f);
+        position.y += settleJump * 0.38f;
+        airborneStretch = settleJump * 0.035f;
+        squash = std::sin(
+            std::clamp((settleTime - 0.76f) / 0.34f, 0.0f, 1.0f) * kTitleIntroPi
+        ) * 0.15f;
+        rotation.y += std::sin(settleTime * 0.72f) * 0.12f;
+        rotation.z += std::sin(settleTime * 2.3f) * 0.026f;
+    }
+
+    scale.x *= 1.0f + squash - airborneStretch * 0.30f;
+    scale.y *= 1.0f - squash * 0.82f + airborneStretch;
+    scale.z *= 1.0f + squash - airborneStretch * 0.30f;
+
+    titleHeroSlime_->SetIsVisible(true);
     titleHeroSlime_->SetTranslate(position);
     titleHeroSlime_->SetScale(scale);
     titleHeroSlime_->SetRotation(rotation);

@@ -39,6 +39,7 @@ class LevelLoader;
 class LockOnSystem;
 class GameRule;
 class BossCore;
+class BaseEnemy;
 struct StageData;
 
 /// <summary>
@@ -68,11 +69,15 @@ public:
 
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
+    void StartArenaBossIntro(Object3d* bossObject, Object3d* gateObject, float bossRevealDelay);
+    void StartArenaBossDefeatReward(Object3d* rewardObject);
 
     // --- BaseScene インターフェース ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
+    std::unique_ptr<Object3d> CreateReplayObject(const json& descriptor) override;
+    void OnReplayObjectsRecreated() override;
 
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
     void CollectReplaySprites(std::vector<Sprite*>& sprites) override;
@@ -135,6 +140,11 @@ private:
 
     Player* player_ = nullptr;
 
+#ifdef USE_IMGUI
+    // 能力呼び出しに必要な実敵インスタンスを、デバッグ変身中だけ所有します。
+    std::unique_ptr<BaseEnemy> debugPlayerMorphSource_;
+#endif
+
     // --- BGM / SE ---
     uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
@@ -156,44 +166,55 @@ private:
 
     // --- ゴール/クリア演出 ---
     struct GoalPresentationTuning {
-        float crownFocusEndTime = 0.60f;
-        float crownMoveStartTime = 0.88f;
+        float crownFocusEndTime = 0.72f;
+        float crownMoveStartTime = 0.98f;
         float crownDropHeight = 2.00f;
         float crownSeatDepth = 0.10f;
-        float crownFocusDistance = 5.20f;
-        float crownFocusSide = 0.85f;
-        float crownFocusHeight = 1.05f;
-        float landingCameraDistance = 7.00f;
-        float landingCameraSide = 1.00f;
-        float landingCameraHeight = 1.60f;
-        float jumpCameraDistance = 8.50f;
-        float jumpCameraSide = 0.75f;
-        float jumpCameraHeight = 2.00f;
-        float resultCameraDistance = 9.00f;
-        float resultCameraSide = 0.30f;
-        float resultCameraHeight = 1.40f;
-        float resultTargetSide = 2.00f;
-        float crownFocusFov = 0.50f;
-        float landingFov = 0.58f;
-        float jumpFov = 0.68f;
-        float resultFov = 0.64f;
+        float crownFocusDistance = 5.80f;
+        float crownFocusSide = 1.25f;
+        float crownFocusHeight = 1.25f;
+        float landingCameraDistance = 7.60f;
+        float landingCameraSide = 1.60f;
+        float landingCameraHeight = 1.90f;
+        float jumpCameraDistance = 8.20f;
+        float jumpCameraSide = 1.85f;
+        float jumpCameraHeight = 2.35f;
+        float resultCameraDistance = 8.60f;
+        float resultCameraSide = 1.55f;
+        float resultCameraHeight = 1.85f;
+        float resultTargetSide = 0.55f;
+        float crownFocusFov = 0.46f;
+        float landingFov = 0.54f;
+        float jumpFov = 0.61f;
+        float resultFov = 0.54f;
         float resultUiCenterX = 0.50f;
-        float resultUiCenterY = 0.72f;
+        float resultUiCenterY = 0.24f;
         float resultUiScale = 1.00f;
-        float resultBackdropAlpha = 0.30f;
-        float resultGlowAlpha = 0.18f;
+        float resultBackdropAlpha = 1.00f;
+        float resultGlowAlpha = 0.72f;
+        float resultLetterStagger = 0.085f;
+        float resultLetterFallDuration = 0.34f;
+        float resultLetterDropHeight = 260.0f;
+        float resultLetterBounceHeight = 48.0f;
+        float resultLetterBounceDamping = 2.90f;
+        float resultLetterBounceFrequency = 9.80f;
     };
 
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
+    bool goalWasStageCleared_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
 
     // --- ステージ開始時のゲート登場演出 ---
     bool stageEntryPresentationActive_ = false;
+    bool stageEntryPresentationPending_ = true;
+    bool stageEntryPresentationCompleted_ = false;
+    bool stageEntryRuntimeWasPlaying_ = false;
     bool stageEntryPlayerEmergenceStarted_ = false;
     bool stageEntryHadPlayerControl_ = true;
     bool stageEntryCinemaBarOverrideActive_ = false;
     float stageEntryPresentationTimer_ = 0.0f;
+    float stageEntryPresentationRetryTimer_ = 0.0f;
     float stageEntryCinemaBarBaseHeight_ = 0.0f;
     Object3d* stageEntryGate_ = nullptr;
     Vector3 stageEntryDirection_ = { 1.0f, 0.0f, 0.0f };
@@ -203,6 +224,40 @@ private:
     Vector3 stageEntryCameraFocusTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 stageEntryCameraRestoreEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 stageEntryCameraRestoreTarget_ = { 0.0f, 0.0f, 0.0f };
+    float stageEntryCameraBaseFov_ = 0.45f;
+    float stageEntryCameraFocusFov_ = 0.45f;
+
+    // --- ステージ3 ボス登場演出 ---
+    bool arenaBossIntroActive_ = false;
+    bool arenaBossIntroHadPlayerControl_ = true;
+    bool arenaBossIntroCinemaBarOverrideActive_ = false;
+    float arenaBossIntroTimer_ = 0.0f;
+    float arenaBossIntroRevealDelay_ = 0.72f;
+    float arenaBossIntroBaseFov_ = 0.45f;
+    float arenaBossIntroCinemaBarBaseHeight_ = 0.0f;
+    Object3d* arenaBossIntroBoss_ = nullptr;
+    Object3d* arenaBossIntroGate_ = nullptr;
+    Vector3 arenaBossIntroGameplayEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroGameplayTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroRestoreEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroRestoreTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroGateEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroGateTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroBossEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossIntroBossTarget_ = { 0.0f, 0.0f, 0.0f };
+
+    // --- ステージ3 ボス撃破・王冠落下演出 ---
+    bool arenaBossRewardActive_ = false;
+    bool arenaBossRewardHadPlayerControl_ = true;
+    bool arenaBossRewardCinemaBarOverrideActive_ = false;
+    float arenaBossRewardTimer_ = 0.0f;
+    float arenaBossRewardBaseFov_ = 0.45f;
+    float arenaBossRewardCinemaBarBaseHeight_ = 0.0f;
+    Object3d* arenaBossRewardObject_ = nullptr;
+    Vector3 arenaBossRewardGameplayEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossRewardGameplayTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossRewardFocusEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 arenaBossRewardFocusTarget_ = { 0.0f, 0.0f, 0.0f };
 
     enum class GoalPresentationState {
         Inactive,
@@ -260,14 +315,10 @@ private:
     bool goalCinematicTimelineLoaded_ = false;
     GoalPresentationTuning goalPresentationTuning_;
     std::unique_ptr<Camera> goalPresentationCamera_;
-    std::unique_ptr<Sprite> goalOverlayBackdrop_;
     std::unique_ptr<Sprite> goalOverlayFlash_;
-    std::unique_ptr<Sprite> goalOverlayGlow_;
-    std::unique_ptr<Sprite> goalOverlayTopLine_;
-    std::unique_ptr<Sprite> goalOverlayBottomLine_;
-    std::unique_ptr<Sprite> goalOverlayStageClearText_;
     std::unique_ptr<Sprite> goalOverlayReturnText_;
-    std::array<std::unique_ptr<Sprite>, 8> goalOverlaySparkles_;
+    std::array<std::unique_ptr<Sprite>, 10> goalOverlayStageClearLetters_;
+    std::array<std::unique_ptr<Sprite>, 10> goalOverlaySparkles_;
 
     // HUD の基準値。演出で拡縮しても戻せるよう保存する。
     struct HudSpriteState {
@@ -324,6 +375,44 @@ private:
     float hudMorphGaugeTimer_ = 0.0f;
     float hudMorphGaugeVisibleTimer_ = 0.0f;
 
+    // --- ボス／中ボス共通 HUD ---
+    enum class PrismBossHudPhase {
+        Hidden,
+        Introducing,
+        Active,
+        Dismissing,
+    };
+    enum class BossHudTheme {
+        Prism,
+        Magma,
+        FalseKing,
+    };
+    HudSpriteState prismBossHudName_;
+    HudSpriteState prismBossHudGlow_;
+    HudSpriteState prismBossHudBack_;
+    HudSpriteState prismBossHudTrack_;
+    HudSpriteState prismBossHudDamageFill_;
+    HudSpriteState prismBossHudFill_;
+    HudSpriteState prismBossHudHighlight_;
+    HudSpriteState prismBossHudFrameTop_;
+    HudSpriteState prismBossHudFrameBottom_;
+    HudSpriteState prismBossHudShardLeft_;
+    HudSpriteState prismBossHudShardRight_;
+    std::array<HudSpriteState, 6> prismBossHudGlints_;
+    std::array<HudSpriteState, 3> falseKingBossHudPhaseCrowns_;
+    std::array<HudSpriteState, 2> falseKingBossHudPhaseDividers_;
+    PrismBossHudPhase prismBossHudPhase_ = PrismBossHudPhase::Hidden;
+    float prismBossHudTimer_ = 0.0f;
+    float prismBossHudDisplayedRate_ = 0.0f;
+    float prismBossHudDelayedRate_ = 0.0f;
+    float prismBossHudPreviousHp_ = 0.0f;
+    float prismBossHudDamagePulseTimer_ = 0.0f;
+    float prismBossHudDamageHoldTimer_ = 0.0f;
+    float prismBossHudAnimationTimer_ = 0.0f;
+    BossHudTheme prismBossHudTheme_ = BossHudTheme::Prism;
+    int falseKingBossHudPreviousPhase_ = 1;
+    float falseKingBossHudPhasePulseTimer_ = 0.0f;
+
     // --- ライフ減少演出 ---
     bool lifeLostPresentationActive_ = false;
     bool lifeLostPresentationFinished_ = true;
@@ -366,12 +455,26 @@ private:
     void ApplyStageStarCoinState();
     void UpdateGoalCrownIdleAnimation(float deltaTime);
     bool StartRespawnIrisInIfNeeded();
-    void StartStageEntryPresentation();
+    bool StartStageEntryPresentation();
     void UpdateStageEntryPresentation(float deltaTime);
     void FinishStageEntryPresentation();
     Object3d* FindStageEntryGate() const;
+    void UpdateArenaBossIntro(float deltaTime);
+    void FinishArenaBossIntro();
+    void UpdateArenaBossDefeatReward(float deltaTime);
+    void FinishArenaBossDefeatReward();
     void InitializeDebugAnimationPreview();
     void FinalizeGameplayResources();
+#ifdef USE_IMGUI
+    void ApplyDebugPlayerMorph(const char* enemyType);
+    void ClearDebugPlayerMorph();
+    Object3d* FindDebugObjectByName(const char* objectName) const;
+    bool TeleportPlayerToDebugTarget(
+        const char* anchorName,
+        const Vector3& anchorOffset,
+        const char* facingObjectName,
+        const char* destinationLabel);
+#endif
 
     int loadingInitializePhase_ = 0;
     size_t loadingInitializeItemIndex_ = 0;
@@ -418,6 +521,7 @@ private:
     void UpdateEffectDebugShortcuts();
     void UpdateGameplayHUD(float deltaTime);
     void UpdateStageStarHUD(float deltaTime, bool visible);
+    void UpdatePrismBossHUD(float deltaTime);
     void UpdateLifeLostPresentation(float deltaTime);
     bool HandleControlsGuideOverlay(float deltaTime);
     bool IsControlsGuideOpenTriggered() const;
@@ -427,6 +531,7 @@ private:
     // UI 描画
     void DrawGameplayHUD();
     void DrawStageStarHUD();
+    void DrawPrismBossHUD();
     void DrawLifeLostPresentation();
     void InitializeLifeLostPresentationObjects();
     void UpdateLifeLostPresentationWorld(float deltaTime);
@@ -437,6 +542,9 @@ private:
     void SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
     void StartStageStarHUDCollectEffect(int starIndex, const Vector3& worldPosition);
     Vector2 ProjectWorldToScreen(const Vector3& worldPosition) const;
+    class EnemyPrismSlime* FindPrismBossForHUD();
+    class EnemyMagmaSlime* FindMagmaBossForHUD();
+    class EnemyFalseKingSlime* FindFalseKingBossForHUD();
 
     // 視錐台カリング判定
     bool IsVisible(Object3d* obj);

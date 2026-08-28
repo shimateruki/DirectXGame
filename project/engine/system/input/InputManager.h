@@ -8,6 +8,7 @@
 
 #include <windows.h>
 #include <Xinput.h>
+#include <array>
 #include <cstdint>
 #include <dinput.h>
 #include <string>
@@ -29,6 +30,38 @@
 // InputManagerは、キーボード、マウス、ゲームパッド、アクション入力をまとめて管理します。
 class InputManager {
 public:
+    // 自動回帰テストで、1フレーム分の入力を同じ状態へ戻すためのデータです。
+    struct ReplayState {
+        std::array<uint8_t, 256> keys{};
+        std::array<uint8_t, 256> previousKeys{};
+        std::array<uint8_t, 4> mouseButtons{};
+        std::array<uint8_t, 4> previousMouseButtons{};
+        int32_t mouseX = 0;
+        int32_t mouseY = 0;
+        int32_t mouseWheel = 0;
+        int32_t previousMouseX = 0;
+        int32_t previousMouseY = 0;
+        int32_t previousMouseWheel = 0;
+        uint16_t gamepadButtons = 0;
+        uint16_t previousGamepadButtons = 0;
+        uint8_t leftTrigger = 0;
+        uint8_t rightTrigger = 0;
+        uint8_t previousLeftTrigger = 0;
+        uint8_t previousRightTrigger = 0;
+        int16_t leftX = 0;
+        int16_t leftY = 0;
+        int16_t rightX = 0;
+        int16_t rightY = 0;
+        int16_t previousLeftX = 0;
+        int16_t previousLeftY = 0;
+        int16_t previousRightX = 0;
+        int16_t previousRightY = 0;
+        bool gamepadMode = false;
+        Vector3 accelerometer{};
+        Vector3 gyroscope{};
+        Vector3 baseAccelerometer{};
+    };
+
     /// <summary>
     /// シングルトンインスタンスを取得する。
     /// </summary>
@@ -62,6 +95,10 @@ bool IsKeyTriggered(BYTE keyCode) const;
 Vector2 GetMouseMoveDelta() const;
     Vector2 GetMousePosition() const;
     float GetMouseWheelDelta() const;
+
+    // 現在の物理入力を保存し、回帰テスト中に同じ入力へ差し替えます。
+    ReplayState CaptureReplayState() const;
+    void ApplyReplayState(const ReplayState& state);
     int GetPressedMouseButton() const;
 
     // ゲームパッド入力。
@@ -74,6 +111,12 @@ Vector2 GetGamepadLeftStick() const;
     bool IsGamepadMode() const { return isGamepadMode_; }
     Vector2 GetLeftStick() const;
     Vector2 GetRightStick() const;
+
+    // 複数の振動要求を強い方へ合成し、指定時間後に確実に停止します。
+    void PlayRumble(float lowFrequency, float highFrequency, float duration);
+    void UpdateRumble(float unscaledDeltaTime);
+    void StopRumble();
+    bool IsRumbling() const { return !rumbleRequests_.empty(); }
 
     // SDLセンサー入力。
     void Finalize();
@@ -120,4 +163,15 @@ private:
     bool isCalibrated_ = false;
 
     bool isGamepadMode_ = false;
+
+    struct RumbleRequest {
+        float lowFrequency = 0.0f;
+        float highFrequency = 0.0f;
+        float remaining = 0.0f;
+    };
+    void RefreshRumbleOutput();
+
+    std::vector<RumbleRequest> rumbleRequests_;
+    float appliedLowFrequency_ = -1.0f;
+    float appliedHighFrequency_ = -1.0f;
 };

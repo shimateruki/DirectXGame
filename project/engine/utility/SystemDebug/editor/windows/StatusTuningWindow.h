@@ -35,7 +35,7 @@ private:
 private:
     DebugEditor* editor_ = nullptr;
     SceneManager* sceneManager_ = nullptr;
-    std::array<EnemyTypeInfo, 12> enemyTypes_ = {
+    std::array<EnemyTypeInfo, 14> enemyTypes_ = {
         EnemyTypeInfo{ "Slime", "ピンクスライム" },
         EnemyTypeInfo{ "Bomb", "ボム" },
         EnemyTypeInfo{ "Bomber", "ボムスライム" },
@@ -45,8 +45,10 @@ private:
         EnemyTypeInfo{ "WindSlime", "風スライム" },
         EnemyTypeInfo{ "GiantSlime", "巨大スライム" },
         EnemyTypeInfo{ "PrismSlime", "プリズムスライム（中ボス）" },
+        EnemyTypeInfo{ "MagmaSlime", "マグマスライム（中ボス）" },
         EnemyTypeInfo{ "Bat", "コウモリ" },
         EnemyTypeInfo{ "BeamDrone", "ビームドローン" },
+        EnemyTypeInfo{ "RingBurner", "リングバーナー" },
         EnemyTypeInfo{ "BossCore", "ボスコア" }
     };
     std::vector<std::string> characterModelNames_;

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "6a436fd7847e48c19dc66d73f8297fb2",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_fire_breath.json",
+  "version": 1
+}

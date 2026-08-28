@@ -670,7 +670,7 @@ void DebugEditor::Draw3DIcons() {
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     for (const auto& obj : objects) {
-        if (!obj->GetIsVisible()) continue;
+        if (!obj->GetIsRenderVisible()) continue;
         std::string className = obj->GetClassName();
         const char* iconStr = nullptr;
         ImU32 iconColor = IM_COL32(255, 255, 255, 200); // デフォルト白（半透明）
@@ -745,7 +745,7 @@ void DebugEditor::DrawEventIDOverlay() {
     }
 
     for (const auto& obj : objects) {
-        if (!obj->GetIsVisible()) continue;
+        if (!obj->GetIsRenderVisible()) continue;
 
         // イベント関連のIDを取得
         int myID = obj->GetEventID();

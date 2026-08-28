@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include "ParticleCommon.h" 
+#include "VFXAuthoring.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <algorithm>
@@ -40,6 +41,9 @@ struct Particle {
 
         float hdrIntensity;
         Vector2 baseScale = { 1.0f, 1.0f };
+        bool useAuthoringCurves = false;
+        VFXBakedFloatCurve sizeOverLife;
+        VFXBakedColorGradient colorOverLife;
 
     };
 
@@ -75,6 +79,10 @@ public:
 
         bool isEmitting = true; // 発生させるかどうか
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+        bool useAuthoringCurves = false;
+        VFXFloatCurve sizeOverLife;
+        VFXColorGradient colorOverLife;
+        VFXLodSettings lod;
         ParticleBlendMode blendMode = ParticleBlendMode::kAlpha;
         float initialRotationSpeed = 0.0f;      // 基本の回転スピード
         float rotationSpeedRandomness = 0.0f;   // 回転スピードのバラつき
@@ -143,6 +151,8 @@ private:
     void SpawnFromEmitter();
     void SpawnFromParams(const EmitterParams& params, const Vector3& origin);
 
+    float ResolveEmissionScale(const EmitterParams& params, const Vector3& origin) const;
+    std::size_t ResolveParticleLimit(const EmitterParams& params) const;
 private:
     static const int kMaxParticles = 1024;
     ParticleCommon* common_ = nullptr;

@@ -95,6 +95,18 @@ float4 main(VSOutput input) : SV_TARGET
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
     screenUV = saturate(screenUV);
 
+    uint depthWidth = 1;
+    uint depthHeight = 1;
+    depthTex.GetDimensions(depthWidth, depthHeight);
+    uint2 depthCoord = min(
+        uint2(screenUV * float2(depthWidth, depthHeight)),
+        uint2(depthWidth - 1, depthHeight - 1));
+    float rawSceneDepth = depthTex.Load(int3(depthCoord, 0));
+    float rawPortalDepth = saturate(input.screenPos.z / input.screenPos.w);
+
+    // Special materials are rendered without a DSV, so reject fragments hidden by opaque scene depth explicitly.
+    clip(rawSceneDepth - rawPortalDepth + 0.00001f);
+
     float speed = max(waveSpeed, 0.05f);
     float detail = max(waveFrequency, 0.1f);
     float depthPower = max(waveHeight, 0.05f);
@@ -109,6 +121,82 @@ float4 main(VSOutput input) : SV_TARGET
     float t = time * speed * lerp(0.24f, 1.12f, activation);
 
     float2 p = input.localPos.xy;
+
+    if (mode > 2.5f)
+    {
+        // Fade a barrier only while the camera is crossing its surface.
+        // This prevents a nearby wall from behaving like a full-screen overlay.
+        float3 barrierNormal = normalize(input.normal);
+        float cameraPlaneDistance = abs(dot(cameraWorldPosition - input.worldPos, barrierNormal));
+        float cameraSurfaceFade = smoothstep(1.25f, 4.50f, cameraPlaneDistance);
+
+        float2 absP = abs(p);
+        float edgeDistance = 1.0f - max(absP.x, absP.y);
+        float outerMask = smoothstep(0.0f, 0.055f, edgeDistance);
+        float border = 1.0f - smoothstep(0.018f, 0.115f, edgeDistance);
+
+        float revealTop = -1.04f + activation * 2.12f;
+        float revealMask = 1.0f - smoothstep(revealTop - 0.045f, revealTop + 0.075f, p.y);
+        revealMask *= outerMask;
+
+        float2 barrierUV = p * float2(8.0f + detail * 0.11f, 4.2f + detail * 0.045f);
+        float2 barrierCell = frac(barrierUV + float2(t * 0.08f, -t * 0.13f)) - 0.5f;
+        float diamondDistance = abs(abs(barrierCell.x) + abs(barrierCell.y) - 0.43f);
+        float diamondLattice = 1.0f - smoothstep(0.025f, 0.085f, diamondDistance);
+
+        float verticalFilament = pow(
+            saturate(0.5f + 0.5f * sin((p.x * (13.0f + detail * 0.12f) + t * 0.42f) * 6.2831853f)),
+            13.0f);
+        float counterFilament = pow(
+            saturate(0.5f + 0.5f * sin((p.x * 7.0f - p.y * 2.6f - t * 0.31f) * 6.2831853f)),
+            18.0f);
+        float scanBand = pow(
+            saturate(0.5f + 0.5f * sin((p.y * 3.2f - t * 0.72f) * 6.2831853f)),
+            8.0f);
+
+        float shardNoise = Fbm2(barrierUV * 0.54f + float2(t * 0.19f, -t * 0.34f));
+        float shardGlint = pow(saturate(shardNoise * 1.32f - 0.72f), 3.2f);
+        float energy = saturate(
+            diamondLattice * 0.58f +
+            verticalFilament * 0.82f +
+            counterFilament * 0.54f +
+            scanBand * 0.30f +
+            shardGlint * 0.72f +
+            border * 1.15f);
+
+        float burstLine = 1.0f - smoothstep(0.035f, 0.18f, abs(p.y - revealTop));
+        burstLine *= activationBurst * outerMask;
+        energy = saturate(energy + burstLine * 1.35f);
+
+        float2 distortDirection = float2(
+            sin(p.y * 12.0f + t * 1.7f),
+            cos(p.x * 9.0f - t * 1.3f));
+        float distortStrength = (0.0018f + energy * 0.0065f) * activation;
+        float3 scene = grabTex.SampleLevel(smp, saturate(screenUV + distortDirection * distortStrength), 0).rgb;
+
+        float3 deepColor = float3(0.015f, 0.055f, 0.145f);
+        float3 cyanColor = float3(0.055f, 0.760f, 1.000f);
+        float3 magentaColor = float3(0.900f, 0.160f, 1.000f);
+        float chroma = 0.5f + 0.5f * sin(p.x * 8.2f - p.y * 5.6f + t * 1.9f + shardNoise * 4.0f);
+        float3 barrierColor = lerp(cyanColor, magentaColor, chroma * 0.42f);
+        barrierColor = lerp(deepColor, barrierColor, 0.32f + energy * 0.68f);
+        barrierColor = lerp(barrierColor, float3(0.82f, 0.98f, 1.0f), saturate(border + burstLine));
+        barrierColor *= saturate(color.rgb + 0.34f);
+
+        float veil = 0.15f + diamondLattice * 0.08f + scanBand * 0.055f;
+        float alpha = saturate((veil + energy * 0.48f + border * 0.26f) * revealMask * color.a);
+        alpha *= cameraSurfaceFade;
+        float3 refractedScene = scene * lerp(0.88f, 0.30f, alpha);
+        float3 finalBarrierColor = lerp(refractedScene, barrierColor * (0.70f + intensity * 0.38f), alpha);
+        finalBarrierColor += barrierColor * energy * (0.22f + intensity * 0.16f) * revealMask;
+
+        if (alpha < 0.008f)
+        {
+            discard;
+        }
+        return float4(finalBarrierColor, alpha);
+    }
+
     float quadEdge = max(abs(p.x), abs(p.y));
     float quadSafeFade = 1.0f - smoothstep(0.68f, 0.94f, quadEdge);
     float portalAspect = 1.0f;

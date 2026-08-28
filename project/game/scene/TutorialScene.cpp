@@ -101,8 +101,9 @@ constexpr const char* kTutorialMeshEffectsToPreload[] = {
 	"Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
 	"Resources/json/effect/effect_player_pink_straight_arc.json",
 	"Resources/json/effect/effect_player_pink_straight_impact.json",
-	"Resources/json/effect/effect_player_pink_bounce_launch.json",
-	"Resources/json/effect/effect_player_pink_bounce_land.json"
+	"Resources/json/effect/effect_player_pink_guard_start.json",
+	"Resources/json/effect/effect_player_pink_guard_shell.json",
+	"Resources/json/effect/effect_player_pink_guard_release.json"
 };
 
 constexpr const char* kTutorialGpuParticlePresetsToPreload[] = {
@@ -113,8 +114,7 @@ constexpr const char* kTutorialGpuParticlePresetsToPreload[] = {
 	"hit_enemy_ability",
 	"player_jump_dust",
 	"player_land_dust",
-	"player_pink_straight_splash",
-	"player_pink_bounce_droplets"
+	"player_pink_straight_splash"
 };
 
 constexpr const char* kTutorialVfxSequencesToPreload[] = {
@@ -268,6 +268,18 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 	manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
 		? "Resources/output_skybox.dds"
 		: GetSceneLoadContext().skyboxPath);
+	std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
+	if (preloadBgmPath.empty()) {
+	    const auto& preloadStages = StageManager::GetInstance()->GetStages();
+	    const int preloadStageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+	    if (preloadStageIndex >= 0 &&
+	        preloadStageIndex < static_cast<int>(preloadStages.size())) {
+	        preloadBgmPath = preloadStages[preloadStageIndex].bgmPath;
+	    }
+	}
+	if (!preloadBgmPath.empty()) {
+	    manifest.AddAudio(preloadBgmPath);
+	}
 	return manifest;
 }
 

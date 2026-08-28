@@ -1,0 +1,11 @@
+{
+    "assetType": "Model",
+    "guid": "4854a23773695f5e84f20963913c9bba",
+    "importSettings": {
+        "generateTangents": true,
+        "scale": 1
+    },
+    "importer": "ModelImporter",
+    "source": "Resources/3DModel/Stages/magma_horizon_island/magma_horizon_island.obj",
+    "version": 1
+}

@@ -3,9 +3,12 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "Easing.h"
+#include "GameplayEventTrace.h"
+#include "InputManager.h"
 #include "GPUParticleManager.h"
 #include "LightManager.h"
 #include "MeshEffectManager.h"
+#include "PostEffect.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -17,10 +20,59 @@ using json = nlohmann::json;
 
 namespace {
     constexpr const char* kSequenceDirectory = "Resources/json/vfx_sequence/";
+    constexpr float kDegreesToRadians = 3.14159265358979323846f / 180.0f;
+    float gameplayTimeScale = 1.0f;
+
+    const char* GetVFXEventTypeName(VFXEventType type) {
+        switch (type) {
+        case VFXEventType::GPUParticle: return "GPU Particle";
+        case VFXEventType::MeshEffect: return "Mesh Effect";
+        case VFXEventType::SoundEffect: return "Audio Event";
+        case VFXEventType::MovingParticle: return "Moving Particle";
+        case VFXEventType::CameraShake: return "Camera Shake";
+        case VFXEventType::PostEffectPulse: return "Post Effect";
+        case VFXEventType::LightPulse: return "Light Pulse";
+        case VFXEventType::HitStop: return "Hit Stop";
+        case VFXEventType::ControllerRumble: return "Controller Rumble";
+        case VFXEventType::CameraFovPulse: return "Camera FOV";
+        default: return "Unknown";
+        }
+    }
+
+    std::string DescribeTraceTarget(const Object3d* targetObject) {
+        if (!targetObject) {
+            return "World";
+        }
+        std::string source = targetObject->GetName();
+        const std::string& guid = targetObject->GetPersistentGuid();
+        if (!guid.empty()) {
+            source += " [" + guid + "]";
+        }
+        return source;
+    }
+
+    void TraceSequence(
+        GameplayEventTracePhase phase,
+        const std::string& sequenceName,
+        const Object3d* targetObject,
+        const std::string& detail = {}) {
+        GameplayEventTrace::GetInstance()->Record(
+            phase, "Feedback Cue", DescribeTraceTarget(targetObject), sequenceName, detail);
+    }
 
     std::vector<std::unique_ptr<VFXSequencer>>& ActiveOneShotSequences() {
         static std::vector<std::unique_ptr<VFXSequencer>> sequences;
         return sequences;
+    }
+
+    struct HitStopLayer {
+        float remaining = 0.0f;
+        float timeScale = 0.0f;
+    };
+
+    std::vector<HitStopLayer>& ActiveHitStops() {
+        static std::vector<HitStopLayer> layers;
+        return layers;
     }
 
     std::unordered_map<std::string, std::vector<VFXEvent>>& SequenceEventCache() {
@@ -37,7 +89,12 @@ namespace {
         for (auto& event : events) {
             event.hasFired = false;
             event.isFinished = false;
-            event.hasCapturedPostBase = false;
+            event.hasAppliedPostPulse = false;
+            event.appliedRadialIntensity = 0.0f;
+            event.appliedDamageFlash = 0.0f;
+            event.appliedChromaticAberration = 0.0f;
+            event.appliedWobbleIntensity = 0.0f;
+            event.appliedBloomIntensity = 0.0f;
         }
     }
 
@@ -146,11 +203,67 @@ namespace {
         emitMatrix = Math::MakeAffineMatrix(rootScale, rootRotation, spawnPos);
         return spawnPos;
     }
+    void RemovePostPulseContribution(VFXEvent& event) {
+        if (!event.hasAppliedPostPulse) return;
+
+        PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+        if (params) {
+            params->radialIntensity -= event.appliedRadialIntensity;
+            params->damageFlash -= event.appliedDamageFlash;
+            params->chromaticAberration -= event.appliedChromaticAberration;
+            params->wobbleIntensity -= event.appliedWobbleIntensity;
+            params->bloomIntensity -= event.appliedBloomIntensity;
+        }
+
+        event.hasAppliedPostPulse = false;
+        event.appliedRadialIntensity = 0.0f;
+        event.appliedDamageFlash = 0.0f;
+        event.appliedChromaticAberration = 0.0f;
+        event.appliedWobbleIntensity = 0.0f;
+        event.appliedBloomIntensity = 0.0f;
+    }
+
+    void ApplyPostPulse(VFXEvent& event, float currentTime) {
+        PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
+        if (!params) {
+            event.isFinished = true;
+            return;
+        }
+
+        RemovePostPulseContribution(event);
+
+        const float duration = (std::max)(event.duration, 0.01f);
+        const float progress = std::clamp((currentTime - event.triggerTime) / duration, 0.0f, 1.0f);
+        if (progress >= 1.0f) {
+            event.isFinished = true;
+            return;
+        }
+
+        const float envelope = 1.0f - ApplyEventEasing(event.easingType, progress);
+        event.appliedRadialIntensity = event.radialIntensity * envelope;
+        event.appliedDamageFlash = event.damageFlash * envelope;
+        event.appliedChromaticAberration = event.chromaticAberration * envelope;
+        event.appliedWobbleIntensity = event.wobbleIntensity * envelope;
+        event.appliedBloomIntensity = event.bloomIntensity * envelope;
+
+        params->radialIntensity += event.appliedRadialIntensity;
+        params->damageFlash += event.appliedDamageFlash;
+        params->chromaticAberration += event.appliedChromaticAberration;
+        params->wobbleIntensity += event.appliedWobbleIntensity;
+        params->bloomIntensity += event.appliedBloomIntensity;
+        event.hasAppliedPostPulse = true;
+        event.hasFired = true;
+    }
+
 
     float GetVFXEventEndTime(const VFXEvent& event) {
         if (event.type == VFXEventType::MovingParticle ||
             event.type == VFXEventType::CameraShake ||
-            event.type == VFXEventType::LightPulse) {
+            event.type == VFXEventType::PostEffectPulse ||
+            event.type == VFXEventType::LightPulse ||
+            event.type == VFXEventType::HitStop ||
+            event.type == VFXEventType::ControllerRumble ||
+            event.type == VFXEventType::CameraFovPulse) {
             return event.triggerTime + (std::max)(event.duration, 0.01f);
         }
         return event.triggerTime + 0.08f;
@@ -158,13 +271,14 @@ namespace {
 }
 
 void VFXSequencer::Initialize(Object3d* targetObject) {
+    Reset();
     targetObject_ = targetObject;
     useRootPosition_ = false;
     rootPosition_ = { 0.0f, 0.0f, 0.0f };
     rootScale_ = { 1.0f, 1.0f, 1.0f };
     rootRotation_ = { 0.0f, 0.0f, 0.0f };
+    sequenceName_.clear();
     events_.clear();
-    Reset();
 }
 
 void VFXSequencer::SetRootPosition(const Vector3& rootPosition) {
@@ -211,9 +325,21 @@ void VFXSequencer::AddEvent(
 void VFXSequencer::Play() {
     Reset();
     isPlaying_ = true;
+    TraceSequence(
+        GameplayEventTracePhase::Started,
+        sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
+        targetObject_,
+        std::to_string(events_.size()) + " events");
 }
 
 void VFXSequencer::Stop() {
+    if (isPlaying_) {
+        TraceSequence(
+            GameplayEventTracePhase::Cancelled,
+            sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
+            targetObject_,
+            "Stopped before completion");
+    }
     Reset();
 }
 
@@ -221,9 +347,9 @@ void VFXSequencer::Reset() {
     currentTime_ = 0.0f;
     isPlaying_ = false;
     for (auto& event : events_) {
+        RemovePostPulseContribution(event);
         event.hasFired = false;
         event.isFinished = false;
-        event.hasCapturedPostBase = false;
     }
 }
 
@@ -251,9 +377,18 @@ void VFXSequencer::Update(float deltaTime) {
             continue;
         }
 
+        if (!event.hasFired) {
+            GameplayEventTrace::GetInstance()->Record(
+                GameplayEventTracePhase::Fired,
+                GetVFXEventTypeName(event.type),
+                DescribeTraceTarget(targetObject_),
+                event.presetName,
+                (sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_) +
+                    " @ " + std::to_string(event.triggerTime) + " sec");
+        }
+
         if (event.type == VFXEventType::PostEffectPulse) {
-            event.hasFired = true;
-            event.isFinished = true;
+            ApplyPostPulse(event, currentTime_);
         }
         else if (event.type == VFXEventType::LightPulse) {
             if (!event.hasFired) {
@@ -339,15 +474,22 @@ void VFXSequencer::Update(float deltaTime) {
                 }
             }
             else if (event.type == VFXEventType::SoundEffect) {
-                std::string path = "Resources/audio/se/" + event.presetName;
-                uint32_t soundHandle = AudioPlayer::GetInstance()->LoadSoundFile(path);
-                AudioPlayer::GetInstance()->PlaySE(soundHandle, false, 1.0f);
+                Matrix4x4 emitMatrix;
+                Vector3 spawnPosition = ResolveSequencerPosition(
+                    targetObject_, useRootPosition_, rootPosition_, rootScale_, rootRotation_, event.offset, emitMatrix);
+                AudioEventSystem::GetInstance()->PlayReference(event.presetName, &spawnPosition);
             }
             else if (event.type == VFXEventType::CameraShake) {
-                Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-                if (camera) {
-                    camera->StartShake(event.duration, event.intensity, event.frequency, event.scale);
-                }
+                CameraManager::GetInstance()->PlayShake(event.duration, event.intensity, event.frequency, event.scale);
+            }
+            else if (event.type == VFXEventType::CameraFovPulse) {
+                CameraManager::GetInstance()->PlayFovPulse(event.duration, event.intensity * kDegreesToRadians, event.attackRatio);
+            }
+            else if (event.type == VFXEventType::ControllerRumble) {
+                InputManager::GetInstance()->PlayRumble(event.intensity, event.secondaryIntensity, event.duration);
+            }
+            else if (event.type == VFXEventType::HitStop) {
+                RequestHitStop(event.duration, event.intensity);
             }
 
             event.hasFired = true;
@@ -361,18 +503,20 @@ void VFXSequencer::Update(float deltaTime) {
 
     if (allFinished) {
         isPlaying_ = false;
+        TraceSequence(
+            GameplayEventTracePhase::Completed,
+            sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
+            targetObject_,
+            std::to_string(events_.size()) + " events completed");
     }
 }
 
 void VFXSequencer::Save(const std::string& sequenceName) {
     json root;
-    root["version"] = 2;
+    root["version"] = 3;
     root["events"] = json::array();
 
     for (const auto& event : events_) {
-        if (event.type == VFXEventType::PostEffectPulse) {
-            continue;
-        }
 
         json eventJson;
         eventJson["type"] = static_cast<int>(event.type);
@@ -388,7 +532,9 @@ void VFXSequencer::Save(const std::string& sequenceName) {
         eventJson["intensity"] = event.intensity;
         eventJson["frequency"] = event.frequency;
         eventJson["radialIntensity"] = event.radialIntensity;
+        eventJson["secondaryIntensity"] = event.secondaryIntensity;
         eventJson["damageFlash"] = event.damageFlash;
+        eventJson["attackRatio"] = event.attackRatio;
         eventJson["chromaticAberration"] = event.chromaticAberration;
         eventJson["wobbleIntensity"] = event.wobbleIntensity;
         eventJson["bloomIntensity"] = event.bloomIntensity;
@@ -418,6 +564,7 @@ void VFXSequencer::Save(const std::string& sequenceName) {
 }
 
 void VFXSequencer::Load(const std::string& sequenceName) {
+    sequenceName_ = sequenceName;
     std::string filepath = std::string(kSequenceDirectory) + sequenceName + ".json";
     std::filesystem::file_time_type currentWriteTime{};
     bool hasWriteTime = false;
@@ -429,6 +576,7 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     } catch (const std::filesystem::filesystem_error&) {
         hasWriteTime = false;
     }
+    Reset();
 
     auto& cache = SequenceEventCache();
     auto& writeTimeCache = SequenceWriteTimeCache();
@@ -450,7 +598,14 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     }
 
     std::ifstream file(filepath);
-    if (!file.is_open()) return;
+    if (!file.is_open()) {
+        TraceSequence(
+            GameplayEventTracePhase::Failed,
+            sequenceName,
+            targetObject_,
+            "Sequence JSONを開けません");
+        return;
+    }
 
     json root;
     file >> root;
@@ -460,11 +615,8 @@ void VFXSequencer::Load(const std::string& sequenceName) {
         for (const auto& eventJson : root["events"]) {
             VFXEvent event;
             int type = eventJson.value("type", static_cast<int>(VFXEventType::GPUParticle));
-            type = std::clamp(type, static_cast<int>(VFXEventType::GPUParticle), static_cast<int>(VFXEventType::LightPulse));
+            type = std::clamp(type, static_cast<int>(VFXEventType::GPUParticle), static_cast<int>(VFXEventType::CameraFovPulse));
             event.type = static_cast<VFXEventType>(type);
-            if (event.type == VFXEventType::PostEffectPulse) {
-                continue;
-            }
             event.presetName = eventJson.value("presetName", std::string{});
             event.triggerTime = eventJson.value("triggerTime", 0.0f);
             event.offset = eventJson.contains("offset") ? ReadVector3(eventJson["offset"], event.offset) : event.offset;
@@ -478,7 +630,9 @@ void VFXSequencer::Load(const std::string& sequenceName) {
             event.frequency = eventJson.value("frequency", 24.0f);
             event.radialIntensity = eventJson.value("radialIntensity", 0.0f);
             event.damageFlash = eventJson.value("damageFlash", 0.0f);
+            event.secondaryIntensity = eventJson.value("secondaryIntensity", 0.7f);
             event.chromaticAberration = eventJson.value("chromaticAberration", 0.0f);
+            event.attackRatio = eventJson.value("attackRatio", 0.12f);
             event.wobbleIntensity = eventJson.value("wobbleIntensity", 0.0f);
             event.bloomIntensity = eventJson.value("bloomIntensity", 0.0f);
             event.lightRadius = eventJson.value("lightRadius", 9.0f);
@@ -497,6 +651,13 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     }
     Reset();
 
+    if (events_.empty()) {
+        TraceSequence(
+            GameplayEventTracePhase::Warning,
+            sequenceName,
+            targetObject_,
+            "再生可能なEventがありません");
+    }
     if (DebugConsole::GetInstance()) {
         DebugConsole::GetInstance()->AddLog("Loaded VFX Sequence: " + sequenceName);
     }
@@ -515,6 +676,11 @@ void VFXSequencer::PlayOneShot(const std::string& sequenceName, const Vector3& p
     sequence->Initialize(nullptr);
     sequence->Load(sequenceName);
     if (sequence->GetEvents().empty()) {
+        TraceSequence(
+            GameplayEventTracePhase::Warning,
+            sequenceName,
+            nullptr,
+            "OneShotを開始できません: Eventがありません");
         return;
     }
 
@@ -541,6 +707,11 @@ void VFXSequencer::PlayOneShotOnTarget(
     const Vector3& scale,
     const Vector3& rotation) {
     if (!targetObject) {
+        TraceSequence(
+            GameplayEventTracePhase::Failed,
+            sequenceName,
+            nullptr,
+            "Target Objectがnullです");
         return;
     }
 
@@ -548,6 +719,11 @@ void VFXSequencer::PlayOneShotOnTarget(
     sequence->Initialize(targetObject);
     sequence->Load(sequenceName);
     if (sequence->GetEvents().empty()) {
+        TraceSequence(
+            GameplayEventTracePhase::Warning,
+            sequenceName,
+            targetObject,
+            "Target OneShotを開始できません: Eventがありません");
         return;
     }
 
@@ -577,5 +753,42 @@ void VFXSequencer::UpdateOneShots(float deltaTime) {
 }
 
 void VFXSequencer::ClearOneShots() {
+    for (auto& sequence : ActiveOneShotSequences()) {
+        if (sequence) {
+            sequence->Stop();
+        }
+    }
     ActiveOneShotSequences().clear();
+    ActiveHitStops().clear();
+    gameplayTimeScale = 1.0f;
+    InputManager::GetInstance()->StopRumble();
+}
+
+void VFXSequencer::RequestHitStop(float duration, float timeScale) {
+    if (duration <= 0.0f) {
+        return;
+    }
+    ActiveHitStops().push_back({ duration, std::clamp(timeScale, 0.0f, 1.0f) });
+}
+
+void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
+    const float timeStep = (std::max)(unscaledDeltaTime, 0.0f);
+    auto& layers = ActiveHitStops();
+    for (HitStopLayer& layer : layers) {
+        layer.remaining -= timeStep;
+    }
+    layers.erase(
+        std::remove_if(layers.begin(), layers.end(), [](const HitStopLayer& layer) {
+            return layer.remaining <= 0.0f;
+        }),
+        layers.end());
+
+    gameplayTimeScale = 1.0f;
+    for (const HitStopLayer& layer : layers) {
+        gameplayTimeScale = (std::min)(gameplayTimeScale, layer.timeScale);
+    }
+}
+
+float VFXSequencer::GetGameplayTimeScale() {
+    return gameplayTimeScale;
 }

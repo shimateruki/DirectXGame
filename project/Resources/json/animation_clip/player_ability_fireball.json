@@ -1,0 +1,108 @@
+{
+  "version": 2,
+  "name": "player_ability_fireball",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.58,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.15,
+      "translate": [
+        0,
+        -0.14,
+        -0.24
+      ],
+      "rotate": [
+        0.16,
+        0,
+        -0.04
+      ],
+      "scale": [
+        1.2,
+        0.7,
+        1.12
+      ],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.25,
+      "translate": [
+        0,
+        0.11,
+        0.32
+      ],
+      "rotate": [
+        -0.2,
+        0,
+        0.05
+      ],
+      "scale": [
+        0.76,
+        1.38,
+        1.16
+      ],
+      "easingToNext": 1
+    },
+    {
+      "time": 0.42,
+      "translate": [
+        0,
+        0.02,
+        0.1
+      ],
+      "rotate": [
+        -0.06,
+        0,
+        -0.02
+      ],
+      "scale": [
+        0.94,
+        1.08,
+        1.02
+      ],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.58,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

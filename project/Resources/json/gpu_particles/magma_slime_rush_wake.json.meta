@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "213e9448ce1f41f29602d3a55fd97212",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/magma_slime_rush_wake.json",
+  "version": 1
+}

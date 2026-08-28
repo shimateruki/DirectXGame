@@ -1,6 +1,8 @@
 #define NOMINMAX
 #include "PlayerSlimeAnimator.h"
 #include "Player.h"
+#include "VFXSequencer.h"
+#include "GameplayEventTrace.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #include <algorithm>
 #include <cmath>
@@ -27,7 +29,7 @@ float HorizontalLength(const Vector3& v) {
 
 }
 
-void PlayerSlimeAnimator::Reset(const Vector3& baseScale)
+void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player)
 {
     if (!controllerLoaded_) {
         ReloadController();
@@ -37,9 +39,12 @@ void PlayerSlimeAnimator::Reset(const Vector3& baseScale)
     modeTimer_ = 0.0f;
     jumpChargeRate_ = 0.0f;
     pullProgress_ = 0.0f;
+    abilityPose_ = AbilityPose::None;
+    abilityPoseStrength_ = 0.0f;
     impulseTimer_ = 0.0f;
     impulseDuration_ = 0.0f;
     impulseScale_ = baseScale_;
+    ClearAbilityMotion(player);
     modeTransitionTimer_ = 0.0f;
     modeTransitionCapturePending_ = false;
     modeTransitionStartScale_ = baseScale_;
@@ -97,11 +102,72 @@ void PlayerSlimeAnimator::SetJumpCharge(float chargeRate)
     jumpChargeRate_ = std::clamp(chargeRate, 0.0f, 1.0f);
 }
 
+void PlayerSlimeAnimator::SetAbilityPose(AbilityPose pose, float strength)
+{
+    abilityPose_ = pose;
+    abilityPoseStrength_ = std::clamp(strength, 0.0f, 1.0f);
+}
+
 void PlayerSlimeAnimator::TriggerImpulse(const Vector3& scale, float duration)
 {
     impulseScale_ = scale;
     impulseDuration_ = (std::max)(duration, 0.01f);
     impulseTimer_ = impulseDuration_;
+}
+
+bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool loop,
+    float playbackSpeed, float blendInDuration, float blendOutDuration)
+{
+    if (clipName.empty()) {
+        return false;
+    }
+    if (abilityMotionActive_ && abilityMotionName_ == clipName && !abilityMotionStopping_) {
+        abilityMotionLoop_ = loop;
+        abilityMotionPlaybackSpeed_ = (std::max)(playbackSpeed, 0.01f);
+        return true;
+    }
+
+    BodyAnimationClip clip;
+    if (!clip.Load(BodyAnimationClip::ResolveAssetPath(clipName))) {
+        return false;
+    }
+    abilityMotionClip_ = std::move(clip);
+    abilityMotionName_ = clipName;
+    abilityMotionTimer_ = 0.0f;
+    abilityMotionPlaybackSpeed_ = (std::max)(playbackSpeed, 0.01f);
+    abilityMotionBlendInDuration_ = (std::max)(blendInDuration, 0.01f);
+    abilityMotionBlendOutDuration_ = (std::max)(blendOutDuration, 0.01f);
+    abilityMotionStopTimer_ = 0.0f;
+    abilityMotionStopDuration_ = 0.0f;
+    abilityMotionActive_ = true;
+    abilityMotionLoop_ = loop;
+    abilityMotionStopping_ = false;
+    return true;
+}
+
+void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration)
+{
+    if (!abilityMotionActive_) {
+        return;
+    }
+    abilityMotionStopDuration_ = (std::max)(blendOutDuration, 0.01f);
+    abilityMotionStopTimer_ = abilityMotionStopDuration_;
+    abilityMotionStopping_ = true;
+}
+
+void PlayerSlimeAnimator::ClearAbilityMotion(Player* player)
+{
+    abilityMotionClip_.Clear();
+    abilityMotionName_.clear();
+    abilityMotionTimer_ = 0.0f;
+    abilityMotionStopTimer_ = 0.0f;
+    abilityMotionStopDuration_ = 0.0f;
+    abilityMotionActive_ = false;
+    abilityMotionLoop_ = false;
+    abilityMotionStopping_ = false;
+    if (player && player->GetMeshRenderer()) {
+        player->GetMeshRenderer()->ResetVisualTransform();
+    }
 }
 
 void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
@@ -117,7 +183,23 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     }
 
     if (controllerLoaded_) {
-        controllerRuntime_.Update(deltaTime, [](const std::string&) { return 0.0f; });
+        // 従来どおりmodeTimer_は連続時間のまま進め、EventだけStateのTimeline Durationを使います。
+        controllerRuntime_.Update(deltaTime, [](const AnimatorStateDefinition&) { return 0.0f; });
+        for (const AnimatorEventInstance& event : controllerRuntime_.ConsumeEvents()) {
+            if (event.name == "FeedbackCue" && !event.payload.empty()) {
+                std::string traceSource = player->GetName();
+                if (!player->GetPersistentGuid().empty()) {
+                    traceSource += " [" + player->GetPersistentGuid() + "]";
+                }
+                GameplayEventTrace::GetInstance()->Record(
+                    GameplayEventTracePhase::Requested,
+                    "Animation Event",
+                    std::move(traceSource),
+                    event.payload,
+                    event.name);
+                VFXSequencer::PlayOneShotOnTarget(event.payload, player);
+            }
+        }
         modeTimer_ = controllerRuntime_.GetStateTime();
     } else {
         modeTimer_ += deltaTime;
@@ -148,7 +230,8 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
 
     Vector3 targetScale;
     Vector3 targetRotation;
-    const bool usesAuthoredBodyClip = TryBuildAuthoredBodyPose(player, targetScale, targetRotation);
+    Vector3 visualOffset{};
+    const bool usesAuthoredBodyClip = TryBuildAuthoredBodyPose(player, targetScale, targetRotation, visualOffset);
     if (!usesAuthoredBodyClip) {
         targetScale = BuildModeScale(player, deltaTime);
         targetRotation = BuildModeRotation(player);
@@ -178,6 +261,18 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
             Math::Lerp(targetScale.z, impulseScale_.z, rate)
         };
     }
+
+    ApplyAbilityPose(targetScale, targetRotation);
+
+    Vector3 abilityVisualScale{ 1.0f, 1.0f, 1.0f };
+    Vector3 abilityVisualRotation{};
+    UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset);
+    if (player->GetMeshRenderer()) {
+        player->GetMeshRenderer()->SetVisualTransform(abilityVisualScale, abilityVisualRotation, visualOffset);
+    }
+    // 能力側が毎フレーム更新した時だけ専用姿勢を維持し、解除後の姿勢残りを防ぎます。
+    abilityPose_ = AbilityPose::None;
+    abilityPoseStrength_ = 0.0f;
 
     const bool landingActive = landingSquashTimer_ > 0.0f || landingReboundTimer_ > 0.0f;
     const bool controllerTransition = controllerLoaded_ && controllerRuntime_.IsTransitioning();
@@ -220,6 +315,89 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     player->UpdateWorldMatrix();
 }
 
+void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) const
+{
+    const float strength = std::clamp(abilityPoseStrength_, 0.0f, 1.0f);
+    if (abilityPose_ == AbilityPose::None || strength <= 0.0f) {
+        return;
+    }
+
+    switch (abilityPose_) {
+    case AbilityPose::Guard: {
+        const float bracePulse = std::sin(modeTimer_ * 17.0f) * 0.035f * strength;
+        const float shellWobble = std::sin(modeTimer_ * 8.5f) * 0.022f * strength;
+        scale.x *= 1.0f + (0.34f + bracePulse) * strength;
+        scale.y *= 1.0f - (0.30f + std::abs(bracePulse) * 0.55f) * strength;
+        scale.z *= 1.0f + (0.30f - bracePulse * 0.55f) * strength;
+        rotation.x *= 1.0f - strength * 0.82f;
+        rotation.z = Math::Lerp(rotation.z, shellWobble, strength);
+        break;
+    }
+    case AbilityPose::BlazeDash: {
+        const float flameFlutter = std::sin(modeTimer_ * 54.0f) * 0.045f * strength;
+        scale.x *= 1.0f - (0.18f - flameFlutter) * strength;
+        scale.y *= 1.0f - (0.22f + std::abs(flameFlutter) * 0.45f) * strength;
+        scale.z *= 1.0f + (0.38f - flameFlutter) * strength;
+        rotation.x += -motionDirection_.z * 0.13f * strength;
+        rotation.z += motionDirection_.x * 0.13f * strength;
+        break;
+    }
+    case AbilityPose::SlowFall: {
+        const float canopyWave = std::sin(modeTimer_ * 9.0f) * 0.055f * strength;
+        const float sideWave = std::cos(modeTimer_ * 6.5f) * 0.035f * strength;
+        scale.x *= 1.0f + (0.34f + canopyWave) * strength;
+        scale.y *= 1.0f - (0.28f + std::abs(canopyWave) * 0.35f) * strength;
+        scale.z *= 1.0f + (0.31f - canopyWave * 0.65f) * strength;
+        rotation.x = Math::Lerp(rotation.x, canopyWave * 0.65f, strength);
+        rotation.z = Math::Lerp(rotation.z, sideWave, strength);
+        break;
+    }
+    case AbilityPose::None:
+    default:
+        break;
+    }
+}
+
+void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualScale,
+    Vector3& visualRotation, Vector3& visualOffset)
+{
+    if (!abilityMotionActive_ || !abilityMotionClip_.IsValid()) {
+        return;
+    }
+
+    abilityMotionTimer_ += deltaTime * abilityMotionPlaybackSpeed_;
+    const float clipDuration = abilityMotionClip_.GetDuration();
+    BodyAnimationClip::Sample sample;
+    if (!abilityMotionClip_.Evaluate(abilityMotionTimer_, abilityMotionLoop_, sample)) {
+        ClearAbilityMotion();
+        return;
+    }
+
+    float weight = std::clamp(abilityMotionTimer_ / abilityMotionBlendInDuration_, 0.0f, 1.0f);
+    if (abilityMotionStopping_) {
+        abilityMotionStopTimer_ = (std::max)(0.0f, abilityMotionStopTimer_ - deltaTime);
+        weight *= abilityMotionStopTimer_ / (std::max)(abilityMotionStopDuration_, 0.01f);
+    }
+    else if (!abilityMotionLoop_) {
+        const float remainingSeconds = (std::max)(0.0f, clipDuration - abilityMotionTimer_) /
+            (std::max)(abilityMotionPlaybackSpeed_, 0.01f);
+        weight *= std::clamp(remainingSeconds / abilityMotionBlendOutDuration_, 0.0f, 1.0f);
+    }
+
+    visualScale = {
+        Math::Lerp(1.0f, sample.scale.x, weight),
+        Math::Lerp(1.0f, sample.scale.y, weight),
+        Math::Lerp(1.0f, sample.scale.z, weight)
+    };
+    visualRotation = sample.rotate * weight;
+    visualOffset += sample.translate * weight;
+
+    if ((abilityMotionStopping_ && abilityMotionStopTimer_ <= 0.0f) ||
+        (!abilityMotionLoop_ && abilityMotionTimer_ >= clipDuration)) {
+        ClearAbilityMotion();
+    }
+}
+
 bool PlayerSlimeAnimator::ReloadController()
 {
     AnimatorControllerAsset asset;
@@ -259,7 +437,8 @@ void PlayerSlimeAnimator::ReloadBodyClips()
 bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(
     Player* player,
     Vector3& scaleOut,
-    Vector3& rotationOut) const
+    Vector3& rotationOut,
+    Vector3& visualOffsetOut) const
 {
     if (!player || !controllerLoaded_) {
         return false;
@@ -307,6 +486,8 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(
         proceduralRotation.y + sample.rotate.y,
         proceduralRotation.z + sample.rotate.z
     };
+    // 位置キーは物理座標ではなく描画専用Transformへ渡します。
+    visualOffsetOut = sample.translate;
     return true;
 }
 

@@ -50,8 +50,10 @@ constexpr Vector3 kEnemyDropCoinScale = { 0.055f, 0.055f, 0.014f };
 constexpr float kEnemyDropCoinWorldCollectRadius = 0.50f;
 constexpr float kEnemyDropCoinLifetime = 8.0f;
 constexpr float kEnemyDropCoinBlinkStart = 2.2f;
-constexpr const char* kEnemyNoticeMarkModel = "GeneratedText/text3d_240c8dec";
+constexpr const char* kEnemyDetectedMarkModel = "GeneratedText/text3d_240c8dec";
+constexpr const char* kEnemyLostMarkModel = "GeneratedText/text3d_3a0cb08e";
 constexpr float kEnemyNoticeDuration = 0.36f;
+constexpr float kEnemyLostDuration = 1.55f;
 constexpr float kEnemyNoticeCooldown = 1.25f;
 constexpr float kDamageReactionMinDuration = 0.22f;
 constexpr float kDamageReactionMaxDuration = 0.34f;
@@ -95,6 +97,10 @@ float NextDropRandom(uint32_t& seed) {
 }
 
 int GetCoinDropCountByEnemyType(const std::string& enemyType) {
+    // Stage 3のボス報酬は専用王冠だけに絞り、通常コインで勝利演出を散らしません。
+    if (enemyType == "FalseKingSlime") {
+        return 0;
+    }
     if (enemyType == "PrismSlime") {
         return 12;
     }
@@ -128,8 +134,10 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     hasSpawnedDefeatCoinDrops_ = false;
     wasTargetDetected_ = false;
     isNoticeReactionActive_ = false;
+    noticeReactionKind_ = NoticeReactionKind::None;
     noticeReactionTimer_ = 0.0f;
     noticeReactionCooldown_ = 0.0f;
+    noticeDetectionRange_ = detectionRange_;
     noticeMarkYaw_ = 0.0f;
     damageReactionTimer_ = 0.0f;
     damageReactionDuration_ = 0.0f;
@@ -665,7 +673,7 @@ void BaseEnemy::EnsureNoticeMarkObject() {
     noticeMarkObject_->Initialize(common_);
     noticeMarkObject_->SetName("__EnemyNoticeMark");
     noticeMarkObject_->SetClassName("Effect");
-    noticeMarkObject_->SetModel(kEnemyNoticeMarkModel);
+    noticeMarkObject_->SetModel(kEnemyDetectedMarkModel);
     noticeMarkObject_->SetTexture("Resources/sprite/common/white.png");
     noticeMarkObject_->SetMaterialType(0);
     noticeMarkObject_->SetBlendMode(BlendMode::kNormal);
@@ -676,28 +684,60 @@ void BaseEnemy::EnsureNoticeMarkObject() {
     noticeMarkObject_->SetIsVisible(false);
 }
 
-void BaseEnemy::BeginNoticeReaction() {
+void BaseEnemy::ConfigureNoticeMarkForReaction() {
+    EnsureNoticeMarkObject();
+    if (!noticeMarkObject_) {
+        return;
+    }
+
+    const bool isLost = noticeReactionKind_ == NoticeReactionKind::Lost;
+    noticeMarkObject_->SetModel(isLost ? kEnemyLostMarkModel : kEnemyDetectedMarkModel);
+    noticeMarkObject_->SetColor(isLost
+        ? Vector4{ 0.30f, 0.90f, 1.0f, 1.0f }
+        : Vector4{ 1.0f, 0.88f, 0.16f, 1.0f });
+    noticeMarkObject_->SetEmissive(isLost ? 4.4f : 4.0f);
+}
+
+void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
+    if (kind == NoticeReactionKind::None) {
+        return;
+    }
+    if (isNoticeReactionActive_) {
+        EndNoticeReaction(true);
+    }
+
     noticeBaseScale_ = GetScale();
+    noticeBaseRotation_ = GetRotation();
     noticeBaseColor_ = GetColor();
     isNoticeReactionActive_ = true;
-    noticeReactionTimer_ = kEnemyNoticeDuration;
-    noticeReactionCooldown_ = kEnemyNoticeCooldown;
+    noticeReactionKind_ = kind;
+    noticeReactionTimer_ = kind == NoticeReactionKind::Lost ? kEnemyLostDuration : kEnemyNoticeDuration;
+    if (kind == NoticeReactionKind::Detected) {
+        noticeReactionCooldown_ = kEnemyNoticeCooldown;
+    }
     noticeMarkYaw_ = 0.0f;
 
     SetVelocity({ 0.0f, 0.0f, 0.0f });
-    TriggerAttackTelegraphCue({ 1.0f, 0.82f, 0.12f, 0.9f });
-    EnsureNoticeMarkObject();
+    TriggerAttackTelegraphCue(kind == NoticeReactionKind::Lost
+        ? Vector4{ 0.20f, 0.82f, 1.0f, 0.82f }
+        : Vector4{ 1.0f, 0.82f, 0.12f, 0.9f });
+    ConfigureNoticeMarkForReaction();
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(true);
     }
 }
 
 void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
+    const NoticeReactionKind finishedKind = noticeReactionKind_;
     if (restoreVisual && isNoticeReactionActive_) {
         SetScale(noticeBaseScale_);
+        if (finishedKind == NoticeReactionKind::Lost) {
+            SetRotation(noticeBaseRotation_);
+        }
     }
 
     isNoticeReactionActive_ = false;
+    noticeReactionKind_ = NoticeReactionKind::None;
     noticeReactionTimer_ = 0.0f;
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(false);
@@ -708,6 +748,7 @@ void BaseEnemy::CancelNoticeReaction() {
     EndNoticeReaction(true);
     wasTargetDetected_ = false;
     noticeReactionCooldown_ = 0.0f;
+    noticeDetectionRange_ = detectionRange_;
 }
 
 void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
@@ -717,63 +758,109 @@ void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
     }
 
     const float bodyScale = MaxAbsScaleComponent(GetScale());
-    const float pop = 1.0f + std::sin((std::clamp)(progress / 0.55f, 0.0f, 1.0f) * kWanderPi) * 0.34f;
-    const float hover = std::sin(progress * kWanderPi * 2.0f) * 0.18f;
+    const bool isLost = noticeReactionKind_ == NoticeReactionKind::Lost;
+    const float pop = 1.0f + std::sin((std::clamp)(progress / (isLost ? 0.32f : 0.55f), 0.0f, 1.0f) * kWanderPi) * 0.34f;
+    const float hover = std::sin(progress * kWanderPi * (isLost ? 4.0f : 2.0f)) * (isLost ? 0.12f : 0.18f);
     const float markScale = (std::clamp)(bodyScale * 0.34f, 0.32f, 1.15f) * pop;
 
     Vector3 position = GetWorldPosition();
     position.y += (std::clamp)(bodyScale * 1.45f, 1.10f, 4.80f) + hover;
-    noticeMarkYaw_ += deltaTime * 1.6f;
+    noticeMarkYaw_ += deltaTime * (isLost ? 0.75f : 1.6f);
 
     noticeMarkObject_->SetTranslate(position);
     noticeMarkObject_->SetScale({ markScale, markScale, markScale });
     noticeMarkObject_->SetRotation({ 0.0f, noticeMarkYaw_, 0.0f });
-    noticeMarkObject_->SetColor({ 1.0f, 0.82f + std::sin(progress * kWanderPi) * 0.14f, 0.12f, 1.0f });
+    noticeMarkObject_->SetColor(isLost
+        ? Vector4{ 0.24f, 0.82f + std::sin(progress * kWanderPi) * 0.16f, 1.0f, 1.0f }
+        : Vector4{ 1.0f, 0.82f + std::sin(progress * kWanderPi) * 0.14f, 0.12f, 1.0f });
     noticeMarkObject_->SetIsVisible(true);
     noticeMarkObject_->UpdateLocalMatrix();
     noticeMarkObject_->UpdateWorldMatrix();
 }
 
 bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection) {
+    (void)deltaTime;
     (void)targetDirection;
 
-    noticeReactionCooldown_ = (std::max)(0.0f, noticeReactionCooldown_ - deltaTime);
-    const bool detected = target_ && targetDistance <= (std::max)(0.0f, detectRange);
+    noticeDetectionRange_ = (std::max)(0.0f, detectRange);
+    const bool detected = target_ && targetDistance <= noticeDetectionRange_;
     if (!detected) {
-        wasTargetDetected_ = false;
-        if (!isNoticeReactionActive_ && noticeMarkObject_) {
-            noticeMarkObject_->SetIsVisible(false);
-        }
+        // 見失いへの遷移は、固有AIの状態に左右されない共通Updateで一度だけ処理します。
         return isNoticeReactionActive_;
     }
 
-    if (!wasTargetDetected_ && !isNoticeReactionActive_ && noticeReactionCooldown_ <= 0.0f) {
-        BeginNoticeReaction();
+    if (!wasTargetDetected_) {
+        if (noticeReactionKind_ == NoticeReactionKind::Lost ||
+            (!isNoticeReactionActive_ && noticeReactionCooldown_ <= 0.0f)) {
+            BeginNoticeReaction(NoticeReactionKind::Detected);
+        }
+        wasTargetDetected_ = true;
     }
-    wasTargetDetected_ = true;
+    return isNoticeReactionActive_;
+}
 
+void BaseEnemy::UpdateNoticeAwareness(float deltaTime) {
+    noticeReactionCooldown_ = (std::max)(0.0f, noticeReactionCooldown_ - deltaTime);
+
+    const bool detected = target_ &&
+        PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) <= (std::max)(0.0f, noticeDetectionRange_);
+
+    if (wasTargetDetected_ && !detected) {
+        wasTargetDetected_ = false;
+        BeginNoticeReaction(NoticeReactionKind::Lost);
+    } else if (!wasTargetDetected_ && detected && noticeReactionKind_ == NoticeReactionKind::Lost) {
+        // 見渡している最中に再発見した場合は、疑問符を残さず感知リアクションへ切り替えます。
+        wasTargetDetected_ = true;
+        BeginNoticeReaction(NoticeReactionKind::Detected);
+    }
+
+    UpdateNoticeReactionAnimation(deltaTime);
+}
+
+void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
     if (!isNoticeReactionActive_) {
-        return false;
+        return;
     }
 
+    const float duration = noticeReactionKind_ == NoticeReactionKind::Lost
+        ? kEnemyLostDuration
+        : kEnemyNoticeDuration;
     noticeReactionTimer_ = (std::max)(0.0f, noticeReactionTimer_ - deltaTime);
-    const float progress = 1.0f - (noticeReactionTimer_ / kEnemyNoticeDuration);
+    const float progress = 1.0f - noticeReactionTimer_ / duration;
     const float clampedProgress = (std::clamp)(progress, 0.0f, 1.0f);
-    const float squash = std::sin(clampedProgress * kWanderPi);
-    const float hopPop = std::sin(clampedProgress * kWanderPi * 2.0f) * 0.035f;
 
     SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetScale({
-        noticeBaseScale_.x * (1.0f + squash * 0.10f - hopPop),
-        noticeBaseScale_.y * (1.0f + squash * 0.12f + hopPop),
-        noticeBaseScale_.z * (1.0f + squash * 0.10f - hopPop)
-    });
-    UpdateNoticeMark(deltaTime, clampedProgress);
+    if (noticeReactionKind_ == NoticeReactionKind::Lost) {
+        const float rampIn = (std::clamp)(clampedProgress / 0.12f, 0.0f, 1.0f);
+        const float rampOut = (std::clamp)((1.0f - clampedProgress) / 0.15f, 0.0f, 1.0f);
+        const float envelope = (std::min)(rampIn, rampOut);
+        const float lookYaw = std::sin(clampedProgress * kWanderPi * 3.0f) * 0.62f * envelope;
+        const float searchPulse = std::sin(clampedProgress * kWanderPi * 6.0f) * envelope;
 
+        SetRotation({
+            noticeBaseRotation_.x,
+            noticeBaseRotation_.y + lookYaw,
+            noticeBaseRotation_.z - lookYaw * 0.10f
+        });
+        SetScale({
+            noticeBaseScale_.x * (1.0f + std::abs(searchPulse) * 0.035f),
+            noticeBaseScale_.y * (1.0f - std::abs(searchPulse) * 0.025f),
+            noticeBaseScale_.z * (1.0f + std::abs(searchPulse) * 0.035f)
+        });
+    } else {
+        const float squash = std::sin(clampedProgress * kWanderPi);
+        const float hopPop = std::sin(clampedProgress * kWanderPi * 2.0f) * 0.035f;
+        SetScale({
+            noticeBaseScale_.x * (1.0f + squash * 0.10f - hopPop),
+            noticeBaseScale_.y * (1.0f + squash * 0.12f + hopPop),
+            noticeBaseScale_.z * (1.0f + squash * 0.10f - hopPop)
+        });
+    }
+
+    UpdateNoticeMark(deltaTime, clampedProgress);
     if (noticeReactionTimer_ <= 0.0f) {
         EndNoticeReaction(true);
     }
-    return true;
 }
 
 // HPが尽きた時の共通撃破演出
@@ -1100,6 +1187,9 @@ void BaseEnemy::Update(float deltaTime) {
     if (param_.has_value()) {
         detectionRange_ = param_->detectionRange;
     }
+
+    // 固有AIが追跡・攻撃状態へ移っていても、範囲外への遷移と見渡しを共通で更新します。
+    UpdateNoticeAwareness(deltaTime);
 
     if (isThrownPhysics_) {
         UpdateThrownPhysics(deltaTime);

@@ -903,7 +903,7 @@ void DebugEditor::DuplicateSelected() {
     RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
         // 自分自身、カーソル、非表示のものは無視
-        if (obj.get() == selectedObject_ || obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        if (obj.get() == selectedObject_ || obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
 
         Matrix4x4 wm = obj->GetWorldMatrix();
         Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };

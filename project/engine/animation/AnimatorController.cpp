@@ -75,15 +75,25 @@ bool AnimatorControllerAsset::Save(const std::string& filePath) const {
         });
     }
     for (const auto& state : states) {
-        root["states"].push_back({
+        json stateJson = {
             { "name", state.name },
             { "clipName", state.clipName },
             { "bodyClipName", state.bodyClipName },
             { "speed", state.speed },
             { "loop", state.loop },
             { "blendDuration", state.blendDuration },
-            { "blendEasing", state.blendEasing }
-        });
+            { "blendEasing", state.blendEasing },
+            { "eventTimelineDuration", state.eventTimelineDuration },
+            { "events", json::array() }
+        };
+        for (const auto& event : state.events) {
+            stateJson["events"].push_back({
+                { "name", event.name },
+                { "payload", event.payload },
+                { "normalizedTime", event.normalizedTime }
+            });
+        }
+        root["states"].push_back(stateJson);
     }
     for (const auto& transition : transitions) {
         json item = {
@@ -147,6 +157,14 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
             state.loop = item.value("loop", true);
             state.blendDuration = item.value("blendDuration", 0.12f);
             state.blendEasing = item.value("blendEasing", 4);
+            state.eventTimelineDuration = (std::max)(item.value("eventTimelineDuration", 1.0f), 0.01f);
+            for (const auto& eventItem : item.value("events", json::array())) {
+                AnimatorEventDefinition event;
+                event.name = eventItem.value("name", "FeedbackCue");
+                event.payload = eventItem.value("payload", "");
+                event.normalizedTime = std::clamp(eventItem.value("normalizedTime", 0.0f), 0.0f, 1.0f);
+                state.events.push_back(event);
+            }
             states.push_back(state);
         }
         for (const auto& item : root.value("transitions", json::array())) {
@@ -190,10 +208,12 @@ void AnimatorControllerRuntime::Reset(bool playEntryState) {
     transitionElapsed_ = 0.0f;
     transitionDuration_ = 0.0f;
     transitionEasing_ = 4;
+    pendingEvents_.clear();
     InitializeParameters();
     if (playEntryState && controller_) {
         const int entryIndex = controller_->FindStateIndex(controller_->entryState);
         currentStateIndex_ = entryIndex >= 0 ? entryIndex : (controller_->states.empty() ? -1 : 0);
+        QueueEntryEvents(GetCurrentState());
     }
 }
 
@@ -203,6 +223,13 @@ void AnimatorControllerRuntime::Update(float deltaTime, const DurationResolver& 
     }
 
     const AnimatorStateDefinition* current = GetCurrentState();
+    const float previousCurrentTime = currentTime_;
+    const float speed = current ? std::max(0.0f, current->speed) : 0.0f;
+    const float clipDuration = ResolveStateDuration(current, durationResolver);
+    const float eventDuration = clipDuration > 0.0f
+        ? clipDuration
+        : (current ? (std::max)(current->eventTimelineDuration, 0.01f) : 0.0f);
+    CollectCrossedEvents(current, previousCurrentTime, previousCurrentTime + deltaTime * speed, eventDuration);
     AdvanceStateTime(currentTime_, current, deltaTime, durationResolver);
     if (IsTransitioning()) {
         AdvanceStateTime(previousTime_, GetPreviousState(), deltaTime, durationResolver);
@@ -238,6 +265,8 @@ bool AnimatorControllerRuntime::Play(const std::string& stateName, float timeSec
     previousTime_ = 0.0f;
     transitionElapsed_ = 0.0f;
     transitionDuration_ = 0.0f;
+    pendingEvents_.clear();
+    if (currentTime_ <= 0.0001f) QueueEntryEvents(GetCurrentState());
     return true;
 }
 
@@ -274,6 +303,7 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
         previousStateIndex_ = -1;
         previousTime_ = 0.0f;
     }
+    QueueEntryEvents(GetCurrentState());
     return true;
 }
 
@@ -302,6 +332,17 @@ float AnimatorControllerRuntime::GetTransitionWeight() const {
     }
     const float rate = std::clamp(transitionElapsed_ / std::max(transitionDuration_, 0.0001f), 0.0f, 1.0f);
     return AnimationInterpolation::ApplyEasing(rate, ToEasing(transitionEasing_));
+}
+
+void AnimatorControllerRuntime::SetCurrentTime(float timeSeconds) {
+    currentTime_ = std::max(0.0f, timeSeconds);
+    pendingEvents_.clear();
+}
+
+std::vector<AnimatorEventInstance> AnimatorControllerRuntime::ConsumeEvents() {
+    std::vector<AnimatorEventInstance> result;
+    result.swap(pendingEvents_);
+    return result;
 }
 
 void AnimatorControllerRuntime::SetFloat(const std::string& name, float value) { floatParameters_[name] = value; }
@@ -357,6 +398,7 @@ void AnimatorControllerRuntime::RestoreSnapshot(const Snapshot& snapshot) {
     transitionElapsed_ = snapshot.transitionElapsed;
     transitionDuration_ = snapshot.transitionDuration;
     transitionEasing_ = snapshot.transitionEasing;
+    pendingEvents_.clear();
 }
 
 void AnimatorControllerRuntime::InitializeParameters() {
@@ -377,6 +419,65 @@ void AnimatorControllerRuntime::InitializeParameters() {
     }
 }
 
+float AnimatorControllerRuntime::ResolveStateDuration(
+    const AnimatorStateDefinition* state,
+    const DurationResolver& durationResolver) const {
+    if (!state) {
+        return 0.0f;
+    }
+    const float resolved = durationResolver ? durationResolver(*state) : 0.0f;
+    return resolved > 0.0f ? resolved : 0.0f;
+}
+
+void AnimatorControllerRuntime::QueueEntryEvents(const AnimatorStateDefinition* state) {
+    if (!state) {
+        return;
+    }
+    for (const AnimatorEventDefinition& event : state->events) {
+        if (event.normalizedTime <= 0.0001f) {
+            pendingEvents_.push_back({ state->name, event.name, event.payload, event.normalizedTime });
+        }
+    }
+}
+
+void AnimatorControllerRuntime::CollectCrossedEvents(
+    const AnimatorStateDefinition* state,
+    float previousTime,
+    float rawNewTime,
+    float duration) {
+    if (!state || state->events.empty() || duration <= 0.0f || rawNewTime <= previousTime) {
+        return;
+    }
+
+    std::vector<const AnimatorEventDefinition*> sortedEvents;
+    sortedEvents.reserve(state->events.size());
+    for (const AnimatorEventDefinition& event : state->events) {
+        sortedEvents.push_back(&event);
+    }
+    std::stable_sort(sortedEvents.begin(), sortedEvents.end(), [](const auto* lhs, const auto* rhs) {
+        return lhs->normalizedTime < rhs->normalizedTime;
+    });
+
+    constexpr float kEventTimeEpsilon = 0.00001f;
+    const int lastLoop = state->loop ? static_cast<int>(std::floor(rawNewTime / duration)) : 0;
+    const int firstLoop = state->loop ? (std::max)(0, static_cast<int>(std::floor(previousTime / duration))) : 0;
+    const float clampedEndTime = state->loop ? rawNewTime : (std::min)(rawNewTime, duration);
+    for (int loopIndex = firstLoop; loopIndex <= lastLoop; ++loopIndex) {
+        for (const AnimatorEventDefinition* event : sortedEvents) {
+            const float eventTime =
+                std::clamp(event->normalizedTime, 0.0f, 1.0f) * duration +
+                static_cast<float>(loopIndex) * duration;
+            if (eventTime > previousTime + kEventTimeEpsilon &&
+                eventTime <= clampedEndTime + kEventTimeEpsilon) {
+                pendingEvents_.push_back({ state->name, event->name, event->payload, event->normalizedTime });
+            }
+        }
+        if (!state->loop) {
+            break;
+        }
+    }
+}
+
 void AnimatorControllerRuntime::AdvanceStateTime(
     float& time,
     const AnimatorStateDefinition* state,
@@ -386,7 +487,7 @@ void AnimatorControllerRuntime::AdvanceStateTime(
         return;
     }
     time += deltaTime * std::max(0.0f, state->speed);
-    const float duration = durationResolver ? durationResolver(state->clipName) : 0.0f;
+    const float duration = ResolveStateDuration(state, durationResolver);
     if (duration <= 0.0f) {
         return;
     }
@@ -401,10 +502,10 @@ float AnimatorControllerRuntime::GetNormalizedTime(
     const AnimatorStateDefinition* state,
     float time,
     const DurationResolver& durationResolver) const {
-    if (!state || !durationResolver) {
+    if (!state) {
         return 0.0f;
     }
-    const float duration = durationResolver(state->clipName);
+    const float duration = ResolveStateDuration(state, durationResolver);
     return duration > 0.0f ? time / duration : 0.0f;
 }
 

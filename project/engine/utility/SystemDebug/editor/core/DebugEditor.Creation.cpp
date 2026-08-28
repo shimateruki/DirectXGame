@@ -443,7 +443,7 @@ void DebugEditor::DropToFloor() {
     for (auto& obj : objects) {
         if (obj.get() == selectedObject_) continue; // 自分自身は無視
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
-        if (!obj->GetIsVisible()) continue; // 非表示オブジェクトはすり抜ける
+        if (!obj->GetIsRenderVisible()) continue; // 非表示オブジェクトはすり抜ける
 
         Matrix4x4 targetWm = obj->GetWorldMatrix();
         Vector3 wp = { targetWm.m[3][0], targetWm.m[3][1], targetWm.m[3][2] };
@@ -623,7 +623,7 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     auto& objects = currentScene->GetObjects();
     RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
         Matrix4x4 wm = obj->GetWorldMatrix();
         Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
         Vector3 ws = obj->GetTransform()->scale;
@@ -707,7 +707,7 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
     auto& objects = currentScene->GetObjects();
     RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
         Matrix4x4 wm = obj->GetWorldMatrix();
         Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
         Vector3 ws = obj->GetTransform()->scale;
@@ -777,7 +777,7 @@ void DebugEditor::InstantiatePrefabAtCursor(const std::string& prefabName) {
     auto& objects = currentScene->GetObjects();
     RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
         Matrix4x4 wm = obj->GetWorldMatrix();
         Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
         Vector3 ws = obj->GetTransform()->scale;
@@ -851,7 +851,7 @@ void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
     auto& objects = currentScene->GetObjects();
     RayResult best; best.isHit = false; best.distance = 1e5f;
     for (auto& obj : objects) {
-        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsRenderVisible()) continue;
         Matrix4x4 wm = obj->GetWorldMatrix();
         Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
         Vector3 ws = obj->GetTransform()->scale;

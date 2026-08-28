@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9cab6dcb3456560d94482fecf6f7205d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_garden_oneway_platform/star_garden_oneway_platform.obj",
+  "version": 1
+}

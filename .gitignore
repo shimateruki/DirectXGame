@@ -380,6 +380,14 @@ project/output/pdf/
 portfolio_outputs/
 project_submit_removed_*/
 
+# Local executable packages and Codex workspace state
+/ExecutableSets/
+/SubmissionPackages/
+/.codex/
+/project/ExecutableSets/
+/project/SubmissionPackages/
+/project/.codex/
+
 # Local runtime save data
 project/Resources/json/save/
 

@@ -1,0 +1,18 @@
+{
+  "tool": "Text3DGenerator",
+  "text": "?",
+  "modelName": "GeneratedText/text3d_3a0cb08e",
+  "objPath": "Resources/3DModel/GeneratedText/text3d_3a0cb08e/text3d_3a0cb08e.obj",
+  "font": "M PLUS 1p",
+  "fontSize": 128.0,
+  "padding": 18.0,
+  "sampleStep": 4,
+  "alphaThreshold": 48,
+  "modelHeight": 2.2,
+  "thickness": 0.22,
+  "maskWidth": 117,
+  "maskHeight": 133,
+  "filledCells": 174,
+  "vertexCount": 1824,
+  "faceCount": 456
+}

@@ -1,7 +1,7 @@
 {
     "version": 4,
     "name": "goal_clear_timeline",
-    "duration": 5.35,
+    "duration": 5.55,
     "tracks": [],
     "cameraShots": [],
     "animationClips": [
@@ -12,7 +12,7 @@
             "driver": "GoalClearPlayer",
             "clipName": "goal_clear",
             "startTime": 0.0,
-            "duration": 5.35,
+            "duration": 5.55,
             "playbackSpeed": 1.0,
             "loop": false,
             "enabled": true,
@@ -25,8 +25,8 @@
             "targetName": "goal",
             "targetEventId": -1,
             "sequenceName": "crown_focus_cue",
-            "startTime": 0.38,
-            "duration": 1.2,
+            "startTime": 0.50,
+            "duration": 1.1,
             "enabled": true,
             "muted": false
         },
@@ -35,7 +35,7 @@
             "targetName": "goal",
             "targetEventId": -1,
             "sequenceName": "crown_get_cue",
-            "startTime": 2.3,
+            "startTime": 2.28,
             "duration": 0.1,
             "enabled": true,
             "muted": false
@@ -45,7 +45,17 @@
             "targetName": "player",
             "targetEventId": -1,
             "sequenceName": "crown_result_cue",
-            "startTime": 3.72,
+            "startTime": 3.08,
+            "duration": 0.1,
+            "enabled": true,
+            "muted": false
+        },
+        {
+            "name": "Victory Landing VFX",
+            "targetName": "player",
+            "targetEventId": -1,
+            "sequenceName": "crown_victory_land_cue",
+            "startTime": 3.46,
             "duration": 0.1,
             "enabled": true,
             "muted": false
@@ -53,9 +63,9 @@
     ],
     "audioClips": [
         {
-            "name": "Jump Stretch SE",
+            "name": "Bounce Stretch SE",
             "audioId": "slime_stretch",
-            "startTime": 2.82,
+            "startTime": 2.72,
             "duration": 0.2,
             "volume": 0.85,
             "loop": false,
@@ -65,7 +75,7 @@
     ],
     "signals": [
         {
-            "time": 0.6,
+            "time": 0.72,
             "name": "Crown Focus End",
             "signal": "goal.crown_focus_end",
             "payload": "",
@@ -74,7 +84,7 @@
             "enabled": true
         },
         {
-            "time": 0.88,
+            "time": 0.98,
             "name": "Crown Move Start",
             "signal": "goal.crown_move_start",
             "payload": "",
@@ -83,7 +93,7 @@
             "enabled": true
         },
         {
-            "time": 2.3,
+            "time": 2.28,
             "name": "Crown Land",
             "signal": "goal.crown_land",
             "payload": "",
@@ -101,8 +111,8 @@
             "enabled": true
         },
         {
-            "time": 2.82,
-            "name": "Big Jump",
+            "time": 2.72,
+            "name": "Celebration Bounce",
             "signal": "goal.jump",
             "payload": "",
             "targetName": "player",
@@ -110,8 +120,8 @@
             "enabled": true
         },
         {
-            "time": 3.72,
-            "name": "Jump Apex",
+            "time": 3.08,
+            "name": "First Bounce Apex",
             "signal": "goal.apex",
             "payload": "",
             "targetName": "player",
@@ -119,7 +129,7 @@
             "enabled": true
         },
         {
-            "time": 3.8,
+            "time": 3.1,
             "name": "Result UI",
             "signal": "goal.result",
             "payload": "",
@@ -128,7 +138,16 @@
             "enabled": true
         },
         {
-            "time": 5.35,
+            "time": 3.46,
+            "name": "First Bounce Landing",
+            "signal": "goal.victory_land",
+            "payload": "",
+            "targetName": "player",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 5.55,
             "name": "Ready To Return",
             "signal": "goal.ready",
             "payload": "",

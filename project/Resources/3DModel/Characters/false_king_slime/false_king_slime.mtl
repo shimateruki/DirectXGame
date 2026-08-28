@@ -1,0 +1,212 @@
+# CG2 High Crown material set
+
+newmtl SlimeBody
+Ka 0.288235 0.310196 0.332157
+Kd 0.823529 0.886275 0.949020
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 102.400000
+Pr 0.200000
+Pm 0.020000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_slimebody.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl SlimeHighlight
+Ka 0.350000 0.345882 0.350000
+Kd 1.000000 0.988235 1.000000
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 110.080000
+Pr 0.140000
+Pm 0.010000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_slimehighlight.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl SlimeShadow
+Ka 0.251176 0.241569 0.300588
+Kd 0.717647 0.690196 0.858824
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 89.600000
+Pr 0.300000
+Pm 0.010000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_slimeshadow.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl Face
+Ka 0.037059 0.023333 0.071373
+Kd 0.105882 0.066667 0.203922
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 104.960000
+Pr 0.180000
+Pm 0.040000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_face.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl CrownBlack
+Ka 0.074118 0.075490 0.098824
+Kd 0.211765 0.215686 0.282353
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 61.440000
+Pr 0.520000
+Pm 0.120000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_crownblack.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl CrownStone
+Ka 0.112549 0.111176 0.134510
+Kd 0.321569 0.317647 0.384314
+Ks 0.780000 0.780000 0.860000
+Ke 0.000000 0.000000 0.000000
+Ns 51.200000
+Pr 0.600000
+Pm 0.050000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_crownstone.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl CrownGold
+Ka 0.323922 0.258039 0.104314
+Kd 0.925490 0.737255 0.298039
+Ks 0.780000 0.780000 0.860000
+Ke 0.074039 0.058980 0.023843
+Ns 94.720000
+Pr 0.260000
+Pm 0.780000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_crowngold.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl CoreGlow
+Ka 0.350000 0.227843 0.308824
+Kd 1.000000 0.650980 0.882353
+Ks 0.780000 0.780000 0.860000
+Ke 0.260000 0.169255 0.229412
+Ns 102.400000
+Pr 0.200000
+Pm 0.100000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_coreglow.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemRed
+Ka 0.322549 0.093333 0.104314
+Kd 0.921569 0.266667 0.298039
+Ks 0.780000 0.780000 0.860000
+Ke 0.239608 0.069333 0.077490
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemred.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemBlue
+Ka 0.072745 0.177059 0.322549
+Kd 0.207843 0.505882 0.921569
+Ks 0.780000 0.780000 0.860000
+Ke 0.054039 0.131529 0.239608
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemblue.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemGreen
+Ka 0.061765 0.256667 0.182549
+Kd 0.176471 0.733333 0.521569
+Ks 0.780000 0.780000 0.860000
+Ke 0.045882 0.190667 0.135608
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemgreen.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemViolet
+Ka 0.240196 0.101569 0.308824
+Kd 0.686275 0.290196 0.882353
+Ks 0.780000 0.780000 0.860000
+Ke 0.178431 0.075451 0.229412
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemviolet.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemOrange
+Ka 0.337647 0.211373 0.063137
+Kd 0.964706 0.603922 0.180392
+Ks 0.780000 0.780000 0.860000
+Ke 0.250824 0.157020 0.046902
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemorange.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+
+newmtl GemCyan
+Ka 0.070000 0.284118 0.277255
+Kd 0.200000 0.811765 0.792157
+Ks 0.780000 0.780000 0.860000
+Ke 0.052000 0.211059 0.205961
+Ns 107.520000
+Pr 0.160000
+Pm 0.560000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd false_king_gemcyan.png
+map_Bump false_king_surface_normal.dds
+map_Pm false_king_surface_orm.dds
+

@@ -259,6 +259,103 @@ void LightEditor::Draw3D() {
     }
 }
 
+void LightEditor::DrawEnvironmentProfilePanel() {
+#ifdef USE_IMGUI
+    if (!lightManager_) {
+        return;
+    }
+
+    ImGui::Separator();
+    ImGui::Text(ICON_FA_PALETTE " Environment Profile");
+    ImGui::TextWrapped(
+        "太陽光、環境光、フォグ、背景、影、Bloom、Tone Mapping、色調補正をまとめて保存します。");
+
+    const std::filesystem::path directory("Resources/json/environment");
+    std::vector<std::string> fileNames;
+    std::error_code error;
+    if (std::filesystem::exists(directory, error) && !error) {
+        for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                fileNames.push_back(entry.path().filename().string());
+            }
+        }
+    }
+    std::sort(fileNames.begin(), fileNames.end());
+
+    if (ImGui::BeginCombo(
+        ICON_FA_FOLDER_OPEN " Profile",
+        environmentProfileFileName_)) {
+        for (const std::string& fileName : fileNames) {
+            const bool selected = fileName == environmentProfileFileName_;
+            if (ImGui::Selectable(fileName.c_str(), selected)) {
+                strncpy_s(
+                    environmentProfileFileName_,
+                    sizeof(environmentProfileFileName_),
+                    fileName.c_str(),
+                    _TRUNCATE);
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText(
+        "Profileファイル名",
+        environmentProfileFileName_,
+        sizeof(environmentProfileFileName_));
+    ImGui::DragFloat(
+        "切替時間",
+        &environmentProfileBlendDuration_,
+        0.05f,
+        0.0f,
+        10.0f,
+        "%.2f s");
+    environmentProfileBlendDuration_ =
+        (std::max)(0.0f, environmentProfileBlendDuration_);
+
+    std::filesystem::path profilePath =
+        directory / std::filesystem::path(environmentProfileFileName_);
+    if (profilePath.extension().empty()) {
+        profilePath.replace_extension(".json");
+    }
+    const std::string profilePathString = profilePath.generic_string();
+
+    if (ImGui::Button(ICON_FA_SAVE " 現在の環境を保存")) {
+        const bool saved =
+            lightManager_->SaveEnvironmentProfile(profilePathString);
+        SetStatusMessage(
+            saved ? "Environment Profileを保存しました"
+                  : "Environment Profileの保存に失敗しました",
+            saved);
+        DebugConsole::GetInstance()->AddLog(
+            saved ? "Environment Profile saved: " + profilePathString
+                  : "Environment Profile save failed: " + profilePathString);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_PLAY " Profileを適用")) {
+        const bool applied = lightManager_->ApplyEnvironmentProfile(
+            profilePathString,
+            environmentProfileBlendDuration_);
+        SetStatusMessage(
+            applied ? "Environment Profileを適用しました"
+                    : "Environment Profileの読込に失敗しました",
+            applied);
+    }
+
+    if (lightManager_->IsEnvironmentProfileBlending()) {
+        const float progress =
+            lightManager_->GetEnvironmentProfileBlendProgress();
+        ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "切替中");
+    }
+    const std::string& currentProfile =
+        lightManager_->GetCurrentEnvironmentProfileFile();
+    if (!currentProfile.empty()) {
+        ImGui::TextDisabled("現在: %s", currentProfile.c_str());
+    }
+#endif
+}
 void LightEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!lightManager_) return;
@@ -276,6 +373,7 @@ void LightEditor::DrawImGui() {
 
     if (ImGui::CollapsingHeader(ICON_FA_CLOUD_SUN " 環境設定 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawSkyboxTextureList();
+        DrawEnvironmentProfilePanel();
     }
     ImGui::Spacing();
 

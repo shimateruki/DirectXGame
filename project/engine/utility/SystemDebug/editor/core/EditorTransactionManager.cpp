@@ -28,6 +28,45 @@ void EditorTransactionManager::Register(EditorTransaction transaction) {
     }
 }
 
+void EditorTransactionManager::BeginInteractive(
+    std::uint64_t itemId,
+    const std::string& label,
+    std::function<void()> undo) {
+    if (isApplying_ || !undo) {
+        return;
+    }
+    if (interactiveTransaction_ && interactiveTransaction_->itemId == itemId) {
+        return;
+    }
+
+    interactiveTransaction_.reset();
+    InteractiveTransaction pending;
+    pending.itemId = itemId;
+    pending.transaction.label = label.empty() ? "Editor Property Edit" : label;
+    pending.transaction.undo = std::move(undo);
+    interactiveTransaction_ = std::move(pending);
+}
+
+void EditorTransactionManager::CommitInteractive(
+    std::uint64_t itemId,
+    std::function<void()> redo) {
+    if (isApplying_ || !interactiveTransaction_ ||
+        interactiveTransaction_->itemId != itemId || !redo) {
+        return;
+    }
+
+    EditorTransaction transaction = std::move(interactiveTransaction_->transaction);
+    interactiveTransaction_.reset();
+    transaction.redo = std::move(redo);
+    Register(std::move(transaction));
+}
+
+void EditorTransactionManager::CancelInteractive(std::uint64_t itemId) {
+    if (interactiveTransaction_ && interactiveTransaction_->itemId == itemId) {
+        interactiveTransaction_.reset();
+    }
+}
+
 void EditorTransactionManager::BeginGroup(const std::string& label) {
     if (isApplying_) {
         return;
@@ -111,6 +150,7 @@ void EditorTransactionManager::Clear() {
     groupTransactions_.clear();
     groupLabel_.clear();
     groupDepth_ = 0;
+    interactiveTransaction_.reset();
 }
 
 const std::string& EditorTransactionManager::GetUndoLabel() const {

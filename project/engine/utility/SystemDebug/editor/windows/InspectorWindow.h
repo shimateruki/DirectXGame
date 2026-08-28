@@ -33,6 +33,10 @@ private:
     void DrawEnemyTypeSelector();
     void DrawGimmickTypeSelector();
     void DrawItemTypeSelector();
+    /// Ghost Recorderで作成した移動パスの割り当てと試験再生を描画する。
+    void DrawPathMoverSection(Object3d* selectedObject);
+    /// Event・Class・ステータス・タイプ固有値をまとめたゲームプレイ設定を描画する。
+    void DrawGameplayDataSection(Object3d* selectedObject);
     /// 衝突属性やマスクなどのビットフラグを、人間が見やすい形で編集する。
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
 

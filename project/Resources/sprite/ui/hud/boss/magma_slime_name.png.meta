@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a099e5eb063653f29bc12609c28e6e17",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/boss/magma_slime_name.png",
+  "version": 1
+}

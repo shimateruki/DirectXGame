@@ -29,11 +29,11 @@
             "collisionMask": 1,
             "color": [
                 1.0,
-                0.2,
-                0.01,
+                0.16,
+                0.008,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -101,9 +101,9 @@
             "roughness": 0.42,
             "saveCategory": "Object",
             "scale": [
-                600.0,
+                900.0,
                 2.0,
-                255.0
+                700.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -128,13 +128,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -166,21 +181,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.66,
-                0.39,
-                0.27,
+                0.8308,
+                0.29000000000000004,
+                0.1545,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "4fea68c8-8624-5133-bb93-7d99aae97072",
+            "guid": "108e5f1e-6428-5ad0-99f3-b4f290a666ee",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -202,25 +217,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_NorthWest",
+            "name": "Stage2_Backdrop_Ridge_NorthWest",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -405.0,
-                -9.2,
-                490.0
+                -650.0,
+                -9.5,
+                620.0
             ],
             "quaternion": [
                 0.0,
-                0.0799146939691727,
+                0.08987854919801104,
                 0.0,
-                0.9968017063026194
+                0.9959527330119943
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -229,15 +244,127 @@
             },
             "rotation": [
                 0.0,
-                0.16,
+                0.18,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                2.2,
+                1.3,
+                2.06
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.7928,
+                0.25,
+                0.1405,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "d451d7c4-dedb-5950-b5d8-4d1ac4940a6b",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_NorthMidA",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -315.0,
+                -9.6,
+                660.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.05497227502706773,
+                0.0,
+                0.9984878812375985
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.11,
+                0.0
+            ],
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
                 1.92,
                 1.08,
-                1.82
+                1.84
             ],
             "tag": "",
             "targetID": -1,
@@ -278,21 +405,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.57,
-                0.31,
-                0.23,
+                0.8231999999999999,
+                0.275,
+                0.1475,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "2ca411b3-3dfd-53c2-b6db-0c9f3770e6ce",
+            "guid": "16568bf3-5467-5500-a373-3189a5567738",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -314,25 +441,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_NorthMidA",
+            "name": "Stage2_Backdrop_Ridge_NorthMidB",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -105.0,
+                70.0,
                 -9.4,
-                515.0
+                675.0
             ],
             "quaternion": [
                 0.0,
-                -0.04997916927067833,
+                0.11474668839366382,
                 0.0,
-                0.9987502603949663
+                0.9933947843142158
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -341,15 +468,15 @@
             },
             "rotation": [
                 0.0,
-                -0.1,
+                0.23,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
-                1.72,
-                0.94,
-                1.68
+                2.16,
+                1.24,
+                2.02
             ],
             "tag": "",
             "targetID": -1,
@@ -390,21 +517,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.64,
-                0.36,
-                0.25,
+                0.7889999999999999,
+                0.245,
+                0.137,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "0f6294c9-6dea-55e2-b2de-a0054cc7bdb0",
+            "guid": "2a80f8a5-82fe-5221-8f5d-f8fee0279f70",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -426,25 +553,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_NorthMidB",
+            "name": "Stage2_Backdrop_Ridge_NorthEast",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                205.0,
-                -9.1,
-                500.0
+                485.0,
+                -9.6,
+                635.0
             ],
             "quaternion": [
                 0.0,
-                0.11971220728891936,
+                -0.09983341664682815,
                 0.0,
-                0.9928086358538663
+                0.9950041652780258
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -453,14 +580,462 @@
             },
             "rotation": [
                 0.0,
-                0.24,
+                -0.2,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
                 2.02,
-                1.14,
+                1.12,
+                1.92
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8118,
+                0.265,
+                0.144,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "09b85c95-015a-5327-9e0b-5b7eb2d999f8",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_SouthWest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -640.0,
+                -9.4,
+                -630.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.08489768280241602,
+                0.0,
+                0.9963896745022904
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.17,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                2.12,
+                1.2,
+                2.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.7776,
+                0.24000000000000002,
+                0.1335,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8e6fb5f2-88e0-5041-99a7-ea146835ee5f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_SouthMidA",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -285.0,
+                -9.6,
+                -680.0
+            ],
+            "quaternion": [
+                0.0,
+                0.059964006479444595,
+                0.0,
+                0.9982005399352042
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.12,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.86,
+                1.04,
+                1.8
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8193999999999999,
+                0.27,
+                0.144,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "fdab01f7-f0ca-5a23-a9a5-04ded1aff293",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_SouthMidB",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                105.0,
+                -9.4,
+                -670.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.12467473338522769,
+                0.0,
+                0.992197667229329
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.25,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                2.18,
+                1.27,
+                2.06
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.7928,
+                0.25,
+                0.137,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e4fa4adc-c8f5-58b6-8a06-c1c632d55546",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_SouthEast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                520.0,
+                -9.5,
+                -625.0
+            ],
+            "quaternion": [
+                0.0,
+                0.10480716882888248,
+                0.0,
+                0.9944925627484974
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.21,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                1.1,
                 1.9
             ],
             "tag": "",
@@ -502,21 +1077,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.54,
-                0.29,
-                0.22,
+                0.7889999999999999,
+                0.245,
+                0.137,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "504b35b9-e39c-569f-acf0-b5e8cdefc191",
+            "guid": "0b79e0fe-913b-5937-8b4f-41b9d5960d85",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -538,25 +1113,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_NorthEast",
+            "name": "Stage2_Backdrop_Ridge_WestSouth",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                510.0,
-                -9.3,
-                470.0
+                -810.0,
+                -9.6,
+                -330.0
             ],
             "quaternion": [
                 0.0,
-                -0.09983341664682815,
+                0.6209859870365597,
                 0.0,
-                0.9950041652780258
+                0.7838216658808492
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -565,15 +1140,15 @@
             },
             "rotation": [
                 0.0,
-                -0.2,
+                1.34,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
-                1.8,
-                0.99,
-                1.72
+                1.88,
+                1.06,
+                1.82
             ],
             "tag": "",
             "targetID": -1,
@@ -614,21 +1189,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.6,
-                0.33,
-                0.23,
+                0.8231999999999999,
+                0.275,
+                0.1475,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "d2b964f2-c627-508f-8186-8e69d4456377",
+            "guid": "2d8bfe46-bacf-5f46-9cb3-2b7429fba6ec",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -650,25 +1225,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_SouthWest",
+            "name": "Stage2_Backdrop_Ridge_WestMid",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -430.0,
-                -9.1,
-                -485.0
+                -835.0,
+                -9.5,
+                25.0
             ],
             "quaternion": [
                 0.0,
-                -0.08987854919801104,
+                0.706825181105366,
                 0.0,
-                0.9959527330119943
+                0.7073882691671998
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -677,13 +1252,125 @@
             },
             "rotation": [
                 0.0,
-                -0.18,
+                1.57,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
-                1.86,
+                2.1,
+                1.21,
+                1.98
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.7814,
+                0.24000000000000002,
+                0.1335,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "06823dcd-cf03-5356-b5b5-ff8dced4525a",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_WestNorth",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -800.0,
+                -9.6,
+                390.0
+            ],
+            "quaternion": [
+                0.0,
+                0.7770717475268238,
+                0.0,
+                0.6294120265736969
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                1.78,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.84,
                 1.02,
                 1.78
             ],
@@ -726,21 +1413,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.51,
-                0.27,
-                0.21,
+                0.8004,
+                0.255,
+                0.1405,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "072c12a1-a46a-56df-8387-01ac7de8bb02",
+            "guid": "3022059f-f4c9-5ded-a446-4fa52930499b",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -762,25 +1449,25 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_SouthMidA",
+            "name": "Stage2_Backdrop_Ridge_EastSouth",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -120.0,
-                -9.4,
-                -520.0
+                845.0,
+                -9.5,
+                -360.0
             ],
             "quaternion": [
                 0.0,
-                0.059964006479444595,
+                -0.6248973167276999,
                 0.0,
-                0.9982005399352042
+                0.7807069511324468
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -789,126 +1476,14 @@
             },
             "rotation": [
                 0.0,
-                0.12,
+                -1.35,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
-                1.68,
-                0.92,
-                1.64
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 0,
-            "castShadow": false,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "type": 0
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 0,
-            "color": [
-                0.63,
-                0.35,
-                0.24,
-                1.0
-            ],
-            "emissive": 0.28,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.18,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "0d9ed0c5-dffa-52fa-9a18-8b44c3940009",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.2,
-                    0.8,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.02,
-            "modelName": "Stages/volcanic_backdrop_ridge",
-            "myEventID": -1,
-            "name": "Stage2_Backdrop_SouthMidB",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                195.0,
-                -9.2,
-                -510.0
-            ],
-            "quaternion": [
-                0.0,
-                -0.12467473338522769,
-                0.0,
-                0.992197667229329
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.25,
-                0.0
-            ],
-            "roughness": 0.96,
-            "saveCategory": "Object",
-            "scale": [
-                1.98,
-                1.11,
+                1.96,
+                1.12,
                 1.88
             ],
             "tag": "",
@@ -950,21 +1525,21 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.56,
-                0.3,
-                0.22,
+                0.827,
+                0.28,
+                0.1475,
                 1.0
             ],
-            "emissive": 0.28,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.62,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "d26d2a68-974d-59a9-bde5-ed87a777d49c",
+            "guid": "44fcf517-86d1-5c93-9ba5-124e4bd504f2",
             "isStatic": true,
             "itemType": "",
             "layer": "Default",
@@ -986,19 +1561,1811 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.02,
+            "metallic": 0.04,
             "modelName": "Stages/volcanic_backdrop_ridge",
             "myEventID": -1,
-            "name": "Stage2_Backdrop_SouthEast",
+            "name": "Stage2_Backdrop_Ridge_EastMid",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                515.0,
-                -9.3,
-                -475.0
+                875.0,
+                -9.6,
+                -5.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.706825181105366,
+                0.0,
+                0.7073882691671998
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.57,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                2.14,
+                1.24,
+                2.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.7852,
+                0.245,
+                0.137,
+                1.0
+            ],
+            "emissive": 1.62,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "d8343282-670e-531e-931a-03a235e2bcd3",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/volcanic_backdrop_ridge",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Ridge_EastNorth",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                830.0,
+                -9.4,
+                365.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.7833269096274834,
+                0.0,
+                0.6216099682706644
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.8,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.88,
+                1.08,
+                1.82
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "4399e609-87ad-5db8-b1a8-b61f8a81ce3c",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_NorthWest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -555.0,
+                -8.8,
+                330.0
+            ],
+            "quaternion": [
+                0.0,
+                0.08987854919801104,
+                0.0,
+                0.9959527330119943
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.18,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.75,
+                1.32,
+                1.55
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "600c45df-8a97-5598-a5bd-7639ed1911cd",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_NorthMidA",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -225.0,
+                -8.9,
+                395.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.10977830083717481,
+                0.0,
+                0.9939560979566968
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.22,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.48,
+                1.16,
+                1.35
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "685aa13a-f801-5ab2-a851-e34c40f2849d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_NorthMidB",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                145.0,
+                -8.8,
+                375.0
+            ],
+            "quaternion": [
+                0.0,
+                0.1345903110073483,
+                0.0,
+                0.9909013312045479
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.27,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.66,
+                1.28,
+                1.48
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "be39cca8-9c04-5283-a60d-be2509c83e95",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_NorthEast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                520.0,
+                -8.9,
+                315.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.08489768280241602,
+                0.0,
+                0.9963896745022904
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.17,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.55,
+                1.2,
+                1.42
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "0124d54a-3141-52e3-9d90-3ccbcaea0a4f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_SouthWest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -545.0,
+                -8.8,
+                -335.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.09983341664682815,
+                0.0,
+                0.9950041652780258
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.2,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.62,
+                1.24,
+                1.48
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3485466e-0e20-5a4a-af8b-e3cd8b4428fa",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_SouthMidA",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -175.0,
+                -8.9,
+                -405.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0799146939691727,
+                0.0,
+                0.9968017063026194
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.16,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.42,
+                1.12,
+                1.34
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "1ec7f9e2-0bbd-57c1-9c66-9f204d065791",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_SouthMidB",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                220.0,
+                -8.8,
+                -385.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.1395431146442365,
+                0.0,
+                0.9902159962126371
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.28,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.7,
+                1.3,
+                1.52
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "992d4872-f747-5e13-b553-b1a3619d026f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_SouthEast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                575.0,
+                -8.9,
+                -305.0
+            ],
+            "quaternion": [
+                0.0,
+                0.10480716882888248,
+                0.0,
+                0.9944925627484974
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.21,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.5,
+                1.18,
+                1.38
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "86fb89d3-8c67-505b-9582-f7ad93b4e610",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_West",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -690.0,
+                -8.9,
+                70.0
+            ],
+            "quaternion": [
+                0.0,
+                0.674287911628145,
+                0.0,
+                0.7384685587295879
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                1.48,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.58,
+                1.22,
+                1.42
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9067999999999999,
+                0.35,
+                0.179,
+                1.0
+            ],
+            "emissive": 1.48,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8a74405d-c446-58e5-8197-cecf063054a1",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_island",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Island_East",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                700.0,
+                -8.8,
+                105.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.6889214451105513,
+                0.0,
+                0.7248360107409052
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.52,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.74,
+                1.34,
+                1.56
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "89fd9bd4-e4c5-5516-a56f-d7d43baf261f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_NorthWest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -620.0,
+                -9.0,
+                455.0
+            ],
+            "quaternion": [
+                0.0,
+                0.10977830083717481,
+                0.0,
+                0.9939560979566968
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.22,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.5,
+                1.46,
+                1.5
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "00f98b2c-db8f-5b10-b83b-99792f507ecf",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_NorthMid",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -65.0,
+                -9.1,
+                485.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.08987854919801104,
+                0.0,
+                0.9959527330119943
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.18,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.72,
+                1.66,
+                1.72
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2cf74de5-bf9c-5cd4-a83d-8d0e66246de7",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_NorthEast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                500.0,
+                -9.0,
+                430.0
+            ],
+            "quaternion": [
+                0.0,
+                0.1395431146442365,
+                0.0,
+                0.9902159962126371
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.28,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.46,
+                1.42,
+                1.46
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "180ca734-e89c-504c-8147-978c786a4f5a",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_SouthWest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -570.0,
+                -9.0,
+                -455.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.11971220728891936,
+                0.0,
+                0.9928086358538663
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.24,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.58,
+                1.54,
+                1.58
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "76a0a7f4-a644-5358-9542-0aa690e451af",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_SouthMid",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                55.0,
+                -9.1,
+                -505.0
             ],
             "quaternion": [
                 0.0,
@@ -1016,12 +3383,236 @@
                 0.2,
                 0.0
             ],
-            "roughness": 0.96,
+            "roughness": 0.86,
             "saveCategory": "Object",
             "scale": [
                 1.78,
-                0.97,
-                1.7
+                1.72,
+                1.78
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c21e7026-cf78-5bd7-83d5-96fe143e9759",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_SouthEast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                610.0,
+                -9.0,
+                -420.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.14943813247359922,
+                0.0,
+                0.9887710779360422
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.3,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.48,
+                1.44,
+                1.48
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.8535999999999999,
+                0.29000000000000004,
+                0.158,
+                1.0
+            ],
+            "emissive": 1.82,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.62,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "beaa64af-7c69-52bf-87bd-5cc89ac06203",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.2,
+                    0.8,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.04,
+            "modelName": "Stages/magma_horizon_spire",
+            "myEventID": -1,
+            "name": "Stage2_Backdrop_Spire_East",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                735.0,
+                -9.0,
+                155.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.6365371822219679,
+                0.0,
+                0.7712460149971067
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.38,
+                0.0
+            ],
+            "roughness": 0.86,
+            "saveCategory": "Object",
+            "scale": [
+                1.62,
+                1.58,
+                1.62
             ],
             "tag": "",
             "targetID": -1,
@@ -1259,8 +3850,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1386,8 +3977,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1498,8 +4089,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1535,8 +4126,8 @@
             "collisionMask": 4294967295,
             "color": [
                 1.0,
-                0.2,
-                0.01,
+                0.16,
+                0.008,
                 1.0
             ],
             "emissive": 0.1,
@@ -1610,8 +4201,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1722,8 +4313,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1774,8 +4365,8 @@
             "collisionMask": 4294967295,
             "color": [
                 1.0,
-                0.2,
-                0.01,
+                0.16,
+                0.008,
                 1.0
             ],
             "emissive": 0.1,
@@ -1849,8 +4440,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -1961,8 +4552,8 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
@@ -2112,13 +4703,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -2360,13 +4966,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -2608,13 +5229,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -2856,13 +5492,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -4000,13 +6651,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -4136,13 +6802,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -4384,13 +7065,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -4632,13 +7328,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -4880,13 +7591,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -5128,13 +7854,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -5376,13 +8117,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -5848,13 +8604,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -6096,13 +8867,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -6344,13 +9130,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -7376,13 +10177,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -7624,13 +10440,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -8320,13 +11151,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -8456,13 +11302,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -8592,13 +11453,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -8969,7 +11845,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9064,13 +11940,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9105,7 +11996,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9200,13 +12091,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9241,7 +12147,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9336,13 +12242,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9377,7 +12298,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9472,13 +12393,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9513,7 +12449,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9608,13 +12544,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9649,7 +12600,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9744,13 +12695,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9785,7 +12751,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -9880,13 +12846,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -9921,7 +12902,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.55,
+            "emissive": 1.62,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -10016,13 +12997,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -10923,6 +13919,829 @@
         {
             "animation": {
                 "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    3.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    4.0,
+                    20.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "gimmickType": "ArenaEncounter",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "",
+            "myEventID": 8501,
+            "name": "Stage2_MagmaArena_Encounter",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "gimmickType": "ArenaEncounter",
+                "maxCount": 4,
+                "shakeDuration": 0.74,
+                "startActive": true,
+                "returnOnOff": false
+            },
+            "quaternion": [
+                0.0,
+                -0.059964006479444595,
+                0.0,
+                0.9982005399352042
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.42,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": 8502,
+            "texturePath": "",
+            "type": "Gimmick",
+            "guid": "2553999d-a9c0-5ef5-9158-60dbe705932b",
+            "position": [
+                228.0,
+                33.0,
+                -146.0
+            ],
+            "rotation": [
+                0.0,
+                -0.12,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "layer": "Default",
+            "isStatic": false,
+            "gpuParticleName": "",
+            "particleName": "",
+            "tag": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "autoTextureTiling": false,
+            "meshDrawIndex": -1,
+            "castShadow": false,
+            "enableLighting": true,
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8501,
+                    "targetId": 8502,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.88,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.96,
+                    0.96,
+                    0.96
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 8,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.94,
+                0.86,
+                1.0
+            ],
+            "emissive": 1.18,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "MagmaSlime",
+            "envIntensity": 0.42,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.12,
+            "myEventID": 8502,
+            "name": "Stage2_MagmaArena_Boss",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "MagmaSlime",
+                "actionMode": 1,
+                "shakeDuration": 1.16,
+                "startActive": false
+            },
+            "particleName": "",
+            "prefabInstance": null,
+            "quaternion": [
+                0.0,
+                -0.6631354426633497,
+                0.0,
+                0.7484994219661651
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.26,
+            "saveCategory": "Object",
+            "tag": "",
+            "targetID": 8501,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy",
+            "guid": "813b500c-0b72-54f2-b46c-707cf1b40399",
+            "position": [
+                270.0,
+                33.05,
+                -165.0
+            ],
+            "rotation": [
+                0.0,
+                -1.45,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "modelName": "Characters/magma_slime",
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8502,
+                    "targetId": 8501,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.45
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.2,
+                0.02,
+                0.86
+            ],
+            "emissive": 2.65,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "gimmickType": "PrismBarrier",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/portal_surface",
+            "myEventID": 8503,
+            "name": "Stage2_MagmaBarrier_West",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "gimmickType": "PrismBarrier",
+                "moveSpeed": 0.42,
+                "interval": 2.7,
+                "startActive": false,
+                "returnOnOff": true
+            },
+            "quaternion": [
+                0.0,
+                0.7071067811865476,
+                0.0,
+                0.7071067811865476
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.22,
+            "saveCategory": "Object",
+            "scale": [
+                34.0,
+                6.4,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick",
+            "guid": "19d6746f-55c9-59d6-bc57-4dcbff60ad7f",
+            "position": [
+                222.0,
+                37.4,
+                -165.0
+            ],
+            "rotation": [
+                0.0,
+                1.5707963267948966,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "layer": "Default",
+            "isStatic": false,
+            "gpuParticleName": "",
+            "particleName": "",
+            "tag": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "autoTextureTiling": false,
+            "meshDrawIndex": -1,
+            "castShadow": false,
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.82,
+                "effectScale": 1.0,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 0.08,
+                "effectSoftness": 0.46,
+                "effectType": 3.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "waveFrequency": 18.0,
+                "waveHeight": 0.72,
+                "waveSpeed": 1.25
+            },
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8503,
+                    "targetId": -1,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.45
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.2,
+                0.02,
+                0.86
+            ],
+            "emissive": 2.65,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "gimmickType": "PrismBarrier",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/portal_surface",
+            "myEventID": 8504,
+            "name": "Stage2_MagmaBarrier_East",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "gimmickType": "PrismBarrier",
+                "moveSpeed": 0.42,
+                "interval": 2.7,
+                "startActive": false,
+                "returnOnOff": true
+            },
+            "quaternion": [
+                0.0,
+                0.7071067811865476,
+                0.0,
+                0.7071067811865476
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.22,
+            "saveCategory": "Object",
+            "scale": [
+                34.0,
+                6.4,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick",
+            "guid": "7b85b9e0-991b-5df0-b440-834d87c0cf1b",
+            "position": [
+                318.0,
+                37.4,
+                -165.0
+            ],
+            "rotation": [
+                0.0,
+                1.5707963267948966,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "layer": "Default",
+            "isStatic": false,
+            "gpuParticleName": "",
+            "particleName": "",
+            "tag": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "autoTextureTiling": false,
+            "meshDrawIndex": -1,
+            "castShadow": false,
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.82,
+                "effectScale": 1.0,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 0.08,
+                "effectSoftness": 0.46,
+                "effectType": 3.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "waveFrequency": 18.0,
+                "waveHeight": 0.72,
+                "waveSpeed": 1.25
+            },
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8504,
+                    "targetId": -1,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.45
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.2,
+                0.02,
+                0.86
+            ],
+            "emissive": 2.65,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "gimmickType": "PrismBarrier",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/portal_surface",
+            "myEventID": 8505,
+            "name": "Stage2_MagmaBarrier_North",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "gimmickType": "PrismBarrier",
+                "moveSpeed": 0.42,
+                "interval": 2.7,
+                "startActive": false,
+                "returnOnOff": true
+            },
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.22,
+            "saveCategory": "Object",
+            "scale": [
+                48.0,
+                6.4,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick",
+            "guid": "26a43842-d8b5-51ed-b474-450ac579896a",
+            "position": [
+                270.0,
+                37.4,
+                -199.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "layer": "Default",
+            "isStatic": false,
+            "gpuParticleName": "",
+            "particleName": "",
+            "tag": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "autoTextureTiling": false,
+            "meshDrawIndex": -1,
+            "castShadow": false,
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.82,
+                "effectScale": 1.0,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 0.08,
+                "effectSoftness": 0.46,
+                "effectType": 3.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "waveFrequency": 18.0,
+                "waveHeight": 0.72,
+                "waveSpeed": 1.25
+            },
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8505,
+                    "targetId": -1,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.45
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.2,
+                0.02,
+                0.86
+            ],
+            "emissive": 2.65,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "gimmickType": "PrismBarrier",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/portal_surface",
+            "myEventID": 8506,
+            "name": "Stage2_MagmaBarrier_South",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "gimmickType": "PrismBarrier",
+                "moveSpeed": 0.42,
+                "interval": 2.7,
+                "startActive": false,
+                "returnOnOff": true
+            },
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "roughness": 0.22,
+            "saveCategory": "Object",
+            "scale": [
+                48.0,
+                6.4,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick",
+            "guid": "6058354b-b907-5803-be76-48c612c90574",
+            "position": [
+                270.0,
+                37.4,
+                -131.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "eventID": 0,
+            "parentGuid": "",
+            "parentName": "",
+            "layer": "Default",
+            "isStatic": false,
+            "gpuParticleName": "",
+            "particleName": "",
+            "tag": "",
+            "textureTiling": [
+                32.0,
+                24.0
+            ],
+            "autoTextureTiling": false,
+            "meshDrawIndex": -1,
+            "castShadow": false,
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.82,
+                "effectScale": 1.0,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 0.08,
+                "effectSoftness": 0.46,
+                "effectType": 3.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "waveFrequency": 18.0,
+                "waveHeight": 0.72,
+                "waveSpeed": 1.25
+            },
+            "components": {
+                "GameplayLink": {
+                    "_editorPresent": true,
+                    "eventId": 8506,
+                    "targetId": -1,
+                    "version": 1
+                }
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
                 "animatorController": "",
                 "isAnimLoop": true
             },
@@ -11384,13 +15203,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -11744,13 +15578,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -12104,13 +15953,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -12688,13 +16552,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -12824,13 +16703,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -13072,13 +16966,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -13320,13 +17229,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -13568,13 +17492,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -13816,13 +17755,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -14064,13 +18018,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -14312,13 +18281,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -14560,13 +18544,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -14696,13 +18695,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -14832,13 +18846,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -15416,13 +19445,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -15664,13 +19708,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -16584,13 +20643,28 @@
             "particleName": "",
             "tag": "",
             "textureTiling": [
-                1.0,
-                1.0
+                32.0,
+                24.0
             ],
             "autoTextureTiling": false,
             "meshDrawIndex": -1,
             "castShadow": false,
-            "enableLighting": true
+            "enableLighting": true,
+            "waterParam": {
+                "billboardScale": 1.0,
+                "effectIntensity": 1.48,
+                "effectScale": 1.52,
+                "effectScaleX": 1.0,
+                "effectScaleY": 1.0,
+                "effectScaleZ": 1.0,
+                "effectSoftness": 0.6,
+                "effectType": 0.0,
+                "flowSpeedX": 0.072,
+                "flowSpeedY": 0.027,
+                "waveFrequency": 2.75,
+                "waveHeight": 0.46,
+                "waveSpeed": 0.68
+            }
         },
         {
             "animation": {
@@ -17321,236 +21395,6 @@
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
-            "enemyType": "ThunderSlime",
-            "envIntensity": 1.0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "isStatic": false,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 25,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "myEventID": -1,
-            "name": "Stage2_FinalThunderGuard",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "ThunderSlime"
-            },
-            "particleName": "",
-            "prefabInstance": null,
-            "quaternion": [
-                0.0,
-                -0.9320390859672263,
-                0.0,
-                0.3623577544766736
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "roughness": 0.6000000238418579,
-            "saveCategory": "Object",
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "Enemy",
-            "guid": "ec7540e7-c98f-5886-9cb6-486a76462302",
-            "position": [
-                258.0,
-                33.0,
-                -160.0
-            ],
-            "rotation": [
-                0.0,
-                -2.4,
-                0.0
-            ],
-            "eventID": 0,
-            "parentGuid": "",
-            "parentName": "",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": true,
-            "collider": {
-                "center": [
-                    -0.001757591962814331,
-                    0.3655702769756317,
-                    -0.0006781518459320068
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.5137262344360352,
-                    0.3710375130176544,
-                    0.5139153003692627
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 65,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "Bomber",
-            "envIntensity": 1.0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "isStatic": false,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 25,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "myEventID": -1,
-            "name": "Stage2_FinalBomberGuard",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Bomber"
-            },
-            "particleName": "",
-            "prefabInstance": null,
-            "quaternion": [
-                0.0,
-                0.9757233578266591,
-                0.0,
-                0.2190066870930415
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "roughness": 0.6000000238418579,
-            "saveCategory": "Object",
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "Enemy",
-            "guid": "d05bcc7b-0312-584e-aced-9e2d47fb2463",
-            "position": [
-                292.0,
-                33.0,
-                -174.0
-            ],
-            "rotation": [
-                0.0,
-                2.7,
-                0.0
-            ],
-            "eventID": 0,
-            "parentGuid": "",
-            "parentName": "",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": true,
-            "collider": {
-                "center": [
-                    -0.001757591962814331,
-                    0.3655702769756317,
-                    -0.0006781518459320068
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.8199999928474426,
-                    0.8199999928474426,
-                    0.8199999928474426
-                ],
-                "type": 1
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 77,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
             "enemyType": "FireSlime",
             "envIntensity": 1.0,
             "gimmickType": "",
@@ -17938,7 +21782,7 @@
                 "MeshEffect": {
                     "_editorPresent": true,
                     "primary": "Resources/json/effect/effect_crown_idle_shell.json",
-                    "secondary": "",
+                    "secondary": "Resources/json/effect/effect_crown_aura_ring.json",
                     "version": 1
                 }
             },
@@ -17987,7 +21831,7 @@
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "Resources/json/effect/effect_crown_idle_shell.json",
-            "meshEffect2": "",
+            "meshEffect2": "Resources/json/effect/effect_crown_aura_ring.json",
             "metallic": 0.3799999952316284,
             "modelName": "Stages/crown",
             "myEventID": -1,

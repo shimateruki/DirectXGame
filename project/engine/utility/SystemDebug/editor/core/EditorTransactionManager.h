@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +21,9 @@ public:
     static EditorTransactionManager* GetInstance();
 
     void Register(EditorTransaction transaction);
+    void BeginInteractive(std::uint64_t itemId, const std::string& label, std::function<void()> undo);
+    void CommitInteractive(std::uint64_t itemId, std::function<void()> redo);
+    void CancelInteractive(std::uint64_t itemId);
     void BeginGroup(const std::string& label);
     void EndGroup();
     bool Undo();
@@ -31,6 +36,11 @@ public:
     const std::string& GetRedoLabel() const;
 
 private:
+    struct InteractiveTransaction {
+        std::uint64_t itemId = 0;
+        EditorTransaction transaction;
+    };
+
     static constexpr std::size_t kMaxHistoryEntries = 128;
     std::deque<EditorTransaction> undoStack_;
     std::deque<EditorTransaction> redoStack_;
@@ -38,4 +48,5 @@ private:
     std::string groupLabel_;
     int groupDepth_ = 0;
     bool isApplying_ = false;
+    std::optional<InteractiveTransaction> interactiveTransaction_;
 };

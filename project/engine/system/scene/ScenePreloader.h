@@ -21,12 +21,34 @@ struct SceneLoadManifest {
     std::vector<std::string> additionalJsonPaths;
     std::vector<std::string> modelNames;
     std::vector<TextureRequest> textures;
+    std::vector<std::string> audioPaths;
 
     void AddObjectLayout(const std::string& path);
     void AddSpriteLayout(const std::string& path);
     void AddJson(const std::string& path);
     void AddModel(const std::string& modelName);
     void AddTexture(const std::string& path, bool linear = false);
+    void AddAudio(const std::string& path);
+};
+enum class SceneDependencyType {
+    Json,
+    Model,
+    Texture,
+    Audio,
+    Other,
+};
+
+struct SceneDependencyRecord {
+    SceneDependencyType type = SceneDependencyType::Other;
+    std::string path;
+    bool exists = true;
+};
+
+struct SceneDependencyReport {
+    std::vector<SceneDependencyRecord> assets;
+    std::vector<std::string> missingPaths;
+
+    std::size_t Count(SceneDependencyType type) const;
 };
 
 // LoadingSceneから安全に参照できる、ワーカースレッド側の進行状況です。
@@ -55,6 +77,8 @@ public:
     std::unordered_map<std::string, nlohmann::json> jsonDocuments;
     std::vector<std::string> modelNames;
     std::vector<SceneLoadManifest::TextureRequest> textures;
+    std::vector<std::string> audioPaths;
+    SceneDependencyReport dependencyReport;
     std::vector<std::string> warnings;
 };
 
@@ -65,4 +89,5 @@ public:
     static std::shared_ptr<ScenePreloadData> Prepare(
         const SceneLoadManifest& manifest,
         const std::shared_ptr<ScenePreloadProgress>& progress);
+    static SceneDependencyReport Inspect(const SceneLoadManifest& manifest);
 };

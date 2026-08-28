@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "engine/graphics/3d/material/MaterialInstance.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "EffectObject3d.h"
@@ -420,7 +421,7 @@ const void* Object3d::FindBuiltInComponent(std::string_view typeId) const {
 
 
 void Object3d::DrawShadow() {
-    if (IsCameraObject()) return;
+    if (!GetIsRenderVisible() || IsCameraObject()) return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadow();
     }
@@ -431,14 +432,14 @@ void Object3d::SetShadowCommonState() {
     }
 }
 void Object3d::DrawShadowOnly() {
-    if (IsCameraObject()) return;
+    if (!GetIsRenderVisible() || IsCameraObject()) return;
     if (meshRenderer_) {
         meshRenderer_->DrawShadowOnly();
     }
 }
 
 void Object3d::DrawLocalFog(uint32_t depthSrvHandle) {
-    if (meshRenderer_) {
+    if (GetIsRenderVisible() && meshRenderer_) {
         // メッシュレンダラーに描画を丸投げ！
         meshRenderer_->DrawLocalFog(depthSrvHandle);
     }
@@ -463,6 +464,10 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->enemyType_ = other->enemyType_;
     this->gimmickType_ = other->gimmickType_;
     this->itemType_ = other->itemType_;
+    this->materialInstancePath_ = other->materialInstancePath_;
+    this->decalSettings_ = other->decalSettings_;
+    this->decalElapsedTime_ = 0.0f;
+    this->decalAuthoredAlpha_ = other->decalAuthoredAlpha_;
     this->isVisible_ = other->isVisible_;
     this->isLocked_ = other->isLocked_;
     this->castShadow_ = other->castShadow_;
@@ -495,32 +500,14 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 5. Stats (Param)
     this->param_ = other->param_;
 
-    // 6. MeshRenderer (グラフィックス・マテリアル・PBR設定)
+    // 6. MeshRendererはMaterial Instanceと同じ共通変換を使い、項目追加時のコピー漏れを防ぎます。
     if (meshRenderer_ && other->meshRenderer_) {
-        this->SetColor(other->GetColor());
-        this->SetBlendMode(other->GetBlendMode());
-        this->SetMaterialType(other->GetMaterialType());
-
-        // ★追加: 金属度と粗さ
-        this->SetMetallic(other->GetMetallic());
-        this->SetRoughness(other->GetRoughness());
-
-        // テクスチャ・マップ群
-        this->SetEnableNormalMap(other->GetEnableNormalMap());
-        this->SetNormalMap(other->GetNormalMapPath());
-        this->SetOrmMap(other->GetOrmMapPath());
-        this->SetTexture(other->GetTexturePath());
-
-        // 環境マップ
-        this->SetEnableEnvMap(other->GetEnableEnvMap());
-        this->SetEnvIntensity(other->GetEnvIntensity());
-        this->SetEmissive(other->GetEmissive());
-
-        // LOD設定
+        MaterialInstanceAsset::Apply(MaterialInstanceAsset::Capture(*other), *this);
         this->SetLodEnabled(other->IsLodEnabled());
         this->SetLodLevels(other->GetLodLevels());
         this->SetMeshDrawIndex(other->GetMeshDrawIndex());
     }
+
 
     // 7. アニメーション
     this->animName_ = other->animName_;

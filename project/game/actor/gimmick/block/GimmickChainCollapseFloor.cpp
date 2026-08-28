@@ -3,6 +3,11 @@
 #include "SceneManager.h"
 #include <cstdlib>
 
+namespace {
+// 落下復帰後にプレイヤーと床が重ならないよう、十分な退避時間を確保する。
+constexpr float kReturnDelaySeconds = 5.0f;
+}
+
 void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
@@ -20,6 +25,8 @@ void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::st
     param_->fallDuration = 1.4f;
     param_->interval = 0.18f;
     param_->gravity = 48.0f;
+    // 従来の一度きりの挙動を既定とし、必要なステージだけ明示的に復帰を有効化する。
+    param_->returnOnOff = false;
 }
 
 void GimmickChainCollapseFloor::Update(float deltaTime) {
@@ -72,6 +79,12 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         break;
 
     case State::Hidden:
+        if (ShouldReturnAfterCollapse()) {
+            returnTimer_ += deltaTime;
+            if (returnTimer_ >= kReturnDelaySeconds) {
+                ResetForRetry();
+            }
+        }
         break;
     }
 
@@ -98,9 +111,17 @@ void GimmickChainCollapseFloor::StartCollapse() {
 }
 
 void GimmickChainCollapseFloor::QueueCollapse() {
+    // 前の床だけ先に復帰して踏まれた場合も、後続床へのイベントを失わない。
+    if (state_ == State::Hidden && ShouldReturnAfterCollapse()) {
+        ResetForRetry();
+    }
     if (state_ != State::Idle) return;
     pendingTimer_ = GetChainDelay();
     ChangeState(State::Pending);
+}
+
+void GimmickChainCollapseFloor::ResetForRetry() {
+    ChangeState(State::Idle);
 }
 
 void GimmickChainCollapseFloor::ChangeState(State state) {
@@ -117,6 +138,7 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         GetTransform()->isQuaternionMaster = false;
         velocityY_ = 0.0f;
         pendingTimer_ = 0.0f;
+        returnTimer_ = 0.0f;
         triggeredNext_ = false;
         SetColor({ 0.75f, 0.92f, 1.0f, 0.82f });
         break;
@@ -141,8 +163,13 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         SetIsVisible(false);
         SetCollisionAttribute(0);
         SetCollisionMask(0);
+        returnTimer_ = 0.0f;
         break;
     }
+}
+
+bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const {
+    return param_.has_value() && param_->returnOnOff;
 }
 
 void GimmickChainCollapseFloor::TriggerNextFloor() {

@@ -7,8 +7,11 @@
 #include "EnemyWindSlime.h"
 #include "EnemyGiantSlime.h"
 #include "EnemyPrismSlime.h"
+#include "EnemyMagmaSlime.h"
+#include "EnemyFalseKingSlime.h"
 #include "EnemyBat.h"
 #include "EnemyBeamDrone.h"
+#include "EnemyRingBurner.h"
 #include <BossCore.h>
 #include "SceneManager.h"
 #include <EnemyBomber.h>
@@ -27,11 +30,17 @@ bool IsSlimeEnemyType(const std::string& enemyType) {
         enemyType == "ThunderSlime" ||
         enemyType == "WindSlime" ||
         enemyType == "GiantSlime" ||
-        enemyType == "PrismSlime";
+        enemyType == "PrismSlime" ||
+        enemyType == "MagmaSlime" ||
+        enemyType == "FalseKingSlime";
 }
 
 void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
     if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
+        return;
+    }
+    // マグマスライムは複数のPBR材質で外皮と発光亀裂を描き分けます。
+    if (enemy->GetEnemyType() == "MagmaSlime") {
         return;
     }
     enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime"
@@ -125,6 +134,19 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(prismSlime);
     }
+    else if (enemyName == "MagmaSlime")
+    {
+        auto magmaSlime = std::make_unique<EnemyMagmaSlime>();
+        magmaSlime->Initialize(common, "Characters/magma_slime");
+
+        newEnemy = std::move(magmaSlime);
+    }
+    else if (enemyName == "FalseKingSlime")
+    {
+        auto falseKing = std::make_unique<EnemyFalseKingSlime>();
+        falseKing->Initialize(common, "Characters/false_king_slime");
+        newEnemy = std::move(falseKing);
+    }
     else if (enemyName == "Bat")
     {
         auto bat = std::make_unique<EnemyBat>();
@@ -138,6 +160,13 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         beamDrone->Initialize(common, "Characters/eye");
 
         newEnemy = std::move(beamDrone);
+    }
+    else if (enemyName == "RingBurner")
+    {
+        auto ringBurner = std::make_unique<EnemyRingBurner>();
+        ringBurner->Initialize(common, "Characters/ring_burner");
+
+        newEnemy = std::move(ringBurner);
     }
     // 作った敵にタイプ名を保存し、タイプ共通設定を一元管理から適用します。
     if (newEnemy) {

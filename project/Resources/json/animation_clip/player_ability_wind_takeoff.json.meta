@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "a1339f15c020477db13e71bc652d07b9",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_wind_takeoff.json",
+  "version": 1
+}

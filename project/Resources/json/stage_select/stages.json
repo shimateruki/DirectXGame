@@ -25,12 +25,14 @@
         {
             "id": "stage3",
             "name": "Stage 3 - High Crown",
-            "description": "Stage 2クリア後に解放されるステージ",
+            "description": "黒格子に閉ざされた天空闘技場で偽王スライムに挑むボスステージ",
             "levelPath": "Resources/json/3Dobject/stage3.json",
             "spritePath": "Resources/json/sprite/stage3_sprite.json",
             "bgmPath": "Resources/bgm/Alarm02.mp3",
             "defaultUnlocked": false,
-            "unlockStageIndex": 1
+            "unlockStageIndex": 1,
+            "lightPath": "Resources/json/light/stage3_high_crown.json",
+            "skyboxPath": "Resources/skybox/stage3_high_crown.dds"
         },
         {
             "id": "stage4",

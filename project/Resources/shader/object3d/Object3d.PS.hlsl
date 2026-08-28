@@ -417,12 +417,12 @@ float BuildDashArrow(float2 uv, float time, float speed, float density)
     float cellY = frac(uv.y * density - time * speed);
     float2 p = float2(uv.x - 0.5f, cellY - 0.5f);
 
-    float shaft = SmoothBox(p - float2(0.0f, -0.15f), float2(0.055f, 0.22f), 0.035f);
+    float shaft = SmoothBox(p - float2(0.0f, -0.14f), float2(0.085f, 0.23f), 0.030f);
 
-    float headY = p.y - 0.05f;
-    float halfWidth = max(0.0f, (0.36f - headY) * 0.76f);
-    float headSide = 1.0f - smoothstep(0.0f, 0.035f, abs(p.x) - halfWidth);
-    float headVertical = smoothstep(0.02f, 0.10f, headY) * (1.0f - smoothstep(0.30f, 0.38f, headY));
+    float headY = p.y - 0.015f;
+    float halfWidth = max(0.0f, (0.39f - headY) * 0.86f);
+    float headSide = 1.0f - smoothstep(0.0f, 0.030f, abs(p.x) - halfWidth);
+    float headVertical = smoothstep(0.015f, 0.075f, headY) * (1.0f - smoothstep(0.32f, 0.395f, headY));
     float head = headSide * headVertical;
 
     return saturate(max(shaft, head));
@@ -431,30 +431,44 @@ float BuildDashArrow(float2 uv, float time, float speed, float density)
 float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float shadowFactor)
 {
     float2 panelUv = frac(uv);
-    float speed = lerp(0.9f, 3.8f, MATERIAL_ROUGHNESS);
-    float density = lerp(1.35f, 3.2f, MATERIAL_METALLIC);
+    float speed = lerp(1.85f, 3.15f, saturate(1.0f - MATERIAL_ROUGHNESS));
+    float density = 1.72f;
 
-    float topMask = smoothstep(0.18f, 0.58f, abs(normal.y));
-    float lane = 1.0f - smoothstep(0.36f, 0.50f, abs(panelUv.x - 0.5f));
+    float topMask = smoothstep(0.22f, 0.68f, abs(normal.y));
+    float lane = 1.0f - smoothstep(0.455f, 0.495f, abs(panelUv.x - 0.5f));
     float edgeDistance = min(min(panelUv.x, 1.0f - panelUv.x), min(panelUv.y, 1.0f - panelUv.y));
-    float border = 1.0f - smoothstep(0.025f, 0.075f, edgeDistance);
+    float border = 1.0f - smoothstep(0.020f, 0.065f, edgeDistance);
 
-    float arrow = BuildDashArrow(panelUv, gMaterial.time, speed, density);
-    float trailA = pow(saturate(0.5f + 0.5f * sin((uv.y - gMaterial.time * speed) * 34.0f + uv.x * 7.0f)), 7.0f) * lane;
-    float trailB = pow(saturate(0.5f + 0.5f * sin((uv.y - gMaterial.time * (speed * 1.25f)) * 19.0f - uv.x * 11.0f)), 10.0f) * lane;
-    float sideRail = smoothstep(0.34f, 0.43f, abs(panelUv.x - 0.5f)) * (1.0f - smoothstep(0.45f, 0.50f, abs(panelUv.x - 0.5f)));
-    float pulse = 0.82f + 0.18f * sin(gMaterial.time * 5.5f);
+    // Three synchronized arrow lanes remain readable across the full track width.
+    float laneUvX = frac(panelUv.x * 3.0f);
+    float arrow = BuildDashArrow(float2(laneUvX, panelUv.y), gMaterial.time, speed, density);
+    float laneSeparator = 1.0f - smoothstep(0.015f, 0.045f, abs(frac(panelUv.x * 3.0f) - 0.5f));
+    float trailA = pow(saturate(0.5f + 0.5f * sin((panelUv.y - gMaterial.time * speed) * 39.0f + panelUv.x * 8.0f)), 9.0f) * lane;
+    float trailB = pow(saturate(0.5f + 0.5f * sin((panelUv.y - gMaterial.time * (speed * 1.32f)) * 23.0f - panelUv.x * 13.0f)), 12.0f) * lane;
+    float sideRail = smoothstep(0.405f, 0.438f, abs(panelUv.x - 0.5f)) * (1.0f - smoothstep(0.465f, 0.492f, abs(panelUv.x - 0.5f)));
+    float idlePulse = 0.88f + 0.12f * sin(gMaterial.time * 6.4f);
 
-    float3 base = lerp(float3(0.018f, 0.12f, 0.16f), float3(0.035f, 0.38f, 0.46f), lane);
-    base *= lerp(0.82f, 1.12f, dot(saturate(textureBase), float3(0.299f, 0.587f, 0.114f)));
+    // Emissive is also the short activation signal driven by GimmickDashPanel.
+    float activation = saturate((gMaterial.emissive - 1.20f) * 0.34f);
+    float activationPhase = frac(panelUv.y * 1.18f - gMaterial.time * 4.8f);
+    float activationWave = 1.0f - smoothstep(0.02f, 0.19f, abs(activationPhase - 0.50f));
 
-    float3 accent = lerp(float3(0.08f, 0.95f, 1.0f), saturate(MATERIAL_COLOR.rgb * 1.35f), 0.35f);
-    float glow = arrow * 2.45f + trailA * 0.72f + trailB * 0.45f + sideRail * 0.75f + border * 0.55f;
-    float3 topColor = base + accent * glow * pulse;
-    topColor *= lerp(0.72f, 1.0f, shadowFactor);
+    float3 base = lerp(float3(0.017f, 0.010f, 0.014f), float3(0.155f, 0.031f, 0.006f), lane);
+    base *= lerp(0.86f, 1.08f, dot(saturate(textureBase), float3(0.299f, 0.587f, 0.114f)));
 
-    float3 sideColor = float3(0.025f, 0.08f, 0.10f) * lerp(0.75f, 1.15f, textureBase);
-    return lerp(sideColor, topColor, topMask) * max(1.0f, gMaterial.emissive);
+    float3 amber = lerp(float3(1.22f, 0.245f, 0.012f), MATERIAL_COLOR.rgb * 1.36f, 0.22f);
+    float3 gold = float3(1.85f, 0.78f, 0.055f);
+    float3 hotCore = float3(2.55f, 2.06f, 0.72f);
+    float glow = arrow * 2.90f + trailA * 0.62f + trailB * 0.36f + sideRail * 1.08f + border * 0.72f;
+    float3 topColor = base + amber * glow * idlePulse;
+    topColor += gold * (laneSeparator * 0.12f + arrow * trailA * 0.72f);
+    topColor += hotCore * activationWave * activation * (0.48f + arrow * 1.25f);
+    topColor *= lerp(0.78f, 1.0f, shadowFactor);
+
+    float3 sideColor = float3(0.050f, 0.014f, 0.010f) * lerp(0.80f, 1.20f, textureBase);
+    sideColor += amber * border * 0.20f;
+    float emissiveGain = 1.0f + saturate(gMaterial.emissive - 1.0f) * 0.32f;
+    return lerp(sideColor, topColor, topMask) * emissiveGain;
 }
 
 PixelShaderOutput main(VertexShaderOutput input)
@@ -782,30 +796,86 @@ PixelShaderOutput main(VertexShaderOutput input)
             // ===========================================================
                 else if (gMaterial.materialType == 25)
                 {
+                    float3 ormColor = gOrmMap.Sample(gSampler, transformedUV.xy).rgb;
+                    float materialRoughness = MATERIAL_ROUGHNESS;
+                    float roughness = clamp(materialRoughness * lerp(1.0f, ormColor.g, 0.35f), 0.08f, 0.92f);
+                    float metallic = MATERIAL_METALLIC * ormColor.b;
+                    float ao = lerp(1.0f, ormColor.r, 0.75f);
+
+                    float rigidRate = saturate(max(
+                        smoothstep(0.44f, 0.60f, materialRoughness),
+                        smoothstep(0.32f, 0.62f, metallic)));
+
                     float3 N = normalize(input.normal);
+                    if (gMaterial.enableNormalMap == 1)
+                    {
+                        float3 T = normalize(input.tangent);
+                        T = normalize(T - dot(T, N) * N);
+                        float3 B = cross(N, T);
+                        float3x3 TBN = float3x3(T, B, N);
+                        float3 sampledNormal = gNormalMap.Sample(gSampler, transformedUV.xy).rgb * 2.0f - 1.0f;
+                        float3 mappedNormal = normalize(mul(sampledNormal, TBN));
+                        N = normalize(lerp(N, mappedNormal, lerp(0.34f, 0.82f, rigidRate)));
+                    }
+
                     float3 L = normalize(-gDirectionalLight.direction);
                     float3 V = normalize(gCamera.worldPosition - input.worldPosition);
                     float3 H = normalize(L + V);
-
                     float3 baseColor = MATERIAL_COLOR.rgb * textureColor.rgb;
                     float NdotL = saturate(dot(N, L));
                     float NdotV = saturate(dot(N, V));
                     float NdotH = saturate(dot(N, H));
 
-                    float ambientStrength = 0.58f + saturate(max(max(gDirectionalLight.ambientColor.r, gDirectionalLight.ambientColor.g), gDirectionalLight.ambientColor.b)) * 0.22f;
-                    float directStrength = lerp(0.34f, 0.78f, NdotL) * saturate(gDirectionalLight.intenssity);
-                    directStrength *= lerp(0.72f, 1.0f, shadowFactor);
+                    // The soft body keeps a readable pearl tint instead of clipping the entire surface to white.
+                    float directStrength = (0.34f + NdotL * 0.48f * saturate(gDirectionalLight.intenssity));
+                    directStrength *= lerp(0.74f, 1.0f, shadowFactor);
+                    float3 softAmbient = baseColor * gDirectionalLight.ambientColor * 0.34f * ao;
+                    float3 pearlBody = baseColor * directStrength + softAmbient;
 
-                    float rim = pow(1.0f - NdotV, 2.4f) * 0.14f;
-                    float softSpecPower = lerp(42.0f, 96.0f, saturate(1.0f - MATERIAL_ROUGHNESS));
-                    float softSpec = pow(NdotH, softSpecPower) * 0.20f;
+                    float rim = pow(1.0f - NdotV, 2.15f);
+                    float pearlPhase = frac((1.0f - NdotV) * 0.82f
+                        + dot(N, normalize(float3(0.64f, 0.27f, 0.72f))) * 0.16f
+                        + input.worldPosition.y * 0.012f);
+                    float3 pearlSpectrum = BuildPrismSpectrum(pearlPhase);
+                    pearlBody += lerp(float3(0.24f, 0.66f, 1.0f), pearlSpectrum, 0.58f) * rim * 0.19f;
 
-                    float3 slimeLight = baseColor * (ambientStrength + directStrength);
-                    slimeLight *= lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.18f);
-                    slimeLight += float3(0.28f, 0.74f, 1.0f) * rim;
-                    slimeLight += float3(0.82f, 0.96f, 1.0f) * softSpec;
+                    float softSpecPower = lerp(34.0f, 88.0f, saturate(1.0f - roughness));
+                    float softSpec = pow(NdotH, softSpecPower);
+                    pearlBody += float3(0.78f, 0.92f, 1.0f) * softSpec * 0.22f;
 
-                    output.color.rgb = saturate(slimeLight);
+                    if (gMaterial.enableEnvMap == 1)
+                    {
+                        float3 reflectionDirection = reflect(-V, N);
+                        float3 reflection = gEnvTexture.SampleLevel(
+                            gSampler,
+                            reflectionDirection,
+                            lerp(0.4f, 4.2f, roughness)).rgb;
+                        pearlBody += reflection * gMaterial.envIntensity * (0.045f + rim * 0.10f);
+                    }
+
+                    // Appearance animation drives emissive above one, producing a visible internal pulse.
+                    float appearanceGlow = saturate((gMaterial.emissive - 1.0f) * 0.42f);
+                    pearlBody += lerp(float3(0.16f, 0.72f, 1.0f), float3(1.0f, 0.34f, 0.82f), pearlPhase)
+                        * appearanceGlow * (0.18f + rim * 0.28f);
+
+                    // Crown stones, gold, and gems use their authored mesh roughness/metallic values.
+                    float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), baseColor, metallic);
+                    float3 radiance = gDirectionalLight.color.rgb * gDirectionalLight.intenssity;
+                    float3 rigidColor = CalcPBRLight(L, V, N, radiance, baseColor, roughness, metallic, F0)
+                        * shadowFactor;
+                    rigidColor += baseColor * gDirectionalLight.ambientColor * ao * lerp(0.42f, 0.12f, metallic);
+                    if (gMaterial.enableEnvMap == 1)
+                    {
+                        float3 reflectionDirection = reflect(-V, N);
+                        float3 reflection = gEnvTexture.SampleLevel(
+                            gSampler,
+                            reflectionDirection,
+                            lerp(0.2f, 5.0f, roughness)).rgb;
+                        float3 fresnel = FresnelSchlick(NdotV, F0);
+                        rigidColor += reflection * fresnel * gMaterial.envIntensity * (1.0f - roughness * 0.72f);
+                    }
+
+                    output.color.rgb = saturate(lerp(pearlBody, rigidColor, rigidRate));
                     output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }
             // ===========================================================
@@ -930,6 +1000,14 @@ PixelShaderOutput main(VertexShaderOutput input)
 
                     output.color.rgb = (hotCore * core * 3.6f + baseColor * innerGlow * 2.6f + baseColor * outerGlow * 1.25f + baseColor * shell * 2.0f) * gMaterial.emissive;
                     output.color.a = saturate(MATERIAL_COLOR.a * (core + innerGlow * 0.55f + outerGlow * 0.28f + shell * 0.45f));
+                }
+            // ===========================================================
+            // Surface decal (unlit alpha)
+            // ===========================================================
+                else if (gMaterial.materialType == 28)
+                {
+                    output.color = MATERIAL_COLOR * textureColor;
+                    output.color.rgb *= gMaterial.emissive;
                 }
             // ===========================================================
             // 通常のPBRマテリアル
