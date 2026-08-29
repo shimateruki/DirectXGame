@@ -1,9 +1,0 @@
-newmtl SoftGrass
-Ns 12.000
-Ka 1.000 1.000 1.000
-Kd 0.420 0.780 0.220
-Ks 0.040 0.050 0.030
-d 1.000
-illum 2
-map_Kd soft_grass_leaf.png
-

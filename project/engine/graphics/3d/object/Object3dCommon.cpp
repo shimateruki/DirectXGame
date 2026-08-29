@@ -159,7 +159,7 @@ void Object3dCommon::CreatePipelineStates() {
     // ブレンドモードごとにPSOを生成
     for (size_t i = 0; i < static_cast<size_t>(BlendMode::kCountOfBlendMode); ++i) {
         BlendMode mode = static_cast<BlendMode>(i);
-        // ★ builder側でBlendStateとDepthWriteMaskを自動で良しなに設定してくれる！
+        // Blend Modeに対応するBlend StateとDepth Write設定はBuilder側で適用します。
         builder.SetBlendMode(mode);
         builder.Build(device, graphicsPipelineStates_[i].GetAddressOf());
     }
@@ -173,15 +173,15 @@ void Object3dCommon::CreatePipelineStates() {
     shadowBuilder.SetRootSignature(shadowRootSignature_.Get());
     shadowBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
 
-    // ★ 影なのでピクセルシェーダーは不要！
+    // Shadow MapにはDepthだけを書き込むためPixel Shaderは使用しません。
     shadowBuilder.SetShaders(shadowVsBlob.Get(), nullptr);
     shadowBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
-    // ★ 影のギザギザノイズ（シャドウアクネ）を防ぐ設定を一撃で！
+    // Depth Biasを設定し、Shadow Acneを抑えます。
     shadowBuilder.SetDepthBias(10000, 0.0f, 1.0f);
     shadowBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL);
 
-    // ★ 書き込み先はRTVなし(0個)、深度は 32bit Float
+    // Shadow PassはRTVを使わず、32bit FloatのDepthだけへ書き込みます。
     shadowBuilder.SetRenderTargets(0, nullptr, DXGI_FORMAT_D32_FLOAT);
 
     shadowBuilder.Build(device, shadowPipelineState_.GetAddressOf());
@@ -222,7 +222,7 @@ void Object3dCommon::CreateLocalFogPipeline() {
     // [0] b0: WVP行列 (Model::DrawShadow と一致させる)
     rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    // [1] t1: ボーン情報 (Model::DrawShadow がここに書き込んでくるので空けておく！)
+    // [1] t1: Model::DrawShadowがBindするBone情報用SRVです。
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
     // [2] t0: デプステクスチャ (ピクセルシェーダー用)
@@ -256,13 +256,13 @@ void Object3dCommon::CreateLocalFogPipeline() {
     psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
-    // ★重要: カメラが箱の中に入っても見えるように、表面をカリングして裏面を描く！
+    // CameraがBox内部へ入っても表示できるよう、表面をCullして内側の面を描きます。
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID);
 
     // 半透明合成設定 (BlendMode::kNormal と同じ設定を流用)
     psoBuilder.SetBlendMode(BlendMode::kNormal);
 
-    // ★重要: フォグはZテスト不要＆Zバッファへの書き込みもしないので上書きしてOFFにする
+    // Local Fogは画面合成するためDepth TestとDepth Writeを無効にします。
     psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO);
 
     // レンダーターゲット (デプスバッファは使わないので DSVFormat は UNKNOWN にする)
@@ -318,7 +318,7 @@ void Object3dCommon::CreateEffectRootSignature() {
 
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     // サンプラー (s0, ピクセルシェーダー用)
-    // デフォルト引数で MIN_MAG_MIP_LINEAR と WRAP が設定されるので指定はレジスタ番号だけでOK！
+    // FilterとAddress Modeは既定値を使い、Sampler Registerだけを指定します。
     builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
     // ビルド実行 (頂点レイアウトを使用するフラグを立てる)
@@ -329,7 +329,7 @@ void Object3dCommon::CreateEffectRootSignature() {
     );
 }
 // ==========================================================
-// ★ エフェクト用パイプラインの構築 (ブレンドモード全対応版)
+// 全Blend Modeに対応するEffect用Pipelineを構築します。
 // ==========================================================
 void Object3dCommon::CreateEffectPipeline() {
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -350,11 +350,11 @@ void Object3dCommon::CreateEffectPipeline() {
     psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
-    // ★超重要: 斬撃の裏側が消えないように CULL_MODE_NONE にする！
+    // 薄い斬撃Meshを両面から見せるためCullを無効にします。
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
     // Zテスト(奥にあるものは隠れる)は有効にしておく
-    // ※エフェクトなのでZバッファへの書き込みはしない(ZERO)
+    // 透明EffectはDepth Testだけを行い、Depthへは書き込みません。
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO);
 
     // レンダーターゲットの設定
@@ -470,7 +470,7 @@ void Object3dCommon::CreateMagmaPipeline() {
         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // ★頂点シェーダーは水(Water.VS)を使い回し、ピクセルシェーダーだけMagmaにする！
+    // 頂点変形はWaterと共通化し、表面表現だけMagma用Pixel Shaderへ差し替えます。
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.VS.hlsl", L"vs_6_0");
     auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.PS.hlsl", L"ps_6_0");
 
@@ -480,11 +480,11 @@ void Object3dCommon::CreateMagmaPipeline() {
     psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
-    // ★マグマは不透明で分厚いので裏面カリング(CULL_MODE_BACK)
+    // Magmaは不透明な閉じた形状としてBack FaceをCullします。
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
-    // ★ブレンドなし（完全不透明）
+    // 不透明描画のためBlendを無効にします。
     psoBuilder.SetBlendMode(BlendMode::kNone);
-    // ★ZテストもZ書き込みも行う
+    // 不透明物としてDepth TestとDepth Writeを有効にします。
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -510,11 +510,11 @@ void Object3dCommon::CreateIcePipeline() {
     psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
-    // ★氷は分厚く見せたいのでカリングなし(CULL_MODE_NONE)
+    // Ice内部も見せるためCullを無効にします。
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-    // ★半透明合成
+    // Ice表面は半透明Blendで合成します。
     psoBuilder.SetBlendMode(BlendMode::kNormal);
-    // ★Zテストはするが、Z書き込みはしない(透明物の基本)
+    // 透明物としてDepth Testだけを行い、Depthへは書き込みません。
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;

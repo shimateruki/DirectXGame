@@ -1,24 +1,14 @@
 #include "SceneFactory.h"
-#include "GamePlayScene.h" 
-#include "GameSelectScene.h"
-#include "TitleScene.h"    
-#include "SettingsScene.h"
-#include"GameOverScene.h"
-#include"GameClearScene.h"
-#include"PreviewScene.h"
+#include "GameOverScene.h"
+#include "GameScene.h"
 #include "SceneAssetEditorScene.h"
-#include "TutorialScene.h"
+#include "TitleScene.h"
 #include <utility>
 
 SceneFactory::SceneFactory() {
     RegisterScene("TITLE", [] { return std::make_unique<TitleScene>(); });
-    RegisterScene("SETTING", [] { return std::make_unique<SettingsScene>(); });
-    RegisterScene("GAMEPLAY", [] { return std::make_unique<GamePlayScene>(); });
-    RegisterScene("SELECT", [] { return std::make_unique<GameSelectScene>(); });
-    RegisterScene("GAMEOVER", [] { return std::make_unique<GameOverScene>(); });
-    RegisterScene("GAMECLEAR", [] { return std::make_unique<GameClearScene>(); });
-    RegisterScene("PREVIEW", [] { return std::make_unique<PreviewScene>(); });
-    RegisterScene("TUTORIAL", [] { return std::make_unique<TutorialScene>(); });
+    RegisterScene("GAME", [] { return std::make_unique<GameScene>(); });
+    RegisterScene("GAME_OVER", [] { return std::make_unique<GameOverScene>(); });
     RegisterScene("SCENE_EDITOR", [] { return std::make_unique<SceneAssetEditorScene>(); });
 }
 

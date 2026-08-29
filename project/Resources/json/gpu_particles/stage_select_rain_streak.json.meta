@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "41c1c8f31378ca1f47c6503cfea4a66b",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/stage_select_rain_streak.json",
-  "version": 1
-}

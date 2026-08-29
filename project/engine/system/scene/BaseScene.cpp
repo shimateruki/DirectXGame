@@ -1,8 +1,6 @@
 #include "BaseScene.h"
 #include "DirectXCommon.h"
 #include "Object3d.h"
-#include "Player.h"
-#include "BulletManager.h"
 #include "Camera.h"
 #include "GPUParticleManager.h"
 #include "LightManager.h"
@@ -36,17 +34,10 @@ void BaseScene::OnActivated() {
 
 void BaseScene::FixedUpdate(float fixedDeltaTime) {
     auto& objects = GetObjects();
-    Player* player = GetPlayer();
-    bool playerWasUpdated = false;
 
     for (auto& object : objects) {
         if (!object || object->IsReplayRemoved()) continue;
         object->FixedUpdate(fixedDeltaTime);
-        playerWasUpdated = playerWasUpdated || object.get() == player;
-    }
-
-    if (player && !playerWasUpdated && !player->IsReplayRemoved()) {
-        player->FixedUpdate(fixedDeltaTime);
     }
 }
 
@@ -129,9 +120,6 @@ void BaseScene::RefreshRenderCameraData() {
         }
     }
 
-    if (Player* player = GetPlayer()) {
-        player->RefreshRenderCameraData();
-    }
 }
 
 void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
@@ -279,14 +267,14 @@ bool BaseScene::IsSpecialMaterialType(int materialType) const {
     return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
-bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const {
-    if (!isFirstPerson || !object || !player) {
+bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Object3d* hiddenRoot, bool hideHierarchy) const {
+    if (!hideHierarchy || !object || !hiddenRoot) {
         return false;
     }
 
     Object3d* current = object;
     while (current) {
-        if (current == player) {
+        if (current == hiddenRoot) {
             return true;
         }
         current = current->GetParent();
@@ -294,7 +282,7 @@ bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isF
     return false;
 }
 
-bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* hiddenRoot, bool hideHierarchy) {
     if (!dxCommon) {
         return false;
     }
@@ -304,7 +292,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
 
     bool hasFog = false;
     for (auto& obj : objects) {
-        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), hiddenRoot, hideHierarchy)) {
             hasFog = true;
             break;
         }
@@ -315,7 +303,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
 
     dxCommon->PreDrawLocalFog();
     for (auto& obj : objects) {
-        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+        if (obj && obj->GetIsRenderVisible() && obj->GetMaterialType() == 7 && !IsHiddenByFirstPerson(obj.get(), hiddenRoot, hideHierarchy)) {
             obj->DrawLocalFog(dxCommon->GetDepthSrvHandle());
         }
     }
@@ -323,7 +311,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
     return true;
 }
 
-bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* hiddenRoot, bool hideHierarchy) {
     if (!dxCommon) {
         return false;
     }
@@ -335,13 +323,12 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
     for (auto& obj : objects) {
         if (obj && obj->GetIsRenderVisible() &&
             (IsSpecialMaterialType(obj->GetMaterialType()) || obj->HasOwnedSpecialMaterialVisuals()) &&
-            !IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+            !IsHiddenByFirstPerson(obj.get(), hiddenRoot, hideHierarchy)) {
             hasSpecialObjects = true;
             break;
         }
     }
-    const bool hasSpecialBullets = bulletManager && bulletManager->HasSpecialMaterialBullets();
-    if (!hasSpecialObjects && !hasSpecialBullets) {
+    if (!hasSpecialObjects) {
         return false;
     }
 
@@ -352,7 +339,7 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
         const uint32_t depthSrvHandle = dxCommon->GetDepthSrvHandle();
         const uint32_t grabSrvHandle = dxCommon->GetGrabSrvHandle();
         for (auto& obj : objects) {
-            if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), player, isFirstPerson)) {
+            if (!obj || !obj->GetIsRenderVisible() || IsHiddenByFirstPerson(obj.get(), hiddenRoot, hideHierarchy)) {
                 continue;
             }
 
@@ -412,9 +399,6 @@ bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>
         }
     }
 
-    if (hasSpecialBullets) {
-        bulletManager->DrawSpecial(dxCommon->GetDepthSrvHandle(), dxCommon->GetGrabSrvHandle());
-    }
     dxCommon->PostDrawLocalFog();
     return true;
 }
@@ -447,18 +431,12 @@ bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32
 }
 
 void BaseScene::TriggerEvent(int targetID) {
-    // IDが -1 (設定なし) なら何もしない
+    // -1は接続なしを表す予約値です。
     if (targetID == -1) return;
-
-
-
-    // シーン内の全オブジェクトを取得 
     auto& objects = GetObjects();
 
     for (auto& obj : objects) {
-        // 「俺の受信ID、呼ばれた番号と同じだ！」
         if (obj->GetEventID() == targetID) {
-            // アクションを実行！
             obj->OnTrigger();
         }
     }
@@ -476,13 +454,12 @@ void BaseScene::SetEventActive(int targetID, bool active) {
 }
 
 Object3d* BaseScene::FindObjectByEventID(int eventID) {
-    // IDなしなら無視
     if (eventID == -1) return nullptr;
 
     auto& objects = GetObjects();
     for (auto& obj : objects) {
         if (obj->GetEventID() == eventID) {
-            return obj.get(); // 見つけたオブジェクトそのものを返す！
+            return obj.get();
         }
     }
     return nullptr;
@@ -525,7 +502,6 @@ std::size_t BaseScene::EnsureUniquePersistentObjectGuids() {
     return regeneratedCount;
 }
 
-// 名前からスプライトを取得する
 Sprite* BaseScene::GetSpriteByName(const std::string& name) {
     auto& sprites = GetSprites();
     for (auto& sprite : sprites) {
@@ -533,5 +509,5 @@ Sprite* BaseScene::GetSpriteByName(const std::string& name) {
             return sprite.get();
         }
     }
-    return nullptr; // 見つからなかった場合
+    return nullptr;
 }

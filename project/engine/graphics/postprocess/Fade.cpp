@@ -8,9 +8,6 @@
 #include "WinApp.h"
 
 #include <algorithm>
-#include <cmath>
-#include <cstdio>
-#include <utility>
 
 namespace {
 float ScreenW() {
@@ -25,15 +22,9 @@ float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-float EaseInOut(float t) {
-    t = Clamp01(t);
+float EaseInOut(float value) {
+    const float t = Clamp01(value);
     return t * t * (3.0f - 2.0f * t);
-}
-
-std::string MakeFramePath(const std::string& directory, int index) {
-    char buffer[256] = {};
-    std::snprintf(buffer, sizeof(buffer), "%s/frame_%02d.png", directory.c_str(), index);
-    return buffer;
 }
 }
 
@@ -58,48 +49,20 @@ void Fade::InitializeSprites() {
         spriteCommon_->Initialize(DirectXCommon::GetInstance());
     }
 
-    const uint32_t whiteHandle = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/common/white.png");
-    if (whiteHandle == 0) {
-        return;
-    }
+    const uint32_t whiteHandle =
+        TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
     fallbackBlack_ = std::make_unique<Sprite>();
     fallbackBlack_->Initialize(spriteCommon_.get(), whiteHandle);
     fallbackBlack_->SetAnchorPoint({ 0.5f, 0.5f });
-}
-
-void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, int frameCount) {
-    if (!sequence.textureHandles.empty()) {
-        return;
-    }
-
-    std::vector<uint32_t> resolvedHandles;
-    resolvedHandles.reserve(frameCount);
-    for (int i = 0; i < frameCount; ++i) {
-        const uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(MakeFramePath(directory, i));
-        if (handle == 0) {
-            return;
-        }
-        resolvedHandles.push_back(handle);
-    }
-
-    sequence.textureHandles = std::move(resolvedHandles);
-
-    if (!sequence.textureHandles.empty()) {
-        sequence.sprite = std::make_unique<Sprite>();
-        sequence.sprite->Initialize(spriteCommon_.get(), sequence.textureHandles.front());
-        sequence.sprite->SetAnchorPoint({ 0.5f, 0.5f });
-    }
 }
 
 void Fade::ResolveNoiseTexture() {
     if (noiseTextureResolved_) {
         return;
     }
-    const uint32_t noiseHandle = TextureManager::GetInstance()->GetSrvHandle(
-        "Resources/sprite/effect/noise0.png");
-    if (noiseHandle == 0) {
-        return;
-    }
+
+    const uint32_t noiseHandle =
+        TextureManager::GetInstance()->Load("Resources/sprite/effect/noise0.png");
     PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
     noiseTextureResolved_ = true;
 }
@@ -115,7 +78,6 @@ void Fade::Update(float deltaTime) {
     coverage_ = IsClosing() ? EaseInOut(t) : 1.0f - EaseInOut(t);
 
     ResetPostEffectFade();
-
     if (t >= 1.0f) {
         coverage_ = IsClosing() ? 1.0f : 0.0f;
         status_ = Status::Finished;
@@ -128,30 +90,23 @@ void Fade::Draw() {
     }
 
     InitializeSprites();
-
-    if (style_ == VisualStyle::CrownIris) {
-        LoadSequence(crownIris_, "Resources/sprite/fade/crown_iris", 48);
-        DrawFrameSequence(crownIris_, coverage_);
-    } else {
-        LoadSequence(slimeWipe_, "Resources/sprite/fade/slime_wipe", 48);
-        DrawFrameSequence(slimeWipe_, coverage_);
-    }
+    DrawFallbackBlack(coverage_);
 }
 
 void Fade::StartFadeIn(float duration) {
-    Begin(Status::FadeIn, VisualStyle::CrownIris, duration, { 0.5f, 0.5f }, 1.0f);
+    Begin(Status::FadeIn, duration, { 0.5f, 0.5f }, 1.0f);
 }
 
 void Fade::StartFadeOut(float duration) {
-    Begin(Status::FadeOut, VisualStyle::CrownIris, duration, { 0.5f, 0.5f }, 0.0f);
+    Begin(Status::FadeOut, duration, { 0.5f, 0.5f }, 0.0f);
 }
 
 void Fade::StartIrisOut(float duration, const Vector2& center) {
-    Begin(Status::IrisOut, VisualStyle::CrownIris, duration, center, 0.0f);
+    Begin(Status::IrisOut, duration, center, 0.0f);
 }
 
 void Fade::StartIrisIn(float duration, const Vector2& center) {
-    Begin(Status::IrisIn, VisualStyle::CrownIris, duration, center, 1.0f);
+    Begin(Status::IrisIn, duration, center, 1.0f);
 }
 
 void Fade::Stop() {
@@ -161,34 +116,18 @@ void Fade::Stop() {
     ResetPostEffectFade();
 }
 
-void Fade::Begin(Status status, VisualStyle style, float duration, const Vector2& center, float initialCoverage) {
+void Fade::Begin(
+    Status status,
+    float duration,
+    const Vector2& center,
+    float initialCoverage) {
     InitializeSprites();
     status_ = status;
-    style_ = style;
     duration_ = (std::max)(duration, 0.001f);
     counter_ = 0.0f;
     center_ = { Clamp01(center.x), Clamp01(center.y) };
     coverage_ = Clamp01(initialCoverage);
     ResetPostEffectFade();
-}
-
-void Fade::DrawFrameSequence(FrameSequence& sequence, float coverage) {
-    if (!sequence.sprite || sequence.textureHandles.empty()) {
-        DrawFallbackBlack(coverage);
-        return;
-    }
-
-    const float framePosition = Clamp01(coverage) * static_cast<float>(sequence.textureHandles.size() - 1);
-    const size_t frameIndex = static_cast<size_t>(std::round(framePosition));
-    const uint32_t textureHandle = sequence.textureHandles[(std::min)(frameIndex, sequence.textureHandles.size() - 1)];
-
-    sequence.sprite->SetTextureHandle(textureHandle);
-    sequence.sprite->SetPosition({ ScreenW() * 0.5f, ScreenH() * 0.5f });
-    sequence.sprite->SetSize({ ScreenW(), ScreenH() });
-    sequence.sprite->SetRotation(0.0f);
-    sequence.sprite->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-    sequence.sprite->Update();
-    sequence.sprite->Draw();
 }
 
 void Fade::DrawFallbackBlack(float alpha) {

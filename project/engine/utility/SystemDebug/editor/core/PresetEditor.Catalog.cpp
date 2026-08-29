@@ -1,6 +1,9 @@
 #include "PresetEditor.h"
 
 #include "ModelManager.h"
+#include "EnemyFactory.h"
+#include "GimmickFactory.h"
+#include "ItemFactory.h"
 #include "imgui.h"
 
 #include <algorithm>
@@ -83,14 +86,7 @@ bool PresetEditor::MatchesCategory(const json& data, Category category) const {
     if (category == Category::All) {
         return true;
     }
-    if (category == Category::Stage1) {
-        return IsStage1Preset(data);
-    }
     return DetectCategory(data) == category;
-}
-
-bool PresetEditor::IsStage1Preset(const json& data) const {
-    return ReadString(data, "presetCollection", "") == "Stage1";
 }
 
 PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
@@ -116,7 +112,6 @@ PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
 
 const char* PresetEditor::GetCategoryLabel(Category category) const {
     switch (category) {
-    case Category::Stage1: return "ステージ1";
     case Category::Enemy: return "敵";
     case Category::Gimmick: return "ギミック";
     case Category::Item: return "アイテム";
@@ -128,7 +123,6 @@ const char* PresetEditor::GetCategoryLabel(Category category) const {
 
 ImVec4 PresetEditor::GetCategoryColor(Category category) const {
     switch (category) {
-    case Category::Stage1: return ImVec4(0.16f, 0.76f, 0.88f, 1.0f);
     case Category::Enemy: return ImVec4(0.78f, 0.28f, 0.24f, 1.0f);
     case Category::Gimmick: return ImVec4(0.24f, 0.50f, 0.84f, 1.0f);
     case Category::Item: return ImVec4(0.28f, 0.66f, 0.38f, 1.0f);
@@ -136,14 +130,6 @@ ImVec4 PresetEditor::GetCategoryColor(Category category) const {
     case Category::All:
     default: return ImVec4(0.40f, 0.42f, 0.46f, 1.0f);
     }
-}
-
-ImVec4 PresetEditor::GetStage1SectionColor(int sectionOrder) const {
-    if (sectionOrder < 200) return ImVec4(0.30f, 0.84f, 0.55f, 1.0f);
-    if (sectionOrder < 300) return ImVec4(0.24f, 0.70f, 1.0f, 1.0f);
-    if (sectionOrder < 400) return ImVec4(0.78f, 0.52f, 1.0f, 1.0f);
-    if (sectionOrder < 500) return ImVec4(1.0f, 0.76f, 0.24f, 1.0f);
-    return ImVec4(0.60f, 0.78f, 0.50f, 1.0f);
 }
 
 std::string PresetEditor::ShortModelName(const std::string& modelName) const {
@@ -208,61 +194,21 @@ std::string PresetEditor::ToLower(const std::string& value) const {
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetEnemyOptions() const {
-    return {
-        { "FireSlime", "Fire Slime" },
-        { "ThunderSlime", "Thunder Slime" },
-        { "WindSlime", "Wind Slime" },
-        { "Slime", "スライム" },
-        { "BossCore", "ボスコア" },
-        { "Bomb", "ボム" },
-        { "Bomber", "ボマー" },
-        { "Mushroom", "キノコ" },
-        { "GiantSlime", "巨大スライム" },
-        { "Bat", "コウモリ" },
-        { "BeamDrone", "目玉ビーム" }
-    };
+    std::vector<TypeOption> options;
+    for (const std::string& type : EnemyFactory::GetInstance()->GetRegisteredTypes()) options.push_back({ type, type });
+    return options;
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
-    return {
-        { "Default", "通常" },
-        { "MovingFloor", "移動床" },
-        { "Trampoline", "トランポリン" },
-        { "LaunchStar", "スターランチャー" },
-        { "ChikuwaBlock", "ちくわブロック" },
-        { "BlinkBlock", "点滅ブロック" },
-        { "BreakableBlock", "破壊ブロック" },
-        { "Coin", "コイン" },
-        { "HookAnchor", "フックアンカー" },
-        { "SinkingFloor", "沈む床" },
-        { "SeesawFloor", "シーソー床" },
-        { "DashPanel", "ダッシュパネル" },
-        { "IceFloor", "氷の床" },
-        { "TimedSwitch", "時限スイッチ床" },
-        { "AppearingFloor", "出現床" },
-        { "Switch", "汎用スイッチ" },
-        { "EventReceiver", "イベント受信" },
-        { "ArenaEncounter", "中ボス遭遇管理" },
-        { "GameplayVolume", "ゲームプレイボリューム" },
-        { "PrismBarrier", "プリズム障壁" },
-        { "HookPullBlock", "フック可動ブロック" },
-        { "OneWayFloor", "一方通行床" },
-        { "LiquidLevel", "水位・マグマ上下" },
-        { "MagmaHazard", "マグマダメージ床" },
-        { "ChainCollapseFloor", "連鎖崩れ床" },
-        { "RotatingFloor", "回転床" },
-        { "RotatingPillar", "回転柱" },
-        { "PhaseFlipFloor", "順番反転床" },
-        { "LaserEmitter", "レーザー発生器" },
-        { "LaserNode", "レーザー接続ノード" },
-        { "StageGate", "ステージゲート" }
-    };
+    std::vector<TypeOption> options;
+    for (const std::string& type : GimmickFactory::GetInstance()->GetRegisteredTypes()) options.push_back({ type, type });
+    return options;
 }
 
 std::vector<PresetEditor::TypeOption> PresetEditor::GetItemOptions() const {
-    return {
-        { "Heal", "回復アイテム" }
-    };
+    std::vector<TypeOption> options;
+    for (const std::string& type : ItemFactory::GetInstance()->GetRegisteredTypes()) options.push_back({ type, type });
+    return options;
 }
 
 #endif

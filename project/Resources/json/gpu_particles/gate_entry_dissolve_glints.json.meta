@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "6fe5bfd6cdacfcea487ff656ee2388bc",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/gate_entry_dissolve_glints.json",
-  "version": 1
-}

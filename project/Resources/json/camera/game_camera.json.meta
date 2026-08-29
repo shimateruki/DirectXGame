@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "6729f96a95a20e9a09e28587a65ff7f3",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/camera/game_camera.json",
-  "version": 1
-}

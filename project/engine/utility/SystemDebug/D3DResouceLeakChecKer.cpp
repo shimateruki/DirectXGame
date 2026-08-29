@@ -3,15 +3,15 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
+
 D3DResourceLeakChecKer::~D3DResourceLeakChecKer()
 {
-	//ƒŠƒ\[ƒXƒ`ƒFƒbƒN
-	Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
-	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug))))
-	{
-		// ReportLiveObjects ‚ðŒÄ‚Ño‚µAƒŠ[ƒN‚µ‚Ä‚¢‚éƒIƒuƒWƒFƒNƒg‚ðƒfƒoƒbƒOƒEƒBƒ“ƒhƒE‚Éo—Í
-		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
-		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
-		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-	}
+    // çµ‚äº†æ™‚ã«è§£æ”¾ã•ã‚Œã¦ã„ãªã„DXGI/D3D12ãƒªã‚½ãƒ¼ã‚¹ã‚’ãƒ‡ãƒãƒƒã‚°å‡ºåŠ›ã¸å ±å‘Šã—ã¾ã™ã€‚
+    Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug))))
+    {
+        debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+        debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+        debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+    }
 }

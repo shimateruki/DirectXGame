@@ -1,9 +1,17 @@
 {
     "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
     "_sceneAsset": {
-        "displayName": "sample",
+        "controller": "DEFAULT",
+        "displayName": "New Scene",
         "id": "new_scene",
+        "resources": {
+            "bgm": "",
+            "camera": "",
+            "light": "",
+            "skybox": ""
+        },
+        "runtimeScene": "SCENE_EDITOR",
         "spriteLayout": "Resources/json/sprite/new_scene_sprite.json",
-        "version": 1
+        "version": 3
     }
 }

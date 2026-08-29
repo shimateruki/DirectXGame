@@ -3,7 +3,7 @@
 #include "Object3d.h" 
 #include "Model.h"    
 
-// ★ ヘルパー: 子オブジェクト群の中から、モデル(Mesh)を持っているパーツを再帰的に探し出す！
+// 発生元の子階層を走査し、実際にMeshを持つObjectを探します。
 Object3d* FindModelObject(Object3d* obj) {
     if (!obj) return nullptr;
     if (obj->GetModel()) return obj;
@@ -35,7 +35,7 @@ void GPUParticleEmitter::EmitOnce() {
     Matrix4x4 worldMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
 
     if (targetObject_) {
-        // ★ Player自身ではなく、その子供(Player_body等)からモデルを引っこ抜く！
+        // 発生元本体にModelがない場合は、子階層の表示用Modelを使用します。
         Object3d* modelObj = FindModelObject(targetObject_);
         if (modelObj && modelObj->GetModel()) {
             worldMat = modelObj->GetWorldMatrix();
@@ -45,7 +45,7 @@ void GPUParticleEmitter::EmitOnce() {
                 vb = modelData.meshes[0].vertexResource.Get();
                 vCount = static_cast<uint32_t>(modelData.meshes[0].vertices.size());
                 vStride = sizeof(Model::VertexData);
-                boneSrv = model->GetBoneSrvIndex(); // ★ ボーン情報を取得！
+                boneSrv = model->GetBoneSrvIndex(); // Skinning済み発生位置の計算に使用するBone SRVです。
             }
         }
         else {

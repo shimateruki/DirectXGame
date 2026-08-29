@@ -393,7 +393,7 @@ float IntersectRayAABB(const Vector3& start, const Vector3& direction, const AAB
         return std::numeric_limits<float>::max(); // 衝突しない
     }
 
-    // ★修正2: レイの始点がAABBの「中」にあった場合は、即座に押し出すために 0.0f を返す
+    // Ray始点がAABB内部の場合は、即時Hitとして距離0.0を返します。
     if (tEnter < 0.0f) {
         return 0.0f;
     }
@@ -493,8 +493,8 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
         }
 
         // =========================================================
-        // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
-        // 壁（レイキャストの障害物）として扱わないように完全に除外する！
+        // ignoredObject本体だけでなく、その子階層も自己判定から除外します。
+        // TriggerはRaycastを遮る壁として扱わないため、Query対象から除外します。
         // =========================================================
         bool isPlayerPart = false;
         Object3d* current = object;
@@ -508,7 +508,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
             current = current->GetParent();
         }
 
-        // プレイヤーの一部だったら、このオブジェクトへのレイキャストはスキップ！
+        // ignoredObjectの子階層も自己判定になるためRaycast対象から除外します。
         if (isPlayerPart) {
             continue;
         }

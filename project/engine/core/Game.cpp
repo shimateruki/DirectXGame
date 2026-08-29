@@ -5,12 +5,8 @@
 #include "AudioPlayer.h"
 #include "CameraManager.h"
 #include "DebrisEffectManager.h"
-#include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "EditorCommandRegistry.h"
-#include "GameAudioSettings.h"
-#include "GameDataManager.h"
-#include "GameSettingsManager.h"
 #include "InputManager.h"
 #include "KeyConfig.h"
 #include "LightManager.h"
@@ -23,7 +19,6 @@
 #include "SceneFactory.h"
 #include "SceneManager.h"
 #include "SrvManager.h"
-#include "StageManager.h"
 #include "TextureManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
@@ -97,10 +92,6 @@ void Game::InitializeEngineServices() {
 	Framework::Initialize();
 
 	ProfilerManager::GetInstance()->Initialize();
-	StageManager::GetInstance()->Initialize();
-	GameDataManager::GetInstance()->Initialize();
-	GameSettingsManager::GetInstance()->Initialize();
-	GameAudioSettings::GetInstance()->Initialize();
 
 	sceneFactory_ = std::make_unique<SceneFactory>();
 	sceneManager_ = std::make_unique<SceneManager>();
@@ -109,53 +100,23 @@ void Game::InitializeEngineServices() {
 
 void Game::InitializeScene() {
 	currentSceneName_ = ResolveStartSceneName();
-	initialSceneOverridesPending_ = true;
 	sceneManager_->Initialize(sceneFactory_.get(), currentSceneName_);
-	ApplyInitialSceneOverrides();
 }
 // ビルド設定やエディタの最終シーン情報から、起動時に開くシーン名を決める。
 
 std::string Game::ResolveStartSceneName() const {
 	std::string startScene = "TITLE";
 
-#ifdef DD
-	StageManager::GetInstance()->SetCurrentStage(0);
-	startScene = "GAMEPLAY";
-#endif
-
-#if defined(USE_IMGUI) && !defined(DD)
+#ifdef USE_IMGUI
 	if (sceneManager_) {
 		std::string lastScene = sceneManager_->LoadLastSceneName();
-		if (!lastScene.empty()) {
+		if (!lastScene.empty() && sceneManager_->IsSceneRegistered(lastScene)) {
 			startScene = lastScene;
 		}
 	}
 #endif
 
 	return startScene;
-}
-// 起動直後に必要なシーン内オブジェクトの初期上書きを適用する。
-
-void Game::ApplyInitialSceneOverrides() {
-	if (!initialSceneOverridesPending_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
-		return;
-	}
-
-	BaseScene* currentScene = sceneManager_->GetCurrentScene();
-	if (!currentScene) {
-		return;
-	}
-
-	for (auto& object : currentScene->GetObjects()) {
-		if (object && object->GetName() == "Skydome") {
-			object->SetSelectedLighting(0);
-#ifdef USE_IMGUI
-			DebugConsole::GetInstance()->AddLog("Skydome settings have been overwritten.");
-#endif
-			break;
-		}
-	}
-	initialSceneOverridesPending_ = false;
 }
 // ポストエフェクト、LUT、フェード、キー設定を初期化する。
 
@@ -261,7 +222,6 @@ void Game::Update() {
 	}
 #endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
-	ApplyInitialSceneOverrides();
 }
 // 前フレームからの経過時間を求め、極端に大きい値は固定値へ丸める。
 

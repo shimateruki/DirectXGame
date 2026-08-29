@@ -1,21 +1,35 @@
 #pragma once
+
+#include "BaseGimmick.h"
+
+#include <functional>
 #include <memory>
 #include <string>
-#include "BaseGimmick.h"
-#include "Object3dCommon.h"
+#include <unordered_map>
+#include <vector>
 
-// 文字列のギミックタイプ名から、対応するギミックを生成するファクトリ
+class Object3dCommon;
+
+/// Gimmickタイプ名と生成処理を登録するFactoryです。初期状態は空です。
+/// Creatorは受け取ったObject3dCommonで初期化済みのインスタンスを返してください。
 class GimmickFactory {
 public:
-    // シングルトンインスタンスを取得する
+    using Creator = std::function<std::unique_ptr<BaseGimmick>(Object3dCommon*)>;
+
     static GimmickFactory* GetInstance();
 
-    // gimmickName に対応するギミックを生成し、基本初期化まで行う
-    std::unique_ptr<BaseGimmick> CreateGimmick(const std::string& gimmickName, Object3dCommon* common);
+    /// 同名登録はCreatorを置き換えますが、エディター表示順は最初の登録位置を維持します。
+    bool Register(const std::string& typeName, Creator creator);
+    bool Unregister(const std::string& typeName);
+    void Clear();
+    bool IsRegistered(const std::string& typeName) const;
+    std::vector<std::string> GetRegisteredTypes() const;
+    std::unique_ptr<BaseGimmick> CreateGimmick(
+        const std::string& typeName,
+        Object3dCommon* common) const;
 
 private:
     GimmickFactory() = default;
-    ~GimmickFactory() = default;
-    GimmickFactory(const GimmickFactory&) = delete;
-    const GimmickFactory& operator=(const GimmickFactory&) = delete;
+    std::unordered_map<std::string, Creator> creators_;
+    std::vector<std::string> registrationOrder_;
 };

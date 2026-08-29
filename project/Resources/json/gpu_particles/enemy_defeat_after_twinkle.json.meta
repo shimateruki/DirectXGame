@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "cd9495fc8cef98f5ff343e21b1597484",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/enemy_defeat_after_twinkle.json",
-  "version": 1
-}

@@ -14,7 +14,6 @@
 #include <initializer_list>
 #include <map>
 #include <sstream>
-#include <unordered_map>
 #include <utility>
 
 namespace {
@@ -56,52 +55,7 @@ bool IsTerrainVisual(const Object3d& object) {
 }
 
 std::string GetTypeDisplayName(const std::string& type) {
-    static const std::unordered_map<std::string, std::string> kNames = {
-        { "AppearingFloor", "出現床" },
-        { "BlinkBlock", "点滅ブロック" },
-        { "BreakableBlock", "破壊可能壁・ブロック" },
-        { "ChainCollapseFloor", "連鎖して落ちる床" },
-        { "ChikuwaBlock", "ちくわブロック" },
-        { "DashPanel", "ダッシュパネル" },
-        { "EventReceiver", "イベント受信オブジェクト" },
-        { "ArenaEncounter", "中ボス遭遇管理" },
-        { "GameplayVolume", "ゲームプレイボリューム" },
-        { "PrismBarrier", "プリズム障壁" },
-        { "FallingSpike", "落下する棘" },
-        { "FireCannon", "炎の砲台" },
-        { "HazardRideFloor", "妨害付き輸送床" },
-        { "HookAnchor", "フックアンカー" },
-        { "IceFloor", "氷床" },
-        { "LaserNode", "レーザーノード" },
-        { "MagmaGeyser", "マグマ噴出口" },
-        { "MagmaHazard", "マグマ地形" },
-        { "MovingFloor", "移動床" },
-        { "OneWayFloor", "一方通行床" },
-        { "PhaseFlipFloor", "時間反転床" },
-        { "RotatingFloor", "回転床" },
-        { "SeesawFloor", "シーソー床" },
-        { "SinkingFloor", "沈む床" },
-        { "StageGate", "ステージゲート" },
-        { "TimedSwitch", "時間スイッチ" },
-        { "Trampoline", "ジャンプ床" },
-        { "Coin", "コイン" },
-        { "StarCoin", "スターコイン" },
-        { "Slime", "ピンクスライム" },
-        { "FireSlime", "炎スライム" },
-        { "ThunderSlime", "雷スライム" },
-        { "WindSlime", "風スライム" },
-        { "PrismSlime", "クリスタルスライム" },
-        { "MagmaSlime", "マグマスライム" },
-        { "GiantSlime", "巨大スライム" },
-        { "RingBurner", "リングバーナー" },
-        { "Bomber", "ボムスライム" },
-        { "Bomb", "ボム" },
-        { "Mushroom", "キノコ" },
-        { "Goblin", "ゴブリン" },
-    };
-
-    auto it = kNames.find(type);
-    return it != kNames.end() ? it->second : type;
+    return type;
 }
 
 const char* GetColliderShapeName(ColliderType type) {

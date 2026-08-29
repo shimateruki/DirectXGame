@@ -1,7 +1,0 @@
-newmtl PrismGel
-Ka 0.08 0.20 0.24
-Kd 0.52 0.94 1.00
-Ks 0.72 0.92 1.00
-Ns 72.0
-d 1.0
-illum 2

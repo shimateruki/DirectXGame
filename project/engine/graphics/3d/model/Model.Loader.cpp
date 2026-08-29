@@ -696,7 +696,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         for (unsigned int f = 0; f < aiMesh->mNumFaces; f++) {
             aiFace face = aiMesh->mFaces[f];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                // 頂点をコピーするのではなく、頂点の「番号」だけを記録する！
+                // Bone Weightは頂点実体ではなく頂点Indexへ関連付けます。
                 mesh.indices.push_back(face.mIndices[j]);
             }
         }
@@ -793,7 +793,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         }
         modelData.animations.push_back(animation);
     }
-    // ★ 追加: 読み込んだノードツリーからSkeleton(1次元配列)を作成する
+    // 読み込んだNode TreeからIndex参照できる1次元Skeletonを構築します。
     modelData.skeleton = CreateSkeleton(modelData.rootNode);
 
     WriteModelCache(filePath, modelData);

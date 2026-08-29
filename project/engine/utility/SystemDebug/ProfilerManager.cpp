@@ -55,7 +55,7 @@ void ProfilerManager::RecordGpuTime(const std::string& name, float timeMs) {
 
     auto& data = gpuDataMap_[displayName];
     data.current = timeMs;
-    // 指数移動平均 (α=0.1 → より安定させ、ノイズを除去)
+    // α=0.1の指数移動平均でFrame間の計測ノイズを抑えます。
     data.smoothed = data.smoothed * 0.9f + timeMs * 0.1f;
     // 履歴リングバッファに記録
     data.history[data.historyIndex] = timeMs;

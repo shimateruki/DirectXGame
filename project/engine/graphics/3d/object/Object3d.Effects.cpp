@@ -83,7 +83,7 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // ========================================================================
 void Object3d::UpdateAttachedEffects(float deltaTime) {
     // =================================================================
-    // ★ 追加: エフェクト用のアンカーを更新（エディタと同じ挙動を再現）
+    // RuntimeとEditorで同じ追従結果になるよう、Effect用Anchorを更新します。
     // 親のスケールやX,Z回転を無視し、座標と大元のY軸回転だけを反映する
     // =================================================================
     effectAnchor_.translate = GetWorldPosition();
@@ -144,7 +144,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         effect->SetTranslate(localPos);
                         effect->SetRotation(localRot);
 
-                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
+                        // Object本体の階層ではなく、Effect専用Anchorへ接続してTransformの二重適用を防ぎます。
                         effect->GetTransform()->parent = &effectAnchor_;
 
                         attachedEffects1_.push_back(std::move(effect));
@@ -200,7 +200,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         effect->SetTranslate(localPos);
                         effect->SetRotation(localRot);
 
-                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
+                        // Object本体の階層ではなく、Effect専用Anchorへ接続してTransformの二重適用を防ぎます。
                         effect->GetTransform()->parent = &effectAnchor_;
 
                         attachedEffects2_.push_back(std::move(effect));

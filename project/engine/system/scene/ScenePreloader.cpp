@@ -150,36 +150,6 @@ void CollectSharedParticleTextures(ScenePreloadData& data) {
     }
 }
 
-void CollectSharedFadeTextures(ScenePreloadData& data) {
-    const std::filesystem::path directory = "Resources/sprite/fade/crown_iris";
-    std::error_code error;
-    if (!std::filesystem::exists(directory, error) || error) {
-        return;
-    }
-
-    for (std::filesystem::directory_iterator iterator(
-             directory,
-             std::filesystem::directory_options::skip_permission_denied,
-             error), end;
-         iterator != end;
-         iterator.increment(error)) {
-        if (error) {
-            error.clear();
-            continue;
-        }
-        if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
-            error.clear();
-            continue;
-        }
-
-        SceneLoadManifest::TextureRequest request;
-        request.path = NormalizePath(iterator->path().string());
-        AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
-            return item.path + (item.linear ? "|linear" : "|color");
-        });
-    }
-}
-
 void AddSharedTexture(
     ScenePreloadData& data,
     const std::string& path,
@@ -517,7 +487,6 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         RecordDependency(*result, SceneDependencyType::Texture, texture.path);
     }
     CollectSharedParticleTextures(*result);
-    CollectSharedFadeTextures(*result);
     AddSharedTexture(*result, "Resources/sprite/effect/noise0.png", true);
     AddSharedTexture(*result, "Resources/texture/lut/soft_adventure_lut.png");
 

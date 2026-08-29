@@ -44,7 +44,6 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -675,9 +674,9 @@ void DebugEditor::Draw3DIcons() {
         const char* iconStr = nullptr;
         ImU32 iconColor = IM_COL32(255, 255, 255, 200); // デフォルト白（半透明）
 
-        // クラスごとに表示するアイコンを変える！
+        // ObjectのClassに応じたIconを表示します。
         if (className == "InvisibleBox") {
-            //  名前でトリガーか当たり判定かを区別する！
+            // 旧データはClass情報がないため、名前からTriggerとColliderを補完します。
             if (obj->GetName().find("Trigger") != std::string::npos) {
                 iconStr = ICON_FA_BOLT; // 雷マーク (トリガー用)
                 iconColor = IM_COL32(255, 255, 0, 200); // 黄色
@@ -805,5 +804,5 @@ void DebugEditor::DrawEventIDOverlay() {
 }
 
 // ==========================================
-//  一発・床ピタッ！ (接地機能)
+// 選択Objectを直下の床面へ接地させます。
 // ==========================================

@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "d11e68382d6d4753ab94c5304ea71ceb",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/animation_clip/player_ability_fire_dash.json",
-  "version": 1
-}

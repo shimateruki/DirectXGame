@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "bd05efa7630a040288a98c8cb48ea342",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hitfx_kickpunch_spark_particles.json",
-  "version": 1
-}

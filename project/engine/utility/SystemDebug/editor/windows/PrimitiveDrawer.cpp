@@ -111,15 +111,15 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
         cylinderVerts[kCylinderSegments + i] = { cosT, -0.5f, sinT, 1.0f };
 
         // インデックス結線
-        // ① 上面の円の線分
+        // 上面の円周。
         cylinderIdx[i * 2] = i;
         cylinderIdx[i * 2 + 1] = (i + 1) % kCylinderSegments;
 
-        // ② 底面の円の線分
+        // 底面の円周。
         cylinderIdx[kCylinderSegments * 2 + i * 2] = kCylinderSegments + i;
         cylinderIdx[kCylinderSegments * 2 + i * 2 + 1] = kCylinderSegments + ((i + 1) % kCylinderSegments);
 
-        // ③ 上下を繋ぐ縦線
+        // 上下の円周を結ぶ縦線。
         cylinderIdx[kCylinderSegments * 4 + i * 2] = i;
         cylinderIdx[kCylinderSegments * 4 + i * 2 + 1] = kCylinderSegments + i;
     }

@@ -5,7 +5,6 @@
 #include "EditorPropertyRegistry.h"
 #include "EditorTransactionManager.h"
 #include "EnemyFactory.h"
-#include "GameplayStatusManager.h"
 
 #include <algorithm>
 #include <atomic>
@@ -547,9 +546,6 @@ void CreateObjectFromPresetNode(
             object->param_.emplace();
         }
         object->param_->enemyType = enemyType;
-        auto* statusManager = GameplayStatusManager::GetInstance();
-        statusManager->Initialize();
-        statusManager->ApplyEnemyStatus(object.get(), true);
     }
     ApplyGroundDefaultsIfNeeded(object.get());
     if (node.contains("name") && node["name"].is_string()) {
@@ -1034,9 +1030,6 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
         json preset = it->second;
         RemoveSceneObjectGuids(preset);
         obj->ImportFromJson(preset);
-        auto* statusManager = GameplayStatusManager::GetInstance();
-        statusManager->Initialize();
-        statusManager->ApplyManagedStatus(obj, false);
     } catch (...) {
     }
 }

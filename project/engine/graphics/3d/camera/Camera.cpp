@@ -337,7 +337,7 @@ void Camera::Update(float deltaTime) {
             float targetLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.2f;
             float eyeLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.15f;
 
-            // ★エイム中は強制固定（ワープ）を廃止し、滑らかにズームする係数に変更
+            // Aim中も位置を瞬間変更せず、補間係数を上げて素早くZoomします。
             if (isAiming) {
                 targetLerpFactor = 0.4f; // 視線の向きは早めに追従させてエイムしやすくする
                 eyeLerpFactor = 0.2f;    // カメラ位置は少し時間をかけて頭に引き寄せる
@@ -369,7 +369,7 @@ void Camera::Update(float deltaTime) {
                 Vector3 targetEye = smoothEye_;
                 float finalDist = dist;
 
-                // ① 壁などのオブジェクトとの判定
+                // Cameraと注視点の間にある障害物を検出します。
                 if (dist > 0.1f) {
                     RaycastHit hit = CollisionManager::GetInstance()->Raycast(
                         rayStartPos, direction, dist, kGround
@@ -382,7 +382,7 @@ void Camera::Update(float deltaTime) {
                     }
                 }
 
-                // ② 地面へのめり込み防止
+                // 補正後のCameraが地面へ入らないよう下方向も検査します。
                 float groundLimitY = playerPos.y + 0.5f;
                 if (targetEye.y < groundLimitY && direction.y < -0.001f) {
                     float distToGround = (groundLimitY - rayStartPos.y) / direction.y;
@@ -394,7 +394,7 @@ void Camera::Update(float deltaTime) {
                 eye_ = targetEye;
             }
             else {
-                eye_ = smoothEye_; // desiredEye ではなく滑らかに移動中の smoothEye_ を適用！
+                eye_ = smoothEye_; // 衝突補正後も補間中の位置を使い、Cameraの瞬間移動を防ぎます。
             }
         }
 

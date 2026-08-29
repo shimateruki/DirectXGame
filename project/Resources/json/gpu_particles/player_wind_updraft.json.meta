@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "9107fc2301e34d2935eaa2420acfad83",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_wind_updraft.json",
-  "version": 1
-}

@@ -7,9 +7,7 @@
 #include <memory>
 #include <vector>
 
-/// <summary>
-/// シーン切り替え中に進捗、アニメーション、ヒントを表示する専用シーン。
-/// </summary>
+/// シーン切り替え中に、汎用図形だけで進捗を表示する専用シーンです。
 class LoadingScene : public BaseScene {
 public:
     LoadingScene() = default;
@@ -24,14 +22,16 @@ public:
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-    /// <summary>
-    /// ロード進捗を0.0から1.0の範囲で設定する。
-    /// </summary>
+    /// ロード進捗を0.0から1.0の範囲で設定します。
     void SetProgress(float progress);
 
 private:
-    Sprite* CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color);
-    void UpdateSlimeRunAnimation();
+    Sprite* CreateSprite(
+        uint32_t textureHandle,
+        const Vector2& position,
+        const Vector2& size,
+        const Vector4& color);
+    void UpdateMarkerAnimation();
     void UpdateDotAnimation();
     void UpdateProgressGauge();
 
@@ -40,10 +40,8 @@ private:
     std::vector<std::unique_ptr<Sprite>> sprites_;
 
     Sprite* background_ = nullptr;
-    Sprite* loadingText_ = nullptr;
-    Sprite* slime_ = nullptr;
-    Sprite* shadow_ = nullptr;
-    Sprite* hintText_ = nullptr;
+    Sprite* marker_ = nullptr;
+    Sprite* markerShadow_ = nullptr;
     std::vector<Sprite*> dots_;
 
     Sprite* gaugeShadow_ = nullptr;
@@ -57,5 +55,4 @@ private:
     float timer_ = 0.0f;
     float targetProgress_ = 0.0f;
     float displayedProgress_ = 0.0f;
-    int slimeFrame_ = -1;
 };

@@ -38,7 +38,7 @@ KeyConfig* KeyConfig::GetInstance() {
 }
 
 void KeyConfig::Initialize() {
-    // 1. デフォルト設定 (キーとパッドの両方を設定！)
+    // 初期設定にはKeyboardとGamepadの両方を登録します。
     bindings_["Forward"] = { 0x11, -1, XINPUT_GAMEPAD_DPAD_UP };       // W / 上十字
     bindings_["Backward"] = { 0x1F, -1, XINPUT_GAMEPAD_DPAD_DOWN };    // S / 下十字
     bindings_["Left"] = { 0x1E, -1, XINPUT_GAMEPAD_DPAD_LEFT };        // A / 左十字
@@ -226,7 +226,7 @@ void KeyConfig::DrawImGui() {
 
     if (ImGui::Button(ICON_FA_PLUS " 追加")) {
         std::string newName(newActionName_);
-        // 空文字ではなく、まだ登録されていない名前なら辞書に追加！
+        // 有効かつ未登録のAction名だけを追加します。
         if (!newName.empty() && bindings_.find(newName) == bindings_.end()) {
             bindings_[newName] = { 0, -1, 0 }; // 初期値（未設定）で登録
             newActionName_[0] = '\0';      // 入力欄を綺麗にクリア
@@ -258,18 +258,18 @@ void KeyConfig::DrawImGui() {
             ImGui::TableNextRow();
 
             // -------------------------------------------------
-            // ① アクション名
+            // Action名。
             // -------------------------------------------------
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("%s", actionName.c_str());
 
     
           // -------------------------------------------------
-            // ② キーボード / マウス設定 (ボタンを押して割り当て)
+            // Keyboard / Mouse Bind。
             // -------------------------------------------------
             ImGui::TableSetColumnIndex(1);
             if (waitMode_ == WaitMode::Key && waitingForInputAction_ == actionName) {
-                // 入力待ち状態：キーボードとマウスの両方を監視！
+                // Bind待機中はKeyboardとMouseの入力を監視します。
                 ImGui::Button((ICON_FA_SPINNER " 入力待ち...##" + actionName).c_str(), ImVec2(-1, 0));
 
                 // A. キーボードチェック
@@ -281,7 +281,7 @@ void KeyConfig::DrawImGui() {
                     waitingForInputAction_ = "";
                 }
 
-                // B. マウスボタンチェック (★追加)
+                // Mouse Buttonの割り当て。
                 int mBtn = input->GetPressedMouseButton();
                 if (mBtn != -1) {
                     bind.mouseButton = mBtn;
@@ -309,7 +309,7 @@ void KeyConfig::DrawImGui() {
             }
 
             // -------------------------------------------------
-            // ③ ゲームパッド設定（プルダウンで選択）
+            // Gamepad Bind。
             // -------------------------------------------------
             ImGui::TableSetColumnIndex(2);
 
@@ -343,13 +343,13 @@ void KeyConfig::DrawImGui() {
             ImGui::PushItemWidth(-1); // セル幅いっぱいに広げる
             std::string comboLabel = "##Combo_" + actionName;
             if (ImGui::Combo(comboLabel.c_str(), &currentItem, padNames, IM_ARRAYSIZE(padNames))) {
-                // プレイヤーが別の項目を選んだら、その場で値を更新！
+                // 選択Actionが変わった時点で編集対象のBindを更新します。
                 bind.padCode = padValues[currentItem];
             }
             ImGui::PopItemWidth();
 
             // -------------------------------------------------
-            // ④ 削除ボタン
+            // Action削除。
             // -------------------------------------------------
             ImGui::TableSetColumnIndex(3);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // ボタンを赤くする

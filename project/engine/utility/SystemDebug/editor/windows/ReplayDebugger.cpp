@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "BaseScene.h"
-#include "BulletManager.h"
+
 #include "CaptureToolWindow.h"
 #include "Camera.h"
 #include "CameraManager.h"
@@ -1116,7 +1116,7 @@ void ReplayDebugger::ReleaseRetainedObjects() {
 }
 
 void ReplayDebugger::ClearTransientRuntime() {
-    BulletManager::GetInstance()->Clear();
+
     MeshEffectManager::GetInstance()->Clear();
     DebrisEffectManager::GetInstance()->Clear();
     GPUParticleManager::GetInstance()->ClearAllAutoEmitters();

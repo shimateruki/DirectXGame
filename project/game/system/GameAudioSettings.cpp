@@ -176,25 +176,7 @@ void GameAudioSettings::Stop(const std::string& id) {
 }
 
 void GameAudioSettings::EnsureDefaultEntries() {
-    AddDefaultEntry({ "cursor_move", "カーソル移動", kCategorySE, "Resources/audio/se/generated/cursor_move.wav", 0.75f, false });
-    AddDefaultEntry({ "decide", "決定", kCategorySE, "Resources/audio/se/generated/decide.wav", 0.80f, false });
-    AddDefaultEntry({ "cancel", "キャンセル", kCategorySE, "Resources/audio/se/generated/cancel.wav", 0.70f, false });
-    AddDefaultEntry({ "coin_get", "コイン取得", kCategorySE, "Resources/audio/se/generated/coin_get.wav", 0.80f, false });
-    AddDefaultEntry({ "crown_get", "王冠取得", kCategorySE, "Resources/audio/se/generated/crown_get.wav", 0.85f, false });
-    AddDefaultEntry({ "explosion", "爆発", kCategorySE, "Resources/audio/se/generated/explosion.wav", 0.85f, false });
-    AddDefaultEntry({ "hit_damage", "被弾", kCategorySE, "Resources/audio/se/generated/hit_damage.wav", 0.82f, false });
-    AddDefaultEntry({ "enemy_bind_loop", "敵拘束ループ", kCategorySE, "Resources/audio/se/generated/enemy_bind_loop.wav", 0.45f, true });
-    AddDefaultEntry({ "enemy_transform", "敵取り込み変身", kCategorySE, "Resources/audio/se/generated/enemy_transform.wav", 0.82f, false });
-    AddDefaultEntry({ "gate_enter", "ゲート進入", kCategorySE, "Resources/audio/se/generated/gate_enter.wav", 0.78f, false });
-    AddDefaultEntry({ "jump", "ジャンプ", kCategorySE, "Resources/audio/se/generated/jump.wav", 0.70f, false });
-    AddDefaultEntry({ "land", "着地", kCategorySE, "Resources/audio/se/generated/land.wav", 0.58f, false });
-    AddDefaultEntry({ "slime_stretch", "スライム伸び", kCategorySE, "Resources/audio/se/generated/slime_stretch.wav", 0.62f, false });
-    AddDefaultEntry({ "throw", "投げ", kCategorySE, "Resources/audio/se/generated/throw.wav", 0.70f, false });
-    AddDefaultEntry({ "beam_charge", "ビーム溜め", kCategorySE, "Resources/audio/se/generated/beam_charge.wav", 0.68f, false });
-    AddDefaultEntry({ "beam_fire", "ビーム発射", kCategorySE, "Resources/audio/se/generated/beam_fire.wav", 0.75f, false });
-    AddDefaultEntry({ "menu_open", "メニュー開始", kCategorySE, "Resources/audio/se/generated/menu_open.wav", 0.65f, false });
-    AddDefaultEntry({ "menu_close", "メニュー終了", kCategorySE, "Resources/audio/se/generated/menu_close.wav", 0.60f, false });
-
+    // 新しいゲームで必要なSEは、Audio Settingsから明示的に登録します。
     AddDefaultEntry({ "sample_bgm", "確認用BGM", kCategoryBGM, "Resources/audio/Alarm02.mp3", 0.60f, true });
 }
 

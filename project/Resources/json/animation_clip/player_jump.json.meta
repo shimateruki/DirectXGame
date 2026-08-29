@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "c18bfdd39264a5e5f5c847c82a008478",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/animation_clip/player_jump.json",
-  "version": 1
-}

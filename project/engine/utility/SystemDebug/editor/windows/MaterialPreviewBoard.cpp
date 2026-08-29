@@ -356,9 +356,7 @@ void MaterialPreviewBoard::RefreshModelCandidates() {
         "Primitives/sphere",
         "Primitives/cube",
         "Primitives/cylinder",
-        "Primitives/plane",
-        "Stages/block",
-        "Effects/flame"
+        "Primitives/plane"
     };
 
     std::error_code ec;

@@ -1,8 +1,0 @@
-{
-  "assetType": "Texture",
-  "guid": "f60ae9e524354b3a8a01c22dc818a206",
-  "importSettings": { "colorSpace": "Auto", "generateMipmaps": true },
-  "importer": "TextureImporter",
-  "source": "Resources/sprite/ui/tutorial/tutorial_throw.png",
-  "version": 1
-}

@@ -44,7 +44,6 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -891,7 +890,7 @@ void DebugEditor::DuplicateSelected() {
     newObj->SetName(selectedObject_->GetName() + "_Copy" + std::to_string(duplicateCount++));
 
     // =========================================================
-    //  マウスカーソルの位置(レイキャスト)を計算してペースト！
+    // Cursor位置からRaycastした配置点へClipboard内容を貼り付けます。
     // =========================================================
     Math math;
     Ray ray = ScreenPointToRay(gameViewMousePos_);

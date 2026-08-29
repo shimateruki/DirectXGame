@@ -194,7 +194,7 @@ void MeshEffectEditor::Update(float deltaTime) {
             rootObj = rootObj->GetParent(); // 一番上の親（プレイヤー本体など）まで遡る
         }
         if (rootObj) {
-            targetWorldY = rootObj->GetRotation().y; // 本体の大元の向きだけを使う！
+            targetWorldY = rootObj->GetRotation().y; // Boneの捻れを避け、Root ObjectのYawだけを使います。
         }
 
         // 位置のオフセット計算（sin/cosを使う元の計算が一番安全）
@@ -571,7 +571,7 @@ void MeshEffectEditor::DrawImGui() {
             ImGui::TextDisabled("※プロシージャル生成を使用しているためモデル選択は不要です");
         }
 
-        // --- ① メインテクスチャ (t0) ---
+        // Main Texture（t0）。
         TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
             if (auto renderer = previewEffect_->GetMeshRenderer()) {
                 renderer->SetTexture(path);
@@ -581,7 +581,7 @@ void MeshEffectEditor::DrawImGui() {
             ImGui::TextDisabled("プロシージャル形状にも発光テクスチャやストリークを貼れます。");
         }
 
-        // --- ② ノイズテクスチャ (t2) ---
+        // Noise Texture（t2）。
 
         if (editProceduralType_ != 1) {
             TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
@@ -594,7 +594,7 @@ void MeshEffectEditor::DrawImGui() {
             ImGui::TextDisabled("※プロシージャルで斬撃の筋(ノイズ)を自動生成しています");
         }
 
-        // --- ③ カラーランプ (t3) ---
+        // Color Ramp（t3）。
         TextureCombo(ICON_FA_PALETTE " カラーランプ", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
             uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
             previewEffect_->SetRampTexture(handle);
@@ -672,10 +672,10 @@ void MeshEffectEditor::DrawImGui() {
             else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
 
             // =======================================================
-            //  現在の設定を取り出して、正しく上書きする！
+            // 現在の設定を取得し、編集対象だけを上書きします。
             // =======================================================
             Object3d::ColliderConfig cConfig = previewEffect_->GetColliderConfig();
-            cConfig.type = cType; // ここで確実に Sphere や Cylinder をセット！
+            cConfig.type = cType; // UIで選択したCollider形状を明示的に反映します。
             cConfig.size = previewEffect_->editCollisionSize_;
             cConfig.center = previewEffect_->editCollisionOffset_;
 
@@ -726,7 +726,7 @@ void MeshEffectEditor::DrawImGui() {
         // 保存ボタン
         if (ImGui::Button(ICON_FA_SAVE " JSON 保存", ImVec2(halfWidth, 0))) {
             SaveToJson();
-            RefreshJsonFileList(); // 保存したらリストを最新に更新する！
+            RefreshJsonFileList(); // 保存結果をFile一覧へ反映します。
         }
         ImGui::SameLine();
 
@@ -743,7 +743,7 @@ void MeshEffectEditor::DrawImGui() {
 void MeshEffectEditor::SaveToJson() {
     std::string directoryPath = "Resources/json/effect/";
 
-    // フォルダが無ければ自動で作ってくれる魔法の1行！
+    // 保存先Folderがない場合は親階層ごと作成します。
     std::filesystem::create_directories(directoryPath);
 
     // ファイル名と合体させてフルパスを作る

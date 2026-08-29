@@ -25,7 +25,7 @@ private:
     char searchBuffer_[128] = "";
     std::string statusText_ = "SE/BGMの音量を調整できます。";
     char audioEventFileName_[128] = "new_audio_event.json";
-    char audioEventClipPath_[260] = "Resources/audio/se/generated/explosion.wav";
+    char audioEventClipPath_[260] = "";
     AudioEventDefinition audioEventDefinition_{};
     bool audioEventInitialized_ = false;
 };

@@ -124,9 +124,6 @@ void AnimatorControllerEditor::SaveController() {
             if (target->GetAnimatorControllerPath() == fileNameBuffer_ || target->GetAnimatorControllerPath() == path) {
                 target->SetAnimatorController(fileNameBuffer_);
             }
-            if (Player* player = dynamic_cast<Player*>(target); player && std::string(fileNameBuffer_) == "player_slime") {
-                player->ReloadSlimeAnimatorController();
-            }
         }
     }
 }

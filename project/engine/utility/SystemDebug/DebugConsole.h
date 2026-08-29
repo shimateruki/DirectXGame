@@ -40,7 +40,7 @@ private:
 #ifdef USE_IMGUI
     ImGuiTextFilter filter_;
 
-    // ★追加: ログレベルの表示ON/OFFフラグ
+    // Log Levelごとの表示Filter。
     bool showInfo_ = true;
     bool showWarn_ = true;
     bool showError_ = true;

@@ -230,66 +230,15 @@ std::string ResolveExistingSpritePath(const std::string& sceneId) {
 }
 
 bool IsRuntimeReferencedScene(const std::string& sceneId, std::string& referenceDescription) {
-    static const char* kFixedRuntimeScenes[] = {
-        "titleScene",
-        "stageSelect",
-        "gameOverScene",
-        "gameClearScene",
-        "sample",
-        "tutorial",
-        "stage1",
-        "stage2",
-        "stage3",
-        "stage4",
-        "stage5"
-    };
-    for (const char* fixedScene : kFixedRuntimeScenes) {
-        if (sceneId == fixedScene) {
-            referenceDescription = "ゲーム用Sceneクラスから固定パスで参照されています。";
-            return true;
-        }
-    }
-
-    const fs::path stageDefinitions = "Resources/json/stage_select/stages.json";
-    const json root = ReadJsonObject(stageDefinitions);
-    if (!root.contains("stages") || !root["stages"].is_array()) {
-        return false;
-    }
-
-    const std::string expectedLevelPath =
-        (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
-    for (const json& stage : root["stages"]) {
-        if (!stage.is_object()) {
-            continue;
-        }
-        if (stage.value("levelPath", std::string()) == expectedLevelPath) {
-            referenceDescription = "stages.jsonのステージ「" +
-                stage.value("name", stage.value("id", sceneId)) + "」から参照されています。";
-            return true;
-        }
+    if (sceneId == "titleScene" || sceneId == "new_scene") {
+        referenceDescription = "エンジンの空シーンテンプレートとして保持されています。";
+        return true;
     }
     return false;
 }
 
-std::string InferLegacyRuntimeScene(const std::string& sceneId) {
-    if (sceneId == "titleScene") return "TITLE";
-    if (sceneId == "stageSelect") return "SELECT";
-    if (sceneId == "gameOverScene") return "GAMEOVER";
-    if (sceneId == "gameClearScene") return "GAMECLEAR";
-    if (sceneId == "sample") return "PREVIEW";
-    if (sceneId == "tutorial") return "TUTORIAL";
-
-    const json root = ReadJsonObject("Resources/json/stage_select/stages.json");
-    if (root.contains("stages") && root["stages"].is_array()) {
-        const std::string expectedPath =
-            (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
-        for (const json& stage : root["stages"]) {
-            if (stage.is_object() && stage.value("levelPath", std::string()) == expectedPath) {
-                return "GAMEPLAY";
-            }
-        }
-    }
-    return {};
+std::string InferLegacyRuntimeScene(const std::string&) {
+    return "SCENE_EDITOR";
 }
 }
 
@@ -301,14 +250,14 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     std::vector<SaveTarget> targets;
     if (!editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) return targets;
 
-    // ベース名の取得 (stage1.json -> stage1)
+    // 拡張子を除いたScene IDを、分割JSONすべての共通名として使用します。
     std::string baseName = currentFilename;
     size_t extPos = baseName.find(".json");
     if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
 
     std::string basePath = "Resources/json/3Dobject/" + baseName;
 
-    // カテゴリ別の箱
+    // 互換性のため保存先は4カテゴリに分けます。未分類ObjectはObjectへ集約します。
     json playerSceneData, enemySceneData, objectSceneData, cameraSceneData;
     playerSceneData["objects"] = json::array();
     enemySceneData["objects"] = json::array();
@@ -325,7 +274,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
 
         json d = SerializeObject(obj.get());
 
-        // SaveCategoryを見て振り分け
+        // Camera判定を優先し、それ以外はSaveCategoryで振り分けます。
         std::string cat = obj->GetSaveCategory();
         if (obj->IsCameraObject() || cat == "Camera") cameraSceneData["objects"].push_back(d);
         else if (cat == "Player") playerSceneData["objects"].push_back(d);
@@ -333,7 +282,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
         else objectSceneData["objects"].push_back(d);
     }
 
-    // モードに応じた書き出し
+    // 部分保存では指定カテゴリだけを書き換え、他カテゴリのファイルを維持します。
     if (mode == SaveMode::All || mode == SaveMode::Player) {
         targets.push_back({ "Player", basePath + "_player.json", playerSceneData, false });
     }
@@ -370,7 +319,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     std::vector<SaveTarget> targets;
     if (!object) return targets;
 
-    // 1. ファイル名の自動振り分け
+    // 保存先未指定時はObject種別に応じた標準JSONを選びます。
     std::string baseName = filename;
     size_t extPos = baseName.find(".json");
     if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
@@ -382,7 +331,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     else if (cat == "Enemy") targetFilename = "Resources/json/3Dobject/" + baseName + "_enemy.json";
     else targetFilename = "Resources/json/3Dobject/" + baseName + "_object.json";
 
-    // 2. 既存JSONの読み込み
+    // 未編集Objectを失わないよう、既存JSONへ差分更新します。
     json sceneData;
     std::ifstream inFile(targetFilename);
     if (inFile.is_open()) {
@@ -399,10 +348,10 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
         sceneData["objects"] = json::array();
     }
 
-    // 3. データの構築
+    // 現在のEditor状態を保存形式へ変換します。
     json currentData = SerializeObject(object);
 
-    // 4. 配列内を探して更新 or 追加
+    // 同名Objectを更新し、存在しなければ末尾へ追加します。
     bool found = false;
     if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
         sceneData["objects"] = json::array();
@@ -457,7 +406,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["components"] = components;
     }
 
-    // 1. 基本設定
+    // 基本識別情報
     std::string className = obj->GetClassName();
     if (className.empty()) className = "Model";
     const bool isManagedCharacter = className == "Player" || className == "Enemy";
@@ -486,11 +435,11 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["modelName"] = obj->GetModelName();
     }
 
-    // 2. 親子関係
+    // 親子関係はGUIDを正とし、旧データ互換用に名前も保存します。
     d["parentName"] = obj->GetParent() ? obj->GetParent()->GetName() : "";
     d["parentGuid"] = obj->GetParent() ? obj->GetParent()->EnsurePersistentGuid() : "";
 
-    // 3. Transform
+    // Transform
     Transform* t = obj->GetTransform();
     d["position"] = { t->translate.x, t->translate.y, t->translate.z };
     d["rotation"] = { t->rotate.x, t->rotate.y, t->rotate.z };
@@ -509,26 +458,26 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         return d;
     }
 
-    // 4. Collider
+    // Collider
     Object3d::ColliderConfig c = obj->GetColliderConfig();
     d["collider"]["type"] = (int)c.type;
     d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
     d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
     d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
 
-    // 5. 衝突属性
+    // 衝突属性
     d["collisionAttribute"] = obj->GetCollisionAttribute();
     d["collisionMask"] = obj->GetCollisionMask();
     if (!obj->GetTerrainCollisionPath().empty()) {
         d["terrainCollisionPath"] = obj->GetTerrainCollisionPath();
     }
 
-    // 6. イベント関連
+    // イベント接続
     d["eventID"] = static_cast<int>(obj->GetEventType());
     d["targetID"] = obj->GetTargetID();
     d["myEventID"] = obj->GetEventID();
 
-    // 7. パラメータ。Player/Enemyの共通ステータスはGameplayStatusManagerだけが保存元です。
+    // ゲーム側が追加した汎用拡張パラメータ
     if (obj->param_.has_value()) {
         auto& p = obj->param_.value();
         if (isManagedCharacter) {
@@ -569,7 +518,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         }
     }
 
-    // 8. グラフィックス
+    // 描画設定
     Vector4 color = obj->GetColor();
     d["color"] = { color.x, color.y, color.z, color.w };
     d["blendMode"] = static_cast<int>(obj->GetBlendMode());
@@ -607,17 +556,17 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         }
         d["lod"] = lodJson;
     }
-    // 9. アニメーション
+    // アニメーション
     d["animation"]["animName"] = obj->animName_;
     d["animation"]["isAnimLoop"] = obj->isAnimLoop_;
     d["animation"]["animatorController"] = obj->GetAnimatorControllerPath();
 
-    // 10. レコーダー (Ghost)
+    // Path Recorder
     d["recorder"]["recordPathName"] = obj->GetRecordPathName();
     d["recorder"]["isRecordLoop"] = obj->IsRecordLoop();
     d["recorder"]["isRecordRelative"] = obj->IsRecordRelative();
 
-    // 11. ローカルフォグ
+    // Local Fog
     if (auto* fogData = obj->GetLocalFogData()) {
         d["localFog"]["color"] = { fogData->fogColor.x, fogData->fogColor.y, fogData->fogColor.z, fogData->fogColor.w };
         d["localFog"]["density"] = fogData->fogDensity;
@@ -649,9 +598,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     return d;
 }
 
-// =========================================================
-// 単体オブジェクトの更新保存 (UpdateObjectInSceneJSON)
-// =========================================================
+// Scene JSON内の単体Objectだけを差分更新します。
 void SceneSerializer::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
     if (!object) return;
 
@@ -1190,21 +1137,6 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
         }
     }
 
-    if (asset->runtimeScene == "GAMEPLAY") {
-        if (!hasPlayer) {
-            result.errors.push_back("GAMEPLAYにはPlayerが1体必要です。");
-        }
-        if (!hasCamera) {
-            result.warnings.push_back("Camera Objectがありません。固定Camera設定だけで成立するか確認してください。");
-        }
-        if (!hasGoal) {
-            result.warnings.push_back("goal Objectがありません。クリア条件が別実装か確認してください。");
-        }
-        if (InferLegacyRuntimeScene(asset->id) != "GAMEPLAY") {
-            result.warnings.push_back(
-                "stages.jsonに同じStage IDがありません。解放進行へ使用する場合はStage定義へ登録してください。");
-        }
-    }
     for (const std::string& duplicateName : duplicateNames) {
         result.warnings.push_back("Object名が重複しています: " + duplicateName);
     }

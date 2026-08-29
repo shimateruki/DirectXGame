@@ -1,8 +1,0 @@
-{
-  "assetType": "Texture",
-  "guid": "da64e4258be74b90949d26af3fe28204",
-  "importSettings": { "colorSpace": "Auto", "generateMipmaps": true },
-  "importer": "TextureImporter",
-  "source": "Resources/sprite/ui/tutorial/tutorial_reach_enemy.png",
-  "version": 1
-}

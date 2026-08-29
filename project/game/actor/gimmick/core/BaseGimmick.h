@@ -1,20 +1,14 @@
 #pragma once
-#include "Object3d.h"
-#include <string>
 
-// 全てのギミックが共有する初期化、更新、衝突処理の基底クラス
+#include "Object3d.h"
+
+/// 新しいGimmick実装を追加するための最小基底クラスです。
 class BaseGimmick : public Object3d {
 public:
-    virtual ~BaseGimmick() = default;
+    BaseGimmick() = default;
+    ~BaseGimmick() override = default;
 
-    // モデル名を指定してギミック本体を初期化する
-    virtual void Initialize(Object3dCommon* common, const std::string& modelName);
-
-    // ギミック共通の更新処理
-    virtual void Update(float deltaTime) override;
-
-    // ギミック共通の衝突処理
-    virtual bool OnCollision(Object3d* other) override;
-
+    virtual void Initialize(Object3dCommon* common, const std::string& modelName = {});
+    /// 派生型は動的型を維持するため、自身のCloneを必ずoverrideしてください。
     std::unique_ptr<Object3d> Clone() const override;
 };

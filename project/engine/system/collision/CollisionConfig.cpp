@@ -156,7 +156,7 @@ CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadi
 
         // OBBのサイズ(半サイズ)で制限
         float clamped = std::clamp(dist, -obb.size.x, obb.size.x);
-        // ※ size.x, y, z を配列的にアクセスできない場合は以下のように分岐するか、sizeを配列にする
+        // Vector3は配列Accessを持たないため、軸番号を各Componentへ明示的に対応させます。
         if (i == 1) clamped = std::clamp(dist, -obb.size.y, obb.size.y);
         if (i == 2) clamped = std::clamp(dist, -obb.size.z, obb.size.z);
 
@@ -180,7 +180,7 @@ CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadi
         } else {
             // 中心が完全に埋まっている場合
             info.penetration = sphereRadius;
-            info.normal = obb.orientations[1]; // とりあえずY軸などで代用
+            info.normal = obb.orientations[1]; // 安定した押し戻し方向としてOBBのY軸を使用します。
         }
     }
 
@@ -199,12 +199,12 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
 
     float R[3][3];
     float absR[3][3];
-    // ★ EPS は削除（外積の計算時にゼロ除算回避が入っているため不要）
+    // 外積側でゼロ除算を防いでいるため、ここでは補正値を加えません。
 
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             R[i][j] = math.Dot(a.orientations[i], b.orientations[j]);
-            // ★ EPSを足さない純粋な絶対値にする（床が膨張するバグの修正）
+            // Boundsを不必要に拡張しないよう、回転行列成分の純粋な絶対値を使います。
             absR[i][j] = std::fabs(R[i][j]);
         }
     }

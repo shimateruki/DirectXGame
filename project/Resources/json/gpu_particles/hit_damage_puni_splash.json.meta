@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "1923f715de302d6f67f34b832b4461bb",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_damage_puni_splash.json",
-  "version": 1
-}

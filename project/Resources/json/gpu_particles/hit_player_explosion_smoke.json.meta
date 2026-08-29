@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "924c6b63faac3dac201408b9807f7e4d",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_player_explosion_smoke.json",
-  "version": 1
-}

@@ -150,7 +150,7 @@ void GPUParticleSystem::CreateBuffer() {
     dummyBoneSrvIndex_ = SRVManager::GetInstance()->Allocate();
     SRVManager::GetInstance()->CreateSRVforResource(dummyBoneSrvIndex_, dummyBoneBuffer_.Get(), boneSrvDesc);
 
-    // ★追加: 初期状態で真っ白なテクスチャをロードしておく（テクスチャ未設定によるクラッシュ防止）
+    // Texture未指定でも有効なSRVをBindできるよう、白Textureを既定値として読み込みます。
     currentTextureHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
 
     CreateGraphicsPipeline();
@@ -486,7 +486,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
     // =========================================================
-    // ★ 修正1: 斬撃エフェクトなどの頂点データを引き継がないようにリセット！
+    // Preset切替時に前の形状固有頂点を引き継がないよう、Mesh設定を初期化します。
     // =========================================================
     commandList->IASetVertexBuffers(0, 0, nullptr);
     commandList->IASetIndexBuffer(nullptr);

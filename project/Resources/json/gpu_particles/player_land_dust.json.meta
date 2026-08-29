@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "dd4380373a565bc294af48d9be395b4e",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_land_dust.json",
-  "version": 1
-}

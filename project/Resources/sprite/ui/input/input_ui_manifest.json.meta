@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "647e001e4028294a82d127a0a8b2d0be",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/sprite/ui/input/input_ui_manifest.json",
-  "version": 1
-}

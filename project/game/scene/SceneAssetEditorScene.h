@@ -7,22 +7,19 @@
 
 class DirectXCommon;
 class InputManager;
-class LevelLoader;
 class Object3dCommon;
 class ObjectManager;
 class ParticleCommon;
 class ParticleSystem;
-class Player;
 class Skybox;
 class SpriteCommon;
 
-/// <summary>
 /// Scene Assetをゲームロジックから分離して編集するための専用シーン。
-/// </summary>
+/// 登録済みFactoryがない型もObject3dとして保持し、配置データを失わず編集できます。
 class SceneAssetEditorScene : public BaseScene {
 public:
-    SceneAssetEditorScene() = default;
-    ~SceneAssetEditorScene() override = default;
+    SceneAssetEditorScene();
+    ~SceneAssetEditorScene() override;
 
     void Initialize() override;
     SceneLoadManifest BuildAsyncLoadManifest() const override;
@@ -44,15 +41,14 @@ public:
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
-    Player* GetPlayer() const override { return player_; }
-    void SetPlayer(Player* player) override { player_ = player; }
-
 private:
+    void LoadObjectLayout(const std::string& path);
+    void LoadSpriteLayout(const std::string& path);
+
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
 
     std::unique_ptr<ObjectManager> objectManager_;
-    std::unique_ptr<LevelLoader> levelLoader_;
     std::unique_ptr<Object3dCommon> object3dCommon_;
     std::unique_ptr<SpriteCommon> spriteCommon_;
     std::unique_ptr<ParticleCommon> particleCommon_;
@@ -60,6 +56,5 @@ private:
     std::unique_ptr<Skybox> skybox_;
     std::vector<std::unique_ptr<Sprite>> sprites_;
 
-    Player* player_ = nullptr;
     uint32_t gpuParticleTextureHandle_ = 0;
 };

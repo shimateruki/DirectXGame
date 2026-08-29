@@ -439,7 +439,7 @@ json Object3d::ExportToJson() {
     d["materialType"] = GetMaterialType();
     d["meshDrawIndex"] = GetMeshDrawIndex();
 
-    // ★追加: 金属度と粗さ
+    // PBR用の金属度と粗さ。
     d["metallic"] = GetMetallic();
     d["roughness"] = GetRoughness();
 
@@ -659,7 +659,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("materialType")) SetMaterialType(j["materialType"]);
     if (j.contains("meshDrawIndex")) SetMeshDrawIndex(j["meshDrawIndex"].get<int>());
 
-    // ★追加: 金属度と粗さ
+    // PBR用の金属度と粗さ。
     if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
     if (j.contains("roughness")) SetRoughness(j["roughness"].get<float>());
 

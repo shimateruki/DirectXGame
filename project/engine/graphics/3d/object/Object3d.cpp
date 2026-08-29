@@ -325,7 +325,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
             common_->GetDxCommon()->EndGpuProfile(name_);
         }
     }
-    // ★ DrawAttachedEffects はここでは呼ばない！
+    // Attached EffectはGrab Texture更新後の専用Passで描くため、通常Drawには含めません。
     //    エフェクトの歪み(Distortion)がGrabTextureを参照するため、
     //    GrabTexture更新後の専用パスで描画する必要がある。
 }

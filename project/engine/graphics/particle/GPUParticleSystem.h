@@ -9,7 +9,7 @@
 #include <Object3dCommon.h>
 
 /// <summary>
-/// 個別のエフェクト（炎、魔法など）を担当する独立した部隊
+/// 1種類のGPU Particle Effectについて、発生、更新、描画Resourceを所有します。
 /// </summary>
 // GPUParticleSystemは、1種類のGPUパーティクルをComputeで更新し、Spriteとして描画する実体です。
 class GPUParticleSystem {

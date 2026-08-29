@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "df5a5a593922d7dab034a7308e423ef5",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/sprite/gameOverScene.json",
-  "version": 1
-}

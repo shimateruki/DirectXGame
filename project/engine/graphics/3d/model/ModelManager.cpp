@@ -77,7 +77,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     std::string fileName;
 
     // ==========================================
-    // ★ 修正：モデル自身のフォルダ名(stem)もしっかりパスに含める！
+    // 同名Modelの衝突を避けるため、Model自身のFolder名もCache Keyへ含めます。
     // ==========================================
     // サブフォルダ指定がある場合は、モデル自身と同名のフォルダ配下をまず候補にする。
     if (!parentPath.empty()) {
@@ -357,7 +357,7 @@ std::vector<std::string> ModelManager::GetAvailableModelNames() const {
 #include <Windows.h> // OutputDebugStringAで読み込みログを出力するために使用。
 
 // ---------------------------------------------------------
-// ★修正版：フォルダ内を自動スキャンして一括ロード（ログ出力付き）
+// Model Folderを再帰走査し、検出したAssetをまとめて読み込みます。
 // ---------------------------------------------------------
 // Resources/3DModel配下を走査し、見つかったモデルファイルを事前にまとめて読み込む。
 void ModelManager::LoadAllModels() {
@@ -372,12 +372,12 @@ void ModelManager::LoadAllModels() {
             std::string ext = entry.path().extension().string();
             if (ext == ".obj" || ext == ".gltf" || ext == ".glb") {
 
-                // ファイルの本当の場所をそのまま使う！
+                // 検出した実File PathをそのままLoad元として使用します。
                 std::string dirPath = entry.path().parent_path().string() + "/";
                 std::string fileName = entry.path().filename().string();
 
                 // ==========================================
-                // ★ 修正：LoadModelを使わず、相対パスから完璧な「登録キー」を自動生成する
+                // Relative Pathから一意な登録Keyを生成し、同名Fileの衝突を避けます。
                 // ==========================================
                 // 事前ロード時はモデルファイル名ではなく、モデルフォルダまでの相対パスを登録キーにする。
                 std::filesystem::path relPath = std::filesystem::relative(entry.path(), kDefaultBaseDirectory);

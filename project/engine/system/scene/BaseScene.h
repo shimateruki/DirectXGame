@@ -4,11 +4,10 @@
 #include <string>
 #include <vector>
 
-// 継承先でも頻繁に使うため、基底クラス側で共通 include しておく
+// 派生Sceneの保存対象APIで直接使うため、完全型を公開します。
 #include "Object3d.h"
 #include "Sprite.h"
 
-// 前方宣言
 class SceneManager;
 class Object3dCommon;
 class SpriteCommon;
@@ -16,7 +15,6 @@ class ParticleSystem;
 class DebugEditor;
 class Camera;
 class DirectXCommon;
-class BulletManager;
 class Player;
 class GameRule;
 class Skybox;
@@ -26,40 +24,35 @@ struct SceneLoadManifest;
 #include "engine/utility/state/IEditable.h"
 #include "SceneLoadContext.h"
 
-/// <summary>
-/// すべてのシーンが実装する基底クラス。
-/// </summary>
-// BaseSceneは、各ゲームシーンが共通して持つ初期化、更新、描画、保存対象アクセスの土台です。
+/// 各Sceneが共通して持つ生存期間、更新、描画、保存対象アクセスの基底クラスです。
+/// 派生Sceneは所有するObjectとSpriteの一覧を公開し、EditorやReplayから同じ入口で扱えるようにします。
 class BaseScene : public IEditable {
 public:
     virtual ~BaseScene() = default;
 
-    // --- IEditable ---
+    // IEditable
     virtual std::string GetName() override { return "Scene Settings"; }
     virtual void DrawImGui() override {}
 
-    // --- 必須オーバーライド ---
-        // シーン固有のオブジェクト、カメラ、UI、管理クラスを初期化します。
-virtual void Initialize() = 0;
-        // ロード画面を更新しながら初期化するための段階実行インターフェースです。
-        // 既定実装は従来の Initialize() を1回だけ呼ぶため、既存Sceneとの互換性を保ちます。
-virtual void BeginLoadingInitialize();
-virtual bool InitializeLoadingStep();
-virtual float GetLoadingInitializeProgress() const;
-        // 非同期初期化完了後、現在Sceneへ切り替える直前にメインスレッドで呼ばれます。
-virtual void OnActivated();
-        // ワーカースレッドで先読みするScene Assetと依存リソースを列挙します。
-virtual SceneLoadManifest BuildAsyncLoadManifest() const;
-        // シーン内のゲームロジックをフレーム時間に合わせて更新します。
-virtual void Update(float deltaTime) = 0;
-        // 固定刻みで動かす物理・ゲーム処理をScene内Objectへ通知します。
-virtual void FixedUpdate(float fixedDeltaTime);
-        // シーン内の3D/2D要素を描画します。
-virtual void Draw() = 0;
-        // シーン終了時にリソースや登録状態を片付けます。
-virtual void Finalize() = 0;
+    // Sceneの生存期間
+    /// Scene固有のObject、カメラ、UI、管理クラスを初期化します。
+    virtual void Initialize() = 0;
+    /// ロード画面を更新しながら初期化するための段階実行インターフェースです。
+    /// 既定実装はInitializeを1回だけ呼び、段階初期化を実装しないSceneとの互換性を保ちます。
+    virtual void BeginLoadingInitialize();
+    virtual bool InitializeLoadingStep();
+    virtual float GetLoadingInitializeProgress() const;
+    /// 非同期準備後、現在Sceneへ切り替える直前にメインスレッドで呼ばれます。
+    virtual void OnActivated();
+    /// ワーカースレッドで先読みするScene Assetと依存リソースを列挙します。
+    virtual SceneLoadManifest BuildAsyncLoadManifest() const;
+    virtual void Update(float deltaTime) = 0;
+    /// 固定刻みで動かす物理処理をScene内Objectへ通知します。
+    virtual void FixedUpdate(float fixedDeltaTime);
+    virtual void Draw() = 0;
+    virtual void Finalize() = 0;
 
-    // --- マネージャ設定 ---
+    // SceneManagerとロード情報
     virtual void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
     virtual void SetDebugEditor(DebugEditor* editor) { debugEditor_ = editor; }
     virtual void SetSceneLoadContext(const SceneLoadContext& context) { sceneLoadContext_ = context; }
@@ -83,7 +76,7 @@ virtual void Finalize() = 0;
     std::string ResolvePrimaryObjectLayoutPath(const std::string& defaultPath);
     std::string ResolvePrimarySpriteLayoutPath(const std::string& defaultPath);
 
-    // --- オブジェクト管理 (LevelLoader / Editor 用) ---
+    // Object、Sprite、Replayの共通アクセス
     virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
         static std::vector<std::unique_ptr<Object3d>> empty;
         return empty;
@@ -94,24 +87,24 @@ virtual void Finalize() = 0;
         return empty;
     }
 
-    // ReplayDebuggerへ、Sceneが現在所有している永続Spriteを列挙します。
-    // 個別unique_ptrで保持するHUDは派生Sceneで追加してください。
+    /// ReplayDebuggerへSceneが所有する永続Spriteを列挙します。
+    /// GetSprites以外で個別所有するHUDは、派生Sceneで追加してください。
     virtual void CollectReplaySprites(std::vector<Sprite*>& sprites);
     virtual void CaptureReplaySceneState(json& state) const;
     virtual void RestoreReplaySceneState(const json& state);
     void ReleaseReplaySprites();
 
-    // エディタやロード処理からObject3dを追加するための入口です。
+    /// Editorやロード処理からObject3dを追加する共通入口です。
     virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
-    // Replay archiveに記録された動的ObjectをScene固有のFactoryで再生成します。
+    /// Replay Archive内の動的Objectを、Scene固有のFactoryで再生成します。
     virtual std::unique_ptr<Object3d> CreateReplayObject(const json& descriptor) {
         (void)descriptor;
         return nullptr;
     }
-    // 動的Objectをまとめて再生成した後、Scene固有の参照を再接続します。
+    /// 動的Objectの再生成後に、Scene固有の非所有参照を接続し直します。
     virtual void OnReplayObjectsRecreated() {}
-    // Object3dを安全に削除予約または削除します。
+    /// Sceneが所有するObjectまたはSpriteを安全に削除します。
     bool Destroy(Object3d* object);
     bool Destroy(Sprite* sprite);
     bool DestroyObject(Object3d* object);
@@ -120,20 +113,20 @@ virtual void Finalize() = 0;
     bool IsAlive(Sprite* sprite);
     virtual void RefreshRenderCameraData();
 
-    // --- 共通リソース取得 ---
+    // Sceneが所有する共通描画サービス
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
     virtual SpriteCommon* GetSpriteCommon() { return nullptr; }
     virtual ParticleSystem* GetParticleSystem() { return nullptr; }
     virtual Skybox* GetSkybox() { return nullptr; }
 
-    // --- Player 連携 (LevelLoader 用) ---
+    // ゲーム側が必要に応じて実装するPlayer連携
     virtual Player* GetPlayer() const { return nullptr; }
     virtual void SetPlayer(Player* player) { (void)player; }
     virtual GameRule* GetGameRule() { return nullptr; }
 
-    // --- イベント連携 ---
-        // targetIDに紐づくイベント受信オブジェクトへ通知します。
-void TriggerEvent(int targetID);
+    // 永続IDとイベント連携
+    /// targetIDに紐づくイベント受信Objectへ通知します。
+    void TriggerEvent(int targetID);
     void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
     Object3d* FindObjectByPersistentGuid(const std::string& guid);
@@ -152,12 +145,12 @@ void TriggerEvent(int targetID);
 
 protected:
     bool IsSpecialMaterialType(int materialType) const;
-    bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
-    bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
-        // 水、炎、ポータルなど通常描画と分けたい特殊マテリアルをまとめて描画します。
-bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
-        // シーンのカメラ情報を使ってGPUパーティクルを描画します。
-bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
+    bool IsHiddenByFirstPerson(Object3d* object, Object3d* hiddenRoot, bool hideHierarchy) const;
+    bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* hiddenRoot = nullptr, bool hideHierarchy = false);
+    /// 水、炎、ポータルなど通常パスと分ける特殊マテリアルをまとめて描画します。
+    bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Object3d* hiddenRoot = nullptr, bool hideHierarchy = false);
+    /// Sceneのカメラ情報を使ってGPU Particleを描画します。
+    bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;

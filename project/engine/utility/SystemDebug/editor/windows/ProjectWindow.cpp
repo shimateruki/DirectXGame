@@ -36,19 +36,9 @@ struct HudPortraitSpec {
     float offsetY;
 };
 
-constexpr std::array<HudPortraitSpec, 9> kHudPortraitSpecs = {
-    HudPortraitSpec{ "Builtin/Enemy/Slime", "slime", 0.0f, -0.12f, 1.08f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/Bomber", "bomber", 0.0f, -0.12f, 1.08f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/Bat", "bat", 0.0f, -0.08f, 2.20f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/BeamDrone", "beam_drone", 0.0f, -0.08f, 1.05f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/Mushroom", "mushroom", 0.0f, -0.12f, 1.10f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/GiantSlime", "giant_slime", 0.0f, -0.12f, 1.24f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/FireSlime", "fire_slime", 0.0f, -0.12f, 1.08f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/ThunderSlime", "thunder_slime", 0.0f, -0.12f, 1.08f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/WindSlime", "wind_slime", 0.0f, -0.12f, 1.08f, 0.0f },
-};
+constexpr std::array<HudPortraitSpec, 0> kHudPortraitSpecs = {};
 
-constexpr const char* kHudPortraitDirectory = "Resources/sprite/ui/hud/morph_icons";
+constexpr const char* kHudPortraitDirectory = "Resources/sprite/generated/portraits";
 
 std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
@@ -316,7 +306,7 @@ void ProjectWindow::CapturePendingThumbnails() {
     auto commandList = dxCommon_->GetCommandList();
 
     // =======================================================
-    //  シーンの進行状況に依存しない、安全な専用 Object3dCommon を使う！
+    // Sceneの生存期間に依存しないPreview専用Object3dCommonを使用します。
     // =======================================================
     Object3dCommon* objCommon = previewObject3dCommon_.get();
     if (!objCommon) return;
@@ -376,7 +366,7 @@ void ProjectWindow::CapturePendingThumbnails() {
     }
     studioCamera_.Update(); // 行列を計算
 
-    // メインカメラから、このスタジオ用カメラにすり替える！
+    // Preview描画中だけStudio Cameraを有効にします。
     CameraManager::GetInstance()->SetActiveCamera(&studioCamera_);
     // =================================================================
 
@@ -513,7 +503,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject->SetIsUIPreview(true);
         }
 
-        // プリセットの設定を適用！
+        // 選択Presetの設定をPreview Objectへ適用します。
         PresetManager::GetInstance()->ApplyPresetToObject(presetName, data.previewObject.get());
 
         // プレビュー用に姿勢を微調整（くるくる回す）
@@ -900,7 +890,7 @@ void ProjectWindow::Draw() {
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_PLUS_SQUARE " Create New Preset");
-        ImGui::TextDisabled(" (Use '/' in name for folders, e.g. 'Enemy/Slime')");
+        ImGui::TextDisabled(" (Use '/' in name for folders, e.g. 'Gameplay/Example')");
 
         if (editor_->GetSelectedObject()) {
             static char presetNameBuf[64] = "NewPreset";
@@ -925,13 +915,6 @@ void ProjectWindow::Draw() {
 
         ImGui::Separator();
         ImGui::Spacing();
-
-        if (ImGui::Button("HUDアイコンを再生成")) {
-            QueueHudPortraitExports(true);
-            DebugConsole::GetInstance()->AddLog("HUD icon regeneration queued.");
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("実際の敵プリセットから通常・被弾PNGを生成します");
 
         ImGui::Separator();
         ImGui::Spacing();

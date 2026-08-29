@@ -73,7 +73,7 @@ void ParticleSystem::SpawnFromParams(const EmitterParams& params, const Vector3&
     if (particles_.size() >= ResolveParticleLimit(params)) return;
 
     // ---------------------------------------------------
-    // ★形状ごとの計算分岐
+    // Emitter形状ごとに初期位置を生成します。
     // ---------------------------------------------------
     Vector3 pos = origin;
     Vector3 vel = params.initialVelocity; // 基準速度
@@ -281,7 +281,7 @@ void ParticleSystem::Update(float deltaTime) {
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
 
     // 定数バッファ用のVP行列更新
-    // ※ matrixData_ がMapされている前提
+    // matrixData_はInitialize時にMap済みであることを前提とします。
     if (matrixData_) {
         matrixData_->viewProjection = viewMatrix * projectionMatrix;
     }
@@ -334,7 +334,7 @@ void ParticleSystem::Update(float deltaTime) {
         if (graphIndex > 9) graphIndex = 9;
 
         // エディタで編集したカーブの値をサイズとして採用
-        // ※ params_.sizeCurve が float配列[10] である前提
+        // sizeCurveは10 Sampleの固定長Curveとして補間します。
         float currentSize = p.useAuthoringCurves
             ? p.sizeOverLife.Evaluate(lifeRatio)
             : params_.sizeCurve[graphIndex];
@@ -347,7 +347,7 @@ void ParticleSystem::Update(float deltaTime) {
         p.position.y += p.velocity.y * deltaTime;
         p.position.z += p.velocity.z * deltaTime;
 
-        // --- 回転更新 (★今回の追加) ---
+        // 回転速度を現在角度へ積分します。
         p.rotation += p.rotationSpeed * deltaTime;
 
 
@@ -356,7 +356,7 @@ void ParticleSystem::Update(float deltaTime) {
         // 1. スケール行列
         Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize * p.baseScale.x, currentSize * p.baseScale.y, currentSize });
 
-        // 2. 回転行列 (★今回の追加: Z軸回転)
+        // Billboard姿勢へZ軸回転を追加します。
         // ビルボード面の上でクルクル回る動きを作ります
         Matrix4x4 rotateMatrix = math.MakeRotateZMatrix(p.rotation);
 
@@ -486,7 +486,7 @@ void ParticleSystem::SpawnPrimitiveHitEffect(const Vector3& position) {
     std::uniform_real_distribution<float> angleDist(0.0f, 3.141592f);
     float baseRotation = angleDist(randomEngine_);
 
-    // ① 星型の閃光 (4本のラインで十字を作る)
+    // 4本のLine Particleで星型の閃光を作ります。
     int lineCount = 4;
     for (int i = 0; i < lineCount; ++i) {
         if (particles_.size() >= kMaxParticles) break;
@@ -513,18 +513,17 @@ void ParticleSystem::SpawnPrimitiveHitEffect(const Vector3& position) {
         particles_.push_back(p);
     }
 
-        // ★ ②の中心のまるフラッシュは削除しました
+        // 中心Flashは別Effectと重複するため、このPresetでは生成しません。
 }
 
 // ==============================================================
-// ★課題エフェクト①: ランダムZ回転で星型ヒットエフェクト
-//   楕円パーティクルを8個、-π〜πのランダム回転で配置 → 星型/閃光
+// 楕円Particleを8枚ランダム回転させ、星型のHit Effectを生成します。
 // ==============================================================
 void ParticleSystem::SpawnStarHitEffect(const Vector3& position) {
     // Z回転をランダムに (-π〜π)
     std::uniform_real_distribution<float> distRotate(
         -std::numbers::pi_v<float>, std::numbers::pi_v<float>);
-    // 縦方向スケールをランダムに (1.0〜3.5) ← 大きめ
+    // 縦Scaleを1.0から3.5の範囲で分散させます。
     std::uniform_real_distribution<float> distScale(1.0f, 3.5f);
 
     constexpr int kCount = 8;
@@ -556,11 +555,10 @@ void ParticleSystem::SpawnStarHitEffect(const Vector3& position) {
 }
 
 // ==============================================================
-// ★課題エフェクト②: ランダムY-scaleで斬撃エフェクト
-//   縦長パーティクルを3個、Yスケールランダム → 斬撃/スラッシュ
+// 縦長Particleを3枚生成し、Y Scaleの差でSlash形状を作ります。
 // ==============================================================
 void ParticleSystem::SpawnSlashEffect(const Vector3& position, float baseRotation) {
-    // 縦方向スケールをランダムに (1.5〜4.0) ← 大きめ
+    // 縦Scaleを1.5から4.0の範囲で分散させます。
     std::uniform_real_distribution<float> distScale(1.5f, 4.0f);
     // 回転のゆらぎ
     std::uniform_real_distribution<float> distRotJitter(-0.4f, 0.4f);

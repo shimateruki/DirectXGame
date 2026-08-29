@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "a1ecf829f332f6238576fa144f10ff22",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/player_death_slime_soft_mist.json",
-  "version": 1
-}

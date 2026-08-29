@@ -97,7 +97,7 @@ bool WinApp::Update() {
     }
     if (isCursorLocked_) {
         // 他のアプリ（ブラウザ等）を操作している時にマウスが奪われないよう、
-        // 自分のゲーム画面がアクティブ（最前面）の時だけ固定する！
+        // 他アプリの操作を妨げないよう、自ウィンドウが最前面の場合だけカーソルを固定します。
         if (GetActiveWindow() == hwnd_) {
             RECT clientRect;
             GetClientRect(hwnd_, &clientRect);
@@ -108,7 +108,7 @@ bool WinApp::Update() {
                 (clientRect.bottom - clientRect.top) / 2
             };
 
-            // モニター全体の座標系に変換して、そこにマウスを強制テレポート！
+            // クライアント中央をスクリーン座標へ変換し、相対入力用の基準位置へカーソルを戻します。
             ClientToScreen(hwnd_, &center);
             SetCursorPos(center.x, center.y);
         }
@@ -169,11 +169,11 @@ void WinApp::SetCursorClipping(bool isClipping) {
         rect.right = bottomRight.x;
         rect.bottom = bottomRight.y;
 
-        // カーソルを指定範囲に監禁！
+        // カーソルを指定したクライアント領域内へ制限します。
         ClipCursor(&rect);
     }
     else {
-        // 監禁を解除！
+        // ウィンドウ非アクティブ時はカーソル制限を解除します。
         ClipCursor(nullptr);
     }
 }

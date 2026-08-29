@@ -19,13 +19,13 @@ class Object3d;
 class Model {
 public:
 
-    // --- 鬪ｨ ---
+    // スキニングで使用するボーン情報。
     struct Bone {
         std::string name;
-        Matrix4x4 inverseBindPoseMatrix; // 蛻晄悄蟋ｿ蜍｢縺ｮ騾・｡悟・
+        Matrix4x4 inverseBindPoseMatrix; // 初期姿勢からボーン空間へ変換する逆バインド行列。
     };
 
-    // --- 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ髢｢騾｣ ---
+    // アニメーションのキーフレームとノード単位のトラック。
     template <typename T>
     struct Keyframe {
         float time;
@@ -42,13 +42,13 @@ public:
     };
 
     struct Animation {
-        std::string name;     // 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ蜷・
-        float duration;       // 蜈ｨ菴薙・髟ｷ縺・遘・
-        float ticksPerSecond; // 1遘偵≠縺溘ｊ縺ｮ騾ｲ陦悟ｺｦ
-        std::vector<NodeAnimation> nodeAnimations; // 蜷・ｪｨ縺ｮ蜍輔″繝ｪ繧ｹ繝・
+        std::string name;     // アニメーション名。
+        float duration;       // 全体の長さ（秒）。
+        float ticksPerSecond; // 読み込み元データの1秒当たりのTick数。
+        std::vector<NodeAnimation> nodeAnimations; // ノードごとのアニメーショントラック。
     };
 
-    // --- 繝槭ユ繝ｪ繧｢繝ｫ繝ｻ繝弱・繝・---
+    // シェーダーへ渡すマテリアル定数。HLSL側の配置と順序を一致させます。
     struct Material {
         Vector4 color;
         int32_t enableLighting;
@@ -57,13 +57,13 @@ public:
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
-        float roughness;           // 4 byte (邊励＆: 0.0=繝・Ν繝・Ν, 1.0=繧ｶ繝ｩ繧ｶ繝ｩ)
-        float metallic;            // 4 byte (驥大ｱ槫ｺｦ: 0.0=髱樣≡螻・ 1.0=驥大ｱ・
+        float roughness;           // 粗さ。0.0が平滑、1.0が粗い表面。
+        float metallic;            // 金属度。0.0が非金属、1.0が金属。
         int32_t enableNormalMap;
-        int32_t enableEnvMap;      // 4 byte (迺ｰ蠅・・繝・・譛牙柑蛹・
-        float envIntensity;        // 4 byte (迺ｰ蠅・・繝・・蠑ｷ蠎ｦ)
-        float emissive;            // 4 byte (閾ｪ蟾ｱ逋ｺ蜈峨・蠑ｷ縺輔・.0縺ｧ蜈峨ｉ縺ｪ縺・
-        float time;                // 4 byte (譎る俣繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ逕ｨ)
+        int32_t enableEnvMap;      // 環境マップを使用するか。
+        float envIntensity;        // 環境マップの反射強度。
+        float emissive;            // 自己発光強度。0.0で無効。
+        float time;                // 時間依存マテリアルのアニメーション用。
         float portalClipEnabled;
         float portalClipProgress;
         Vector3 portalClipCenter;
@@ -98,25 +98,24 @@ public:
     struct Node {
         QuaternionTransform transform;
         Matrix4x4 localMatrix;
-        Matrix4x4 globalMatrix; // 笘・ｿｽ蜉: 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ險育ｮ礼ｵ先棡(繝ｯ繝ｼ繝ｫ繝芽｡悟・)逕ｨ
+        Matrix4x4 globalMatrix; // アニメーション計算後のモデル内グローバル行列。
         std::string name;
         std::vector<Node> children;
     };
 
-        // モデルメッシュ1頂点分の位置、UV、法線などを表します。
-struct VertexData {
+    // モデルメッシュ1頂点分の位置、UV、法線、スキニング情報です。
+    struct VertexData {
         Vector4 position;
         Vector2 texcoord;
         Vector3 normal;
         Vector3 tangent;
-        Vector4 boneWeights; // 驥阪∩
-        Vector4 boneIndices; // 鬪ｨ逡ｪ蜿ｷ
+        Vector4 boneWeights; // 各ボーンの影響度。
+        Vector4 boneIndices; // 参照するボーン番号。
 
     };
 
-    // --- 繝・・繧ｿ縺ｾ縺ｨ繧√ｋ逕ｨ ---
-        // モデルファイルから読み取ったマテリアルとテクスチャ参照情報です。
-struct MaterialData {
+    // モデルファイルから読み取ったマテリアルとテクスチャ参照情報です。
+    struct MaterialData {
         std::string textureFilePath;
         std::string normalMapPath;
         std::string ormMapPath;
@@ -142,8 +141,8 @@ struct MaterialData {
         Microsoft::WRL::ComPtr<ID3D12Resource> computeSkinnedVertexResource;
         D3D12_VERTEX_BUFFER_VIEW computeSkinnedVertexBufferView{};
         D3D12_RESOURCE_STATES computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource; //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝舌ャ繝輔ぃ
-        D3D12_INDEX_BUFFER_VIEW indexBufferView{};            //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝薙Η繝ｼ
+        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource; // インデックス用GPUバッファ。
+        D3D12_INDEX_BUFFER_VIEW indexBufferView{};            // インデックスバッファビュー。
     };
 
     struct ModelData {
@@ -155,7 +154,7 @@ struct MaterialData {
         std::vector<Animation> animations;
         bool hasSkinning = false;
         bool usesNodeAnimationProxy = false;
-        Skeleton skeleton; // 笘・ｿｽ蜉
+        Skeleton skeleton;
     };
 
     struct BoneForGPU {
@@ -163,10 +162,8 @@ struct MaterialData {
     };
 
 
-public: // 繝｡繝ｳ繝宣未謨ｰ
-    /// <summary>
-    /// 蛻晄悄蛹・
-    /// </summary>
+public:
+    /// モデルファイルを読み込み、描画に必要なGPUリソースまで初期化します。
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
     // Assimp/キャッシュ解析だけを行い、DirectXリソースを生成しないCPU側ロードです。
     static ModelData LoadCpuData(const std::string& directoryPath, const std::string& filename);
@@ -177,9 +174,7 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
         const std::string& sourceName);
     void Update();
     void Update(bool force);
-    /// <summary>
-    /// 謠冗判
-    /// </summary>
+    /// モデルを描画します。meshDrawIndexが負数の場合は全Meshが対象です。
     void Draw(ID3D12Resource* wvpResource,
         ID3D12Resource* directionalLightResource,
         ID3D12Resource* cameraResource,
@@ -197,14 +192,10 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
     /// </summary>
     bool PrepareComputeSkinning();
     bool UsesComputeSkinning() const { return computeSkinningAvailable_; }
-    /// <summary>
-    /// 繝槭ユ繝ｪ繧｢繝ｫ諠・ｱ縺ｮ蜿門ｾ・(ImGui縺ｧ縺ｮ謫堺ｽ懃畑)
-    /// </summary>
+    /// 先頭マテリアルの編集用ポインタを返します。
     Material* GetMaterial() { return materialData_; }
 
-    /// <summary>
-    /// 繝・け繧ｹ繝√Ε繝上Φ繝峨Ν繧貞叙蠕・
-    /// </summary>
+    /// 先頭マテリアルのテクスチャハンドルを返します。未設定なら0です。
     uint32_t GetTextureHandle() const {
         if (modelData_.materials.empty()) return 0;
         return modelData_.materials[0].textureHandle;
@@ -237,11 +228,11 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
     void DrawMeshOnly(int meshDrawIndex = -1);
     void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
     
-    // --- 諠・ｱ蜿門ｾ礼畑 ---
+    // エディターや統計表示で使用する読取専用情報。
     uint32_t GetVertexCount() const;
     uint32_t GetPolygonCount() const;
     uint32_t GetMeshCount() const { return static_cast<uint32_t>(modelData_.meshes.size()); }
-private: // 蜀・Κ蜃ｦ逅・未謨ｰ
+private:
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
 
@@ -249,17 +240,17 @@ private: // 蜀・Κ蜃ｦ逅・未謨ｰ
 
     Node* FindNode(Node& node, const std::string& name);
 
-    // 繧ｭ繝ｼ繝輔Ξ繝ｼ繝縺九ｉ蛟､繧定ｨ育ｮ励☆繧具ｼ郁｣憺俣・・
+    // キーフレーム間を補間して指定時刻の値を求めます。
     static Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
     static Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
 
-    // --- Skeleton 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ ---
+    // Skeletonの構築とアニメーション適用。
     static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
     static Skeleton CreateSkeleton(const Node& rootNode);
     void UpdateSkeleton(Skeleton& skeleton);
     void ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animation, float time);
 
-    // 繝懊・繝ｳ繝舌ャ繝輔ぃ髢｢騾｣
+    // ボーン行列をGPUへ渡すバッファとCompute Skinning用リソース。
     void CreateBoneBuffer();
     void UpdateBoneBuffer();
     void CreateComputeSkinningResources();
@@ -267,7 +258,7 @@ private: // 蜀・Κ蜃ｦ逅・未謨ｰ
 
 
 
-private: // 繝｡繝ｳ繝仙､画焚
+private:
     ModelCommon* common_ = nullptr;
     ModelData modelData_{};
 
@@ -275,13 +266,13 @@ private: // 繝｡繝ｳ繝仙､画焚
     Material* materialData_ = nullptr;
 
     Math math_;
-    Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // 繝・ヵ繧ｩ繝ｫ繝医・1x1x1
-    Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // 繝・ヵ繧ｩ繝ｫ繝医・蜴溽せ
-    // --- 繝懊・繝ｳ繝舌ャ繝輔ぃ髢｢騾｣ ---
+    Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // 読み込み前の既定サイズ。
+    Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // 読み込み前の既定中心。
+    // ボーンバッファはModelが所有し、SRV番号だけを描画側へ公開します。
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
-    uint32_t boneSrvIndex_ = 0; //  繝懊・繝ｳ諠・ｱSRV縺ｮ繧､繝ｳ繝・ャ繧ｯ繧ｹ
-    uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 笘・ｿｽ蜉・壽怙蠕後↓譖ｴ譁ｰ縺励◆繝輔Ξ繝ｼ繝逡ｪ蜿ｷ
+    uint32_t boneSrvIndex_ = 0; // ボーン情報SRVのインデックス。
+    uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 同一フレームでの重複更新を防ぐ更新番号。
     bool computeSkinningAvailable_ = false;
     bool computeSkinningDirty_ = true;
     bool computeSkinningOutputReady_ = false;

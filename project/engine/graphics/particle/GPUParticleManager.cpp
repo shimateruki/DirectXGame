@@ -123,7 +123,7 @@ void GPUParticleManager::Update(float deltaTime) {
         }
     }
 
-    // ★ 全ての独立した部隊(System)のUpdateを呼ぶ
+    // 登録済みの全Particle Systemを更新します。
     for (auto& pair : systems_) {
         pair.second->SetTimeScale(timeScale_);
         pair.second->Update(deltaTime);
@@ -147,7 +147,7 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     const auto cpuStart = std::chrono::high_resolution_clock::now();
     dxCommon_->StartGpuProfile("Particle GPU pass");
 
-    // ★ 共通の状態設定はループの外で行う（軽量化）
+    // 全Batchで共通する描画状態はLoopの外で一度だけ設定します。
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
 
     for (auto& pair : systems_) {
@@ -161,8 +161,8 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
 }
 
 // ====================================================================
-// ★ オートルーティングの心臓部
-// 新しいテクスチャやブレンドの組み合わせが来たら、勝手に新しい部隊を作る！
+// 描画条件に対応するParticle Systemを検索または生成します。
+// 未登録のTextureとBlend Modeの組み合わせは、新しい描画Batchとして作成します。
 // ====================================================================
 GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig& config) {
     // キーの作成（例: "Resources/sprite/Fire.png_0"）
@@ -255,7 +255,7 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
         }
     }
 
-    // どの部隊に所属するかを自動判定！
+    // 描画条件から所属するBatchを決定します。
     GPUParticleSystem* targetSystem = GetOrCreateSystem(config);
 
     // メッシュ情報をその部隊に渡してから発生させる

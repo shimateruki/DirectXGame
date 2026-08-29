@@ -147,7 +147,7 @@ void InputManager::Update()
         }
 
         // -------------------------------------------------------------
-        // ★修正点1: SDLのスティック入力を取得して XInput形式 に統合
+        // SDLのStick入力を取得し、内部のXInput互換形式へ変換します。
         // -------------------------------------------------------------
         // SDLの軸入力(-32768 ～ 32767)を取得
         int16_t leftX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
@@ -156,7 +156,7 @@ void InputManager::Update()
         int16_t rightY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTY);
 
         // 値が入っている場合のみ上書き (XInput側が0の場合などを考慮)
-        // ※SDLのY軸はXInputと逆の場合が多いですが、ここでは「入力があるか」の判定に使えれば良いのでそのままでもOK
+        // ここではDevice切替用の入力有無だけを見るため、SDLとXInputのY軸符号差は補正しません。
         // 必要なら: leftY = -leftY; のように反転
         if (abs(leftX) > 0 || abs(leftY) > 0) {
             gamepadState.Gamepad.sThumbLX = leftX;
@@ -228,7 +228,7 @@ void InputManager::Update()
 
 
     // =================================================================
-    // 4. 操作モードの自動切り替え判定 (★修正済み)
+    // 入力があったDeviceへ操作表示を自動切り替えします。
     // =================================================================
 
     // --- A. キーボード・マウスの入力判定 ---
@@ -242,7 +242,7 @@ void InputManager::Update()
         }
     }
 
-    // ★修正点2: マウスの「微細なブレ」を無視する (閾値を設ける)
+    // Mouseの微小な揺れでDevice表示が切り替わらないよう閾値を設けます。
     // マウスは触れてなくてもセンサーの誤差で 1〜2 動くことがあるため、
     // 明らかに動かしたと判定できる数値(例えば 5程度)以上で反応させる
     const long MOUSE_MOVE_THRESHOLD = 5;
@@ -275,9 +275,9 @@ void InputManager::Update()
         isGamepadActive = true;
     }
 
-    // ★修正点3: スティックのデッドゾーン判定を「モード切替用」に甘くする
+    // Device切替検出では通常操作より小さいStick入力も検出します。
     // デフォルトの XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE (7849) はゲーム操作用には良いが、
-    // 「コントローラー触った！」という検知には少し鈍感な場合があるため、閾値を下げる。
+    // Device切替検出は小さなStick操作も拾えるよう、通常入力より低い閾値を使います。
 
     // モード切替検知用の閾値 (少し触れたら反応するように小さくする: 例 2000)
     const short DETECTION_DEADZONE = 2000;
@@ -462,7 +462,7 @@ Vector2 InputManager::GetMousePosition() const {
     }
 
     // (2) 「スクリーン全体」の座標を、「ウィンドウ内」の座標に変換
-    // (※ hwnd_ が Initialize で保存されている必要がある)
+    // hwnd_はInitializeで設定済みであることを前提とします。
     if (!ScreenToClient(hwnd_, &screenPos)) {
         return { 0.0f, 0.0f };
     }
@@ -479,7 +479,7 @@ bool InputManager::IsMouseButtonReleased(int button) const {
         return false;
     }
     // (現在 離されている) かつ (前フレームでは 押されていた) 場合にtrue
-    // (※ IsMouseButtonTriggered とロジックが逆)
+    // Triggeredとは逆に、前Frameだけ押されていた場合を検出します。
     return !(mouseState.rgbButtons[button] & 0x80) && (prevMouseState.rgbButtons[button] & 0x80);
 }
 
@@ -692,13 +692,13 @@ bool InputManager::IsActionPressed(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード判定
+    // Keyboard。
     if (data->keyCode != 0 && IsKeyPressed(static_cast<BYTE>(data->keyCode))) return true;
 
-    // ② マウス判定 
+    // Mouse。
     if (data->mouseButton != -1 && IsMouseButtonPressed(data->mouseButton)) return true;
 
-    // ③ パッド判定
+    // Gamepad。
     if (data->padCode != 0 && IsGamepadButtonPressed(data->padCode)) return true;
 
     return false;
@@ -709,13 +709,13 @@ bool InputManager::IsActionTriggered(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード判定
+    // Keyboard。
     if (data->keyCode != 0 && IsKeyTriggered(static_cast<BYTE>(data->keyCode))) return true;
 
-    // ② マウス判定 
+    // Mouse。
     if (data->mouseButton != -1 && IsMouseButtonTriggered(data->mouseButton)) return true;
 
-    // ③ パッド判定
+    // Gamepad。
     if (data->padCode != 0 && IsGamepadButtonTriggered(data->padCode)) return true;
 
     return false;
@@ -725,13 +725,13 @@ bool InputManager::IsActionReleased(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード
+    // Keyboard。
     if (data->keyCode != 0 && !(keyState[data->keyCode] & 0x80) && (prevKeyState[data->keyCode] & 0x80)) return true;
 
-    // ② マウス (離した判定)
+    // MouseのRelease。
     if (data->mouseButton != -1 && IsMouseButtonReleased(data->mouseButton)) return true;
 
-    // ③ パッド (離した判定：wButtonsのビットが落ちた瞬間)
+    // GamepadのRelease。wButtonsのBitが落ちたFrameを検出します。
     if (data->padCode != 0 && !(gamepadState.Gamepad.wButtons & data->padCode) && (prevGamepadState.Gamepad.wButtons & data->padCode)) return true;
 
     return false;

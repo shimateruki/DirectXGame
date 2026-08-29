@@ -433,7 +433,7 @@ void DebrisEffectEditor::SyncConfigFromModelBuffers() {
 void DebrisEffectEditor::ApplyQuickPresetRock() {
     config_ = DebrisEffectConfig{};
     config_.name = "rock_burst";
-    config_.modelNames = { "Primitives/cube", "Stages/block" };
+    config_.modelNames = { "Primitives/cube", "Primitives/sphere" };
     config_.spawnCount = 22;
     config_.spawnOffset = { 0.0f, 0.35f, 0.0f };
     config_.horizontalSpread = 1.2f;
@@ -455,7 +455,7 @@ void DebrisEffectEditor::ApplyQuickPresetRock() {
 void DebrisEffectEditor::ApplyQuickPresetWood() {
     config_ = DebrisEffectConfig{};
     config_.name = "wood_splinter_burst";
-    config_.modelNames = { "Stages/block", "Primitives/cube" };
+    config_.modelNames = { "Primitives/cylinder", "Primitives/cube" };
     config_.spawnCount = 16;
     config_.horizontalSpread = 0.9f;
     config_.verticalMin = 0.25f;

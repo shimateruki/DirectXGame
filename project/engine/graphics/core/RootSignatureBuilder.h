@@ -11,7 +11,7 @@ public:
     ~RootSignatureBuilder() = default;
 
     // =======================================================
-    // 1. 直接指定系 (RegisterSpace も指定可能に！)
+    // Root Parameterを直接追加します。Register Spaceも明示できます。
     // =======================================================
         // 指定レジスタの定数バッファビューをRootParameterへ追加します。
 void AddCBV(uint32_t shaderRegister, uint32_t registerSpace = 0, D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);

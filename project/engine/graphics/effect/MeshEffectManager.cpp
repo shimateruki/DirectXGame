@@ -278,7 +278,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     }
 
     // ==========================================
-    // ★ 1. 基準となるターゲットの取得（位置と向きを分離！）
+    // 追従先から位置と向きを分けて取得し、Bone回転による不要な捻れを避けます。
     // ==========================================
     Vector3 basePos = { 0, 0, 0 };
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」
@@ -315,12 +315,12 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         }
     }
 
-    // ① 位置は指定されたボーン（posTarget）に正確に合わせる
+    // 位置は指定Boneへ追従させます。
     if (posTarget) {
         basePos = posTarget->GetWorldPosition();
     }
 
-    // ② 向き（Y回転）はボーンのねじれを完全に無視し、一番大元（ルート）の向きだけを取る！
+    // YawはBone回転を使わず、Root Objectの向きだけを基準にします。
     if (rotTarget) {
         Object3d* rootObj = rotTarget;
         // 親を辿って一番上のノード（プレイヤー本体など）を見つける
@@ -333,7 +333,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     }
 
     // ==========================================
-    // ★ 2. オフセットの読み込みと「回転計算」
+    // Local Offsetを読み込み、Root ObjectのYawで回転します。
     // ==========================================
     Vector3 offsetPos = { 0, 0, 0 };
     Vector3 offsetRot = { 0, 0, 0 };
@@ -349,7 +349,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     offsetRot.y += extRot.y;
     offsetRot.z += extRot.z;
 
-    // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの大元の向きに合わせて回転させる！
+    // Editorで設定したLocal OffsetをRoot ObjectのYawへ合わせて回転します。
     float s = sinf(targetWorldY);
     float c = cosf(targetWorldY);
     Vector3 rotatedOffset;
@@ -362,7 +362,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     float lifetime = j.contains("Lifetime") ? (float)j["Lifetime"] : 1.0f;
 
     // ==========================================
-    // ★ 3. ループ生成
+    // 設定されたLoop数だけEffect Objectを生成します。
     // ==========================================
     for (int i = 0; i < numSpawns; ++i) {
         auto effect = std::make_unique<EffectObject3d>();
@@ -428,7 +428,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         }
 
         // =========================================================
-        // ★ 当たり判定(Collision)の復元とマネージャーへの登録
+        // Collider設定を復元し、有効な場合だけCollision Managerへ登録します。
         // =========================================================
         if (j.contains("Collision")) {
             effect->editHasCollision_ = j["Collision"]["HasCollision"];
@@ -444,7 +444,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
 
                 // =======================================================
-                // ★ 修正箇所: 現在の設定を取り出して、正しく上書きする！
+                // 既存設定を取得し、対象Slotだけを更新して他項目を維持します。
                 // =======================================================
                 Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
                 cConfig.type = cType;
@@ -460,10 +460,10 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
             }
         }
 
-        // --- ★ 4. 立体化のための座標・回転適用 ---
+        // 厚みを持たせるための位置と回転を適用します。
         Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
 
-        // ★回転はシンプルにY軸だけを足す！（行列バグ防止）
+        // 追従回転はYawだけを加算し、Bone姿勢との二重適用を避けます。
         Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
 
         Vector3 localZ;
@@ -653,7 +653,7 @@ void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
     effect->SetDistortionStrength(0.0f);
     effect->SetEdgeFadeStrength(1.0f);
 
-    // ★ 課題用: リング波紋エフェクトの設定
+    // Ring状の波紋Effectを生成する既定設定です。
     effect->SetProceduralType(10); // 10: Ring
     
     // UVスクロールで波紋を外側に広げる (V方向スクロール)
@@ -664,7 +664,7 @@ void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
     effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
     effect->SetEndScale({ 6.0f, 6.0f, 6.0f });
     
-    // 色と透明度（青白っぽく発光しながら消える）
+    // 青白い発光色を保ちながらAlphaを減衰させます。
     effect->SetStartColor({ 0.5f, 0.8f, 1.0f, 1.0f });
     effect->SetEndColor({ 0.5f, 0.8f, 1.0f, 0.0f });
     
@@ -701,10 +701,10 @@ void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
 }
 
 // ==========================================================
-// ★ 課題: Cylinderポータルエフェクト
+// 横方向UV ScrollとColor補間を使うCylinder Portal Effectです。
 //   - Cylinderメッシュ (ProceduralType 5)
 //   - U方向（横方向）にUVスクロール
-//   - StartColor → EndColor でポータルらしく色が変化
+// StartColorからEndColorへ補間し、時間変化するPortal表現にします。
 //   - alphaReference = 0.0 なのでテクスチャのαが0以外なら描画
 //   - Culling=NONE, DepthWrite=ZERO (パイプライン側で設定済み)
 // ==========================================================
@@ -729,7 +729,7 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
     effect->SetDistortionStrength(0.0f);
     effect->SetEdgeFadeStrength(1.0f);
 
-    // ★ 1. Cylinder メッシュ (ProceduralType = 5)
+    // ProceduralType 5のCylinder Meshを使用します。
     effect->SetProceduralType(5);
     effect->editCylinderRadius_ = 1.5f;   // 半径
     effect->editCylinderHeight_ = 3.0f;   // 高さ
@@ -738,17 +738,17 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
     effect->editUvTiling_ = { 4.0f, 1.0f };
     effect->UpdateProceduralMesh();
 
-    // ★ 2. 横方向（U方向）にUVスクロール (scrollSpeed.x != 0)
+    // U方向へTextureをScrollします。
     effect->SetScrollSpeed({ 0.8f, 0.0f }); // 横方向スクロール
 
-    // ★ 3. ポータルらしい色アニメーション (青紫 → 水色)
+    // 青紫から水色へColorを補間します。
     effect->SetStartColor({ 0.3f, 0.1f, 1.0f, 0.9f }); // 青紫
     effect->SetEndColor(  { 0.0f, 0.8f, 1.0f, 0.6f }); // 水色
 
     // 発光強度
     effect->SetIntensity(2.5f);
 
-    // ★ 4. alphaReference = 0.0 (完全透明のみdiscard、半透明は通す)
+    // 完全透明PixelだけをDiscardし、半透明部分は描画します。
     effect->SetAlphaReference(0.0f);
 
     // 加算合成でポータルらしく光らせる
@@ -759,7 +759,7 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
         effect->GetMeshRenderer()->SetTexture("Resources/sprite/effect/gradationLine.png");
     }
 
-    // ★ 5. スケールアニメーション (少し脈動させる)
+    // Scaleを小さく往復させて脈動を表現します。
     effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
     effect->SetEndScale(  { 1.1f, 1.0f, 1.1f });
 

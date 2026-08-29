@@ -46,7 +46,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
+
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -769,11 +769,11 @@ void DebugEditor::Update() {
 
             // --- ショートカットキー処理 ---
             if (input->IsKeyTriggered(DIK_DELETE)) {
-                // パス編集モード中なら「点」を消す！
+                // Path編集中は選択中のControl Pointを削除します。
                 if (isPathEditMode_ && selectedObject_ && selectedObject_->recorder_ && selectedObject_->recorder_->IsPinSelected()) {
                     selectedObject_->recorder_->DeleteSelectedPin();
                 }
-                // 通常モードなら「オブジェクト」を消す！
+                // 通常編集では選択中のObjectを削除します。
                 else if (!isPathEditMode_) {
                     EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::EditDelete);
                 }
@@ -1301,68 +1301,9 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     CameraEditor::GetInstance()->DrawOrbitGuide(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
     DrawPreviewWire(commandList, instanceCount, kMaxDrawLimit);
 
-    if (drawColliders_) {
-        const auto& bullets = BulletManager::GetInstance()->GetBullets();
-
-        for (const auto& bullet : bullets) {
-            if (!bullet || bullet->IsDead()) continue;
-            if (instanceCount >= kMaxDrawLimit) break;
-
-            ColliderType type = bullet->GetColliderType();
-            if (type == ColliderType::kNone) continue;
-
-            // 弾は黄色固定
-            Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
-            Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
-
-            // 弾の場合は物理挙動の結果(GetOBB)をそのまま信じて描画する
-            if (type == ColliderType::kOBB) {
-                OBB obb = bullet->GetOBB();
-                Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
-
-                // OBBの軸から回転行列を復元
-                Matrix4x4 matRot = math.MakeIdentity4x4();
-                matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
-                matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
-                matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
-
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
-                drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
-
-            }
-            else if (type == ColliderType::kAABB) {
-                AABB aabb = bullet->GetAABB();
-                Vector3 center = (aabb.min + aabb.max) * 0.5f;
-                Vector3 size = aabb.max - aabb.min;
-                Matrix4x4 matScale = math.MakeScaleMatrix(size);
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-                drawWorldMatrix = math.Multiply(matScale, matTrans);
-
-            }
-            else if (type == ColliderType::kSphere) {
-                float radius = bullet->GetCollisionRadius();
-                Vector3 center = bullet->GetWorldPosition();
-                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-                drawWorldMatrix = math.Multiply(matScale, matTrans);
-            }
-
-            // PrimitiveDrawer で弾も描画実行
-            if (type == ColliderType::kSphere) {
-                primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
-            }
-            else if (type == ColliderType::kCylinder) {
-                primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
-            }
-            else {
-                primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
-            }
-            instanceCount++;
-        }
-        // =========================================================
     // 3. エフェクトのコライダー描画
     // =========================================================
-        if (drawColliders_) {
+    if (drawColliders_) {
             // ゲーム中のエフェクト ＋ エディタのプレビューエフェクトを両方収集
             std::vector<EffectObject3d*> effectsToDraw;
 
@@ -1373,7 +1314,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 effectsToDraw.push_back(preview);
             }
 
-            // 集めたエフェクトを描画！
+            // Scene内から収集したEffect Objectをまとめて描画します。
             for (EffectObject3d* effect : effectsToDraw) {
                 if (instanceCount >= kMaxDrawLimit) break;
 
@@ -1502,7 +1443,6 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 instanceCount++;
             }
         }
-    }
 
     // シーン視覚監査で選択した問題ペアは、通常のコライダー表示設定に関係なく強調する。
     sceneValidator_.DrawDebug(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
@@ -1566,4 +1506,3 @@ void DebugEditor::DrawProjectWindow() {
     projectWindow_.Draw();
 }
 #endif
-

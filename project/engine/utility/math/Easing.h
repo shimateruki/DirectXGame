@@ -33,7 +33,7 @@ public:
     static float OutQuint(float t);
     static float InOutQuint(float t);
 
-    // 7. Expo (指数：シュッ！と動く)
+    // Expo: 指数関数による急加速・急減速。
     static float InExpo(float t);
     static float OutExpo(float t);
     static float InOutExpo(float t);

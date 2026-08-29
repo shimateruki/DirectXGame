@@ -405,7 +405,7 @@ void MeshRenderer::Update() {
     if (waterParamData_) {
         waterParamData_->time = time_; 
 
-        // ★流速に基づいてオフセットを蓄積）
+        // 流速を時間積分し、Texture Scroll Offsetへ蓄積します。
         waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * (1.0f / 60.0f);
         waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * (1.0f / 60.0f);
 

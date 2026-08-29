@@ -125,7 +125,7 @@ void TrailEmitterEditor::Update(float deltaTime) {
         gpuManager->Update(deltaTime);
     }
 
-    // ── Play開始を検知 → ポインタリセット ──
+    // Play開始時はScene側のEmitterへ参照を接続し直します。
     // エディットモードで選んだObject3dはPlay開始時に再生成されて無効になるため
     if (isGamePlaying && !wasPlaying_) {
         targetObject_    = nullptr;
@@ -135,7 +135,7 @@ void TrailEmitterEditor::Update(float deltaTime) {
         emitter_.Stop();
     }
 
-    // ── Play停止を検知 → ポインタリセット ──
+    // Play停止時は破棄済みRuntime Emitterへの参照を解除します。
     // ゲーム中に選んだObject3dはStop時に再生成・破棄されて無効になるため
     if (!isGamePlaying && wasPlaying_) {
         targetObject_    = nullptr;

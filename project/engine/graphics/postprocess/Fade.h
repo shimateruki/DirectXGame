@@ -2,15 +2,12 @@
 
 #include "engine/utility/math/Math.h"
 
-#include <cstdint>
 #include <memory>
-#include <string>
-#include <vector>
 
 class Sprite;
 class SpriteCommon;
 
-// Fadeは、画面全体を覆うSpriteでフェードイン、フェードアウト演出を行います。
+/// 画面全体を覆う汎用フェードイン・フェードアウトを管理します。
 class Fade {
 public:
     enum class Status {
@@ -26,8 +23,7 @@ public:
 
     void Initialize();
     void Update(float deltaTime);
-        // フェード中の画面覆いSpriteを描画します。
-void Draw();
+    void Draw();
 
     void StartFadeIn(float duration);
     void StartFadeOut(float duration);
@@ -40,28 +36,19 @@ void Draw();
     void Stop();
 
 private:
-    enum class VisualStyle {
-        SlimeWipe,
-        CrownIris
-    };
-
-    struct FrameSequence {
-        std::unique_ptr<Sprite> sprite;
-        std::vector<uint32_t> textureHandles;
-    };
-
     Fade() = default;
     ~Fade() = default;
     Fade(const Fade&) = delete;
     Fade& operator=(const Fade&) = delete;
 
     void InitializeSprites();
-    void LoadSequence(FrameSequence& sequence, const std::string& directory, int frameCount);
     void ResolveNoiseTexture();
     void ResetPostEffectFade();
-    void Begin(Status status, VisualStyle style, float duration, const Vector2& center, float initialCoverage);
-
-    void DrawFrameSequence(FrameSequence& sequence, float coverage);
+    void Begin(
+        Status status,
+        float duration,
+        const Vector2& center,
+        float initialCoverage);
     void DrawFallbackBlack(float alpha);
 
     float GetNormalizedTime() const;
@@ -69,8 +56,6 @@ private:
 
 private:
     Status status_ = Status::None;
-    VisualStyle style_ = VisualStyle::SlimeWipe;
-
     float duration_ = 1.0f;
     float counter_ = 0.0f;
     float coverage_ = 0.0f;
@@ -78,7 +63,5 @@ private:
 
     std::unique_ptr<SpriteCommon> spriteCommon_;
     std::unique_ptr<Sprite> fallbackBlack_;
-    FrameSequence slimeWipe_;
-    FrameSequence crownIris_;
     bool noiseTextureResolved_ = false;
 };

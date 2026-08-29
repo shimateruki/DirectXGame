@@ -62,7 +62,7 @@ void AudioPlayer::Finalize() {
 		}
 	}
 
-	// ★ マップ自体もクリアして、unique_ptr がデストラクタを呼ぶのを防ぐ
+	// Voice解放後に管理Mapも空にし、終了順序を明示します。
 	// これでプログラム終了時にデストラクタが走っても、中身は空になっている
 	streamingSoundDatas_.clear();
 
@@ -207,7 +207,7 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 
 	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
 
-	// ★ 新しい引数 volume を設定 ★
+	// 再生開始前に指定VolumeをVoiceへ適用します。
 	data->sourceVoice->SetVolume(std::clamp(volume, 0.0f, 1.0f));
 
 	data->sourceVoice->Start(0);
@@ -295,7 +295,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				mfSample->ConvertToContiguousBuffer(&mfBuffer);
 				mfBuffer->Lock(&localAudioData, NULL, &localAudioDataBytes);
 
-				// ★★★ バグ修正: リングバッファの該当インデックスのバッファにデータをコピー ★★★
+				// Decode結果を現在のRing Buffer Slotへコピーします。
 				auto& currentBuffer = data->buffers[data->currentBufferIndex];
 				currentBuffer.assign(localAudioData, localAudioData + localAudioDataBytes);
 
@@ -308,7 +308,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				audioBuffer.pContext = &data->cv;
 				data->sourceVoice->SubmitSourceBuffer(&audioBuffer);
 
-				// ★★★ バグ修正: 次に使うバッファのインデックスを更新 ★★★
+				// 次回Decodeで使用するRing Buffer Slotへ進めます。
 				data->currentBufferIndex = (data->currentBufferIndex + 1) % SoundDataStreaming::kNumBuffers;
 			}
 		} else {

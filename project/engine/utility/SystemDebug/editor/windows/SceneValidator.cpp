@@ -598,9 +598,7 @@ void SceneValidator::CheckCollectibleOrientations() {
         if (!object || IsEditorOnlyObject(object)) continue;
 
         const std::string& name = object->GetName();
-        const std::string modelName = NormalizePath(object->GetModelName());
-        const bool isStarCoin = name.find("StarCoin") != std::string::npos ||
-            modelName == "Gimmicks/star" || modelName.rfind("Gimmicks/star/", 0) == 0;
+        const bool isStarCoin = name.find("StarCoin") != std::string::npos;
         if (!isStarCoin) continue;
 
         const Vector3 rotation = object->GetRotation();
@@ -719,7 +717,7 @@ void SceneValidator::CheckFloorPenetrations() {
         const bool isPlacementObject = std::any_of(
             std::begin(placementTokens), std::end(placementTokens),
             [&name](const char* token) { return name.find(token) != std::string::npos; });
-        if (!isPlacementObject || name.rfind("Stage1_Ruins_", 0) == 0) continue;
+        if (!isPlacementObject) continue;
 
         const AABB visualBounds = object->GetModelWorldAABB();
         float deepestPenetration = 0.0f;

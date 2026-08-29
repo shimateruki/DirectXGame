@@ -28,7 +28,7 @@ Vector3 operator/(const Vector3& v, float scalar) {
 	if (scalar != 0.0f) {
 		return { v.x / scalar, v.y / scalar, v.z / scalar };
 	}
-	// 0で割ろうとした場合は、とりあえずゼロベクトルを返す
+	// ゼロ除算を避け、長さを持たないVectorはゼロVectorとして扱います。
 	return { 0.0f, 0.0f, 0.0f };
 }
 
@@ -240,7 +240,7 @@ Matrix4x4 Math::MakeOrthographicMatrix(float left, float top, float right, float
 	return result;
 }
 
-// ★追加: ビューポート行列
+// 3D座標をScreen座標へ変換するViewport行列を生成します。
 Matrix4x4 Math::MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth)
 {
 	Matrix4x4 result = {};
@@ -396,7 +396,7 @@ Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 	result.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
 	float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
 
-	// wで割って正規化する（これが重要！）
+	// 同次座標をwで除算し、3D座標へ戻します。
 	if (w != 0.0f) {
 		result.x /= w;
 		result.y /= w;
@@ -731,7 +731,7 @@ bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const V
 		if (f.planes[i].normal.y >= 0) p.y = maxBox.y;
 		if (f.planes[i].normal.z >= 0) p.z = maxBox.z;
 
-		// pが面よりも外側にあれば、箱全体が外側にあると確定！
+		// 法線方向で最も内側の点まで外側なら、AABB全体がPlaneの外側です。
 		float dot = f.planes[i].normal.x * p.x + f.planes[i].normal.y * p.y + f.planes[i].normal.z * p.z;
 		if (dot + f.planes[i].distance < 0) {
 			return false;

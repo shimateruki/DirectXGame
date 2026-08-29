@@ -89,7 +89,7 @@ void ParticleCommon::CreatePipeline() {
     for (int i = 0; i < (int)ParticleBlendMode::kCount; ++i) {
         ParticleBlendMode pMode = static_cast<ParticleBlendMode>(i);
 
-        // ① 独自の ParticleBlendMode から、共通の BlendMode へ変換
+        // Particle用Blend ModeをPipeline共通のBlend Modeへ変換します。
         ::BlendMode globalMode = ::BlendMode::kNormal;
         switch (pMode) {
         case ParticleBlendMode::kAlpha:    globalMode = ::BlendMode::kNormal;   break;
@@ -99,14 +99,14 @@ void ParticleCommon::CreatePipeline() {
         case ParticleBlendMode::kScreen:   globalMode = ::BlendMode::kScreen;   break;
         }
 
-        // ② 変換したモードをセット
+        // 変換したBlend ModeをPipelineへ設定します。
         builder.SetBlendMode(globalMode);
 
-        // ③ ★超重要★ 
+        // Particleは透明描画のためDepth Testだけを行い、Depthへは書き込みません。
      
         builder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
-        // ④ ビルド実行
+        // 設定済みのPipelineを生成します。
         builder.Build(device, graphicsPipelines_[i].GetAddressOf());
     }
 }

@@ -55,7 +55,7 @@ void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, con
     // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
     void SpawnRingWaveEffect(const Vector3& position);
 
-    // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
+    // Cylinder、横UV Scroll、Color補間を使うPortal Effectを生成します。
     void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
 
     // エディターの時間シーク用に、初期化状態とプリロードを維持したまま再生中のエフェクトだけを消します。

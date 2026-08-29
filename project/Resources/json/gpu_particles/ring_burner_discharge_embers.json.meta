@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "e2d84d5538f1f8df285a3ad0e37744fc",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/ring_burner_discharge_embers.json",
-  "version": 1
-}

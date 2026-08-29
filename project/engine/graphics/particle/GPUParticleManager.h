@@ -73,7 +73,7 @@ private:
     std::string loadedPresetDirectory_;
 
     // ========================================================
-    // ★ ここが魔法のコア！テクスチャとブレンドモードごとに分割された部隊たち
+    // TextureとBlend Modeの組み合わせごとに描画Batchを分けます。
     // Key: "TexturePath_BlendModeIndex"
     // ========================================================
     std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> systems_;

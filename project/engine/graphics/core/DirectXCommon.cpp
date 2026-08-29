@@ -473,7 +473,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 	D3D12_CLEAR_VALUE depthClearValue{};
 	depthClearValue.DepthStencil.Depth = 1.0f;
 
-	// ★ここはDSV用として固定のまま
+	// このHeapはDSV専用のためShader Visibleにはしません。
 	depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
@@ -545,7 +545,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bo
 	HRESULT hr = S_FALSE;
 
 	// =========================================================
-	//  拡張子が .dds かどうかで読み込み関数を分ける！
+	// DDSは専用Loader、それ以外はWIC Loaderへ振り分けます。
 	// =========================================================
 	if (filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".dds")
 	{
@@ -593,7 +593,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bo
 		image.InitializeFromImage(whiteImage);
 		mipImages.InitializeFromImage(whiteImage);
 
-		// ★ついでにメモリリーク修正: 配列をnewしたので delete[] が正解です
+		// 配列として確保したDecode Bufferはdelete[]で解放します。
 		delete[] pixels;
 		return mipImages;
 	}
@@ -809,7 +809,7 @@ void DirectXCommon::CreateRenderTexture() {
 	}
 
 	// =======================================================
-	// ★追加: ディストーション用の背景コピーテクスチャ (GrabTexture) の生成
+	// Distortionなどが画面色を参照するためのGrab Textureを生成します。
 	// =======================================================
 	// 6. GrabTexture本体の生成 (設定は renderTexture_ と全く同じ)
 	Microsoft::WRL::ComPtr<ID3D12Resource> newGrabTexture;
@@ -896,7 +896,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	//  バックバッファのインデックスを取得 (これが必要)
 	backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
 
-	// ★追加: リソースバリア (表示モード -> 書き込みモードへ変更)
+	// Render Targetを表示状態から書込状態へ遷移します。
 	// これがないとGPUはバックバッファへの描画を無視します
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -1042,7 +1042,7 @@ void DirectXCommon::PreDrawShadow() {
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = shadowDsvHeap_->GetCPUDescriptorHandleForHeapStart();
 	commandList_->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
 
-	// 3. 画面を真っ白（深度1.0f）にクリアする！
+	// Depth Bufferを最遠値の1.0でクリアします。
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 	// 4. ビューポートとシザー矩形をシャドウマップの解像度に合わせる
@@ -1098,7 +1098,7 @@ void DirectXCommon::EndGpuProfile(const std::string& name) {
     uint32_t endIndex = startIndex + 1;
     commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, endIndex);
 
-    // ※ 個別に Resolve せず、フレームの最後で一括で行うように変更
+    // GPU TimestampはPassごとにResolveせず、Frame末尾でまとめて読み戻します。
 }
 // 登録済みGPU計測区間をクリアし、次フレームの計測に備える。
 
@@ -1148,7 +1148,7 @@ void DirectXCommon::CreateDepthSrv() {
 	srvDesc.Texture2D.MipLevels = 1;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-	// ここでSRVを作る！
+	// Depth TextureをShaderから参照するためのSRVを作成します。
 	if (depthSrvHandle_ != 0) {
 		SRVManager::GetInstance()->CreateSRVforResource(depthSrvHandle_, depthStencilResource_.Get(), srvDesc);
 	} else {
@@ -1158,7 +1158,7 @@ void DirectXCommon::CreateDepthSrv() {
 // ローカルフォグ描画用に深度バッファを読み取り可能状態へ切り替える。
 
 void DirectXCommon::PreDrawLocalFog() {
-	// バリア：深度「書き込みモード」 -> 「読み込みモード (画像)」に変換！
+	// Depth Bufferを書込状態からShader読取状態へ遷移します。
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Transition.pResource = depthStencilResource_.Get();
@@ -1167,12 +1167,12 @@ void DirectXCommon::PreDrawLocalFog() {
 	commandList_->ResourceBarrier(1, &barrier);
 	// =================================================================
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // ← DSVを nullptr にする！
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // 読取中のDepth BufferはDSVへ同時Bindしません。
 }
 // ローカルフォグ後に深度バッファを通常の深度書き込み状態へ戻す。
 
 void DirectXCommon::PostDrawLocalFog() {
-	// バリア：「読み込みモード」 -> 元の「書き込みモード」に戻す！
+	// 特殊描画後はDepth Bufferを書込状態へ戻します。
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Transition.pResource = depthStencilResource_.Get();
@@ -1181,7 +1181,7 @@ void DirectXCommon::PostDrawLocalFog() {
 	commandList_->ResourceBarrier(1, &barrier);
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // ← DSVを復活！
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // 後続描画用にDSVを再Bindします。
 }
 // 現在のレンダーテクスチャ内容をGrab用テクスチャへコピーする。
 
@@ -1206,7 +1206,7 @@ void DirectXCommon::UpdateGrabTexture() {
 	barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 	commandList_->ResourceBarrier(1, &barrier2);
 
-	// ★コピー実行！(現在の画面を丸ごと保存)
+	// 現在のColor Bufferを画面参照エフェクト用Textureへコピーします。
 	commandList_->CopyResource(grabTexture_.Get(), renderTexture_.Get());
 
 	// バリアを元の状態に戻す

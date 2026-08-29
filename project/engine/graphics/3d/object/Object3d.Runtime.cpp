@@ -440,7 +440,7 @@ void Object3d::DrawShadowOnly() {
 
 void Object3d::DrawLocalFog(uint32_t depthSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
-        // メッシュレンダラーに描画を丸投げ！
+        // Material固有の描画はMeshRendererへ委譲します。
         meshRenderer_->DrawLocalFog(depthSrvHandle);
     }
 }

@@ -37,7 +37,6 @@ public:
 private:
     enum class Category {
         All,
-        Stage1,
         Enemy,
         Gimmick,
         Item,
@@ -45,8 +44,8 @@ private:
     };
 
     struct TypeOption {
-        const char* value;
-        const char* label;
+        std::string value;
+        std::string label;
     };
 
     PresetEditor() = default;
@@ -124,7 +123,6 @@ private:
 
     bool MatchesCategory(const json& data, Category category) const;
 
-    bool IsStage1Preset(const json& data) const;
 
     Category DetectCategory(const json& data) const;
 
@@ -132,7 +130,6 @@ private:
 
     ImVec4 GetCategoryColor(Category category) const;
 
-    ImVec4 GetStage1SectionColor(int sectionOrder) const;
 
     std::string ShortModelName(const std::string& modelName) const;
 
@@ -161,7 +158,7 @@ private:
     std::function<uint64_t(const std::string&)> thumbnailProvider_;
     std::vector<std::string> modelNames_;
     std::string selectedName_;
-    Category activeCategory_ = Category::Stage1;
+    Category activeCategory_ = Category::All;
     char searchBuffer_[128]{};
     char newName_[64] = "NewPreset";
     bool requestDelete_ = false;

@@ -1,9 +1,0 @@
-{
-    "tracks": [
-        {
-            "delayTime": 0.0,
-            "pathFileName": "anim_path",
-            "targetName": "Enemy_BossCore"
-        }
-    ]
-}

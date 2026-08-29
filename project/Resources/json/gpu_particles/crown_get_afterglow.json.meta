@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "37b12c86dcda0ba660ccfab352a328da",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/crown_get_afterglow.json",
-  "version": 1
-}

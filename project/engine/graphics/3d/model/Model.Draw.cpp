@@ -639,7 +639,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     vbDesc.SampleDesc.Count = 1;
     vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-    // ★ 修正: vertexResource に生成
+    // 頂点Data用Upload Resourceを生成します。
     HRESULT hr = device->CreateCommittedResource(
         &uploadHeap,
         D3D12_HEAP_FLAG_NONE,
@@ -654,7 +654,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         return;
     }
 
-    // ★ 修正: vertexResource に対してマップしてデータを流し込む
+    // 頂点ResourceをMapし、初期Dataを転送します。
     void* mappedVerts = nullptr;
     hr = mesh.vertexResource->Map(0, nullptr, &mappedVerts);
     if (FAILED(hr) || !mappedVerts) {
@@ -665,7 +665,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     memcpy(mappedVerts, vertices.data(), vbSize);
     mesh.vertexResource->Unmap(0, nullptr);
 
-    // ★ 修正: vertexResource からGPUアドレスを取得
+    // 頂点ResourceのGPU AddressからViewを構築します。
     mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
     mesh.vertexBufferView.SizeInBytes = vbSize;
     mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
@@ -678,7 +678,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     D3D12_RESOURCE_DESC ibDesc = vbDesc;
     ibDesc.Width = ibSize;
 
-    // ★ 修正: indexResource に生成
+    // Index Data用Upload Resourceを生成します。
     hr = device->CreateCommittedResource(
         &uploadHeap,
         D3D12_HEAP_FLAG_NONE,
@@ -693,7 +693,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         return;
     }
 
-    // ★ 修正: indexResource に対してマップしてデータを流し込む
+    // Index ResourceをMapし、初期Dataを転送します。
     void* mappedIndices = nullptr;
     hr = mesh.indexResource->Map(0, nullptr, &mappedIndices);
     if (FAILED(hr) || !mappedIndices) {
@@ -704,7 +704,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     memcpy(mappedIndices, indices.data(), ibSize);
     mesh.indexResource->Unmap(0, nullptr);
 
-    // ★ 修正: indexResource からGPUアドレスを取得
+    // Index ResourceのGPU AddressからViewを構築します。
     mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
     mesh.indexBufferView.SizeInBytes = ibSize;
     mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;

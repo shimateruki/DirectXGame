@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "06bf2c2fdd3cf500f371f5a99abdf2d0",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/trail_sparks.json",
-  "version": 1
-}

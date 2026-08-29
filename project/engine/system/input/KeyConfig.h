@@ -50,7 +50,7 @@ private:
     KeyConfig& operator=(const KeyConfig&) = delete;
 
 private:
-    // ：辞書の中身を int から BindData に変更！
+    // Action名ごとにKeyboardとGamepadのBindをまとめて保持します。
     std::unordered_map<std::string, BindData> bindings_;
 
     // ImGuiエディタ用：現在変更待ちのアクションと、待機しているデバイス(キーかパッドか)

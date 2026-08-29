@@ -252,7 +252,7 @@ void PostEffect::CreateRootSignature() {
 void PostEffect::CreatePipelineState() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    // ★ VSは1つ、PSは用途に合わせて5つコンパイルする！
+    // Fullscreen VSを共有し、用途別のPixel Shaderをまとめてコンパイルします。
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.VS.hlsl", L"vs_6_0", L"main");
     auto psCopy = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
     auto psExtract = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
@@ -265,7 +265,7 @@ void PostEffect::CreatePipelineState() {
     // ==========================================================
     GraphicsPipelineBuilder builder;
     builder.SetRootSignature(rootSignature_.Get());
-    builder.SetInputLayout(nullptr, 0); // 頂点バッファレス方式に変更！
+    builder.SetInputLayout(nullptr, 0); // Vertex IDから全画面三角形を生成するため入力Layoutは不要です。
 
     // カリングなし、Zテストなし
     builder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
@@ -326,7 +326,7 @@ void PostEffect::CreatePipelineState() {
 }
 
 // ==========================================================
-// ★ リソースバリア（テクスチャの状態切り替え）関数
+// Post Effect TextureのResource Stateを切り替えます。
 // ==========================================================
 void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
@@ -363,13 +363,13 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
     commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
-    // ★ 引数が true の時だけ画面をクリアする (加算合成のときはクリアしない)
+    // 加算合成では前段結果を残すため、要求されたPassだけTargetをClearします。
     if (clear) {
         float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     }
 
-    // ★ テクスチャ自身のサイズを取得して、ビューポート(描画範囲)を合わせる！
+    // 出力Textureの実寸へViewportとScissorを合わせます。
     D3D12_RESOURCE_DESC resDesc = rt.resource->GetDesc();
     float width = (float)resDesc.Width;
     float height = (float)resDesc.Height;
@@ -487,7 +487,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 3頂点で全画面を覆う
-    // commandList->IASetVertexBuffers() はいらない！
+    // 頂点をVertex Shader内で生成するためVertex Bufferは設定しません。
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
     // [1] t0 のセット (メイン画像)

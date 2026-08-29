@@ -131,25 +131,25 @@ void EffectObject3d::Update(float deltaTime) {
     float progress = std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f);
 
     // ========================================================
-    // ★ 緩急（イージング）の適用
+    // 正規化時間へEasingを適用します。
     // ========================================================
-    // エディタで選んだ easingType_ を使って進行度を曲げる！
+    // Editorで選択したEasingを正規化時間へ適用します。
     float easeProgress = ApplyEasing1(easingType_, progress);
 
     // ========================================================
-    // ★ アニメーションの適用
+    // Easing後の進行度から各Animation値を更新します。
     // ========================================================
-    // ① 軌跡を伸ばす (Reveal)
+    // 軌跡の表示範囲を伸ばします。
     materialData_->revealProgress = easeProgress;
 
-    // ② ディゾルブ (後半50%から消え始める処理にもイージングを乗せる)
+    // 後半50%からDissolveを進め、消失にも同じEasingを適用します。
     materialData_->dissolveFade = std::clamp((easeProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
 
     // 画面サイズの更新（歪み用）
     materialData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
 
     // ========================================================
-    // ★ スケールと色の補間（Lerp）
+    // ScaleとColorを開始値から終了値へ補間します。
     // ========================================================
     Vector3 currentScale;
     currentScale.x = std::lerp(startScale_.x, endScale_.x, easeProgress);
@@ -200,7 +200,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     Model* model = meshRenderer_->GetModel();
     if (!model)
     {
-        // ★ 3. モデルが取得できずに弾かれているか確認
+        // Model未設定時は描画Resourceを作れないため終了します。
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "  Error: Model is NULL! Drawing skipped.");
         return;
     }
@@ -210,13 +210,13 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     common_->SetEffectGraphicsCommand(blendMode_);
 
     // =======================================================
-    // 2. ルートパラメータのセット (必ず定義通りの4つをセットする！)
+    // Root Signature定義と同じ順序で4つのParameterを設定します。
     // =======================================================
 
-    // [0] CBV b0 (VS用) -> ここにWVP行列を渡す！(先頭64バイトが読まれるのでOK)
+    // [0] CBV b0: Vertex ShaderへWVP行列を渡します。
     commandList->SetGraphicsRootConstantBufferView(0, meshRenderer_->GetWvpResource()->GetGPUVirtualAddress());
 
-    // [1] CBV b1 (VS用) -> 空っぽだとクラッシュするので、とりあえずWVPバッファを繋いでおく
+    // [1] CBV b1: 未Bindを避けるため、未使用時も有効なWVP Bufferを設定します。
     commandList->SetGraphicsRootConstantBufferView(1, meshRenderer_->GetWvpResource()->GetGPUVirtualAddress());
 
     // [2] CBV b0 (PS用) -> エフェクトマテリアル
@@ -270,7 +270,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         float currentY = pitchStep * i - (spiralPitch / 2.0f);
 
         // ==========================================
-           // ★ 三日月型（テーパー）の計算の修正
+           // 両端へ向かって内径を外径へ近づけ、三日月形へ絞ります。
            // ==========================================
         float currentInRad = inRad;
         float currentOutRad = outRad;
@@ -279,7 +279,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         if (isCrescent) {
             float taper = sinf(u * 3.14159265f);
 
-            // ★ 修正：外径(刃先)は美しい円弧をキープし、内径(根元)を両端で刃先に合わせる！
+            // 外周の円弧を保ち、内周だけを両端で外周へ収束させて三日月形を作ります。
             currentInRad = outRad - (outRad - inRad) * taper;
 
             // 立体的な厚みも両端に向かって薄くする
@@ -290,7 +290,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         float midRad = (currentInRad + currentOutRad) / 2.0f;
         float halfThick = currentThick / 2.0f;
 
-        // 1. 内側の縁 (V=1.0) -> ★ currentInRad に変更
+        // 内側の縁には位置ごとに補間した半径を使います。
         Model::VertexData vIn;
         vIn.position = { s * currentInRad, currentY, c * currentInRad, 1.0f };
         vIn.texcoord = { u, 1.0f };
@@ -334,7 +334,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         proceduralIndices_.push_back(curr + 3); proceduralIndices_.push_back(next + 2); proceduralIndices_.push_back(next + 3);
     }
 }
-// ② 円錐形（突き）の頂点生成：底面にフタをして、両面ポリゴン化
+// 突きEffect用の円錐Meshを、底面付き・両面Polygonで生成します。
 void EffectObject3d::GenerateThrustVertices(float length, float radius, int segments) {
     proceduralVertices_.clear();
     proceduralIndices_.clear();
@@ -678,7 +678,7 @@ void EffectObject3d::UpdateProceduralMesh() {
     int type = materialData_ ? materialData_->proceduralType : 0;
 
     if (type == 1) {
-        // ★ 斜め切り: 最後に true を渡して三日月型にする！
+        // 斜め斬撃は三日月形状を有効にします。
         GenerateSlashVertices(editSlashAngle_, editInnerRadius_, editOuterRadius_, editThickness_, editSpiralPitch_, editMeshSegments_, true);
     }
     else if (type == 2) {
@@ -715,7 +715,7 @@ void EffectObject3d::UpdateProceduralMesh() {
     else { return; }
 
     // ==========================================
-    // ★ 全形状共通：UVタイリング（スケール）の適用
+    // 全Procedural形状へ共通のUV Tilingを適用します。
     // ==========================================
     for (auto& v : proceduralVertices_) {
         v.texcoord.x *= editUvTiling_.x;

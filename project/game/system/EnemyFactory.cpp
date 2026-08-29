@@ -1,187 +1,60 @@
 #include "EnemyFactory.h"
-#include "EnemySlime.h"
-#include "EnemyBomb.h"
-#include "EnemyMushroom.h"
-#include "EnemyFireSlime.h"
-#include "EnemyThunderSlime.h"
-#include "EnemyWindSlime.h"
-#include "EnemyGiantSlime.h"
-#include "EnemyPrismSlime.h"
-#include "EnemyMagmaSlime.h"
-#include "EnemyFalseKingSlime.h"
-#include "EnemyBat.h"
-#include "EnemyBeamDrone.h"
-#include "EnemyRingBurner.h"
-#include <BossCore.h>
-#include "SceneManager.h"
-#include <EnemyBomber.h>
-#include "GameplayStatusManager.h"
+
 #include <algorithm>
-// 他の敵タイプを追加する場合は include と CreateEnemy の分岐を増やす
-
-namespace {
-constexpr int kSlimeSoftMaterialType = 25;
-constexpr int kPrismCrystalMaterialType = 27;
-
-bool IsSlimeEnemyType(const std::string& enemyType) {
-    return enemyType == "Slime" ||
-        enemyType == "Bomber" ||
-        enemyType == "FireSlime" ||
-        enemyType == "ThunderSlime" ||
-        enemyType == "WindSlime" ||
-        enemyType == "GiantSlime" ||
-        enemyType == "PrismSlime" ||
-        enemyType == "MagmaSlime" ||
-        enemyType == "FalseKingSlime";
-}
-
-void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
-    if (!enemy || !IsSlimeEnemyType(enemy->GetEnemyType())) {
-        return;
-    }
-    // マグマスライムは複数のPBR材質で外皮と発光亀裂を描き分けます。
-    if (enemy->GetEnemyType() == "MagmaSlime") {
-        return;
-    }
-    enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime"
-        ? kPrismCrystalMaterialType
-        : kSlimeSoftMaterialType);
-}
-}
 
 EnemyFactory* EnemyFactory::GetInstance() {
     static EnemyFactory instance;
     return &instance;
 }
 
-// 敵タイプ名ごとに専用クラスを生成します。共通ステータスはGameplayStatusManagerが設定します。
-std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
-    std::unique_ptr<BaseEnemy> newEnemy = nullptr;
-    if (enemyName == "Slime") {
-        auto slime = std::make_unique<EnemySlime>();
-
-        // モデル読み込みと共通初期化
-        slime->Initialize(common, "Characters/slime_pink");
-
-        newEnemy = std::move(slime);
+bool EnemyFactory::Register(const std::string& typeName, Creator creator) {
+    if (typeName.empty() || !creator) {
+        return false;
     }
-    else if (enemyName == "BossCore") 
-    {
-        auto boss = std::make_unique<BossCore>();
-
-        boss->SetSceneManager(SceneManager::GetInstance());
-        // ボスはブロックモデルをコア/パーツ制御の基準として使う
-        boss->Initialize(common, "Stages/block");
-
-        newEnemy = std::move(boss);
+    const bool isNew = creators_.find(typeName) == creators_.end();
+    creators_[typeName] = std::move(creator);
+    if (isNew) {
+        registrationOrder_.push_back(typeName);
     }
-    else if (enemyName == "Bomb")
-    {
-        auto bomb = std::make_unique<EnemyBomb>();
-        
-        bomb->Initialize(common, "Gimmicks/blob");
+    return true;
+}
 
-        newEnemy = std::move(bomb);
+bool EnemyFactory::Unregister(const std::string& typeName) {
+    if (creators_.erase(typeName) == 0) {
+        return false;
     }
+    registrationOrder_.erase(
+        std::remove(registrationOrder_.begin(), registrationOrder_.end(), typeName),
+        registrationOrder_.end());
+    return true;
+}
 
-    else if (enemyName == "Bomber")
-    {
-        auto bomber = std::make_unique<EnemyBomber>();
+void EnemyFactory::Clear() {
+    creators_.clear();
+    registrationOrder_.clear();
+}
 
-        bomber->Initialize(common, "Characters/slime_black");
+bool EnemyFactory::IsRegistered(const std::string& typeName) const {
+    return creators_.find(typeName) != creators_.end();
+}
 
-        newEnemy = std::move(bomber);
-    }
-    else if (enemyName == "Mushroom")
-    {
-        auto mushroom = std::make_unique<EnemyMushroom>();
-        mushroom->Initialize(common, "Primitives/cylinder");
+std::vector<std::string> EnemyFactory::GetRegisteredTypes() const {
+    return registrationOrder_;
+}
 
-        newEnemy = std::move(mushroom);
-    }
-    else if (enemyName == "FireSlime")
-    {
-        auto fireSlime = std::make_unique<EnemyFireSlime>();
-        fireSlime->Initialize(common, "Characters/slime_red");
-
-        newEnemy = std::move(fireSlime);
-    }
-    else if (enemyName == "ThunderSlime")
-    {
-        auto thunderSlime = std::make_unique<EnemyThunderSlime>();
-        thunderSlime->Initialize(common, "Characters/slime_yellow");
-
-        newEnemy = std::move(thunderSlime);
-    }
-    else if (enemyName == "WindSlime")
-    {
-        auto windSlime = std::make_unique<EnemyWindSlime>();
-        windSlime->Initialize(common, "Characters/slime_wind");
-
-        newEnemy = std::move(windSlime);
-    }
-    else if (enemyName == "GiantSlime")
-    {
-        auto giantSlime = std::make_unique<EnemyGiantSlime>();
-        giantSlime->Initialize(common, "Characters/slime");
-
-        newEnemy = std::move(giantSlime);
-    }
-    else if (enemyName == "PrismSlime")
-    {
-        auto prismSlime = std::make_unique<EnemyPrismSlime>();
-        prismSlime->Initialize(common, "Characters/prism_slime");
-
-        newEnemy = std::move(prismSlime);
-    }
-    else if (enemyName == "MagmaSlime")
-    {
-        auto magmaSlime = std::make_unique<EnemyMagmaSlime>();
-        magmaSlime->Initialize(common, "Characters/magma_slime");
-
-        newEnemy = std::move(magmaSlime);
-    }
-    else if (enemyName == "FalseKingSlime")
-    {
-        auto falseKing = std::make_unique<EnemyFalseKingSlime>();
-        falseKing->Initialize(common, "Characters/false_king_slime");
-        newEnemy = std::move(falseKing);
-    }
-    else if (enemyName == "Bat")
-    {
-        auto bat = std::make_unique<EnemyBat>();
-        bat->Initialize(common, "Characters/bat");
-
-        newEnemy = std::move(bat);
-    }
-    else if (enemyName == "BeamDrone")
-    {
-        auto beamDrone = std::make_unique<EnemyBeamDrone>();
-        beamDrone->Initialize(common, "Characters/eye");
-
-        newEnemy = std::move(beamDrone);
-    }
-    else if (enemyName == "RingBurner")
-    {
-        auto ringBurner = std::make_unique<EnemyRingBurner>();
-        ringBurner->Initialize(common, "Characters/ring_burner");
-
-        newEnemy = std::move(ringBurner);
-    }
-    // 作った敵にタイプ名を保存し、タイプ共通設定を一元管理から適用します。
-    if (newEnemy) {
-        newEnemy->SetEnemyType(enemyName);
-        newEnemy->SetClassName("Enemy");
-        ApplySlimeMaterialDefault(newEnemy.get());
-        auto* statusManager = GameplayStatusManager::GetInstance();
-        statusManager->Initialize();
-        statusManager->ApplyEnemyStatus(newEnemy.get(), true);
-    } else {
-        // 未登録タイプの場合は、落ちずに確認できる仮の敵を置く
-        newEnemy = std::make_unique<BaseEnemy>();
-        newEnemy->Initialize(common, "Primitives/cube");
-        newEnemy->SetEnemyType("");
+std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(
+    const std::string& typeName,
+    Object3dCommon* common) const {
+    const auto found = creators_.find(typeName);
+    if (found == creators_.end() || !found->second) {
+        return nullptr;
     }
 
-    return newEnemy;
+    std::unique_ptr<BaseEnemy> enemy = found->second(common);
+    if (enemy) {
+        enemy->SetClassName("Enemy");
+        enemy->SetSaveCategory("Enemy");
+        enemy->SetEnemyType(typeName);
+    }
+    return enemy;
 }

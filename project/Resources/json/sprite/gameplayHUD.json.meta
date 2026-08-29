@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "6d32c4b0cb149bdc81bcb06006fded1b",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/sprite/gameplayHUD.json",
-  "version": 1
-}

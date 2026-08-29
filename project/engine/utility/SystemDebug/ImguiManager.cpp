@@ -48,7 +48,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     // 🎨 フォントとアイコンの「合体（Merge）」読み込み
     // =================================================================
     
-    // ① まずはメインの日本語フォントを読み込む
+    // 本文用の日本語フォントを先に読み込みます。
     float fontSize = 18.0f;
     io.Fonts->AddFontFromFileTTF(
         "Resources/sprite/meiryo.ttc",
@@ -57,16 +57,16 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
         io.Fonts->GetGlyphRangesJapanese()
     );
 
-    // ② 次に読み込むアイコンフォントを「MergeMode」で合体させる設定にする
+    // 後続のIcon Fontを本文Fontへ統合する設定です。
     ImFontConfig config;
-    config.MergeMode = true;       // ★ここが肝！前のフォントに上書き合体する
+    config.MergeMode = true;       // 直前に読み込んだ本文フォントへアイコンGlyphを統合します。
     config.PixelSnapH = true;
     config.GlyphMinAdvanceX = fontSize; // アイコンの幅をフォントサイズに合わせる
 
-    // ③ アイコンの文字コード範囲を指定（IconsFontAwesome5.hで定義されている範囲）
+    // Font Awesomeで使用するGlyph範囲だけを読み込みます。
     static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 
-    // ④ アイコンフォントを読み込んで合体！
+    // アイコンフォントを本文フォントへ統合します。
     io.Fonts->AddFontFromFileTTF(
         "Resources/font/fa-solid-900.ttf",
         fontSize,
@@ -151,7 +151,7 @@ void ImGuiManager::EndFrame() {
         ImGui::UpdatePlatformWindows();
 
         // 3. サブウィンドウを描画
-        // ※最新版では、第1引数と第2引数は nullptr で内部解決させ、
+        // 現行Backendでは第1・第2引数をnullptrにして内部解決させ、
         //   メインのコマンドリストに記録させるのが最も安定します。
         ImGui::RenderPlatformWindowsDefault(nullptr, nullptr);
 

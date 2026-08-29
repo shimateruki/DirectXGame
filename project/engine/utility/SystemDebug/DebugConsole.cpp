@@ -91,7 +91,7 @@ void DebugConsole::DrawImGui() {
     {
         std::lock_guard<std::mutex> lock(logMutex_);
 
-        // ★追加: コピー処理の完全版（表示中のログだけを結合してコピー）
+        // 現在Filterを通過しているLogだけを結合してClipboardへコピーします。
         if (copy) {
             std::string clipboardText;
             for (const auto& entry : logs_) {
@@ -110,7 +110,7 @@ void DebugConsole::DrawImGui() {
             // フィルタ適用
             if (!filter_.PassFilter(entry.message.c_str())) continue;
 
-            // ★追加: チェックが外れているレベルのログはスキップ！
+            // 非表示にしたLog Levelは一覧構築時点で除外します。
             if (entry.level == LogLevel::Info && !showInfo_) continue;
             if (entry.level == LogLevel::Warning && !showWarn_) continue;
             if (entry.level == LogLevel::Error && !showError_) continue;

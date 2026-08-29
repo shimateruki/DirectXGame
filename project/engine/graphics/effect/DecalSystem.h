@@ -13,7 +13,7 @@ class Object3dCommon;
 // DecalSpawnDescは、地面や壁へ沿わせる薄い投影面の生成設定です。
 struct DecalSpawnDesc {
     std::string name = "Decal";
-    std::string texturePath = "Resources/sprite/effect/thunder/thunder_ground_scorch.dds";
+    std::string texturePath = "Resources/sprite/common/circle2.png";
     Vector2 size = { 2.0f, 2.0f };
     Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
     float rotationRadians = 0.0f;

@@ -13,7 +13,7 @@ void EditorManager::DrawInspector() {
         ImGui::Text("Selected: %s", selectedObject_->GetName().c_str());
         ImGui::Separator();
         ImGui::Spacing();
-        // ポストエフェクトならポストエフェクトのUIがここに描画される！
+        // 選択中のIEditableが提供するInspector UIを描画します。
         selectedObject_->DrawImGui();
 
     } else {

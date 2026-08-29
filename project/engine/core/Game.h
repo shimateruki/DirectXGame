@@ -34,7 +34,6 @@ void InitializeEngineServices();
 	void InitializePostProcess();
 	void InitializeEditorTools();
 	void ConfigureInitialPlayState();
-	void ApplyInitialSceneOverrides();
 
 	std::string ResolveStartSceneName() const;
 	float CalculateDeltaTime();
@@ -64,7 +63,6 @@ private:
 	float timeScale_ = 1.0f;
 	float fixedUpdateAccumulator_ = 0.0f;
 	bool isPlaying_ = false;
-	bool initialSceneOverridesPending_ = false;
 	std::string currentSceneName_;
 
 	float sceneUpdateTimeMs_ = 0.0f;

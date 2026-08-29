@@ -16,7 +16,7 @@
 #include "CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
-#include "GameplayStatusManager.h"
+
 #include "EditorPropertyDrawer.h"
 #include "EditorPropertyRegistry.h"
 #include "EditorCommandRegistry.h"
@@ -1086,14 +1086,12 @@ void InspectorWindow::Draw() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     const std::size_t selectedCount = editor_->GetSelectedObjectCount();
 
-    // ---------------------------------------------------------
-    // 2. オブジェクト詳細 (Inspector本体)
-    // ---------------------------------------------------------
+    // 選択ObjectのInspector本体。
     if (selectedObject == nullptr) {
         ImGui::TextDisabled(ICON_FA_EXCLAMATION_CIRCLE " オブジェクトが選択されていません");
         ImGui::TextDisabled("Hierarchyから選択してください");
         ImGui::Separator();
-        // ゲッター経由での描画フラグ制御
+        // 表示状態はObject側APIを経由して変更します。
         ImGui::Checkbox(ICON_FA_EYE " コライダー枠を描画", editor_->GetDrawCollidersPtr());
         ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
     }
@@ -1110,7 +1108,7 @@ void InspectorWindow::Draw() {
 
         DrawPrefabInstancePanel(editor_, currentScene, selectedObject);
 
-        // --- 名前表示 ---
+        // 名前と編集モード。
         char nameBuffer[256];
         std::string currentName = selectedObject->GetName();
         if (currentName.empty()) currentName = "NoName";
@@ -1122,7 +1120,7 @@ void InspectorWindow::Draw() {
         ImGui::Spacing();
 
         if (editor_->GetIsPathEditMode()) {
-            // 編集モード中は目立つ色（オレンジ）にして警告を表示
+            // Path編集中は誤操作を避けるため、警告色で状態を表示します。
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
             if (ImGui::Button(ICON_FA_CHECK_CIRCLE " パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
@@ -1140,9 +1138,7 @@ void InspectorWindow::Draw() {
         }
         ImGui::Separator();
 
-        // =========================================================================
-        // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
-        // =========================================================================
+        // Path編集中は、以下の通常プロパティ編集を無効化します。
         ImGui::BeginDisabled(editor_->GetIsPathEditMode());
         ImGui::Spacing();
 
@@ -1155,7 +1151,7 @@ void InspectorWindow::Draw() {
         }
         ImGui::Spacing();
 
-        // --- クラス名表示 ---
+        // Runtimeクラス情報。
         ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject->GetClassName().c_str());
 
         if (selectedObject->IsCameraObject()) {
@@ -1164,7 +1160,7 @@ void InspectorWindow::Draw() {
             return;
         }
 
-        const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(selectedObject);
+        const bool isManagedCharacter = false;
 
         static Object3d* tagLayerBufferOwner = nullptr;
         static char tagBuffer[128] = {};
@@ -1252,7 +1248,7 @@ void InspectorWindow::Draw() {
         }
         DrawMixedValueHint(mixedSaveCategory);
 
-        // --- 親の名前表示 ---
+        // 親Object。
         if (selectedObject->GetParent()) {
             ImGui::TextDisabled(ICON_FA_SITEMAP " 親: %s", selectedObject->GetParent()->GetName().c_str());
             if (ImGui::Button(ICON_FA_UNLINK " 親を解除 (Unparent)")) {
@@ -1263,7 +1259,7 @@ void InspectorWindow::Draw() {
             ImGui::TextDisabled(ICON_FA_SITEMAP " 親: なし");
         }
 
-        // --- Model Asset (InvisibleBoxでない場合のみ表示) ---
+        // 表示用Model Asset。不可視Objectでは表示しません。
         if (selectedObject->GetClassName() != "InvisibleBox") {
             ImGui::Separator();
             ImGui::Text(ICON_FA_CUBE " モデルアセット: %s", selectedObject->GetModelName().c_str());
@@ -1285,7 +1281,7 @@ void InspectorWindow::Draw() {
                         }
                     }
 
-                    // プリセットデータのドロップ受付
+                    // Preset Assetのドロップを受け付けます。
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
                         const char* presetName = (const char*)payload->Data;
                         PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);
@@ -1310,7 +1306,7 @@ void InspectorWindow::Draw() {
             }
         }
 
-        // --- 可視性設定 ---
+        // 可視性とShadow設定。
         ImGui::Separator();
         bool isVisible = selectedObject->GetIsVisible();
         const bool mixedVisible = HasMixedInspectorValue(inspectorTargets, "rendering.visible");
@@ -1346,7 +1342,7 @@ void InspectorWindow::Draw() {
         }
         PopMixedCheckbox();
 
-        // --- Transform編集 ---
+        // Transform編集。
         ImGui::Separator();
         ImGui::Text(ICON_FA_ARROWS_ALT " トランスフォーム (Transform)");
         Transform* transform = selectedObject->GetTransform();
@@ -1422,7 +1418,7 @@ void InspectorWindow::Draw() {
         }
 
 
-        // --- コライダー設定 ---
+        // Collider設定。
         ImGui::Separator();
         if (ImGui::CollapsingHeader(ICON_FA_SHIELD_ALT " コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
             Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
@@ -1473,7 +1469,7 @@ void InspectorWindow::Draw() {
                 }
             }
             else {
-                // なしの時も一応反映
+                // 「なし」も明示的に反映し、以前の形状を残しません。
                 if (isColChanged) {
                     for (Object3d* object : inspectorTargets) {
                         if (!object) continue;
@@ -2221,7 +2217,7 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             if (HasRegisteredComponent(selectedObject, "ParticleEmitter") &&
                 ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
-                // --- CPU Particle (Old) ---
+                // CPU Particle。
                 const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();
                 std::vector<const char*> cpuItemNames;
                 int currentCpuIndex = 0; int cpuIdx = 0;
@@ -2243,7 +2239,7 @@ void InspectorWindow::Draw() {
 
                 ImGui::Separator();
 
-                // --- GPU Particle (New) ---
+                // GPU Particle。
                 const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
                 std::vector<const char*> gpuItemNames;
                 int currentGpuIndex = 0; int gpuIdx = 0;
@@ -2292,7 +2288,7 @@ void InspectorWindow::Draw() {
                     itemNames.push_back(displayName.c_str());
                 }
 
-                // --- スロット1 ---
+                // Mesh Effect Slot 1。
                 std::string currentEff1 = selectedObject->GetMeshEffect1Name();
                 int selectIdx1 = 0;
                 for (size_t i = 0; i < effectPaths.size(); ++i) {
@@ -2306,7 +2302,7 @@ void InspectorWindow::Draw() {
                     selectedObject->SetMeshEffect1Name(effectPaths[selectIdx1]);
                 }
 
-                // --- スロット2 ---
+                // Mesh Effect Slot 2。
                 std::string currentEff2 = selectedObject->GetMeshEffect2Name();
                 int selectIdx2 = 0;
                 for (size_t i = 0; i < effectPaths.size(); ++i) {
@@ -2332,9 +2328,7 @@ void InspectorWindow::Draw() {
         }
 
         if (HasRegisteredComponent(selectedObject, "Animator")) {
-            // ==========================================
-            // 1. ボーンアニメーション設定
-            // ==========================================
+            // Bone Animation設定。
             ImGui::Separator();
             ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
             const std::vector<Object3d*> animatorTargets =
@@ -2429,7 +2423,7 @@ void InspectorWindow::Draw() {
             EditorManager::GetInstance()->ClearSelection();
         }
 
-        // --- Gizmo 操作切替 ---
+        // Gizmo操作モード。
         ImGui::Separator();
         ImGui::Text(ICON_FA_HAND_POINTER " ギズモ操作モード:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
@@ -2445,6 +2439,4 @@ void InspectorWindow::Draw() {
 #endif
 }
 
-// -------------------------------------------------------------
-// UIヘルパー関数群
-// -------------------------------------------------------------
+// Inspector内で共用するUIヘルパー。

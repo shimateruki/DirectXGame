@@ -1,32 +1,60 @@
 #include "ItemFactory.h"
-#include "game/actor/item/HealItem.h"
+
+#include <algorithm>
 
 ItemFactory* ItemFactory::GetInstance() {
     static ItemFactory instance;
     return &instance;
 }
 
-// アイテムタイプ名から専用アイテムを生成する。未登録なら仮アイテムを返す。
-std::unique_ptr<BaseItem> ItemFactory::CreateItem(const std::string& itemName, Object3dCommon* common) {
-    std::unique_ptr<BaseItem> newItem = nullptr;
+bool ItemFactory::Register(const std::string& typeName, Creator creator) {
+    if (typeName.empty() || !creator) {
+        return false;
+    }
+    const bool isNew = creators_.find(typeName) == creators_.end();
+    creators_[typeName] = std::move(creator);
+    if (isNew) {
+        registrationOrder_.push_back(typeName);
+    }
+    return true;
+}
 
-    if (itemName == "Heal") {
-        auto heal = std::make_unique<HealItem>();
-        heal->Initialize(common, "Item/heart.gltf");
-        newItem = std::move(heal);
+bool ItemFactory::Unregister(const std::string& typeName) {
+    if (creators_.erase(typeName) == 0) {
+        return false;
+    }
+    registrationOrder_.erase(
+        std::remove(registrationOrder_.begin(), registrationOrder_.end(), typeName),
+        registrationOrder_.end());
+    return true;
+}
+
+void ItemFactory::Clear() {
+    creators_.clear();
+    registrationOrder_.clear();
+}
+
+bool ItemFactory::IsRegistered(const std::string& typeName) const {
+    return creators_.find(typeName) != creators_.end();
+}
+
+std::vector<std::string> ItemFactory::GetRegisteredTypes() const {
+    return registrationOrder_;
+}
+
+std::unique_ptr<BaseItem> ItemFactory::CreateItem(
+    const std::string& typeName,
+    Object3dCommon* common) const {
+    const auto found = creators_.find(typeName);
+    if (found == creators_.end() || !found->second) {
+        return nullptr;
     }
 
-    if (!newItem) {
-        newItem = std::make_unique<BaseItem>();
-        newItem->Initialize(common, "Primitives/sphere");
+    std::unique_ptr<BaseItem> item = found->second(common);
+    if (item) {
+        item->SetClassName("Item");
+        item->SetSaveCategory("Object");
+        item->SetItemType(typeName);
     }
-
-    // タイプ名を本体とパラメータの両方に保存して、エディタ/イベント側から参照できるようにする
-    newItem->SetItemType(itemName);
-    if (!newItem->param_.has_value()) {
-        newItem->param_.emplace();
-    }
-    newItem->param_->itemType = itemName;
-
-    return newItem;
+    return item;
 }

@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "688bff5f03579445291da0b956db4708",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_bomb_fire_sparks.json",
-  "version": 1
-}

@@ -1,3 +1,17 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json"
+    "_comment": "Actual data is in _player, _enemy, and _object.json",
+    "_sceneAsset": {
+        "controller": "DEFAULT",
+        "displayName": "Title",
+        "id": "titleScene",
+        "resources": {
+            "bgm": "",
+            "camera": "",
+            "light": "",
+            "skybox": ""
+        },
+        "runtimeScene": "SCENE_EDITOR",
+        "spriteLayout": "Resources/json/sprite/Titlescene.json",
+        "version": 3
+    }
 }

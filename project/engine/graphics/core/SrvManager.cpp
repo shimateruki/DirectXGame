@@ -19,7 +19,7 @@ void SRVManager::Initialize(DirectXCommon* dxCommon) {
     srvHeapDesc.NumDescriptors = kMaxSRVCount; // 256個確保
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-    // ★重要：srvDescriptorHeap_ に生成する（重複変数は消したので迷わない）
+    // SRVはこのManagerが所有する共通Descriptor Heapへ生成します。
     HRESULT hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap_));
     assert(SUCCEEDED(hr));
 

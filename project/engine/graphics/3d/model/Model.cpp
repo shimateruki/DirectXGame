@@ -596,7 +596,7 @@ void Model::InitializeFromCpuData(
         // カリング用のローカルAABBを保存
         localAabbMin_ = min;
         localAabbMax_ = max;
-        // 中心座標とサイズも一応計算して保持
+        // EditorのBounds表示とCull判定用に中心とサイズも保持します。
         center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
         size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
     }
@@ -753,7 +753,7 @@ void Model::CreateBoneBuffer() {
         return;
     }
 
-    // ★重要: 初期値を「単位行列」で埋めておく
+    // 未使用Boneが頂点を変形しないよう、初期値を単位行列で埋めます。
     // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
     Math math;
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
@@ -1056,7 +1056,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
         if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
-            // エディタで画像が選ばれていたら、そっちを優先して貼る！
+            // Editorで上書きTextureが指定されている場合はModel既定Textureより優先します。
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
         }
         else if (mesh.materialIndex < modelData_.materials.size()) {

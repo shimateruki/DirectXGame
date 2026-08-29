@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "f3855561bf02b5e495f5d1a1777d4cc5",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/animation_clip/player_idle.json",
-  "version": 1
-}

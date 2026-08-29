@@ -25,9 +25,8 @@ void AudioSettingsWindow::Initialize(DebugEditor* editor) {
 void AudioSettingsWindow::DrawAudioEventEditor() {
 #ifdef USE_IMGUI
     if (!audioEventInitialized_) {
-        audioEventDefinition_.clips = {
-            "Resources/audio/se/generated/explosion.wav"
-        };
+        // 新規プロジェクトでは旧ゲームのSEを引き継がず、空のEventから作成します。
+        audioEventDefinition_.clips.clear();
         audioEventInitialized_ = true;
     }
 

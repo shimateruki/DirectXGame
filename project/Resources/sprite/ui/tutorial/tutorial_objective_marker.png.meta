@@ -1,8 +1,0 @@
-{
-  "assetType": "Texture",
-  "guid": "62566ebf4d8c4b559e159da0325049ce",
-  "importSettings": { "colorSpace": "Auto", "generateMipmaps": true },
-  "importer": "TextureImporter",
-  "source": "Resources/sprite/ui/tutorial/tutorial_objective_marker.png",
-  "version": 1
-}

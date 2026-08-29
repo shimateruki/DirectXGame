@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "3e1981b1dd254f0390ae95a5091a888c",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/effect/effect_player_wind_slow_fall.json",
-  "version": 1
-}

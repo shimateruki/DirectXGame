@@ -351,7 +351,6 @@ namespace {
         ImGui::Separator();
 
         if (ImGui::BeginMenu(ICON_FA_CUBE " 基本オブジェクト")) {
-            if (ImGui::MenuItem("ステージブロック")) CreatePrimitive(editor, scene, "Stages/block", "Block", useGameViewCursor);
             if (ImGui::MenuItem("Cube")) CreatePrimitive(editor, scene, "Primitives/cube", "Cube", useGameViewCursor);
             if (ImGui::MenuItem("Sphere")) CreatePrimitive(editor, scene, "Primitives/sphere", "Sphere", useGameViewCursor);
             if (ImGui::MenuItem("Cylinder")) CreatePrimitive(editor, scene, "Primitives/cylinder", "Cylinder", useGameViewCursor);
@@ -364,56 +363,29 @@ namespace {
         }
 
         if (ImGui::BeginMenu(ICON_FA_PUZZLE_PIECE " ギミック")) {
-            if (ImGui::MenuItem("動く床")) CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("破壊ブロック")) CreateGimmick(editor, scene, "BreakableBlock", useGameViewCursor);
-            if (ImGui::MenuItem("ジャンプ台")) CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
-            if (ImGui::MenuItem("スターランチャー")) CreateGimmick(editor, scene, "LaunchStar", useGameViewCursor);
-            if (ImGui::MenuItem("沈む床")) CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("シーソー床")) CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
-            if (ImGui::MenuItem("ダッシュパネル")) CreateGimmick(editor, scene, "DashPanel", useGameViewCursor);
-            if (ImGui::MenuItem("氷の床")) CreateGimmick(editor, scene, "IceFloor", useGameViewCursor);
-            if (ImGui::MenuItem("時限スイッチ")) CreateGimmick(editor, scene, "TimedSwitch", useGameViewCursor);
-            if (ImGui::MenuItem("出現床")) CreateGimmick(editor, scene, "AppearingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("汎用スイッチ")) CreateGimmick(editor, scene, "Switch", useGameViewCursor);
-            if (ImGui::MenuItem("イベント受信")) CreateGimmick(editor, scene, "EventReceiver", useGameViewCursor);
-            if (ImGui::MenuItem("中ボス遭遇管理")) CreateGimmick(editor, scene, "ArenaEncounter", useGameViewCursor);
-            if (ImGui::MenuItem("ゲームプレイボリューム")) CreateGimmick(editor, scene, "GameplayVolume", useGameViewCursor);
-            if (ImGui::MenuItem("プリズム障壁")) CreateGimmick(editor, scene, "PrismBarrier", useGameViewCursor);
-            if (ImGui::MenuItem("フックアンカー")) CreateGimmick(editor, scene, "HookAnchor", useGameViewCursor);
-            if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
-            if (ImGui::MenuItem("一方通行床")) CreateGimmick(editor, scene, "OneWayFloor", useGameViewCursor);
-            if (ImGui::MenuItem("水位/マグマ上下")) CreateGimmick(editor, scene, "LiquidLevel", useGameViewCursor);
-            if (ImGui::MenuItem("マグマダメージ床")) CreateGimmick(editor, scene, "MagmaHazard", useGameViewCursor);
-            if (ImGui::MenuItem("連鎖崩れ床")) CreateGimmick(editor, scene, "ChainCollapseFloor", useGameViewCursor);
-            if (ImGui::MenuItem("回転床")) CreateGimmick(editor, scene, "RotatingFloor", useGameViewCursor);
-            if (ImGui::MenuItem("回転柱")) CreateGimmick(editor, scene, "RotatingPillar", useGameViewCursor);
-            if (ImGui::MenuItem("時間反転床")) CreateGimmick(editor, scene, "PhaseFlipFloor", useGameViewCursor);
-            if (ImGui::MenuItem("レーザー発射")) CreateGimmick(editor, scene, "LaserEmitter", useGameViewCursor);
-            if (ImGui::MenuItem("レーザーノード")) CreateGimmick(editor, scene, "LaserNode", useGameViewCursor);
-            if (ImGui::MenuItem("ステージゲート")) CreateGimmick(editor, scene, "StageGate", useGameViewCursor);
+            const auto types = GimmickFactory::GetInstance()->GetRegisteredTypes();
+            if (types.empty()) ImGui::TextDisabled("登録されたギミックはありません");
+            for (const std::string& type : types) {
+                if (ImGui::MenuItem(type.c_str())) CreateGimmick(editor, scene, type, useGameViewCursor);
+            }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu(ICON_FA_SKULL " 敵")) {
-            if (ImGui::MenuItem("Fire Slime")) CreateEnemy(editor, scene, "FireSlime", useGameViewCursor);
-            if (ImGui::MenuItem("Thunder Slime")) CreateEnemy(editor, scene, "ThunderSlime", useGameViewCursor);
-            if (ImGui::MenuItem("Wind Slime")) CreateEnemy(editor, scene, "WindSlime", useGameViewCursor);
-            if (ImGui::MenuItem("スライム")) CreateEnemy(editor, scene, "Slime", useGameViewCursor);
-            if (ImGui::MenuItem("ボム")) CreateEnemy(editor, scene, "Bomb", useGameViewCursor);
-            if (ImGui::MenuItem("ボマー")) CreateEnemy(editor, scene, "Bomber", useGameViewCursor);
-            if (ImGui::MenuItem("キノコ")) CreateEnemy(editor, scene, "Mushroom", useGameViewCursor);
-            if (ImGui::MenuItem("巨大スライム")) CreateEnemy(editor, scene, "GiantSlime", useGameViewCursor);
-            if (ImGui::MenuItem("プリズムスライム（中ボス）")) CreateEnemy(editor, scene, "PrismSlime", useGameViewCursor);
-            if (ImGui::MenuItem("マグマスライム（中ボス）")) CreateEnemy(editor, scene, "MagmaSlime", useGameViewCursor);
-            if (ImGui::MenuItem("コウモリ")) CreateEnemy(editor, scene, "Bat", useGameViewCursor);
-            if (ImGui::MenuItem("目玉ビーム")) CreateEnemy(editor, scene, "BeamDrone", useGameViewCursor);
-            if (ImGui::MenuItem("リングバーナー")) CreateEnemy(editor, scene, "RingBurner", useGameViewCursor);
-            if (ImGui::MenuItem("ボスコア")) CreateEnemy(editor, scene, "BossCore", useGameViewCursor);
+            const auto types = EnemyFactory::GetInstance()->GetRegisteredTypes();
+            if (types.empty()) ImGui::TextDisabled("登録された敵はありません");
+            for (const std::string& type : types) {
+                if (ImGui::MenuItem(type.c_str())) CreateEnemy(editor, scene, type, useGameViewCursor);
+            }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu(ICON_FA_HEART " アイテム")) {
-            if (ImGui::MenuItem("体力回復")) CreateItem(editor, scene, "Heal", useGameViewCursor);
+            const auto types = ItemFactory::GetInstance()->GetRegisteredTypes();
+            if (types.empty()) ImGui::TextDisabled("登録されたアイテムはありません");
+            for (const std::string& type : types) {
+                if (ImGui::MenuItem(type.c_str())) CreateItem(editor, scene, type, useGameViewCursor);
+            }
             ImGui::EndMenu();
         }
 
@@ -627,9 +599,7 @@ void HierarchyWindow::Draw() {
     ImGui::Separator();
     ImGui::Separator();
 
-    // =======================================================
-    //  検索バーとカテゴリフィルタを横に並べて表示！
-    // =======================================================
+    // 検索欄とカテゴリフィルターを同じ行へ配置します。
     ImGui::Text(ICON_FA_SEARCH " 検索:");
     ImGui::SameLine();
     ImGui::PushItemWidth(120.0f); // 検索バーの幅
@@ -754,11 +724,11 @@ void HierarchyWindow::Draw() {
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common); 
-                    newObj->SetModel("Stages/block"); 
+                    newObj->SetModel("Primitives/cube");
                     newObj->SetName("VFX_" + std::string(presetName)); 
                     newObj->SetClassName("GPUParticle");
                     newObj->SetGPUParticleName(presetName);
-                    // エディタ上で分かりやすいように色をオレンジ半透明っぽくする
+                    // Triggerは通常Objectと区別できるよう、半透明のオレンジで表示します。
                     newObj->SetColor({1.0f, 0.5f, 0.0f, 0.5f});
                     newObj->SetBlendMode(BlendMode::kNormal);
                     
@@ -1450,10 +1420,10 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 #ifdef USE_IMGUI
     if (!obj) return;
     if (!HasMatchingCategory(obj)) return;
-    //  IDの衝突を防ぐためにPushIDを使用
+    // 同名ObjectでもImGui IDが衝突しないよう、ObjectポインタをIDへ積みます。
     ImGui::PushID(obj);
 
-    //  AllowItemOverlapを追加して、ツリーと同じ行にボタンを押せるようにする
+    // 同じ行に表示・ロックボタンを重ねるため、後続Itemとの重なりを許可します。
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if (editor_->IsObjectSelected(obj)) node_flags |= ImGuiTreeNodeFlags_Selected;
 
@@ -1471,10 +1441,10 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
     if (obj->IsEditorTemporarilyHidden()) {
         name += " [一時非表示]";
     }
-    // 左側にツリーノードを描画
+    // 左側へ階層ツリーを描画します。
     bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
 
-    // アイテムがクリックされたら選択状態にする
+    // ツリー本体のクリックだけを選択操作として扱います。
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
         if (ImGui::GetIO().KeyShift) {
             editor_->ToggleSelectedObject(obj);
@@ -1484,7 +1454,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         editor_->SyncObjectSelectionToInspector();
     }
 
-    // --- ドラッグ＆ドロップ処理 ---
+    // 親子付け替え用のドラッグ＆ドロップ。
     if (ImGui::BeginDragDropSource()) {
         ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
         ImGui::Text("Move %s", name.c_str());
@@ -1502,12 +1472,10 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         ImGui::EndDragDropTarget();
     }
 
-    // ==========================================================
-    //  右端に目玉と南京錠のアイコンを配置する
-    // ==========================================================
+    // 行の右端へ表示状態と編集ロックの操作を固定配置します。
     ImGui::SameLine(ImGui::GetWindowWidth() - 75.0f); // 右端から75pxの位置に寄せる
 
-    // 1. 表示・非表示トグル (目のアイコン)
+    // 表示・非表示トグル。
     bool isVisible = obj->GetIsVisible();
     const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
     if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // 非表示時はグレーアウト
@@ -1520,7 +1488,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 
     ImGui::SameLine();
 
-    // 2. ロックトグル (南京錠アイコン)
+    // 編集ロックトグル。
     bool isLocked = obj->GetIsLocked();
     const char* lockIcon = isLocked ? ICON_FA_LOCK : ICON_FA_UNLOCK;
     if (isLocked) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f)); // ロック時は赤色

@@ -92,7 +92,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 	static std::string s_lastSyncedSpriteFilename = "";
 	std::string currentLoadedName = currentScene->GetLoadedSpriteFilename();
 
-	// 読み込み名が変わった瞬間だけ、エディタにセットする！
+	// 読込対象が変わったFrameだけEditor状態を同期します。
 	if (!currentLoadedName.empty() && s_lastSyncedSpriteFilename != currentLoadedName) {
 		SetSpriteFilename(currentLoadedName);
 		s_lastSyncedSpriteFilename = currentLoadedName;
@@ -111,7 +111,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 			if (selectedSprite_ == nullptr) goto SKIP_SHORTCUTS;
 
 			// --- 複製 (Ctrl + D または Ctrl + C) ---
-			// ※ InputManager の「キーを押しっぱなし」を判定する関数名（IsKeyPressed など）に合わせてください
+			// 連続移動には押下継続判定を使用します。
 			bool isCtrlDown = inputManager_->IsKeyPressed(DIK_LCONTROL) || inputManager_->IsKeyPressed(DIK_RCONTROL);
 
 			// Ctrl + C (コピー) または Ctrl + D (複製)
@@ -125,7 +125,7 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 
 				// 元のスプライトのパラメータを丸コピー
 				newSprite->SetName(selectedSprite_->GetName() + "_Copy");
-				// ※完全に重なると見えないので、少しズラして配置する
+				// 複製直後も識別できるよう、位置を少しずらします。
 				Vector2 selectedWorldPos = selectedSprite_->GetWorldPosition();
 				newSprite->SetPosition({ selectedWorldPos.x + 20.0f, selectedWorldPos.y + 20.0f });
 				newSprite->SetSize(selectedSprite_->GetSize());
@@ -815,7 +815,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 					// ドラッグ＆ドロップ処理
 					if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
 						// =======================================================
-						//  裏のデータ（ペイロード）は relativePath に戻してクラッシュ回避！
+						// Drag Payloadには寿命を管理しやすいRelative Path文字列を格納します。
 						// =======================================================
 						ImGui::SetDragDropPayload("SPRITE_FILE", relativePath.c_str(), relativePath.size() + 1);
 

@@ -44,7 +44,6 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -835,7 +834,7 @@ void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
     auto newObj = std::make_unique<Object3d>();
     newObj->Initialize(currentScene->GetObject3dCommon());
     
-    newObj->SetModel("Stages/block"); 
+    newObj->SetModel("Primitives/cube");
     newObj->SetName("VFX_" + particleName + "_" + std::to_string(currentScene->GetObjects().size())); 
     newObj->SetClassName("GPUParticle");
     newObj->SetGPUParticleName(particleName);

@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "59e3299ce4104bad8af096dc81fc6018",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/launch_star_trail.json",
-  "version": 1
-}

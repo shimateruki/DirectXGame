@@ -132,10 +132,10 @@ void Draw();
     void SetTexture(const std::string& texturePath);
     void SpawnPrimitiveHitEffect(const Vector3& position);
 
-    // ★課題: ランダムZ回転で星型ヒットエフェクト (8個)
+    // Z回転を分散させた8枚のParticleで星型Hit Effectを生成します。
     void SpawnStarHitEffect(const Vector3& position);
 
-    // ★課題: ランダムY-scaleで斬撃エフェクト (3個)
+    // Y Scaleを分散させた3枚のParticleでSlash Effectを生成します。
     void SpawnSlashEffect(const Vector3& position, float baseRotation = 0.0f);
     void SpawnContinuousHitEffect(const Vector3& position, int count,
         float initialSpeed,

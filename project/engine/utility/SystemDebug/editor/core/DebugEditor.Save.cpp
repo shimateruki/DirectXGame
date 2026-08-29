@@ -45,7 +45,6 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
-#include <BulletManager.h>
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
@@ -533,10 +532,6 @@ SceneSerializer::SceneAssetValidationResult DebugEditor::ValidateSceneAsset(
     const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneSerializer::SceneAssetInfo& candidate) {
         return candidate.filename == filename;
     });
-    if (asset != assets.end() && asset->runtimeScene == "GAMEPLAY" &&
-        !SceneControllerFactory::GetInstance()->IsRegistered(asset->controllerName)) {
-        result.errors.push_back("Scene Controllerが登録されていません: " + asset->controllerName);
-    }
     return result;
 }
 

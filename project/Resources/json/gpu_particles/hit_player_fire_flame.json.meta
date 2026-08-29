@@ -1,8 +1,0 @@
-{
-  "assetType": "JSON",
-  "guid": "f1b8796f50763c33d9892dcd74481084",
-  "importSettings": {},
-  "importer": "JsonImporter",
-  "source": "Resources/json/gpu_particles/hit_player_fire_flame.json",
-  "version": 1
-}

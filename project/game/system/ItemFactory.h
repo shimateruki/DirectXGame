@@ -1,20 +1,35 @@
 #pragma once
+
 #include "game/actor/item/BaseItem.h"
-#include "Object3dCommon.h"
+
+#include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
-// 文字列のアイテムタイプ名から、対応するアイテムを生成するファクトリ
+class Object3dCommon;
+
+/// Itemタイプ名と生成処理を登録するFactoryです。初期状態は空です。
+/// Creatorは受け取ったObject3dCommonで初期化済みのインスタンスを返してください。
 class ItemFactory {
 public:
+    using Creator = std::function<std::unique_ptr<BaseItem>(Object3dCommon*)>;
+
     static ItemFactory* GetInstance();
 
-    // itemName に対応するアイテムを生成し、基本初期化まで行う
-    std::unique_ptr<BaseItem> CreateItem(const std::string& itemName, Object3dCommon* common);
+    /// 同名登録はCreatorを置き換えますが、エディター表示順は最初の登録位置を維持します。
+    bool Register(const std::string& typeName, Creator creator);
+    bool Unregister(const std::string& typeName);
+    void Clear();
+    bool IsRegistered(const std::string& typeName) const;
+    std::vector<std::string> GetRegisteredTypes() const;
+    std::unique_ptr<BaseItem> CreateItem(
+        const std::string& typeName,
+        Object3dCommon* common) const;
 
 private:
     ItemFactory() = default;
-    ~ItemFactory() = default;
-    ItemFactory(const ItemFactory&) = delete;
-    const ItemFactory& operator=(const ItemFactory&) = delete;
+    std::unordered_map<std::string, Creator> creators_;
+    std::vector<std::string> registrationOrder_;
 };

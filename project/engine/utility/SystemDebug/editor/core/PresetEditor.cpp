@@ -54,12 +54,9 @@ void PresetEditor::DrawImGui() {
 }
 
 void PresetEditor::DrawPalettePane() {
-    ImGui::TextDisabled("ステージライブラリ");
-    DrawCategoryButton("ステージ1", Category::Stage1);
-    ImGui::SameLine();
-    DrawCategoryButton("すべて", Category::All);
-
     ImGui::TextDisabled("種類で絞り込み");
+    DrawCategoryButton("すべて", Category::All);
+    ImGui::SameLine();
     DrawCategoryButton("敵", Category::Enemy);
     ImGui::SameLine();
     DrawCategoryButton("ギミック", Category::Gimmick);
@@ -141,41 +138,11 @@ void PresetEditor::DrawPresetList() {
         entries.push_back({ &name, &data });
     }
 
-    std::stable_sort(entries.begin(), entries.end(), [this](const PresetListEntry& lhs, const PresetListEntry& rhs) {
-        const bool lhsStage1 = IsStage1Preset(*lhs.data);
-        const bool rhsStage1 = IsStage1Preset(*rhs.data);
-        if (lhsStage1 != rhsStage1) {
-            return lhsStage1;
-        }
-
-        const int lhsSection = ReadInt(*lhs.data, "presetSectionOrder", 10000);
-        const int rhsSection = ReadInt(*rhs.data, "presetSectionOrder", 10000);
-        if (lhsSection != rhsSection) {
-            return lhsSection < rhsSection;
-        }
-
-        const int lhsOrder = ReadInt(*lhs.data, "presetOrder", 10000);
-        const int rhsOrder = ReadInt(*rhs.data, "presetOrder", 10000);
-        if (lhsOrder != rhsOrder) {
-            return lhsOrder < rhsOrder;
-        }
+    std::stable_sort(entries.begin(), entries.end(), [](const PresetListEntry& lhs, const PresetListEntry& rhs) {
         return *lhs.name < *rhs.name;
     });
 
-    std::string currentSection;
     for (const PresetListEntry& entry : entries) {
-        if (activeCategory_ == Category::Stage1) {
-            const std::string section = ReadString(*entry.data, "presetSection", "その他");
-            if (section != currentSection) {
-                if (!currentSection.empty()) {
-                    ImGui::Spacing();
-                }
-                currentSection = section;
-                const ImVec4 sectionColor = GetStage1SectionColor(ReadInt(*entry.data, "presetSectionOrder", 0));
-                ImGui::TextColored(sectionColor, "%s", currentSection.c_str());
-                ImGui::Separator();
-            }
-        }
         DrawPresetListItem(*entry.name, *entry.data);
     }
 
@@ -188,8 +155,7 @@ void PresetEditor::DrawPresetListItem(const std::string& name, const json& data)
     bool selected = selectedName_ == name;
     Category category = DetectCategory(data);
     ImVec4 accent = GetCategoryColor(category);
-    const bool stage1Preset = IsStage1Preset(data);
-    const float rowHeight = stage1Preset ? 128.0f : 96.0f;
+    const float rowHeight = 96.0f;
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, selected ? ImVec4(0.18f, 0.25f, 0.38f, 1.0f) : ImVec4(0.11f, 0.12f, 0.14f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Border, selected ? ImVec4(0.70f, 0.86f, 1.0f, 1.0f) : ImVec4(0.25f, 0.26f, 0.30f, 1.0f));
@@ -218,19 +184,9 @@ void PresetEditor::DrawPresetListItem(const std::string& name, const json& data)
         }
     }
     ImGui::TextColored(accent, "%s", GetCategoryLabel(category));
-    if (stage1Preset && ReadBool(data, "presetRecommended", false)) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.76f, 0.24f, 1.0f), "よく使う");
-    }
     ImGui::TextDisabled("Model: %s", ShortModelName(ReadString(data, "modelName", "(なし)")).c_str());
-    if (stage1Preset) {
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
-        ImGui::TextDisabled("%s", ReadString(data, "presetDescription", "").c_str());
-        ImGui::PopTextWrapPos();
-    } else {
-        Vector3 scale = ReadVector3(data, "scale", { 1.0f, 1.0f, 1.0f });
-        ImGui::TextDisabled("Scale: %.2f / %.2f / %.2f", scale.x, scale.y, scale.z);
-    }
+    Vector3 scale = ReadVector3(data, "scale", { 1.0f, 1.0f, 1.0f });
+    ImGui::TextDisabled("Scale: %.2f / %.2f / %.2f", scale.x, scale.y, scale.z);
     ImGui::EndGroup();
 
     ImGui::EndChild();
@@ -273,14 +229,6 @@ void PresetEditor::DrawSettingsPane() {
     if (displayName != selectedName_) {
         ImGui::TextDisabled("%s", selectedName_.c_str());
     }
-    if (IsStage1Preset(data)) {
-        ImGui::TextColored(
-            GetStage1SectionColor(ReadInt(data, "presetSectionOrder", 0)),
-            "ステージ1 / %s",
-            ReadString(data, "presetSection", "その他").c_str());
-        ImGui::TextWrapped("%s", ReadString(data, "presetDescription", "").c_str());
-        ImGui::TextDisabled("同期元: %s", ReadString(data, "presetSourceObject", "").c_str());
-    }
     if (placePresetCallback_ && ImGui::Button("配置プレビュー")) {
         placePresetCallback_(selectedName_);
     }
@@ -301,11 +249,7 @@ void PresetEditor::DrawSettingsPane() {
 
     if (ImGui::CollapsingHeader("配置テンプレート", ImGuiTreeNodeFlags_DefaultOpen)) {
         changed |= DrawStringField(data, "表示名", "name", selectedName_);
-        if (category == Category::Enemy) {
-            ImGui::TextDisabled("敵のモデルとタイプ共通スケールはステータス管理で設定します。");
-        } else {
-            changed |= DrawModelField(data);
-        }
+        changed |= DrawModelField(data);
         changed |= DrawColorField(data, "色", "color", { 1.0f, 1.0f, 1.0f, 1.0f });
         changed |= DrawIntField(data, "マテリアルタイプ", "materialType", 0);
         changed |= DrawFloatField(data, "発光", "emissive", 1.0f, 0.05f);
@@ -314,11 +258,7 @@ void PresetEditor::DrawSettingsPane() {
     if (ImGui::CollapsingHeader("配置時Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
         changed |= DrawVector3Field(data, "位置オフセット", "translate", { 0.0f, 0.0f, 0.0f }, 0.1f);
         changed |= DrawVector3Field(data, "回転", "rotate", { 0.0f, 0.0f, 0.0f }, 0.01f);
-        if (category == Category::Enemy) {
-            ImGui::TextDisabled("スケールはステータス管理の敵タイプ共通値を使用します。");
-        } else {
-            changed |= DrawVector3Field(data, "スケール", "scale", { 1.0f, 1.0f, 1.0f }, 0.05f);
-        }
+        changed |= DrawVector3Field(data, "スケール", "scale", { 1.0f, 1.0f, 1.0f }, 0.05f);
     }
 
     if (category == Category::Enemy) {

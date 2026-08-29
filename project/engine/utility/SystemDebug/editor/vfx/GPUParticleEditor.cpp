@@ -197,7 +197,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::Separator();
         ImGui::Combo(ICON_FA_EXPAND_ARROWS_ALT " サイズの変形カーブ", &config_.sizeEaseType, easeTypes, IM_ARRAYSIZE(easeTypes));
 
-        // 形に合わせて出すUIを変える！
+        // Emitter形状に応じて必要なParameterだけを表示します。
         if (config_.shapeType == 0) {
             ImGui::DragFloat3("発生範囲 (Area)", &config_.emitArea.x, 0.1f);
         }
