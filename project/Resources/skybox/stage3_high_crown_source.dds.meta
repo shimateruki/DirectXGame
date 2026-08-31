@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "1446191efbba3f57ffac0bb7f47c2608",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/skybox/stage3_high_crown_source.dds",
+  "version": 1
+}

@@ -448,6 +448,7 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         { "keyconfig", "キーコンフィグ", "key input", KeyConfig::GetInstance() },
         { "preset", "プリセットエディタ", "preset prefab", PresetEditor::GetInstance() },
         { "sceneValidator", "シーン視覚監査", "scene audit overlap rotate", editor_->GetSceneValidator() },
+        { "levelDesignLab", "レベル設計ラボ", "level design ai plan reachability visibility", editor_->GetLevelDesignLabWindow() },
         { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
         { "materialPreview", "マテリアル確認", "material pbr", editor_->GetMaterialPreviewBoard() },
         { "effectPreview", "エフェクト確認ステージ", "effect vfx preview", editor_->GetEffectPreviewStage() },

@@ -42,6 +42,17 @@ public:
         std::vector<int> newStarCoinIndices;
     };
 
+    // ステージ内チェックポイントからの再開に必要な一時情報です。
+    // セーブデータには書き込まず、死亡によるシーン再生成を一度だけ跨ぎます。
+    struct StageCheckpointRespawn {
+        bool active = false;
+        int stageIndex = -1;
+        float positionX = 0.0f;
+        float positionY = 0.0f;
+        float positionZ = 0.0f;
+        std::string morphEnemyType;
+    };
+
     static GameDataManager* GetInstance() {
         static GameDataManager instance;
         return &instance;
@@ -208,6 +219,23 @@ public:
         const bool requested = pendingRespawnIrisIn_;
         pendingRespawnIrisIn_ = false;
         return requested;
+    }
+
+    void RequestStageCheckpointRespawn(
+        int stageIndex, float positionX, float positionY, float positionZ,
+        const std::string& morphEnemyType) {
+        pendingStageCheckpointRespawn_.active = stageIndex >= 0;
+        pendingStageCheckpointRespawn_.stageIndex = stageIndex;
+        pendingStageCheckpointRespawn_.positionX = positionX;
+        pendingStageCheckpointRespawn_.positionY = positionY;
+        pendingStageCheckpointRespawn_.positionZ = positionZ;
+        pendingStageCheckpointRespawn_.morphEnemyType = morphEnemyType;
+    }
+
+    StageCheckpointRespawn ConsumeStageCheckpointRespawn() {
+        StageCheckpointRespawn request = pendingStageCheckpointRespawn_;
+        pendingStageCheckpointRespawn_ = {};
+        return request;
     }
 
     void RequestStageClearRewardPresentation(int stageIndex, int previousCrownCount, int newCrownCount) {
@@ -405,6 +433,7 @@ private:
     int playTimeSeconds_ = 0;
     int activeSlot_ = 0;
     bool pendingRespawnIrisIn_ = false;
+    StageCheckpointRespawn pendingStageCheckpointRespawn_;
     StageClearRewardPresentation pendingStageClearReward_;
     StageSelectReturnPresentation pendingStageSelectReturn_;
     std::vector<int> clearedStages_;

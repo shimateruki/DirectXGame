@@ -1,0 +1,234 @@
+{
+  "objects": [
+    {
+      "name": "Sample_Entrance",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Sample_SightGate",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_turn_wall.obj",
+      "position": [0.0, 0.4, 12.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.125, 0.0], "size": [8.0, 0.475, 5.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Sample_MainBridge",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "position": [5.0, 0.4, 24.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.2, 0.0], "size": [3.0, 0.4, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Sample_Courtyard",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 0.0, 38.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Sample_ExitTerrace",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 0.0, 52.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Sample_UpperGallery",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_gallery.obj",
+      "position": [-6.0, 4.4, 30.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.125, 0.0], "size": [6.0, 0.375, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "SightGate_Wall_Left",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [-6.5, 4.075, 12.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.5, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "SightGate_Wall_Low",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [-2.0, 2.375, 12.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [3.0, 1.625, 0.8], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "SightGate_Wall_Upper",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [1.1, 6.4, 12.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [6.1, 1.0, 0.8], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "SightGate_Wall_Middle",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [2.0, 4.075, 12.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "SightGate_Wall_Right",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [7.6, 4.075, 12.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.4, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Bridge_Rail_Left",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [2.225, 1.175, 24.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Bridge_Rail_Right",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [7.775, 1.175, 24.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Gallery_Wall_Left",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [-9.5, 6.175, 32.15],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [2.5, 1.525, 0.35], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Gallery_Wall_Right",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [-2.5, 6.175, 32.15],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [2.5, 1.525, 0.35], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "Gallery_Rail_Left",
+      "type": "InvisibleBox",
+      "saveCategory": "Object",
+      "position": [-11.6, 5.725, 30.0],
+      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.4, 1.075, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "isStatic": true
+    },
+    {
+      "name": "AbilityGuide_CopyMemory",
+      "type": "Gimmick",
+      "saveCategory": "Object",
+      "gimmickType": "CopyMemoryStation",
+      "modelName": "Gimmicks/copy_memory_station",
+      "position": [4.2, 0.7, 3.0],
+      "rotation": [0.0, 3.14159265, 0.0],
+      "scale": [0.8, 0.8, 0.8],
+      "param": {
+        "gimmickType": "CopyMemoryStation",
+        "copyMemoryActivationRadius": 0.9,
+        "copyMemoryTypeA": "WindSlime",
+        "copyMemoryTypeB": "WindSlime",
+        "copyMemoryTypeC": "WindSlime",
+        "copyMemoryUnlimitedDuration": true,
+        "startActive": true
+      }
+    },
+    {
+      "name": "Sample_HiddenStar",
+      "type": "Model",
+      "saveCategory": "Object",
+      "modelName": "Gimmicks/star",
+      "position": [-6.0, 6.2, 38.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.08, 0.08, 0.08],
+      "color": [1.0, 0.74, 0.08, 1.0],
+      "emissive": 1.65,
+      "castShadow": false,
+      "eventID": 7,
+      "targetID": 0,
+      "collider": { "type": 1, "center": [0.0, 0.0, 0.0], "size": [14.0, 14.0, 14.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 16,
+      "collisionMask": 1
+    },
+    {
+      "name": "Sample_GoalGate",
+      "type": "Gimmick",
+      "saveCategory": "Object",
+      "gimmickType": "StageGate",
+      "modelName": "Gimmicks/crown_stage_gate",
+      "position": [5.0, 0.7, 56.0],
+      "rotation": [0.0, 3.14159265, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "param": {
+        "actionMode": 1,
+        "gimmickType": "StageGate",
+        "startActive": true,
+        "targetScene": "SELECT"
+      }
+    }
+  ]
+}

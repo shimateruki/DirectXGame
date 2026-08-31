@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "6a59295acf3f85f88334e70fe0c5d7ce",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/vfx_sequence/player_fire_dash_hit_cue.json",
+  "version": 1
+}

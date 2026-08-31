@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "Player.h"
 #include "PlayerCopyAbilityController.h"
+#include "PlayerCopyTypeCatalog.h"
 #include "Model.h"
 #include "CollisionConfig.h"
 #include "engine/utility/math/Math.h"
@@ -12,6 +13,7 @@
 #include "GameDataManager.h"
 #include "GameplayStatusManager.h"
 #include "SceneManager.h"
+#include "StageManager.h"
 #include"Winapp.h"
 #include <DebugConsole.h>
 #include <algorithm>
@@ -147,9 +149,19 @@ namespace {
 
 Player::~Player() = default;
 
-bool Player::IsGiantSlimeRushActive() const
+bool Player::IsImpactBreakActive() const
 {
-    return copyAbilityController_ && copyAbilityController_->IsGiantRushActive();
+    const bool baseImpact =
+        baseCombatController_ && baseCombatController_->CanBreakImpactGate();
+    const bool copyImpact =
+        copyAbilityController_ && copyAbilityController_->CanBreakImpactGate();
+    return baseImpact || copyImpact;
+}
+
+bool Player::IsPinkBounceSlamImpactActive() const
+{
+    return copyAbilityController_ &&
+        copyAbilityController_->IsPinkBounceSlamImpactActive();
 }
 
 void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon)
@@ -160,6 +172,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 外部システムの依存注入
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
+    baseCombatController_ = std::make_unique<PlayerBaseCombatController>();
     copyAbilityController_ = std::make_unique<PlayerCopyAbilityController>();
 
     // 自機としての基本設定
@@ -413,6 +426,9 @@ void Player::Update(float deltaTime)
 
         // 4. 死亡判定
         if (GetHp() <= 0.0f && !isDead) {
+            if (baseCombatController_) {
+                baseCombatController_->Cancel(*this, false);
+            }
             CancelEnemyMorph();
             isDead = true;
             deathTimer_ = 0.0f;
@@ -425,7 +441,9 @@ void Player::Update(float deltaTime)
 
         // 5. 落下判定
         if (transform_.translate.y < -18.0f && !isDead && isControlActive_) {
-            CancelEnemyMorph();
+            if (baseCombatController_) {
+                baseCombatController_->Cancel(*this, false);
+            }
             if (tutorialSafetyEnabled_) {
                 SetTranslate(respawnPosition_);
                 SetVelocity({ 0.0f, 0.0f, 0.0f });
@@ -591,6 +609,16 @@ void Player::Update(float deltaTime)
     const bool morphReleaseTriggered =
         deltaTime > 0.0f &&
         inputManager_->IsActionTriggered("MorphRelease");
+
+    // 通常形態は左クリック／攻撃アクションで必ず攻撃できます。
+    // 運搬中は投げ操作、コピー中はコピー能力を優先します。
+    const bool baseAttackTriggered =
+        deltaTime > 0.0f && !hookAimHeld &&
+        (inputManager_->IsActionTriggered("Attack") || morphLeftAbilityTriggered);
+    if (baseCombatController_) {
+        baseCombatController_->ProcessInput(*this, baseAttackTriggered);
+        baseCombatController_->Update(*this, deltaTime);
+    }
 
     if (!absorbEffectActive_ && isEnemyMorphed_ && !enemyMorphReleaseActive_ &&
         isControlActive_ && !isDead && morphReleaseTriggered) {
@@ -1125,26 +1153,23 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
         return;
     }
 
-    const float currentMoveYaw = GetMoveYaw();
-
-    if (!isEnemyMorphed_) {
-        savedMorphModelName_ = GetModelName();
-        savedMorphTexturePath_ = GetTexturePath();
-        savedMorphAnimName_ = animName_;
-        savedMorphAnimLoop_ = isAnimLoop_;
-        savedMorphColor_ = GetColor();
-        savedMorphScale_ = GetScale();
-        savedMorphMaterialType_ = GetMaterialType();
-        savedMorphEmissive_ = GetEmissive();
-        savedMorphSourceVisible_ = enemy->GetIsVisible();
-        savedMorphChildVisible_.clear();
-        savedMorphChildVisible_.reserve(GetChildren().size());
-        for (Object3d* child : GetChildren()) {
-            savedMorphChildVisible_.push_back(child ? child->GetIsVisible() : false);
-        }
+    const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemy->GetEnemyType());
+    if (resolvedType == EnemyMorphType::None) {
+        DebugConsole::GetInstance()->AddLog("Enemy morph rejected: unsupported enemy type.");
+        return;
     }
 
-    enemyMorphType_ = ResolveEnemyMorphType(enemy->GetEnemyType());
+    if (baseCombatController_) {
+        baseCombatController_->Cancel(*this, true);
+    }
+    if (isEnemyMorphed_ && copyAbilityController_) {
+        copyAbilityController_->Cancel(*this);
+    }
+
+    const float currentMoveYaw = GetMoveYaw();
+    SaveEnemyMorphBaseAppearance(enemy->GetIsVisible());
+
+    enemyMorphType_ = resolvedType;
     enemyMorphSource_ = enemy;
     enemyMorphHasTimeLimit_ = !enemy->param_.has_value() || enemy->param_->morphLimited;
     enemyMorphDuration_ = enemy->param_.has_value()
@@ -1158,15 +1183,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     }
     enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
     isEnemyMorphed_ = true;
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
-        camera->SetAimCameraSuppressed(true);
-    }
-    if (hookMarker_) {
-        hookMarker_->SetIsVisible(false);
-    }
-    aimTargetObject_ = nullptr;
-    SetMoveYaw(currentMoveYaw);
+    CompleteEnemyMorphStart(currentMoveYaw);
     enemy->SetCarried(true);
     if (enemy->param_.has_value()) {
         enemy->param_->hp = 0.0f;
@@ -1193,12 +1210,69 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     animationTime_ = 0.0f;
     SetColor(enemy->GetColor());
 
+    EmitEnemyMorphStartEffects();
+
+    DebugConsole::GetInstance()->AddLog("Enemy morph start: " + enemy->GetEnemyType());
+    if (carriedEnemy_ == enemy) {
+        SetCarriedEnemy(nullptr);
+    }
+
+    // スライム系のコピー能力は元敵の寿命から完全に切り離します。
+    // 以降の更新・解除はPlayerCopyAbilityControllerだけが担当します。
+    if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
+        enemyMorphSource_ = nullptr;
+    }
+}
+
+void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible)
+{
+    if (isEnemyMorphed_) {
+        return;
+    }
+
+    savedMorphModelName_ = GetModelName();
+    savedMorphTexturePath_ = GetTexturePath();
+    savedMorphAnimName_ = animName_;
+    savedMorphAnimLoop_ = isAnimLoop_;
+    savedMorphColor_ = GetColor();
+    savedMorphScale_ = GetScale();
+    savedMorphMaterialType_ = GetMaterialType();
+    savedMorphEmissive_ = GetEmissive();
+    savedMorphSourceVisible_ = sourceVisible;
+    savedMorphChildVisible_.clear();
+    savedMorphChildVisible_.reserve(GetChildren().size());
+    for (Object3d* child : GetChildren()) {
+        savedMorphChildVisible_.push_back(child ? child->GetIsVisible() : false);
+    }
+}
+
+void Player::CompleteEnemyMorphStart(float moveYaw)
+{
+    if (checkpointActivated_) {
+        const std::string currentMorph = GetEnemyTypeForCurrentMorph();
+        if (!currentMorph.empty()) {
+            checkpointMorphEnemyType_ = currentMorph;
+            RefreshCheckpointMorphSnapshot();
+        }
+    }
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
+        camera->SetAimCameraSuppressed(true);
+    }
+    if (hookMarker_) {
+        hookMarker_->SetIsVisible(false);
+    }
+    aimTargetObject_ = nullptr;
+    SetMoveYaw(moveYaw);
     for (Object3d* child : GetChildren()) {
         if (child) {
             child->SetIsVisible(false);
         }
     }
+}
 
+void Player::EmitEnemyMorphStartEffects()
+{
     if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
         EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f }, managedBaseScale_);
     }
@@ -1224,7 +1298,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
         EmitCopyMorphPreset(kWindMorphAuraPreset, effectPosition);
         enemyMorphEffectTimer_ = 0.28f;
     }
-    else if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime && enemyMorphType_ != EnemyMorphType::GiantSlime) {
+    else if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime) {
         Vector3 up = { 0.0f, 1.0f, 0.0f };
         particleSystem_->SpawnParticles(
             GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f },
@@ -1241,16 +1315,6 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
         );
     }
 
-    DebugConsole::GetInstance()->AddLog("Enemy morph start: " + enemy->GetEnemyType());
-    if (carriedEnemy_ == enemy) {
-        SetCarriedEnemy(nullptr);
-    }
-
-    // スライム系のコピー能力は元敵の寿命から完全に切り離します。
-    // 以降の更新・解除はPlayerCopyAbilityControllerだけが担当します。
-    if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
-        enemyMorphSource_ = nullptr;
-    }
 }
 
 void Player::UpdateEnemyMorph(float deltaTime)
@@ -1391,6 +1455,22 @@ void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float 
     }
 }
 
+void Player::CancelLaunchStar(bool restoreControl)
+{
+    if (!launchStarActive_) {
+        return;
+    }
+
+    launchStarActive_ = false;
+    launchStarTimer_ = 0.0f;
+    launchStarTrailTimer_ = 0.0f;
+    SetCollisionAttribute(launchStarSavedCollisionAttribute_);
+    SetCollisionMask(launchStarSavedCollisionMask_);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetIsControlActive(
+        restoreControl && launchStarSavedControlActive_ && !isDead && !isCinematicLocked_);
+}
+
 void Player::UpdateLaunchStar(float deltaTime)
 {
     if (!launchStarActive_) {
@@ -1456,6 +1536,97 @@ float Player::GetEnemyMorphReleaseRate() const
 bool Player::IsPinkSlimeMorphed() const
 {
     return isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Slime;
+}
+
+void Player::ActivateCheckpoint(const Vector3& position)
+{
+    respawnPosition_ = position;
+    checkpointActivated_ = true;
+    const std::string currentMorph = GetEnemyTypeForCurrentMorph();
+    if (!currentMorph.empty()) {
+        checkpointMorphEnemyType_ = currentMorph;
+    }
+    RefreshCheckpointMorphSnapshot();
+}
+
+bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration)
+{
+    const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
+    const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemyType);
+    if (!descriptor || resolvedType == EnemyMorphType::None || isDead || isCinematicLocked_ ||
+        absorbEffectActive_ || enemyMorphReleaseActive_) {
+        return false;
+    }
+
+    if (baseCombatController_) {
+        baseCombatController_->Cancel(*this, true);
+    }
+    if (isEnemyMorphed_ && copyAbilityController_) {
+        copyAbilityController_->Cancel(*this);
+    }
+
+    // 記憶台は敵を吸収する通常経路を通らないため、所持中の敵をここで正規解放します。
+    // 参照だけを残すと変身解除後に敵が再び頭上へ追従し、カメラへ張り付いたように見えます。
+    ReleaseCarriedEnemy(true);
+    aimTargetObject_ = nullptr;
+    if (hookMarker_) {
+        hookMarker_->SetIsVisible(false);
+    }
+
+    const float currentMoveYaw = GetMoveYaw();
+    SaveEnemyMorphBaseAppearance(true);
+
+    enemyMorphType_ = resolvedType;
+    enemyMorphSource_ = nullptr;
+    enemyMorphHasTimeLimit_ = !unlimitedDuration;
+    enemyMorphDuration_ = kEnemyMorphDuration;
+    enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
+    enemyMorphEffectTimer_ = 0.0f;
+    enemyMorphVisualTimer_ = 0.0f;
+    enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
+    if (copyAbilityController_) {
+        copyAbilityController_->ActivateDefault(static_cast<int>(enemyMorphType_));
+    }
+    isEnemyMorphed_ = true;
+    CompleteEnemyMorphStart(currentMoveYaw);
+
+    SetModel(std::string(descriptor->modelName));
+    SetTexture("");
+    SetMaterialType(25);
+    SetEmissive(1.0f);
+    animName_.clear();
+    animationTime_ = 0.0f;
+    SetColor(descriptor->displayColor);
+    EmitEnemyMorphStartEffects();
+
+    DebugConsole::GetInstance()->AddLog("Stored copy applied: " + enemyType);
+    return true;
+}
+
+std::string Player::GetEnemyTypeForCurrentMorph() const
+{
+    if (!isEnemyMorphed_) {
+        return {};
+    }
+    switch (enemyMorphType_) {
+    case EnemyMorphType::Slime: return "Slime";
+    case EnemyMorphType::Bomber: return "Bomber";
+    case EnemyMorphType::FireSlime: return "FireSlime";
+    case EnemyMorphType::ThunderSlime: return "ThunderSlime";
+    case EnemyMorphType::WindSlime: return "WindSlime";
+    default: return {};
+    }
+}
+
+void Player::RefreshCheckpointMorphSnapshot()
+{
+    if (!checkpointActivated_) {
+        return;
+    }
+    const Vector3 position = respawnPosition_;
+    GameDataManager::GetInstance()->RequestStageCheckpointRespawn(
+        StageManager::GetInstance()->GetCurrentStageIndex(),
+        position.x, position.y, position.z, checkpointMorphEnemyType_);
 }
 
 void Player::BeginEnemyMorphRelease(bool expired)
@@ -1813,12 +1984,81 @@ void Player::DebugClearEnemyMorph()
 {
     CancelEnemyMorph();
 }
+
+void Player::DebugPrepareForTeleport()
+{
+    // 移動系演出を先に止め、保存されていた衝突設定を通常状態へ戻します。
+    if (mover_) {
+        mover_->ResetTransientState();
+    }
+    CancelLaunchStar(false);
+    if (gateReturnAnimation_.IsActive()) {
+        gateReturnAnimation_.Stop(this, false);
+    }
+    if (isCinematicLocked_) {
+        EndCinematicLock(false);
+    }
+
+    // 攻撃・コピー能力の更新が次フレームに残らないよう、各セッションを明示的に破棄します。
+    if (baseCombatController_) {
+        baseCombatController_->Cancel(*this, false);
+    }
+    if (copyAbilityController_) {
+        copyAbilityController_->Cancel(*this);
+    }
+    CancelEnemyMorph();
+    ReleaseCarriedEnemy(true);
+
+    // 感電は固定座標を毎フレーム再適用するため、ワープ座標を設定する前に必ず解除します。
+    if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {
+        electricShockPendingInvincibleDuration_ = 0.0f;
+        EndElectricShockFeedback();
+    }
+
+    RestoreDamageBlinkVisibility();
+    damageCooldownTimer_ = 0.0f;
+    evasionInvincibleTimer_ = 0.0f;
+    invincibleBlinkTimer_ = 0.0f;
+    isEvasionInvincible_ = false;
+    SetDamageInvincible(false);
+    SetDashInvincible(false);
+    SetGuardInvincible(false);
+
+    pendingAttack2_ = false;
+    comboWindowTimer_ = 0.0f;
+    attackInputBuffered_ = false;
+    attackInputBufferTimer_ = 0.0f;
+    forcedSlimeAnimationModeActive_ = false;
+    aimTargetObject_ = nullptr;
+    if (hookMarker_) {
+        hookMarker_->SetIsVisible(false);
+    }
+
+    ClearSlimeAbilityMotion();
+    ChangeState(std::make_unique<PlayerStateIdle>());
+    slimeAnimator_.Reset(managedBaseScale_, this);
+    slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Idle);
+
+    Vector3 stableRotation = GetRotation();
+    stableRotation.x = baseRotation_.x;
+    stableRotation.z = baseRotation_.z;
+    SetScale(managedBaseScale_);
+    SetRotation(stableRotation);
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetIsControlActive(false);
+    SetIsVisible(true);
+    UpdateColor();
+}
 #endif
 
 void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration)
 {
     if (tutorialSafetyEnabled_ || isDead || isCinematicLocked_ || electricShockControlLocked_) {
         return;
+    }
+
+    if (baseCombatController_) {
+        baseCombatController_->Cancel(*this, false);
     }
 
     damageCooldownTimer_ = (std::max)(damageCooldownTimer_, (std::max)(0.0f, invincibleDuration));
@@ -2017,7 +2257,8 @@ Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyTyp
     if (enemyType == "Bat") return EnemyMorphType::Bat;
     if (enemyType == "BeamDrone") return EnemyMorphType::BeamDrone;
     if (enemyType == "Mushroom") return EnemyMorphType::Mushroom;
-    if (enemyType == "GiantSlime") return EnemyMorphType::GiantSlime;
+    // 巨大スライムはフックで分裂して小型化するため、直接コピー対象にはしません。
+    if (enemyType == "GiantSlime") return EnemyMorphType::None;
     if (enemyType == "FireSlime") return EnemyMorphType::FireSlime;
     if (enemyType == "ThunderSlime") return EnemyMorphType::ThunderSlime;
     if (enemyType == "WindSlime") return EnemyMorphType::WindSlime;
@@ -2036,8 +2277,6 @@ Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const
         return { 0.42f, 0.95f, 1.0f, 1.0f };
     case EnemyMorphType::Mushroom:
         return { 1.0f, 0.34f, 0.72f, 1.0f };
-    case EnemyMorphType::GiantSlime:
-        return { 1.0f, 0.50f, 0.86f, 1.0f };
     case EnemyMorphType::FireSlime:
         return { 1.0f, 0.24f, 0.16f, 1.0f };
     case EnemyMorphType::ThunderSlime:
@@ -2120,6 +2359,14 @@ bool Player::OnCollision(Object3d* other)
         return false;
     }
 
+    // actionMode=6の衝撃ゲートは、押し戻しを行う前に体当たり系攻撃で破壊します。
+    // 先に物理解決すると、破壊フレームだけ壁へ大きく押し戻されるためです。
+    if (auto* breakableBlock = dynamic_cast<GimmickBreakableBlock*>(other)) {
+        if (breakableBlock->TryBreakByPlayerImpact(this)) {
+            return true;
+        }
+    }
+
     // =======================================================
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
@@ -2147,47 +2394,13 @@ bool Player::OnCollision(Object3d* other)
             return true;
         }
 
-        // 突進（タックル）判定
-        const bool isDashAttack = (mover_ && mover_->IsDashing()) || isDashInvincible_;
-        if ((attribute & kEnemy) && isDashAttack)
-        {
-            // 敵に大ダメージ
-            DamageEvent tackleDmg;
-            tackleDmg.target = other;
-            tackleDmg.attacker = this;
-            tackleDmg.damageAmount = 30.0f;
-
-            // 吹き飛ばしベクトル：向いている方向に斜め上に弾き飛ばす
-            const float yaw = GetMoveYaw();
-            Vector3 pushDir = { std::sin(yaw), 0.4f, std::cos(yaw) };
-            tackleDmg.knockbackVelocity = pushDir * 50.0f; // 結構な勢いで飛ばす
-
-            EventManager::GetInstance()->Dispatch(tackleDmg);
-
-            // 突進を接触点で止め、次フレームに敵の反対側へ抜けないようにします。
-            transform_.translate += info.normal * (info.penetration + 0.02f);
-            Vector3 impactVelocity = GetVelocity();
-            const float inwardSpeed = Math::Dot(impactVelocity, info.normal);
-            if (inwardSpeed < 0.0f) {
-                impactVelocity = impactVelocity - info.normal * inwardSpeed;
-            }
-            impactVelocity.x += info.normal.x * 3.5f;
-            impactVelocity.z += info.normal.z * 3.5f;
-            SetVelocity(impactVelocity);
-
-            if (mover_) {
-                mover_->StopDashOnImpact();
-            }
-            if (copyAbilityController_ && copyAbilityController_->IsActive()) {
-                copyAbilityController_->Cancel(*this);
-            }
-
-            DebugConsole::GetInstance()->AddLog("Slime Tackle! Enemy Blasted.");
-            return true; // 突進中はダメージを受けず、相手を倒す
+        // ピンクガードは単にダメージを無視するだけでなく、受け止めた瞬間を
+        // コピー能力へ通知して反動モーションと次のバウンド強化へつなげます。
+        if (isGuardInvincible_ && copyAbilityController_) {
+            copyAbilityController_->NotifyGuardedHit(*this, other->GetWorldPosition());
         }
-
         // 通常のダメージ処理 (被弾)
-        if (damageCooldownTimer_ <= 0.0f && !IsInvincible())
+        else if (damageCooldownTimer_ <= 0.0f && !IsInvincible())
         {
             const Bullet* attackBullet = dynamic_cast<const Bullet*>(other);
             const bool isElectricHit =
@@ -2386,6 +2599,9 @@ void Player::BeginCinematicLock()
     cinematicSavedCollisionAttribute_ = GetCollisionAttribute();
     cinematicSavedCollisionMask_ = GetCollisionMask();
 
+    if (baseCombatController_) {
+        baseCombatController_->Cancel(*this, false);
+    }
     CancelEnemyMorph();
     ReleaseCarriedEnemy(true);
     if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {

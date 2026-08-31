@@ -35,6 +35,7 @@
 #include "HierarchyWindow.h"
 #include "InspectorWindow.h"
 #include "JsonBackupWindow.h"
+#include "LevelDesignLabWindow.h"
 #include "MaterialPreviewBoard.h"
 #include "ModelOptimizerWindow.h"
 #include "NodeGraphEditorWindow.h"
@@ -307,6 +308,7 @@ void PerformRedo();
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     SceneInventoryWindow* GetSceneInventoryWindow() { return &sceneInventoryWindow_; }
     SceneValidator* GetSceneValidator() { return &sceneValidator_; }
+    LevelDesignLabWindow* GetLevelDesignLabWindow() { return &levelDesignLabWindow_; }
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     EnemyAttackPreviewWindow* GetEnemyAttackPreviewWindow() { return &enemyAttackPreviewWindow_; }
@@ -560,6 +562,7 @@ enum class EditorCommandType {
     PrimitiveDrawer primitiveDrawer_;
     SceneInventoryWindow sceneInventoryWindow_;
     SceneValidator sceneValidator_;
+    LevelDesignLabWindow levelDesignLabWindow_;
     MaterialPreviewBoard materialPreviewBoard_;
     EnemyAttackPreviewWindow enemyAttackPreviewWindow_;
     AnimationWorkbench animationWorkbench_;

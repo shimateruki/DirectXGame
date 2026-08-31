@@ -52,9 +52,11 @@ constexpr const char* kControlsGuidePortraitsToPreload[] = {
 constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
     "Resources/sprite/ui/control_guide/labels/absorb.png",
     "Resources/sprite/ui/control_guide/labels/throw.png",
+    "Resources/sprite/ui/control_guide/labels/slime_attack.png",
+    "Resources/sprite/ui/control_guide/labels/hook_aim.png",
     "Resources/sprite/ui/control_guide/labels/slime_dive.png",
     "Resources/sprite/ui/control_guide/labels/puni_straight.png",
-    "Resources/sprite/ui/control_guide/labels/bounce_evade.png",
+    "Resources/sprite/ui/control_guide/labels/puni_guard.png",
     "Resources/sprite/ui/control_guide/labels/bomb_throw.png",
     "Resources/sprite/ui/control_guide/labels/bomb_place.png",
     "Resources/sprite/ui/control_guide/labels/blast_jump.png",
@@ -130,6 +132,15 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_player_fire_blaze_ground_wake.json",
     "Resources/json/effect/effect_player_pink_straight_arc.json",
     "Resources/json/effect/effect_player_pink_straight_impact.json",
+    "Resources/json/effect/effect_player_pink_bounce_launch.json",
+    "Resources/json/effect/effect_player_pink_bounce_land.json",
+    "Resources/json/effect/effect_player_base_bash_arc.json",
+    "Resources/json/effect/effect_player_base_bash_impact.json",
+    "Resources/json/effect/effect_player_base_press_impact.json",
+    "Resources/json/effect/effect_checkpoint_activate_ring.json",
+    "Resources/json/effect/effect_checkpoint_activate_pillar.json",
+    "Resources/json/effect/effect_copy_memory_transfer_ring.json",
+    "Resources/json/effect/effect_copy_memory_transfer_pillar.json",
     "Resources/json/effect/effect_player_pink_guard_start.json",
     "Resources/json/effect/effect_player_pink_guard_shell.json",
     "Resources/json/effect/effect_player_pink_guard_release.json",
@@ -176,6 +187,8 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "hit_pull_bind",
     "hit_pull_catch",
     "hit_slime_elastic",
+    "player_base_bash_droplets",
+    "player_base_press_splash",
     "hit_throw_slam_dust",
     "carry_bomber_throw_sparks",
     "carry_eye_charge_sparks",
@@ -222,6 +235,7 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "player_fire_blaze_trail",
     "player_fire_blaze_burst",
     "player_pink_straight_splash",
+    "player_pink_bounce_droplets",
     "player_bomb_place_fuse",
     "player_bomb_blast_jump",
     "player_bomb_morph_aura",
@@ -229,6 +243,10 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
     "player_wind_morph_aura",
     "player_wind_updraft",
     "player_wind_dash",
+    "wind_slime_gust_impact",
+    "checkpoint_active_motes",
+    "copy_memory_transfer_sparks",
+    "checkpoint_flag_capture_stars",
     "ring_burner_charge_sparks",
     "ring_burner_discharge_embers",
     "magma_slime_core_embers",
@@ -252,6 +270,12 @@ constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
 
 constexpr const char* kGameplayVfxSequencesToPreload[] = {
     "bomb_explosion_cue",
+    "player_base_bash_hit_cue",
+    "player_base_press_enemy_hit_cue",
+    "player_base_press_land_cue",
+    "player_pink_bounce_slam_cue",
+    "player_fire_dash_hit_cue",
+    "player_wind_soar_land_cue",
     "damage_puni_burst_cue",
     "enemy_defeat_pop_cue",
     "slime_elastic_hit_cue",
@@ -275,7 +299,9 @@ constexpr const char* kGameplayVfxSequencesToPreload[] = {
     "magma_arena_release_cue",
     "false_king_appear_cue",
     "false_king_phase_shift_cue",
-    "false_king_dominion_cue"
+    "false_king_dominion_cue",
+    "checkpoint_activate_cue",
+    "copy_memory_station_activate_cue"
 };
 
 constexpr const char* kGameplayDebrisPresetsToPreload[] = {
@@ -398,6 +424,9 @@ void GamePlayScene::BeginLoadingInitialize() {
     loadingInitializePhase_ = 0;
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
+#ifdef USE_IMGUI
+    pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
+#endif
     stageEntryPresentationActive_ = false;
     stageEntryPresentationPending_ = true;
     stageEntryPresentationCompleted_ = false;
@@ -823,6 +852,25 @@ void GamePlayScene::ApplyStageStarCoinState() {
 bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     if (!GameDataManager::GetInstance()->ConsumeRespawnIrisInRequest()) {
         return false;
+    }
+
+    const GameDataManager::StageCheckpointRespawn checkpoint =
+        GameDataManager::GetInstance()->ConsumeStageCheckpointRespawn();
+    if (checkpoint.active && player_ &&
+        checkpoint.stageIndex == StageManager::GetInstance()->GetCurrentStageIndex()) {
+        const Vector3 respawnPosition{
+            checkpoint.positionX,
+            checkpoint.positionY,
+            checkpoint.positionZ
+        };
+        player_->SetTranslate(respawnPosition);
+        player_->ActivateCheckpoint(respawnPosition);
+        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+        if (!checkpoint.morphEnemyType.empty()) {
+            // チェックポイントのコピー状態は敵を仮生成せず、保存情報から直接復元します。
+            player_->ApplyStoredCopy(checkpoint.morphEnemyType, true);
+        }
     }
 
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();

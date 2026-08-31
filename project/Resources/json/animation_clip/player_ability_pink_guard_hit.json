@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "name": "player_ability_pink_guard_hit",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.24,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    { "time": 0.0, "translate": [0.0, -0.08, 0.0], "rotate": [0.04, 0.0, 0.0], "scale": [1.28, 0.72, 1.28], "easingToNext": 2 },
+    { "time": 0.055, "translate": [0.0, -0.16, -0.10], "rotate": [0.15, 0.0, 0.06], "scale": [1.58, 0.48, 1.44], "easingToNext": 3 },
+    { "time": 0.13, "translate": [0.0, 0.11, 0.07], "rotate": [-0.10, 0.0, -0.035], "scale": [0.76, 1.46, 0.82], "easingToNext": 3 },
+    { "time": 0.24, "translate": [0.0, -0.10, -0.08], "rotate": [0.10, 0.0, 0.0], "scale": [1.16, 0.82, 1.14], "easingToNext": 4 }
+  ],
+  "keys": [],
+  "events": []
+}

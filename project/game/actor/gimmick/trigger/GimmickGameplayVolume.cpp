@@ -179,7 +179,9 @@ void GimmickGameplayVolume::Activate(Player* player) {
         break;
     case Mode::Checkpoint:
         if (player) {
-            player->SetRespawnPosition(GetWorldPosition());
+            const Vector3 checkpointPosition = GetWorldPosition();
+            player->ActivateCheckpoint(checkpointPosition);
+            VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpointPosition);
         }
         break;
     case Mode::FallDeath:

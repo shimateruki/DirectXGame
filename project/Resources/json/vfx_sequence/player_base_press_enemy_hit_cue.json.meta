@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "000d8208997fd7901eeece5b6649a1d9",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/vfx_sequence/player_base_press_enemy_hit_cue.json",
+  "version": 1
+}

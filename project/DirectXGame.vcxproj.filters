@@ -194,7 +194,9 @@
     <ClCompile Include="game\actor\player\Player.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerBaseCombatController.cpp" />
     <ClCompile Include="game\actor\player\PlayerCopyAbilityController.cpp" />
+    <ClCompile Include="game\actor\player\PlayerCopyTypeCatalog.cpp" />
     <ClCompile Include="game\actor\Character.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -620,6 +622,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.Report.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -725,6 +728,7 @@
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\trigger\GimmickGameplayVolume.cpp" />
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickCopyMemoryStation.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickBossGate.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickPrismBarrier.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
@@ -982,7 +986,9 @@
     <ClInclude Include="game\actor\player\Player.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\player\PlayerBaseCombatController.h" />
     <ClInclude Include="game\actor\player\PlayerCopyAbilityController.h" />
+    <ClInclude Include="game\actor\player\PlayerCopyTypeCatalog.h" />
     <ClInclude Include="game\actor\CollisionConfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1888,6 +1894,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneInventoryWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2002,6 +2009,7 @@
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\trigger\GimmickGameplayVolume.h" />
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickCopyMemoryStation.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickBossGate.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickPrismBarrier.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>

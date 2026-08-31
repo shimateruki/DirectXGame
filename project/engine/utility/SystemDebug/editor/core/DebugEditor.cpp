@@ -422,7 +422,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
         DebugConsole::GetInstance()->AddLog("Asset Database Error: Resourcesを初期化できませんでした。");
     }
     else {
-        DebugConsole::GetInstance()->AddLog("Asset Database: 初期索引を開始しました。");
+        DebugConsole::GetInstance()->AddLog("Asset Database: 起動時の差分索引を開始しました。");
     }
     PresetManager::GetInstance()->Initialize();
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
@@ -458,6 +458,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     primitiveDrawer_.Initialize(dxCommon);
     sceneInventoryWindow_.Initialize(sceneManager, this);
     sceneValidator_.Initialize(sceneManager, this);
+    levelDesignLabWindow_.Initialize(sceneManager, this);
     materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
     enemyAttackPreviewWindow_.Initialize(sceneManager);

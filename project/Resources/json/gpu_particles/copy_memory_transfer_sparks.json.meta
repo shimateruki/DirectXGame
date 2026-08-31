@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "417590b1aa2a652668fe89bc0ab591ef",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/copy_memory_transfer_sparks.json",
+  "version": 1
+}

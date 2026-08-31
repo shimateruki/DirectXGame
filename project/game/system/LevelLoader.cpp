@@ -832,6 +832,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("volumeTriggerOnExit")) param.volumeTriggerOnExit = p["volumeTriggerOnExit"];
                     if (p.contains("volumeRearmDelay")) param.volumeRearmDelay = (std::max)(0.0f, p["volumeRearmDelay"].get<float>());
                     if (p.contains("volumeBlendDuration")) param.volumeBlendDuration = (std::max)(0.0f, p["volumeBlendDuration"].get<float>());
+                    if (p.contains("copyMemoryTypeA") && p["copyMemoryTypeA"].is_string()) param.copyMemoryTypeA = p["copyMemoryTypeA"].get<std::string>();
+                    if (p.contains("copyMemoryTypeB") && p["copyMemoryTypeB"].is_string()) param.copyMemoryTypeB = p["copyMemoryTypeB"].get<std::string>();
+                    if (p.contains("copyMemoryTypeC") && p["copyMemoryTypeC"].is_string()) param.copyMemoryTypeC = p["copyMemoryTypeC"].get<std::string>();
+                    if (p.contains("copyMemoryActivationRadius")) param.copyMemoryActivationRadius = (std::max)(0.1f, p["copyMemoryActivationRadius"].get<float>());
+                    if (p.contains("copyMemoryUnlimitedDuration")) param.copyMemoryUnlimitedDuration = p["copyMemoryUnlimitedDuration"];
                     if (!isManagedCharacter) {
                         param.maxHp = (std::max)(param.maxHp, 1.0f);
                         if (hasMaxHp && !hasHp) {

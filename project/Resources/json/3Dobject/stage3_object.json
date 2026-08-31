@@ -12634,6 +12634,50 @@
                     }
                 ]
             }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": {
+                "center": [0.0, 0.95, 0.0],
+                "rotation": [0.0, 0.0, 0.0],
+                "size": [3.1, 1.6, 1.85],
+                "type": 3
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "gimmickType": "CopyMemoryStation",
+            "guid": "cea45194-08db-5f4f-b38a-fc0638425903",
+            "isStatic": false,
+            "isVisible": true,
+            "materialType": 0,
+            "metallic": 0.18,
+            "modelName": "Gimmicks/copy_memory_station",
+            "name": "Stage3_PreBoss_CopyMemoryStation",
+            "param": {
+                "copyMemoryActivationRadius": 0.9,
+                "copyMemoryTypeA": "Slime",
+                "copyMemoryTypeB": "FireSlime",
+                "copyMemoryTypeC": "Bomber",
+                "copyMemoryUnlimitedDuration": true,
+                "gimmickType": "CopyMemoryStation",
+                "startActive": true
+            },
+            "position": [-4.35, -2.4, 62.5],
+            "rotation": [0.0, 1.5707963267948966, 0.0],
+            "roughness": 0.34,
+            "saveCategory": "Object",
+            "scale": [0.72, 0.72, 0.72],
+            "type": "Gimmick"
         }
     ]
 }

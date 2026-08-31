@@ -53,6 +53,31 @@ void PlayerMover::StopDashOnImpact()
     childOriginalAttributes_.clear();
 }
 
+void PlayerMover::ResetTransientState()
+{
+    StopDashOnImpact();
+    isJumpCharging_ = false;
+    jumpChargeTimer_ = 0.0f;
+    hasAirDashed_ = false;
+    dashDirection_ = {};
+    currentDashSpeed_ = dashSpeed_;
+    currentDashDuration_ = dashDuration_;
+
+    dashPanelTimer_ = 0.0f;
+    dashPanelSpeedMultiplier_ = 1.0f;
+    dashPanelTurnMultiplier_ = 1.0f;
+    iceTimer_ = 0.0f;
+    iceFriction_ = 1.0f;
+    iceSteering_ = 1.0f;
+    hasGroundedHistory_ = false;
+    wasGroundedLastFrame_ = false;
+
+    if (player_) {
+        player_->SetSlimeJumpCharge(0.0f);
+        player_->SetDashInvincible(false);
+    }
+}
+
 void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem)
 {
     player_ = player;

@@ -8,7 +8,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "ArenaEncounter", "GameplayVolume", "PrismBarrier", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "FallingSpike", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "ArenaEncounter", "GameplayVolume", "CopyMemoryStation", "PrismBarrier", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "FallingSpike", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
@@ -30,6 +30,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "イベント受信ギミック",
         "中ボス遭遇管理",
         "ゲームプレイボリューム",
+        "コピー記憶台",
         "プリズム障壁",
         "フックで引っ張るブロック",
         "一方通行床",
@@ -469,6 +470,34 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.type = ColliderType::kOBB;
             colConfig.center = { 0.0f, 0.0f, 0.0f };
             colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "CopyMemoryStation") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_CopyMemoryStation");
+            selectedObject->SetModel("Gimmicks/copy_memory_station");
+            selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            selectedObject->SetMaterialType(0);
+            selectedObject->SetEmissive(1.0f);
+            selectedObject->SetRoughness(0.34f);
+            selectedObject->SetMetallic(0.18f);
+            selectedObject->SetCastShadow(true);
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->copyMemoryTypeA = "FireSlime";
+            selectedObject->param_->copyMemoryTypeB = "ThunderSlime";
+            selectedObject->param_->copyMemoryTypeC = "WindSlime";
+            selectedObject->param_->copyMemoryActivationRadius = 0.9f;
+            selectedObject->param_->copyMemoryUnlimitedDuration = true;
+            selectedObject->param_->startActive = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.center = { 0.0f, 0.95f, 0.0f };
+            colConfig.size = { 3.1f, 1.6f, 1.85f };
             selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "PrismBarrier") {

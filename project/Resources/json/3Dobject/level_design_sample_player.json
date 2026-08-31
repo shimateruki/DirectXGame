@@ -1,0 +1,23 @@
+{
+  "objects": [
+    {
+      "name": "Player",
+      "type": "Player",
+      "saveCategory": "Player",
+      "modelName": "Characters/slime",
+      "position": [0.0, 1.45, -3.5],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "collider": {
+        "type": 2,
+        "center": [0.0, 0.37, 0.0],
+        "size": [0.52, 0.38, 0.52],
+        "rotation": [0.0, 0.0, 0.0]
+      },
+      "collisionAttribute": 1,
+      "collisionMask": 4294967295,
+      "materialType": 25,
+      "castShadow": true
+    }
+  ]
+}

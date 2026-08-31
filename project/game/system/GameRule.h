@@ -7,6 +7,7 @@
 #include "Event.h"
 
 class BaseScene;
+class Player;
 
 // 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
 class GameRule {
@@ -22,6 +23,8 @@ private:
     void ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale);
     bool IsStatusTargetAlive(Object3d* target) const;
     void EmitStatusVisual(Object3d* target, const std::string& presetName) const;
+    void ActivateCheckpoint(Player* player, Object3d* checkpoint);
+    void UpdateCheckpointPresentation(float deltaTime);
 
     struct ActiveStatusEffect {
         Object3d* target = nullptr;
@@ -36,4 +39,10 @@ private:
 
     BaseScene* scene_ = nullptr;
     std::vector<ActiveStatusEffect> activeStatusEffects_;
+    Object3d* activeCheckpoint_ = nullptr;
+    Object3d* raisingCheckpoint_ = nullptr;
+    float checkpointBaseEmissive_ = 1.0f;
+    float checkpointPresentationTimer_ = 0.0f;
+    float checkpointParticleTimer_ = 0.0f;
+    float checkpointRaiseDelay_ = 0.0f;
 };

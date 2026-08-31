@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_player_wind_soar_land",
+      "triggerTime": 0.0,
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "type": 0,
+      "presetName": "wind_slime_gust_impact",
+      "triggerTime": 0.0,
+      "scale": [0.64, 0.64, 0.64]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.12,
+      "intensity": 4.2,
+      "lightRadius": 4.4,
+      "lightDecay": 1.6,
+      "lightColor": [0.42, 1.0, 0.78, 1.0]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.09,
+      "intensity": 0.048,
+      "frequency": 20.0,
+      "scale": [0.82, 0.30, 0.82]
+    },
+    {
+      "type": 8,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.08,
+      "intensity": 0.26,
+      "secondaryIntensity": 0.15
+    }
+  ]
+}

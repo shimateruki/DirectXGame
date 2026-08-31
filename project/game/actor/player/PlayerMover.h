@@ -36,6 +36,8 @@ public:
 
 	bool IsDashing() const { return isDashing_; }
 	void StopDashOnImpact();
+	// ワープや演出復帰時に、継続中のダッシュ・床補正・ジャンプ溜めを破棄します。
+	void ResetTransientState();
 	void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 	void ApplyIceSurface(float duration, float friction, float steering);
 

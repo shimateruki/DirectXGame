@@ -204,40 +204,27 @@ float ValueNoise2D(float2 p)
 
 float3 BuildSlimeSoftTexture(float2 uv, float3 textureBase)
 {
-    float2 offsetA = float2(0.018f, 0.018f);
-    float2 offsetB = float2(0.045f, 0.045f);
-    float2 offsetC = float2(0.082f, 0.082f);
+    // Keep the filter inside the current texel footprint so atlas islands never bleed into the body.
+    float2 footprint = max(abs(ddx(uv)), abs(ddy(uv))) * 0.55f;
+    footprint = clamp(footprint, float2(0.0005f, 0.0005f), float2(0.0035f, 0.0035f));
 
-    float3 blurredColor = textureBase * 2.0f;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetA.x, 0.0f))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(offsetA.x, 0.0f))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(0.0f, offsetA.y))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(0.0f, offsetA.y))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + offsetB)).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv - offsetB)).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetB.x, -offsetB.y))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(-offsetB.x, offsetB.y))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(offsetC.x, 0.0f))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(offsetC.x, 0.0f))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(0.0f, offsetC.y))).rgb;
-    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(0.0f, offsetC.y))).rgb;
-    blurredColor /= 14.0f;
+    float3 blurredColor = textureBase * 4.0f;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(footprint.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(footprint.x, 0.0f))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv + float2(0.0f, footprint.y))).rgb;
+    blurredColor += gTexture.Sample(gSampler, saturate(uv - float2(0.0f, footprint.y))).rgb;
+    blurredColor /= 8.0f;
 
     float maxChannel = max(max(textureBase.r, textureBase.g), textureBase.b);
     float minChannel = min(min(textureBase.r, textureBase.g), textureBase.b);
     float luminance = dot(textureBase, float3(0.299f, 0.587f, 0.114f));
 
     float preserveDark = 1.0f - smoothstep(0.035f, 0.17f, luminance);
-    float preserveBright = smoothstep(0.92f, 0.985f, luminance) * smoothstep(0.78f, 0.94f, minChannel);
+    float preserveBright = smoothstep(0.88f, 0.98f, luminance) * smoothstep(0.72f, 0.92f, minChannel);
     float preserveDetail = saturate(max(preserveDark, preserveBright));
 
     float bodyMask = 1.0f - preserveDetail;
-
-    float blurredLuminance = dot(blurredColor, float3(0.299f, 0.587f, 0.114f));
-    float3 softHue = blurredColor / max(blurredLuminance, 0.08f);
-    float3 bodyColor = saturate(softHue * blurredLuminance);
-
-    return lerp(textureBase, bodyColor, bodyMask);
+    return lerp(textureBase, blurredColor, bodyMask * 0.22f);
 }
 
 float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 N, float3 V, float3 worldPosition, float shadowFactor)
@@ -800,11 +787,13 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float materialRoughness = MATERIAL_ROUGHNESS;
                     float roughness = clamp(materialRoughness * lerp(1.0f, ormColor.g, 0.35f), 0.08f, 0.92f);
                     float metallic = MATERIAL_METALLIC * ormColor.b;
-                    float ao = lerp(1.0f, ormColor.r, 0.75f);
+                    float ao = lerp(1.0f, ormColor.r, 0.22f);
 
-                    float rigidRate = saturate(max(
-                        smoothstep(0.44f, 0.60f, materialRoughness),
-                        smoothstep(0.32f, 0.62f, metallic)));
+                    // Ordinary slime uses roughness around 0.6, so roughness alone must not select the rigid branch.
+                    float rigidFromMetal = smoothstep(0.16f, 0.48f, metallic);
+                    float rigidFromHardSurface = smoothstep(0.74f, 0.92f, materialRoughness)
+                        * smoothstep(0.06f, 0.24f, metallic);
+                    float rigidRate = saturate(max(rigidFromMetal, rigidFromHardSurface));
 
                     float3 N = normalize(input.normal);
                     if (gMaterial.enableNormalMap == 1)
@@ -826,22 +815,29 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float NdotV = saturate(dot(N, V));
                     float NdotH = saturate(dot(N, H));
 
-                    // The soft body keeps a readable pearl tint instead of clipping the entire surface to white.
-                    float directStrength = (0.34f + NdotL * 0.48f * saturate(gDirectionalLight.intenssity));
-                    directStrength *= lerp(0.74f, 1.0f, shadowFactor);
-                    float3 softAmbient = baseColor * gDirectionalLight.ambientColor * 0.34f * ao;
-                    float3 pearlBody = baseColor * directStrength + softAmbient;
+                    // A stable ambient floor keeps small characters readable without flattening the top light.
+                    float ambientBrightness = dot(
+                        saturate(gDirectionalLight.ambientColor),
+                        float3(0.299f, 0.587f, 0.114f));
+                    float bodyLight = 0.62f + ambientBrightness * 0.45f
+                        + NdotL * 0.42f * max(gDirectionalLight.intenssity, 0.65f);
+                    bodyLight *= lerp(0.86f, 1.0f, shadowFactor);
+                    float3 ambientTint = lerp(
+                        float3(1.0f, 1.0f, 1.0f),
+                        saturate(gDirectionalLight.ambientColor * 2.2f),
+                        0.14f);
+                    float3 pearlBody = baseColor * ambientTint * bodyLight * lerp(1.0f, ao, 0.28f);
 
                     float rim = pow(1.0f - NdotV, 2.15f);
                     float pearlPhase = frac((1.0f - NdotV) * 0.82f
                         + dot(N, normalize(float3(0.64f, 0.27f, 0.72f))) * 0.16f
                         + input.worldPosition.y * 0.012f);
                     float3 pearlSpectrum = BuildPrismSpectrum(pearlPhase);
-                    pearlBody += lerp(float3(0.24f, 0.66f, 1.0f), pearlSpectrum, 0.58f) * rim * 0.19f;
+                    pearlBody += lerp(float3(0.40f, 0.78f, 1.0f), pearlSpectrum, 0.25f) * rim * 0.12f;
 
                     float softSpecPower = lerp(34.0f, 88.0f, saturate(1.0f - roughness));
                     float softSpec = pow(NdotH, softSpecPower);
-                    pearlBody += float3(0.78f, 0.92f, 1.0f) * softSpec * 0.22f;
+                    pearlBody += float3(0.84f, 0.95f, 1.0f) * softSpec * 0.28f;
 
                     if (gMaterial.enableEnvMap == 1)
                     {

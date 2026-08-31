@@ -17,8 +17,8 @@ public:
     // 衝突判定
     bool OnCollision(Object3d* other) override;
 
-    // 大型スライムの装甲突進専用ゲートなら、その場で破壊して通過可能にする。
-    bool TryBreakByGiantRush(const Player* player);
+    // actionMode=6は汎用衝撃、7はピンクのバウンド落下だけで破壊します。
+    bool TryBreakByPlayerImpact(const Player* player);
 
     std::unique_ptr<Object3d> Clone() const override;
 

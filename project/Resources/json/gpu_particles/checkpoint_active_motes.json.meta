@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "391c65a7c8e59979738c8c194469140a",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/checkpoint_active_motes.json",
+  "version": 1
+}

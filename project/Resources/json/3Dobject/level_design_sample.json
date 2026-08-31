@@ -1,0 +1,17 @@
+{
+  "_comment": "Actual data is in _player, _enemy, _object, and _camera.json",
+  "_sceneAsset": {
+    "controller": "DEFAULT",
+    "displayName": "発見型レベル設計サンプル",
+    "id": "level_design_sample",
+    "resources": {
+      "bgm": "",
+      "camera": "",
+      "light": "Resources/json/light/light_layout.json",
+      "skybox": "Resources/output_skybox.dds"
+    },
+    "runtimeScene": "PREVIEW",
+    "spriteLayout": "Resources/json/sprite/level_design_sample_sprite.json",
+    "version": 3
+  }
+}

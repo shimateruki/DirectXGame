@@ -1,0 +1,27 @@
+newmtl Stone
+Ka 0.12 0.11 0.09
+Kd 0.52 0.49 0.41
+Ks 0.10 0.09 0.07
+Ns 28.0
+illum 2
+
+newmtl Pole
+Ka 0.05 0.025 0.010
+Kd 0.30 0.13 0.035
+Ks 0.16 0.07 0.02
+Ns 36.0
+illum 2
+
+newmtl Gold
+Ka 0.24 0.14 0.018
+Kd 0.98 0.62 0.10
+Ks 0.62 0.38 0.08
+Ns 88.0
+illum 2
+
+newmtl FlagCloth
+Ka 0.20 0.04 0.04
+Kd 0.83 0.08 0.11
+Ks 0.20 0.18 0.14
+Ns 42.0
+illum 2

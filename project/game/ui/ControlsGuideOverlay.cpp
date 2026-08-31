@@ -47,8 +47,8 @@ AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
     if (!player->IsEnemyMorphed()) {
         return { {
             "ui/control_guide/labels/absorb.png",
-            "ui/control_guide/labels/throw.png",
-            nullptr
+            "ui/control_guide/labels/slime_attack.png",
+            "ui/control_guide/labels/hook_aim.png"
         } };
     }
 
@@ -57,7 +57,7 @@ AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
         return { {
             "ui/control_guide/labels/slime_dive.png",
             "ui/control_guide/labels/puni_straight.png",
-            "ui/control_guide/labels/bounce_evade.png"
+            "ui/control_guide/labels/puni_guard.png"
         } };
     case Player::EnemyMorphType::Bomber:
         return { {
@@ -104,8 +104,6 @@ const char* ResolvePortraitTexture(const Player* player) {
         return "ui/portraits/beam_drone.png";
     case Player::EnemyMorphType::Mushroom:
         return "ui/portraits/mushroom.png";
-    case Player::EnemyMorphType::GiantSlime:
-        return "ui/portraits/giant_slime.png";
     case Player::EnemyMorphType::FireSlime:
         return "ui/control_guide/portraits/fire_slime.png";
     case Player::EnemyMorphType::ThunderSlime:

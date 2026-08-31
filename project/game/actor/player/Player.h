@@ -6,6 +6,7 @@
 #include "ParticleSystem.h"
 #include "PlayerGateReturnAnimation.h"
 #include "PlayerMover.h"
+#include "PlayerBaseCombatController.h"
 #include "PlayerCopyAbilityController.h"
 #include "PlayerSlimeAnimator.h"
 #include "engine/utility/math/Math.h"
@@ -24,16 +25,16 @@ class Player : public Character
 {
 public:
     enum class EnemyMorphType {
-        None,
-        Slime,
-        Bomber,
-        Bat,
-        BeamDrone,
-        Mushroom,
-        GiantSlime,
-        FireSlime,
-        ThunderSlime,
-        WindSlime
+        None = 0,
+        Slime = 1,
+        Bomber = 2,
+        Bat = 3,
+        BeamDrone = 4,
+        Mushroom = 5,
+        // 値6は廃止した巨大スライムコピーとのリプレイ互換用に予約します。
+        FireSlime = 7,
+        ThunderSlime = 8,
+        WindSlime = 9
     };
 
     // ==================================================
@@ -86,8 +87,13 @@ public:
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
     void ApplyIceSurface(float duration, float friction, float steering);
     void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
+    void CancelLaunchStar(bool restoreControl);
     bool IsLaunchStarActive() const { return launchStarActive_; }
-    bool IsGiantSlimeRushActive() const;
+    // 通常攻撃または対応コピー突進が、衝撃ゲートを破壊できる攻撃中か返します。
+    bool IsImpactBreakActive() const;
+    // ピンクスライムのバウンド落下中だけ真を返します。
+    // 通常攻撃では代用できない、能力専用の寄り道ギミックに使用します。
+    bool IsPinkBounceSlamImpactActive() const;
 
     // ==================================================
     // アクセス
@@ -97,6 +103,9 @@ public:
     void SetVelocity(const Vector3& v) { velocity_ = v; }
     void SetRespawnPosition(const Vector3& pos) { respawnPosition_ = pos; }
     Vector3 GetRespawnPosition() const { return respawnPosition_; }
+    void ActivateCheckpoint(const Vector3& position);
+    // 敵オブジェクトを生成せず、保存済みのコピー能力を直接適用します。
+    bool ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration = true);
 
     Vector3 GetRotation() const { return transform_.rotate; }
     float GetVisualYawOffset() const;
@@ -192,6 +201,8 @@ public:
     // デバッグUIから実際の敵能力を保ったまま、任意の変身状態へ直接切り替えます。
     void DebugForceEnemyMorph(BaseEnemy* enemy);
     void DebugClearEnemyMorph();
+    // デバッグ移動前に、次フレームで座標や操作状態を上書きする一時状態を解除します。
+    void DebugPrepareForTeleport();
 #endif
 
 protected:
@@ -204,6 +215,7 @@ private:
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
     PlayerSlimeAnimator slimeAnimator_;
     PlayerGateReturnAnimation gateReturnAnimation_;
+    std::unique_ptr<PlayerBaseCombatController> baseCombatController_;
     std::unique_ptr<PlayerCopyAbilityController> copyAbilityController_;
     Vector3 managedBaseScale_ = { 2.0f, 2.0f, 2.0f };
 
@@ -280,6 +292,8 @@ private:
     Vector3 respawnPosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f }; // 初期回転。モデル姿勢補正にも使う。
     bool isFirstUpdate_ = true;
+    bool checkpointActivated_ = false;
+    std::string checkpointMorphEnemyType_;
 
     // フックマーカー
     std::unique_ptr<Object3d> hookMarker_;
@@ -347,6 +361,9 @@ private:
     bool absorbEffectActive_ = false;
 
     void StartEnemyMorph(BaseEnemy* enemy);
+    void SaveEnemyMorphBaseAppearance(bool sourceVisible);
+    void CompleteEnemyMorphStart(float moveYaw);
+    void EmitEnemyMorphStartEffects();
     void UpdateEnemyMorph(float deltaTime);
     void BeginEnemyMorphRelease(bool expired);
     void UpdateEnemyMorphRelease(float deltaTime);
@@ -362,6 +379,8 @@ private:
     float GetEnemyMorphModelYawOffset() const;
     EnemyMorphType ResolveEnemyMorphType(const std::string& enemyType) const;
     Vector4 GetEnemyMorphTint(EnemyMorphType type) const;
+    std::string GetEnemyTypeForCurrentMorph() const;
+    void RefreshCheckpointMorphSnapshot();
 
 public:
     Object3d* GetHookMarker() const { return hookMarker_.get(); }

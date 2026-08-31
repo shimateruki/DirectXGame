@@ -1,0 +1,195 @@
+{
+  "_archivedForVerticalTest": true,
+  "objects": [
+    {
+      "name": "Stage4_EntranceTerrace", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_EntranceGate", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "StageGate",
+      "modelName": "Gimmicks/crown_stage_gate", "position": [0.0, 0.7, -6.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "param": { "actionMode": 1, "gimmickType": "StageGate", "startActive": true, "targetScene": "SELECT" }
+    },
+    {
+      "name": "Stage4_SightGate", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_turn_wall.obj",
+      "position": [0.0, 0.4, 12.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.125, 0.0], "size": [8.0, 0.475, 5.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    { "name": "Stage4_SightWall_Left", "type": "InvisibleBox", "saveCategory": "Object", "position": [-6.5, 4.075, 12.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.5, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_SightWall_Low", "type": "InvisibleBox", "saveCategory": "Object", "position": [-2.0, 2.375, 12.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [3.0, 1.625, 0.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_SightWall_Upper", "type": "InvisibleBox", "saveCategory": "Object", "position": [1.1, 6.4, 12.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [6.1, 1.0, 0.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_SightWall_Middle", "type": "InvisibleBox", "saveCategory": "Object", "position": [2.0, 4.075, 12.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_SightWall_Right", "type": "InvisibleBox", "saveCategory": "Object", "position": [7.6, 4.075, 12.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.4, 3.325, 0.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    {
+      "name": "Stage4_ApproachBridge", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "position": [5.0, 0.4, 24.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.2, 0.0], "size": [3.0, 0.4, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    { "name": "Stage4_ApproachRail_Left", "type": "InvisibleBox", "saveCategory": "Object", "position": [2.225, 1.175, 24.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_ApproachRail_Right", "type": "InvisibleBox", "saveCategory": "Object", "position": [7.775, 1.175, 24.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    {
+      "name": "Stage4_ChoiceCourtyard", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 0.0, 38.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_AbilityStation", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "CopyMemoryStation",
+      "modelName": "Gimmicks/copy_memory_station",
+      "position": [5.0, 0.7, 34.0], "rotation": [0.0, 3.14159265, 0.0], "scale": [0.8, 0.8, 0.8],
+      "param": { "gimmickType": "CopyMemoryStation", "copyMemoryActivationRadius": 0.9, "copyMemoryTypeA": "WindSlime", "copyMemoryTypeB": "Bomber", "copyMemoryTypeC": "ThunderSlime", "copyMemoryUnlimitedDuration": true, "startActive": true }
+    },
+    {
+      "name": "Stage4_WindGallery", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_gallery.obj",
+      "position": [-6.0, 5.2, 42.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.125, 0.0], "size": [6.0, 0.375, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    { "name": "Stage4_WindGalleryRail", "type": "InvisibleBox", "saveCategory": "Object", "position": [-11.6, 6.525, 42.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.4, 1.075, 7.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    {
+      "name": "Stage4_StarCoin_01", "type": "Model", "saveCategory": "Object", "modelName": "Gimmicks/star",
+      "position": [-6.0, 6.95, 45.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.08, 0.08, 0.08],
+      "color": [1.0, 0.74, 0.08, 1.0], "emissive": 1.65, "castShadow": false, "eventID": 7, "targetID": 0,
+      "collider": { "type": 1, "center": [0.0, 0.0, 0.0], "size": [14.0, 14.0, 14.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 16, "collisionMask": 1
+    },
+    {
+      "name": "Stage4_BombBridge", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "position": [17.0, 0.4, 38.0], "rotation": [0.0, 1.57079633, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.2, 0.0], "size": [3.0, 0.4, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_BombVaultWall", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "BreakableBlock",
+      "modelName": "Stages/star_garden_giant_gate", "position": [25.0, 3.0, 38.0], "rotation": [0.0, 1.57079633, 0.0], "scale": [0.7, 0.7, 0.7],
+      "collider": { "type": 3, "center": [0.0, 0.0, 0.0], "size": [7.2, 4.2, 1.5], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 255, "materialType": 0,
+      "param": { "actionMode": 0, "gimmickType": "BreakableBlock", "startActive": true }
+    },
+    {
+      "name": "Stage4_BombVault", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [31.0, 0.0, 38.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_StarCoin_02", "type": "Model", "saveCategory": "Object", "modelName": "Gimmicks/star",
+      "position": [32.5, 2.0, 38.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.08, 0.08, 0.08],
+      "color": [1.0, 0.74, 0.08, 1.0], "emissive": 1.65, "castShadow": false, "eventID": 7, "targetID": 1,
+      "collider": { "type": 1, "center": [0.0, 0.0, 0.0], "size": [14.0, 14.0, 14.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 16, "collisionMask": 1
+    },
+    { "name": "Stage4_BombVaultTrampoline", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Trampoline", "modelName": "Stages/star_garden_trampoline_platform", "position": [32.5, 0.7, 43.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.45, 0.45, 0.45], "param": { "gimmickType": "Trampoline", "jumpPower": 30.0, "startActive": true } },
+    {
+      "name": "Stage4_LaunchBridge", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "position": [5.0, 0.4, 52.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.2, 0.0], "size": [3.0, 0.4, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_LaunchTerrace", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 0.0, 66.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_SkyLaunch", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "LaunchStar", "modelName": "Gimmicks/star_launch",
+      "position": [5.0, 0.75, 66.0], "rotation": [-0.046, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "param": { "gimmickType": "LaunchStar", "moveAmount": 52.0, "jumpPower": 14.0, "speed": 38.0, "startActive": true }
+    },
+    {
+      "name": "Stage4_LandingTerrace", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 2.4, 118.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_Checkpoint_Landing", "type": "Model", "saveCategory": "Object", "modelName": "Stages/star_garden_checkpoint",
+      "position": [0.0, 3.25, 118.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0], "eventID": 4,
+      "collider": { "type": 3, "center": [0.0, 1.45, 0.0], "size": [1.35, 1.45, 1.35], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 16, "collisionMask": 1,
+      "color": [0.3, 0.95, 1.0, 1.0], "emissive": 1.35
+    },
+    {
+      "name": "Stage4_ThunderStation", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "CopyMemoryStation",
+      "modelName": "Gimmicks/copy_memory_station",
+      "position": [5.0, 3.1, 121.5], "rotation": [0.0, 0.0, 0.0], "scale": [0.72, 0.72, 0.72],
+      "param": { "gimmickType": "CopyMemoryStation", "copyMemoryActivationRadius": 0.9, "copyMemoryTypeA": "ThunderSlime", "copyMemoryTypeB": "ThunderSlime", "copyMemoryTypeC": "ThunderSlime", "copyMemoryUnlimitedDuration": true, "startActive": true }
+    },
+    {
+      "name": "Stage4_TransitMovingFloor", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "MovingFloor", "modelName": "Stages/star_garden_moving_platform",
+      "position": [5.0, 2.75, 132.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 3, "center": [0.0, -0.09, 0.0], "size": [6.4, 0.6, 4.8], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 255,
+      "param": { "actionMode": 3, "gimmickType": "MovingFloor", "moveAmount": 2.0, "speed": 0.6, "startActive": true }
+    },
+    {
+      "name": "Stage4_ThunderArena", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 2.4, 146.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_ThunderRewardIsland", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [28.0, 2.4, 146.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "Stage4_StarCoin_03", "type": "Model", "saveCategory": "Object", "modelName": "Gimmicks/star",
+      "position": [28.0, 4.35, 146.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.08, 0.08, 0.08],
+      "color": [1.0, 0.74, 0.08, 1.0], "emissive": 1.65, "castShadow": false, "eventID": 7, "targetID": 2,
+      "collider": { "type": 1, "center": [0.0, 0.0, 0.0], "size": [14.0, 14.0, 14.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 16, "collisionMask": 1
+    },
+    {
+      "name": "Stage4_GoalBridge", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "position": [5.0, 2.8, 160.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.2, 0.0], "size": [3.0, 0.4, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    { "name": "Stage4_GoalRail_Left", "type": "InvisibleBox", "saveCategory": "Object", "position": [2.225, 3.575, 160.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    { "name": "Stage4_GoalRail_Right", "type": "InvisibleBox", "saveCategory": "Object", "position": [7.775, 3.575, 160.0], "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [0.225, 0.575, 7.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true },
+    {
+      "name": "Stage4_GoalTerrace", "type": "Model", "saveCategory": "Object",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "position": [5.0, 2.4, 174.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
+      "collider": { "type": 2, "center": [0.0, -0.15, 0.0], "size": [7.0, 0.85, 7.0], "rotation": [0.0, 0.0, 0.0] },
+      "collisionAttribute": 4, "collisionMask": 4294967295, "isStatic": true
+    },
+    {
+      "name": "goal", "type": "Model", "saveCategory": "Object", "modelName": "Stages/crown",
+      "position": [5.0, 4.2, 174.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.9, 0.9, 0.9], "eventID": 5,
+      "collider": { "type": 2, "center": [0.0, 0.09, 0.0], "size": [1.0, 0.43, 1.0], "rotation": [0.0, 0.0, 0.0] }, "collisionAttribute": 16, "collisionMask": 1,
+      "color": [1.0, 0.82, 0.22, 1.0], "emissive": 1.3
+    },
+    { "name": "Stage4_Decor_Observatory", "type": "Model", "saveCategory": "Object", "modelName": "Stages/star_observatory", "position": [-0.5, 0.75, 41.0], "rotation": [0.0, 0.45, 0.0], "scale": [0.9, 0.9, 0.9], "collisionAttribute": 0, "collisionMask": 0, "isStatic": true },
+    { "name": "Stage4_Decor_Pillar_01", "type": "Model", "saveCategory": "Object", "modelName": "Stages/star_ruin_pillar", "position": [-5.2, 0.7, 2.5], "rotation": [0.0, 0.2, 0.0], "scale": [1.4, 1.4, 1.4], "collisionAttribute": 0, "collisionMask": 0, "isStatic": true },
+    { "name": "Stage4_Decor_Pillar_02", "type": "Model", "saveCategory": "Object", "modelName": "Stages/star_ruin_pillar", "position": [10.0, 3.1, 116.0], "rotation": [0.0, -0.3, 0.0], "scale": [1.5, 1.5, 1.5], "collisionAttribute": 0, "collisionMask": 0, "isStatic": true },
+    { "name": "Stage4_Decor_Tree_01", "type": "Model", "saveCategory": "Object", "modelName": "Stages/soft_tree", "position": [-4.8, 0.75, 35.0], "rotation": [0.0, 0.4, 0.0], "scale": [0.9, 0.9, 0.9], "collisionAttribute": 0, "collisionMask": 0, "isStatic": true },
+    { "name": "Stage4_Decor_Tree_02", "type": "Model", "saveCategory": "Object", "modelName": "Stages/soft_tree", "position": [10.0, 3.15, 175.5], "rotation": [0.0, -0.5, 0.0], "scale": [0.9, 0.9, 0.9], "collisionAttribute": 0, "collisionMask": 0, "isStatic": true },
+    { "name": "Stage4_Guide_01", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [0.0, 1.8, 6.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_02", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 1.8, 18.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_03", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 1.8, 27.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_04", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 1.8, 47.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_05", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 1.8, 57.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Wind", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [-3.0, 5.9, 38.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Bomb", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [19.0, 1.8, 38.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Thunder_01", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 4.6, 128.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Thunder_02", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [13.5, 4.7, 146.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Goal_01", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 4.7, 155.0], "scale": [0.055, 0.055, 0.055] },
+    { "name": "Stage4_Guide_Goal_02", "type": "Gimmick", "saveCategory": "Object", "gimmickType": "Coin", "modelName": "Gimmicks/koin", "position": [5.0, 4.7, 164.0], "scale": [0.055, 0.055, 0.055] }
+  ]
+}

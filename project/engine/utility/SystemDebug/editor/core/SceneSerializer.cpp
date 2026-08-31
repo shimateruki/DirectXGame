@@ -566,6 +566,11 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
             d["param"]["volumeTriggerOnExit"] = p.volumeTriggerOnExit;
             d["param"]["volumeRearmDelay"] = p.volumeRearmDelay;
             d["param"]["volumeBlendDuration"] = p.volumeBlendDuration;
+            d["param"]["copyMemoryTypeA"] = p.copyMemoryTypeA;
+            d["param"]["copyMemoryTypeB"] = p.copyMemoryTypeB;
+            d["param"]["copyMemoryTypeC"] = p.copyMemoryTypeC;
+            d["param"]["copyMemoryActivationRadius"] = p.copyMemoryActivationRadius;
+            d["param"]["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
         }
     }
 

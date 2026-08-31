@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "engine/utility/math/Math.h"
+
 class Player;
 class EnemyAttackProfile;
 
@@ -30,10 +32,14 @@ public:
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input);
     void Update(Player& player, float deltaTime);
     void Cancel(Player& player);
+    // ガード中に攻撃を受け止めたことを能力へ通知します。
+    // ダメージ判定とコピー固有の反応を分離し、敵クラスへ能力処理を戻しません。
+    bool NotifyGuardedHit(Player& player, const Vector3& sourcePosition);
 
     bool HandlesMorphType(int morphType) const;
     bool IsActive() const;
-    bool IsGiantRushActive() const;
+    bool CanBreakImpactGate() const;
+    bool IsPinkBounceSlamImpactActive() const;
 
 private:
     class Impl;

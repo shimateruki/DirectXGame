@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "50448d3aaa69bdd6d955d2b5e1f64e4f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/effect/effect_copy_memory_transfer_ring.json",
+  "version": 1
+}

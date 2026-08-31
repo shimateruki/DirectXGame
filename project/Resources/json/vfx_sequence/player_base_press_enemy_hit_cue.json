@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_player_base_bash_impact",
+      "triggerTime": 0.0,
+      "rotation": [1.5707963, 0.0, 0.0],
+      "scale": [1.12, 1.12, 1.12]
+    },
+    {
+      "type": 0,
+      "presetName": "player_base_press_splash",
+      "triggerTime": 0.0,
+      "scale": [0.82, 0.82, 0.82]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.09,
+      "intensity": 0.064,
+      "frequency": 27.0,
+      "scale": [0.62, 0.82, 0.34]
+    },
+    {
+      "type": 7,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.055,
+      "intensity": 0.08
+    },
+    {
+      "type": 8,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.085,
+      "intensity": 0.42,
+      "secondaryIntensity": 0.26
+    },
+    {
+      "type": 9,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.12,
+      "intensity": 1.35,
+      "attackRatio": 0.16
+    }
+  ]
+}

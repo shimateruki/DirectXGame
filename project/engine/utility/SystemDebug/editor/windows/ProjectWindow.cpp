@@ -654,14 +654,21 @@ void ProjectWindow::Draw() {
             const float fraction = total > 0
                 ? static_cast<float>(progress) / static_cast<float>(total)
                 : 1.0f;
-            ImGui::Text("初期索引を作成中: %zu / %zu", progress, total);
+            ImGui::Text(
+                "差分索引を確認中: %zu / %zu  (Cache %zu / 再解析 %zu)",
+                progress,
+                total,
+                assetDatabase->GetInitialReusedAssetCount(),
+                assetDatabase->GetInitialReparsedAssetCount());
             ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f));
         }
     }
     else {
         ImGui::Text(
-            "%zu Assets / Meta作成 %zu / Error %zu",
+            "%zu Assets / Cache %zu / 再解析 %zu / Meta作成 %zu / Error %zu",
             databaseStatus.assetCount,
+            databaseStatus.reusedAssetCount,
+            databaseStatus.reparsedAssetCount,
             databaseStatus.createdMetaCount,
             databaseStatus.errorCount);
     }

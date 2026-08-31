@@ -438,6 +438,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "EventReceiver", "イベント受信" },
         { "ArenaEncounter", "中ボス遭遇管理" },
         { "GameplayVolume", "ゲームプレイボリューム" },
+        { "CopyMemoryStation", "コピー記憶台" },
         { "PrismBarrier", "プリズム障壁" },
         { "BossGate", "ボス闘技場・黒格子ゲート" },
         { "HookAnchor", "フックアンカー" },

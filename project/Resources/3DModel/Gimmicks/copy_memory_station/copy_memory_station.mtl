@@ -1,0 +1,41 @@
+newmtl StationShadow
+Ka 0.030 0.040 0.070
+Kd 0.105 0.135 0.220
+Ks 0.420 0.480 0.650
+Ns 96.0
+illum 2
+
+newmtl StationPearl
+Ka 0.120 0.150 0.190
+Kd 0.660 0.780 0.900
+Ks 0.900 0.950 1.000
+Ns 180.0
+illum 2
+
+newmtl StationGold
+Ka 0.180 0.100 0.020
+Kd 0.930 0.620 0.120
+Ks 1.000 0.880 0.420
+Ns 220.0
+illum 2
+
+newmtl StationCoral
+Ka 0.160 0.030 0.050
+Kd 1.000 0.260 0.330
+Ks 1.000 0.620 0.720
+Ns 150.0
+illum 2
+
+newmtl StationViolet
+Ka 0.180 0.120 0.020
+Kd 0.980 0.760 0.100
+Ks 1.000 0.950 0.550
+Ns 180.0
+illum 2
+
+newmtl StationAqua
+Ka 0.020 0.130 0.150
+Kd 0.160 0.850 0.940
+Ks 0.700 1.000 1.000
+Ns 190.0
+illum 2

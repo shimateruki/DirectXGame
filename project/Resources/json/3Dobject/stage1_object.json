@@ -4640,7 +4640,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_a",
+                    "path": "stage1_v4_moving_intro_b",
                     "relative": true,
                     "version": 1
                 }
@@ -4787,7 +4787,7 @@
                 "PathMover": {
                     "_editorPresent": true,
                     "loop": true,
-                    "path": "stage1_v4_moving_intro_a",
+                    "path": "stage1_v4_moving_intro_c",
                     "relative": true,
                     "version": 1
                 }
@@ -5768,11 +5768,11 @@
             "metallic": 0.1,
             "modelName": "Stages/star_garden_giant_gate",
             "myEventID": -1,
-            "name": "Stage1_V4_GiantRushGate",
+            "name": "Stage1_V4_ImpactBreakGate",
             "normalMapPath": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_normal.png",
             "ormMapPath": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.png",
             "param": {
-                "actionMode": 6,
+                "actionMode": 7,
                 "attackPower": 1.0,
                 "colorType": 0,
                 "detectionRange": 20.0,
@@ -5956,10 +5956,7 @@
                 -98.0
             ],
             "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0.7071067811865475, 0.0, 0.0, 0.7071067811865476
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -5967,9 +5964,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
-                0.0,
-                0.0
+                1.5707963267948966, 0.0, 0.0
             ],
             "roughness": 0.3199999928474426,
             "saveCategory": "Object",
@@ -14185,10 +14180,7 @@
                 78.0
             ],
             "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0.7071067811865475, 0.0, 0.0, 0.7071067811865476
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -14196,9 +14188,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
-                0.0,
-                0.0
+                1.5707963267948966, 0.0, 0.0
             ],
             "roughness": 0.3199999928474426,
             "saveCategory": "Object",
@@ -14245,13 +14235,8 @@
             },
             "collisionAttribute": 16,
             "collisionMask": 1,
-            "color": [
-                0.3,
-                0.95,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.35,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 0.04,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -14283,7 +14268,7 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.28,
-            "modelName": "Stages/star_garden_checkpoint",
+            "modelName": "Gimmicks/checkpoint_flag",
             "myEventID": -1,
             "name": "Stage1_V4_Checkpoint_PreBoss",
             "normalMapPath": "",
@@ -15360,7 +15345,7 @@
             "particleName": "",
             "position": [
                 392.0,
-                10.02,
+                10.38,
                 -20.0
             ],
             "quaternion": [
@@ -15498,7 +15483,7 @@
             "particleName": "",
             "position": [
                 435.0,
-                10.02,
+                10.38,
                 -20.0
             ],
             "quaternion": [
@@ -15636,7 +15621,7 @@
             "particleName": "",
             "position": [
                 478.0,
-                10.02,
+                10.38,
                 -20.0
             ],
             "quaternion": [
@@ -17770,13 +17755,8 @@
             },
             "collisionAttribute": 16,
             "collisionMask": 1,
-            "color": [
-                0.3,
-                0.95,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.35,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 0.04,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -17808,7 +17788,7 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.28,
-            "modelName": "Stages/star_garden_checkpoint",
+            "modelName": "Gimmicks/checkpoint_flag",
             "myEventID": -1,
             "name": "Stage1_V4_Checkpoint_PostDash",
             "normalMapPath": "",
@@ -17907,7 +17887,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 24,
+            "materialType": 0,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.18,
@@ -18058,7 +18038,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 24,
+            "materialType": 0,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.18,
@@ -18209,7 +18189,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 24,
+            "materialType": 0,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.18,
@@ -24144,10 +24124,7 @@
                 96.0
             ],
             "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
+                0.7071067811865475, 0.0, 0.0, 0.7071067811865476
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -24155,9 +24132,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
-                0.0,
-                0.0
+                1.5707963267948966, 0.0, 0.0
             ],
             "roughness": 0.3199999928474426,
             "saveCategory": "Object",
@@ -28378,6 +28353,246 @@
                 1.0,
                 1.0
             ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true,
+                "animatorController": ""
+            },
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": {
+                "center": [0.0, 0.95, 0.0],
+                "rotation": [0.0, 0.0, 0.0],
+                "size": [3.1, 1.6, 1.85],
+                "type": 3
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 0.35,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "gimmickType": "CopyMemoryStation",
+            "guid": "4d5ac594-7105-5bba-a80c-78cfe0895901",
+            "isStatic": false,
+            "isVisible": true,
+            "materialType": 0,
+            "metallic": 0.18,
+            "modelName": "Gimmicks/copy_memory_station",
+            "name": "Stage1_V4_PreBoss_CopyMemoryStation",
+            "param": {
+                "copyMemoryActivationRadius": 0.52,
+                "copyMemoryTypeA": "FireSlime",
+                "copyMemoryTypeB": "ThunderSlime",
+                "copyMemoryTypeC": "WindSlime",
+                "copyMemoryUnlimitedDuration": true,
+                "gimmickType": "CopyMemoryStation",
+                "startActive": true
+            },
+            "position": [270.0, 10.03, -20.0],
+            "rotation": [0.0, 3.141592653589793, 0.0],
+            "roughness": 0.34,
+            "saveCategory": "Object",
+            "scale": [1.55, 1.15, 1.25],
+            "type": "Gimmick"
+        },
+        {
+            "animation": { "animName": "", "animatorController": "", "isAnimLoop": true },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": { "center": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "size": [0.0, 0.0, 0.0], "type": 0 },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [0.33, 0.42, 0.62, 1.0],
+            "emissive": 0.08,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.22,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3cc2edfd-e094-5c54-b49f-3a0dc2460901",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": { "color": [0.2, 0.8, 0.5, 1.0], "density": 0.5, "edgeFade": 0.0, "noiseScale": 0.0, "noiseSpeed": 0.0, "scatteringG": 0.0, "scatteringIntensity": 0.0 },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.05,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Stage1_V4_StarVault_LeftWall",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [-186.15, 10.15, -96.0],
+            "quaternion": [0.0, 0.0, 0.0, 1.0],
+            "recorder": { "isRecordLoop": false, "isRecordRelative": false, "recordPathName": "" },
+            "rotation": [0.0, 0.0, 0.0],
+            "roughness": 0.68,
+            "saveCategory": "Object",
+            "scale": [0.42, 2.55, 7.25],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [1.0, 1.0],
+            "type": "Model"
+        },
+        {
+            "animation": { "animName": "", "animatorController": "", "isAnimLoop": true },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": { "center": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "size": [0.0, 0.0, 0.0], "type": 0 },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [0.33, 0.42, 0.62, 1.0],
+            "emissive": 0.08,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.22,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "460dd327-622c-51f0-8cc4-d35f67fda502",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": { "color": [0.2, 0.8, 0.5, 1.0], "density": 0.5, "edgeFade": 0.0, "noiseScale": 0.0, "noiseSpeed": 0.0, "scatteringG": 0.0, "scatteringIntensity": 0.0 },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.05,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Stage1_V4_StarVault_RightWall",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [-169.85, 10.15, -96.0],
+            "quaternion": [0.0, 0.0, 0.0, 1.0],
+            "recorder": { "isRecordLoop": false, "isRecordRelative": false, "recordPathName": "" },
+            "rotation": [0.0, 0.0, 0.0],
+            "roughness": 0.68,
+            "saveCategory": "Object",
+            "scale": [0.42, 2.55, 7.25],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [1.0, 1.0],
+            "type": "Model"
+        },
+        {
+            "animation": { "animName": "", "animatorController": "", "isAnimLoop": true },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": { "center": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "size": [0.0, 0.0, 0.0], "type": 0 },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [0.33, 0.42, 0.62, 1.0],
+            "emissive": 0.08,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.22,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "a7b64136-9f5e-5f76-a5d5-4e237d3ac803",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": { "color": [0.2, 0.8, 0.5, 1.0], "density": 0.5, "edgeFade": 0.0, "noiseScale": 0.0, "noiseSpeed": 0.0, "scatteringG": 0.0, "scatteringIntensity": 0.0 },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.05,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Stage1_V4_StarVault_BackWall",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [-178.0, 10.15, -103.15],
+            "quaternion": [0.0, 0.0, 0.0, 1.0],
+            "recorder": { "isRecordLoop": false, "isRecordRelative": false, "recordPathName": "" },
+            "rotation": [0.0, 0.0, 0.0],
+            "roughness": 0.68,
+            "saveCategory": "Object",
+            "scale": [8.15, 2.55, 0.42],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [1.0, 1.0],
+            "type": "Model"
+        },
+        {
+            "animation": { "animName": "", "animatorController": "", "isAnimLoop": true },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "castShadow": true,
+            "collider": { "center": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "size": [0.0, 0.0, 0.0], "type": 0 },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [0.33, 0.42, 0.62, 1.0],
+            "emissive": 0.08,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.22,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3b8b6495-1b13-5f95-9002-9d7be2a7fb04",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": { "color": [0.2, 0.8, 0.5, 1.0], "density": 0.5, "edgeFade": 0.0, "noiseScale": 0.0, "noiseSpeed": 0.0, "scatteringG": 0.0, "scatteringIntensity": 0.0 },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.05,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Stage1_V4_StarVault_Roof",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [-178.0, 15.38, -96.0],
+            "quaternion": [0.0, 0.0, 0.0, 1.0],
+            "recorder": { "isRecordLoop": false, "isRecordRelative": false, "recordPathName": "" },
+            "rotation": [0.0, 0.0, 0.0],
+            "roughness": 0.68,
+            "saveCategory": "Object",
+            "scale": [8.15, 0.16, 7.25],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [1.0, 1.0],
             "type": "Model"
         }
     ]

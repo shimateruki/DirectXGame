@@ -1,3 +1,17 @@
 {
-    "_comment": "Actual data is in _player, _enemy, and _object.json"
+  "_comment": "立体構造テスト。実データは_player、_enemy、_objectに分割。",
+  "_sceneAsset": {
+    "controller": "DEFAULT",
+    "displayName": "星環宮殿・立体構造テスト",
+    "id": "stage4",
+    "resources": {
+      "bgm": "Resources/bgm/Alarm02.mp3",
+      "camera": "",
+      "light": "Resources/json/light/stage3_high_crown.json",
+      "skybox": "Resources/skybox/stage3_high_crown.dds"
+    },
+    "runtimeScene": "GAMEPLAY",
+    "spriteLayout": "Resources/json/sprite/stage4_sprite.json",
+    "version": 4
+  }
 }

@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "name": "player_ability_pink_bounce_slam",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.72,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0.0,
+      "translate": [0.0, -0.12, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.22, 0.68, 1.22],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.13,
+      "translate": [0.0, 0.30, 0.06],
+      "rotate": [-0.16, 0.0, 0.04],
+      "scale": [0.62, 1.72, 0.62],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.29,
+      "translate": [0.0, 0.12, 0.0],
+      "rotate": [0.10, 0.0, -0.03],
+      "scale": [0.90, 1.20, 0.90],
+      "easingToNext": 1
+    },
+    {
+      "time": 0.48,
+      "translate": [0.0, -0.16, 0.03],
+      "rotate": [0.22, 0.0, 0.0],
+      "scale": [1.36, 0.56, 1.36],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.61,
+      "translate": [0.0, 0.08, 0.0],
+      "rotate": [-0.06, 0.0, 0.0],
+      "scale": [0.82, 1.30, 0.82],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.72,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

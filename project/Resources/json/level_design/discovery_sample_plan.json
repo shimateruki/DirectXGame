@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "name": "DiscoverySample",
+  "designIntent": {
+    "mainRoute": "基礎移動だけで完走できる短いS字ルート",
+    "sideRoute": "風能力で上層へ移り、先に見せたスターを回収して本道へ戻る",
+    "visibility": "入口では門壁がスターを隠し、門上の窓付近で一度見せ、橋上では回廊が再び隠す"
+  },
+  "operations": [
+    { "name": "Entrance", "chunk": "discovery_terrace", "position": [0.0, 0.0, 0.0] },
+    { "name": "SightGate", "chunk": "discovery_turn_wall", "position": [0.0, 0.4, 12.0] },
+    { "name": "MainBridge", "chunk": "discovery_bridge", "position": [5.0, 0.4, 24.0] },
+    { "name": "Courtyard", "chunk": "discovery_terrace", "position": [5.0, 0.0, 38.0] },
+    { "name": "Exit", "chunk": "discovery_terrace", "position": [5.0, 0.0, 52.0] },
+    { "name": "UpperGallery", "chunk": "discovery_gallery", "position": [-6.0, 4.4, 30.0] },
+    { "name": "HiddenStar", "chunk": "discovery_star", "position": [-6.0, 6.2, 38.0], "scale": [1.2, 1.2, 1.2], "allowOverlap": true }
+  ],
+  "mainPath": {
+    "start": "Entrance",
+    "goal": "Exit",
+    "links": [
+      { "from": "Entrance", "to": "SightGate", "maxGap": 1.0 },
+      { "from": "SightGate", "to": "MainBridge", "maxGap": 1.0 },
+      { "from": "MainBridge", "to": "Courtyard", "maxGap": 1.0 },
+      { "from": "Courtyard", "to": "Exit", "maxGap": 1.0 },
+      { "from": "SightGate", "to": "UpperGallery", "ability": "WindSlime", "maxGap": 15.0 },
+      { "from": "UpperGallery", "to": "HiddenStar", "maxGap": 2.5 },
+      { "from": "HiddenStar", "to": "Courtyard", "ability": "WindSlime", "maxGap": 15.0 }
+    ]
+  },
+  "targets": [
+    { "operation": "HiddenStar", "ability": "WindSlime" }
+  ],
+  "visibilityChecks": [
+    {
+      "from": "Entrance",
+      "fromOffset": [0.0, 2.2, 0.0],
+      "target": "HiddenStar",
+      "expected": "occluded"
+    },
+    {
+      "from": "SightGate",
+      "fromOffset": [-2.5, 5.2, 0.0],
+      "target": "HiddenStar",
+      "expected": "visible"
+    },
+    {
+      "from": "MainBridge",
+      "fromOffset": [0.0, 2.2, 0.0],
+      "target": "HiddenStar",
+      "expected": "occluded"
+    }
+  ]
+}

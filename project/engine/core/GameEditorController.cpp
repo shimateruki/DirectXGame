@@ -49,6 +49,7 @@
 #include "SrvManager.h"
 #include "TextureManager.h"
 #include "TrailEmitterEditor.h"
+#include "VFXSequencer.h"
 #include "VFXSequencerEditor.h"
 #include "WinApp.h"
 #include "IconsFontAwesome5.h"
@@ -326,7 +327,11 @@ void GameEditorController::StopPlay() {
 		sceneManager_->SetIsPlaying(false);
 	}
 
+	// 停止時に進行途中のシーケンスを残すと、次フレームに0秒更新されて
+	// 消去後のメッシュエフェクトを再生成し、編集画面へ張り付いたように残ります。
+	VFXSequencer::ClearOneShots();
 	MeshEffectManager::GetInstance()->Clear();
+	GPUParticleManager::GetInstance()->ResetSimulation();
 	DebrisEffectManager::GetInstance()->Clear();
 	ClearSceneBoundEditorState();
 	if (playModeChangeTracker_) {
@@ -1411,7 +1416,11 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 	}
 
 	ApplyPendingPlayStartPosition();
+	// エディターのプレビューや直前のPlayから残った一時演出を、再生開始前に破棄します。
+	// シーケンスを先に止めることで、消去済みエフェクトが後から再生成されるのを防ぎます。
+	VFXSequencer::ClearOneShots();
 	MeshEffectManager::GetInstance()->Clear();
+	GPUParticleManager::GetInstance()->ResetSimulation();
 	DebrisEffectManager::GetInstance()->Clear();
 	isPlaying = true;
 	if (sceneManager) {

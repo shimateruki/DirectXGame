@@ -36,11 +36,13 @@
         },
         {
             "id": "stage4",
-            "name": "Stage 4",
-            "description": "Stage 3クリア後に解放されるステージ",
+            "name": "Stage 4 - Astral Keep",
+            "description": "下層から同じ空間の上層へ戻る、部屋・通路・高所の立体構造テスト",
             "levelPath": "Resources/json/3Dobject/stage4.json",
             "spritePath": "Resources/json/sprite/stage4_sprite.json",
             "bgmPath": "Resources/bgm/Alarm02.mp3",
+            "lightPath": "Resources/json/light/stage3_high_crown.json",
+            "skyboxPath": "Resources/skybox/stage3_high_crown.dds",
             "defaultUnlocked": false,
             "unlockStageIndex": 2
         },

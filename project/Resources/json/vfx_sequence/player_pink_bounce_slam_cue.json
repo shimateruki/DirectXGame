@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_player_pink_bounce_land",
+      "triggerTime": 0.0,
+      "scale": [1.25, 1.25, 1.25]
+    },
+    {
+      "type": 0,
+      "presetName": "player_pink_bounce_droplets",
+      "triggerTime": 0.0,
+      "scale": [1.1, 1.1, 1.1]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.14,
+      "intensity": 5.8,
+      "lightRadius": 4.8,
+      "lightDecay": 1.7,
+      "lightColor": [1.0, 0.38, 0.82, 1.0]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.13,
+      "intensity": 0.078,
+      "frequency": 24.0,
+      "scale": [0.92, 0.38, 0.92]
+    },
+    {
+      "type": 7,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.045,
+      "intensity": 0.18
+    },
+    {
+      "type": 8,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.11,
+      "intensity": 0.48,
+      "secondaryIntensity": 0.28
+    },
+    {
+      "type": 9,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.12,
+      "intensity": 1.35,
+      "attackRatio": 0.15
+    }
+  ]
+}

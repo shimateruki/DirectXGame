@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "a891e52b0c4a43a19d17e540619f7f10",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/level_design/level_chunks.json",
+  "version": 1
+}

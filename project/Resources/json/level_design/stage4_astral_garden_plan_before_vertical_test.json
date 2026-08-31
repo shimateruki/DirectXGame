@@ -1,0 +1,56 @@
+{
+  "_archivedForVerticalTest": true,
+  "version": 1,
+  "name": "Stage4AstralGarden",
+  "designIntent": {
+    "mainRoute": "能力なしで、門壁、橋、選択広場、発射スター、移動床、戦闘広場を通って完走できる",
+    "sideRoute": "風は上層回廊、ボムは石壁金庫、雷は敵列の先に見える離れ島を短時間で攻略する",
+    "visibility": "入口では上層スターを隠し、門の窓から一度だけ見せ、選択広場で3方向を読み取れるようにする",
+    "combat": "雷の直線5連撃と同じ2.2間隔で敵を並べ、能力の強みを一度で理解できるようにする"
+  },
+  "operations": [
+    { "name": "Entrance", "chunk": "discovery_terrace", "position": [0.0, 0.0, 0.0] },
+    { "name": "SightGate", "chunk": "discovery_turn_wall", "position": [0.0, 0.4, 12.0] },
+    { "name": "ApproachBridge", "chunk": "discovery_bridge", "position": [5.0, 0.4, 24.0] },
+    { "name": "ChoiceCourtyard", "chunk": "discovery_terrace", "position": [5.0, 0.0, 38.0] },
+    { "name": "LaunchBridge", "chunk": "discovery_bridge", "position": [5.0, 0.4, 52.0] },
+    { "name": "LaunchTerrace", "chunk": "discovery_terrace", "position": [5.0, 0.0, 66.0] },
+    { "name": "LandingTerrace", "chunk": "discovery_terrace", "position": [5.0, 2.4, 118.0] },
+    { "name": "ThunderArena", "chunk": "discovery_terrace", "position": [5.0, 2.4, 146.0] },
+    { "name": "GoalBridge", "chunk": "discovery_bridge", "position": [5.0, 2.8, 160.0] },
+    { "name": "GoalTerrace", "chunk": "discovery_terrace", "position": [5.0, 2.4, 174.0] },
+    { "name": "WindGallery", "chunk": "discovery_gallery", "position": [-6.0, 5.2, 42.0] },
+    { "name": "WindStar", "chunk": "discovery_star", "position": [-6.0, 6.95, 45.0], "scale": [1.2, 1.2, 1.2], "allowOverlap": true },
+    { "name": "BombStar", "chunk": "discovery_star", "position": [32.5, 2.0, 38.0], "scale": [1.2, 1.2, 1.2], "allowOverlap": true },
+    { "name": "ThunderStar", "chunk": "discovery_star", "position": [28.0, 4.35, 146.0], "scale": [1.2, 1.2, 1.2], "allowOverlap": true }
+  ],
+  "mainPath": {
+    "start": "Entrance",
+    "goal": "GoalTerrace",
+    "links": [
+      { "from": "Entrance", "to": "SightGate", "maxGap": 2.0 },
+      { "from": "SightGate", "to": "ApproachBridge", "maxGap": 2.0 },
+      { "from": "ApproachBridge", "to": "ChoiceCourtyard", "maxGap": 2.0 },
+      { "from": "ChoiceCourtyard", "to": "LaunchBridge", "maxGap": 2.0 },
+      { "from": "LaunchBridge", "to": "LaunchTerrace", "maxGap": 2.0 },
+      { "from": "LaunchTerrace", "to": "LandingTerrace", "maxGap": 60.0 },
+      { "from": "LandingTerrace", "to": "ThunderArena", "maxGap": 32.0 },
+      { "from": "ThunderArena", "to": "GoalBridge", "maxGap": 2.0 },
+      { "from": "GoalBridge", "to": "GoalTerrace", "maxGap": 2.0 },
+      { "from": "ChoiceCourtyard", "to": "WindGallery", "ability": "WindSlime", "maxGap": 16.0 },
+      { "from": "WindGallery", "to": "WindStar", "maxGap": 4.0 },
+      { "from": "ChoiceCourtyard", "to": "BombStar", "ability": "Bomber", "maxGap": 36.0 },
+      { "from": "ThunderArena", "to": "ThunderStar", "ability": "ThunderSlime", "maxGap": 30.0 }
+    ]
+  },
+  "targets": [
+    { "operation": "WindStar", "ability": "WindSlime" },
+    { "operation": "BombStar", "ability": "Bomber" },
+    { "operation": "ThunderStar", "ability": "ThunderSlime" }
+  ],
+  "visibilityChecks": [
+    { "from": "Entrance", "fromOffset": [0.0, 2.2, 0.0], "target": "WindStar", "expected": "occluded" },
+    { "from": "SightGate", "fromOffset": [-2.5, 5.2, 0.0], "target": "WindStar", "expected": "visible" },
+    { "from": "ApproachBridge", "fromOffset": [0.0, 2.2, 0.0], "target": "WindStar", "expected": "occluded" }
+  ]
+}

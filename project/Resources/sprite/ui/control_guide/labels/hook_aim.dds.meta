@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b866b61bdb094da18205adfb9fb15377",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/hook_aim.dds",
+  "version": 1
+}

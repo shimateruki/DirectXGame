@@ -25,9 +25,11 @@ if (-not (Test-Path -LiteralPath $texconv)) {
 $labels = [ordered]@{
     "absorb" = "吸収"
     "throw" = "投げる"
+    "slime_attack" = "スライムアタック"
+    "hook_aim" = "フック照準"
     "slime_dive" = "スライムダイブ"
     "puni_straight" = "ぷにストレート"
-    "bounce_evade" = "バウンド回避"
+    "puni_guard" = "ぷにガード"
     "bomb_throw" = "ボムスロー"
     "bomb_place" = "ボム設置"
     "blast_jump" = "爆風ジャンプ"

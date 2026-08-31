@@ -46,8 +46,11 @@ struct AssetDatabaseRefreshResult {
     std::size_t assetCount = 0;
     std::size_t createdMetaCount = 0;
     std::size_t updatedMetaCount = 0;
+    std::size_t reusedAssetCount = 0;
+    std::size_t reparsedAssetCount = 0;
     std::size_t errorCount = 0;
     bool filesystemChanged = false;
+    bool loadedPersistentCache = false;
 };
 
 enum class DDSCacheBuildState {
@@ -77,6 +80,8 @@ public:
     std::size_t GetInitialDiscoveredAssetCount() const { return pendingSourcePaths_.size(); }
     std::size_t GetInitialIndexProgress() const { return pendingSourcePathIndex_; }
     std::size_t GetInitialIndexTotal() const { return pendingSourcePaths_.size(); }
+    std::size_t GetInitialReusedAssetCount() const { return pendingRefreshResult_.reusedAssetCount; }
+    std::size_t GetInitialReparsedAssetCount() const { return pendingRefreshResult_.reparsedAssetCount; }
     std::uint64_t GetGeneration() const { return generation_; }
     const std::string& GetResourcesRoot() const { return resourcesRootPath_; }
     const AssetDatabaseRefreshResult& GetLastRefreshResult() const { return lastRefreshResult_; }
@@ -121,6 +126,15 @@ private:
         EditorAssetRecord record;
     };
 
+    /// 起動をまたいで再利用するAsset情報と、変更検知に必要なファイル状態です。
+    struct PersistentAssetEntry {
+        EditorAssetRecord record;
+        std::uintmax_t metaFileSize = 0;
+        std::int64_t sourceWriteTimeTicks = 0;
+        std::int64_t metaWriteTimeTicks = 0;
+        bool metaExists = false;
+    };
+
     std::string NormalizeProjectPath(const std::filesystem::path& path) const;
     std::filesystem::path ResolveAbsolutePath(const std::string& projectPath) const;
     bool IsPathInsideResources(const std::filesystem::path& absolutePath) const;
@@ -130,6 +144,13 @@ private:
         bool createMissingMeta,
         std::unordered_map<std::string, std::string>& guidOwners);
     bool WriteMeta(const EditorAssetRecord& record, std::string* errorMessage = nullptr) const;
+    bool LoadPersistentIndexCache();
+    bool SavePersistentIndexCache();
+    bool TryReusePersistentAsset(
+        const std::filesystem::path& sourcePath,
+        std::unordered_map<std::string, std::string>& guidOwners,
+        EditorAssetRecord* reusedRecord);
+    void StorePendingPersistentAsset(const EditorAssetRecord& record);
     bool StartFilesystemWatcher();
     void StopFilesystemWatcher();
     void RestartFilesystemWatcher();
@@ -167,6 +188,10 @@ private:
     std::vector<std::filesystem::path> pendingSourcePaths_;
     std::size_t pendingSourcePathIndex_ = 0;
     std::unordered_map<std::string, std::string> pendingGuidOwners_;
+    std::unordered_map<std::string, PersistentAssetEntry> persistentAssetsByPath_;
+    std::unordered_map<std::string, PersistentAssetEntry> pendingPersistentAssetsByPath_;
+    bool persistentIndexCacheInitialized_ = false;
+    bool persistentIndexCacheAvailable_ = false;
     AssetDatabaseRefreshResult pendingRefreshResult_;
     std::vector<void*> changeNotificationHandles_;
     bool filesystemChangePending_ = false;

@@ -67,13 +67,23 @@ bool GimmickBreakableBlock::OnCollision(Object3d* other) {
     return BaseGimmick::OnCollision(other);
 }
 
-bool GimmickBreakableBlock::TryBreakByGiantRush(const Player* player) {
-    if (isBroken_ || !player || !player->IsGiantSlimeRushActive()) {
+bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
+    if (isBroken_ || !player || !param_.has_value()) {
         return false;
     }
 
-    // actionMode=6は大型スライム能力でのみ開くStage用の能力ゲートとして扱う。
-    if (!param_.has_value() || param_->actionMode != 6) {
+    const int actionMode = param_->actionMode;
+    if (actionMode == 7) {
+        if (!player->IsPinkBounceSlamImpactActive()) {
+            return false;
+        }
+    }
+    else if (actionMode == 6) {
+        if (!player->IsImpactBreakActive()) {
+            return false;
+        }
+    }
+    else {
         return false;
     }
 

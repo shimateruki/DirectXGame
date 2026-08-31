@@ -81,6 +81,16 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
         else if (type == "BlinkBlock") {
             changed |= DrawParamIntCombo(param, "色タイプ", "colorType", 0, { "青", "赤" });
         }
+        else if (type == "BreakableBlock") {
+            const int actionMode = param.value("actionMode", 0);
+            int condition = actionMode == 7 ? 2 : (actionMode == 6 ? 1 : 0);
+            if (ImGui::Combo("破壊条件", &condition,
+                "ボムのみ\0汎用衝撃攻撃\0ピンクのバウンド落下\0")) {
+                param["actionMode"] = condition == 2 ? 7 : (condition == 1 ? 6 : 0);
+                changed = true;
+            }
+            ImGui::TextDisabled("ピンク専用は通常攻撃や横突進では開きません。");
+        }
         else if (type == "Switch") {
             changed |= DrawParamIntCombo(param, "スイッチ方式", "switchMode", 0, { "押している間", "押すたび切替", "一定時間" });
             changed |= DrawParamFloat(param, "有効時間", "interval", 3.0f, 0.05f);
@@ -108,6 +118,14 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawParamFloat(param, "環境切替時間", "volumeBlendDuration", 0.75f, 0.05f);
             changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
             changed |= DrawParamBool(param, "退出時にOFFへ戻す", "returnOnOff", false);
+        }
+        else if (type == "CopyMemoryStation") {
+            changed |= DrawStringField(param, "左コア", "copyMemoryTypeA", "FireSlime");
+            changed |= DrawStringField(param, "中央コア", "copyMemoryTypeB", "ThunderSlime");
+            changed |= DrawStringField(param, "右コア", "copyMemoryTypeC", "WindSlime");
+            changed |= DrawParamFloat(param, "コア接触半径", "copyMemoryActivationRadius", 0.9f, 0.02f);
+            changed |= DrawParamBool(param, "時間制限なし", "copyMemoryUnlimitedDuration", true);
+            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
         }
         else if (type == "PrismBarrier") {
             changed |= DrawParamFloat(param, "展開・解除時間", "moveSpeed", 0.42f, 0.02f);
@@ -298,6 +316,26 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             param["startActive"] = true;
             param["returnOnOff"] = false;
             SetColliderDefaults(data, 3, { 1.0f, 1.0f, 1.0f });
+        }
+        else if (type == "CopyMemoryStation") {
+            data["modelName"] = "Gimmicks/copy_memory_station";
+            data["scale"] = { 1.0f, 1.0f, 1.0f };
+            data["materialType"] = 0;
+            data["emissive"] = 1.0f;
+            data["metallic"] = 0.18f;
+            data["roughness"] = 0.34f;
+            data["collisionAttribute"] = CollisionAttribute::kTrigger;
+            data["collisionMask"] = CollisionAttribute::kPlayer;
+            json& param = EnsureParam(data);
+            param["gimmickType"] = "CopyMemoryStation";
+            param["copyMemoryTypeA"] = "FireSlime";
+            param["copyMemoryTypeB"] = "ThunderSlime";
+            param["copyMemoryTypeC"] = "WindSlime";
+            param["copyMemoryActivationRadius"] = 0.9f;
+            param["copyMemoryUnlimitedDuration"] = true;
+            param["startActive"] = true;
+            SetColliderDefaults(data, 3, { 3.1f, 1.6f, 1.85f });
+            data["collider"]["center"] = { 0.0f, 0.95f, 0.0f };
         }
         else if (type == "PrismBarrier") {
             data["modelName"] = "Gimmicks/portal_surface";

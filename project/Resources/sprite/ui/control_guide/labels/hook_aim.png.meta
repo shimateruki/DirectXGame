@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "061c99771d1b4d94b062c8a95a0a7a49",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/hook_aim.png",
+  "version": 1
+}

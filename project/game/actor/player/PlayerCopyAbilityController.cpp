@@ -15,6 +15,7 @@
 #include "Player.h"
 #include "PlayerState.h"
 #include "SceneManager.h"
+#include "VFXSequencer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -148,7 +149,9 @@ public:
     virtual void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) = 0;
     virtual void Update(Player& player, float deltaTime) = 0;
     virtual void Cancel(Player& player) = 0;
-    virtual bool IsGiantRushActive() const { return false; }
+    virtual bool NotifyGuardedHit(Player&, const Vector3&) { return false; }
+    virtual bool CanBreakImpactGate() const { return false; }
+    virtual bool IsPinkBounceSlamImpactActive() const { return false; }
 
 protected:
     EnemyAttackProfile profile_;
@@ -165,8 +168,9 @@ public:
         }
         if (input.secondaryTriggered && player.IsGrounded() && guardCooldown_ <= 0.0f) {
             state_ = State::Guard;
-            guardTimer_ = 1.8f;
-            guardCooldown_ = 0.78f;
+            guardTimer_ = 1.25f;
+            guardHitMotionTimer_ = 0.0f;
+            effectTimer_ = 0.0f;
             direction_ = NormalizePlanar(player.GetForwardDirection());
             player.SetVelocity({ 0.0f, player.GetVelocity().y, 0.0f });
             player.SetIsControlActive(false);
@@ -178,21 +182,43 @@ public:
                 player.GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f });
             return;
         }
-        if (input.specialTriggered) {
-            BeginRush(player, 0.34f, 25.0f, false);
+        if (input.specialTriggered && player.IsGrounded() && bounceCooldown_ <= 0.0f) {
+            BeginBounceCharge(player);
             return;
         }
         if (input.primaryTriggered && straightCooldown_ <= 0.0f) {
-            BeginRush(player, player.IsGrounded() ? 0.28f : 0.55f, player.IsGrounded() ? 31.0f : 24.0f,
-                !player.IsGrounded());
+            // 左クリックは空中でも前方直進に統一し、Eの落下攻撃と役割を重ねません。
+            BeginRush(player, player.IsGrounded() ? 0.28f : 0.34f,
+                player.IsGrounded() ? 31.0f : 26.0f, false,
+                player.IsGrounded() ? 10.0f : 11.0f);
             straightCooldown_ = 0.62f;
         }
     }
 
     void Update(Player& player, float deltaTime) override {
         straightCooldown_ = std::max(0.0f, straightCooldown_ - deltaTime);
+        bounceCooldown_ = std::max(0.0f, bounceCooldown_ - deltaTime);
         guardCooldown_ = std::max(0.0f, guardCooldown_ - deltaTime);
+        guardImpactCooldown_ = std::max(0.0f, guardImpactCooldown_ - deltaTime);
+        const bool guardHitMotionWasActive = guardHitMotionTimer_ > 0.0f;
+        guardHitMotionTimer_ = std::max(0.0f, guardHitMotionTimer_ - deltaTime);
+        if (guardHitMotionWasActive && guardHitMotionTimer_ <= 0.0f && state_ == State::Guard) {
+            player.PlaySlimeAbilityMotion("player_ability_pink_guard", true,
+                1.0f, 0.035f, 0.08f);
+        }
         effectTimer_ -= deltaTime;
+        storedPowerEffectTimer_ -= deltaTime;
+
+        // ガード成功で蓄えた弾性を、次のE入力まで小さな脈動として見せます。
+        // UIを見なくても強化が残っていることをプレイヤー本体から読み取れます。
+        if (state_ == State::Idle && storedBouncePower_ > 0.0f && storedPowerEffectTimer_ <= 0.0f) {
+            const float effectScale = 0.56f + storedBouncePower_ * 0.34f;
+            SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+                player.GetWorldPosition() + Vector3{ 0.0f, 0.62f, 0.0f }, {},
+                { effectScale, effectScale, effectScale });
+            storedPowerEffectTimer_ = 0.32f;
+        }
+
         if (state_ == State::Guard) {
             guardTimer_ = std::max(0.0f, guardTimer_ - deltaTime);
             if (!guardHeld_ || guardTimer_ <= 0.0f || !player.IsGrounded()) {
@@ -212,6 +238,97 @@ public:
             }
             return;
         }
+
+        if (state_ == State::BounceCharge) {
+            timer_ = std::max(0.0f, timer_ - deltaTime);
+            player.SetVelocity({ 0.0f, std::min(player.GetVelocity().y, 0.0f), 0.0f });
+            player.SetIsControlActive(false);
+            player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+            if (effectTimer_ <= 0.0f) {
+                const float pulseScale = 0.72f + activeBouncePower_ * 0.28f;
+                SpawnEffect("Resources/json/effect/effect_pink_slime_charge_pulse_ring.json",
+                    player.GetWorldPosition() + Vector3{ 0.0f, 0.12f, 0.0f }, {},
+                    { pulseScale, pulseScale, pulseScale });
+                effectTimer_ = 0.065f;
+            }
+            if (timer_ <= 0.0f) {
+                LaunchBounceSlam(player);
+            }
+            return;
+        }
+
+        if (state_ == State::BounceRise) {
+            timer_ = std::max(0.0f, timer_ - deltaTime);
+            Vector3 velocity = player.GetVelocity();
+            const float riseForwardSpeed = 6.2f + activeBouncePower_ * 1.4f;
+            velocity.x = direction_.x * riseForwardSpeed;
+            velocity.z = direction_.z * riseForwardSpeed;
+            player.SetVelocity(velocity);
+            player.SetIsControlActive(false);
+            player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+            player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, direction_);
+
+            if (timer_ <= 0.0f || velocity.y <= 3.5f) {
+                state_ = State::BounceFall;
+                duration_ = 1.25f;
+                timer_ = duration_;
+                velocity.y = std::min(velocity.y, -5.5f);
+                player.SetVelocity(velocity);
+                player.TriggerSlimeImpulse({ 1.30f, 0.54f, 1.30f }, 0.12f);
+                player.PlaySlimeAbilityMotion("player_ability_pink_bounce_fall", true,
+                    1.0f, 0.025f, 0.055f);
+                SpawnEffect("Resources/json/effect/effect_pink_slime_apex_focus_flash.json",
+                    player.GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f }, {},
+                    { 0.72f, 0.72f, 0.72f });
+                effectTimer_ = 0.0f;
+            }
+            return;
+        }
+
+        if (state_ == State::BounceFall) {
+            timer_ = std::max(0.0f, timer_ - deltaTime);
+            Vector3 velocity = player.GetVelocity();
+            const float fallForwardSpeed = 3.8f + activeBouncePower_ * 1.0f;
+            velocity.x = direction_.x * fallForwardSpeed;
+            velocity.z = direction_.z * fallForwardSpeed;
+            const float fallAcceleration = 68.0f + activeBouncePower_ * 12.0f;
+            const float terminalSpeed = 34.0f + activeBouncePower_ * 6.0f;
+            velocity.y = std::max(velocity.y - fallAcceleration * deltaTime, -terminalSpeed);
+            player.SetVelocity(velocity);
+            player.SetIsControlActive(false);
+            player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+            player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, direction_);
+
+            if (effectTimer_ <= 0.0f) {
+                const Vector3 trailPosition = player.GetWorldPosition() - direction_ * 0.28f +
+                    Vector3{ 0.0f, 0.82f, 0.0f };
+                SpawnEffect("Resources/json/effect/effect_pink_slime_dive_streak.json",
+                    trailPosition, { 0.0f, std::atan2(direction_.x, direction_.z), 0.0f },
+                    { 0.78f, 0.92f, 0.78f });
+                EmitDirectedPreset("player_pink_bounce_droplets", trailPosition,
+                    Vector3{ 0.0f, 1.0f, 0.0f }, 0.68f);
+                effectTimer_ = 0.075f;
+            }
+
+            const float fallProgress = 1.0f - timer_ / std::max(duration_, 0.001f);
+            if (player.IsGrounded() && fallProgress > 0.06f) {
+                LandBounceSlam(player);
+            }
+            else if (timer_ <= 0.0f) {
+                // 地面へ届かなかった場合は空中で衝撃を発生させず、操作だけ安全に返します。
+                Finish(player);
+            }
+            return;
+        }
+
+        if (state_ == State::BounceRecovery) {
+            timer_ = std::max(0.0f, timer_ - deltaTime);
+            if (timer_ <= 0.0f) {
+                Finish(player);
+            }
+            return;
+        }
+
         if (state_ != State::Rush) {
             return;
         }
@@ -248,19 +365,51 @@ public:
 
     void Cancel(Player& player) override {
         player.ClearSlimeAbilityMotion();
+        storedBouncePower_ = 0.0f;
+        activeBouncePower_ = 0.0f;
+        guardHitMotionTimer_ = 0.0f;
         Finish(player);
     }
 
 private:
-    enum class State { Idle, Rush, Guard };
+    enum class State { Idle, Rush, Guard, BounceCharge, BounceRise, BounceFall, BounceRecovery };
 
-    void BeginRush(Player& player, float duration, float speed, bool diving) {
+public:
+    bool CanBreakImpactGate() const override {
+        return state_ == State::Rush || state_ == State::BounceFall;
+    }
+
+    bool IsPinkBounceSlamImpactActive() const override {
+        return state_ == State::BounceFall;
+    }
+
+    bool NotifyGuardedHit(Player& player, const Vector3& sourcePosition) override {
+        if (state_ != State::Guard || guardImpactCooldown_ > 0.0f) {
+            return false;
+        }
+
+        guardImpactCooldown_ = 0.22f;
+        guardHitMotionTimer_ = 0.24f;
+        storedBouncePower_ = std::min(1.0f, storedBouncePower_ + 0.36f);
+        direction_ = NormalizePlanar(player.GetWorldPosition() - sourcePosition);
+        player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+        player.PlaySlimeAbilityMotion("player_ability_pink_guard_hit", false,
+            1.0f, 0.015f, 0.045f);
+        player.TriggerSlimeImpulse({ 3.05f, 0.86f, 2.78f }, 0.13f);
+        VFXSequencer::PlayOneShot("player_pink_guard_hit_cue",
+            player.GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f });
+        return true;
+    }
+
+private:
+    void BeginRush(Player& player, float duration, float speed, bool diving, float damage) {
         state_ = State::Rush;
         duration_ = duration;
         timer_ = duration;
         startSpeed_ = speed;
         direction_ = NormalizePlanar(player.GetForwardDirection());
         diving_ = diving;
+        rushDamage_ = damage;
         effectTimer_ = 0.0f;
         hitTargets_.clear();
         player.SetIsControlActive(false);
@@ -273,6 +422,74 @@ private:
         player.TriggerSlimeImpulse({ 1.18f, 2.4f, 1.88f }, 0.15f);
     }
 
+    void BeginBounceCharge(Player& player) {
+        state_ = State::BounceCharge;
+        direction_ = NormalizePlanar(player.GetForwardDirection());
+        duration_ = 0.18f;
+        timer_ = duration_;
+        effectTimer_ = 0.0f;
+        activeBouncePower_ = storedBouncePower_;
+        storedBouncePower_ = 0.0f;
+        storedPowerEffectTimer_ = 0.0f;
+        hitTargets_.clear();
+        player.SetIsControlActive(false);
+        player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+        player.SetVelocity({ 0.0f, std::min(player.GetVelocity().y, 0.0f), 0.0f });
+        player.PlaySlimeAbilityMotion("player_ability_pink_bounce_charge", false,
+            1.0f, 0.015f, 0.035f);
+        player.TriggerSlimeImpulse({ 2.82f, 0.74f, 2.82f }, 0.11f);
+        bounceCooldown_ = 1.15f;
+    }
+
+    void LaunchBounceSlam(Player& player) {
+        state_ = State::BounceRise;
+        duration_ = 0.40f;
+        timer_ = duration_;
+        effectTimer_ = 0.0f;
+        player.SetIsControlActive(false);
+        player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+        const float launchForwardSpeed = 6.2f + activeBouncePower_ * 1.4f;
+        const float launchVerticalSpeed = 21.5f + activeBouncePower_ * 4.5f;
+        player.SetVelocity({ direction_.x * launchForwardSpeed,
+            std::max(player.GetVelocity().y, launchVerticalSpeed),
+            direction_.z * launchForwardSpeed });
+        player.StartEvasionInvincibility(0.42f);
+        player.PlaySlimeAbilityMotion("player_ability_pink_bounce_rise", false,
+            1.0f, 0.018f, 0.045f);
+        player.TriggerSlimeImpulse({ 0.72f, 1.70f, 0.72f }, 0.16f);
+        SpawnEffect("Resources/json/effect/effect_player_pink_bounce_launch.json",
+            player.GetWorldPosition() + Vector3{ 0.0f, 0.08f, 0.0f }, {},
+            { 1.0f + activeBouncePower_ * 0.24f,
+              1.0f + activeBouncePower_ * 0.24f,
+              1.0f + activeBouncePower_ * 0.24f });
+        EmitDirectedPreset("player_pink_bounce_droplets",
+            player.GetWorldPosition() + Vector3{ 0.0f, 0.15f, 0.0f },
+            { 0.0f, -1.0f, 0.0f }, 0.78f + activeBouncePower_ * 0.28f);
+    }
+
+    void LandBounceSlam(Player& player) {
+        const Vector3 center = player.GetWorldPosition() + Vector3{ 0.0f, 0.24f, 0.0f };
+        const float radius = 3.25f + activeBouncePower_ * 1.15f;
+        const float damage = 14.0f + activeBouncePower_ * 8.0f;
+        DamageSphere(player, center, radius, damage, DamageType::Physical,
+            12.0f + activeBouncePower_ * 4.0f, 9.0f + activeBouncePower_ * 3.0f);
+        VFXSequencer::PlayOneShot("player_pink_bounce_slam_cue", center);
+        if (activeBouncePower_ >= 0.35f) {
+            SpawnEffect("Resources/json/effect/effect_pink_slime_landing_burst_ring.json",
+                center, {},
+                { 1.0f + activeBouncePower_ * 0.42f,
+                  1.0f + activeBouncePower_ * 0.42f,
+                  1.0f + activeBouncePower_ * 0.42f });
+        }
+        player.PlaySlimeAbilityMotion("player_ability_pink_bounce_land", false,
+            1.0f, 0.012f, 0.055f);
+        player.TriggerSlimeImpulse({ 3.18f, 0.42f, 3.18f }, 0.16f);
+        player.SetVelocity({ direction_.x * 1.8f,
+            4.2f + activeBouncePower_ * 1.8f, direction_.z * 1.8f });
+        state_ = State::BounceRecovery;
+        timer_ = 0.34f;
+    }
+
     void DamageRush(Player& player) {
         PhysicsQueryFilter filter;
         filter.mask = kEnemy;
@@ -283,14 +500,20 @@ private:
             if (!target || !hitTargets_.insert(target).second) {
                 continue;
             }
-            DamageEnemy(player, target, 1.0f, DamageType::Physical,
+            DamageEnemy(player, target, rushDamage_, DamageType::Physical,
                 { direction_.x * 12.0f, 5.5f, direction_.z * 12.0f });
+            SpawnEffect("Resources/json/effect/effect_player_pink_straight_impact.json",
+                target->GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
         }
     }
 
     void Finish(Player& player) {
         if (state_ == State::Idle) {
             return;
+        }
+        if (state_ == State::Guard) {
+            // 防御中に再使用待ちを消化させず、解除後に必ず隙を作ります。
+            guardCooldown_ = std::max(guardCooldown_, 0.82f);
         }
         player.SetGuardInvincible(false);
         player.SetDashInvincible(false);
@@ -304,6 +527,9 @@ private:
         state_ = State::Idle;
         timer_ = 0.0f;
         guardTimer_ = 0.0f;
+        guardHitMotionTimer_ = 0.0f;
+        activeBouncePower_ = 0.0f;
+        diving_ = false;
         hitTargets_.clear();
     }
 
@@ -315,8 +541,15 @@ private:
     float startSpeed_ = 0.0f;
     float effectTimer_ = 0.0f;
     float straightCooldown_ = 0.0f;
+    float bounceCooldown_ = 0.0f;
     float guardCooldown_ = 0.0f;
     float guardTimer_ = 0.0f;
+    float guardImpactCooldown_ = 0.0f;
+    float guardHitMotionTimer_ = 0.0f;
+    float storedPowerEffectTimer_ = 0.0f;
+    float storedBouncePower_ = 0.0f;
+    float activeBouncePower_ = 0.0f;
+    float rushDamage_ = 10.0f;
     bool guardHeld_ = false;
     bool diving_ = false;
 };
@@ -342,9 +575,6 @@ public:
         else if (input.specialTriggered && fireballCooldown_ <= 0.0f && !dashActive_) {
             Fireball(player);
         }
-        if (primaryHeld_ && !dashActive_) {
-            breathTimer_ = std::max(breathTimer_, 0.12f);
-        }
     }
 
     void Update(Player& player, float deltaTime) override {
@@ -353,17 +583,23 @@ public:
         breathDamageTimer_ -= deltaTime;
         breathEffectTimer_ -= deltaTime;
         dashEffectTimer_ -= deltaTime;
+        dashGroundWakeTimer_ -= deltaTime;
+        actionMotionTimer_ = std::max(0.0f, actionMotionTimer_ - deltaTime);
         if (dashActive_) {
             UpdateDash(player, deltaTime);
             return;
         }
-        if (!primaryHeld_) {
-            breathTimer_ = 0.0f;
-            player.StopSlimeAbilityMotion(0.08f);
+        if (actionMotionTimer_ > 0.0f) {
             return;
         }
-        player.PlaySlimeAbilityMotion("player_ability_fire_breath", true, 1.0f, 0.05f, 0.08f);
-        breathTimer_ = std::max(0.0f, breathTimer_ - deltaTime);
+        if (!primaryHeld_) {
+            StopBreathMotion(player);
+            return;
+        }
+        if (!breathMotionActive_) {
+            breathMotionActive_ = player.PlaySlimeAbilityMotion(
+                "player_ability_fire_breath", true, 1.0f, 0.05f, 0.08f);
+        }
         const Vector3 direction = NormalizePlanar(player.GetForwardDirection());
         const Vector3 origin = player.GetWorldPosition() + Vector3{ 0.0f, 0.78f, 0.0f };
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction);
@@ -383,15 +619,19 @@ public:
         player.ClearSlimeAbilityMotion();
         dashActive_ = false;
         primaryHeld_ = false;
-        breathTimer_ = 0.0f;
+        breathMotionActive_ = false;
         breathDamageTimer_ = 0.0f;
         breathEffectTimer_ = 0.0f;
         dashTimer_ = 0.0f;
         dashEffectTimer_ = 0.0f;
+        dashGroundWakeTimer_ = 0.0f;
+        actionMotionTimer_ = 0.0f;
         hitTargets_.clear();
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
         player.SetIsControlActive(true);
     }
+
+    bool CanBreakImpactGate() const override { return dashActive_; }
 
 private:
     void Fireball(Player& player) {
@@ -406,9 +646,11 @@ private:
         const float speed = attack.maxSpeed > 0.0f ? attack.maxSpeed : 31.0f;
         BulletManager::GetInstance()->Fire(position, direction * speed + Vector3{ 0.0f, 1.4f, 0.0f },
             kPlayerAttack, kEnemy | kAllSolid, "Primitives/sphere", 0.52f,
-            attack.lifetime > 0.0f ? attack.lifetime : 2.2f, MakeFireVisual(), attack.damage,
+            attack.lifetime > 0.0f ? attack.lifetime : 2.2f, MakeFireVisual(), std::max(attack.damage, 14.0f),
             MakeBurnStatus(attack), DamageType::Fire);
+        StopBreathMotion(player);
         player.PlaySlimeAbilityMotion("player_ability_fireball", false, 1.0f, 0.035f, 0.08f);
+        actionMotionTimer_ = 0.58f;
         EmitPreset(attack.activeVfx.empty() ? "fire_slime_cast" : attack.activeVfx.c_str(), position);
         fireballCooldown_ = 0.58f;
     }
@@ -416,12 +658,15 @@ private:
     void BeginDash(Player& player) {
         // 前回の突進が異常終了していても、新しい炎を重ねる前に必ず回収します。
         StopDashEffects();
+        StopBreathMotion(player);
         dashDirection_ = NormalizePlanar(player.GetForwardDirection());
         player.PlaySlimeAbilityMotion("player_ability_fire_dash", false, 1.0f, 0.025f, 0.055f);
         dashActive_ = true;
         dashTimer_ = 0.44f;
         dashCooldown_ = 1.05f;
         dashEffectTimer_ = 0.0f;
+        dashGroundWakeTimer_ = 0.0f;
+        actionMotionTimer_ = 0.0f;
         hitTargets_.clear();
         const Vector3 position = player.GetWorldPosition();
         SpawnScopedEffect(effectScope_, "Resources/json/effect/effect_player_fire_blaze_burst.json",
@@ -432,7 +677,8 @@ private:
         EmitPreset("player_fire_blaze_burst", position + Vector3{ 0.0f, 0.42f, 0.0f });
         player.SetVelocity({ dashDirection_.x * 38.0f, std::max(player.GetVelocity().y, 0.0f), dashDirection_.z * 38.0f });
         player.SetMoveYaw(std::atan2(dashDirection_.x, dashDirection_.z));
-        player.StartEvasionInvincibility(0.32f);
+        player.SetIsControlActive(false);
+        player.StartEvasionInvincibility(0.50f);
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::BlazeDash);
         player.TriggerSlimeImpulse({ 1.08f, 1.16f, 3.62f }, 0.17f);
     }
@@ -446,6 +692,7 @@ private:
         velocity.z = dashDirection_.z * speed;
         if (player.IsGrounded() && velocity.y < 0.0f) velocity.y = 0.0f;
         player.SetVelocity(velocity);
+        player.SetIsControlActive(false);
         player.SetMoveYaw(std::atan2(dashDirection_.x, dashDirection_.z));
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, dashDirection_);
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::BlazeDash);
@@ -459,10 +706,21 @@ private:
             EmitDirectedPreset("player_fire_blaze_trail", trail, dashDirection_ * -1.0f, 0.85f);
             dashEffectTimer_ = 0.055f;
         }
+        if (player.IsGrounded() && dashGroundWakeTimer_ <= 0.0f) {
+            const Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f +
+                Vector3{ 0.0f, 0.04f, 0.0f };
+            SpawnScopedEffect(effectScope_,
+                "Resources/json/effect/effect_player_fire_blaze_ground_wake.json", wake,
+                { 0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f },
+                { 0.92f, 0.92f, 1.16f });
+            dashGroundWakeTimer_ = 0.10f;
+        }
         if (dashTimer_ <= 0.0f) {
             StopDashEffects();
             dashActive_ = false;
             player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
+            player.StopSlimeAbilityMotion(0.055f);
+            player.SetIsControlActive(true);
             velocity.x *= 0.30f;
             velocity.z *= 0.30f;
             player.SetVelocity(velocity);
@@ -477,6 +735,14 @@ private:
         }
     }
 
+    void StopBreathMotion(Player& player) {
+        if (!breathMotionActive_) {
+            return;
+        }
+        player.StopSlimeAbilityMotion(0.08f);
+        breathMotionActive_ = false;
+    }
+
     void DamageDash(Player& player) {
         PhysicsQueryFilter filter;
         filter.mask = kEnemy;
@@ -487,8 +753,10 @@ private:
             if (!target || !hitTargets_.insert(target).second) continue;
             EnemyAttackDefinition fallback;
             const EnemyAttackDefinition& attack = FindAttackOrFallback(profile_, "flame_breath", fallback);
-            DamageEnemy(player, target, 1.25f, DamageType::Fire,
+            DamageEnemy(player, target, 12.0f, DamageType::Fire,
                 { dashDirection_.x * 11.0f, 5.5f, dashDirection_.z * 11.0f }, MakeBurnStatus(attack));
+            VFXSequencer::PlayOneShot("player_fire_dash_hit_cue",
+                target->GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f });
         }
     }
 
@@ -507,7 +775,7 @@ private:
             std::max(attack.radius, 1.0f), filter)) {
             Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !damaged.insert(target).second) continue;
-            DamageEnemy(player, target, attack.damage, DamageType::Fire,
+            DamageEnemy(player, target, std::max(attack.damage, 2.5f), DamageType::Fire,
                 { direction.x * 5.0f, 2.5f, direction.z * 5.0f }, MakeBurnStatus(attack));
         }
     }
@@ -518,12 +786,14 @@ private:
     float dashCooldown_ = 0.0f;
     float dashTimer_ = 0.0f;
     float dashEffectTimer_ = 0.0f;
-    float breathTimer_ = 0.0f;
     float breathDamageTimer_ = 0.0f;
     float breathEffectTimer_ = 0.0f;
+    float dashGroundWakeTimer_ = 0.0f;
+    float actionMotionTimer_ = 0.0f;
     MeshEffectManager::EffectScopeId effectScope_ = MeshEffectManager::kInvalidEffectScope;
     bool dashActive_ = false;
     bool primaryHeld_ = false;
+    bool breathMotionActive_ = false;
 };
 
 class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
@@ -562,7 +832,7 @@ public:
                 const Vector3 center = player.GetWorldPosition() + Vector3{ 0.0f, 0.45f, 0.0f };
                 SpawnEffect("Resources/json/effect/effect_player_thunder_discharge_burst.json", center);
                 EmitPreset("player_thunder_discharge_burst", center);
-                DamageSphere(player, center, 4.6f, 1.0f, DamageType::Electric, 10.0f, 6.5f);
+                DamageSphere(player, center, 4.6f, 14.0f, DamageType::Electric, 10.0f, 6.5f);
                 player.TriggerSlimeImpulse({ 2.4f, 0.68f, 2.4f }, 0.16f);
             }
         }
@@ -597,7 +867,7 @@ private:
             ground + Vector3{ 0.0f, 1.1f, 0.0f }, 1.45f, filter)) {
             Object3d* target = FindEnemyRoot(hit.object);
             if (!target || !lineHitTargets_.insert(target).second) continue;
-            DamageEnemy(player, target, 1.0f, DamageType::Electric,
+            DamageEnemy(player, target, 10.0f, DamageType::Electric,
                 { lineDirection_.x * 6.5f, 7.0f, lineDirection_.z * 6.5f });
         }
     }
@@ -621,7 +891,7 @@ private:
         player.StartEvasionInvincibility(0.24f);
         player.TriggerSlimeImpulse({ 1.95f, 0.68f, 1.95f }, 0.13f);
         DamageSphere(player, destination + Vector3{ 0.0f, 0.55f, 0.0f }, 2.25f,
-            0.65f, DamageType::Electric, 9.0f, 5.0f);
+            5.0f, DamageType::Electric, 9.0f, 5.0f);
         evadeCooldown_ = 0.85f;
     }
 
@@ -641,10 +911,10 @@ public:
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
         primaryHeld_ = input.primaryHeld;
-        if (input.secondaryTriggered && !soarActive_ && soarCooldown_ <= 0.0f) {
+        if (input.secondaryTriggered && player.IsGrounded() && !soarActive_ && soarCooldown_ <= 0.0f) {
             BeginSoar(player);
         }
-        else if (input.specialTriggered && updraftCooldown_ <= 0.0f) {
+        else if (input.specialTriggered && !updraftConsumed_ && updraftCooldown_ <= 0.0f) {
             Updraft(player);
         }
     }
@@ -654,35 +924,50 @@ public:
         soarCooldown_ = std::max(0.0f, soarCooldown_ - deltaTime);
         effectTimer_ -= deltaTime;
         pushTimer_ -= deltaTime;
+        actionMotionTimer_ = std::max(0.0f, actionMotionTimer_ - deltaTime);
+        if (!soarActive_ && player.IsGrounded() && player.GetVelocity().y <= 0.1f) {
+            updraftConsumed_ = false;
+        }
         if (soarActive_) {
-            soarTimer_ = std::max(0.0f, soarTimer_ - deltaTime);
             Vector3 velocity = player.GetVelocity();
             if (velocity.y < 0.0f) {
                 if (!descending_) {
                     player.PlaySlimeAbilityMotion("player_ability_wind_slow_fall", true, 1.0f, 0.10f, 0.10f);
+                    const Vector3 transition = player.GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
+                    SpawnEffect("Resources/json/effect/effect_player_wind_slow_fall.json", transition);
+                    EmitDirectedPreset("player_wind_dash", transition, Vector3{ 0.0f, 1.0f, 0.0f }, 0.92f);
+                    player.TriggerSlimeImpulse({ 2.24f, 0.72f, 2.24f }, 0.12f);
+                    effectTimer_ = 0.11f;
                 }
                 descending_ = true;
                 velocity.y = std::max(velocity.y, -5.2f);
                 player.SetVelocity(velocity);
                 player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::SlowFall);
+                if (effectTimer_ <= 0.0f) {
+                    const Vector3 position = player.GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
+                    SpawnEffect("Resources/json/effect/effect_player_wind_slow_fall.json", position);
+                    EmitDirectedPreset("player_wind_dash", position, Vector3{ 0.0f, 1.0f, 0.0f }, 0.78f);
+                    effectTimer_ = 0.11f;
+                }
             }
             player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, soarDirection_);
-            if (effectTimer_ <= 0.0f) {
-                const Vector3 position = player.GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
-                SpawnEffect("Resources/json/effect/effect_player_wind_slow_fall.json", position);
-                EmitDirectedPreset("player_wind_dash", position, descending_ ? Vector3{ 0.0f, 1.0f, 0.0f } : Vector3{ 0.0f, -1.0f, 0.0f });
-                effectTimer_ = 0.065f;
-            }
-            if (soarTimer_ <= 0.0f || (descending_ && player.IsGrounded())) {
+            // 落下速度低下は時間切れで空中解除せず、着地するまで維持します。
+            if (descending_ && player.IsGrounded()) {
                 FinishSoar(player);
             }
             return;
         }
-        if (!primaryHeld_) {
-            player.StopSlimeAbilityMotion(0.08f);
+        if (actionMotionTimer_ > 0.0f) {
             return;
         }
-        player.PlaySlimeAbilityMotion("player_ability_wind_breath", true, 1.0f, 0.05f, 0.08f);
+        if (!primaryHeld_) {
+            StopBreathMotion(player);
+            return;
+        }
+        if (!breathMotionActive_) {
+            breathMotionActive_ = player.PlaySlimeAbilityMotion(
+                "player_ability_wind_breath", true, 1.0f, 0.05f, 0.08f);
+        }
         const Vector3 direction = NormalizePlanar(player.GetForwardDirection());
         const Vector3 origin = player.GetWorldPosition() + Vector3{ 0.0f, 0.74f, 0.0f };
         if (effectTimer_ <= 0.0f) {
@@ -698,13 +983,17 @@ public:
     void Cancel(Player& player) override {
         player.ClearSlimeAbilityMotion();
         primaryHeld_ = false;
+        breathMotionActive_ = false;
         soarActive_ = false;
         descending_ = false;
+        updraftConsumed_ = false;
+        actionMotionTimer_ = 0.0f;
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
     }
 
 private:
     void Updraft(Player& player) {
+        StopBreathMotion(player);
         Vector3 velocity = player.GetVelocity();
         velocity.y = std::max(velocity.y, 18.0f);
         player.SetVelocity(velocity);
@@ -713,19 +1002,22 @@ private:
         player.TriggerSlimeImpulse({ 0.74f, 1.62f, 0.74f }, 0.22f);
         const Vector3 center = player.GetWorldPosition();
         SpawnEffect("Resources/json/effect/effect_player_wind_updraft_spiral.json", center + Vector3{ 0.0f, 1.72f, 0.0f });
+        SpawnEffect("Resources/json/effect/effect_player_wind_updraft_spiral_counter.json", center + Vector3{ 0.0f, 1.18f, 0.0f });
         EmitPreset("player_wind_updraft", center);
-        DamageSphere(player, center + Vector3{ 0.0f, 1.0f, 0.0f }, 4.2f, 0.0f, DamageType::Physical, 5.0f, 16.5f);
+        DamageSphere(player, center + Vector3{ 0.0f, 1.0f, 0.0f }, 4.2f, 10.0f, DamageType::Physical, 5.0f, 16.5f);
+        actionMotionTimer_ = 0.52f;
+        updraftConsumed_ = true;
         updraftCooldown_ = 1.0f;
     }
 
     void BeginSoar(Player& player) {
+        StopBreathMotion(player);
         soarDirection_ = NormalizePlanar(player.GetVelocity());
         if (std::abs(player.GetVelocity().x) + std::abs(player.GetVelocity().z) < 1.2f) {
             soarDirection_ = NormalizePlanar(player.GetForwardDirection());
         }
         soarActive_ = true;
         descending_ = false;
-        soarTimer_ = 3.2f;
         soarCooldown_ = 1.15f;
         effectTimer_ = 0.0f;
         player.SetVelocity({ soarDirection_.x * 9.0f, std::max(player.GetVelocity().y, 19.5f), soarDirection_.z * 9.0f });
@@ -743,8 +1035,17 @@ private:
         descending_ = false;
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);
         player.PlaySlimeAbilityMotion("player_ability_wind_land", false, 1.0f, 0.02f, 0.07f);
-        SpawnEffect("Resources/json/effect/effect_player_wind_soar_land.json", player.GetWorldPosition());
+        actionMotionTimer_ = 0.36f;
+        VFXSequencer::PlayOneShot("player_wind_soar_land_cue", player.GetWorldPosition());
         player.TriggerSlimeImpulse({ 2.68f, 1.26f, 2.68f }, 0.15f);
+    }
+
+    void StopBreathMotion(Player& player) {
+        if (!breathMotionActive_) {
+            return;
+        }
+        player.StopSlimeAbilityMotion(0.08f);
+        breathMotionActive_ = false;
     }
 
     void PushCone(Player& player, const Vector3& origin, const Vector3& direction) {
@@ -760,20 +1061,24 @@ private:
             if (distance <= 0.001f || distance > 8.5f) continue;
             const Vector3 targetDirection = NormalizePlanar(toTarget);
             if (Math::Dot(direction, targetDirection) < 0.20f) continue;
+            DamageEnemy(player, enemy, 3.0f, DamageType::Physical,
+                { direction.x * 8.0f, 3.0f, direction.z * 8.0f });
             enemy->ApplyExternalImpulse({ direction.x * 24.0f, 7.0f, direction.z * 24.0f }, 0.24f);
-            EmitDirectedPreset("wind_slime_impact", enemy->GetWorldPosition(), direction, 1.0f);
+            EmitDirectedPreset("wind_slime_gust_impact", enemy->GetWorldPosition(), direction, 1.0f);
         }
     }
 
     Vector3 soarDirection_{ 0.0f, 0.0f, 1.0f };
     float updraftCooldown_ = 0.0f;
     float soarCooldown_ = 0.0f;
-    float soarTimer_ = 0.0f;
     float effectTimer_ = 0.0f;
     float pushTimer_ = 0.0f;
+    float actionMotionTimer_ = 0.0f;
     bool primaryHeld_ = false;
+    bool breathMotionActive_ = false;
     bool soarActive_ = false;
     bool descending_ = false;
+    bool updraftConsumed_ = false;
 };
 
 class BomberCopyAbility final : public ICopyAbilitySession {
@@ -848,7 +1153,7 @@ private:
         player.SetMoveYaw(std::atan2(blastDirection_.x, blastDirection_.z));
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Jump, blastDirection_);
         player.TriggerSlimeImpulse({ 2.55f, 0.62f, 2.55f }, 0.17f);
-        DamageSphere(player, center + Vector3{ 0.0f, 0.58f, 0.0f }, 3.2f, 1.0f, DamageType::Explosion, 13.0f, 9.5f);
+        DamageSphere(player, center + Vector3{ 0.0f, 0.58f, 0.0f }, 3.2f, 8.0f, DamageType::Explosion, 13.0f, 9.5f);
         SpawnEffect("Resources/json/effect/effect_player_bomb_blast_jump.json", center);
         EmitPreset("player_bomb_blast_jump", center);
         blastCooldown_ = 1.10f;
@@ -864,89 +1169,6 @@ private:
     float trailTimer_ = 0.0f;
     float blastElapsed_ = 0.0f;
     bool blastActive_ = false;
-};
-
-class GiantSlimeCopyAbility final : public ICopyAbilitySession {
-public:
-    using ICopyAbilitySession::ICopyAbilitySession;
-
-    void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
-        if (!input.secondaryTriggered || active_ || cooldown_ > 0.0f) return;
-        direction_ = NormalizePlanar(player.GetForwardDirection());
-        active_ = true;
-        timer_ = 0.46f;
-        cooldown_ = 1.25f;
-        effectTimer_ = 0.0f;
-        hitTargets_.clear();
-        player.SetIsControlActive(false);
-        player.SetDashInvincible(true);
-        player.StartEvasionInvincibility(0.54f);
-        player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
-        player.SetVelocity({ direction_.x * 24.0f, std::max(player.GetVelocity().y, 0.0f), direction_.z * 24.0f });
-        player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
-        player.PlaySlimeAbilityMotion("player_ability_giant_rush", false, 1.0f, 0.025f, 0.06f);
-        player.TriggerSlimeImpulse({ 1.16f, 1.34f, 3.85f }, 0.17f);
-        SpawnEffect("Resources/json/effect/effect_player_giant_rush_launch.json", player.GetWorldPosition());
-    }
-
-    void Update(Player& player, float deltaTime) override {
-        cooldown_ = std::max(0.0f, cooldown_ - deltaTime);
-        if (!active_) return;
-        timer_ = std::max(0.0f, timer_ - deltaTime);
-        effectTimer_ -= deltaTime;
-        const float progress = 1.0f - timer_ / 0.46f;
-        const float speed = 24.0f * (1.0f - SmoothStep(progress) * 0.58f);
-        Vector3 velocity = player.GetVelocity();
-        velocity.x = direction_.x * speed;
-        velocity.z = direction_.z * speed;
-        player.SetVelocity(velocity);
-        player.SetIsControlActive(false);
-        player.SetDashInvincible(true);
-        player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
-        PhysicsQueryFilter filter;
-        filter.mask = kEnemy;
-        filter.ignoredObject = &player;
-        for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(
-            player.GetWorldPosition() + Vector3{ 0.0f, 0.75f, 0.0f }, 1.55f, filter)) {
-            Object3d* target = FindEnemyRoot(hit.object);
-            if (!target || !hitTargets_.insert(target).second) continue;
-            DamageEnemy(player, target, 1.5f, DamageType::Physical,
-                { direction_.x * 15.0f, 7.0f, direction_.z * 15.0f });
-        }
-        if (effectTimer_ <= 0.0f) {
-            SpawnEffect("Resources/json/effect/effect_player_giant_rush_trail.json",
-                player.GetWorldPosition() - direction_ * 0.75f + Vector3{ 0.0f, 0.25f, 0.0f });
-            effectTimer_ = 0.065f;
-        }
-        if (timer_ <= 0.0f) Finish(player);
-    }
-
-    void Cancel(Player& player) override {
-        player.ClearSlimeAbilityMotion();
-        Finish(player);
-    }
-    bool IsGiantRushActive() const override { return active_; }
-
-private:
-    void Finish(Player& player) {
-        if (!active_) return;
-        active_ = false;
-        player.SetDashInvincible(false);
-        player.StopSlimeAbilityMotion(0.06f);
-        player.SetIsControlActive(true);
-        Vector3 velocity = player.GetVelocity();
-        velocity.x *= 0.28f;
-        velocity.z *= 0.28f;
-        player.SetVelocity(velocity);
-        hitTargets_.clear();
-    }
-
-    Vector3 direction_{ 0.0f, 0.0f, 1.0f };
-    std::unordered_set<Object3d*> hitTargets_;
-    float cooldown_ = 0.0f;
-    float timer_ = 0.0f;
-    float effectTimer_ = 0.0f;
-    bool active_ = false;
 };
 
 std::unique_ptr<ICopyAbilitySession> CreateSession(int morphType, const EnemyAttackProfile& profile) {
@@ -965,9 +1187,6 @@ std::unique_ptr<ICopyAbilitySession> CreateSession(int morphType, const EnemyAtt
     if (morphType == static_cast<int>(Player::EnemyMorphType::Bomber)) {
         return std::make_unique<BomberCopyAbility>(profile);
     }
-    if (morphType == static_cast<int>(Player::EnemyMorphType::GiantSlime)) {
-        return std::make_unique<GiantSlimeCopyAbility>(profile);
-    }
     return nullptr;
 }
 
@@ -977,7 +1196,6 @@ const char* GetEnemyTypeForMorph(int morphType) {
     if (morphType == static_cast<int>(Player::EnemyMorphType::ThunderSlime)) return "ThunderSlime";
     if (morphType == static_cast<int>(Player::EnemyMorphType::WindSlime)) return "WindSlime";
     if (morphType == static_cast<int>(Player::EnemyMorphType::Bomber)) return "Bomber";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::GiantSlime)) return "GiantSlime";
     return "";
 }
 }
@@ -1026,6 +1244,12 @@ void PlayerCopyAbilityController::Cancel(Player& player) {
     impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
 }
 
+bool PlayerCopyAbilityController::NotifyGuardedHit(
+    Player& player, const Vector3& sourcePosition) {
+    return impl_->session &&
+        impl_->session->NotifyGuardedHit(player, sourcePosition);
+}
+
 bool PlayerCopyAbilityController::HandlesMorphType(int morphType) const {
     return impl_->session && impl_->morphType == morphType;
 }
@@ -1034,6 +1258,11 @@ bool PlayerCopyAbilityController::IsActive() const {
     return impl_->session != nullptr;
 }
 
-bool PlayerCopyAbilityController::IsGiantRushActive() const {
-    return impl_->session && impl_->session->IsGiantRushActive();
+bool PlayerCopyAbilityController::CanBreakImpactGate() const {
+    return impl_->session && impl_->session->CanBreakImpactGate();
+}
+
+bool PlayerCopyAbilityController::IsPinkBounceSlamImpactActive() const {
+    return impl_->session &&
+        impl_->session->IsPinkBounceSlamImpactActive();
 }

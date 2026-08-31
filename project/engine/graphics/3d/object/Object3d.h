@@ -111,6 +111,11 @@ public:
         bool volumeTriggerOnExit = false;
         float volumeRearmDelay = 0.0f;
         float volumeBlendDuration = 0.75f;
+        std::string copyMemoryTypeA = "FireSlime";
+        std::string copyMemoryTypeB = "ThunderSlime";
+        std::string copyMemoryTypeC = "WindSlime";
+        float copyMemoryActivationRadius = 0.9f;
+        bool copyMemoryUnlimitedDuration = true;
         EntityParameter() = default;
     };
 

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "86d2531e0e5c4418bf003624271bb425",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/player_base_bash_droplets.json",
+  "version": 1
+}

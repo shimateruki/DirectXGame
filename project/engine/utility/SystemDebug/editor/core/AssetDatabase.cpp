@@ -23,6 +23,8 @@ using json = nlohmann::json;
 namespace {
 
 constexpr int kAssetMetaVersion = 1;
+constexpr int kPersistentIndexCacheVersion = 1;
+constexpr char kPersistentIndexCachePath[] = ".cache/asset_database_index.json";
 constexpr auto kFilesystemChangeDebounce = std::chrono::milliseconds(250);
 constexpr auto kInitialIndexFrameBudget = std::chrono::milliseconds(4);
 constexpr std::size_t kInitialDirectoryMaxEntriesPerFrame = 512;
@@ -60,6 +62,32 @@ std::string MakeTimestamp() {
     return stream.str();
 }
 
+std::int64_t FileTimeToTicks(const fs::file_time_type& writeTime) {
+    return static_cast<std::int64_t>(writeTime.time_since_epoch().count());
+}
+
+bool ReadFileStamp(
+    const fs::path& path,
+    std::uintmax_t* fileSize,
+    fs::file_time_type* writeTime) {
+    if (!fileSize || !writeTime) {
+        return false;
+    }
+
+    std::error_code error;
+    if (!fs::exists(path, error) || error ||
+        !fs::is_regular_file(path, error) || error) {
+        return false;
+    }
+
+    *fileSize = fs::file_size(path, error);
+    if (error) {
+        return false;
+    }
+    *writeTime = fs::last_write_time(path, error);
+    return !error;
+}
+
 } // namespace
 
 AssetDatabase* AssetDatabase::GetInstance() {
@@ -87,8 +115,13 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
 
     resourcesRootPath_ = NormalizeProjectPath(resourcesRoot_);
     createMissingMeta_ = createMissingMeta;
+    persistentAssetsByPath_.clear();
+    pendingPersistentAssetsByPath_.clear();
+    persistentIndexCacheInitialized_ = false;
+    persistentIndexCacheAvailable_ = false;
     initialized_ = true;
-    // 起動時は索引だけを作る。DDS全走査はProject Windowの明示操作や更新要求時に限定する。
+    // 起動時は永続索引を利用した差分確認だけを行います。
+    // DDS全走査はProject Windowの明示操作や更新要求時に限定します。
     BeginInitialIndexBuild(createMissingMeta_, false);
     return true;
 }
@@ -101,6 +134,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     pendingSourcePaths_.clear();
     pendingSourcePathIndex_ = 0;
     pendingGuidOwners_.clear();
+    pendingPersistentAssetsByPath_.clear();
     assets_.clear();
     issues_.clear();
     assetIndexByGuid_.clear();
@@ -129,6 +163,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     assets_.reserve(sourcePaths.size());
     for (const fs::path& sourcePath : sourcePaths) {
         MetaLoadResult meta = LoadOrCreateMeta(sourcePath, createMissingMeta, guidOwners);
+        ++result.reparsedAssetCount;
         if (!meta.success) {
             continue;
         }
@@ -138,6 +173,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
         if (meta.updated) {
             ++result.updatedMetaCount;
         }
+        StorePendingPersistentAsset(meta.record);
         assets_.push_back(std::move(meta.record));
     }
 
@@ -155,6 +191,9 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
         }));
     ++generation_;
     lastRefreshResult_ = result;
+    persistentAssetsByPath_ = std::move(pendingPersistentAssetsByPath_);
+    persistentIndexCacheAvailable_ = true;
+    SavePersistentIndexCache();
     if (!changeNotificationHandles_.empty()) {
         RestartFilesystemWatcher();
     }
@@ -685,6 +724,281 @@ bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* erro
     return true;
 }
 
+bool AssetDatabase::LoadPersistentIndexCache() {
+    persistentAssetsByPath_.clear();
+    persistentIndexCacheAvailable_ = false;
+
+    const fs::path cachePath = resourcesRoot_ / kPersistentIndexCachePath;
+    std::error_code error;
+    if (!fs::exists(cachePath, error) || error) {
+        return false;
+    }
+
+    try {
+        std::ifstream input(cachePath, std::ios::binary);
+        if (!input.is_open()) {
+            throw std::runtime_error("キャッシュファイルを開けません");
+        }
+
+        json document;
+        input >> document;
+        if (!document.is_object() ||
+            document.value("version", 0) != kPersistentIndexCacheVersion ||
+            document.value("assetMetaVersion", 0) != kAssetMetaVersion ||
+            document.value("resourcesRoot", std::string()) != resourcesRootPath_ ||
+            !document.contains("assets") ||
+            !document["assets"].is_array()) {
+            throw std::runtime_error("キャッシュ形式または対象Resourcesが一致しません");
+        }
+
+        std::unordered_map<std::string, PersistentAssetEntry> loadedAssets;
+        loadedAssets.reserve(document["assets"].size());
+        for (const json& item : document["assets"]) {
+            if (!item.is_object()) {
+                throw std::runtime_error("Asset項目がObjectではありません");
+            }
+
+            PersistentAssetEntry entry;
+            entry.record.guid = ToLowerAscii(item.value("guid", std::string()));
+            entry.record.sourcePath = item.value("sourcePath", std::string());
+            entry.record.metaPath = item.value("metaPath", std::string());
+            entry.record.importer = item.value("importer", std::string());
+            entry.record.fileSize = item.value("fileSize", std::uintmax_t{0});
+            entry.sourceWriteTimeTicks = item.value("sourceWriteTimeTicks", std::int64_t{0});
+            entry.metaFileSize = item.value("metaFileSize", std::uintmax_t{0});
+            entry.metaWriteTimeTicks = item.value("metaWriteTimeTicks", std::int64_t{0});
+            entry.metaExists = item.value("metaExists", false);
+            entry.record.importSettings =
+                item.contains("importSettings") && item["importSettings"].is_object()
+                ? item["importSettings"]
+                : json::object();
+
+            const int assetType = item.value("assetType", -1);
+            if (assetType < static_cast<int>(EditorAssetType::Unknown) ||
+                assetType > static_cast<int>(EditorAssetType::Binary)) {
+                throw std::runtime_error("Asset種別が範囲外です");
+            }
+            entry.record.type = static_cast<EditorAssetType>(assetType);
+
+            if (entry.record.sourcePath.empty() ||
+                entry.record.metaPath.empty() ||
+                (!entry.record.guid.empty() && !IsGuidValid(entry.record.guid))) {
+                throw std::runtime_error("Asset項目の必須情報が不正です");
+            }
+
+            const fs::path sourceAbsolute = ResolveAbsolutePath(entry.record.sourcePath);
+            fs::path expectedMetaAbsolute = sourceAbsolute;
+            expectedMetaAbsolute += ".meta";
+            if (!IsPathInsideResources(sourceAbsolute) ||
+                entry.record.sourcePath != NormalizeProjectPath(sourceAbsolute) ||
+                entry.record.metaPath != NormalizeProjectPath(expectedMetaAbsolute)) {
+                throw std::runtime_error("Resources外または不正なAssetパスが含まれています");
+            }
+
+            const std::string key = ToLowerAscii(entry.record.sourcePath);
+            if (!loadedAssets.emplace(key, std::move(entry)).second) {
+                throw std::runtime_error("同じAssetパスが重複しています");
+            }
+        }
+
+        persistentAssetsByPath_ = std::move(loadedAssets);
+        persistentIndexCacheAvailable_ = true;
+        return true;
+    }
+    catch (const std::exception& exception) {
+        persistentAssetsByPath_.clear();
+        AddIssue(
+            AssetDatabaseIssueSeverity::Warning,
+            NormalizeProjectPath(cachePath),
+            std::string("永続索引を読み込めないため安全な全解析へ切り替えました: ") + exception.what());
+        return false;
+    }
+}
+
+bool AssetDatabase::SavePersistentIndexCache() {
+    const fs::path cachePath = resourcesRoot_ / kPersistentIndexCachePath;
+    fs::path temporaryPath = cachePath;
+    temporaryPath += ".tmp";
+
+    std::vector<const PersistentAssetEntry*> sortedEntries;
+    sortedEntries.reserve(persistentAssetsByPath_.size());
+    for (const auto& pair : persistentAssetsByPath_) {
+        sortedEntries.push_back(&pair.second);
+    }
+    std::sort(
+        sortedEntries.begin(),
+        sortedEntries.end(),
+        [](const PersistentAssetEntry* left, const PersistentAssetEntry* right) {
+            return left->record.sourcePath < right->record.sourcePath;
+        });
+
+    json document;
+    document["version"] = kPersistentIndexCacheVersion;
+    document["assetMetaVersion"] = kAssetMetaVersion;
+    document["resourcesRoot"] = resourcesRootPath_;
+    document["assets"] = json::array();
+    for (const PersistentAssetEntry* entry : sortedEntries) {
+        json item;
+        item["guid"] = entry->record.guid;
+        item["sourcePath"] = entry->record.sourcePath;
+        item["metaPath"] = entry->record.metaPath;
+        item["assetType"] = static_cast<int>(entry->record.type);
+        item["importer"] = entry->record.importer;
+        item["fileSize"] = entry->record.fileSize;
+        item["sourceWriteTimeTicks"] = entry->sourceWriteTimeTicks;
+        item["metaFileSize"] = entry->metaFileSize;
+        item["metaWriteTimeTicks"] = entry->metaWriteTimeTicks;
+        item["metaExists"] = entry->metaExists;
+        item["importSettings"] = entry->record.importSettings.is_object()
+            ? entry->record.importSettings
+            : json::object();
+        document["assets"].push_back(std::move(item));
+    }
+
+    std::error_code error;
+    fs::create_directories(cachePath.parent_path(), error);
+    if (error) {
+        AddIssue(
+            AssetDatabaseIssueSeverity::Warning,
+            NormalizeProjectPath(cachePath),
+            "永続索引フォルダを作成できません: " + error.message());
+        return false;
+    }
+
+    {
+        std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+        if (!output.is_open()) {
+            AddIssue(
+                AssetDatabaseIssueSeverity::Warning,
+                NormalizeProjectPath(cachePath),
+                "永続索引の一時ファイルを開けません。");
+            return false;
+        }
+        output << document.dump() << '\n';
+        output.flush();
+        if (!output.good()) {
+            AddIssue(
+                AssetDatabaseIssueSeverity::Warning,
+                NormalizeProjectPath(cachePath),
+                "永続索引の書き込みに失敗しました。");
+            return false;
+        }
+    }
+
+    if (!MoveFileExW(
+        temporaryPath.c_str(),
+        cachePath.c_str(),
+        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        const DWORD windowsError = GetLastError();
+        fs::remove(temporaryPath, error);
+        AddIssue(
+            AssetDatabaseIssueSeverity::Warning,
+            NormalizeProjectPath(cachePath),
+            "永続索引を確定できません。Windows Error: " + std::to_string(windowsError));
+        return false;
+    }
+    return true;
+}
+
+bool AssetDatabase::TryReusePersistentAsset(
+    const fs::path& sourcePath,
+    std::unordered_map<std::string, std::string>& guidOwners,
+    EditorAssetRecord* reusedRecord) {
+    if (!reusedRecord || !persistentIndexCacheAvailable_) {
+        return false;
+    }
+
+    const std::string normalizedSource = NormalizeProjectPath(sourcePath);
+    const std::string key = ToLowerAscii(normalizedSource);
+    const auto cached = persistentAssetsByPath_.find(key);
+    if (cached == persistentAssetsByPath_.end()) {
+        return false;
+    }
+
+    const PersistentAssetEntry& entry = cached->second;
+    std::uintmax_t sourceFileSize = 0;
+    fs::file_time_type sourceWriteTime{};
+    if (!ReadFileStamp(sourcePath, &sourceFileSize, &sourceWriteTime) ||
+        entry.record.sourcePath != normalizedSource ||
+        entry.record.fileSize != sourceFileSize ||
+        entry.sourceWriteTimeTicks != FileTimeToTicks(sourceWriteTime) ||
+        entry.record.type != DetectAssetType(sourcePath) ||
+        entry.record.importer != GetDefaultImporter(entry.record.type)) {
+        return false;
+    }
+
+    fs::path metaPath = sourcePath;
+    metaPath += ".meta";
+    std::error_code error;
+    const bool metaExists = fs::exists(metaPath, error) && !error;
+    if (error || entry.metaExists != metaExists ||
+        (pendingCreateMissingMeta_ && !metaExists)) {
+        return false;
+    }
+
+    if (metaExists) {
+        std::uintmax_t metaFileSize = 0;
+        fs::file_time_type metaWriteTime{};
+        if (!ReadFileStamp(metaPath, &metaFileSize, &metaWriteTime) ||
+            entry.metaFileSize != metaFileSize ||
+            entry.metaWriteTimeTicks != FileTimeToTicks(metaWriteTime) ||
+            !IsGuidValid(entry.record.guid)) {
+            return false;
+        }
+    }
+    else if (!entry.record.guid.empty()) {
+        return false;
+    }
+
+    const auto owner = guidOwners.find(entry.record.guid);
+    if (!entry.record.guid.empty() && owner != guidOwners.end()) {
+        return false;
+    }
+
+    *reusedRecord = entry.record;
+    reusedRecord->fileSize = sourceFileSize;
+    reusedRecord->lastWriteTime = sourceWriteTime;
+    if (!reusedRecord->guid.empty()) {
+        guidOwners[reusedRecord->guid] = reusedRecord->sourcePath;
+    }
+
+    PersistentAssetEntry refreshedEntry = entry;
+    refreshedEntry.record = *reusedRecord;
+    pendingPersistentAssetsByPath_[key] = std::move(refreshedEntry);
+    return true;
+}
+
+void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record) {
+    const fs::path sourcePath = ResolveAbsolutePath(record.sourcePath);
+    std::uintmax_t sourceFileSize = 0;
+    fs::file_time_type sourceWriteTime{};
+    if (!ReadFileStamp(sourcePath, &sourceFileSize, &sourceWriteTime)) {
+        return;
+    }
+
+    PersistentAssetEntry entry;
+    entry.record = record;
+    entry.record.fileSize = sourceFileSize;
+    entry.record.lastWriteTime = sourceWriteTime;
+    entry.sourceWriteTimeTicks = FileTimeToTicks(sourceWriteTime);
+
+    const fs::path metaPath = ResolveAbsolutePath(record.metaPath);
+    std::error_code error;
+    entry.metaExists = fs::exists(metaPath, error) && !error;
+    if (error) {
+        return;
+    }
+    if (entry.metaExists) {
+        fs::file_time_type metaWriteTime{};
+        if (!ReadFileStamp(metaPath, &entry.metaFileSize, &metaWriteTime)) {
+            return;
+        }
+        entry.metaWriteTimeTicks = FileTimeToTicks(metaWriteTime);
+    }
+
+    pendingPersistentAssetsByPath_[ToLowerAscii(record.sourcePath)] = std::move(entry);
+}
+
 bool AssetDatabase::StartFilesystemWatcher() {
     if (!initialized_ || resourcesRoot_.empty()) {
         return false;
@@ -786,6 +1100,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDS
     assetsByDirectory_.clear();
     subdirectoriesByDirectory_.clear();
     pendingGuidOwners_.clear();
+    pendingPersistentAssetsByPath_.clear();
     pendingRefreshResult_ = {};
     pendingCreateMissingMeta_ = createMissingMeta;
     pendingSourcePaths_.clear();
@@ -793,6 +1108,12 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDDS
     buildDDSCacheAfterIndex_ = buildDDSCacheAfterIndex_ || buildDDSCacheAfterCompletion;
     initialIndexBuildInProgress_ = true;
     initialDirectoryScanInProgress_ = true;
+
+    if (!persistentIndexCacheInitialized_) {
+        persistentIndexCacheInitialized_ = true;
+        LoadPersistentIndexCache();
+    }
+    pendingRefreshResult_.loadedPersistentCache = persistentIndexCacheAvailable_;
 
     std::error_code error;
     pendingDirectoryIterator_ = fs::recursive_directory_iterator(
@@ -861,18 +1182,28 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
     std::size_t processedThisFrame = 0;
     while (pendingSourcePathIndex_ < pendingSourcePaths_.size() &&
            processedThisFrame < kInitialIndexMaxAssetsPerFrame) {
-        MetaLoadResult meta = LoadOrCreateMeta(
-            pendingSourcePaths_[pendingSourcePathIndex_],
-            pendingCreateMissingMeta_,
-            pendingGuidOwners_);
-        if (meta.success) {
-            if (meta.created) {
-                ++pendingRefreshResult_.createdMetaCount;
+        const fs::path& sourcePath = pendingSourcePaths_[pendingSourcePathIndex_];
+        EditorAssetRecord reusedRecord;
+        if (TryReusePersistentAsset(sourcePath, pendingGuidOwners_, &reusedRecord)) {
+            ++pendingRefreshResult_.reusedAssetCount;
+            assets_.push_back(std::move(reusedRecord));
+        }
+        else {
+            MetaLoadResult meta = LoadOrCreateMeta(
+                sourcePath,
+                pendingCreateMissingMeta_,
+                pendingGuidOwners_);
+            ++pendingRefreshResult_.reparsedAssetCount;
+            if (meta.success) {
+                if (meta.created) {
+                    ++pendingRefreshResult_.createdMetaCount;
+                }
+                if (meta.updated) {
+                    ++pendingRefreshResult_.updatedMetaCount;
+                }
+                StorePendingPersistentAsset(meta.record);
+                assets_.push_back(std::move(meta.record));
             }
-            if (meta.updated) {
-                ++pendingRefreshResult_.updatedMetaCount;
-            }
-            assets_.push_back(std::move(meta.record));
         }
 
         ++pendingSourcePathIndex_;
@@ -895,6 +1226,10 @@ void AssetDatabase::CompleteInitialIndexBuild() {
         return left.sourcePath < right.sourcePath;
     });
     RebuildLookupTables();
+
+    persistentAssetsByPath_ = std::move(pendingPersistentAssetsByPath_);
+    persistentIndexCacheAvailable_ = true;
+    SavePersistentIndexCache();
 
     pendingRefreshResult_.assetCount = assets_.size();
     pendingRefreshResult_.errorCount = static_cast<std::size_t>(std::count_if(

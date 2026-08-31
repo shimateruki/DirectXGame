@@ -24,6 +24,23 @@ Vector4 ReadVector4(const json& value, const Vector4& fallback) {
     }
     return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() };
 }
+
+bool IsSupportedMorphTypeValue(int value) {
+    switch (static_cast<Player::EnemyMorphType>(value)) {
+    case Player::EnemyMorphType::None:
+    case Player::EnemyMorphType::Slime:
+    case Player::EnemyMorphType::Bomber:
+    case Player::EnemyMorphType::Bat:
+    case Player::EnemyMorphType::BeamDrone:
+    case Player::EnemyMorphType::Mushroom:
+    case Player::EnemyMorphType::FireSlime:
+    case Player::EnemyMorphType::ThunderSlime:
+    case Player::EnemyMorphType::WindSlime:
+        return true;
+    default:
+        return false;
+    }
+}
 }
 
 void Player::CaptureReplayCustomState(json& state) const {
@@ -45,6 +62,8 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
     state["playerDeathTimer"] = deathTimer_;
     state["playerRespawnPosition"] = ToJson(respawnPosition_);
+    state["playerCheckpointActivated"] = checkpointActivated_;
+    state["playerCheckpointMorphEnemyType"] = checkpointMorphEnemyType_;
     state["playerBaseRotation"] = ToJson(baseRotation_);
     state["playerFirstUpdate"] = isFirstUpdate_;
     state["playerJumpCount"] = jumpCount_;
@@ -56,7 +75,6 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerMorphDuration"] = enemyMorphDuration_;
     state["playerMorphEffectTimer"] = enemyMorphEffectTimer_;
     state["playerMorphVisualTimer"] = enemyMorphVisualTimer_;
-    state["playerGiantRushActive"] = IsGiantSlimeRushActive();
     state["playerMorphReleaseActive"] = enemyMorphReleaseActive_;
     state["playerMorphReleaseBurstStarted"] = enemyMorphReleaseBurstStarted_;
     state["playerMorphReleaseExpired"] = enemyMorphReleaseExpired_;
@@ -74,6 +92,16 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerTutorialSafety"] = tutorialSafetyEnabled_;
     state["playerTutorialCarryThrowEnabled"] = tutorialCarryThrowEnabled_;
     state["playerTutorialCarryAbsorbEnabled"] = tutorialCarryAbsorbEnabled_;
+    if (baseCombatController_) {
+        const PlayerBaseCombatController::ReplayState combatState =
+            baseCombatController_->CaptureReplayState();
+        state["playerBaseCombatPhase"] = combatState.phase;
+        state["playerBaseCombatDirection"] = ToJson(combatState.direction);
+        state["playerBaseCombatTimer"] = combatState.timer;
+        state["playerBaseCombatEffectTimer"] = combatState.effectTimer;
+        state["playerBaseCombatInputBufferTimer"] = combatState.inputBufferTimer;
+        state["playerBaseCombatPressHitEnemy"] = combatState.pressHitEnemy;
+    }
 }
 
 void Player::RestoreReplayCustomState(const json& state) {
@@ -97,6 +125,10 @@ void Player::RestoreReplayCustomState(const json& state) {
     if (state.contains("playerRespawnPosition")) {
         respawnPosition_ = ReadVector3(state["playerRespawnPosition"], respawnPosition_);
     }
+    checkpointActivated_ =
+        state.value("playerCheckpointActivated", checkpointActivated_);
+    checkpointMorphEnemyType_ =
+        state.value("playerCheckpointMorphEnemyType", checkpointMorphEnemyType_);
     if (state.contains("playerBaseRotation")) {
         baseRotation_ = ReadVector3(state["playerBaseRotation"], baseRotation_);
     }
@@ -107,11 +139,15 @@ void Player::RestoreReplayCustomState(const json& state) {
     }
 
     const int morphType = state.value("playerEnemyMorphType", static_cast<int>(enemyMorphType_));
-    if (morphType >= static_cast<int>(EnemyMorphType::None) &&
-        morphType <= static_cast<int>(EnemyMorphType::WindSlime)) {
+    const bool supportedMorphType = IsSupportedMorphTypeValue(morphType);
+    if (supportedMorphType) {
         enemyMorphType_ = static_cast<EnemyMorphType>(morphType);
+    } else {
+        // 値6は廃止済みの巨大コピーです。古いリプレイは通常形態へ安全に戻します。
+        enemyMorphType_ = EnemyMorphType::None;
     }
-    isEnemyMorphed_ = state.value("playerEnemyMorphed", isEnemyMorphed_);
+    isEnemyMorphed_ =
+        supportedMorphType && state.value("playerEnemyMorphed", isEnemyMorphed_);
     enemyMorphHasTimeLimit_ = state.value("playerMorphHasTimeLimit", enemyMorphHasTimeLimit_);
     enemyMorphTimer_ = state.value("playerMorphTimer", enemyMorphTimer_);
     enemyMorphDuration_ = state.value("playerMorphDuration", enemyMorphDuration_);
@@ -162,4 +198,19 @@ void Player::RestoreReplayCustomState(const json& state) {
     tutorialSafetyEnabled_ = state.value("playerTutorialSafety", tutorialSafetyEnabled_);
     tutorialCarryThrowEnabled_ = state.value("playerTutorialCarryThrowEnabled", tutorialCarryThrowEnabled_);
     tutorialCarryAbsorbEnabled_ = state.value("playerTutorialCarryAbsorbEnabled", tutorialCarryAbsorbEnabled_);
+    if (baseCombatController_) {
+        PlayerBaseCombatController::ReplayState combatState;
+        combatState.phase = state.value("playerBaseCombatPhase", 0);
+        if (state.contains("playerBaseCombatDirection")) {
+            combatState.direction =
+                ReadVector3(state["playerBaseCombatDirection"], combatState.direction);
+        }
+        combatState.timer = state.value("playerBaseCombatTimer", 0.0f);
+        combatState.effectTimer = state.value("playerBaseCombatEffectTimer", 0.0f);
+        combatState.inputBufferTimer =
+            state.value("playerBaseCombatInputBufferTimer", 0.0f);
+        combatState.pressHitEnemy =
+            state.value("playerBaseCombatPressHitEnemy", false);
+        baseCombatController_->RestoreReplayState(combatState);
+    }
 }

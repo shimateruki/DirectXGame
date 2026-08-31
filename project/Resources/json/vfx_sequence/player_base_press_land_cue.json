@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_player_base_press_impact",
+      "triggerTime": 0.0,
+      "scale": [1.0, 1.0, 1.0]
+    },
+    {
+      "type": 0,
+      "presetName": "player_base_press_splash",
+      "triggerTime": 0.0,
+      "scale": [1.12, 1.12, 1.12]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.13,
+      "intensity": 5.4,
+      "lightRadius": 4.6,
+      "lightDecay": 1.75,
+      "lightColor": [0.28, 0.90, 1.0, 1.0]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.12,
+      "intensity": 0.072,
+      "frequency": 25.0,
+      "scale": [0.82, 0.34, 0.82]
+    },
+    {
+      "type": 7,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.028,
+      "intensity": 0.22
+    },
+    {
+      "type": 8,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.10,
+      "intensity": 0.32,
+      "secondaryIntensity": 0.18
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "name": "player_ability_pink_bounce_fall",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.24,
+  "loop": true,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    { "time": 0.0, "translate": [0.0, -0.05, 0.03], "rotate": [0.18, 0.0, 0.0], "scale": [1.24, 0.68, 1.24], "easingToNext": 3 },
+    { "time": 0.08, "translate": [0.025, -0.10, 0.04], "rotate": [0.24, 0.0, -0.045], "scale": [1.39, 0.54, 1.32], "easingToNext": 4 },
+    { "time": 0.16, "translate": [-0.025, -0.08, 0.04], "rotate": [0.21, 0.0, 0.045], "scale": [1.31, 0.59, 1.40], "easingToNext": 4 },
+    { "time": 0.24, "translate": [0.0, -0.05, 0.03], "rotate": [0.18, 0.0, 0.0], "scale": [1.24, 0.68, 1.24], "easingToNext": 3 }
+  ],
+  "keys": [],
+  "events": []
+}

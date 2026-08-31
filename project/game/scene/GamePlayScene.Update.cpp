@@ -318,6 +318,13 @@ void GamePlayScene::Update(float deltaTime) {
     if (SceneManager* sceneManager = GetSceneManager()) {
         runtimePlaying = sceneManager->IsPlaying();
     }
+
+    // ImGui描画中に受け付けた移動要求は、演出やPlayer更新より先に一度だけ反映します。
+    if (runtimePlaying) {
+        ProcessPendingDebugTeleport();
+    } else {
+        pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
+    }
 #endif
 
     if (!runtimePlaying) {

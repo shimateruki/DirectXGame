@@ -1,0 +1,23 @@
+{
+  "AlphaReference": 0.002,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 9,
+  "EdgeFadeStrength": 2.8,
+  "EndColor": [1.20, 0.38, 0.04, 0.0],
+  "EndScale": [3.2, 1.0, 3.2],
+  "Intensity": 4.8,
+  "Lifetime": 0.68,
+  "MeshSegments": 96,
+  "Position": [0.0, 0.08, 0.0],
+  "ProceduralType": 10,
+  "RingInnerRadius": 0.64,
+  "RingOuterRadius": 1.0,
+  "Rotation": [0.0, 0.0, 0.0],
+  "ScrollSpeed": [0.18, -0.14],
+  "StartColor": [7.8, 4.9, 0.78, 0.92],
+  "StartScale": [0.18, 1.0, 0.18],
+  "TexturePath": "Resources/sprite/common/circle2.png",
+  "UvTiling": [1.0, 1.0],
+  "VolumeMode": 0
+}

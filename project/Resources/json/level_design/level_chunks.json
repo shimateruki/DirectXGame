@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "description": "AIと人間が共有する、短い発見型レベル用の意味付きチャンクカタログです。",
+  "chunks": [
+    {
+      "id": "discovery_terrace",
+      "displayName": "発見型・広場",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_terrace.obj",
+      "role": "main_path",
+      "halfExtents": [7.0, 1.0, 7.0],
+      "colliderSize": [7.0, 1.0, 7.0],
+      "entry": [0.0, 1.0, -7.0],
+      "exit": [0.0, 1.0, 7.0],
+      "color": [0.72, 0.82, 1.0, 1.0],
+      "walkable": true,
+      "blocksSight": false
+    },
+    {
+      "id": "discovery_turn_wall",
+      "displayName": "発見型・視界を切る門壁",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_turn_wall.obj",
+      "role": "sightline_gate",
+      "halfExtents": [8.0, 4.5, 5.0],
+      "colliderSize": [8.0, 0.6, 5.0],
+      "entry": [0.0, 0.6, -5.0],
+      "exit": [5.0, 0.6, 5.0],
+      "color": [0.63, 0.70, 0.98, 1.0],
+      "walkable": true,
+      "blocksSight": true,
+      "sightBounds": [
+        { "center": [-6.5, 3.68, 0.0], "halfExtents": [1.5, 3.33, 0.8] },
+        { "center": [-2.0, 1.98, 0.0], "halfExtents": [3.0, 1.63, 0.8] },
+        { "center": [1.1, 6.0, 0.0], "halfExtents": [6.1, 1.0, 0.8] },
+        { "center": [2.0, 3.68, 0.0], "halfExtents": [1.0, 3.33, 0.8] },
+        { "center": [7.6, 3.68, 0.0], "halfExtents": [0.4, 3.33, 0.8] }
+      ]
+    },
+    {
+      "id": "discovery_bridge",
+      "displayName": "発見型・橋",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_bridge.obj",
+      "role": "main_path",
+      "halfExtents": [3.0, 1.5, 7.0],
+      "colliderSize": [3.0, 0.6, 7.0],
+      "entry": [0.0, 0.6, -7.0],
+      "exit": [0.0, 0.6, 7.0],
+      "color": [0.68, 0.78, 1.0, 1.0],
+      "walkable": true,
+      "blocksSight": false
+    },
+    {
+      "id": "discovery_gallery",
+      "displayName": "発見型・上層回廊",
+      "modelName": "Stages/star_garden_discovery_kit/discovery_gallery.obj",
+      "role": "ability_side_path",
+      "halfExtents": [6.0, 2.5, 7.0],
+      "colliderSize": [6.0, 0.6, 7.0],
+      "entry": [0.0, 0.6, -7.0],
+      "exit": [0.0, 0.6, 7.0],
+      "color": [0.84, 0.72, 1.0, 1.0],
+      "walkable": true,
+      "blocksSight": true,
+      "sightBounds": [
+        { "center": [-3.5, 1.78, 2.15], "halfExtents": [2.5, 1.53, 0.35] },
+        { "center": [3.5, 1.78, 2.15], "halfExtents": [2.5, 1.53, 0.35] },
+        { "center": [-5.6, 1.33, 0.0], "halfExtents": [0.4, 1.08, 7.0] }
+      ]
+    },
+    {
+      "id": "discovery_star",
+      "displayName": "寄り道スター",
+      "modelName": "Gimmicks/star/star.gltf",
+      "role": "optional_reward",
+      "halfExtents": [0.8, 0.8, 0.8],
+      "colliderSize": [0.8, 0.8, 0.8],
+      "entry": [0.0, 0.0, 0.0],
+      "exit": [0.0, 0.0, 0.0],
+      "color": [1.0, 0.92, 0.28, 1.0],
+      "walkable": false,
+      "blocksSight": false
+    }
+  ]
+}

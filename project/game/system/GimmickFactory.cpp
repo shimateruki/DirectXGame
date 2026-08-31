@@ -19,6 +19,7 @@
 #include "GimmickEventReceiver.h"
 #include "GimmickArenaEncounter.h"
 #include "GimmickGameplayVolume.h"
+#include "GimmickCopyMemoryStation.h"
 #include "GimmickPrismBarrier.h"
 #include "GimmickBossGate.h"
 #include "GimmickHookPullBlock.h"
@@ -145,6 +146,11 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto volume = std::make_unique<GimmickGameplayVolume>();
         volume->Initialize(common, "Primitives/cube");
         newGimmick = std::move(volume);
+    }
+    else if (gimmickName == "CopyMemoryStation") {
+        auto station = std::make_unique<GimmickCopyMemoryStation>();
+        station->Initialize(common, "Gimmicks/copy_memory_station");
+        newGimmick = std::move(station);
     }
     else if (gimmickName == "PrismBarrier") {
         auto barrier = std::make_unique<GimmickPrismBarrier>();

@@ -21,12 +21,14 @@ void GimmickBlinkBlock::Initialize(Object3dCommon* common, const std::string& mo
 }
 
 void GimmickBlinkBlock::Update(float deltaTime) {
-    // エディタでの色変更を即座に反映
+    // Scene JSONはInitialize後に適用されるため、初回Updateで色種別と初期ON/OFFを同期する。
+    // 青(0)は既定値と一致して変更検知だけでは再描画されないので、見た目は毎フレーム確定する。
     if (param_.has_value() && param_->colorType != colorType_) {
         colorType_ = param_->colorType;
-        UpdateAppearance();
+        isActive_ = (colorType_ == 0);
     }
 
+    UpdateAppearance();
     BaseGimmick::Update(deltaTime);
 }
 

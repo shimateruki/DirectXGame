@@ -2146,6 +2146,152 @@
         ],
         "type": "Gimmick"
     },
+    "Builtin/Gimmick/CopyMemoryStation": {
+        "animation": {
+            "animName": "",
+            "animatorController": "",
+            "isAnimLoop": true
+        },
+        "autoTextureTiling": false,
+        "blendMode": 1,
+        "builtinCreateTemplate": true,
+        "castShadow": true,
+        "collider": {
+            "center": [
+                0.0,
+                0.949999988079071,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                3.0999999046325684,
+                1.600000023841858,
+                1.850000023841858
+            ],
+            "type": 3
+        },
+        "collisionAttribute": 16,
+        "collisionMask": 1,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 0.35,
+        "enableEnvMap": false,
+        "enableLighting": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "CopyMemoryStation",
+        "gpuParticleName": "",
+        "isLocked": false,
+        "isStatic": false,
+        "isVisible": true,
+        "itemType": "",
+        "layer": "Default",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshDrawIndex": -1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.18000000715255737,
+        "modelName": "Gimmicks/copy_memory_station",
+        "myEventID": -1,
+        "name": "コピー記憶台",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "attackPower": 1.0,
+            "colorType": 0,
+            "copyMemoryActivationRadius": 0.6800000071525574,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryUnlimitedDuration": true,
+            "detectionRange": 20.0,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "CopyMemoryStation",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "morphDuration": 5.0,
+            "morphLimited": true,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "returnOnOff": true,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": true,
+            "switchMode": 0,
+            "targetScene": "SELECT"
+        },
+        "particleName": "",
+        "prefabInstance": null,
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.3400000035762787,
+        "saveCategory": "Object",
+        "scale": [
+            1.55,
+            1.15,
+            1.25
+        ],
+        "tag": "",
+        "targetID": -1,
+        "texturePath": "",
+        "textureTiling": [
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "type": "Gimmick"
+    },
     "Builtin/Gimmick/DashPanel": {
         "animation": {
             "animName": "",
@@ -7060,7 +7206,7 @@
         ],
         "type": "Gimmick"
     },
-    "Stage1/Gimmick/GiantBreakGate": {
+    "Stage1/Gimmick/ImpactBreakGate": {
         "animation": {
             "animName": "",
             "animatorController": "",
@@ -7130,11 +7276,11 @@
         "metallic": 0.1,
         "modelName": "Stages/star_garden_giant_gate",
         "myEventID": -1,
-        "name": "巨大スライム破壊ゲート",
+        "name": "ピンクバウンドゲート",
         "normalMapPath": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_normal.png",
         "ormMapPath": "Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.png",
         "param": {
-            "actionMode": 6,
+            "actionMode": 7,
             "attackPower": 1.0,
             "colorType": 0,
             "detectionRange": 20.0,
@@ -7168,12 +7314,12 @@
             0.0
         ],
         "presetCollection": "Stage1",
-        "presetDescription": "巨大スライムの突進能力で壊す専用ゲート。能力ルートの出口向けです。",
+        "presetDescription": "ピンクスライムのEバウンド落下だけで開く、能力寄り道用のガラスゲートです。",
         "presetOrder": 300,
         "presetRecommended": true,
         "presetSection": "攻略・進行",
         "presetSectionOrder": 300,
-        "presetSourceObject": "Stage1_V4_GiantRushGate",
+        "presetSourceObject": "Stage1_V4_ImpactBreakGate",
         "quaternion": [
             0.0,
             0.0,
@@ -7607,7 +7753,7 @@
             "PathMover": {
                 "_editorPresent": true,
                 "loop": true,
-                "path": "stage1_v4_moving_intro_a",
+                "path": "stage1_v4_moving_intro_c",
                 "relative": true,
                 "version": 1
             }
@@ -7762,13 +7908,8 @@
         },
         "collisionAttribute": 16,
         "collisionMask": 1,
-        "color": [
-            0.3,
-            0.95,
-            1.0,
-            1.0
-        ],
-        "emissive": 1.35,
+        "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 0.04,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7800,7 +7941,7 @@
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.28,
-        "modelName": "Stages/star_garden_checkpoint",
+        "modelName": "Gimmicks/checkpoint_flag",
         "myEventID": -1,
         "name": "チェックポイント",
         "normalMapPath": "",
@@ -7814,7 +7955,7 @@
             0.0
         ],
         "presetCollection": "Stage1",
-        "presetDescription": "復帰地点として使う発光チェックポイント。イベント設定を含みます。",
+        "presetDescription": "白旗に触れると赤旗が上がる復帰地点。保存と起動演出を含みます。",
         "presetOrder": 310,
         "presetRecommended": true,
         "presetSection": "攻略・進行",

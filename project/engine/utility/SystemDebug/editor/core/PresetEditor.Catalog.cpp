@@ -244,6 +244,7 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
         { "EventReceiver", "イベント受信" },
         { "ArenaEncounter", "中ボス遭遇管理" },
         { "GameplayVolume", "ゲームプレイボリューム" },
+        { "CopyMemoryStation", "コピー記憶台" },
         { "PrismBarrier", "プリズム障壁" },
         { "HookPullBlock", "フック可動ブロック" },
         { "OneWayFloor", "一方通行床" },

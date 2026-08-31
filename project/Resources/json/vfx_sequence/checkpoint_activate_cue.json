@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_checkpoint_activate_ring",
+      "triggerTime": 0.0,
+      "offset": [0.0, -0.12, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.72, 0.72, 0.72]
+    },
+    {
+      "type": 1,
+      "presetName": "effect_checkpoint_activate_pillar",
+      "triggerTime": 0.03,
+      "offset": [0.0, -0.08, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.76, 0.76, 0.76]
+    },
+    {
+      "type": 0,
+      "presetName": "checkpoint_flag_capture_stars",
+      "triggerTime": 0.03,
+      "offset": [0.0, 0.82, 0.0],
+      "scale": [0.86, 0.86, 0.86]
+    },
+    {
+      "type": 0,
+      "presetName": "checkpoint_active_motes",
+      "triggerTime": 0.05,
+      "offset": [0.0, 1.4, 0.0],
+      "scale": [0.68, 0.68, 0.68]
+    },
+    {
+      "type": 4,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.18,
+      "intensity": 0.045,
+      "frequency": 22.0,
+      "scale": [0.70, 0.28, 0.70]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.60,
+      "intensity": 2.1,
+      "lightRadius": 7.2,
+      "lightDecay": 1.8,
+      "lightColor": [1.0, 0.70, 0.18, 1.0]
+    },
+    {
+      "type": 8,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.12,
+      "intensity": 0.24,
+      "secondaryIntensity": 0.12
+    },
+    {
+      "type": 9,
+      "presetName": "",
+      "triggerTime": 0.0,
+      "duration": 0.18,
+      "intensity": 0.85,
+      "attackRatio": 0.22
+    }
+  ]
+}

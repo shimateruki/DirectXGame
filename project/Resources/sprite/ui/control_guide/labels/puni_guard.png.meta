@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "63a0bdf4bf46498dafb3546dc667c659",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/puni_guard.png",
+  "version": 1
+}

@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "name": "player_ability_pink_bounce_charge",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.18,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    { "time": 0.0, "translate": [0.0, 0.0, 0.0], "rotate": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0], "easingToNext": 2 },
+    { "time": 0.065, "translate": [0.0, -0.13, -0.04], "rotate": [0.05, 0.0, 0.0], "scale": [1.30, 0.63, 1.28], "easingToNext": 3 },
+    { "time": 0.135, "translate": [0.0, -0.20, 0.02], "rotate": [-0.035, 0.0, 0.025], "scale": [1.52, 0.42, 1.46], "easingToNext": 3 },
+    { "time": 0.18, "translate": [0.0, 0.18, 0.08], "rotate": [-0.12, 0.0, 0.0], "scale": [0.64, 1.70, 0.64], "easingToNext": 1 }
+  ],
+  "keys": [],
+  "events": []
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "25bea3d264904a62b70d80f0d61b700e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": false
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/labels/slime_attack.dds",
+  "version": 1
+}

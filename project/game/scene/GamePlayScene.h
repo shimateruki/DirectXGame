@@ -141,8 +141,16 @@ private:
     Player* player_ = nullptr;
 
 #ifdef USE_IMGUI
+    enum class DebugTeleportDestination {
+        None,
+        PrismArena,
+        GoalApproach,
+    };
+
     // 能力呼び出しに必要な実敵インスタンスを、デバッグ変身中だけ所有します。
     std::unique_ptr<BaseEnemy> debugPlayerMorphSource_;
+    // ImGui描画中にゲーム状態を直接変更せず、次の更新開始時に安全に処理します。
+    DebugTeleportDestination pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
 #endif
 
     // --- BGM / SE ---
@@ -468,6 +476,8 @@ private:
 #ifdef USE_IMGUI
     void ApplyDebugPlayerMorph(const char* enemyType);
     void ClearDebugPlayerMorph();
+    void QueueDebugTeleport(DebugTeleportDestination destination);
+    void ProcessPendingDebugTeleport();
     Object3d* FindDebugObjectByName(const char* objectName) const;
     bool TeleportPlayerToDebugTarget(
         const char* anchorName,

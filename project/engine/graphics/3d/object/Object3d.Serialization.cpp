@@ -423,6 +423,11 @@ json Object3d::ExportToJson() {
             jp["moveSpeed"] = p.moveSpeed;
             jp["startActive"] = p.startActive;
             jp["returnOnOff"] = p.returnOnOff;
+            jp["copyMemoryTypeA"] = p.copyMemoryTypeA;
+            jp["copyMemoryTypeB"] = p.copyMemoryTypeB;
+            jp["copyMemoryTypeC"] = p.copyMemoryTypeC;
+            jp["copyMemoryActivationRadius"] = p.copyMemoryActivationRadius;
+            jp["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
         }
         if (!jp.empty()) {
             d["param"] = jp;
@@ -639,6 +644,11 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
         if (jp.contains("startActive")) p.startActive = jp["startActive"];
         if (jp.contains("returnOnOff")) p.returnOnOff = jp["returnOnOff"];
+        if (jp.contains("copyMemoryTypeA")) p.copyMemoryTypeA = jp["copyMemoryTypeA"].get<std::string>();
+        if (jp.contains("copyMemoryTypeB")) p.copyMemoryTypeB = jp["copyMemoryTypeB"].get<std::string>();
+        if (jp.contains("copyMemoryTypeC")) p.copyMemoryTypeC = jp["copyMemoryTypeC"].get<std::string>();
+        if (jp.contains("copyMemoryActivationRadius")) p.copyMemoryActivationRadius = (std::max)(0.1f, jp["copyMemoryActivationRadius"].get<float>());
+        if (jp.contains("copyMemoryUnlimitedDuration")) p.copyMemoryUnlimitedDuration = jp["copyMemoryUnlimitedDuration"];
         if (!isManagedCharacter) {
             p.maxHp = (std::max)(p.maxHp, 1.0f);
             if (hasMaxHp && !hasHp) {

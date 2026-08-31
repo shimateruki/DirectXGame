@@ -58,8 +58,6 @@ const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
             return showHurtIcon ? "ui/portraits/beam_drone_hurt.png" : "ui/portraits/beam_drone.png";
         case Player::EnemyMorphType::Mushroom:
             return showHurtIcon ? "ui/portraits/mushroom_hurt.png" : "ui/portraits/mushroom.png";
-        case Player::EnemyMorphType::GiantSlime:
-            return showHurtIcon ? "ui/portraits/giant_slime_hurt.png" : "ui/portraits/giant_slime.png";
         case Player::EnemyMorphType::FireSlime:
             return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
         case Player::EnemyMorphType::ThunderSlime:

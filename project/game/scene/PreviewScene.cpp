@@ -97,8 +97,6 @@ const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon)
 			return showHurtIcon ? "ui/portraits/beam_drone_hurt.png" : "ui/portraits/beam_drone.png";
 		case Player::EnemyMorphType::Mushroom:
 			return showHurtIcon ? "ui/portraits/mushroom_hurt.png" : "ui/portraits/mushroom.png";
-		case Player::EnemyMorphType::GiantSlime:
-			return showHurtIcon ? "ui/portraits/giant_slime_hurt.png" : "ui/portraits/giant_slime.png";
 		case Player::EnemyMorphType::FireSlime:
 			return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
 		case Player::EnemyMorphType::ThunderSlime:
@@ -224,24 +222,34 @@ void PreviewScene::Initialize() {
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/sample.json");
-	levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
+	const std::string objectLayoutPath =
+		HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
+		? GetSceneLoadContext().objectLayoutPath
+		: "Resources/json/3Dobject/sample.json";
+	const std::string spriteLayoutPath =
+		HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
+		? GetSceneLoadContext().spriteLayoutPath
+		: currentStage.spritePath;
+	levelLoader_->LoadObjectLayout(this, objectLayoutPath);
+	levelLoader_->LoadSpriteLayout(this, spriteLayoutPath);
 	LightManager::GetInstance()->LoadState(
 		ResolveSceneLightPath("Resources/json/light/light_layout.json"));
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
 
-	animatedCube_ = std::make_unique<Object3d>();
-	animatedCube_->Initialize(object3dCommon_.get());
-	animatedCube_->SetModel("Samples/walk"); 
-	
-	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
-		animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
+	if (!HasSceneAssetContext()) {
+		animatedCube_ = std::make_unique<Object3d>();
+		animatedCube_->Initialize(object3dCommon_.get());
+		animatedCube_->SetModel("Samples/walk");
+
+		if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
+			animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
+		}
+
+		animatedCube_->isAnimLoop_ = true;
+		animatedCube_->SetTranslate({ 0.0f, 0.0f, 0.0f });
+		animatedCube_->SetScale({ 2.0f, 2.0f, 2.0f });
 	}
-	
-	animatedCube_->isAnimLoop_ = true;
-	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f}); 
-	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
 
 	InitializePreviewHUD();
 

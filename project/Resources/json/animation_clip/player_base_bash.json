@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "name": "player_base_bash",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.44,
+  "loop": false,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {
+      "time": 0.0,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 2
+    },
+    {
+      "time": 0.07,
+      "translate": [0.0, -0.02, -0.18],
+      "rotate": [0.08, 0.0, 0.0],
+      "scale": [1.12, 0.86, 0.94],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.15,
+      "translate": [0.0, 0.07, 0.44],
+      "rotate": [-0.12, 0.0, 0.0],
+      "scale": [0.82, 1.16, 1.78],
+      "easingToNext": 1
+    },
+    {
+      "time": 0.28,
+      "translate": [0.0, -0.03, 0.22],
+      "rotate": [-0.05, 0.0, 0.0],
+      "scale": [1.08, 0.90, 1.15],
+      "easingToNext": 3
+    },
+    {
+      "time": 0.44,
+      "translate": [0.0, 0.0, 0.0],
+      "rotate": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "easingToNext": 4
+    }
+  ],
+  "keys": [],
+  "events": []
+}

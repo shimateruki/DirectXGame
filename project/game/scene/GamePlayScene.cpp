@@ -143,8 +143,6 @@ const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
         return "ピンクスライム";
     case Player::EnemyMorphType::Bomber:
         return "ボムスライム";
-    case Player::EnemyMorphType::GiantSlime:
-        return "巨大スライム";
     case Player::EnemyMorphType::FireSlime:
         return "炎スライム";
     case Player::EnemyMorphType::ThunderSlime:
@@ -1189,13 +1187,15 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
             ImGui::Text("デバッグ移動");
+            const bool debugRuntimePlaying =
+                GetSceneManager() && GetSceneManager()->IsPlaying();
+            const bool teleportRequestPending =
+                pendingDebugTeleportDestination_ != DebugTeleportDestination::None;
             const bool teleportStateReady =
+                debugRuntimePlaying &&
                 !player_->isDead &&
-                player_->IsControlActive() &&
-                !player_->IsCinematicLocked() &&
-                !player_->IsLaunchStarActive() &&
-                !stageEntryPresentationActive_ &&
-                !isGoal_;
+                !isGoal_ &&
+                !teleportRequestPending;
             const bool hasPrismAnchor = FindDebugObjectByName(kDebugPrismArenaAnchorName) != nullptr;
             const bool hasGoalAnchor = FindDebugObjectByName(kDebugGoalEntryAnchorName) != nullptr;
             const float teleportSpacing = ImGui::GetStyle().ItemSpacing.x;
@@ -1206,11 +1206,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Button(ICON_FA_GEM " 中ボス前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
-                TeleportPlayerToDebugTarget(
-                    kDebugPrismArenaAnchorName,
-                    { -20.0f, 0.0f, 0.0f },
-                    kDebugPrismSlimeName,
-                    "中ボス前");
+                QueueDebugTeleport(DebugTeleportDestination::PrismArena);
             }
             if (!teleportStateReady || !hasPrismAnchor) {
                 ImGui::EndDisabled();
@@ -1221,16 +1217,16 @@ void GamePlayScene::DrawImGui() {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Button(ICON_FA_FLAG_CHECKERED " ゴール前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
-                TeleportPlayerToDebugTarget(
-                    kDebugGoalEntryAnchorName,
-                    { 0.0f, 0.0f, 0.0f },
-                    kDebugGoalName,
-                    "ゴール前");
+                QueueDebugTeleport(DebugTeleportDestination::GoalApproach);
             }
             if (!teleportStateReady || !hasGoalAnchor) {
                 ImGui::EndDisabled();
             }
-            ImGui::TextDisabled("ステージ1専用。移動時は運搬・変身・ロックオン状態を解除します。");
+            if (stageEntryPresentationActive_) {
+                ImGui::TextDisabled("開始演出中でも、演出を安全に終了してから移動します。");
+            } else {
+                ImGui::TextDisabled("ステージ1専用。移動時は攻撃・運搬・変身・ロックオン状態を解除します。");
+            }
 
             ImGui::Separator();
             ImGui::Text("デバッグ変身（時間制限なし）");
@@ -1254,7 +1250,6 @@ void GamePlayScene::DrawImGui() {
             ImGui::SameLine();
             drawMorphButton("風##DebugMorph", "WindSlime");
             ImGui::SameLine();
-            drawMorphButton("巨大##DebugMorph", "GiantSlime");
 
             const bool hasMorph = player_->IsEnemyMorphed();
             if (!hasMorph) {
@@ -1376,14 +1371,80 @@ void GamePlayScene::ClearDebugPlayerMorph() {
     debugPlayerMorphSource_.reset();
 }
 
+void GamePlayScene::QueueDebugTeleport(DebugTeleportDestination destination) {
+    if (destination == DebugTeleportDestination::None) {
+        return;
+    }
+
+    pendingDebugTeleportDestination_ = destination;
+    DebugConsole::GetInstance()->AddLog("Debug teleport queued for the next gameplay update.");
+}
+
+void GamePlayScene::ProcessPendingDebugTeleport() {
+    const DebugTeleportDestination destination = pendingDebugTeleportDestination_;
+    pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
+    if (destination == DebugTeleportDestination::None) {
+        return;
+    }
+
+    if (!player_ || player_->isDead || isGoal_) {
+        DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
+        return;
+    }
+
+    // Play開始直後に押されても、入口演出が次フレームで再開して座標を戻さないよう完了扱いにします。
+    if (stageEntryPresentationActive_) {
+        FinishStageEntryPresentation();
+    }
+    stageEntryPresentationPending_ = false;
+    stageEntryPresentationCompleted_ = true;
+    stageEntryRuntimeWasPlaying_ = true;
+    stageEntryPresentationRetryTimer_ = 0.0f;
+
+    switch (destination) {
+    case DebugTeleportDestination::PrismArena:
+        TeleportPlayerToDebugTarget(
+            kDebugPrismArenaAnchorName,
+            { 18.0f, 0.0f, 5.0f },
+            kDebugPrismSlimeName,
+            "中ボス前");
+        break;
+    case DebugTeleportDestination::GoalApproach:
+        TeleportPlayerToDebugTarget(
+            kDebugGoalEntryAnchorName,
+            { 0.0f, 0.0f, 0.0f },
+            kDebugGoalName,
+            "ゴール前");
+        break;
+    case DebugTeleportDestination::None:
+    default:
+        break;
+    }
+}
+
 Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     if (!objectManager_ || !objectName || objectName[0] == '\0') {
         return nullptr;
     }
 
+    std::vector<Object3d*> objectsToVisit;
+    objectsToVisit.reserve(objectManager_->GetObjects().size());
     for (const auto& object : objectManager_->GetObjects()) {
-        if (object && object->GetName() == objectName) {
-            return object.get();
+        if (object) {
+            objectsToVisit.push_back(object.get());
+        }
+    }
+
+    while (!objectsToVisit.empty()) {
+        Object3d* object = objectsToVisit.back();
+        objectsToVisit.pop_back();
+        if (object->GetName() == objectName) {
+            return object;
+        }
+        for (Object3d* child : object->GetChildren()) {
+            if (child) {
+                objectsToVisit.push_back(child);
+            }
         }
     }
     return nullptr;
@@ -1394,9 +1455,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
     const Vector3& anchorOffset,
     const char* facingObjectName,
     const char* destinationLabel) {
-    if (!player_ || player_->isDead || !player_->IsControlActive() ||
-        player_->IsCinematicLocked() || player_->IsLaunchStarActive() ||
-        stageEntryPresentationActive_ || isGoal_) {
+    if (!player_ || player_->isDead || isGoal_) {
         DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
         return false;
     }
@@ -1408,7 +1467,13 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
         return false;
     }
 
-    // 編集側で床の高さを変えても追従できるよう、配置座標ではなくコライダー上面を着地点にします。
+    // 親子階層を含む編集直後のTransformも確定してから、コライダー上面を着地点にします。
+    Object3d* anchorRoot = anchor;
+    while (anchorRoot->GetParent()) {
+        anchorRoot = anchorRoot->GetParent();
+    }
+    anchorRoot->UpdateWorldMatrix(false);
+
     Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
     const AABB anchorBounds = anchor->GetAABB();
     if (anchorBounds.max.y > anchorBounds.min.y) {
@@ -1429,11 +1494,14 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
         }
     }
 
-    // 移動前の能力や運搬対象を残すと、次フレームに旧座標へ引き戻されるため先に解消します。
-    ClearDebugPlayerMorph();
-    player_->ReleaseCarriedEnemy(true);
-    player_->ChangeState(std::make_unique<PlayerStateIdle>());
-    player_->SetVelocity({ 0.0f, -1.0f, 0.0f });
+    // デバッグ移動では進行中の移動演出も明示的に止め、次フレームの座標上書きを防ぎます。
+    if (arenaBossIntroActive_) {
+        FinishArenaBossIntro();
+    }
+    // プレイヤー内部の各コントローラーを一括解除し、次フレームの座標上書きを防ぎます。
+    player_->DebugPrepareForTeleport();
+    debugPlayerMorphSource_.reset();
+    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
     player_->SetGrounded(false);
     player_->SetTranslate(destination);
     player_->SetRespawnPosition(destination);
@@ -1449,6 +1517,9 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
     }
     player_->SetLockOn(false);
     if (camera) {
+        CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+        camera->EndOverride(0.0f);
+        camera->ClearPresentationLayers();
         CameraManager::GetInstance()->SetActiveCamera(camera);
         camera->SetInputEnabled(true);
         camera->SetFollowTarget(player_);

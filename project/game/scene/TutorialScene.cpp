@@ -72,9 +72,11 @@ constexpr const char* kControlsGuidePortraitsToPreload[] = {
 constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
 	"Resources/sprite/ui/control_guide/labels/absorb.png",
 	"Resources/sprite/ui/control_guide/labels/throw.png",
+	"Resources/sprite/ui/control_guide/labels/slime_attack.png",
+	"Resources/sprite/ui/control_guide/labels/hook_aim.png",
 	"Resources/sprite/ui/control_guide/labels/slime_dive.png",
 	"Resources/sprite/ui/control_guide/labels/puni_straight.png",
-	"Resources/sprite/ui/control_guide/labels/bounce_evade.png",
+	"Resources/sprite/ui/control_guide/labels/puni_guard.png",
 	"Resources/sprite/ui/control_guide/labels/bomb_throw.png",
 	"Resources/sprite/ui/control_guide/labels/bomb_place.png",
 	"Resources/sprite/ui/control_guide/labels/blast_jump.png",
@@ -101,6 +103,11 @@ constexpr const char* kTutorialMeshEffectsToPreload[] = {
 	"Resources/json/effect/effect_pink_slime_landing_shock_arc.json",
 	"Resources/json/effect/effect_player_pink_straight_arc.json",
 	"Resources/json/effect/effect_player_pink_straight_impact.json",
+	"Resources/json/effect/effect_player_pink_bounce_launch.json",
+	"Resources/json/effect/effect_player_pink_bounce_land.json",
+	"Resources/json/effect/effect_player_base_bash_arc.json",
+	"Resources/json/effect/effect_player_base_bash_impact.json",
+	"Resources/json/effect/effect_player_base_press_impact.json",
 	"Resources/json/effect/effect_player_pink_guard_start.json",
 	"Resources/json/effect/effect_player_pink_guard_shell.json",
 	"Resources/json/effect/effect_player_pink_guard_release.json"
@@ -110,14 +117,21 @@ constexpr const char* kTutorialGpuParticlePresetsToPreload[] = {
 	"hit_pull_bind",
 	"hit_pull_catch",
 	"hit_slime_elastic",
+	"player_base_bash_droplets",
+	"player_base_press_splash",
 	"hit_throw_slam_dust",
 	"hit_enemy_ability",
 	"player_jump_dust",
 	"player_land_dust",
-	"player_pink_straight_splash"
+	"player_pink_straight_splash",
+	"player_pink_bounce_droplets"
 };
 
 constexpr const char* kTutorialVfxSequencesToPreload[] = {
+	"player_base_bash_hit_cue",
+	"player_base_press_enemy_hit_cue",
+	"player_base_press_land_cue",
+	"player_pink_bounce_slam_cue",
 	"slime_elastic_hit_cue",
 	"pull_bind_cue",
 	"pull_catch_cue",

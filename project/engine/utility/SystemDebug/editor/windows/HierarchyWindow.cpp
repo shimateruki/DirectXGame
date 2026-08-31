@@ -378,6 +378,7 @@ namespace {
             if (ImGui::MenuItem("イベント受信")) CreateGimmick(editor, scene, "EventReceiver", useGameViewCursor);
             if (ImGui::MenuItem("中ボス遭遇管理")) CreateGimmick(editor, scene, "ArenaEncounter", useGameViewCursor);
             if (ImGui::MenuItem("ゲームプレイボリューム")) CreateGimmick(editor, scene, "GameplayVolume", useGameViewCursor);
+            if (ImGui::MenuItem("コピー記憶台")) CreateGimmick(editor, scene, "CopyMemoryStation", useGameViewCursor);
             if (ImGui::MenuItem("プリズム障壁")) CreateGimmick(editor, scene, "PrismBarrier", useGameViewCursor);
             if (ImGui::MenuItem("フックアンカー")) CreateGimmick(editor, scene, "HookAnchor", useGameViewCursor);
             if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
@@ -528,6 +529,10 @@ void HierarchyWindow::Draw() {
         if (editor_->GetSceneValidator() && ImGui::Selectable("  " ICON_FA_CHECK_CIRCLE " シーン視覚監査 (Scene Visual Audit)", currentObj == editor_->GetSceneValidator())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneValidator());
+        }
+        if (editor_->GetLevelDesignLabWindow() && ImGui::Selectable("  " ICON_FA_DRAFTING_COMPASS " レベル設計ラボ (Level Design Lab)", currentObj == editor_->GetLevelDesignLabWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetLevelDesignLabWindow());
         }
         if (editor_->GetSceneInventoryWindow() && ImGui::Selectable("  " ICON_FA_CHART_BAR " 配置物集計 (Scene Inventory)", currentObj == editor_->GetSceneInventoryWindow())) {
             editor_->SetSelectedObject(nullptr);

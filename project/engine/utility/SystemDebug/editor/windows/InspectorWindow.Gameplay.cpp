@@ -395,6 +395,31 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         } else if (p.volumeMode == 2) {
           ImGui::TextDisabled("既存の落下・残機処理へ接続します");
         }
+      } else if (gType == "CopyMemoryStation") {
+        const char* copyTypeIds[] = {
+            "Slime", "FireSlime", "ThunderSlime", "WindSlime", "Bomber"};
+        const char* copyTypeLabels[] = {
+            "ピンクスライム", "炎スライム", "雷スライム", "風スライム", "ボムスライム"};
+        auto drawCopyType = [&](const char* label, std::string& value) {
+          int current = 0;
+          for (int index = 0; index < IM_ARRAYSIZE(copyTypeIds); ++index) {
+            if (value == copyTypeIds[index]) {
+              current = index;
+              break;
+            }
+          }
+          if (ImGui::Combo(label, &current, copyTypeLabels, IM_ARRAYSIZE(copyTypeLabels))) {
+            value = copyTypeIds[current];
+          }
+        };
+        drawCopyType("左コア", p.copyMemoryTypeA);
+        drawCopyType("中央コア", p.copyMemoryTypeB);
+        drawCopyType("右コア", p.copyMemoryTypeC);
+        ImGui::DragFloat("コア接触半径", &p.copyMemoryActivationRadius,
+                         0.02f, 0.35f, 1.4f, "%.2f m");
+        ImGui::Checkbox("時間制限なし", &p.copyMemoryUnlimitedDuration);
+        ImGui::Checkbox("開始時に有効", &p.startActive);
+        ImGui::TextDisabled("操作キー不要。ミニスライムへ直接触れるとコピーを切り替えます");
       } else if (gType == "PrismBarrier") {
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 展開・解除時間", &p.moveSpeed,
                          0.02f, 0.05f, 3.0f, "%.2f s");

@@ -1,0 +1,13 @@
+{
+  "objects": [
+    {
+      "name": "AbilityGuide_WindSlime",
+      "type": "Enemy",
+      "saveCategory": "Enemy",
+      "enemyType": "WindSlime",
+      "position": [-3.8, 1.45, 5.0],
+      "rotation": [0.0, 3.14159265, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  ]
+}

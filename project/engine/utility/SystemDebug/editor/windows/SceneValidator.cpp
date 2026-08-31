@@ -14,6 +14,7 @@
 #include "SceneManager.h"
 #include "TextureManager.h"
 #include "imgui.h"
+#include <array>
 #include <cctype>
 #include <algorithm>
 #include <cmath>
@@ -28,6 +29,12 @@
 namespace {
 constexpr int kMaxKnownMaterialType = 27;
 constexpr float kPi = 3.14159265358979323846f;
+
+bool IsSupportedCopyMemoryType(const std::string& enemyType) {
+    return enemyType == "Slime" || enemyType == "FireSlime" ||
+        enemyType == "ThunderSlime" || enemyType == "WindSlime" ||
+        enemyType == "Bomber";
+}
 
 bool IsEditorOnlyObject(const Object3d* object) {
     if (!object) return false;
@@ -548,6 +555,33 @@ void SceneValidator::Refresh() {
 
         if (!object->GetGimmickType().empty() && !object->param_.has_value()) {
             AddIssue(Severity::Warning, object, "Parameter", "ギミック種別がありますが param がありません");
+        }
+
+        if (object->GetGimmickType() == "CopyMemoryStation" && object->param_.has_value()) {
+            const auto& parameter = object->param_.value();
+            const std::array<std::string, 3> copyTypes = {
+                parameter.copyMemoryTypeA,
+                parameter.copyMemoryTypeB,
+                parameter.copyMemoryTypeC,
+            };
+            std::set<std::string> uniqueTypes;
+            for (size_t index = 0; index < copyTypes.size(); ++index) {
+                if (!IsSupportedCopyMemoryType(copyTypes[index])) {
+                    AddIssue(Severity::Error, object, "Copy Memory",
+                        "コア" + std::to_string(index + 1) + "のコピー種が未対応です: " + copyTypes[index]);
+                }
+                else {
+                    uniqueTypes.insert(copyTypes[index]);
+                }
+            }
+            if (uniqueTypes.size() < copyTypes.size()) {
+                AddIssue(Severity::Warning, object, "Copy Memory",
+                    "3つのコアに同じコピー種が重複しています");
+            }
+            if (parameter.copyMemoryActivationRadius <= 0.0f) {
+                AddIssue(Severity::Error, object, "Copy Memory",
+                    "コア接触半径は0より大きい値が必要です");
+            }
         }
     }
 
