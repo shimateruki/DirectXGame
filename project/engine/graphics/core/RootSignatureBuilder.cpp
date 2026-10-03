@@ -120,8 +120,11 @@ void RootSignatureBuilder::AddStaticSamplerCustom(const D3D12_STATIC_SAMPLER_DES
 // 登録済みパラメータとサンプラーからルートシグネチャをシリアライズして作成する。
 
 void RootSignatureBuilder::Build(ID3D12Device* device, ID3D12RootSignature** outRootSignature, D3D12_ROOT_SIGNATURE_FLAGS flags) {
-    assert(device != nullptr);
-    assert(outRootSignature != nullptr);
+    if (!device || !outRootSignature) {
+        assert(false && "Root signature build requires a device and output pointer");
+        return;
+    }
+    *outRootSignature = nullptr;
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
     rsDesc.NumParameters = static_cast<UINT>(parameters_.size());
@@ -141,6 +144,8 @@ void RootSignatureBuilder::Build(ID3D12Device* device, ID3D12RootSignature** out
             OutputDebugStringA(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
         }
         assert(false && "Failed to serialize root signature!");
+        // Release では assert が無効になるため、空の signatureBlob を参照せずに終了します。
+        return;
     }
 
     hr = device->CreateRootSignature(

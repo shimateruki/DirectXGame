@@ -27,7 +27,7 @@ public:
 	/// <param name="objects">シーン内の全オブジェクトリスト</param>
 	/// <param name="camera">メインカメラ</param>
 	/// <param name="Characters/player">操作中のプレイヤー</param>
-	void Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player);
+	void Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player, float deltaTime);
 
 	/// <summary>
 	/// 現在ロックオン中かどうか
@@ -48,7 +48,7 @@ private:
 	/// <summary>
 	/// 最も適したターゲットを検索する内部関数
 	/// </summary>
-	Object3d* FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player);
+	Object3d* FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player, bool next = false);
 
 private:
 	InputManager* inputManager_ = nullptr;
@@ -56,7 +56,7 @@ private:
 	bool isLockingOn_ = false;		   // ロックオン中フラグ
 
 	// 定数パラメータ
-	const float kMaxLockOnDistance_ = 500.0f; // 届く距離
+	const float kMaxLockOnDistance_ = 45.0f; // 取得可能距離。攻撃の射程は延長しません。
 	const float kMinLockOnDot_ = 0.0f;
 	float lostSightTimer_ = 0.0f;
 };

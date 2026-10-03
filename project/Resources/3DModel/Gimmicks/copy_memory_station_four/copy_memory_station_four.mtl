@@ -1,0 +1,15 @@
+newmtl Shadow
+Kd 0.06 0.12 0.23
+Ks 0.1 0.1 0.1
+Ns 30
+illum 2
+newmtl Pearl
+Kd 0.92 0.87 0.72
+Ks 0.15 0.15 0.15
+Ns 30
+illum 2
+newmtl Gold
+Kd 1.0 0.68 0.12
+Ks 0.4 0.4 0.2
+Ns 60
+illum 2

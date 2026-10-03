@@ -1,0 +1,7 @@
+newmtl GlassShard
+Ka 0.10 0.18 0.20
+Kd 0.62 0.85 0.93
+Ks 1.00 1.00 1.00
+Ns 220.0
+d 1.0
+illum 2

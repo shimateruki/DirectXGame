@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f966ae0f8ac77f50e9d78db9e7fd6779",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_thunder/copy_essence_thunder.obj",
+  "version": 1
+}

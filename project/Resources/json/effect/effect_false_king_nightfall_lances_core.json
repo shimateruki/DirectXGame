@@ -1,0 +1,22 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 1,
+  "EasingType": 0,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "Intensity": 1.3,
+  "Lifetime": 600.0,
+  "MeshSegments": 8,
+  "Position": [0.0, 0.0, 0.0],
+  "ProceduralType": 12,
+  "ConeRadius": 1.02,
+  "ConeHeight": 8.0,
+  "Rotation": [0.0, 0.0, 0.0],
+  "StartColor": [1.0, 1.0, 1.0, 1.0],
+  "EndColor": [1.0, 1.0, 1.0, 1.0],
+  "StartScale": [1.0, 1.0, 1.0],
+  "EndScale": [1.0, 1.0, 1.0],
+  "TexturePath": "Resources/sprite/common/white.png",
+  "UvTiling": [1.0, 1.0],
+  "VolumeMode": 0
+}

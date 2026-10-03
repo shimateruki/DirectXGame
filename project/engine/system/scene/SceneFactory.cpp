@@ -1,13 +1,13 @@
 #include "SceneFactory.h"
-#include "GamePlayScene.h" 
-#include "GameSelectScene.h"
-#include "TitleScene.h"    
-#include "SettingsScene.h"
-#include"GameOverScene.h"
-#include"GameClearScene.h"
-#include"PreviewScene.h"
-#include "SceneAssetEditorScene.h"
-#include "TutorialScene.h"
+#include "game/scene/gameplay/GamePlayScene.h"
+#include "game/scene/select/GameSelectScene.h"
+#include "game/scene/title/TitleScene.h"
+#include "game/scene/settings/SettingsScene.h"
+#include"game/scene/gameover/GameOverScene.h"
+#include"game/scene/clear/GameClearScene.h"
+#include"game/scene/preview/PreviewScene.h"
+#include "game/scene/editor/SceneAssetEditorScene.h"
+#include "game/scene/tutorial/TutorialScene.h"
 #include <utility>
 
 SceneFactory::SceneFactory() {

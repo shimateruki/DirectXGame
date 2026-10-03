@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "7c24e93b9f4d41a8a97e1b80cdd54e0f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/prism_spell_motes.json",
+  "version": 1
+}

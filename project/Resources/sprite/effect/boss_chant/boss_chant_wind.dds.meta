@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a371ff05395ad71715d00891168f5f91",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/boss_chant/boss_chant_wind.dds",
+  "version": 1
+}

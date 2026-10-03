@@ -28,6 +28,7 @@ bool UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos, class Par
     }
 
 private:
+    float GetBodyAttackDamage() const override;
         // 巨大スライムの待機、チャージ、ジャンプ、着地回復などの状態です。
 enum class State {
         Idle,

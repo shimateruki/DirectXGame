@@ -15,17 +15,16 @@
 
 class Object3d;
 
-// Modelは、OBJ/GLTFなどから読み込んだメッシュ、マテリアル、テクスチャ情報をGPU描画用に保持します。
+/// <summary>モデルのCPU側データと描画用GPUリソースを保持する。</summary>
 class Model {
 public:
-
-    // --- 鬪ｨ ---
+    /// <summary>スキニングに使うボーンと逆バインド姿勢。</summary>
     struct Bone {
         std::string name;
-        Matrix4x4 inverseBindPoseMatrix; // 蛻晄悄蟋ｿ蜍｢縺ｮ騾・｡悟・
+        Matrix4x4 inverseBindPoseMatrix; // メッシュの初期姿勢へ戻す行列。
     };
 
-    // --- 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ髢｢騾｣ ---
+    /// <summary>アニメーションの時刻（秒）と、その時点の値を保持する。</summary>
     template <typename T>
     struct Keyframe {
         float time;
@@ -34,6 +33,7 @@ public:
     using KeyframeVector3 = Keyframe<Vector3>;
     using KeyframeQuaternion = Keyframe<Quaternion>;
 
+    /// <summary>一つのノードに適用する拡縮・回転・移動のキーフレーム群。</summary>
     struct NodeAnimation {
         std::vector<KeyframeVector3> scale;
         std::vector<KeyframeQuaternion> rotate;
@@ -41,14 +41,15 @@ public:
         std::string name;
     };
 
+    /// <summary>モデルに含まれる名前付きアニメーション。長さと各キーの時刻は秒単位。</summary>
     struct Animation {
-        std::string name;     // 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ蜷・
-        float duration;       // 蜈ｨ菴薙・髟ｷ縺・遘・
-        float ticksPerSecond; // 1遘偵≠縺溘ｊ縺ｮ騾ｲ陦悟ｺｦ
-        std::vector<NodeAnimation> nodeAnimations; // 蜷・ｪｨ縺ｮ蜍輔″繝ｪ繧ｹ繝・
+        std::string name;
+        float duration; // 長さ（秒）。Assimpのtick値は読み込み時に変換する。
+        float ticksPerSecond; // 元データの1秒あたりのtick数。
+        std::vector<NodeAnimation> nodeAnimations;
     };
 
-    // --- 繝槭ユ繝ｪ繧｢繝ｫ繝ｻ繝弱・繝・---
+    /// <summary>モデル用シェーダーへ渡すマテリアル定数。GPU側のレイアウトと一致させる。</summary>
     struct Material {
         Vector4 color;
         int32_t enableLighting;
@@ -57,13 +58,13 @@ public:
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
-        float roughness;           // 4 byte (邊励＆: 0.0=繝・Ν繝・Ν, 1.0=繧ｶ繝ｩ繧ｶ繝ｩ)
-        float metallic;            // 4 byte (驥大ｱ槫ｺｦ: 0.0=髱樣≡螻・ 1.0=驥大ｱ・
+        float roughness; // 粗さ。0で滑らか、1で粗い。
+        float metallic; // 金属度。0で非金属、1で金属。
         int32_t enableNormalMap;
-        int32_t enableEnvMap;      // 4 byte (迺ｰ蠅・・繝・・譛牙柑蛹・
-        float envIntensity;        // 4 byte (迺ｰ蠅・・繝・・蠑ｷ蠎ｦ)
-        float emissive;            // 4 byte (閾ｪ蟾ｱ逋ｺ蜈峨・蠑ｷ縺輔・.0縺ｧ蜈峨ｉ縺ｪ縺・
-        float time;                // 4 byte (譎る俣繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ逕ｨ)
+        int32_t enableEnvMap; // 環境マップの有効フラグ。
+        float envIntensity; // 環境マップの強度。
+        float emissive; // 自己発光の強度。
+        float time; // シェーダー内の時間演出に使う値。
         float portalClipEnabled;
         float portalClipProgress;
         Vector3 portalClipCenter;
@@ -73,12 +74,15 @@ public:
         Vector4 portalClipColor;
 
     };
+
+    /// <summary>ノードやジョイントのローカル姿勢を拡縮・クォータニオン・移動で表す。</summary>
     struct QuaternionTransform {
         Vector3 scale = {1.0f, 1.0f, 1.0f};
         Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
         Vector3 translate = {0.0f, 0.0f, 0.0f};
     };
 
+    /// <summary>スケルトン内の一関節と、親子関係および計算済み行列を保持する。</summary>
     struct Joint {
         QuaternionTransform transform;
         Matrix4x4 localMatrix;
@@ -89,34 +93,36 @@ public:
         std::optional<int32_t> parent;
     };
 
+    /// <summary>ルート関節、名前からの索引、全関節の姿勢をまとめる。</summary>
     struct Skeleton {
         int32_t root;
         std::map<std::string, int32_t> jointMap;
         std::vector<Joint> joints;
     };
 
+    /// <summary>読み込んだモデルの階層ノード。親から累積した変換も保持する。</summary>
     struct Node {
         QuaternionTransform transform;
         Matrix4x4 localMatrix;
-        Matrix4x4 globalMatrix; // 笘・ｿｽ蜉: 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ險育ｮ礼ｵ先棡(繝ｯ繝ｼ繝ｫ繝芽｡悟・)逕ｨ
+        Matrix4x4 globalMatrix; // 親から累積したノード変換。
         std::string name;
         std::vector<Node> children;
     };
 
-        // モデルメッシュ1頂点分の位置、UV、法線などを表します。
-struct VertexData {
+    /// <summary>モデルメッシュ1頂点分の属性。</summary>
+    struct VertexData {
         Vector4 position;
         Vector2 texcoord;
         Vector3 normal;
         Vector3 tangent;
-        Vector4 boneWeights; // 驥阪∩
-        Vector4 boneIndices; // 鬪ｨ逡ｪ蜿ｷ
+        Vector4 boneWeights; // スキニングの重み。
+        Vector4 boneIndices; // 参照するボーン番号。
 
     };
 
-    // --- 繝・・繧ｿ縺ｾ縺ｨ繧√ｋ逕ｨ ---
-        // モデルファイルから読み取ったマテリアルとテクスチャ参照情報です。
-struct MaterialData {
+
+    /// <summary>モデルファイルから読んだマテリアルとテクスチャ参照。</summary>
+    struct MaterialData {
         std::string textureFilePath;
         std::string normalMapPath;
         std::string ormMapPath;
@@ -133,6 +139,7 @@ struct MaterialData {
         Material* materialData = nullptr;
     };
 
+    /// <summary>一メッシュの頂点・インデックスと、通常描画／Compute Skinning用GPUバッファ。</summary>
     struct Mesh {
         std::vector<VertexData> vertices;
         std::vector<uint32_t> indices;
@@ -142,10 +149,11 @@ struct MaterialData {
         Microsoft::WRL::ComPtr<ID3D12Resource> computeSkinnedVertexResource;
         D3D12_VERTEX_BUFFER_VIEW computeSkinnedVertexBufferView{};
         D3D12_RESOURCE_STATES computeSkinnedVertexState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource; //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝舌ャ繝輔ぃ
-        D3D12_INDEX_BUFFER_VIEW indexBufferView{};            //  繧､繝ｳ繝・ャ繧ｯ繧ｹ逕ｨ繝薙Η繝ｼ
+        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource;
+        D3D12_INDEX_BUFFER_VIEW indexBufferView{};
     };
 
+    /// <summary>ファイル読込で得るCPU側のメッシュ、マテリアル、階層、アニメーション一式。</summary>
     struct ModelData {
         std::vector<Mesh> meshes;
         std::vector<MaterialData> materials;
@@ -155,31 +163,54 @@ struct MaterialData {
         std::vector<Animation> animations;
         bool hasSkinning = false;
         bool usesNodeAnimationProxy = false;
-        Skeleton skeleton; // 笘・ｿｽ蜉
+        Skeleton skeleton;
     };
 
+    /// <summary>スキニング用にGPUへ転送するボーンの最終変換行列。</summary>
     struct BoneForGPU {
         Matrix4x4 finalMatrix;
     };
 
-
-public: // 繝｡繝ｳ繝宣未謨ｰ
-    /// <summary>
-    /// 蛻晄悄蛹・
-    /// </summary>
+public:
+    /// <summary>ファイルを読み、モデルと描画用リソースを初期化する。</summary>
+    /// <param name="common">GPUリソース生成に使うモデル共通機能。</param>
+    /// <param name="directoryPath">モデルファイルのディレクトリ。</param>
+    /// <param name="filename">読み込むファイル名。</param>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
-    // Assimp/キャッシュ解析だけを行い、DirectXリソースを生成しないCPU側ロードです。
+
+    /// <summary>AssimpまたはキャッシュからCPU側データだけを読み込む。</summary>
+    /// <remarks>DirectXリソースを生成しないため、ワーカースレッドでの準備に使用できる。</remarks>
+    /// <returns>GPUリソース未作成のモデルデータ。</returns>
     static ModelData LoadCpuData(const std::string& directoryPath, const std::string& filename);
-    // ワーカースレッドで準備したCPUデータから、メインスレッドでGPUリソースを生成します。
+
+    /// <summary>準備済みCPUデータから描画用GPUリソースを作成する。</summary>
+    /// <param name="common">GPUリソース生成に使うモデル共通機能。</param>
+    /// <param name="modelData">所有権を移すCPU側データ。</param>
+    /// <param name="sourceName">キャッシュや診断に使う元モデル名。</param>
     void InitializeFromCpuData(
         ModelCommon* common,
         ModelData modelData,
         const std::string& sourceName);
+
+    /// <summary>同じフレーム内の重複更新を避けながら、現在姿勢の関節行列とボーンバッファを更新する。</summary>
     void Update();
+
+    /// <summary>forceが真ならフレーム内で更新済みでもボーンを再計算する。</summary>
     void Update(bool force);
-    /// <summary>
-    /// 謠冗判
-    /// </summary>
+
+    /// <summary>指定の描画リソースを使ってモデルを描画する。</summary>
+    /// <param name="wvpResource">描画対象の座標変換定数。</param>
+    /// <param name="directionalLightResource">平行光源の定数。</param>
+    /// <param name="cameraResource">カメラ位置などの定数。</param>
+    /// <param name="pointLightResource">点光源の定数。</param>
+    /// <param name="spotLightResource">スポットライトの定数。</param>
+    /// <param name="overrideMaterialResource">指定時は通常のマテリアル定数に優先する。</param>
+    /// <param name="normalMapHandle">上書き用法線マップのSRV番号。</param>
+    /// <param name="ormMapHandle">上書き用ORMマップのSRV番号。</param>
+    /// <param name="overrideTextureHandle">上書き用ベーステクスチャのSRV番号。</param>
+    /// <param name="instanceCount">描画するインスタンス数。</param>
+    /// <param name="startInstanceLocation">描画開始インスタンス番号。</param>
+    /// <param name="meshDrawIndex">描画するメッシュ番号。-1は全メッシュ。</param>
     void Draw(ID3D12Resource* wvpResource,
         ID3D12Resource* directionalLightResource,
         ID3D12Resource* cameraResource,
@@ -190,84 +221,141 @@ public: // 繝｡繝ｳ繝宣未謨ｰ
         uint32_t startInstanceLocation = 0,
         int meshDrawIndex = -1
     );
+
+    /// <summary>影マップ用に深度のみを描画する。-1なら全メッシュを対象にする。</summary>
     void DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex = -1);
+
     /// <summary>
     /// 現在のボーン行列からスキニング済み頂点をCompute Shaderで生成します。
     /// 利用できない場合はfalseを返し、従来のVertex Shader版へフォールバックします。
     /// </summary>
     bool PrepareComputeSkinning();
+
+    /// <summary>Compute Skinningを利用できるか返す。</summary>
     bool UsesComputeSkinning() const { return computeSkinningAvailable_; }
-    /// <summary>
-    /// 繝槭ユ繝ｪ繧｢繝ｫ諠・ｱ縺ｮ蜿門ｾ・(ImGui縺ｧ縺ｮ謫堺ｽ懃畑)
-    /// </summary>
+
+    /// <summary>先頭マテリアルの編集用ポインタを返す。</summary>
     Material* GetMaterial() { return materialData_; }
 
-    /// <summary>
-    /// 繝・け繧ｹ繝√Ε繝上Φ繝峨Ν繧貞叙蠕・
-    /// </summary>
+    /// <summary>先頭マテリアルのテクスチャハンドルを返す。未設定時は0。</summary>
     uint32_t GetTextureHandle() const {
         if (modelData_.materials.empty()) return 0;
         return modelData_.materials[0].textureHandle;
     }
+
+    /// <summary>読み込み済みのモデルデータを参照する。</summary>
     const ModelData& GetModelData() const { return modelData_; }
+
+    /// <summary>先頭のマテリアルを返す。存在しなければnullptr。</summary>
     const MaterialData* GetPrimaryMaterialData() const {
         return modelData_.materials.empty() ? nullptr : &modelData_.materials[0];
     }
+
+    /// <summary>モデルのローカル空間での大きさを返す。</summary>
     Vector3 GetSize() const { return size_; }
+
+    /// <summary>モデルのローカル空間での中心を返す。</summary>
     Vector3 GetCenter() const { return center_; }
+
+    /// <summary>指定秒のアニメーション姿勢をモデルへ適用する。</summary>
     void ApplyAnimation(const Animation& animation, float time);
+
+    /// <summary>二つのアニメーション姿勢を重みで補間して適用する。</summary>
+    /// <param name="blendWeight">0はfrom、1はto側の姿勢。</param>
     void ApplyBlendedAnimation(
         const Animation& fromAnimation,
         float fromTime,
         const Animation& toAnimation,
         float toTime,
         float blendWeight);
+
+    /// <summary>名前に一致するアニメーションを返す。未登録ならnullptr。</summary>
     const Animation* GetAnimation(const std::string& name) const;
+
+    /// <summary>操作可能なスケルトンがあるか返す。</summary>
     bool HasSkeleton() const;
+
+    /// <summary>現在の関節一覧を参照する。</summary>
     const std::vector<Joint>& GetJoints() const;
+
+    /// <summary>名前に一致する関節の索引を返す。未登録なら-1。</summary>
     int FindJointIndex(const std::string& name) const;
+
+    /// <summary>指定関節の現在のローカル姿勢を返す。</summary>
     QuaternionTransform GetJointTransform(int jointIndex) const;
+
+    /// <summary>指定関節のローカル姿勢を変更する。索引が無効ならfalse。</summary>
     bool SetJointTransform(int jointIndex, const QuaternionTransform& transform);
+
+    /// <summary>関節をモデルの初期姿勢に戻す。</summary>
     void ResetSkeletonPose();
+
+    /// <summary>エディター操作後の関節姿勢からスケルトン行列とGPUデータを再計算する。</summary>
     void RebuildSkeletonForEditor();
+
+    /// <summary>ボーン行列のSRV番号を返す。</summary>
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
+
+    /// <summary>モデルのローカル空間AABBの最小点を返す。</summary>
     Vector3 GetLocalAabbMin() const { return localAabbMin_; }
+
+    /// <summary>モデルのローカル空間AABBの最大点を返す。</summary>
     Vector3 GetLocalAabbMax() const { return localAabbMax_; }
 
+    /// <summary>マテリアル設定を行わず、指定メッシュの頂点・インデックスを描画する。</summary>
     void DrawMeshOnly(int meshDrawIndex = -1);
+
+    /// <summary>外部から渡された頂点・インデックスで描画モデルを作る。</summary>
     void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
     
-    // --- 諠・ｱ蜿門ｾ礼畑 ---
+    /// <summary>全メッシュの頂点数を返す。</summary>
     uint32_t GetVertexCount() const;
+
+    /// <summary>全メッシュの三角形数を返す。</summary>
     uint32_t GetPolygonCount() const;
+
+    /// <summary>メッシュ数を返す。</summary>
     uint32_t GetMeshCount() const { return static_cast<uint32_t>(modelData_.meshes.size()); }
-private: // 蜀・Κ蜃ｦ逅・未謨ｰ
+private:
+    // ファイルを解析し、モデルのCPU側表現へ変換する。
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
+
+    // Assimpのノード階層を再帰的に読み、平坦な索引にも記録する。
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
 
+    // テンプレートのマテリアル定義を読み込む。
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
+    // ノード階層から名前に一致する要素を探す。
     Node* FindNode(Node& node, const std::string& name);
 
-    // 繧ｭ繝ｼ繝輔Ξ繝ｼ繝縺九ｉ蛟､繧定ｨ育ｮ励☆繧具ｼ郁｣憺俣・・
+    // 指定秒を挟むキーフレームから値を補間する。
     static Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
     static Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
 
-    // --- Skeleton 繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ ---
+    // 読み込んだノード階層から関節一覧と名前索引を組み立てる。
     static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
     static Skeleton CreateSkeleton(const Node& rootNode);
+
+    // 現在のローカル姿勢を親から積み上げ、スケルトン空間の行列を更新する。
     void UpdateSkeleton(Skeleton& skeleton);
+
+    // アニメーションの各トラックを対応する関節へ適用する。
     void ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animation, float time);
 
-    // 繝懊・繝ｳ繝舌ャ繝輔ぃ髢｢騾｣
+    // ボーン行列を格納するGPUバッファの生成・転送。
     void CreateBoneBuffer();
     void UpdateBoneBuffer();
+
+    // Compute Skinning用の入出力バッファとディスクリプタを準備する。
     void CreateComputeSkinningResources();
+
+    // Compute出力が使える場合はスキニング済み頂点、それ以外は元の頂点を選ぶ。
     const D3D12_VERTEX_BUFFER_VIEW& GetActiveVertexBufferView(const Mesh& mesh) const;
 
 
 
-private: // 繝｡繝ｳ繝仙､画焚
+private:
     ModelCommon* common_ = nullptr;
     ModelData modelData_{};
 
@@ -275,13 +363,14 @@ private: // 繝｡繝ｳ繝仙､画焚
     Material* materialData_ = nullptr;
 
     Math math_;
-    Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // 繝・ヵ繧ｩ繝ｫ繝医・1x1x1
-    Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // 繝・ヵ繧ｩ繝ｫ繝医・蜴溽せ
-    // --- 繝懊・繝ｳ繝舌ャ繝輔ぃ髢｢騾｣ ---
+    Vector3 size_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 center_ = { 0.0f, 0.0f, 0.0f };
+
+    // ボーン行列のGPU転送状態。
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
-    uint32_t boneSrvIndex_ = 0; //  繝懊・繝ｳ諠・ｱSRV縺ｮ繧､繝ｳ繝・ャ繧ｯ繧ｹ
-    uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 笘・ｿｽ蜉・壽怙蠕後↓譖ｴ譁ｰ縺励◆繝輔Ξ繝ｼ繝逡ｪ蜿ｷ
+    uint32_t boneSrvIndex_ = 0; // ボーン行列を参照するSRV番号。
+    uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 最後に更新したフレーム番号。
     bool computeSkinningAvailable_ = false;
     bool computeSkinningDirty_ = true;
     bool computeSkinningOutputReady_ = false;

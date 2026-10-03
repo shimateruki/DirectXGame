@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "073aa9a57256bd2322fef9eeb61c0a01",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/pink/move_0_condition.png",
+  "version": 1
+}

@@ -3,7 +3,7 @@
 
 #include "DebugConsole.h"
 #include "GameDataManager.h"
-#include "GameSelectScene.h"
+#include "game/scene/select/GameSelectScene.h"
 #include "IconsFontAwesome5.h"
 #include "SceneManager.h"
 #include "StageManager.h"
@@ -71,6 +71,7 @@ void GameDataDebugEditor::DrawImGui() {
 }
 
 void GameDataDebugEditor::SyncSlotState() {
+    // 外部のセーブスロット切替に追従し、古いスロットの表示を残しません。
     GameDataManager* save = GameDataManager::GetInstance();
     const int activeSlot = save->GetActiveSlot();
     if (lastActiveSlot_ != activeSlot) {
@@ -395,6 +396,7 @@ void GameDataDebugEditor::DrawStageTable() {
 }
 
 void GameDataDebugEditor::ApplyCrownCountToStages() {
+    // 指定した王冠数に合わせ、先頭ステージから順にクリア状態を更新します。
     GameDataManager* save = GameDataManager::GetInstance();
     const auto& stages = StageManager::GetInstance()->GetStages();
     const int target = std::clamp(crownTarget_, 0, static_cast<int>(stages.size()));

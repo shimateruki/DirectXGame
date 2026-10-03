@@ -80,7 +80,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -112,7 +112,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;DD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -144,8 +144,9 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ProcessorNumber>2</ProcessorNumber>
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/imgui-node-editor;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/nodegraph;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
@@ -163,35 +164,36 @@
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\deps\restore_sdl2.ps1"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll' -Destination '$(OutDir)dxcompiler.dll' -Force; Copy-Item -LiteralPath '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll' -Destination '$(OutDir)dxil.dll' -Force; Copy-Item -LiteralPath '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' -Destination '$(OutDir)SDL2.dll' -Force"</Command>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; function CopyIfChanged($src, $dst) { $source=[IO.FileInfo]::new($src); $target=[IO.FileInfo]::new($dst); if (-not $target.Exists -or $source.Length -ne $target.Length -or $source.LastWriteTimeUtc -ne $target.LastWriteTimeUtc) { Copy-Item -LiteralPath $src -Destination $dst -Force } }; CopyIfChanged '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll' '$(OutDir)dxcompiler.dll'; CopyIfChanged '$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll' '$(OutDir)dxil.dll'; CopyIfChanged '$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll' '$(OutDir)SDL2.dll'"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp" />
-    <ClCompile Include="game\actor\enemy\core\AttackTelegraph.cpp" />
-    <ClCompile Include="game\actor\enemy\core\EnemyAttackProfile.cpp" />
+    <ClCompile Include="game\actor\enemy\combat\AttackTelegraph.cpp" />
+    <ClCompile Include="game\actor\enemy\combat\EnemyAttackProfile.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyWindSlime.cpp" />
     <ClCompile Include="game\actor\enemy\heavy\EnemyGiantSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\EnemyPrismSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\EnemyMagmaSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\EnemyFalseKingSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp" />
     <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp" />
     <ClCompile Include="engine\graphics\effect\EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.Ui.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\BossCore.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Ui.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\core\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorManager.cpp" />
     <ClCompile Include="game\actor\gimmick\core\BaseGimmick.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickMovingFloor.cpp" />
+    <ClCompile Include="game\actor\gimmick\movement\RidingPlatformController.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickHazardRideFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickLaunchStar.cpp" />
@@ -228,13 +230,13 @@
     <ClCompile Include="game\actor\gimmick\combat\GimmickFallingSpike.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
-    <ClCompile Include="game\system\EnemyFactory.cpp" />
+    <ClCompile Include="game\actor\enemy\spawn\EnemyFactory.cpp" />
     <ClCompile Include="game\system\GameplayStatusManager.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp" />
-    <ClCompile Include="game\system\EnemySpawner.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.Persistence.cpp" />
+    <ClCompile Include="game\actor\enemy\spawn\EnemySpawner.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Persistence.cpp" />
     <ClCompile Include="engine\utility\math\Easing.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -257,9 +259,9 @@
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="game\scene\GameOverScene.cpp" />
-    <ClCompile Include="game\scene\GameClearScene.cpp" />
-    <ClCompile Include="game\scene\SettingsScene.cpp" />
+    <ClCompile Include="game\scene\gameover\GameOverScene.cpp" />
+    <ClCompile Include="game\scene\clear\GameClearScene.cpp" />
+    <ClCompile Include="game\scene\settings\SettingsScene.cpp" />
     <ClCompile Include="game\ui\ControlsGuideOverlay.cpp" />
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp" />
     <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
@@ -283,13 +285,23 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Selection.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Commands.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorToolSettings.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorQuickSearch.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneWorkspace.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.Components.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BaseProperties.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.RenderProperties.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.CameraGameplayProperties.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Persistence.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Indexing.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.DDSCache.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.Creation.cpp" />
@@ -311,17 +323,28 @@
     </ClCompile>
     <ClCompile Include="engine\core\Framework.cpp" />
     <ClCompile Include="engine\core\Game.cpp" />
-    <ClCompile Include="engine\core\GameEditorController.cpp" />
+    <ClCompile Include="engine\core\editor\GameEditorController.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
-    <ClCompile Include="game\scene\GamePlayScene.cpp" />
-    <ClCompile Include="game\scene\GamePlayScene.HUD.cpp" />
-    <ClCompile Include="game\scene\GamePlayScene.Setup.cpp" />
-    <ClCompile Include="game\scene\GamePlayScene.Update.cpp" />
-    <ClCompile Include="game\scene\PreviewScene.cpp" />
-    <ClCompile Include="game\scene\SceneAssetEditorScene.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Replay.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Debug.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.GoalPresentation.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.StageEntry.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.ArenaPresentation.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.HUD.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Setup.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Update.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinale.cpp" />
+    <ClCompile Include="game\scene\preview\PreviewScene.cpp" />
+    <ClCompile Include="game\scene\editor\SceneAssetEditorScene.cpp" />
     <ClCompile Include="game\scene\SceneController.cpp" />
-    <ClCompile Include="game\scene\TutorialScene.cpp" />
-    <ClCompile Include="game\scene\GameSelectScene.cpp" />
+    <ClCompile Include="game\scene\tutorial\TutorialScene.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.Internal.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.Unlock.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.Rewards.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.GateCinematic.cpp" />
+    <ClCompile Include="game\scene\select\GameSelectScene.Hud.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ProfilerManager.cpp" />
     <ClCompile Include="engine\graphics\3d\light\Light.cpp" />
@@ -357,27 +380,34 @@
     <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\ParticleEditor.cpp" />
     <ClCompile Include="game\actor\player\Player.cpp" />
-    <ClCompile Include="game\actor\player\PlayerBaseCombatController.cpp" />
-    <ClCompile Include="game\actor\player\PlayerCopyAbilityController.cpp" />
-    <ClCompile Include="game\actor\player\PlayerCopyTypeCatalog.cpp" />
+    <ClCompile Include="game\actor\player\combat\PlayerBaseCombatController.cpp" />
+    <ClCompile Include="game\actor\player\copy\PlayerCopyAbilityController.cpp" />
+    <ClCompile Include="game\actor\player\copy\PinkSlimeCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\FireSlimeCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\ThunderSlimeCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\WindSlimeCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\BomberCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\CrownCopyAbility.cpp" />
+    <ClCompile Include="game\actor\player\copy\PlayerCopyTypeCatalog.cpp" />
     <ClCompile Include="game\actor\player\Player.Replay.cpp" />
     <ClCompile Include="engine\system\scene\SceneFactory.cpp" />
     <ClCompile Include="engine\system\scene\SceneManager.cpp" />
     <ClCompile Include="engine\system\scene\ScenePreloader.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.cpp" />
     <ClCompile Include="engine\graphics\2d\Text.cpp" />
-    <ClCompile Include="game\scene\TitleScene.cpp" />
+    <ClCompile Include="game\scene\title\TitleScene.cpp" />
     <ClCompile Include="game\component\MoveStrategy2D.cpp" />
     <ClCompile Include="game\component\MoveStrategy3D.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\LightEditor.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Settings.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Catalog.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
     <ClCompile Include="game\system\GhostDirector.cpp" />
+    <ClCompile Include="game\system\GhostDirector.Studio.cpp" />
     <ClCompile Include="game\system\CinematicPlayer.cpp" />
     <ClCompile Include="game\system\CinematicSequence.cpp" />
     <ClCompile Include="engine\animation\BodyAnimationClip.cpp" />
@@ -393,19 +423,19 @@
     <ClCompile Include="engine\graphics\3d\MeshRenderer.Shadow.cpp" />
     <ClCompile Include="game\system\ObjectManager.cpp" />
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
-    <ClCompile Include="game\actor\player\PlayerMover.cpp" />
-    <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp" />
-    <ClCompile Include="game\actor\player\PlayerGateReturnAnimation.cpp" />
-    <ClCompile Include="game\actor\player\PlayerDeathAnimation.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.Basic.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.Damage.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.Hook.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.Life.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.PullEnemy.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.PullObject.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.Carry.cpp" />
-    <ClCompile Include="game\actor\player\PlayerClone.cpp" />
+    <ClCompile Include="game\actor\player\movement\PlayerMover.cpp" />
+    <ClCompile Include="game\actor\player\animation\PlayerSlimeAnimator.cpp" />
+    <ClCompile Include="game\actor\player\animation\PlayerGateReturnAnimation.cpp" />
+    <ClCompile Include="game\actor\player\animation\PlayerDeathAnimation.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Basic.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Damage.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Hook.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Life.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.PullEnemy.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.PullObject.cpp" />
+    <ClCompile Include="game\actor\player\state\PlayerState.Carry.cpp" />
+    <ClCompile Include="game\actor\player\clone\PlayerClone.cpp" />
     <ClCompile Include="engine\graphics\postprocess\Fade.cpp" />
     <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\PostEffectEditor.cpp" />
@@ -413,18 +443,22 @@
     <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp" />
     <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.Timeline.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Ui.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Timeline.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Spawner.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Enemy.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Gimmick.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Gameplay.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorTextureCatalog.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Item.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Material.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Spawner.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Enemy.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Gimmick.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Gameplay.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Item.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.cpp" />
@@ -434,9 +468,11 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Packaging.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp" />
@@ -496,6 +532,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="Resources\shader\materials\Ice.PS.hlsl">
+      <ShaderModel>5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -617,29 +654,33 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h" />
-    <ClInclude Include="game\actor\enemy\core\AttackTelegraph.h" />
-    <ClInclude Include="game\actor\enemy\core\EnemyAttackProfile.h" />
+    <ClInclude Include="game\actor\enemy\combat\AttackTelegraph.h" />
+    <ClInclude Include="game\actor\enemy\combat\EnemyAttackProfile.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommandRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorToolSettings.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorQuickSearch.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\SceneWorkspace.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Internal.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorAssetDragPayload.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\boss\BossCore.h" />
-    <ClInclude Include="game\actor\enemy\boss\EnemyPrismSlime.h" />
-    <ClInclude Include="game\actor\enemy\boss\EnemyMagmaSlime.h" />
-    <ClInclude Include="game\actor\enemy\boss\EnemyFalseKingSlime.h" />
+    <ClInclude Include="game\actor\enemy\boss\core\BossCore.h" />
+    <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.h" />
+    <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h" />
+    <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.h" />
     <ClInclude Include="game\actor\enemy\core\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\component\GameplayLinkComponent.h" />
@@ -651,6 +692,9 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorManager.h" />
     <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h" />
+    <ClInclude Include="game\actor\gimmick\movement\RidingPlatformController.h" />
+    <ClInclude Include="game\actor\gimmick\movement\MovingFloorSupport.h" />
+    <None Include="Resources\shader\object3d\FoliageDeformation.hlsli" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickHazardRideFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickLaunchStar.h" />
@@ -687,7 +731,7 @@
     <ClInclude Include="game\actor\gimmick\combat\GimmickFallingSpike.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
-    <ClInclude Include="game\system\EnemyFactory.h" />
+    <ClInclude Include="game\actor\enemy\spawn\EnemyFactory.h" />
     <ClInclude Include="game\system\GameplayStatusManager.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h" />
@@ -699,8 +743,8 @@
     <ClInclude Include="game\actor\enemy\flying\EnemyBat.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyRingBurner.h" />
-    <ClInclude Include="game\system\EnemySpawner.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.h" />
+    <ClInclude Include="game\actor\enemy\spawn\EnemySpawner.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />
     <ClInclude Include="externals\assimp\include\assimp\aabb.h" />
     <ClInclude Include="externals\assimp\include\assimp\ai_assert.h" />
@@ -884,8 +928,8 @@
     <ClInclude Include="externals\SDL2\include\SDL_version.h" />
     <ClInclude Include="externals\SDL2\include\SDL_video.h" />
     <ClInclude Include="externals\SDL2\include\SDL_vulkan.h" />
-    <ClInclude Include="game\scene\GameOverScene.h" />
-    <ClInclude Include="game\scene\GameClearScene.h" />
+    <ClInclude Include="game\scene\gameover\GameOverScene.h" />
+    <ClInclude Include="game\scene\clear\GameClearScene.h" />
     <ClInclude Include="game\system\GameRule.h" />
     <ClInclude Include="game\system\TutorialDirector.h" />
     <ClInclude Include="game\system\GroundEffectLocator.h" />
@@ -916,7 +960,7 @@
     <ClInclude Include="externals\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="engine\core\Framework.h" />
     <ClInclude Include="engine\core\Game.h" />
-    <ClInclude Include="engine\core\GameEditorController.h" />
+    <ClInclude Include="engine\core\editor\GameEditorController.h" />
     <ClInclude Include="engine\system\input\InputManager.h" />
     <ClInclude Include="engine\graphics\3d\model\Model.h" />
     <ClInclude Include="engine\graphics\3d\model\ModelCommon.h" />
@@ -929,14 +973,16 @@
     <ClInclude Include="engine\platform\WinApp.h" />
     <ClInclude Include="engine\utility\math\Math.h" />
     <ClInclude Include="engine\graphics\core\SrvManager.h" />
-    <ClInclude Include="game\scene\GamePlayScene.h" />
-    <ClInclude Include="game\scene\PreviewScene.h" />
-    <ClInclude Include="game\scene\SceneAssetEditorScene.h" />
+    <ClInclude Include="game\scene\gameplay\GamePlayScene.h" />
+    <ClInclude Include="game\scene\gameplay\GamePlayScene.PresentationMath.h" />
+    <ClInclude Include="game\scene\preview\PreviewScene.h" />
+    <ClInclude Include="game\scene\editor\SceneAssetEditorScene.h" />
     <ClInclude Include="game\scene\SceneController.h" />
     <ClInclude Include="engine\system\scene\SceneLoadContext.h" />
-    <ClInclude Include="game\scene\TutorialScene.h" />
-    <ClInclude Include="game\scene\GameSelectScene.h" />
-    <ClInclude Include="game\scene\SettingsScene.h" />
+    <ClInclude Include="game\scene\tutorial\TutorialScene.h" />
+    <ClInclude Include="game\scene\select\GameSelectScene.h" />
+    <ClInclude Include="game\scene\select\GameSelectScene.Internal.h" />
+    <ClInclude Include="game\scene\settings\SettingsScene.h" />
     <ClInclude Include="game\ui\ControlsGuideOverlay.h" />
     <ClInclude Include="game\ui\PauseMenuOverlay.h" />
     <ClInclude Include="game\ui\SaveIndicatorOverlay.h" />
@@ -953,15 +999,17 @@
     <ClInclude Include="engine\graphics\3d\light\LightManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\ParticleEditor.h" />
     <ClInclude Include="game\actor\player\Player.h" />
-    <ClInclude Include="game\actor\player\PlayerBaseCombatController.h" />
-    <ClInclude Include="game\actor\player\PlayerCopyAbilityController.h" />
-    <ClInclude Include="game\actor\player\PlayerCopyTypeCatalog.h" />
+    <ClInclude Include="game\actor\player\combat\PlayerBaseCombatController.h" />
+    <ClInclude Include="game\actor\player\copy\PlayerCopyAbilityController.h" />
+    <ClInclude Include="game\actor\player\copy\CopyAbilitySupport.h" />
+    <ClInclude Include="game\actor\player\copy\CopyAbilitySession.h" />
+    <ClInclude Include="game\actor\player\copy\PlayerCopyTypeCatalog.h" />
     <ClInclude Include="engine\system\scene\SceneFactory.h" />
     <ClInclude Include="engine\system\scene\SceneManager.h" />
     <ClInclude Include="engine\system\scene\ScenePreloader.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.h" />
     <ClInclude Include="engine\graphics\2d\Text.h" />
-    <ClInclude Include="game\scene\TitleScene.h" />
+    <ClInclude Include="game\scene\title\TitleScene.h" />
     <ClInclude Include="game\system\GameAudioSettings.h" />
     <ClInclude Include="game\system\GameSettingsManager.h" />
     <ClInclude Include="game\system\SpriteLayoutScaler.h" />
@@ -971,7 +1019,7 @@
     <ClInclude Include="game\component\MoveStrategy3D.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\LightEditor.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
@@ -989,19 +1037,19 @@
     <ClInclude Include="game\system\ObjectManager.h" />
     <ClInclude Include="game\system\ItemFactory.h" />
     <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
-    <ClInclude Include="game\actor\player\PlayerMover.h" />
-    <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h" />
-    <ClInclude Include="game\actor\player\PlayerGateReturnAnimation.h" />
-    <ClInclude Include="game\actor\player\PlayerDeathAnimation.h" />
-    <ClInclude Include="game\actor\player\PlayerState.h" />
-    <ClInclude Include="game\actor\player\PlayerState.Basic.h" />
-    <ClInclude Include="game\actor\player\PlayerState.Carry.h" />
-    <ClInclude Include="game\actor\player\PlayerState.Damage.h" />
-    <ClInclude Include="game\actor\player\PlayerState.Hook.h" />
-    <ClInclude Include="game\actor\player\PlayerState.Life.h" />
-    <ClInclude Include="game\actor\player\PlayerState.PullEnemy.h" />
-    <ClInclude Include="game\actor\player\PlayerState.PullObject.h" />
-    <ClInclude Include="game\actor\player\PlayerClone.h" />
+    <ClInclude Include="game\actor\player\movement\PlayerMover.h" />
+    <ClInclude Include="game\actor\player\animation\PlayerSlimeAnimator.h" />
+    <ClInclude Include="game\actor\player\animation\PlayerGateReturnAnimation.h" />
+    <ClInclude Include="game\actor\player\animation\PlayerDeathAnimation.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Basic.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Carry.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Damage.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Hook.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.Life.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.PullEnemy.h" />
+    <ClInclude Include="game\actor\player\state\PlayerState.PullObject.h" />
+    <ClInclude Include="game\actor\player\clone\PlayerClone.h" />
     <ClInclude Include="engine\graphics\postprocess\Fade.h" />
     <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\PostEffectEditor.h" />
@@ -1014,10 +1062,11 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorTextureCatalog.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.h" />
@@ -1027,6 +1076,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Internal.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />
@@ -1103,6 +1153,72 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\scene\gameover\GameOverSlimeAnimator.h" />
+    <ClInclude Include="game\scene\gameplay\GoalClearPlayerAnimator.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\enemy\animation\SlimeBounceAnimator.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\Player.Internal.h" />
+    <ClCompile Include="game\actor\player\copy\Player.Morph.cpp" />
+    <ClCompile Include="game\actor\player\copy\Player.MorphRelease.cpp" />
+    <ClCompile Include="game\actor\player\combat\Player.Feedback.cpp" />
+    <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Internal.h" />
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Attacks.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Encounter.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Finale.cpp" />
+    <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h" />
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Attacks.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Encounter.cpp" />
+    <ClInclude Include="game\actor\enemy\boss\core\BossCore.Internal.h" />
+    <ClCompile Include="game\actor\enemy\boss\core\BossCore.Sequence.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="game\actor\player\movement\PlayerLaunchStarController.cpp" />
+    <ClInclude Include="game\actor\player\movement\PlayerLaunchStarController.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="engine\core\editor\GameEditorController.Internal.h" />
+    <ClCompile Include="engine\core\editor\GameEditorController.Support.cpp" />
+    <ClCompile Include="engine\core\editor\GameEditorController.Commands.cpp" />
+    <ClCompile Include="engine\core\editor\GameEditorController.Workspace.cpp" />
+    <ClCompile Include="engine\core\editor\GameEditorController.Viewport.cpp" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Internal.h" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Support.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.PrefabSync.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Overrides.cpp" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Internal.h" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Support.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Ui.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Guides.cpp" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Internal.h" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Support.cpp" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Internal.h" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Support.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Archive.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\enemy\boss\core\BossArmorFlightController.h" />
+    <ClCompile Include="game\actor\enemy\boss\core\BossArmorFlightController.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\combat\CombatMath.h" />
+    <ClInclude Include="game\actor\combat\CombatGroundQuery.h" />
+    <ClCompile Include="game\actor\combat\CombatGroundQuery.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\combat\PlayerAttackInputBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\item\DroppedCopyStar.h" />
+    <ClCompile Include="game\actor\item\DroppedCopyStar.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\movement\PlayerJumpRequest.h" />
   </ItemGroup>
 </Project>
 

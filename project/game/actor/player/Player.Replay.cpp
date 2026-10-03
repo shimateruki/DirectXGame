@@ -1,5 +1,5 @@
-#include "Player.h"
-#include "PlayerCopyAbilityController.h"
+﻿#include "Player.h"
+#include "game/actor/player/copy/PlayerCopyAbilityController.h"
 
 namespace {
 json ToJson(const Vector3& value) {
@@ -36,6 +36,7 @@ bool IsSupportedMorphTypeValue(int value) {
     case Player::EnemyMorphType::FireSlime:
     case Player::EnemyMorphType::ThunderSlime:
     case Player::EnemyMorphType::WindSlime:
+    case Player::EnemyMorphType::Crown:
         return true;
     default:
         return false;
@@ -49,10 +50,11 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerControlActive"] = isControlActive_;
     state["playerCinematicLocked"] = isCinematicLocked_;
     state["playerPendingAttack2"] = pendingAttack2_;
-    state["playerComboWindowTimer"] = comboWindowTimer_;
-    state["playerAttackInputBuffered"] = attackInputBuffered_;
-    state["playerAttackBufferUsed"] = attackBufferUsedForStateStart_;
-    state["playerAttackInputBufferTimer"] = attackInputBufferTimer_;
+    const auto attackInput = attackInputBuffer_.Capture();
+    state["playerComboWindowTimer"] = attackInput.comboWindowTimer;
+    state["playerAttackInputBuffered"] = attackInput.buffered;
+    state["playerAttackBufferUsed"] = attackInput.usedForStateStart;
+    state["playerAttackInputBufferTimer"] = attackInput.inputBufferTimer;
     state["playerDamageCooldownTimer"] = damageCooldownTimer_;
     state["playerDamageInvincible"] = isDamageInvincible_;
     state["playerDashInvincible"] = isDashInvincible_;
@@ -110,10 +112,12 @@ void Player::RestoreReplayCustomState(const json& state) {
     isControlActive_ = state.value("playerControlActive", isControlActive_);
     isCinematicLocked_ = state.value("playerCinematicLocked", isCinematicLocked_);
     pendingAttack2_ = state.value("playerPendingAttack2", pendingAttack2_);
-    comboWindowTimer_ = state.value("playerComboWindowTimer", comboWindowTimer_);
-    attackInputBuffered_ = state.value("playerAttackInputBuffered", attackInputBuffered_);
-    attackBufferUsedForStateStart_ = state.value("playerAttackBufferUsed", attackBufferUsedForStateStart_);
-    attackInputBufferTimer_ = state.value("playerAttackInputBufferTimer", attackInputBufferTimer_);
+    auto attackInput = attackInputBuffer_.Capture();
+    attackInput.comboWindowTimer = state.value("playerComboWindowTimer", attackInput.comboWindowTimer);
+    attackInput.buffered = state.value("playerAttackInputBuffered", attackInput.buffered);
+    attackInput.usedForStateStart = state.value("playerAttackBufferUsed", attackInput.usedForStateStart);
+    attackInput.inputBufferTimer = state.value("playerAttackInputBufferTimer", attackInput.inputBufferTimer);
+    attackInputBuffer_.Restore(attackInput);
     damageCooldownTimer_ = state.value("playerDamageCooldownTimer", damageCooldownTimer_);
     isDamageInvincible_ = state.value("playerDamageInvincible", isDamageInvincible_);
     isDashInvincible_ = state.value("playerDashInvincible", isDashInvincible_);

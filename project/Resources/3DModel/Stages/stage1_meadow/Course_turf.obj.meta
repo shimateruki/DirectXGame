@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cd277effe7e00a4136a39d219cc49b10",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_meadow/Course_turf.obj",
+  "version": 1
+}

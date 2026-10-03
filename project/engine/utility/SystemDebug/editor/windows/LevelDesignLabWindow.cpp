@@ -295,6 +295,7 @@ bool LevelDesignLabWindow::HasErrors() const {
 }
 
 void LevelDesignLabWindow::ValidatePlan() {
+    // プレビューを作る前に、範囲・接続・必須要素の問題をまとめて報告します。
     issues_.clear();
     validationComplete_ = false;
     if (!planLoaded_) return;
@@ -468,6 +469,7 @@ void LevelDesignLabWindow::ValidatePlan() {
 }
 
 void LevelDesignLabWindow::StartPlanPreview() {
+    // 検証済みのプランから配置案を作り、シーンへの確定操作とは分けます。
     if (!editor_ || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
         !validationComplete_ || HasErrors() || operations_.empty()) {
         statusText_ = "エラーのない検証済みPlanだけをプレビューできます。";

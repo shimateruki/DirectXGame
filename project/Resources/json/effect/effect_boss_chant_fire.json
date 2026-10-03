@@ -1,0 +1,64 @@
+{
+  "AlphaReference": 0.004,
+  "AutoLoop": false,
+  "BlendMode": 1,
+  "DistortionStrength": 0,
+  "EasingType": 0,
+  "EdgeFadeStrength": 0,
+  "EnableDistortion": false,
+  "EnableReveal": true,
+  "RevealMode": 2,
+  "EndColor": [
+    1,
+    1,
+    1,
+    0.72
+  ],
+  "EndScale": [
+    1,
+    1,
+    1
+  ],
+  "Intensity": 1.35,
+  "UseTextureColor": true,
+  "Lifetime": 600,
+  "MeshSegments": 1,
+  "ModelName": "",
+  "PlaneSize": [
+    2.4,
+    2.4
+  ],
+  "Position": [
+    0,
+    0,
+    0
+  ],
+  "ProceduralType": 7,
+  "Rotation": [
+    0,
+    0,
+    0
+  ],
+  "ScrollSpeed": [
+    0,
+    0
+  ],
+  "StartColor": [
+    1,
+    1,
+    1,
+    0.72
+  ],
+  "StartScale": [
+    1,
+    1,
+    1
+  ],
+  "TargetName": "",
+  "TexturePath": "Resources/sprite/effect/boss_chant/boss_chant_fire.png",
+  "UvTiling": [
+    1,
+    1
+  ],
+  "VolumeMode": 0
+}

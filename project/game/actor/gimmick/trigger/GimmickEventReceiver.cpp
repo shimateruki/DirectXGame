@@ -87,6 +87,14 @@ void GimmickEventReceiver::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
+void GimmickEventReceiver::RelocateRuntimeBase(const Vector3& position) {
+    const Vector3 offset = position - (initializedForPlay_ ? basePosition_ : GetTranslate());
+    basePosition_ = position;
+    targetPosition_ = initializedForPlay_ ? targetPosition_ + offset : position;
+    SetTranslate(GetTranslate() + offset);
+    UpdateWorldMatrix(true);
+}
+
 void GimmickEventReceiver::OnTrigger() {
     OnSwitchEvent(true);
 }

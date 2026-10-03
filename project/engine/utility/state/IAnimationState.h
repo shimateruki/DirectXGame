@@ -2,6 +2,7 @@
 
 class Player;
 
+/// <summary>プレイヤーのアニメーション状態の開始、更新、終了を受け取る境界。</summary>
 class IAnimationState {
 public:
     virtual ~IAnimationState() = default;

@@ -7,6 +7,9 @@
 #include <iomanip>
 #include <filesystem> 
 #include "IconsFontAwesome5.h"
+#ifdef USE_IMGUI
+#include "EditorToolSettings.h"
+#endif
 using json = nlohmann::json;
 
 namespace {
@@ -37,6 +40,14 @@ KeyConfig* KeyConfig::GetInstance() {
     return &instance;
 }
 
+bool KeyConfig::SetBinding(const std::string& actionName, const BindData& binding) {
+    auto found = bindings_.find(actionName);
+    if (found == bindings_.end() || binding.keyCode < 0 || binding.keyCode > 255 ||
+        binding.mouseButton < -1 || binding.mouseButton > 3) return false;
+    found->second = binding;
+    return true;
+}
+
 void KeyConfig::Initialize() {
     // 1. デフォルト設定 (キーとパッドの両方を設定！)
     bindings_["Forward"] = { 0x11, -1, XINPUT_GAMEPAD_DPAD_UP };       // W / 上十字
@@ -50,6 +61,10 @@ void KeyConfig::Initialize() {
     bindings_["Ability"] = { 0x12, -1, XINPUT_GAMEPAD_Y };
     bindings_["MorphRelease"] = { 0x13, -1, XINPUT_GAMEPAD_B };        // R / Bボタン
 
+    bindings_["LockOn"] = { DIK_Q, -1, XINPUT_GAMEPAD_RIGHT_THUMB };
+    bindings_["LockOnNext"] = { DIK_G, -1, XINPUT_GAMEPAD_LEFT_THUMB };
+    bindings_["PrimaryAttack"] = { 0, 0, XINPUT_GAMEPAD_X };
+    bindings_["SecondaryAction"] = { 0, 1, XINPUT_GAMEPAD_LEFT_SHOULDER };
     Load();
 }
 
@@ -84,7 +99,7 @@ void KeyConfig::Load(const std::string& filepath) {
     }
 }
 
-void KeyConfig::Save(const std::string& filepath) {
+bool KeyConfig::Save(const std::string& filepath) {
     std::filesystem::path dir = std::filesystem::path(filepath).parent_path();
     if (!dir.empty() && !std::filesystem::exists(dir)) {
         std::filesystem::create_directories(dir);
@@ -106,6 +121,8 @@ void KeyConfig::Save(const std::string& filepath) {
     else {
         DebugConsole::GetInstance()->AddLog("KeyConfig: [ERROR] 保存に失敗しました");
     }
+    file.flush();
+    return file.good();
 }
 
 int KeyConfig::GetKeyCode(const std::string& actionName) const {
@@ -201,6 +218,8 @@ std::string KeyConfig::GetPadName(WORD padCode) const {
 // =================================================================
 void KeyConfig::DrawImGui() {
 #ifdef USE_IMGUI
+    if (ImGui::Button("エディターのショートカット設定を開く")) EditorToolSettings::Get().Open();
+    ImGui::TextDisabled("以下はゲーム操作用です。エディターの割当とは別に保存されます。");
     // ---------------------------------------------------------
     // 1. セーブ＆ロード ボタン
     // ---------------------------------------------------------

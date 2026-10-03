@@ -103,6 +103,9 @@ void MeshEffectManager::PreloadEffect(const std::string& jsonFilePath) {
     effect->SetProceduralType(0);
     effect->SetEnableNoiseTexture(false);
     effect->SetEnableColorRamp(false);
+    if (j.contains("UseTextureColor")) {
+        effect->SetUseTextureColor(j["UseTextureColor"].get<bool>());
+    }
     effect->SetEnableDistortion(false);
     effect->SetEnableReveal(true);
     effect->SetDistortionStrength(0.0f);
@@ -383,12 +386,14 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         if (j.contains("EndColor")) effect->SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
         if (j.contains("ScrollSpeed")) effect->SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
         if (j.contains("Intensity")) effect->SetIntensity(j["Intensity"]);
+        if (j.contains("UseTextureColor")) effect->SetUseTextureColor(j["UseTextureColor"].get<bool>());
         if (j.contains("DistortionStrength")) effect->SetDistortionStrength(j["DistortionStrength"]);
         if (j.contains("DistortionSpeed")) effect->SetDistortionSpeed(j["DistortionSpeed"]);
         if (j.contains("EdgeFadeStrength")) effect->SetEdgeFadeStrength(j["EdgeFadeStrength"]);
         if (j.contains("EnableDistortion")) effect->SetEnableDistortion(j["EnableDistortion"]);
         if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal")) effect->SetEnableReveal(j["EnableReveal"]);
+        if (j.contains("RevealMode")) effect->SetRevealMode(j["RevealMode"]);
         if (j.contains("EasingType")) effect->SetEasingType(j["EasingType"]);
         if (j.contains("AlphaReference")) effect->SetAlphaReference(j["AlphaReference"]);
 
@@ -552,12 +557,14 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
         if (j.contains("EndColor"))   effect->SetEndColor(  { j["EndColor"][0],   j["EndColor"][1],   j["EndColor"][2],   j["EndColor"][3]   });
         if (j.contains("ScrollSpeed"))       effect->SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
         if (j.contains("Intensity"))         effect->SetIntensity(j["Intensity"]);
+        if (j.contains("UseTextureColor"))  effect->SetUseTextureColor(j["UseTextureColor"].get<bool>());
         if (j.contains("DistortionStrength"))effect->SetDistortionStrength(j["DistortionStrength"]);
         if (j.contains("DistortionSpeed"))   effect->SetDistortionSpeed(j["DistortionSpeed"]);
         if (j.contains("EdgeFadeStrength"))  effect->SetEdgeFadeStrength(j["EdgeFadeStrength"]);
         if (j.contains("EnableDistortion"))  effect->SetEnableDistortion(j["EnableDistortion"]);
         if (j.contains("BlendMode"))         effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal"))      effect->SetEnableReveal(j["EnableReveal"]);
+        if (j.contains("RevealMode"))        effect->SetRevealMode(j["RevealMode"]);
         if (j.contains("EasingType"))        effect->SetEasingType(j["EasingType"]);
         if (j.contains("AlphaReference"))    effect->SetAlphaReference(j["AlphaReference"]);
 

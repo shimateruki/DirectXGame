@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "c3c1ee9c8097cc42898db1bb4c136a45",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/fireball_trail_embers.json",
+  "version": 1
+}

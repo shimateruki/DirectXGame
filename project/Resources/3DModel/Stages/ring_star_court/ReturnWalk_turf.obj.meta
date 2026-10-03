@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b7c012099344c297e9e356bf5e6147a4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnWalk_turf.obj",
+  "version": 1
+}

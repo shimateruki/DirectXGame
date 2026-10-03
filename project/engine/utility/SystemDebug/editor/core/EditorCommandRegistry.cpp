@@ -9,6 +9,7 @@ EditorCommandRegistry* EditorCommandRegistry::GetInstance() {
 }
 
 bool EditorCommandRegistry::Register(EditorCommand command) {
+    // 同じ ID の再登録は同一 owner に限り、別ツールのコマンドを上書きしません。
     if (command.id.empty() || command.displayName.empty() || !command.execute) {
         return false;
     }
@@ -46,6 +47,7 @@ bool EditorCommandRegistry::Unregister(std::string_view id, const void* owner) {
 }
 
 void EditorCommandRegistry::UnregisterOwner(const void* owner) {
+    // ツール終了時に自身のコマンドだけを取り除き、検索候補の世代も更新します。
     if (!owner) {
         return;
     }

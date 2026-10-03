@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "111a09484eed43425c5572e2b3d502d6",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/fireball_impact_sparks.json",
+  "version": 1
+}

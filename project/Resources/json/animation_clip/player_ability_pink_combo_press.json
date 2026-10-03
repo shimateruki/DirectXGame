@@ -1,0 +1,13 @@
+{
+ "version":2,"model":"Characters/slime_pink","baseAnimation":"","name":"player_ability_pink_combo_press","duration":0.86,"loop":false,"keys":[],"events":[],
+ "bodyKeys":[
+ {"time":0,"scale":[1,1,1],"rotate":[0,0,0],"translate":[0,0,0],"shear":[0,0,0],"easingToNext":4},
+ {"time":0.14,"scale":[1.50,0.42,1.52],"rotate":[0,0,0],"translate":[0,0,0],"shear":[0,0,0.32],"easingToNext":2},
+ {"time":0.28,"scale":[0.68,2.15,0.70],"rotate":[0,0,0],"translate":[0,0.65,0],"shear":[0,0,0.32],"easingToNext":4},
+ {"time":0.34,"scale":[0.94,1.75,1.10],"rotate":[0,0,0],"translate":[0,0.80,0],"shear":[0,0,-0.55],"easingToNext":2},
+ {"time":0.40,"scale":[2.18,0.28,2.10],"rotate":[0,0,0],"translate":[0,0,0],"shear":[0,0,-0.72],"easingToNext":1},
+ {"time":0.49,"scale":[2.05,0.32,2.02],"rotate":[0,0,0],"translate":[0,0,0],"shear":[0,0,-0.56],"easingToNext":4},
+ {"time":0.66,"scale":[0.82,1.32,0.86],"rotate":[0,0,0],"translate":[0,0.08,0],"shear":[0,0,0.12],"easingToNext":4},
+ {"time":0.86,"scale":[1,1,1],"rotate":[0,0,0],"translate":[0,0,0],"shear":[0,0,0],"easingToNext":4}
+ ]
+}

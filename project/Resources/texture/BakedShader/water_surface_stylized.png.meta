@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "6805b9ce972a45a3bd391692ac144181",
+  "importSettings": {
+    "colorSpace": "sRGB",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/texture/BakedShader/water_surface_stylized.png",
+  "version": 1
+}

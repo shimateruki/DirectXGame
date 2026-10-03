@@ -264,6 +264,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     }
     shadowWvpData_->WVP = Math::MakeIdentity4x4();
     shadowWvpData_->world = Math::MakeIdentity4x4();
+    shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
 
     if (!CreateMappedBuffer(dxCommon, sizeof(LocalFogData), localFogResource_, localFogData_, "LocalFog")) {
         common_ = nullptr;
@@ -294,11 +295,22 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->effectScaleX = 1.0f;
     waterParamData_->effectScaleY = 1.0f;
     waterParamData_->effectScaleZ = 1.0f;
-    waterParamData_->waterParamPadding0 = 0.0f;
+    waterParamData_->topDownDetail = 1.0f;
     waterParamData_->waterLightDirection = { -0.35f, -0.82f, 0.45f };
     waterParamData_->waterLightIntensity = 1.0f;
     waterParamData_->waterLightColor = { 1.0f, 0.96f, 0.88f };
-    waterParamData_->waterParamPadding1 = 0.0f;
+    waterParamData_->waterParamPadding1 = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
+    waterParamData_->waterInverseViewProjection = Math::MakeIdentity4x4();
+    waterParamData_->waterDebugView = 0.0f;
+    for (float& padding : waterParamData_->waterDebugPadding) padding = 0.0f;
+    for (int i = 0; i < kPreviewBufferCount; ++i) {
+        if (!CreateMappedBuffer(dxCommon, sizeof(WaterParamForGPU),
+            previewWaterResources_[i], previewWaterData_[i], "PreviewWater")) {
+            common_ = nullptr;
+            return;
+        }
+        *previewWaterData_[i] = *waterParamData_;
+    }
     EnsureBakedShaderTexturesLoaded();
     
 }
@@ -370,6 +382,7 @@ void MeshRenderer::RefreshCameraDependentData() {
         wvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
         cameraData_->worldPosition = camera->GetEye();
         waterParamData_->cameraWorldPosition = camera->GetEye();
+        waterParamData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
         localFogData_->cameraPos = camera->GetEye();
         localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
     } else {
@@ -380,6 +393,7 @@ void MeshRenderer::RefreshCameraDependentData() {
     if (isUIPreview_) {
         shadowWvpData_->WVP = Math::MakeIdentity4x4();
         shadowWvpData_->world = Math::MakeIdentity4x4();
+        shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
         return;
     }
 
@@ -388,6 +402,14 @@ void MeshRenderer::RefreshCameraDependentData() {
     const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
     shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
     shadowWvpData_->world = shadowWorld;
+    shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
+}
+
+void MeshRenderer::AdvanceWaterAnimation(float deltaTime) {
+    if (!waterParamData_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
+    waterParamData_->time += deltaTime;
+    waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * deltaTime;
+    waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * deltaTime;
 }
 
 void MeshRenderer::Update() {
@@ -397,19 +419,24 @@ void MeshRenderer::Update() {
 	// 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
     if (materialData_) {
-        materialData_->time = time_;
+        // 草木は実時間で更新する。行列更新やEditor操作で風の時刻を戻さない。
+        if (materialData_->materialType != 30 && materialData_->materialType != 31) {
+            materialData_->time = time_;
+        }
         materialData_->color = ColorSpace::AuthoringToWorking(materialColor_);
     }
     UpdateUvTransform();
 
     if (waterParamData_) {
-        waterParamData_->time = time_; 
-
-        // ★流速に基づいてオフセットを蓄積）
-        waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * (1.0f / 60.0f);
-        waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * (1.0f / 60.0f);
+        // 水以外の既存エフェクトは従来の時間更新を維持します。
+        if (!materialData_ || materialData_->materialType != 8) {
+            waterParamData_->time = time_;
+            waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * (1.0f / 60.0f);
+            waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * (1.0f / 60.0f);
+        }
 
         auto& sun = LightManager::GetInstance()->GetDirectionalLight();
+        waterParamData_->waterParamPadding1 = ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
         const Vector4 sunColor = ColorSpace::AuthoringToWorking(sun.color);
         waterParamData_->waterLightDirection = sun.direction;
         waterParamData_->waterLightIntensity = sun.intensity;
@@ -446,6 +473,7 @@ void MeshRenderer::Update() {
             cameraData_->worldPosition = camera->GetEye();
             if (waterParamData_) {
                 waterParamData_->cameraWorldPosition = camera->GetEye();
+                waterParamData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
             }
             localFogData_->cameraPos = camera->GetEye();
             localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
@@ -458,6 +486,7 @@ void MeshRenderer::Update() {
                 // 影マップの影響を受けないように、行列を初期化しておく
                 shadowWvpData_->WVP = Math::MakeIdentity4x4();
                 shadowWvpData_->world = Math::MakeIdentity4x4();
+                shadowWvpData_->WorldInverseTranspose = Math::MakeIdentity4x4();
             }
             return; 
         }
@@ -467,6 +496,7 @@ void MeshRenderer::Update() {
             const Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
             shadowWvpData_->WVP = math.Multiply(shadowWorld, lightVP);
             shadowWvpData_->world = shadowWorld;
+            shadowWvpData_->WorldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
         }
     }
 }

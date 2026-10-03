@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b1bb3dadf8454598046d5127520d6515",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/end.png",
+  "version": 1
+}

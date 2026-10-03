@@ -6,8 +6,7 @@ Texture2D<float4> bakedFireFlameTex : register(t2);
 Texture2D<float4> bakedFireOrbTex : register(t3);
 SamplerState smp : register(s0);
 
-static const float kNearClip = 0.1f;
-static const float kFarClip = 1000.0f;
+#include "FireVolume.hlsli"
 
 float Hash12(float2 p)
 {
@@ -52,12 +51,6 @@ float BakedFireMask(float4 texel)
     return saturate(dot(max(texel.rgb, 0.0f), float3(0.299f, 0.587f, 0.114f)));
 }
 
-float LinearizeDepth(float z)
-{
-    z = saturate(z);
-    return (kNearClip * kFarClip) / max(kFarClip - z * (kFarClip - kNearClip), 0.0001f);
-}
-
 float3 TonalFireRamp(float heat, float ember, float3 artistTint)
 {
     float3 deepCoal = float3(0.060f, 0.006f, 0.002f);
@@ -67,10 +60,10 @@ float3 TonalFireRamp(float heat, float ember, float3 artistTint)
     float3 whiteHot = float3(3.20f, 2.42f, 1.08f);
 
     float3 c = deepCoal;
-    c = lerp(c, redCore, smoothstep(0.18f, 0.22f, heat));
-    c = lerp(c, orange, smoothstep(0.42f, 0.47f, heat));
-    c = lerp(c, yellow, smoothstep(0.64f, 0.69f, heat));
-    c = lerp(c, whiteHot, smoothstep(0.86f, 0.91f, heat));
+    c = lerp(c, redCore, smoothstep(0.12f, 0.30f, heat));
+    c = lerp(c, orange, smoothstep(0.30f, 0.62f, heat));
+    c = lerp(c, yellow, smoothstep(0.57f, 0.86f, heat));
+    c = lerp(c, whiteHot, smoothstep(0.91f, 1.0f, heat) * 0.45f);
     c += float3(1.0f, 0.22f, 0.025f) * ember * 0.55f;
     return c;
 }
@@ -89,6 +82,10 @@ float2 BuildSurfaceUV(float3 worldPos, float3 normal)
 
 float4 main(VSOutput input) : SV_TARGET
 {
+    if ((effectType >= 1.5f && effectType < 2.5f) ||
+        (effectType >= 3.5f && effectType < 7.5f))
+        return RenderFireVolume(input);
+
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
     screenUV = saturate(screenUV);
 
@@ -128,66 +125,7 @@ float4 main(VSOutput input) : SV_TARGET
     float smoke = 0.0f;
     float alpha = 0.0f;
 
-    if (effectType >= 3.5f && effectType < 4.5f)
-    {
-        // Each crossed card gets a different flow phase while sharing one coherent flame body.
-        float horizontal = input.localPos.x;
-        float height01 = saturate(input.localPos.y);
-        float cardIndex = input.localPos.z;
-        float fromBase = 1.0f - height01;
-        float cardPhase = cardIndex * 2.37f + centerWorld.x * 0.11f + centerWorld.z * 0.17f;
-        float wind = clamp(flowSpeedX, -1.0f, 1.0f);
-        float motion = saturate(abs(flowSpeedY));
-
-        float2 volumeUV = float2(
-            horizontal * (3.0f + detail * 0.62f) + cardPhase + wind * time * 0.18f,
-            height01 * (4.2f + detail * 1.05f) - time * animSpeed * (1.12f + motion * 0.34f)
-        );
-        float bodyNoise = Fbm2(volumeUV + phaseSeed);
-        float tongueNoise = Fbm2(volumeUV * 1.72f + float2(cardPhase * 0.47f + time * 0.19f, -time * animSpeed * 0.76f));
-        float broadNoise = Fbm2(volumeUV * 0.46f + float2(-time * 0.08f, time * 0.11f + cardPhase));
-        float emberNoise = Fbm2(volumeUV * 3.15f + float2(time * 0.51f, -time * 1.18f));
-
-        float2 bakedUV = saturate(float2(horizontal * 0.5f + 0.5f, 1.0f - height01));
-        bakedUV.x = saturate(bakedUV.x + (bodyNoise - 0.5f) * 0.045f + wind * height01 * 0.035f);
-        float4 bakedFlame = bakedFireFlameTex.Sample(smp, bakedUV);
-        float bakedMask = BakedFireMask(bakedFlame);
-
-        float width = lerp(0.95f, 0.105f, pow(height01, 1.16f));
-        width += fromBase * 0.08f;
-        width += (broadNoise - 0.5f) * lerp(0.13f, 0.24f, height01);
-        float horizontalDisplacement = horizontal;
-        horizontalDisplacement += (tongueNoise - 0.5f) * lerp(0.08f, 0.25f, height01);
-        horizontalDisplacement += wind * 0.10f * height01 * height01;
-
-        float edgeSoft = lerp(0.045f, 0.17f, softness);
-        float flameMask = smoothstep(width + edgeSoft, width - edgeSoft, abs(horizontalDisplacement));
-
-        float forkCenter = sin(time * (2.15f + motion) + cardPhase) * 0.15f;
-        forkCenter += (bodyNoise - 0.5f) * 0.16f;
-        float forkWidth = lerp(0.31f, 0.045f, smoothstep(0.36f, 1.0f, height01));
-        float forkMask = smoothstep(forkWidth + edgeSoft, forkWidth - edgeSoft, abs(horizontal - forkCenter));
-        forkMask *= smoothstep(0.38f, 0.68f, height01);
-        flameMask = max(flameMask, forkMask * 0.78f);
-
-        float bottomFade = smoothstep(-0.04f, 0.035f, height01);
-        float topFade = 1.0f - smoothstep(0.925f, 1.0f, height01);
-        float sideFade = 1.0f - smoothstep(0.91f, 1.0f, abs(horizontal));
-        flameMask *= bottomFade * topFade * sideFade;
-        flameMask = saturate(flameMask * 0.82f + bakedMask * flameMask * 0.26f);
-
-        float inner = saturate(1.0f - abs(horizontalDisplacement) / max(width, 0.08f));
-        heat = saturate(0.16f + fromBase * 0.18f + inner * 0.25f + bodyNoise * 0.25f + tongueNoise * 0.20f + bakedFlame.r * 0.18f);
-        core = smoothstep(0.61f, 0.91f, heat + inner * 0.20f + bakedFlame.g * 0.12f - height01 * 0.07f) * flameMask;
-        edgeGlow = smoothstep(0.48f, 0.92f, tongueNoise + bodyNoise * 0.24f + bakedFlame.r * 0.18f) * flameMask;
-        ember = smoothstep(0.79f, 0.97f, emberNoise + fromBase * 0.10f + bakedFlame.b * 0.18f) * flameMask;
-        smoke = smoothstep(0.70f, 0.97f, height01) * smoothstep(0.52f, 0.91f, 1.0f - broadNoise) * flameMask;
-
-        // Lower per-card opacity lets the intersections create a brighter inner volume.
-        alpha = saturate(flameMask * (0.16f + heat * 0.25f + core * 0.14f));
-        distortionSurfaceUV = float2(horizontal, height01 * 2.0f - 1.0f) + cardPhase * 0.071f;
-    }
-    else if (effectType < 0.5f)
+    if (effectType < 0.5f)
     {
         float sx = max(effectScaleX, 0.12f);
         float sy = max(effectScaleY, 0.12f);
@@ -326,19 +264,28 @@ float4 main(VSOutput input) : SV_TARGET
         alpha = saturate(flameMask * proxyMask * (0.26f + heat * 0.38f + core * 0.20f));
     }
 
-    float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
-    float fireDepth = input.screenPos.z / input.screenPos.w;
-    float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(fireDepth);
-    float softFactor = lerp(0.68f, 1.0f, saturate(depthDiff / 0.36f));
-    softFactor = (bgDepth >= 0.999f) ? 1.0f : softFactor;
+    // This pass has no DSV bound. Occlusion must be enforced in the shader.
+    float bgDepth = depthTex.Load(int3(input.pos.xy, 0));
+    float fireDepth = input.pos.z;
+    if (fireDepth > bgDepth) discard;
+    float3 scenePosition = FireWorldPosition(screenUV, bgDepth);
+    float depthDiff = length(scenePosition - cameraWorldPosition) -
+                      length(input.worldPos - cameraWorldPosition);
+    float softFactor = (bgDepth >= 1.0f) ? 1.0f : saturate(depthDiff / 0.12f);
 
     float2 distortionNoise;
     distortionNoise.x = Fbm2(distortionSurfaceUV * 2.1f + float2(time * 0.23f, -time * 1.25f));
     distortionNoise.y = Fbm2(distortionSurfaceUV * 2.4f + float2(4.3f - time * 0.18f, -time * 1.05f));
     distortionNoise = distortionNoise * 2.0f - 1.0f;
 
-    float heatDistortion = (0.004f + 0.010f * heat) * saturate(0.35f + core + edgeGlow * 0.45f);
+    float heatDistortion = (0.001f + 0.0025f * heat) * saturate(0.35f + core + edgeGlow * 0.45f);
     float2 distortedUV = saturate(screenUV + distortionNoise * heatDistortion * softFactor);
+    // Refraction must not pull a foreground wall into the flame.
+    uint depthWidth, depthHeight;
+    depthTex.GetDimensions(depthWidth, depthHeight);
+    int2 distortedPixel = min(int2(distortedUV * float2(depthWidth, depthHeight)),
+                              int2(depthWidth, depthHeight) - 1);
+    if (depthTex.Load(int3(distortedPixel, 0)) < fireDepth) distortedUV = screenUV;
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;
     float3 distortedScene = grabTex.SampleLevel(smp, distortedUV, 0).rgb;
 

@@ -40,15 +40,17 @@ SamplerState smp : register(s0);
 
 float4 main(VSOutput input) : SV_TARGET
 {
-    // Compute the soft-particle fade.
-    // The reciprocal of SV_POSITION.w gives the particle linear depth here.
-    float linearParticleDepth = 1.0f / input.pos.w;
+    // This pass has no DSV bound: reject occluded fragments explicitly in device depth.
     float bgDepthZ = depthTex.Load(int3(input.pos.xy, 0));
-    float m22 = projection._m22;
-    float m32 = projection._m32;
-    float linearBgDepth = m32 / (bgDepthZ - m22);
+    if (input.pos.z > bgDepthZ) discard;
+
+    // Reconstruct both depths from the same projection (perspective or orthographic).
+    float particleDenom = input.pos.z * projection._m23 - projection._m22;
+    float backgroundDenom = bgDepthZ * projection._m23 - projection._m22;
+    float linearParticleDepth = (projection._m32 - input.pos.z * projection._m33) / particleDenom;
+    float linearBgDepth = (projection._m32 - bgDepthZ * projection._m33) / backgroundDenom;
     float depthDiff = linearBgDepth - linearParticleDepth;
-    float softFactor = saturate(depthDiff / softParticleFade);
+    float softFactor = softParticleFade > 0.0001f ? saturate(depthDiff / softParticleFade) : 1.0f;
 
     float4 finalColor;
 

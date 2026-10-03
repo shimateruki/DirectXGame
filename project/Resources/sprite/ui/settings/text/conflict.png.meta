@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "410da97a134a624b1c1dcff8a8b82276",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/conflict.png",
+  "version": 1
+}

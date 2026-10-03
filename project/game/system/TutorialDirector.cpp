@@ -3,6 +3,7 @@
 
 #include "BaseScene.h"
 #include "BaseEnemy.h"
+#include "CollisionConfig.h"
 #include "Camera.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
@@ -89,9 +90,12 @@ bool TutorialDirector::Initialize(
         SpawnEnemySlot slot;
         slot.objectName = objectName;
         slot.enemy = enemy;
-        slot.initialPosition = enemy->GetWorldPosition();
-        slot.collisionAttribute = enemy->GetCollisionAttribute();
-        slot.collisionMask = enemy->GetCollisionMask();
+        slot.initialPosition = enemy->GetTranslate();
+        // 非表示中に保存された敵は衝突設定が0になるため、出現時の通常設定を保持します。
+        slot.collisionAttribute = enemy->GetCollisionAttribute() != 0
+            ? enemy->GetCollisionAttribute() : kEnemy;
+        slot.collisionMask = enemy->GetCollisionMask() != 0
+            ? enemy->GetCollisionMask() : (kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack);
         const auto hpOverride = spawnEnemyMaxHpOverrides_.find(objectName);
         if (hpOverride != spawnEnemyMaxHpOverrides_.end()) {
             slot.maxHpOverride = hpOverride->second;
@@ -138,6 +142,7 @@ void TutorialDirector::Finalize() {
     completed_ = false;
     cinematicActive_ = false;
     controlsGuideOpened_ = false;
+    lockedTargetName_.clear();
     stepConditionSatisfied_ = false;
     conditionSatisfiedTimer_ = 0.0f;
     morphWasActiveOnStepEntry_ = false;
@@ -147,6 +152,7 @@ void TutorialDirector::Finalize() {
     promptIcons_ = {};
     promptAlpha_ = 0.0f;
     promptRequestedVisible_ = false;
+    promptGamepadMode_ = false;
     objectiveMarkers_ = {};
     objectiveTargetNames_ = {};
     objectiveOffsetY_ = 0.75f;
@@ -178,6 +184,11 @@ void TutorialDirector::Update(float deltaTime) {
 
     stepTimer_ += (std::max)(0.0f, deltaTime);
     UpdateCinematic(deltaTime);
+    // 手順が続いている間も、最後に使用した入力方式へ案内を切り替えます。
+    if (!stepConditionSatisfied_ && inputManager_ &&
+        promptGamepadMode_ != inputManager_->IsGamepadMode()) {
+        ApplyStepPrompt(&steps_[static_cast<size_t>(currentStepIndex_)]);
+    }
     UpdatePrompt(deltaTime);
     UpdateObjectiveMarker(deltaTime);
 
@@ -202,6 +213,10 @@ void TutorialDirector::Update(float deltaTime) {
 
 void TutorialDirector::NotifyControlsGuideOpened() {
     controlsGuideOpened_ = true;
+}
+
+void TutorialDirector::NotifyLockOnTarget(const Object3d* target) {
+    lockedTargetName_ = target ? target->GetName() : std::string{};
 }
 
 const std::string& TutorialDirector::GetCurrentStepId() const {
@@ -456,6 +471,11 @@ bool TutorialDirector::LoadFlow(const std::string& flowPath) {
                     step.promptIcons.push_back(icon.get<std::string>());
                 }
             }
+            for (const auto& icon : item.value("promptIconsGamepad", json::array())) {
+                if (icon.is_string()) {
+                    step.promptIconsGamepad.push_back(icon.get<std::string>());
+                }
+            }
             for (const auto& objectName : item.value("objectiveTargets", json::array())) {
                 if (objectName.is_string()) {
                     step.objectiveTargets.push_back(objectName.get<std::string>());
@@ -493,6 +513,7 @@ TutorialDirector::CompletionCondition TutorialDirector::ParseCondition(const std
     if (conditionName == "cinematic_finished") return CompletionCondition::kCinematicFinished;
     if (conditionName == "move_distance") return CompletionCondition::kMoveDistance;
     if (conditionName == "action_triggered") return CompletionCondition::kActionTriggered;
+    if (conditionName == "target_locked") return CompletionCondition::kTargetLocked;
     if (conditionName == "reach_position") return CompletionCondition::kReachPosition;
     if (conditionName == "carry_enemy") return CompletionCondition::kCarryEnemy;
     if (conditionName == "enemy_thrown") return CompletionCondition::kEnemyThrown;
@@ -615,6 +636,8 @@ bool TutorialDirector::EvaluateCurrentStep() const {
         return HorizontalDistance(player_->GetWorldPosition(), stepStartPosition_) >= step.threshold;
     case CompletionCondition::kActionTriggered:
         return IsActionTriggered(step.action);
+    case CompletionCondition::kTargetLocked:
+        return !step.objectiveTarget.empty() && lockedTargetName_ == step.objectiveTarget;
     case CompletionCondition::kReachPosition:
         return step.hasTargetPosition &&
             HorizontalDistance(player_->GetWorldPosition(), step.targetPosition) <= step.radius;
@@ -692,11 +715,13 @@ bool TutorialDirector::IsActionTriggered(const std::string& action) const {
     if (!inputManager_) {
         return false;
     }
-    if (action == "MouseLeft") return inputManager_->IsMouseButtonTriggered(0);
-    if (action == "MouseRight") return inputManager_->IsMouseButtonTriggered(1);
+    if (action == "MouseLeft") return inputManager_->IsActionTriggered("PrimaryAttack");
+    if (action == "MouseRight") return inputManager_->IsActionTriggered("SecondaryAction");
     if (action == "MouseMove") {
         const Vector2 delta = inputManager_->GetMouseMoveDelta();
-        return std::abs(delta.x) + std::abs(delta.y) > 0.5f;
+        const Vector2 stick = inputManager_->GetRightStick();
+        return std::abs(delta.x) + std::abs(delta.y) > 0.5f ||
+            std::abs(stick.x) + std::abs(stick.y) > 0.25f;
     }
     return !action.empty() && inputManager_->IsActionTriggered(action);
 }
@@ -839,6 +864,9 @@ void TutorialDirector::SetSpawnEnemyActive(const std::string& objectName, bool a
     slot.enemy->SetIsVisible(active);
     slot.enemy->SetCollisionAttribute(active ? slot.collisionAttribute : 0);
     slot.enemy->SetCollisionMask(active ? slot.collisionMask : 0);
+    // 出現位置と当たり判定を同じフレームで確定します。
+    slot.enemy->UpdateLocalMatrix();
+    slot.enemy->UpdateWorldMatrix(false);
 
     if (active) {
         DebugConsole::GetInstance()->AddLog("[Tutorial] Enemy spawned: " + slot.objectName);
@@ -946,8 +974,13 @@ void TutorialDirector::BindPromptSprites() {
 }
 
 void TutorialDirector::ApplyStepPrompt(const Step* step) {
+    promptGamepadMode_ = inputManager_ && inputManager_->IsGamepadMode();
+    const std::vector<std::string>* icons = step ? &step->promptIcons : nullptr;
+    if (step && promptGamepadMode_ && !step->promptIconsGamepad.empty()) {
+        icons = &step->promptIconsGamepad;
+    }
     const bool show = step && step->showPrompt &&
-        (!step->promptIcons.empty() || !step->promptLabel.empty());
+        (!icons->empty() || !step->promptLabel.empty());
     SetPromptVisible(show);
     promptLabel_.requestedVisible = false;
     for (PromptVisual& visual : promptIcons_) {
@@ -962,11 +995,11 @@ void TutorialDirector::ApplyStepPrompt(const Step* step) {
         promptLabel_.requestedVisible = true;
         promptLabel_.sprite->SetVisible(true);
         SetFullTextureRect(promptLabel_.sprite, step->promptLabel, { 470.0f, 76.0f });
-        promptLabel_.basePosition.x = step->promptIcons.empty() ? 960.0f : 1070.0f;
+        promptLabel_.basePosition.x = icons->empty() ? 960.0f : 1070.0f;
         promptLabel_.baseSize = promptLabel_.sprite->GetSize();
     }
 
-    const size_t iconCount = (std::min)(step->promptIcons.size(), promptIcons_.size());
+    const size_t iconCount = (std::min)(icons->size(), promptIcons_.size());
     constexpr float kPromptIconSpacing = 132.0f;
     const float iconGroupCenterX = hasLabel ? 690.0f : 960.0f;
     const float firstIconX = iconGroupCenterX - kPromptIconSpacing * static_cast<float>(iconCount - 1) * 0.5f;
@@ -975,11 +1008,11 @@ void TutorialDirector::ApplyStepPrompt(const Step* step) {
         if (!visual.sprite) {
             continue;
         }
-        const bool hasIcon = index < step->promptIcons.size();
+        const bool hasIcon = index < icons->size();
         visual.requestedVisible = hasIcon;
         visual.sprite->SetVisible(hasIcon);
         if (hasIcon) {
-            SetFullTextureRect(visual.sprite, step->promptIcons[index], { 190.0f, 118.0f });
+            SetFullTextureRect(visual.sprite, (*icons)[index], { 190.0f, 118.0f });
             visual.basePosition.x = firstIconX + kPromptIconSpacing * static_cast<float>(index);
             visual.baseSize = visual.sprite->GetSize();
         }

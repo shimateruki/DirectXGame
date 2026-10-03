@@ -1,0 +1,8 @@
+{
+  "assetType": "Model",
+  "guid": "7712c5ac51d84fa99a2f48ac5d671cb6",
+  "importSettings": { "generateTangents": true, "scale": 1.0 },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/glass_shard_plate/glass_shard_plate.obj",
+  "version": 1
+}

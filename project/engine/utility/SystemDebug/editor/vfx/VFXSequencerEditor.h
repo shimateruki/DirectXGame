@@ -17,6 +17,8 @@ void DrawImGui() override;
     std::string GetName() override { return "VFX Cue Editor"; }
         // 保存済みVFXシーケンスの一覧を更新します。
 void RefreshFileList();
+    // 別ツールからの読込も確認を挟み、編集中の内容を保護します。
+    void RequestOpenSequence(const std::string& name);
 
 private:
     Vector3 ResolvePreviewPosition() const;
@@ -30,6 +32,15 @@ void DrawTimelinePreview();
     const char* GetEventTypeName(VFXEventType type) const;
 
     VFXSequencer previewSequencer_;
+    std::string pendingSequence_;
+    std::string fileStatus_;
+    bool openRequested_ = false;
+    int selectedEvent_ = -1;
+    int draggingEvent_ = -1;
+    float dragStartTime_ = 0.0f;
+    float dragTimelineDuration_ = 3.0f;
+    float timelineDuration_ = 5.0f;
+    bool snapTimeline_ = true;
     char sequenceNameInput_[64] = "UltimateMeteor";
     std::vector<std::string> particlePresetList_;
     std::vector<std::string> sequenceFileList_;

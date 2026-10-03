@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "57a37be56c8d2b753d103e5e461c73be",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/technique_row.dds",
+  "version": 1
+}

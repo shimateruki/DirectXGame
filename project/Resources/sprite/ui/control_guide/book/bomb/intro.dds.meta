@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "31313025974c5d130e221667d26ad258",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/intro.dds",
+  "version": 1
+}

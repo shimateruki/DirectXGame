@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8488d154623c4c7c7f0c4fbcc482b85f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/moves_heading.png",
+  "version": 1
+}

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Bullet.h" 
 #include <list>
 #include <memory>
@@ -9,6 +9,7 @@ class Object3dCommon;
 class CollisionManager;
 
 struct BulletVisualConfig {
+    float explosionRadius = 0.0f;
     int32_t materialType = 0;
     BlendMode blendMode = BlendMode::kNormal;
     Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -24,9 +25,13 @@ struct BulletVisualConfig {
     float billboardScale = 0.55f;
     std::string texturePath = "";
     std::string trailPreset = "";
+    std::string trailSecondaryPreset = "";
     std::string impactPreset = "";
+    std::string impactSecondaryPreset = "";
     float trailInterval = 0.05f;
     float trailSpeedScale = 1.0f;
+    bool trailReverseDirection = false;
+    bool impactDirected = true;
 };
 
 /// <summary>
@@ -69,7 +74,7 @@ public:
         const std::string& model = "Primitives/sphere", float radius = 0.2f, float life = 120,
         const BulletVisualConfig& visualConfig = {}, float damage = 1.0f,
         const StatusEffectApplication& statusEffect = {},
-        DamageType damageType = DamageType::Physical);
+        DamageType damageType = DamageType::Physical, float gravity = 0.0f);
 
     const std::list<std::unique_ptr<Bullet>>& GetBullets() const { return bullets_; }
 

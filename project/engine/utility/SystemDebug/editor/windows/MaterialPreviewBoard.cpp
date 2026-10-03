@@ -176,6 +176,7 @@ void MaterialPreviewBoard::DrawModelSelector() {
 }
 
 void MaterialPreviewBoard::CreateBoard() {
+    // 比較対象をエディター専用オブジェクトとして並べ、シーンの保存対象から分離します。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
@@ -249,6 +250,7 @@ void MaterialPreviewBoard::CreateBoard() {
 }
 
 void MaterialPreviewBoard::RemoveBoard() {
+    // このボードが作ったオブジェクトだけを削除します。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();

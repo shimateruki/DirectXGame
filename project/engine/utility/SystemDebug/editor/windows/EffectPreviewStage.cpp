@@ -1,7 +1,7 @@
 #include "EffectPreviewStage.h"
 
 #include "BaseScene.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"

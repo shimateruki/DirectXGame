@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "80c48f34a4bbc9cf644d464542cb713f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_Meadow_Course_soil.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "eafe4bf533dd4d2b20d1ce575e9001f4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/role.png",
+  "version": 1
+}

@@ -1,12 +1,12 @@
 #pragma once
 #include "engine/utility/math/Math.h"
-#include "Transform.h" // Transformを使うため
+#include "Transform.h"
 #include "CollisionConfig.h" 
 #include <cstdint>
 #include <vector>
 
 
-// ColliderConfigは、Colliderの形状、中心、サイズ、回転をまとめた設定です。
+/// <summary>衝突形状と所有Transformからの相対位置・大きさ。</summary>
 struct ColliderConfig {
     ColliderType type = ColliderType::kAABB;
     Vector3 center = { 0.0f, 0.0f, 0.0f };
@@ -14,7 +14,7 @@ struct ColliderConfig {
     Vector3 rotation = { 0.0f, 0.0f, 0.0f };
 };
 
-// TerrainCollisionDataは、高さマップ地形との衝突判定に使うサンプル情報です。
+/// <summary>高さマップ地形との接触判定に使うサンプル情報。</summary>
 struct TerrainCollisionData {
     bool enabled = false;
     int resolution = 0;
@@ -25,24 +25,22 @@ struct TerrainCollisionData {
     std::vector<float> heights;
 };
 
-// 新しい Collider クラス
-// Colliderは、Object3dに紐づく衝突形状と属性マスクを保持し、形状間判定を行います。
+/// <summary>Transformに紐づく衝突形状と属性マスクを保持し、形状間を判定する。</summary>
 class Collider {
 public:
-    // コンストラクタ：誰（どのTransform）にくっつくかを指定して作る
-        // 所有Object3dのTransformを参照し、ワールド座標で判定できるようにします。
-Collider(Transform* ownerTransform);
+    /// <summary>所有オブジェクトのTransformを参照してColliderを作る。</summary>
+    /// <param name="ownerTransform">衝突判定中に有効なTransform。Colliderは所有しない。</param>
+    Collider(Transform* ownerTransform);
     ~Collider() = default;
 
-    // --- 設定 (Setters) ---
-        // Colliderの形状設定をまとめて差し替えます。
-void SetConfig(const ColliderConfig& config) { config_ = config; }
+    /// <summary>形状設定をまとめて差し替える。</summary>
+    void SetConfig(const ColliderConfig& config) { config_ = config; }
     void SetAttribute(uint32_t attribute) { attribute_ = attribute; }
     void SetMask(uint32_t mask) { mask_ = mask; }
     void SetTerrainData(const TerrainCollisionData& data) { terrainData_ = data; }
     void ClearTerrainData() { terrainData_ = TerrainCollisionData{}; }
-    // 描画アニメーションで所有Transformのscaleが変形するObject向けに、
-    // 物理形状だけが参照する固定スケールを指定します。
+
+    /// <summary>描画アニメーションの拡縮に影響されない衝突判定用スケールを指定する。</summary>
     void SetScaleOverride(const Vector3& scale) { scaleOverride_ = scale; useScaleOverride_ = true; }
     void ClearScaleOverride() { useScaleOverride_ = false; }
 
@@ -59,26 +57,28 @@ void SetConfig(const ColliderConfig& config) { config_ = config; }
     Vector3 GetSize() const { return config_.size; }
     Vector3 GetCenter() const { return config_.center; }
 
-    // 半径の取得 (スケールを加味)
-        // 球判定や近似判定に使う半径を取得します。
-float GetRadius() const;
+    /// <summary>所有Transformと上書きスケールを考慮した判定半径を返す。</summary>
+    float GetRadius() const;
 
-    // --- 形状計算 (Object3dから移動) ---
+    // 所有Transformを反映したワールド空間の衝突形状。
     AABB GetAABB() const;
     OBB GetOBB() const;
     Ring GetRing() const;
     Cylinder GetCylinder() const;
 
-    // --- 衝突判定 (Object3dから移動) ---
-    // 相手も Object3d ではなく Collider として受け取るように変更
+    /// <summary>指定Colliderとの接触情報を返す。</summary>
+    /// <param name="other">判定相手のCollider。</param>
     CollisionInfo CheckCollision(const Collider* other) const;
 
 private:
+    // 判定用の上書きスケールを優先して、衝突形状のワールド変換を組み立てる。
     Vector3 GetCollisionScale() const;
     Matrix4x4 GetCollisionWorldMatrix() const;
 
-        // 地形Colliderから指定座標の高さと法線をサンプリングします。
-bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+    // 地形Colliderの高さマップから指定座標の高さと法線をサンプリングする。
+    bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+
+    // 球と地形の接触判定に使うワールド座標と押し戻し情報を求める。
     Vector3 GetSphereCenter() const;
     CollisionInfo CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const;
     CollisionInfo CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const;

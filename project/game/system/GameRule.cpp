@@ -4,21 +4,23 @@
 #include "BaseScene.h"
 #include "Event.h" 
 #include "Player.h"
-#include "GamePlayScene.h"
-#include "PreviewScene.h"
+#include "game/scene/gameplay/GamePlayScene.h"
+#include "game/scene/preview/PreviewScene.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "GPUParticleManager.h"
 #include "VFXSequencer.h"
 #include "HitEffectDirector.h"
 #include "BaseEnemy.h"
-#include <PlayerState.h>
+#include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
+#include "Math.h"
+#include <game/actor/player/state/PlayerState.h>
 #include <algorithm>
 #include <cmath>
 
 namespace {
 constexpr const char* kCheckpointLoweredModel = "Gimmicks/checkpoint_flag";
-constexpr const char* kCheckpointRaisedModel = "Gimmicks/checkpoint_flag_active";
+constexpr const char* kCheckpointRaisedModel = "Gimmicks/checkpoint_beacon_active";
 constexpr float kCheckpointFlagRaiseDelay = 0.14f;
 
 void PlayCrownGetPresentation(Object3d* crownObject) {
@@ -56,6 +58,7 @@ void GameRule::Initialize(BaseScene* scene) {
     checkpointRaiseDelay_ = 0.0f;
     checkpointPresentationTimer_ = 0.0f;
     checkpointParticleTimer_ = 0.0f;
+    checkpointAmbientRingTimer_ = 0.0f;
 
     // --------------------------------------------------------
     // ① プレイヤーがギミック等に触れたときのイベント (既存のまま)
@@ -156,6 +159,12 @@ void GameRule::Initialize(BaseScene* scene) {
             // 敵のTargetIDは接触時の汎用イベントではなく、撃破完了通知として使います。
             // プレイヤーの攻撃が当たっただけでボス部屋の完了イベントを発火させません。
             if (dynamic_cast<BaseEnemy*>(objectHit)) {
+                break;
+            }
+            // マグマ連動床のTarget IDは駆動元の参照であり、接触スイッチではない。
+            // 着地で噴出口を反転すると、乗った瞬間に上昇が停止してしまう。
+            if (objectHit->GetGimmickType() == "MovingFloor" && objectHit->param_ &&
+                objectHit->param_->actionMode == 5) {
                 break;
             }
             int tID = objectHit->GetTargetID();
@@ -338,20 +347,50 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
     activeCheckpoint_ = checkpoint;
     checkpointBaseEmissive_ = checkpoint->GetEmissive();
     checkpointPresentationTimer_ = 0.0f;
-    checkpointParticleTimer_ = 0.0f;
 
     if (checkpoint->GetModelName() == kCheckpointLoweredModel) {
         raisingCheckpoint_ = checkpoint;
         checkpointRaiseDelay_ = kCheckpointFlagRaiseDelay;
     }
-    // 到達前の白旗は素材本来の色を保ち、起動時だけ最小限の金色の光を足します。
+    // 素材色を残し、到達した瞬間だけ控えめに明るくします。
     checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
     VFXSequencer::PlayOneShot("checkpoint_activate_cue",
-        checkpoint->GetWorldPosition() + Vector3{ 0.0f, 0.12f, 0.0f });
+        checkpoint->GetWorldPosition(), checkpoint->GetScale(), checkpoint->GetRotation());
     DebugConsole::GetInstance()->AddLog("Checkpoint activated. Respawn and copy memory updated.");
 }
 
 void GameRule::UpdateCheckpointPresentation(float deltaTime) {
+    // 未到達の旗も案内として光らせます。有限寿命の演出を間隔を空けて再生します。
+    checkpointParticleTimer_ -= deltaTime;
+    checkpointAmbientRingTimer_ -= deltaTime;
+    if (scene_ && (checkpointParticleTimer_ <= 0.0f || checkpointAmbientRingTimer_ <= 0.0f)) {
+        const bool emitMotes = checkpointParticleTimer_ <= 0.0f;
+        const bool emitRing = checkpointAmbientRingTimer_ <= 0.0f;
+        for (const auto& owned : scene_->GetObjects()) {
+            Object3d* checkpoint = owned.get();
+            if (!checkpoint || !checkpoint->GetIsVisible()) {
+                continue;
+            }
+            const auto& modelName = checkpoint->GetModelName();
+            if (modelName != kCheckpointLoweredModel && modelName != kCheckpointRaisedModel &&
+                modelName != "Gimmicks/checkpoint_flag_active") {
+                continue;
+            }
+            if (emitMotes) {
+                if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+                    particles->Emit("checkpoint_active_motes",
+                        Math::Transform(Vector3{ 0.0f, 0.55f, 0.0f }, checkpoint->GetWorldMatrix()));
+                }
+            }
+            if (emitRing) {
+                VFXSequencer::PlayOneShot("checkpoint_idle_cue",
+                    checkpoint->GetWorldPosition(), checkpoint->GetScale(), checkpoint->GetRotation());
+            }
+        }
+        if (emitMotes) checkpointParticleTimer_ = 0.45f;
+        if (emitRing) checkpointAmbientRingTimer_ = 1.35f;
+    }
+
     if (raisingCheckpoint_) {
         if (!scene_ || !scene_->IsAlive(raisingCheckpoint_)) {
             raisingCheckpoint_ = nullptr;
@@ -362,6 +401,7 @@ void GameRule::UpdateCheckpointPresentation(float deltaTime) {
                 // SetModelはコライダーを自動調整するため、起動前の当たり判定を復元します。
                 const Object3d::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
                 raisingCheckpoint_->SetModel(kCheckpointRaisedModel);
+                raisingCheckpoint_->RestoreAnimationPlayback("Activate", 0.0f, false);
                 raisingCheckpoint_->SetColliderConfig(collider);
                 raisingCheckpoint_ = nullptr;
             }
@@ -376,18 +416,17 @@ void GameRule::UpdateCheckpointPresentation(float deltaTime) {
         return;
     }
 
+    const float previousTime = checkpointPresentationTimer_;
     checkpointPresentationTimer_ += deltaTime;
-    checkpointParticleTimer_ -= deltaTime;
-    const float emissivePulse = 0.30f + std::sin(checkpointPresentationTimer_ * 4.6f) * 0.04f;
+    if (previousTime < kCheckpointFlagRaiseDelay + 0.60f &&
+        checkpointPresentationTimer_ >= kCheckpointFlagRaiseDelay + 0.60f &&
+        activeCheckpoint_->GetModelName() == kCheckpointRaisedModel) {
+        activeCheckpoint_->RestoreAnimationPlayback("Idle", 0.0f, true);
+    }
+    const float emissivePulse = 0.12f + std::sin(checkpointPresentationTimer_ * 2.0f) * 0.025f;
     activeCheckpoint_->SetEmissive((std::max)(checkpointBaseEmissive_, emissivePulse));
 
-    if (checkpointParticleTimer_ <= 0.0f) {
-        if (GPUParticleManager* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-            particles->Emit("checkpoint_active_motes",
-                activeCheckpoint_->GetWorldPosition() + Vector3{ 0.0f, 1.65f, 0.0f });
-        }
-        checkpointParticleTimer_ = 0.28f;
-    }
+
 }
 
 void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale) {
@@ -455,6 +494,10 @@ void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName)
 bool GameRule::ApplyDamage(Object3d* target, float damage) {
     if (!target) {
         return false;
+    }
+    if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(target)) {
+        damage = king->FilterFinaleDamage(damage);
+        if (damage <= 0.0f) return false;
     }
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d942f66f5ee27620f4bed9902be6b64d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/coaster/EnemyPerch.obj",
+  "version": 1
+}

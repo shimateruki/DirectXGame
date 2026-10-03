@@ -174,7 +174,8 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
 
     bool hasSpecialMaterial = false;
     for (const auto& object : objects) {
-        if (object && object->GetIsRenderVisible() && IsSpecialMaterialType(object->GetMaterialType())) {
+        if (object && object->GetIsRenderVisible() &&
+            (IsSpecialMaterialType(object->GetMaterialType()) || object->HasOwnedSpecialMaterialVisuals())) {
             hasSpecialMaterial = true;
             break;
         }
@@ -197,14 +198,23 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
     const uint32_t depthSrvHandle = postEffect->GetDepthSRVHandle(targetTextureIndex);
     const uint32_t grabSrvHandle = postEffect->GetGrabSRVHandle(targetTextureIndex);
     for (auto& object : objects) {
-        if (!object || !object->GetIsRenderVisible() || !IsSpecialMaterialType(object->GetMaterialType())) {
+        if (!object || !object->GetIsRenderVisible()) {
             continue;
         }
-        object->DrawSpecialMaterialForCamera(
-            camera,
-            depthSrvHandle,
-            grabSrvHandle,
-            previewBufferIndex);
+        if (IsSpecialMaterialType(object->GetMaterialType())) {
+            object->DrawSpecialMaterialForCamera(
+                camera,
+                depthSrvHandle,
+                grabSrvHandle,
+                previewBufferIndex);
+        }
+        if (object->HasOwnedSpecialMaterialVisuals()) {
+            object->DrawOwnedSpecialMaterialVisualsForCamera(
+                camera,
+                depthSrvHandle,
+                grabSrvHandle,
+                previewBufferIndex);
+        }
     }
     postEffect->EndCameraPreviewSpecialPass(commandList, targetTextureIndex);
 }

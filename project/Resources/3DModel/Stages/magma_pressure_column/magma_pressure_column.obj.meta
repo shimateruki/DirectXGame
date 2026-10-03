@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b662f32777bab23bd3c292ddacda03f3",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_pressure_column/magma_pressure_column.obj",
+  "version": 1
+}

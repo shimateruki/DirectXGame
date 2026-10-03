@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "fa7077fc83ca897d72fe6bdfe9db0038",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/island_soil.obj",
+  "version": 1
+}

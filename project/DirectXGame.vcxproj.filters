@@ -84,9 +84,7 @@
     <ClCompile Include="engine\core\Game.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClCompile>
-    <ClCompile Include="engine\core\GameEditorController.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
-    </ClCompile>
+    <ClCompile Include="engine\core\editor\GameEditorController.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
     <ClCompile Include="engine\system\input\InputManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
     </ClCompile>
@@ -144,27 +142,42 @@
     <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GamePlayScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.cpp">
+      <Filter>Scenes\gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GamePlayScene.HUD.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Replay.cpp">
+      <Filter>Scenes\gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GamePlayScene.Setup.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Debug.cpp">
+      <Filter>Scenes\gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GamePlayScene.Update.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.GoalPresentation.cpp">
+      <Filter>Scenes\gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\PreviewScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.StageEntry.cpp">
+      <Filter>Scenes\gameplay</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\SceneAssetEditorScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.ArenaPresentation.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.HUD.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Setup.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.Update.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\preview\PreviewScene.cpp">
+      <Filter>Scenes\preview</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\editor\SceneAssetEditorScene.cpp">
+      <Filter>Scenes\editor</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\SceneController.cpp" />
-    <ClCompile Include="game\scene\TutorialScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClCompile Include="game\scene\tutorial\TutorialScene.cpp">
+      <Filter>Scenes\tutorial</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
@@ -192,11 +205,17 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\player\Player.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Player</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerBaseCombatController.cpp" />
-    <ClCompile Include="game\actor\player\PlayerCopyAbilityController.cpp" />
-    <ClCompile Include="game\actor\player\PlayerCopyTypeCatalog.cpp" />
+    <ClCompile Include="game\actor\player\combat\PlayerBaseCombatController.cpp">
+      <Filter>Player\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\PlayerCopyAbilityController.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\PlayerCopyTypeCatalog.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\Character.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -227,10 +246,19 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneWorkspace.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.Ui.cpp" />
     <ClCompile Include="engine\graphics\3d\object\Object3d.Animation.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.Components.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BaseProperties.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.RenderProperties.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.CameraGameplayProperties.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Persistence.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Indexing.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.DDSCache.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp">
@@ -248,11 +276,11 @@
     <ClCompile Include="engine\system\scene\ScenePreloader.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\TitleScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\title\TitleScene.cpp">
+      <Filter>Scenes\title</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\SettingsScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\settings\SettingsScene.cpp">
+      <Filter>Scenes\settings</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
@@ -330,50 +358,52 @@
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.Persistence.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Persistence.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\core</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\core\AttackTelegraph.cpp" />
-    <ClCompile Include="game\actor\enemy\core\EnemyAttackProfile.cpp" />
+    <ClCompile Include="game\actor\enemy\combat\AttackTelegraph.cpp">
+      <Filter>Enemies\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\combat\EnemyAttackProfile.cpp">
+      <Filter>Enemies\combat</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\normal</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\normal</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\elemental\EnemyWindSlime.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\heavy\EnemyGiantSlime.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\heavy</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\boss\EnemyPrismSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\EnemyMagmaSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\EnemyFalseKingSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\flying</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp" />
-    <ClCompile Include="game\system\EnemyFactory.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp">
+      <Filter>Enemies\ranged</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\spawn\EnemyFactory.cpp">
+      <Filter>Enemies\spawn</Filter>
     </ClCompile>
     <ClCompile Include="game\system\GameplayStatusManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
@@ -399,9 +429,7 @@
     <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetManager.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.cpp"><Filter>EditorOrganization\Prefab</Filter></ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -411,14 +439,14 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetEditor.Catalog.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\system\EnemySpawner.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\enemy\spawn\EnemySpawner.cpp">
+      <Filter>Enemies\spawn</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GameClearScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\clear\GameClearScene.cpp">
+      <Filter>Scenes\clear</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GameOverScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\gameover\GameOverScene.cpp">
+      <Filter>Scenes\gameover</Filter>
     </ClCompile>
     <ClCompile Include="engine\component\Collider.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
@@ -448,42 +476,44 @@
     <ClCompile Include="game\system\ObjectManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerMover.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\movement\PlayerMover.cpp">
+      <Filter>Player\movement</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerSlimeAnimator.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\animation\PlayerSlimeAnimator.cpp">
+      <Filter>Player\animation</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerGateReturnAnimation.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\animation\PlayerGateReturnAnimation.cpp">
+      <Filter>Player\animation</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\state\IAnimationState.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerDeathAnimation.cpp" />
-    <ClCompile Include="game\actor\player\PlayerState.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\animation\PlayerDeathAnimation.cpp">
+      <Filter>Player\animation</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.Basic.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.Damage.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.Basic.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.Hook.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.Damage.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.Life.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.Hook.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.PullEnemy.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.Life.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.PullObject.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.PullEnemy.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.Carry.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\actor\player\state\PlayerState.PullObject.cpp">
+      <Filter>Player\state</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\state\PlayerState.Carry.cpp">
+      <Filter>Player\state</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
@@ -513,10 +543,9 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\animation\BodyAnimationClip.cpp" />
+    <ClCompile Include="game\system\GhostDirector.Studio.cpp" />
     <ClCompile Include="engine\animation\AnimatorController.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\BossCore.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\core\BossCore.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -535,6 +564,7 @@
     <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.Timeline.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -544,6 +574,8 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Ui.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Timeline.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -553,27 +585,13 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Spawner.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Enemy.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Gimmick.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Gameplay.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorTextureCatalog.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.Item.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Spawner.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Enemy.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Gimmick.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Gameplay.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Item.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -598,6 +616,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Packaging.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -605,6 +624,9 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.Ui.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp">
@@ -633,12 +655,16 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimatorControllerEditor.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.Ui.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Ui.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
     <ClCompile Include="engine\graphics\3d\object\Object3d.Replay.cpp" />
     <ClCompile Include="game\actor\Character.Replay.cpp" />
-    <ClCompile Include="game\actor\player\Player.Replay.cpp" />
-    <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp" />
+    <ClCompile Include="game\actor\player\Player.Replay.cpp">
+      <Filter>Player</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp">
+      <Filter>Enemies\core</Filter>
+    </ClCompile>
     <ClCompile Include="engine\system\input\KeyConfig.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -673,6 +699,7 @@
     <ClCompile Include="game\actor\gimmick\core\BaseGimmick.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\gimmick\movement\RidingPlatformController.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickMovingFloor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -778,11 +805,23 @@
     <ClCompile Include="game\actor\item\HealItem.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\scene\GameSelectScene.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\select\GameSelectScene.cpp">
+      <Filter>Scenes\select</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerClone.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClCompile Include="game\scene\select\GameSelectScene.Internal.cpp">
+      <Filter>Scenes\select</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\select\GameSelectScene.Unlock.cpp">
+      <Filter>Scenes\select</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\select\GameSelectScene.Rewards.cpp">
+      <Filter>Scenes\select</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\select\GameSelectScene.GateCinematic.cpp">
+      <Filter>Scenes\select</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\clone\PlayerClone.cpp">
+      <Filter>Player\clone</Filter>
     </ClCompile>
     <ClCompile Include="game\system\GimmickFactory.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
@@ -791,7 +830,7 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -892,9 +931,7 @@
     <ClInclude Include="engine\core\Game.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
     </ClInclude>
-    <ClInclude Include="engine\core\GameEditorController.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
-    </ClInclude>
+    <ClInclude Include="engine\core\editor\GameEditorController.h"><Filter>EditorOrganization\Controller</Filter></ClInclude>
     <ClInclude Include="engine\system\input\InputManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
     </ClInclude>
@@ -943,19 +980,22 @@
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\GamePlayScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClInclude Include="game\scene\gameplay\GamePlayScene.h">
+      <Filter>Scenes\gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\PreviewScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClInclude Include="game\scene\gameplay\GamePlayScene.PresentationMath.h">
+      <Filter>Scenes\gameplay</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\SceneAssetEditorScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClInclude Include="game\scene\preview\PreviewScene.h">
+      <Filter>Scenes\preview</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\editor\SceneAssetEditorScene.h">
+      <Filter>Scenes\editor</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\SceneController.h" />
     <ClInclude Include="engine\system\scene\SceneLoadContext.h" />
-    <ClInclude Include="game\scene\TutorialScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\scene</Filter>
+    <ClInclude Include="game\scene\tutorial\TutorialScene.h">
+      <Filter>Scenes\tutorial</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
@@ -984,11 +1024,17 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\player\Player.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Player</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerBaseCombatController.h" />
-    <ClInclude Include="game\actor\player\PlayerCopyAbilityController.h" />
-    <ClInclude Include="game\actor\player\PlayerCopyTypeCatalog.h" />
+    <ClInclude Include="game\actor\player\combat\PlayerBaseCombatController.h">
+      <Filter>Player\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\copy\PlayerCopyAbilityController.h">
+      <Filter>Player\copy</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\copy\PlayerCopyTypeCatalog.h">
+      <Filter>Player\copy</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\CollisionConfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1008,11 +1054,11 @@
     <ClInclude Include="engine\system\scene\ScenePreloader.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\TitleScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\scene\title\TitleScene.h">
+      <Filter>Scenes\title</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\SettingsScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\scene\settings\SettingsScene.h">
+      <Filter>Scenes\settings</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -1329,48 +1375,52 @@
     <ClInclude Include="game\system\HitEffectDirector.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.h"><Filter>EditorOrganization\Camera</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\core\BaseEnemy.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\core</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\core\AttackTelegraph.h" />
-    <ClInclude Include="game\actor\enemy\core\EnemyAttackProfile.h" />
+    <ClInclude Include="game\actor\enemy\combat\AttackTelegraph.h">
+      <Filter>Enemies\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\combat\EnemyAttackProfile.h">
+      <Filter>Enemies\combat</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\normal</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\normal</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\elemental\EnemyThunderSlime.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClInclude>
     <ClInclude Include="game\system\TutorialDirector.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyWindSlime.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+      <Filter>Enemies\elemental</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\heavy\EnemyGiantSlime.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\heavy</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\boss\EnemyPrismSlime.h" />
-    <ClInclude Include="game\actor\enemy\boss\EnemyMagmaSlime.h" />
-    <ClInclude Include="game\actor\enemy\boss\EnemyFalseKingSlime.h" />
+    <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.h"><Filter>Enemies\boss\prism</Filter></ClInclude>
+    <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h"><Filter>Enemies\boss\magma</Filter></ClInclude>
+    <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.h"><Filter>Enemies\boss\false_king</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\flying\EnemyBat.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\flying</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\ranged\EnemyRingBurner.h" />
-    <ClInclude Include="game\system\EnemyFactory.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\enemy\ranged\EnemyRingBurner.h">
+      <Filter>Enemies\ranged</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\spawn\EnemyFactory.h">
+      <Filter>Enemies\spawn</Filter>
     </ClInclude>
     <ClInclude Include="game\system\GameplayStatusManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -1399,20 +1449,18 @@
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetManager.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.h"><Filter>EditorOrganization\Prefab</Filter></ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\system\EnemySpawner.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\enemy\spawn\EnemySpawner.h">
+      <Filter>Enemies\spawn</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\GameClearScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\scene\clear\GameClearScene.h">
+      <Filter>Scenes\clear</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\GameOverScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\scene\gameover\GameOverScene.h">
+      <Filter>Scenes\gameover</Filter>
     </ClInclude>
     <ClInclude Include="externals\SDL2\include\begin_code.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -1724,42 +1772,44 @@
     <ClInclude Include="game\system\ObjectManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerMover.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\movement\PlayerMover.h">
+      <Filter>Player\movement</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerSlimeAnimator.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\animation\PlayerSlimeAnimator.h">
+      <Filter>Player\animation</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerGateReturnAnimation.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\animation\PlayerGateReturnAnimation.h">
+      <Filter>Player\animation</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\state\IAnimationState.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerDeathAnimation.h" />
-    <ClInclude Include="game\actor\player\PlayerState.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\animation\PlayerDeathAnimation.h">
+      <Filter>Player\animation</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.Basic.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.Carry.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.Basic.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.Damage.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.Carry.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.Hook.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.Damage.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.Life.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.Hook.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.PullEnemy.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.Life.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.PullObject.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\state\PlayerState.PullEnemy.h">
+      <Filter>Player\state</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\state\PlayerState.PullObject.h">
+      <Filter>Player\state</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\particle\ParticleManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -1793,9 +1843,7 @@
     </ClInclude>
     <ClInclude Include="engine\animation\BodyAnimationClip.h" />
     <ClInclude Include="engine\animation\AnimatorController.h" />
-    <ClInclude Include="game\actor\enemy\boss\BossCore.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
+    <ClInclude Include="game\actor\enemy\boss\core\BossCore.h"><Filter>Enemies\boss\core</Filter></ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1831,6 +1879,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1840,12 +1889,8 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorTextureCatalog.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.h"><Filter>EditorOrganization\Inspector</Filter></ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.h"><Filter>EditorOrganization\Inspector</Filter></ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1870,6 +1915,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Internal.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\CaptureToolWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1909,7 +1955,10 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PlayModeChangeTracker.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetReferenceExplorer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorWindowsText.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyRegistry.BuiltIn.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Internal.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorAssetDragPayload.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />
@@ -1919,7 +1968,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ReplayDebugger.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.h"><Filter>EditorOrganization\Replay</Filter></ClInclude>
     <ClInclude Include="engine\system\input\KeyConfig.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1954,6 +2003,9 @@
     <ClInclude Include="game\actor\gimmick\core\BaseGimmick.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\gimmick\movement\RidingPlatformController.h" />
+    <ClInclude Include="game\actor\gimmick\movement\MovingFloorSupport.h" />
+    <None Include="Resources\shader\object3d\FoliageDeformation.hlsli" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickMovingFloor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2059,8 +2111,11 @@
     <ClInclude Include="game\actor\item\HealItem.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\scene\GameSelectScene.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\scene\select\GameSelectScene.h">
+      <Filter>Scenes\select</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\select\GameSelectScene.Internal.h">
+      <Filter>Scenes\select</Filter>
     </ClInclude>
     <ClInclude Include="game\system\GameSettingsManager.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -2083,11 +2138,11 @@
     <ClInclude Include="game\ui\SettingsMenuOverlay.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerClone.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    <ClInclude Include="game\actor\player\clone\PlayerClone.h">
+      <Filter>Player\clone</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+      <Filter>Enemies\ranged</Filter>
     </ClInclude>
     <ClInclude Include="game\system\ItemFactory.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
@@ -2186,6 +2241,157 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="game\actor\player\copy\PinkSlimeCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\FireSlimeCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\ThunderSlimeCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\WindSlimeCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\BomberCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\copy\CrownCopyAbility.cpp">
+      <Filter>Player\copy</Filter>
+    </ClCompile>
+    <ClInclude Include="game\actor\player\copy\CopyAbilitySession.h">
+      <Filter>Player\copy</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\player\copy\CopyAbilitySupport.h">
+      <Filter>Player\copy</Filter>
+    </ClInclude>
+    <ClCompile Include="game\scene\select\GameSelectScene.Hud.cpp">
+      <Filter>Scenes\select</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Material.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Scenes"><UniqueIdentifier>{00a822a9-99a5-4f14-bd80-a8658915fd0d}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\clear"><UniqueIdentifier>{dfa07631-fe91-4c84-beb9-915ea8aadbb0}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\editor"><UniqueIdentifier>{0ee7e947-3129-4253-8449-3e1c1248e078}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\gameover"><UniqueIdentifier>{8a881f1b-8074-4e24-96e0-ad16785c0c22}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\gameplay"><UniqueIdentifier>{2f21fa6a-8a63-4904-b36c-5bed9cd7dfb8}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\preview"><UniqueIdentifier>{9d4727cf-a74c-439a-a229-6c2bbbfad934}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\select"><UniqueIdentifier>{59a209b2-1bbc-48c4-99f4-bc0efeaaabcf}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\settings"><UniqueIdentifier>{0cb92b9a-d6f1-490e-9886-9796e88ff3df}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\title"><UniqueIdentifier>{2ac3e553-4f10-44c8-9620-97804e9463ec}</UniqueIdentifier></Filter>
+    <Filter Include="Scenes\tutorial"><UniqueIdentifier>{65ff9b34-ba83-4471-a649-122149407d2b}</UniqueIdentifier></Filter>
+    <ClInclude Include="game\scene\gameover\GameOverSlimeAnimator.h">
+      <Filter>Scenes\gameover</Filter>
+    </ClInclude>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinale.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
+    <ClInclude Include="game\scene\gameplay\GoalClearPlayerAnimator.h">
+      <Filter>Scenes\gameplay</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Player"><UniqueIdentifier>{f1eea010-e0c4-44ad-a18d-ca27c78777eb}</UniqueIdentifier></Filter>
+    <Filter Include="Player\animation"><UniqueIdentifier>{ce68b876-dfda-4920-a295-4340f06cbddc}</UniqueIdentifier></Filter>
+    <Filter Include="Player\clone"><UniqueIdentifier>{2d53d3e5-f467-4a31-a251-c95a1d90a975}</UniqueIdentifier></Filter>
+    <Filter Include="Player\combat"><UniqueIdentifier>{45937126-5e97-4b7e-ac19-607f6188a564}</UniqueIdentifier></Filter>
+    <Filter Include="Player\copy"><UniqueIdentifier>{17bc01ac-7a5a-49f8-89e6-d96c7b982474}</UniqueIdentifier></Filter>
+    <Filter Include="Player\movement"><UniqueIdentifier>{4ed3d524-b4c6-4e46-9338-07893b29e3e6}</UniqueIdentifier></Filter>
+    <Filter Include="Player\state"><UniqueIdentifier>{5584b813-e2e8-4e47-8a26-c299c146b51c}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Enemies"><UniqueIdentifier>{aefa2777-0887-4661-aa95-490c088e8e78}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\animation"><UniqueIdentifier>{72877ee9-7628-4c3c-b011-82c77818c147}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\boss"><UniqueIdentifier>{9d95cf68-c73d-420c-8cea-31c4bc76d1e1}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\combat"><UniqueIdentifier>{7c1b9c6c-c602-42e9-8ce6-baf85e2626c7}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\core"><UniqueIdentifier>{5374d693-b992-45e3-933d-acaa06d41408}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\elemental"><UniqueIdentifier>{68611da3-0bfb-4f08-9a5a-bd4d814eb782}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\flying"><UniqueIdentifier>{d6f44e82-20f3-461c-a5f3-ca4cd6ac1952}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\heavy"><UniqueIdentifier>{ace7585d-bc3c-4cbf-ad79-2ef28305e42a}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\normal"><UniqueIdentifier>{4f158c1e-ed5e-4ac6-99af-937e0f4783a2}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\ranged"><UniqueIdentifier>{7377960c-1f7a-4abf-b443-0899a3c4f455}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\spawn"><UniqueIdentifier>{d25a499a-1599-443f-9c86-444bfb181aae}</UniqueIdentifier></Filter>
+    <ClInclude Include="game\actor\enemy\animation\SlimeBounceAnimator.h">
+      <Filter>Enemies\animation</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\Player.Internal.h"><Filter>Player</Filter></ClInclude>
+    <ClCompile Include="game\actor\player\copy\Player.Morph.cpp"><Filter>Player\copy</Filter></ClCompile>
+    <ClCompile Include="game\actor\player\copy\Player.MorphRelease.cpp"><Filter>Player\copy</Filter></ClCompile>
+    <ClCompile Include="game\actor\player\combat\Player.Feedback.cpp"><Filter>Player\combat</Filter></ClCompile>
+    <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Internal.h"><Filter>Enemies\boss\false_king</Filter></ClInclude>
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Attacks.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Encounter.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Finale.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
+    <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h"><Filter>Enemies\boss\prism</Filter></ClInclude>
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Attacks.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Encounter.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
+    <ClInclude Include="game\actor\enemy\boss\core\BossCore.Internal.h"><Filter>Enemies\boss\core</Filter></ClInclude>
+    <ClCompile Include="game\actor\enemy\boss\core\BossCore.Sequence.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="game\actor\player\movement\PlayerLaunchStarController.cpp"><Filter>Player\movement</Filter></ClCompile>
+    <ClInclude Include="game\actor\player\movement\PlayerLaunchStarController.h"><Filter>Player\movement</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="engine\core\editor\GameEditorController.Internal.h"><Filter>EditorOrganization\Controller</Filter></ClInclude>
+    <ClCompile Include="engine\core\editor\GameEditorController.Support.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
+    <ClCompile Include="engine\core\editor\GameEditorController.Commands.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
+    <ClCompile Include="engine\core\editor\GameEditorController.Workspace.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
+    <ClCompile Include="engine\core\editor\GameEditorController.Viewport.cpp"><Filter>EditorOrganization\Controller</Filter></ClCompile>
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Internal.h"><Filter>EditorOrganization\Prefab</Filter></ClInclude>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Support.cpp"><Filter>EditorOrganization\Prefab</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.PrefabSync.cpp"><Filter>EditorOrganization\Prefab</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\preset\PresetManager.Overrides.cpp"><Filter>EditorOrganization\Prefab</Filter></ClCompile>
+    <ClInclude Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Internal.h"><Filter>EditorOrganization\Camera</Filter></ClInclude>
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Support.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Ui.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.Guides.cpp"><Filter>EditorOrganization\Camera</Filter></ClCompile>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Internal.h"><Filter>EditorOrganization\Inspector</Filter></ClInclude>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Support.cpp"><Filter>EditorOrganization\Inspector</Filter></ClCompile>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Internal.h"><Filter>EditorOrganization\Replay</Filter></ClInclude>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Support.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Archive.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\enemy\boss\core\BossArmorFlightController.h"><Filter>Enemies\boss\core</Filter></ClInclude>
+    <ClCompile Include="game\actor\enemy\boss\core\BossArmorFlightController.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="EditorOrganization"><UniqueIdentifier>{45b7f158-22d4-405b-98bb-ea41549bb6d2}</UniqueIdentifier></Filter>
+    <Filter Include="EditorOrganization\Camera"><UniqueIdentifier>{3cb190d1-87f9-4427-b113-70d9f67ea5d9}</UniqueIdentifier></Filter>
+    <Filter Include="EditorOrganization\Controller"><UniqueIdentifier>{9ef75197-b7bd-471e-8ee3-dada90e6e34e}</UniqueIdentifier></Filter>
+    <Filter Include="EditorOrganization\Inspector"><UniqueIdentifier>{ff210256-2f9e-4ca0-9d28-cba46cbac2d7}</UniqueIdentifier></Filter>
+    <Filter Include="EditorOrganization\Prefab"><UniqueIdentifier>{6f45f334-9bf0-436f-b6bb-7a9807ab62e3}</UniqueIdentifier></Filter>
+    <Filter Include="EditorOrganization\Replay"><UniqueIdentifier>{45db71fa-3340-448d-b1c5-2684f9919549}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\boss\core"><UniqueIdentifier>{ed74f4e8-8420-426c-bdc8-1d48f3eb7579}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\boss\false_king"><UniqueIdentifier>{9d5e696f-ed6f-44c2-b326-b79100bd9d29}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\boss\magma"><UniqueIdentifier>{7eb0618d-652e-4d34-9c0b-b2da74f814d6}</UniqueIdentifier></Filter>
+    <Filter Include="Enemies\boss\prism"><UniqueIdentifier>{70bb9e26-ae1a-45f4-9a42-6182b359254f}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\combat\CombatMath.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClInclude Include="game\actor\combat\CombatGroundQuery.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClCompile Include="game\actor\combat\CombatGroundQuery.cpp"><Filter>CombatShared</Filter></ClCompile>
+    <Filter Include="CombatShared"><UniqueIdentifier>{506a94b9-a9f2-4c6e-8d2f-b38e19474524}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\combat\PlayerAttackInputBuffer.h"><Filter>Player\combat</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\item\DroppedCopyStar.h"><Filter>Item</Filter></ClInclude>
+    <ClCompile Include="game\actor\item\DroppedCopyStar.cpp"><Filter>Item</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Item"><UniqueIdentifier>{bac48574-f5fb-46a4-9512-42bac1eaf9a1}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\actor\player\movement\PlayerJumpRequest.h"><Filter>Player\movement</Filter></ClInclude>
   </ItemGroup>
 </Project>
 

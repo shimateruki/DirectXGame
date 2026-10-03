@@ -1,0 +1,49 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "ProceduralType": 1,
+  "SlashAngle": 155,
+  "InnerRadius": 0.85,
+  "OuterRadius": 1.72,
+  "Thickness": 0.48,
+  "MeshSegments": 48,
+  "Lifetime": 0.34,
+  "StartScale": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "EndScale": [
+    1.12,
+    0.85,
+    1.12
+  ],
+  "StartColor": [
+    1.0,
+    0.68,
+    0.79,
+    1.0
+  ],
+  "EndColor": [
+    1,
+    0.26,
+    0.48,
+    0
+  ],
+  "Intensity": 2.1,
+  "EasingType": 0,
+  "TexturePath": "Resources/sprite/effect/gradationLine.png",
+  "UvTiling": [
+    1.0,
+    1.0
+  ],
+  "ScrollSpeed": [
+    0,
+    0
+  ],
+  "AlphaReference": 0.003,
+  "EdgeFadeStrength": 0,
+  "VolumeMode": 0,
+  "EnableReveal": false,
+  "NoiseTexturePath": "Resources/sprite/common/white.png"
+}

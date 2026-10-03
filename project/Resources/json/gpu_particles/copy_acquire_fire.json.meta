@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "8d0b06537baece77dca1f755164b5489",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/copy_acquire_fire.json",
+  "version": 1
+}

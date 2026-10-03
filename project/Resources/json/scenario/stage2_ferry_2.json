@@ -1,0 +1,210 @@
+{
+    "version": 6,
+    "name": "スター2・浮き岩2",
+    "duration": 38,
+    "tracks": [
+        {
+            "name": "乗車経路（岩の上面が高さの基準）",
+            "targetName": "Stage2_Ferry_Raft_2",
+            "targetEventId": -1,
+            "startTime": 0,
+            "enabled": true,
+            "muted": false,
+            "relative": false,
+            "holdLast": true,
+            "keys": [
+                {
+                    "time": 0,
+                    "position": [
+                        164,
+                        -3,
+                        -290
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1,
+                    "position": [
+                        164,
+                        -3,
+                        -290
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 8,
+                    "position": [
+                        195,
+                        -3,
+                        -320
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 11,
+                    "position": [
+                        195,
+                        -3,
+                        -320
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 17,
+                    "position": [
+                        208,
+                        -3,
+                        -360
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 23,
+                    "position": [
+                        244,
+                        -3,
+                        -341
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 26,
+                    "position": [
+                        244,
+                        -3,
+                        -341
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 32,
+                    "position": [
+                        268,
+                        -3,
+                        -307
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 38,
+                    "position": [
+                        260,
+                        -3,
+                        -279
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        10,
+                        3,
+                        6
+                    ],
+                    "easingToNext": 0
+                }
+            ]
+        }
+    ],
+    "signals": [
+        {
+            "time": 0,
+            "name": "乗り場に戻ると呼び戻せる浮き岩",
+            "signal": "ride.ferry",
+            "payload": "",
+            "targetName": "Stage2_Ferry_Raft_2",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 0,
+            "name": "出航スイッチ待ち",
+            "signal": "ride.wait_switch",
+            "payload": "",
+            "targetName": "Stage2_Ferry_DepartureSwitch",
+            "targetEventId": -1,
+            "enabled": true
+        }
+    ]
+}

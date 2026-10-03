@@ -1,9 +1,12 @@
 #include "WinApp.h"
+#include "game/ui/SettingsMenuOverlay.h"
 #include <Windows.h>
 #ifdef USE_IMGUI
 #include "imgui_impl_win32.h"
 #endif
 #include <DirectXCommon.h>
+#include "json.hpp"
+#include <fstream>
 
 #pragma comment(lib, "winmm.lib")
 #ifdef USE_IMGUI
@@ -80,22 +83,67 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     kClientHeight = clientRect.bottom - clientRect.top;
 
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
+    // 保存済み表示設定のみ起動時に反映。破損した設定では従来の起動を維持します。
+    try {
+        std::ifstream file("Resources/json/user_config.json");
+        nlohmann::json config;
+        if (file >> config; config.contains("display")) {
+            const auto& d = config.at("display");
+            SetDisplayMode(d.value("width", 1280), d.value("height", 720), d.value("borderless", false));
+        }
+    } catch (...) {}
+    GetClientRect(hwnd_, &clientRect);
+    kClientWidth = clientRect.right;
+    kClientHeight = clientRect.bottom;
+}
+
+WinApp::DisplayState WinApp::CaptureDisplayState() const {
+    DisplayState state;
+    state.style = GetWindowLongPtr(hwnd_, GWL_STYLE);
+    GetWindowPlacement(hwnd_, &state.placement);
+    return state;
+}
+
+bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
+    if (!hwnd_ || width < 960 || height < 540 || width > 7680 || height > 4320) return false;
+    MONITORINFO monitor{ sizeof(MONITORINFO) };
+    if (!GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor)) return false;
+    RECT rect{0, 0, width, height};
+    const LONG style = borderless ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+    if (borderless) rect = monitor.rcMonitor;
+    else {
+        AdjustWindowRect(&rect, style, FALSE);
+        width = rect.right - rect.left; height = rect.bottom - rect.top;
+        const auto& work = monitor.rcWork;
+        if (width > work.right-work.left || height > work.bottom-work.top) return false;
+        rect = {work.left + (work.right-work.left-width)/2, work.top + (work.bottom-work.top-height)/2,
+                work.left + (work.right-work.left+width)/2, work.top + (work.bottom-work.top+height)/2};
+    }
+    ShowWindow(hwnd_, SW_RESTORE);
+    SetWindowLongPtr(hwnd_, GWL_STYLE, style | WS_VISIBLE);
+    return SetWindowPos(hwnd_, nullptr, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top,
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED) != FALSE;
+}
+
+void WinApp::RestoreDisplayState(const DisplayState& state) {
+    SetWindowLongPtr(hwnd_, GWL_STYLE, state.style);
+    SetWindowPlacement(hwnd_, &state.placement);
+    SetWindowPos(hwnd_, nullptr, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
 }
 // Windowsメッセージを処理し、終了要求が来ていればtrueを返す。
 bool WinApp::Update() {
     MSG msg{};
 
-    // メッセージがあるか
-    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+    // 保留中の入力通知をまとめて配送し、ImGuiの入力遅延を防ぐ。
+    // 終了通知はDispatchせず、その場でメインループへ返す。
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) {
+            return true;
+        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
-    // 終了メッセージが来たらtrueを返す
-    if (msg.message == WM_QUIT) {
-        return true;
-    }
-    if (isCursorLocked_) {
+    if (isCursorLocked_ && !SettingsMenuOverlay::IsAnyActive()) {
         // 他のアプリ（ブラウザ等）を操作している時にマウスが奪われないよう、
         // 自分のゲーム画面がアクティブ（最前面）の時だけ固定する！
         if (GetActiveWindow() == hwnd_) {

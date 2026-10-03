@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5bac7b9177c558e2d04c16c3a5e159d0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/pink/move_1_condition.dds",
+  "version": 1
+}

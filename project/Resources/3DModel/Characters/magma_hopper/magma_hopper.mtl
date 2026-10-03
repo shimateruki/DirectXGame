@@ -1,0 +1,11 @@
+newmtl Body
+Kd 1 1 1
+Ns 80
+d 1
+illum 2
+
+newmtl Face
+Kd 1 1 1
+Ns 96
+d 1
+illum 2

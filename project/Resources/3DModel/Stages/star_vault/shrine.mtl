@@ -1,0 +1,52 @@
+newmtl DefaultMaterial
+Kd 1 1 1
+Pr .5
+Pm 0
+
+newmtl Stone
+Kd 0.51 0.47 0.36
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2
+
+newmtl StoneLight
+Kd 0.65 0.6 0.46
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2
+
+newmtl StoneDark
+Kd 0.37 0.36 0.29
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2
+
+newmtl Soil
+Kd 0.32 0.245 0.13
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2
+
+newmtl Moss
+Kd 0.26 0.39 0.1
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2
+
+newmtl Gold
+Kd 0.73 0.55 0.21
+Ks .04 .04 .04
+Pr .86
+Pm 0
+Ns 8
+illum 2

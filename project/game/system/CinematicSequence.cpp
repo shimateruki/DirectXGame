@@ -6,8 +6,19 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <cmath>
 
 using json = nlohmann::json;
+
+Vector3 CinematicAnchorPosition(const Vector3& local, const Vector3& origin, float yaw) {
+    const float c = std::cos(yaw), s = std::sin(yaw);
+    return { origin.x + local.x * c + local.z * s, origin.y + local.y,
+        origin.z - local.x * s + local.z * c };
+}
+
+Vector3 CinematicAnchorLocalPosition(const Vector3& world, const Vector3& origin, float yaw) {
+    return CinematicAnchorPosition({ world.x - origin.x, world.y - origin.y, world.z - origin.z }, {}, -yaw);
+}
 
 namespace {
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
@@ -37,6 +48,10 @@ void WriteBinding(json& value, const CinematicObjectBinding& binding) {
 }
 
 void CinematicSequence::Clear() {
+    anchor = {};
+    anchorYawOffset = 0.0f;
+    roleBindings = {};
+    previewModels = { "Characters/slime_pink", "Primitives/cube" };
     version = kCurrentVersion;
     duration = 0.0f;
     transformTracks.clear();
@@ -104,6 +119,15 @@ bool CinematicSequence::Save(const std::string& filePath) const {
     root["version"] = kCurrentVersion;
     root["name"] = name;
     root["duration"] = duration;
+    WriteBinding(root["anchor"], anchor);
+    root["anchorYawOffset"] = anchorYawOffset;
+    root["roleBindings"] = json::array();
+    root["previewModels"] = previewModels;
+    for (const auto& binding : roleBindings) {
+        json item;
+        WriteBinding(item, binding);
+        root["roleBindings"].push_back(item);
+    }
     root["tracks"] = json::array();
     root["vfxCues"] = json::array();
     root["cameraShots"] = json::array();
@@ -123,6 +147,7 @@ bool CinematicSequence::Save(const std::string& filePath) const {
         item["muted"] = track.muted;
         item["locked"] = track.locked;
         item["relative"] = track.relative;
+        item["anchorRelative"] = track.anchorRelative;
         item["holdLast"] = track.holdLast;
         item["keys"] = json::array();
         for (const auto& key : track.keys) {
@@ -245,6 +270,16 @@ bool CinematicSequence::Load(const std::string& filePath) {
         version = root.value("version", 1);
         name = root.value("name", std::filesystem::path(filePath).stem().string());
         duration = root.value("duration", 0.0f);
+        ReadBinding(root.value("anchor", json::object()), anchor);
+        anchorYawOffset = root.value("anchorYawOffset", 0.0f);
+        const auto roles = root.value("roleBindings", json::array());
+        // 旧データの入口サンプルは従来の仮ゲートを維持する。
+        previewModels = { "Characters/slime_pink", "Gimmicks/portal_gate" };
+        const auto models = root.value("previewModels", json::array());
+        for (size_t index = 0; index < previewModels.size() && index < models.size(); ++index)
+            previewModels[index] = models[index].get<std::string>();
+        for (size_t index = 0; index < roleBindings.size() && index < roles.size(); ++index)
+            ReadBinding(roles[index], roleBindings[index]);
 
         const json transformItems = root.value("tracks", json::array());
         for (const auto& item : transformItems) {
@@ -257,6 +292,7 @@ bool CinematicSequence::Load(const std::string& filePath) {
             track.muted = item.value("muted", false);
             track.locked = item.value("locked", false);
             track.relative = item.value("relative", false);
+            track.anchorRelative = item.value("anchorRelative", false);
             track.holdLast = item.value("holdLast", true);
             for (const auto& keyItem : item.value("keys", json::array())) {
                 CinematicTransformKey key;

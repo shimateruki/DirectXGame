@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "1ea0984a5ab568a5b7e312c4f04dec6e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/RecoveryStep_4_soil.obj",
+  "version": 1
+}

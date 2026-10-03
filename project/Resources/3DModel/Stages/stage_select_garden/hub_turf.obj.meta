@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "778676fabfdaed680de3a9e99ace7cdc",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/hub_turf.obj",
+  "version": 1
+}

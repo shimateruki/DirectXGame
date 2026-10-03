@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "77da9e828a447c3a2efcf1ccbc119b31",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/move_2_condition.png",
+  "version": 1
+}

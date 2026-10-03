@@ -24,13 +24,10 @@
 #pragma comment(lib, "xinput.lib")
 #pragma comment(lib, "dxguid.lib")
 
-/// <summary>
-/// キーボード、マウス、ゲームパッド、SDLセンサー入力をまとめて管理する。
-/// </summary>
-// InputManagerは、キーボード、マウス、ゲームパッド、アクション入力をまとめて管理します。
+/// <summary>物理入力、アクション入力、振動、SDL センサーをフレーム単位で管理します。</summary>
 class InputManager {
 public:
-    // 自動回帰テストで、1フレーム分の入力を同じ状態へ戻すためのデータです。
+    /// <summary>回帰再生用に、現在と前フレームの物理入力をまとめた状態です。</summary>
     struct ReplayState {
         std::array<uint8_t, 256> keys{};
         std::array<uint8_t, 256> previousKeys{};
@@ -62,73 +59,111 @@ public:
         Vector3 baseAccelerometer{};
     };
 
-    /// <summary>
-    /// シングルトンインスタンスを取得する。
-    /// </summary>
-        // エンジン全体で共有する入力管理インスタンスを取得します。
-static InputManager* GetInstance();
+    /// <summary>エンジンで共有する入力管理インスタンスを取得します。</summary>
+    static InputManager* GetInstance();
 
-    /// <summary>
-    /// 入力デバイスを初期化する。
-    /// </summary>
-        // DirectInputとSDLゲームパッドを初期化し、入力取得を開始します。
-void Initialize(HWND hwnd);
+    /// <summary>DirectInput と SDL ゲームパッドを初期化します。</summary>
+    /// <param name="hwnd">マウスとキーボード入力を受け取るウィンドウ。</param>
+    void Initialize(HWND hwnd);
 
-    /// <summary>
-    /// 毎フレームの入力状態を更新する。
-    /// </summary>
-        // 現在フレームの入力状態を取得し、前フレーム状態との差分を更新します。
-void Update();
+    /// <summary>デバイスをポーリングし、前フレームとの差分を更新します。</summary>
+    void Update();
 
-    // キーボード入力。
-        // 指定キーが押され続けているかを返します。
-bool IsKeyPressed(BYTE keyCode) const;
-        // 指定キーがこのフレームで押された瞬間かを返します。
-bool IsKeyTriggered(BYTE keyCode) const;
+    /// <summary>指定キーが押され続けているか返します。</summary>
+    bool IsKeyPressed(BYTE keyCode) const;
+
+    /// <summary>指定キーがこのフレームで押されたか返します。</summary>
+    bool IsKeyTriggered(BYTE keyCode) const;
+
+    /// <summary>現在押されているキーコードの一覧を返します。</summary>
     std::vector<uint8_t> GetPressedKeys() const;
 
-    // マウス入力。
+    /// <summary>指定マウスボタンが押され続けているか返します。</summary>
     bool IsMouseButtonPressed(int button) const;
+
+    /// <summary>指定マウスボタンがこのフレームで押されたか返します。</summary>
     bool IsMouseButtonTriggered(int button) const;
+
+    /// <summary>指定マウスボタンがこのフレームで離されたか返します。</summary>
     bool IsMouseButtonReleased(int button) const;
-        // 前フレームからのマウス移動量を取得します。
-Vector2 GetMouseMoveDelta() const;
+
+    /// <summary>前フレームからのマウス移動量を返します。</summary>
+    Vector2 GetMouseMoveDelta() const;
+
+    /// <summary>現在のマウス位置を返します。</summary>
     Vector2 GetMousePosition() const;
+
+    /// <summary>このフレームのホイール変化量を返します。</summary>
     float GetMouseWheelDelta() const;
 
-    // 現在の物理入力を保存し、回帰テスト中に同じ入力へ差し替えます。
+    /// <summary>物理入力を再生用に保存します。</summary>
     ReplayState CaptureReplayState() const;
+
+    /// <summary>回帰再生用の現在・前フレーム入力を復元します。</summary>
+    /// <param name="state">復元する入力状態。</param>
     void ApplyReplayState(const ReplayState& state);
+
+    /// <summary>現在押されているマウスボタン番号を返します。</summary>
     int GetPressedMouseButton() const;
 
-    // ゲームパッド入力。
-        // ゲームパッド左スティックの入力値を取得します。
-Vector2 GetGamepadLeftStick() const;
+    /// <summary>ゲームパッド左スティックの入力を返します。</summary>
+    Vector2 GetGamepadLeftStick() const;
+
+    /// <summary>ゲームパッド右スティックの入力を返します。</summary>
     Vector2 GetGamepadRightStick() const;
+
+    /// <summary>指定ゲームパッドボタンが押され続けているか返します。</summary>
     bool IsGamepadButtonPressed(WORD button) const;
+
+    /// <summary>指定ゲームパッドボタンがこのフレームで押されたか返します。</summary>
     bool IsGamepadButtonTriggered(WORD button) const;
+
+    /// <summary>現在押されているゲームパッドボタンを返します。</summary>
     WORD GetPressedGamepadButton() const;
+
+    /// <summary>直近の操作デバイスがゲームパッドか返します。</summary>
     bool IsGamepadMode() const { return isGamepadMode_; }
+
+    /// <summary>XInput を優先し、入力がなければ SDL の左スティック値を返します。</summary>
     Vector2 GetLeftStick() const;
+
+    /// <summary>XInput を優先し、入力がなければ SDL の右スティック値を返します。</summary>
     Vector2 GetRightStick() const;
 
-    // 複数の振動要求を強い方へ合成し、指定時間後に確実に停止します。
+    /// <summary>低・高周波の振動を指定時間だけ要求します。並行要求は強い方を採用します。</summary>
     void PlayRumble(float lowFrequency, float highFrequency, float duration);
+
+    /// <summary>振動要求の残り時間とデバイス出力を更新します。</summary>
     void UpdateRumble(float unscaledDeltaTime);
+
+    /// <summary>すべての振動要求を破棄して停止します。</summary>
     void StopRumble();
+
+    /// <summary>有効な振動要求が残っているか返します。</summary>
     bool IsRumbling() const { return !rumbleRequests_.empty(); }
 
-    // SDLセンサー入力。
+    /// <summary>入力デバイスと SDL センサーを解放します。</summary>
     void Finalize();
+
+    /// <summary>現在の加速度センサー値を返します。</summary>
     Vector3 GetAccelerometer() const { return accelData_; }
+
+    /// <summary>現在のジャイロセンサー値を返します。</summary>
     Vector3 GetGyroscope() const { return gyroData_; }
+
+    /// <summary>現在の加速度を基準値として記録します。</summary>
     void Calibrate() { baseAccel_ = accelData_; }
+
+    /// <summary>校正時の加速度基準値を返します。</summary>
     Vector3 GetBaseAccelerometer() const { return baseAccel_; }
 
-    // アクション名ベースの入力判定。
-        // KeyConfigに登録されたアクションが押されているかを返します。
-bool IsActionPressed(const std::string& actionName) const;
+    /// <summary>KeyConfig のアクションが押され続けているか返します。</summary>
+    bool IsActionPressed(const std::string& actionName) const;
+
+    /// <summary>KeyConfig のアクションがこのフレームで押されたか返します。</summary>
     bool IsActionTriggered(const std::string& actionName) const;
+
+    /// <summary>KeyConfig のアクションがこのフレームで離されたか返します。</summary>
     bool IsActionReleased(const std::string& actionName) const;
 
 private:
@@ -137,7 +172,7 @@ private:
     InputManager(const InputManager&) = delete;
     InputManager& operator=(const InputManager&) = delete;
 
-    // DirectInput関連。
+    // DirectInput の所有ポインタと、差分判定に必要な前フレーム状態。
     IDirectInput8* directInput = nullptr;
     IDirectInputDevice8* keyboardDevice = nullptr;
     IDirectInputDevice8* mouseDevice = nullptr;
@@ -155,7 +190,7 @@ private:
     XINPUT_STATE prevGamepadState{};
     HWND hwnd_ = nullptr;
 
-    // SDL2センサー状態。
+    // SDL2 センサー値と校正時の加速度基準値。
     SDL_GameController* sdlController_ = nullptr;
     Vector3 accelData_ = { 0, 0, 0 };
     Vector3 gyroData_ = { 0, 0, 0 };
@@ -164,11 +199,14 @@ private:
 
     bool isGamepadMode_ = false;
 
+    /// <summary>強弱の振動量と残り時間を持つ一時的な振動要求。</summary>
     struct RumbleRequest {
         float lowFrequency = 0.0f;
         float highFrequency = 0.0f;
         float remaining = 0.0f;
     };
+
+    // 複数の要求を合成し、実際に変化した場合だけデバイスへ送ります。
     void RefreshRumbleOutput();
 
     std::vector<RumbleRequest> rumbleRequests_;

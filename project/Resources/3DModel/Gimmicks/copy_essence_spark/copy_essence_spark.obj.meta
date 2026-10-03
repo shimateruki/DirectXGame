@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9d0aa580fee51753f89c432586185279",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_spark/copy_essence_spark.obj",
+  "version": 1
+}

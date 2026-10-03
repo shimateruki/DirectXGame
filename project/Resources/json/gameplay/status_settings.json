@@ -121,7 +121,7 @@
         },
         "FalseKingSlime": {
             "attackPower": 1.6,
-            "detectionRange": 36.0,
+            "detectionRange": 90.0,
             "gravity": 68.0,
             "jumpPower": 24.0,
             "maxFallSpeed": 62.0,
@@ -172,7 +172,7 @@
         },
         "MagmaSlime": {
             "attackPower": 1.45,
-            "detectionRange": 30.0,
+            "detectionRange": 90.0,
             "gravity": 72.0,
             "jumpPower": 22.0,
             "maxFallSpeed": 62.0,
@@ -189,7 +189,7 @@
         },
         "PrismSlime": {
             "attackPower": 1.350000023841858,
-            "detectionRange": 30.0,
+            "detectionRange": 90.0,
             "gravity": 72.0,
             "jumpPower": 22.0,
             "maxFallSpeed": 62.0,

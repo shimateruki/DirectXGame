@@ -512,6 +512,12 @@ PixelShaderOutput main(VertexShaderOutput input)
         shadowUV.y > 0.0f && shadowUV.y < 1.0f)
     {
         float bias = 0.005f;
+        // The legacy bias spans about two metres over the 399m shadow depth range.
+        // Garden receivers need a centimetre-scale bias to retain contact shadows.
+        if (gMaterial.materialType >= 29 && gMaterial.materialType <= 34) {
+            float grazing = 1.0f - saturate(dot(normalize(input.normal), normalize(-gDirectionalLight.direction)));
+            bias = 0.00012f + grazing * 0.00018f;
+        }
         shadowFactor = 0.0f;
 
         uint shadowMapWidth;
@@ -1028,6 +1034,113 @@ PixelShaderOutput main(VertexShaderOutput input)
                     }
 
                     float3 albedo = MATERIAL_COLOR.rgb * textureColor.rgb;
+                    if (gMaterial.materialType == 29 || gMaterial.materialType == 32) {
+                        // Soft painted turf evaluated before the normal PBR lighting.
+                        // Blend rotated scales to avoid visible square noise cells.
+                        float2 turfUV = float2(input.worldPosition.x * 0.83f - input.worldPosition.z * 0.56f,
+                            input.worldPosition.x * 0.56f + input.worldPosition.z * 0.83f);
+                        // Domain-warped, non-lattice patches avoid visible square interpolation cells.
+                        float2 warped = turfUV * 0.14f;
+                        warped += float2(sin(warped.y * 0.73f), sin(warped.x * 0.91f)) * 0.8f;
+                        float broad = 0.5f + sin(warped.x + warped.y * 0.63f) * 0.18f
+                            + sin(warped.y * 1.37f - warped.x * 0.41f + 2.3f) * 0.12f;
+                        float detail = ValueNoise2D(input.worldPosition.xz * 1.4f);
+                        float3 turf = lerp(float3(0.22f, 0.32f, 0.105f),
+                            float3(0.31f, 0.42f, 0.16f), broad);
+                        albedo = turf * (0.94f + detail * 0.12f) * MATERIAL_COLOR.rgb;
+                        if (gMaterial.materialType == 32) {
+                            // UV cross-section defines the path; noise softens the soil/turf boundary.
+                            float acrossPath = abs(input.texcoord.y - 0.5f) * 44.0f;
+                            float edgeNoise = ValueNoise2D(input.worldPosition.xz * 0.65f);
+                            float pathMask = 1.0f - smoothstep(max(gMaterial.envIntensity, 1.0f) - 0.6f,
+                                max(gMaterial.envIntensity, 1.0f) + 0.65f, acrossPath + (edgeNoise - 0.5f) * 1.1f);
+                            float3 soil = lerp(float3(0.34f, 0.235f, 0.12f),
+                                float3(0.51f, 0.385f, 0.22f), broad) * (0.94f + detail * 0.12f);
+                            // A smoother worn center contrasts with darker granular path margins.
+                            float worn = 1.0f - smoothstep(0.7f, max(gMaterial.envIntensity, 1.0f), acrossPath);
+                            soil = lerp(soil * (0.88f + detail * 0.12f),
+                                float3(0.49f, 0.37f, 0.22f) * (0.97f + broad * 0.06f), worn * 0.65f);
+                            albedo = lerp(albedo, soil * MATERIAL_COLOR.rgb, pathMask);
+                        }
+                        metallic = 0.0f;
+                        roughness = max(roughness, 0.85f);
+                    }
+                    if (gMaterial.materialType == 33) {
+                        // Entrance soil sides: path-related earth colors, softly eroded strata.
+                        float2 soilUV = float2(input.worldPosition.x + input.worldPosition.z, input.worldPosition.y);
+                        float macro = ValueNoise2D(soilUV * float2(0.22f, 0.32f));
+                        float grain = ValueNoise2D(soilUV * 5.0f);
+                        float strata = sin(soilUV.y * 2.8f + macro * 2.2f) * 0.025f;
+                        // Split terrain sides encode local depth in UV, independent of platform altitude.
+                        float soilDepth = input.texcoord.x > 0.5f ? input.texcoord.y : -input.worldPosition.y;
+                        float depth = saturate(soilDepth / 13.0f);
+                        float3 earth = lerp(float3(0.43f,0.315f,0.185f),float3(0.30f,0.205f,0.12f),depth);
+                        earth *= 0.91f + macro * 0.15f + grain * 0.04f + strata;
+                        float grassEdge = 1.0f - smoothstep(0.03f,0.32f + macro * 0.32f,soilDepth);
+                        albedo = lerp(earth,float3(0.27f,0.40f,0.095f),grassEdge * 0.8f) * MATERIAL_COLOR.rgb;
+                        roughness = 0.95f;
+                        metallic = 0.0f;
+                    }
+                    if (gMaterial.materialType == 30) {
+                        // Geometric blades retain opaque silhouettes and a soft root-to-tip gradient.
+                        float tip = saturate(input.texcoord.y);
+                        albedo = lerp(float3(0.09f, 0.18f, 0.045f),
+                            float3(0.42f, 0.55f, 0.18f), tip) * MATERIAL_COLOR.rgb;
+                        N = normalize(float3(N.x * 0.35f, abs(N.y) + 0.65f, N.z * 0.35f));
+                        metallic = 0.0f;
+                        roughness = max(roughness, 0.85f);
+                    }
+                    if (gMaterial.materialType == 31) {
+                        float leafMask = step(0.5f, input.texcoord.y);
+                        // Coplanar two-sided leaf triangles must agree on the visible side normal.
+                        if (leafMask > 0.5f && dot(N, V) < 0.0f) N = -N;
+                        float variation = ValueNoise2D(input.worldPosition.xz * 0.7f);
+                        float3 leaves = lerp(float3(0.12f, 0.26f, 0.075f),
+                            float3(0.38f, 0.51f, 0.16f), saturate(abs(N.y) * 0.3f + 0.5f + variation * 0.2f));
+                        float3 bark = lerp(float3(0.25f, 0.12f, 0.045f),
+                            float3(0.40f, 0.23f, 0.10f), variation);
+                        albedo = lerp(bark, leaves, leafMask) * MATERIAL_COLOR.rgb;
+                        metallic = 0.0f;
+                        // Keep bark matte while allowing broad leaf highlights from the editor roughness.
+                        roughness = lerp(max(roughness, 0.85f), clamp(roughness, 0.45f, 1.0f), leafMask);
+                    }
+
+                    if (gMaterial.materialType == 35) {
+                        // Object UVs keep the rock surface attached while the lift moves.
+                        float2 uv = input.texcoord;
+                        float macro = ValueNoise2D(uv * 0.29f);
+                        float grain = ValueNoise2D(uv * 3.8f);
+                        float2 p = uv * 0.30f + float2(macro, ValueNoise2D(uv * 0.31f + 17.0f)) * 0.65f;
+                        float2 cell = floor(p), local = frac(p);
+                        float nearest = 8.0f, second = 8.0f;
+                        [unroll] for (int cy = -1; cy <= 1; ++cy) {
+                            [unroll] for (int cx = -1; cx <= 1; ++cx) {
+                                float2 offset = float2(cx, cy);
+                                float2 seed = cell + offset;
+                                float2 site = 0.15f + 0.7f * float2(Hash21(seed), Hash21(seed + 23.7f));
+                                float distance = length(offset + site - local);
+                                second = min(second, max(nearest, distance));
+                                nearest = min(nearest, distance);
+                            }
+                        }
+                        float edge = second - nearest;
+                        float aa = max(fwidth(edge), 0.003f);
+                        float fissure = 1.0f - smoothstep(0.012f, 0.034f + aa, edge);
+                        float detailFade = 1.0f - smoothstep(0.10f, 0.40f, max(length(ddx(uv)), length(ddy(uv))));
+                        grain = lerp(0.5f, grain, detailFade);
+                        float relief = macro * 0.10f + grain * 0.006f - fissure * 0.018f;
+                        // Surface-gradient bump mapping works on top and side UV islands.
+                        float3 dpdx = ddx(input.worldPosition), dpdy = ddy(input.worldPosition);
+                        float3 r1 = cross(dpdy, N), r2 = cross(N, dpdx);
+                        float determinant = dot(dpdx, r1);
+                        float3 gradient = (ddx(relief) * r1 + ddy(relief) * r2)
+                            * sign(determinant) / max(abs(determinant), 0.00001f);
+                        N = normalize(N - gradient);
+                        float3 basalt = lerp(float3(0.22f, 0.255f, 0.29f), float3(0.40f, 0.435f, 0.47f), macro);
+                        albedo = basalt * (0.94f + grain * 0.12f) * (1.0f - fissure * 0.30f) * MATERIAL_COLOR.rgb;
+                        roughness = clamp(MATERIAL_ROUGHNESS + (grain - 0.5f) * 0.12f + fissure * 0.06f, 0.55f, 1.0f);
+                        metallic = 0.0f;
+                    }
                     float3 F0 = float3(0.04f, 0.04f, 0.04f);
                     F0 = lerp(F0, albedo, metallic);
 
@@ -1045,6 +1158,18 @@ PixelShaderOutput main(VertexShaderOutput input)
                     float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * lightIntensity;
                 
                     Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
+                    // Thin-leaf transmission is driven by sunlight, never by emission.
+                    // Shadowing still suppresses it under the canopy; bark stays opaque.
+                    if (gMaterial.materialType == 30 || gMaterial.materialType == 31) {
+                        float leaf = gMaterial.materialType == 30 ? saturate(input.texcoord.y)
+                            : step(0.5f, input.texcoord.y);
+                        float backLight = saturate(dot(-N, L_dir));
+                        float forwardLight = pow(saturate(dot(V, -L_dir)), 3.0f);
+                        float transmission = (backLight * 0.22f + forwardLight * 0.12f)
+                            * leaf * lerp(0.08f, 1.0f, shadowFactor);
+                        Lo += albedo * float3(1.08f,1.04f,0.78f)
+                            * gDirectionalLight.color.rgb * gDirectionalLight.intenssity * transmission;
+                    }
 
                 // 2. 点光源
                     for (int i = 0; i < gPointLights.activeCount; ++i)
@@ -1104,6 +1229,10 @@ PixelShaderOutput main(VertexShaderOutput input)
                         ambient = gDirectionalLight.ambientColor * albedo * (1.0f - metallic);
                     }
 
+                    if (gMaterial.materialType >= 29 && gMaterial.materialType <= 34) {
+                        // Keep indirect fill, but do not let it erase the shadowed side of foliage.
+                        ambient *= lerp(0.78f, 1.0f, shadowFactor);
+                    }
                     output.color.rgb = Lo + ambient;
                     output.color.a = MATERIAL_COLOR.a * textureColor.a;
                 }

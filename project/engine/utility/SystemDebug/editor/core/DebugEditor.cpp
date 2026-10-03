@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include "EditorToolSettings.h"
+#include "game/ui/SettingsMenuOverlay.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "Object3d.h"
@@ -27,7 +29,7 @@
 #include <sstream>
 #include "GhostRecorder.h" 
 #include "GhostDirector.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
 #include "EditorManager.h"
@@ -47,7 +49,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
-#include <PresetManager.h>
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
@@ -747,10 +749,13 @@ void DebugEditor::Update() {
     // =========================================================
     //  モードA: 古い設置モード (Hierarchy等からのプレビュー配置)
     // =========================================================
-    if (previewObject_) {
+    if (SettingsMenuOverlay::IsAnyActive()) {
+        // 設定項目をクリックしても背後のオブジェクトを選択・移動しないようにします。
+    }
+    else if (previewObject_) {
         UpdatePreviewPlacement();
 
-        if (isGameViewHovered_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        if (EditorToolSettings::Get().IsVisible("placementPreview") && isGameViewHovered_ && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             ConfirmPreviewPlacement();
         }
 
@@ -760,7 +765,8 @@ void DebugEditor::Update() {
         }
     }
     else if (isPresetBrushMode_) {
-        UpdatePresetBrush();
+        // 非表示のブラシで誤って配置しないよう、表示を戻すまで操作を待ちます。
+        if (EditorToolSettings::Get().IsVisible("placementPreview")) UpdatePresetBrush();
     }
     // =========================================================
     //  モードB: 通常選択・編集モード
@@ -811,12 +817,13 @@ void DebugEditor::Update() {
         }
 
         // --- マウス選択処理 (ギズモを触っていない ＆ パス編集中じゃない時) ---
-        const bool canSelectInGameView = !isPathEditMode_ && !isCameraEditorSelected && !ImGuizmo::IsOver();
-        if (canSelectInGameView && (isGameViewHovered_ || isSelectionRectDragging_)) {
+        const bool canStartSelection = !isPathEditMode_ && !isCameraEditorSelected &&
+            isGameViewHovered_ && !ImGuizmo::IsOver();
+        if (canStartSelection || isSelectionRectDragging_) {
             const bool isShiftPressed = ImGui::GetIO().KeyShift;
             constexpr float kSelectionDragThreshold = 6.0f;
 
-            if (isGameViewHovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            if (canStartSelection && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 selectionRectStart_ = gameViewMousePos_;
                 selectionRectEnd_ = gameViewMousePos_;
                 isSelectionRectDragging_ = true;
@@ -836,7 +843,7 @@ void DebugEditor::Update() {
                 if (isSelectionRectReady_) {
                     SelectObjectsInGameViewRect(selectionRectStart_, selectionRectEnd_, isShiftPressed);
                 } else {
-                    Object3d* hit = PickObjectAtGameViewPos(gameViewMousePos_);
+                    Object3d* hit = PickObjectAtGameViewPos(selectionRectStart_);
                     if (hit) {
                         if (isShiftPressed) {
                             ToggleSelectedObject(hit);
@@ -857,7 +864,7 @@ void DebugEditor::Update() {
 
         // --- ギズモ (ImGuizmo) 操作 ---
         if (selectedObject_) {
-            if (!isPathEditMode_ && !selectedObject_->GetIsLocked()) {
+            if (!isPathEditMode_ && !selectedObject_->GetIsLocked() && EditorToolSettings::Get().IsVisible("transformGizmo")) {
                 static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
                 if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantTextInput) {
                     if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
@@ -1025,8 +1032,10 @@ void DebugEditor::Update() {
                 }
             }
         }
-        DrawSelectionRectangleOverlay();
-        DrawSelectedObjectBoundsOverlay();
+        if (EditorToolSettings::Get().IsVisible("selectionBounds")) {
+            DrawSelectionRectangleOverlay();
+            DrawSelectedObjectBoundsOverlay();
+        }
     }
 
     // =========================================================
@@ -1037,11 +1046,15 @@ void DebugEditor::Update() {
     DrawSaveNotification();
     DrawSavePreview();
     DrawCrashRecoveryPrompt();
-    Draw3DIcons();
-    DrawEventIDOverlay();
-    DrawPreviewMarker();
-    DrawPresetBrushOverlay();
-    textSpriteGenerator_.DrawPreview();
+    if (EditorToolSettings::Get().IsVisible("sceneIcons")) Draw3DIcons();
+    if (!SettingsMenuOverlay::IsAnyActive()) {
+        if (EditorToolSettings::Get().IsVisible("eventIds")) DrawEventIDOverlay();
+        if (EditorToolSettings::Get().IsVisible("placementPreview")) {
+            DrawPreviewMarker();
+            DrawPresetBrushOverlay();
+            textSpriteGenerator_.DrawPreview();
+        }
+    }
 #endif
 }
 // ========================================================================
@@ -1063,6 +1076,11 @@ void DebugEditor::Finalize() {
 // コライダー描画処理 
 // ========================================================================
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
+#ifdef USE_IMGUI
+    if (EditorToolSettings::Get().IsTemporarilyHidden()) return;
+#endif
+    // メニュー中だけ抑制し、エディターの表示設定そのものは変更しません。
+    if (SettingsMenuOverlay::IsAnyActive()) return;
     if (sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
@@ -1096,6 +1114,9 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         // コライダー表示OFF設定の時、「見える物体」のコライダーは消すが、
         // 「見えない物体(透明な壁など)」は編集用に表示したままにする
         if (!drawColliders_ && !isInvisibleObj) continue;
+#ifdef USE_IMGUI
+        if (isInvisibleObj && !drawInvisibleBounds_) continue;
+#endif
 
         // --- 行列計算 (サイズと位置) ---
         Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
@@ -1300,7 +1321,10 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     // 2. 弾のコライダー描画
     // =========================================================
     CameraEditor::GetInstance()->DrawOrbitGuide(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
-    DrawPreviewWire(commandList, instanceCount, kMaxDrawLimit);
+#ifdef USE_IMGUI
+    if (EditorToolSettings::Get().IsVisible("placementPreview"))
+#endif
+        DrawPreviewWire(commandList, instanceCount, kMaxDrawLimit);
 
     if (drawColliders_) {
         const auto& bullets = BulletManager::GetInstance()->GetBullets();

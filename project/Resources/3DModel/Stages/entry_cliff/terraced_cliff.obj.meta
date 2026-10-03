@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "804b20134724825f9f2927ad1ebd0e62",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_cliff/terraced_cliff.obj",
+  "version": 1
+}

@@ -4,6 +4,7 @@
 #include <array>
 class DirectXCommon;
 
+/// <summary>CPUパーティクル描画で使う色合成方式。</summary>
 enum class ParticleBlendMode {
     kAlpha,     // 通常 (Alpha Blend)
     kAdd,       // 加算 (Additive)
@@ -12,18 +13,21 @@ enum class ParticleBlendMode {
     kScreen,    // スクリーン (Screen)
     kCount      // 最大数
 };
-/// <summary>
-/// パーティクル描画の共通処理
-/// </summary>
-// ParticleCommonは、CPUパーティクル描画で共通利用するRootSignatureとPipelineStateを管理します。
+
+/// <summary>CPUパーティクル描画用の共通ルートシグネチャと合成方式別パイプラインを管理する。</summary>
 class ParticleCommon {
 public:
 
-        // DirectXCommonを保持し、パーティクル描画パイプラインを準備します。
-void Initialize(DirectXCommon* dxCommon);
+    /// <summary>DirectX基盤を受け取り、CPUパーティクル描画パイプラインを作る。</summary>
+    void Initialize(DirectXCommon* dxCommon);
+
+    /// <summary>所有しないDirectX基盤への参照を返す。</summary>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
+
+    /// <summary>指定した合成方式のパイプラインをコマンドリストに設定する。</summary>
     void SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode = ParticleBlendMode::kAlpha);
 private:
+    // CPUパーティクル描画で使うルートシグネチャと合成方式別PipelineStateを作る。
     void CreateRootSignature();
     void CreatePipeline();
 

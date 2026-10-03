@@ -58,6 +58,8 @@ void GameSettingsManager::Load() {
     bgmVolume_ = ClampVolume(data.value("bgmVolume", bgmVolume_));
     seVolume_ = ClampVolume(data.value("seVolume", seVolume_));
     cameraSensitivity_ = ClampSensitivity(data.value("cameraSensitivity", cameraSensitivity_));
+    cameraInvertX_ = data.value("cameraInvertX", false);
+    cameraInvertY_ = data.value("cameraInvertY", false);
     stageSelectWeatherMode_ = ClampStageSelectWeatherMode(data.value(
         "stageSelectWeatherMode",
         static_cast<int>(stageSelectWeatherMode_)));
@@ -65,7 +67,7 @@ void GameSettingsManager::Load() {
     ApplyAudioSettings();
 }
 
-void GameSettingsManager::Save() const {
+bool GameSettingsManager::Save() const {
     nlohmann::json data;
     std::ifstream input(filePath_);
     if (input.is_open()) {
@@ -83,6 +85,8 @@ void GameSettingsManager::Save() const {
     data["bgmVolume"] = bgmVolume_;
     data["seVolume"] = seVolume_;
     data["cameraSensitivity"] = cameraSensitivity_;
+    data["cameraInvertX"] = cameraInvertX_;
+    data["cameraInvertY"] = cameraInvertY_;
     data["stageSelectWeatherMode"] = static_cast<int>(stageSelectWeatherMode_);
     data.erase("brightness");
     data.erase("resolutionIndex");
@@ -93,6 +97,8 @@ void GameSettingsManager::Save() const {
     if (output.is_open()) {
         output << data.dump(4);
     }
+    output.flush();
+    return output.good();
 }
 
 void GameSettingsManager::SetBGMVolume(float volume) {

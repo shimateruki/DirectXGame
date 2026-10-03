@@ -2,93 +2,87 @@
 
 newmtl BackdropStoneDark
 Ka 0.144000 0.162667 0.205333
-Kd 0.423529 0.478431 0.603922
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.000000 0.000000 0.000000
-Ns 35.840000
-Pr 0.720000
-Pm 0.020000
+Ns 15.360000
+Pr 0.880000
+Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdropstonedark.dds
 map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
 
 newmtl BackdropStone
 Ka 0.224000 0.241333 0.276000
-Kd 0.658824 0.709804 0.811765
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.000000 0.000000 0.000000
-Ns 40.960000
-Pr 0.680000
-Pm 0.010000
+Ns 23.040000
+Pr 0.820000
+Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdropstone.dds
 map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
 
 newmtl BackdropStoneLight
 Ka 0.300000 0.306667 0.320000
-Kd 0.882353 0.901961 0.941176
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.000000 0.000000 0.000000
-Ns 48.640000
-Pr 0.620000
-Pm 0.010000
+Ns 35.840000
+Pr 0.720000
+Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdropstonelight.dds
 map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
 
 newmtl BackdropGold
 Ka 0.325333 0.253333 0.096000
-Kd 0.956863 0.745098 0.282353
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.028706 0.022353 0.008471
-Ns 89.600000
-Pr 0.300000
-Pm 0.720000
+Ns 92.160000
+Pr 0.280000
+Pm 0.860000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdropgold.dds
-map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
+map_Bump ../high_crown/high_crown_gate_surface_normal.dds
 
 newmtl BackdropRune
 Ka 0.232000 0.112000 0.293333
-Kd 0.682353 0.329412 0.862745
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.150118 0.072471 0.189804
 Ns 97.280000
 Pr 0.240000
-Pm 0.040000
+Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdroprune.dds
 map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
 
 newmtl BackdropBanner
 Ka 0.149333 0.077333 0.202667
-Kd 0.439216 0.227451 0.596078
+Kd 1.000000 1.000000 1.000000
 Ks 0.720000 0.760000 0.840000
 Ke 0.000000 0.000000 0.000000
-Ns 30.720000
-Pr 0.760000
+Ns 10.240000
+Pr 0.920000
 Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_background_backdropbanner.dds
 map_Bump ../high_crown/high_crown_surface_normal.dds
-map_Pm ../high_crown/high_crown_surface_orm.dds
 
 newmtl CloudLight
 Ka 0.317333 0.329333 0.337333

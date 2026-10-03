@@ -1,0 +1,19 @@
+newmtl Stone
+Kd .62 .63 .49
+Ks .1 .1 .1
+Ns 16
+
+newmtl Wood
+Kd .48 .29 .12
+Ks .1 .1 .1
+Ns 8
+
+newmtl Gold
+Kd .85 .64 .2
+Ks .3 .3 .3
+Ns 40
+
+newmtl Cyan
+Kd .15 .85 .78
+Ks .2 .2 .2
+Ns 24

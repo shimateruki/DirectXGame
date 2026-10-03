@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cf6216f497bccd1d5509b8ddc10ccb90",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_memory_station_single/copy_memory_station_single.obj",
+  "version": 1
+}

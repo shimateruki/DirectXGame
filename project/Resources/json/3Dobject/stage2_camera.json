@@ -22,17 +22,17 @@
                 "eyeSource": 0,
                 "farClip": 1000.0,
                 "fixedTarget": [
-                    0.0,
-                    0.0,
-                    0.0
+                    -465.0,
+                    -1.0,
+                    -119.0
                 ],
                 "forwardDistance": 10.0,
-                "fovY": 0.44999998807907104,
+                "fovY": 0.5,
                 "nearClip": 0.10000000149011612,
                 "role": 1,
                 "targetFollowMode": 0,
                 "targetFollowResponse": 14.0,
-                "targetMode": 2,
+                "targetMode": 0,
                 "targetObjectName": "",
                 "targetOffset": [
                     0.0,
@@ -50,15 +50,15 @@
             "parentGuid": "",
             "parentName": "",
             "position": [
-                -486.0,
-                16.0,
-                -142.0
+                -481.0,
+                2.0,
+                -134.0
             ],
             "quaternion": [
-                -0.10067996559119857,
-                0.3962001722525381,
-                -0.04375865472397806,
-                0.911577834401628
+                0.062322620302438736,
+                0.39661118388175964,
+                0.027000155299901962,
+                0.9154706001281738
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -66,8 +66,8 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -0.22,
-                0.82,
+                0.13594453036785126,
+                0.8176450729370117,
                 0.0
             ],
             "saveCategory": "Camera",

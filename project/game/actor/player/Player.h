@@ -1,14 +1,16 @@
-#pragma once
+﻿#pragma once
 #include "Character.h"
+#include "game/actor/player/combat/PlayerAttackInputBuffer.h"
+#include "game/actor/player/movement/PlayerLaunchStarController.h"
 #include "EffectObject3d.h"
 #include "IAnimationState.h"
 #include "InputManager.h"
 #include "ParticleSystem.h"
-#include "PlayerGateReturnAnimation.h"
-#include "PlayerMover.h"
-#include "PlayerBaseCombatController.h"
-#include "PlayerCopyAbilityController.h"
-#include "PlayerSlimeAnimator.h"
+#include "game/actor/player/animation/PlayerGateReturnAnimation.h"
+#include "game/actor/player/movement/PlayerMover.h"
+#include "game/actor/player/combat/PlayerBaseCombatController.h"
+#include "game/actor/player/copy/PlayerCopyAbilityController.h"
+#include "game/actor/player/animation/PlayerSlimeAnimator.h"
 #include "engine/utility/math/Math.h"
 #include <memory>
 #include <string>
@@ -34,7 +36,8 @@ public:
         // 値6は廃止した巨大スライムコピーとのリプレイ互換用に予約します。
         FireSlime = 7,
         ThunderSlime = 8,
-        WindSlime = 9
+        WindSlime = 9,
+        Crown = 10
     };
 
     // ==================================================
@@ -44,6 +47,15 @@ public:
     void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon = nullptr);
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
+    void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0) override;
+    bool HasOwnedSpecialMaterialVisuals() const override;
+    void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
+    void DrawOwnedSpecialMaterialVisualsForCamera(
+        Camera* camera,
+        uint32_t depthSrvHandle,
+        uint32_t grabSrvHandle,
+        int previewBufferIndex = 0) override;
     void DrawUI(); // プレイヤー専用 UI の描画。
     void ApplyManagedScale(const Vector3& scale) override;
 
@@ -76,7 +88,7 @@ public:
     bool IsGateReturnAnimationActive() const;
     bool IsGateReturnAnimationFinished() const;
     void StopGateReturnAnimation(bool restoreControl);
-    void BeginCinematicLock();
+    void BeginCinematicLock(bool preserveCopyAbility = false);
     void EndCinematicLock(bool restoreControl);
     bool IsCinematicLocked() const { return isCinematicLocked_; }
 
@@ -88,7 +100,7 @@ public:
     void ApplyIceSurface(float duration, float friction, float steering);
     void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
     void CancelLaunchStar(bool restoreControl);
-    bool IsLaunchStarActive() const { return launchStarActive_; }
+    bool IsLaunchStarActive() const { return launchStarController_.IsActive(); }
     // 通常攻撃または対応コピー突進が、衝撃ゲートを破壊できる攻撃中か返します。
     bool IsImpactBreakActive() const;
     // ピンクスライムのバウンド落下中だけ真を返します。
@@ -106,6 +118,16 @@ public:
     void ActivateCheckpoint(const Vector3& position);
     // 敵オブジェクトを生成せず、保存済みのコピー能力を直接適用します。
     bool ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration = true);
+    // 隔離エディター専用。実入力を混ぜず、通常の能力処理へ一フレーム分を渡します。
+    void SetCopyPreviewInput(const PlayerCopyAbilityInput& input) {
+        if (IsEditorInternal()) { copyPreviewActive_ = true; copyPreviewInput_ = input; }
+    }
+    void ReleaseCopyPreview() { if (IsEditorInternal()) BeginEnemyMorphRelease(false); }
+    void SetCopyPreviewGroundHeight(float height) { if (IsEditorInternal()) copyPreviewGroundHeight_ = height; }
+    void AddCopyPreviewObject(std::unique_ptr<Object3d> object) { if (IsEditorInternal()) copyPreviewObjects_.push_back(std::move(object)); }
+    void StepCopyPreviewObjects(float deltaTime, float groundY);
+    const char* GetCopyAbilityStateLabel() const { return copyAbilityController_ ? copyAbilityController_->GetStateLabel() : "未コピー"; }
+    void ClearCrownPower();
 
     Vector3 GetRotation() const { return transform_.rotate; }
     float GetVisualYawOffset() const;
@@ -132,6 +154,9 @@ public:
     // --- 状態フラグ ---
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
+    // 対象は座標だけを受け取り、削除される敵のポインターを保持しません。
+    void SetLockOnAimPoint(const Vector3& point, bool valid) { lockOnAimPoint_ = point; lockOnAimValid_ = valid; }
+    Vector3 GetLockOnAttackDirection() const;
     void SetIsControlActive(bool active) { isControlActive_ = active; }
     bool IsControlActive() const { return isControlActive_; }
     void SetTutorialSafetyEnabled(bool enabled);
@@ -183,6 +208,8 @@ public:
     // いずれかの無敵状態が有効なら、ダメージを受けない状態として扱う
     bool IsInvincible() const { return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ || isGuardInvincible_; }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
+    // 乗車型床の水平速度。ジャンプ時だけ一部を引き継ぐ。
+    void SetPlatformMotion(const Vector3& velocity);
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
 
@@ -217,6 +244,12 @@ private:
     PlayerGateReturnAnimation gateReturnAnimation_;
     std::unique_ptr<PlayerBaseCombatController> baseCombatController_;
     std::unique_ptr<PlayerCopyAbilityController> copyAbilityController_;
+    bool copyPreviewActive_ = false;
+    float copyPreviewGroundHeight_ = 0.0f;
+    std::unique_ptr<Object3d> copyAdornment_;
+    void UpdateCopyAdornment();
+    PlayerCopyAbilityInput copyPreviewInput_{};
+    std::vector<std::unique_ptr<Object3d>> copyPreviewObjects_;
     Vector3 managedBaseScale_ = { 2.0f, 2.0f, 2.0f };
 
     // --- 外部システム参照 ---
@@ -225,6 +258,8 @@ private:
 
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか。
+    Vector3 lockOnAimPoint_{};
+    bool lockOnAimValid_ = false;
     bool isControlActive_ = true;    // 入力を受け付ける状態か。
     bool forcedSlimeAnimationModeActive_ = false;
     PlayerSlimeAnimator::Mode forcedSlimeAnimationMode_ = PlayerSlimeAnimator::Mode::Idle;
@@ -238,28 +273,14 @@ private:
     bool tutorialCarryAbsorbEnabled_ = true;
 
     // スターランチャーによる区画間移動。移動中は入力と通常衝突を一時停止します。
-    bool launchStarActive_ = false;
-    bool launchStarSavedControlActive_ = true;
-    uint32_t launchStarSavedCollisionAttribute_ = 0;
-    uint32_t launchStarSavedCollisionMask_ = 0;
-    Vector3 launchStarStart_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 launchStarDestination_ = { 0.0f, 0.0f, 0.0f };
-    float launchStarArcHeight_ = 12.0f;
-    float launchStarDuration_ = 1.2f;
-    float launchStarTimer_ = 0.0f;
-    float launchStarTrailTimer_ = 0.0f;
+    PlayerLaunchStarController launchStarController_;
     void UpdateLaunchStar(float deltaTime);
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;
 
-    // --- コンボ受付時間 ---
-    float comboWindowTimer_ = 0.0f; // >0 の間、次の攻撃入力を 2 段目へ変換する。
-
-    // --- 攻撃入力バッファ ---
-    bool attackInputBuffered_ = false;              // バッファに攻撃入力があるか。
-    bool attackBufferUsedForStateStart_ = false;    // そのバッファを状態遷移開始で使ったか。
-    float attackInputBufferTimer_ = 0.0f;           // バッファの残り時間。
+    // コンボ予約・入力消費の状態は専用クラスだけが変更します。
+    PlayerAttackInputBuffer attackInputBuffer_;
 
     // --- 無敵関連 ---
     bool isInvincible_ = false;

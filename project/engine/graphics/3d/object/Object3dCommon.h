@@ -14,50 +14,45 @@ enum class BlendMode {
     kCountOfBlendMode, // ブレンドモード数
 };
 
-/// <summary>
-/// 3Dオブジェクト描画で共有するルートシグネチャとパイプラインを管理する。
-/// </summary>
-// Object3dCommonは、3Dモデル、影、特殊マテリアル、スカイボックスの共通パイプラインを管理します。
+/// <summary>3Dモデル、影、特殊マテリアル、スカイボックスの共通描画パイプラインを管理する。</summary>
 class Object3dCommon {
 public:
-    /// <summary>
-    /// DirectX基盤を受け取り、各種描画パイプラインを初期化する。
-    /// </summary>
-        // DirectX共通機能を受け取り、3D描画用パイプラインをまとめて作成します。
-void Initialize(DirectXCommon* dxCommon);
+    /// <summary>DirectX基盤を受け取り、3D描画用の各パイプラインを作成する。</summary>
+    void Initialize(DirectXCommon* dxCommon);
 
-    /// <summary>
-    /// 通常3D描画用の共通コマンドを設定する。
-    /// </summary>
-        // 通常3Dモデル描画用のRootSignatureとPipelineStateを設定します。
-void SetGraphicsCommand();
+    /// <summary>通常の3Dモデル描画用ルートシグネチャとパイプラインを設定する。</summary>
+    void SetGraphicsCommand();
 
-        // 通常3Dモデル描画に必要なRootSignatureを作成します。
-void CreateRootSignature();
+    /// <summary>通常の3Dモデル描画に使うルートシグネチャを作成する。</summary>
+    void CreateRootSignature();
 
-    /// <summary>
-    /// 指定したブレンドモードのパイプラインをコマンドリストへ設定する。
-    /// </summary>
-        // 指定ブレンドモードに対応した通常描画PipelineStateを設定します。
-void SetPipelineState(BlendMode blendMode);
+    /// <summary>指定ブレンドモードの通常描画パイプラインを設定する。</summary>
+    void SetPipelineState(BlendMode blendMode);
 
+    /// <summary>所有しないDirectX基盤への参照を返す。</summary>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
-    // 影描画、ローカルフォグ、エフェクト、水面用の描画設定。
-    void SetShadowPipelineState();
+    // 影描画のパイプライン。foliageが真なら葉用の影描画を選ぶ。
+    void SetShadowPipelineState(bool foliage = false);
     void SetShadowGraphicsCommand();
     void CreateShadowRootSignature();
+
+    // ローカルフォグ用のパイプライン作成と描画時設定。
     void CreateLocalFogPipeline();
     void SetLocalFogGraphicsCommand();
-        // エフェクト、特殊マテリアル系で共有するRootSignatureを作成します。
-void CreateEffectRootSignature();
+
+    // エフェクト描画用のルートシグネチャ、パイプライン、描画コマンド。
+    void CreateEffectRootSignature();
     void CreateEffectPipeline();
     void SetEffectGraphicsCommand(BlendMode blendMode);
+
+    // 水面描画用のルートシグネチャ、パイプライン、描画コマンド。
     void CreateWaterRootSignature();
     void CreateWaterPipeline();
     void SetWaterGraphicsCommand();
 
-    // ステージギミックや演出で使う特殊マテリアルのパイプライン生成。
+    // 以下のCreate*Pipelineは、各特殊マテリアル専用のPipelineStateを作る。
+    // 対応するSet*GraphicsCommandがそのPipelineStateと共通ルートシグネチャを設定する。
     void CreateMagmaPipeline();
     void CreateIcePipeline();
     void CreateFirePipeline();
@@ -74,7 +69,7 @@ void CreateEffectRootSignature();
     void CreateGatePortalPipeline();
     void CreateWindOrbPipeline();
 
-    // 特殊マテリアルごとの描画コマンド設定。
+    // 特殊マテリアルごとの描画コマンド設定。関数名と同じ種類のCreate*Pipelineに対応する。
     void SetMagmaGraphicsCommand();
     void SetIceGraphicsCommand();
     void SetFireGraphicsCommand();
@@ -91,7 +86,7 @@ void CreateEffectRootSignature();
     void SetGatePortalGraphicsCommand();
     void SetWindOrbGraphicsCommand();
 
-    // スカイボックス描画用パイプライン。
+    // スカイボックスのパイプラインと参照用アクセッサ。
     void CreateSkyboxPipeline();
     ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
     ID3D12PipelineState* GetSkyboxPipelineState() const { return skyboxPipelineState_.Get(); }
@@ -102,11 +97,9 @@ private:
     /// </summary>
     void CreatePipelineStates();
 
-    /// <summary>
-    /// シェーダーとブレンド設定を指定して特殊マテリアルのパイプラインを生成する。
-    /// </summary>
-        // 特殊マテリアル用PipelineStateの共通作成処理です。
-void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
+    /// <summary>シェーダー、合成方式、カリング方式を指定して特殊マテリアル用PipelineStateを作る。</summary>
+    /// <param name="outPipelineState">生成したパイプラインの出力先。</param>
+    void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
 
 private:
     // DirectX基盤への参照。Object3dCommonは所有しない。
@@ -119,6 +112,7 @@ private:
 
     // 影、フォグ、エフェクト、水面用の描画リソース。
     Microsoft::WRL::ComPtr<ID3D12PipelineState> shadowPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> foliageShadowPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> shadowRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> localFogRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> localFogPipelineState_;

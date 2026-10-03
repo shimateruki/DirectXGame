@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7722419baf6e20011a49b7421bc9916b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/BackWall.obj",
+  "version": 1
+}

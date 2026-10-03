@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b58bf60061c6fc5f6a11cbb58f5b1442",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/release.png",
+  "version": 1
+}

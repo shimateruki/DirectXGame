@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0cb55a23cff37095f96ff217acc57e59",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/copy_band_pink/copy_band_pink.obj",
+  "version": 1
+}

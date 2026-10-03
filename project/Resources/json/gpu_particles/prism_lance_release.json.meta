@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "67e50c0f8aa749fd99bf64153a2ae72a",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/prism_lance_release.json",
+  "version": 1
+}

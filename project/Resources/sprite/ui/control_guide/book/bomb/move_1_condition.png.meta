@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c74a891b0bea34c0f0aea184d0599a0d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/move_1_condition.png",
+  "version": 1
+}

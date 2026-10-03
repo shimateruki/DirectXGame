@@ -1,0 +1,22 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 0,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "Intensity": 3.4,
+  "Lifetime": 600.0,
+  "ModelName": "",
+  "ProceduralType": 4,
+  "SphereRadius": 1.0,
+  "SphereRings": 16,
+  "MeshSegments": 24,
+  "Position": [0.0, 0.0, 0.0],
+  "Rotation": [0.0, 0.0, 0.0],
+  "StartColor": [1.0, 1.0, 1.0, 1.0],
+  "EndColor": [1.0, 1.0, 1.0, 1.0],
+  "StartScale": [1.0, 1.0, 1.0],
+  "EndScale": [1.0, 1.0, 1.0],
+  "TexturePath": "Resources/sprite/particle/glow_core.png",
+  "VolumeMode": 0
+}

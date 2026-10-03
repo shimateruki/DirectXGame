@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ee77bd3bb30af9ba1e1e6296b6f03633",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/horizon_turf.obj",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e3b9fc5aebb70121b87253d57e3bde46",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/ui/settingsMenu.json",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7f196de09cfa4dfaab591398d0c3806b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/boss_chant/boss_chant_magma.png",
+  "version": 1
+}

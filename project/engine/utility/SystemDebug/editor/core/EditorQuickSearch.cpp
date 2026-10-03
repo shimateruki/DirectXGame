@@ -4,7 +4,7 @@
 
 #include "AssetDatabase.h"
 #include "BaseScene.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "DebrisEffectEditor.h"
@@ -20,7 +20,7 @@
 #include "KeyConfig.h"
 #include "Object3d.h"
 #include "PresetEditor.h"
-#include "PresetManager.h"
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "SceneManager.h"
 #include "imgui.h"
 #include "json.hpp"
@@ -216,6 +216,7 @@ void EditorQuickSearch::Draw() {
 }
 
 void EditorQuickSearch::RefreshResults(bool force) {
+    // 各エディター機能の候補を集め、検索語と利用履歴に基づいて並べ直します。
     EditorCommandRegistry* commandRegistry = EditorCommandRegistry::GetInstance();
     AssetDatabase* assetDatabase = AssetDatabase::GetInstance();
     PresetManager* presetManager = PresetManager::GetInstance();
@@ -497,6 +498,7 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
 }
 
 int EditorQuickSearch::ScoreItem(const SearchItem& item, const std::string& normalizedQuery) const {
+    // 完全一致・先頭一致・語の一致に重みを付け、お気に入りと最近使った項目を補正します。
     int score = 0;
     if (item.favorite) score += 300;
     if (item.recentRank >= 0) score += (std::max)(0, 160 - item.recentRank * 10);
@@ -575,6 +577,7 @@ int EditorQuickSearch::FindRecentRank(const std::string& id) const {
 }
 
 void EditorQuickSearch::LoadState() {
+    // 検索の好みだけを復元し、現在のシーンや資産の候補は毎回作り直します。
     favoriteIds_.clear();
     recentIds_.clear();
     std::ifstream file(statePath_);

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "727b718c1ac2e43b6c9bbaf8f06cd231",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_fire/copy_essence_fire.obj",
+  "version": 1
+}

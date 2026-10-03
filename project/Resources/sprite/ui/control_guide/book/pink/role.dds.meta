@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d2f20367e711c80e50ee3bef52650105",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/pink/role.dds",
+  "version": 1
+}

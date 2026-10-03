@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "75fd7c981e78c6279b8404f51c79d89d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/cancel.dds",
+  "version": 1
+}

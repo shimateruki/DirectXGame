@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2ebc86f35515dbdcaae8ca00f38cdb0e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/portal_frame.obj",
+  "version": 1
+}

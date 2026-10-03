@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b37b596f2575b4ab0240001a384c3cc2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown/traits.dds",
+  "version": 1
+}

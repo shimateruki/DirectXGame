@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a00d9aa73b9986f76fda4e36fa6292e9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause/pause_text_title.png",
+  "version": 1
+}

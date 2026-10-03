@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include "engine/utility/SystemDebug/editor/core/EditorWindowsText.h"
 #include "ModelOptimizerWindow.h"
 
 #include "DebugConsole.h"
@@ -74,6 +75,7 @@ bool IsInsideDirectory(const fs::path& path, const fs::path& root) {
 }
 
 bool SafeDeleteGeneratedLodFile(const fs::path& path) {
+    // 元モデルを消さないよう、生成物の名前と許可された配置先を両方確認します。
     if (path.empty()) return false;
     if (!IsGeneratedLodFile(path)) return false;
     if (!IsInsideDirectory(path, "Resources/3DModel")) return false;
@@ -101,23 +103,8 @@ std::string ToModelName(const fs::path& fullPath) {
     return NormalizeSlashes(relative.generic_string());
 }
 
-std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) return L"";
-    const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    if (size <= 0) return L"";
-    std::wstring result(size - 1, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), size);
-    return result;
-}
-
-std::string WideToUtf8(const std::wstring& text) {
-    if (text.empty()) return "";
-    const int size = WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0) return "";
-    std::string result(size - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, result.data(), size, nullptr, nullptr);
-    return result;
-}
+using EditorWindowsText::Utf8ToWide;
+using EditorWindowsText::WideToUtf8;
 
 std::string QuoteCommandArg(const std::string& value) {
     std::string escaped;
@@ -244,6 +231,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
 }
 
 bool HasGltfUnsafeLodFeature(const nlohmann::json& gltf) {
+    // LOD 変換で意味が変わる可能性がある glTF 機能を事前に検出します。
     if (gltf.contains("skins") && gltf["skins"].is_array() && !gltf["skins"].empty()) {
         return true;
     }
@@ -606,6 +594,7 @@ void ModelOptimizerWindow::SetModelName(const std::string& modelName) {
 }
 
 bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
+    // 解析のみと生成を同じ外部ビルダーに渡し、完了結果は別フレームで受け取ります。
     if (builderRunning_) {
         lastStatus_ = "外部LODツールはすでに実行中です。完了を待ってください。";
         return false;
@@ -884,6 +873,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
 }
 
 bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
+    // 保存済みの LOD 設定を選択オブジェクトへ反映し、プレビューと実配置を揃えます。
     if (!editor_ || !object) {
         lastStatus_ = "LODを適用するObjectが選択されていません。";
         return false;
@@ -962,6 +952,7 @@ bool ModelOptimizerWindow::RejectGeneratedLods() {
 }
 
 int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
+    // レポートが示す生成物だけを対象にし、SafeDeleteGeneratedLodFile でも再検証します。
     if (!hasReport_ || !latestReport_.is_object()) {
         return 0;
     }

@@ -16,6 +16,9 @@ class Object3dCommon;
 class LightEditor : public IEditable {
 public:
     static LightEditor* GetInstance();
+#ifdef USE_IMGUI
+    bool* GetGizmoVisiblePtr() { return &isVisibleGizmos_; }
+#endif
 
         // ライト編集に必要な参照を受け取り、UI操作できる状態にします。
 void Initialize();

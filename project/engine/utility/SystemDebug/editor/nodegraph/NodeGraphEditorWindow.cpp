@@ -518,6 +518,7 @@ void NodeGraphEditorWindow::DrawPropertyEditor(NodeProperty& property) {
 }
 
 void NodeGraphEditorWindow::HandleCreateLink() {
+    // キャンバス上の接続要求をグラフの型・方向規則で確認してから追加します。
 #ifdef USE_IMGUI
     ed::BeginCreate(ImColor(120, 210, 255), 2.0f);
 
@@ -592,6 +593,7 @@ void NodeGraphEditorWindow::AddNodeFromTemplate(const std::string& templateType)
 }
 
 void NodeGraphEditorWindow::StartDryRun() {
+    // 編集中のグラフを保存せずに検証・試行し、実ゲームへの反映と分離します。
     dryRunExecutor_.ClearActionHandlers();
     dryRunExecutor_.SetLogHandler([this](const std::string& message) {
         statusMessage_ = "ログ: " + message;

@@ -13,6 +13,11 @@ public:
     std::unique_ptr<Object3d> Clone() const override;
 
 private:
+    void UpdateEscape(float deltaTime);
+    void ResetEscapeObjects(bool active);
+    bool escapeStarted_ = false;
+    bool escapeFinished_ = false;
+    float escapeTime_ = 0.0f;
     void ApplyTarget(bool active);
     void ApplyLiquidVisual();
 

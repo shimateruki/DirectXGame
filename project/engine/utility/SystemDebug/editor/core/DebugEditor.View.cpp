@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include "game/ui/SettingsMenuOverlay.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "Object3d.h"
@@ -26,7 +27,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
 #include "EditorManager.h"
@@ -45,7 +46,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
-#include <PresetManager.h>
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
@@ -662,6 +663,13 @@ Vector3 DebugEditor::WorldToScreen(const Vector3& worldPos) {
 // 3D空間へのアイコンオーバーレイ描画
 // ========================================================================
 void DebugEditor::Draw3DIcons() {
+    int left=0,top=0,right=0,bottom=0;
+    GetGameViewScreenRect(left,top,right,bottom);
+    SettingsMenuOverlay::SetEditorViewport(left,top,right,bottom);
+    if (SettingsMenuOverlay::IsAnyActive()) return;
+#ifdef USE_IMGUI
+    if (!drawSceneIcons_) return;
+#endif
 #ifdef USE_IMGUI
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 

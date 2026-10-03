@@ -3,8 +3,10 @@
 #include <numbers>
 #include <algorithm>
 
+/// <summary>0～1の進行割合を演出用の加速・減速曲線へ変換する関数群。</summary>
 class Easing {
 public:
+    // 引数tは補間の進行割合。Inは開始側、Outは終了側、InOutは両側を緩急づける。
     // 1. Linear (等速)
     static float Linear(float t);
 

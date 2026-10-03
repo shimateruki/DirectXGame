@@ -161,6 +161,7 @@ void EnemyBat::UpdateTargetBehavior(float deltaTime, Vector3& desired, float& mo
 }
 
 void EnemyBat::UpdateWanderBehavior(float deltaTime, Vector3& desired, float& moveSpeed) {
+    state_ = BatState::Orbit;
     desired = GetWanderTargetPosition(deltaTime, 0.36f);
     desired.y += std::sin(hoverTimer_ * 2.2f) * 0.32f;
     moveSpeed = kOrbitSpeed * 0.75f;
@@ -232,6 +233,10 @@ Vector3 EnemyBat::CalcOrbitPosition() const {
     targetPos.y += kHoverHeight + std::sin(hoverTimer_ * 2.2f) * kOrbitBobHeight;
     targetPos.z += std::sin(angle) * kOrbitRadius;
     return targetPos;
+}
+
+float EnemyBat::GetBodyAttackDamage() const {
+    return state_ == BatState::Dive ? 1.0f : 0.0f;
 }
 
 void EnemyBat::SetPlayerContactEnabled(bool enabled) {

@@ -82,7 +82,8 @@ fs::path GetCaptureRoot() {
     fs::path root = fs::current_path(ec);
     if (ec || root.empty()) {
         root = fs::path(L".");
-    }    if (root.filename() == L"project" && root.has_parent_path()) {
+    }
+    if (root.filename() == L"project" && root.has_parent_path()) {
         return root.parent_path() / "captures";
     }
     return root / "captures";}
@@ -156,6 +157,7 @@ bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
     return true;
 }
 bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, bool forceGameViewClientCapture, RECT& outRect, std::string& errorMessage) {
+    // ウィンドウ全体と Game View の座標系を区別し、画面内の有効な矩形へ解決します。
     switch (area) {    case CaptureToolWindow::CaptureArea::GameView: {
         if (forceGameViewClientCapture) {
             return ResolveClientRect(outRect, errorMessage);
@@ -562,6 +564,7 @@ void CaptureToolWindow::UpdateRecording() {
 }
 
 void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRect, float fps) {
+    // キャプチャと動画エンコードを描画スレッドから切り離して実行します。
     std::string resultMessage;
     bool succeeded = false;
 

@@ -51,6 +51,10 @@ public:
     std::string GetName() override { return "Effect Preview Stage"; }
 
     bool IsEnabled() const { return enabled_; }
+#ifdef USE_IMGUI
+    bool* GetGridVisiblePtr() { return &showGrid_; }
+    bool* GetAxesVisiblePtr() { return &showAxes_; }
+#endif
     bool IsLoopEnabled() const { return loopPreview_; }
     float GetPlaybackSpeed() const { return transportPlaying_ ? playbackSpeed_ : 0.0f; }
     float GetConfiguredPlaybackSpeed() const { return playbackSpeed_; }

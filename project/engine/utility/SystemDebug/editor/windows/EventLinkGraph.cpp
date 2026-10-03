@@ -18,6 +18,7 @@ void EventLinkGraph::Initialize(SceneManager* sceneManager, DebugEditor* editor)
 }
 
 void EventLinkGraph::CollectNodes() {
+    // 現在シーンの送受信 ID を再収集し、表示設定に応じて未接続のものも含めます。
     nodes_.clear();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
@@ -49,6 +50,7 @@ void EventLinkGraph::CollectNodes() {
 }
 
 bool EventLinkGraph::HasEventID(int id, Object3d* ignoreObject) const {
+    // 指定オブジェクトを除外して、同じ送信 ID の存在を確認します。
     if (id == -1 || !sceneManager_ || !sceneManager_->GetCurrentScene()) return false;
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();

@@ -1,3 +1,5 @@
+#include "FoliageDeformation.hlsli"
+
 struct VSInput
 {
     float4 position : POSITION;
@@ -49,6 +51,10 @@ VSOutput main(VSInput input)
         localPosition = mul(input.position, boneMatrix);
     }
 
+    float3 localNormal = input.normal;
+    float3 localTangent = input.tangent;
+    ApplyFoliageDeformation(localPosition, localNormal, localTangent, input.texcoord,
+        gTransformationMatrix.world, gTransformationMatrix.WorldInverseTranspose);
     output.position = mul(localPosition, gTransformationMatrix.WVP);
     return output;
 }

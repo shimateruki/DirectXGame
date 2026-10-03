@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "16f0d8c026b70ca3123b8a1eb627c6cb",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/move_1_description.png",
+  "version": 1
+}

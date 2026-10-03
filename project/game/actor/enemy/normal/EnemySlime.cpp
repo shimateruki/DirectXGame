@@ -1,5 +1,5 @@
 #include "EnemySlime.h"
-#include "SlimeBounceAnimator.h"
+#include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "DebrisEffectManager.h"
 #include "HitEffectDirector.h"
 #include "CollisionConfig.h"
@@ -193,6 +193,10 @@ void EnemySlime::Update(float deltaTime) {
 
     ApplySlimeAnimation(deltaTime);
     BaseEnemy::Update(deltaTime);
+}
+
+float EnemySlime::GetBodyAttackDamage() const {
+    return moveState_ == MoveState::Dive ? GetAttackDefinition(kDiveAttackId).damage : 0.0f;
 }
 
 void EnemySlime::EnsureBaseScale() {

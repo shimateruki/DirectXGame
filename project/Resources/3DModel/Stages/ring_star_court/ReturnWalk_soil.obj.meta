@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "695fb18b4c85423c1166c77da7cd7df8",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnWalk_soil.obj",
+  "version": 1
+}

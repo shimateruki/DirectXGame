@@ -1,0 +1,213 @@
+{
+  "version": 2,
+  "model": "Characters/slime_pink",
+  "baseAnimation": "",
+  "previewPlaybackSpeed": 1,
+  "keys": [],
+  "events": [],
+  "name": "player_ability_pink_combo_return",
+  "duration": 0.64,
+  "loop": false,
+  "bodyKeys": [
+    {
+      "time": 0,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "shear": [
+        0,
+        0,
+        0
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.12,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0.65,
+        0
+      ],
+      "scale": [
+        1.3,
+        0.58,
+        1.28
+      ],
+      "shear": [
+        0.42,
+        0,
+        0.3
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.18,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0.95,
+        0
+      ],
+      "scale": [
+        1.38,
+        0.54,
+        1.3
+      ],
+      "shear": [
+        0.55,
+        0,
+        0.36
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 2
+    },
+    {
+      "time": 0.26,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        -0.35,
+        0
+      ],
+      "scale": [
+        1.75,
+        0.66,
+        1.02
+      ],
+      "shear": [
+        -0.65,
+        0,
+        -0.7
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 1
+    },
+    {
+      "time": 0.34,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        -1.35,
+        0
+      ],
+      "scale": [
+        1.56,
+        0.72,
+        1.02
+      ],
+      "shear": [
+        -0.45,
+        0,
+        -0.4
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.4459,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        -0.35,
+        0
+      ],
+      "scale": [
+        0.88,
+        1.18,
+        0.96
+      ],
+      "shear": [
+        0.12,
+        0,
+        0.12
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.5341,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0.08,
+        0
+      ],
+      "scale": [
+        1.08,
+        0.88,
+        1.06
+      ],
+      "shear": [
+        -0.04,
+        0,
+        0
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.64,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "shear": [
+        0,
+        0,
+        0
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    }
+  ]
+}

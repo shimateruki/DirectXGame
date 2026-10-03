@@ -1,0 +1,18 @@
+{
+  "sealRadius": 14,
+  "sealHitRadius": 3,
+  "sealAimTime": 1.25,
+  "sealDodgeTime": 0.85,
+  "sealRecoveryTime": 1.6,
+  "sealArmorDamageRate": 0.25,
+  "sealBreakDamage": 48,
+  "sealTargetAssistRadius": 5,
+  "sealSatelliteSpread": 5.5,
+  "movieDuration": 14,
+  "escapeHeight": 32,
+  "destinationX": 160,
+  "lanceDamage": 12,
+  "waveDamage": 20,
+  "dashDamage": 16,
+  "armorOpenTime": 5
+}

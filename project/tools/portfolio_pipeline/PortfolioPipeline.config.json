@@ -1,0 +1,19 @@
+{
+  "repositoryUrl": "https://github.com/shimateruki/DirectXGame.git",
+  "branch": "kozin",
+  "submissionFolderName": "LE3X_99 シメイ 作品",
+  "shallowClone": true,
+  "sourceRoot": "project",
+  "includePaths": [
+    "engine",
+    "game",
+    "Resources/shader",
+    "Resources/json",
+    "DirectXGame.sln",
+    "DirectXGame.vcxproj",
+    "DirectXGame.vcxproj.filters",
+    "DirectXGame.rc",
+    "resource.h",
+    "ReadMe.md"
+  ]
+}

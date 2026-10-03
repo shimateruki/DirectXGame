@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "78c72d21a0a1b6edbbce4511c4241ff8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/invert_x.dds",
+  "version": 1
+}

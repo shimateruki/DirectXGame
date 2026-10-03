@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "61f1f5d08b4f02b067e1739efdd31b5f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/courtyard.obj",
+  "version": 1
+}

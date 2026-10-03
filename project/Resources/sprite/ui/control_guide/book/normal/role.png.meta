@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "025651451b85f938e958646b901cec06",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/normal/role.png",
+  "version": 1
+}

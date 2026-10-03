@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "73d6114e503414f4fcec42aa5627cb0a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown/move_1_condition.dds",
+  "version": 1
+}

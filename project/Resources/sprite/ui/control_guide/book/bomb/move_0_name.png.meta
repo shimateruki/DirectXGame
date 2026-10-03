@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b6458bb9314acf83495827a6f848aa0d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/move_0_name.png",
+  "version": 1
+}

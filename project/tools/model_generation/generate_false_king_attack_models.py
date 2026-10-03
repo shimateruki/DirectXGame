@@ -156,6 +156,46 @@ def build_royal_wave() -> ObjBuilder:
     return model
 
 
+def build_royal_shockwave_wall() -> ObjBuilder:
+    """Build a raised annular wall used only by the boss shockwave attack."""
+    model = ObjBuilder()
+    segments = 64
+    inner_radius = 0.905
+    outer_radius = 1.0
+    base_y = 0.0
+
+    for index in range(segments):
+        angle0 = math.tau * index / segments
+        angle1 = math.tau * (index + 1) / segments
+        crest0 = 0.62 + 0.075 * math.sin(angle0 * 8.0)
+        crest1 = 0.62 + 0.075 * math.sin(angle1 * 8.0)
+        material = "RoyalGold" if index % 2 == 0 else "RoyalViolet"
+
+        outer0 = (math.cos(angle0) * outer_radius, base_y, math.sin(angle0) * outer_radius)
+        outer1 = (math.cos(angle1) * outer_radius, base_y, math.sin(angle1) * outer_radius)
+        outer_top0 = (outer0[0], crest0, outer0[2])
+        outer_top1 = (outer1[0], crest1, outer1[2])
+        inner0 = (math.cos(angle0) * inner_radius, base_y, math.sin(angle0) * inner_radius)
+        inner1 = (math.cos(angle1) * inner_radius, base_y, math.sin(angle1) * inner_radius)
+        inner_top0 = (inner0[0], crest0 * 0.82, inner0[2])
+        inner_top1 = (inner1[0], crest1 * 0.82, inner1[2])
+
+        middle_angle = (angle0 + angle1) * 0.5
+        outward = (math.cos(middle_angle), 0.0, math.sin(middle_angle))
+        inward = (-outward[0], 0.0, -outward[2])
+        model.quad(material, (outer0, outer1, outer_top1, outer_top0), outward)
+        model.quad("RoyalCore", (inner1, inner0, inner_top0, inner_top1), inward)
+        model.quad(
+            "RoyalCore",
+            (inner_top0, outer_top0, outer_top1, inner_top1),
+            normalize((outward[0] * 0.12, 1.0, outward[2] * 0.12)),
+        )
+
+    model.torus("RoyalDark", (0.0, 0.08, 0.0), 0.945, 0.065, 64, 8)
+    model.torus("RoyalCore", (0.0, 0.54, 0.0), 0.952, 0.048, 64, 7)
+    return model
+
+
 def build_royal_beam() -> ObjBuilder:
     model = ObjBuilder()
     model.box("RoyalDark", (0.0, 0.0, 0.0), (0.50, 0.11, 1.0))
@@ -217,9 +257,39 @@ def build_dominion_sigil() -> ObjBuilder:
     return model
 
 
+def build_seal_core() -> ObjBuilder:
+    model = ObjBuilder()
+    add_diamond(model, "RoyalViolet", (0, 0, 0), 0.7, 1.1, 0.7)
+    model.torus("RoyalGold", (0, 0, 0), 0.72, 0.09, 32, 8)
+    for i in range(4):
+        angle = math.tau * i / 4
+        add_diamond(model, "RoyalCore", (math.sin(angle)*0.78,0,math.cos(angle)*0.78),0.12,0.3,0.12)
+    return model
+
+
+def build_seal_base() -> ObjBuilder:
+    model = ObjBuilder()
+    model.cylinder("RoyalDark", (0,0,0), 1.25, 0.5, 8)
+    model.torus("RoyalGold", (0,0.28,0), 1.05, 0.10, 32, 8)
+    for i in range(4):
+        angle = math.tau * i / 4
+        add_diamond(model,"RoyalGold",(math.sin(angle),0.55,math.cos(angle)),0.18,0.45,0.18)
+    return model
+
+
+def build_seal_link() -> ObjBuilder:
+    model = ObjBuilder()
+    model.cylinder("RoyalCore", (0,0,0), 1, 1, 8)
+    return model
+
+
 MODELS = {
+    "false_king_seal_core": build_seal_core,
+    "false_king_seal_base": build_seal_base,
+    "false_king_seal_link": build_seal_link,
     "false_king_crown_lance": build_crown_lance,
     "false_king_royal_wave": build_royal_wave,
+    "false_king_shockwave_wall": build_royal_shockwave_wall,
     "false_king_royal_beam": build_royal_beam,
     "false_king_rush_wings": build_rush_wings,
     "false_king_dominion_sigil": build_dominion_sigil,
@@ -281,7 +351,7 @@ def write_materials(path: Path) -> None:
 
 def render_preview(models: dict[str, ObjBuilder], output: Path) -> None:
     panel_width, panel_height = 420, 330
-    image = Image.new("RGBA", (panel_width * 3, panel_height * 2), (0, 0, 0, 0))
+    image = Image.new("RGBA", (panel_width * 3, panel_height * math.ceil(len(models)/3)), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image, "RGBA")
     camera = (4.6, 3.6, 5.4)
     target = (0.0, 0.0, 0.0)
@@ -334,10 +404,13 @@ def render_preview(models: dict[str, ObjBuilder], output: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="偽王スライムの専用攻撃モデルを生成します。")
     parser.add_argument("--preview", type=Path)
+    parser.add_argument("--only", action="append", choices=MODELS)
     args = parser.parse_args()
 
     built_models: dict[str, ObjBuilder] = {}
     for name, factory in MODELS.items():
+        if args.only and name not in args.only:
+            continue
         output_dir = OUTPUT_ROOT / name
         output_dir.mkdir(parents=True, exist_ok=True)
         model = factory()

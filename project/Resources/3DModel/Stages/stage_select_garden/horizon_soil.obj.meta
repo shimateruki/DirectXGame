@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "09484ce3d4b931758d381dd70daca92f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/horizon_soil.obj",
+  "version": 1
+}

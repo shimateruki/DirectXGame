@@ -13,40 +13,25 @@
 class WinApp;
 
 /// <summary>
-/// DirectX 12の初期化、コマンド実行、描画ターゲット、GPU同期をまとめて管理する。
+/// DirectX 12の初期化、描画先、コマンド実行、GPU同期を管理する。
 /// </summary>
-// DirectXCommonは、D3D12デバイス、SwapChain、コマンド、各種レンダーターゲットを管理する基盤クラスです。
 class DirectXCommon {
 public:
-    /// <summary>
-    /// シングルトンインスタンスを取得する。
-    /// </summary>
-        // エンジン全体で共有するDirectX管理インスタンスを取得します。
-static DirectXCommon* GetInstance();
+    /// <summary>エンジン全体で共有するDirectX管理インスタンスを取得する。</summary>
+    static DirectXCommon* GetInstance();
 
-    /// <summary>
-    /// DirectX関連リソースを初期化する。
-    /// </summary>
-        // ウィンドウ情報を受け取り、DirectX12の主要リソースを初期化します。
-void Initialize(WinApp* winApp);
+    /// <summary>ウィンドウ情報からDirectX 12の主要リソースを初期化する。</summary>
+    /// <param name="winApp">SwapChainの対象となるウィンドウ。</param>
+    void Initialize(WinApp* winApp);
 
-    /// <summary>
-    /// DirectX関連リソースを終了処理する。
-    /// </summary>
-        // GPU完了待ちを行い、DirectX関連リソースを安全に終了します。
-void Finalize();
+    /// <summary>GPUの完了を待ち、DirectX関連リソースを終了する。</summary>
+    void Finalize();
 
-    /// <summary>
-    /// バックバッファへの描画開始処理を行う。
-    /// </summary>
-        // 1フレームの描画開始前にコマンドリストやバックバッファ状態を準備します。
-void PreDraw();
+    /// <summary>バックバッファ描画前にコマンドリストと描画先を準備する。</summary>
+    void PreDraw();
 
-    /// <summary>
-    /// バックバッファへの描画終了処理を行う。
-    /// </summary>
-        // 描画コマンドを実行し、Presentとフェンス更新を行います。
-void PostDraw();
+    /// <summary>描画コマンドを実行してPresentとフェンスを更新する。</summary>
+    void PostDraw();
 
     // DirectXの主要オブジェクト取得。
     ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -59,20 +44,21 @@ void PostDraw();
     // SRVの最大数。
     static const uint32_t kMaxSRVCount = 512;
 
+    /// <summary>固定FPS用の基準時刻を初期化する。</summary>
     void InitalaizeFixFPS();
+
+    /// <summary>固定FPSの待機を行い、次フレームの基準時刻を更新する。</summary>
     void UpdateFixFPS();
 
-    /// <summary>
-    /// HLSLシェーダーをコンパイルする。
-    /// </summary>
-        // HLSLファイルを指定プロファイルでコンパイルし、パイプライン作成に使えるBlobを返します。
-Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
+    /// <summary>HLSLファイルを指定プロファイルでコンパイルする。</summary>
+    /// <param name="filePath">読み込むシェーダーファイル。</param>
+    /// <param name="profileconst">シェーダーのターゲットプロファイル。</param>
+    /// <param name="entryPoint">コンパイル対象のエントリーポイント。</param>
+    /// <returns>コンパイル済みバイトコード。</returns>
+    Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
 
-    /// <summary>
-    /// アップロードヒープ上にバッファリソースを作成する。
-    /// </summary>
-        // 定数バッファや頂点バッファ用のアップロードリソースを作成します。
-Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
+    /// <summary>定数・頂点データ用のアップロードヒープを作成する。</summary>
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
 
     /// <summary>
     /// テクスチャ用リソースを作成する。
@@ -84,20 +70,20 @@ Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
     /// </summary>
     void UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
 
-    /// <summary>
-    /// テクスチャファイルを読み込む。
-    /// </summary>
-        // 画像ファイルを読み込み、必要に応じてDDSキャッシュやsRGB変換を扱います。
-static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
+    /// <summary>画像ファイルを読み込み、必要に応じてDDSキャッシュとsRGB変換を使う。</summary>
+    static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
 
     /// <summary>
     /// UTF-8文字列をワイド文字列に変換する。
     /// </summary>
     static std::wstring ConvertString(const std::string& str);
 
-        // 送信済みコマンドの完了を待ち、必要ならコマンドリストを再利用可能にします。
-void FlushCommandQueue(bool reset = true);
+    /// <summary>送信済みコマンドの完了を待つ。</summary>
+    /// <param name="reset">完了後にコマンドリストを再利用可能にするか。</param>
+    void FlushCommandQueue(bool reset = true);
 
+    /// <summary>指定種類・個数のディスクリプタヒープを作る。</summary>
+    /// <param name="shaderVisible">シェーダーから参照可能なヒープにするか。</param>
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 
     /// <summary>
@@ -110,7 +96,10 @@ void FlushCommandQueue(bool reset = true);
     /// </summary>
     DXGI_FORMAT GetDSVFormat() const;
 
+    /// <summary>GPUの完了を待ち、コマンドリストを再利用可能な状態へ戻す。</summary>
     void WaitForGPUAndReset();
+
+    /// <summary>GPUに送信済みの作業が終わるまで待つ。</summary>
     void WaitForGPUIdle();
 
     ID3D12CommandAllocator* GetCommandAllocator() const { return commandAllocator_.Get(); }
@@ -119,14 +108,16 @@ void FlushCommandQueue(bool reset = true);
     uint64_t GetFenceValue() const { return fenceValue_; }
     HANDLE GetFenceEvent() const { return fenceEvent_; }
 
-    // GameView用レンダーテクスチャ。
+    // GameView用レンダーテクスチャの生成、描画開始・終了、SRV取得。
     void CreateRenderTexture();
     void PreDrawRenderTexture();
     void PostDrawRenderTexture();
     uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
 
+    /// <summary>描画先をクリアするRGBA色を設定する。</summary>
     void SetRenderClearColor(float r, float g, float b, float a);
 
+    /// <summary>SwapChainのバックバッファを描画先として準備する。</summary>
     void PreDrawBackBuffer();
 
     // シャドウマップ描画。
@@ -137,6 +128,7 @@ void FlushCommandQueue(bool reset = true);
     void PreDrawShadow();
     void PostDrawShadow();
 
+    /// <summary>直近のGPU描画時間をミリ秒で返す。</summary>
     float GetGpuDrawTimeMs() const { return gpuDrawTimeMs_; }
 
     // GPU計測。
@@ -145,6 +137,7 @@ void FlushCommandQueue(bool reset = true);
     void ResetGpuProfiles();
     void ReadAllGpuProfiles();
 
+    /// <summary>深度テクスチャをシェーダーから参照するSRVを作る。</summary>
     void CreateDepthSrv();
     uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
 
@@ -152,6 +145,8 @@ void FlushCommandQueue(bool reset = true);
     void PreDrawLocalFog();
     void PostDrawLocalFog();
     uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
+
+    /// <summary>現在の画面カラーをGrabTextureへコピーする。</summary>
     void UpdateGrabTexture();
 
     // Camera Preview小窓の描画中かどうか。
@@ -159,9 +154,13 @@ void FlushCommandQueue(bool reset = true);
     void SetCameraPreviewRendering(bool isRendering) { cameraPreviewRendering_ = isRendering; }
     bool IsCameraPreviewRendering() const { return cameraPreviewRendering_; }
 
-        // ウィンドウサイズ変更に合わせてSwapChainと関連RTV/DSVを作り直します。
-void ResizeSwapChain(int32_t width, int32_t height);
+    /// <summary>ウィンドウサイズに合わせてSwapChainとRTV/DSVを作り直す。</summary>
+    void ResizeSwapChain(int32_t width, int32_t height);
+
+    /// <summary>描画中の直接再生成を避けるため、リサイズを予約する。</summary>
     void RequestResize(int32_t width, int32_t height);
+
+    /// <summary>予約済みのリサイズを安全なタイミングで適用する。</summary>
     void ProcessPendingResize();
 
 private:
@@ -170,9 +169,8 @@ private:
     DirectXCommon(const DirectXCommon&) = delete;
     const DirectXCommon& operator=(const DirectXCommon&) = delete;
 
-    // DirectX初期化の内部手順。
-        // DXGI Factory、D3D12 Device、DXCなどの低レベルオブジェクトを初期化します。
-void InitializeDXGIDevice();
+    // DirectX初期化の内部手順。依存するリソースを順に作る。
+    void InitializeDXGIDevice();
     void CreateCommand();
     void CreateSwapChain();
     void CreateRTV();

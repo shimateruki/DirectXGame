@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 
 // Timeline上のトラックとシーンObjectを、名前またはイベントIDで結び付けます。
 struct CinematicObjectBinding {
@@ -28,6 +29,7 @@ struct CinematicTransformTrack {
     bool muted = false;
     bool locked = false;
     bool relative = false;
+    bool anchorRelative = false;
     bool holdLast = true;
     std::vector<CinematicTransformKey> keys;
 };
@@ -103,7 +105,7 @@ struct CinematicEventMarker {
 
 class CinematicSequence {
 public:
-    static constexpr int kCurrentVersion = 4;
+    static constexpr int kCurrentVersion = 6;
 
     void Clear();
     void Sort();
@@ -114,6 +116,13 @@ public:
     int version = kCurrentVersion;
     std::string name = "cinematic_sequence";
     float duration = 0.0f;
+    // ゲート等を共通原点にする。大きさや傾きは引き継がず、水平方向だけ使用する。
+    CinematicObjectBinding anchor;
+    float anchorYawOffset = 0.0f;
+    // 役割名で作った演出を実シーンへ接続する。プレビュー専用Object名は保存しない。
+    std::array<CinematicObjectBinding, 3> roleBindings;
+    // 制作空間の仮モデル。ゲーム側の対象モデルは変更しない。
+    std::array<std::string, 2> previewModels = { "Characters/slime_pink", "Primitives/cube" };
     std::vector<CinematicTransformTrack> transformTracks;
     std::vector<CinematicVFXTrackData> vfxTracks;
     std::vector<CinematicCameraShot> cameraShots;
@@ -122,3 +131,7 @@ public:
     std::vector<CinematicSignalMarker> signals;
     std::vector<CinematicEventMarker> events;
 };
+
+// エディターの軌跡表示・キー記録と再生器で同じ座標変換を使用する。
+Vector3 CinematicAnchorPosition(const Vector3& local, const Vector3& origin, float yaw);
+Vector3 CinematicAnchorLocalPosition(const Vector3& world, const Vector3& origin, float yaw);

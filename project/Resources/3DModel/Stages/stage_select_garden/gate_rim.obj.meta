@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ed669499972d20e59e88349275ec7bc0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/gate_rim.obj",
+  "version": 1
+}

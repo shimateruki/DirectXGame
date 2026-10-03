@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "acf347ced4e8afc21604a64740682789",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/awaken.dds",
+  "version": 1
+}

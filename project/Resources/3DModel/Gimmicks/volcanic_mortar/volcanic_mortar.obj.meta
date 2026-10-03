@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "1cc14243b54117fcce947d84477d4671",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/volcanic_mortar/volcanic_mortar.obj",
+  "version": 1
+}

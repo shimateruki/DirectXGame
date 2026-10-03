@@ -13,6 +13,15 @@ CollisionManager* CollisionManager::GetInstance() {
     return &instance;
 }
 
+void CollisionManager::SetGridSize(float size) {
+    if (!std::isfinite(size) || size <= 0.0f || size == gridSize_) {
+        return;
+    }
+    // セル幅が変わると既存の静的オブジェクトのセル ID も変わります。
+    gridSize_ = size;
+    needsStaticGridRebuild_ = true;
+}
+
 namespace {
 bool IsCollisionActive(Object3d* object) {
     if (!object || !object->GetCollider()) {

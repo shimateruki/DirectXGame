@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4134ed8012ddd13b41fbd59a8a2120d1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/timeout.png",
+  "version": 1
+}

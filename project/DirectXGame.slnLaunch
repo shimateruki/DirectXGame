@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "DirectXGame",
+    "Projects": [
+      {
+        "Path": "DirectXGame.vcxproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

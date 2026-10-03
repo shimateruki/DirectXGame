@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9a6e9a2ffa6d47e9878a0f2c19f2dc40",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/times.png",
+  "version": 1
+}

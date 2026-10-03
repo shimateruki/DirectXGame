@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "c5d204bc8f26c91cded9df46e712ab89",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/FoliageDeformation.hlsli",
+  "version": 1
+}

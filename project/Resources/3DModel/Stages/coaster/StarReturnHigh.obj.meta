@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "31c2e3518bfb415caa6f8014459715b1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/coaster/StarReturnHigh.obj",
+  "version": 1
+}

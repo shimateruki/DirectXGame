@@ -1,151 +1,6 @@
-#define NOMINMAX
-#include "Player.h"
-#include "PlayerCopyAbilityController.h"
-#include "PlayerCopyTypeCatalog.h"
-#include "Model.h"
-#include "CollisionConfig.h"
-#include "engine/utility/math/Math.h"
-#include "EventManager.h"
-#include "CameraManager.h"
-#include "IMoveStrategy.h"
-#include "PlayerState.h"
-#include "PostEffect.h"
-#include "GameDataManager.h"
-#include "GameplayStatusManager.h"
-#include "SceneManager.h"
-#include "StageManager.h"
-#include"Winapp.h"
-#include <DebugConsole.h>
-#include <algorithm>
-#include <CollisionManager.h>
-#include "DirectXCommon.h"
-#include"BaseEnemy.h"
-#include "Bullet.h"
-#include "GimmickHookPullBlock.h"
-#include "GimmickBreakableBlock.h"
-#include "MeshEffectManager.h"
-#include "GPUParticleManager.h"
-#include <cmath>
-#include <unordered_set>
+﻿#include "game/actor/player/Player.Internal.h"
 
-namespace {
-    constexpr float kPi = 3.1415926535f;
-    constexpr float kTwoPi = kPi * 2.0f;
-    constexpr float kEnemyMorphDuration = 5.0f;
-    constexpr float kEnemyMorphParticleInterval = 0.12f;
-    constexpr float kEnemyMorphReleaseDuration = 0.42f;
-    constexpr float kEnemyMorphExpiredReleaseDuration = 0.32f;
-    constexpr float kEnemyMorphReleaseBurstTime = 0.11f;
-    constexpr float kEnemyMorphExpiredReleaseBurstTime = 0.075f;
-    constexpr float kAbsorbEffectDuration = 0.24f;
-    constexpr float kAbsorbEffectParticleInterval = 0.035f;
-    constexpr float kPlayerModelYawOffset = kPi;
-    constexpr const char* kPinkSlimeMorphBurstPreset = "pink_slime_morph_burst";
-    constexpr float kPinkSlimeMorphParticleInterval = 0.18f;
-    constexpr const char* kBomberMorphAuraPreset = "player_bomb_morph_aura";
-    constexpr const char* kFireMorphAuraPreset = "player_fire_morph_aura";
-    constexpr const char* kWindMorphAuraPreset = "player_wind_morph_aura";
-    constexpr const char* kBomberMorphPulseEffectPath = "Resources/json/effect/effect_player_bomb_morph_pulse.json";
-    constexpr const char* kFireMorphPulseEffectPath = "Resources/json/effect/effect_player_fire_morph_pulse.json";
-    constexpr const char* kWindMorphPulseEffectPath = "Resources/json/effect/effect_player_wind_morph_pulse.json";
-    constexpr float kElectricShockShakeAmount = 0.045f;
-    constexpr const char* kElectricShockAuraEffectPath = "Resources/json/effect/effect_thunder_slime_constant_aura.json";
-
-    float NormalizeYaw(float yaw) {
-        while (yaw > kPi) yaw -= kTwoPi;
-        while (yaw < -kPi) yaw += kTwoPi;
-        return yaw;
-    }
-
-    Vector3 GetStableEnemyCarryScale(Object3d* enemy) {
-        if (!enemy) {
-            return { 1.0f, 1.0f, 1.0f };
-        }
-
-        const Vector3 scale = enemy->GetScale();
-        if (!dynamic_cast<BaseEnemy*>(enemy)) {
-            return scale;
-        }
-
-        const float absX = std::abs(scale.x);
-        const float absY = std::abs(scale.y);
-        const float absZ = std::abs(scale.z);
-        const float minScale = (std::min)({ absX, absY, absZ });
-        const float maxScale = (std::max)({ absX, absY, absZ });
-        if (minScale <= 0.0001f || maxScale / minScale < 1.18f) {
-            return scale;
-        }
-
-        const float stableScale = std::cbrt(absX * absY * absZ);
-        return { stableScale, stableScale, stableScale };
-    }
-
-    Vector3 ResolveTransformEuler(const Transform& transform) {
-        if (!transform.isQuaternionMaster) {
-            return transform.rotate;
-        }
-
-        return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform.quaternion));
-    }
-
-    void CalculateThunderAuraShape(const Vector3& position, const Vector3& scale, Vector3& center, float& horizontalDiameter, float& verticalDiameter) {
-        const float maxXZ = (std::max)({ std::abs(scale.x), std::abs(scale.z), 1.0f });
-        const float yScale = (std::max)(std::abs(scale.y), 0.18f);
-
-        horizontalDiameter = (std::max)(2.55f, maxXZ * 1.35f);
-        verticalDiameter = (std::max)(0.46f, yScale * 1.28f);
-
-        center = position;
-        center.y += (std::max)(0.22f, yScale * 0.43f);
-    }
-
-    void EmitOuterThunderParticles(const Vector3& position, const Vector3& scale, float phase, int count, const char* presetName = "thunder_slime_idle_spark") {
-        auto* gpuParticleManager = GPUParticleManager::GetInstance();
-        if (!gpuParticleManager || !gpuParticleManager->IsInitialized() || count <= 0) {
-            return;
-        }
-
-        Vector3 center{};
-        float horizontalDiameter = 1.0f;
-        float verticalDiameter = 1.0f;
-        CalculateThunderAuraShape(position, scale, center, horizontalDiameter, verticalDiameter);
-
-        const float horizontalRadius = horizontalDiameter * 0.52f;
-        const float verticalRadius = verticalDiameter * 0.38f;
-
-        for (int i = 0; i < count; ++i) {
-            const float angle = phase + kTwoPi * static_cast<float>(i) / static_cast<float>(count);
-            Vector3 emitPos = center;
-            emitPos.x += std::cos(angle) * horizontalRadius;
-            emitPos.z += std::sin(angle) * horizontalRadius;
-            emitPos.y += std::sin(angle * 1.37f) * verticalRadius;
-            gpuParticleManager->Emit(presetName, emitPos);
-        }
-    }
-
-    void EmitThunderMorphBurst(const Vector3& position, const Vector3& scale) {
-        EmitOuterThunderParticles(position, scale, 0.35f, 4);
-    }
-
-    void EmitCopyMorphPreset(const char* presetName, const Vector3& position) {
-        auto* gpuParticleManager = GPUParticleManager::GetInstance();
-        if (gpuParticleManager && gpuParticleManager->IsInitialized()) {
-            gpuParticleManager->Emit(presetName, position);
-        }
-    }
-
-    void SpawnCopyMorphPulse(const char* effectPath, const Vector3& position, const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
-        auto* meshEffects = MeshEffectManager::GetInstance();
-        if (meshEffects) {
-            meshEffects->SpawnEffectAt(effectPath, position, { 0.0f, 0.0f, 0.0f }, scale);
-        }
-    }
-
-}
-
-// =================================================================
-// 初期化・更新・描画
-// =================================================================
+using namespace PlayerImplementation;
 
 Player::~Player() = default;
 
@@ -238,8 +93,30 @@ void Player::ApplyManagedScale(const Vector3& scale) {
     slimeAnimator_.Reset(scale, this);
 }
 
+Vector3 Player::GetLockOnAttackDirection() const {
+    if (!isLockingOn_ || !lockOnAimValid_ || isDead || isCinematicLocked_)
+        return GetForwardDirection();
+    Vector3 direction = lockOnAimPoint_ - GetWorldPosition();
+    direction.y = 0.0f;
+    const float length = Math::Length(direction);
+    return length > 0.001f ? direction / length : GetForwardDirection();
+}
+
 void Player::Update(float deltaTime)
 {
+    if (mover_ && deltaTime > 0.0f) {
+        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ ||
+            launchStarController_.IsActive() || gateReturnAnimation_.IsActive() ||
+            absorbEffectActive_ || enemyMorphReleaseActive_ || copyPreviewActive_ ||
+            electricShockControlLocked_);
+    }
+    // 隔離プレビューは固定刻み側だけが状態を進めます。Scene側のUpdate(0)で
+    // 接地や保留入力を再評価すると、コマ送り結果が同じフレーム内で壊れます。
+    if (copyPreviewActive_ && deltaTime <= 0.0f) {
+        UpdateWorldMatrix(true);
+        return;
+    }
+    if (copyPreviewActive_) SetIsControlActive(false);
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = transform_.translate;
@@ -248,7 +125,7 @@ void Player::Update(float deltaTime)
         isFirstUpdate_ = false;
     }
 
-    if (launchStarActive_) {
+    if (launchStarController_.IsActive()) {
         UpdateLaunchStar(deltaTime);
         Object3d::Update(deltaTime);
         return;
@@ -272,7 +149,7 @@ void Player::Update(float deltaTime)
         !enemyMorphReleaseActive_ &&
         !absorbEffectActive_;
     const bool hookAimHeld =
-        inputManager_ && inputManager_->IsMouseButtonPressed(1) && !copyAbilityInputMode;
+        inputManager_ && inputManager_->IsActionPressed("SecondaryAction") && !copyAbilityInputMode;
 
     if (copyAbilityInputMode) {
         // コピー中の右クリックは能力専用です。通常形態のフック照準を持ち越しません。
@@ -336,10 +213,34 @@ void Player::Update(float deltaTime)
                             dir.x /= length; dir.y /= length; dir.z /= length;
                         }
 
+                        // ロック中はカメラからではなく、自機から対象の判定中心へ狙います。
+                        // 三人称カメラの壁越し判定や、小さい敵の頭上への空振りを防ぎます。
+                        if (isLockingOn_ && lockOnAimValid_) {
+                            const AABB bounds = GetAABB();
+                            start = (bounds.min + bounds.max) * 0.5f;
+                            const Vector3 toTarget = lockOnAimPoint_ - start;
+                            if (Math::Length(toTarget) > 0.001f) dir = Math::Normalize(toTarget);
+                            const float planarLength = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+                            SetRotation({ baseRotation_.x - std::atan2(dir.y, planarLength),
+                                NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()), baseRotation_.z });
+                        }
                         float maxDistance = 150.0f;
                         uint32_t mask = kAllSolid | kEnemy | kHookAnchor;
 
-                        RaycastHit hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
+                        RaycastHit hit;
+                        if (isLockingOn_) {
+                            // 球のローカルオフセットにも対応するQuery版を使い、自分と子パーツを除外します。
+                            PhysicsQueryFilter filter;
+                            filter.mask = mask;
+                            filter.ignoredObject = this;
+                            filter.includeTriggers = true;
+                            if (lockOnAimValid_) {
+                                hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, filter);
+                            }
+                        } else {
+                            // 非ロック時の自由照準・フックアンカーの操作は維持します。
+                            hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
+                        }
 
                         if (hit.isHit) {
                             hookMarker_->SetIsVisible(true);
@@ -424,6 +325,20 @@ void Player::Update(float deltaTime)
             param_->hp = param_->maxHp;
         }
 
+        // 液面への接触は無敵や残HPに関係なく死亡します。安全チュートリアルは従来どおり保護します。
+        float liquidY = 0.0f;
+        if (!isDead && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get())
+            && FindLethalLiquidSurface(*this, liquidY) && param_.has_value()) {
+            const float footY = GetModelWorldAABB().min.y;
+            Vector3 position = GetTranslate();
+            position.y += liquidY - footY + 0.04f;
+            SetTranslate(position);
+            UpdateLocalMatrix();
+            UpdateWorldMatrix();
+            SetVelocity({0.0f, 0.0f, 0.0f});
+            param_->hp = 0.0f;
+        }
+
         // 4. 死亡判定
         if (GetHp() <= 0.0f && !isDead) {
             if (baseCombatController_) {
@@ -497,7 +412,44 @@ void Player::Update(float deltaTime)
     }
 
     // 6. 親クラスの更新
-    Character::Update(deltaTime);
+    // 破裂中は物理移動を止め、液面に残して演出を見せます。
+    if (isDead) {
+        SetVelocity({0.0f, 0.0f, 0.0f});
+        Object3d::Update(deltaTime);
+    } else {
+        Character::Update(deltaTime);
+        // 互換モーターは接地をリセットし、シーン末尾の衝突解決まで未接地になります。
+        // 能力判定より先に実際の足元接触を確認します。押し戻し・衝突イベントは
+        // 従来のCollisionManagerに任せ、ここでは位置や速度を変更しません。
+        if (!copyPreviewActive_ && deltaTime > 0.0f && param_.has_value() &&
+            !param_->motorContinuousCollision && !IsGrounded() && GetVelocity().y <= 0.0f) {
+            UpdateWorldMatrix(false);
+            PhysicsQueryFilter filter;
+            filter.mask = kAllSolid & GetCollisionMask();
+            filter.ignoredObject = this;
+            const float maxSlope = std::clamp(param_->motorMaxSlopeDegrees, 0.0f, 89.9f);
+            const float minimumGroundNormalY = std::cos(maxSlope * kPi / 180.0f);
+            for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapAABB(GetAABB(), filter)) {
+                // 広域の箱判定だけで接地扱いにせず、自機本来のCollider形状で確認します。
+                const CollisionInfo contact = CheckCollision(hit.object);
+                if (contact.isColliding && contact.normal.y > minimumGroundNormalY) {
+                    SetGrounded(true);
+                    break;
+                }
+            }
+        }
+        // 隔離空間には物理床がないため、モーターの更新後・能力入力の前に床を解決します。
+        // 更新前のSetGroundedだけではBeginFrameで消され、ガードが開始できません。
+        if (copyPreviewActive_) {
+            const bool grounded = transform_.translate.y <= copyPreviewGroundHeight_ + 0.001f && velocity_.y <= 0.0f;
+            if (grounded) {
+                transform_.translate.y = copyPreviewGroundHeight_;
+                velocity_.y = 0.0f;
+            }
+            SetGrounded(grounded);
+            UpdateWorldMatrix(true);
+        }
+    }
 
     if (hasTemporaryPhysicsOverride && param_.has_value()) {
         param_->gravity = configuredGravity;
@@ -592,29 +544,29 @@ void Player::Update(float deltaTime)
     }
 
     const bool carryAbilityTriggered =
-        inputManager_->IsKeyTriggered(DIK_E) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_Y);
+        deltaTime > 0.0f && (copyPreviewActive_ ? copyPreviewInput_.specialTriggered :
+        inputManager_->IsActionTriggered("Ability"));
     const bool morphRightAbilityTriggered =
         deltaTime > 0.0f &&
-        inputManager_->IsMouseButtonTriggered(1);
+        (copyPreviewActive_ ? copyPreviewInput_.secondaryTriggered : inputManager_->IsActionTriggered("SecondaryAction"));
     const bool morphRightAbilityHeld =
         deltaTime > 0.0f &&
-        inputManager_->IsMouseButtonPressed(1);
+        (copyPreviewActive_ ? copyPreviewInput_.secondaryHeld : inputManager_->IsActionPressed("SecondaryAction"));
     const bool morphLeftAbilityTriggered =
         deltaTime > 0.0f &&
-        inputManager_->IsMouseButtonTriggered(0);
+        (copyPreviewActive_ ? copyPreviewInput_.primaryTriggered : inputManager_->IsActionTriggered("PrimaryAttack"));
     const bool morphLeftAbilityHeld =
         deltaTime > 0.0f &&
-        inputManager_->IsMouseButtonPressed(0);
+        (copyPreviewActive_ ? copyPreviewInput_.primaryHeld : inputManager_->IsActionPressed("PrimaryAttack"));
     const bool morphReleaseTriggered =
         deltaTime > 0.0f &&
-        inputManager_->IsActionTriggered("MorphRelease");
+        !copyPreviewActive_ && inputManager_->IsActionTriggered("MorphRelease");
 
     // 通常形態は左クリック／攻撃アクションで必ず攻撃できます。
     // 運搬中は投げ操作、コピー中はコピー能力を優先します。
     const bool baseAttackTriggered =
         deltaTime > 0.0f && !hookAimHeld &&
-        (inputManager_->IsActionTriggered("Attack") || morphLeftAbilityTriggered);
+        ((!copyPreviewActive_ && inputManager_->IsActionTriggered("Attack")) || morphLeftAbilityTriggered);
     if (baseCombatController_) {
         baseCombatController_->ProcessInput(*this, baseAttackTriggered);
         baseCombatController_->Update(*this, deltaTime);
@@ -627,7 +579,7 @@ void Player::Update(float deltaTime)
 
     if (tutorialCarryThrowEnabled_ &&
         !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && !isEnemyMorphed_ &&
-        inputManager_->IsMouseButtonPressed(0)) {
+        inputManager_->IsActionPressed("PrimaryAttack")) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             CancelEnemyMorph();
@@ -834,6 +786,7 @@ float Player::GetEnemyMorphModelYawOffset() const
     case EnemyMorphType::WindSlime:
     case EnemyMorphType::Bomber:
     case EnemyMorphType::BeamDrone:
+    case EnemyMorphType::Crown:
         return kPi;
     default:
         return 0.0f;
@@ -856,1443 +809,134 @@ void Player::SetMoveYaw(float yaw)
     SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset()));
 }
 
-void Player::SetCarriedEnemy(Object3d* enemy)
-{
-    if (carriedEnemy_ == enemy) {
-        if (enemy && !hasCarriedEnemyBaseScale_) {
-            carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
-            const Transform* enemyTransform = enemy->GetTransform();
-            if (enemyTransform) {
-                carriedEnemyBaseRotation_ = enemyTransform->rotate;
-                carriedEnemyBaseQuaternion_ = enemyTransform->quaternion;
-                carriedEnemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
-            }
-            hasCarriedEnemyBaseScale_ = true;
-        }
-        return;
-    }
-
-    carriedEnemy_ = enemy;
-    if (enemy) {
-        carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
-        const Transform* enemyTransform = enemy->GetTransform();
-        if (enemyTransform) {
-            carriedEnemyBaseRotation_ = enemyTransform->rotate;
-            carriedEnemyBaseQuaternion_ = enemyTransform->quaternion;
-            carriedEnemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
-        }
-        hasCarriedEnemyBaseScale_ = true;
-    }
-    else {
-        carriedEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
-        carriedEnemyBaseRotation_ = { 0.0f, 0.0f, 0.0f };
-        carriedEnemyBaseQuaternion_ = { 0.0f, 0.0f, 0.0f, 1.0f };
-        carriedEnemyBaseQuaternionMaster_ = true;
-        hasCarriedEnemyBaseScale_ = false;
-    }
-}
-
-void Player::ReleaseCarriedEnemy(bool restorePose)
-{
-    if (absorbEffectActive_) {
-        CancelAbsorbEffect(restorePose);
-    }
-
-    Object3d* enemy = carriedEnemy_;
-    if (!enemy) {
-        return;
-    }
-
-    if (auto* enemyBase = dynamic_cast<BaseEnemy*>(enemy)) {
-        enemyBase->SetCarried(false);
-    }
-    else {
-        enemy->SetCollisionAttribute(kEnemy);
-        enemy->SetCollisionMask(kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack);
-    }
-
-    enemy->SetIsVisible(true);
-    if (restorePose) {
-        Transform* enemyTransform = enemy->GetTransform();
-        if (enemyTransform) {
-            enemyTransform->scale = hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemy->GetScale();
-            enemyTransform->rotate = carriedEnemyBaseRotation_;
-            enemyTransform->quaternion = carriedEnemyBaseQuaternion_;
-            enemyTransform->isQuaternionMaster = carriedEnemyBaseQuaternionMaster_;
-            enemy->UpdateLocalMatrix();
-            enemy->UpdateWorldMatrix();
-        }
-    }
-
-    SetCarriedEnemy(nullptr);
-}
-
-bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const
-{
-    if (!enemy) {
-        return false;
-    }
-
-    const EnemyMorphType type = ResolveEnemyMorphType(enemy->GetEnemyType());
-    return type == EnemyMorphType::Slime || type == EnemyMorphType::FireSlime;
-}
-
-void Player::BeginAbsorbEffect(BaseEnemy* enemy)
-{
-    if (!enemy) {
-        return;
-    }
-
-    pendingAbsorbType_ = ResolveEnemyMorphType(enemy->GetEnemyType());
-    if (pendingAbsorbType_ != EnemyMorphType::Slime && pendingAbsorbType_ != EnemyMorphType::FireSlime) {
-        StartEnemyMorph(enemy);
-        return;
-    }
-
-    pendingAbsorbEnemy_ = enemy;
-    pendingAbsorbEnemyBaseScale_ = hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : GetStableEnemyCarryScale(enemy);
-    pendingAbsorbEnemyStartPos_ = enemy->GetWorldPosition();
-    pendingAbsorbTint_ = pendingAbsorbType_ == EnemyMorphType::Slime
-        ? Vector4{ 1.0f, 0.42f, 0.82f, 1.0f }
-        : GetEnemyMorphTint(pendingAbsorbType_);
-    pendingAbsorbPlayerBaseColor_ = GetColor();
-    absorbEffectTimer_ = 0.0f;
-    absorbEffectEmitTimer_ = 0.0f;
-    absorbEffectActive_ = true;
-
-    enemy->SetCarried(true);
-    enemy->SetCollisionAttribute(0);
-    enemy->SetCollisionMask(0);
-    enemy->SetIsVisible(true);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    transform_.scale = { 2.35f, 1.65f, 2.35f };
-}
-
-void Player::UpdateAbsorbEffect(float deltaTime)
-{
-    if (!absorbEffectActive_) {
-        return;
-    }
-    if (!pendingAbsorbEnemy_) {
-        CancelAbsorbEffect(false);
-        return;
-    }
-    if (deltaTime <= 0.0f) {
-        return;
-    }
-
-    absorbEffectTimer_ += deltaTime;
-    absorbEffectEmitTimer_ -= deltaTime;
-
-    const float t = std::clamp(absorbEffectTimer_ / kAbsorbEffectDuration, 0.0f, 1.0f);
-    const float ease = t * t * (3.0f - 2.0f * t);
-    const Vector3 playerPos = GetWorldPosition();
-    const Vector3 targetPos = playerPos + Vector3{ 0.0f, 1.35f, 0.0f };
-
-    Vector3 absorbPos{
-        Math::Lerp(pendingAbsorbEnemyStartPos_.x, targetPos.x, ease),
-        Math::Lerp(pendingAbsorbEnemyStartPos_.y, targetPos.y, ease),
-        Math::Lerp(pendingAbsorbEnemyStartPos_.z, targetPos.z, ease)
-    };
-    absorbPos.y += std::sin(t * kPi) * 0.22f;
-
-    const float scaleRate = Math::Lerp(1.0f, 0.06f, ease);
-    const float squash = std::sin(t * kPi) * 0.22f;
-    Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform();
-    if (enemyTransform) {
-        enemyTransform->translate = absorbPos;
-        enemyTransform->scale = {
-            pendingAbsorbEnemyBaseScale_.x * scaleRate * (1.0f + squash),
-            pendingAbsorbEnemyBaseScale_.y * scaleRate * (1.0f - squash * 0.75f),
-            pendingAbsorbEnemyBaseScale_.z * scaleRate * (1.0f + squash)
-        };
-        enemyTransform->rotate.x += 9.0f * deltaTime;
-        enemyTransform->rotate.y += 18.0f * deltaTime;
-        enemyTransform->rotate.z += 7.0f * deltaTime;
-        enemyTransform->isQuaternionMaster = false;
-        pendingAbsorbEnemy_->UpdateLocalMatrix();
-        pendingAbsorbEnemy_->UpdateWorldMatrix();
-    }
-
-    pendingAbsorbEnemy_->SetColor(pendingAbsorbTint_);
-    pendingAbsorbEnemy_->SetCollisionAttribute(0);
-    pendingAbsorbEnemy_->SetCollisionMask(0);
-
-    const float flash = std::sin(t * kPi);
-    const float colorRate = 0.35f + flash * 0.55f;
-    Vector4 flashColor{
-        std::clamp(pendingAbsorbPlayerBaseColor_.x * (1.0f - colorRate) + pendingAbsorbTint_.x * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        std::clamp(pendingAbsorbPlayerBaseColor_.y * (1.0f - colorRate) + pendingAbsorbTint_.y * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        std::clamp(pendingAbsorbPlayerBaseColor_.z * (1.0f - colorRate) + pendingAbsorbTint_.z * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        1.0f
-    };
-    SetColor(flashColor);
-    for (Object3d* child : GetChildren()) {
-        if (child) {
-            child->SetColor(flashColor);
-        }
-    }
-
-    const float bodyPulse = std::sin(t * kPi);
-    transform_.scale = {
-        2.0f + bodyPulse * 0.55f,
-        2.0f - bodyPulse * 0.38f,
-        2.0f + bodyPulse * 0.55f
-    };
-
-    if (particleSystem_ && absorbEffectEmitTimer_ <= 0.0f) {
-        Vector3 toPlayer = targetPos - absorbPos;
-        const float length = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
-        if (length > 0.001f) {
-            toPlayer = toPlayer / length;
-        } else {
-            toPlayer = { 0.0f, 1.0f, 0.0f };
-        }
-
-        const int count = pendingAbsorbType_ == EnemyMorphType::FireSlime ? 14 : 12;
-        particleSystem_->SpawnParticles(
-            absorbPos,
-            count,
-            1.4f,
-            &toPlayer,
-            26.0f,
-            pendingAbsorbTint_,
-            { pendingAbsorbTint_.x, pendingAbsorbTint_.y, pendingAbsorbTint_.z, 0.0f },
-            0.08f,
-            0.24f,
-            0.34f,
-            0.035f
-        );
-        absorbEffectEmitTimer_ = kAbsorbEffectParticleInterval;
-    }
-
-    if (absorbEffectTimer_ >= kAbsorbEffectDuration) {
-        FinishAbsorbEffect();
-    }
-}
-
-void Player::FinishAbsorbEffect()
-{
-    BaseEnemy* enemy = pendingAbsorbEnemy_;
-    if (!enemy) {
-        CancelAbsorbEffect(false);
-        return;
-    }
-
-    const Vector3 burstPos = GetWorldPosition() + Vector3{ 0.0f, 1.2f, 0.0f };
-    if (particleSystem_) {
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
-        particleSystem_->SpawnParticles(
-            burstPos,
-            pendingAbsorbType_ == EnemyMorphType::FireSlime ? 34 : 30,
-            2.0f,
-            &up,
-            30.0f,
-            pendingAbsorbTint_,
-            { pendingAbsorbTint_.x, pendingAbsorbTint_.y, pendingAbsorbTint_.z, 0.0f },
-            0.12f,
-            0.38f,
-            0.42f,
-            0.05f
-        );
-    }
-
-    SetColor(pendingAbsorbPlayerBaseColor_);
-    for (Object3d* child : GetChildren()) {
-        if (child) {
-            child->SetColor(pendingAbsorbPlayerBaseColor_);
-        }
-    }
-
-    transform_.scale = managedBaseScale_;
-    absorbEffectActive_ = false;
-    pendingAbsorbEnemy_ = nullptr;
-    pendingAbsorbType_ = EnemyMorphType::None;
-    absorbEffectTimer_ = 0.0f;
-    absorbEffectEmitTimer_ = 0.0f;
-
-    StartEnemyMorph(enemy);
-    transform_.scale = {
-        managedBaseScale_.x * 1.325f,
-        managedBaseScale_.y * 0.36f,
-        managedBaseScale_.z * 1.325f
-    };
-}
-
-void Player::CancelAbsorbEffect(bool restoreEnemy)
-{
-    if (restoreEnemy && pendingAbsorbEnemy_) {
-        if (Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform()) {
-            enemyTransform->scale = pendingAbsorbEnemyBaseScale_;
-            enemyTransform->isQuaternionMaster = true;
-            pendingAbsorbEnemy_->UpdateLocalMatrix();
-            pendingAbsorbEnemy_->UpdateWorldMatrix();
-        }
-        pendingAbsorbEnemy_->SetIsVisible(true);
-    }
-
-    SetColor(pendingAbsorbPlayerBaseColor_);
-    if (!isEnemyMorphed_) {
-        for (Object3d* child : GetChildren()) {
-            if (child) {
-                child->SetColor(pendingAbsorbPlayerBaseColor_);
-            }
-        }
-    }
-
-    absorbEffectActive_ = false;
-    pendingAbsorbEnemy_ = nullptr;
-    pendingAbsorbType_ = EnemyMorphType::None;
-    absorbEffectTimer_ = 0.0f;
-    absorbEffectEmitTimer_ = 0.0f;
-}
-
-void Player::StartEnemyMorph(BaseEnemy* enemy)
-{
-    if (!enemy) {
-        return;
-    }
-
-    const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemy->GetEnemyType());
-    if (resolvedType == EnemyMorphType::None) {
-        DebugConsole::GetInstance()->AddLog("Enemy morph rejected: unsupported enemy type.");
-        return;
-    }
-
-    if (baseCombatController_) {
-        baseCombatController_->Cancel(*this, true);
-    }
-    if (isEnemyMorphed_ && copyAbilityController_) {
-        copyAbilityController_->Cancel(*this);
-    }
-
-    const float currentMoveYaw = GetMoveYaw();
-    SaveEnemyMorphBaseAppearance(enemy->GetIsVisible());
-
-    enemyMorphType_ = resolvedType;
-    enemyMorphSource_ = enemy;
-    enemyMorphHasTimeLimit_ = !enemy->param_.has_value() || enemy->param_->morphLimited;
-    enemyMorphDuration_ = enemy->param_.has_value()
-        ? (std::max)(0.1f, enemy->param_->morphDuration)
-        : kEnemyMorphDuration;
-    enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
-    enemyMorphEffectTimer_ = 0.0f;
-    enemyMorphVisualTimer_ = 0.0f;
-    if (copyAbilityController_) {
-        copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), enemy->GetAttackProfile());
-    }
-    enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
-    isEnemyMorphed_ = true;
-    CompleteEnemyMorphStart(currentMoveYaw);
-    enemy->SetCarried(true);
-    if (enemy->param_.has_value()) {
-        enemy->param_->hp = 0.0f;
-    }
-    enemy->isDead = true;
-    enemy->SetIsVisible(false);
-    enemy->SetCollisionAttribute(0);
-    enemy->SetCollisionMask(0);
-    enemy->SetParticleName("");
-    enemy->SetGPUParticleName("");
-    enemy->SetMeshEffect1Name("");
-    enemy->SetMeshEffect2Name("");
-
-    if (!enemy->GetModelName().empty()) {
-        SetModel(enemy->GetModelName());
-    }
-    const std::string enemyTexture = enemy->GetTexturePath();
-    if (!enemyTexture.empty()) {
-        SetTexture(enemyTexture);
-    }
-    SetMaterialType(enemy->GetMaterialType());
-    SetEmissive(enemy->GetEmissive());
-    animName_.clear();
-    animationTime_ = 0.0f;
-    SetColor(enemy->GetColor());
-
-    EmitEnemyMorphStartEffects();
-
-    DebugConsole::GetInstance()->AddLog("Enemy morph start: " + enemy->GetEnemyType());
-    if (carriedEnemy_ == enemy) {
-        SetCarriedEnemy(nullptr);
-    }
-
-    // スライム系のコピー能力は元敵の寿命から完全に切り離します。
-    // 以降の更新・解除はPlayerCopyAbilityControllerだけが担当します。
-    if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
-        enemyMorphSource_ = nullptr;
-    }
-}
-
-void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible)
-{
-    if (isEnemyMorphed_) {
-        return;
-    }
-
-    savedMorphModelName_ = GetModelName();
-    savedMorphTexturePath_ = GetTexturePath();
-    savedMorphAnimName_ = animName_;
-    savedMorphAnimLoop_ = isAnimLoop_;
-    savedMorphColor_ = GetColor();
-    savedMorphScale_ = GetScale();
-    savedMorphMaterialType_ = GetMaterialType();
-    savedMorphEmissive_ = GetEmissive();
-    savedMorphSourceVisible_ = sourceVisible;
-    savedMorphChildVisible_.clear();
-    savedMorphChildVisible_.reserve(GetChildren().size());
-    for (Object3d* child : GetChildren()) {
-        savedMorphChildVisible_.push_back(child ? child->GetIsVisible() : false);
-    }
-}
-
-void Player::CompleteEnemyMorphStart(float moveYaw)
-{
-    if (checkpointActivated_) {
-        const std::string currentMorph = GetEnemyTypeForCurrentMorph();
-        if (!currentMorph.empty()) {
-            checkpointMorphEnemyType_ = currentMorph;
-            RefreshCheckpointMorphSnapshot();
-        }
-    }
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
-        camera->SetAimCameraSuppressed(true);
-    }
-    if (hookMarker_) {
-        hookMarker_->SetIsVisible(false);
-    }
-    aimTargetObject_ = nullptr;
-    SetMoveYaw(moveYaw);
-    for (Object3d* child : GetChildren()) {
-        if (child) {
-            child->SetIsVisible(false);
-        }
-    }
-}
-
-void Player::EmitEnemyMorphStartEffects()
-{
-    if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
-        EmitThunderMorphBurst(GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f }, managedBaseScale_);
-    }
-    else if (enemyMorphType_ == EnemyMorphType::Slime) {
-        EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
-        enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
-    }
-    else if (enemyMorphType_ == EnemyMorphType::Bomber) {
-        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
-        SpawnCopyMorphPulse(kBomberMorphPulseEffectPath, effectPosition, { 1.12f, 1.12f, 1.12f });
-        EmitCopyMorphPreset(kBomberMorphAuraPreset, effectPosition);
-        enemyMorphEffectTimer_ = 0.34f;
-    }
-    else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
-        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f };
-        SpawnCopyMorphPulse(kFireMorphPulseEffectPath, effectPosition, { 1.18f, 1.18f, 1.18f });
-        EmitCopyMorphPreset(kFireMorphAuraPreset, effectPosition);
-        enemyMorphEffectTimer_ = 0.22f;
-    }
-    else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
-        const Vector3 effectPosition = GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
-        SpawnCopyMorphPulse(kWindMorphPulseEffectPath, effectPosition, { 1.22f, 1.0f, 1.22f });
-        EmitCopyMorphPreset(kWindMorphAuraPreset, effectPosition);
-        enemyMorphEffectTimer_ = 0.28f;
-    }
-    else if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime) {
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
-        particleSystem_->SpawnParticles(
-            GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f },
-            32,
-            2.2f,
-            &up,
-            22.0f,
-            enemyMorphTint_,
-            { enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f },
-            0.14f,
-            0.45f,
-            0.42f,
-            0.08f
-        );
-    }
-
-}
-
-void Player::UpdateEnemyMorph(float deltaTime)
-{
-    if (enemyMorphReleaseActive_) {
-        UpdateEnemyMorphRelease(deltaTime);
-        return;
-    }
-
-    if (!isEnemyMorphed_) {
-        return;
-    }
-
-    if (enemyMorphSource_ && enemyMorphSource_->IsDefeatEffectPlaying()) {
-        BeginEnemyMorphRelease(true);
-        return;
-    }
-
-    if (enemyMorphHasTimeLimit_ && deltaTime > 0.0f) {
-        enemyMorphTimer_ -= deltaTime;
-        enemyMorphEffectTimer_ -= deltaTime;
-        enemyMorphVisualTimer_ += deltaTime;
-    } else if (!enemyMorphHasTimeLimit_ && deltaTime > 0.0f) {
-        enemyMorphEffectTimer_ -= deltaTime;
-        enemyMorphVisualTimer_ += deltaTime;
-    }
-
-    if (enemyMorphSource_) {
-        enemyMorphSource_->SetIsVisible(false);
-    }
-
-    if (enemyMorphHasTimeLimit_ && enemyMorphTimer_ <= 0.0f) {
-        BeginEnemyMorphRelease(true);
-        return;
-    }
-
-    for (Object3d* child : GetChildren()) {
-        if (child) {
-            child->SetIsVisible(false);
-        }
-    }
-
-    if (enemyMorphEffectTimer_ <= 0.0f) {
-        if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
-            const float morphElapsed = (std::max)(0.0f, enemyMorphDuration_ - enemyMorphTimer_);
-            EmitOuterThunderParticles(GetWorldPosition(), GetScale(), morphElapsed * 3.4f, 3);
-            enemyMorphEffectTimer_ = 0.32f;
-            return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::Slime) {
-            EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.55f, 0.0f });
-            enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
-            return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::Bomber) {
-            EmitCopyMorphPreset(kBomberMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f });
-            enemyMorphEffectTimer_ = 0.34f;
-            return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
-            EmitCopyMorphPreset(kFireMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.66f, 0.0f });
-            enemyMorphEffectTimer_ = 0.22f;
-            return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
-            EmitCopyMorphPreset(kWindMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f });
-            enemyMorphEffectTimer_ = 0.28f;
-            return;
-        }
-        else if (particleSystem_) {
-            Vector3 up = { 0.0f, 1.0f, 0.0f };
-            particleSystem_->SpawnParticles(
-                GetWorldPosition() + Vector3{ 0.0f, 1.1f, 0.0f },
-                6,
-                1.2f,
-                &up,
-                12.0f,
-                enemyMorphTint_,
-                { enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f },
-                0.08f,
-                0.22f,
-                0.26f,
-                0.03f
-            );
-        }
-        enemyMorphEffectTimer_ = kEnemyMorphParticleInterval;
-    }
-}
-
-float Player::GetEnemyMorphRate() const
-{
-    if (!isEnemyMorphed_) {
-        return 0.0f;
-    }
-    if (!enemyMorphHasTimeLimit_) {
-        return 1.0f;
-    }
-    if (enemyMorphDuration_ <= 0.0f) {
-        return 0.0f;
-    }
-    return std::clamp(enemyMorphTimer_ / enemyMorphDuration_, 0.0f, 1.0f);
-}
-
+// 外部APIを維持し、スター移動固有の状態と軌道計算を委譲します。
 void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float duration)
 {
-    if (launchStarActive_ || isDead || isCinematicLocked_) {
-        return;
-    }
-
-    launchStarActive_ = true;
-    launchStarSavedControlActive_ = isControlActive_;
-    launchStarSavedCollisionAttribute_ = GetCollisionAttribute();
-    launchStarSavedCollisionMask_ = GetCollisionMask();
-    launchStarStart_ = GetWorldPosition();
-    launchStarDestination_ = destination;
-    launchStarArcHeight_ = (std::max)(2.0f, arcHeight);
-    launchStarDuration_ = (std::max)(0.35f, duration);
-    launchStarTimer_ = 0.0f;
-    launchStarTrailTimer_ = 0.0f;
-
-    SetIsControlActive(false);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetCollisionMask(0);
-
-    Vector3 direction = launchStarDestination_ - launchStarStart_;
-    direction.y = 0.0f;
-    if (Math::Length(direction) > 0.001f) {
-        direction = Math::Normalize(direction);
-        SetMoveYaw(std::atan2(direction.x, direction.z));
-        slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Jump);
-        slimeAnimator_.SetMotionDirection(direction);
-    }
-    TriggerSlimeImpulse({ 0.78f, 1.28f, 0.78f }, 0.2f);
-    StartEvasionInvincibility(launchStarDuration_ + 0.2f);
-
-    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-        gpuParticleManager->Emit("launch_star_burst", launchStarStart_ + Vector3{ 0.0f, 0.7f, 0.0f });
-    }
+    launchStarController_.Start(*this, slimeAnimator_, destination, arcHeight, duration);
 }
 
 void Player::CancelLaunchStar(bool restoreControl)
 {
-    if (!launchStarActive_) {
-        return;
-    }
-
-    launchStarActive_ = false;
-    launchStarTimer_ = 0.0f;
-    launchStarTrailTimer_ = 0.0f;
-    SetCollisionAttribute(launchStarSavedCollisionAttribute_);
-    SetCollisionMask(launchStarSavedCollisionMask_);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetIsControlActive(
-        restoreControl && launchStarSavedControlActive_ && !isDead && !isCinematicLocked_);
+    launchStarController_.Cancel(*this, restoreControl);
 }
 
 void Player::UpdateLaunchStar(float deltaTime)
 {
-    if (!launchStarActive_) {
-        return;
-    }
-
-    launchStarTimer_ += (std::max)(0.0f, deltaTime);
-    const float t = std::clamp(launchStarTimer_ / launchStarDuration_, 0.0f, 1.0f);
-    const float eased = t * t * (3.0f - 2.0f * t);
-
-    Vector3 position = launchStarStart_ + (launchStarDestination_ - launchStarStart_) * eased;
-    position.y += std::sin(t * 3.14159265f) * launchStarArcHeight_;
-    SetTranslate(position);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetIsControlActive(false);
-
-    Vector3 direction = launchStarDestination_ - launchStarStart_;
-    direction.y = 0.0f;
-    if (Math::Length(direction) > 0.001f) {
-        direction = Math::Normalize(direction);
-        slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Jump);
-        slimeAnimator_.SetMotionDirection(direction);
-    }
-
-    if (!absorbEffectActive_ && !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead) {
-        slimeAnimator_.Update(this, deltaTime);
-    }
-
-    launchStarTrailTimer_ -= deltaTime;
-    if (launchStarTrailTimer_ <= 0.0f) {
-        if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-            gpuParticleManager->Emit("launch_star_trail", position);
-        }
-        launchStarTrailTimer_ = 0.045f;
-    }
-
-    if (t < 1.0f) {
-        return;
-    }
-
-    launchStarActive_ = false;
-    SetTranslate(launchStarDestination_);
-    SetRespawnPosition(launchStarDestination_);
-    SetVelocity({ 0.0f, -1.0f, 0.0f });
-    SetCollisionAttribute(launchStarSavedCollisionAttribute_);
-    SetCollisionMask(launchStarSavedCollisionMask_);
-    SetIsControlActive(launchStarSavedControlActive_);
-    TriggerSlimeImpulse({ 1.18f, 0.82f, 1.18f }, 0.18f);
-
-    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-        gpuParticleManager->Emit("launch_star_burst", launchStarDestination_ + Vector3{ 0.0f, 0.45f, 0.0f });
-    }
+    const bool updateAnimation = !absorbEffectActive_ && !enemyMorphReleaseActive_
+        && electricShockFeedbackTimer_ <= 0.0f && !isDead;
+    launchStarController_.Update(*this, slimeAnimator_, deltaTime, updateAnimation);
 }
 
-float Player::GetEnemyMorphReleaseRate() const
-{
-    if (!enemyMorphReleaseActive_ || enemyMorphReleaseDuration_ <= 0.0f) {
-        return 0.0f;
-    }
-    return std::clamp(enemyMorphReleaseTimer_ / enemyMorphReleaseDuration_, 0.0f, 1.0f);
-}
-
-bool Player::IsPinkSlimeMorphed() const
-{
-    return isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Slime;
-}
-
-void Player::ActivateCheckpoint(const Vector3& position)
-{
-    respawnPosition_ = position;
-    checkpointActivated_ = true;
-    const std::string currentMorph = GetEnemyTypeForCurrentMorph();
-    if (!currentMorph.empty()) {
-        checkpointMorphEnemyType_ = currentMorph;
-    }
-    RefreshCheckpointMorphSnapshot();
-}
-
-bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration)
-{
-    const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
-    const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemyType);
-    if (!descriptor || resolvedType == EnemyMorphType::None || isDead || isCinematicLocked_ ||
-        absorbEffectActive_ || enemyMorphReleaseActive_) {
-        return false;
-    }
-
-    if (baseCombatController_) {
-        baseCombatController_->Cancel(*this, true);
-    }
-    if (isEnemyMorphed_ && copyAbilityController_) {
-        copyAbilityController_->Cancel(*this);
-    }
-
-    // 記憶台は敵を吸収する通常経路を通らないため、所持中の敵をここで正規解放します。
-    // 参照だけを残すと変身解除後に敵が再び頭上へ追従し、カメラへ張り付いたように見えます。
-    ReleaseCarriedEnemy(true);
-    aimTargetObject_ = nullptr;
-    if (hookMarker_) {
-        hookMarker_->SetIsVisible(false);
-    }
-
-    const float currentMoveYaw = GetMoveYaw();
-    SaveEnemyMorphBaseAppearance(true);
-
-    enemyMorphType_ = resolvedType;
-    enemyMorphSource_ = nullptr;
-    enemyMorphHasTimeLimit_ = !unlimitedDuration;
-    enemyMorphDuration_ = kEnemyMorphDuration;
-    enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
-    enemyMorphEffectTimer_ = 0.0f;
-    enemyMorphVisualTimer_ = 0.0f;
-    enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
-    if (copyAbilityController_) {
-        copyAbilityController_->ActivateDefault(static_cast<int>(enemyMorphType_));
-    }
-    isEnemyMorphed_ = true;
-    CompleteEnemyMorphStart(currentMoveYaw);
-
-    SetModel(std::string(descriptor->modelName));
-    SetTexture("");
-    SetMaterialType(25);
-    SetEmissive(1.0f);
-    animName_.clear();
-    animationTime_ = 0.0f;
-    SetColor(descriptor->displayColor);
-    EmitEnemyMorphStartEffects();
-
-    DebugConsole::GetInstance()->AddLog("Stored copy applied: " + enemyType);
-    return true;
-}
-
-std::string Player::GetEnemyTypeForCurrentMorph() const
-{
-    if (!isEnemyMorphed_) {
-        return {};
-    }
-    switch (enemyMorphType_) {
-    case EnemyMorphType::Slime: return "Slime";
-    case EnemyMorphType::Bomber: return "Bomber";
-    case EnemyMorphType::FireSlime: return "FireSlime";
-    case EnemyMorphType::ThunderSlime: return "ThunderSlime";
-    case EnemyMorphType::WindSlime: return "WindSlime";
-    default: return {};
-    }
-}
-
-void Player::RefreshCheckpointMorphSnapshot()
-{
-    if (!checkpointActivated_) {
-        return;
-    }
-    const Vector3 position = respawnPosition_;
-    GameDataManager::GetInstance()->RequestStageCheckpointRespawn(
-        StageManager::GetInstance()->GetCurrentStageIndex(),
-        position.x, position.y, position.z, checkpointMorphEnemyType_);
-}
-
-void Player::BeginEnemyMorphRelease(bool expired)
-{
-    if (!isEnemyMorphed_ || enemyMorphReleaseActive_) {
-        return;
-    }
-
-    if (copyAbilityController_) {
-        copyAbilityController_->Cancel(*this);
-    }
-    evasionInvincibleTimer_ = 0.0f;
-    isEvasionInvincible_ = false;
-    UpdateColor();
-
-    enemyMorphReleaseActive_ = true;
-    enemyMorphReleaseBurstStarted_ = false;
-    enemyMorphReleaseExpired_ = expired;
-    enemyMorphReleaseTimer_ = 0.0f;
-    enemyMorphReleaseDuration_ = expired ? kEnemyMorphExpiredReleaseDuration : kEnemyMorphReleaseDuration;
-    enemyMorphReleaseBurstTime_ = expired ? kEnemyMorphExpiredReleaseBurstTime : kEnemyMorphReleaseBurstTime;
-    enemyMorphReleaseParticleTimer_ = 0.0f;
-    enemyMorphReleasePlayerScale_ = GetScale();
-    enemyMorphReleaseTint_ = GetEnemyMorphTint(enemyMorphType_);
-
-    const float yaw = GetMoveYaw();
-    enemyMorphReleaseDirection_ = { -std::sin(yaw), 0.0f, -std::cos(yaw) };
-    const float playerScale = (std::max)({
-        std::abs(savedMorphScale_.x),
-        std::abs(savedMorphScale_.y),
-        std::abs(savedMorphScale_.z),
-        0.1f
-    });
-    const float residueScale = std::clamp(playerScale * 0.32f, 0.38f, 0.82f);
-    enemyMorphReleaseVisualScale_ = { residueScale, residueScale, residueScale };
-
-    if (enemyMorphReleaseVisual_) {
-        enemyMorphReleaseVisual_->SetIsVisible(false);
-        enemyMorphReleaseVisual_->SetColor(enemyMorphReleaseTint_);
-        enemyMorphReleaseVisual_->SetScale({ 0.0f, 0.0f, 0.0f });
-    }
-
-    pendingAttack2_ = false;
-    comboWindowTimer_ = 0.0f;
-    attackInputBuffered_ = false;
-    attackInputBufferTimer_ = 0.0f;
-    DebugConsole::GetInstance()->AddLog(expired ? "Enemy morph release: expired." : "Enemy morph release: manual.");
-}
-
-void Player::EmitEnemyMorphReleaseBurst()
-{
-    if (enemyMorphReleaseBurstStarted_) {
-        return;
-    }
-
-    enemyMorphReleaseBurstStarted_ = true;
-    enemyMorphReleaseParticleTimer_ = 0.0f;
-    enemyMorphReleaseStartPosition_ = GetWorldPosition() + Vector3{ 0.0f, 0.82f, 0.0f };
-
-    if (enemyMorphReleaseVisual_) {
-        enemyMorphReleaseVisual_->SetTranslate(enemyMorphReleaseStartPosition_);
-        enemyMorphReleaseVisual_->SetRotation({ 0.0f, GetMoveYaw() + kPi, 0.0f });
-        enemyMorphReleaseVisual_->SetScale({
-            enemyMorphReleaseVisualScale_.x * 1.18f,
-            enemyMorphReleaseVisualScale_.y * 0.58f,
-            enemyMorphReleaseVisualScale_.z * 1.18f
-        });
-        enemyMorphReleaseVisual_->SetColor(enemyMorphReleaseTint_);
-        enemyMorphReleaseVisual_->SetIsVisible(true);
-        enemyMorphReleaseVisual_->UpdateLocalMatrix();
-        enemyMorphReleaseVisual_->UpdateWorldMatrix();
-    }
-
-    Vector3 burstDirection = {
-        enemyMorphReleaseDirection_.x,
-        0.42f,
-        enemyMorphReleaseDirection_.z
-    };
-    const float burstLength = Math::Length(burstDirection);
-    if (burstLength > 0.001f) {
-        burstDirection = burstDirection / burstLength;
-    }
-    if (particleSystem_) {
-        particleSystem_->SpawnParticles(
-            enemyMorphReleaseStartPosition_,
-            enemyMorphReleaseExpired_ ? 20 : 28,
-            1.45f,
-            &burstDirection,
-            enemyMorphReleaseExpired_ ? 20.0f : 25.0f,
-            enemyMorphReleaseTint_,
-            { enemyMorphReleaseTint_.x, enemyMorphReleaseTint_.y, enemyMorphReleaseTint_.z, 0.0f },
-            0.10f,
-            0.34f,
-            0.32f,
-            0.04f
-        );
-    }
-
-    if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
-        EmitThunderMorphBurst(enemyMorphReleaseStartPosition_, enemyMorphReleaseVisualScale_);
-    }
-    else if (enemyMorphType_ == EnemyMorphType::Slime) {
-        EmitCopyMorphPreset(kPinkSlimeMorphBurstPreset, enemyMorphReleaseStartPosition_);
-    }
-    else if (enemyMorphType_ == EnemyMorphType::Bomber) {
-        SpawnCopyMorphPulse(kBomberMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.24f, 1.24f, 1.24f });
-        EmitCopyMorphPreset(kBomberMorphAuraPreset, enemyMorphReleaseStartPosition_);
-    }
-    else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
-        SpawnCopyMorphPulse(kFireMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.28f, 1.28f, 1.28f });
-        EmitCopyMorphPreset(kFireMorphAuraPreset, enemyMorphReleaseStartPosition_);
-    }
-    else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
-        SpawnCopyMorphPulse(kWindMorphPulseEffectPath, enemyMorphReleaseStartPosition_, { 1.32f, 1.08f, 1.32f });
-        EmitCopyMorphPreset(kWindMorphAuraPreset, enemyMorphReleaseStartPosition_);
-    }
-
-    RestoreEnemyMorphAppearance();
-}
-
-void Player::UpdateEnemyMorphRelease(float deltaTime)
-{
-    if (!enemyMorphReleaseActive_) {
-        return;
-    }
-
-    if (deltaTime > 0.0f) {
-        enemyMorphReleaseTimer_ += deltaTime;
-        enemyMorphReleaseParticleTimer_ -= deltaTime;
-    }
-
-    if (!enemyMorphReleaseBurstStarted_ && enemyMorphReleaseTimer_ < enemyMorphReleaseBurstTime_) {
-        const float t = std::clamp(enemyMorphReleaseTimer_ / (std::max)(enemyMorphReleaseBurstTime_, 0.001f), 0.0f, 1.0f);
-        const float eased = t * t * (3.0f - 2.0f * t);
-        SetScale({
-            enemyMorphReleasePlayerScale_.x * (1.0f + eased * 0.18f),
-            enemyMorphReleasePlayerScale_.y * (1.0f - eased * 0.38f),
-            enemyMorphReleasePlayerScale_.z * (1.0f + eased * 0.18f)
-        });
-        SetColor(Math::Lerp(GetColor(), { 1.0f, 1.0f, 1.0f, 1.0f }, eased * 0.22f));
-        UpdateLocalMatrix();
-        UpdateWorldMatrix();
-        return;
-    }
-
-    if (!enemyMorphReleaseBurstStarted_) {
-        EmitEnemyMorphReleaseBurst();
-    }
-
-    const float flightDuration = (std::max)(enemyMorphReleaseDuration_ - enemyMorphReleaseBurstTime_, 0.001f);
-    const float flightTime = (std::max)(0.0f, enemyMorphReleaseTimer_ - enemyMorphReleaseBurstTime_);
-    const float t = std::clamp(flightTime / flightDuration, 0.0f, 1.0f);
-    const float eased = 1.0f - std::pow(1.0f - t, 3.0f);
-    const float wobble = std::sin(t * kPi * 4.0f) * std::pow(1.0f - t, 1.35f);
-
-    SetScale({
-        savedMorphScale_.x * (1.0f + wobble * 0.11f),
-        savedMorphScale_.y * (1.0f - wobble * 0.09f),
-        savedMorphScale_.z * (1.0f + wobble * 0.11f)
-    });
-    UpdateLocalMatrix();
-    UpdateWorldMatrix();
-
-    if (enemyMorphReleaseVisual_) {
-        Vector3 position = enemyMorphReleaseStartPosition_;
-        position.x += enemyMorphReleaseDirection_.x * 2.25f * eased;
-        position.z += enemyMorphReleaseDirection_.z * 2.25f * eased;
-        position.y += std::sin(t * kPi) * 0.92f - t * 0.34f;
-
-        float scaleRate = 1.0f;
-        if (t < 0.20f) {
-            scaleRate = 0.72f + (t / 0.20f) * 0.38f;
-        }
-        else if (t > 0.68f) {
-            scaleRate = std::clamp((1.0f - t) / 0.32f, 0.0f, 1.0f);
-        }
-        const float residueWobble = std::sin(t * kPi * 5.0f) * (1.0f - t) * 0.18f;
-        enemyMorphReleaseVisual_->SetTranslate(position);
-        enemyMorphReleaseVisual_->SetScale({
-            enemyMorphReleaseVisualScale_.x * scaleRate * (1.0f + residueWobble),
-            enemyMorphReleaseVisualScale_.y * scaleRate * (1.0f - residueWobble * 0.75f),
-            enemyMorphReleaseVisualScale_.z * scaleRate * (1.0f + residueWobble)
-        });
-        enemyMorphReleaseVisual_->SetColor({
-            enemyMorphReleaseTint_.x,
-            enemyMorphReleaseTint_.y,
-            enemyMorphReleaseTint_.z,
-            std::clamp((1.0f - t) * 1.8f, 0.0f, 1.0f)
-        });
-        enemyMorphReleaseVisual_->Update(deltaTime);
-        enemyMorphReleaseVisual_->UpdateLocalMatrix();
-        enemyMorphReleaseVisual_->UpdateWorldMatrix();
-    }
-
-    if (enemyMorphReleaseParticleTimer_ <= 0.0f && t < 0.82f) {
-        if (enemyMorphReleaseExpired_ || t > 0.18f) {
-            if (particleSystem_) {
-                Vector3 trailDirection = {
-                    -enemyMorphReleaseDirection_.x,
-                    0.12f,
-                    -enemyMorphReleaseDirection_.z
-                };
-                Vector3 trailPosition = enemyMorphReleaseVisual_
-                    ? enemyMorphReleaseVisual_->GetWorldPosition()
-                    : enemyMorphReleaseStartPosition_;
-                particleSystem_->SpawnParticles(
-                    trailPosition,
-                    4,
-                    0.55f,
-                    &trailDirection,
-                    6.0f,
-                    enemyMorphReleaseTint_,
-                    { enemyMorphReleaseTint_.x, enemyMorphReleaseTint_.y, enemyMorphReleaseTint_.z, 0.0f },
-                    0.04f,
-                    0.14f,
-                    0.16f,
-                    0.01f
-                );
-            }
-            enemyMorphReleaseParticleTimer_ = 0.055f;
-        }
-    }
-
-    if (enemyMorphReleaseTimer_ >= enemyMorphReleaseDuration_) {
-        const Vector3 reboundScale = {
-            savedMorphScale_.x * 1.08f,
-            savedMorphScale_.y * 0.92f,
-            savedMorphScale_.z * 1.08f
-        };
-        ResetEnemyMorphRelease();
-        TriggerSlimeImpulse(reboundScale, 0.16f);
-    }
-}
-
-void Player::RestoreEnemyMorphAppearance()
-{
-    if (!isEnemyMorphed_) {
-        return;
-    }
-
-    const float currentMoveYaw = GetMoveYaw();
-    BaseEnemy* morphSource = enemyMorphSource_;
-
-    if (copyAbilityController_) {
-        copyAbilityController_->Cancel(*this);
-    }
-
-    if (!savedMorphModelName_.empty()) {
-        SetModel(savedMorphModelName_);
-    }
-    if (!savedMorphTexturePath_.empty()) {
-        SetTexture(savedMorphTexturePath_);
-    } else {
-        SetTexture("");
-    }
-    SetMaterialType(savedMorphMaterialType_);
-    SetEmissive(savedMorphEmissive_);
-    SetColor(savedMorphColor_);
-    SetScale(savedMorphScale_);
-    animName_ = savedMorphAnimName_;
-    isAnimLoop_ = savedMorphAnimLoop_;
-    animationTime_ = 0.0f;
-
-    const auto& children = GetChildren();
-    for (size_t i = 0; i < children.size(); ++i) {
-        Object3d* child = children[i];
-        if (child) {
-            child->SetColor(savedMorphColor_);
-            if (i < savedMorphChildVisible_.size()) {
-                child->SetIsVisible(savedMorphChildVisible_[i]);
-            } else {
-                child->SetIsVisible(true);
+void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
+    if (!IsEditorInternal()) return;
+    for (auto& object : copyPreviewObjects_) {
+        object->Update(deltaTime);
+        if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
+            Vector3 position = enemy->GetTranslate();
+            Vector3 velocity = enemy->GetVelocity();
+            if (position.y < groundY + 0.48f && velocity.y <= 0) {
+                position.y = groundY + 0.48f;
+                velocity.y = 0;
+                velocity.x *= 0.96f;
+                velocity.z *= 0.96f;
+                enemy->SetTranslate(position);
+                enemy->SetVelocity(velocity);
+                enemy->SetGrounded(true);
+                enemy->UpdateWorldMatrix(true);
             }
         }
     }
-
-    if (morphSource && !morphSource->isDead && !morphSource->IsDefeatEffectPlaying()) {
-        morphSource->SetIsVisible(savedMorphSourceVisible_);
-    }
-    if (carriedEnemy_ == morphSource) {
-        SetCarriedEnemy(nullptr);
-    }
-
-    isEnemyMorphed_ = false;
-    enemyMorphType_ = EnemyMorphType::None;
-    enemyMorphSource_ = nullptr;
-    enemyMorphHasTimeLimit_ = true;
-    enemyMorphTimer_ = 0.0f;
-    enemyMorphEffectTimer_ = 0.0f;
-    enemyMorphVisualTimer_ = 0.0f;
-    savedMorphChildVisible_.clear();
-    savedMorphSourceVisible_ = true;
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        camera->SetAimCameraSuppressed(false);
-    }
-    SetMoveYaw(currentMoveYaw);
-    DebugConsole::GetInstance()->AddLog("Enemy morph end.");
 }
 
-void Player::ResetEnemyMorphRelease()
-{
-    if (enemyMorphReleaseVisual_) {
-        enemyMorphReleaseVisual_->SetIsVisible(false);
-        enemyMorphReleaseVisual_->SetScale({ 0.0f, 0.0f, 0.0f });
-    }
-    if (enemyMorphReleaseActive_ && !isEnemyMorphed_) {
-        SetScale(savedMorphScale_);
-        SetColor(savedMorphColor_);
-        UpdateLocalMatrix();
-        UpdateWorldMatrix();
-    }
-    enemyMorphReleaseActive_ = false;
-    enemyMorphReleaseBurstStarted_ = false;
-    enemyMorphReleaseExpired_ = false;
-    enemyMorphReleaseTimer_ = 0.0f;
-    enemyMorphReleaseParticleTimer_ = 0.0f;
-}
-
-void Player::CancelEnemyMorph()
-{
-    if (absorbEffectActive_) {
-        CancelAbsorbEffect(true);
-    }
-    ResetEnemyMorphRelease();
-    RestoreEnemyMorphAppearance();
-    if (hookMarker_) {
-        hookMarker_->SetIsVisible(false);
-    }
-    aimTargetObject_ = nullptr;
-    evasionInvincibleTimer_ = 0.0f;
-    isEvasionInvincible_ = false;
-    UpdateColor();
-}
-
-#ifdef USE_IMGUI
-void Player::DebugForceEnemyMorph(BaseEnemy* enemy)
-{
-    if (!enemy || isDead || isCinematicLocked_) {
-        return;
-    }
-
-    // 通常の吸収・運搬状態を先に解消し、能力側に古い敵参照を残さないようにします。
-    CancelEnemyMorph();
-    ReleaseCarriedEnemy(true);
-    StartEnemyMorph(enemy);
-
-    // デバッグ中は時間切れで解除されないようにし、任意の能力を継続して確認できます。
-    if (isEnemyMorphed_) {
-        enemyMorphHasTimeLimit_ = false;
-        enemyMorphTimer_ = 0.0f;
-    }
-}
-
-void Player::DebugClearEnemyMorph()
-{
-    CancelEnemyMorph();
-}
-
-void Player::DebugPrepareForTeleport()
-{
-    // 移動系演出を先に止め、保存されていた衝突設定を通常状態へ戻します。
-    if (mover_) {
-        mover_->ResetTransientState();
-    }
-    CancelLaunchStar(false);
-    if (gateReturnAnimation_.IsActive()) {
-        gateReturnAnimation_.Stop(this, false);
-    }
-    if (isCinematicLocked_) {
-        EndCinematicLock(false);
-    }
-
-    // 攻撃・コピー能力の更新が次フレームに残らないよう、各セッションを明示的に破棄します。
-    if (baseCombatController_) {
-        baseCombatController_->Cancel(*this, false);
-    }
-    if (copyAbilityController_) {
-        copyAbilityController_->Cancel(*this);
-    }
-    CancelEnemyMorph();
-    ReleaseCarriedEnemy(true);
-
-    // 感電は固定座標を毎フレーム再適用するため、ワープ座標を設定する前に必ず解除します。
-    if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {
-        electricShockPendingInvincibleDuration_ = 0.0f;
-        EndElectricShockFeedback();
-    }
-
-    RestoreDamageBlinkVisibility();
-    damageCooldownTimer_ = 0.0f;
-    evasionInvincibleTimer_ = 0.0f;
-    invincibleBlinkTimer_ = 0.0f;
-    isEvasionInvincible_ = false;
-    SetDamageInvincible(false);
-    SetDashInvincible(false);
-    SetGuardInvincible(false);
-
-    pendingAttack2_ = false;
-    comboWindowTimer_ = 0.0f;
-    attackInputBuffered_ = false;
-    attackInputBufferTimer_ = 0.0f;
-    forcedSlimeAnimationModeActive_ = false;
-    aimTargetObject_ = nullptr;
-    if (hookMarker_) {
-        hookMarker_->SetIsVisible(false);
-    }
-
-    ClearSlimeAbilityMotion();
-    ChangeState(std::make_unique<PlayerStateIdle>());
-    slimeAnimator_.Reset(managedBaseScale_, this);
-    slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Idle);
-
-    Vector3 stableRotation = GetRotation();
-    stableRotation.x = baseRotation_.x;
-    stableRotation.z = baseRotation_.z;
-    SetScale(managedBaseScale_);
-    SetRotation(stableRotation);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetIsControlActive(false);
-    SetIsVisible(true);
-    UpdateColor();
-}
-#endif
-
-void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration)
-{
-    if (tutorialSafetyEnabled_ || isDead || isCinematicLocked_ || electricShockControlLocked_) {
-        return;
-    }
-
-    if (baseCombatController_) {
-        baseCombatController_->Cancel(*this, false);
-    }
-
-    damageCooldownTimer_ = (std::max)(damageCooldownTimer_, (std::max)(0.0f, invincibleDuration));
-    SetDamageInvincible(damageCooldownTimer_ > 0.0f);
-    ChangeState(std::make_unique<PlayerStateDamage>(knockbackDirection));
-}
-
-void Player::StartElectricShockFeedback(float duration, float invincibleDuration)
-{
-    if (tutorialSafetyEnabled_) {
-        return;
-    }
-
-    duration = (std::max)(0.0f, duration);
-    electricShockPendingInvincibleDuration_ = (std::max)(
-        electricShockPendingInvincibleDuration_,
-        (std::max)(0.0f, invincibleDuration)
-    );
-
-    if (duration <= 0.0f) {
-        EndElectricShockFeedback();
-        return;
-    }
-
-    RestoreDamageBlinkVisibility();
-
-    if (!electricShockControlLocked_) {
-        electricShockWasControlActive_ = isControlActive_;
-        electricShockLockedPosition_ = GetTranslate();
-        electricShockBaseScale_ = GetScale();
-        electricShockBaseRotation_ = GetRotation();
-        electricShockControlLocked_ = true;
-    }
-
-    electricShockFeedbackTimer_ = (std::max)(electricShockFeedbackTimer_, duration);
-    electricShockFeedbackTotalDuration_ = (std::max)(electricShockFeedbackTotalDuration_, electricShockFeedbackTimer_);
-    electricShockFeedbackEmitTimer_ = 0.0f;
-
-    SetIsControlActive(false);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    SetTranslate(electricShockLockedPosition_);
-    UpdateElectricShockAuraEffect(1.0f / 60.0f);
-}
-
-void Player::UpdateElectricShockFeedback(float deltaTime)
-{
-    if (electricShockFeedbackTimer_ <= 0.0f || deltaTime <= 0.0f) {
-        return;
-    }
-
-    const float previousShockTimer = electricShockFeedbackTimer_;
-    electricShockFeedbackTimer_ = (std::max)(0.0f, electricShockFeedbackTimer_ - deltaTime);
-    electricShockFeedbackEmitTimer_ -= deltaTime;
-
-    const float totalDuration = (std::max)(electricShockFeedbackTotalDuration_, 0.001f);
-    const float elapsed = (std::max)(0.0f, totalDuration - electricShockFeedbackTimer_);
-    const float flicker = std::sin(elapsed * 74.0f);
-    const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
-    SetColor({
-        (std::clamp)(base.x + 0.24f * std::max(0.0f, flicker), 0.0f, 1.0f),
-        (std::clamp)(base.y + 0.18f, 0.0f, 1.0f),
-        (std::clamp)(base.z + 0.42f * std::max(0.0f, -flicker), 0.0f, 1.0f),
-        base.w
-    });
-
-    if (electricShockControlLocked_) {
-        Vector3 shockPosition = electricShockLockedPosition_;
-        shockPosition.x += std::sin(elapsed * 94.0f) * kElectricShockShakeAmount;
-        shockPosition.z += std::cos(elapsed * 83.0f) * kElectricShockShakeAmount * 0.75f;
-        SetTranslate(shockPosition);
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
-
-        const float squash = 0.055f + std::abs(std::sin(elapsed * 46.0f)) * 0.075f;
-        SetScale({
-            electricShockBaseScale_.x * (1.0f + squash),
-            electricShockBaseScale_.y * (1.0f - squash * 0.65f),
-            electricShockBaseScale_.z * (1.0f + squash * 0.9f)
-        });
-
-        Vector3 shockRotation = electricShockBaseRotation_;
-        shockRotation.x += std::sin(elapsed * 67.0f) * 0.045f;
-        shockRotation.z += std::sin(elapsed * 89.0f) * 0.075f;
-        SetRotation(shockRotation);
-    }
-
-    UpdateElectricShockAuraEffect(deltaTime);
-
-    if (electricShockFeedbackEmitTimer_ <= 0.0f) {
-        EmitOuterThunderParticles(GetWorldPosition(), GetScale(), elapsed * 3.4f, 5);
-        electricShockFeedbackEmitTimer_ = 0.045f;
-    }
-
-    if (previousShockTimer > 0.0f && electricShockFeedbackTimer_ <= 0.0f) {
-        EndElectricShockFeedback();
-    }
-}
-
-void Player::EndElectricShockFeedback()
-{
-    if (electricShockControlLocked_) {
-        SetTranslate(electricShockLockedPosition_);
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
-        SetScale(electricShockBaseScale_);
-        SetRotation(electricShockBaseRotation_);
-        SetIsControlActive(!isDead && electricShockWasControlActive_);
-        electricShockControlLocked_ = false;
-    }
-
-    electricShockFeedbackTimer_ = 0.0f;
-    electricShockFeedbackEmitTimer_ = 0.0f;
-    electricShockFeedbackTotalDuration_ = 0.0f;
-    HideElectricShockAuraEffect();
-    UpdateColor();
-
-    const float invincibleDuration = electricShockPendingInvincibleDuration_;
-    electricShockPendingInvincibleDuration_ = 0.0f;
-    if (invincibleDuration > 0.0f && !isDead) {
-        damageCooldownTimer_ = (std::max)(damageCooldownTimer_, invincibleDuration);
-        invincibleBlinkTimer_ = 0.0f;
-        SetDamageInvincible(true);
-    }
-}
-
-void Player::InitializeElectricShockAuraEffect()
-{
-    if (!common_ || electricShockAuraEffect_) {
-        return;
-    }
-
-    electricShockAuraEffect_ = std::make_unique<EffectObject3d>();
-    electricShockAuraEffect_->Initialize(common_);
-    electricShockAuraEffect_->SetName("Player_ElectricShockAura");
-    if (!electricShockAuraEffect_->LoadFromJson(kElectricShockAuraEffectPath)) {
-        electricShockAuraEffect_.reset();
-        return;
-    }
-    electricShockAuraEffect_->SetIsVisible(false);
-    electricShockAuraEffect_->Play(99999.0f);
-}
-
-void Player::UpdateElectricShockAuraEffect(float deltaTime)
-{
-    if (!electricShockAuraEffect_) {
-        InitializeElectricShockAuraEffect();
-    }
-    if (!electricShockAuraEffect_) {
-        return;
-    }
-
-    Vector3 auraPos{};
-    float horizontalDiameter = 1.0f;
-    float verticalDiameter = 1.0f;
-    CalculateElectricShockAuraShape(auraPos, horizontalDiameter, verticalDiameter);
-
-    float yaw = GetRotation().y;
-    Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
-    if (camera) {
-        const Vector3 toCamera = camera->GetEye() - auraPos;
-        if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
-            yaw = std::atan2(toCamera.x, toCamera.z);
+void Player::UpdateCopyAdornment() {
+    const char* model = nullptr;
+    if (isEnemyMorphed_ && !enemyMorphReleaseActive_) {
+        switch (enemyMorphType_) {
+        case EnemyMorphType::Slime: model = "Characters/copy_band_pink"; break;
+        case EnemyMorphType::FireSlime: model = "Characters/copy_band_fire"; break;
+        case EnemyMorphType::ThunderSlime: model = "Characters/copy_band_thunder"; break;
+        case EnemyMorphType::WindSlime: model = "Characters/copy_band_wind"; break;
+        case EnemyMorphType::Bomber: model = "Characters/copy_band_bomb"; break;
+        default: break; // 覇王は既存モデルに王冠を含みます。
         }
     }
-
-    electricShockAuraEffect_->SetIsVisible(true);
-    electricShockAuraEffect_->Update(deltaTime);
-    electricShockAuraEffect_->SetTranslate(auraPos);
-    electricShockAuraEffect_->SetRotation({ 1.5707963f, yaw, 0.0f });
-    electricShockAuraEffect_->SetScale({ horizontalDiameter, 1.0f, verticalDiameter });
-    electricShockAuraEffect_->UpdateLocalMatrix();
-    electricShockAuraEffect_->UpdateWorldMatrix();
+    if (!model || !GetIsVisible()) {
+        if (copyAdornment_) copyAdornment_->SetIsVisible(false);
+        return;
+    }
+    if (!copyAdornment_) {
+        copyAdornment_ = std::make_unique<Object3d>();
+        copyAdornment_->Initialize(common_);
+        copyAdornment_->SetColliderType(ColliderType::kNone);
+        copyAdornment_->SetCollisionAttribute(0);
+        copyAdornment_->SetCollisionMask(0);
+        copyAdornment_->SetMaterialType(0);
+        copyAdornment_->SetEnableLighting(true);
+    }
+    if (copyAdornment_->GetModelName() != model) copyAdornment_->SetModel(model);
+    copyAdornment_->SetIsVisible(true);
+    // 本体の潰れ・伸び・回転を含めて追従。能力解除時は描かず、元敵には付けません。
+    *copyAdornment_->GetTransform() = transform_;
+    if (auto* decorationRenderer = copyAdornment_->GetMeshRenderer()) {
+        if (auto* bodyRenderer = GetMeshRenderer()) {
+            decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(),
+                bodyRenderer->GetVisualRotation(), bodyRenderer->GetVisualOffset());
+            decorationRenderer->SetVisualShear(bodyRenderer->GetVisualShear(), bodyRenderer->GetVisualShearPivotY());
+        }
+    }
+    copyAdornment_->UpdateWorldMatrix(true);
 }
 
-void Player::HideElectricShockAuraEffect()
-{
-    if (electricShockAuraEffect_) {
-        electricShockAuraEffect_->SetIsVisible(false);
+void Player::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    Character::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    if (!GetIsVisible()) return;
+    UpdateCopyAdornment();
+    if (copyAdornment_ && copyAdornment_->GetIsVisible())
+        copyAdornment_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    if (copyAbilityController_) copyAbilityController_->Draw(*this, pointLightResource, spotLightResource, camera, previewBufferIndex);
+    if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible())
+        enemyMorphReleaseVisual_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    for (auto& object : copyPreviewObjects_) object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+}
+
+void Player::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+    Character::DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+    if (!GetIsVisible()) return;
+    auto* lights = LightManager::GetInstance();
+    if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible())
+        enemyMorphReleaseVisual_->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(), previewBufferIndex);
+    for (auto& object : copyPreviewObjects_)
+        object->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(), previewBufferIndex);
+}
+
+bool Player::HasOwnedSpecialMaterialVisuals() const {
+    return copyAbilityController_ && copyAbilityController_->HasOwnedVisuals();
+}
+
+void Player::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (copyAbilityController_ && GetIsVisible()) {
+        copyAbilityController_->DrawOwnedVisuals(*this, depthSrvHandle, grabSrvHandle);
     }
 }
 
-void Player::CalculateElectricShockAuraShape(Vector3& center, float& horizontalDiameter, float& verticalDiameter) const
-{
-    const Vector3 scale = GetScale();
-    const float maxXZ = (std::max)({ std::abs(scale.x), std::abs(scale.z), 1.0f });
-    const float yScale = (std::max)(std::abs(scale.y), 0.18f);
-
-    horizontalDiameter = (std::max)(2.55f, maxXZ * 1.35f);
-    verticalDiameter = (std::max)(0.46f, yScale * 1.28f);
-
-    center = GetWorldPosition();
-    center.y += (std::max)(0.22f, yScale * 0.43f);
-}
-
-Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyType) const
-{
-    if (enemyType == "Bomber") return EnemyMorphType::Bomber;
-    if (enemyType == "Bat") return EnemyMorphType::Bat;
-    if (enemyType == "BeamDrone") return EnemyMorphType::BeamDrone;
-    if (enemyType == "Mushroom") return EnemyMorphType::Mushroom;
-    // 巨大スライムはフックで分裂して小型化するため、直接コピー対象にはしません。
-    if (enemyType == "GiantSlime") return EnemyMorphType::None;
-    if (enemyType == "FireSlime") return EnemyMorphType::FireSlime;
-    if (enemyType == "ThunderSlime") return EnemyMorphType::ThunderSlime;
-    if (enemyType == "WindSlime") return EnemyMorphType::WindSlime;
-    if (enemyType == "Slime") return EnemyMorphType::Slime;
-    return EnemyMorphType::None;
-}
-
-Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const
-{
-    switch (type) {
-    case EnemyMorphType::Bomber:
-        return { 1.0f, 0.45f, 0.22f, 1.0f };
-    case EnemyMorphType::Bat:
-        return { 0.55f, 0.64f, 1.0f, 1.0f };
-    case EnemyMorphType::BeamDrone:
-        return { 0.42f, 0.95f, 1.0f, 1.0f };
-    case EnemyMorphType::Mushroom:
-        return { 1.0f, 0.34f, 0.72f, 1.0f };
-    case EnemyMorphType::FireSlime:
-        return { 1.0f, 0.24f, 0.16f, 1.0f };
-    case EnemyMorphType::ThunderSlime:
-        return { 1.0f, 0.92f, 0.18f, 1.0f };
-    case EnemyMorphType::WindSlime:
-        return { 0.42f, 1.0f, 0.82f, 1.0f };
-    case EnemyMorphType::Slime:
-        return { 1.0f, 0.46f, 0.86f, 1.0f };
-    default:
-        return { 1.0f, 1.0f, 1.0f, 1.0f };
+void Player::DrawOwnedSpecialMaterialVisualsForCamera(
+    Camera* camera,
+    uint32_t depthSrvHandle,
+    uint32_t grabSrvHandle,
+    int previewBufferIndex) {
+    if (copyAbilityController_ && GetIsVisible()) {
+        copyAbilityController_->DrawOwnedVisuals(
+            *this, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
     }
 }
 
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
     Character::Draw(pointLightResource, spotLightResource);
+    UpdateCopyAdornment();
+    if (copyAdornment_ && copyAdornment_->GetIsVisible()) copyAdornment_->Draw(pointLightResource, spotLightResource);
+    for (auto& object : copyPreviewObjects_) object->Draw(pointLightResource, spotLightResource);
+    if (copyAbilityController_ && GetIsVisible()) copyAbilityController_->Draw(*this, pointLightResource, spotLightResource);
     if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible()) {
         enemyMorphReleaseVisual_->Draw(pointLightResource, spotLightResource);
     }
@@ -2386,14 +1030,11 @@ bool Player::OnCollision(Object3d* other)
     // =======================================================
     // 2. ダメージ処理 / 突進攻撃
     // =======================================================
-    if (attribute & (kEnemy | kEnemyAttack))
+    const BaseEnemy* bodyEnemy = (attribute & kEnemy) ? dynamic_cast<const BaseEnemy*>(other) : nullptr;
+    const float bodyAttackDamage = bodyEnemy ? bodyEnemy->GetActiveBodyAttackDamage() : 0.0f;
+    // 本体への接触と攻撃への命中は別。物理解決と下のギミック通知は常に維持します。
+    if ((attribute & kEnemyAttack) || bodyAttackDamage > 0.0f)
     {
-        // リングバーナーは固定足場でもあるため、上面へ着地した時だけ接触ダメージを発生させません。
-        // 側面接触と、砲台から放たれる熱輪のダメージは通常どおり有効です。
-        if ((attribute & kEnemy) && other->GetEnemyType() == "RingBurner" && info.normal.y > 0.55f) {
-            return true;
-        }
-
         // ピンクガードは単にダメージを無視するだけでなく、受け止めた瞬間を
         // コピー能力へ通知して反動モーションと次のバウンド強化へつなげます。
         if (isGuardInvincible_ && copyAbilityController_) {
@@ -2411,7 +1052,8 @@ bool Player::OnCollision(Object3d* other)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = attackBullet ? attackBullet->GetDamage() : 1.0f;
+            dmgEvent.damageAmount = attackBullet ? attackBullet->GetDamage()
+                : (bodyAttackDamage > 0.0f ? bodyAttackDamage : 1.0f);
             if (attackBullet) {
                 dmgEvent.damageType = attackBullet->GetDamageType();
                 dmgEvent.statusEffect = attackBullet->GetStatusEffect();
@@ -2470,6 +1112,10 @@ void Player::ApplyIceSurface(float duration, float friction, float steering)
     {
         mover_->ApplyIceSurface(duration, friction, steering);
     }
+}
+
+void Player::SetPlatformMotion(const Vector3& velocity) {
+    if (mover_) mover_->SetPlatformMotion(velocity);
 }
 
 // =================================================================
@@ -2587,7 +1233,7 @@ void Player::StopGateReturnAnimation(bool restoreControl)
     gateReturnAnimation_.Stop(this, restoreControl);
 }
 
-void Player::BeginCinematicLock()
+void Player::BeginCinematicLock(bool preserveCopyAbility)
 {
     if (isCinematicLocked_ || isDead) {
         return;
@@ -2602,7 +1248,10 @@ void Player::BeginCinematicLock()
     if (baseCombatController_) {
         baseCombatController_->Cancel(*this, false);
     }
-    CancelEnemyMorph();
+    // ボス導入ではコピー能力を維持し、入力と戦闘状態だけを止めます。
+    if (!preserveCopyAbility) {
+        CancelEnemyMorph();
+    }
     ReleaseCarriedEnemy(true);
     if (electricShockFeedbackTimer_ > 0.0f || electricShockControlLocked_) {
         electricShockPendingInvincibleDuration_ = 0.0f;
@@ -2617,9 +1266,7 @@ void Player::BeginCinematicLock()
     SetDamageInvincible(false);
     SetDashInvincible(false);
     pendingAttack2_ = false;
-    comboWindowTimer_ = 0.0f;
-    attackInputBuffered_ = false;
-    attackInputBufferTimer_ = 0.0f;
+    attackInputBuffer_.ClearPendingInput();
 
     // Damage Stateなどの終了処理で基準姿勢へ戻してから、演出側が姿勢を取得します。
     ChangeState(std::make_unique<PlayerStateIdle>());
@@ -2629,7 +1276,9 @@ void Player::BeginCinematicLock()
     Vector3 stableRotation = GetRotation();
     stableRotation.x = baseRotation_.x;
     stableRotation.z = baseRotation_.z;
-    SetScale(managedBaseScale_);
+    if (!preserveCopyAbility || !isEnemyMorphed_) {
+        SetScale(managedBaseScale_);
+    }
     SetRotation(stableRotation);
     SetVelocity({ 0.0f, 0.0f, 0.0f });
     SetIsControlActive(false);
@@ -2784,7 +1433,8 @@ void Player::UpdateColor() {
         : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
 
     if (isGuardInvincible_) {
-        targetColor = { 1.0f, 0.36f, 0.80f, 1.0f };
+        // 通常のピンクと区別できる、身を固めた濃いローズ色。
+        targetColor = { 0.78f, 0.12f, 0.34f, 1.0f };
     }
     else if (isDashInvincible_ || isEvasionInvincible_) {
         targetColor = { 0.18f, 0.82f, 1.0f, 1.0f }; // 回避中は雷を思わせる水色を設定
@@ -2804,12 +1454,12 @@ void Player::UpdateColor() {
 // =======================================================
 void Player::StartComboWindow(float duration)
 {
-    comboWindowTimer_ = std::max(0.0f, duration);
+    attackInputBuffer_.StartComboWindow(duration);
 }
 
 bool Player::IsComboWindowActive() const
 {
-    return comboWindowTimer_ > 0.0f;
+    return attackInputBuffer_.IsComboWindowActive();
 }
 
 // =======================================================
@@ -2817,25 +1467,15 @@ bool Player::IsComboWindowActive() const
 // =======================================================
 void Player::RecordAttackInput(float duration)
 {
-    attackInputBuffered_ = true;
-    attackInputBufferTimer_ = std::max(0.0f, duration);
-    attackBufferUsedForStateStart_ = false;
+    attackInputBuffer_.Record(duration);
 }
 
 void Player::MarkAttackBufferUsedForStateStart()
 {
-    if (attackInputBuffered_) attackBufferUsedForStateStart_ = true;
+    attackInputBuffer_.MarkUsedForStateStart();
 }
 
 bool Player::ConsumeBufferedAttackInput()
 {
-    if (attackInputBuffered_ && !attackBufferUsedForStateStart_)
-    {
-        // consume
-        attackInputBuffered_ = false;
-        attackInputBufferTimer_ = 0.0f;
-        attackBufferUsedForStateStart_ = false;
-        return true;
-    }
-    return false;
+    return attackInputBuffer_.Consume();
 }

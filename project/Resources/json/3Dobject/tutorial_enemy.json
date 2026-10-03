@@ -1,124 +1,549 @@
 {
-  "objects": [
-    {
-      "type": "Enemy",
-      "saveCategory": "Enemy",
-      "name": "Tutorial_PinkSlime_Throw",
-      "guid": "a38277e9-bd94-48d6-9e7a-5e006ad8bb21",
-      "enemyType": "Slime",
-      "gimmickType": "",
-      "itemType": "",
-      "position": [20.0, -0.62, 4.0],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [0.8, 1.3, 0.8],
-      "materialType": 25,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": true,
-      "param": {
-        "enemyType": "Slime"
-      },
-      "parentGuid": "",
-      "parentName": ""
-    },
-    {
-      "type": "Enemy",
-      "saveCategory": "Enemy",
-      "name": "Tutorial_PinkSlime_Absorb",
-      "guid": "8e1bc73d-f2f9-4ab0-8c56-c71d3f2ef812",
-      "enemyType": "Slime",
-      "gimmickType": "",
-      "itemType": "",
-      "position": [24.0, -0.62, 8.0],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [0.8, 1.3, 0.8],
-      "materialType": 25,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": true,
-      "param": {
-        "enemyType": "Slime"
-      },
-      "parentGuid": "",
-      "parentName": ""
-    },
-    {
-      "type": "Enemy",
-      "saveCategory": "Enemy",
-      "name": "Tutorial_AbilityTarget_0",
-      "guid": "532c83e9-2b2a-4657-8f47-86cd317d8b30",
-      "enemyType": "Slime",
-      "gimmickType": "",
-      "itemType": "",
-      "position": [28.0, -0.62, 5.7],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [0.8, 1.3, 0.8],
-      "materialType": 25,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": true,
-      "param": {
-        "enemyType": "Slime"
-      },
-      "parentGuid": "",
-      "parentName": ""
-    },
-    {
-      "type": "Enemy",
-      "saveCategory": "Enemy",
-      "name": "Tutorial_AbilityTarget_1",
-      "guid": "600b7a95-b0ae-4ebd-871f-f01f6cd8fcd4",
-      "enemyType": "Slime",
-      "gimmickType": "",
-      "itemType": "",
-      "position": [30.0, -0.62, 8.0],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [0.8, 1.3, 0.8],
-      "materialType": 25,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": true,
-      "param": {
-        "enemyType": "Slime"
-      },
-      "parentGuid": "",
-      "parentName": ""
-    },
-    {
-      "type": "Enemy",
-      "saveCategory": "Enemy",
-      "name": "Tutorial_AbilityTarget_2",
-      "guid": "66020f8f-fb4e-42a1-816d-894555505757",
-      "enemyType": "Slime",
-      "gimmickType": "",
-      "itemType": "",
-      "position": [28.0, -0.62, 10.3],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [0.8, 1.3, 0.8],
-      "materialType": 25,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": true,
-      "param": {
-        "enemyType": "Slime"
-      },
-      "parentGuid": "",
-      "parentName": ""
-    }
-  ]
+    "objects": [
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "a38277e9-bd94-48d6-9e7a-5e006ad8bb21",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_PinkSlime_Throw",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                20.0,
+                -0.6200000047683716,
+                4.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8e1bc73d-f2f9-4ab0-8c56-c71d3f2ef812",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_PinkSlime_Absorb",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                24.0,
+                -0.6200000047683716,
+                8.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "532c83e9-2b2a-4657-8f47-86cd317d8b30",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_AbilityTarget_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                28.0,
+                -0.6200000047683716,
+                5.699999809265137
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "600b7a95-b0ae-4ebd-871f-f01f6cd8fcd4",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_AbilityTarget_1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                30.0,
+                -0.6200000047683716,
+                8.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 77,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "66020f8f-fb4e-42a1-816d-894555505757",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 25,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_AbilityTarget_2",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Slime"
+            },
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                28.0,
+                -0.6200000047683716,
+                10.300000190734863
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Enemy",
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Enemy"
+        }
+    ]
 }

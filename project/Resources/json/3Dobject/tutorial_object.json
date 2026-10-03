@@ -1,434 +1,2028 @@
 {
-  "objects": [
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Ocean",
-      "guid": "03ad66dd-f080-4e63-9094-3c94ddd0b001",
-      "modelName": "Stages/block",
-      "position": [0.0, -7.8404, 0.0],
-      "rotation": [0.0, -1.5707963, 0.0],
-      "quaternion": [0.0, -0.7071068, 0.0, 0.7071068],
-      "scale": [180.0, 4.97, 120.0],
-      "materialType": 8,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "metallic": 0.0,
-      "roughness": 0.5,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 1.0,
-      "castShadow": false,
-      "isStatic": true,
-      "collider": { "type": 0, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295,
-      "waterParam": {
-        "billboardScale": 0.5,
-        "effectIntensity": 1.15,
-        "effectScale": 0.82,
-        "effectScaleX": 8.0,
-        "effectScaleY": 0.35,
-        "effectScaleZ": 1.15,
-        "effectSoftness": 0.48,
-        "effectType": 0.0,
-        "flowSpeedX": 0.035,
-        "flowSpeedY": 0.018,
-        "waveFrequency": 4.2,
-        "waveHeight": 0.42,
-        "waveSpeed": 1.05
-      }
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_SandBase",
-      "guid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
-      "modelName": "Stages/block",
-      "position": [0.0, -3.5, 0.0],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [58.0, 2.0, 58.0],
-      "materialType": 23,
-      "color": [0.94, 0.78, 0.52, 1.0],
-      "metallic": 0.66,
-      "roughness": 0.08,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 0.55,
-      "emissive": 0.45,
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_GrassSquare",
-      "guid": "eed83789-4ed3-4286-8854-e5496e803003",
-      "modelName": "Stages/block",
-      "position": [0.0, -1.5, 0.0],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [54.0, 0.22, 54.0],
-      "materialType": 23,
-      "color": [0.24, 0.64, 0.14, 1.0],
-      "metallic": 0.55,
-      "roughness": 0.32,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.25,
-      "emissive": 1.0,
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Palm_Start",
-      "guid": "7015ac20-8f28-451b-8e3e-8ce5849da101",
-      "modelName": "Stages/tree1",
-      "position": [-46.0, -1.07, -32.0],
-      "rotation": [0.0, 0.45, 0.0],
-      "quaternion": [0.0, 0.2231064, 0.0, 0.9747941],
-      "scale": [1.15, 1.15, 1.15],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 2.4, 0.0], "size": [0.55, 2.5, 0.55], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Palm_West",
-      "guid": "e37e509f-80f2-4c8d-8c6c-3d8cfb6ea102",
-      "modelName": "Stages/tree1",
-      "position": [-27.0, -1.07, 35.0],
-      "rotation": [0.0, -0.7, 0.0],
-      "quaternion": [0.0, -0.3428978, 0.0, 0.9393727],
-      "scale": [0.92, 0.92, 0.92],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 2.4, 0.0], "size": [0.55, 2.5, 0.55], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Palm_Center",
-      "guid": "6942be6c-5911-477a-a2d5-029da271a103",
-      "modelName": "Stages/tree1",
-      "position": [0.0, -1.07, -36.0],
-      "rotation": [0.0, 0.9, 0.0],
-      "quaternion": [0.0, 0.4349655, 0.0, 0.9004471],
-      "scale": [1.0, 1.0, 1.0],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 2.4, 0.0], "size": [0.55, 2.5, 0.55], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Palm_Exit",
-      "guid": "cae34117-c485-46c3-a824-324532a9a105",
-      "modelName": "Stages/tree1",
-      "position": [47.0, -1.07, 34.0],
-      "rotation": [0.0, 0.7, 0.0],
-      "quaternion": [0.0, 0.3428978, 0.0, 0.9393727],
-      "scale": [1.08, 1.08, 1.08],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 2.4, 0.0], "size": [0.55, 2.5, 0.55], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Rock_West",
-      "guid": "af945b69-8085-47ed-941d-89923a63b201",
-      "modelName": "Stages/rock1",
-      "position": [-48.0, -4.08, 21.0],
-      "rotation": [0.0, 0.2, 0.0],
-      "quaternion": [0.0, 0.0998334, 0.0, 0.9950042],
-      "scale": [1.4, 1.4, 1.4],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Rock_North",
-      "guid": "06e60a0e-145c-44e8-8250-2f7729dcf202",
-      "modelName": "Stages/rock3",
-      "position": [-8.0, -4.81, 48.0],
-      "rotation": [0.0, -0.55, 0.0],
-      "quaternion": [0.0, -0.2715469, 0.0, 0.9624252],
-      "scale": [1.5, 1.5, 1.5],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Rock_South",
-      "guid": "a5416579-e30b-4ddc-8164-f0725647b203",
-      "modelName": "Stages/rock4",
-      "position": [18.0, -4.85, -48.0],
-      "rotation": [0.0, 0.65, 0.0],
-      "quaternion": [0.0, 0.3193088, 0.0, 0.9476507],
-      "scale": [1.8, 1.8, 1.8],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_Rock_Exit",
-      "guid": "6eb9b6aa-84ac-47ac-b5d5-50e3e8853205",
-      "modelName": "Stages/rock5",
-      "position": [49.0, -4.45, -22.0],
-      "rotation": [0.0, 0.4, 0.0],
-      "quaternion": [0.0, 0.1986693, 0.0, 0.9800666],
-      "scale": [1.6, 1.6, 1.6],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_ExitGateFrame",
-      "guid": "0bb29917-4a6f-47de-a027-26d2bd05e501",
-      "modelName": "Stages/gate",
-      "position": [44.0, 1.0977, 15.0],
-      "rotation": [0.0, 0.0, 1.5707965],
-      "quaternion": [0.0, 0.0, 0.7071068, 0.7071067],
-      "scale": [1.0, 1.0, 1.0],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "metallic": 0.0,
-      "roughness": 0.8,
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.0, 0.0], "size": [3.1156623, 0.3995824, 3.1156623], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_GateBrazier_Left",
-      "guid": "4c8b0b9a-763d-4a93-8ef4-6b59fa10b701",
-      "modelName": "Gimmicks/brazier",
-      "position": [40.8, -1.27, 10.6],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [1.55, 1.55, 1.55],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "metallic": 0.0,
-      "roughness": 0.72,
-      "enableLighting": true,
-      "enableEnvMap": true,
-      "envIntensity": 0.18,
-      "emissive": 0.1,
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.52, 0.0], "size": [0.72, 0.55, 0.72], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Model",
-      "saveCategory": "Object",
-      "name": "Tutorial_GateBrazier_Right",
-      "guid": "b6cb4ff7-11bd-4d52-b432-b1e63c69b702",
-      "modelName": "Gimmicks/brazier",
-      "position": [40.8, -1.27, 19.4],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [1.55, 1.55, 1.55],
-      "materialType": 0,
-      "color": [1.0, 1.0, 1.0, 1.0],
-      "metallic": 0.0,
-      "roughness": 0.72,
-      "enableLighting": true,
-      "enableEnvMap": true,
-      "envIntensity": 0.18,
-      "emissive": 0.1,
-      "castShadow": true,
-      "isStatic": true,
-      "collider": { "type": 2, "center": [0.0, 0.52, 0.0], "size": [0.72, 0.55, 0.72], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 4,
-      "collisionMask": 4294967295
-    },
-    {
-      "type": "Effect",
-      "saveCategory": "Object",
-      "name": "Tutorial_GateFlame_Left",
-      "guid": "b8a53da2-a38a-4d09-afca-4284dcda7701",
-      "modelName": "Effects/flame",
-      "position": [40.8, 0.98, 10.6],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [1.0, 1.0, 1.0],
-      "blendMode": 1,
-      "materialType": 11,
-      "color": [1.0, 0.2, 0.02, 0.84],
-      "metallic": 0.0,
-      "roughness": 0.6,
-      "enableLighting": false,
-      "enableEnvMap": false,
-      "envIntensity": 0.0,
-      "emissive": 2.15,
-      "castShadow": false,
-      "isStatic": false,
-      "collider": { "type": 0, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 0,
-      "collisionMask": 0,
-      "waterParam": {
-        "billboardScale": 0.74,
-        "effectIntensity": 0.88,
-        "effectScale": 0.96,
-        "effectScaleX": 0.9,
-        "effectScaleY": 1.15,
-        "effectScaleZ": 0.82,
-        "effectSoftness": 0.36,
-        "effectType": 4.0,
-        "flowSpeedX": 0.03,
-        "flowSpeedY": 0.48,
-        "waveFrequency": 2.2,
-        "waveHeight": 0.5,
-        "waveSpeed": 1.55
-      }
-    },
-    {
-      "type": "Effect",
-      "saveCategory": "Object",
-      "name": "Tutorial_GateFlame_Right",
-      "guid": "5e09488c-3dce-42e5-91b8-cbd79e1b7702",
-      "modelName": "Effects/flame",
-      "position": [40.8, 0.98, 19.4],
-      "rotation": [0.0, 0.0, 0.0],
-      "quaternion": [0.0, 0.0, 0.0, 1.0],
-      "scale": [1.0, 1.0, 1.0],
-      "blendMode": 1,
-      "materialType": 11,
-      "color": [1.0, 0.2, 0.02, 0.84],
-      "metallic": 0.0,
-      "roughness": 0.6,
-      "enableLighting": false,
-      "enableEnvMap": false,
-      "envIntensity": 0.0,
-      "emissive": 2.15,
-      "castShadow": false,
-      "isStatic": false,
-      "collider": { "type": 0, "center": [0.0, 0.0, 0.0], "size": [1.0, 1.0, 1.0], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 0,
-      "collisionMask": 0,
-      "waterParam": {
-        "billboardScale": 0.74,
-        "effectIntensity": 0.88,
-        "effectScale": 0.96,
-        "effectScaleX": 0.9,
-        "effectScaleY": 1.15,
-        "effectScaleZ": 0.82,
-        "effectSoftness": 0.36,
-        "effectType": 4.0,
-        "flowSpeedX": -0.025,
-        "flowSpeedY": 0.48,
-        "waveFrequency": 2.2,
-        "waveHeight": 0.5,
-        "waveSpeed": 1.55
-      }
-    },
-    {
-      "type": "Gimmick",
-      "saveCategory": "Object",
-      "name": "Gimmick_StageGate",
-      "guid": "01d33ce2-38d8-4867-b232-d5dc7cb1af01",
-      "modelName": "Gimmicks/crown_stage_gate",
-      "gimmickType": "StageGate",
-      "parentName": "Tutorial_ExitGateFrame",
-      "position": [-0.0438614, 0.000206, -0.0123434],
-      "rotation": [0.0, 0.0, 3.1415908],
-      "quaternion": [0.0, 0.0, 1.0, 0.00000091],
-      "scale": [8.3267, 6.26246, 1.40001],
-      "materialType": 22,
-      "color": [0.35, 0.75, 1.0, 1.0],
-      "metallic": 0.0,
-      "roughness": 0.5,
-      "enableLighting": true,
-      "enableEnvMap": false,
-      "envIntensity": 1.0,
-      "emissive": 2.2,
-      "castShadow": false,
-      "collider": { "type": 1, "center": [0.0, 0.0, 0.0], "size": [4.4, 4.4, 4.4], "rotation": [0.0, 0.0, 0.0] },
-      "collisionAttribute": 16,
-      "collisionMask": 1,
-      "param": {
-        "actionMode": 1,
-        "gimmickType": "StageGate",
-        "targetScene": "SELECT",
-        "startActive": false,
-        "returnOnOff": true,
-        "moveSpeed": 6.0,
-        "speed": 1.0,
-        "hp": 100.0,
-        "maxHp": 100.0
-      },
-      "waterParam": {
-        "billboardScale": 0.385,
-        "effectIntensity": 2.02,
-        "effectScale": 1.18,
-        "effectScaleX": 0.95,
-        "effectScaleY": 0.976,
-        "effectScaleZ": 0.569,
-        "effectSoftness": 0.66,
-        "effectType": 1.0,
-        "flowSpeedX": 0.0,
-        "flowSpeedY": 0.0,
-        "waveFrequency": 22.0,
-        "waveHeight": 1.35,
-        "waveSpeed": 2.25
-      }
-    }
-  ]
+    "objects": [
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "03ad66dd-f080-4e63-9094-3c94ddd0b001",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 8,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Tutorial_Ocean",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                -7.840400218963623,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.7071068286895752,
+                0.0,
+                0.7071068286895752
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.570796251296997,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                180.0,
+                4.96999979019165,
+                120.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model",
+            "waterParam": {
+                "billboardScale": 0.5,
+                "effectIntensity": 1.149999976158142,
+                "effectScale": 0.8199999928474426,
+                "effectScaleX": 8.0,
+                "effectScaleY": 0.3499999940395355,
+                "effectScaleZ": 1.149999976158142,
+                "effectSoftness": 0.47999998927116394,
+                "effectType": 2.0,
+                "flowSpeedX": 0.03500000014901161,
+                "flowSpeedY": 0.017999999225139618,
+                "topDownDetail": 1.0,
+                "waveFrequency": 4.199999809265137,
+                "waveHeight": 0.41999998688697815,
+                "waveSpeed": 1.0499999523162842
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.9399999976158142,
+                0.7799999713897705,
+                0.5199999809265137,
+                1.0
+            ],
+            "emissive": 0.44999998807907104,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.550000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "de0606c4-ef79-4dd6-97d3-d74091be9002",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 23,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.6600000262260437,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Tutorial_SandBase",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                -3.5,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.07999999821186066,
+            "saveCategory": "Object",
+            "scale": [
+                58.0,
+                2.0,
+                58.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.23999999463558197,
+                0.6399999856948853,
+                0.14000000059604645,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.25,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "eed83789-4ed3-4286-8854-e5496e803003",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 23,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.550000011920929,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Tutorial_GrassSquare",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                -1.5,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.3199999928474426,
+            "saveCategory": "Object",
+            "scale": [
+                54.0,
+                0.2199999988079071,
+                54.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.4000000953674316,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.550000011920929,
+                    2.5,
+                    0.550000011920929
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "7015ac20-8f28-451b-8e3e-8ce5849da101",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tree1",
+            "myEventID": -1,
+            "name": "Tutorial_Palm_Start",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -46.0,
+                -1.0700000524520874,
+                -32.0
+            ],
+            "quaternion": [
+                0.0,
+                0.22310639917850494,
+                0.0,
+                0.9747940897941589
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.44999998807907104,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.149999976158142,
+                1.149999976158142,
+                1.149999976158142
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.4000000953674316,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.550000011920929,
+                    2.5,
+                    0.550000011920929
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "e37e509f-80f2-4c8d-8c6c-3d8cfb6ea102",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tree1",
+            "myEventID": -1,
+            "name": "Tutorial_Palm_West",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -27.0,
+                -1.0700000524520874,
+                35.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.34289780259132385,
+                0.0,
+                0.939372718334198
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.699999988079071,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.9200000166893005,
+                0.9200000166893005,
+                0.9200000166893005
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.4000000953674316,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.550000011920929,
+                    2.5,
+                    0.550000011920929
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6942be6c-5911-477a-a2d5-029da271a103",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tree1",
+            "myEventID": -1,
+            "name": "Tutorial_Palm_Center",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                -1.0700000524520874,
+                -36.0
+            ],
+            "quaternion": [
+                0.0,
+                0.43496549129486084,
+                0.0,
+                0.9004470705986023
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.8999999761581421,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    2.4000000953674316,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.550000011920929,
+                    2.5,
+                    0.550000011920929
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "cae34117-c485-46c3-a824-324532a9a105",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/tree1",
+            "myEventID": -1,
+            "name": "Tutorial_Palm_Exit",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                47.0,
+                -1.0700000524520874,
+                34.0
+            ],
+            "quaternion": [
+                0.0,
+                0.34289780259132385,
+                0.0,
+                0.939372718334198
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.699999988079071,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.0800000429153442,
+                1.0800000429153442,
+                1.0800000429153442
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "af945b69-8085-47ed-941d-89923a63b201",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/rock1",
+            "myEventID": -1,
+            "name": "Tutorial_Rock_West",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -48.0,
+                -4.079999923706055,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0998333990573883,
+                0.0,
+                0.9950041770935059
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.20000000298023224,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.399999976158142,
+                1.399999976158142,
+                1.399999976158142
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "06e60a0e-145c-44e8-8250-2f7729dcf202",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "lod": {
+                "enabled": true,
+                "levels": [
+                    {
+                        "distance": 58.5,
+                        "level": 1,
+                        "modelName": "Stages/rock3/rock3_lod1.gltf"
+                    },
+                    {
+                        "distance": 70.0,
+                        "level": 2,
+                        "modelName": "Stages/rock3/rock3_lod2.gltf"
+                    }
+                ]
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/rock3",
+            "myEventID": -1,
+            "name": "Tutorial_Rock_North",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -8.0,
+                -4.809999942779541,
+                48.0
+            ],
+            "quaternion": [
+                0.0,
+                -0.2715469002723694,
+                0.0,
+                0.962425172328949
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.550000011920929,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.5,
+                1.5,
+                1.5
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "a5416579-e30b-4ddc-8164-f0725647b203",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/rock4",
+            "myEventID": -1,
+            "name": "Tutorial_Rock_South",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                18.0,
+                -4.849999904632568,
+                -48.0
+            ],
+            "quaternion": [
+                0.0,
+                0.3193087875843048,
+                0.0,
+                0.947650671005249
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.6499999761581421,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.7999999523162842,
+                1.7999999523162842,
+                1.7999999523162842
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6eb9b6aa-84ac-47ac-b5d5-50e3e8853205",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/rock5",
+            "myEventID": -1,
+            "name": "Tutorial_Rock_Exit",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                49.0,
+                -4.449999809265137,
+                -22.0
+            ],
+            "quaternion": [
+                0.0,
+                0.19866929948329926,
+                0.0,
+                0.9800665974617004
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.4000000059604645,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                1.600000023841858,
+                1.600000023841858,
+                1.600000023841858
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    3.1156623363494873,
+                    0.3995823860168457,
+                    3.1156623363494873
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "0bb29917-4a6f-47de-a027-26d2bd05e501",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/gate",
+            "myEventID": -1,
+            "name": "Tutorial_ExitGateFrame",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                44.0,
+                1.0976999998092651,
+                15.031389236450195
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.7071068286895752,
+                0.7071067094802856
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                1.5707964897155762
+            ],
+            "roughness": 0.800000011920929,
+            "saveCategory": "Object",
+            "scale": [
+                0.9999974966049194,
+                0.9999974966049194,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.5199999809265137,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.7200000286102295,
+                    0.550000011920929,
+                    0.7200000286102295
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 0.10000000149011612,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.18000000715255737,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "4c8b0b9a-763d-4a93-8ef4-6b59fa10b701",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/brazier",
+            "myEventID": -1,
+            "name": "Tutorial_GateBrazier_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                40.79999923706055,
+                -1.2699999809265137,
+                10.600000381469727
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                1.5499999523162842,
+                1.5499999523162842,
+                1.5499999523162842
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.5199999809265137,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.7200000286102295,
+                    0.550000011920929,
+                    0.7200000286102295
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 0.10000000149011612,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.18000000715255737,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b6cb4ff7-11bd-4d52-b432-b1e63c69b702",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/brazier",
+            "myEventID": -1,
+            "name": "Tutorial_GateBrazier_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                40.79999923706055,
+                -1.2699999809265137,
+                19.399999618530273
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.7200000286102295,
+            "saveCategory": "Object",
+            "scale": [
+                1.5499999523162842,
+                1.5499999523162842,
+                1.5499999523162842
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.20000000298023224,
+                0.019999999552965164,
+                0.8399999737739563
+            ],
+            "emissive": 2.1500000953674316,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b8a53da2-a38a-4d09-afca-4284dcda7701",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Effects/flame",
+            "myEventID": -1,
+            "name": "Tutorial_GateFlame_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                40.79999923706055,
+                0.9800000190734863,
+                10.600000381469727
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.7400000095367432,
+                "effectIntensity": 0.8799999952316284,
+                "effectScale": 0.9599999785423279,
+                "effectScaleX": 0.8999999761581421,
+                "effectScaleY": 1.149999976158142,
+                "effectScaleZ": 0.8199999928474426,
+                "effectSoftness": 0.36000001430511475,
+                "effectType": 4.0,
+                "flowSpeedX": 0.029999999329447746,
+                "flowSpeedY": 0.47999998927116394,
+                "topDownDetail": 1.0,
+                "waveFrequency": 2.200000047683716,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.5499999523162842
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.20000000298023224,
+                0.019999999552965164,
+                0.8399999737739563
+            ],
+            "emissive": 2.1500000953674316,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "5e09488c-3dce-42e5-91b8-cbd79e1b7702",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 11,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Effects/flame",
+            "myEventID": -1,
+            "name": "Tutorial_GateFlame_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                40.79999923706055,
+                0.9800000190734863,
+                19.399999618530273
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.6000000238418579,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Effect",
+            "waterParam": {
+                "billboardScale": 0.7400000095367432,
+                "effectIntensity": 0.8799999952316284,
+                "effectScale": 0.9599999785423279,
+                "effectScaleX": 0.8999999761581421,
+                "effectScaleY": 1.149999976158142,
+                "effectScaleZ": 0.8199999928474426,
+                "effectSoftness": 0.36000001430511475,
+                "effectType": 4.0,
+                "flowSpeedX": -0.02500000037252903,
+                "flowSpeedY": 0.47999998927116394,
+                "topDownDetail": 1.0,
+                "waveFrequency": 2.200000047683716,
+                "waveHeight": 0.5,
+                "waveSpeed": 1.5499999523162842
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.30000001192092896,
+                    0.30000001192092896,
+                    0.30000001192092896
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [
+                0.30000001192092896,
+                0.5400000214576721,
+                0.6399999856948853,
+                0.9200000166893005
+            ],
+            "emissive": 0.3400000035762787,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "StageGate",
+            "gpuParticleName": "",
+            "guid": "01d33ce2-38d8-4867-b232-d5dc7cb1af01",
+            "isStatic": false,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/crown_stage_gate",
+            "myEventID": -1,
+            "name": "Gimmick_StageGate",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 1,
+                "attackPower": 1.0,
+                "colorType": 0,
+                "copyMemoryActivationRadius": 0.8999999761581421,
+                "copyMemoryEssenceScale": 1.0,
+                "copyMemoryGlow": 0.44999998807907104,
+                "copyMemoryHoverAmount": 0.10000000149011612,
+                "copyMemoryTypeA": "FireSlime",
+                "copyMemoryTypeB": "ThunderSlime",
+                "copyMemoryTypeC": "WindSlime",
+                "copyMemoryTypeD": "",
+                "copyMemoryUnlimitedDuration": true,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "StageGate",
+                "gravity": 50.0,
+                "healAmount": 1.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "itemType": "",
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0,
+                "targetScene": "SELECT",
+                "volumeBlendDuration": 0.75,
+                "volumeMode": 0,
+                "volumePayload": "",
+                "volumeRearmDelay": 0.0,
+                "volumeTriggerOnExit": false,
+                "volumeTriggerOnce": true
+            },
+            "parentGuid": "0bb29917-4a6f-47de-a027-26d2bd05e501",
+            "parentName": "Tutorial_ExitGateFrame",
+            "particleName": "",
+            "position": [
+                -0.0438612699508667,
+                0.3472328186035156,
+                2.231161117553711
+            ],
+            "quaternion": [
+                -6.434369765884185e-07,
+                0.7071068286895752,
+                -0.7071068286895752,
+                -6.434444230762892e-07
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                -1.5707964897155762,
+                -1.819925159907143e-06,
+                3.1415927410125732
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                8.3267183303833,
+                6.262543201446533,
+                1.4000097513198853
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Gimmick",
+            "waterParam": {
+                "billboardScale": 0.38499999046325684,
+                "effectIntensity": 0.11999999731779099,
+                "effectScale": 0.7799999713897705,
+                "effectScaleX": 0.949999988079071,
+                "effectScaleY": 0.9760000109672546,
+                "effectScaleZ": 0.5690000057220459,
+                "effectSoftness": 0.2800000011920929,
+                "effectType": 1.0,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.0,
+                "topDownDetail": 1.0,
+                "waveFrequency": 4.0,
+                "waveHeight": 0.18000000715255737,
+                "waveSpeed": 0.2800000011920929
+            }
+        }
+    ]
 }

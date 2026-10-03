@@ -27,7 +27,7 @@
 #include <sstream>
 #include "GhostRecorder.h" 
 #include "GhostDirector.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
 #include "EditorManager.h"
@@ -46,7 +46,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
-#include <PresetManager.h>
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"
@@ -521,11 +521,9 @@ void DebugEditor::PruneInvalidSelectedObjects() {
 Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
-    Math math;
     Ray ray = ScreenPointToRay(mousePos);
-    RayResult best;
-    best.isHit = false;
-    best.distance = 1e5f;
+    if (Math::Dot(ray.diff, ray.diff) < 1e-12f) return nullptr;
+    float bestDistance = 1.0f;
     Object3d* hit = nullptr;
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
@@ -534,14 +532,101 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
         if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
         if (!obj->GetIsRenderVisible() || obj->GetIsLocked()) continue;
 
-        Matrix4x4 worldMatrix = obj->GetWorldMatrix();
-        Vector3 worldPosition = { worldMatrix.m[3][0], worldMatrix.m[3][1], worldMatrix.m[3][2] };
-        Vector3 worldScale = obj->GetTransform()->scale;
-        RayResult tmp;
+        const Matrix4x4 worldMatrix = obj->GetWorldMatrix();
+        // ゼロスケールの変換行列は逆変換できないため、選択判定から除外する。
+        const Vector3 axisX = { worldMatrix.m[0][0], worldMatrix.m[0][1], worldMatrix.m[0][2] };
+        const Vector3 axisY = { worldMatrix.m[1][0], worldMatrix.m[1][1], worldMatrix.m[1][2] };
+        const Vector3 axisZ = { worldMatrix.m[2][0], worldMatrix.m[2][1], worldMatrix.m[2][2] };
+        if (Math::Dot(axisX, axisX) < 1e-12f ||
+            Math::Dot(axisY, axisY) < 1e-12f ||
+            Math::Dot(axisZ, axisZ) < 1e-12f) continue;
 
-        if (math.IntersectRayAABB(ray, worldPosition - worldScale, worldPosition + worldScale, &tmp)) {
-            if (tmp.distance < best.distance) {
-                best = tmp;
+        const Matrix4x4 inverseWorld = Math::Inverse(worldMatrix);
+        const Ray localRay = {
+            Math::Transform(ray.origin, inverseWorld),
+            Math::TransformNormal(ray.diff, inverseWorld)
+        };
+        if (!std::isfinite(localRay.origin.x) || !std::isfinite(localRay.origin.y) || !std::isfinite(localRay.origin.z) ||
+            !std::isfinite(localRay.diff.x) || !std::isfinite(localRay.diff.y) || !std::isfinite(localRay.diff.z)) continue;
+        Vector3 localMin = { -0.5f, -0.5f, -0.5f };
+        Vector3 localMax = { 0.5f, 0.5f, 0.5f };
+        Model* model = obj->GetModel();
+        if (model) {
+            localMin = model->GetLocalAabbMin();
+            localMax = model->GetLocalAabbMax();
+        }
+        if (!std::isfinite(localMin.x) || !std::isfinite(localMin.y) || !std::isfinite(localMin.z) ||
+            !std::isfinite(localMax.x) || !std::isfinite(localMax.y) || !std::isfinite(localMax.z) ||
+            localMin.x > localMax.x || localMin.y > localMax.y || localMin.z > localMax.z) continue;
+        const float origins[3] = { localRay.origin.x, localRay.origin.y, localRay.origin.z };
+        const float directions[3] = { localRay.diff.x, localRay.diff.y, localRay.diff.z };
+        const float mins[3] = { localMin.x, localMin.y, localMin.z };
+        const float maxs[3] = { localMax.x, localMax.y, localMax.z };
+        float entry = 0.0f;
+        float exit = 1.0f;
+        bool startsInside = true;
+        bool intersects = true;
+        for (int axis = 0; axis < 3; ++axis) {
+            if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) startsInside = false;
+            if (std::abs(directions[axis]) < 1e-6f) {
+                if (origins[axis] < mins[axis] || origins[axis] > maxs[axis]) intersects = false;
+                continue;
+            }
+            float nearT = (mins[axis] - origins[axis]) / directions[axis];
+            float farT = (maxs[axis] - origins[axis]) / directions[axis];
+            if (nearT > farT) std::swap(nearT, farT);
+            entry = (std::max)(entry, nearT);
+            exit = (std::min)(exit, farT);
+            if (entry > exit) {
+                intersects = false;
+                break;
+            }
+        }
+
+        if (!intersects || entry > bestDistance) continue;
+
+        // 静的モデルは面との交差を調べ、AABB の空間部分で手前の物体を選ばない。
+        // アニメーション中の頂点はCPU側と一致しないため、従来の箱判定を使う。
+        const bool useMeshSurface = model && !model->GetModelData().hasSkinning &&
+            !model->GetModelData().usesNodeAnimationProxy;
+        if (useMeshSurface) {
+            const auto& meshes = model->GetModelData().meshes;
+            const int drawIndex = obj->GetMeshDrawIndex();
+            for (size_t meshIndex = 0; meshIndex < meshes.size(); ++meshIndex) {
+                if (drawIndex >= 0 && meshIndex != static_cast<size_t>(drawIndex)) continue;
+                const auto& mesh = meshes[meshIndex];
+                for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3) {
+                    const uint32_t i0 = mesh.indices[index];
+                    const uint32_t i1 = mesh.indices[index + 1];
+                    const uint32_t i2 = mesh.indices[index + 2];
+                    if (i0 >= mesh.vertices.size() || i1 >= mesh.vertices.size() || i2 >= mesh.vertices.size()) continue;
+                    const auto& a = mesh.vertices[i0].position;
+                    const auto& b = mesh.vertices[i1].position;
+                    const auto& c = mesh.vertices[i2].position;
+                    const Vector3 edge1 = { b.x - a.x, b.y - a.y, b.z - a.z };
+                    const Vector3 edge2 = { c.x - a.x, c.y - a.y, c.z - a.z };
+                    const Vector3 p = Math::Cross(localRay.diff, edge2);
+                    const float determinant = Math::Dot(edge1, p);
+                    if (std::abs(determinant) < 1e-8f) continue;
+                    const float inverseDeterminant = 1.0f / determinant;
+                    const Vector3 fromA = { localRay.origin.x - a.x, localRay.origin.y - a.y, localRay.origin.z - a.z };
+                    const float u = Math::Dot(fromA, p) * inverseDeterminant;
+                    if (u < 0.0f || u > 1.0f) continue;
+                    const Vector3 q = Math::Cross(fromA, edge1);
+                    const float v = Math::Dot(localRay.diff, q) * inverseDeterminant;
+                    if (v < 0.0f || u + v > 1.0f) continue;
+                    const float distance = Math::Dot(edge2, q) * inverseDeterminant;
+                    if (distance >= 0.0f && distance <= 1.0f && distance < bestDistance) {
+                        bestDistance = distance;
+                        hit = obj.get();
+                    }
+                }
+            }
+        } else {
+            // 箱の内側から始まるレイは出口を比較し、周囲の大きなObjectを優先しない。
+            const float distance = startsInside ? exit : entry;
+            if (distance >= 0.0f && distance < bestDistance) {
+                bestDistance = distance;
                 hit = obj.get();
             }
         }
@@ -623,6 +708,7 @@ void DebugEditor::DrawSelectionRectangleOverlay() {
 
 void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 #ifdef USE_IMGUI
+    if (!drawSelectionBounds_) return;
     PruneInvalidSelectedObjects();
     if (selectedObjects_.empty() || selectionOverlayMode_ == SelectionOverlayMode::Hidden) return;
     if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f) return;

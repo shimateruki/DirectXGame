@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "fd9874268f75e1f5926425c726ada2db",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/title.png",
+  "version": 1
+}

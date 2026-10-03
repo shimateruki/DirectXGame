@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b01e1991da2e58fc94b137584c0d4bf1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/foundation.obj",
+  "version": 1
+}

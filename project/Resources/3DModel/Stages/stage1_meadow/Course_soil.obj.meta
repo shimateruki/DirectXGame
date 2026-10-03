@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "1733cc0a522d53e7fad71137ad27feb4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_meadow/Course_soil.obj",
+  "version": 1
+}

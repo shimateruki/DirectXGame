@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4d0cd50e4d8fd0a32e5527eb2b7dbd7a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/copy_band_thunder/copy_band_thunder.obj",
+  "version": 1
+}

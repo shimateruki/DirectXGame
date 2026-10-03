@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f28611ea3883278b6acc098f785e4a00",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/fireball_impact_flame.json",
+  "version": 1
+}

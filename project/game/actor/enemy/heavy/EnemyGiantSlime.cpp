@@ -1,9 +1,9 @@
 #include "EnemyGiantSlime.h"
-#include "SlimeBounceAnimator.h"
+#include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "BaseScene.h"
 #include "CollisionConfig.h"
 #include "DebugConsole.h"
-#include "EnemyFactory.h"
+#include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "EventManager.h"
 #include "HitEffectDirector.h"
 #include "MeshRenderer.h"
@@ -80,6 +80,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
     Vector3 direction = { 0.0f, 0.0f, 1.0f };
     float distance = 9999.0f;
     UpdateTargetFacing(direction, distance);
+    UpdateBossTargetEngagement(distance);
     if (state_ == State::Idle && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
         SetVelocity({ 0.0f, GetVelocity().y, 0.0f });
         ApplySlimeAnimation(deltaTime);
@@ -174,7 +175,7 @@ void EnemyGiantSlime::UpdateTargetFacing(Vector3& direction, float& distance) {
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
-        if (distance <= detectionRange_) {
+        if (IsBossTargetEngaged() || distance <= detectionRange_) {
             const float targetYaw = std::atan2(direction.x, direction.z) + kGiantSlimeModelYawOffset;
             SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.08f), 0.0f });
         }
@@ -222,7 +223,7 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction,
         velocity.z *= 0.65f;
         SetVelocity(velocity);
 
-        if (distance <= (std::min)(detectionRange_, attack.maxRange)) {
+        if (IsBossTargetEngaged() && distance <= attack.maxRange) {
             jumpTimer_ += deltaTime;
             if (jumpTimer_ >= attack.cooldown) {
                 BeginJumpCharge(direction, distance);
@@ -232,6 +233,10 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction,
             jumpTimer_ += deltaTime * 0.65f;
             Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
             Vector3 wanderDirection = { wanderVelocity.x, 0.0f, wanderVelocity.z };
+            if (IsBossTargetEngaged() && target_) {
+                // 交戦後は射程外でも目標へ跳び、ランダム徘徊に戻らないようにします。
+                wanderDirection = direction;
+            }
             const float wanderLength = Math::Length(wanderDirection);
             if (wanderLength > 0.001f) {
                 wanderDirection = wanderDirection / wanderLength;
@@ -803,6 +808,13 @@ void EnemyGiantSlime::LaunchJump(const Vector3& direction, float distance) {
     isJumpingAttack_ = true;
     isGrounded_ = false;
     SetColor(defaultColor_);
+}
+
+float EnemyGiantSlime::GetBodyAttackDamage() const {
+    // 上昇中・フック拘束中は無害。下降中の踏みつけだけ本体に攻撃力を持たせます。
+    return state_ == State::Airborne && isJumpingAttack_ && velocity_.y < 0.0f &&
+        !isHookSplitPulled_ && !hookSplitAwaitingLanding_ && !hasSplit_
+        ? GetAttackDefinition(kJumpPressAttackId).damage : 0.0f;
 }
 
 void EnemyGiantSlime::DispatchLandingShockwave() {

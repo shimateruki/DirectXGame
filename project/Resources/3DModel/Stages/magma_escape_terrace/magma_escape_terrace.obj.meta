@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "28dd4abce200419c6a202484bdcaa855",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_escape_terrace/magma_escape_terrace.obj",
+  "version": 1
+}

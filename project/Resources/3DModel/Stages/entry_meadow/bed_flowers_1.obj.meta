@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4e6ff4908e1d340978d28d58fe06b6f1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/bed_flowers_1.obj",
+  "version": 1
+}

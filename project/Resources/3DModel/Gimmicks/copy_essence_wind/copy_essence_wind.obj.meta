@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6c16be5b4644dffa9a936e27f545c2cf",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_wind/copy_essence_wind.obj",
+  "version": 1
+}

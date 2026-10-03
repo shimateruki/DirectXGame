@@ -1,10 +1,14 @@
 #include "Bullet.h"
+#include "CameraManager.h"
+#include "MeshEffectManager.h"
+#include <unordered_set>
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "GPUParticleManager.h"
 #include <EventManager.h>
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
 
 void Bullet::Initialize(Object3dCommon* common) {
     Object3d::Initialize(common);
@@ -17,6 +21,8 @@ void Bullet::Fire(const Vector3& position, const Vector3& velocity,
 
     transform_.translate = position;
     velocity_ = velocity;
+    gravity_ = 0.0f;
+    explosionRadius_ = 0.0f;
     lifeTimer_ = life;
     damage_ = (std::max)(0.0f, damage);
     damageType_ = damageType;
@@ -30,13 +36,18 @@ void Bullet::Fire(const Vector3& position, const Vector3& velocity,
     SetCollisionMask(mask);
 }
 
-void Bullet::ConfigureVfx(const std::string& trailPreset, const std::string& impactPreset,
-    float trailInterval, float trailSpeedScale) {
+void Bullet::ConfigureVfx(const std::string& trailPreset, const std::string& trailSecondaryPreset,
+    const std::string& impactPreset, const std::string& impactSecondaryPreset,
+    float trailInterval, float trailSpeedScale, bool trailReverseDirection, bool impactDirected) {
     trailPreset_ = trailPreset;
+    trailSecondaryPreset_ = trailSecondaryPreset;
     impactPreset_ = impactPreset;
+    impactSecondaryPreset_ = impactSecondaryPreset;
     trailInterval_ = (std::max)(0.01f, trailInterval);
     trailTimer_ = 0.0f;
     trailSpeedScale_ = (std::max)(0.05f, trailSpeedScale);
+    trailReverseDirection_ = trailReverseDirection;
+    impactDirected_ = impactDirected;
 }
 
 void Bullet::Expire(bool playImpact) {
@@ -61,7 +72,22 @@ void Bullet::Update(float deltaTime) {
         return;
     }
 
-    const Vector3 displacement = velocity_ * deltaTime;
+    if (GetModelName() == "Characters/magma_hopper") {
+        // 見た目だけを伸縮し、衝突半径は発射時の値を維持する。
+        const float base = GetColliderConfig().size.x * 1.3f;
+        const float stretch = 0.92f + 0.40f * std::clamp(std::abs(velocity_.y) / 20.0f, 0.0f, 1.0f);
+        const float width = 1.0f / std::sqrt(stretch);
+        SetScale({base * width, base * stretch, base * width});
+        if (auto* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+            const Vector3 towardCamera = camera->GetEye() - GetTranslate();
+            if (towardCamera.x * towardCamera.x + towardCamera.z * towardCamera.z > 0.001f)
+                SetRotation({0.0f, std::atan2(-towardCamera.x, -towardCamera.z), 0.0f});
+        }
+    }
+
+    // 放物線のフレーム間変位を計算し、既存のSphereCastで地形との衝突を調べる。
+    const Vector3 displacement = velocity_ * deltaTime + Vector3{0.0f, -0.5f * gravity_ * deltaTime * deltaTime, 0.0f};
+    velocity_.y -= gravity_ * deltaTime;
     const float travelDistance = Math::Length(displacement);
     if (travelDistance <= 0.000001f) {
         return;
@@ -84,6 +110,7 @@ void Bullet::Update(float deltaTime) {
     if (hit.isHit && hit.hitObject) {
         // SphereCastが重なりを検出した中心へ止め、同フレーム末尾の通常衝突処理へ渡します。
         transform_.translate += direction * hit.distance;
+        if (explosionRadius_ > 0.0f) Explode();
         return;
     }
 
@@ -91,12 +118,14 @@ void Bullet::Update(float deltaTime) {
 }
 
 bool Bullet::OnCollision(Object3d* other) {
+    if (isDead_ || !other) return false;
 
     CollisionInfo info = CheckCollision(other);
 
     if (!info.isColliding) {
         return false;
     }
+    if (explosionRadius_ > 0.0f) { Explode(); return true; }
     // 何かに当たったら死亡
     EmitImpactVfx();
     isDead_ = true;
@@ -105,7 +134,7 @@ bool Bullet::OnCollision(Object3d* other) {
 }
 
 void Bullet::EmitTrailVfx() {
-    if (trailPreset_.empty()) {
+    if (trailPreset_.empty() && trailSecondaryPreset_.empty()) {
         return;
     }
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
@@ -118,11 +147,19 @@ void Bullet::EmitTrailVfx() {
     } else {
         direction = Math::Normalize(direction);
     }
-    particles->EmitDirected(trailPreset_, GetTranslate(), direction, trailSpeedScale_);
+    if (trailReverseDirection_) {
+        direction = direction * -1.0f;
+    }
+    if (!trailPreset_.empty()) {
+        particles->EmitDirected(trailPreset_, GetTranslate(), direction, trailSpeedScale_);
+    }
+    if (!trailSecondaryPreset_.empty()) {
+        particles->EmitDirected(trailSecondaryPreset_, GetTranslate(), direction, trailSpeedScale_);
+    }
 }
 
 void Bullet::EmitImpactVfx() {
-    if (impactEmitted_ || impactPreset_.empty()) {
+    if (impactEmitted_ || (impactPreset_.empty() && impactSecondaryPreset_.empty())) {
         return;
     }
     impactEmitted_ = true;
@@ -136,5 +173,63 @@ void Bullet::EmitImpactVfx() {
     } else {
         direction = Math::Normalize(direction);
     }
-    particles->EmitDirected(impactPreset_, GetTranslate(), direction, trailSpeedScale_);
+    for (const std::string* preset : { &impactPreset_, &impactSecondaryPreset_ }) {
+        if (preset->empty()) {
+            continue;
+        }
+        if (impactDirected_) {
+            particles->EmitDirected(*preset, GetTranslate(), direction, trailSpeedScale_);
+        } else {
+            particles->Emit(*preset, GetTranslate());
+        }
+    }
+}
+
+void Bullet::Explode() {
+    if (isDead_) return;
+    // 直撃と爆風が同じフレームに二重加算されないよう、先に弾を無効化する。
+    isDead_ = true;
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    const Vector3 center = GetTranslate();
+    if (auto* effects = MeshEffectManager::GetInstance()) {
+        const float core = explosionRadius_ / 3.0f;
+        const float ring = explosionRadius_ / 5.8f;
+        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", center,
+            {0,0,0}, {core,core,core});
+        PhysicsQueryFilter groundFilter;
+        groundFilter.mask = kAllSolid;
+        groundFilter.ignoredObject = this;
+        const auto ground = CollisionManager::GetInstance()->Raycast(center, {0,-1,0}, explosionRadius_ + 1.0f, groundFilter);
+        const Vector3 ringPosition = ground.isHit ? ground.hitPoint + Vector3{0,0.06f,0} : center;
+        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_shockwave_ring.json", ringPosition,
+            {0,0,0}, {ring,ring,ring});
+    }
+    if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+        particles->Emit("hit_bomb_fire_core", center);
+        particles->Emit("hit_bomb_fire_sparks", center);
+        particles->Emit("hit_bomb_orange_smoke", center);
+    }
+    PhysicsQueryFilter filter;
+    filter.mask = CollisionAttribute::kPlayer;
+    filter.ignoredObject = this;
+    std::unordered_set<Object3d*> damaged;
+    for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, explosionRadius_, filter)) {
+        if (!hit.object || !damaged.insert(hit.object).second) continue;
+        Vector3 delta = hit.object->GetWorldPosition() - center;
+        PhysicsQueryFilter wallFilter;
+        wallFilter.mask = kAllSolid;
+        wallFilter.ignoredObject = this;
+        const float distance = Math::Length(delta);
+        if (distance > 0.05f) {
+            const auto wall = CollisionManager::GetInstance()->Raycast(center, delta / distance, distance, wallFilter);
+            if (wall.isHit && wall.distance > 0.05f && wall.distance < distance - 0.1f) continue;
+        }
+        DamageEvent event;
+        event.target = hit.object;
+        event.attacker = this;
+        event.damageAmount = damage_;
+        event.damageType = DamageType::Explosion;
+        EventManager::GetInstance()->Dispatch(event);
+    }
 }

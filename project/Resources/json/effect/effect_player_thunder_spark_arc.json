@@ -1,0 +1,16 @@
+{
+  "AutoLoop": false,
+  "ProceduralType": 7,
+  "PlaneSize": [0.65,1.35],
+  "MeshSegments": 1,
+  "Lifetime": 0.14,
+  "BlendMode": 2,
+  "TexturePath": "Resources/sprite/particle/electric_bolt.png",
+  "StartScale": [1,1,1],
+  "EndScale": [1,1,1],
+  "StartColor": [1.0,0.93,0.55,0.85],
+  "EndColor": [0.75,0.88,1.0,0.15],
+  "Intensity": 1.8,
+  "EnableReveal": false,
+  "AlphaReference": 0.008
+}

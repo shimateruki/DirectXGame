@@ -6,21 +6,17 @@
 #include <unordered_map>
 #include <vector>
 
-/// <summary>
-/// このゲームで使う具体的なシーンを名前から生成するファクトリ。
-/// </summary>
-// SceneFactoryは、文字列のシーン名を実際のシーンクラス生成へ変換するファクトリーです。
+/// <summary>登録されたシーン名を対応するBaseScene派生クラスの生成関数へ結び付ける。</summary>
 class SceneFactory : public AbstractSceneFactory {
 public:
     using SceneCreator = std::function<std::unique_ptr<BaseScene>()>;
 
     SceneFactory();
 
-    /// <summary>
-    /// sceneName に対応するシーンインスタンスを生成する。
-    /// </summary>
-        // 指定されたシーン名に対応するBaseScene派生クラスを生成します。
-std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) override;
+    /// <summary>名前に対応するシーンインスタンスを生成する。未登録ならnullptr。</summary>
+    std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) override;
+
+    /// <summary>登録順にシーン名を返す。</summary>
     std::vector<std::string> GetRegisteredSceneNames() const override;
 
     // 新しいBaseScene派生クラスはここへ登録すると、Editorの候補へ自動反映されます。

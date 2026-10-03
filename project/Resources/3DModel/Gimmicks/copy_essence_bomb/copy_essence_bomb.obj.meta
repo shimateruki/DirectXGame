@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7e289a0813a843361a05e20b9cf4cac4",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_bomb/copy_essence_bomb.obj",
+  "version": 1
+}

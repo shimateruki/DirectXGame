@@ -1,0 +1,20 @@
+{
+    "clearColor": [0.023166, 0.219287, 1.0, 1.0],
+    "directionalLight": {
+        "ambientColor": [0.30, 0.35, 0.42],
+        "color": [1.0, 0.95, 0.84, 1.0],
+        "direction": [0.48, -0.78, 0.40],
+        "intensity": 1.8,
+        "enableFog": 0,
+        "fogColor": [0.0, 0.0, 0.0],
+        "fogStart": 501.0,
+        "fogEnd": 1000.0,
+        "fogHeightMin": -5.0,
+        "fogHeightMax": 5.0,
+        "volumetricIntensity": 0.0,
+        "volumetricSteps": 8
+    },
+    "shadow": {"resolution": 2048, "areaSize": 80.0},
+    "pointLights": [],
+    "spotLights": []
+}

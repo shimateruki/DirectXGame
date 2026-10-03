@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "89c961376f2b53a74a36ad750ed96d99",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/scroll_panel.dds",
+  "version": 1
+}

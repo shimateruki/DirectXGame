@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4e5def2c7f2ecd778779d9345af6ef45",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/normal/traits.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "16c6b2f5238c2a0324c006880ea26189",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/left.png",
+  "version": 1
+}

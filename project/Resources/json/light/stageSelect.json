@@ -10,37 +10,37 @@
         "texture": "Resources/output_skybox.dds"
     },
     "shadow": {
-        "resolution": 2048,
-        "areaSize": 90.0
+        "resolution": 4096,
+        "areaSize": 120.0
     },
     "directionalLight": {
         "ambientColor": [
-            0.24,
-            0.29,
-            0.34
+            0.3,
+            0.35,
+            0.42
         ],
         "color": [
             1.0,
-            0.92,
-            0.78,
+            0.95,
+            0.84,
             1.0
         ],
         "direction": [
-            0.15022553503513336,
-            -0.961443305015564,
-            0.23034580051898956
+            0.48,
+            -0.78,
+            0.4
         ],
+        "intensity": 1.8,
         "enableFog": 0,
         "fogColor": [
             0.0,
             0.0,
             0.0
         ],
-        "fogEnd": 1000.0,
-        "fogHeightMax": 5.0,
-        "fogHeightMin": -5.0,
         "fogStart": 501.0,
-        "intensity": 1.02,
+        "fogEnd": 1000.0,
+        "fogHeightMin": -5.0,
+        "fogHeightMax": 5.0,
         "volumetricIntensity": 0.0,
         "volumetricSteps": 8
     },

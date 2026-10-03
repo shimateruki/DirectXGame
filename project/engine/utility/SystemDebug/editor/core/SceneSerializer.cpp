@@ -534,6 +534,12 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         if (isManagedCharacter) {
             if (className == "Enemy" && !p.enemyType.empty()) {
                 d["param"]["enemyType"] = p.enemyType;
+                // 出現条件は配置固有の設定なので、共通ステータスと分けて保存します。
+                if (p.enemyType == "PrismSlime" || p.enemyType == "MagmaSlime" || p.enemyType == "FalseKingSlime") {
+                    d["param"]["actionMode"] = p.actionMode;
+                    d["param"]["shakeDuration"] = p.shakeDuration;
+                    d["param"]["startActive"] = p.startActive;
+                }
             }
         } else {
             d["param"]["hp"] = p.hp;
@@ -569,7 +575,11 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
             d["param"]["copyMemoryTypeA"] = p.copyMemoryTypeA;
             d["param"]["copyMemoryTypeB"] = p.copyMemoryTypeB;
             d["param"]["copyMemoryTypeC"] = p.copyMemoryTypeC;
+            d["param"]["copyMemoryTypeD"] = p.copyMemoryTypeD;
             d["param"]["copyMemoryActivationRadius"] = p.copyMemoryActivationRadius;
+            d["param"]["copyMemoryEssenceScale"] = p.copyMemoryEssenceScale;
+            d["param"]["copyMemoryHoverAmount"] = p.copyMemoryHoverAmount;
+            d["param"]["copyMemoryGlow"] = p.copyMemoryGlow;
             d["param"]["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
         }
     }
@@ -645,6 +655,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         jw["effectScaleX"] = water->effectScaleX;
         jw["effectScaleY"] = water->effectScaleY;
         jw["effectScaleZ"] = water->effectScaleZ;
+        jw["topDownDetail"] = water->topDownDetail;
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;

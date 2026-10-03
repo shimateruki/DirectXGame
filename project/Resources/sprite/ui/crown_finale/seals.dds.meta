@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "83dc8b264d68fdb9b24f7d5a182a0eed",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/seals.dds",
+  "version": 1
+}

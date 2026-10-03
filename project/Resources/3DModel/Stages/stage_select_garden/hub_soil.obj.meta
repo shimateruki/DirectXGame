@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5a8258a163759a5e36bee6d220fe6390",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/hub_soil.obj",
+  "version": 1
+}

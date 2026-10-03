@@ -38,6 +38,7 @@ public:
     /// </summary>
     void EndFrame();
 
+    /// <summary>作成済みのImGui描画データをコマンドリストへ送る。</summary>
     void Draw(); 
 
 private:

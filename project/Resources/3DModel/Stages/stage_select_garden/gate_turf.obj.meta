@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e6e5967e85bf1f31a09e382749a48621",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/gate_turf.obj",
+  "version": 1
+}

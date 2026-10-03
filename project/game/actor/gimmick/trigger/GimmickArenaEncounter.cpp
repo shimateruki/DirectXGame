@@ -3,12 +3,14 @@
 
 #include "BaseScene.h"
 #include "CollisionConfig.h"
-#include "EnemyPrismSlime.h"
+#include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "BaseEnemy.h"
-#include "GamePlayScene.h"
+#include "game/scene/gameplay/GamePlayScene.h"
 #include "Player.h"
 #include "SceneManager.h"
 #include "VFXSequencer.h"
+#include "GameDataManager.h"
+#include "StageManager.h"
 
 #include <algorithm>
 #include <cassert>
@@ -153,6 +155,8 @@ void GimmickArenaEncounter::BeginEncounter() {
 }
 
 void GimmickArenaEncounter::CompleteEncounter() {
+    // マグマ脱出の再挑戦でのみ、中ボス戦をやり直さずに再開します。
+    if (IsMagmaMode()) GameDataManager::GetInstance()->RememberCheckpointEncounter(StageManager::GetInstance()->GetCurrentStageIndex(), GetEventID());
     state_ = State::Cleared;
     stateTimer_ = 0.0f;
     SetCollisionAttribute(0);
@@ -262,4 +266,15 @@ bool GimmickArenaEncounter::IsMagmaMode() const {
         ? scene->FindObjectByEventID(GetTargetID())
         : nullptr;
     return boss && boss->GetEnemyType() == "MagmaSlime";
+}
+
+void GimmickArenaEncounter::RestoreCheckpointClear() {
+    initializedForPlay_ = true;
+    state_ = State::Cleared;
+    stateTimer_ = 0.0f;
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetBossActive(false);
+    SetBarriersActive(false);
+    if (IsHighCrownMode()) SetRewardActive(true);
 }

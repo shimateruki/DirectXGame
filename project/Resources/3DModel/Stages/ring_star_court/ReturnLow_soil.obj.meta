@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "cf88e9fa7b9e7bf691c87c203e960f5d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnLow_soil.obj",
+  "version": 1
+}

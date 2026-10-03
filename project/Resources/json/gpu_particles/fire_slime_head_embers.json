@@ -2,7 +2,7 @@
   "emitPos": [0.0, 0.0, 0.0],
   "emitArea": [0.18, 0.06, 0.18],
   "emitVelocity": [0.0, 1.10, 0.0],
-  "emitCount": 5,
+  "emitCount": 2,
   "emitLife": 0.50,
   "velocityVariance": 0.52,
   "baseColor": [1.0, 0.78, 0.24, 0.72],
@@ -27,6 +27,6 @@
   "shapeType": 2,
   "shapeRadius": 0.16,
   "shapeAngle": 32.0,
-  "softParticleFade": 2.4,
+  "softParticleFade": 0.12,
   "texturePath": "Resources/sprite/particle/spark_streak.png"
 }

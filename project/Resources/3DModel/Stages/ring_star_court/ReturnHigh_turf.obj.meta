@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4c59e2912226e63d93f0025b15486647",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnHigh_turf.obj",
+  "version": 1
+}

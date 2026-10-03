@@ -3,6 +3,10 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include "RenderStats.h"
+#include "GimmickMovingFloor.h"
+#include "GimmickSinkingFloor.h"
+#include "game/actor/gimmick/stage/GimmickLiquidLevel.h"
+#include "Player.h"
 #include "engine/utility/math/Math.h"
 #include <string>
 #include <algorithm> // remove_if用
@@ -18,9 +22,28 @@ bool ShouldDrawStageGateFrame(const std::unique_ptr<Object3d>& obj) {
 }
 
 void ObjectManager::Update(float deltaTime) {
+    // 入力を処理しないフレームが挟まっても、古い床の速度を持ち越さない。
+    for (auto& obj : objects_) {
+        if (auto* player = obj && !obj->IsReplayRemoved() ? dynamic_cast<Player*>(obj.get()) : nullptr)
+            player->SetPlatformMotion({});
+    }
+    // 上昇する液面をPlayerの死亡判定より先に更新します。
+    for (auto& obj : objects_) {
+        if (auto* liquid = obj && !obj->IsReplayRemoved() ? dynamic_cast<GimmickLiquidLevel*>(obj.get()) : nullptr)
+            liquid->Update(deltaTime);
+    }
+    // 全移動床を乗員の物理より先に動かす。従来型も下降時の接地を保つ。
+    for (auto& obj : objects_) {
+        auto* floor = obj && !obj->IsReplayRemoved() ? dynamic_cast<GimmickMovingFloor*>(obj.get()) : nullptr;
+        if (floor) floor->Update(deltaTime);
+        else if (auto* sinking = obj && !obj->IsReplayRemoved() ? dynamic_cast<GimmickSinkingFloor*>(obj.get()) : nullptr;
+                 sinking && sinking->param_ && sinking->param_->actionMode == 1) sinking->Update(deltaTime);
+    }
 	// 1. 各オブジェクトの更新
 	for (auto& obj : objects_) {
 		if (!obj || obj->IsReplayRemoved()) continue;
+		if (dynamic_cast<GimmickMovingFloor*>(obj.get()) || dynamic_cast<GimmickLiquidLevel*>(obj.get())) continue;
+        if (dynamic_cast<GimmickSinkingFloor*>(obj.get()) && obj->param_ && obj->param_->actionMode == 1) continue;
 		obj->Update(deltaTime);
 	}
 
@@ -67,7 +90,9 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
 		if (!obj->GetIsVisible() || obj->IsCameraObject()) continue;
 		const int materialType = obj->GetMaterialType();
 		const bool drawStageGateFrame = ShouldDrawStageGateFrame(obj);
-		if (drawStageGateFrame || (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24))) {
+		// 25（スライムの通常シェーディング）も不透明パスへ渡す。
+		// 偽王のDrawは所有する槍・光刃も描くため、ここで除外すると攻撃だけが消える。
+		if (drawStageGateFrame || (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24 || materialType == 25))) {
 			obj->Draw(pointLight, spotLight);
 		}
 	}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0d0a2c2e0e479aeba8f2919bb3a72fee",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/clean.png",
+  "version": 1
+}

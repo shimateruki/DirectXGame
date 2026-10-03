@@ -1,5 +1,5 @@
 #include "BaseEnemy.h"
-#include "AttackTelegraph.h"
+#include "game/actor/enemy/combat/AttackTelegraph.h"
 #include "CollisionConfig.h" // kEnemyなどの定義を使うため
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
@@ -14,6 +14,7 @@
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
 #include "GimmickCoin.h"
+#include "GroundEffectLocator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -133,6 +134,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     defaultColor_ = GetColor();
     hasSpawnedDefeatCoinDrops_ = false;
     wasTargetDetected_ = false;
+    bossTargetEngaged_ = false;
     isNoticeReactionActive_ = false;
     noticeReactionKind_ = NoticeReactionKind::None;
     noticeReactionTimer_ = 0.0f;
@@ -778,12 +780,18 @@ void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
     noticeMarkObject_->UpdateWorldMatrix();
 }
 
+void BaseEnemy::UpdateBossTargetEngagement(float targetDistance) {
+    if (target_ && targetDistance <= detectionRange_) {
+        bossTargetEngaged_ = true;
+    }
+}
+
 bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection) {
     (void)deltaTime;
     (void)targetDirection;
 
     noticeDetectionRange_ = (std::max)(0.0f, detectRange);
-    const bool detected = target_ && targetDistance <= noticeDetectionRange_;
+    const bool detected = target_ && (bossTargetEngaged_ || targetDistance <= noticeDetectionRange_);
     if (!detected) {
         // 見失いへの遷移は、固有AIの状態に左右されない共通Updateで一度だけ処理します。
         return isNoticeReactionActive_;
@@ -802,8 +810,8 @@ bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, floa
 void BaseEnemy::UpdateNoticeAwareness(float deltaTime) {
     noticeReactionCooldown_ = (std::max)(0.0f, noticeReactionCooldown_ - deltaTime);
 
-    const bool detected = target_ &&
-        PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) <= (std::max)(0.0f, noticeDetectionRange_);
+    const bool detected = target_ && (bossTargetEngaged_ ||
+        PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) <= (std::max)(0.0f, noticeDetectionRange_));
 
     if (wasTargetDetected_ && !detected) {
         wasTargetDetected_ = false;
@@ -906,7 +914,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
     const Vector3 baseScale = GetScale();
     const float rawBodyScale = (std::max)({ 0.8f, std::abs(baseScale.x), std::abs(baseScale.y), std::abs(baseScale.z) });
     const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
-    const float groundY = basePosition.y + 0.18f;
+    const float groundY = GroundEffectLocator::ResolveGroundPosition(basePosition).y;
     const float spawnY = basePosition.y + (std::max)(0.65f, bodyScale * 0.32f);
 
     uint32_t seed = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
@@ -1316,6 +1324,16 @@ void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size
     }
 }
 
+void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color) {
+    if (!attackTelegraph_ && common_) {
+        attackTelegraph_ = std::make_unique<AttackTelegraph>();
+        attackTelegraph_->Initialize(common_);
+    }
+    if (attackTelegraph_) {
+        attackTelegraph_->ShowReadableImpactAreas(centers, centerCount, radius, progress, color);
+    }
+}
+
 void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
@@ -1330,6 +1348,15 @@ void BaseEnemy::HideAttackTelegraph() {
     if (attackTelegraph_) {
         attackTelegraph_->Hide();
     }
+}
+
+float BaseEnemy::GetActiveBodyAttackDamage() const {
+    // 中断前のAI状態が残っていても、演出中・運搬中の本体は攻撃にしません。
+    if (isDead || isDormant_ || isCarried_ || IsThrowRecovering() ||
+        isDefeatEffectPlaying_ || (param_.has_value() && param_->hp <= 0.0f)) {
+        return 0.0f;
+    }
+    return (std::max)(0.0f, GetBodyAttackDamage());
 }
 
 bool BaseEnemy::OnCollision(Object3d* other) {

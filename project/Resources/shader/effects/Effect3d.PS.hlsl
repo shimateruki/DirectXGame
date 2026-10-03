@@ -27,7 +27,11 @@ cbuffer EffectMaterial : register(b0)
     int enableNoiseTexture; // ノイズテクスチャ有効フラグ
     int enableReveal;
     int proceduralType; 
-    float3 padding2;
+    int useTextureColor;
+    float chantFlowStrength;
+    float chantRibbonStrength;
+    float ringEnergyStrength;
+    float ringSpinSpeed;
 };
 // --- プロシージャル計算用関数 ---
 // 2Dランダムハッシュ
@@ -88,9 +92,18 @@ float fbm_light(float2 uv)
 }
 float4 main(VertexOutput input) : SV_TARGET
 {
-    // 1. エディタからの制御で進行方向に合わせて消す (Reveal)
+    // Reveal mode 1 wipes horizontally; mode 2 draws a clockwise arc from the top.
     if (enableReveal == 1 && input.uv.x > revealProgress)
         discard;
+    if (enableReveal == 2)
+    {
+        float2 centeredUv = input.uv - float2(0.5f, 0.5f);
+        float sweep = atan2(centeredUv.x, -centeredUv.y) / 6.2831853f;
+        if (sweep < 0.0f)
+            sweep += 1.0f;
+        if (sweep > saturate(revealProgress))
+            discard;
+    }
         
     float2 scrolledUV = input.uv + (scrollSpeed * time);
     float4 mainColor = mainTex.Sample(smp, scrolledUV);
@@ -164,9 +177,11 @@ float4 main(VertexOutput input) : SV_TARGET
         // ★修正: smoothstep(0, 0.5, dist) の形にしてから 1.0 から引く！
         float dist = distance(input.uv, float2(0.5f, 0.5f));
         float sphere = 1.0f - smoothstep(0.0f, 0.5f, dist);
-        
-        alphaMask = sphere * baseNoiseValue;
-        distMask = sphere;
+
+        // Color opt-in also preserves authored alpha on flowing ribbons.
+        float authoredAlpha = useTextureColor != 0 ? mainColor.a : 1.0f;
+        alphaMask = sphere * baseNoiseValue * authoredAlpha;
+        distMask = sphere * authoredAlpha;
         mainColor.r = 1.0f;
     }
     else if (proceduralType == 3)
@@ -181,7 +196,103 @@ float4 main(VertexOutput input) : SV_TARGET
         // Plane sprites should keep the authored texture alpha.
         alphaMask = mainColor.a;
         distMask = mainColor.a;
-        mainColor.r = max(mainColor.r, mainColor.a);
+        // Legacy grayscale tint keeps its alpha-derived brightness.
+        if (useTextureColor == 0)
+            mainColor.r = max(mainColor.r, mainColor.a);
+    }
+
+    // A polar flow mask turns a simple plane into rotating ground energy.
+    // It is opt-in so existing mesh effects keep their authored appearance.
+    if (chantFlowStrength > 0.001f && proceduralType == 7)
+    {
+        float2 p = (input.uv - float2(0.5f, 0.5f)) * 2.0f;
+        float radius = length(p);
+        float angle = atan2(p.y, p.x);
+        float warpedRadius = radius + (baseNoiseValue - 0.5f) * 0.055f;
+        float angularSpeed = 2.3f + abs(scrollSpeed.x) * 2.0f;
+        float radialSpeed = 1.5f + abs(scrollSpeed.y);
+        float phase = angle * 3.0f - warpedRadius * 13.0f + time * angularSpeed;
+        float counterPhase = -angle * 5.0f - warpedRadius * 19.0f - time * radialSpeed;
+        float innerFade = smoothstep(0.12f, 0.28f, radius);
+        float outerFade = 1.0f - smoothstep(0.83f, 1.0f, radius);
+        float filament = pow(saturate(0.5f + 0.5f * sin(phase)), 12.0f) * innerFade * outerFade;
+        float secondFilament = pow(saturate(0.5f + 0.5f * sin(counterPhase)), 18.0f) *
+            smoothstep(0.34f, 0.55f, radius) * outerFade;
+        float rimDistance = (warpedRadius - 0.76f) * 13.0f;
+        float rim = exp(-rimDistance * rimDistance) *
+            (0.72f + 0.28f * sin(angle * 6.0f - time * 2.0f));
+        float centerGlow = exp(-radius * radius * 14.0f) * 0.25f;
+        // Keep a faint floor wash so the moving filaments carry the bright accents.
+        float washBand = smoothstep(0.32f, 0.49f, radius) *
+            (1.0f - smoothstep(0.82f, 0.98f, radius));
+        float washMotion = 0.74f + 0.26f * sin(angle * 2.0f - radius * 7.0f + time * 1.6f);
+        float groundWash = washBand * washMotion * (0.72f + 0.28f * baseNoiseValue) * 0.17f;
+        float flow = saturate(filament * 0.85f + secondFilament * 0.38f +
+            rim * 0.72f + centerGlow + groundWash);
+        alphaMask = flow * outerFade * chantFlowStrength;
+        distMask = alphaMask;
+        mainColor.rgb = 1.0f;
+    }
+
+    // The helical mesh carries a soft outer ribbon and a moving bright filament.
+    // This mask belongs to the caster, independent of the ground sigil.
+    if (chantRibbonStrength > 0.001f && proceduralType == 2)
+    {
+        float along = saturate(input.uv.x);
+        float across = saturate(input.uv.y);
+        float endFade = smoothstep(0.0f, 0.10f, along) *
+            (1.0f - smoothstep(0.84f, 1.0f, along));
+        float movingCenter = 0.5f + 0.10f * sin(along * 17.0f - time * (4.0f + abs(scrollSpeed.x)));
+        float distanceFromCore = abs(across - movingCenter);
+        float softBody = exp(-distanceFromCore * distanceFromCore * 14.0f);
+        float brightCore = exp(-distanceFromCore * distanceFromCore * 85.0f);
+        // Moving windows break the continuous helix into short flowing wisps.
+        float travelingLight = 0.16f + 0.84f * pow(saturate(
+            0.5f + 0.5f * sin(along * 16.0f - time * 5.0f)), 2.5f);
+        float turbulence = 0.66f + 0.34f * baseNoiseValue;
+        alphaMask = saturate((softBody * 0.24f + brightCore * 0.76f) *
+            endFade * travelingLight * turbulence * chantRibbonStrength);
+        distMask = alphaMask;
+        mainColor.rgb = float3(0.68f + brightCore * 0.38f,
+            0.68f + brightCore * 0.38f, 0.68f + brightCore * 0.38f);
+    }
+
+    // A ground ribbon joins the three fire anchors without a stretched sprite.
+    // The thin traveling core reads as a drawn spell boundary during the wipe.
+    if (chantRibbonStrength > 0.001f && proceduralType == 7)
+    {
+        float across = abs(input.uv.y - 0.5f) * 2.0f;
+        float sideGlow = exp(-across * across * 13.0f);
+        float hotCore = exp(-across * across * 115.0f);
+        float ends = smoothstep(0.0f, 0.035f, input.uv.x) *
+            (1.0f - smoothstep(0.965f, 1.0f, input.uv.x));
+        float travel = pow(saturate(0.5f + 0.5f *
+            sin(input.uv.x * 29.0f - time * 7.0f)), 5.0f);
+        float glimmer = 0.74f + 0.26f * baseNoiseValue;
+        alphaMask = saturate((sideGlow * 0.24f + hotCore * (0.48f + travel * 0.28f)) *
+            ends * glimmer * chantRibbonStrength);
+        distMask = alphaMask;
+        mainColor.rgb = float3(1.0f, 0.84f + hotCore * 0.16f, 0.70f + hotCore * 0.30f);
+    }
+
+    // Opt-in torus energy: moving teeth, counterflow and concentrated hot spots.
+    // The faint body keeps the ring readable while the highlights imply a fast cutting edge.
+    if (ringEnergyStrength > 0.001f && proceduralType == 8)
+    {
+        float angle = frac(input.uv.x) * 6.2831853f;
+        float spin = time * ringSpinSpeed;
+        float teeth = pow(saturate(0.5f + 0.5f * sin(angle * 12.0f - spin * 5.0f)), 9.0f);
+        float counterflow = pow(saturate(0.5f + 0.5f * sin(angle * 7.0f + spin * 2.4f)), 12.0f);
+        float hotSpot = pow(saturate(0.5f + 0.5f * sin((angle - spin) * 3.0f)), 20.0f);
+        float grain = valueNoise(float2(input.uv.x * 64.0f - time * 2.4f,
+            input.uv.y * 5.0f + time * 1.8f));
+        float chargedBody = 0.14f + 0.18f * grain;
+        float cuttingEdge = teeth * 0.42f + counterflow * 0.16f + hotSpot * 0.72f;
+        alphaMask = saturate((chargedBody + cuttingEdge) * ringEnergyStrength);
+        distMask = alphaMask;
+        float heat = saturate(hotSpot * 0.94f + teeth * 0.40f);
+        mainColor.rgb = lerp(float3(0.36f, 0.16f, 0.70f),
+            float3(1.35f, 1.22f, 1.30f), heat);
     }
 
     // ========================================================
@@ -195,9 +306,21 @@ float4 main(VertexOutput input) : SV_TARGET
     }
     
     // mainColor.rを掛けることで、テクスチャの濃淡(白黒)も反映させる
-    float3 tintColor = baseColor * intensity * mainColor.r;
+    // Opt-in preserves the authored RGB of colorful plane textures.
+    float3 textureColor = useTextureColor != 0 ? mainColor.rgb : mainColor.rrr;
+    float3 tintColor = baseColor * intensity * textureColor;
     
     float4 glowColor = float4(tintColor, alphaMask * color.a);
+
+    // A narrow hot edge makes the dissolving lance read as energy breaking apart.
+    if (proceduralType == 12 && dissolveFade > 0.001f)
+    {
+        float edgeDistance = baseNoiseValue - dissolveFade;
+        float edge = (1.0f - smoothstep(0.0f, 0.12f, edgeDistance)) *
+            saturate(dissolveFade * 5.0f) * (1.0f - saturate(dissolveFade * 0.70f));
+        glowColor.rgb += edge * float3(2.0f, 0.48f, 2.3f);
+        glowColor.a = max(glowColor.a, edge * color.a * 0.72f);
+    }
 
     // ========================================================
     // 6. 最終出力

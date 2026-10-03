@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d3ad3d7ce43b968f4ec3da118748d3b2",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/fireball_trail_flame.json",
+  "version": 1
+}

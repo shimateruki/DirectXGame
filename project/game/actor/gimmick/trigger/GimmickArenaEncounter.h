@@ -13,6 +13,8 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
+    void RestoreCheckpointClear();
+
 private:
     enum class State {
         Waiting,

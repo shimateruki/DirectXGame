@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f5a4d816ca4f9d70b756dd2d469847f2",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/player_ability_wind_tornado.json",
+  "version": 1
+}

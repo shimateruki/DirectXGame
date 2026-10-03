@@ -1,0 +1,286 @@
+{
+    "version": 6,
+    "name": "stage1_coaster",
+    "duration": 26.3,
+    "tracks": [
+        {
+            "name": "乗車床：出発・乗り込み停車・上昇・急降下",
+            "targetName": "Stage1_Coaster_Deck",
+            "targetEventId": -1,
+            "startTime": 0,
+            "enabled": true,
+            "muted": false,
+            "relative": false,
+            "holdLast": true,
+            "keys": [
+                {
+                    "time": 0,
+                    "position": [
+                        632,
+                        11.4,
+                        -14
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 1.1,
+                    "position": [
+                        632,
+                        11.4,
+                        -14
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 4,
+                    "position": [
+                        650,
+                        15,
+                        -32
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 7,
+                    "position": [
+                        672,
+                        18,
+                        -10
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 8.5,
+                    "position": [
+                        681,
+                        18,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 10.6,
+                    "position": [
+                        681,
+                        18,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 14,
+                    "position": [
+                        706,
+                        23,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 15.7,
+                    "position": [
+                        706,
+                        23,
+                        -8
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 19,
+                    "position": [
+                        718,
+                        36,
+                        14
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 4
+                },
+                {
+                    "time": 22,
+                    "position": [
+                        727,
+                        50,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                },
+                {
+                    "time": 23,
+                    "position": [
+                        727,
+                        50,
+                        29
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 1
+                },
+                {
+                    "time": 24.8,
+                    "position": [
+                        752,
+                        23,
+                        18
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 2
+                },
+                {
+                    "time": 26.3,
+                    "position": [
+                        763,
+                        16.4,
+                        13
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "scale": [
+                        1,
+                        1,
+                        1
+                    ],
+                    "easingToNext": 0
+                }
+            ]
+        }
+    ],
+    "signals": [
+        {
+            "time": 8.8,
+            "name": "スライム1が乗り込む",
+            "signal": "ride.board",
+            "payload": "{\"duration\": 1.1, \"height\": 6, \"offset\": [-3, 0, 0]}",
+            "targetName": "Stage1_Coaster_Boarder_0",
+            "targetEventId": -1,
+            "enabled": true
+        },
+        {
+            "time": 14.2,
+            "name": "スライム2が乗り込む",
+            "signal": "ride.board",
+            "payload": "{\"duration\": 1.1, \"height\": 6, \"offset\": [3, 0, 0]}",
+            "targetName": "Stage1_Coaster_Boarder_1",
+            "targetEventId": -1,
+            "enabled": true
+        }
+    ]
+}

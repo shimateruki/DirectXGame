@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "db3bd0c1a6d16dc8a5e27f05da18b7f6",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_ferry_break_rock/magma_ferry_break_rock.obj",
+  "version": 1
+}

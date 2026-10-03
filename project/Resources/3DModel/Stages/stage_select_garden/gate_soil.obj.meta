@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7ccd068fc490f0009079e29d4be5de4f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/gate_soil.obj",
+  "version": 1
+}

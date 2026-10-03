@@ -1,281 +1,121 @@
 ﻿#include "LockOnSystem.h"
-#include "Object3d.h"
+
 #include "Camera.h"
 #include "Player.h"
 #include "InputManager.h"
-#include "CollisionManager.h" 
-#include "Math.h"
-
-// 定義 (kEnemy) のために必要ならインクルード
-#include "BaseEnemy.h" // もし属性チェックで必要なら
-#include <DebugConsole.h>
-
+#include "CollisionManager.h"
+#include "CollisionConfig.h"
+#include "BaseEnemy.h"
+#include "SceneManager.h"
+#include <algorithm>
+#include <cmath>
 namespace {
-bool ContainsObject(const std::vector<std::unique_ptr<Object3d>>& objects, const Object3d* target) {
-    if (!target) {
-        return false;
-    }
-    for (const auto& object : objects) {
-        if (object.get() == target) {
-            return true;
-        }
-    }
-    return false;
+Vector3 AimCenter(Object3d* object) {
+    // 原点や固定の高さではなく、サイズ・オフセットを反映した判定中心を狙います。
+    const AABB bounds = object->GetAABB();
+    return (bounds.min + bounds.max) * 0.5f;
+}
+bool Available(Object3d* object) {
+    auto* enemy = dynamic_cast<BaseEnemy*>(object);
+    return enemy && !enemy->isDead && enemy->GetIsVisible() &&
+        (enemy->GetCollisionAttribute() & kEnemy) &&
+        !enemy->IsCarried() && !enemy->IsDefeatEffectPlaying();
+}
+bool Visible(Player* player, Object3d* target) {
+    const Vector3 start = AimCenter(player);
+    const Vector3 delta = AimCenter(target) - start;
+    const float distance = Math::Length(delta);
+    if (distance < 0.001f) return true;
+    PhysicsQueryFilter filter;
+    filter.mask = kAllSolid;
+    filter.ignoredObject = player;
+    return !CollisionManager::GetInstance()->Raycast(start, delta / distance, distance, filter).isHit;
 }
 }
-
-LockOnSystem::LockOnSystem() {
-    inputManager_ = nullptr;
-    lockOnTarget_ = nullptr;
-    isLockingOn_ = false;
-}
-
-LockOnSystem::~LockOnSystem() {
-    // ポインタは外部管理なのでdeleteしない
-}
-
+LockOnSystem::LockOnSystem() = default;
+LockOnSystem::~LockOnSystem() = default;
+void LockOnSystem::Initialize(InputManager* inputManager) { inputManager_ = inputManager; }
 void LockOnSystem::ResetLockOn(Camera* camera) {
+    const bool active = isLockingOn_;
     isLockingOn_ = false;
     lockOnTarget_ = nullptr;
-    lostSightTimer_ = 0.0f;
-
-    if (camera) {
+    lostSightTimer_ = 0;
+    if (camera && active) {
+        camera->SyncRotationToCurrentView();
         camera->SetLockOnTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kAimable);
-    }
-}
-
-void LockOnSystem::Initialize(InputManager* inputManager) {
-    inputManager_ = inputManager;
-}
-void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
-    if (!inputManager_ || !camera || !player) return;
-
-    if (lockOnTarget_ && !ContainsObject(objects, lockOnTarget_)) {
-        isLockingOn_ = false;
-        lockOnTarget_ = nullptr;
-        camera->SetLockOnTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::kAimable);
-        lostSightTimer_ = 0.0f;
-    }
-
-    // (1) 0キー(Zキー等)入力処理
-    if (inputManager_->IsKeyTriggered(DIK_R)) {
-        isLockingOn_ = !isLockingOn_;
-
-        if (isLockingOn_) {
-            // ロックオン開始 -> 対象検索
-            lockOnTarget_ = FindBestTarget(objects, camera, player);
-            if (!lockOnTarget_) {
-                isLockingOn_ = false; // 見つからなかったら解除
-            }
-            else {
-                lostSightTimer_ = 0.0f; // ロックオン開始時にタイマーを初期化
-            }
-        }
-
-        if (!isLockingOn_) {
-            // ロックオン解除
-            lockOnTarget_ = nullptr;
-            camera->SyncRotationToCurrentView();
-            camera->SetLockOnTarget(nullptr);
-            camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
-            lostSightTimer_ = 0.0f; // 解除時もタイマーを初期化
-        }
-
-    }
-
-    // (2) ロックオン中の挙動
-    if (isLockingOn_) {
-        // ターゲットが消えた(死亡など)場合の安全対策
-        if (!lockOnTarget_) {
-            isLockingOn_ = false;
-            // player->SetLockOn(false); // ← ここも念のためコメントアウト！！
+        if (camera->GetFollowMode() == Camera::FollowMode::kLockOn)
             camera->SetFollowMode(Camera::FollowMode::kAimable);
+    }
+}
+void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
+    Camera* camera, Player* player, float deltaTime) {
+    if (!player || !camera || !inputManager_) return;
+    player->SetLockOn(false);
+    player->SetLockOnAimPoint({}, false);
+    if (!SceneManager::GetInstance()->IsPlaying() || player->isDead || player->IsCinematicLocked() ||
+        player->IsLaunchStarActive() || player->IsGateReturnAnimationActive()) {
+        ResetLockOn(camera);
+        return;
+    }
+    if (deltaTime <= 0 || !std::isfinite(deltaTime)) return;
+    if (lockOnTarget_) {
+        // 対象を参照する前に、シーンに残っていることを確認します。
+        const bool exists = std::any_of(objects.begin(), objects.end(),
+            [&](const auto& object) { return object.get() == lockOnTarget_; });
+        if (!exists || !Available(lockOnTarget_) ||
+            Math::Length(lockOnTarget_->GetWorldPosition() - player->GetWorldPosition()) > kMaxLockOnDistance_ * 1.25f) {
+            ResetLockOn(camera);
             return;
         }
-
-        constexpr uint32_t kTargetAttribute = 2; // kEnemy
-        BaseEnemy* targetEnemy = dynamic_cast<BaseEnemy*>(lockOnTarget_);
-        const bool targetUnavailable =
-            !lockOnTarget_->GetIsVisible() ||
-            lockOnTarget_->isDead ||
-            (!(lockOnTarget_->GetCollisionAttribute() & kTargetAttribute) &&
-                lockOnTarget_->GetName().find("BossCore") == std::string::npos) ||
-            (targetEnemy && (targetEnemy->IsCarried() || targetEnemy->IsDefeatEffectPlaying()));
-        if (targetUnavailable) {
-            isLockingOn_ = false;
-            lockOnTarget_ = nullptr;
-            camera->SyncRotationToCurrentView();
-            camera->SetLockOnTarget(nullptr);
-            camera->SetFollowMode(Camera::FollowMode::kAimable);
-            lostSightTimer_ = 0.0f;
-            return;
-        }
-
-        // 障害物による視認不可のチェック
-        // ========================================================
-        Vector3 playerPos = player->GetWorldPosition();
-        Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
-
-        // 足元だと地面をすってしまうので、胸の高さ(Y+1.0f)からレイを飛ばす
-        Vector3 rayStart = { playerPos.x, playerPos.y + 1.0f, playerPos.z };
-        Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.0f, enemyPos.z };
-        Vector3 toEnemy = { rayEnd.x - rayStart.x, rayEnd.y - rayStart.y, rayEnd.z - rayStart.z };
-
-        float dist = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.y * toEnemy.y + toEnemy.z * toEnemy.z);
-        if (dist > 0.0f) {
-            Vector3 dir = { toEnemy.x / dist, toEnemy.y / dist, toEnemy.z / dist };
-
-            // 障害物があるかチェック (第4引数の 1 は kGround などの壁属性)
-            RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, dir, dist, 1);
-
-            if (hit.isHit) {
-                // 壁に遮られたらタイマーを進める (約60FPS想定で 0.016f ずつ加算)
-                lostSightTimer_ += 0.016f;
-
-                // 1.5秒間、壁に隠れ続けたら強制的にロックオン解除！
-                if (lostSightTimer_ >= 1.5f) {
-                    isLockingOn_ = false;
-                    lockOnTarget_ = nullptr;
-                    // player->SetLockOn(false); // ← 視線切れ解除時もコメントアウト！！
-                    camera->SyncRotationToCurrentView(); // 今のカメラの向きを維持
-                    camera->SetLockOnTarget(nullptr);
-                    camera->SetFollowMode(Camera::FollowMode::kAimable);
-                    lostSightTimer_ = 0.0f;
-
-                    DebugConsole::GetInstance()->AddLog("LockOn Lost: Target behind wall.");
-                    return; // 今フレームの処理はここで終了
-                }
-            }
-            else {
-                // 見えているならタイマーをリセット（一瞬でも見えれば回復する）
-                lostSightTimer_ = 0.0f;
-            }
-        }
-
-        // カメラ設定 (毎フレーム更新)
-        camera->SetFollowMode(Camera::FollowMode::kLockOn);
-        camera->SetLockOnTarget(lockOnTarget_);
     }
+    if (inputManager_->IsActionTriggered("LockOn")) {
+        if (isLockingOn_) { ResetLockOn(camera); return; }
+        lockOnTarget_ = FindBestTarget(objects, camera, player);
+        isLockingOn_ = lockOnTarget_ != nullptr;
+    } else if (isLockingOn_ && inputManager_->IsActionTriggered("LockOnNext")) {
+        if (auto* next = FindBestTarget(objects, camera, player, true)) {
+            lockOnTarget_ = next;
+            lostSightTimer_ = 0;
+        }
+    }
+    if (!isLockingOn_ || !lockOnTarget_) return;
+    const bool visible = Visible(player, lockOnTarget_);
+    lostSightTimer_ = visible ? 0 : lostSightTimer_ + deltaTime;
+    if (lostSightTimer_ >= 0.5f) { ResetLockOn(camera); return; }
+    camera->SetFollowMode(Camera::FollowMode::kLockOn);
+    camera->SetLockOnTarget(lockOnTarget_);
+    player->SetLockOn(true);
+    // 遮蔽中の猶予はカメラだけに与え、攻撃補助は止めます。
+    player->SetLockOnAimPoint(AimCenter(lockOnTarget_), visible);
 }
-Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
-    static Math math;
-    if (!player || !camera) return nullptr;
-
-    Object3d* bestTarget = nullptr;
-    float minDistance = kMaxLockOnDistance_ + 1.0f;
-
-    Vector3 playerPos = player->GetWorldPosition();
-    Vector3 cameraEye = camera->GetEye();
-
-    // カメラの奥行きを含めた3D前方ベクトルを算出
-    // ========================================================
-    Vector3 cameraForward = camera->GetTargetPoint() - cameraEye;
-    float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.y * cameraForward.y + cameraForward.z * cameraForward.z);
-    if (cfLen > 0.001f) {
-        cameraForward.x /= cfLen;
-        cameraForward.y /= cfLen;
-        cameraForward.z /= cfLen;
-    }
-    else {
-        cameraForward = { 0.0f, 0.0f, 1.0f };
-    }
-
-    const uint32_t kTargetAttribute = 2; // kEnemy (例)
-
-    for (const auto& obj : objects) {
-        if (!obj || !obj->GetIsVisible() || obj->isDead) {
-            continue;
-        }
-
-        if (BaseEnemy* enemy = dynamic_cast<BaseEnemy*>(obj.get())) {
-            if (enemy->IsCarried() || enemy->IsDefeatEffectPlaying()) {
-                continue;
-            }
-        }
-
-        if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
-            // 名前に "BossCore" が含まれていない場合のみ除外する（ボスはスルーして判定を続ける）
-            if (obj->GetName().find("BossCore") == std::string::npos) {
-                continue;
-            }
-        }
-        
-
-        // 2. 自分自身、および「自分の子パーツ(武器や手足など)」を除外
-        bool isPlayerPart = false;
-        Object3d* current = obj.get();
-        while (current) {
-            if (current == player) { isPlayerPart = true; break; }
-            current = current->GetParent();
-        }
-        if (isPlayerPart) continue;
-
-        // 3. ブロックなど無関係なものを除外
-        std::string name = obj->GetName();
-        if (name.find("Block") != std::string::npos || name.find("Stages/block") != std::string::npos) continue;
-
-        // -----------------------------------------------------------------
-        //  (D) 距離と角度のチェック（完全3D化！）
-        // -----------------------------------------------------------------
-        Vector3 enemyPos = obj->GetWorldPosition();
-
-        // プレイヤーからの距離（ロックオン可能距離の判定などに使う）
-        Vector3 toEnemyFromPlayer = enemyPos - playerPos;
-        float distance = math.Length(toEnemyFromPlayer);
-
+Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects,
+    Camera* camera, Player* player, bool next) {
+    struct Candidate { Object3d* object; float score; };
+    std::vector<Candidate> candidates;
+    Vector3 forward = camera->GetTargetPoint() - camera->GetEye();
+    const float length = Math::Length(forward);
+    forward = length > 0.001f ? forward / length : Vector3{0,0,1};
+    for (const auto& object : objects) {
+        if (!Available(object.get())) continue;
+        bool owned = false;
+        for (auto* parent = object.get(); parent; parent = parent->GetParent())
+            if (parent == player) { owned = true; break; }
+        if (owned) continue;
+        const float distance = Math::Length(object->GetWorldPosition() - player->GetWorldPosition());
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
-
-        // カメラ座標を起点としたターゲットへの方向を算出
-        // ========================================================
-        Vector3 toEnemyFromCam = enemyPos - cameraEye;
-        float teCamLen = std::sqrt(toEnemyFromCam.x * toEnemyFromCam.x + toEnemyFromCam.y * toEnemyFromCam.y + toEnemyFromCam.z * toEnemyFromCam.z);
-        if (teCamLen > 0.001f) {
-            toEnemyFromCam.x /= teCamLen;
-            toEnemyFromCam.y /= teCamLen;
-            toEnemyFromCam.z /= teCamLen;
-        }
-
-        // カメラの向きと、敵への方向の3D内積（画面に入っているかチェック）
-        float dot = math.Dot(cameraForward, toEnemyFromCam);
-
-        // 視野内（前方180度弱）かつ最短距離の対象を選別
-        // ========================================================
-        if (dot > -0.2f && distance < minDistance) {
-
-            // 15m以内なら壁を無視して確定（激甘判定）
-            if (distance < 15.0f) {
-                minDistance = distance;
-                bestTarget = obj.get();
-                continue;
-            }
-
-            // 15m以上の遠距離なら壁チェック（レイを1.5mの高さから撃つ）
-            Vector3 rayStart = { playerPos.x, playerPos.y + 1.5f, playerPos.z };
-            Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.5f, enemyPos.z };
-            Vector3 toEnemy3D = { rayEnd.x - rayStart.x, rayEnd.y - rayStart.y, rayEnd.z - rayStart.z };
-
-            float trueDist = std::sqrt(toEnemy3D.x * toEnemy3D.x + toEnemy3D.y * toEnemy3D.y + toEnemy3D.z * toEnemy3D.z);
-
-            if (trueDist > 0.0f) {
-                Vector3 toEnemyNormalized = { toEnemy3D.x / trueDist, toEnemy3D.y / trueDist, toEnemy3D.z / trueDist };
-
-                RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                    rayStart,
-                    toEnemyNormalized,
-                    trueDist,
-                    1
-                );
-
-                // 間に壁がなければ、最も良いターゲットとして更新
-                if (!hit.isHit) {
-                    minDistance = distance;
-                    bestTarget = obj.get();
-                }
-            }
-        }
+        const Vector3 delta = object->GetWorldPosition() - camera->GetEye();
+        const float cameraDistance = Math::Length(delta);
+        if (cameraDistance < 0.001f) continue;
+        const float dot = Math::Dot(forward, delta / cameraDistance);
+        if (dot < 0.5f || !Visible(player, object.get())) continue;
+        candidates.push_back({object.get(), (1-dot)*2 + distance/kMaxLockOnDistance_});
     }
-
-    return bestTarget;
+    if (candidates.empty()) return nullptr;
+    // 手動切替は安定したシーン順で巡回し、カメラ移動で同じ2体を往復させません。
+    if (next) {
+        for (size_t i=0; i<candidates.size(); ++i)
+            if (candidates[i].object == lockOnTarget_) return candidates[(i+1)%candidates.size()].object;
+    }
+    std::stable_sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) { return a.score < b.score; });
+    return candidates.front().object;
 }

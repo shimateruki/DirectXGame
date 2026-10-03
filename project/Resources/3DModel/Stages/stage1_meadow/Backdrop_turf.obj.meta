@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "1c4862240433d993caf2af1c53d12a84",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_meadow/Backdrop_turf.obj",
+  "version": 1
+}

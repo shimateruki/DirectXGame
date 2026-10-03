@@ -10,27 +10,26 @@
 class DirectXCommon;
 
 /// <summary>
-/// 2Dスプライトの変換、描画、簡易アニメーションを扱う。
+/// 2D画像の変換、UV、親子関係、簡易アニメーションを管理して描画する。
 /// </summary>
-// Spriteは、2D画像の位置、サイズ、UV、親子関係、簡易アニメーションを管理して描画するクラスです。
 class Sprite {
 public:
-    // GPUへ送る基本構造体。
-        // Spriteを画面上へ配置するための基本Transformです。
-struct Transform {
+    /// <summary>画面上に配置するための基本変換。</summary>
+    struct Transform {
         Vector3 scale;
         Vector3 rotate;
         Vector3 translate;
     };
 
+    /// <summary>Spriteの頂点位置、UV、法線を保持する。</summary>
     struct VertexData {
         Vector4 position;
         Vector2 texcoord;
         Vector3 normal;
     };
 
-        // Sprite描画時にGPUへ渡す色、UV変換、発光などのマテリアル情報です。
-struct Material {
+    /// <summary>GPUへ渡す色、UV変換、発光などの描画属性。</summary>
+    struct Material {
         Vector4 color;
         int32_t enableLighting;
         float padding1[3];
@@ -39,7 +38,8 @@ struct Material {
         float padding2[3];
     };
 
-struct TransformationMatrix {
+    /// <summary>Sprite描画に使用するGPU向け変換行列。</summary>
+    struct TransformationMatrix {
         Matrix4x4 WVP;
         Matrix4x4 World;
     };
@@ -76,29 +76,17 @@ struct TransformationMatrix {
 public:
     ~Sprite();
 
-    /// <summary>
-    /// テクスチャハンドルを指定して初期化する。
-    /// </summary>
-        // 既に読み込まれたテクスチャハンドルを使ってSpriteを初期化します。
-void Initialize(SpriteCommon* common, uint32_t textureHandle);
+    /// <summary>読み込み済みテクスチャのハンドルから初期化する。</summary>
+    void Initialize(SpriteCommon* common, uint32_t textureHandle);
 
-    /// <summary>
-    /// テクスチャファイルを読み込んで初期化する。
-    /// </summary>
-        // テクスチャファイル名から読み込みを行い、Spriteを初期化します。
-void Initialize(SpriteCommon* common, const std::string& textureFilePath);
+    /// <summary>ファイルからテクスチャを読み込み、初期化する。</summary>
+    void Initialize(SpriteCommon* common, const std::string& textureFilePath);
 
-    /// <summary>
-    /// 座標、UV、アニメーション状態を更新する。
-    /// </summary>
-        // 座標、UV、アニメーション状態をもとにGPU用行列を更新します。
-void Update();
+    /// <summary>座標、UV、アニメーション状態からGPU用行列を更新する。</summary>
+    void Update();
 
-    /// <summary>
-    /// 現在のスプライトを描画する。
-    /// </summary>
-        // 現在のSprite設定で2D描画コマンドを発行します。
-void Draw();
+    /// <summary>現在の設定で2D描画コマンドを発行する。</summary>
+    void Draw();
 
     // 基本パラメータの取得と設定。
     const Vector2& GetPosition() const { return position_; }
@@ -111,6 +99,8 @@ void Draw();
     void SetSize(const Vector2& size) { size_ = size; }
 
     const Vector4& GetColor() const { return color_; }
+
+    /// <summary>表示色を保存し、初期化済みならGPU用マテリアルへ反映する。</summary>
     void SetColor(const Vector4& color);
 
     void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
@@ -122,8 +112,8 @@ void Draw();
     void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
     bool GetIsFlipY() const { return isFlipY_; }
 
-        // テクスチャ内の一部だけを表示するためのUV範囲を設定します。
-void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
+    /// <summary>テクスチャから表示するUV範囲をピクセル単位で指定する。</summary>
+    void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
         textureLeftTop_ = texLeftTop;
         textureSize_ = texSize;
     }
@@ -136,18 +126,17 @@ void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
     /// </summary>
     uint32_t GetTextureHandle() const { return textureHandle_; }
 
+    /// <summary>描画に使用する読み込み済みテクスチャのハンドルを切り替える。</summary>
     void SetTextureHandle(uint32_t textureHandle) {
         textureHandle_ = textureHandle;
         /* AdjustTextureSize(); */
     }
 
+    /// <summary>テクスチャを読み込み、描画用ハンドルを返す。</summary>
     static uint32_t LoadTexture(const std::string& fileName);
 
-    /// <summary>
-    /// 横並びスプライトシートのアニメーション設定を行う。
-    /// </summary>
-        // 横並びフレームを使った簡易Spriteアニメーションを設定します。
-void SetAnimation(int frameCount, float duration, bool loop);
+    /// <summary>横並びスプライトシートの簡易アニメーションを設定する。</summary>
+    void SetAnimation(int frameCount, float duration, bool loop);
 
     // エディタ表示や階層管理で使う識別情報。
     void SetName(const std::string& name) { name_ = name; }
@@ -169,17 +158,26 @@ void SetAnimation(int frameCount, float duration, bool loop);
     void SetLocked(bool isLocked) { isLocked_ = isLocked; }
     const std::string& GetTextureName() const { return textureName_; }
     void SetTextureName(const std::string& name) { textureName_ = name; }
-        // 親Spriteを設定し、UI部品を階層的に移動できるようにします。
-void SetParent(Sprite* parent, bool keepWorldPosition = true);
+
+    /// <summary>親Spriteを設定し、必要なら表示上の位置を維持する。</summary>
+    void SetParent(Sprite* parent, bool keepWorldPosition = true);
     Sprite* GetParent() const { return parent_; }
     const std::vector<Sprite*>& GetChildren() const { return children_; }
+
+    /// <summary>親Spriteの変換を反映した画面上の位置を返す。</summary>
     Vector2 GetWorldPosition() const;
 
     // ReplayDebuggerがフレームをまたいで同じSpriteを識別するためのIDです。
     uint64_t EnsureReplayId();
     uint64_t GetReplayId() const { return replayId_; }
+
+    /// <summary>リプレイ再現に必要な可変状態を保存する。</summary>
     ReplayState CaptureReplayState() const;
+
+    /// <summary>保存済みのリプレイ状態をSpriteへ復元する。</summary>
     void RestoreReplayState(const ReplayState& state);
+
+    /// <summary>リプレイ復元後に描画用の行列やUVを再計算する。</summary>
     void RefreshAfterReplayRestore();
     bool IsReplayRetained() const { return replayRetained_; }
     void SetReplayRetained(bool retained) { replayRetained_ = retained; }
@@ -215,8 +213,8 @@ private:
     int frameWidth_ = 0;
     int frameHeight_ = 0;
 
-        // テクスチャのピクセルサイズに合わせてSpriteサイズやUVを調整します。
-void AdjustTextureSize();
+    // テクスチャのピクセルサイズに合わせて描画サイズとUVを更新する。
+    void AdjustTextureSize();
 
     // GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;

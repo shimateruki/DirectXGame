@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "740fd61596366a27b89cbb319fe5816c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/inherit.dds",
+  "version": 1
+}

@@ -9,6 +9,7 @@
 #include <DebugConsole.h>
 #include "IconsFontAwesome5.h"
 #include <filesystem>
+#include <algorithm>
 #include <MeshEffectManager.h>
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
@@ -122,6 +123,11 @@ void MeshEffectEditor::Update(float deltaTime) {
         previewEffect_->SetColor(editColor_);
         previewEffect_->SetScrollSpeed(editScrollSpeed_);
         previewEffect_->SetIntensity(editIntensity_);
+        previewEffect_->SetUseTextureColor(editUseTextureColor_);
+        previewEffect_->SetChantFlowStrength(editChantFlowStrength_);
+        previewEffect_->SetChantRibbonStrength(editChantRibbonStrength_);
+        previewEffect_->SetRingEnergyStrength(editRingEnergyStrength_);
+        previewEffect_->SetRingSpinSpeed(editRingSpinSpeed_);
     }
 
     if (!previewEffect_) return;
@@ -252,12 +258,18 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->SetEndColor(editEndColor_);
         fx->SetScrollSpeed(editScrollSpeed_);
         fx->SetIntensity(editIntensity_);
+        fx->SetUseTextureColor(editUseTextureColor_);
+        fx->SetChantFlowStrength(editChantFlowStrength_);
+        fx->SetChantRibbonStrength(editChantRibbonStrength_);
+        fx->SetRingEnergyStrength(editRingEnergyStrength_);
+        fx->SetRingSpinSpeed(editRingSpinSpeed_);
 
         fx->SetDistortionStrength(editDistortionStrength_);
         fx->SetDistortionSpeed(editDistortionSpeed_);
         fx->SetEdgeFadeStrength(editEdgeFadeStrength_);
         fx->SetEnableDistortion(editEnableDistortion_);
         fx->SetEnableReveal(editEnableReveal_);
+        fx->SetRevealMode(editEnableReveal_ ? editRevealMode_ : 0);
         fx->SetEasingType(editEasingType_);
         fx->SetProceduralType(editProceduralType_);
         fx->SetAlphaReference(editAlphaReference_);
@@ -397,17 +409,24 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::Combo(ICON_FA_ADJUST " ブレンドモード", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
         previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
     }
+    if (ImGui::Checkbox("画像のRGBを反映", &editUseTextureColor_)) {
+        previewEffect_->SetUseTextureColor(editUseTextureColor_);
+    }
     ImGui::Separator();
     ImGui::Text(ICON_FA_CUBES " [ 立体化モード (Volume Mode) ]");
     const char* volumeModes[] = { "0: なし (None)", "1: 十字クロス (Cross)", "2: 3枚重ね (Layer)" };
     ImGui::Combo("立体化", &editVolumeMode_, volumeModes, IM_ARRAYSIZE(volumeModes));
 
     ImGui::Checkbox(ICON_FA_RULER_HORIZONTAL " 伸びるアニメーション (Reveal Mode)", &editEnableReveal_);
+    if (editEnableReveal_) {
+        const char* revealModes[] = { "なし", "横方向", "円周方向" };
+        ImGui::Combo("表示の組み立て方", &editRevealMode_, revealModes, IM_ARRAYSIZE(revealModes));
+    }
     if (ImGui::Combo(ICON_FA_CHART_LINE " イージング (Easing)", &editEasingType_, kEasingNames, IM_ARRAYSIZE(kEasingNames))) {
         previewEffect_->SetEasingType(editEasingType_);
     }
     ImGui::Separator();
-    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)" };
+    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)", "12: 槍 (Lance)" };
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
         previewEffect_->SetProceduralType(editProceduralType_);
 
@@ -460,7 +479,7 @@ void MeshEffectEditor::DrawImGui() {
             changed |= ImGui::SliderFloat("副半径 (太さ)", &previewEffect_->editTorusMinorRadius_, 0.01f, 5.0f);
             changed |= ImGui::SliderInt("断面の分割数", &previewEffect_->editSphereRings_, 3, 64);
         }
-        else if (editProceduralType_ == 9) {
+        else if (editProceduralType_ == 9 || editProceduralType_ == 12) {
             changed |= ImGui::SliderFloat("半径", &previewEffect_->editConeRadius_, 0.1f, 20.0f);
             changed |= ImGui::SliderFloat("高さ", &previewEffect_->editConeHeight_, 0.1f, 20.0f);
         }
@@ -641,6 +660,12 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_SLIDERS_H " シェーダーパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragFloat2("スクロール速度", &editScrollSpeed_.x, 0.01f);
         ImGui::DragFloat("発光強度 (HDR)", &editIntensity_, 0.01f, 0.0f, 100.0f);
+        ImGui::SliderFloat("詠唱の光の流れ", &editChantFlowStrength_, 0.0f, 1.0f);
+        ImGui::SliderFloat("術者を巻く光帯", &editChantRibbonStrength_, 0.0f, 1.0f);
+        ImGui::TextDisabled("平面の光の流れ／回転切りの光帯で有効。スクロール速度で流れを調整します。");
+        ImGui::SliderFloat("リング刃のエネルギー密度", &editRingEnergyStrength_, 0.0f, 1.0f);
+        ImGui::SliderFloat("リング刃の周回速度", &editRingSpinSpeed_, -40.0f, 40.0f);
+        ImGui::TextDisabled("トーラス形状で有効。輪郭に明暗を作り、発光部を周回させます。");
 
         ImGui::Separator();
 
@@ -779,6 +804,11 @@ void MeshEffectEditor::SaveToJson() {
     // --- シェーダーパラメータ ---
     j["ScrollSpeed"] = { editScrollSpeed_.x, editScrollSpeed_.y };
     j["Intensity"] = editIntensity_;
+    j["UseTextureColor"] = editUseTextureColor_;
+    j["ChantFlowStrength"] = editChantFlowStrength_;
+    j["ChantRibbonStrength"] = editChantRibbonStrength_;
+    j["RingEnergyStrength"] = editRingEnergyStrength_;
+    j["RingSpinSpeed"] = editRingSpinSpeed_;
     j["DistortionStrength"] = editDistortionStrength_;
     j["DistortionSpeed"] = editDistortionSpeed_;
     j["EdgeFadeStrength"] = editEdgeFadeStrength_;
@@ -786,6 +816,7 @@ void MeshEffectEditor::SaveToJson() {
     j["EnableDistortion"] = editEnableDistortion_;
     j["BlendMode"] = currentBlendModeIndex_;
     j["EnableReveal"] = editEnableReveal_;
+    j["RevealMode"] = editEnableReveal_ ? editRevealMode_ : 0;
     j["EasingType"] = editEasingType_;
     j["VolumeMode"] = editVolumeMode_;
 
@@ -944,8 +975,21 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
     else editEnableDistortion_ = false;
     if (j.contains("BlendMode")) currentBlendModeIndex_ = j["BlendMode"];
+    if (j.contains("UseTextureColor")) editUseTextureColor_ = j["UseTextureColor"].get<bool>();
+    else editUseTextureColor_ = false;
+    previewEffect_->SetUseTextureColor(editUseTextureColor_);
+    editChantFlowStrength_ = j.value("ChantFlowStrength", 0.0f);
+    previewEffect_->SetChantFlowStrength(editChantFlowStrength_);
+    editChantRibbonStrength_ = j.value("ChantRibbonStrength", 0.0f);
+    previewEffect_->SetChantRibbonStrength(editChantRibbonStrength_);
+    editRingEnergyStrength_ = j.value("RingEnergyStrength", 0.0f);
+    previewEffect_->SetRingEnergyStrength(editRingEnergyStrength_);
+    editRingSpinSpeed_ = j.value("RingSpinSpeed", 0.0f);
+    previewEffect_->SetRingSpinSpeed(editRingSpinSpeed_);
     if (j.contains("EnableReveal")) editEnableReveal_ = j["EnableReveal"];
     else editEnableReveal_ = true;
+    if (j.contains("RevealMode")) editRevealMode_ = std::clamp(j["RevealMode"].get<int>(), 0, 2);
+    else editRevealMode_ = editEnableReveal_ ? 1 : 0;
 
     if (j.contains("EasingType")) editEasingType_ = j["EasingType"];
     else editEasingType_ = 0;

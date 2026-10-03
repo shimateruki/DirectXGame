@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "1e0eb9b9632c17b15cd05f1484a90606",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_pink/copy_essence_pink.obj",
+  "version": 1
+}

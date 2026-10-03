@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include "engine/utility/SystemDebug/editor/core/EditorWindowsText.h"
 #include "AssetAuditWindow.h"
 
 #include "AudioPlayer.h"
@@ -68,14 +69,7 @@ std::string NormalizeSlash(std::string text) {
 }
 
 // ShellExecuteやCreateProcessに渡すため、UTF-8文字列をWindowsのワイド文字へ変換する。
-std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) return L"";
-    const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    if (size <= 0) return L"";
-    std::wstring result(size - 1, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), size);
-    return result;
-}
+using EditorWindowsText::Utf8ToWide;
 
 // PowerShell実行コマンドへ安全に渡せるよう、引数を引用符で囲んでエスケープする。
 std::string QuoteCommandArg(const std::string& value) {

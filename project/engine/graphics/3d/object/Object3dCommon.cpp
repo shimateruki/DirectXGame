@@ -1,4 +1,5 @@
 #include "Object3dCommon.h"
+#include "../FoliageInteraction.h"
 #include "RootSignatureBuilder.h"
 #include "GraphicsPipelineBuilder.h" 
 #include <cassert>
@@ -40,6 +41,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
 void Object3dCommon::SetGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
+    commandList->SetGraphicsRoot32BitConstants(15, 32, FoliageInteraction::samples.data(), 0);
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
@@ -98,6 +100,10 @@ void Object3dCommon::CreateRootSignature() {
 
     // [13] Mesh Material Factors (Root Constants b5 - Pixel)
     builder.AddConstants(5, 6, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    // [14] 草の頂点アニメーション用マテリアル。既存の番号は維持する。
+    builder.AddCBV(6, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    // [15] プレイヤーの草への接触履歴。Root Parameter合計60 DWORD。
+    builder.AddConstants(7, 32, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
     // =================================================================
     // 2. サンプラーの設定 (s0, s1)
@@ -185,11 +191,14 @@ void Object3dCommon::CreatePipelineStates() {
     shadowBuilder.SetRenderTargets(0, nullptr, DXGI_FORMAT_D32_FLOAT);
 
     shadowBuilder.Build(device, shadowPipelineState_.GetAddressOf());
+    // 草の薄い葉が大きな深度バイアスで地面の裏へ消えない専用設定。
+    shadowBuilder.SetDepthBias(128, 0.0f, 0.35f);
+    shadowBuilder.Build(device, foliageShadowPipelineState_.GetAddressOf());
 }
 
-void Object3dCommon::SetShadowPipelineState() {
+void Object3dCommon::SetShadowPipelineState(bool foliage) {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetPipelineState(shadowPipelineState_.Get());
+    commandList->SetPipelineState(foliage ? foliageShadowPipelineState_.Get() : shadowPipelineState_.Get());
 }
 
 void Object3dCommon::SetShadowGraphicsCommand() {
@@ -207,6 +216,10 @@ void Object3dCommon::CreateShadowRootSignature() {
 
     // [1] ボーン情報 (DescriptorTable t0 - VertexShader用)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    // [2,3] 通常描画と同じ風・踏み分けを影にも反映する。
+    builder.AddCBV(6, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    builder.AddConstants(7, 32, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
     // ビルド実行
     builder.Build(dxCommon_->GetDevice(), shadowRootSignature_.GetAddressOf());
@@ -555,7 +568,8 @@ void Object3dCommon::CreateFirePipeline() {
     // 炎は裏側からも見えるようにカリングなし、半透明合成
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
     psoBuilder.SetBlendMode(BlendMode::kNormal);
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+    // このパスはDSVを外して深度を読むため、遮蔽は炎シェーダー側で処理します。
+    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_ALWAYS);
 
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "42f106bc0a4be147b8543ffb473e1a0f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/fire/move_1_description.dds",
+  "version": 1
+}

@@ -35,6 +35,7 @@ public:
     void Update(float deltaTime);
 
     void NotifyControlsGuideOpened();
+    void NotifyLockOnTarget(const Object3d* target);
     void SetCompletionCallback(CompletionCallback callback) { completionCallback_ = std::move(callback); }
 
     bool IsLoaded() const { return loaded_; }
@@ -59,6 +60,7 @@ private:
         kCinematicFinished,
         kMoveDistance,
         kActionTriggered,
+        kTargetLocked,
         kReachPosition,
         kCarryEnemy,
         kEnemyThrown,
@@ -76,6 +78,7 @@ private:
         std::string promptLabel;
         std::string objectiveTarget;
         std::vector<std::string> promptIcons;
+        std::vector<std::string> promptIconsGamepad;
         std::vector<std::string> objectiveTargets;
         std::vector<std::string> targetEnemyObjects;
         std::vector<std::string> spawnEnemyObjects;
@@ -178,6 +181,7 @@ private:
     bool completed_ = false;
     bool cinematicActive_ = false;
     bool controlsGuideOpened_ = false;
+    std::string lockedTargetName_;
     bool stepConditionSatisfied_ = false;
     bool morphWasActiveOnStepEntry_ = false;
     Object3d* carriedEnemyOnStepEntry_ = nullptr;
@@ -190,6 +194,7 @@ private:
     std::array<PromptVisual, 3> promptIcons_{};
     float promptAlpha_ = 0.0f;
     bool promptRequestedVisible_ = false;
+    bool promptGamepadMode_ = false;
 
     std::array<PromptVisual, 3> objectiveMarkers_{};
     std::array<std::string, 3> objectiveTargetNames_{};

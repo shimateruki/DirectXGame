@@ -86,6 +86,7 @@ const NodeGraphTemplateRegistry& NodeGraphTemplateRegistry::Instance() {
 }
 
 NodeGraphTemplateRegistry::NodeGraphTemplateRegistry() {
+    // ノードの表示情報と実行種別を同じ定義にまとめ、編集画面と実行側のずれを防ぎます。
     templates_.push_back(MakeTemplate(
         "Event.Start",
         "開始",
@@ -388,6 +389,7 @@ std::vector<NodeTemplateCategory> NodeGraphTemplateRegistry::GetDisplayCategorie
 }
 
 NodeData* NodeGraphTemplateRegistry::CreateNode(NodeGraphCore& graph, const std::string& type, float editorX, float editorY) const {
+    // 登録済みテンプレートのピンと初期値を使ってノードを追加します。
     const NodeTemplateDefinition* definition = Find(type);
     if (!definition) {
         return nullptr;

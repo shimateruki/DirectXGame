@@ -1,0 +1,11 @@
+{
+  "AutoLoop": false, "ProceduralType": 2,
+  "SlashAngle": 320.0, "SpiralPitch": 0.55,
+  "InnerRadius": 0.68, "OuterRadius": 1.0, "Thickness": 0.14,
+  "MeshSegments": 64, "Lifetime": 0.25, "BlendMode": 2,
+  "TexturePath": "Resources/sprite/particle/slash_streak.png",
+  "StartScale": [2.2,1,2.2], "EndScale": [3.3,0.4,3.3],
+  "StartColor": [0.78,1.0,0.93,0.95], "EndColor": [0.35,0.90,1.0,0],
+  "Intensity": 2.8, "EnableReveal": false, "AlphaReference": 0.004,
+  "UvTiling": [2,1], "ScrollSpeed": [3,0]
+}

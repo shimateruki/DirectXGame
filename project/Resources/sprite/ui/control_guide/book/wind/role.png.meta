@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "77474fb41d17f78b59b25133497856dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/wind/role.png",
+  "version": 1
+}

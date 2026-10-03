@@ -41,10 +41,11 @@ BakedShaderTextureCache& GetBakedShaderTextureCache() {
     return cache;
 }
 
-uint32_t LoadTextureWithFallback(const char* texturePath) {
+uint32_t LoadTextureWithFallback(const char* texturePath, bool isLinearData = true) {
     const char* fallbackPath = "Resources/sprite/common/white.dds";
     const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
-    return TextureManager::GetInstance()->Load(pathToLoad, true);
+    return TextureManager::GetInstance()->Load(pathToLoad,
+        isLinearData ? TextureManager::TextureColorSpace::Linear : TextureManager::TextureColorSpace::SRGB);
 }
 
 void EnsureBakedShaderTexturesLoaded() {
@@ -58,7 +59,7 @@ void EnsureBakedShaderTexturesLoaded() {
     cache.water = {
         LoadTextureWithFallback("Resources/texture/BakedShader/water_foam_mask.dds"),
         LoadTextureWithFallback("Resources/texture/BakedShader/water_flow_noise.dds"),
-        fallback
+        LoadTextureWithFallback("Resources/texture/BakedShader/water_surface_stylized.dds", false)
     };
     cache.fire = {
         LoadTextureWithFallback("Resources/texture/BakedShader/fire_flame_mask.dds"),
@@ -277,11 +278,18 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         !PreparePreviewCameraData(camera, previewBufferIndex, previewWvpResource, previewCameraResource)) {
         return;
     }
-
     switch (materialType) {
     case 8:
-        DrawWaterWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
+    {
+        // 別カメラの描画で通常画面の定数を上書きしないようにします。
+        const int index = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
+        if (!waterParamData_ || !previewWaterData_[index]) return;
+        *previewWaterData_[index] = *waterParamData_;
+        previewWaterData_[index]->cameraWorldPosition = camera->GetEye();
+        previewWaterData_[index]->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
+        DrawWaterWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, previewWaterResources_[index].Get());
         break;
+    }
     case 9:
         DrawMagmaWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
         break;
@@ -336,11 +344,13 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawWaterWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
-void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, ID3D12Resource* waterResource) {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
-    const bool useWaterGrid = !waterParamData_ || waterParamData_->effectType < 0.5f;
+    // 0/1は従来、2/3はイラスト調。それぞれ偶数が専用グリッドです。
+    const bool useWaterGrid = !waterParamData_ || waterParamData_->effectType < 0.5f ||
+        (waterParamData_->effectType >= 1.5f && waterParamData_->effectType < 2.5f);
     if (useWaterGrid && !waterProxyModel_) {
         InitializeWaterProxyModel();
     }
@@ -349,7 +359,7 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, (waterResource ? waterResource : waterParamResource_.Get())->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
 
@@ -408,9 +418,10 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
-    // かがり火だけは交差する複数面で厚みを作り、それ以外の炎は従来のビルボードを維持します。
+    // かがり火、まとい炎、火炎放射、炎柱は閉じた立体内の密度を積分します。
     const bool useVolumetricProxy = waterParamData_ &&
-        waterParamData_->effectType >= 3.5f && waterParamData_->effectType < 4.5f;
+        ((waterParamData_->effectType >= 3.5f && waterParamData_->effectType < 7.5f) ||
+         (waterParamData_->effectType >= 1.5f && waterParamData_->effectType < 2.5f));
     if (useVolumetricProxy) {
         if (!volumetricFireProxyModel_) {
             InitializeVolumetricFireProxyModel();
@@ -525,7 +536,7 @@ void MeshRenderer::InitializeWaterProxyModel() {
 
     waterProxyModel_ = std::make_unique<Model>();
 
-    constexpr int kSegments = 64;
+    constexpr int kSegments = 128;
     constexpr int kRow = kSegments + 1;
     std::vector<Model::VertexData> vertices;
     vertices.reserve(kRow * kRow);
@@ -598,38 +609,32 @@ void MeshRenderer::InitializeVolumetricFireProxyModel() {
 
     volumetricFireProxyModel_ = std::make_unique<Model>();
 
-    constexpr int kCardCount = 3;
-    constexpr float kPi = 3.14159265358979323846f;
     std::vector<Model::VertexData> vertices;
     std::vector<uint32_t> indices;
-    vertices.reserve(kCardCount * 4);
-    indices.reserve(kCardCount * 6);
+    vertices.reserve(24);
+    indices.reserve(36);
 
-    // 三方向の炎面を交差させます。UVの2単位ごとの帯はシェーダーで面番号を復元するために使います。
-    for (int cardIndex = 0; cardIndex < kCardCount; ++cardIndex) {
-        const float angle = static_cast<float>(cardIndex) * (kPi / 3.0f);
-        const float directionX = std::cos(angle);
-        const float directionZ = std::sin(angle);
-        const Vector3 normal = { -directionZ, 0.0f, directionX };
-        const Vector3 tangent = { directionX, 0.0f, directionZ };
-        const float encodedU = static_cast<float>(cardIndex * 2);
+    // 箱の面は表示せず、内側の炎だけを描きます。面法線で二重描画を防ぎます。
+    for (int face = 0; face < 6; ++face) {
+        const int axis = face / 2;
+        const float sign = (face % 2 == 0) ? -1.0f : 1.0f;
         const uint32_t firstVertex = static_cast<uint32_t>(vertices.size());
-
-        auto addVertex = [&](float horizontal, float y, float u, float v) {
+        for (int corner = 0; corner < 4; ++corner) {
+            const float u = (corner == 2 || corner == 3) ? 1.0f : -1.0f;
+            const float v = (corner == 1 || corner == 2) ? 1.0f : -1.0f;
+            float p[3]{};
+            float n[3]{};
+            p[axis] = sign;
+            p[(axis + 1) % 3] = u;
+            p[(axis + 2) % 3] = v;
+            n[axis] = sign;
             Model::VertexData vertex{};
-            vertex.position = { directionX * horizontal, y, directionZ * horizontal, 1.0f };
-            vertex.texcoord = { encodedU + u, v };
-            vertex.normal = normal;
-            vertex.tangent = tangent;
-            vertex.boneWeights = { 0.0f, 0.0f, 0.0f, 0.0f };
-            vertex.boneIndices = { 0.0f, 0.0f, 0.0f, 0.0f };
+            vertex.position = { p[0], p[1], p[2], 1.0f };
+            vertex.texcoord = { u * 0.5f + 0.5f, v * 0.5f + 0.5f };
+            vertex.normal = { n[0], n[1], n[2] };
+            vertex.tangent = { 1.0f, 0.0f, 0.0f };
             vertices.push_back(vertex);
-        };
-
-        addVertex(-1.0f, -1.0f, 0.0f, 1.0f);
-        addVertex(-1.0f,  1.0f, 0.0f, 0.0f);
-        addVertex( 1.0f,  1.0f, 1.0f, 0.0f);
-        addVertex( 1.0f, -1.0f, 1.0f, 1.0f);
+        }
         indices.insert(indices.end(), {
             firstVertex, firstVertex + 1, firstVertex + 2,
             firstVertex, firstVertex + 2, firstVertex + 3

@@ -117,6 +117,11 @@ bool EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialData_->edgeFadeStrength = 1.5f;   // 少し削る
     materialData_->alphaReference = 0.0f;     // デフォルト: 完全透明のみdiscard
     materialData_->enableDistortion = 0;
+    materialData_->useTextureColor = 0;
+    materialData_->chantFlowStrength = 0.0f;
+    materialData_->chantRibbonStrength = 0.0f;
+    materialData_->ringEnergyStrength = 0.0f;
+    materialData_->ringSpinSpeed = 0.0f;
     return true;
 }
 
@@ -671,6 +676,48 @@ void EffectObject3d::GenerateTriangleVertices(float size) {
     proceduralIndices_.push_back(0); proceduralIndices_.push_back(1); proceduralIndices_.push_back(2);
 }
 
+void EffectObject3d::GenerateLanceVertices(float radius, float height, int segments) {
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+
+    // 下端を刃先にし、刃の肩・鍔・細い柄・石突きを一つの連続した輪郭にします。
+    constexpr float profile[][2] = {
+        { -0.50f, 0.00f }, { -0.43f, 0.25f }, { -0.29f, 0.76f },
+        { -0.15f, 1.00f }, { -0.07f, 0.57f }, { -0.02f, 0.27f },
+        {  0.03f, 0.64f }, {  0.09f, 0.22f }, {  0.39f, 0.16f },
+        {  0.45f, 0.35f }, {  0.50f, 0.00f }
+    };
+    constexpr int ringCount = static_cast<int>(sizeof(profile) / sizeof(profile[0]));
+    const int sideCount = (std::max)(6, segments);
+    for (int ring = 0; ring < ringCount; ++ring) {
+        for (int side = 0; side <= sideCount; ++side) {
+            const float angle = static_cast<float>(side) * 2.0f * 3.14159265f /
+                static_cast<float>(sideCount);
+            const float facet = (side % 2 == 0) ? 1.0f : 0.78f;
+            const float radial = radius * profile[ring][1] * facet;
+            const float cosine = std::cos(angle);
+            const float sine = std::sin(angle);
+            Model::VertexData vertex{};
+            vertex.position = { cosine * radial, profile[ring][0] * height,
+                sine * radial, 1.0f };
+            vertex.texcoord = { static_cast<float>(side) / static_cast<float>(sideCount),
+                static_cast<float>(ring) / static_cast<float>(ringCount - 1) };
+            vertex.normal = { cosine, 0.0f, sine };
+            proceduralVertices_.push_back(vertex);
+        }
+    }
+    for (int ring = 0; ring < ringCount - 1; ++ring) {
+        for (int side = 0; side < sideCount; ++side) {
+            const uint32_t lower = static_cast<uint32_t>(ring * (sideCount + 1) + side);
+            const uint32_t upper = lower + static_cast<uint32_t>(sideCount + 1);
+            proceduralIndices_.insert(proceduralIndices_.end(), {
+                lower, upper, lower + 1, lower + 1, upper, upper + 1,
+                lower + 1, upper, lower, upper + 1, upper, lower + 1
+            });
+        }
+    }
+}
+
 void EffectObject3d::UpdateProceduralMesh() {
     if (!dynamicModel_) { dynamicModel_ = std::make_unique<Model>(); }
     if (meshRenderer_) { meshRenderer_->SetModel(dynamicModel_.get()); }
@@ -712,6 +759,9 @@ void EffectObject3d::UpdateProceduralMesh() {
     else if (type == 11) { // 三角形
         GenerateTriangleVertices(editTriangleSize_);
     }
+    else if (type == 12) { // 槍
+        GenerateLanceVertices(editConeRadius_, editConeHeight_, editMeshSegments_);
+    }
     else { return; }
 
     // ==========================================
@@ -745,6 +795,11 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     SetProceduralType(0);
     SetEnableNoiseTexture(false);
     SetEnableColorRamp(false);
+    SetUseTextureColor(false);
+    SetChantFlowStrength(0.0f);
+    SetChantRibbonStrength(0.0f);
+    SetRingEnergyStrength(0.0f);
+    SetRingSpinSpeed(0.0f);
     SetEnableDistortion(false);
     SetEnableReveal(true);
     SetDistortionStrength(0.0f);
@@ -805,6 +860,21 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     if (j.contains("Intensity")) {
         SetIntensity(j["Intensity"]);
     }
+    if (j.contains("UseTextureColor")) {
+        SetUseTextureColor(j["UseTextureColor"].get<bool>());
+    }
+    if (j.contains("ChantFlowStrength")) {
+        SetChantFlowStrength(j["ChantFlowStrength"].get<float>());
+    }
+    if (j.contains("ChantRibbonStrength")) {
+        SetChantRibbonStrength(j["ChantRibbonStrength"].get<float>());
+    }
+    if (j.contains("RingEnergyStrength")) {
+        SetRingEnergyStrength(j["RingEnergyStrength"].get<float>());
+    }
+    if (j.contains("RingSpinSpeed")) {
+        SetRingSpinSpeed(j["RingSpinSpeed"].get<float>());
+    }
     if (j.contains("DistortionStrength")) {
         SetDistortionStrength(j["DistortionStrength"]);
     }
@@ -822,6 +892,9 @@ bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
     }
     if (j.contains("EnableReveal")) {
         SetEnableReveal(j["EnableReveal"].get<bool>());
+    }
+    if (j.contains("RevealMode")) {
+        SetRevealMode(j["RevealMode"].get<int>());
     }
     if (j.contains("EasingType")) {
         SetEasingType(j["EasingType"]);

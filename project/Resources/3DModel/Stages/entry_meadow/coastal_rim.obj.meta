@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "129df6f8bc9c1db469a73d303679e232",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/coastal_rim.obj",
+  "version": 1
+}

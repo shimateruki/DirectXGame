@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c9274c6f3a9e412e4636357d2be12ce4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/action_10.png",
+  "version": 1
+}

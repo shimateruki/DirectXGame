@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a55ea3fba6be7ddfe8f951449bd77ecf",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Main_turf.obj",
+  "version": 1
+}

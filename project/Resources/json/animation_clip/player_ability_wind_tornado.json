@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "name": "player_ability_wind_tornado",
+  "model": "Characters/slime",
+  "baseAnimation": "",
+  "duration": 0.4,
+  "loop": true,
+  "previewPlaybackSpeed": 1.0,
+  "bodyKeys": [
+    {"time":0.0,"translate":[0,0.15,0],"rotate":[0,0,0.12],"scale":[1.28,0.75,1.05],"easingToNext":0},
+    {"time":0.1,"translate":[0,0.23,0],"rotate":[0,1.570796,0],"scale":[1.05,1.18,1.28],"easingToNext":0},
+    {"time":0.2,"translate":[0,0.15,0],"rotate":[0,3.141593,-0.12],"scale":[1.28,0.75,1.05],"easingToNext":0},
+    {"time":0.3,"translate":[0,0.23,0],"rotate":[0,4.712389,0],"scale":[1.05,1.18,1.28],"easingToNext":0},
+    {"time":0.4,"translate":[0,0.15,0],"rotate":[0,6.283185,0.12],"scale":[1.28,0.75,1.05],"easingToNext":0}
+  ],
+  "keys": [],
+  "events": []
+}

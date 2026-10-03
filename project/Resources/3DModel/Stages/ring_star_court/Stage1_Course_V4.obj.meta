@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3ce0c5c8ffbfa0990471234fe3913d4c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_Course_V4.obj",
+  "version": 1
+}

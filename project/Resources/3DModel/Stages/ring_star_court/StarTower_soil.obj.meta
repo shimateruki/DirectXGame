@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "88a4094332666834a12656bcb818005e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/StarTower_soil.obj",
+  "version": 1
+}

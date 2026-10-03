@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "b6f7e76638ae76605ab655fae8058d3f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/digit_6.png",
+  "version": 1
+}

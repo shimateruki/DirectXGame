@@ -1,0 +1,51 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "ProceduralType": 4,
+  "SlashAngle": 125,
+  "InnerRadius": 0.85,
+  "OuterRadius": 1.72,
+  "Thickness": 0.38,
+  "MeshSegments": 48,
+  "Lifetime": 0.2,
+  "StartScale": [
+    0.8,
+    0.8,
+    0.8
+  ],
+  "EndScale": [
+    1.35,
+    1.35,
+    0.35
+  ],
+  "StartColor": [
+    1,
+    0.92,
+    0.72,
+    1.0
+  ],
+  "EndColor": [
+    1,
+    0.26,
+    0.48,
+    0
+  ],
+  "Intensity": 2.2,
+  "EasingType": 0,
+  "TexturePath": "Resources/sprite/common/white.png",
+  "UvTiling": [
+    1.0,
+    1.0
+  ],
+  "ScrollSpeed": [
+    0,
+    0
+  ],
+  "AlphaReference": 0.003,
+  "EdgeFadeStrength": 0.45,
+  "VolumeMode": 0,
+  "SphereRadius": 0.45,
+  "SphereRings": 10,
+  "EnableReveal": false,
+  "NoiseTexturePath": "Resources/sprite/common/white.png"
+}

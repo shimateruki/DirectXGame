@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "5f6db7b2a39066b486f428df6a260360",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/copy_acquire_wind.json",
+  "version": 1
+}

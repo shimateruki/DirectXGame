@@ -134,8 +134,9 @@ void PlayModeChangeTracker::OnSceneRestored(bool restored) {
         open_ = false;
         return;
     }
-    open_ = !candidates_.empty();
-    if (open_) statusMessage_ = "Play中の編集可能な変更を検出しました。";
+    // 停止後は作業を遮らず、メニューから必要なときだけ確認します。
+    open_ = false;
+    if (!candidates_.empty()) statusMessage_ = "Play中の編集可能な変更を検出しました。";
 }
 
 void PlayModeChangeTracker::ApplySelectedChanges() {
@@ -172,6 +173,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
 
 void PlayModeChangeTracker::Draw() {
     if (!open_) return;
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(760.0f, 520.0f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Play中変更の持ち帰り", &open_)) {
         ImGui::End();
@@ -179,6 +181,7 @@ void PlayModeChangeTracker::Draw() {
     }
     ImGui::TextWrapped("停止前に変わった編集可能Objectだけを表示しています。Player・Enemyの状態とGimmickの実行時Transformは除外済みです。");
     ImGui::TextDisabled("Transformと設定値をObjectごとに選んで反映できます。反映操作はUndo可能です。");
+    ImGui::TextWrapped("この一覧は一時データです。次のPlay開始で更新されます。保存済みリプレイとは別の機能です。");
     ImGui::Separator();
     ImGui::BeginChild("PlayModeChangeCandidates", ImVec2(0.0f, -52.0f), true);
     for (std::size_t index = 0; index < candidates_.size(); ++index) {

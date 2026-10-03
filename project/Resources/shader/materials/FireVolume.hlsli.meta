@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "6ab0c97e4ff6483c8a58dcf4e6137e6d",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/materials/FireVolume.hlsli",
+  "version": 1
+}

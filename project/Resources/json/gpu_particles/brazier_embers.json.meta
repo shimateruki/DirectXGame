@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "2e59811c9cd64f599b5a2ac51ab89bfd",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/brazier_embers.json",
+  "version": 1
+}

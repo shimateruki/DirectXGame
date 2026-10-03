@@ -1,0 +1,9 @@
+newmtl gold
+Kd .95 .72 .16
+Ns 30
+newmtl stone
+Kd .30 .34 .42
+Ns 12
+newmtl socket
+Kd .55 .44 .72
+Ns 18

@@ -1,4 +1,4 @@
-#include "SceneManager.h"
+﻿#include "SceneManager.h"
 
 #include "DirectXCommon.h"
 #include "LoadingScene.h"
@@ -6,7 +6,7 @@
 #include "TextureManager.h"
 #include "engine/graphics/postprocess/Fade.h"
 #ifdef USE_IMGUI
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #endif
 #include "json.hpp"
 
@@ -132,6 +132,8 @@ void SceneManager::Finalize() {
     preparedAssetsReady_ = false;
     sceneInitializationStarted_ = false;
     sceneInitializationFinished_ = false;
+    directTransitionPending_ = false;
+    directDestinationHandlesReveal_ = false;
     transitionPhase_ = TransitionPhase::Idle;
 }
 
@@ -141,6 +143,27 @@ void SceneManager::Update(float deltaTime) {
     switch (transitionPhase_) {
     case TransitionPhase::FadingOutCurrent:
         if (Fade::GetInstance()->GetStatus() == Fade::Status::FadeOut && !Fade::GetInstance()->IsFinished()) {
+            return;
+        }
+        if (directTransitionPending_) {
+            // 暗転が完了してから旧シーンを破棄し、次のシーンを直接初期化する。
+            // ロード画面の最低表示時間と追加の暗転を挟まない。
+            nextScene_ = sceneFactory_->CreateScene(nextSceneName_);
+            nextSceneName_.clear();
+            assert(nextScene_ && "Direct scene creation failed.");
+            if (!nextScene_) {
+                directTransitionPending_ = false;
+                transitionPhase_ = TransitionPhase::Idle;
+                return;
+            }
+            SwapToDirectNextScene();
+            if (!directDestinationHandlesReveal_ ||
+                Fade::GetInstance()->GetStatus() != Fade::Status::IrisIn) {
+                Fade::GetInstance()->StartFadeIn(0.25f);
+            }
+            directTransitionPending_ = false;
+            directDestinationHandlesReveal_ = false;
+            transitionPhase_ = TransitionPhase::Idle;
             return;
         }
         BeginLoadingTransition();
@@ -227,11 +250,15 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
     QueueSceneChange(sceneName, true);
 }
 
+void SceneManager::ChangeSceneWithoutLoading(const std::string& sceneName, bool destinationHandlesReveal) {
+    QueueSceneChange(sceneName, true, true, destinationHandlesReveal);
+}
+
 void SceneManager::ChangeSceneAfterFade(const std::string& sceneName) {
     QueueSceneChange(sceneName, false);
 }
 
-void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFadeOut) {
+void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFadeOut, bool skipLoading, bool destinationHandlesReveal) {
     if (sceneFactory_ == nullptr) {
         assert(false && "SceneFactory is not set in SceneManager.");
         return;
@@ -253,9 +280,11 @@ void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFade
 
     nextSceneName_ = sceneName;
     pendingSceneNameForSwap_ = sceneName;
+    directTransitionPending_ = skipLoading;
+    directDestinationHandlesReveal_ = skipLoading && destinationHandlesReveal;
     transitionPhase_ = TransitionPhase::FadingOutCurrent;
     if (startFadeOut) {
-        Fade::GetInstance()->StartFadeOut(1.0f);
+        Fade::GetInstance()->StartFadeOut(skipLoading ? 0.2f : 1.0f);
     }
 
 #ifdef USE_IMGUI

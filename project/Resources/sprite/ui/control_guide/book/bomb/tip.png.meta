@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0e88e4590ba2a461acf8a28bfd4dfeb0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/tip.png",
+  "version": 1
+}

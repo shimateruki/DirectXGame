@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f7ccc98ffb841303a46fdc0d41653c07",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/path_inlay.obj",
+  "version": 1
+}

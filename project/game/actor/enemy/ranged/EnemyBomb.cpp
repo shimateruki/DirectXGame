@@ -1,7 +1,7 @@
 ﻿#define NOMINMAX
 #include "EnemyBomb.h"
 #include "game/actor/player/Player.h"
-#include "PlayerState.h"
+#include "game/actor/player/state/PlayerState.h"
 #include "Event.h"          
 #include "EventManager.h" 
 #include "CollisionConfig.h"

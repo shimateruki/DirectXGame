@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3143d1927ff9596e0a0d4d0c9e83cfea",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/Roof.obj",
+  "version": 1
+}

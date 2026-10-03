@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include "engine/utility/SystemDebug/editor/core/EditorWindowsText.h"
 #include "JsonBackupWindow.h"
 
 #include "DebugConsole.h"
@@ -23,14 +24,7 @@ namespace fs = std::filesystem;
 constexpr const char* kReportPath = "Resources/.cache/json_backup/latest_report.json";
 constexpr const char* kToolPath = "tools/json_backup/json_backup_watcher.ps1";
 
-std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) return L"";
-    const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    if (size <= 0) return L"";
-    std::wstring result(size - 1, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), size);
-    return result;
-}
+using EditorWindowsText::Utf8ToWide;
 
 std::string QuoteCommandArg(const std::string& value) {
     std::string escaped;

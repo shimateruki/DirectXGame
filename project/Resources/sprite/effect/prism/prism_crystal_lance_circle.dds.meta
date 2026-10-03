@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ee601ff6d16323e3f366247205cace8c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/prism/prism_crystal_lance_circle.dds",
+  "version": 1
+}

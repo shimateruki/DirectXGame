@@ -4,7 +4,7 @@
 
 #include "BaseScene.h"
 #include "Camera.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "DebugEditor.h"
@@ -184,6 +184,7 @@ void SceneWorkspace::DrawHierarchyPanel() {
 }
 
 void SceneWorkspace::IsolateSelection() {
+    // 選択階層を残し、それ以外に隔離用の非表示理由を設定します。
     if (!editor_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return;
     }
@@ -233,6 +234,7 @@ void SceneWorkspace::ShowSelectionTemporarily() {
 }
 
 void SceneWorkspace::RestoreAllTemporaryVisibility() {
+    // エディターの非表示理由を全解除し、隔離・レイヤー状態を初期化します。
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
             if (object) {
@@ -360,6 +362,7 @@ void SceneWorkspace::ClearBookmark(std::size_t index) {
 }
 
 void SceneWorkspace::LoadBookmarks() {
+    // シーンごとのカメラ記憶位置を読み込み、別シーンの記録と混ぜません。
     bookmarksByScene_.clear();
     std::ifstream file(bookmarkStatePath_);
     if (!file.is_open()) {

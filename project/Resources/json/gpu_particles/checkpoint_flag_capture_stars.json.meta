@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "37963deaf2a87e9937db2f7ce541e628",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/gpu_particles/checkpoint_flag_capture_stars.json",
+  "version": 1
+}

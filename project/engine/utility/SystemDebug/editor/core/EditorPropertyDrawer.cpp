@@ -32,6 +32,7 @@ float ReadArrayNumber(const json& value, std::size_t index, float fallback = 0.0
 
 }
 
+// 登録済みの型に合わせて入力 UI を選び、変更があった場合だけ呼び出し元へ通知します。
 bool EditorPropertyDrawer::DrawValue(
     const EditorPropertyDescriptor& property,
     nlohmann::json& value,

@@ -23,6 +23,7 @@ void AudioSettingsWindow::Initialize(DebugEditor* editor) {
 }
 
 void AudioSettingsWindow::DrawAudioEventEditor() {
+    // 音源ファイルとイベント設定を分けて扱い、イベント側の調整値を編集します。
 #ifdef USE_IMGUI
     if (!audioEventInitialized_) {
         audioEventDefinition_.clips = {
@@ -180,6 +181,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
 #endif
 }
 void AudioSettingsWindow::DrawImGui() {
+    // 現在の設定を表示し、変更操作は Audio の設定管理へ渡します。
 #ifdef USE_IMGUI
     GameSettingsManager* gameSettings = GameSettingsManager::GetInstance();
     GameAudioSettings* audioSettings = GameAudioSettings::GetInstance();

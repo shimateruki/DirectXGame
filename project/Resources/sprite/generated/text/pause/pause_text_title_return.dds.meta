@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "23619d5a719c48a8274cd107f6b1609b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/pause/pause_text_title_return.dds",
+  "version": 1
+}

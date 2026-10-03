@@ -43,6 +43,7 @@ struct PointLight {
 // (ポイントライトの最大数を定義)
 const int kMaxPointLights = 50;
 
+/// <summary>平行光源と固定上限の点光源を束ねる描画用データ。</summary>
 struct LightGroup {
     DirectionalLight directionalLight;
     PointLight pointLights[kMaxPointLights];

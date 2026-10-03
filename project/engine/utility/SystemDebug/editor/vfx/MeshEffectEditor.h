@@ -81,6 +81,12 @@ private:
     int currentRampTextureIndex_ = -1;
     int currentBlendModeIndex_ = 2;
     bool editEnableReveal_ = true;
+    bool editUseTextureColor_ = false;
+    float editChantFlowStrength_ = 0.0f;
+    float editChantRibbonStrength_ = 0.0f;
+    float editRingEnergyStrength_ = 0.0f;
+    float editRingSpinSpeed_ = 0.0f;
+    int editRevealMode_ = 1;
     std::vector<std::string> jsonFileList_;
     int currentJsonIndex_ = -1;
     int editEasingType_ = 0;

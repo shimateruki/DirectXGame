@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_copy_bomb_ring",
+      "triggerTime": 0.09,
+      "offset": [
+        0,
+        0.45,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "type": 2,
+      "presetName": "copy_acquire.wav",
+      "triggerTime": 0.09
+    },
+    {
+      "type": 0,
+      "presetName": "copy_acquire_bomb",
+      "triggerTime": 0.12,
+      "offset": [
+        0,
+        0.7,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0.09,
+      "duration": 0.13,
+      "intensity": 1.5,
+      "lightRadius": 2.8,
+      "lightDecay": 2,
+      "lightColor": [
+        1,
+        0.65,
+        0.18,
+        1
+      ]
+    }
+  ]
+}

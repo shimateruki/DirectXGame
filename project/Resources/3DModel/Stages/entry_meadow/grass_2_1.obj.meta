@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9fe4e50d07cf68507383a78d86b3e3b2",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/grass_2_1.obj",
+  "version": 1
+}

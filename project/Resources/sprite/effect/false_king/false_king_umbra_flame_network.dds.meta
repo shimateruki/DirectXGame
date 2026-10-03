@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "eac772911acf09c6f20bce4aeb8b7cfa",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/false_king/false_king_umbra_flame_network.dds",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "aa26a444e93fbaece96a73509c7232d2",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_Meadow_Course_turf.obj",
+  "version": 1
+}

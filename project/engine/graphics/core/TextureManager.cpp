@@ -484,6 +484,8 @@ bool TextureManager::BeginAsyncUploadBatch() {
     return true;
 }
 
+thread_local bool TextureManager::asyncUploadRecording_ = false;
+
 void TextureManager::SetAsyncUploadRecording(bool enabled) {
     asyncUploadRecording_ = enabled && asyncUploadBatchActive_ && !asyncUploadBatchSubmitted_;
 }

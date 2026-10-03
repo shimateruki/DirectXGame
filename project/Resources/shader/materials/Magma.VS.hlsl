@@ -30,6 +30,16 @@ VSOutput main(VSInput input)
     float detail = max(waveFrequency, 0.15f);
     float viscosity = max(effectScale, 0.1f);
 
+    // Dedicated geyser mode: pulses travel upward while both endpoints stay attached.
+    if (effectType > 2.5f && effectType < 3.5f)
+    {
+        float y = saturate(localPos.y);
+        float pulse = sin(y * 25.0f - time * 12.0f);
+        float anchor = sin(y * 3.14159265f);
+        localPos.xz *= 1.0f + pulse * 0.16f * anchor;
+        localPos.x += sin(y * 19.0f - time * 8.0f) * 0.065f * anchor;
+        localPos.z += cos(y * 17.0f - time * 9.0f) * 0.055f * anchor;
+    }
     float2 worldXZ = mul(localPos, world).xz;
     float2 flow = float2(flowSpeedX, flowSpeedY);
     float t = time * speed / (0.8f + viscosity * 0.65f);
@@ -43,7 +53,8 @@ VSOutput main(VSInput input)
     output.screenPos = output.pos;
     output.localPos = localPos.xyz;
 
-    output.normal = normalize(mul(input.normal, (float3x3) world));
+    // Preserve face orientation under strongly nonuniform scale.
+    output.normal = normalize(mul(input.normal, (float3x3) WorldInverseTranspose));
     output.uv = input.uv;
 
     return output;

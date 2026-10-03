@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7a876e53a2910fed8ef7c98823d0b352",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/boss_intro.dds",
+  "version": 1
+}

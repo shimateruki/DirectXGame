@@ -1,0 +1,8 @@
+{
+  "assetType": "Model",
+  "guid": "33f6962ee9d347b6841efde1693b73c1",
+  "importSettings": { "generateTangents": true, "scale": 1.0 },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/glass_shard_wedge/glass_shard_wedge.obj",
+  "version": 1
+}

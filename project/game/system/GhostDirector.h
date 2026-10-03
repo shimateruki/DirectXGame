@@ -10,6 +10,7 @@
 class DebugEditor;
 class Object3d;
 class SceneManager;
+class BaseScene;
 
 struct ActiveEvent {
     int id = 0;
@@ -21,8 +22,11 @@ class GhostDirector : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DebugEditor* editor = nullptr);
     void Update(float deltaTime);
+    void ApplyBodyPose() { player_.ApplyBodyPose(); }
     void DrawImGui() override;
-    std::string GetName() override { return "Cinematic Director (Multi Object)"; }
+    void DrawTimelinePanel();
+    std::string GetName() override { return "演出タイムライン"; }
+    void EndStudio();
 
     void PlayScenario(bool isLoop = false, bool useImguiTime = false);
     void StopScenario();
@@ -38,6 +42,10 @@ public:
     void RecordTransformKey(Object3d* object, bool force = false);
     bool IsAutoKeyEnabled() const { return autoKeyEnabled_; }
     float GetCurrentTime() const { return currentScrubTime_; }
+#ifdef USE_IMGUI
+    bool* GetTrackPreviewPtr() { return &showSelectedTrackPreview_; }
+    bool* GetOrientationPreviewPtr() { return &showPreviewOrientation_; }
+#endif
 
 private:
     static constexpr float kKeyTimeEpsilon = 1.0f / 120.0f;
@@ -55,13 +63,21 @@ private:
     float GetScenarioDuration() const;
 
     void DrawTransportControls();
+    void DrawInspectorContents();
+    void DrawStudioControls();
+    bool BeginStudio();
+    void CreateStudioObjects();
+    void PlaceStudioCamera();
+    Object3d* FindStudioObject(int role) const;
+    static int GetRoleIndex(const std::string& name);
+    void DrawAuthoringGuide();
+    void DrawAnchorTemplateEditor();
     void DrawTransformTrackEditor();
     void DrawVFXTrackEditor();
     void DrawCameraShotEditor();
     void DrawAnimationClipEditor();
     void DrawAudioClipEditor();
     void DrawSignalEditor();
-    void DrawTimelineWindow();
     void DrawTimelineCanvas();
     bool DrawObjectBindingEditor(
         const char* label,
@@ -70,18 +86,30 @@ private:
         bool allowWorld);
 
     SceneManager* sceneManager_ = nullptr;
+    BaseScene* studioScene_ = nullptr;
+    bool studioEnabled_ = false;
+    bool studioCameraSaved_ = false;
+    Vector3 studioStoredEye_ = {}, studioStoredTarget_ = {}, studioStoredRotation_ = {};
+    float studioStoredFov_ = 0.45f, studioStoredNear_ = 0.1f, studioStoredFar_ = 1000.0f;
+    int studioStoredMode_ = 0, studioStoredFollowMode_ = 0;
+    Object3d* studioStoredFollow_ = nullptr;
     DebugEditor* editor_ = nullptr;
     CinematicSequence sequence_;
+    CinematicObjectBinding templateActor_;
+    CinematicObjectBinding templateCamera_;
+    float templateDuration_ = 2.7f;
+    float templateDistance_ = 5.0f;
+    float templateHeight_ = 2.0f;
     CinematicPlayer player_;
     char scenarioNameBuf_[64] = "boss_attack_1";
 
     float currentScrubTime_ = 0.0f;
     float timelinePixelsPerSecond_ = 100.0f;
     bool isLooping_ = false;
-    bool autoKeyEnabled_ = true;
+    bool autoKeyEnabled_ = false;
     bool showSelectedTrackPreview_ = true;
     bool showPreviewOrientation_ = true;
-    bool timelineWindowOpen_ = true;
+    std::string fileOperationStatus_;
     int selectedTrackKind_ = 0;
     int selectedTrackIndex_ = -1;
     int selectedKeyIndex_ = -1;

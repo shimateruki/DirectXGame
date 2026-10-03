@@ -1,0 +1,9 @@
+{
+ "AutoLoop":false,"BlendMode":2,"ProceduralType":2,
+ "SlashAngle":360,"InnerRadius":0.975,"OuterRadius":1.02,"Thickness":0.035,"MeshSegments":64,
+ "Lifetime":0.20,"EasingType":0,"EnableReveal":false,
+ "TexturePath":"Resources/sprite/common/white.png",
+ "StartScale":[1,1,1],"EndScale":[1,1,1],
+ "StartColor":[0.75,0.94,1,0.85],"EndColor":[0.75,0.94,1,0.85],
+ "Intensity":1.6,"AlphaReference":0.003,"VolumeMode":0
+}

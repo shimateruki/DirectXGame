@@ -1,11 +1,11 @@
 #include "BuiltInCreatePresetRegistry.h"
 
-#include "EnemyFactory.h"
+#include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "GimmickFactory.h"
 #include "ItemFactory.h"
 #include "Object3d.h"
 #include "Object3dCommon.h"
-#include "PresetManager.h"
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "json.hpp"
 
 #include <fstream>

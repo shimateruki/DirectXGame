@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "efed9d9b77559471425d7399fddc93c7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/windowed.dds",
+  "version": 1
+}

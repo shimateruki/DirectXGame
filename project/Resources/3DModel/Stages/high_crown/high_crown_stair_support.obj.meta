@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6b7c4e8c63192353132fa3baa0ae3019",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/high_crown/high_crown_stair_support.obj",
+  "version": 1
+}

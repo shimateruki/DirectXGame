@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "3da4a4c98ffaa1c8b909c799d223eb3f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnWalk_path.obj",
+  "version": 1
+}

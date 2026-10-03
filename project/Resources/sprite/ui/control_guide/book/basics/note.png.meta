@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "27773f63a858df5e7ac155c863c9dacc",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/note.png",
+  "version": 1
+}

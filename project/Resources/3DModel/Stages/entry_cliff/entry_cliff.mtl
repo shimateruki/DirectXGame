@@ -1,0 +1,36 @@
+newmtl DefaultMaterial
+Kd 1 1 1
+Pr 0.5
+Pm 0
+
+newmtl Soil
+Kd 0.32 0.245 0.13
+Ks 0.04 0.04 0.04
+Pr 0.88
+Pm 0
+Ns 15.36
+illum 2
+
+newmtl Stone
+Kd 0.51 0.43 0.3
+Ks 0.04 0.04 0.04
+Pr 0.88
+Pm 0
+Ns 15.36
+illum 2
+
+newmtl StoneLight
+Kd 0.61 0.53 0.38
+Ks 0.04 0.04 0.04
+Pr 0.88
+Pm 0
+Ns 15.36
+illum 2
+
+newmtl StoneDark
+Kd 0.43 0.36 0.26
+Ks 0.04 0.04 0.04
+Pr 0.88
+Pm 0
+Ns 15.36
+illum 2

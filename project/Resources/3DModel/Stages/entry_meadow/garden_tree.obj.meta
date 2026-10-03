@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8be86011df82eac652456965c158838c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/garden_tree.obj",
+  "version": 1
+}

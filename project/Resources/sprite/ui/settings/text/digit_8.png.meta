@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "fab67e9e0e31234d9fda0aea05eb6d6d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/digit_8.png",
+  "version": 1
+}

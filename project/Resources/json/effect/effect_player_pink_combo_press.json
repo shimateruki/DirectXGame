@@ -1,0 +1,11 @@
+{
+ "AutoLoop":false,"BlendMode":2,"ProceduralType":3,
+ "ThrustLength":2.8,"ThrustRadius":0.32,"MeshSegments":12,
+ "Lifetime":0.32,"EasingType":0,"EnableReveal":false,
+ "NoiseTexturePath":"Resources/sprite/common/white.png",
+ "TexturePath":"Resources/sprite/common/white.png",
+ "StartScale":[1,1,0.5],"EndScale":[0.08,0.08,1.5],
+ "StartColor":[1,0.80,0.86,1],"EndColor":[1,0.35,0.55,0],
+ "Intensity":1.9,"AlphaReference":0.003,"VolumeMode":0,
+ "ScrollSpeed":[0,0],"UvTiling":[1,1]
+}

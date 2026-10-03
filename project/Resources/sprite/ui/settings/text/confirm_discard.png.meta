@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5318f5b9def394f7a67ff8e41532a7dd",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/confirm_discard.png",
+  "version": 1
+}

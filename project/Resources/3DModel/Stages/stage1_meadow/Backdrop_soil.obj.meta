@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "7385da959eee467030ec97133c43159d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_meadow/Backdrop_soil.obj",
+  "version": 1
+}

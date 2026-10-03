@@ -30,6 +30,7 @@ private:
     float dropLifetime_ = 0.0f;
     float dropBlinkStartTime_ = 0.0f;
     float dropGroundY_ = 0.0f;
+    float dropGroundOffset_ = 0.0f;
     float dropSettleTimer_ = 0.0f;
     Vector3 dropVelocity_{ 0.0f, 0.0f, 0.0f };
     Vector3 collectStartPosition_{};

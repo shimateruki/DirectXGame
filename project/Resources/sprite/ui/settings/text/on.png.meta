@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d30f5e8c84fe5ca83bdeaacd5bb239f8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/on.png",
+  "version": 1
+}

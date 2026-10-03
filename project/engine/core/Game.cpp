@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "Game.h"
 
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "AudioPlayer.h"
 #include "CameraManager.h"
 #include "DebrisEffectManager.h"
@@ -30,6 +30,7 @@
 #include "GPUParticleManager.h"
 #include "engine/graphics/postprocess/Fade.h"
 #include "engine/graphics/core/ColorSpace.h"
+#include "engine/graphics/3d/FoliageInteraction.h"
 #include "json.hpp"
 
 #include <Windows.h>
@@ -117,11 +118,6 @@ void Game::InitializeScene() {
 
 std::string Game::ResolveStartSceneName() const {
 	std::string startScene = "TITLE";
-
-#ifdef DD
-	StageManager::GetInstance()->SetCurrentStage(0);
-	startScene = "GAMEPLAY";
-#endif
 
 #if defined(USE_IMGUI) && !defined(DD)
 	if (sceneManager_) {
@@ -343,6 +339,46 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 			}
 		}
 	}
+#ifdef USE_IMGUI
+    // 編集中も環境の水・草木だけをプレビュー。ゲーム・リプレイの停止は維持します。
+    if (!isPlaying_ && !replayFrozen && !sceneTransitioning && sceneManager_) {
+        if (BaseScene* scene = sceneManager_->GetCurrentScene()) {
+            for (auto& object : scene->GetObjects()) {
+                if (object && object->GetMaterialType() == 8 && object->GetMeshRenderer()) {
+                    object->GetMeshRenderer()->AdvanceWaterAnimation(deltaTime);
+                }
+                if (object && (object->GetMaterialType() == 30 || object->GetMaterialType() == 31)
+                    && object->GetMeshRenderer()) {
+                    if (auto* material = object->GetMeshRenderer()->GetMaterialData()) {
+                        material->time += deltaTime;
+                    }
+                }
+            }
+        }
+    }
+#endif
+    // シーン変更時は草への接触履歴を消し、現プレイヤーだけ反映する。
+    {
+        static const BaseScene* foliageScene = nullptr;
+        BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+        if (scene != foliageScene || sceneTransitioning) {
+            FoliageInteraction::Reset();
+            foliageScene = scene;
+        }
+        bool found = false;
+        if (scene && !sceneTransitioning) {
+            for (auto& object : scene->GetObjects()) {
+                if (object && object->GetClassName() == "Player") {
+                    const auto pos = object->GetWorldPosition();
+                    FoliageInteraction::Update(pos.x, pos.y, pos.z,
+                        replayFrozen ? 0.0f : (isPlaying_ ? finalDeltaTime : deltaTime));
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (!found) FoliageInteraction::Reset();
+    }
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("ライト");
 		LightManager::GetInstance()->Update();

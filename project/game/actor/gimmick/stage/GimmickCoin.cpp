@@ -3,6 +3,7 @@
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include "GroundEffectLocator.h"
 #include <DebugConsole.h>
 #include <algorithm>
 #include <cmath>
@@ -45,6 +46,7 @@ void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelNam
     dropLifetime_ = 0.0f;
     dropBlinkStartTime_ = 0.0f;
     dropGroundY_ = GetTranslate().y;
+    dropGroundOffset_ = 0.0f;
     dropSettleTimer_ = 0.0f;
     dropVelocity_ = { 0.0f, 0.0f, 0.0f };
     collectStartPosition_ = GetTranslate();
@@ -113,7 +115,11 @@ void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float l
     dropLifetime_ = (std::max)(0.2f, lifetime);
     dropBlinkStartTime_ = std::clamp(blinkStartTime, 0.0f, dropLifetime_);
     dropAge_ = 0.0f;
-    dropGroundY_ = groundY;
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+    const AABB bounds = GetModelWorldAABB();
+    dropGroundOffset_ = (std::max)(0.03f, GetTranslate().y - bounds.min.y + 0.03f);
+    dropGroundY_ = groundY + dropGroundOffset_;
     dropSettleTimer_ = 0.0f;
     SetColor({ 1.0f, 0.92f, 0.18f, 1.0f });
     SetIsVisible(true);
@@ -132,6 +138,8 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     }
 
     Vector3 position = GetTranslate();
+    const Vector3 groundSample = { position.x, dropGroundY_ - dropGroundOffset_, position.z };
+    dropGroundY_ = GroundEffectLocator::ResolveGroundPosition(groundSample).y + dropGroundOffset_;
     if (dropSettleTimer_ <= 0.0f) {
         dropVelocity_.y -= kDropGravity * deltaTime;
         position += dropVelocity_ * deltaTime;
@@ -221,6 +229,7 @@ void GimmickCoin::CaptureReplayCustomState(json& state) const {
     state["coinDropLifetime"] = dropLifetime_;
     state["coinDropBlinkStartTime"] = dropBlinkStartTime_;
     state["coinDropGroundY"] = dropGroundY_;
+    state["coinDropGroundOffset"] = dropGroundOffset_;
     state["coinDropSettleTimer"] = dropSettleTimer_;
     state["coinDropVelocity"] = Vector3ToReplayJson(dropVelocity_);
     state["coinCollectStartPosition"] = Vector3ToReplayJson(collectStartPosition_);
@@ -237,6 +246,7 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
     dropLifetime_ = state.value("coinDropLifetime", dropLifetime_);
     dropBlinkStartTime_ = state.value("coinDropBlinkStartTime", dropBlinkStartTime_);
     dropGroundY_ = state.value("coinDropGroundY", dropGroundY_);
+    dropGroundOffset_ = state.value("coinDropGroundOffset", dropGroundOffset_);
     dropSettleTimer_ = state.value("coinDropSettleTimer", dropSettleTimer_);
     if (state.contains("coinDropVelocity")) {
         dropVelocity_ = ReplayJsonToVector3(state["coinDropVelocity"], dropVelocity_);

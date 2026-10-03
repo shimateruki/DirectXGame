@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdint>
 #include <d3d12.h>
 #include <mutex>
@@ -6,42 +7,58 @@
 
 class DirectXCommon;
 
-// SRV デスクリプタヒープの確保、作成、バインドをまとめる管理クラス
-// SRVManagerは、シェーダーから参照するテクスチャやバッファ用DescriptorHeapを管理します。
+/// <summary>シェーダー可視の SRV ヒープと、ゲーム用スロットの払い出しを管理します。</summary>
 class SRVManager {
 public:
-    // ImGui が先頭の一部を使うため、ゲーム側で使える十分な数を用意する。
+    // 先頭の 2 スロットは ImGui が使用します。
     static const size_t kMaxSRVCount = 2018;
 
-public:
-        // エンジン全体で共有するSRV管理インスタンスを取得します。
-static SRVManager* GetInstance();
+    /// <summary>エンジンで共有する管理インスタンスを取得します。</summary>
+    static SRVManager* GetInstance();
 
-        // SRV用DescriptorHeapを作成し、割り当てを開始できる状態にします。
-void Initialize(DirectXCommon* dxCommon);
+    /// <summary>DirectX デバイスから SRV ヒープを作成し、払い出し位置を初期化します。</summary>
+    /// <param name="dxCommon">初期化済みの DirectX 管理オブジェクト。</param>
+    void Initialize(DirectXCommon* dxCommon);
 
-    // 空きインデックスを確保して SRV を作成する
-        // 新しいSRV番号を確保し、指定リソース用Descriptorを作成します。
-uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+    /// <summary>次のゲーム用スロットに SRV を作成します。</summary>
+    /// <param name="resource">参照対象の GPU リソース。</param>
+    /// <param name="srvDesc">作成する SRV の記述。</param>
+    /// <returns>作成した SRV のヒープ内インデックス。</returns>
+    uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
 
+    /// <summary>管理中のディスクリプタヒープを取得します。</summary>
     ID3D12DescriptorHeap* GetDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
-    // Graphics 用のルートパラメータへ SRV をセットする
-        // グラフィックスパイプラインへ指定SRVをバインドします。
-void SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
+    /// <summary>指定した SRV を描画用ルートパラメータへ設定します。</summary>
+    /// <param name="commandList">設定先のコマンドリスト。</param>
+    /// <param name="rootParameterIndex">ディスクリプタテーブルのルートパラメータ番号。</param>
+    /// <param name="srvHandle">SRV のヒープ内インデックス。</param>
+    void SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
 
+    /// <summary>管理中のシェーダー可視ヒープをコマンドリストに設定します。</summary>
+    /// <param name="commandList">設定先のコマンドリスト。</param>
     void SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList);
 
-    // 確保済みのインデックスを指定して SRV を作成する
+    /// <summary>確保済みスロットに SRV を作成または上書きします。</summary>
+    /// <param name="index">事前に確保したヒープ内インデックス。</param>
+    /// <param name="pResource">参照対象の GPU リソース。</param>
+    /// <param name="srvDesc">作成する SRV の記述。</param>
     void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
-        // 未使用のSRVインデックスを1つ払い出します。
-uint32_t Allocate();
-        // SRVインデックスに対応するGPU Descriptor Handleを取得します。
-D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
 
-    // Compute Shader 用のルートパラメータへ SRV をセットする
+    /// <summary>後から SRV を作成できるよう、ゲーム用スロットだけを確保します。</summary>
+    /// <returns>確保したヒープ内インデックス。</returns>
+    uint32_t Allocate();
+
+    /// <summary>SRV インデックスに対応する GPU ハンドルを取得します。</summary>
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
+
+    /// <summary>指定した SRV をコンピュート用ルートパラメータへ設定します。</summary>
+    /// <param name="commandList">設定先のコマンドリスト。</param>
+    /// <param name="rootParameterIndex">ディスクリプタテーブルのルートパラメータ番号。</param>
+    /// <param name="srvHandle">SRV のヒープ内インデックス。</param>
     void SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
 
+    /// <summary>SRV インデックスに対応する CPU ハンドルを取得します。</summary>
     D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t index);
 
 private:
@@ -50,13 +67,9 @@ private:
     SRVManager(const SRVManager&) = delete;
     SRVManager& operator=(const SRVManager&) = delete;
 
-private:
     Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;
-
-    uint32_t descriptorSize_ = 0;
-    mutable std::mutex mutex_;
-
-    // 0,1 は ImGui が使うため、ゲーム用 SRV は 2 番から確保する。
-    uint32_t nextIndex_ = 2;
+    uint32_t descriptorSize_ = 0; // デバイスから取得した 1 スロットのバイト数。
+    mutable std::mutex mutex_;    // 並列のスロット確保と SRV 作成を直列化します。
+    uint32_t nextIndex_ = 2;       // 0、1 は ImGui 用です。
 };

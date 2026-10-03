@@ -1,0 +1,12 @@
+newmtl stone0
+Kd .36 .27 .19
+Ns 8
+newmtl stone1
+Kd .30 .23 .17
+Ns 8
+newmtl stone2
+Kd .42 .33 .23
+Ns 8
+newmtl crack
+Kd .035 .018 .009
+Ns 1

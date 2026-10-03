@@ -19,6 +19,7 @@
 
 namespace {
 bool IsEditorOnlyObject(const Object3d& object) {
+    // 編集用オブジェクトは配置数や分類の集計に含めません。
     const std::string& name = object.GetName();
     return object.IsEditorInternal() || name.rfind("__Editor_", 0) == 0 || object.GetClassName() == "EditorOnly";
 }
@@ -44,6 +45,7 @@ bool ContainsAny(const std::string& text, std::initializer_list<const char*> wor
 }
 
 bool IsTerrainVisual(const Object3d& object) {
+    // 名前からの暫定分類です。背景装飾を先に除いて地形の誤判定を抑えます。
     const std::string identity = object.GetName() + " " + object.GetModelName();
     if (ContainsAny(identity, { "backdrop", "background", "decor", "tree", "pillar", "brazier", "sign", "marker" })) {
         return false;
@@ -177,6 +179,7 @@ void SceneInventoryWindow::DrawImGui() {
 }
 
 void SceneInventoryWindow::RebuildEntries() {
+    // 表示中のシーンから毎回集計し、編集直後の追加・削除を即座に反映します。
     entries_.clear();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
@@ -326,6 +329,7 @@ void SceneInventoryWindow::CopySummaryToClipboard() const {
 }
 
 std::vector<SceneInventoryWindow::Group> SceneInventoryWindow::BuildGroups(GroupMode mode) const {
+    // 同じ配置一覧を、選択した分類軸だけ変えて再集計します。
     std::map<std::string, Group> grouped;
 
     for (const Entry& entry : entries_) {

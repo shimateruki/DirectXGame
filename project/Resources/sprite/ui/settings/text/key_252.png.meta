@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0458ae509adab699630240a5075a355a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/key_252.png",
+  "version": 1
+}

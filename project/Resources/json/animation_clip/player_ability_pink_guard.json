@@ -1,11 +1,13 @@
 {
   "version": 2,
-  "name": "player_ability_pink_guard",
-  "model": "Characters/slime",
+  "model": "Characters/slime_pink",
   "baseAnimation": "",
-  "duration": 0.52,
+  "previewPlaybackSpeed": 1,
+  "keys": [],
+  "events": [],
+  "name": "player_ability_pink_guard",
+  "duration": 0.8,
   "loop": true,
-  "previewPlaybackSpeed": 1.0,
   "bodyKeys": [
     {
       "time": 0,
@@ -20,52 +22,20 @@
         0
       ],
       "scale": [
-        1,
-        1,
-        1
+        1.40,
+        0.44,
+        1.42
       ],
-      "easingToNext": 2
-    },
-    {
-      "time": 0.1,
-      "translate": [
+      "shear": [
         0,
-        -0.1,
-        -0.08
-      ],
-      "rotate": [
-        0.1,
         0,
-        0
+        0.16
       ],
-      "scale": [
-        1.16,
-        0.82,
-        1.14
-      ],
-      "easingToNext": 3
-    },
-    {
-      "time": 0.28,
-      "translate": [
-        0,
-        0.035,
-        0.04
-      ],
-      "rotate": [
-        -0.035,
-        0,
-        0.025
-      ],
-      "scale": [
-        0.94,
-        1.13,
-        0.96
-      ],
+      "shearPivotY": 0,
       "easingToNext": 4
     },
     {
-      "time": 0.52,
+      "time": 0.4,
       "translate": [
         0,
         0,
@@ -77,13 +47,42 @@
         0
       ],
       "scale": [
-        1,
-        1,
-        1
+        1.39,
+        0.45,
+        1.41
       ],
+      "shear": [
+        0,
+        0,
+        0.15
+      ],
+      "shearPivotY": 0,
+      "easingToNext": 4
+    },
+    {
+      "time": 0.8,
+      "translate": [
+        0,
+        0,
+        0
+      ],
+      "rotate": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.40,
+        0.44,
+        1.42
+      ],
+      "shear": [
+        0,
+        0,
+        0.16
+      ],
+      "shearPivotY": 0,
       "easingToNext": 4
     }
-  ],
-  "keys": [],
-  "events": []
+  ]
 }

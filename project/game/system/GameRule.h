@@ -44,5 +44,6 @@ private:
     float checkpointBaseEmissive_ = 1.0f;
     float checkpointPresentationTimer_ = 0.0f;
     float checkpointParticleTimer_ = 0.0f;
+    float checkpointAmbientRingTimer_ = 0.0f;
     float checkpointRaiseDelay_ = 0.0f;
 };

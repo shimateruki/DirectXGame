@@ -10,7 +10,7 @@
 #include "json.hpp"
 #include <cmath>
 #include <algorithm>
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "DebugConsole.h"
 #include "Easing.h"
 #include "ImGuizmo.h"
@@ -137,6 +137,7 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 
 	isLoop_ = false;
 	isRelative_ = true;
+	wasEditorPaused_ = false;
 	currentFrameIndex_ = 0;
 
 	genParams_ = GenerationParams();
@@ -205,6 +206,20 @@ void GhostRecorder::Update() {
 	ClearTargetIfMissingFromScene();
 	if (!target_) return;
 
+	// シーン配置オブジェクトのPathは編集停止中に再生しない。
+	// 編集後のPlay開始時は、移動した配置を相対再生の基準に取り直す。
+	if (target_->recorder_ == this && !SceneManager::GetInstance()->IsPlaying()) {
+		wasEditorPaused_ = true;
+		return;
+	}
+	if (wasEditorPaused_) {
+		wasEditorPaused_ = false;
+		if (state_ == State::Playing) {
+			currentFrameIndex_ = 0;
+			if (isRelative_) CaptureBasePose();
+		}
+	}
+
 	// 録画中
 	if (state_ == State::Recording) {
 		GhostFrame frame;
@@ -251,6 +266,7 @@ void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative
 
 	isLoop_ = loop;
 	isRelative_ = isRelative; // 渡された引数（Objectのチェックボックス）を優先
+	wasEditorPaused_ = false;
 	isOverrideCamera_ = isCinematic;
 
 	if (target_) { target_->SetIsVisible(!isCinematic); }
@@ -298,8 +314,11 @@ void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
 	}
 
 	if (isRelative_) {
-		target_->SetTranslate(basePosition_ + frame.position);
-		target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
+		// 相対生成済みのフレームはそのまま使用する。絶対記録は先頭フレームを原点に変換する。
+		const Vector3 origin = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().position : Vector3{};
+		const Vector3 originRotation = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().rotation : Vector3{};
+		target_->SetTranslate(basePosition_ + frame.position - origin);
+		target_->SetRotation(AddEuler(baseRotation_, SubEuler(frame.rotation, originRotation)));
 	}
 	else {
 		target_->SetTranslate(frame.position);
@@ -439,13 +458,15 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 			sample.rotation = AnimationInterpolation::SlerpEuler(a.rotation, b.rotation, localT);
 			sample.scale = Math::Lerp(a.scale, b.scale, localT);
 
-			if (isRelative_ || genParams_.generateRelative) {
+			if (isRelative_) {
+				const Vector3 origin = genParams_.generateRelative ? Vector3{} : frames_.front().position;
+				const Vector3 originRotation = genParams_.generateRelative ? Vector3{} : frames_.front().rotation;
 				sample.position = {
-					basePos.x + sample.position.x,
-					basePos.y + sample.position.y,
-					basePos.z + sample.position.z
+					basePos.x + sample.position.x - origin.x,
+					basePos.y + sample.position.y - origin.y,
+					basePos.z + sample.position.z - origin.z
 				};
-				sample.rotation = AddEuler(baseRot, sample.rotation);
+				sample.rotation = AddEuler(baseRot, SubEuler(sample.rotation, originRotation));
 			}
 			samples.push_back(sample);
 		}
@@ -620,11 +641,85 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 		return res;
 		};
 
+	if (isReadOnly) {
+		// 通常表示は編集用の始点・終点ではなく、再生に使う全フレームを描く。
+		// 往復パスでは始点と終点が重なるため、編集用の２点だけでは軌道を表せない。
+		std::vector<Vector3> pathPositions;
+		if (frames_.size() >= 2) {
+			pathPositions.reserve(frames_.size());
+			Vector3 basePosition = target_->GetTranslate();
+			if (isRelative_ && genParams_.generateRelative) {
+				FindAnchor();
+				if (anchor_) basePosition = anchor_->GetTranslate() + genParams_.anchorOffsetPos;
+			}
+			const Vector3 origin = (isRelative_ && !genParams_.generateRelative) ? frames_.front().position : Vector3{};
+			for (const GhostFrame& frame : frames_) {
+				const Vector3 localPosition = isRelative_ ? basePosition + frame.position - origin : frame.position;
+				pathPositions.push_back(LocalToWorld(localPosition));
+			}
+		}
+		else {
+			for (const GhostFrame& sample : BuildPreviewSamples(32)) {
+				pathPositions.push_back(LocalToWorld(sample.position));
+			}
+		}
+		if (pathPositions.size() < 2) return;
+
+		// Foreground描画でもGame Viewの外へはみ出さないように切り抜く。
+		drawList->PushClipRect(ImVec2(offset.x, offset.y), ImVec2(offset.x + size.x, offset.y + size.y), true);
+		const ImU32 outlineColor = IM_COL32(17, 18, 32, 230);
+		const ImU32 routeColor = IM_COL32(245, 105, 235, 235);
+		ImVec2 previous = WorldToScreen(pathPositions.front());
+		for (size_t index = 1; index < pathPositions.size(); ++index) {
+			const ImVec2 current = WorldToScreen(pathPositions[index]);
+			if (previous.x > -5000.0f && current.x > -5000.0f) {
+				drawList->AddLine(previous, current, outlineColor, 5.0f);
+				drawList->AddLine(previous, current, routeColor, 2.5f);
+			}
+			previous = current;
+		}
+
+		// ループ経路は終点が始点と重なるので、最も遠い点を折り返し目印にする。
+		size_t turnIndex = 0;
+		float farthestDistanceSquared = -1.0f;
+		for (size_t index = 0; index < pathPositions.size(); ++index) {
+			const Vector3 delta = pathPositions[index] - pathPositions.front();
+			const float distanceSquared = delta.x * delta.x + delta.y * delta.y + delta.z * delta.z;
+			if (distanceSquared > farthestDistanceSquared) {
+				farthestDistanceSquared = distanceSquared;
+				turnIndex = index;
+			}
+		}
+		const ImVec2 start = WorldToScreen(pathPositions.front());
+		const ImVec2 turn = WorldToScreen(pathPositions[turnIndex]);
+		if (start.x > -5000.0f) {
+			drawList->AddCircleFilled(start, 6.0f, outlineColor);
+			drawList->AddCircleFilled(start, 4.0f, IM_COL32(108, 245, 145, 255));
+			drawList->AddText(ImVec2(start.x + 9.0f, start.y + 7.0f), IM_COL32(255, 255, 255, 240), target_->GetName().c_str());
+		}
+		if (turnIndex != 0 && turn.x > -5000.0f) {
+			drawList->AddCircleFilled(turn, 6.0f, outlineColor);
+			drawList->AddCircleFilled(turn, 4.0f, IM_COL32(255, 189, 78, 255));
+		}
+		drawList->PopClipRect();
+		return;
+	}
+
 	// --- 2. 描画位置のオフセット計算 ---
 	Vector3 drawOffset = { 0, 0, 0 };
 	Vector3 drawRotOffset = { 0, 0, 0 };
 
-	if (genParams_.generateRelative && target_) {
+	if (isReadOnly) {
+		if (isRelative_ && target_) {
+			// 配置オブジェクトのPathは現在の配置を基準に表示する。
+			// 絶対記録のPathだけ先頭を引き、相対生成済みのPathは保存値を維持する。
+			const Vector3 origin = genParams_.generateRelative ? Vector3{} : genParams_.startPos;
+			const Vector3 originRotation = genParams_.generateRelative ? Vector3{} : genParams_.startRot;
+			drawOffset = target_->GetTranslate() - origin;
+			drawRotOffset = SubEuler(target_->GetRotation(), originRotation);
+		}
+	}
+	else if (genParams_.generateRelative && target_) {
 		FindAnchor();
 		if (state_ == State::Playing || isScrubbing_ || isReadOnly) {
 			drawOffset = { basePosition_.x - genParams_.startPos.x, basePosition_.y - genParams_.startPos.y, basePosition_.z - genParams_.startPos.z };

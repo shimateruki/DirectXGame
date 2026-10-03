@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "47b3da7945033e3b60354a8aa2eacbf2",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/horizon_rim.obj",
+  "version": 1
+}

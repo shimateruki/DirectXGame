@@ -65,6 +65,9 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
             key.translate = ReadVector3(item, "translate", {});
             key.rotate = ReadVector3(item, "rotate", {});
             key.scale = ReadVector3(item, "scale", { 1.0f, 1.0f, 1.0f });
+            key.shear = ReadVector3(item, "shear", {});
+            key.shear.y = 0.0f;
+            key.shearPivotY = item.value("shearPivotY", 0.0f);
             key.easingToNext = std::clamp(item.value("easingToNext", 4), 0, 4);
             keys_.push_back(key);
         }
@@ -103,6 +106,8 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         sampleOut.translate = key.translate;
         sampleOut.rotate = key.rotate;
         sampleOut.scale = key.scale;
+        sampleOut.shear = key.shear;
+        sampleOut.shearPivotY = key.shearPivotY;
     };
 
     if (keys_.size() == 1 || sampleTime <= keys_.front().time) {
@@ -127,6 +132,8 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         sampleOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
         sampleOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
         sampleOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
+        sampleOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
+        sampleOut.shearPivotY = Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
         return true;
     }
 

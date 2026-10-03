@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "52b42f24596c67b761c0b56972f3c24e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/move_0_condition.dds",
+  "version": 1
+}

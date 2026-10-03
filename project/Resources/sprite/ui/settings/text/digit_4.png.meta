@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a5433efc82f62079619360c0674c94f0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/digit_4.png",
+  "version": 1
+}

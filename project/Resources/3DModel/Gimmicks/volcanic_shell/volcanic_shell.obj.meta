@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "167fadd08578262c2f94b8561f737b4e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/volcanic_shell/volcanic_shell.obj",
+  "version": 1
+}

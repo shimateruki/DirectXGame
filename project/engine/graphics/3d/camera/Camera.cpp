@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Camera.h"
+#include "GameSettingsManager.h"
 #include "WinApp.h" 
 #include "DirectXCommon.h"
 #include <algorithm> // std::min, std::max
@@ -213,20 +214,21 @@ void Camera::Update(float deltaTime) {
                 Vector3 playerFocus = playerPos;
                 playerFocus.y += aimHeight_ * 0.5f;
 
-                targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.7f;
-                targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.7f;
+                // 敵中心へ寄せすぎず、足元と進行方向を画面内へ残します。
+                targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.35f;
+                targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.35f;
 
                 float distXZ_L = std::sqrt((enemyPos.x - playerFocus.x) * (enemyPos.x - playerFocus.x) +
                     (enemyPos.z - playerFocus.z) * (enemyPos.z - playerFocus.z));
                 float maxY = playerFocus.y + std::min(3.0f, distXZ_L * 0.4f);
-                float idealY = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
+                float idealY = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.25f;
                 targetPos.y = std::min(idealY, maxY);
 
                 Vector3 toEnemy = enemyPos - playerPos;
 
                 float distanceXZ = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z);
                 float heightDiff = std::max(0.0f, enemyPos.y - playerPos.y);
-                float heightZoom = heightDiff * 0.8f;
+                float heightZoom = std::min(heightDiff * 0.3f, 4.0f);
 
                 float closeZoomOut = 0.0f;
                 if (distanceXZ < 8.0f) {
@@ -248,7 +250,7 @@ void Camera::Update(float deltaTime) {
                     };
 
                 float diff = NormalizeAngle(angleToEnemy - rotation_.y);
-                rotation_.y += diff * 0.08f;
+                rotation_.y += diff * (1.0f - std::exp(-5.0f * std::max(0.0f, deltaTime)));
 
                 Matrix4x4 rotateMat = math.MakeRotateYMatrix(rotation_.y);
                 Vector3 rotatedOffset = math.TransformNormal(dynamicOffset, rotateMat);
@@ -313,7 +315,8 @@ void Camera::Update(float deltaTime) {
         // -----------------------------------------------------------------
         // 右クリック（エイム・フック構え）時の1人称オーバーライド
         // -----------------------------------------------------------------
-        bool isAiming = (inputManager_ && inputManager_->IsMouseButtonPressed(1) && !isAimCameraSuppressed_);
+        bool isAiming = (inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
+            !isAimCameraSuppressed_ && followMode_ != FollowMode::kLockOn);
         if (isAiming) {
             // カメラの目標位置をプレイヤーの頭の位置に設定
             desiredEye = playerPos + Vector3{ 0.0f, aimHeight_, 0.0f };
@@ -334,8 +337,10 @@ void Camera::Update(float deltaTime) {
         }
         else {
             // 基本の補間スピード
-            float targetLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.2f;
-            float eyeLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.15f;
+            float targetLerpFactor = (followMode_ == FollowMode::kLockOn)
+                ? 1.0f - std::exp(-10.0f * std::max(0.0f, deltaTime)) : 0.2f;
+            float eyeLerpFactor = (followMode_ == FollowMode::kLockOn)
+                ? 1.0f - std::exp(-7.0f * std::max(0.0f, deltaTime)) : 0.15f;
 
             // ★エイム中は強制固定（ワープ）を廃止し、滑らかにズームする係数に変更
             if (isAiming) {
@@ -678,8 +683,9 @@ void Camera::SnapToThirdPerson(float distance, float height, float pitch) {
 void Camera::AddRotation(const Vector2& mouseDelta) {
     // kAimable と kFirstPerson で共用の回転処理
     const float rotateSpeed = 0.005f * rotationSensitivity_;
-    rotation_.x += mouseDelta.y * rotateSpeed;
-    rotation_.y += mouseDelta.x * rotateSpeed;
+    const auto* settings = GameSettingsManager::GetInstance();
+    rotation_.x += mouseDelta.y * rotateSpeed * (settings->GetCameraInvertY() ? -1.f : 1.f);
+    rotation_.y += mouseDelta.x * rotateSpeed * (settings->GetCameraInvertX() ? -1.f : 1.f);
 
     // X軸の回転（ピッチ）に制限をかける
     const float pitchLimit = PI / 2.0f - 0.01f; // 90度手前
@@ -691,7 +697,7 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
 }
 
 void Camera::SetRotationSensitivity(float sensitivity) {
-    rotationSensitivity_ = std::clamp(sensitivity, 0.5f, 2.0f);
+    rotationSensitivity_ = std::clamp(sensitivity, 0.2f, 2.0f);
 }
 
 void Camera::SyncRotationToCurrentView() {

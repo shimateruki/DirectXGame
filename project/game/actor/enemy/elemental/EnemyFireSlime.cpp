@@ -1,8 +1,6 @@
 #include "EnemyFireSlime.h"
-#include "SlimeBounceAnimator.h"
+#include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "BulletManager.h"
-#include "Camera.h"
-#include "CameraManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
 #include "EventManager.h"
@@ -23,11 +21,11 @@ constexpr float kThrownCollisionWorldRadius = 1.18f;
 constexpr float kMoveHopInterval = 0.28f;
 constexpr float kMoveHopPower = 4.7f;
 constexpr float kFireSlimeModelYawOffset = 3.1415926535f;
-constexpr float kHeadFlameHeight = 0.62f;
+constexpr float kHeadFlameHeight = 0.95f;
 constexpr float kHeadFlameBaseScale = 0.78f;
 constexpr int kHeadFlameMaterialType = 11;
 constexpr float kHeadFlameEffectType = 2.0f;
-constexpr float kBreathFlameEffectType = 3.0f;
+constexpr float kBreathFlameEffectType = 5.0f;
 constexpr int kBreathFlameVisualCount = 7;
 constexpr const char* kBreathPreset = "fire_slime_breath";
 constexpr const char* kBreathEmberPreset = "fire_slime_breath_embers";
@@ -56,6 +54,14 @@ BulletVisualConfig MakeFireVisual(float scale) {
     visual.effectSoftness = 0.42f;
     visual.effectIntensity = 0.96f;
     visual.billboardScale = 0.68f;
+    visual.trailPreset = "fireball_trail_flame";
+    visual.trailSecondaryPreset = "fireball_trail_embers";
+    visual.impactPreset = "fireball_impact_flame";
+    visual.impactSecondaryPreset = "fireball_impact_sparks";
+    visual.trailInterval = 0.030f;
+    visual.trailSpeedScale = 1.0f;
+    visual.trailReverseDirection = true;
+    visual.impactDirected = false;
     return visual;
 }
 
@@ -103,8 +109,8 @@ void EnemyFireSlime::Update(float deltaTime) {
     }
 
     idleTimer_ += deltaTime;
-    UpdateHeadFlame(deltaTime);
     if (UpdateThrowRecoveryState(deltaTime)) {
+        UpdateHeadFlame(deltaTime);
         return;
     }
 
@@ -118,15 +124,10 @@ void EnemyFireSlime::Update(float deltaTime) {
     UpdateWildBehavior(deltaTime, velocity);
     ApplyGroundMovementAndAnimation(deltaTime, velocity);
     BaseEnemy::Update(deltaTime);
+    UpdateHeadFlame(deltaTime);
 }
 
 bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
-    if (isCarried_) {
-        HideAttackTelegraph();
-        idleTimer_ += deltaTime;
-        return true;
-    }
-
     if (isDead || !GetIsVisible()) {
         HideAttackTelegraph();
         breathTimer_ = 0.0f;
@@ -138,6 +139,14 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         RequestRemoveHeadFlameVisual();
         RequestRemoveBreathFlameVisuals();
         SetVelocity({ 0.0f, 0.0f, 0.0f });
+        return true;
+    }
+
+    if (isCarried_) {
+        HideAttackTelegraph();
+        if (headFlameVisual_) headFlameVisual_->SetIsVisible(false);
+        HideBreathFlameVisuals();
+        idleTimer_ += deltaTime;
         return true;
     }
 
@@ -492,12 +501,15 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
         if (auto* water = renderer->GetWaterParamData()) {
             water->effectType = kHeadFlameEffectType;
             water->waveSpeed = 1.75f;
-            water->effectScale = 0.68f;
-            water->effectSoftness = 0.72f;
+            water->effectScale = 0.95f;
+            water->waveFrequency = 2.2f;
+            water->waveHeight = 0.55f;
+            water->effectSoftness = 0.48f;
             water->effectIntensity = 0.84f;
-            water->billboardScale = 0.58f;
+            water->billboardScale = 0.80f;
             water->effectScaleX = 0.92f;
-            water->effectScaleY = 0.78f;
+            water->effectScaleY = 1.0f;
+            water->effectScaleZ = 0.92f;
             water->uvOffsetX = 2.73f;
             water->uvOffsetY = 5.17f;
         }
@@ -527,20 +539,10 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
         pos = pos + trailDirection * (std::min)(0.32f, moveSpeed * 0.022f);
     }
 
-    float yaw = GetRotation().y;
-    float flowX = 0.0f;
-    Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
-    if (camera) {
-        const Vector3 toCamera = camera->GetEye() - pos;
-        if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
-            yaw = std::atan2(toCamera.x, toCamera.z);
-
-            Vector3 viewForward = Math::Normalize(toCamera);
-            Vector3 upSeed = std::abs(viewForward.y) > 0.96f ? Vector3{ 0.0f, 0.0f, 1.0f } : Vector3{ 0.0f, 1.0f, 0.0f };
-            Vector3 viewRight = Math::Normalize(Math::Cross(upSeed, viewForward));
-            flowX = (std::clamp)(Math::Dot(smoothedFlameVelocity_, viewRight) * 0.12f, -1.0f, 1.0f);
-        }
-    }
+    // 炎の向きを本体へ固定し、カメラ移動時にも内部の奥行きが保たれるようにします。
+    const float yaw = GetRotation().y;
+    const Vector3 localRight = { std::cos(yaw), 0.0f, -std::sin(yaw) };
+    const float flowX = (std::clamp)(-Math::Dot(smoothedFlameVelocity_, localRight) * 0.12f, -1.0f, 1.0f);
 
     const float pulse = std::sin(idleTimer_ * 8.0f) * 0.06f;
     const float speedRate = (std::clamp)(moveSpeed * 0.055f, 0.0f, 1.0f);
@@ -560,7 +562,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
             water->waveSpeed = 1.75f + std::sin(idleTimer_ * 1.7f) * 0.16f + speedRate * 0.42f;
             water->effectIntensity = 0.82f + std::sin(idleTimer_ * 4.1f) * 0.045f + speedRate * 0.07f;
             water->effectScaleX = 0.92f + speedRate * 0.10f;
-            water->effectScaleY = 0.78f + speedRate * 0.08f;
+            water->effectScaleY = 1.0f + speedRate * 0.08f;
         }
     }
 
@@ -574,14 +576,14 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
         if (headFlameParticleTimer_ <= 0.0f) {
             constexpr float kGoldenAngle = 2.39996323f;
             const float phase = idleTimer_ * 2.8f + static_cast<float>(headFlameParticleCursor_) * kGoldenAngle;
-            const float ringRadius = bodyScale * (0.22f + 0.04f * std::sin(phase * 1.7f));
+            const float ringRadius = bodyScale * (0.10f + 0.025f * std::sin(phase * 1.7f));
             Vector3 emitPosition = pos;
             emitPosition.x += std::cos(phase) * ringRadius;
             emitPosition.z += std::sin(phase) * ringRadius;
-            emitPosition.y += 0.04f + 0.08f * std::sin(phase * 1.31f);
+            emitPosition.y += bodyScale * (0.18f + 0.06f * std::sin(phase * 1.31f));
             EmitDirectedFirePreset(kHeadFlamePreset, emitPosition, particleDirection, 0.90f + speedRate * 0.34f);
             ++headFlameParticleCursor_;
-            headFlameParticleTimer_ += 0.055f;
+            headFlameParticleTimer_ = 0.12f;
         }
         if (headEmberParticleTimer_ <= 0.0f) {
             const float phase = idleTimer_ * 4.2f + static_cast<float>(headFlameParticleCursor_) * 1.37f;
@@ -590,7 +592,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
             emitPosition.z += std::sin(phase) * bodyScale * 0.26f;
             emitPosition.y += 0.12f;
             EmitDirectedFirePreset(kHeadEmberPreset, emitPosition, particleDirection, 1.02f + speedRate * 0.44f);
-            headEmberParticleTimer_ += 0.14f;
+            headEmberParticleTimer_ = 0.24f;
         }
     }
 }
@@ -666,7 +668,8 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
                 water->effectIntensity = 0.92f;
                 water->billboardScale = 0.72f;
                 water->effectScaleX = 1.0f;
-                water->effectScaleY = 0.72f;
+                water->effectScaleY = 0.90f;
+                water->effectScaleZ = 1.15f;
                 water->uvOffsetX = 3.71f * static_cast<float>(i + 1);
                 water->uvOffsetY = 6.13f * static_cast<float>(i + 1);
             }
@@ -692,8 +695,6 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
     const float breathAlpha = fadeIn * fadeOut;
     const Vector3 side = { -direction.z, 0.0f, direction.x };
 
-    Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
-
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
         Object3d* flame = breathFlameVisuals_[i];
         if (!flame) {
@@ -706,19 +707,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
         Vector3 pos = origin + direction * distance + side * wobble;
         pos.y += (0.62f + step * 0.12f) * (std::max)(0.7f, std::abs(scale.y));
 
-        float yaw = GetRotation().y;
-        float flowX = 0.0f;
-        if (camera) {
-            const Vector3 toCamera = camera->GetEye() - pos;
-            if (std::abs(toCamera.x) + std::abs(toCamera.z) > 0.001f) {
-                yaw = std::atan2(toCamera.x, toCamera.z);
-
-                Vector3 viewForward = Math::Normalize(toCamera);
-                Vector3 upSeed = std::abs(viewForward.y) > 0.96f ? Vector3{ 0.0f, 0.0f, 1.0f } : Vector3{ 0.0f, 1.0f, 0.0f };
-                Vector3 viewRight = Math::Normalize(Math::Cross(upSeed, viewForward));
-                flowX = (std::clamp)(Math::Dot(direction, viewRight) * 0.85f + wobble * 0.45f, -1.0f, 1.0f);
-            }
-        }
+        const float yaw = std::atan2(direction.x, direction.z);
 
         const float pulse = std::sin(idleTimer_ * (8.2f + step * 2.3f) + step * 5.7f) * 0.035f;
         const float width = (0.64f + step * 0.78f + pulse) * bodyScale;
@@ -728,17 +717,18 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
         flame->SetIsVisible(alpha > 0.02f);
         flame->SetTranslate(pos);
         flame->SetRotation({ 0.0f, yaw, 0.0f });
-        flame->SetScale({ width, height, width });
+        flame->SetScale({ width, (std::max)(height, width * 0.68f), width * 1.12f });
         flame->SetColor({ 1.0f, 0.30f + step * 0.06f, 0.045f, alpha });
 
         if (auto* renderer = flame->GetMeshRenderer()) {
             if (auto* water = renderer->GetWaterParamData()) {
-                water->flowSpeedX = flowX;
+                water->flowSpeedX = wobble;
                 water->flowSpeedY = 0.82f + step * 0.42f;
                 water->waveSpeed = 2.35f + step * 0.58f;
                 water->effectIntensity = 0.88f + step * 0.10f;
                 water->effectScaleX = 1.08f + step * 0.56f;
-                water->effectScaleY = 0.64f + step * 0.18f;
+                water->effectScaleY = 0.90f;
+                water->effectScaleZ = 1.15f;
             }
         }
 

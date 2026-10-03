@@ -25,27 +25,37 @@ void Fire(const Vector3& position, const Vector3& velocity,
        DamageType damageType = DamageType::Physical);
 
     // 弾へ追従する軌跡と、衝突時に一度だけ再生する演出を設定します。
-    void ConfigureVfx(const std::string& trailPreset, const std::string& impactPreset,
-        float trailInterval, float trailSpeedScale);
+    void ConfigureVfx(const std::string& trailPreset, const std::string& trailSecondaryPreset,
+        const std::string& impactPreset, const std::string& impactSecondaryPreset,
+        float trailInterval, float trailSpeedScale, bool trailReverseDirection, bool impactDirected);
 
+    void SetExplosionRadius(float radius) { explosionRadius_ = radius; }
     bool IsDead() const { return isDead_; }
     void Expire(bool playImpact = false);
+    void SetGravity(float gravity) { gravity_ = gravity; }
     float GetDamage() const { return damage_; }
     const Vector3& GetVelocity() const { return velocity_; }
     DamageType GetDamageType() const { return damageType_; }
     const StatusEffectApplication& GetStatusEffect() const { return statusEffect_; }
 
 private:
+    void Explode();
+    float explosionRadius_ = 0.0f;
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f };
     float lifeTimer_ = 0.0f;
+    float gravity_ = 0.0f;
     float damage_ = 1.0f;
     DamageType damageType_ = DamageType::Physical;
     StatusEffectApplication statusEffect_;
     std::string trailPreset_;
+    std::string trailSecondaryPreset_;
     std::string impactPreset_;
+    std::string impactSecondaryPreset_;
     float trailInterval_ = 0.05f;
     float trailTimer_ = 0.0f;
     float trailSpeedScale_ = 1.0f;
+    bool trailReverseDirection_ = false;
+    bool impactDirected_ = true;
     bool impactEmitted_ = false;
     bool isDead_ = false;
 

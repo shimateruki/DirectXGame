@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4f53970240876054c9ce17117d23202f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/wind/move_2_name.png",
+  "version": 1
+}

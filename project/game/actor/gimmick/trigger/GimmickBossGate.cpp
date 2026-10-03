@@ -48,6 +48,11 @@ void GimmickBossGate::Update(float deltaTime) {
         return;
     }
 
+    if (cinematicOverride_) {
+        SetCollisionEnabled(false);
+        BaseGimmick::Update(deltaTime);
+        return;
+    }
     CaptureAuthoredState();
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
@@ -72,6 +77,7 @@ void GimmickBossGate::OnTrigger() {
 }
 
 void GimmickBossGate::OnSwitchEvent(bool active) {
+    if (cinematicOverride_) return;
     if (!active && param_.has_value() && !param_->returnOnOff) {
         return;
     }
@@ -117,6 +123,7 @@ void GimmickBossGate::CaptureAuthoredState(bool force) {
 }
 
 void GimmickBossGate::ResetForEditor() {
+    cinematicOverride_ = false;
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
         SetScale(authoredScale_);

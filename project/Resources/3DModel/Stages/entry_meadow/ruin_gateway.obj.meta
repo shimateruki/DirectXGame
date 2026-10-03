@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "80a69287e5a975f469e94537cc8707fd",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/ruin_gateway.obj",
+  "version": 1
+}

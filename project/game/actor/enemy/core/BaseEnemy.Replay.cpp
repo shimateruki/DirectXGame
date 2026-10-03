@@ -54,6 +54,7 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     state["enemyDefeatFinished"] = isDefeatEffectFinished_;
     state["enemyCoinDropsSpawned"] = hasSpawnedDefeatCoinDrops_;
     state["enemyTargetDetected"] = wasTargetDetected_;
+    state["enemyBossTargetEngaged"] = bossTargetEngaged_;
     state["enemyNoticeActive"] = isNoticeReactionActive_;
     state["enemyNoticeKind"] = static_cast<int>(noticeReactionKind_);
     state["enemyNoticeTimer"] = noticeReactionTimer_;
@@ -102,6 +103,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     isDefeatEffectFinished_ = state.value("enemyDefeatFinished", isDefeatEffectFinished_);
     hasSpawnedDefeatCoinDrops_ = state.value("enemyCoinDropsSpawned", hasSpawnedDefeatCoinDrops_);
     wasTargetDetected_ = state.value("enemyTargetDetected", wasTargetDetected_);
+    bossTargetEngaged_ = state.value("enemyBossTargetEngaged", bossTargetEngaged_);
     isNoticeReactionActive_ = state.value("enemyNoticeActive", isNoticeReactionActive_);
     const int noticeKindValue = state.value("enemyNoticeKind", isNoticeReactionActive_ ? 1 : 0);
     switch (noticeKindValue) {

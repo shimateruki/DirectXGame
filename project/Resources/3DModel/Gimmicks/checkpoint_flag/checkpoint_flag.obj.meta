@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4c75e4a98e8156dedc867d99805c6328",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/checkpoint_flag/checkpoint_flag.obj",
+  "version": 1
+}

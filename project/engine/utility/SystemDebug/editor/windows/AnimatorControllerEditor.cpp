@@ -220,6 +220,7 @@ void AnimatorControllerEditor::DrawPreviewTargetControls() {
 }
 
 void AnimatorControllerEditor::DrawStateEditor() {
+    // 状態の名前変更や削除は参照元の遷移にも影響するため、専用操作に集約します。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS " State追加")) {
         AnimatorStateDefinition state;
@@ -451,6 +452,7 @@ void AnimatorControllerEditor::DrawTransitionEditor() {
 }
 
 void AnimatorControllerEditor::RenameState(const std::string& oldName, const std::string& newName) {
+    // 遷移と現在の開始状態が古い名前を参照し続けないよう、関連箇所を更新します。
     if (selectedStateIndex_ < 0 || selectedStateIndex_ >= static_cast<int>(controller_.states.size()) || newName.empty()) {
         return;
     }

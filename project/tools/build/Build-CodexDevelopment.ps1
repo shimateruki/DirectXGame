@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [switch]$PrimeOnly
 )
@@ -8,8 +8,8 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $solutionPath = Join-Path $projectRoot 'DirectXGame.sln'
-$trackingSource = [System.IO.Path]::GetFullPath((Join-Path $projectRoot '..\generated\obj\DirectXGame\DirectXGame\Development\DirectXGame.tlog'))
-$trackingCache = Join-Path $projectRoot 'output\codex-msbuild-cache\DirectXGame\Development\DirectXGame.tlog'
+$trackingSource = [System.IO.Path]::GetFullPath((Join-Path $projectRoot '..\generated\obj\DirectXGame\DirectXGame\Development\v145\DirectXGame\DirectXGame.tlog'))
+$trackingCache = Join-Path $projectRoot 'output\codex-msbuild-cache\DirectXGame\Development\v145\DirectXGame.tlog'
 
 $msBuildCandidates = @(
     'C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe',

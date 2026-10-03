@@ -11,6 +11,8 @@ ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
 ConstantBuffer<TransformationMatrix> gShadowMatrix : register(b1);
 StructuredBuffer<float32_t4x4> gMatrixPalette : register(t1);
 
+#include "FoliageDeformation.hlsli"
+
 struct VertexShaderInput
 {
     float32_t4 position : POSITION0;
@@ -51,6 +53,8 @@ VertexShaderOutput main(VertexShaderInput input)
         skinnedSmoothNormal = mul(localSmoothNormal, (float32_t3x3)skinningMatrix);
     }
 
+    ApplyFoliageDeformation(skinnedPosition, skinnedNormal, skinnedTangent,
+        input.texcoord, gTransformationMatrix.World, gTransformationMatrix.WorldInverseTranspose);
     output.position = mul(skinnedPosition, gTransformationMatrix.WVP);
     output.texcoord = input.texcoord;
     output.normal = normalize(mul(

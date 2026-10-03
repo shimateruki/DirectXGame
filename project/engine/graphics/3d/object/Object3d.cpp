@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
+#include "EditorToolSettings.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "EffectObject3d.h"
@@ -154,6 +155,15 @@ void Object3d::Initialize(Object3dCommon* common) {
 // ========================================================================
 
 void Object3d::Update(float deltaTime) {
+    if (meshRenderer_ && (GetMaterialType() == 30 || GetMaterialType() == 31)
+        && std::isfinite(deltaTime) && deltaTime > 0.0f) {
+        if (auto* material = meshRenderer_->GetMaterialData()) {
+            material->time += deltaTime;
+        }
+    }
+    if (meshRenderer_ && GetMaterialType() == 8) {
+        meshRenderer_->AdvanceWaterAnimation(deltaTime);
+    }
     auto startAll = std::chrono::high_resolution_clock::now();
     
     // 毎フレームリセット
@@ -302,6 +312,11 @@ void Object3d::UpdateParticle() {
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!GetIsRenderVisible()) return;
+#ifdef USE_IMGUI
+    // シーン配置カメラも補助表示です。動作や保存データは変更せず描画だけを抑制します。
+    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody")) return;
+    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels")) return;
+#endif
     if (IsCameraObject()) {
         SceneManager* sceneManager = SceneManager::GetInstance();
         if ((sceneManager && sceneManager->IsPlaying()) || DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
@@ -336,6 +351,10 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 
 void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!GetIsRenderVisible()) return;
+#ifdef USE_IMGUI
+    if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody")) return;
+    if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels")) return;
+#endif
     if (IsCameraObject() && DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
         return;
     }

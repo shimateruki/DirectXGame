@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2a5cf385c9fab26a2cb5953721c33d7d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/coaster/StarIsland.obj",
+  "version": 1
+}

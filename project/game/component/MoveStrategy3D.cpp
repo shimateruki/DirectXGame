@@ -16,16 +16,8 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
     // --- 方向ベクトルの準備 ---
     Vector3 forward, right;
 
-    if (player->IsLockingOn()) {
-        // --- (A) ロックオン中の移動 (自キャラ基準) ---
-        forward = { 0, 0, 1 };
-        right = { 1, 0, 0 };
-        Matrix4x4 rotateMat = math.MakeRotateYMatrix(player->GetMoveYaw());
-        forward = math.TransformNormal(forward, rotateMat);
-        right = math.TransformNormal(right, rotateMat);
-    }
-    else {
-        // --- (B) 通常時の移動 (カメラ基準) ---
+    {
+        // ロックオンしても入力方向の基準は変えず、自由に足場を移動できます。
         forward = camera->GetTargetPoint() - camera->GetEye();
         forward.y = 0.0f;
         right = math.Cross({ 0.0f, 1.0f, 0.0f }, forward);

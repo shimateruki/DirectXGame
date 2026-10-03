@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d09c339cc8cfee9e99d764f643e7a55b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/false_king/false_king_umbra_flame_sigil.dds",
+  "version": 1
+}

@@ -67,42 +67,9 @@ void GimmickMagmaHazard::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-bool GimmickMagmaHazard::OnCollision(Object3d* other) {
-    if (damageCooldownTimer_ > 0.0f) {
-        return true;
-    }
-
-    Player* player = dynamic_cast<Player*>(other);
-    if (!player) {
-        return true;
-    }
-
-    const CollisionInfo collision = CheckCollision(player);
-    if (!collision.isColliding) {
-        return true;
-    }
-
-    Vector3 knockback = player->GetWorldPosition() - GetWorldPosition();
-    knockback.y = 0.0f;
-    if (Math::Length(knockback) < 0.001f) {
-        knockback = { 0.0f, 0.0f, 1.0f };
-    }
-    knockback = Math::Normalize(knockback) * 7.0f;
-    knockback.y = 12.0f;
-
-    DamageEvent damageEvent;
-    damageEvent.target = player;
-    damageEvent.attacker = this;
-    damageEvent.damageAmount = GetDamage();
-    damageEvent.knockbackVelocity = knockback;
-    damageEvent.damageType = DamageType::Fire;
-    damageEvent.statusEffect.type = StatusEffectType::Burning;
-    damageEvent.statusEffect.duration = 1.4f;
-    damageEvent.statusEffect.tickInterval = 0.7f;
-    damageEvent.statusEffect.tickDamage = 0.5f;
-    EventManager::GetInstance()->Dispatch(damageEvent);
-
-    damageCooldownTimer_ = GetDamageInterval();
+bool GimmickMagmaHazard::OnCollision(Object3d* /*other*/) {
+    // 液面接触による死亡はPlayer側で波の高さも含めて判定します。
+    // 旧Colliderによるダメージ・炎上・ノックバックを重ねないようにします。
     return true;
 }
 

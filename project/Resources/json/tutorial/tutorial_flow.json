@@ -40,6 +40,7 @@
       "promptIcons": [
         "ui/input/combo/combo_wasd.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_l_stick.png"],
       "promptLabel": "ui/tutorial/tutorial_move.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.45
@@ -51,6 +52,7 @@
       "promptIcons": [
         "ui/input/mouse/mouse_move.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_r_stick.png"],
       "promptLabel": "ui/tutorial/tutorial_look.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.45
@@ -62,6 +64,7 @@
       "promptIcons": [
         "ui/input/keyboard/key_space.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_a.png"],
       "promptLabel": "ui/tutorial/tutorial_jump.png",
       "minimumDisplayTime": 0.65,
       "completionDelay": 0.55
@@ -78,6 +81,19 @@
       "completionDelay": 0.25
     },
     {
+      "id": "lock_on_throw_slime",
+      "condition": "target_locked",
+      "objectiveTarget": "Tutorial_PinkSlime_Throw",
+      "objectiveOffsetY": 0.85,
+      "promptIcons": [
+        "ui/input/keyboard/key_q.png"
+      ],
+      "promptIconsGamepad": ["ui/input/controller/pad_r3.png"],
+      "promptLabel": "ui/tutorial/tutorial_lock_on.png",
+      "minimumDisplayTime": 0.6,
+      "completionDelay": 0.45
+    },
+    {
       "id": "pull_throw_slime",
       "condition": "carry_enemy",
       "objectiveTarget": "Tutorial_PinkSlime_Throw",
@@ -86,6 +102,7 @@
       "promptIcons": [
         "ui/input/mouse/mouse_right.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_lb.png"],
       "promptLabel": "ui/tutorial/tutorial_pull.png",
       "minimumDisplayTime": 0.5,
       "completionDelay": 0.45
@@ -99,6 +116,7 @@
       "promptIcons": [
         "ui/input/mouse/mouse_left.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_x.png"],
       "promptLabel": "ui/tutorial/tutorial_throw.png",
       "minimumDisplayTime": 0.5,
       "completionDelay": 0.3
@@ -133,6 +151,7 @@
       "promptIcons": [
         "ui/input/mouse/mouse_right.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_lb.png"],
       "promptLabel": "ui/tutorial/tutorial_pull.png",
       "minimumDisplayTime": 0.5,
       "completionDelay": 0.45
@@ -146,6 +165,7 @@
       "promptIcons": [
         "ui/input/keyboard/key_e.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_y.png"],
       "promptLabel": "ui/tutorial/tutorial_absorb.png",
       "minimumDisplayTime": 0.55,
       "completionDelay": 0.55
@@ -187,6 +207,7 @@
       "promptIcons": [
         "ui/input/keyboard/key_e.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_y.png"],
       "promptLabel": "ui/tutorial/tutorial_ability.png",
       "minimumDisplayTime": 0.8,
       "completionDelay": 0.65
@@ -197,6 +218,7 @@
       "promptIcons": [
         "ui/input/keyboard/key_tab.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_view.png"],
       "promptLabel": "ui/tutorial/tutorial_controls.png",
       "minimumDisplayTime": 0.6,
       "completionDelay": 0.45
@@ -207,6 +229,7 @@
       "promptIcons": [
         "ui/input/keyboard/key_r.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_b.png"],
       "promptLabel": "ui/tutorial/tutorial_release.png",
       "minimumDisplayTime": 0.65,
       "completionDelay": 0.55
@@ -233,6 +256,7 @@
       "promptIcons": [
         "ui/input/combo/combo_wasd.png"
       ],
+      "promptIconsGamepad": ["ui/input/controller/pad_l_stick.png"],
       "promptLabel": "ui/tutorial/tutorial_exit.png",
       "minimumDisplayTime": 0.6,
       "completionDelay": 0.35

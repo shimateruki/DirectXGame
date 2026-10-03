@@ -230,11 +230,11 @@ void GameplayStatusManager::ResetToDefaults() {
         Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_wind", false, 5.0f));
     enemyStatuses_.emplace("GiantSlime", MakeStatus(160.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
         Vector3{ 3.6f, 3.6f, 3.6f }, "Characters/slime_pink", true, 5.0f));
-    enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 30.0f,
+    enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 90.0f,
         Vector3{ 4.2f, 4.2f, 4.2f }, "Characters/prism_slime", true, 5.0f));
-    enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 30.0f,
+    enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 90.0f,
         Vector3{ 3.8f, 3.8f, 3.8f }, "Characters/magma_slime", true, 5.0f));
-    enemyStatuses_.emplace("FalseKingSlime", MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 36.0f,
+    enemyStatuses_.emplace("FalseKingSlime", MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f,
         Vector3{ 1.3f, 1.3f, 1.3f }, "Characters/false_king_slime", true, 5.0f));
     enemyStatuses_.emplace("Bat", MakeStatus(16.0f, 0.45f, 1.8f, 0.0f, 60.0f, 10.0f, 17.0f,
         Vector3{ 0.72f, 0.72f, 0.72f }, "Characters/bat", true, 5.0f));

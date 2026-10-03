@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8fafc0a8e8db42a8beb71877cad30e26",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/course_without_vault.obj",
+  "version": 1
+}

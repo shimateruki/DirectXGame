@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4e7cab3946f013722957a4b91b30601d",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/LeftWall.obj",
+  "version": 1
+}

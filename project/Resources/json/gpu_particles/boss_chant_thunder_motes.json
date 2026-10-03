@@ -1,0 +1,75 @@
+{
+  "emitPos": [
+    0,
+    0,
+    0
+  ],
+  "emitArea": [
+    0.04,
+    0.04,
+    0.04
+  ],
+  "emitVelocity": [
+    0,
+    5,
+    0
+  ],
+  "emitCount": 1,
+  "emitLife": 0.29,
+  "velocityVariance": 0.16,
+  "baseColor": [
+    0.65,
+    0.57,
+    1,
+    0
+  ],
+  "midColor": [
+    1,
+    1,
+    0.8,
+    0.95
+  ],
+  "endColor": [
+    0.48,
+    0.52,
+    1,
+    0
+  ],
+  "colorMidTime": 0.22,
+  "baseSize": 0.05,
+  "midSize": 0.23,
+  "endSize": 0.015,
+  "sizeMidTime": 0.24,
+  "rotSpeed": 28,
+  "blendModeIndex": 0,
+  "envGravity": [
+    0,
+    0,
+    0
+  ],
+  "envDrag": 0.12,
+  "envWind": [
+    0,
+    0,
+    0
+  ],
+  "envTurbulence": 0.12,
+  "isLooping": false,
+  "emitInterval": 0.1,
+  "shapeType": 1,
+  "shapeRadius": 0.05,
+  "shapeAngle": 18,
+  "sizeEaseType": 2,
+  "colorEaseType": 2,
+  "colorIntensity": 3.2,
+  "softParticleFade": 2,
+  "texturePath": "Resources/sprite/particle/electric_bolt_sheet.png",
+  "spriteAnimation": {
+    "columns": 4,
+    "rows": 4,
+    "frameCount": 16,
+    "fps": 44,
+    "loop": false,
+    "randomStart": true
+  }
+}

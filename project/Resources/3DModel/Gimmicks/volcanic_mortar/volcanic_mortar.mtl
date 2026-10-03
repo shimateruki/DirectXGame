@@ -1,0 +1,29 @@
+newmtl stone
+Kd 0.24 0.2 0.28
+Ks 0.3 0.3 0.3
+Ns 48
+illum 2
+
+newmtl iron
+Kd 0.24 0.29 0.34
+Ks 0.3 0.3 0.3
+Ns 48
+illum 2
+
+newmtl rim
+Kd 0.62 0.4 0.19
+Ks 0.3 0.3 0.3
+Ns 48
+illum 2
+
+newmtl hot
+Kd 1 0.48 0.08
+Ks 0.3 0.3 0.3
+Ns 48
+illum 2
+
+newmtl dark
+Kd 0.025 0.018 0.035
+Ks 0.3 0.3 0.3
+Ns 48
+illum 2

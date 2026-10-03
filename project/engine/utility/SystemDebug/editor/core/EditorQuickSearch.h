@@ -10,16 +10,24 @@
 class DebugEditor;
 class SceneManager;
 
-// EditorQuickSearchは、Editor操作とScene/AssetをCtrl+Kから横断検索します。
+/// Editor 操作、Scene、Asset を Ctrl+K から横断検索するコマンドパレット。
 class EditorQuickSearch {
 public:
+    /// シーン・エディターの参照と、非表示のパネルを開くコールバックを登録します。
     void Initialize(
         SceneManager* sceneManager,
         DebugEditor* editor,
         std::function<void()> ensureEditorPanelsVisible);
+    /// お気に入りと履歴を保存して参照を解除します。
     void Finalize();
+
+    /// 入力欄へフォーカスしてパレットを開きます。
     void Open();
+
+    /// Ctrl+K を処理します。テキスト入力中はショートカットを消費しません。
     void HandleShortcut();
+
+    /// 候補の検索・選択・実行を描画します。
     void Draw();
 
 private:
@@ -33,6 +41,7 @@ private:
         Window,
     };
 
+    /// 検索・順位付け・実行に必要な一件分の候補。
     struct SearchItem {
         std::string id;
         std::string label;
@@ -47,6 +56,7 @@ private:
         std::function<void()> execute;
     };
 
+    // 資産・シーンなどの世代が変わったときだけ候補を再収集します。
     void RefreshResults(bool force = false);
     void CollectCommands(std::vector<SearchItem>& items) const;
     void CollectObjects(std::vector<SearchItem>& items) const;
@@ -54,16 +64,19 @@ private:
     void CollectSceneAssets(std::vector<SearchItem>& items) const;
     void CollectPresets(std::vector<SearchItem>& items) const;
     void CollectEditorWindows(std::vector<SearchItem>& items) const;
+    // 検索語の一致度と利用履歴を使って表示順位を決めます。
     int ScoreItem(const SearchItem& item, const std::string& normalizedQuery) const;
     void ExecuteItem(std::size_t index);
     void ToggleFavorite(const std::string& id);
     void TouchRecent(const std::string& id);
     bool IsFavorite(const std::string& id) const;
     int FindRecentRank(const std::string& id) const;
+    // 利用者固有のお気に入り・履歴だけをディスクへ永続化します。
     void LoadState();
     void SaveState() const;
 
 private:
+    // 外部の管理者は所有せず、候補と UI 状態のみこのクラスが保持します。
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* editor_ = nullptr;
     std::function<void()> ensureEditorPanelsVisible_;

@@ -67,6 +67,32 @@
       "movement": { "minSpeed": 8.0, "maxSpeed": 15.0, "lifetime": 1.6 },
       "preview": { "targetDistance": 7.0, "duration": 5.9 },
       "presentation": { "animation": "lava_spiral_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_spiral_surge", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    },
+    {
+      "id": "fire_column",
+      "displayName": "三柱炎陣・爆炎柱",
+      "targeting": { "minRange": 10.0, "maxRange": 20.0, "radius": 6.0 },
+      "timing": { "windup": 1.50, "active": 3.40, "recovery": 0.78, "cooldown": 3.70, "warningLead": 0.36 },
+      "combat": {
+        "damage": 0.52,
+        "statusEffect": { "type": "burning", "duration": 2.8, "tickInterval": 0.55, "tickDamage": 0.16, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.40 },
+      "preview": { "targetDistance": 16.0, "duration": 7.8 },
+      "presentation": { "animation": "fire_column_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_fire_column_stream", "impactVfx": "magma_slime_impact", "audioCue": "" }
+    },
+    {
+      "id": "magma_flood",
+      "displayName": "地脈溶岩奔流",
+      "targeting": { "minRange": 4.0, "maxRange": 15.0, "radius": 2.05 },
+      "timing": { "windup": 1.28, "active": 2.55, "recovery": 0.92, "cooldown": 4.85, "warningLead": 0.42 },
+      "combat": {
+        "damage": 0.65,
+        "statusEffect": { "type": "burning", "duration": 3.1, "tickInterval": 0.58, "tickDamage": 0.18, "vfx": "status_burning_flame" }
+      },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.55 },
+      "preview": { "targetDistance": 9.0, "duration": 7.8 },
+      "presentation": { "animation": "magma_flood_cast", "windupVfx": "magma_slime_charge", "activeVfx": "magma_slime_flood_splash", "impactVfx": "magma_slime_impact", "audioCue": "" }
     }
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "18528d0476af4a9e8be1eb5a11d12836",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_escape_rock_1/magma_escape_rock_1.obj",
+  "version": 1
+}

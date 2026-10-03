@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9d14aeef2fc92366b64e3a2b9b398bca",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/camera.dds",
+  "version": 1
+}

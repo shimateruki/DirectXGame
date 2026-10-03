@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "121c400d185508584ad1c1875d16d9c7",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/1_Grass_0.obj",
+  "version": 1
+}

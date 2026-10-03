@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c04dc8c17d86fac8d76431d13499679f",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/display_error.png",
+  "version": 1
+}

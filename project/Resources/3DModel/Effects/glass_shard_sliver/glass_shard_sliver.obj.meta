@@ -1,0 +1,8 @@
+{
+  "assetType": "Model",
+  "guid": "be8e4a5cfd6841d9b5d9b86b46c2ef8f",
+  "importSettings": { "generateTangents": true, "scale": 1.0 },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/glass_shard_sliver/glass_shard_sliver.obj",
+  "version": 1
+}

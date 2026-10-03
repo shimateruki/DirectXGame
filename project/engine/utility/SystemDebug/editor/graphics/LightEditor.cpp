@@ -1,5 +1,6 @@
 ﻿#include "LightEditor.h"
 #include "imgui.h"
+#include "EditorToolSettings.h"
 #include "json.hpp"
 #include <fstream>
 #include <cmath>
@@ -246,6 +247,9 @@ void LightEditor::Update() {
 }
 
 void LightEditor::Draw3D() {
+#ifdef USE_IMGUI
+    if (!EditorToolSettings::Get().IsVisible("light")) return;
+#endif
     if (!isVisibleGizmos_ || !lightManager_) return;
 
     ID3D12Resource* plRes = lightManager_->GetPointLightResource();
@@ -361,6 +365,14 @@ void LightEditor::DrawImGui() {
     if (!lightManager_) return;
 
     ImGui::Checkbox(ICON_FA_EYE " ライト位置を表示 (Gizmos)", &isVisibleGizmos_);
+    ImGui::TextWrapped("読込ライト: %s", lightManager_->GetCurrentStateFile().c_str());
+    ImGui::Text("読込結果: %s", lightManager_->WasLastLoadSuccessful() ? "成功" : "未読込 / 失敗");
+    // 設定値を変更せず、実際に使用中の光を確認する。
+    const auto& comparisonSun = lightManager_->GetDirectionalLight();
+    ImGui::Text("実効太陽設定: 強度 %.2f / 方向 %.2f, %.2f, %.2f",
+        comparisonSun.intensity, comparisonSun.direction.x, comparisonSun.direction.y, comparisonSun.direction.z);
+    ImGui::Text("環境光 RGB: %.2f, %.2f, %.2f", comparisonSun.ambientColor.x,
+        comparisonSun.ambientColor.y, comparisonSun.ambientColor.z);
     ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " ギズモサイズ", &gizmoScale_, 0.01f, 0.2f, 2.0f);
     ImGui::Separator();
     ImGui::Spacing();

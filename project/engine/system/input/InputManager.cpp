@@ -220,8 +220,8 @@ void InputManager::Update()
     // =================================================================
     // 3. キャリブレーション
     // =================================================================
-    bool isPadReset = (sdlController_ && SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_BACK));
-    if (IsKeyTriggered(DIK_C) || isPadReset) {
+    // View/Backは操作ガイド用に使うため、センサー再調整はCキーだけで行います。
+    if (IsKeyTriggered(DIK_C)) {
         Calibrate();
         DebugConsole::GetInstance()->AddLog("InputManager: Calibrated accelerometer.");
     }

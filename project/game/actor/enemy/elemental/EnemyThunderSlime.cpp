@@ -1,5 +1,5 @@
 #include "EnemyThunderSlime.h"
-#include "SlimeBounceAnimator.h"
+#include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 #include "CameraManager.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"

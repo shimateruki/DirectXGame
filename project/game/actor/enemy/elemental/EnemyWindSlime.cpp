@@ -9,7 +9,7 @@
 #include "GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "SceneManager.h"
-#include "SlimeBounceAnimator.h"
+#include "game/actor/enemy/animation/SlimeBounceAnimator.h"
 
 #include <algorithm>
 #include <cmath>

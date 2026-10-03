@@ -6,8 +6,8 @@
     {
       "id": "crystal_spikes",
       "displayName": "晶槍召喚陣",
-      "targeting": { "minRange": 2.0, "maxRange": 12.0, "radius": 3.6 },
-      "timing": { "windup": 0.88, "active": 0.82, "recovery": 0.62, "cooldown": 2.9, "warningLead": 0.28 },
+      "targeting": { "minRange": 2.0, "maxRange": 15.0, "radius": 10.0 },
+      "timing": { "windup": 1.08, "active": 1.20, "recovery": 0.62, "cooldown": 2.9, "warningLead": 0.28 },
       "combat": { "damage": 1.0 },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
       "preview": { "targetDistance": 7.5, "duration": 4.8 },
@@ -48,12 +48,12 @@
     },
     {
       "id": "wind_wave",
-      "displayName": "持続する暴風波",
-      "targeting": { "minRange": 0.0, "maxRange": 10.5, "radius": 3.1 },
-      "timing": { "windup": 0.58, "active": 1.12, "recovery": 0.46, "cooldown": 2.75, "warningLead": 0.20 },
+      "displayName": "風術・巡る竜巻",
+      "targeting": { "minRange": 0.0, "maxRange": 10.5, "radius": 4.0 },
+      "timing": { "windup": 0.82, "active": 5.4, "recovery": 0.46, "cooldown": 3.2, "warningLead": 0.20 },
       "combat": { "damage": 0.65 },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
-      "preview": { "targetDistance": 6.8, "duration": 4.3 },
+      "preview": { "targetDistance": 6.8, "duration": 8.2 },
       "presentation": { "animation": "wind_wave_stretch", "windupVfx": "wind_slime_charge", "activeVfx": "wind_slime_breath_stream", "impactVfx": "Resources/json/effect/effect_wind_gust_ring.json", "audioCue": "" }
     },
     {

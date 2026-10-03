@@ -2,8 +2,10 @@
 #include "GPUParticleManager.h"
 #include "Object3d.h" 
 #include "Model.h"    
+#include <cmath>
 
-// ★ ヘルパー: 子オブジェクト群の中から、モデル(Mesh)を持っているパーツを再帰的に探し出す！
+namespace {
+// エミッターが空の親に付いていても、子階層にある描画メッシュを使う。
 Object3d* FindModelObject(Object3d* obj) {
     if (!obj) return nullptr;
     if (obj->GetModel()) return obj;
@@ -13,6 +15,7 @@ Object3d* FindModelObject(Object3d* obj) {
     }
     return nullptr;
 }
+} // namespace
 
 void GPUParticleEmitter::Initialize(const std::string& presetName, Object3d* targetObject) {
     presetName_ = presetName; targetObject_ = targetObject; isPlaying_ = false; emitTimer_ = 0.0f;
@@ -21,8 +24,15 @@ void GPUParticleEmitter::Initialize(const std::string& presetName, Object3d* tar
 
 void GPUParticleEmitter::Update(float deltaTime) {
     if (!isPlaying_ || presetName_.empty()) return;
+    if (!std::isfinite(deltaTime) || deltaTime < 0.0f) return;
+    // 0以下や非数の間隔では剰余が定義できないため、各更新で一度だけ発生させる。
+    if (!std::isfinite(emitInterval_) || emitInterval_ <= 0.0f) {
+        EmitOnce();
+        emitTimer_ = 0.0f;
+        return;
+    }
     emitTimer_ += deltaTime;
-    if (emitTimer_ >= emitInterval_) { EmitOnce(); emitTimer_ = fmod(emitTimer_, emitInterval_); }
+    if (emitTimer_ >= emitInterval_) { EmitOnce(); emitTimer_ = std::fmod(emitTimer_, emitInterval_); }
 }
 
 void GPUParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
@@ -35,7 +45,7 @@ void GPUParticleEmitter::EmitOnce() {
     Matrix4x4 worldMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
 
     if (targetObject_) {
-        // ★ Player自身ではなく、その子供(Player_body等)からモデルを引っこ抜く！
+        // ルートにメッシュがない場合は、子階層のモデルを発生元として使う。
         Object3d* modelObj = FindModelObject(targetObject_);
         if (modelObj && modelObj->GetModel()) {
             worldMat = modelObj->GetWorldMatrix();
@@ -45,7 +55,7 @@ void GPUParticleEmitter::EmitOnce() {
                 vb = modelData.meshes[0].vertexResource.Get();
                 vCount = static_cast<uint32_t>(modelData.meshes[0].vertices.size());
                 vStride = sizeof(Model::VertexData);
-                boneSrv = model->GetBoneSrvIndex(); // ★ ボーン情報を取得！
+                boneSrv = model->GetBoneSrvIndex();
             }
         }
         else {

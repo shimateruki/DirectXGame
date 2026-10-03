@@ -3,11 +3,12 @@
 
 #include "AnimationInterpolation.h"
 #include "BaseScene.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "GameAudioSettings.h"
 #include "GhostRecorder.h"
 #include "Object3d.h"
+#include "MeshRenderer.h"
 #include "SceneManager.h"
 
 #include <algorithm>
@@ -65,6 +66,7 @@ void CinematicPlayer::SetSequence(CinematicSequence* sequence) {
 }
 
 void CinematicPlayer::RefreshBindings() {
+    anchorCaptured_ = false;
     boundScene_ = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     transformRuntime_.clear();
     vfxRuntime_.clear();
@@ -104,6 +106,11 @@ void CinematicPlayer::RefreshBindings() {
     animationRuntime_.resize(sequence_->animationClips.size());
     for (size_t index = 0; index < sequence_->animationClips.size(); ++index) {
         animationRuntime_[index].target = ResolveTarget(sequence_->animationClips[index].binding);
+        const auto& clip = sequence_->animationClips[index];
+        animationRuntime_[index].restoreOnStop = clip.restoreOnStop;
+        if (clip.driver == "Body" && clip.enabled && !clip.muted) {
+            animationRuntime_[index].bodyClip.Load(BodyAnimationClip::ResolveAssetPath(clip.clipName));
+        }
     }
 }
 
@@ -204,6 +211,8 @@ void CinematicPlayer::Update(float deltaTime) {
         Evaluate(duration, previousTime, true);
         currentTime_ = duration;
         isPlaying_ = false;
+        // 終端ポーズを保持したプレビューとして扱い、再編集時にも開始前へ復元する。
+        isPreviewing_ = true;
         return;
     }
 
@@ -278,6 +287,7 @@ bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& 
 }
 
 Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
+    if (bindingResolver_) return bindingResolver_(binding);
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return nullptr;
     }
@@ -313,6 +323,8 @@ float CinematicPlayer::GetTransformTrackDuration(size_t index) const {
 }
 
 void CinematicPlayer::CaptureBasePoses() {
+    anchorCaptured_ = false;
+    anchorCaptured_ = GetAnchorPose(anchorPosition_, anchorYaw_);
     for (auto& runtime : transformRuntime_) {
         if (!runtime.target) {
             continue;
@@ -333,24 +345,49 @@ void CinematicPlayer::CaptureBasePoses() {
         runtime.legacyAnimationName = runtime.target->animName_;
         runtime.legacyAnimationTime = runtime.target->GetAnimationTime();
         runtime.legacyLoop = runtime.target->isAnimLoop_;
+        if (runtime.bodyClip.IsValid()) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                runtime.baseVisual.scale = renderer->GetVisualScale();
+                runtime.baseVisual.rotate = renderer->GetVisualRotation();
+                runtime.baseVisual.translate = renderer->GetVisualOffset();
+                runtime.baseVisual.shear = renderer->GetVisualShear();
+                runtime.baseVisual.shearPivotY = renderer->GetVisualShearPivotY();
+                runtime.bodyCaptured = true;
+            }
+        }
         runtime.captured = true;
     }
 }
 
 void CinematicPlayer::RestoreBasePoses() {
+    anchorCaptured_ = false;
+    // 編集でクリップが削除・並べ替えされても、保存した対象から復元する。
+    if (!sceneManager_ || sceneManager_->GetCurrentScene() != boundScene_ || !boundScene_) return;
+    const auto isAlive = [this](Object3d* target) {
+        for (const auto& object : boundScene_->GetObjects()) {
+            if (object.get() == target) return true;
+        }
+        return false;
+    };
     for (auto& runtime : transformRuntime_) {
-        if (!runtime.target || !runtime.captured) {
+        if (!runtime.target || !runtime.captured || !isAlive(runtime.target)) {
             continue;
         }
         ApplyPose(runtime.target, runtime.basePosition, runtime.baseRotation, runtime.baseScale);
         runtime.captured = false;
     }
-    for (size_t index = 0; sequence_ && index < animationRuntime_.size() && index < sequence_->animationClips.size(); ++index) {
-        auto& runtime = animationRuntime_[index];
-        if (!runtime.target || !runtime.captured || !sequence_->animationClips[index].restoreOnStop) {
+    for (auto& runtime : animationRuntime_) {
+        if (!runtime.target || !runtime.captured || !runtime.restoreOnStop || !isAlive(runtime.target)) {
             continue;
         }
-        if (runtime.animatorSnapshot.valid) {
+        if (runtime.bodyCaptured) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                const auto& base = runtime.baseVisual;
+                renderer->SetVisualTransform(base.scale, base.rotate, base.translate);
+                renderer->SetVisualShear(base.shear, base.shearPivotY);
+            }
+            runtime.bodyCaptured = false;
+        } else if (runtime.animatorSnapshot.valid) {
             runtime.target->RestoreAnimatorSnapshot(runtime.animatorSnapshot);
         } else {
             runtime.target->RestoreAnimationPlayback(
@@ -474,6 +511,16 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
         }
     }
 
+    if (track.anchorRelative) {
+        Vector3 origin;
+        float yaw = 0.0f;
+        // 親付き対象はローカル座標と混同しないよう、明示的に非対応とする。
+        if (runtime.target->GetParent() || !GetAnchorPose(origin, yaw)) return;
+        value.position = CinematicAnchorPosition(value.position, origin, yaw);
+        value.rotation.y += yaw;
+        ApplyPose(runtime.target, value.position, value.rotation, value.scale);
+        return;
+    }
     ApplyPose(
         runtime.target,
         track.relative ? AddVector3(runtime.basePosition, value.position) : value.position,
@@ -481,12 +528,55 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
         track.relative ? MultiplyVector3(runtime.baseScale, value.scale) : value.scale);
 }
 
-void CinematicPlayer::EvaluateAnimationClips(float timeSeconds) {
+void CinematicPlayer::ApplyBodyPose() {
+    if ((isPlaying_ || isPreviewing_) && sceneManager_ &&
+        sceneManager_->GetCurrentScene() == boundScene_) {
+        // 編集用の基準移動も通常更新後に保持する。イベントは再発火しない。
+        for (size_t index = 0; sequence_ && index < sequence_->transformTracks.size(); ++index) {
+            if (sequence_->transformTracks[index].anchorRelative &&
+                index < transformRuntime_.size() &&
+                transformRuntime_[index].target == ResolveTarget(sequence_->transformTracks[index].binding))
+                EvaluateTransformTrack(index, currentTime_, currentTime_, false);
+        }
+        EvaluateAnimationClips(currentTime_, true);
+    }
+}
+
+bool CinematicPlayer::GetAnchorPose(Vector3& position, float& yaw) const {
+    if (anchorCaptured_) {
+        position = anchorPosition_;
+        yaw = anchorYaw_;
+        return true;
+    }
+    Object3d* anchor = sequence_ ? ResolveTarget(sequence_->anchor) : nullptr;
+    if (!anchor || anchor->GetParent()) return false;
+    position = anchor->GetTranslate();
+    yaw = anchor->GetRotation().y + sequence_->anchorYawOffset;
+    return true;
+}
+
+void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
     if (!sequence_) {
         return;
     }
+    // 毎回基準へ戻してから評価するため、逆方向のシークや区間外にも変形を残さない。
+    // 同じ対象で区間が重なる場合は、リストの後の身体クリップを優先する。
+    for (size_t index = 0; index < animationRuntime_.size(); ++index) {
+        auto& runtime = animationRuntime_[index];
+        // シーン内で削除された対象へ保存ポインタからアクセスしない。
+        if (index >= sequence_->animationClips.size() ||
+            runtime.target != ResolveTarget(sequence_->animationClips[index].binding)) continue;
+        if (runtime.target && runtime.bodyCaptured) {
+            if (auto* renderer = runtime.target->GetMeshRenderer()) {
+                const auto& base = runtime.baseVisual;
+                renderer->SetVisualTransform(base.scale, base.rotate, base.translate);
+                renderer->SetVisualShear(base.shear, base.shearPivotY);
+            }
+        }
+    }
     for (size_t index = 0; index < sequence_->animationClips.size(); ++index) {
         const auto& clip = sequence_->animationClips[index];
+        if (bodyOnly && clip.driver != "Body") continue;
         if (!clip.enabled || clip.muted) {
             continue;
         }
@@ -496,10 +586,29 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds) {
             continue;
         }
         float localTime = elapsed * std::max(0.0f, clip.playbackSpeed);
-        if (clip.loop && duration > 0.0f) {
+        if (clip.driver != "Body" && clip.loop && duration > 0.0f) {
             localTime = std::fmod(localTime, duration);
         }
         Object3d* target = index < animationRuntime_.size() ? animationRuntime_[index].target : ResolveTarget(clip.binding);
+        if (target != ResolveTarget(clip.binding)) continue;
+        if (target && clip.driver == "Body" && index < animationRuntime_.size()) {
+            auto& runtime = animationRuntime_[index];
+            BodyAnimationClip::Sample sample;
+            auto* renderer = target->GetMeshRenderer();
+            if (renderer && runtime.bodyCaptured && runtime.bodyClip.Evaluate(localTime, clip.loop, sample)) {
+                const float weight = clip.blendInDuration > 0.0f
+                    ? AnimationInterpolation::ApplyEasing(std::clamp(elapsed / clip.blendInDuration, 0.0f, 1.0f), ToEasingType(clip.easing))
+                    : 1.0f;
+                const auto& base = runtime.baseVisual;
+                // 物理座標・当たり判定には触れず、描画用の変形だけを上書きする。
+                renderer->SetVisualTransform(
+                    AnimationInterpolation::Lerp(base.scale, sample.scale, weight),
+                    AnimationInterpolation::SlerpEuler(base.rotate, sample.rotate, weight),
+                    AnimationInterpolation::Lerp(base.translate, sample.translate, weight));
+                renderer->SetVisualShear(AnimationInterpolation::Lerp(base.shear, sample.shear, weight),
+                    base.shearPivotY + (sample.shearPivotY - base.shearPivotY) * weight);
+            }
+        }
         if (target && (clip.driver.empty() || clip.driver == "Animator" || clip.driver == "Model" || clip.driver == "Skeletal")) {
             target->EvaluateAnimatorState(
                 clip.clipName,
@@ -509,7 +618,7 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds) {
                 clip.easing,
                 isPreviewing_);
         }
-        if (animationCallback_) {
+        if (animationCallback_ && !bodyOnly) {
             animationCallback_(target, clip, localTime, isPreviewing_);
         }
     }

@@ -623,7 +623,10 @@
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
-            "enemyType": "FalseKingSlime"
+            "actionMode": 0,
+            "enemyType": "FalseKingSlime",
+            "shakeDuration": 1.0,
+            "startActive": false
         },
         "particleName": "",
         "prefabInstance": null,
@@ -1063,7 +1066,10 @@
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
-            "enemyType": "PrismSlime"
+            "actionMode": 0,
+            "enemyType": "PrismSlime",
+            "shakeDuration": 1.0,
+            "startActive": false
         },
         "particleName": "",
         "prefabInstance": null,
@@ -1173,7 +1179,10 @@
         "normalMapPath": "",
         "ormMapPath": "",
         "param": {
-            "enemyType": "RingBurner"
+            "enemyType": "RingBurner",
+            "interval": 3.0,
+            "moveAmount": 10.0,
+            "shakeDuration": 1.0
         },
         "particleName": "",
         "prefabInstance": null,
@@ -5968,6 +5977,15 @@
             "actionMode": 0,
             "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -5988,7 +6006,13 @@
             "speed": 1.0,
             "startActive": false,
             "switchMode": 0,
-            "targetScene": "SELECT"
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -6029,9 +6053,9 @@
         "roughness": 0.5,
         "saveCategory": "Object",
         "scale": [
-            0.055,
-            0.055,
-            0.055
+            0.054999999701976776,
+            0.054999999701976776,
+            0.054999999701976776
         ],
         "tag": "",
         "targetID": -1,
@@ -6079,8 +6103,8 @@
         "collisionMask": 4294967295,
         "color": [
             1.0,
-            0.74,
-            0.08,
+            0.7400000095367432,
+            0.07999999821186066,
             1.0
         ],
         "components": {
@@ -6091,7 +6115,7 @@
                 "version": 1
             }
         },
-        "emissive": 1.65,
+        "emissive": 1.649999976158142,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -6182,9 +6206,9 @@
         "roughness": 0.3199999928474426,
         "saveCategory": "Object",
         "scale": [
-            0.05,
-            0.05,
-            0.05
+            0.05000000074505806,
+            0.05000000074505806,
+            0.05000000074505806
         ],
         "tag": "",
         "targetID": 0,
@@ -6232,8 +6256,8 @@
         "collisionMask": 4294967295,
         "color": [
             1.0,
-            0.74,
-            0.08,
+            0.7400000095367432,
+            0.07999999821186066,
             1.0
         ],
         "components": {
@@ -6244,7 +6268,7 @@
                 "version": 1
             }
         },
-        "emissive": 1.65,
+        "emissive": 1.649999976158142,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -6335,9 +6359,9 @@
         "roughness": 0.3199999928474426,
         "saveCategory": "Object",
         "scale": [
-            0.05,
-            0.05,
-            0.05
+            0.05000000074505806,
+            0.05000000074505806,
+            0.05000000074505806
         ],
         "tag": "",
         "targetID": 1,
@@ -6385,8 +6409,8 @@
         "collisionMask": 4294967295,
         "color": [
             1.0,
-            0.74,
-            0.08,
+            0.7400000095367432,
+            0.07999999821186066,
             1.0
         ],
         "components": {
@@ -6397,7 +6421,7 @@
                 "version": 1
             }
         },
-        "emissive": 1.65,
+        "emissive": 1.649999976158142,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -6488,9 +6512,9 @@
         "roughness": 0.3199999928474426,
         "saveCategory": "Object",
         "scale": [
-            0.05,
-            0.05,
-            0.05
+            0.05000000074505806,
+            0.05000000074505806,
+            0.05000000074505806
         ],
         "tag": "",
         "targetID": 2,
@@ -6519,7 +6543,7 @@
         "collider": {
             "center": [
                 0.0,
-                0.52,
+                0.5199999809265137,
                 0.0
             ],
             "rotation": [
@@ -6528,9 +6552,9 @@
                 0.0
             ],
             "size": [
-                0.72,
-                0.55,
-                0.72
+                0.7200000286102295,
+                0.550000011920929,
+                0.7200000286102295
             ],
             "type": 2
         },
@@ -6547,7 +6571,7 @@
         "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "",
-        "envIntensity": 0.18,
+        "envIntensity": 0.18000000715255737,
         "eventID": 0,
         "gimmickType": "",
         "gpuParticleName": "",
@@ -6615,12 +6639,12 @@
             0.0,
             0.0
         ],
-        "roughness": 0.72,
+        "roughness": 0.7200000286102295,
         "saveCategory": "Object",
         "scale": [
-            1.55,
-            1.55,
-            1.55
+            1.5499999523162842,
+            1.5499999523162842,
+            1.5499999523162842
         ],
         "tag": "",
         "targetID": -1,
@@ -6748,9 +6772,9 @@
         "roughness": 0.6200000047683716,
         "saveCategory": "Object",
         "scale": [
-            1.3,
-            1.3,
-            1.3
+            1.2999999523162842,
+            1.2999999523162842,
+            1.2999999523162842
         ],
         "tag": "",
         "targetID": -1,
@@ -6807,7 +6831,7 @@
         "enableLighting": true,
         "enableNormalMap": false,
         "enemyType": "",
-        "envIntensity": 1.0,
+        "envIntensity": 0.800000011920929,
         "eventID": 0,
         "gimmickType": "",
         "gpuParticleName": "",
@@ -6829,12 +6853,12 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 0,
+        "materialType": 31,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
-        "modelName": "Stages/soft_tree",
+        "modelName": "Stages/entry_meadow/garden_tree_soft.obj",
         "myEventID": -1,
         "name": "庭園の樹木",
         "normalMapPath": "",
@@ -6878,9 +6902,9 @@
         "roughness": 0.6200000047683716,
         "saveCategory": "Object",
         "scale": [
-            2.8,
-            2.8,
-            2.8
+            4.619999885559082,
+            4.619999885559082,
+            4.619999885559082
         ],
         "tag": "",
         "targetID": -1,
@@ -7063,7 +7087,7 @@
         "collider": {
             "center": [
                 0.0,
-                -0.08,
+                -0.07999999821186066,
                 0.0
             ],
             "rotation": [
@@ -7072,9 +7096,9 @@
                 0.0
             ],
             "size": [
-                8.35,
-                0.2,
-                2.52
+                8.350000381469727,
+                0.20000000298023224,
+                2.5199999809265137
             ],
             "type": 3
         },
@@ -7082,11 +7106,11 @@
         "collisionMask": 255,
         "color": [
             1.0,
-            0.38,
-            0.04,
+            0.3799999952316284,
+            0.03999999910593033,
             1.0
         ],
-        "emissive": 1.2,
+        "emissive": 1.98424232006073,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7117,7 +7141,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.28,
+        "metallic": 0.2800000011920929,
         "modelName": "Stages/star_garden_dash_panel",
         "myEventID": -1,
         "name": "ダッシュパネル",
@@ -7127,6 +7151,15 @@
             "actionMode": 0,
             "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -7147,7 +7180,13 @@
             "speed": 12.0,
             "startActive": false,
             "switchMode": 0,
-            "targetScene": "SELECT"
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -7185,7 +7224,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.42,
+        "roughness": 0.41999998688697815,
         "saveCategory": "Object",
         "scale": [
             1.0,
@@ -7561,7 +7600,7 @@
         "collider": {
             "center": [
                 0.0,
-                -0.09,
+                -0.09000000357627869,
                 0.0
             ],
             "rotation": [
@@ -7570,17 +7609,17 @@
                 0.0
             ],
             "size": [
-                6.4,
-                0.6,
-                4.8
+                6.400000095367432,
+                0.6000000238418579,
+                4.800000190734863
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 255,
         "color": [
-            0.3,
-            0.88,
+            0.30000001192092896,
+            0.8799999952316284,
             1.0,
             1.0
         ],
@@ -7590,10 +7629,11 @@
                 "loop": true,
                 "path": "stage1_v4_moving_intro_a",
                 "relative": true,
+                "rideSequence": "",
                 "version": 1
             }
         },
-        "emissive": 1.18,
+        "emissive": 1.1799999475479126,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7624,7 +7664,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.22,
+        "metallic": 0.2199999988079071,
         "modelName": "Stages/star_garden_moving_platform",
         "myEventID": -1,
         "name": "移動床（横移動）",
@@ -7634,6 +7674,15 @@
             "actionMode": 0,
             "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -7654,7 +7703,13 @@
             "speed": 0.0,
             "startActive": true,
             "switchMode": 0,
-            "targetScene": "SELECT"
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -7692,7 +7747,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.36,
+        "roughness": 0.36000001430511475,
         "saveCategory": "Object",
         "scale": [
             1.0,
@@ -7726,7 +7781,7 @@
         "collider": {
             "center": [
                 0.0,
-                -0.09,
+                -0.09000000357627869,
                 0.0
             ],
             "rotation": [
@@ -7735,17 +7790,17 @@
                 0.0
             ],
             "size": [
-                6.4,
-                0.6,
-                4.8
+                6.400000095367432,
+                0.6000000238418579,
+                4.800000190734863
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 255,
         "color": [
-            0.3,
-            0.88,
+            0.30000001192092896,
+            0.8799999952316284,
             1.0,
             1.0
         ],
@@ -7755,10 +7810,11 @@
                 "loop": true,
                 "path": "stage1_v4_moving_intro_c",
                 "relative": true,
+                "rideSequence": "",
                 "version": 1
             }
         },
-        "emissive": 1.18,
+        "emissive": 1.1799999475479126,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7789,7 +7845,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.22,
+        "metallic": 0.2199999988079071,
         "modelName": "Stages/star_garden_lift_platform",
         "myEventID": -1,
         "name": "昇降リフト（上下移動）",
@@ -7799,6 +7855,15 @@
             "actionMode": 0,
             "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -7819,7 +7884,13 @@
             "speed": 0.0,
             "startActive": true,
             "switchMode": 0,
-            "targetScene": "SELECT"
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -7857,7 +7928,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.36,
+        "roughness": 0.36000001430511475,
         "saveCategory": "Object",
         "scale": [
             1.0,
@@ -7891,7 +7962,7 @@
         "collider": {
             "center": [
                 0.0,
-                1.45,
+                1.4500000476837158,
                 0.0
             ],
             "rotation": [
@@ -7900,16 +7971,21 @@
                 0.0
             ],
             "size": [
-                1.35,
-                1.45,
-                1.35
+                1.350000023841858,
+                1.4500000476837158,
+                1.350000023841858
             ],
             "type": 3
         },
         "collisionAttribute": 16,
         "collisionMask": 1,
-        "color": [1.0, 1.0, 1.0, 1.0],
-            "emissive": 0.04,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 0.03999999910593033,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -7940,7 +8016,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.28,
+        "metallic": 0.2800000011920929,
         "modelName": "Gimmicks/checkpoint_flag",
         "myEventID": -1,
         "name": "チェックポイント",
@@ -7955,7 +8031,7 @@
             0.0
         ],
         "presetCollection": "Stage1",
-        "presetDescription": "白旗に触れると赤旗が上がる復帰地点。保存と起動演出を含みます。",
+        "presetDescription": "復帰地点として使う発光チェックポイント。イベント設定を含みます。",
         "presetOrder": 310,
         "presetRecommended": true,
         "presetSection": "攻略・進行",
@@ -7982,7 +8058,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.34,
+        "roughness": 0.3400000035762787,
         "saveCategory": "Object",
         "scale": [
             1.0,
@@ -7991,7 +8067,7 @@
         ],
         "tag": "",
         "targetID": -1,
-        "texturePath": "Resources/sprite/common/white.png",
+        "texturePath": "",
         "textureTiling": [
             1.0,
             1.0
@@ -8071,7 +8147,7 @@
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
-        "modelName": "Gimmicks/crown_stage_gate",
+        "modelName": "Gimmicks/portal_surface",
         "myEventID": -1,
         "name": "ステージ入口ゲート",
         "normalMapPath": "",
@@ -8080,6 +8156,15 @@
             "actionMode": 1,
             "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -8100,7 +8185,13 @@
             "speed": 1.0,
             "startActive": true,
             "switchMode": 0,
-            "targetScene": "SELECT"
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -8141,9 +8232,9 @@
         "roughness": 0.5,
         "saveCategory": "Object",
         "scale": [
+            1.9999806880950928,
             1.0,
-            1.0,
-            1.0
+            0.9999903440475464
         ],
         "tag": "",
         "targetID": -1,
@@ -8169,6 +8260,7 @@
             "effectType": 1.0,
             "flowSpeedX": 0.0,
             "flowSpeedY": 0.0,
+            "topDownDetail": 1.0,
             "waveFrequency": 22.0,
             "waveHeight": 1.3500001430511475,
             "waveSpeed": 2.25
@@ -8198,17 +8290,17 @@
             "size": [
                 1.0,
                 1.0,
-                0.45
+                0.44999998807907104
             ],
             "type": 3
         },
-        "collisionAttribute": 4,
-        "collisionMask": 255,
+        "collisionAttribute": 0,
+        "collisionMask": 0,
         "color": [
-            0.3,
-            0.86,
+            0.30000001192092896,
+            0.8600000143051147,
             1.0,
-            0.84
+            0.8399999737739563
         ],
         "components": {
             "GameplayLink": {
@@ -8218,7 +8310,7 @@
                 "version": 1
             }
         },
-        "emissive": 2.4,
+        "emissive": 2.4000000953674316,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -8257,7 +8349,17 @@
         "ormMapPath": "",
         "param": {
             "actionMode": 0,
+            "attackPower": 1.0,
             "colorType": 0,
+            "copyMemoryActivationRadius": 0.8999999761581421,
+            "copyMemoryEssenceScale": 1.0,
+            "copyMemoryGlow": 0.44999998807907104,
+            "copyMemoryHoverAmount": 0.10000000149011612,
+            "copyMemoryTypeA": "FireSlime",
+            "copyMemoryTypeB": "ThunderSlime",
+            "copyMemoryTypeC": "WindSlime",
+            "copyMemoryTypeD": "",
+            "copyMemoryUnlimitedDuration": true,
             "detectionRange": 20.0,
             "enemyType": "",
             "fallDuration": 2.0,
@@ -8265,19 +8367,26 @@
             "gravity": 50.0,
             "healAmount": 1.0,
             "hp": 100.0,
-            "interval": 2.4,
+            "interval": 2.4000000953674316,
             "itemType": "",
-            "jumpPower": 38,
+            "jumpPower": 38.0,
             "maxCount": 5,
             "maxFallSpeed": 60.0,
             "maxHp": 100.0,
             "moveAmount": 10.0,
-            "moveSpeed": 0.42,
+            "moveSpeed": 0.41999998688697815,
             "returnOnOff": true,
             "shakeDuration": 1.0,
-            "speed": 12,
+            "speed": 12.0,
             "startActive": false,
-            "switchMode": 0
+            "switchMode": 0,
+            "targetScene": "SELECT",
+            "volumeBlendDuration": 0.75,
+            "volumeMode": 0,
+            "volumePayload": "",
+            "volumeRearmDelay": 0.0,
+            "volumeTriggerOnExit": false,
+            "volumeTriggerOnce": true
         },
         "parentGuid": "",
         "parentName": "",
@@ -8315,11 +8424,11 @@
             0.0,
             0.0
         ],
-        "roughness": 0.22,
+        "roughness": 0.2199999988079071,
         "saveCategory": "Object",
         "scale": [
             30.0,
-            6.4,
+            6.400000095367432,
             1.0
         ],
         "tag": "",
@@ -8337,19 +8446,18 @@
         "type": "Gimmick",
         "waterParam": {
             "billboardScale": 1.0,
-            "effectIntensity": 1.78,
+            "effectIntensity": 0.05999999865889549,
             "effectScale": 1.0,
             "effectScaleX": 1.0,
             "effectScaleY": 1.0,
-            "effectScaleZ": 0.08,
-            "effectSoftness": 0.48,
+            "effectScaleZ": 0.07999999821186066,
+            "effectSoftness": 0.47999998927116394,
             "effectType": 3.0,
             "flowSpeedX": 0.0,
             "flowSpeedY": 0.0,
-            "uvOffsetX": 0.0,
-            "uvOffsetY": 1.0,
+            "topDownDetail": 1.0,
             "waveFrequency": 18.0,
-            "waveHeight": 0.72,
+            "waveHeight": 0.7200000286102295,
             "waveSpeed": 1.25
         }
     },
@@ -8366,7 +8474,7 @@
         "collider": {
             "center": [
                 0.0,
-                -0.09,
+                -0.09000000357627869,
                 0.0
             ],
             "rotation": [
@@ -8375,17 +8483,17 @@
                 0.0
             ],
             "size": [
-                6.4,
-                0.6,
-                4.8
+                6.400000095367432,
+                0.6000000238418579,
+                4.800000190734863
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 255,
         "color": [
-            0.3,
-            0.88,
+            0.30000001192092896,
+            0.8799999952316284,
             1.0,
             1.0
         ],
@@ -8395,10 +8503,11 @@
                 "loop": true,
                 "path": "stage1_v4_moving_intro_a",
                 "relative": true,
+                "rideSequence": "",
                 "version": 1
             }
         },
-        "emissive": 1.18,
+        "emissive": 1.1799999475479126,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -8429,7 +8538,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.22,
+        "metallic": 0.2199999988079071,
         "modelName": "Stages/star_garden_moving_platform",
         "myEventID": -1,
         "name": "庭園足場（固定）",
@@ -8471,7 +8580,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.36,
+        "roughness": 0.36000001430511475,
         "saveCategory": "Object",
         "scale": [
             1.0,

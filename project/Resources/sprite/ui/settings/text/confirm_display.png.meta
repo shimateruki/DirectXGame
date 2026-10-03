@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "412a56a4ad6f65c8c6857e7d7de5bc07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/confirm_display.png",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "20af73b961004fe35a99368b2c48060b",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/checkpoint_beacon_active/checkpoint_beacon_active.gltf",
+  "version": 1
+}

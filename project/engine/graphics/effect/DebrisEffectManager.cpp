@@ -270,6 +270,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
     }
     if (j.contains("spawnCount")) config.spawnCount = j["spawnCount"].get<int>();
     config.spawnOffset = ReadVector3(j, "spawnOffset", config.spawnOffset);
+    config.spawnBoxHalfExtents = ReadVector3(j, "spawnBoxHalfExtents", config.spawnBoxHalfExtents);
     config.baseDirection = ReadVector3(j, "baseDirection", config.baseDirection);
     if (j.contains("horizontalSpread")) config.horizontalSpread = j["horizontalSpread"].get<float>();
     if (j.contains("verticalMin")) config.verticalMin = j["verticalMin"].get<float>();
@@ -311,6 +312,7 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
     j["modelNames"] = config.modelNames;
     j["spawnCount"] = config.spawnCount;
     WriteVector3(j, "spawnOffset", config.spawnOffset);
+    WriteVector3(j, "spawnBoxHalfExtents", config.spawnBoxHalfExtents);
     WriteVector3(j, "baseDirection", config.baseDirection);
     j["horizontalSpread"] = config.horizontalSpread;
     j["verticalMin"] = config.verticalMin;
@@ -499,7 +501,11 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         piece.age = 0.0f;
         piece.sleeping = false;
         piece.matrixDirty = true;
-        piece.position = position + config.spawnOffset;
+        piece.position = position + config.spawnOffset + Vector3{
+            RandomRange(-std::abs(config.spawnBoxHalfExtents.x), std::abs(config.spawnBoxHalfExtents.x)),
+            RandomRange(-std::abs(config.spawnBoxHalfExtents.y), std::abs(config.spawnBoxHalfExtents.y)),
+            RandomRange(-std::abs(config.spawnBoxHalfExtents.z), std::abs(config.spawnBoxHalfExtents.z))
+        };
         piece.rotation = {
             RandomRange(-3.141592f, 3.141592f),
             RandomRange(-3.141592f, 3.141592f),

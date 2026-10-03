@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0f964e655a02dae4dc685d02a2e22000",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/copy_band_wind/copy_band_wind.obj",
+  "version": 1
+}

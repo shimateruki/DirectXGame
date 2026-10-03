@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d654750f13f25dce940f8b1aab55f977",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown/move_1_name.png",
+  "version": 1
+}

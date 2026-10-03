@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c82baaf0d8e772590060576621f03ca4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/move_0_name.dds",
+  "version": 1
+}

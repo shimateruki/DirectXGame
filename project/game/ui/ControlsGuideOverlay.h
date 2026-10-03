@@ -2,6 +2,7 @@
 
 #include "engine/utility/math/Math.h"
 #include "json.hpp"
+#include "IEditable.h"
 
 #include <array>
 #include <memory>
@@ -13,9 +14,12 @@ class Player;
 class Sprite;
 class SpriteCommon;
 
-// Tabで開く操作ガイド。基本操作と現在能力のページを横スライドで切り替えます。
-class ControlsGuideOverlay {
+// Tabで開く操作ガイド。能力図鑑を縦に読み、左右で基本操作へ切り替えます。
+class ControlsGuideOverlay : public IEditable {
 public:
+    ~ControlsGuideOverlay() override;
+    void DrawImGui() override;
+    std::string GetName() override { return "能力ガイド (Ability Guide)"; }
     void Initialize(
         SpriteCommon* spriteCommon,
         Player* player,
@@ -49,7 +53,21 @@ private:
         Element portrait;
         std::array<Element, kActionCount> actionGlyphs{};
         std::array<Element, kActionCount> actionLabels{};
+        std::vector<Element> details;
     };
+
+    struct BookElement {
+        Element visual;
+        std::string slot;
+        bool scroll = false;
+        int row = -1;
+        Vector2 textureSize = { 1.0f, 1.0f };
+        Vector2 textureOrigin = { 0.0f, 0.0f };
+    };
+
+    void UpdateBook(float deltaTime);
+    void LayoutBook(float offsetX);
+    void RefreshBook();
 
     void LoadLayout(const std::string& layoutPath);
     void BindLayoutSprites();
@@ -63,6 +81,7 @@ private:
     void UpdateSlide(float deltaTime);
     void UpdateStaticVisuals();
     void RefreshAbilityVisuals();
+    void RefreshInputGlyphs(bool force = false);
     bool IsToggleHeld() const;
 
     SpriteCommon* spriteCommon_ = nullptr;
@@ -77,9 +96,10 @@ private:
     std::array<PageVisual, kPageCount> pages_{};
 
     bool isActive_ = false;
+    bool inputGlyphGamepadMode_ = false;
     bool suppressToggleInput_ = false;
     bool isSliding_ = false;
-    int currentPage_ = 0;
+    int currentPage_ = 1;
     int outgoingPage_ = 0;
     int incomingPage_ = 0;
     int slideDirection_ = 1;
@@ -89,4 +109,24 @@ private:
     std::string portraitTexturePath_;
     std::array<std::string, kActionCount> abilityLabelTexturePaths_{};
     std::array<bool, kActionCount> abilityActionAvailable_{};
+
+    std::vector<BookElement> bookElements_;
+    nlohmann::json bookData_;
+    std::string bookKey_;
+    bool bookEnabled_ = false;
+    bool bookVisible_ = false;
+    int bookMoveCount_ = 0;
+    float bookScroll_ = 0.0f;
+    float bookTargetScroll_ = 0.0f;
+    float bookTop_ = 0.0f;
+    float bookBottom_ = 0.0f;
+    float bookMaxScroll_ = 0.0f;
+    float bookScrollSpeed_ = 650.0f;
+    float bookWheelStep_ = 125.0f;
+    float bookBob_ = 4.0f;
+    float bookOffsetX_ = 0.0f;
+    std::string layoutPath_;
+    Vector2 layoutRatio_ = { 1.0f, 1.0f };
+    std::string bookPreviewKey_;
+    std::string editorStatus_;
 };

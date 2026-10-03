@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a2f0a9f1a47a06e21002d4c144f2e4e1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/fire/move_0_name.png",
+  "version": 1
+}

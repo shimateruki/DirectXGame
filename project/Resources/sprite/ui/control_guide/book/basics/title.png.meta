@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c17ca5f0ec7f5a554df49bb58baab381",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/basics/title.png",
+  "version": 1
+}

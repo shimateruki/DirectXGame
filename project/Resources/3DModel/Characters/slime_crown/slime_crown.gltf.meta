@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "92d95f92e551d653f212af9301bb50a9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/slime_crown/slime_crown.gltf",
+  "version": 1
+}

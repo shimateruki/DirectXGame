@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "882338d55be1aa180885366ba0882d35",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/copy_essence_halo/copy_essence_halo.obj",
+  "version": 1
+}

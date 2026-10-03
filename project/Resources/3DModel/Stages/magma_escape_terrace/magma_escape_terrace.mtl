@@ -1,0 +1,7 @@
+newmtl basalt
+Kd 0.38 0.41 0.45
+Ka 0.05 0.05 0.05
+Ks 0.04 0.04 0.04
+Ns 8
+d 1
+illum 2

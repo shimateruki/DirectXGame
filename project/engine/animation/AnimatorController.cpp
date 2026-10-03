@@ -12,6 +12,7 @@
 using json = nlohmann::json;
 
 namespace {
+// JSON では列挙値を整数で保存します。未知の値は既知の範囲へ丸めて読み込みます。
 int ToInt(AnimatorParameterType type) {
     return static_cast<int>(type);
 }
@@ -58,6 +59,7 @@ const AnimatorStateDefinition* AnimatorControllerAsset::FindState(const std::str
 
 bool AnimatorControllerAsset::Save(const std::string& filePath) const {
     json root;
+    // 読み込んだ旧版の番号は引き継がず、現在の形式として書き出します。
     root["version"] = kCurrentVersion;
     root["name"] = name;
     root["entryState"] = entryState;
@@ -135,6 +137,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
     json root;
     try {
         file >> root;
+        // 再読み込みでは古い配列へ追記せず、JSON の内容で定義全体を置き換えます。
         Clear();
         version = root.value("version", 1);
         name = root.value("name", std::filesystem::path(filePath).stem().string());
@@ -157,6 +160,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
             state.loop = item.value("loop", true);
             state.blendDuration = item.value("blendDuration", 0.12f);
             state.blendEasing = item.value("blendEasing", 4);
+            // 不正な時刻とイベント位置を読み込んでも、発火判定の時間軸を有効範囲に保ちます。
             state.eventTimelineDuration = (std::max)(item.value("eventTimelineDuration", 1.0f), 0.01f);
             for (const auto& eventItem : item.value("events", json::array())) {
                 AnimatorEventDefinition event;
@@ -185,6 +189,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
             transitions.push_back(transition);
         }
     } catch (...) {
+        // 途中まで読み込んだ定義を Runtime から参照させないため、失敗時は空に戻します。
         Clear();
         return false;
     }
@@ -212,6 +217,7 @@ void AnimatorControllerRuntime::Reset(bool playEntryState) {
     InitializeParameters();
     if (playEntryState && controller_) {
         const int entryIndex = controller_->FindStateIndex(controller_->entryState);
+        // 初期状態名が欠ける古い定義でも、先頭の状態から再生できるようにします。
         currentStateIndex_ = entryIndex >= 0 ? entryIndex : (controller_->states.empty() ? -1 : 0);
         QueueEntryEvents(GetCurrentState());
     }
@@ -226,10 +232,14 @@ void AnimatorControllerRuntime::Update(float deltaTime, const DurationResolver& 
     const float previousCurrentTime = currentTime_;
     const float speed = current ? std::max(0.0f, current->speed) : 0.0f;
     const float clipDuration = ResolveStateDuration(current, durationResolver);
+    // クリップ長が取れない状態でも、イベントと exitTime は同じ代替時間軸で評価します。
+    // 実際のアニメーション再生位置はクリップ長が分からないまま折り返しません。
     const float eventDuration = clipDuration > 0.0f
         ? clipDuration
         : (current ? (std::max)(current->eventTimelineDuration, 0.01f) : 0.0f);
-    CollectCrossedEvents(current, previousCurrentTime, previousCurrentTime + deltaTime * speed, eventDuration);
+    const float rawNewTime = previousCurrentTime + deltaTime * speed;
+    // 時刻をループ位置へ折り返す前に通過イベントを調べ、1 更新で複数周した場合も拾います。
+    CollectCrossedEvents(current, previousCurrentTime, rawNewTime, eventDuration);
     AdvanceStateTime(currentTime_, current, deltaTime, durationResolver);
     if (IsTransitioning()) {
         AdvanceStateTime(previousTime_, GetPreviousState(), deltaTime, durationResolver);
@@ -241,10 +251,12 @@ void AnimatorControllerRuntime::Update(float deltaTime, const DurationResolver& 
         }
     }
 
-    const float normalizedTime = GetNormalizedTime(current, currentTime_, durationResolver);
+    // 折り返した時刻だけを見ると、大きな deltaTime で exitTime をまたいだ遷移を取りこぼします。
+    const float normalizedTime = GetNormalizedTime(current, rawNewTime, durationResolver);
     if (const AnimatorTransitionDefinition* transition = FindAutomaticTransition(normalizedTime)) {
         const int destination = controller_->FindStateIndex(transition->toState);
         if (destination >= 0 && destination != currentStateIndex_) {
+            // 行き先が有効なときだけ Trigger を消費し、失敗した定義で入力を失わないようにします。
             ConsumeTriggers(*transition);
             CrossFade(transition->toState, transition->duration, transition->easing);
         }
@@ -266,6 +278,7 @@ bool AnimatorControllerRuntime::Play(const std::string& stateName, float timeSec
     transitionElapsed_ = 0.0f;
     transitionDuration_ = 0.0f;
     pendingEvents_.clear();
+    // 時刻 0 からの再生だけ、開始位置に配置されたイベントを即時発火させます。
     if (currentTime_ <= 0.0001f) QueueEntryEvents(GetCurrentState());
     return true;
 }
@@ -282,6 +295,7 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
         return true;
     }
 
+    // 引数の負値は「未指定」です。遷移定義、遷移先状態の順で既定値を探します。
     float duration = durationOverride;
     int easing = easingOverride;
     if (const AnimatorTransitionDefinition* transition = FindRequestedTransition(currentStateIndex_, destination)) {
@@ -391,6 +405,7 @@ void AnimatorControllerRuntime::RestoreSnapshot(const Snapshot& snapshot) {
     if (!controller_ || !snapshot.valid) {
         return;
     }
+    // 配列位置ではなく状態名で復元し、Asset 内の並び替えに依存しないようにします。
     currentStateIndex_ = controller_->FindStateIndex(snapshot.currentState);
     previousStateIndex_ = controller_->FindStateIndex(snapshot.previousState);
     currentTime_ = snapshot.currentTime;
@@ -414,6 +429,7 @@ void AnimatorControllerRuntime::InitializeParameters() {
         case AnimatorParameterType::Float: floatParameters_[parameter.name] = parameter.defaultFloat; break;
         case AnimatorParameterType::Int: intParameters_[parameter.name] = parameter.defaultInt; break;
         case AnimatorParameterType::Bool: boolParameters_[parameter.name] = parameter.defaultBool; break;
+        // Trigger は持続値ではないため、定義の初期値に関係なく未発火から始めます。
         case AnimatorParameterType::Trigger: triggerParameters_[parameter.name] = false; break;
         }
     }
@@ -449,6 +465,7 @@ void AnimatorControllerRuntime::CollectCrossedEvents(
         return;
     }
 
+    // Asset 側の配列順に依存しない発火順を保証するため、参照だけを時刻順に並べます。
     std::vector<const AnimatorEventDefinition*> sortedEvents;
     sortedEvents.reserve(state->events.size());
     for (const AnimatorEventDefinition& event : state->events) {
@@ -458,6 +475,8 @@ void AnimatorControllerRuntime::CollectCrossedEvents(
         return lhs->normalizedTime < rhs->normalizedTime;
     });
 
+    // (前回時刻, 今回時刻] を対象にし、境界上のイベントを次フレームで重複発火させません。
+    // rawNewTime はループ前の値なので、1 更新で複数周した場合も各周を調べられます。
     constexpr float kEventTimeEpsilon = 0.00001f;
     const int lastLoop = state->loop ? static_cast<int>(std::floor(rawNewTime / duration)) : 0;
     const int firstLoop = state->loop ? (std::max)(0, static_cast<int>(std::floor(previousTime / duration))) : 0;
@@ -486,9 +505,11 @@ void AnimatorControllerRuntime::AdvanceStateTime(
     if (!state) {
         return;
     }
+    // speed の負値は逆再生ではなく停止として扱う仕様です。
     time += deltaTime * std::max(0.0f, state->speed);
     const float duration = ResolveStateDuration(state, durationResolver);
     if (duration <= 0.0f) {
+        // クリップ長が不明な場合は折り返し先を決められないため、時刻をそのまま進めます。
         return;
     }
     if (state->loop) {
@@ -505,8 +526,11 @@ float AnimatorControllerRuntime::GetNormalizedTime(
     if (!state) {
         return 0.0f;
     }
-    const float duration = ResolveStateDuration(state, durationResolver);
-    return duration > 0.0f ? time / duration : 0.0f;
+    const float clipDuration = ResolveStateDuration(state, durationResolver);
+    const float duration = clipDuration > 0.0f
+        ? clipDuration
+        : (std::max)(state->eventTimelineDuration, 0.01f);
+    return time / duration;
 }
 
 const AnimatorTransitionDefinition* AnimatorControllerRuntime::FindRequestedTransition(int fromIndex, int toIndex) const {
@@ -515,6 +539,7 @@ const AnimatorTransitionDefinition* AnimatorControllerRuntime::FindRequestedTran
     }
     const std::string from = fromIndex >= 0 ? controller_->states[fromIndex].name : "";
     const std::string& to = controller_->states[toIndex].name;
+    // 明示的な切り替えでも、同じ宛先に複数定義があれば状態固有を優先します。
     for (const auto& transition : controller_->transitions) {
         if (transition.fromState == from && transition.toState == to) {
             return &transition;
@@ -533,9 +558,10 @@ const AnimatorTransitionDefinition* AnimatorControllerRuntime::FindAutomaticTran
         return nullptr;
     }
     const std::string& current = controller_->states[currentStateIndex_].name;
-    // State固有の遷移をAny Stateより優先し、JSONの並び順で挙動が変わるのを防ぎます。
+    // State 固有の遷移を Any State より優先します。同じ優先度内では定義順で選びます。
     for (int pass = 0; pass < 2; ++pass) {
         for (const auto& transition : controller_->transitions) {
+            // 自分自身への自動遷移を除外し、毎フレームの再開始を防ぎます。
             if (transition.toState.empty() || transition.toState == current) {
                 continue;
             }
@@ -557,6 +583,7 @@ const AnimatorTransitionDefinition* AnimatorControllerRuntime::FindAutomaticTran
 
 bool AnimatorControllerRuntime::AreConditionsMet(const AnimatorTransitionDefinition& transition) const {
     if (transition.conditions.empty()) {
+        // 条件も exitTime もない定義が毎フレーム発火し続けるのを防ぎます。
         return transition.hasExitTime;
     }
     for (const auto& condition : transition.conditions) {

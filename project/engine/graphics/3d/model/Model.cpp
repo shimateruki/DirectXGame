@@ -965,9 +965,11 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     // 1. マテリアル設定
     if (overrideMaterialResource) {
         commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(14, overrideMaterialResource->GetGPUVirtualAddress());
     }
     else if (materialResource_) {
         commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(14, materialResource_->GetGPUVirtualAddress());
     }
 
     // 2. 定数バッファ設定

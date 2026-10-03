@@ -9,6 +9,7 @@
 // フレームレートに依存しない追従と、回転の最短経路補間を一か所へまとめます。
 namespace AnimationInterpolation {
 
+/// <summary>補間率へ適用する加減速カーブの種類。</summary>
 enum class EasingType {
     Linear = 0,
     EaseIn = 1,
@@ -17,10 +18,15 @@ enum class EasingType {
     SmootherStep = 4
 };
 
+/// <summary>補間率を 0～1 に収めます。</summary>
 inline float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
 }
 
+/// <summary>0～1 の再生割合へ指定のイージングを適用します。</summary>
+/// <param name="value">元の補間率。範囲外は 0～1 に収めます。</param>
+/// <param name="type">イージングの種類。</param>
+/// <returns>変換後の補間率。</returns>
 inline float ApplyEasing(float value, EasingType type) {
     const float t = Clamp01(value);
     switch (type) {
@@ -42,16 +48,18 @@ inline float ApplyEasing(float value, EasingType type) {
     }
 }
 
+/// <summary>2 つの数値を線形補間します。rate は 0～1 に収めます。</summary>
 inline float Lerp(float start, float end, float rate) {
     return start + (end - start) * Clamp01(rate);
 }
 
-// Euler角の単一軸を最短経路で補間します。
-// Y=180度付近でも0度側へ大回りしないため、キャラクターの旋回に使用できます。
+/// <summary>Euler 角の単一軸を最短経路で補間します。</summary>
+/// <remarks>180 度付近でも遠回りしないため、キャラクターの旋回に使用できます。</remarks>
 inline float LerpAngle(float start, float end, float rate) {
     return Math::LerpShortAngle(start, end, Clamp01(rate));
 }
 
+/// <summary>2 つの座標を線形補間します。rate は 0～1 に収めます。</summary>
 inline Vector3 Lerp(const Vector3& start, const Vector3& end, float rate) {
     const float t = Clamp01(rate);
     return {
@@ -61,6 +69,10 @@ inline Vector3 Lerp(const Vector3& start, const Vector3& end, float rate) {
     };
 }
 
+/// <summary>時間刻みに依存しない追従率を計算します。</summary>
+/// <param name="response">追従の速さ。0 以下なら停止します。</param>
+/// <param name="deltaTime">経過秒数。0 以下なら停止します。</param>
+/// <returns>このフレームに適用する 0～1 の割合。</returns>
 inline float FollowAlpha(float response, float deltaTime) {
     if (deltaTime <= 0.0f || response <= 0.0f) {
         return 0.0f;
@@ -68,17 +80,18 @@ inline float FollowAlpha(float response, float deltaTime) {
     return 1.0f - std::exp(-response * deltaTime);
 }
 
+/// <summary>単一軸の角度を最短経路で追従させます。</summary>
 inline float DampAngle(float current, float target, float response, float deltaTime) {
     return LerpAngle(current, target, FollowAlpha(response, deltaTime));
 }
 
+/// <summary>座標を時間刻みに依存しない速度で追従させます。</summary>
 inline Vector3 Damp(const Vector3& current, const Vector3& target, float response, float deltaTime) {
     return Lerp(current, target, FollowAlpha(response, deltaTime));
 }
 
-// 各Euler軸を独立して最短経路補間します。
-// 小さな傾きとキャラクターのY旋回を混ぜる用途では、クォータニオンを
-// Euler角へ戻した際に起きる等価角度への折り返しを避けられます。
+/// <summary>Euler の各軸を独立に最短経路で補間します。</summary>
+/// <remarks>小さな傾きと Y 旋回を混ぜる場合、Quaternion から Euler へ戻す際の折り返しを避けられます。</remarks>
 inline Vector3 LerpEulerAxes(const Vector3& startEuler, const Vector3& endEuler, float rate) {
     const float t = Clamp01(rate);
     return {
@@ -88,6 +101,7 @@ inline Vector3 LerpEulerAxes(const Vector3& startEuler, const Vector3& endEuler,
     };
 }
 
+/// <summary>Euler の各軸を独立に、時間刻みに依存しない速度で追従させます。</summary>
 inline Vector3 DampEulerAxes(
     const Vector3& currentEuler,
     const Vector3& targetEuler,
@@ -96,6 +110,7 @@ inline Vector3 DampEulerAxes(
     return LerpEulerAxes(currentEuler, targetEuler, FollowAlpha(response, deltaTime));
 }
 
+/// <summary>Euler 角を Quaternion に変換して球面線形補間します。</summary>
 inline Vector3 SlerpEuler(const Vector3& startEuler, const Vector3& endEuler, float rate) {
     const Quaternion start = Math::EulerToQuaternion(startEuler);
     const Quaternion end = Math::EulerToQuaternion(endEuler);
@@ -103,10 +118,13 @@ inline Vector3 SlerpEuler(const Vector3& startEuler, const Vector3& endEuler, fl
     return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(result));
 }
 
+/// <summary>Euler 角を Quaternion 経由で追従させます。</summary>
 inline Vector3 DampEuler(const Vector3& currentEuler, const Vector3& targetEuler, float response, float deltaTime) {
     return SlerpEuler(currentEuler, targetEuler, FollowAlpha(response, deltaTime));
 }
 
+/// <summary>指定時間区間内での進行割合を 0～1 で返します。</summary>
+/// <remarks>区間長が 0 に近いときは、終端へ到達したかどうかで 0 または 1 を返します。</remarks>
 inline float SegmentRate(float time, float startTime, float endTime) {
     const float duration = endTime - startTime;
     if (duration <= 0.0001f) {

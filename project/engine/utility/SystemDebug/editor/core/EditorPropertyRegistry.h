@@ -115,38 +115,84 @@ struct EditorPropertyDescriptor {
 /// Inspector、Prefab、Sequencerから共通利用するObject3dプロパティ台帳です。
 class EditorPropertyRegistry {
 public:
+    /// <summary>共有のプロパティ台帳を返します。</summary>
     static EditorPropertyRegistry* GetInstance();
 
+    /// <summary>標準コンポーネントとプロパティを定義順に一度だけ登録します。</summary>
     void InitializeBuiltInProperties();
+
+    /// <summary>コンポーネントの型情報を登録します。</summary>
+    /// <param name="descriptor">安定した型IDと追加・削除処理を含む定義。</param>
     bool RegisterComponent(EditorComponentDescriptor descriptor);
+
+    /// <summary>編集可能なプロパティを登録します。</summary>
+    /// <param name="descriptor">保存パス、値の取得・設定処理を含む定義。</param>
     bool Register(EditorPropertyDescriptor descriptor);
+
+    /// <summary>型IDからコンポーネント定義を探します。</summary>
     const EditorComponentDescriptor* FindComponent(const std::string& typeId) const;
+
+    /// <summary>コンポーネントに属する追加用プリセットを探します。</summary>
     const EditorComponentPresetDescriptor* FindComponentPreset(
         const std::string& typeId,
         const std::string& presetId) const;
+
+    /// <summary>パスからプロパティ定義を探します。</summary>
     const EditorPropertyDescriptor* Find(const std::string& path) const;
+
+    /// <summary>登録順のコンポーネント定義とプロパティ定義を返します。</summary>
     const std::vector<EditorComponentDescriptor>& GetComponents() const { return components_; }
     const std::vector<EditorPropertyDescriptor>& GetProperties() const { return properties_; }
+
+    /// <summary>対象に適用できるコンポーネントを表示順で返します。</summary>
     std::vector<const EditorComponentDescriptor*> GetApplicableComponentsForObject(const Object3d* object) const;
+
+    /// <summary>対象に実際に存在するコンポーネントを返します。</summary>
     std::vector<const EditorComponentDescriptor*> GetComponentsForObject(const Object3d* object) const;
+
+    /// <summary>指定した型に属するプロパティを登録順で返します。</summary>
     std::vector<const EditorPropertyDescriptor*> GetPropertiesForComponent(const std::string& typeId) const;
+
+    /// <summary>対象の種類にコンポーネントを適用できるか調べます。</summary>
     bool IsComponentApplicable(const Object3d* object, const std::string& typeId) const;
+
+    /// <summary>実体または保存JSONにコンポーネントが存在するか調べます。</summary>
     bool IsComponentPresent(const Object3d* object, const std::string& typeId) const;
     bool IsComponentPresent(const nlohmann::json& serializedObject, const std::string& typeId) const;
+
+    /// <summary>保存JSONのコンポーネント存在マーカーを更新します。</summary>
     bool SetComponentPresent(nlohmann::json& serializedObject, const std::string& typeId, bool present) const;
+
+    /// <summary>対象へコンポーネントを追加し、存在マーカーも反映します。</summary>
     bool AddComponent(Object3d* object, const std::string& typeId) const;
+
+    /// <summary>追加済みコンポーネントに選択したプリセットを適用します。</summary>
     bool ApplyComponentPreset(
         Object3d* object,
         const std::string& typeId,
         const std::string& presetId) const;
+
+    /// <summary>削除可能なコンポーネントを対象から外します。</summary>
     bool RemoveComponent(Object3d* object, const std::string& typeId) const;
 
+    /// <summary>対象のプロパティ値を取得・設定します。</summary>
     nlohmann::json GetValue(const Object3d* object, const std::string& path) const;
     bool SetValue(Object3d* object, const std::string& path, const nlohmann::json& value) const;
+
+    /// <summary>対象にプロパティを表示・編集できるか調べます。</summary>
     bool IsApplicable(const Object3d* object, const std::string& path) const;
+
+    /// <summary>複数対象のプロパティ値に差があるか調べます。</summary>
     bool HasMixedValue(const std::vector<Object3d*>& objects, const std::string& path) const;
 
 private:
+    /// <summary>標準定義を所有領域ごとに登録します。登録順はInspectorの表示順に影響します。</summary>
+    void RegisterBuiltInComponents();
+    void RegisterBuiltInBaseProperties();
+    void RegisterBuiltInRenderAndComponentProperties();
+    void RegisterBuiltInCameraAndGameplayProperties();
+
+    // 重複登録を防ぎ、各種IDから定義を定数時間で探すための索引を保持します。
     bool initialized_ = false;
     std::vector<EditorComponentDescriptor> components_;
     std::unordered_map<std::string, std::size_t> componentIndices_;

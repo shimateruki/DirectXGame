@@ -51,6 +51,7 @@ public:
         float positionY = 0.0f;
         float positionZ = 0.0f;
         std::string morphEnemyType;
+        std::vector<int> clearedEncounterIds;
     };
 
     static GameDataManager* GetInstance() {
@@ -224,12 +225,22 @@ public:
     void RequestStageCheckpointRespawn(
         int stageIndex, float positionX, float positionY, float positionZ,
         const std::string& morphEnemyType) {
+        if (pendingStageCheckpointRespawn_.stageIndex != stageIndex) pendingStageCheckpointRespawn_.clearedEncounterIds.clear();
         pendingStageCheckpointRespawn_.active = stageIndex >= 0;
         pendingStageCheckpointRespawn_.stageIndex = stageIndex;
         pendingStageCheckpointRespawn_.positionX = positionX;
         pendingStageCheckpointRespawn_.positionY = positionY;
         pendingStageCheckpointRespawn_.positionZ = positionZ;
         pendingStageCheckpointRespawn_.morphEnemyType = morphEnemyType;
+    }
+
+    void RememberCheckpointEncounter(int stageIndex, int eventId) {
+        if (pendingStageCheckpointRespawn_.stageIndex != stageIndex) {
+            pendingStageCheckpointRespawn_.clearedEncounterIds.clear();
+            pendingStageCheckpointRespawn_.stageIndex = stageIndex;
+        }
+        auto& ids = pendingStageCheckpointRespawn_.clearedEncounterIds;
+        if (std::find(ids.begin(), ids.end(), eventId) == ids.end()) ids.push_back(eventId);
     }
 
     StageCheckpointRespawn ConsumeStageCheckpointRespawn() {

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7e56268358b99a4159a252e699e5261e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown/tip.png",
+  "version": 1
+}

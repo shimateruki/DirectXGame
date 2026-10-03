@@ -11,9 +11,8 @@
 // EffectObject3dは、メッシュベースのVFXをObject3dとして扱い、寿命、色、拡大、ディゾルブを制御します。
 class EffectObject3d : public Object3d {
 public:
-    // シェーダーの cbuffer EffectMaterial と一致させる構造体
-        // エフェクトシェーダーへ渡す色、時間、歪み、リビールなどのパラメータです。
-struct EffectMaterial {
+    /// <summary>エフェクトシェーダーの cbuffer と一致する描画パラメータ。</summary>
+    struct EffectMaterial {
         Vector4 color;
         Vector2 scrollSpeed;
         float time;
@@ -30,35 +29,39 @@ struct EffectMaterial {
         int enableNoiseTexture; //ノイズテクスチャ有効フラグ
         int enableReveal;
         int proceduralType;
-        Vector3 padding2;
+        int useTextureColor;
+        float chantFlowStrength;
+        float chantRibbonStrength;
+        float ringEnergyStrength;
+        float ringSpinSpeed;
     };
 
-    // 初期化・更新・描画
-        // 通常Object3dの初期化に加えて、エフェクト専用マテリアルバッファを作成します。
-void Initialize(Object3dCommon* common);
-        // 再生時間に合わせてスケール、色、ディゾルブなどを補間します。
-void Update(float deltaTime) override;
+    /// <summary>Object3d とエフェクト専用マテリアルバッファを初期化する。</summary>
+    void Initialize(Object3dCommon* common);
 
-    // 通常のDrawをオーバーライドし、エフェクト専用のパイプラインで描画する
-        // エフェクト用パイプラインでメッシュを描画します。
-void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
+    /// <summary>再生時間に応じてスケール、色、ディゾルブを更新する。</summary>
+    void Update(float deltaTime) override;
 
-    // --- エディタから操作するためのアクセッサ ---
+    /// <summary>エフェクト用パイプラインでメッシュを描画する。</summary>
+    void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
+
+    // エフェクト用マテリアルの描画値。バッファ未作成時の設定は反映されない。
     void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
     void SetScrollSpeed(const Vector2& speed) { if (materialData_) materialData_->scrollSpeed = speed; }
     void SetIntensity(float intensity) { if (materialData_) materialData_->intensity = intensity; }
     void ResetTime() { if (materialData_) materialData_->time = 0.0f; }
 
     EffectMaterial* GetMaterialData() const { return materialData_; }
-    // --- アニメーション用セッター ---
-        // 寿命を指定してエフェクト再生を開始します。
+
+    /// <summary>寿命を指定し、再生位置を先頭に戻して開始する。</summary>
     void Play(float lifetime) {
         currentTime_ = 0.0f;
         lifetime_ = lifetime;
         isPlaying_ = true;
         if (materialData_) materialData_->time = 0.0f;
     }
-    // JSONで設定した寿命を保ったまま、同じエフェクトを先頭から再生します。
+
+    /// <summary>設定済みの寿命を保って先頭から再生する。</summary>
     void Restart() {
         currentTime_ = 0.0f;
         isPlaying_ = true;
@@ -67,6 +70,8 @@ void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLigh
     bool IsPlaying() const { return isPlaying_; }
     float GetLifetime() const { return lifetime_; }
     float GetCurrentTime() const { return currentTime_; }
+
+    /// <summary>寿命に対する再生割合を 0～1 で返す。寿命が 0 以下なら 1。</summary>
     float GetPlaybackProgress() const {
         return lifetime_ > 0.0f ? std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f) : 1.0f;
     }
@@ -79,6 +84,8 @@ void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLigh
     void SetDistortionSpeed(float s) { if (materialData_) materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { if (materialData_) materialData_->edgeFadeStrength = s; }
     void SetEnableDistortion(bool enable) { if (materialData_) materialData_->enableDistortion = enable ? 1 : 0; }
+
+    /// <summary>歪み描画が有効で、強度も正かを返す。</summary>
     bool IsDistortionEnabled() const {
         return materialData_ && materialData_->enableDistortion != 0 && materialData_->distortionStrength > 0.0f;
     }
@@ -87,23 +94,34 @@ void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLigh
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }
     void SetEnableColorRamp(bool enable) { if (materialData_) materialData_->enableColorRamp = enable ? 1 : 0; }
     void SetEnableNoiseTexture(bool enable) { if (materialData_) materialData_->enableNoiseTexture = enable ? 1 : 0; }
+    void SetUseTextureColor(bool enable) { if (materialData_) materialData_->useTextureColor = enable ? 1 : 0; }
+    void SetChantFlowStrength(float strength) { if (materialData_) materialData_->chantFlowStrength = std::clamp(strength, 0.0f, 1.0f); }
+    void SetChantRibbonStrength(float strength) { if (materialData_) materialData_->chantRibbonStrength = std::clamp(strength, 0.0f, 1.0f); }
+    void SetRingEnergyStrength(float strength) { if (materialData_) materialData_->ringEnergyStrength = std::clamp(strength, 0.0f, 1.0f); }
+    void SetRingSpinSpeed(float speed) { if (materialData_) materialData_->ringSpinSpeed = std::clamp(speed, -40.0f, 40.0f); }
     void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
     BlendMode GetBlendMode() const { return blendMode_; }
     void SetEnableReveal(bool enable) { if (materialData_) materialData_->enableReveal = enable ? 1 : 0; }
+    void SetRevealMode(int mode) { if (materialData_) materialData_->enableReveal = std::clamp(mode, 0, 2); }
+    void SetRevealProgress(float progress) { if (materialData_) materialData_->revealProgress = std::clamp(progress, 0.0f, 1.0f); }
     void SetEasingType(int type) { easingType_ = type; }
     int GetEasingType() const { return easingType_; }
 
     void SetAutoLoop(bool loop) { isAutoLoop_ = loop; }
     bool GetAutoLoop() const { return isAutoLoop_; }
-        // JSONプリセットからエフェクト形状やマテリアル設定を読み込みます。
-bool LoadFromJson(const std::string& jsonFilePath);
+
+    /// <summary>JSONプリセットから形状とマテリアル設定を読み込む。</summary>
+    bool LoadFromJson(const std::string& jsonFilePath);
 
     void SetTargetObject(Object3d* target) { targetObject_ = target; }
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { if (materialData_) materialData_->proceduralType = type; }
-        // 編集パラメータから手続き生成メッシュを再構築します。
-void UpdateProceduralMesh();
+
+    /// <summary>編集パラメータから手続き生成メッシュを再構築する。</summary>
+    void UpdateProceduralMesh();
+
+    /// <summary>現在の手続き生成メッシュを OBJ 形式で書き出す。</summary>
     void ExportToObj(const std::string& filePath) const;
 
     // --- プロシージャルメッシュ用パラメータ ---
@@ -144,8 +162,9 @@ private:
     Object3d* targetObject_ = nullptr;
     Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
     Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
-        // エフェクト専用マテリアルをGPUへ渡すための定数バッファを作成します。
-bool CreateMaterialBuffer(ID3D12Device* device);
+
+    // エフェクト用マテリアルをGPUへ渡す定数バッファを作る。
+    bool CreateMaterialBuffer(ID3D12Device* device);
     BlendMode blendMode_ = BlendMode::kAdd;
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;
@@ -158,14 +177,14 @@ bool CreateMaterialBuffer(ID3D12Device* device);
     Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     int easingType_ = 0; // デフォルトは 0 (Linear)
     bool isAutoLoop_ = false;
+
     // 動的生成専用のモデル
     std::unique_ptr<Model> dynamicModel_;
     std::vector<Model::VertexData> proceduralVertices_;
     std::vector<uint32_t> proceduralIndices_;
 
-    // 形状別の生成ロジック
-        // 斬撃や三日月形エフェクト用の頂点とインデックスを生成します。
-void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
+    // 以下の Generate* は形状別の頂点・インデックスを proceduralVertices_ / proceduralIndices_ に生成する。
+    void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
     void GenerateThrustVertices(float length, float radius, int segments);
     void GenerateSphereVertices(float radius, int segments, int rings);
     void GenerateCylinderVertices(float radius, float height, int segments);
@@ -173,6 +192,8 @@ void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thic
     void GeneratePlaneVertices(const Vector2& size, int subdivisions);
     void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
     void GenerateConeVertices(float radius, float height, int segments);
+    // 円錐一枚では表現できない刃・鍔・柄の輪郭を持つ槍を生成します。
+    void GenerateLanceVertices(float radius, float height, int segments);
     void GenerateRingVertices(float outerRad, float innerRad, int segments);
     void GenerateTriangleVertices(float size);
 

@@ -1,122 +1,85 @@
 #pragma once
-
-#include "AudioPlayer.h"
+#include "KeyConfig.h"
+#include "WinApp.h"
 #include "engine/utility/math/Math.h"
-
-#include <array>
+#include <chrono>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include "json.hpp"
 
 class InputManager;
 class Sprite;
 class SpriteCommon;
 
+// ゲーム中・タイトル共通の設定画面。編集中の値と確定済みの値を分離します。
 class SettingsMenuOverlay {
 public:
-    enum class Result {
-        None,
-        Closed
-    };
-
-    void Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath = "Resources/json/sprite/settingsScene.json");
+    enum class Result { None, Closed };
+    SettingsMenuOverlay();
+    ~SettingsMenuOverlay();
+    void Initialize(SpriteCommon* common, const std::string& layoutPath = "Resources/json/sprite/settingsScene.json");
     void Finalize();
     void SetActive(bool active);
-    bool IsActive() const { return isActive_; }
+    bool IsActive() const { return active_; }
     Result Update(float deltaTime);
     void Draw();
     void CollectReplaySprites(std::vector<Sprite*>& sprites) const;
     void CaptureReplayState(nlohmann::json& state) const;
     void RestoreReplayState(const nlohmann::json& state);
-
+    static bool IsAnyActive() { return activeCount_ > 0; }
+    // エディターから描画範囲を受け取り、Game View外のクリックを無視します。
+    static void SetEditorViewport(int left, int top, int right, int bottom);
 private:
-    enum class Category {
-        Sound,
-        Control,
-        Count
+    enum class Modal { None, Discard, Reset, Binding, Conflict, Display };
+    struct Values {
+        float bgm = .8f, se = .8f, sensitivity = 1.0f;
+        int width = 1280, height = 720;
+        bool borderless = false;
+        bool invertX = false, invertY = false;
+        std::unordered_map<std::string, BindData> bindings;
     };
-
-    enum class Item {
-        BGM,
-        SE,
-        CameraSensitivity,
-        Count
-    };
-
-    enum class FocusArea {
-        Items,
-        Footer
-    };
-
-    enum class FooterAction {
-        Back,
-        Reset,
-        Apply,
-        Count
-    };
-
-    struct OptionRow {
-        Sprite* backdrop = nullptr;
-        Sprite* label = nullptr;
-        Sprite* track = nullptr;
-        Sprite* fill = nullptr;
-        Sprite* knob = nullptr;
-        Sprite* leftArrow = nullptr;
-        Sprite* rightArrow = nullptr;
-        Sprite* valueLabel = nullptr;
-        std::array<Sprite*, 3> digits = { nullptr, nullptr, nullptr };
-    };
-
-    void LoadLayout(const std::string& layoutPath);
-    void BindLayoutSprites();
-    Sprite* FindSprite(const std::string& name) const;
-    void SetAllVisible(bool visible);
-    bool IsDecisionOrBackHeld() const;
-    Result UpdateInput(float deltaTime);
-    void UpdateSprites();
-    void UpdateCategorySprites();
-    void UpdateFooterSprites();
-    void SetRowVisible(OptionRow& row, bool visible);
-    void ChangeSelection(int direction);
-    void ChangeFooterSelection(int direction);
-    void AdjustSelectedValue(int direction);
-    bool ExecuteFooterAction();
-    void ResetSettingsToDefault();
-    Category GetItemCategory(Item item) const;
-    bool IsItemVisible(Item item) const;
-    bool IsSliderItem(Item item) const;
-    bool IsChoiceItem(Item item) const;
-    float GetValue(Item item) const;
-    float GetNormalizedValue(Item item) const;
-    int GetDisplayValue(Item item) const;
-    std::string GetDisplayTextTexture(Item item) const;
-    void SetNumberSprites(OptionRow& row, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color);
-
-    SpriteCommon* spriteCommon_ = nullptr;
-    InputManager* inputManager_ = nullptr;
+    void ReadValues();
+    bool IsDirty() const;
+    void PreviewAudio();
+    void Apply();
+    void Commit();
+    void RollbackDisplay();
+    void ResetCategory();
+    void ChangeCategory(int category);
+    int RowCount() const;
+    void Adjust(int direction);
+    void ActivateRow();
+    void ActivateFooter(int index);
+    void HandleModal(bool accept, bool back);
+    void CaptureBinding();
+    void AcceptBinding(bool swap);
+    void BuildFrame();
+    void Rect(float x,float y,float w,float h,const Vector4& color);
+    void Label(const std::string& id,float x,float y,float height=22.0f);
+    void Number(int value,float x,float y,float height=22.0f);
+    void Picture(const std::string& texture,float x,float y,float w,float h,const Vector4& color);
+    Vector2 Pointer() const;
+    SpriteCommon* common_ = nullptr;
+    InputManager* input_ = nullptr;
     std::vector<std::unique_ptr<Sprite>> sprites_;
-
-    Sprite* background_ = nullptr;
-    Sprite* panel_ = nullptr;
-    Sprite* title_ = nullptr;
-    Sprite* hintLine_ = nullptr;
-    Sprite* slimeCursor_ = nullptr;
-    Vector2 slimeCursorOffset_ = { 0.0f, 0.0f };
-    Vector2 slimeCursorBaseSize_ = { 0.0f, 0.0f };
-    std::array<OptionRow, static_cast<size_t>(Item::Count)> rows_{};
-    std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryTabs_ = {};
-    std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryIcons_ = {};
-    std::array<Sprite*, static_cast<size_t>(Category::Count)> categoryLabels_ = {};
-    std::array<Sprite*, static_cast<size_t>(FooterAction::Count)> footerButtons_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, static_cast<size_t>(FooterAction::Count)> footerTexts_ = { nullptr, nullptr, nullptr };
-
-    bool isActive_ = false;
-    bool suppressCloseInput_ = false;
-    FocusArea focusArea_ = FocusArea::Items;
-    int selectedIndex_ = 0;
-    int footerIndex_ = static_cast<int>(FooterAction::Apply);
-    float sceneTime_ = 0.0f;
-    float repeatTimer_ = 0.0f;
-    int repeatDirection_ = 0;
+    size_t usedSprites_ = 0;
+    Values original_, draft_;
+    WinApp::DisplayState previousDisplay_;
+    std::chrono::steady_clock::time_point displayDeadline_;
+    Modal modal_ = Modal::None;
+    BindData candidate_;
+    std::string conflictAction_;
+    std::string status_;
+    int category_ = 0, row_ = 0, scroll_ = 0, footer_ = -1, device_ = 0;
+    bool active_ = false, suppressInput_ = false, bindingArmed_ = false, displayTrial_ = false;
+    bool replayOnly_ = false;
+    int modalSelection_ = 1;
+    bool dragging_ = false;
+    Vector2 previousPointer_{-1000,-1000};
+    float rowHeight_ = 56.0f;
+    Vector4 panelColor_{.94f,.97f,.95f,1}, selectedColor_{.68f,.93f,.91f,1};
+    inline static int activeCount_ = 0;
+    inline static RECT editorViewport_{};
+    inline static bool hasEditorViewport_ = false;
 };

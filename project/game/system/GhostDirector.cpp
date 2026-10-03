@@ -6,6 +6,8 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EditorManager.h"
+#include "EditorCommandRegistry.h"
+#include "VFXSequencerEditor.h"
 #include "GameAudioSettings.h"
 #include "GhostRecorder.h"
 #include "IconsFontAwesome5.h"
@@ -115,6 +117,7 @@ void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) 
     sequence_.Clear();
     sequence_.name = scenarioNameBuf_;
     player_.Initialize(sceneManager_);
+    player_.SetBindingResolver([this](const CinematicObjectBinding& binding) { return ResolveTrackTarget(binding); });
     player_.SetSequence(&sequence_);
     currentScrubTime_ = 0.0f;
     selectedTrackKind_ = 0;
@@ -123,6 +126,8 @@ void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) 
 }
 
 void GhostDirector::Update(float deltaTime) {
+    if (studioEnabled_ && (!sceneManager_ || sceneManager_->IsPlaying() ||
+        sceneManager_->GetCurrentScene() != studioScene_)) EndStudio();
     const bool wasPlaying = player_.IsPlaying();
     player_.Update(deltaTime);
     if (wasPlaying || player_.IsPlaying()) {
@@ -130,10 +135,9 @@ void GhostDirector::Update(float deltaTime) {
     }
 }
 
-void GhostDirector::DrawImGui() {
+void GhostDirector::DrawInspectorContents() {
 #ifdef USE_IMGUI
-    ImGui::Text(ICON_FA_FILM " Cinematic Director");
-    ImGui::TextDisabled("複数Object、Camera、Animation、VFX、Audio、Signalを同じマスター時刻で編集します。");
+    ImGui::TextUnformatted("素材とタイミングを編集");
 
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " シーケンス", ImGuiTreeNodeFlags_DefaultOpen)) {
         const auto scenarioFiles = CollectJsonStems(kScenarioDirectory);
@@ -142,7 +146,6 @@ void GhostDirector::DrawImGui() {
                 const bool selected = fileName == scenarioNameBuf_;
                 if (ImGui::Selectable(fileName.c_str(), selected)) {
                     strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
-                    LoadScenario(fileName);
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -156,44 +159,218 @@ void GhostDirector::DrawImGui() {
         }
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_UPLOAD " 読込")) {
-            LoadScenario(scenarioNameBuf_);
+            ImGui::OpenPopup("演出シーケンスの読込確認");
         }
-        ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_EXTERNAL_LINK_ALT " 大きいタイムライン")) {
-            timelineWindowOpen_ = true;
+        ImGui::TextWrapped("一覧の選択だけでは読み込みません。編集内容は保存ボタンで保存してください。");
+        if (!fileOperationStatus_.empty()) ImGui::TextWrapped("直近の操作: %s", fileOperationStatus_.c_str());
+        if (ImGui::BeginPopupModal("演出シーケンスの読込確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("読込先: %s", scenarioNameBuf_);
+            ImGui::TextUnformatted("未保存の編集を置き換えます。必要ならキャンセルして先に保存してください。");
+            if (ImGui::Button("置き換えて読み込む")) {
+                LoadScenario(scenarioNameBuf_);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("キャンセル")) ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
         }
     }
 
-    DrawTransportControls();
+    const char* trackTypes[] = { "移動", "VFX", "カメラ", "身体・動作", "音", "Signal（上級）" };
+    ImGui::Combo("編集する種類", &selectedTrackKind_, trackTypes, IM_ARRAYSIZE(trackTypes));
 
-    if (ImGui::CollapsingHeader(ICON_FA_USERS " Object / Camera Tracks", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::Button(ICON_FA_PLUS_CIRCLE " 選択Objectをトラックへ追加", ImVec2(-1.0f, 0.0f))) {
+    if (selectedTrackKind_ == 0) {
+        if (studioEnabled_) {
+            if (ImGui::Button("演出対象の移動を追加")) AddTransformTrack(FindStudioObject(0));
+            if (ImGui::Button("基準オブジェクトの移動を追加")) AddTransformTrack(FindStudioObject(1));
+            if (ImGui::Button("演出カメラの移動を追加")) AddTransformTrack(FindStudioObject(2));
+        } else if (ImGui::Button(ICON_FA_PLUS_CIRCLE " 選択Objectをトラックへ追加", ImVec2(-1.0f, 0.0f))) {
             AddSelectedObjectsAsTracks();
         }
         DrawTransformTrackEditor();
     }
 
-    if (ImGui::CollapsingHeader(ICON_FA_MAGIC " VFX Tracks")) {
+    if (selectedTrackKind_ == 1) {
         DrawVFXTrackEditor();
     }
 
-    if (ImGui::CollapsingHeader(ICON_FA_CAMERA " Camera Shots", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (selectedTrackKind_ == 2) {
         DrawCameraShotEditor();
     }
 
-    if (ImGui::CollapsingHeader("Animation Clips")) {
+    if (selectedTrackKind_ == 3) {
         DrawAnimationClipEditor();
     }
 
-    if (ImGui::CollapsingHeader("Audio Clips")) {
+    if (selectedTrackKind_ == 4) {
         DrawAudioClipEditor();
     }
 
-    if (ImGui::CollapsingHeader("Signals")) {
+    if (selectedTrackKind_ == 5) {
         DrawSignalEditor();
     }
 
-    DrawTimelineWindow();
+#endif
+}
+
+void GhostDirector::DrawAuthoringGuide() {
+#ifdef USE_IMGUI
+    if (ImGui::CollapsingHeader("制作の流れ・接続チェック", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextWrapped("1. シーン上の対象を各トラックへ割り当てる → 2. 開始時刻・長さを編集 → 3. 大きいタイムラインで再生 → 4. 停止・姿勢復元して保存");
+        ImGui::TextWrapped("VFXシーケンサーは演出素材の組み合わせ、ここはキャラクター・カメラ・音を合わせる全体演出です。");
+        ImGui::Text("移動 %d / カメラ %d / 動作 %d / VFX %d / 音 %d",
+            static_cast<int>(sequence_.transformTracks.size()), static_cast<int>(sequence_.cameraShots.size()),
+            static_cast<int>(sequence_.animationClips.size()), static_cast<int>(sequence_.vfxTracks.size()),
+            static_cast<int>(sequence_.audioClips.size()));
+        ImGui::TextWrapped("相対Transformは対象自身の開始姿勢基準、共通ゲート基準はゲートの位置・水平角度基準です。テンプレートはゲームの入口処理には適用されません。");
+        if (ImGui::TreeNode("設定チェック（再生結果の保証ではありません）")) {
+            int warnings = 0;
+            auto warn = [&](const std::string& text) {
+                ++warnings;
+                ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.25f, 1.0f), "!");
+                ImGui::SameLine();
+                ImGui::TextWrapped("%s", text.c_str());
+            };
+            auto checkTarget = [&](const std::string& name, const CinematicObjectBinding& binding, bool camera) {
+                Object3d* target = ResolveTrackTarget(binding);
+                if (!target) warn(name + ": 対象が見つかりません。対象リストから割り当ててください。");
+                else if (camera && !target->IsCameraObject()) warn(name + ": 対象がカメラではありません。");
+            };
+            for (const auto& track : sequence_.transformTracks) {
+                if (!track.enabled || track.muted) continue;
+                checkTarget(track.name, track.binding, false);
+                if (track.anchorRelative) {
+                    auto* origin = ResolveTrackTarget(sequence_.anchor);
+                    auto* target = ResolveTrackTarget(track.binding);
+                    if (!origin || origin->GetParent()) warn(track.name + ": 共通ゲートが未設定、または親付きObjectです。");
+                    if (target && target->GetParent()) warn(track.name + ": ゲート基準の対象は親を持たないObjectにしてください。");
+                    if (origin && FindTransformTrack(origin) >= 0) warn(track.name + ": 共通ゲート自身に移動トラックがあります。基準は再生開始時に固定されます。");
+                }
+                if (track.keys.empty() && track.legacyPathFile.empty()) warn(track.name + ": 移動キーがありません。");
+            }
+            for (const auto& shot : sequence_.cameraShots) {
+                if (shot.enabled && !shot.muted) checkTarget(shot.name, shot.binding, true);
+            }
+            for (const auto& clip : sequence_.animationClips) {
+                if (!clip.enabled || clip.muted) continue;
+                checkTarget(clip.name, clip.binding, false);
+                if (clip.clipName.empty()) warn(clip.name + ": Animation / State が未設定です。");
+                if (clip.playbackSpeed <= 0.0f) warn(clip.name + ": 再生速度が0です。動きません。");
+                if (!clip.driver.empty() && clip.driver != "Animator" && clip.driver != "Model" && clip.driver != "Skeletal" && clip.driver != "Body")
+                    warn(clip.name + ": 専用Driverはゲーム側の接続が必要です。このエディターではCallback未接続です。");
+                std::error_code error;
+                if (clip.driver == "Body") {
+                    BodyAnimationClip body;
+                    if (!body.Load(BodyAnimationClip::ResolveAssetPath(clip.clipName)))
+                        warn(clip.name + ": 身体変形クリップを読み込めません。ファイルとキーを確認してください。");
+                }
+                if (clip.driver != "Body" && !clip.clipName.empty() && fs::is_regular_file(
+                    fs::path("Resources/json/animation_clip") / (clip.clipName + ".json"), error))
+                    warn(clip.name + ": 身体変形クリップと同名です。通常のAnimator Stateとは別物で、名前指定だけでは再生できません。");
+            }
+            for (const auto& track : sequence_.vfxTracks) {
+                if (!track.enabled || track.muted) continue;
+                if (!track.binding.targetName.empty() || track.binding.targetEventId >= 0)
+                    checkTarget(track.name, track.binding, false);
+                std::error_code error;
+                if (track.sequenceName.empty() || !fs::is_regular_file(
+                    fs::path(kVFXDirectory) / (track.sequenceName + ".json"), error))
+                    warn(track.name + ": VFXシーケンスが見つかりません。");
+            }
+            for (const auto& clip : sequence_.audioClips) {
+                if (clip.enabled && !clip.muted && clip.audioId.empty()) warn(clip.name + ": 音声IDが未設定です。");
+            }
+            if (!sequence_.signals.empty()) warn("Signal: このエディターにはゲーム固有のSignal処理を接続していません。発火時刻の編集用です。");
+            if (warnings == 0) ImGui::TextWrapped("対象・必須項目の簡易チェックで警告はありません。実際の動き・カメラ・音は再生確認してください。");
+            ImGui::TreePop();
+        }
+    }
+#endif
+}
+
+void GhostDirector::DrawAnchorTemplateEditor() {
+#ifdef USE_IMGUI
+    if (!ImGui::CollapsingHeader("ゲート基準・入口テンプレート（編集用）")) return;
+    ImGui::TextWrapped("編集モードで使用してください。共通ゲートを差し替えると、基準付き移動・カメラの配置をまとめて変更できます。既存のゲーム入口処理・シーン設定は変更しません。");
+    bool changed = DrawObjectBindingEditor("共通ゲート / 原点", sequence_.anchor, false, false);
+    changed |= ImGui::SliderAngle("進行方向の補正", &sequence_.anchorYawOffset, -180.0f, 180.0f);
+    if (changed) RefreshPlayer(true);
+    DrawObjectBindingEditor("登場する対象", templateActor_, false, false);
+    DrawObjectBindingEditor("プレビュー用Camera Object", templateCamera_, true, false);
+    ImGui::DragFloat("演出の長さ", &templateDuration_, 0.05f, 0.5f, 30.0f, "%.2f sec", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::DragFloat("ゲートから進む距離", &templateDistance_, 0.1f, 0.1f, 50.0f, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::DragFloat("跳び出す高さ", &templateHeight_, 0.1f, 0.0f, 20.0f, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    auto* anchor = ResolveTrackTarget(sequence_.anchor);
+    auto* actor = ResolveTrackTarget(templateActor_);
+    auto* camera = ResolveTrackTarget(templateCamera_);
+    std::string problem;
+    if (!anchor || !actor || !camera) problem = "ゲート・登場対象・カメラを選択してください。";
+    else if (anchor == actor || anchor == camera || actor == camera) problem = "3つの対象は別々に指定してください。";
+    else if (anchor->GetParent() || actor->GetParent() || camera->GetParent()) problem = "このテンプレートは親を持たないObject用です。";
+    else if (!camera->IsCameraObject()) problem = "カメラObjectを選択してください。";
+    else if (FindTransformTrack(actor) >= 0 || FindTransformTrack(camera) >= 0 || FindTransformTrack(anchor) >= 0)
+        problem = "対象に既存の移動トラックがあります。上書きを避けるため、別の対象または新規シナリオを使用してください。";
+    if (problem.empty()) {
+        const auto& settings = camera->GetSceneCameraSettings();
+        if (!settings.enabled || settings.eyeSource != SceneCameraEyeSource::kCameraObject ||
+            settings.targetMode != SceneCameraTargetMode::kCameraForward)
+            problem = "カメラは有効・Eye=Camera Object・Target=Camera Forwardの専用Objectを選んでください。既存設定は自動変更しません。";
+        const auto nonzero = [](const Vector3& v) { return std::abs(v.x) + std::abs(v.y) + std::abs(v.z) > 0.0001f; };
+        if (nonzero(settings.eyeOffset) || nonzero(settings.targetOffset) ||
+            settings.eyeFollowMode != SceneCameraFollowMode::kSnap || settings.targetFollowMode != SceneCameraFollowMode::kSnap)
+            problem = "再現性のため、専用カメラのEye/Target Offsetは0、追従は完全追従にしてください。設定は自動変更しません。";
+        for (const auto& shot : sequence_.cameraShots) {
+            if (shot.enabled && !shot.muted) problem = "既存のカメラカットがあります。新規シナリオで作成してください。";
+        }
+    }
+    if (!problem.empty()) ImGui::TextWrapped("%s", problem.c_str());
+    ImGui::BeginDisabled(!problem.empty());
+    if (ImGui::Button("入口の移動＋カメラ雛形を追加", ImVec2(-1.0f, 0.0f))) {
+        // プレビュー中の姿勢を雛形のスケールとして取り込まない。
+        player_.Stop(true);
+        CinematicTransformTrack movement, cameraMove;
+        movement.name = "入口・登場対象";
+        movement.binding = templateActor_;
+        movement.anchorRelative = true;
+        cameraMove.name = "入口・カメラ";
+        cameraMove.binding = templateCamera_;
+        cameraMove.anchorRelative = true;
+        for (int index = 0; index < 4; ++index) {
+            const float rates[] = { 0.0f, 0.35f, 0.70f, 1.0f };
+            const float progress[] = { 0.0f, 0.45f, 1.0f, 1.0f };
+            CinematicTransformKey key;
+            key.time = templateDuration_ * rates[index];
+            key.position = { 0.0f, index == 1 ? templateHeight_ : 0.0f, templateDistance_ * progress[index] };
+            key.scale = actor->GetScale();
+            movement.keys.push_back(key);
+            CinematicTransformKey view;
+            view.time = key.time;
+            view.position = { -6.0f + rates[index] * 2.0f, 4.0f, -10.0f + rates[index] * 3.0f };
+            const Vector3 focus = key.position + Vector3{ 0.0f, 1.0f, 0.0f };
+            const Vector3 direction = focus - view.position;
+            view.rotation = { -std::atan2(direction.y, std::sqrt(direction.x * direction.x + direction.z * direction.z)),
+                std::atan2(direction.x, direction.z), 0.0f };
+            view.scale = camera->GetScale();
+            cameraMove.keys.push_back(view);
+        }
+        sequence_.transformTracks.push_back(movement);
+        sequence_.transformTracks.push_back(cameraMove);
+        CinematicCameraShot shot;
+        shot.name = "入口・プレビューカメラ";
+        shot.binding = templateCamera_;
+        shot.duration = templateDuration_;
+        shot.blendInDuration = 0.0f;
+        shot.blendOutDuration = 0.0f;
+        sequence_.cameraShots.push_back(shot);
+        sequence_.Sort();
+        selectedTrackKind_ = 0;
+        selectedTrackIndex_ = static_cast<int>(sequence_.transformTracks.size()) - 2;
+        selectedKeyIndex_ = 0;
+        currentScrubTime_ = 0.0f;
+        RefreshPlayer(false);
+    }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("これは入口演出を制作するための雛形です。ゲームの既存演出の完全複製ではありません。追加後は移動キー・身体クリップ・VFX・音をタイムラインで調整し、停止で姿勢を戻してシナリオ保存してください。基準は再生開始時に固定し、ゲートのスケールや傾きは継承しません。");
 #endif
 }
 
@@ -276,7 +453,14 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
     auto ResolveLocalPose = [&](const CinematicTransformKey& key) {
         CinematicTransformKey pose = key;
-        if (track.relative) {
+        if (track.anchorRelative) {
+            Vector3 origin;
+            float yaw = 0.0f;
+            if (player_.GetAnchorPose(origin, yaw)) {
+                pose.position = CinematicAnchorPosition(key.position, origin, yaw);
+                pose.rotation.y += yaw;
+            }
+        } else if (track.relative) {
             pose.position = AddVector3(basePosition, key.position);
             pose.rotation = AddVector3(baseRotation, key.rotation);
             pose.scale = MultiplyScale(baseScale, key.scale);
@@ -508,19 +692,27 @@ void GhostDirector::SaveScenario(const std::string& fileName) {
     sequence_.Sort();
     const std::string path = std::string(kScenarioDirectory) + fileName + ".json";
     if (sequence_.Save(path)) {
+        fileOperationStatus_ = "保存完了: " + fileName;
         AddDebugLog("Cinematic Director: Saved " + path);
     } else {
+        fileOperationStatus_ = "保存失敗: " + fileName;
         AddDebugLog("Cinematic Director: Save failed " + path);
     }
 }
 
 void GhostDirector::LoadScenario(const std::string& fileName) {
     const std::string path = std::string(kScenarioDirectory) + fileName + ".json";
-    player_.Stop(true);
-    if (!sequence_.Load(path)) {
+    CinematicSequence loaded;
+    if (!loaded.Load(path)) {
+        fileOperationStatus_ = "読込失敗（現在の編集は保持）: " + fileName;
         AddDebugLog("Cinematic Director: Load failed " + path);
         return;
     }
+    player_.Stop(true);
+    const bool reopenStudio = studioEnabled_;
+    if (reopenStudio) EndStudio();
+    sequence_ = std::move(loaded);
+    fileOperationStatus_ = "読込完了: " + fileName;
     strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
     player_.SetSequence(&sequence_);
     currentScrubTime_ = 0.0f;
@@ -528,6 +720,7 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
     selectedTrackIndex_ = sequence_.transformTracks.empty() ? -1 : 0;
     selectedKeyIndex_ = -1;
     AddDebugLog("Cinematic Director: Loaded " + path);
+    if (reopenStudio) BeginStudio();
 }
 
 bool GhostDirector::IsFinished() const {
@@ -576,7 +769,13 @@ void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
     key.position = object->GetTranslate();
     key.rotation = object->GetRotation();
     key.scale = object->GetScale();
-    if (track.relative) {
+    if (track.anchorRelative) {
+        Vector3 origin;
+        float yaw = 0.0f;
+        if (object->GetParent() || !player_.GetAnchorPose(origin, yaw)) return;
+        key.position = CinematicAnchorLocalPosition(key.position, origin, yaw);
+        key.rotation.y -= yaw;
+    } else if (track.relative) {
         Vector3 basePosition = object->GetTranslate();
         Vector3 baseRotation = object->GetRotation();
         Vector3 baseScale = object->GetScale();
@@ -608,6 +807,7 @@ int GhostDirector::FindTransformTrack(Object3d* object) const {
     }
     for (int index = 0; index < static_cast<int>(sequence_.transformTracks.size()); ++index) {
         const auto& binding = sequence_.transformTracks[index].binding;
+        if (GetRoleIndex(binding.targetName) >= 0 && ResolveTrackTarget(binding) == object) return index;
         if (binding.targetEventId >= 0 && binding.targetEventId == object->GetEventID()) {
             return index;
         }
@@ -631,6 +831,11 @@ int GhostDirector::AddTransformTrack(Object3d* object) {
     track.name = BuildTrackName(object);
     track.binding.targetName = object->GetName();
     track.binding.targetEventId = object->GetEventID();
+    if (studioEnabled_) {
+        const char* roles[] = { "$Actor", "$Gate", "$Camera" };
+        for (int index = 0; index < 3; ++index)
+            if (FindStudioObject(index) == object) track.binding = { roles[index], -1 };
+    }
     track.startTime = std::max(0.0f, currentScrubTime_);
     CinematicTransformKey key;
     key.time = 0.0f;
@@ -638,6 +843,16 @@ int GhostDirector::AddTransformTrack(Object3d* object) {
     key.rotation = object->GetRotation();
     key.scale = object->GetScale();
     track.keys.push_back(key);
+    if (studioEnabled_) {
+        sequence_.anchor = { "$Gate", -1 };
+        Vector3 origin;
+        float yaw = 0;
+        if (player_.GetAnchorPose(origin, yaw)) {
+            track.anchorRelative = true;
+            track.keys[0].position = CinematicAnchorLocalPosition(key.position, origin, yaw);
+            track.keys[0].rotation.y -= yaw;
+        }
+    }
     sequence_.transformTracks.push_back(track);
     const int index = static_cast<int>(sequence_.transformTracks.size()) - 1;
     selectedTrackKind_ = 0;
@@ -700,7 +915,7 @@ void GhostDirector::RemoveSelectedTrack() {
 }
 
 void GhostDirector::RefreshPlayer(bool preservePreview) {
-    const bool previewing = preservePreview && player_.IsPreviewing();
+    const bool previewing = preservePreview && (player_.IsPreviewing() || player_.IsPlaying());
     const float time = currentScrubTime_;
     if (player_.IsPlaying()) {
         player_.Stop(true);
@@ -723,6 +938,7 @@ void GhostDirector::EvaluatePreviewAtCurrentTime() {
 }
 
 void GhostDirector::SelectTrackTarget(int trackIndex) {
+    if (studioEnabled_) return;
     if (!editor_ || !sceneManager_ || !sceneManager_->GetCurrentScene() || trackIndex < 0 ||
         trackIndex >= static_cast<int>(sequence_.transformTracks.size())) {
         return;
@@ -736,15 +952,18 @@ Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& bindin
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return nullptr;
     }
+    const int role = GetRoleIndex(binding.targetName);
+    if (studioEnabled_) return role >= 0 ? FindStudioObject(role) : nullptr;
+    const auto& resolved = role >= 0 ? sequence_.roleBindings[role] : binding;
     Object3d* nameMatch = nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (!object) {
             continue;
         }
-        if (binding.targetEventId >= 0 && object->GetEventID() == binding.targetEventId) {
+        if (resolved.targetEventId >= 0 && object->GetEventID() == resolved.targetEventId) {
             return object.get();
         }
-        if (!binding.targetName.empty() && object->GetName() == binding.targetName) {
+        if (!resolved.targetName.empty() && object->GetName() == resolved.targetName) {
             nameMatch = object.get();
         }
     }
@@ -764,12 +983,24 @@ bool GhostDirector::DrawObjectBindingEditor(
 
     bool changed = false;
     const char* currentLabel = binding.targetName.empty() ? (allowWorld ? "World" : "(未設定)") : binding.targetName.c_str();
+    const char* roleLabels[] = { "演出対象（役割）", "基準オブジェクト（役割）", "演出カメラ（役割）" };
+    if (const int role = GetRoleIndex(binding.targetName); role >= 0) currentLabel = roleLabels[role];
     if (ImGui::BeginCombo(label, currentLabel)) {
+        const char* roles[] = { "$Actor", "$Gate", "$Camera" };
+        const char* labels[] = { "演出対象（役割）", "基準オブジェクト（役割）", "演出カメラ（役割）" };
+        for (int index = 0; index < 3; ++index) {
+            if (cameraOnly && index != 2) continue;
+            if (ImGui::Selectable(labels[index], binding.targetName == roles[index])) {
+                binding = { roles[index], -1 };
+                changed = true;
+            }
+        }
         if (allowWorld && ImGui::Selectable("World", binding.targetName.empty())) {
             binding = {};
             changed = true;
         }
         for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+            if (studioEnabled_) continue;
             if (!object || object->IsEditorInternal() || (cameraOnly && !object->IsCameraObject())) {
                 continue;
             }
@@ -835,6 +1066,7 @@ void GhostDirector::DrawTransportControls() {
     ImGui::Checkbox("ループ", &isLooping_);
     ImGui::SameLine();
     ImGui::Checkbox("Auto Key", &autoKeyEnabled_);
+    if (autoKeyEnabled_) ImGui::TextWrapped("自動記録 ON: 対象Objectの移動・回転・拡縮を現在時刻のキーへ記録します。");
 
     if (!player_.IsPlaying()) {
         if (ImGui::Button(ICON_FA_PLAY " 再生")) {
@@ -905,23 +1137,7 @@ void GhostDirector::DrawTransformTrackEditor() {
         track.name = trackName;
     }
 
-    bool bindingChanged = false;
-    if (sceneManager_ && sceneManager_->GetCurrentScene()) {
-        if (ImGui::BeginCombo("対象Object", track.binding.targetName.empty() ? "(未設定)" : track.binding.targetName.c_str())) {
-            for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-                if (!object || object->IsEditorInternal()) {
-                    continue;
-                }
-                const bool selected = object->GetName() == track.binding.targetName;
-                if (ImGui::Selectable(object->GetName().c_str(), selected)) {
-                    track.binding.targetName = object->GetName();
-                    track.binding.targetEventId = object->GetEventID();
-                    bindingChanged = true;
-                }
-            }
-            ImGui::EndCombo();
-        }
-    }
+    bool bindingChanged = DrawObjectBindingEditor("対象", track.binding, false, false);
 
     ImGui::Checkbox("有効", &track.enabled);
     ImGui::SameLine();
@@ -929,8 +1145,9 @@ void GhostDirector::DrawTransformTrackEditor() {
     ImGui::SameLine();
     ImGui::Checkbox("Lock", &track.locked);
     const bool wasRelative = track.relative;
+    ImGui::BeginDisabled(track.anchorRelative);
     if (ImGui::Checkbox("相対Transform", &track.relative) && wasRelative != track.relative) {
-        Object3d* target = editor_ ? editor_->GetSelectedObject() : nullptr;
+        Object3d* target = ResolveTrackTarget(track.binding);
         if (target && FindTransformTrack(target) == selectedTrackIndex_) {
             Vector3 basePosition = target->GetTranslate();
             Vector3 baseRotation = target->GetRotation();
@@ -950,6 +1167,8 @@ void GhostDirector::DrawTransformTrackEditor() {
         }
         EvaluatePreviewAtCurrentTime();
     }
+    ImGui::EndDisabled();
+    if (track.anchorRelative) ImGui::TextWrapped("共通ゲート基準: Positionはゲートからの距離、Rotation Yはゲートからの角度（rad）です。");
     ImGui::SameLine();
     ImGui::Checkbox("終了姿勢を保持", &track.holdLast);
     if (ImGui::DragFloat("開始時刻", &track.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec")) {
@@ -977,10 +1196,7 @@ void GhostDirector::DrawTransformTrackEditor() {
     }
 
     if (ImGui::Button(ICON_FA_KEY " 現在姿勢をキー登録", ImVec2(-1.0f, 0.0f))) {
-        SelectTrackTarget(selectedTrackIndex_);
-        if (editor_ && editor_->GetSelectedObject()) {
-            RecordTransformKey(editor_->GetSelectedObject(), true);
-        }
+        if (auto* target = ResolveTrackTarget(track.binding)) RecordTransformKey(target, true);
     }
 
     if (!track.keys.empty()) {
@@ -1046,6 +1262,7 @@ void GhostDirector::DrawVFXTrackEditor() {
         CinematicVFXTrackData track;
         track.name = "VFX Track";
         track.startTime = currentScrubTime_;
+        if (studioEnabled_) track.binding = { "$Actor", -1 };
         sequence_.vfxTracks.push_back(track);
         selectedTrackKind_ = 1;
         selectedTrackIndex_ = static_cast<int>(sequence_.vfxTracks.size()) - 1;
@@ -1094,6 +1311,16 @@ void GhostDirector::DrawVFXTrackEditor() {
         ImGui::EndCombo();
     }
 
+    ImGui::BeginDisabled(track.sequenceName.empty() || !editor_ || !editor_->GetVFXSequencerEditor());
+    if (ImGui::Button("このVFXシーケンスを編集", ImVec2(-1.0f, 0.0f))) {
+        // 演出の状態を復元してから素材編集へ移り、読込先で置換を確認します。
+        player_.Stop(true);
+        editor_->GetVFXSequencerEditor()->RequestOpenSequence(track.sequenceName);
+        EditorCommandRegistry::GetInstance()->Execute("tool.vfx");
+    }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("素材編集では共有VFXを変更します。保存後にこの演出を先頭から再生して確認してください。");
+
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         const std::string targetLabel = track.binding.targetName.empty() ? "World" : track.binding.targetName;
         if (ImGui::BeginCombo("VFX Target", targetLabel.c_str())) {
@@ -1138,6 +1365,10 @@ void GhostDirector::DrawCameraShotEditor() {
                 shot.blendOutDuration = settings.blendOutDuration;
                 shot.easing = static_cast<int>(settings.easing);
             }
+        }
+        if (studioEnabled_) {
+            shot.binding = { "$Camera", -1 };
+            shot.blendInDuration = shot.blendOutDuration = 0.0f;
         }
         sequence_.cameraShots.push_back(shot);
         selectedTrackKind_ = 2;
@@ -1204,6 +1435,10 @@ void GhostDirector::DrawAnimationClipEditor() {
                 clip.binding.targetEventId = selected->GetEventID();
             }
         }
+        if (studioEnabled_) {
+            clip.binding = { "$Actor", -1 };
+            clip.driver = "Body";
+        }
         sequence_.animationClips.push_back(clip);
         selectedTrackKind_ = 3;
         selectedTrackIndex_ = static_cast<int>(sequence_.animationClips.size()) - 1;
@@ -1235,21 +1470,61 @@ void GhostDirector::DrawAnimationClipEditor() {
     strncpy_s(clipName, sizeof(clipName), clip.clipName.c_str(), _TRUNCATE);
     if (ImGui::InputText("Clip名##Animation", name, sizeof(name))) clip.name = name;
     bool refresh = DrawObjectBindingEditor("Animation対象", clip.binding, false, false);
-    if (ImGui::InputText("Driver", driver, sizeof(driver))) clip.driver = driver;
-    if (ImGui::InputText("Animation / State", clipName, sizeof(clipName))) clip.clipName = clipName;
-    ImGui::Checkbox("有効##Animation", &clip.enabled);
+    int playbackKind = clip.driver == "Body" ? 1 : 0;
+    const char* playbackKinds[] = { "Animator / 専用Driver", "身体変形（Animation Workbench）" };
+    if (ImGui::Combo("再生方式", &playbackKind, playbackKinds, IM_ARRAYSIZE(playbackKinds))) {
+        clip.driver = playbackKind == 1 ? "Body" : "Animator";
+        refresh = true;
+    }
+    if (clip.driver == "Body") {
+        if (ImGui::BeginCombo("身体クリップ", clip.clipName.empty() ? "クリップを選択" : clip.clipName.c_str())) {
+            std::error_code error;
+            std::vector<std::string> assets;
+            fs::directory_iterator it("Resources/json/animation_clip", error), end;
+            while (!error && it != end) {
+                if (it->path().extension() == ".json") assets.push_back(it->path().stem().string());
+                it.increment(error);
+            }
+            std::sort(assets.begin(), assets.end());
+            for (const auto& asset : assets) {
+                if (ImGui::Selectable(asset.c_str(), clip.clipName == asset)) {
+                    clip.clipName = asset;
+                    BodyAnimationClip body;
+                    if (body.Load(BodyAnimationClip::ResolveAssetPath(asset))) {
+                        clip.duration = body.GetDuration() / std::max(0.01f, clip.playbackSpeed);
+                        clip.loop = body.IsLoopDefault();
+                    }
+                    refresh = true;
+                }
+            }
+            if (assets.empty()) ImGui::TextDisabled("保存済みクリップがありません");
+            ImGui::EndCombo();
+        }
+        if (ImGui::Button("再読込・元の長さに合わせる")) {
+            BodyAnimationClip body;
+            if (body.Load(BodyAnimationClip::ResolveAssetPath(clip.clipName))) {
+                clip.duration = body.GetDuration() / std::max(0.01f, clip.playbackSpeed);
+            }
+            refresh = true;
+        }
+        ImGui::TextWrapped("移動・当たり判定は変更せず、見た目の伸縮・回転・ずれ・せん断を再生します。ループ周期は元クリップの長さです。同じ対象で重なる区間はリストの後を優先します。");
+    } else {
+    if (ImGui::InputText("Driver", driver, sizeof(driver))) { clip.driver = driver; refresh = true; }
+    if (ImGui::InputText("Animation / State", clipName, sizeof(clipName))) { clip.clipName = clipName; refresh = true; }
+    }
+    refresh |= ImGui::Checkbox("有効##Animation", &clip.enabled);
     ImGui::SameLine();
-    ImGui::Checkbox("Mute##Animation", &clip.muted);
+    refresh |= ImGui::Checkbox("Mute##Animation", &clip.muted);
     ImGui::SameLine();
-    ImGui::Checkbox("Loop##Animation", &clip.loop);
-    ImGui::DragFloat("開始時刻##Animation", &clip.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
-    ImGui::DragFloat("長さ##Animation", &clip.duration, 0.01f, 0.05f, 600.0f, "%.3f sec");
-    ImGui::DragFloat("再生速度##Animation", &clip.playbackSpeed, 0.01f, 0.0f, 8.0f, "%.2fx");
-    ImGui::DragFloat("Blend In##Animation", &clip.blendInDuration, 0.01f, 0.0f, 5.0f, "%.3f sec");
+    refresh |= ImGui::Checkbox("Loop##Animation", &clip.loop);
+    refresh |= ImGui::DragFloat("開始時刻##Animation", &clip.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec", ImGuiSliderFlags_AlwaysClamp);
+    refresh |= ImGui::DragFloat("長さ##Animation", &clip.duration, 0.01f, 0.05f, 600.0f, "%.3f sec", ImGuiSliderFlags_AlwaysClamp);
+    refresh |= ImGui::DragFloat("再生速度##Animation", &clip.playbackSpeed, 0.01f, 0.0f, 8.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
+    refresh |= ImGui::DragFloat("Blend In##Animation", &clip.blendInDuration, 0.01f, 0.0f, 5.0f, "%.3f sec", ImGuiSliderFlags_AlwaysClamp);
     const char* easingNames[] = { "Linear", "Ease In", "Ease Out", "Ease In Out", "Smoother Step" };
-    ImGui::Combo("Blend補間##Animation", &clip.easing, easingNames, IM_ARRAYSIZE(easingNames));
-    ImGui::Checkbox("停止時に元のStateへ戻す##Animation", &clip.restoreOnStop);
-    ImGui::TextDisabled("Driverはゲーム側Callbackへ渡されます。GoalClearPlayerなど専用Driverも指定できます。");
+    refresh |= ImGui::Combo("Blend補間##Animation", &clip.easing, easingNames, IM_ARRAYSIZE(easingNames));
+    refresh |= ImGui::Checkbox("停止時に元のStateへ戻す##Animation", &clip.restoreOnStop);
+    ImGui::TextWrapped("Animator方式はState名を指定します。身体変形は上の一覧から選択します。それ以外の専用Driverにはゲーム側Callbackが必要です。");
     if (refresh) {
         RefreshPlayer(true);
     }
@@ -1364,51 +1639,6 @@ void GhostDirector::DrawSignalEditor() {
     if (ImGui::Button(ICON_FA_TRASH " Signal削除", ImVec2(-1.0f, 0.0f))) {
         RemoveSelectedTrack();
     }
-#endif
-}
-
-void GhostDirector::DrawTimelineWindow() {
-#ifdef USE_IMGUI
-    if (!timelineWindowOpen_) {
-        return;
-    }
-    ImGui::SetNextWindowSize(ImVec2(1050.0f, 430.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Cinematic Timeline", &timelineWindowOpen_, ImGuiWindowFlags_MenuBar)) {
-        ImGui::End();
-        return;
-    }
-
-    if (ImGui::BeginMenuBar()) {
-        ImGui::Text("%s", sequence_.name.c_str());
-        ImGui::Separator();
-        ImGui::Text("%.3f / %.3f sec", currentScrubTime_, GetScenarioDuration());
-        ImGui::EndMenuBar();
-    }
-
-    if (ImGui::Button(player_.IsPlaying() ? ICON_FA_PAUSE " Pause" : ICON_FA_PLAY " Play")) {
-        if (player_.IsPlaying()) {
-            currentScrubTime_ = player_.GetCurrentTime();
-            player_.Pause();
-        } else if (player_.IsPreviewing()) {
-            player_.Resume(isLooping_);
-        } else {
-            PlayScenario(isLooping_, false);
-        }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_STOP " Stop")) {
-        StopScenario();
-    }
-    ImGui::SameLine();
-    ImGui::Checkbox("Loop##Timeline", &isLooping_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Auto Key##Timeline", &autoKeyEnabled_);
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(160.0f);
-    ImGui::SliderFloat("Zoom", &timelinePixelsPerSecond_, 40.0f, 240.0f, "%.0f px/s");
-
-    DrawTimelineCanvas();
-    ImGui::End();
 #endif
 }
 

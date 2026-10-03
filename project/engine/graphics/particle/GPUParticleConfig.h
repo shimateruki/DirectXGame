@@ -9,6 +9,7 @@ struct GPUParticleConfig {
     int shapeType = 0;         // 0: Box(四角), 1: Sphere(球), 2: Cone(円錐)
     float shapeRadius = 2.0f;  // 球や円錐の時の半径
     float shapeAngle = 30.0f;  // 円錐の時の広がり角度（度数法）
+
     // --- 発生パラメータ ---
     Vector3 emitPos = { 0.0f, 0.0f, 0.0f };
     Vector3 emitArea = { 0.0f, 0.0f, 0.0f };
@@ -16,10 +17,12 @@ struct GPUParticleConfig {
     int emitCount = 1000;
     float emitLife = 2.0f;
     float velocityVariance = 1.0f;
+
     // 0は発生数・寿命・間隔から安全な容量を自動計算します。
     int maxParticles = 0;
 
     VFXLodSettings lod;
+
     // --- 見た目パラメータ ---
     Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 midColor = { 1.0f, 0.5f, 0.0f, 1.0f }; // 途中の色

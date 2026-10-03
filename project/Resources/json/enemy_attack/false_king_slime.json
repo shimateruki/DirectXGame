@@ -17,7 +17,7 @@
       "id": "royal_shockwave",
       "displayName": "王威連環波",
       "targeting": { "minRange": 0.0, "maxRange": 30.0, "radius": 0.95 },
-      "timing": { "windup": 0.96, "active": 2.95, "recovery": 0.72, "cooldown": 3.55, "warningLead": 0.30 },
+      "timing": { "windup": 1.24, "active": 2.95, "recovery": 0.72, "cooldown": 3.55, "warningLead": 0.36 },
       "combat": { "damage": 0.72, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 3.0 },
       "preview": { "targetDistance": 10.0, "duration": 6.5 },
@@ -52,6 +52,36 @@
       "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 5.7 },
       "preview": { "targetDistance": 14.0, "duration": 10.0 },
       "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_dominion", "activeVfx": "false_king_dominion", "impactVfx": "false_king_lance_impact", "audioCue": "" }
+    },
+    {
+      "id": "umbra_flame",
+      "displayName": "双極冥炎陣",
+      "targeting": { "minRange": 0.0, "maxRange": 34.0, "radius": 1.75 },
+      "timing": { "windup": 2.25, "active": 2.65, "recovery": 0.82, "cooldown": 5.80, "warningLead": 0.42 },
+      "combat": { "damage": 1.05, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.8 },
+      "preview": { "targetDistance": 14.0, "duration": 8.4 },
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_umbra_flame_charge", "activeVfx": "false_king_umbra_flame_flame", "impactVfx": "false_king_umbra_flame_flame", "audioCue": "" }
+    },
+    {
+      "id": "astral_reaver",
+      "displayName": "虚光輪舞",
+      "targeting": { "minRange": 0.0, "maxRange": 34.0, "radius": 2.8 },
+      "timing": { "windup": 1.65, "active": 1.8, "recovery": 0.72, "cooldown": 5.1, "warningLead": 0.32 },
+      "combat": { "damage": 1.05, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
+      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 1.8 },
+      "preview": { "targetDistance": 13.0, "duration": 6.2 },
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_chant_motes", "activeVfx": "false_king_astral_reaver_trail", "impactVfx": "false_king_astral_reaver_impact", "audioCue": "" }
+    },
+    {
+      "id": "nightfall_lances",
+        "displayName": "黒晶墜槍",
+      "targeting": { "minRange": 0.0, "maxRange": 34.0, "radius": 7.8 },
+        "timing": { "windup": 1.80, "active": 2.30, "recovery": 0.78, "cooldown": 5.40, "warningLead": 0.40 },
+      "combat": { "damage": 1.20, "statusEffect": { "type": "", "duration": 0.0, "tickInterval": 0.5, "tickDamage": 0.0, "vfx": "" } },
+        "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 2.30 },
+        "preview": { "targetDistance": 15.0, "duration": 7.3 },
+      "presentation": { "animation": "crown_dominion_cast", "windupVfx": "false_king_nightfall_lances_charge", "activeVfx": "false_king_nightfall_lances_trail", "impactVfx": "false_king_nightfall_lances_impact", "audioCue": "" }
     }
   ]
 }

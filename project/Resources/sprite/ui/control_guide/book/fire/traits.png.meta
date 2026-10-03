@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d47f5114b655697a1125a562eb992f32",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/fire/traits.png",
+  "version": 1
+}

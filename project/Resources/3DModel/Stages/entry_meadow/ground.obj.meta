@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "30adf356ef5153380f8a2030b6674ef0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/ground.obj",
+  "version": 1
+}

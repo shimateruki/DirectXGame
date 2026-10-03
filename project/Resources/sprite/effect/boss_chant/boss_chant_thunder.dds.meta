@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2d0e3a420b3c2a4a0460a3ca70cde99c",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/boss_chant/boss_chant_thunder.dds",
+  "version": 1
+}

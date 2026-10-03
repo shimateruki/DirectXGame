@@ -3,35 +3,53 @@
 #include <cstdint>
 #include <string>
 
-// Windows ウィンドウの生成、更新、カーソル制御をまとめるクラス
-// WinAppは、Win32ウィンドウの生成、メッセージ処理、カーソル制御、終了要求を担当します。
+/// <summary>Win32ウィンドウの生成、メッセージ処理、表示とカーソルを管理する。</summary>
 class WinApp {
 public:
     inline static int32_t kClientWidth = 1280;
     inline static int32_t kClientHeight = 720;
 
-    // ウィンドウを生成する
-        // 指定タイトルとサイズでゲーム用ウィンドウを作成します。
-void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
+    /// <summary>指定したタイトルとサイズでゲームウィンドウを作成する。</summary>
+    void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
 
-    // メッセージを処理し、継続可能なら true を返す
-        // Windowsメッセージを処理し、アプリを継続できるか返します。
-bool Update();
+    /// <summary>Windowsメッセージを処理し、アプリを継続できるか返す。</summary>
+    bool Update();
 
     // アクセサ
     HWND GetHwnd() const { return hwnd_; }
     HINSTANCE GetHInstance() const { return hInstance_; }
 
-    // 外部から終了要求を出すための静的 API
-        // 他のシステムから安全にウィンドウ終了を要求します。
-static void RequestClose();
+    /// <summary>表示モード変更前のスタイルとウィンドウ位置を保持する。</summary>
+    struct DisplayState {
+        LONG_PTR style = 0;
+        WINDOWPLACEMENT placement{ sizeof(WINDOWPLACEMENT) };
+    };
+
+    /// <summary>現在の表示状態を保存用に取得する。</summary>
+    DisplayState CaptureDisplayState() const;
+
+    /// <summary>指定解像度と枠なし表示を適用できたか返す。</summary>
+    bool SetDisplayMode(int width, int height, bool borderless);
+
+    /// <summary>保存済みのウィンドウスタイルと配置へ戻す。</summary>
+    void RestoreDisplayState(const DisplayState& state);
+
+    /// <summary>他システムからウィンドウ終了を要求する。</summary>
+    static void RequestClose();
+
+    /// <summary>保留中の終了要求を取得して消費する。</summary>
     static bool ConsumeCloseRequest();
+
+    /// <summary>ウィンドウを直ちに閉じる。</summary>
     static void CloseNow();
 
-        // カーソル表示状態を切り替えます。
-static void SetCursorVisibility(bool isVisible);
-        // カーソルをウィンドウ内へ閉じ込めるか切り替えます。
-void SetCursorClipping(bool isClipping);
+    /// <summary>カーソル表示を切り替える。</summary>
+    static void SetCursorVisibility(bool isVisible);
+
+    /// <summary>カーソルをウィンドウ内へ制限するか切り替える。</summary>
+    void SetCursorClipping(bool isClipping);
+
+    /// <summary>カーソル位置をウィンドウ内に固定するか切り替える。</summary>
     void SetCursorLocked(bool isLocked);
 
 private:

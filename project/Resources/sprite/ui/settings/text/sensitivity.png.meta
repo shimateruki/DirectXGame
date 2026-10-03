@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "31f085497d2bdfb89d17a4554eddd4b0",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/sensitivity.png",
+  "version": 1
+}

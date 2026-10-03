@@ -1,0 +1,5 @@
+newmtl Meadow
+Kd 1 1 1
+Ks .04 .04 .04
+Ns 4
+illum 2

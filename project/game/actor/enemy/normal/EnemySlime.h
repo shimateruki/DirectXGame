@@ -11,6 +11,7 @@ public:
     const char* GetDebugMoveStateName() const;
 
 private:
+    float GetBodyAttackDamage() const override;
     enum class MoveState {
         Wander,
         Charge,

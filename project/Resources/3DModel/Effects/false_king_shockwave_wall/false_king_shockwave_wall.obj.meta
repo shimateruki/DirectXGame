@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "83016518078e8070f77ebc4c59a69705",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_shockwave_wall/false_king_shockwave_wall.obj",
+  "version": 1
+}

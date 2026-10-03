@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d0e154289f39810c8c8cf8bb0c6bf002",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Main_soil.obj",
+  "version": 1
+}

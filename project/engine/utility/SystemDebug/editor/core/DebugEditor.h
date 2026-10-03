@@ -33,7 +33,7 @@
 #include "GameDataDebugEditor.h"
 #include "GhostDirector.h"
 #include "HierarchyWindow.h"
-#include "InspectorWindow.h"
+#include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.h"
 #include "JsonBackupWindow.h"
 #include "LevelDesignLabWindow.h"
 #include "MaterialPreviewBoard.h"
@@ -300,6 +300,16 @@ void PerformRedo();
     size_t GetSearchFilterBufferSize() const { return sizeof(searchFilter_); }
 
     bool* GetDrawCollidersPtr() { return &drawColliders_; }
+#ifdef USE_IMGUI
+    bool* GetDrawSceneIconsPtr() { return &drawSceneIcons_; }
+    bool* GetDrawSelectionBoundsPtr() { return &drawSelectionBounds_; }
+    bool* GetDrawInvisibleBoundsPtr() { return &drawInvisibleBounds_; }
+private:
+    bool drawSceneIcons_ = true;
+    bool drawSelectionBounds_ = true;
+    bool drawInvisibleBounds_ = true;
+public:
+#endif
     bool GetIsPathEditMode() const { return isPathEditMode_; }
 
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }

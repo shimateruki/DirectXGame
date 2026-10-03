@@ -9,63 +9,78 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// エフェクトを動的に発生・管理するシングルトンクラス
-// MeshEffectManagerは、EffectObject3dの生成、再生、更新、描画、プリロードを管理します。
+/// <summary>EffectObject3dの生成、再生、描画、プリロードを管理する。</summary>
 class MeshEffectManager {
 public:
     using EffectScopeId = uint64_t;
     static constexpr EffectScopeId kInvalidEffectScope = 0;
-    // シングルトンインスタンスの取得
-        // エンジン全体で共有するメッシュエフェクト管理インスタンスを取得します。
-static MeshEffectManager* GetInstance();
 
-    // 初期化（ゲーム開始時・シーン初期化時に1回だけ呼ぶ）
-        // メッシュエフェクト生成に必要なObject3dCommonを保持します。
-void Initialize(Object3dCommon* common);
-        // 1フレーム内の更新済み判定など、フレーム単位の状態を初期化します。
-void BeginFrame();
-        // 再生前にエフェクトプリセットを読み込み、初回生成の負荷を抑えます。
-void PreloadEffect(const std::string& jsonFilePath);
+    /// <summary>共有のメッシュエフェクト管理インスタンスを取得する。</summary>
+    static MeshEffectManager* GetInstance();
 
-    // 毎フレームの更新（寿命が切れたエフェクトの自動削除も行う）
+    /// <summary>エフェクト生成に必要なObject3dCommonを設定する。</summary>
+    /// <remarks>commonは所有しないため、利用中は呼び出し側で保持する。</remarks>
+    void Initialize(Object3dCommon* common);
+
+    /// <summary>1フレーム内の更新済み状態を初期化する。</summary>
+    void BeginFrame();
+
+    /// <summary>再生前にプリセットを読み込み、初回生成の負荷を減らす。</summary>
+    void PreloadEffect(const std::string& jsonFilePath);
+
+    /// <summary>エフェクトを更新し、寿命を終えたものを回収する。</summary>
     void Update(float deltaTime);
+
+    /// <summary>エディタのステップ再生としてエフェクトを更新する。</summary>
     void UpdateEditorPreviewStep(float deltaTime);
+
+    /// <summary>エフェクトの時間倍率を指定する。負値は0として扱う。</summary>
     void SetTimeScale(float timeScale) { timeScale_ = (std::max)(0.0f, timeScale); }
+
+    /// <summary>現在の時間倍率を返す。</summary>
     float GetTimeScale() const { return timeScale_; }
 
-    // 描画
+    /// <summary>現在再生中のエフェクトを描画する。</summary>
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
+
+    /// <summary>歪み描画のためにシーンカラーのコピーが必要かを返す。</summary>
     bool RequiresSceneColorCopy() const;
 
-    // 能力などの一時的な所有者ごとに、生成したエフェクトだけを安全に回収するためのIDです。
+    /// <summary>能力などの所有者ごとにエフェクトをまとめるIDを作成する。</summary>
     EffectScopeId CreateEffectScope();
+
+    /// <summary>指定スコープに属するエフェクトだけを停止する。</summary>
     void StopEffectScope(EffectScopeId scopeId);
 
-        // 対象Object3dに追従するメッシュエフェクトを生成します。
-void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
+    /// <summary>対象Object3dに追従するメッシュエフェクトを生成する。</summary>
+    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
 
-    // ワールド座標を直接指定してエフェクトを配置する（TrailEmitter用）
-    // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
-        // ワールド座標を直接指定してメッシュエフェクトを生成します。
-void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
-    // 指定スコープへ所属させて生成し、能力終了時にまとめて停止できるようにします。
+    /// <summary>JSON側の配置値に代えて、指定のワールド座標・回転で生成する。</summary>
+    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+
+    /// <summary>指定スコープに属するエフェクトをワールド座標で生成する。</summary>
     void SpawnEffectAtScoped(EffectScopeId scopeId, const std::string& jsonFilePath,
         const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
 
-    // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
+    /// <summary>リング状の波紋エフェクトを発生させる。</summary>
     void SpawnRingWaveEffect(const Vector3& position);
 
-    // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
+    /// <summary>円柱状のポータルエフェクトを一定時間発生させる。</summary>
     void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
 
-    // エディターの時間シーク用に、初期化状態とプリロードを維持したまま再生中のエフェクトだけを消します。
+    /// <summary>初期化状態とプリロードを維持し、再生中のエフェクトだけを消す。</summary>
     void ClearActiveEffects() { activeEffects_.clear(); effectScopes_.clear(); previewEffectForDebug_ = nullptr; }
 
-    // シーン切り替え時などに全てのエフェクトを消す
-    // common_ も一緒にリセットし、次のSpawn時に自己修復させる
+    /// <summary>シーン切り替え時にエフェクト・プリロード・生成元参照を破棄する。</summary>
     void Clear() { activeEffects_.clear(); effectScopes_.clear(); preloadedEffects_.clear(); common_ = nullptr; }
+
+    /// <summary>現在再生中のエフェクトを返す。</summary>
     const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
+
+    /// <summary>エディタで表示中のエフェクトを指定する。所有しない。</summary>
     void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
+
+    /// <summary>エディタで表示中のエフェクトを返す。</summary>
     EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
 private:
     MeshEffectManager() = default;

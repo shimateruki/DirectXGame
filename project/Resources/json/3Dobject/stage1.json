@@ -7,10 +7,10 @@
         "resources": {
             "bgm": "",
             "camera": "",
-            "light": "",
+            "light": "Resources/json/light/stage1_sunny.json",
             "skybox": ""
         },
-        "runtimeScene": "SCENE_EDITOR",
+        "runtimeScene": "GAMEPLAY",
         "spriteLayout": "Resources/json/sprite/stage1_sprite.json",
         "version": 3
     }

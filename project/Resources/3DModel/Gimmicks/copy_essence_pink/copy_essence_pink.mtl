@@ -1,0 +1,13 @@
+newmtl Candy
+Kd 0.96 0.22 0.57
+Ka 0.1 0.1 0.1
+Ks 0.7 0.7 0.7
+Ns 90
+illum 2
+
+newmtl Symbol
+Kd 1.0 0.96 0.72
+Ka 0.3 0.3 0.2
+Ks 0.3 0.3 0.3
+Ns 30
+illum 2

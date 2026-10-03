@@ -9,12 +9,11 @@
 #include <Object3dCommon.h>
 
 /// <summary>
-/// 個別のエフェクト（炎、魔法など）を担当する独立した部隊
+/// 1種類のGPUパーティクルをCompute Shaderで更新し、描画する。
 /// </summary>
-// GPUParticleSystemは、1種類のGPUパーティクルをComputeで更新し、Spriteとして描画する実体です。
 class GPUParticleSystem {
 public:
-    // HLSLと完全に一致させた構造体
+    // GPUとの共有レイアウト。フィールド順とアラインメントは対応するHLSLに合わせる。
     struct Particle {
         Vector3 position;
         float life;
@@ -49,6 +48,7 @@ public:
         float memFieldPadding;
     };
 
+    /// <summary>Compute Shaderに渡す発生・更新設定。HLSLの定数バッファ配置と一致させる。</summary>
     struct alignas(256) CSConfig {
         float deltaTime;
         float time;
@@ -114,6 +114,7 @@ public:
         float fieldPadding;
     };
 
+    /// <summary>次回GPU更新で処理する粒子発生要求とメッシュ表面参照。</summary>
     struct EmitRequest {
         CSConfig config;
         ID3D12Resource* vb;
@@ -122,6 +123,7 @@ public:
         uint32_t boneSrv;
     };
 
+    /// <summary>描画シェーダーに渡すカメラとSprite表示設定。</summary>
     struct alignas(256) CameraData {
         Matrix4x4 viewProj;
         Matrix4x4 billboardMatrix;
@@ -150,16 +152,31 @@ public:
     GPUParticleSystem() = default;
     ~GPUParticleSystem() = default;
 
-        // パーティクル用バッファ、RootSignature、PipelineStateを作成します。
-void Initialize(DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
-        // ComputeShaderでパーティクル寿命、速度、色、サイズを更新します。
-void Update(float deltaTime);
-        // 生存しているパーティクルをビルボードとして描画します。
-void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
+    /// <summary>粒子バッファとCompute/描画パイプラインを初期化する。</summary>
+    /// <param name="dxCommon">有効期間中に保持するDirectXの管理インスタンス。</param>
+    /// <param name="maxParticles">このシステムが確保する粒子数。</param>
+    void Initialize(DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
 
+    /// <summary>発生要求を反映し、粒子の寿命・移動・色をGPUで更新する。</summary>
+    /// <param name="deltaTime">今回の更新時間（秒）。</param>
+    void Update(float deltaTime);
+
+    /// <summary>更新済み粒子を描画する。</summary>
+    /// <param name="commandList">描画先のコマンドリスト。</param>
+    /// <param name="viewMatrix">現在のビュー行列。</param>
+    /// <param name="projectionMatrix">現在の射影行列。</param>
+    /// <param name="dummyTex">テクスチャ未指定時に使用するSRV。</param>
+    /// <param name="depthSrvHandle">ソフトパーティクル用の深度SRV。</param>
+    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
+
+    /// <summary>プリセット設定から次回更新分の粒子発生を予約する。</summary>
     void EmitFromConfig(const GPUParticleConfig& config);
+
+    /// <summary>以後の描画に使用するテクスチャを切り替える。</summary>
     void SetCurrentTexture(const std::string& path);
 
+    /// <summary>メッシュ表面から発生させる際の頂点バッファを設定する。</summary>
+    /// <remarks>頂点バッファは所有しないため、描画完了まで呼び出し側で保持する。</remarks>
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         emitterVertexBuffer_ = vb;
         emitterVertexCount_ = vCount;
@@ -167,26 +184,39 @@ void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, c
         emitterBoneSrvIndex_ = boneSrvIndex;
     }
 
+    /// <summary>シミュレーションの時間倍率を指定する。</summary>
     void SetTimeScale(float scale) { timeScale_ = scale; }
+
+    /// <summary>次回更新時に粒子を発生できる状態へ戻す。</summary>
     void RequestWarmup() { warmupRequested_ = true; lastEmitTimer_ = 0.0f; }
-    // GPUバッファを解放せず、次の描画時にInitCSで粒子状態だけを初期化します。
+
+    /// <summary>GPUバッファを保持したまま、次回描画時に粒子状態を初期化する。</summary>
     void RequestSimulationReset();
-    // シーン切り替えでは描画を止め、次に発生要求が来た時だけGPU状態を初期化します。
+
+    /// <summary>シーン切り替え時に描画を止め、次の発生要求時にGPU状態を初期化する。</summary>
     void ResetForSceneTransition();
+
+    /// <summary>発生要求または生存し得る粒子があるかを返す。</summary>
     bool IsActive() const { return warmupRequested_ || lastEmitTimer_ <= activeLifetimeWindow_; }
+
+    /// <summary>歪み描画のためにシーンカラーのコピーが必要かを返す。</summary>
     bool RequiresSceneColorCopy() const { return IsActive() && blendModeIndex_ == 2; }
+
+    /// <summary>確保済み粒子の上限を返す。</summary>
     uint32_t GetParticleCapacity() const { return maxParticles_; }
+
+    /// <summary>このシステムが保持するGPUリソースの概算バイト数を返す。</summary>
     size_t GetEstimatedMemoryBytes() const;
 
-    // Systemごとの上限。実際の確保数はプリセット設定から自動計算できます。
+    // 既定値と下限。実際の確保数はプリセット設定から決められる。
     static constexpr uint32_t kMaxParticles = 10000;
     static constexpr uint32_t kMinParticles = 256;
     static const uint32_t kMaxEmitRequests = 256;
 private:
+    // 初期化時に一度だけ作るGPUリソースとパイプライン。
     void CreateBuffer();
     void CreateComputePipeline();
     void CreateGraphicsPipeline();
-
 
     DirectXCommon* dxCommon_ = nullptr;
 

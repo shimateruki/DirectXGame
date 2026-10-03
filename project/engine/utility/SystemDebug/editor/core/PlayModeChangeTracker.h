@@ -21,6 +21,8 @@ public:
     void CaptureRuntimeChanges();
     void OnSceneRestored(bool restored);
     void Draw();
+    std::size_t GetPendingChangeCount() const { return candidates_.size(); }
+    void ShowPendingChanges() { open_ = !candidates_.empty(); }
 
 private:
     struct BaselineEntry {

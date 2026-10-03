@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "13b06d902409bda2b1ea6882c90596c6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/portraits/crown.dds",
+  "version": 1
+}

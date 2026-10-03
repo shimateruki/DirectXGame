@@ -1,7 +1,7 @@
 #pragma once
 #include "BaseEnemy.h"
 
-// 空中を旋回し、予兆後に急降下して接触ダメージを狙う敵
+// 空中を旋回し、予兆後の急降下中だけ本体で攻撃する敵
 // EnemyBatは、浮遊旋回しながらプレイヤーへ急降下する飛行敵です。
 class EnemyBat : public BaseEnemy {
 public:
@@ -16,6 +16,7 @@ void Initialize(Object3dCommon* common, const std::string& modelName) override;
     }
 
 private:
+    float GetBodyAttackDamage() const override;
     // 旋回、予兆、急降下、復帰の4状態で動きを管理する
     enum class BatState {
         Orbit,

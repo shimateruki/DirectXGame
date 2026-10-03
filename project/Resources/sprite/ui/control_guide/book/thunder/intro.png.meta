@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c59c8714972570a2a7309261d12d0016",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/thunder/intro.png",
+  "version": 1
+}

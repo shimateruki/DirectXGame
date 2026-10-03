@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8836949b37135ff5367d0eaee6740049",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/pad_128.png",
+  "version": 1
+}

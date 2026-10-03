@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7e9c3fa908e727d252f26dabd93f96e1",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/crown/role.png",
+  "version": 1
+}

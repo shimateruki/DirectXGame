@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "831a1c317f9ae1e1d5e503969e9305ec",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/RecoveryStep_3_turf.obj",
+  "version": 1
+}

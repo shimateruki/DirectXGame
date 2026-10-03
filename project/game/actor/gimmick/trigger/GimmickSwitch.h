@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "BaseGimmick.h"
 
 class GimmickSwitch : public BaseGimmick {
@@ -10,6 +10,9 @@ public:
     bool OnCollision(Object3d* other) override;
 
     std::unique_ptr<Object3d> Clone() const override;
+
+    void ResetEscapeCycle();
+    bool IsOutputActive() const { return isOutputActive_; }
 
 private:
     void SendActive(bool active);

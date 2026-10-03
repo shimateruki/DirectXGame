@@ -123,6 +123,7 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawStringField(param, "左コア", "copyMemoryTypeA", "FireSlime");
             changed |= DrawStringField(param, "中央コア", "copyMemoryTypeB", "ThunderSlime");
             changed |= DrawStringField(param, "右コア", "copyMemoryTypeC", "WindSlime");
+            changed |= DrawStringField(param, "4台目（空欄で無効）", "copyMemoryTypeD", "");
             changed |= DrawParamFloat(param, "コア接触半径", "copyMemoryActivationRadius", 0.9f, 0.02f);
             changed |= DrawParamBool(param, "時間制限なし", "copyMemoryUnlimitedDuration", true);
             changed |= DrawParamBool(param, "開始時に有効", "startActive", true);

@@ -13,6 +13,7 @@
 class DirectXCommon;
 class Object3d;
 class SceneManager;
+class BaseScene;
 
 /// <summary>
 /// モデルのポーズキー、イベントマーカー、プレビュー再生を編集する作業用ウィンドウ。
@@ -24,6 +25,9 @@ public:
     void Update(float deltaTime);
     void Finalize();
     void DrawImGui() override;
+    void DrawTimelinePanel();
+    void StartPreview();
+    void StopPreview();
     std::string GetName() override { return "Animation Workbench"; }
 
     void ApplyCameraOverride();
@@ -31,6 +35,11 @@ public:
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     bool IsEnabled() const { return enabled_; }
+#ifdef USE_IMGUI
+    bool* GetBoneOverlayPtr() { return &showBoneOverlay_; }
+    bool* GetBoneNamesPtr() { return &showBoneNames_; }
+    bool* GetBoneAxesPtr() { return &showBoneAxes_; }
+#endif
 
 private:
     /// 指定時刻の1ジョイント姿勢を保持し、タイムライン補間の素材にする。
@@ -54,6 +63,7 @@ private:
 private:
     void DrawPreviewControls();
     void DrawTimelineControls();
+    void SeekTimeline(float time);
     void DrawAssetControls();
     void DrawBodyControls();
     void DrawJointControls();
@@ -108,6 +118,17 @@ private:
 
     // プレビュー再生と表示オプション。
     bool enabled_ = false;
+    // 制作空間の所有権と時間軸の表示状態。ゲーム用クリップには保存しない。
+    bool ownsStudio_ = false;
+    int pendingClipAction_ = 0;
+    std::string pendingClipPath_;
+    bool timelineSnap_ = true;
+    float timelineZoom_ = 220.0f;
+    int timelineFps_ = 30;
+    int timelineDragKind_ = -1;
+    int timelineDragIndex_ = -1;
+    float timelineDragTime_ = 0.0f;
+    float timelineDragMouseX_ = 0.0f;
     bool wasEnabled_ = false;
     bool autoApply_ = true;
     bool play_ = false;
@@ -126,6 +147,11 @@ private:
     bool cameraMoveOnEnter_ = true;
     bool recenterCameraRequested_ = false;
     bool hasPlacedCamera_ = false;
+    BaseScene* previewScene_ = nullptr;
+    bool storedCameraValid_ = false;
+    Vector3 storedEye_{}, storedTarget_{}, storedRotation_{};
+    Object3d* storedFollow_ = nullptr;
+    int storedCameraMode_ = 0;
 
     // タイムラインとプレビュー配置。
     float currentTime_ = 0.0f;
@@ -154,6 +180,8 @@ private:
     Vector3 jointRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
     Vector3 jointScaleUi_ = { 1.0f, 1.0f, 1.0f };
     Vector3 bodyTranslateUi_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 bodyShearUi_ = {};
+    float bodyShearPivotY_ = 0.0f;
     Vector3 bodyRotateDegUi_ = { 0.0f, 0.0f, 0.0f };
     Vector3 bodyScaleUi_ = { 1.0f, 1.0f, 1.0f };
     int bodyEasingToNext_ = 4;

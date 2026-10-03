@@ -14,6 +14,9 @@ public:
     // 開門中の退避座標ではなく、シーンで編集した閉鎖位置を返します。
     Vector3 GetClosedPosition();
 
+    // 崩壊演出中はシーン側に配置制御を渡し、開閉状態は保持します。
+    void SetCinematicOverride(bool enabled) { cinematicOverride_ = enabled; }
+
 private:
     void CaptureAuthoredState(bool force = false);
     void ResetForEditor();
@@ -31,4 +34,5 @@ private:
     bool authoredStateCaptured_ = false;
     bool initializedForPlay_ = false;
     bool activationRequested_ = false;
+    bool cinematicOverride_ = false;
 };

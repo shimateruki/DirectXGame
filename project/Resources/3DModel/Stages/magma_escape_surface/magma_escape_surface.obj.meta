@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "05ea2e8fc071eea6cb5b0274d181bbc0",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_escape_surface/magma_escape_surface.obj",
+  "version": 1
+}

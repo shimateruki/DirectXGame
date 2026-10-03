@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2e43c0f6c8f1180a19dc572e6ad62035",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/wind/traits.png",
+  "version": 1
+}

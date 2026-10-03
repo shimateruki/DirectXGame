@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "de133ff12784a1ccdc4fd6ee6ac57978",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/crown_finale/awaken.png",
+  "version": 1
+}

@@ -17,9 +17,10 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr float kModelHeight = 1.46f;
 constexpr float kTopRadius = 1.05f;
 constexpr float kWaveStartRadiusRatio = 1.60f / 11.0f;
-constexpr float kWaveDuration = 1.08f;
+// 波の寿命は effect_ring_burner_wave / wave_heat の Lifetime と揃えます。
+constexpr float kWaveDuration = 3.6f;
 constexpr float kRecoveryDuration = 0.62f;
-constexpr float kSuppressedReleaseDuration = 0.48f;
+constexpr float kSuppressedReleaseDuration = 4.0f;
 constexpr float kWaveBandHalfWidth = 0.72f;
 constexpr float kWaveJumpClearHeight = 1.52f;
 constexpr float kWaveDamage = 1.0f;
@@ -91,6 +92,7 @@ void EnemyRingBurner::Update(float deltaTime) {
         if (state_ != State::Suppressed) {
             EnterState(State::Suppressed, kSuppressedReleaseDuration);
             HideAttackTelegraph();
+            StopWaveEffects();
         }
         stateTimer_ = kSuppressedReleaseDuration;
         cooldownTimer_ = GetCooldownDuration() * 0.38f;
@@ -118,6 +120,7 @@ void EnemyRingBurner::ResolveRuntimeTarget() {
 bool EnemyRingBurner::UpdateInactiveState(float deltaTime) {
     if (IsDormant() || ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
+        StopWaveEffects();
         BaseEnemy::Update(deltaTime);
         return true;
     }
@@ -190,10 +193,12 @@ void EnemyRingBurner::UpdateCombat(float deltaTime) {
     }
     case State::Wave: {
         stateTimer_ -= deltaTime;
-        const float progress = 1.0f - (std::max)(0.0f, stateTimer_) / stateDuration_;
+        const float progress = (std::clamp)(1.0f - stateTimer_ / stateDuration_, 0.0f, 1.0f);
         const float maximumRadius = GetWaveMaximumRadius();
-        waveRadius_ = Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, EaseOutQuint(progress));
-        UpdateWaveDamage();
+        const float previousRadius = waveRadius_;
+        // 発射直後に最大半径へ飛ばず、見た目と同じ等速で一周の輪を広げます。
+        waveRadius_ = Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
+        UpdateWaveDamage(previousRadius);
         if (stateTimer_ <= 0.0f) {
             EnterState(State::Recovery, kRecoveryDuration);
         }
@@ -209,13 +214,13 @@ void EnemyRingBurner::UpdateCombat(float deltaTime) {
     case State::Suppressed:
         stateTimer_ -= deltaTime;
         if (stateTimer_ <= 0.0f) {
-            EnterState(State::Recovery, kSuppressedReleaseDuration);
+            EnterState(State::Recovery, kRecoveryDuration);
         }
         break;
     }
 }
 
-void EnemyRingBurner::UpdateWaveDamage() {
+void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     if (waveDamageDone_ || !target_) {
         return;
     }
@@ -225,9 +230,13 @@ void EnemyRingBurner::UpdateWaveDamage() {
     const float targetDistance = PlanarDistance(origin, targetPosition);
     const float targetRelativeHeight = targetPosition.y - origin.y;
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
-    const float bandWidth = kWaveBandHalfWidth * horizontalScale;
-    const bool crossesRing = std::abs(targetDistance - waveRadius_) <= bandWidth;
-    const bool isLowEnough = targetRelativeHeight <= kWaveJumpClearHeight * baseScale_.y;
+    const float bandWidth = (std::max)(kWaveBandHalfWidth * horizontalScale, waveRadius_ * 0.045f);
+    // フレーム間に通過した帯も調べ、処理落ちで輪がプレイヤーを飛び越えないようにします。
+    const bool crossesRing = targetDistance >= previousRadius - bandWidth &&
+        targetDistance <= waveRadius_ + bandWidth;
+    // 下段の救済床には届かせず、同じ高さのプレイヤーだけを対象にします。
+    const bool isLowEnough = targetRelativeHeight >= -0.65f * baseScale_.y &&
+        targetRelativeHeight <= kWaveJumpClearHeight * baseScale_.y;
     if (!crossesRing || !isLowEnough) {
         return;
     }
@@ -332,7 +341,7 @@ float EnemyRingBurner::GetCooldownDuration() const {
 float EnemyRingBurner::GetWaveMaximumRadius() const {
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float configured = param_.has_value() ? param_->moveAmount : 11.0f;
-    return (std::clamp)(configured, 6.0f, 18.0f) * horizontalScale;
+    return (std::clamp)(configured, 6.0f, 48.0f) * horizontalScale;
 }
 
 void EnemyRingBurner::SpawnChargeEffects() {
@@ -351,12 +360,22 @@ void EnemyRingBurner::SpawnWaveEffects() {
     const float authoredRadius = 11.0f;
     const float effectScale = GetWaveMaximumRadius() / authoredRadius;
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
-        const Vector3 scale = { effectScale, baseScale_.y, effectScale };
-        meshEffects->SpawnEffectAt(kWaveHeatEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
-        meshEffects->SpawnEffectAt(kWaveEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
+        StopWaveEffects();
+        waveEffectScope_ = meshEffects->CreateEffectScope();
+        const Vector3 scale = { effectScale, baseScale_.y * 3.0f, effectScale };
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
     }
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
         particles->Emit(kFireParticle, origin + Vector3{ 0.0f, 1.05f * baseScale_.y, 0.0f });
+    }
+}
+
+void EnemyRingBurner::StopWaveEffects() {
+    // 踏んで停止した輪は当たり判定だけでなく描画も同時に回収します。
+    if (waveEffectScope_ != 0) {
+        MeshEffectManager::GetInstance()->StopEffectScope(waveEffectScope_);
+        waveEffectScope_ = 0;
     }
 }
 

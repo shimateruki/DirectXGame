@@ -11,7 +11,7 @@
 #include "EditorCommandRegistry.h"
 #include "SceneWorkspace.h"
 #include "EditorAssetDragPayload.h"
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "CameraManager.h"
 #include "PostEffectEditor.h"
 #include "SpriteDebugEditor.h"
@@ -23,7 +23,7 @@
 #include "LightEditor.h"
 #include "ModelManager.h"
 #include "DebugConsole.h"
-#include "PresetManager.h"
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "PresetEditor.h"
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
@@ -31,7 +31,7 @@
 #include "DebrisEffectEditor.h"
 #include "TrailEmitterEditor.h"
 #include "GimmickFactory.h"
-#include "EnemyFactory.h"
+#include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "ItemFactory.h"
 #include "json.hpp"
 #include <filesystem>
@@ -478,7 +478,8 @@ void HierarchyWindow::Draw() {
         ImGui::EndPopup();
     }
 
-    if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)")) {
+        ImGui::TextWrapped("ツールは上部の「ツール」メニューから分類別に開けます。ここは従来の一覧です。");
         IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
 
         if (ImGui::Selectable("  " ICON_FA_VIDEO " カメラ設定 (Camera)", currentObj == CameraEditor::GetInstance())) {
@@ -507,7 +508,7 @@ void HierarchyWindow::Draw() {
             if (editor_->GetSelectedObject()) editor_->GetGhostRecorder()->SetTarget(editor_->GetSelectedObject());
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostRecorder());
         }
-        if (editor_->GetGhostDirector() && ImGui::Selectable("  " ICON_FA_BULLHORN " ゴーストディレクター (Ghost Director)", currentObj == editor_->GetGhostDirector())) {
+        if (editor_->GetGhostDirector() && ImGui::Selectable("  " ICON_FA_FILM " 演出タイムライン (Cinematic Timeline)", currentObj == editor_->GetGhostDirector())) {
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
         }
      if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
@@ -546,7 +547,13 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEffectPreviewStage());
         }
-        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow())) {
+        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() && !editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
+            editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(false);
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
+        }
+        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " プレイヤー能力プレビュー (Player Ability Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() && editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
+            editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(true);
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
         }

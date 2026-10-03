@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6832da27d927437dacd772aa164e8628",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_seabed/stage1_seabed.obj",
+  "version": 1
+}

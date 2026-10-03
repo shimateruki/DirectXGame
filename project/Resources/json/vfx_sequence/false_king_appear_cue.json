@@ -12,7 +12,7 @@
     {
       "type": 1,
       "presetName": "effect_goal_clear_gold_ring",
-      "triggerTime": 0.10,
+      "triggerTime": 1.89,
       "offset": [0.0, 0.02, 0.0],
       "rotation": [0.0, 0.0, 0.0],
       "scale": [1.28, 1.0, 1.28]
@@ -27,14 +27,14 @@
     {
       "type": 0,
       "presetName": "prism_slime_pulse",
-      "triggerTime": 0.76,
+      "triggerTime": 1.89,
       "offset": [0.0, 1.2, 0.0],
       "scale": [1.3, 1.3, 1.3]
     },
     {
       "type": 4,
       "presetName": "",
-      "triggerTime": 0.72,
+      "triggerTime": 1.89,
       "duration": 0.34,
       "intensity": 0.085,
       "frequency": 24.0,

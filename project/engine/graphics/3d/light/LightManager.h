@@ -11,11 +11,11 @@ class Object3d;
 class Camera;
 
 /// <summary>
-/// ライト（点光源・スポットライト・平行光源）を一括管理するクラス
+/// 平行光源・点光源・スポットライトと環境設定を共有する。
 /// </summary>
-// LightManagerは、ライト情報のGPUバッファ生成と描画側への共有を担当します。
 class LightManager {
 public:
+    /// <summary>ライティングとポストエフェクトをまとめて保存する設定。</summary>
     struct EnvironmentPostSettings {
         bool bloomEnabled = true;
         int bloomQuality = 2;
@@ -36,7 +36,7 @@ public:
         float colorTint = 0.0f;
     };
 
-    // ライト、空、フォグ、色調補正をひとまとまりで保存・補間する設定です。
+    /// <summary>ライト、空、色調補正をまとめて保存・補間する設定。</summary>
     struct EnvironmentProfileState {
         DirectionalLight directionalLight{};
         Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
@@ -46,6 +46,7 @@ public:
         std::string skyboxTexturePath = "Resources/output_skybox.dds";
         EnvironmentPostSettings post{};
     };
+
     // シェーダーで定義されている最大数と合わせる定数
     static const int kMaxPointLights = 100;
     static const int kMaxSpotLights = 100;
@@ -116,65 +117,90 @@ public:
         float padding[3];
     };
 
-    /// <summary>
-    /// シングルトンインスタンスの取得
-    /// </summary>
-        // シーン全体で共有するライト管理インスタンスを取得します。
-static LightManager* GetInstance();
+    /// <summary>シーン全体で共有するライト管理インスタンスを取得する。</summary>
+    static LightManager* GetInstance();
 
-    /// <summary>
-    /// 初期化処理（バッファの生成など）
-    /// </summary>
-        // DirectXリソースを使ってライト用バッファを作成します。
-void Initialize(DirectXCommon* dxCommon);
+    /// <summary>ライト用GPUバッファを作成する。</summary>
+    /// <param name="dxCommon">バッファ作成に使うDirectX管理インスタンス。</param>
+    void Initialize(DirectXCommon* dxCommon);
 
-    /// <summary>
-    /// 毎フレーム更新（追従処理やGPUへのデータ転送を行う）
-    /// </summary>
-        // CPU側ライト設定をGPUバッファへ反映します。
-
+    /// <summary>現在のライト・空・色調補正を保存用設定として取得する。</summary>
     EnvironmentProfileState CaptureEnvironmentProfile() const;
-    bool SaveEnvironmentProfile(const std::string& filename) const;
-    bool LoadEnvironmentProfile(const std::string& filename, EnvironmentProfileState& profile) const;
-    bool ApplyEnvironmentProfile(const std::string& filename, float blendDuration = 0.0f);
-    void ApplyEnvironmentProfile(const EnvironmentProfileState& profile, float blendDuration = 0.0f);
-    void UpdateEnvironmentProfile(float deltaTime);
-    bool IsEnvironmentProfileBlending() const { return environmentBlendActive_; }
-    float GetEnvironmentProfileBlendProgress() const;
-    const std::string& GetCurrentEnvironmentProfileFile() const { return currentEnvironmentProfileFile_; }
-void Update();
 
-    // --- ゲッター（リソース） ---
+    /// <summary>現在の環境設定をファイルに保存する。</summary>
+    bool SaveEnvironmentProfile(const std::string& filename) const;
+
+    /// <summary>環境設定をファイルから読み込む。現在の設定には適用しない。</summary>
+    bool LoadEnvironmentProfile(const std::string& filename, EnvironmentProfileState& profile) const;
+
+    /// <summary>ファイルの環境設定を即時または時間をかけて適用する。</summary>
+    bool ApplyEnvironmentProfile(const std::string& filename, float blendDuration = 0.0f);
+
+    /// <summary>指定の環境設定を即時または時間をかけて適用する。</summary>
+    void ApplyEnvironmentProfile(const EnvironmentProfileState& profile, float blendDuration = 0.0f);
+
+    /// <summary>環境設定の補間を進める。</summary>
+    void UpdateEnvironmentProfile(float deltaTime);
+
+    /// <summary>環境設定を補間中かを返す。</summary>
+    bool IsEnvironmentProfileBlending() const { return environmentBlendActive_; }
+
+    /// <summary>環境設定の補間進捗を返す。</summary>
+    float GetEnvironmentProfileBlendProgress() const;
+
+    /// <summary>現在適用中の環境設定ファイルを返す。</summary>
+    const std::string& GetCurrentEnvironmentProfileFile() const { return currentEnvironmentProfileFile_; }
+
+    /// <summary>追従・点滅を更新し、ライトの値をGPUバッファへ反映する。</summary>
+    void Update();
+
+    // 描画側が定数バッファを参照するための取得口。
     ID3D12Resource* GetPointLightResource() { return pointLightResource_.Get(); }
     ID3D12Resource* GetSpotLightResource() { return spotLightResource_.Get(); }
     ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource_.Get(); }
 
-    // --- ゲッター（データ参照） ---
+    // エディタとゲーム側が直接編集するライト設定。
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
     std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
     std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
+
+    /// <summary>GPUへ反映済みの有効な点光源数を返す。</summary>
     uint32_t GetActivePointLightCount() const {
         return pointLightConstData_ ? static_cast<uint32_t>(pointLightConstData_->activeCount) : 0;
     }
+
+    /// <summary>GPUへ反映済みの有効なスポットライト数を返す。</summary>
     uint32_t GetActiveSpotLightCount() const {
         return spotLightConstData_ ? static_cast<uint32_t>(spotLightConstData_->activeCount) : 0;
     }
+
+    /// <summary>指定カメラに対する平行光源の影用ビュー投影行列を取得する。</summary>
     const Matrix4x4& GetDirectionalShadowViewProjection(const Camera* camera);
+
+    // シャドウマップ解像度と影を描く領域の大きさ。
     int GetShadowMapResolution() const;
     void SetShadowMapResolution(int resolution);
     float GetShadowAreaSize() const { return shadowAreaSize_; }
     void SetShadowAreaSize(float size);
     Vector4& GetSceneClearColor() { return sceneClearColor_; }
+
+    /// <summary>保持しているシーンのクリア色を描画設定へ反映する。</summary>
     void ApplySceneClearColor();
     bool IsSkyboxEnabled() const { return skyboxEnabled_; }
     void SetSkyboxEnabled(bool enabled) { skyboxEnabled_ = enabled; }
     const std::string& GetSkyboxTexturePath() const { return skyboxTexturePath_; }
+
+    /// <summary>スカイボックスのテクスチャを指定し、読み込みに成功したかを返す。</summary>
     bool SetSkyboxTexturePath(const std::string& texturePath);
     uint32_t GetSkyboxTextureHandle() const { return skyboxTextureHandle_; }
 
-    // --- ライト追加・削除 ---
+    // ライトの追加・削除と一時的な点光源演出。
     PointLightInstance* AddPointLight();
+
+    /// <summary>新しいスポットライトを追加し、編集可能な要素を返す。</summary>
     SpotLightInstance* AddSpotLight();
+
+    /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
     void ClearAllLights();
     void PlayPointLightPulse(
         const Vector3& position,
@@ -184,8 +210,10 @@ void Update();
         float duration,
         float decay = 1.0f);
 
-    // --- ファイル保存・読み込み ---
+    // ライト配置の保存・読み込み。
     bool SaveState(const std::string& filename);
+
+    /// <summary>ライト配置をファイルから読み込み、現在の配置へ適用する。</summary>
     bool LoadState(const std::string& filename);
     const std::string& GetCurrentStateFile() const { return currentStateFile_; }
     bool WasLastLoadSuccessful() const { return lastLoadSucceeded_; }
@@ -214,6 +242,8 @@ private:
     std::vector<PointLightInstance> pointLights_;
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     PointLightConstData* pointLightConstData_ = nullptr;
+
+    /// <summary>寿命付き点光源の基準強度と経過時間。</summary>
     struct TransientPointLight {
         MeshRenderer::PointLight data;
         float baseIntensity = 1.0f;

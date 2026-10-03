@@ -9,6 +9,8 @@ public:
     void Update(float deltaTime) override;
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
+    // 演出による移設では、移動先だけでなく再生の基準位置も更新する。
+    void RelocateRuntimeBase(const Vector3& position);
 
     std::unique_ptr<Object3d> Clone() const override;
 

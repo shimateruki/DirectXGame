@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f1a7b394b51c479d83c44c874e0e29ad",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/boss_chant/boss_chant_fire.png",
+  "version": 1
+}

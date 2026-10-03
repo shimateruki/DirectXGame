@@ -79,7 +79,12 @@ float4 main(VSOutput input) : SV_TARGET
     float radial = length(planeUV) / radiusScale;
     float angle = atan2(planeUV.y, planeUV.x);
 
-    float progress = frac(time * speed * 0.32f + effectType * 0.173f);
+    // Effect type 3 is a focused charge mode: keep one soft inner ring only.
+    float focusedCharge = step(2.5f, effectType);
+    float phaseType = lerp(effectType, 0.0f, focusedCharge);
+    float animatedProgress = frac(time * speed * 0.32f + phaseType * 0.173f);
+    float chargeProgress = 0.66f + sin(time * speed * 3.2f) * 0.035f;
+    float progress = lerp(animatedProgress, chargeProgress, focusedCharge);
     float ringWidth = lerp(0.025f, 0.16f, softness);
     float primary = 1.0f - smoothstep(ringWidth, ringWidth * 2.25f, abs(radial - progress));
     primary *= smoothstep(0.03f, 0.18f, progress) * (1.0f - smoothstep(0.82f, 1.08f, progress));
@@ -87,13 +92,15 @@ float4 main(VSOutput input) : SV_TARGET
     float secondaryCenter = saturate(progress - 0.23f);
     float secondary = 1.0f - smoothstep(ringWidth * 1.2f, ringWidth * 3.0f, abs(radial - secondaryCenter));
     secondary *= smoothstep(0.28f, 0.45f, progress) * 0.55f;
+    secondary *= 1.0f - focusedCharge;
 
     float2 crackUV = planeUV * (10.0f + detail * 2.0f);
     float crackNoise = Fbm2(crackUV + float2(time * 0.12f, -time * 0.09f));
     float spoke = pow(saturate(0.5f + 0.5f * sin(angle * (11.0f + detail) + crackNoise * 6.0f)), 4.0f);
     float dust = smoothstep(0.36f, 0.92f, Fbm2(planeUV * (3.5f + detail * 0.7f) - time * 0.18f));
 
-    float energy = saturate(primary * (0.70f + spoke * 0.55f) + secondary * 0.6f + dust * primary * 0.24f);
+    float chargeDetail = lerp(1.0f, 0.28f, focusedCharge);
+    float energy = saturate(primary * (0.70f + spoke * 0.55f * chargeDetail) + secondary * 0.6f + dust * primary * 0.24f * chargeDetail);
     float fadeOuter = 1.0f - smoothstep(0.96f, 1.18f, radial);
     energy *= fadeOuter;
 

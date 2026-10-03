@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AttackTelegraph.h"
+#include "game/actor/enemy/combat/AttackTelegraph.h"
 #include "BaseGimmick.h"
 
 /// <summary>

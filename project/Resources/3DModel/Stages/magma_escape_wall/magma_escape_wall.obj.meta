@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d56942e069022fff6d4ff13a72f8188e",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_escape_wall/magma_escape_wall.obj",
+  "version": 1
+}

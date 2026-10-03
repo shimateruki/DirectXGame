@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "5532b81f7a2dfe6e5f31ab5ad6ef6c46",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/threshold.obj",
+  "version": 1
+}

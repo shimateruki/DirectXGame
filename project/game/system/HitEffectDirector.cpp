@@ -5,6 +5,7 @@
 #include "GroundEffectLocator.h"
 #include "MeshEffectManager.h"
 #include "Object3d.h"
+#include "Player.h"
 #include "VFXSequencer.h"
 
 #include <algorithm>
@@ -215,6 +216,22 @@ void HitEffectDirector::SpawnDamageEventHit(
 
     const std::string attackerClass = attacker->GetClassName();
     const std::string targetClass = target->GetClassName();
+    // GameRuleでダメージ成立後に呼ばれるため、無敵や空振りには打撃を出しません。
+    if (auto* player = dynamic_cast<Player*>(attacker);
+        player && player->IsPinkSlimeMorphed() && damageType == DamageType::Physical && targetClass != "Player") {
+        if (auto* meshes = MeshEffectManager::GetInstance()) {
+            const Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
+            const Vector3 direction = NormalizePlanar(target->GetWorldPosition() - attacker->GetWorldPosition());
+            const float yaw = std::atan2(direction.x, direction.z);
+            meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_core.json", position, { 0.0f, yaw, 0.0f });
+            // 打撃の接触点から短い衝撃線を出し、魔法陣に見える閉じた輪は使いません。
+            for (int i = 0; i < 3; ++i) {
+                meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_spoke.json", position,
+                    { -0.35f - 0.35f * static_cast<float>(i % 2), yaw + (static_cast<float>(i) - 1.0f) * 1.5f, 0.0f });
+            }
+        }
+        return;
+    }
     if (damageType == DamageType::Fire) {
         SpawnFireDamageHit(target, attacker, knockbackVelocity);
         return;

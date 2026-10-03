@@ -2,6 +2,7 @@
 #include "BaseScene.h"
 #include "CameraManager.h"
 #include "EditorManager.h"
+#include "EditorCommandRegistry.h"
 #include "EffectPreviewStage.h"
 #include "GPUParticleManager.h"
 #include "IconsFontAwesome5.h"
@@ -13,6 +14,9 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <json.hpp>
+#include <stdexcept>
 #include <imgui.h>
 
 namespace fs = std::filesystem;
@@ -66,6 +70,11 @@ namespace {
 void VFXSequencerEditor::Initialize() {
     previewSequencer_.Initialize(nullptr);
     RefreshFileList();
+}
+
+void VFXSequencerEditor::RequestOpenSequence(const std::string& name) {
+    pendingSequence_ = name;
+    openRequested_ = true;
 }
 
 Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
@@ -323,16 +332,10 @@ void VFXSequencerEditor::DrawImGui() {
         ImGui::TextDisabled(ICON_FA_STOP_CIRCLE " 停止中");
     }
     ImGui::TextDisabled("Active Mesh Effects: %d", static_cast<int>(MeshEffectManager::GetInstance()->GetActiveEffects().size()));
-    if (ImGui::Button("メッシュ確認")) {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(
-            "Resources/json/effect/effect_hitfx_kickpunch_center_flash.json",
-            ResolvePreviewPosition(),
-            { 1.5707963f, 0.0f, 0.0f },
-            { previewRootScale_, previewRootScale_, previewRootScale_ });
-    }
-
     DrawTimelinePreview();
 
+    // 再生中のイベント配列変更は、発火状態と実行中の演出を不整合にします。
+    ImGui::BeginDisabled(previewSequencer_.IsPlaying());
     ImGui::SeparatorText("イベント追加");
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
     const float buttonWidth = (std::max)((ImGui::GetContentRegionAvail().x - spacing * 2.0f) / 3.0f, 80.0f);
@@ -377,9 +380,18 @@ void VFXSequencerEditor::DrawImGui() {
     }
     ImGui::SeparatorText("イベント一覧");
     auto& events = previewSequencer_.GetEvents();
-    for (int i = 0; i < static_cast<int>(events.size()); ++i) {
-        DrawEventEditor(i, events[i]);
+    if (selectedEvent_ >= 0 && selectedEvent_ < static_cast<int>(events.size())) {
+        if (ImGui::Button("選択イベントを複製")) {
+            VFXEvent copy = events[selectedEvent_];
+            copy.triggerTime += 0.1f;
+            events.push_back(copy);
+            selectedEvent_ = static_cast<int>(events.size()) - 1;
+        }
+        DrawEventEditor(selectedEvent_, events[selectedEvent_]);
+    } else {
+        ImGui::TextWrapped("タイムラインの行を選ぶと、ここで素材・時刻・位置を編集できます。");
     }
+    ImGui::EndDisabled();
 
     ImGui::SeparatorText("保存と読み込み");
     if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存ファイル", sequenceNameInput_)) {
@@ -403,7 +415,48 @@ void VFXSequencerEditor::DrawImGui() {
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_UPLOAD " 読み込み", ImVec2(120, 0))) {
-        previewSequencer_.Load(sequenceNameInput_);
+        RequestOpenSequence(sequenceNameInput_);
+    }
+    ImGui::TextWrapped("保存は手動です。素材側を変更した後は、停止して先頭から再生してください。");
+    if (!fileStatus_.empty()) ImGui::TextWrapped("%s", fileStatus_.c_str());
+    if (ImGui::Button("演出タイムラインへ（動作・カメラと組み合わせる）")) {
+        previewSequencer_.Stop();
+        EffectPreviewStage::GetInstance()->ReturnToScene();
+        EditorCommandRegistry::GetInstance()->Execute("tool.director");
+    }
+    if (openRequested_) {
+        ImGui::OpenPopup("VFXシーケンスの読込確認");
+        openRequested_ = false;
+    }
+    if (ImGui::BeginPopupModal("VFXシーケンスの読込確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("読込先: %s", pendingSequence_.c_str());
+        ImGui::TextUnformatted("現在の未保存の編集は置き換わります。先に保存する場合はキャンセルしてください。");
+        if (ImGui::Button("置き換えて読み込む")) {
+            try {
+                const fs::path name(pendingSequence_);
+                if (pendingSequence_.empty() || name.has_parent_path() || name.has_extension() || pendingSequence_.size() >= sizeof(sequenceNameInput_))
+                    throw std::runtime_error("invalid sequence name");
+                std::ifstream input(fs::path("Resources/json/vfx_sequence") / (pendingSequence_ + ".json"));
+                const auto root = nlohmann::json::parse(input);
+                if (!root.contains("events") || !root["events"].is_array()) throw std::runtime_error("missing events");
+                // 一時オブジェクトに読み込み、失敗時は現在の編集を残します。
+                VFXSequencer loaded;
+                loaded.Load(pendingSequence_);
+                previewSequencer_.Stop();
+                previewSequencer_.GetEvents() = loaded.GetEvents();
+                strcpy_s(sequenceNameInput_, pendingSequence_.c_str());
+                selectedEvent_ = loaded.GetEvents().empty() ? -1 : 0;
+                timelineDuration_ = 3.0f;
+                for (const auto& event : loaded.GetEvents()) timelineDuration_ = (std::max)(timelineDuration_, GetEventEndTime(event) + 0.5f);
+                fileStatus_ = "読込完了: " + pendingSequence_;
+            } catch (const std::exception&) {
+                fileStatus_ = "読込失敗。ファイル名とJSONを確認してください。現在の編集は保持しています。";
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("キャンセル")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
 #endif
 }
@@ -411,13 +464,17 @@ void VFXSequencerEditor::DrawImGui() {
 void VFXSequencerEditor::DrawTimelinePreview() {
 #ifdef USE_IMGUI
     auto& events = previewSequencer_.GetEvents();
-    float maxTime = 1.0f;
-    for (const auto& event : events) {
-        maxTime = (std::max)(maxTime, GetEventEndTime(event));
-    }
-    maxTime = (std::max)(maxTime, 3.0f);
-
     ImGui::SeparatorText("タイムライン");
+    ImGui::TextWrapped("行をクリックして選択 / バーを左右ドラッグして発火時刻を移動（再生中は編集できません）");
+    ImGui::Checkbox("0.05秒刻みに吸着", &snapTimeline_);
+    ImGui::SetNextItemWidth(120.0f);
+    ImGui::DragFloat("表示する秒数", &timelineDuration_, 0.2f, 1.0f, 180.0f, "%.1f s", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SameLine();
+    if (ImGui::Button("全体に合わせる")) {
+        timelineDuration_ = 3.0f;
+        for (const auto& event : events) timelineDuration_ = (std::max)(timelineDuration_, GetEventEndTime(event) + 0.5f);
+    }
+    const float maxTime = draggingEvent_ >= 0 ? dragTimelineDuration_ : timelineDuration_;
     const float width = (std::max)(ImGui::GetContentRegionAvail().x, 240.0f);
     const float rowHeight = 20.0f;
     const float headerHeight = 22.0f;
@@ -426,13 +483,34 @@ void VFXSequencerEditor::DrawTimelinePreview() {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     ImGui::InvisibleButton("##VFXCueTimeline", ImVec2(width, height));
+    if (ImGui::IsItemActivated() && !previewSequencer_.IsPlaying()) {
+        const ImVec2 mouse = ImGui::GetIO().MousePos;
+        const int row = static_cast<int>(std::floor((mouse.y - origin.y - headerHeight) / rowHeight));
+        if (row >= 0 && row < static_cast<int>(events.size())) {
+            selectedEvent_ = row;
+            const float start = origin.x + events[row].triggerTime / maxTime * width;
+            const float end = (std::max)(origin.x + GetEventEndTime(events[row]) / maxTime * width, start + 8.0f);
+            if (mouse.x >= start && mouse.x <= end) {
+                draggingEvent_ = row;
+                dragStartTime_ = events[row].triggerTime;
+                dragTimelineDuration_ = maxTime;
+            }
+        }
+    }
+    if (ImGui::IsItemActive() && draggingEvent_ >= 0 && draggingEvent_ < static_cast<int>(events.size())) {
+        float time = dragStartTime_ + ImGui::GetMouseDragDelta().x / width * maxTime;
+        if (snapTimeline_) time = std::round(time / 0.05f) * 0.05f;
+        events[draggingEvent_].triggerTime = std::clamp(time, 0.0f, 120.0f);
+    }
+    if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) draggingEvent_ = -1;
 
     const ImU32 bgColor = IM_COL32(28, 31, 36, 255);
     const ImU32 lineColor = IM_COL32(95, 100, 110, 160);
     drawList->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + height), bgColor, 4.0f);
     drawList->AddRect(origin, ImVec2(origin.x + width, origin.y + height), IM_COL32(120, 130, 145, 180), 4.0f);
 
-    for (int second = 0; second <= static_cast<int>(maxTime + 0.5f); ++second) {
+    const int tickStep = (std::max)(1, static_cast<int>(std::ceil(maxTime * 48.0f / width)));
+    for (int second = 0; second <= static_cast<int>(maxTime); second += tickStep) {
         const float x = origin.x + (static_cast<float>(second) / maxTime) * width;
         drawList->AddLine(ImVec2(x, origin.y + headerHeight), ImVec2(x, origin.y + height - 4.0f), lineColor);
         char label[16];
@@ -445,13 +523,18 @@ void VFXSequencerEditor::DrawTimelinePreview() {
         const float startX = origin.x + (event.triggerTime / maxTime) * width;
         const float endX = origin.x + (GetEventEndTime(event) / maxTime) * width;
         const float y = origin.y + headerHeight + i * rowHeight + 3.0f;
+        if (i == selectedEvent_) drawList->AddRectFilled(ImVec2(origin.x, y - 2.0f), ImVec2(origin.x + width, y + 16.0f), IM_COL32(80, 100, 140, 100));
         const ImVec4 color = GetEventColor(event.type);
+        drawList->PushClipRect(origin, ImVec2(origin.x + width, origin.y + height), true);
         drawList->AddRectFilled(ImVec2(startX, y), ImVec2((std::max)(endX, startX + 8.0f), y + 14.0f), ToU32(color), 3.0f);
 
         char label[64];
         sprintf_s(label, "%02d %s", i, GetEventTypeName(event.type));
         drawList->AddText(ImVec2(startX + 4.0f, y - 1.0f), IM_COL32(245, 245, 245, 255), label);
+        drawList->PopClipRect();
     }
+    const float playheadX = origin.x + std::clamp(previewSequencer_.GetCurrentTime() / maxTime, 0.0f, 1.0f) * width;
+    drawList->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, origin.y + height), IM_COL32(255, 110, 130, 255), 2.0f);
 #endif
 }
 
@@ -468,11 +551,24 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
     ImGui::SameLine();
     if (ImGui::SmallButton(ICON_FA_TRASH_ALT)) {
         events.erase(events.begin() + index);
+        selectedEvent_ = -1;
+        if (open) ImGui::TreePop();
         ImGui::PopID();
         return;
     }
 
     if (open) {
+        const char* materialTool = event.type == VFXEventType::MeshEffect ? "tool.mesh" :
+            (event.type == VFXEventType::GPUParticle || event.type == VFXEventType::MovingParticle ? "tool.gpu" : nullptr);
+        if (materialTool) {
+            ImGui::TextWrapped("素材: %s", event.presetName.empty() ? "未設定" : event.presetName.c_str());
+            if (ImGui::Button("素材名をコピーして素材エディターへ")) {
+                ImGui::SetClipboardText(event.presetName.c_str());
+                previewSequencer_.Stop();
+                EditorCommandRegistry::GetInstance()->Execute(materialTool);
+            }
+            ImGui::TextWrapped("素材エディターの未保存内容は維持します。コピーした名前のプリセットを選んで読み込んでください。");
+        }
         ImGui::DragFloat(ICON_FA_STOPWATCH " 発火時間", &event.triggerTime, 0.02f, 0.0f, 120.0f, "%.2f s");
 
         if (event.type == VFXEventType::GPUParticle) {
@@ -618,6 +714,7 @@ void VFXSequencerEditor::AddDefaultEvent(VFXEventType type) {
     }
 
     previewSequencer_.GetEvents().push_back(event);
+    selectedEvent_ = static_cast<int>(previewSequencer_.GetEvents().size()) - 1;
 }
 
 const char* VFXSequencerEditor::GetEventTypeName(VFXEventType type) const {

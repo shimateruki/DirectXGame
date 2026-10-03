@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a682648ef851dee83a0bae86dde2fe53",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/star_vault/RightWall.obj",
+  "version": 1
+}

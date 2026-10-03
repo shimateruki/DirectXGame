@@ -79,6 +79,7 @@ void EditorTransactionManager::BeginGroup(const std::string& label) {
 }
 
 void EditorTransactionManager::EndGroup() {
+    // 連続した編集を利用者にとって一回の Undo として扱います。
     if (isApplying_ || groupDepth_ <= 0) {
         return;
     }
@@ -114,6 +115,7 @@ void EditorTransactionManager::EndGroup() {
 }
 
 bool EditorTransactionManager::Undo() {
+    // 実行済み操作を戻し、同じ操作を Redo 側へ移します。
     if (undoStack_.empty() || isApplying_) {
         return false;
     }

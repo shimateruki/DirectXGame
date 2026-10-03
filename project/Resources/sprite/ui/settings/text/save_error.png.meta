@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "769adb1d0afb514646846f147915e2d9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/save_error.png",
+  "version": 1
+}

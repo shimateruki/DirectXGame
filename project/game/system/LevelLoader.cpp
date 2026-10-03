@@ -13,12 +13,12 @@
 #include "Object3d.h"
 #include "Sprite.h"
 #include "Player.h"
-#include "EnemyFactory.h"
+#include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "GameplayStatusManager.h"
-#include "EnemySpawner.h"
+#include "game/actor/enemy/spawn/EnemySpawner.h"
 #include "BaseEnemy.h"
 #include "EnemyBomber.h"
-#include "EnemyPrismSlime.h"
+#include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "GimmickFactory.h"
 #include "BaseGimmick.h"
 #include "ItemFactory.h"
@@ -28,7 +28,7 @@
 #include "ModelManager.h"
 #include "CollisionManager.h"
 #include "InputManager.h"
-#include "PresetManager.h"
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "SpriteLayoutScaler.h"
 
 using json = nlohmann::json;
@@ -764,6 +764,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (jw.contains("effectScaleX"))  water->effectScaleX = jw["effectScaleX"];
                         if (jw.contains("effectScaleY"))  water->effectScaleY = jw["effectScaleY"];
                         if (jw.contains("effectScaleZ"))  water->effectScaleZ = jw["effectScaleZ"];
+                        if (jw.contains("topDownDetail")) water->topDownDetail = jw["topDownDetail"];
                         if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
                         if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
                         if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
@@ -835,7 +836,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("copyMemoryTypeA") && p["copyMemoryTypeA"].is_string()) param.copyMemoryTypeA = p["copyMemoryTypeA"].get<std::string>();
                     if (p.contains("copyMemoryTypeB") && p["copyMemoryTypeB"].is_string()) param.copyMemoryTypeB = p["copyMemoryTypeB"].get<std::string>();
                     if (p.contains("copyMemoryTypeC") && p["copyMemoryTypeC"].is_string()) param.copyMemoryTypeC = p["copyMemoryTypeC"].get<std::string>();
+                    if (p.contains("copyMemoryTypeD") && p["copyMemoryTypeD"].is_string()) param.copyMemoryTypeD = p["copyMemoryTypeD"].get<std::string>();
                     if (p.contains("copyMemoryActivationRadius")) param.copyMemoryActivationRadius = (std::max)(0.1f, p["copyMemoryActivationRadius"].get<float>());
+                    if (p.contains("copyMemoryEssenceScale")) param.copyMemoryEssenceScale = p["copyMemoryEssenceScale"].get<float>();
+                    if (p.contains("copyMemoryHoverAmount")) param.copyMemoryHoverAmount = p["copyMemoryHoverAmount"].get<float>();
+                    if (p.contains("copyMemoryGlow")) param.copyMemoryGlow = p["copyMemoryGlow"].get<float>();
                     if (p.contains("copyMemoryUnlimitedDuration")) param.copyMemoryUnlimitedDuration = p["copyMemoryUnlimitedDuration"];
                     if (!isManagedCharacter) {
                         param.maxHp = (std::max)(param.maxHp, 1.0f);

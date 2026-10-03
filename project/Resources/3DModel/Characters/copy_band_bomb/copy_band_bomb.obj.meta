@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a6f5caa0d43b58c13c7380a67eac4922",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/copy_band_bomb/copy_band_bomb.obj",
+  "version": 1
+}

@@ -8,27 +8,32 @@
 
 // シーンへ保存するCamera Object専用の設定です。
 // CameraManagerは描画用カメラを所有し、この設定は編集・保存・再生の入力データとして扱います。
+/// <summary>シーンカメラを通常視点と演出視点のどちらに使うか。</summary>
 enum class SceneCameraRole {
     kMain = 0,
     kCinematic = 1,
 };
 
+/// <summary>視点位置の取得元。</summary>
 enum class SceneCameraEyeSource {
     kCameraObject = 0,
     kSceneObject = 1,
 };
 
+/// <summary>カメラの注視点を決める方法。</summary>
 enum class SceneCameraTargetMode {
     kFixedPoint = 0,
     kSceneObject = 1,
     kCameraForward = 2,
 };
 
+/// <summary>視点と注視点の追従方法。</summary>
 enum class SceneCameraFollowMode {
     kSnap = 0,
     kSmooth = 1,
 };
 
+/// <summary>シーンカメラ切替時の補間曲線。</summary>
 enum class SceneCameraEasing {
     kLinear = 0,
     kEaseIn = 1,
@@ -37,6 +42,7 @@ enum class SceneCameraEasing {
     kSmootherStep = 4,
 };
 
+/// <summary>シーンに保存する視点、注視点、画角と切替時間の設定。</summary>
 struct SceneCameraSettings {
     int version = 1;
     bool enabled = true;
@@ -66,6 +72,7 @@ struct SceneCameraSettings {
     SceneCameraEasing easing = SceneCameraEasing::kSmootherStep;
 };
 
+/// <summary>シーンカメラの設定を保存用JSONへ変換する。</summary>
 inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& settings) {
     nlohmann::json camera;
     camera["version"] = settings.version;
@@ -92,6 +99,7 @@ inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& se
     return camera;
 }
 
+/// <summary>JSONにある項目だけを既存設定へ読み込み、数値を有効範囲に収める。</summary>
 inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCameraSettings& settings) {
     if (!camera.is_object()) {
         return;

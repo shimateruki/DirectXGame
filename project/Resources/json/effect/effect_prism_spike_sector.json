@@ -1,0 +1,23 @@
+{
+  "AutoLoop": false,
+  "ProceduralType": 2,
+  "SlashAngle": 84.0,
+  "SpiralPitch": 0.0,
+  "InnerRadius": 0.04,
+  "OuterRadius": 1.0,
+  "Thickness": 0.0,
+  "MeshSegments": 48,
+  "Lifetime": 10.0,
+  "BlendMode": 1,
+  "TexturePath": "Resources/sprite/common/white.dds",
+  "StartScale": [1.0, 1.0, 1.0],
+  "EndScale": [1.0, 1.0, 1.0],
+  "StartColor": [0.35, 0.70, 1.0, 0.30],
+  "EndColor": [0.35, 0.70, 1.0, 0.30],
+  "Intensity": 1.2,
+  "EnableReveal": false,
+  "AlphaReference": 0.003,
+  "EdgeFadeStrength": 0.12,
+  "UvTiling": [1.0, 1.0],
+  "ScrollSpeed": [0.0, 0.0]
+}

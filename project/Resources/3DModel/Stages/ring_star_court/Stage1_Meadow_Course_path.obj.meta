@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "8f553e82771878a4af0c45f5f37cf41a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_Meadow_Course_path.obj",
+  "version": 1
+}

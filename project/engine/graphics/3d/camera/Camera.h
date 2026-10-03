@@ -10,16 +10,12 @@
 #include <wrl.h>
 
 /// <summary>
-/// 3Dシーンの視点、投影、追従、演出用カメラ制御を扱う。
+/// 3Dシーンの視点、投影、追従、演出用の一時上書きを管理する。
 /// </summary>
-// Cameraは、ビュー行列、射影行列、追従、ロックオン、演出用オーバーライドを管理します。
 class Camera {
 public:
-    /// <summary>
-    /// プレイヤー追従や演出で使うカメラモード。
-    /// </summary>
-        // 追従対象に対してカメラがどの動き方をするかを表します。
-enum class FollowMode {
+    /// <summary>追従対象に対して視点をどう動かすかを表す。</summary>
+    enum class FollowMode {
         kFixed,       // 対象に固定オフセットで追従する。
         kAimable,     // 三人称視点で、入力により回転できる。
         kFirstPerson, // 一人称視点。
@@ -43,6 +39,7 @@ enum class FollowMode {
         kSceneObject,
     };
 
+    /// <summary>演出カメラが注視点をどこから取得するか。</summary>
     enum class OverrideTargetSource {
         kFixed,
         kSceneObject,
@@ -55,11 +52,8 @@ enum class FollowMode {
         kSmooth,
     };
 
-    /// <summary>
-    /// シネマティック演出などで一時的に視点を上書きするための設定。
-    /// </summary>
-        // カットシーンや演出中に一時的にカメラ制御を差し替えるための設定です。
-struct CameraOverrideParams {
+    /// <summary>カットシーンなどで通常カメラを一時的に差し替える設定。</summary>
+    struct CameraOverrideParams {
         float duration = 1.0f;
         float exitDuration = 0.35f;
         OverrideEasing easing = OverrideEasing::kSmootherStep;
@@ -93,17 +87,12 @@ struct CameraOverrideParams {
     };
 
 public:
-    /// <summary>
-    /// カメラ行列とGPU用定数バッファを初期化する。
-    /// </summary>
-        // カメラの初期座標、行列、追従関連パラメータを設定します。
-void Initialize();
+    /// <summary>初期座標、行列、追従状態とGPU用定数バッファを初期化する。</summary>
+    void Initialize();
 
-    /// <summary>
-    /// 入力、追従対象、演出状態を反映してカメラを更新する。
-    /// </summary>
-        // 入力、追従、ロックオン、演出補間を反映して行列を更新します。
-void Update(float deltaTime = 1.0f / 60.0f);
+    /// <summary>入力、追従、ロックオン、演出補間を反映して行列を更新する。</summary>
+    /// <param name="deltaTime">前回更新からの経過秒数。</param>
+    void Update(float deltaTime = 1.0f / 60.0f);
 
     // 行列取得。
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
@@ -111,22 +100,27 @@ void Update(float deltaTime = 1.0f / 60.0f);
     const Matrix4x4& GetViewProjectionMatrix() const { return viewProjectionMatrix_; }
     const Matrix4x4& GetInverseViewProjectionMatrix() const { return inverseViewProjectionMatrix_; }
 
-        // FOVやアスペクト比から射影行列を再計算します。
-void UpdateProjectionMatrix();
+    /// <summary>視野角とアスペクト比から射影行列を再計算する。</summary>
+    void UpdateProjectionMatrix();
     void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
+
     // 演出用カメラPreviewなど、通常Updateを通さず指定Eye/Targetで即時に描画用行列を作ります。
     void SetLookAtPreviewView(const Vector3& eye, const Vector3& target, float aspectRatio);
+
     // デバッグリプレイの記録値を通常の追従計算を通さず描画行列へ反映します。
     void ApplyReplayView(const Vector3& eye, const Vector3& target, const Vector3& rotation, float fovY, float nearClip, float farClip);
 
     // 入力と追従対象。
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
-        // プレイ状態や演出に応じてカメラ入力の有効無効を切り替えます。
-void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
-        // 追従するObject3dを設定します。
-void SetFollowTarget(Object3d* target) { followObject_ = target; }
-        // 注視やロックオンに使う対象Object3dを設定します。
-void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
+
+    /// <summary>カメラ操作入力の有効・無効を切り替える。</summary>
+    void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
+
+    /// <summary>追従対象を設定する。対象は所有しない。</summary>
+    void SetFollowTarget(Object3d* target) { followObject_ = target; }
+
+    /// <summary>注視・ロックオン対象を設定する。対象は所有しない。</summary>
+    void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
     Object3d* GetFollowTarget() const { return followObject_; }
 
     // 現在のカメラ状態。
@@ -138,8 +132,11 @@ void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
     void SetEye(const Vector3& eye) { eye_ = eye; }
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
-        // カメラ位置だけを固定し、ターゲット計算と切り離します。
-void SetFreezeEye(bool freeze);
+
+    /// <summary>カメラ位置だけを固定し、ターゲット計算と切り離す。</summary>
+    void SetFreezeEye(bool freeze);
+
+    /// <summary>通常の照準カメラへの切り替えを一時的に抑制する。</summary>
     void SetAimCameraSuppressed(bool suppressed);
 
     void SetFovY(float fov) { fovY_ = fov; }
@@ -155,10 +152,20 @@ void SetFreezeEye(bool freeze);
     void SetFollowMode(FollowMode mode) { followMode_ = mode; }
     FollowMode GetFollowMode() const { return followMode_; }
 
+    // 追従モードごとの配置パラメータを設定する。
+    /// <summary>追従対象からの固定オフセットを設定する。</summary>
     void ConfigFixed(const Vector3& offset);
+
+    /// <summary>照準可能な三人称カメラの距離、高さ、初期角度を設定する。</summary>
     void ConfigAimable(float distance, float height, const Vector3& angle);
+
+    /// <summary>一人称視点での追従対象からの位置差を設定する。</summary>
     void ConfigFirstPerson(const Vector3& eyeOffset);
+
+    /// <summary>位置と角度を固定するカメラを設定する。</summary>
     void ConfigFixedPoint(const Vector3& position, const Vector3& angle);
+
+    /// <summary>補間を待たず三人称視点の位置と角度へ合わせる。</summary>
     void SnapToThirdPerson(float distance, float height, float pitch);
 
     void SetOrbitParams(float radius, float height, float speed) {
@@ -175,19 +182,33 @@ void SetFreezeEye(bool freeze);
     void SetLockOnOffset(const Vector3& offset) { lockOnOffset_ = offset; }
 
     // 入力操作と現在視点への同期。
+    /// <summary>入力差分から現在のカメラ回転を進める。</summary>
     void AddRotation(const Vector2& mouseDelta);
+
+    /// <summary>入力による回転感度を設定する。</summary>
     void SetRotationSensitivity(float sensitivity);
     float GetRotationSensitivity() const { return rotationSensitivity_; }
+
+    /// <summary>現在の視点方向と回転操作用の角度を同期する。</summary>
     void SyncRotationToCurrentView();
 
     // 演出用の一時上書きと画面揺れ。
+    /// <summary>演出カメラへの一時的な切替を開始する。</summary>
     void StartOverride(const CameraOverrideParams& params);
+
+    /// <summary>指定秒数で演出カメラから通常視点へ戻す。</summary>
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
     const Frustum& GetFrustum() const { return frustum_; }
+
+    /// <summary>指定時間の画面揺れを追加する。axisWeightで各軸の揺れ幅を調整する。</summary>
     void StartShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
+
+    /// <summary>画角を一時的に変化させる演出を追加する。</summary>
     void StartFovPulse(float duration, float amountRadians, float attackRatio = 0.12f);
+
+    /// <summary>画面揺れと画角変化の演出を消去する。</summary>
     void ClearPresentationLayers();
     bool IsShaking() const { return !shakeLayers_.empty(); }
 
@@ -197,6 +218,7 @@ private:
     // View/Projectionから派生する行列、視錐台、GPU定数をまとめて更新します。
     void RefreshDerivedMatrices();
 
+    /// <summary>GPUへ送るビュー行列と射影行列。</summary>
     struct CameraVP {
         Matrix4x4 view;
         Matrix4x4 projection;
@@ -280,6 +302,8 @@ private:
         float frequency = 24.0f;
         Vector3 axisWeight = { 1.0f, 1.0f, 0.5f };
     };
+
+    /// <summary>画角変化の経過時間と大きさを保持する演出レイヤー。</summary>
     struct FovPulseLayer {
         float elapsed = 0.0f;
         float duration = 0.01f;

@@ -6,40 +6,36 @@
 #include "engine/utility/math/Math.h"
 
 /// <summary>
-/// パーティクルパラメータの保存・読み込み・発生を管理するクラス
+/// CPUパーティクルの設定保存・読み込みと発生要求を管理する。
 /// </summary>
-// ParticleManagerは、CPUパーティクルグループの生成、更新、描画、テクスチャ設定を管理します。
 class ParticleManager {
 public:
-    // シングルトンインスタンス取得
-        // エンジン全体で共有するCPUパーティクル管理インスタンスを取得します。
-static ParticleManager* GetInstance();
+    /// <summary>共有のCPUパーティクル管理インスタンスを取得する。</summary>
+    static ParticleManager* GetInstance();
 
-    // 初期化（ParticleSystemへの参照をもらう）
+    /// <summary>粒子生成に使うParticleSystemを設定する。所有しない。</summary>
     void Initialize(ParticleSystem* particleSystem);
 
-    // -------------------------------------------------------------
-    // ファイル操作
-    // -------------------------------------------------------------
-    // パラメータをJSONファイルとして保存
+    /// <summary>指定名のパーティクル設定をJSONへ保存する。</summary>
     void SaveParam(const std::string& name, const ParticleSystem::EmitterParams& param);
-    // JSONファイルからパラメータを読み込み
+
+    /// <summary>指定名のJSONからパーティクル設定を読み込む。</summary>
     void LoadParam(const std::string& name);
-    // 指定フォルダ(Resources/json/particle/)内の全JSONを一括読み込み
+
+    /// <summary>Resources/json/particle 内の設定を一括読み込みする。</summary>
     void LoadAllParams();
 
-    // -------------------------------------------------------------
-    // 実行時処理
-    // -------------------------------------------------------------
-    // 名前指定でパーティクルを発生させる（Object3dなどから毎フレーム呼ばれる想定）
-    // name: エフェクト名, position: 発生位置, timer: 呼び出し元のタイマー(参照渡しで更新)
-        // 指定設定でCPUパーティクルを発生させます。
-void Emit(const std::string& name, const Vector3& position, float& timer);
+    /// <summary>指定名の設定に従い、呼び出し元のタイマーを更新して粒子を発生させる。</summary>
+    /// <param name="name">使用する設定名。</param>
+    /// <param name="position">発生の中心位置。</param>
+    /// <param name="timer">発生間隔の経過時間。呼び出し元で保持する。</param>
+    /// <remarks>この経路は呼び出し1回を1/60秒として扱う。</remarks>
+    void Emit(const std::string& name, const Vector3& position, float& timer);
 
-    // 編集用：現在のパラメータリストを取得
+    /// <summary>エディタ表示用に、読み込み済み設定の一覧を返す。</summary>
     const std::map<std::string, ParticleSystem::EmitterParams>& GetParamsMap() const { return paramsMap_; }
 
-    // パラメータの取得（編集用）
+    /// <summary>指定名の編集用設定を返す。未登録名は既定設定を追加する。</summary>
     ParticleSystem::EmitterParams& GetParam(const std::string& name) { return paramsMap_[name]; }
 
 private:

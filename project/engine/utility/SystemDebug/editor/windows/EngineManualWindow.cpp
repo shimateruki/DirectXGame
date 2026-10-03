@@ -148,6 +148,7 @@ void DrawMaterialTable() {
 }
 
 const std::vector<ManualPage>& GetManualPages() {
+    // 手引き本文をページ単位で管理し、検索と表示で同じ定義を使います。
     static const std::vector<ManualPage> pages = {
         {
             "00 基本",
@@ -930,12 +931,12 @@ const std::vector<ManualPage>& GetManualPages() {
         },
         {
             "05 アニメーション",
-            "ゴーストディレクター (Ghost Director)",
+            "演出タイムライン (Cinematic Timeline)",
             "cinematic multi object camera animation VFX audio signal timeline auto key sequence path preview 軌跡",
             "複数Object、Camera Object、Animation、VFX、Audio、Signalを一つのタイムラインで同期し、ムービーやステージクリア演出を制作します。",
-            "Hierarchy最上部の「ゴーストディレクター (Ghost Director)」を選びます。必要に応じて「大きいタイムライン」を開きます。",
+            "Hierarchyまたはツールメニューの「演出タイムライン」を選びます。中央に映像、下側に時間軸、右のInspectorに設定を表示します。別の制作ウィンドウは開きません。",
             {
-                "シーン上でObjectまたはCamera Objectを選び、「選択Objectをトラックへ追加」します。",
+                "編集モードで制作空間を開き、仮モデルを選択します。移動・身体動作・VFX・カメラ等をトラックへ追加し、下側で時刻を選んで右側で調整します。入口サンプルは任意の補助機能です。",
                 "Track名、対象Object、有効、Mute、Lock、相対Transform、終了姿勢保持を設定します。",
                 "Timeline Headを時刻へ移動して対象をImGuizmoで動かし、「現在姿勢をキー登録」またはAuto KeyでTransform Keyを作ります。",
                 "移動を確認したいTransform Trackを選択し、Game Viewの軌跡、方向矢印、Start / Key / End、黄色のCurrent位置を確認します。表示されるのは選択トラック1本だけです。",
@@ -1433,6 +1434,7 @@ void DrawManualPage(const ManualPage& page) {
 #endif
 
 void EngineManualWindow::Draw() {
+    // 選択ページと検索結果は UI 状態で、手引き本文は変更しません。
 #ifdef USE_IMGUI
     if (!isOpen_) {
         return;

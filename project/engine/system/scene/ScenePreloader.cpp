@@ -468,6 +468,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         progress->Begin(jsonPaths.size());
     }
 
+    // JSON 内の参照からさらに JSON が見つかるため、走査中に候補列を伸ばします。
     std::size_t jsonIndex = 0;
     while (jsonIndex < jsonPaths.size()) {
         const std::string path = jsonPaths[jsonIndex++];
@@ -537,6 +538,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         result->warnings.push_back("Scene dependency is missing: " + missing);
     }
     if (progress) {
+        // この時点で依存解析が終わり、残りの事前準備件数が確定します。
         progress->AddTasks(result->textures.size() + result->modelNames.size() + result->audioPaths.size());
     }
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d50fee3cf11315991cf4b231b9a96926",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_seal_core/false_king_seal_core.obj",
+  "version": 1
+}

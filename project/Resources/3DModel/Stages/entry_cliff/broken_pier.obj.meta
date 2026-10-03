@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "479c6a0c6370a63054103c468910843a",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_cliff/broken_pier.obj",
+  "version": 1
+}

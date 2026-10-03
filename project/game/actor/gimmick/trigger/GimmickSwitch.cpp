@@ -37,6 +37,9 @@ void GimmickSwitch::Update(float deltaTime) {
             SendActive(!isOutputActive_);
         }
     }
+    else if (mode == 3) {
+        if (pressedThisFrame) SendActive(true);
+    }
     else {
         if (pressedThisFrame) {
             timedTimer_ = param_->interval > 0.0f ? param_->interval : 3.0f;
@@ -101,4 +104,10 @@ std::unique_ptr<Object3d> GimmickSwitch::Clone() const {
     newObj->Initialize(common_, GetModelName());
     newObj->CopyFrom(this);
     return newObj;
+}
+
+void GimmickSwitch::ResetEscapeCycle() {
+    contactTimer_ = timedTimer_ = 0.0f;
+    wasPressed_ = false;
+    SendActive(false);
 }

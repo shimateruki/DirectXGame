@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "ceacc47b895ad9f22e3f2554dd3499ea",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage1_meadow/Course_path.obj",
+  "version": 1
+}

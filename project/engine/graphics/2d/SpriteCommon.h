@@ -5,22 +5,15 @@
 class DirectXCommon;
 
 /// <summary>
-/// スプライト描画で共有するルートシグネチャとパイプラインを管理する。
+/// Sprite描画で共有するルートシグネチャとパイプラインを管理する。
 /// </summary>
-// SpriteCommonは、Sprite描画で共通利用するRootSignatureとPipelineStateを管理します。
 class SpriteCommon {
 public:
-    /// <summary>
-    /// DirectX基盤を受け取り、スプライト描画用パイプラインを初期化する。
-    /// </summary>
-        // DirectX共通機能を受け取り、Sprite用GPUパイプラインを作成します。
-void Initialize(DirectXCommon* dxCommon);
+    /// <summary>DirectX基盤からSprite用GPUパイプラインを作成する。</summary>
+    void Initialize(DirectXCommon* dxCommon);
 
-    /// <summary>
-    /// スプライト描画前に共通パイプラインをコマンドリストへ設定する。
-    /// </summary>
-        // Sprite描画前に必要なRootSignatureとPipelineStateをコマンドリストへ設定します。
-void SetPipeline(ID3D12GraphicsCommandList* commandList);
+    /// <summary>Sprite描画用のルートシグネチャとパイプラインを設定する。</summary>
+    void SetPipeline(ID3D12GraphicsCommandList* commandList);
 
     /// <summary>
     /// DirectX基盤を取得する。
@@ -28,17 +21,11 @@ void SetPipeline(ID3D12GraphicsCommandList* commandList);
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:
-    /// <summary>
-    /// スプライト描画用のルートシグネチャを生成する。
-    /// </summary>
-        // Sprite用の定数バッファ、テクスチャ、サンプラ構成を定義します。
-void CreateRootSignature();
+    // 定数バッファ、テクスチャ、サンプラの接続を定義する。
+    void CreateRootSignature();
 
-    /// <summary>
-    /// スプライト描画用のグラフィックスパイプラインを生成する。
-    /// </summary>
-        // Sprite描画に使うブレンド、入力レイアウト、シェーダーパイプラインを作成します。
-void CreatePipeline();
+    // Sprite描画のブレンド、入力レイアウト、シェーダーを設定する。
+    void CreatePipeline();
 
 private:
     // DirectX基盤への参照。SpriteCommonは所有しない。

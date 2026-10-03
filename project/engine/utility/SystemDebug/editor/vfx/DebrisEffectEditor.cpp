@@ -128,6 +128,7 @@ void DebrisEffectEditor::Initialize(SceneManager* sceneManager) {
 }
 
 void DebrisEffectEditor::Update(float deltaTime) {
+    // 設定値の反映とプレビューの進行を、描画とは別の更新処理で行います。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     DebrisEffectManager* manager = DebrisEffectManager::GetInstance();
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
@@ -255,6 +256,7 @@ void DebrisEffectEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_RANDOM " 発生と速度", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragInt("発生数", &config_.spawnCount, 1, 1, 256);
         ImGui::DragFloat3("発生オフセット", &config_.spawnOffset.x, 0.05f);
+        ImGui::DragFloat3("発生範囲の半径 (XYZ)", &config_.spawnBoxHalfExtents.x, 0.05f, 0.0f, 50.0f);
         ImGui::DragFloat3("基準方向", &config_.baseDirection.x, 0.05f);
         ImGui::DragFloat("横方向の散らばり", &config_.horizontalSpread, 0.02f, 0.0f, 4.0f);
         ImGui::DragFloat("上方向 最小", &config_.verticalMin, 0.02f, -1.0f, 3.0f);
@@ -414,6 +416,7 @@ void DebrisEffectEditor::SyncModelBuffersFromConfig() {
 }
 
 void DebrisEffectEditor::SyncConfigFromModelBuffers() {
+    // 編集中の入力バッファを確定したときだけ、保存対象の設定に反映します。
     config_.modelNames.clear();
     std::array<std::array<char, 128>*, 4> buffers = {
         &modelBuffer0_, &modelBuffer1_, &modelBuffer2_, &modelBuffer3_

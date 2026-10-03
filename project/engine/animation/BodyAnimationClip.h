@@ -11,22 +11,33 @@ class BodyAnimationClip {
 public:
     static constexpr int kCurrentVersion = 2;
 
+    /// <summary>指定時刻の移動、回転、拡縮、せん断と次キーへの補間方法。</summary>
     struct Key {
         float time = 0.0f;
         Vector3 translate = { 0.0f, 0.0f, 0.0f };
         Vector3 rotate = { 0.0f, 0.0f, 0.0f };
         Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        Vector3 shear = {};
+        float shearPivotY = 0.0f;
         int easingToNext = 4;
     };
 
+    /// <summary>Evaluateが計算した任意時刻の身体姿勢。</summary>
     struct Sample {
         Vector3 translate = { 0.0f, 0.0f, 0.0f };
         Vector3 rotate = { 0.0f, 0.0f, 0.0f };
         Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        Vector3 shear = {};
+        float shearPivotY = 0.0f;
     };
 
+    /// <summary>クリップのキーと再生時間を初期化する。</summary>
     void Clear();
+
+    /// <summary>指定ファイルから身体アニメーションのキーを読み込む。</summary>
     bool Load(const std::string& filePath);
+
+    /// <summary>指定秒の姿勢を評価してsampleOutへ書く。loopは末尾での折り返しを指定する。</summary>
     bool Evaluate(float timeSeconds, bool loop, Sample& sampleOut) const;
 
     bool IsValid() const { return !keys_.empty() && duration_ > 0.0f; }

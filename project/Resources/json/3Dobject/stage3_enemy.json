@@ -115,7 +115,7 @@
                 "actionMode": 1,
                 "attackPower": 1.6,
                 "colorType": 0,
-                "detectionRange": 36.0,
+                "detectionRange": 90.0,
                 "enemyType": "FalseKingSlime",
                 "fallDuration": 2.0,
                 "gimmickType": "",

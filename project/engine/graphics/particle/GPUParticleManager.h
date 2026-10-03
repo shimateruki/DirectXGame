@@ -9,58 +9,101 @@
 #include <vector>
 #include <DirectXCommon.h>
 
-// GPUParticleManagerは、GPUパーティクルシステムのプリセット、発生、更新、描画を一元管理します。
+/// <summary>GPU パーティクルのプリセット、発生、更新、描画を管理します。</summary>
 class GPUParticleManager {
 public:
-        // エンジン全体で共有するGPUパーティクル管理インスタンスを取得します。
-static GPUParticleManager* GetInstance();
+    /// <summary>エンジンで共有する GPU パーティクル管理インスタンスを取得します。</summary>
+    static GPUParticleManager* GetInstance();
 
-        // GPUパーティクル描画とCompute処理に必要なDirectXリソースを準備します。
-void Initialize(DirectXCommon* dxCommon);
-        // 1フレーム内の発生や更新状態を初期化します。
-void BeginFrame();
-        // 各GPUパーティクルシステムのシミュレーション時間を進めます。
-void Update(float deltaTime);
+    /// <summary>描画と Compute に必要な DirectX リソースを準備します。</summary>
+    void Initialize(DirectXCommon* dxCommon);
+
+    /// <summary>フレーム内の更新済み状態を初期化します。</summary>
+    void BeginFrame();
+
+    /// <summary>全システムのシミュレーション時間を進めます。</summary>
+    void Update(float deltaTime);
+
+    /// <summary>Editor プレビューを指定時間だけ進めます。</summary>
     void UpdateEditorPreviewStep(float deltaTime);
-        // 全GPUパーティクルをカメラ行列と深度情報に合わせて描画します。
-void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
+    /// <summary>カメラ行列と深度情報に合わせて全 GPU パーティクルを描画します。</summary>
+    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
+
+    /// <summary>指定ディレクトリのプリセットを読み込みます。</summary>
     void LoadAllPresets(const std::string& directoryPath);
+
+    /// <summary>登録済みプリセットを破棄してディレクトリから読み直します。</summary>
     void ReloadAllPresets(const std::string& directoryPath);
+
+    /// <summary>名前で指定したプリセットのシステムを事前作成します。</summary>
     void PreloadPresetSystem(const std::string& presetName);
+
+    /// <summary>複数プリセットのシステムを事前作成します。</summary>
     void PreloadPresetSystems(const std::vector<std::string>& presetNames);
 
-        // プリセット名を指定して指定位置へGPUパーティクルを発生させます。
-void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
-    // プリセットの速度量を保ったまま、発生方向だけを実行時の方向へ合わせます。
+    /// <summary>プリセットから指定位置へ粒子を発生させます。</summary>
+    void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+
+    /// <summary>速度の大きさを保ち、粒子の進行方向を指定方向へ合わせて発生させます。</summary>
     void EmitDirected(const std::string& presetName, const Vector3& position, const Vector3& direction,
         float speedScale = 1.0f, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
+
+    /// <summary>一時的な設定から直接粒子を発生させます。</summary>
     void EmitFromConfig(const GPUParticleConfig& config);
 
+    /// <summary>シミュレーションの時間倍率を返します。</summary>
     float GetTimeScale() const { return timeScale_; }
+
+    /// <summary>シミュレーションの時間倍率を設定します。</summary>
     void SetTimeScale(float timeScale) { timeScale_ = timeScale; }
+
+    /// <summary>DirectX リソースの初期化済み状態を返します。</summary>
     bool IsInitialized() const { return dxCommon_ != nullptr; }
+
+    /// <summary>設定に必要な GPU パーティクル容量を計算します。</summary>
     static uint32_t ResolveParticleCapacity(const GPUParticleConfig& config);
 
+    /// <summary>読み込み済みプリセットを返します。</summary>
     const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
 
-        // 自動発生するGPUパーティクルエミッターを開始し、管理IDを返します。
-uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
+    /// <summary>自動発生エミッターを開始し、停止用 ID を返します。</summary>
+    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
+
+    /// <summary>ワールド変換を指定して自動発生エミッターを開始します。</summary>
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
+
+    /// <summary>ID で指定した自動発生エミッターを停止します。</summary>
     void StopAutoEmitter(uint32_t id);
+
+    /// <summary>すべての自動発生エミッターを停止します。</summary>
     void ClearAllAutoEmitters();
-    // エディターの時間シーク時に、保持中のGPU粒子を安全に初期状態へ戻します。
+
+    /// <summary>Editor の時間シークに合わせ、保持中の粒子を初期状態へ戻します。</summary>
     void ResetSimulation();
-    // シーン切り替え時に、GPUバッファを再利用しつつ実行中の粒子と参照だけを初期化します。
+
+    /// <summary>GPU バッファを再利用しつつ、シーン内の実行状態を消去します。</summary>
     void ClearSceneRuntime();
+
+    /// <summary>稼働中のシステムがないか返します。</summary>
     bool IsEmpty() const;
+
+    /// <summary>稼働中のシステム数を返します。</summary>
     int GetActiveSystemCount() const;
+
+    /// <summary>直近の更新に要した CPU 時間をミリ秒で返します。</summary>
     float GetLastUpdateCpuTimeMs() const { return lastUpdateCpuTimeMs_; }
+
+    /// <summary>直近の描画に要した CPU 時間をミリ秒で返します。</summary>
     float GetLastDrawCpuTimeMs() const { return lastDrawCpuTimeMs_; }
+
+    /// <summary>設定から推定される GPU メモリ使用量を返します。</summary>
     size_t GetEstimatedMemoryBytesForConfig(const GPUParticleConfig& config) const;
-    // 背景色を参照する歪みパーティクルが描画対象に含まれるかを返します。
+
+    /// <summary>背景色コピーが必要な歪みパーティクルが含まれるか返します。</summary>
     bool RequiresSceneColorCopy() const;
 
+    /// <summary>メッシュ発生用の頂点バッファとボーン SRV を設定します。</summary>
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         meshVb_ = vb; meshVCount_ = vCount; meshVStride_ = vStride; meshBoneSrv_ = boneSrvIndex;
     }
@@ -68,20 +111,18 @@ uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position)
 private:
     DirectXCommon* dxCommon_ = nullptr;
 
-    // プリセットデータ（司令部が一括管理）
+    // プリセット名から設定を引き、必要な GPU システムを共有します。
     std::map<std::string, GPUParticleConfig> presets_;
     std::string loadedPresetDirectory_;
 
-    // ========================================================
-    // ★ ここが魔法のコア！テクスチャとブレンドモードごとに分割された部隊たち
-    // Key: "TexturePath_BlendModeIndex"
-    // ========================================================
+    // 同じテクスチャとブレンドモードの粒子は 1 つの GPU システムでまとめます。
+    // キーは "TexturePath_BlendModeIndex" です。
     std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> systems_;
 
-    // 内部システム自動取得・作成用
+    // 設定に対応する共有システムを取得し、なければ作成します。
     GPUParticleSystem* GetOrCreateSystem(const GPUParticleConfig& config);
 
-    // オートエミッター関連
+    // 自動発生エミッターの再生状態と管理 ID。
     struct AutoEmitter {
         uint32_t id;
         std::string presetName;

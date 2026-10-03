@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "6d526766d6ee156c7b191b4a9b667ef8",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/StarTower_path.obj",
+  "version": 1
+}

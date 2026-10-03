@@ -1,6 +1,7 @@
 #include "BulletManager.h"
 #include "CollisionManager.h"
 #include "Object3dCommon.h"
+#include <algorithm>
 
 namespace {
 bool IsSpecialMaterial(int32_t materialType) {
@@ -99,7 +100,7 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     uint32_t attr, uint32_t mask,
     const std::string& model, float radius, float life,
     const BulletVisualConfig& visualConfig, float damage,
-    const StatusEffectApplication& statusEffect, DamageType damageType) {
+    const StatusEffectApplication& statusEffect, DamageType damageType, float gravity) {
 
     if (!common_ || !colManager_) {
         return;
@@ -127,18 +128,34 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
             param->effectSoftness = visualConfig.effectSoftness;
             param->effectIntensity = visualConfig.effectIntensity;
             param->billboardScale = visualConfig.billboardScale;
+            if (model == "Characters/magma_hopper") {
+                // 通常弾と同じ描画経路で、液面より下だけを隠す。
+                param->effectScaleY = pos.y - radius * 0.5f;
+            }
         }
     }
 
     bullet->SetColliderType(ColliderType::kSphere);
     bullet->SetCollisionRadius(radius);
     bullet->SetCollisionSize({ radius, radius, radius });
+    if (model == "Characters/magma_hopper" && bullet->GetCollider()) {
+        bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
+        bullet->SetCastShadow(false);
+    }
     bullet->Fire(pos, vel, life, attr, mask, damage, statusEffect, damageType);
+    bullet->SetExplosionRadius(visualConfig.explosionRadius);
+    if (visualConfig.explosionRadius > 0.0f && bullet->GetCollider())
+        bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
+    bullet->SetGravity((std::max)(0.0f, gravity));
     bullet->ConfigureVfx(
         visualConfig.trailPreset,
+        visualConfig.trailSecondaryPreset,
         visualConfig.impactPreset,
+        visualConfig.impactSecondaryPreset,
         visualConfig.trailInterval,
-        visualConfig.trailSpeedScale);
+        visualConfig.trailSpeedScale,
+        visualConfig.trailReverseDirection,
+        visualConfig.impactDirected);
 
     colManager_->AddObject(bullet.get());
     bullets_.push_back(std::move(bullet));

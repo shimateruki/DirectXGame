@@ -1,4 +1,5 @@
 #include "MeshRenderer.h"
+#include "FoliageInteraction.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "CameraManager.h"
@@ -186,15 +187,7 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // 通常描画や特殊マテリアルとはパスが違うため、専用ファイルとして分ける。
 // ========================================================================
 void MeshRenderer::DrawShadow() {
-    Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !shadowWvpResource_) return;
-    drawModel->PrepareComputeSkinning();
-    common_->SetShadowGraphicsCommand();
-    // 影用のパイプラインに変更
-    common_->SetShadowPipelineState();
-
-    // 軽量版のドローコールを呼ぶ
-    drawModel->DrawShadow(shadowWvpResource_.Get(), meshDrawIndex_);
+    DrawShadowOnly();
 }
 
 void MeshRenderer::SetShadowCommonState() {
@@ -205,11 +198,15 @@ void MeshRenderer::SetShadowCommonState() {
 
 void MeshRenderer::DrawShadowOnly() {
     Model* drawModel = ResolveDrawModel();
-    if (!drawModel || !common_ || !shadowWvpResource_) return;
+    if (!drawModel || !common_ || !shadowWvpResource_ || !materialResource_ || !materialData_) return;
     drawModel->PrepareComputeSkinning();
     // Compute実行でルートシグネチャとPSOが変わるため、影描画の状態を復元します。
     common_->SetShadowGraphicsCommand();
-    common_->SetShadowPipelineState();
+    const bool foliage = materialData_->materialType == 30 || materialData_->materialType == 31;
+    common_->SetShadowPipelineState(foliage);
+    auto* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRoot32BitConstants(3, 32, FoliageInteraction::samples.data(), 0);
     drawModel->DrawShadow(shadowWvpResource_.Get(), meshDrawIndex_);
 }
 

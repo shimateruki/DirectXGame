@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "351b045b4c3eb930e382b24241fdd254",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/thunder/tip.png",
+  "version": 1
+}

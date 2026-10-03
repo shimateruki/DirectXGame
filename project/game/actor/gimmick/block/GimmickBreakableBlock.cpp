@@ -6,6 +6,7 @@
 #include <MeshEffectManager.h>
 #include <GPUParticleManager.h>
 #include <DebugConsole.h>
+#include <cmath>
 
 void GimmickBreakableBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -104,7 +105,14 @@ void GimmickBreakableBlock::Break() {
 
     // 屈折マテリアルのガラスは、炎を残さず透明破片と短い閃光で割れた瞬間を見せる。
     if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {
-        DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
+        const bool isGiantGate = GetModelName() == "Stages/star_garden_giant_gate";
+        if (isGiantGate) {
+            const AABB bounds = GetModelWorldAABB();
+            const float groundY = std::isfinite(bounds.min.y) ? bounds.min.y : myPos.y - 4.2f;
+            DebrisEffectManager::GetInstance()->SpawnOnGround("star_garden_gate_glass_shatter", myPos, groundY);
+        } else {
+            DebrisEffectManager::GetInstance()->Spawn("star_garden_glass_shatter", myPos);
+        }
         if (GPUParticleManager::GetInstance()) {
             GPUParticleManager::GetInstance()->Emit("star_garden_glass_shards", myPos);
             GPUParticleManager::GetInstance()->Emit("hit_bomb_flash_core", myPos);

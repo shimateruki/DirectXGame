@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "2e97b673c49c10dfae7634df57d93199",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/continue.png",
+  "version": 1
+}

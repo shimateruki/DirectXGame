@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4ba222ccb23d22dc9a53040709b442d2",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/fire/role.png",
+  "version": 1
+}

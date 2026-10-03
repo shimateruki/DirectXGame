@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bef33f9cf2558a777c4f979e649295a4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/scroll.dds",
+  "version": 1
+}

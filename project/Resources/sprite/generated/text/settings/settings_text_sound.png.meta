@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "badedd4b61c6b3d680a1cc7e332c510b",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/generated/text/settings/settings_text_sound.png",
+  "version": 1
+}

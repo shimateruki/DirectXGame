@@ -1,0 +1,31 @@
+newmtl facet0
+Ka 0.08 0.08 0.08
+Kd 1 0.32 0.04
+Ks 0.025 0.025 0.025
+Ns 8
+d 1
+illum 2
+
+newmtl facet1
+Ka 0.08 0.08 0.08
+Kd 1 0.32 0.04
+Ks 0.025 0.025 0.025
+Ns 8
+d 1
+illum 2
+
+newmtl facet2
+Ka 0.08 0.08 0.08
+Kd 1 0.32 0.04
+Ks 0.025 0.025 0.025
+Ns 8
+d 1
+illum 2
+
+newmtl facet3
+Ka 0.08 0.08 0.08
+Kd 1 0.32 0.04
+Ks 0.025 0.025 0.025
+Ns 8
+d 1
+illum 2

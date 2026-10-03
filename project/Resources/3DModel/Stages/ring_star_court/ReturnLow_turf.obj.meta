@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "155142d20fbc5b0fa1e8a4e99b4111d9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnLow_turf.obj",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "c63a692a1548803fee222f4e1122fbb9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/bed_shrub_4.obj",
+  "version": 1
+}

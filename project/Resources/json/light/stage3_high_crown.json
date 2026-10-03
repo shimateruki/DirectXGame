@@ -10,25 +10,25 @@
         "texture": "Resources/skybox/stage3_high_crown.dds"
     },
     "shadow": {
-        "resolution": 2048,
+        "resolution": 4096,
         "areaSize": 150.0
     },
     "directionalLight": {
         "ambientColor": [
-            0.4,
-            0.45,
-            0.56
+            0.27,
+            0.32,
+            0.41
         ],
         "color": [
             1.0,
-            0.96,
-            0.9,
+            0.95,
+            0.85,
             1.0
         ],
         "direction": [
-            -0.34,
-            -0.85,
-            0.4
+            -0.48,
+            -0.76,
+            0.44
         ],
         "enableFog": 1,
         "fogColor": [
@@ -36,12 +36,12 @@
             0.76,
             0.95
         ],
-        "fogEnd": 330.0,
+        "fogEnd": 540.0,
         "fogHeightMax": 48.0,
         "fogHeightMin": -62.0,
-        "fogStart": 105.0,
-        "intensity": 0.88,
-        "volumetricIntensity": 0.055,
+        "fogStart": 190.0,
+        "intensity": 1.75,
+        "volumetricIntensity": 0.012,
         "volumetricSteps": 24
     },
     "pointLights": [],

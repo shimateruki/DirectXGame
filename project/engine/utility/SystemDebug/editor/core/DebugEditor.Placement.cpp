@@ -27,7 +27,7 @@
 #include <iomanip>
 #include <sstream>
 #include "GhostRecorder.h" 
-#include "CameraEditor.h"
+#include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
 #include "EditorManager.h"
@@ -46,7 +46,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
-#include <PresetManager.h>
+#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
 #include "BuiltInCreatePresetRegistry.h"

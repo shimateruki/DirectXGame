@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include "engine/utility/SystemDebug/editor/core/EditorWindowsText.h"
 #include "Text3DGenerator.h"
 
 #include "BaseScene.h"
@@ -154,23 +155,8 @@ private:
     std::atomic<ULONG> refCount_{ 1 };
 };
 
-std::wstring Utf8ToWide(const std::string& text) {
-    if (text.empty()) return L"";
-    const int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, nullptr, 0);
-    if (size <= 0) return L"";
-    std::wstring result(size - 1, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, result.data(), size);
-    return result;
-}
-
-std::string WideToUtf8(const std::wstring& text) {
-    if (text.empty()) return "";
-    const int size = WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0) return "";
-    std::string result(size - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, result.data(), size, nullptr, nullptr);
-    return result;
-}
+using EditorWindowsText::Utf8ToWide;
+using EditorWindowsText::WideToUtf8;
 
 std::string ToLowerAscii(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {

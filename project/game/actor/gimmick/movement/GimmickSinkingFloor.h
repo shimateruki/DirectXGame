@@ -12,6 +12,9 @@ public:
     std::unique_ptr<Object3d> Clone() const override;
 
 private:
+    void UpdateSubmerging(float deltaTime);
+    int submergePhase_ = 0;
+    float submergeTimer_ = 0.0f;
     Vector3 startPos_ = { 0.0f, 0.0f, 0.0f };
     float contactTimer_ = 0.0f;
     float sinkDepth_ = 2.0f;

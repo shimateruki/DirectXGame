@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "18d0f1ecc4311740d936e3cff329ee2f",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnHigh_soil.obj",
+  "version": 1
+}

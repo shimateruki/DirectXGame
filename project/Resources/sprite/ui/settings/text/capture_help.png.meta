@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "345e3a297d3e8f4da576ccfac025d04e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/capture_help.png",
+  "version": 1
+}

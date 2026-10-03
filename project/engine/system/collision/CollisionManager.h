@@ -6,13 +6,12 @@
 #include <unordered_set>
 #include <vector>
 
-// Vector3iは、空間分割グリッドの整数座標を表す小さな補助構造体です。
+/// <summary>空間分割グリッドの整数座標です。</summary>
 struct Vector3i {
     int x, y, z;
 };
 
-// Object3d ポインタの組み合わせをハッシュ化するための関数オブジェクト
-// PairHashは、衝突判定済みオブジェクトペアをunordered_setで管理するためのハッシュです。
+/// <summary>順序を統一したオブジェクトペアをハッシュ化します。</summary>
 struct PairHash {
     std::size_t operator()(const std::pair<Object3d*, Object3d*>& p) const {
         auto hashA = std::hash<Object3d*>{}(p.first);
@@ -21,10 +20,7 @@ struct PairHash {
     }
 };
 
-/// <summary>
-/// レイキャスト結果を格納する構造体。
-/// </summary>
-// RaycastHitは、レイキャスト結果のヒット有無、対象、位置、距離、法線をまとめます。
+/// <summary>レイキャストで最初に見つかった衝突情報です。</summary>
 struct RaycastHit {
     bool isHit = false;            // 衝突したか。
     Object3d* hitObject = nullptr; // 衝突したオブジェクト。
@@ -33,7 +29,7 @@ struct RaycastHit {
     Vector3 normal;                // 衝突面の法線。
 };
 
-// Physics Queryで対象Layer、Trigger、自己Colliderの除外を共通指定します。
+/// <summary>Physics Query の対象レイヤーや除外条件を指定します。</summary>
 struct PhysicsQueryFilter {
     uint32_t mask = 0xFFFFFFFFu;
     Object3d* ignoredObject = nullptr;
@@ -42,68 +38,72 @@ struct PhysicsQueryFilter {
     bool includeDisabled = false;
 };
 
-// Overlap Queryが返す対象と、Query形状を押し戻す方向を保持します。
+/// <summary>Overlap Query の対象と、押し戻し情報です。</summary>
 struct PhysicsOverlapHit {
     Object3d* object = nullptr;
     CollisionInfo collision;
 };
 
-/// <summary>
-/// オブジェクト同士の衝突判定とレイキャストを管理するクラス。
-/// </summary>
-// CollisionManagerは、Object3dの衝突判定、空間分割、レイキャストをまとめて管理します。
+/// <summary>登録オブジェクトの接触判定と Physics Query を管理します。</summary>
 class CollisionManager {
 public:
-        // エンジン全体で共有する衝突管理インスタンスを取得します。
-static CollisionManager* GetInstance();
+    /// <summary>エンジンで共有する衝突管理インスタンスを取得します。</summary>
+    static CollisionManager* GetInstance();
 
-    /// <summary>
-    /// 登録済みオブジェクト同士の衝突を判定する。
-    /// </summary>
-        // 登録オブジェクトを空間グリッドへ分け、必要な衝突ペアだけを判定します。
-void Update();
+    /// <summary>空間グリッドを使って登録オブジェクトの接触を更新します。</summary>
+    void Update();
 
-        // 指定オブジェクトを衝突管理対象から外します。
-void RemoveObject(Object3d* object);
-        // 指定オブジェクトを衝突管理対象へ追加します。
-void AddObject(Object3d* object);
-        // 登録中の衝突対象と判定キャッシュをすべてクリアします。
-void ClearObjects();
+    /// <summary>オブジェクトを衝突管理対象から外します。</summary>
+    void RemoveObject(Object3d* object);
+
+    /// <summary>オブジェクトを衝突管理対象へ追加します。</summary>
+    void AddObject(Object3d* object);
+
+    /// <summary>登録オブジェクトと接触状態をすべてクリアします。</summary>
+    void ClearObjects();
+
+    /// <summary>静的オブジェクトが変化したことを通知し、次回の再構築を予約します。</summary>
     void MarkStaticGridDirty() { needsStaticGridRebuild_ = true; }
 
-    /// <summary>
-    /// 空間分割グリッドの1辺のサイズを設定する。
-    /// </summary>
-    void SetGridSize(float size) { gridSize_ = size; }
+    /// <summary>空間グリッドのセル幅を設定し、静的グリッドを再構築対象にします。</summary>
+    /// <param name="size">正の有限値で指定するセル幅。無効値は無視します。</param>
+    void SetGridSize(float size);
 
-    /// <summary>
-    /// レイを飛ばし、指定マスクに合うオブジェクトとの最初の衝突を返す。
-    /// </summary>
+    /// <summary>指定レイヤーマスクの対象へレイを飛ばし、最初の衝突を返します。</summary>
     RaycastHit Raycast(const Vector3& start, const Vector3& direction,
         float maxDistance, uint32_t mask = 0xFFFFFFFF);
+
+    /// <summary>Trigger や除外対象も指定して、レイの最初の衝突を返します。</summary>
     RaycastHit Raycast(const Vector3& start, const Vector3& direction,
         float maxDistance, const PhysicsQueryFilter& filter);
 
+    /// <summary>球と重なる対象の押し戻し情報を取得します。</summary>
     std::vector<PhysicsOverlapHit> OverlapSphere(
         const Vector3& center, float radius,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+
+    /// <summary>AABB と重なる対象の押し戻し情報を取得します。</summary>
     std::vector<PhysicsOverlapHit> OverlapAABB(
         const AABB& bounds,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+
+    /// <summary>カプセルと重なる対象の押し戻し情報を取得します。</summary>
     std::vector<PhysicsOverlapHit> OverlapCapsule(
         const Vector3& pointA, const Vector3& pointB, float radius,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+
+    /// <summary>球を方向へ移動させ、最初の衝突を返します。</summary>
     RaycastHit SphereCast(
         const Vector3& start, float radius, const Vector3& direction, float maxDistance,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
+
+    /// <summary>カプセルを方向へ移動させ、最初の衝突を返します。</summary>
     RaycastHit CapsuleCast(
         const Vector3& pointA, const Vector3& pointB, float radius,
         const Vector3& direction, float maxDistance,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
-    /// <summary>
-    /// 登録済みオブジェクト一覧を取得する。
-    /// </summary>
+    /// <summary>登録中のオブジェクト一覧を取得します。</summary>
     const std::list<Object3d*>& GetObjects() const { return objects_; }
 
 private:
@@ -112,33 +112,43 @@ private:
     CollisionManager(const CollisionManager&) = delete;
     CollisionManager& operator=(const CollisionManager&) = delete;
 
-    // グリッドの1辺のサイズ。シーンの広さやオブジェクト密度に合わせて調整する。
+    // セル幅と静的オブジェクト用の再構築フラグは同時に更新します。
     float gridSize_ = 5.0f;
 
+    // ワールド座標とグリッド座標の変換に使用します。
     int64_t GetGridID(const Vector3& pos);
+
+    // ワールド座標を整数のセル座標へ、またセル座標を格納用IDへ変換します。
     Vector3i GetGridIndices(const Vector3& pos);
     int64_t GetGridIDFromIndices(int x, int y, int z);
-        // 2つのObject3dのColliderを比較し、衝突イベントを通知します。
-void CheckCollisionPair(Object3d* objA, Object3d* objB);
+
+    // 2 つの Collider を調べ、当フレームの接触ペアへ登録します。
+    void CheckCollisionPair(Object3d* objA, Object3d* objB);
+
+    // 前フレームとの差から Enter、Stay、Exit を通知します。
     void DispatchContactEvents();
+
+    // 各 Query で共通のレイヤー・親子・Trigger 条件を評価します。
     bool PassesQueryFilter(Object3d* object, const PhysicsQueryFilter& filter) const;
+
+    // レイキャストのオーバーロードから共通処理へ合流します。
     RaycastHit RaycastInternal(
         const Vector3& start, const Vector3& direction, float maxDistance,
         const PhysicsQueryFilter& filter, bool excludePlayerHierarchy) const;
 
-    /// <summary>
-    /// 静的オブジェクトを staticGrid_ に登録する。
-    /// </summary>
-        // 静的オブジェクト用の空間グリッドを再構築します。
-void BuildStaticGrid();
+    // 静的オブジェクトをセルへ登録し直します。
+    void BuildStaticGrid();
 
     std::unordered_map<int64_t, std::list<Object3d*>> staticGrid_;
     bool needsStaticGridRebuild_ = true;
 
 private:
+    // 動的な衝突ペアの候補と、前・現在フレームの接触状態を分けて保持します。
     std::list<Object3d*> objects_;
     std::unordered_map<int64_t, std::list<Object3d*>> grid_;
     std::unordered_set<std::pair<Object3d*, Object3d*>, PairHash> checkedPairs_;
+
+    /// <summary>前後フレームで比較する接触情報とTrigger種別。</summary>
     struct ContactState {
         CollisionInfo firstInfo;
         bool isTrigger = false;

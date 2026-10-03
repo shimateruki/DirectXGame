@@ -559,13 +559,17 @@ void SceneValidator::Refresh() {
 
         if (object->GetGimmickType() == "CopyMemoryStation" && object->param_.has_value()) {
             const auto& parameter = object->param_.value();
-            const std::array<std::string, 3> copyTypes = {
+            const std::array<std::string, 4> copyTypes = {
                 parameter.copyMemoryTypeA,
                 parameter.copyMemoryTypeB,
                 parameter.copyMemoryTypeC,
+                parameter.copyMemoryTypeD,
             };
             std::set<std::string> uniqueTypes;
+            size_t configuredCount = 0;
             for (size_t index = 0; index < copyTypes.size(); ++index) {
+                if (index == 3 && copyTypes[index].empty()) continue;
+                ++configuredCount;
                 if (!IsSupportedCopyMemoryType(copyTypes[index])) {
                     AddIssue(Severity::Error, object, "Copy Memory",
                         "コア" + std::to_string(index + 1) + "のコピー種が未対応です: " + copyTypes[index]);
@@ -574,9 +578,9 @@ void SceneValidator::Refresh() {
                     uniqueTypes.insert(copyTypes[index]);
                 }
             }
-            if (uniqueTypes.size() < copyTypes.size()) {
+            if (uniqueTypes.size() < configuredCount) {
                 AddIssue(Severity::Warning, object, "Copy Memory",
-                    "3つのコアに同じコピー種が重複しています");
+                    "コアに同じコピー種が重複しています");
             }
             if (parameter.copyMemoryActivationRadius <= 0.0f) {
                 AddIssue(Severity::Error, object, "Copy Memory",

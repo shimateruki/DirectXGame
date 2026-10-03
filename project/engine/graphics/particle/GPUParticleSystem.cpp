@@ -225,7 +225,8 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     psoBuilder.SetInputLayout(nullptr, 0);
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+    // 深度はSRVで参照するため、遮蔽判定はピクセルシェーダー側で行います。
+    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
     DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
     psoBuilder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
 

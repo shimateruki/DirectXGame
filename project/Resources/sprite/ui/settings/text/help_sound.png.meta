@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "5611dcf6c8f359aae5cfaa8d958840d4",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/help_sound.png",
+  "version": 1
+}

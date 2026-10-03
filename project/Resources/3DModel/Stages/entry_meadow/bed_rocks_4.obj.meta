@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "0b612d0576ae289b2e9296b6e0da7d22",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/entry_meadow/bed_rocks_4.obj",
+  "version": 1
+}

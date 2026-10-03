@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CinematicSequence.h"
+#include "engine/animation/BodyAnimationClip.h"
 #include "VFXSequencer.h"
 
 #include <functional>
@@ -21,6 +22,8 @@ public:
 
     void Initialize(SceneManager* sceneManager);
     void SetSequence(CinematicSequence* sequence);
+    // 制作空間では実シーンの対象ではなく、役割に対応する仮Objectへ解決する。
+    void SetBindingResolver(std::function<Object3d*(const CinematicObjectBinding&)> resolver) { bindingResolver_ = std::move(resolver); }
     void SetAnimationCallback(AnimationCallback callback) { animationCallback_ = std::move(callback); }
     void SetSignalCallback(SignalCallback callback) { signalCallback_ = std::move(callback); }
     void RefreshBindings();
@@ -34,6 +37,8 @@ public:
 
     void BeginPreview();
     void EndPreview(bool restorePose = true);
+    // 通常のキャラクター更新後、イベントを再発火せず身体姿勢だけを保持する。
+    void ApplyBodyPose();
 
     bool IsPlaying() const { return isPlaying_; }
     bool IsPreviewing() const { return isPreviewing_; }
@@ -41,6 +46,7 @@ public:
     float GetCurrentTime() const { return currentTime_; }
     float GetDuration() const;
     bool GetBasePose(Object3d* object, Vector3& position, Vector3& rotation, Vector3& scale) const;
+    bool GetAnchorPose(Vector3& position, float& yaw) const;
     int GetLastEventId() const { return lastEventId_; }
     Object3d* GetLastEventTarget() const { return lastEventTarget_; }
 
@@ -65,6 +71,10 @@ private:
 
     struct AnimationRuntime {
         Object3d* target = nullptr;
+        BodyAnimationClip bodyClip;
+        BodyAnimationClip::Sample baseVisual;
+        bool bodyCaptured = false;
+        bool restoreOnStop = true;
         AnimatorControllerRuntime::Snapshot animatorSnapshot;
         std::string legacyAnimationName;
         float legacyAnimationTime = 0.0f;
@@ -79,7 +89,7 @@ private:
     void ResetRuntimeEvents();
     void Evaluate(float timeSeconds, float previousTimeSeconds, bool dispatchEvents);
     void EvaluateTransformTrack(size_t index, float timeSeconds, float previousTimeSeconds, bool dispatchEvents);
-    void EvaluateAnimationClips(float timeSeconds);
+    void EvaluateAnimationClips(float timeSeconds, bool bodyOnly = false);
     void DispatchSignals(float timeSeconds, float previousTimeSeconds);
     void UpdateVFXTracks(float timeSeconds, float previousTimeSeconds);
     void UpdateAudioClips(float timeSeconds, float previousTimeSeconds);
@@ -98,12 +108,16 @@ private:
     int activeCameraShotIndex_ = -1;
 
     AnimationCallback animationCallback_;
+    std::function<Object3d*(const CinematicObjectBinding&)> bindingResolver_;
     SignalCallback signalCallback_;
 
     float currentTime_ = 0.0f;
     bool isPlaying_ = false;
     bool isPreviewing_ = false;
     bool isLooping_ = false;
+    bool anchorCaptured_ = false;
+    Vector3 anchorPosition_ = {};
+    float anchorYaw_ = 0.0f;
     int lastEventId_ = 0;
     Object3d* lastEventTarget_ = nullptr;
 };

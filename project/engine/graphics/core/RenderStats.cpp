@@ -19,6 +19,7 @@ void RenderStats::EndFrame() {
         return;
     }
 
+    // Editor が描画中の半端な値を読まないよう、完了フレームを別領域に保持します。
     completedFrame_ = currentFrame_;
     currentPass_ = RenderPass::Other;
     frameActive_ = false;
@@ -129,6 +130,7 @@ const char* RenderStats::GetPassDisplayName(RenderPass pass) {
 }
 
 RenderPassStats* RenderStats::GetCurrentPassStats() {
+    // フレーム外で呼ばれた計測 API は無視し、次フレームへの混入を防ぎます。
     if (!frameActive_) {
         return nullptr;
     }

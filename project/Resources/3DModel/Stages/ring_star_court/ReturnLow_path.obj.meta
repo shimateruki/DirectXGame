@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2190aa0a3068b6df55d6105510d99dd7",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/ReturnLow_path.obj",
+  "version": 1
+}

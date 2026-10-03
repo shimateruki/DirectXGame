@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "f32deb4ce85c6b61a7c2aa7eaf452d17",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/effect/effect_checkpoint_idle_ring.json",
+  "version": 1
+}

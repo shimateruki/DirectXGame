@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "36d41201d8934c8677faf23e8605cf21",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/thunder/move_1_name.png",
+  "version": 1
+}

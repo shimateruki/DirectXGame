@@ -1,9 +1,10 @@
-#pragma once
+﻿#pragma once
 
-#include "AttackTelegraph.h"
+#include "game/actor/enemy/combat/AttackTelegraph.h"
 #include "BaseGimmick.h"
 
 #include <memory>
+#include <array>
 
 // 警告、噴出、休止を周期的に繰り返すマグマ噴出口です。
 class GimmickMagmaGeyser : public BaseGimmick {
@@ -11,16 +12,35 @@ public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
     bool OnCollision(Object3d* other) override;
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
 
     bool HasOwnedSpecialMaterialVisuals() const override;
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
+    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0) override;
 
     std::unique_ptr<Object3d> Clone() const override;
 
+    // 移動床は同じ周期から上昇量を取得し、独立したタイマーを持たない。
+    float GetLiftOffset() const;
+    float GetWarningProgress() const;
+    float GetPressureEnvelope() const;
+
+    void ResetEscapeCycle(bool active);
+    // Timelineの信号で、泡の予兆から垂直噴出を一度だけ行う。
+    void RequestFireballEruption();
+
+
 private:
+    void FireMagmaProjectiles();
+    void UpdateSingleEruption(float deltaTime);
+    bool singleEruption_ = false;
+    bool singleFired_ = false;
+    float singleTimer_ = 0.0f;
+    float GetFireballFlightDuration() const;
+
     enum class Phase {
         Warning,
         Erupting,
@@ -38,6 +58,8 @@ private:
     void UpdateWarningVisual();
     void UpdateEruptionVisual(float deltaTime);
     void UpdateCooldownVisual();
+    void UpdateBoilingVisual(float deltaTime, float pressure, bool visible);
+    void HideBoilingVisuals();
     void ApplyCollisionState(bool enabled, float activeHeight);
     void SpawnEruptionBurst();
     void EmitEruptionParticles();
@@ -56,6 +78,10 @@ private:
 
     AttackTelegraph warningTelegraph_;
     std::unique_ptr<Object3d> eruptionVisual_;
+    // 泡は使い回し、予告中に生成・破棄を繰り返さない。
+    std::array<std::unique_ptr<Object3d>, 4> boilingVisuals_;
+    float boilingClock_ = 0.0f;
+    bool ventInLiquid_ = false;
     Phase phase_ = Phase::Warning;
     float phaseTimer_ = 0.0f;
     float phaseDuration_ = 1.0f;

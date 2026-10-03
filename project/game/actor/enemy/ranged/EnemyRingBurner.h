@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseEnemy.h"
+#include <cstdint>
 
 // 近づくと地面すれすれの熱輪を全方向へ放つ固定砲台です。
 // 天板は足場として使え、上に乗っている間は発射を停止します。
@@ -33,7 +34,8 @@ private:
     void BeginCharge();
     void BeginWave();
     void UpdateCombat(float deltaTime);
-    void UpdateWaveDamage();
+    void UpdateWaveDamage(float previousRadius);
+    void StopWaveEffects();
     void UpdateVisualPose(float deltaTime);
     bool IsTargetStandingOnTop() const;
     float GetPlanarTargetDistance() const;
@@ -53,4 +55,5 @@ private:
     float particleTimer_ = 0.0f;
     bool hasBaseScale_ = false;
     bool waveDamageDone_ = false;
+    uint64_t waveEffectScope_ = 0;
 };

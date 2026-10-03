@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9563ce65a8d4bbb130f3e7e095826f76",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/wind/intro.png",
+  "version": 1
+}

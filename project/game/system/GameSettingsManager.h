@@ -16,11 +16,14 @@ public:
 
     void Initialize();
     void Load();
-    void Save() const;
+    bool Save() const;
 
     float GetBGMVolume() const { return bgmVolume_; }
     float GetSEVolume() const { return seVolume_; }
     float GetCameraSensitivity() const { return cameraSensitivity_; }
+    bool GetCameraInvertX() const { return cameraInvertX_; }
+    bool GetCameraInvertY() const { return cameraInvertY_; }
+    void SetCameraInversion(bool x, bool y) { cameraInvertX_=x; cameraInvertY_=y; }
     StageSelectWeatherMode GetStageSelectWeatherMode() const { return stageSelectWeatherMode_; }
 
     void SetBGMVolume(float volume);
@@ -39,5 +42,7 @@ private:
     float bgmVolume_ = 0.8f;
     float seVolume_ = 0.8f;
     float cameraSensitivity_ = 1.0f;
+    bool cameraInvertX_ = false;
+    bool cameraInvertY_ = false;
     StageSelectWeatherMode stageSelectWeatherMode_ = StageSelectWeatherMode::Auto;
 };

@@ -7,35 +7,33 @@
 class SpriteCommon;
 
 /// <summary>
-/// スプライトフォントを使用してテキストを描画するクラス
+/// フォント画像を文字ごとのSpriteへ分けて描画する。
 /// </summary>
-// Textは、フォントテクスチャを複数Spriteへ分割して文字列として描画する簡易テキストクラスです。
 class Text {
 public:
-        // フォント画像を読み込み、文字Spriteを生成できる状態にします。
-void Initialize(SpriteCommon* common, const std::string& fontTextureName);
-        // 文字列、座標、スケールの変更を各文字Spriteへ反映します。
-void Update();
-        // 生成済みの文字Spriteを順番に描画します。
-void Draw();
+    /// <summary>フォント画像を読み込み、文字Spriteを生成できる状態にする。</summary>
+    void Initialize(SpriteCommon* common, const std::string& fontTextureName);
+
+    /// <summary>文字列、座標、スケールの変更を各文字Spriteへ反映する。</summary>
+    void Update();
+
+    /// <summary>生成済みの文字Spriteを順に描画する。</summary>
+    void Draw();
 
     /// <summary>
-    /// 表示する文字列を設定
+    /// 表示する文字列と必要な文字Sprite数を設定する。
     /// </summary>
-        // 表示する文字列を変更し、必要な文字Sprite数へ調整します。
-void SetString(const std::string& str);
+    void SetString(const std::string& str);
 
     /// <summary>
-    /// 座標を設定
+    /// テキスト全体の左上基準位置を設定する。
     /// </summary>
-        // テキスト全体の左上基準位置を設定します。
-void SetPosition(const Vector2& position);
+    void SetPosition(const Vector2& position);
 
     /// <summary>
-    /// 文字のサイズ（スケール）を設定
+    /// 各文字Spriteに適用する表示倍率を設定する。
     /// </summary>
-        // 各文字Spriteへ適用する表示倍率を設定します。
-void SetScale(const Vector2& scale);
+    void SetScale(const Vector2& scale);
 
 
 private:
@@ -52,6 +50,7 @@ private:
     // フォントテクスチャの1文字分のサイズ
     int fontWidth_ = 16;
     int fontHeight_ = 16;
+
     // フォントテクスチャの横に並んでいる文字数
     int fontCharsPerRow_ = 7;
 };

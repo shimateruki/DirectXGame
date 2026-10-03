@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c016249f0609740d98d9c20e2d6ec233",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/bomb/traits.png",
+  "version": 1
+}

@@ -13,6 +13,7 @@
 
 namespace VFXAuthoringEditor {
 
+/// 曲線キーの補間方法を UI に表示する名前へ変換します。
 inline const char* GetEasingName(VFXCurveEasing easing) {
     switch (easing) {
     case VFXCurveEasing::EaseIn: return "Ease In";
@@ -24,6 +25,7 @@ inline const char* GetEasingName(VFXCurveEasing easing) {
     }
 }
 
+/// 既存キーの最大の空白区間へ新しいキーを入れる時刻を返します。
 template <class TKey>
 float FindInsertionTime(const std::vector<TKey>& keys) {
     if (keys.size() < 2) {
@@ -42,6 +44,7 @@ float FindInsertionTime(const std::vector<TKey>& keys) {
     return std::clamp(insertionTime, 0.001f, 0.999f);
 }
 
+/// 曲線を編集し、変更ごとに apply と Undo 記録を同期します。
 inline bool DrawFloatCurve(
     const char* id,
     VFXFloatCurve& curve,
@@ -163,6 +166,7 @@ inline bool DrawFloatCurve(
     return changed;
 }
 
+/// 色のグラデーションキーを編集し、変更を Undo 可能な単位で適用します。
 inline bool DrawColorGradient(
     const char* id,
     VFXColorGradient& gradient,
@@ -245,6 +249,7 @@ inline bool DrawColorGradient(
     return changed;
 }
 
+/// 距離に応じた VFX の品質設定を編集します。
 inline bool DrawLodSettings(
     const char* id,
     VFXLodSettings& settings,

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4efa4efbfb0920c4418831dee1498a53",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/coaster/deck.obj",
+  "version": 1
+}

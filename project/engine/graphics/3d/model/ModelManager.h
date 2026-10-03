@@ -9,14 +9,11 @@
 class DirectXCommon;
 class ModelCommon;
 
-/// <summary>
-/// モデルの読み込み、再読み込み、共有管理を行うシングルトン。
-/// </summary>
-// ModelManagerは、モデルの読み込み、キャッシュ、名前解決を一元管理します。
+/// <summary>モデルの読み込み、再読み込み、キャッシュ、名前解決を管理する。</summary>
 class ModelManager {
 public:
-        // 共通利用するモデル管理インスタンスを取得します。
-static ModelManager* GetInstance();
+    /// <summary>共通利用するモデル管理インスタンスを取得する。</summary>
+    static ModelManager* GetInstance();
 
     /// <summary>
     /// モデル共通情報を初期化する。
@@ -32,6 +29,7 @@ static ModelManager* GetInstance();
     /// モデル名から読み込み済みモデルを取得し、未読み込みなら読み込む。
     /// </summary>
     Model* LoadModel(const std::string& modelName);
+
     // ファイル解析とテクスチャデコードをCPU側だけ先行し、GPU生成はLoadModelまで遅延します。
     bool PrepareModel(const std::string& modelName);
 
@@ -44,6 +42,7 @@ static ModelManager* GetInstance();
     /// 読み込み済みのモデル名一覧を取得する。
     /// </summary>
     std::vector<std::string> GetLoadedModelNames() const;
+
     // GPUへ読み込まず、Resources/3DModelに存在するモデル候補を列挙します。
     std::vector<std::string> GetAvailableModelNames() const;
 
@@ -55,6 +54,7 @@ static ModelManager* GetInstance();
     ModelCommon* GetModelCommon() const { return modelCommon_.get(); }
 
 private:
+    /// <summary>GPUリソース作成前に読み込んだモデルのCPU側データ。</summary>
     struct PreparedModel {
         std::string directoryPath;
         std::string fileName;

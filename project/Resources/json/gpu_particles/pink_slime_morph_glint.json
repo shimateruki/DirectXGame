@@ -5,7 +5,7 @@
         2.65,
         0.78
     ],
-    "baseSize": 0.026,
+    "baseSize": 0.075,
     "blendModeIndex": 1,
     "colorEaseType": 1,
     "colorIntensity": 2.8,
@@ -15,9 +15,9 @@
         0.34,
         0.42
     ],
-    "emitCount": 10,
+    "emitCount": 5,
     "emitInterval": 0.001,
-    "emitLife": 0.44,
+    "emitLife": 0.85,
     "emitPos": [
         0.0,
         0.0,
@@ -55,11 +55,11 @@
         1.0,
         0.92
     ],
-    "midSize": 0.085,
+    "midSize": 0.13,
     "restitution": 0.0,
     "rotSpeed": 9.0,
     "shapeAngle": 86.0,
-    "shapeRadius": 0.34,
+    "shapeRadius": 0.42,
     "shapeType": 1,
     "sizeEaseType": 1,
     "sizeMidTime": 0.14,

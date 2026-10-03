@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "003ee4c90aff85c1a395aa36bba3ceb1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/copy_band_fire/copy_band_fire.obj",
+  "version": 1
+}

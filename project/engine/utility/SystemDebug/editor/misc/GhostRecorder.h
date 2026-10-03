@@ -123,6 +123,7 @@ private:
     size_t currentFrameIndex_ = 0;
     bool isLoop_ = false;
     bool isRelative_ = true;
+    bool wasEditorPaused_ = false;
 
 
     GenerationParams genParams_;

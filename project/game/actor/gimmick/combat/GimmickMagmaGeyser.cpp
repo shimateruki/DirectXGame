@@ -2,6 +2,8 @@
 #include "GimmickMagmaGeyser.h"
 
 #include "CollisionConfig.h"
+#include "CameraManager.h"
+#include "BulletManager.h"
 #include "EventManager.h"
 #include "GPUParticleManager.h"
 #include "MeshEffectManager.h"
@@ -87,16 +89,34 @@ void GimmickMagmaGeyser::Initialize(Object3dCommon* common, const std::string& m
 
     warningTelegraph_.Initialize(common);
 
+    for (auto& bubble : boilingVisuals_) {
+        bubble = std::make_unique<Object3d>();
+        bubble->Initialize(common);
+        bubble->SetName("MagmaGeyser_Bubble");
+        bubble->SetModel("Primitives/sphere");
+        bubble->SetColliderType(ColliderType::kNone);
+        bubble->SetCollisionAttribute(0);
+        bubble->SetCollisionMask(0);
+        bubble->SetCastShadow(false);
+        bubble->SetMaterialType(9);
+        bubble->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+        bubble->SetIsVisible(false);
+        auto* material = bubble->GetMeshRenderer()->GetWaterParamData();
+        material->effectType = 4.0f;
+        material->waveHeight = 0.0f;
+        material->effectIntensity = 1.0f;
+    }
+
     eruptionVisual_ = std::make_unique<Object3d>();
     eruptionVisual_->Initialize(common);
     eruptionVisual_->SetName("MagmaGeyser_FireColumn");
     eruptionVisual_->SetClassName("Effect");
-    eruptionVisual_->SetModel("Primitives/plane");
+    eruptionVisual_->SetModel("Stages/magma_pressure_column");
     eruptionVisual_->SetColliderType(ColliderType::kNone);
     eruptionVisual_->SetCollisionAttribute(0);
     eruptionVisual_->SetCollisionMask(0);
     eruptionVisual_->SetBlendMode(BlendMode::kNormal);
-    eruptionVisual_->SetMaterialType(11);
+    eruptionVisual_->SetMaterialType(9);
     eruptionVisual_->SetSelectedLighting(0);
     eruptionVisual_->SetEnableLighting(false);
     eruptionVisual_->SetEnableEnvMap(false);
@@ -106,7 +126,7 @@ void GimmickMagmaGeyser::Initialize(Object3dCommon* common, const std::string& m
 
     if (MeshRenderer* renderer = eruptionVisual_->GetMeshRenderer()) {
         if (MeshRenderer::WaterParamForGPU* fire = renderer->GetWaterParamData()) {
-            fire->effectType = 0.0f;
+            fire->effectType = 3.0f;
             fire->waveSpeed = 3.1f;
             fire->waveFrequency = 2.8f;
             fire->effectScale = 1.0f;
@@ -130,6 +150,7 @@ void GimmickMagmaGeyser::Update(float deltaTime) {
     if (!IsPlaying()) {
         ResetOutsidePlay();
         BaseGimmick::Update(deltaTime);
+        UpdateBoilingVisual(deltaTime, 0.18f, true);
         return;
     }
 
@@ -138,6 +159,12 @@ void GimmickMagmaGeyser::Update(float deltaTime) {
     }
 
     const float safeDeltaTime = (std::max)(0.0f, deltaTime);
+    if (singleEruption_) {
+        UpdateSingleEruption(safeDeltaTime);
+        BaseGimmick::Update(deltaTime);
+        UpdateBoilingVisual(safeDeltaTime, std::clamp(singleTimer_ / GetWarningDuration(), 0.0f, 1.0f), singleEruption_ && !singleFired_);
+        return;
+    }
 
     // 遠方の噴出口は警告、当たり判定、パーティクル更新を休止する。
     // プレイヤーが接近した時点で警告フェーズから安全に再開する。
@@ -153,6 +180,7 @@ void GimmickMagmaGeyser::Update(float deltaTime) {
             SetEmissive(baseEmissive_);
         }
         BaseGimmick::Update(deltaTime);
+        UpdateBoilingVisual(0.0f, 0.0f, false);
         return;
     }
 
@@ -176,6 +204,8 @@ void GimmickMagmaGeyser::Update(float deltaTime) {
         SetEmissive(baseEmissive_);
         warningTelegraph_.Update(safeDeltaTime);
         BaseGimmick::Update(deltaTime);
+        // 信号待ちの発射口も弱く泡立て、近づいた時に場所が読めるようにする。
+        UpdateBoilingVisual(safeDeltaTime, 0.04f, true);
         return;
     }
 
@@ -205,15 +235,25 @@ void GimmickMagmaGeyser::Update(float deltaTime) {
     }
 
     BaseGimmick::Update(deltaTime);
+    const float pressure = phase_ == Phase::Warning ? GetWarningProgress() : 0.06f;
+    UpdateBoilingVisual(safeDeltaTime, pressure, phase_ != Phase::Erupting);
 }
 
 void GimmickMagmaGeyser::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     warningTelegraph_.DrawGround(pointLightResource, spotLightResource);
-    BaseGimmick::Draw(pointLightResource, spotLightResource);
+    if (!ventInLiquid_ || GetModelName() != "Stages/magma_vent") {
+        BaseGimmick::Draw(pointLightResource, spotLightResource);
+    }
+}
+
+void GimmickMagmaGeyser::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    if (!ventInLiquid_ || GetModelName() != "Stages/magma_vent") {
+        BaseGimmick::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    }
 }
 
 bool GimmickMagmaGeyser::OnCollision(Object3d* other) {
-    if (!IsPlaying() || !active_ || phase_ != Phase::Erupting || damageCooldownTimer_ > 0.0f) {
+    if (!IsPlaying() || !active_ || (param_ && param_->actionMode != 0) || phase_ != Phase::Erupting || damageCooldownTimer_ > 0.0f) {
         return true;
     }
 
@@ -268,18 +308,53 @@ void GimmickMagmaGeyser::OnSwitchEvent(bool active) {
 
     const bool wasActive = active_;
     active_ = active;
+    if (!active_) HideBoilingVisuals();
     if (active_ && !wasActive && IsPlaying()) {
         BeginWarning();
     }
 }
 
 bool GimmickMagmaGeyser::HasOwnedSpecialMaterialVisuals() const {
-    return GetIsVisible() && eruptionVisual_ && eruptionVisual_->GetIsVisible();
+    if (!GetIsVisible()) return false;
+    if (eruptionVisual_ && eruptionVisual_->GetIsVisible()) return true;
+    for (const auto& bubble : boilingVisuals_) {
+        if (bubble && bubble->GetIsVisible()) return true;
+    }
+    return false;
 }
 
 void GimmickMagmaGeyser::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (!GetIsVisible()) return;
+    for (const auto& bubble : boilingVisuals_) {
+        if (bubble && bubble->GetIsVisible()) bubble->DrawMagma(depthSrvHandle, grabSrvHandle);
+    }
     if (GetIsVisible() && eruptionVisual_ && eruptionVisual_->GetIsVisible()) {
-        eruptionVisual_->DrawFire(depthSrvHandle, grabSrvHandle);
+        if (param_ && param_->actionMode == 2) {
+            if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
+                for (const auto& object : scene->GetObjects()) {
+                    if (object && object->GetGimmickType() == "MovingFloor" && GetEventID() >= 0 &&
+                        object->GetTargetID() == GetEventID()) {
+                        Vector3 scale = eruptionVisual_->GetScale();
+                        scale.y = (std::max)(0.1f, object->GetAABB().min.y - GetMouthPosition().y + 0.15f);
+                        eruptionVisual_->SetScale(scale);
+                        eruptionVisual_->UpdateLocalMatrix();
+                        eruptionVisual_->UpdateWorldMatrix();
+                        break;
+                    }
+                }
+            }
+        }
+        eruptionVisual_->DrawMagma(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+void GimmickMagmaGeyser::DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+    if (!GetIsVisible()) return;
+    for (const auto& bubble : boilingVisuals_) {
+        if (bubble && bubble->GetIsVisible()) bubble->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+    }
+    if (eruptionVisual_ && eruptionVisual_->GetIsVisible()) {
+        eruptionVisual_->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
     }
 }
 
@@ -333,6 +408,7 @@ void GimmickMagmaGeyser::BeginPlayCycle() {
 }
 
 void GimmickMagmaGeyser::ResetOutsidePlay() {
+    singleEruption_ = singleFired_ = false;
     if (initializedForPlay_) {
         SetColor(baseColor_);
         SetEmissive(baseEmissive_);
@@ -364,6 +440,7 @@ void GimmickMagmaGeyser::BeginWarning() {
 }
 
 void GimmickMagmaGeyser::BeginEruption() {
+    HideBoilingVisuals();
     phase_ = Phase::Erupting;
     phaseTimer_ = 0.0f;
     phaseDuration_ = GetEruptionDuration();
@@ -371,7 +448,8 @@ void GimmickMagmaGeyser::BeginEruption() {
     particleTimer_ = 0.0f;
     particleBandIndex_ = 0;
     warningTelegraph_.Hide();
-    SpawnEruptionBurst();
+    if (param_ && param_->actionMode == 1) FireMagmaProjectiles();
+    else SpawnEruptionBurst();
 }
 
 void GimmickMagmaGeyser::BeginCooldown(float duration) {
@@ -407,31 +485,44 @@ void GimmickMagmaGeyser::UpdateWarningVisual() {
 
     SetColor(LerpColor(baseColor_, warningColor, warningStrength));
     SetEmissive(baseEmissive_ + 0.45f + progress * 1.45f + pulse * 0.55f);
-    warningTelegraph_.ShowCircle(
-        GetMouthPosition() + Vector3{ 0.0f, 0.035f, 0.0f },
-        GetGeyserRadius(),
-        progress,
-        { 1.0f, 0.13f, 0.01f, 1.0f });
+    // 円のUIではなく、同じ警告進行度で液面の泡を大きくする。
+    warningTelegraph_.Hide();
     ApplyCollisionState(false, GetGeyserHeight());
 }
 
 void GimmickMagmaGeyser::UpdateEruptionVisual(float deltaTime) {
-    const float progress = std::clamp(phaseTimer_ / phaseDuration_, 0.0f, 1.0f);
-    const float rise = SmoothStep01(progress / 0.16f);
-    const float fall = SmoothStep01((1.0f - progress) / 0.20f);
-    const float envelope = (std::min)(rise, fall);
+    // 火の玉は独立して往復するため、同じ場所に噴射柱を重ねない。
+    if (param_ && param_->actionMode == 1) {
+        if (eruptionVisual_) eruptionVisual_->SetIsVisible(false);
+        ApplyCollisionState(false, GetGeyserHeight());
+        return;
+    }
+    const float envelope = GetPressureEnvelope();
     const float activeHeight = (std::max)(0.18f, GetGeyserHeight() * envelope);
     const float radiusPulse = 0.92f + std::sin(visualTimer_ * 17.0f) * 0.08f;
 
     SetColor(LerpColor(baseColor_, { 1.0f, 0.13f, 0.01f, baseColor_.w }, 0.64f + envelope * 0.24f));
     SetEmissive(baseEmissive_ + 1.25f + envelope * 1.35f);
-    ApplyCollisionState(envelope > 0.08f, activeHeight);
+    // 岩盤駆動と火山弾モードは、噴射柱そのものに攻撃判定を持たせない。
+    ApplyCollisionState(param_->actionMode == 0 && envelope > 0.08f, activeHeight);
 
     if (eruptionVisual_) {
-        const float halfHeight = activeHeight * 0.5f;
         const float visualRadius = GetGeyserRadius() * 0.78f * radiusPulse;
-        eruptionVisual_->SetTranslate(GetMouthPosition() + Vector3{ 0.0f, halfHeight, 0.0f });
-        eruptionVisual_->SetScale({ halfHeight, halfHeight, halfHeight });
+        // 専用メッシュは底面Y=0、上面Y=1。岩盤用は下端まで柱を伸ばす。
+        float columnHeight = activeHeight;
+        if (param_->actionMode == 2) {
+            if (auto* scene = SceneManager::GetInstance()->GetCurrentScene()) {
+                for (const auto& object : scene->GetObjects()) {
+                    if (object && object->GetGimmickType() == "MovingFloor" &&
+                        object->GetTargetID() == GetEventID() && GetEventID() >= 0) {
+                        columnHeight = (std::max)(0.1f, object->GetWorldPosition().y - GetMouthPosition().y - 0.8f);
+                        break;
+                    }
+                }
+            }
+        }
+        eruptionVisual_->SetTranslate(GetMouthPosition());
+        eruptionVisual_->SetScale({ visualRadius, columnHeight, visualRadius });
         eruptionVisual_->SetColor({ 1.0f, 0.18f, 0.018f, 0.68f + envelope * 0.24f });
         eruptionVisual_->SetIsVisible(envelope > 0.015f);
 
@@ -440,7 +531,10 @@ void GimmickMagmaGeyser::UpdateEruptionVisual(float deltaTime) {
                 fire->effectScaleX = std::clamp((visualRadius * 2.0f) / activeHeight, 0.18f, 2.4f);
                 fire->effectScaleY = 1.0f;
                 fire->flowSpeedX = std::sin(visualTimer_ * 1.9f) * 0.14f;
-                fire->flowSpeedY = 0.92f;
+                fire->flowSpeedY = 12.0f;
+                fire->waveHeight = 0.0f;
+                fire->waveFrequency = 2.8f;
+                fire->effectIntensity = 1.45f;
             }
         }
     }
@@ -461,6 +555,107 @@ void GimmickMagmaGeyser::UpdateCooldownVisual() {
     SetColor(LerpColor(baseColor_, { 0.72f, 0.07f, 0.015f, baseColor_.w }, glow));
     SetEmissive(baseEmissive_ + glow * 1.8f);
     ApplyCollisionState(false, GetGeyserHeight());
+}
+
+void GimmickMagmaGeyser::HideBoilingVisuals() {
+    for (auto& bubble : boilingVisuals_) {
+        if (bubble) bubble->SetIsVisible(false);
+    }
+}
+
+void GimmickMagmaGeyser::UpdateBoilingVisual(float deltaTime, float pressure, bool visible) {
+    // マグマ面の実際の高さに合わせ、沈んだ噴出口の四角い縁は描かない。
+    Vector3 surface = GetMouthPosition();
+    ventInLiquid_ = false;
+    const float radius = GetGeyserRadius();
+    auto* manager = SceneManager::GetInstance();
+    auto* scene = manager ? manager->GetCurrentScene() : nullptr;
+    if (scene) {
+        for (const auto& object : scene->GetObjects()) {
+            if (!object || object.get() == this || object->GetMaterialType() != 9 || !object->GetIsVisible()) continue;
+            const AABB bounds = object->GetModelWorldAABB();
+            if (surface.x < bounds.min.x || surface.x > bounds.max.x ||
+                surface.z < bounds.min.z || surface.z > bounds.max.z ||
+                std::abs(bounds.max.y - surface.y) > radius) continue;
+            surface.y = bounds.max.y;
+            ventInLiquid_ = true;
+            break;
+        }
+    }
+    surface.y += 0.025f;
+    if (!visible || !GetIsVisible()) {
+        HideBoilingVisuals();
+        return;
+    }
+
+    float width = 1.0f, height = 1.0f, speed = 0.68f;
+    if (auto* renderer = GetMeshRenderer()) {
+        if (auto* params = renderer->GetWaterParamData()) {
+            width = std::clamp(params->effectScaleX, 0.25f, 2.0f);
+            height = std::clamp(params->effectScaleY, 0.25f, 2.0f);
+            speed = std::clamp(params->waveSpeed, 0.1f, 3.0f);
+        }
+    }
+    pressure = std::clamp(pressure, 0.0f, 1.0f);
+    boilingClock_ = std::fmod(boilingClock_ + (std::max)(0.0f, deltaTime) * speed * (0.9f + pressure * 1.8f), 1000.0f);
+    for (size_t i = 0; i < boilingVisuals_.size(); ++i) {
+        auto& bubble = boilingVisuals_[i];
+        if (!bubble) continue;
+        const float index = static_cast<float>(i);
+        const float cycle = std::fmod(boilingClock_ + index * 0.27f, 1.0f);
+        const float growth = SmoothStep01(cycle / 0.72f);
+        float pop = SmoothStep01((cycle - 0.72f) / 0.28f);
+        float bulge = growth * (1.0f - pop);
+        const float angle = index * 2.399963f + GetRotation().y;
+        Vector3 position = surface;
+        if (i > 0) {
+            position.x += std::cos(angle) * radius * 0.85f * width;
+            position.z += std::sin(angle) * radius * 0.85f * width;
+        }
+        float bubbleRadius = radius * width * (i == 0 ? 0.40f : 0.18f)
+            * (0.70f + pressure * 0.30f) * (0.6f + growth * 0.4f + pop * 0.32f);
+        float bubbleHeight = radius * height * (i == 0 ? 0.30f : 0.19f)
+            * (0.45f + pressure * 0.55f) * bulge;
+        // 噴出直前だけ中央に大きな一泡を溜め、発射・上昇と同時に割る。
+        if (i == 0 && pressure > 0.65f) {
+            const float swell = SmoothStep01((pressure - 0.65f) / 0.35f);
+            bubbleRadius = radius * width * (0.38f + swell * 0.18f);
+            bubbleHeight = radius * height * (0.14f + swell * 0.36f);
+            pop = 0.0f;
+            bulge = 1.0f;
+        }
+        const float safeHeight = (std::max)(0.015f, bubbleHeight);
+        // 球の下半分を液面で切り、浮遊する球ではなく膨らんだ液面にする。
+        position.y -= safeHeight * 0.12f;
+        const bool slimeHead = i == 0 && param_ && param_->actionMode == 1;
+        const char* desiredModel = slimeHead ? "Characters/magma_hopper" : "Primitives/sphere";
+        if (bubble->GetModelName() != desiredModel) bubble->SetModel(desiredModel);
+        if (slimeHead) {
+            // 同じモデルが液面から顔を出し、そのまま噴出へつながる。
+            const float base = std::clamp(param_->healAmount, 0.25f, 2.0f) * 1.3f;
+            position = surface;
+            position.y += base * (-0.08f + pressure * 0.48f);
+            bubble->SetScale({base, base * (0.62f + pressure * 0.24f), base});
+            if (auto* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+                const Vector3 towardCamera = camera->GetEye() - position;
+                if (towardCamera.x * towardCamera.x + towardCamera.z * towardCamera.z > 0.001f)
+                    bubble->SetRotation({0.0f, std::atan2(-towardCamera.x, -towardCamera.z), 0.0f});
+            }
+        } else {
+            bubble->SetScale({bubbleRadius, safeHeight, bubbleRadius});
+            bubble->SetRotation({0.0f, 0.0f, 0.0f});
+        }
+        bubble->SetTranslate(position);
+        bubble->SetIsVisible(slimeHead || bulge > 0.025f);
+        auto* material = bubble->GetMeshRenderer()->GetWaterParamData();
+        material->effectType = slimeHead ? 5.0f : 4.0f;
+        material->effectScaleY = surface.y;
+        material->effectSoftness = pop;
+        material->effectIntensity = 0.90f + pressure * 0.16f;
+        bubble->Update((std::max)(0.0f, deltaTime));
+        bubble->UpdateLocalMatrix();
+        bubble->UpdateWorldMatrix();
+    }
 }
 
 void GimmickMagmaGeyser::ApplyCollisionState(bool enabled, float activeHeight) {
@@ -500,7 +695,9 @@ void GimmickMagmaGeyser::EmitEruptionParticles() {
         return;
     }
 
-    const float height = GetGeyserHeight();
+    // 岩盤用は実際の液柱全体へ飛沫を配置し、根元だけの炎に見せない。
+    const float height = (param_ && param_->actionMode == 2 && eruptionVisual_)
+        ? eruptionVisual_->GetScale().y : GetGeyserHeight() * GetPressureEnvelope();
     const float bandRate = 0.10f + static_cast<float>(particleBandIndex_) * 0.28f;
     const Vector3 position = GetMouthPosition() + Vector3{ 0.0f, height * bandRate, 0.0f };
     const float speedScale = std::clamp(height / 6.5f, 0.85f, 2.2f);
@@ -514,7 +711,19 @@ void GimmickMagmaGeyser::EmitEruptionParticles() {
 
 Vector3 GimmickMagmaGeyser::GetMouthPosition() const {
     const float modelScaleY = (std::max)(0.01f, std::abs(GetScale().y));
-    return GetWorldPosition() + Vector3{ 0.0f, kVentMouthLocalHeight * modelScaleY, 0.0f };
+    Vector3 mouth = GetWorldPosition() + Vector3{ 0.0f, kVentMouthLocalHeight * modelScaleY, 0.0f };
+    // 上昇液面へリンクしたスライムは、泡と発射位置の両方を現在の液面へ合わせる。
+    if (param_ && param_->actionMode == 1 && GetTargetID() >= 0) {
+        auto* manager = SceneManager::GetInstance();
+        auto* scene = manager ? manager->GetCurrentScene() : nullptr;
+        auto* liquid = scene ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
+        if (liquid && liquid->GetGimmickType() == "LiquidLevel") {
+            const AABB bounds = liquid->GetModelWorldAABB();
+            if (mouth.x >= bounds.min.x && mouth.x <= bounds.max.x &&
+                mouth.z >= bounds.min.z && mouth.z <= bounds.max.z) mouth.y = bounds.max.y;
+        }
+    }
+    return mouth;
 }
 
 float GimmickMagmaGeyser::GetWarningDuration() const {
@@ -557,4 +766,99 @@ float GimmickMagmaGeyser::GetSimulationWakeDistance() const {
     return param_.has_value()
         ? std::clamp(param_->maxFallSpeed, 20.0f, 500.0f)
         : kDefaultSimulationWakeDistance;
+}
+
+float GimmickMagmaGeyser::GetPressureEnvelope() const {
+    if (!initializedForPlay_ || !active_ || simulationSleeping_ || phase_ != Phase::Erupting) return 0.0f;
+    const float progress = std::clamp(phaseTimer_ / (std::max)(0.2f, phaseDuration_), 0.0f, 1.0f);
+    return (std::min)(SmoothStep01(progress / 0.25f), SmoothStep01((1.0f - progress) / 0.25f));
+}
+
+float GimmickMagmaGeyser::GetLiftOffset() const {
+    return GetGeyserHeight() * GetPressureEnvelope();
+}
+
+float GimmickMagmaGeyser::GetFireballFlightDuration() const {
+    const float radius = param_ ? std::clamp(param_->healAmount, 0.25f, 2.0f) : 0.65f;
+    const float speed = param_ ? std::clamp(param_->jumpPower, 8.0f, 45.0f) : 20.0f;
+    // 発射中心から見た液面下の消滅位置。球全体が戻ってから消す。
+    return (speed + std::sqrt(speed * speed + 40.0f * radius * 1.8f)) / 20.0f;
+}
+
+void GimmickMagmaGeyser::FireMagmaProjectiles() {
+    if (!param_) return;
+    const float radius = std::clamp(param_->healAmount, 0.25f, 2.0f);
+    const float verticalSpeed = std::clamp(param_->jumpPower, 8.0f, 45.0f);
+    BulletVisualConfig visual;
+    visual.materialType = 9;
+    visual.effectType = 5.0f;
+    visual.waveHeight = 0.0f;
+    visual.color = {1.0f, 1.0f, 1.0f, 1.0f};
+    visual.visualScale = radius * 1.3f;
+    visual.emissive = 1.8f;
+    visual.effectIntensity = 1.0f;
+    visual.billboardScale = 1.0f;
+    visual.trailPreset = "";
+    visual.impactPreset = "magma_slime_rush_splash";
+    visual.trailInterval = 0.10f;
+    // 一つの予兆から一発だけ垂直に噴き出し、重力で同じ場所へ戻す。
+    const Vector3 mouth = GetMouthPosition();
+    const Vector3 spawnPosition = mouth + Vector3{0.0f, radius * 0.5f, 0.0f};
+    BulletManager::GetInstance()->Fire(spawnPosition, {0.0f, verticalSpeed, 0.0f},
+        CollisionAttribute::kEnemyAttack, CollisionAttribute::kPlayer | kAllSolid,
+        "Characters/magma_hopper", radius, GetFireballFlightDuration(),
+        visual, GetDamage(), {}, DamageType::Fire, 20.0f);
+    if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
+        particles->Emit("magma_slime_rush_splash", mouth);
+    }
+}
+
+float GimmickMagmaGeyser::GetWarningProgress() const {
+    if (!initializedForPlay_ || !active_ || simulationSleeping_ || phase_ != Phase::Warning) return 0.0f;
+    return std::clamp(phaseTimer_ / (std::max)(0.2f, phaseDuration_), 0.0f, 1.0f);
+}
+
+void GimmickMagmaGeyser::ResetEscapeCycle(bool active) {
+    HideBoilingVisuals();
+    boilingClock_ = 0.0f;
+    singleEruption_ = singleFired_ = false;
+    if (!initializedForPlay_) BeginPlayCycle();
+    // 待機からの復帰で個別の初回遅延を上書きしないようにします。
+    simulationSleeping_ = false;
+    active_ = active;
+    damageCooldownTimer_ = particleTimer_ = visualTimer_ = 0.0f;
+    particleBandIndex_ = 0;
+    warningTelegraph_.Hide();
+    if (eruptionVisual_) eruptionVisual_->SetIsVisible(false);
+    ApplyCollisionState(false, GetGeyserHeight());
+    BeginCooldown(active ? (std::max)(0.05f, GetInitialDelay()) : GetCooldownDuration());
+}
+
+void GimmickMagmaGeyser::RequestFireballEruption() {
+    if (!IsPlaying() || singleEruption_) return;
+    if (!initializedForPlay_) BeginPlayCycle();
+    singleTimer_ = 0.0f;
+    singleEruption_ = true;
+    singleFired_ = false;
+    active_ = false;
+    warningTelegraph_.Hide();
+    ApplyCollisionState(false, GetGeyserHeight());
+    if (eruptionVisual_) eruptionVisual_->SetIsVisible(false);
+}
+
+void GimmickMagmaGeyser::UpdateSingleEruption(float deltaTime) {
+    singleTimer_ += deltaTime;
+    const float warning = GetWarningDuration();
+    if (!singleFired_ && singleTimer_ >= warning) {
+        FireMagmaProjectiles();
+        singleFired_ = true;
+    }
+    // 横方向の着弾予告は出さず、発射口の泡だけで予告する。
+    warningTelegraph_.Hide();
+    const float progress = std::clamp(singleTimer_ / warning, 0.0f, 1.0f);
+    SetEmissive(baseEmissive_ + (singleFired_ ? 0.0f : progress * 1.5f));
+    if (singleTimer_ >= warning + GetFireballFlightDuration()) {
+        singleEruption_ = false;
+        SetEmissive(baseEmissive_);
+    }
 }

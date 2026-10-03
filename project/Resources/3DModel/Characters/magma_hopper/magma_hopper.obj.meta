@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "d1df0c4dd04e5454b77898441e092240",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/magma_hopper/magma_hopper.obj",
+  "version": 1
+}

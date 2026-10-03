@@ -4,10 +4,7 @@
 
 class Object3d;
 
-// ===================================================
-// トレイルエミッターの設定データ
-// ===================================================
-// TrailEmitterConfigは、移動軌跡に沿って発生させるVFXのプリセットと発生条件をまとめます。
+/// <summary>移動軌跡に沿うVFXのプリセットと発生条件。</summary>
 struct TrailEmitterConfig {
     std::string meshEffectPreset;             // エフェクトJSONファイル名 (拡張子なし, 空=無効)
     std::string gpuParticlePreset;            // GPUパーティクルプリセット名 (空=無効)
@@ -18,35 +15,30 @@ struct TrailEmitterConfig {
     bool        autoOrient    = true;         // 移動方向に向きを自動合わせするか
 };
 
-// ===================================================
-// TrailEmitter
-//   対象Object3dの移動軌跡に沿って、一定距離ごとに
-//   メッシュエフェクト / GPUパーティクルを発生させる。
-//
-//   使い方:
-//     emitter.Start(swordTipObject);  // 攻撃開始時
-//     emitter.Update(dt);             // 毎フレーム
-//     emitter.Stop();                 // 攻撃終了時
-// ===================================================
-// TrailEmitterは、対象Object3dの移動距離に応じて軌跡エフェクトを連続発生させます。
+/// <summary>対象の移動距離に応じてメッシュ・GPUパーティクルの軌跡を発生させる。</summary>
+/// <remarks>Startで追跡し、毎フレームUpdate、終了時にStopを呼ぶ。</remarks>
 class TrailEmitter {
 public:
-    // 追跡開始 (攻撃モーション開始時などに呼ぶ)
-        // 追跡対象を設定し、軌跡エフェクトの発生を開始します。
-void Start(Object3d* target);
+    /// <summary>追跡対象を設定し、軌跡の発生を開始する。</summary>
+    /// <param name="target">移動を追跡するObject3d。所有しない。</param>
+    void Start(Object3d* target);
 
-    // 追跡停止
-        // 軌跡エフェクトの発生を停止します。
-void Stop();
+    /// <summary>軌跡の発生を停止する。</summary>
+    void Stop();
 
-    // 毎フレーム呼ぶ
-        // 対象の移動距離を測り、条件を満たしたらVFXを発生させます。
-void Update(float deltaTime);
+    /// <summary>対象の移動距離を調べ、設定距離ごとにVFXを発生させる。</summary>
+    void Update(float deltaTime);
 
+    /// <summary>追跡中かを返す。</summary>
     bool IsActive() const { return isActive_; }
 
+    /// <summary>編集可能な発生設定を返す。</summary>
     TrailEmitterConfig&       GetConfig()       { return config_; }
+
+    /// <summary>現在の発生設定を返す。</summary>
     const TrailEmitterConfig& GetConfig() const { return config_; }
+
+    /// <summary>最後にエフェクトを発生させた位置を返す。</summary>
     Vector3 GetLastEmitPos() const { return lastEmitPos_; }
 
 private:

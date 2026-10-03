@@ -40,7 +40,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -66,12 +66,12 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.04,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_arena.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_ArenaVisual",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
@@ -96,12 +96,12 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.72,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.3
             ],
             "tag": "",
             "targetID": -1,
@@ -152,7 +152,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -178,12 +178,12 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.03,
-            "modelName": "Stages/high_crown_background/high_crown_foundation.obj",
+            "metallic": 0.0,
+            "modelName": "Stages/high_crown/high_crown_battle_foundation.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Background_Foundation",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
@@ -208,12 +208,12 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.72,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.3
             ],
             "tag": "",
             "targetID": -1,
@@ -376,7 +376,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -402,12 +402,12 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.03,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown_background/high_crown_horizon_citadel.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Background_HorizonCitadel",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
@@ -432,7 +432,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.72,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -488,7 +488,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.18,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -514,19 +514,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.03,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown_background/high_crown_entrance_citadel.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Background_EntranceCitadel",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 0.0,
-                0.0,
-                0.0
+                -0.78,
+                10.2
             ],
             "quaternion": [
                 0.0,
@@ -544,7 +544,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.72,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -3902,7 +3902,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.24,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -3928,12 +3928,12 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_throne.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Throne",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
@@ -3958,7 +3958,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.68,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -3995,9 +3995,9 @@
                     0.0
                 ],
                 "size": [
-                    39.2,
+                    54.88,
                     0.7,
-                    6.0
+                    7.800000000000001
                 ],
                 "type": 3
             },
@@ -4107,9 +4107,9 @@
                     0.0
                 ],
                 "size": [
-                    37.7,
+                    52.78,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4164,7 +4164,7 @@
             "position": [
                 0.0,
                 0.0,
-                -9.0
+                -11.700000000000001
             ],
             "quaternion": [
                 0.0,
@@ -4219,9 +4219,9 @@
                     0.0
                 ],
                 "size": [
-                    37.7,
+                    52.78,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4276,7 +4276,7 @@
             "position": [
                 0.0,
                 0.0,
-                9.0
+                11.700000000000001
             ],
             "quaternion": [
                 0.0,
@@ -4331,9 +4331,9 @@
                     0.0
                 ],
                 "size": [
-                    35.4,
+                    49.559999999999995,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4388,7 +4388,7 @@
             "position": [
                 0.0,
                 0.0,
-                -15.0
+                -19.5
             ],
             "quaternion": [
                 0.0,
@@ -4443,9 +4443,9 @@
                     0.0
                 ],
                 "size": [
-                    35.4,
+                    49.559999999999995,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4500,7 +4500,7 @@
             "position": [
                 0.0,
                 0.0,
-                15.0
+                19.5
             ],
             "quaternion": [
                 0.0,
@@ -4555,9 +4555,9 @@
                     0.0
                 ],
                 "size": [
-                    31.2,
+                    43.68,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4612,7 +4612,7 @@
             "position": [
                 0.0,
                 0.0,
-                -21.0
+                -27.3
             ],
             "quaternion": [
                 0.0,
@@ -4667,9 +4667,9 @@
                     0.0
                 ],
                 "size": [
-                    31.2,
+                    43.68,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4724,7 +4724,7 @@
             "position": [
                 0.0,
                 0.0,
-                21.0
+                27.3
             ],
             "quaternion": [
                 0.0,
@@ -4779,9 +4779,9 @@
                     0.0
                 ],
                 "size": [
-                    24.0,
+                    33.599999999999994,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4836,7 +4836,7 @@
             "position": [
                 0.0,
                 0.0,
-                -27.0
+                -35.1
             ],
             "quaternion": [
                 0.0,
@@ -4891,9 +4891,9 @@
                     0.0
                 ],
                 "size": [
-                    24.0,
+                    33.599999999999994,
                     0.7,
-                    3.0
+                    3.9000000000000004
                 ],
                 "type": 3
             },
@@ -4948,7 +4948,7 @@
             "position": [
                 0.0,
                 0.0,
-                27.0
+                35.1
             ],
             "quaternion": [
                 0.0,
@@ -5003,9 +5003,9 @@
                     0.0
                 ],
                 "size": [
-                    14.0,
+                    19.599999999999998,
                     0.7,
-                    1.5
+                    1.9500000000000002
                 ],
                 "type": 3
             },
@@ -5060,7 +5060,7 @@
             "position": [
                 0.0,
                 0.0,
-                -31.5
+                -40.95
             ],
             "quaternion": [
                 0.0,
@@ -5115,9 +5115,9 @@
                     0.0
                 ],
                 "size": [
-                    14.0,
+                    19.599999999999998,
                     0.7,
-                    1.5
+                    1.9500000000000002
                 ],
                 "type": 3
             },
@@ -5172,7 +5172,7 @@
             "position": [
                 0.0,
                 0.0,
-                31.5
+                40.95
             ],
             "quaternion": [
                 0.0,
@@ -5227,9 +5227,9 @@
                     0.0
                 ],
                 "size": [
-                    7.5,
+                    10.5,
                     0.7,
-                    0.8
+                    1.04
                 ],
                 "type": 3
             },
@@ -5284,7 +5284,7 @@
             "position": [
                 0.0,
                 0.0,
-                -33.2
+                -43.160000000000004
             ],
             "quaternion": [
                 0.0,
@@ -5339,9 +5339,9 @@
                     0.0
                 ],
                 "size": [
-                    7.5,
+                    10.5,
                     0.7,
-                    0.8
+                    1.04
                 ],
                 "type": 3
             },
@@ -5396,7 +5396,7 @@
             "position": [
                 0.0,
                 0.0,
-                33.2
+                43.160000000000004
             ],
             "quaternion": [
                 0.0,
@@ -5470,7 +5470,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -5496,17 +5496,17 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_00",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                39.2,
+                54.88,
                 0.8,
                 0.0
             ],
@@ -5526,12 +5526,12 @@
                 -1.5707963267948966,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -5582,7 +5582,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -5608,19 +5608,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_01",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                38.801,
+                54.3214,
                 0.8,
-                4.72485
+                6.142305
             ],
             "quaternion": [
                 0.0,
@@ -5638,12 +5638,12 @@
                 -1.738955473834986,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -5694,7 +5694,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -5720,19 +5720,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_02",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                37.61212,
+                52.65696799999999,
                 0.8,
-                9.35352
+                12.159576
             ],
             "quaternion": [
                 0.0,
@@ -5750,12 +5750,12 @@
                 -1.9045206917076203,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -5806,7 +5806,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -5832,19 +5832,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_03",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                35.65757,
+                49.920598,
                 0.8,
-                13.79178
+                17.929313999999998
             ],
             "quaternion": [
                 0.0,
@@ -5862,12 +5862,12 @@
                 -2.0653240014087575,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -5918,7 +5918,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -5944,19 +5944,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_04",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                32.97714,
+                46.167995999999995,
                 0.8,
-                17.94928
+                23.334064
             ],
             "quaternion": [
                 0.0,
@@ -5974,12 +5974,12 @@
                 -2.2199085603118087,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6030,7 +6030,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6056,19 +6056,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_05",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                29.62538,
+                41.475531999999994,
                 0.8,
-                21.74138
+                28.263794
             ],
             "quaternion": [
                 0.0,
@@ -6086,12 +6086,12 @@
                 -2.36761319425829,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6142,7 +6142,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6168,19 +6168,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_06",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                25.67054,
+                35.938756,
                 0.8,
-                25.09089
+                32.618157000000004
             ],
             "quaternion": [
                 0.0,
@@ -6198,12 +6198,12 @@
                 -2.5084906125061535,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6254,7 +6254,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6280,19 +6280,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_07",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                21.19312,
+                29.670368,
                 0.8,
-                27.92962
+                36.308506
             ],
             "quaternion": [
                 0.0,
@@ -6310,12 +6310,12 @@
                 -2.643140414821694,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6366,7 +6366,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6392,19 +6392,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_08",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                16.28427,
+                22.797977999999997,
                 0.8,
-                30.19978
+                39.259714
             ],
             "quaternion": [
                 0.0,
@@ -6422,12 +6422,12 @@
                 -2.772531057443384,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6478,7 +6478,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6504,19 +6504,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_09",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                11.04392,
+                15.461488,
                 0.8,
-                31.85517
+                41.411721
             ],
             "quaternion": [
                 0.0,
@@ -6534,12 +6534,12 @@
                 -2.8978532796584826,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6590,7 +6590,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6616,19 +6616,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_13",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -11.04392,
+                -15.461488,
                 0.8,
-                31.85517
+                41.411721
             ],
             "quaternion": [
                 0.0,
@@ -6646,12 +6646,12 @@
                 2.897853279658483,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6702,7 +6702,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6728,19 +6728,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_14",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -16.28427,
+                -22.797977999999997,
                 0.8,
-                30.19978
+                39.259714
             ],
             "quaternion": [
                 0.0,
@@ -6758,12 +6758,12 @@
                 2.7725310574433846,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6814,7 +6814,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6840,19 +6840,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_15",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -21.19312,
+                -29.670368,
                 0.8,
-                27.92962
+                36.308506
             ],
             "quaternion": [
                 0.0,
@@ -6870,12 +6870,12 @@
                 2.6431404148216946,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -6926,7 +6926,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -6952,19 +6952,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_16",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -25.67054,
+                -35.938756,
                 0.8,
-                25.09089
+                32.618157000000004
             ],
             "quaternion": [
                 0.0,
@@ -6982,12 +6982,12 @@
                 2.5084906125061535,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7038,7 +7038,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7064,19 +7064,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_17",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -29.62538,
+                -41.475531999999994,
                 0.8,
-                21.74138
+                28.263794
             ],
             "quaternion": [
                 0.0,
@@ -7094,12 +7094,12 @@
                 2.36761319425829,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7150,7 +7150,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7176,19 +7176,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_18",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -32.97714,
+                -46.167995999999995,
                 0.8,
-                17.94928
+                23.334064
             ],
             "quaternion": [
                 0.0,
@@ -7206,12 +7206,12 @@
                 2.219908560311809,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7262,7 +7262,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7288,19 +7288,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_19",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -35.65757,
+                -49.920598,
                 0.8,
-                13.79178
+                17.929313999999998
             ],
             "quaternion": [
                 0.0,
@@ -7318,12 +7318,12 @@
                 2.065324001408758,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7374,7 +7374,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7400,19 +7400,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_20",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -37.61212,
+                -52.65696799999999,
                 0.8,
-                9.35352
+                12.159576
             ],
             "quaternion": [
                 0.0,
@@ -7430,12 +7430,12 @@
                 1.9045206917076203,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7486,7 +7486,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7512,19 +7512,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_21",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -38.801,
+                -54.3214,
                 0.8,
-                4.72485
+                6.142305
             ],
             "quaternion": [
                 0.0,
@@ -7542,12 +7542,12 @@
                 1.738955473834986,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7598,7 +7598,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7624,17 +7624,17 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_22",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -39.2,
+                -54.88,
                 0.8,
                 0.0
             ],
@@ -7654,12 +7654,12 @@
                 1.5707963267948972,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7710,7 +7710,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7736,19 +7736,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_23",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -38.801,
+                -54.3214,
                 0.8,
-                -4.72485
+                -6.142305
             ],
             "quaternion": [
                 0.0,
@@ -7766,12 +7766,12 @@
                 1.4026371797548076,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7822,7 +7822,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7848,19 +7848,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_24",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -37.61212,
+                -52.65696799999999,
                 0.8,
-                -9.35352
+                -12.159576
             ],
             "quaternion": [
                 0.0,
@@ -7878,12 +7878,12 @@
                 1.2370719618821733,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -7934,7 +7934,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -7960,19 +7960,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_25",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -35.65757,
+                -49.920598,
                 0.8,
-                -13.79178
+                -17.929313999999998
             ],
             "quaternion": [
                 0.0,
@@ -7990,12 +7990,12 @@
                 1.0762686521810358,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8046,7 +8046,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8072,19 +8072,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_26",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -32.97714,
+                -46.167995999999995,
                 0.8,
-                -17.94928
+                -23.334064
             ],
             "quaternion": [
                 0.0,
@@ -8102,12 +8102,12 @@
                 0.9216840932779844,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8158,7 +8158,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8184,19 +8184,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_27",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -29.62538,
+                -41.475531999999994,
                 0.8,
-                -21.74138
+                -28.263794
             ],
             "quaternion": [
                 0.0,
@@ -8214,12 +8214,12 @@
                 0.7739794593315036,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8270,7 +8270,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8296,19 +8296,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_28",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -25.67054,
+                -35.938756,
                 0.8,
-                -25.09089
+                -32.618157000000004
             ],
             "quaternion": [
                 0.0,
@@ -8326,12 +8326,12 @@
                 0.6331020410836399,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8382,7 +8382,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8408,19 +8408,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_29",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -21.19312,
+                -29.670368,
                 0.8,
-                -27.92962
+                -36.308506
             ],
             "quaternion": [
                 0.0,
@@ -8438,12 +8438,12 @@
                 0.4984522387680988,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8494,7 +8494,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8520,19 +8520,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_30",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -16.28427,
+                -22.797977999999997,
                 0.8,
-                -30.19978
+                -39.259714
             ],
             "quaternion": [
                 0.0,
@@ -8550,12 +8550,12 @@
                 0.3690615961464097,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8606,7 +8606,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8632,19 +8632,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_31",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -11.04392,
+                -15.461488,
                 0.8,
-                -31.85517
+                -41.411721
             ],
             "quaternion": [
                 0.0,
@@ -8662,12 +8662,12 @@
                 0.2437393739313104,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8718,7 +8718,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8744,19 +8744,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_32",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -5.57874,
+                -7.810235999999999,
                 0.8,
-                -32.86207
+                -42.720691
             ],
             "quaternion": [
                 0.0,
@@ -8774,12 +8774,12 @@
                 0.12117482441788371,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8830,7 +8830,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8856,19 +8856,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_33",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 -0.0,
                 0.8,
-                -33.2
+                -43.160000000000004
             ],
             "quaternion": [
                 0.0,
@@ -8886,12 +8886,12 @@
                 1.5558012907535252e-16,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -8942,7 +8942,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -8968,19 +8968,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_34",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                5.57874,
+                7.810235999999999,
                 0.8,
-                -32.86207
+                -42.720691
             ],
             "quaternion": [
                 0.0,
@@ -8998,12 +8998,12 @@
                 -0.1211748244178834,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9054,7 +9054,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9080,19 +9080,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_35",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                11.04392,
+                15.461488,
                 0.8,
-                -31.85517
+                -41.411721
             ],
             "quaternion": [
                 0.0,
@@ -9110,12 +9110,12 @@
                 -0.24373937393131004,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9166,7 +9166,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9192,19 +9192,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_36",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                16.28427,
+                22.797977999999997,
                 0.8,
-                -30.19978
+                -39.259714
             ],
             "quaternion": [
                 0.0,
@@ -9222,12 +9222,12 @@
                 -0.3690615961464086,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9278,7 +9278,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9304,19 +9304,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_37",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                21.19312,
+                29.670368,
                 0.8,
-                -27.92962
+                -36.308506
             ],
             "quaternion": [
                 0.0,
@@ -9334,12 +9334,12 @@
                 -0.4984522387680993,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9390,7 +9390,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9416,19 +9416,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_38",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                25.67054,
+                35.938756,
                 0.8,
-                -25.09089
+                -32.618157000000004
             ],
             "quaternion": [
                 0.0,
@@ -9446,12 +9446,12 @@
                 -0.633102041083639,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9502,7 +9502,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9528,19 +9528,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_39",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                29.62538,
+                41.475531999999994,
                 0.8,
-                -21.74138
+                -28.263794
             ],
             "quaternion": [
                 0.0,
@@ -9558,12 +9558,12 @@
                 -0.7739794593315028,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9614,7 +9614,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9640,19 +9640,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_40",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                32.97714,
+                46.167995999999995,
                 0.8,
-                -17.94928
+                -23.334064
             ],
             "quaternion": [
                 0.0,
@@ -9670,12 +9670,12 @@
                 -0.9216840932779846,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9726,7 +9726,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9752,19 +9752,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_41",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                35.65757,
+                49.920598,
                 0.8,
-                -13.79178
+                -17.929313999999998
             ],
             "quaternion": [
                 0.0,
@@ -9782,12 +9782,12 @@
                 -1.076268652181035,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9838,7 +9838,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9864,19 +9864,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_42",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                37.61212,
+                52.65696799999999,
                 0.8,
-                -9.35352
+                -12.159576
             ],
             "quaternion": [
                 0.0,
@@ -9894,12 +9894,12 @@
                 -1.2370719618821726,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -9950,7 +9950,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -9976,19 +9976,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.06,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_wall.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_Wall_43",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                38.801,
+                54.3214,
                 0.8,
-                -4.72485
+                -6.142305
             ],
             "quaternion": [
                 0.0,
@@ -10006,12 +10006,12 @@
                 -1.4026371797548072,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
+                1.4,
                 1.0,
-                1.0,
-                1.0
+                1.4
             ],
             "tag": "",
             "targetID": -1,
@@ -10062,7 +10062,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -10088,19 +10088,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.08,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_tower.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_DecorTower_1",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -31.5,
+                -44.099999999999994,
                 0.8,
-                -20.0
+                -26.0
             ],
             "quaternion": [
                 0.0,
@@ -10118,7 +10118,7 @@
                 0.52,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -10174,7 +10174,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -10200,19 +10200,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.08,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_tower.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_DecorTower_2",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                31.5,
+                44.099999999999994,
                 0.8,
-                -20.0
+                -26.0
             ],
             "quaternion": [
                 0.0,
@@ -10230,7 +10230,7 @@
                 -0.52,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -10286,7 +10286,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -10312,19 +10312,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.08,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_tower.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_DecorTower_3",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -31.5,
+                -44.099999999999994,
                 0.8,
-                19.0
+                24.7
             ],
             "quaternion": [
                 0.0,
@@ -10342,7 +10342,7 @@
                 2.62,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -10398,7 +10398,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -10424,19 +10424,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.08,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_tower.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_DecorTower_4",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                31.5,
+                44.099999999999994,
                 0.8,
-                19.0
+                24.7
             ],
             "quaternion": [
                 0.0,
@@ -10454,7 +10454,7 @@
                 -2.62,
                 0.0
             ],
-            "roughness": 0.7,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -10510,7 +10510,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.2,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -10536,19 +10536,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.04,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_step.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_ApproachStairs",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 0.0,
                 0.0,
-                45.0
+                55.2
             ],
             "quaternion": [
                 0.0,
@@ -10566,7 +10566,7 @@
                 3.141592653589793,
                 0.0
             ],
-            "roughness": 0.8,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -10660,7 +10660,7 @@
             "position": [
                 0.0,
                 0.0,
-                63.5
+                73.7
             ],
             "quaternion": [
                 0.0,
@@ -10772,7 +10772,7 @@
             "position": [
                 0.0,
                 0.0,
-                57.0
+                67.2
             ],
             "quaternion": [
                 0.0,
@@ -10884,7 +10884,7 @@
             "position": [
                 0.0,
                 0.0,
-                54.0
+                64.2
             ],
             "quaternion": [
                 0.0,
@@ -10996,7 +10996,7 @@
             "position": [
                 0.0,
                 0.0,
-                51.0
+                61.2
             ],
             "quaternion": [
                 0.0,
@@ -11108,7 +11108,7 @@
             "position": [
                 0.0,
                 0.0,
-                48.0
+                58.2
             ],
             "quaternion": [
                 0.0,
@@ -11220,7 +11220,7 @@
             "position": [
                 0.0,
                 0.0,
-                45.0
+                55.2
             ],
             "quaternion": [
                 0.0,
@@ -11332,7 +11332,7 @@
             "position": [
                 0.0,
                 0.0,
-                42.0
+                52.2
             ],
             "quaternion": [
                 0.0,
@@ -11444,7 +11444,7 @@
             "position": [
                 0.0,
                 0.0,
-                39.0
+                49.2
             ],
             "quaternion": [
                 0.0,
@@ -11556,7 +11556,7 @@
             "position": [
                 0.0,
                 0.0,
-                36.0
+                46.2
             ],
             "quaternion": [
                 0.0,
@@ -11668,7 +11668,7 @@
             "position": [
                 0.0,
                 0.0,
-                33.0
+                43.2
             ],
             "quaternion": [
                 0.0,
@@ -11742,7 +11742,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
@@ -11768,19 +11768,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.08,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_gate_frame.obj",
             "myEventID": -1,
             "name": "Stage3_HighCrown_BossGateFrame",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 0.0,
                 0.72,
-                33.0
+                43.2
             ],
             "quaternion": [
                 0.0,
@@ -11798,7 +11798,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.66,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -11892,7 +11892,7 @@
             "position": [
                 -7.25,
                 0.72,
-                33.0
+                43.2
             ],
             "quaternion": [
                 0.0,
@@ -12004,7 +12004,7 @@
             "position": [
                 7.25,
                 0.72,
-                33.0
+                43.2
             ],
             "quaternion": [
                 0.0,
@@ -12049,9 +12049,9 @@
             "castShadow": false,
             "collider": {
                 "center": [
-                    0.0,
-                    0.15,
-                    0.0
+                    0,
+                    -0.65,
+                    0
                 ],
                 "rotation": [
                     0.0,
@@ -12059,9 +12059,9 @@
                     0.0
                 ],
                 "size": [
-                    0.72,
-                    0.78,
-                    0.2
+                    0.9,
+                    1.15,
+                    0.22
                 ],
                 "type": 3
             },
@@ -12073,7 +12073,7 @@
                 1.0,
                 1.0
             ],
-            "emissive": 1.0,
+            "emissive": 1.65,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -12100,12 +12100,12 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 22,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "",
+            "modelName": "Gimmicks/crown_stage_gate",
             "myEventID": -1,
             "name": "Stage3_HighCrown_EntranceGate",
             "normalMapPath": "",
@@ -12115,8 +12115,8 @@
             "particleName": "",
             "position": [
                 0.0,
-                -0.82,
-                68.1
+                -0.9079999999999997,
+                78.3
             ],
             "quaternion": [
                 0.0,
@@ -12137,9 +12137,9 @@
             "roughness": 0.52,
             "saveCategory": "Object",
             "scale": [
-                1.0,
-                1.0,
-                1.0
+                1.35,
+                1.35,
+                1.35
             ],
             "tag": "",
             "targetID": -1,
@@ -12362,7 +12362,7 @@
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.38,
+            "envIntensity": 0.32,
             "eventID": 0,
             "gimmickType": "BossGate",
             "gpuParticleName": "",
@@ -12388,19 +12388,19 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.34,
+            "metallic": 0.0,
             "modelName": "Stages/high_crown/high_crown_gate.obj",
             "myEventID": 6103,
             "name": "Stage3_HighCrown_BossGate",
-            "normalMapPath": "Resources/3DModel/Stages/high_crown/high_crown_gate_surface_normal.dds",
-            "ormMapPath": "Resources/3DModel/Stages/high_crown/high_crown_gate_surface_orm.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
                 0.0,
                 0.72,
-                33.0
+                43.2
             ],
             "quaternion": [
                 0.0,
@@ -12418,7 +12418,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.38,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -12644,14 +12644,31 @@
             "blendMode": 0,
             "castShadow": true,
             "collider": {
-                "center": [0.0, 0.95, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "size": [3.1, 1.6, 1.85],
+                "center": [
+                    0.0,
+                    0.95,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    3.1,
+                    1.6,
+                    1.85
+                ],
                 "type": 3
             },
             "collisionAttribute": 16,
             "collisionMask": 1,
-            "color": [1.0, 1.0, 1.0, 1.0],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableLighting": true,
@@ -12672,12 +12689,253 @@
                 "gimmickType": "CopyMemoryStation",
                 "startActive": true
             },
-            "position": [-4.35, -2.4, 62.5],
-            "rotation": [0.0, 1.5707963267948966, 0.0],
+            "position": [
+                -4.35,
+                -2.4,
+                72.7
+            ],
+            "rotation": [
+                0.0,
+                1.5707963267948966,
+                0.0
+            ],
             "roughness": 0.34,
             "saveCategory": "Object",
-            "scale": [0.72, 0.72, 0.72],
+            "scale": [
+                0.72,
+                0.72,
+                0.72
+            ],
             "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": false,
+            "collider": {
+                "center": [
+                    0,
+                    -3.42,
+                    0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.85,
+                    1,
+                    16.85
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "0cb9731f-9db2-547a-b75a-519f4426c7f1",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.22,
+                    0.14,
+                    0.36,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "",
+            "myEventID": -1,
+            "name": "[Collision] Stage3_HighCrown_EntranceCourtyard",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0,
+                0,
+                84.2
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.52,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableLighting": true,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 0.32,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "670cdd13-ea11-5c23-a9e3-6d7f17be2dec",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.22,
+                    0.14,
+                    0.36,
+                    1.0
+                ],
+                "density": 0.0,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/high_crown/high_crown_stair_support.obj",
+            "myEventID": -1,
+            "name": "Stage3_HighCrown_StairSupport",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.0,
+                55.2
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                6.123233995736766e-17
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.141592653589793,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
         }
-    ]
+    ],
+    "crownArenaExpansionV1": {
+        "width": 112,
+        "depth": 88.4,
+        "entranceShift": 10.2
+    }
 }

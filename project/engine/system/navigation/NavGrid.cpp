@@ -32,6 +32,7 @@ Vector3 NormalizePlanar(const Vector3& value) {
 }
 
 bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQueryFilter& filter) {
+    // 不正な値をここで正規化し、以後のセル数計算と障害物膨張に同じ設定を使います。
     settings_ = sourceSettings;
     settings_.cellSize = (std::max)(0.1f, settings_.cellSize);
     settings_.agentRadius = (std::max)(0.05f, settings_.agentRadius);
@@ -66,6 +67,7 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
             continue;
         }
 
+        // エージェント中心が通れる幅を確保するため、障害物側を半径分広げます。
         obstacle.min.x -= settings_.agentRadius;
         obstacle.min.z -= settings_.agentRadius;
         obstacle.max.x += settings_.agentRadius;
@@ -92,6 +94,7 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
 }
 
 bool NavGrid::IsBlocked(int x, int z) const {
+    // 探索中に境界外へ踏み出せないよう、外側は障害物として扱います。
     if (x < 0 || z < 0 || x >= width_ || z >= depth_) return true;
     return blocked_[static_cast<std::size_t>(ToIndex(x, z))] != 0;
 }
@@ -120,6 +123,7 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
         return true;
     }
 
+    // プレイヤーや目標が障害物に重なっていても、近い通行可能セルへ補正します。
     const int maxRadius = (std::max)(width_, depth_);
     for (int radius = 1; radius < maxRadius; ++radius) {
         for (int z = sourceZ - radius; z <= sourceZ + radius; ++z) {
@@ -185,6 +189,7 @@ bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Ve
             const int nextX = x + dx;
             const int nextZ = z + dz;
             if (IsBlocked(nextX, nextZ)) continue;
+            // 斜め移動で障害物の角をすり抜けないよう、隣接する直交セルも確認します。
             if (dx != 0 && dz != 0 && (IsBlocked(x + dx, z) || IsBlocked(x, z + dz))) continue;
 
             const int nextIndex = ToIndex(nextX, nextZ);
@@ -204,6 +209,7 @@ bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Ve
     }
     std::reverse(outPath.begin(), outPath.end());
     SimplifyPath(outPath);
+    // 目標セルが元から通行可能なら、セル中心で止めず入力された XZ 位置まで伸ばします。
     if (exactGoalIsWalkable &&
         (outPath.empty() || PlanarDistanceSquared(outPath.back(), goal) > 0.0001f)) {
         Vector3 exactGoal = goal;

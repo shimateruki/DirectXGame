@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "8ed8975b3fb0564df5c3ce4e299a9a7d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/invert_y.png",
+  "version": 1
+}

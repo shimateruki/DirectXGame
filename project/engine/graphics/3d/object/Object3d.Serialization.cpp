@@ -167,8 +167,9 @@ json Object3d::SerializeFeatureComponents() const {
         payload["path"] = pathMoverComponent_->GetPathName();
         payload["loop"] = pathMoverComponent_->IsLoop();
         payload["relative"] = pathMoverComponent_->IsRelative();
+        payload["rideSequence"] = pathMoverComponent_->GetRideSequence();
     } else {
-        clearKnownPayload(std::string(kPathMoverComponentType), { "path", "loop", "relative" });
+        clearKnownPayload(std::string(kPathMoverComponentType), { "path", "loop", "relative", "rideSequence" });
     }
 
     if (gameplayLinkComponent_) {
@@ -281,6 +282,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
     const json* pathPayload = getPayload(kPathMoverComponentType);
     if (resolvePresence(pathPayload, !legacyPath.empty())) {
         PathMoverComponent* component = EnsurePathMoverComponent();
+        component->SetRideSequence(pathPayload ? pathPayload->value("rideSequence", "") : "");
         component->SetPathName(
             pathPayload && pathPayload->contains("path")
                 ? pathPayload->value("path", "") : legacyPath);
@@ -395,6 +397,18 @@ json Object3d::ExportToJson() {
         if (isManagedCharacter) {
             if (className_ == "Enemy" && !p.enemyType.empty()) {
                 jp["enemyType"] = p.enemyType;
+                // プリセットや再生開始時のスナップショットにも出現条件を保持します。
+                if (p.enemyType == "PrismSlime" || p.enemyType == "MagmaSlime" || p.enemyType == "FalseKingSlime") {
+                    jp["actionMode"] = p.actionMode;
+                    jp["shakeDuration"] = p.shakeDuration;
+                    jp["startActive"] = p.startActive;
+                }
+                // リング攻撃の配置ごとの調整値は共通ステータスとは別に保持する。
+                if (p.enemyType == "RingBurner") {
+                    jp["moveAmount"] = p.moveAmount;
+                    jp["interval"] = p.interval;
+                    jp["shakeDuration"] = p.shakeDuration;
+                }
             }
         } else {
             jp["hp"] = p.hp;
@@ -426,7 +440,11 @@ json Object3d::ExportToJson() {
             jp["copyMemoryTypeA"] = p.copyMemoryTypeA;
             jp["copyMemoryTypeB"] = p.copyMemoryTypeB;
             jp["copyMemoryTypeC"] = p.copyMemoryTypeC;
+            jp["copyMemoryTypeD"] = p.copyMemoryTypeD;
             jp["copyMemoryActivationRadius"] = p.copyMemoryActivationRadius;
+            jp["copyMemoryEssenceScale"] = p.copyMemoryEssenceScale;
+            jp["copyMemoryHoverAmount"] = p.copyMemoryHoverAmount;
+            jp["copyMemoryGlow"] = p.copyMemoryGlow;
             jp["copyMemoryUnlimitedDuration"] = p.copyMemoryUnlimitedDuration;
         }
         if (!jp.empty()) {
@@ -504,6 +522,7 @@ json Object3d::ExportToJson() {
         jw["effectSoftness"] = water->effectSoftness;
         jw["effectIntensity"] = water->effectIntensity;
         jw["billboardScale"] = water->billboardScale;
+        jw["topDownDetail"] = water->topDownDetail;
         d["waterParam"] = jw;
     }
     // 7. アニメーション
@@ -647,7 +666,11 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("copyMemoryTypeA")) p.copyMemoryTypeA = jp["copyMemoryTypeA"].get<std::string>();
         if (jp.contains("copyMemoryTypeB")) p.copyMemoryTypeB = jp["copyMemoryTypeB"].get<std::string>();
         if (jp.contains("copyMemoryTypeC")) p.copyMemoryTypeC = jp["copyMemoryTypeC"].get<std::string>();
+        if (jp.contains("copyMemoryTypeD")) p.copyMemoryTypeD = jp["copyMemoryTypeD"].get<std::string>();
         if (jp.contains("copyMemoryActivationRadius")) p.copyMemoryActivationRadius = (std::max)(0.1f, jp["copyMemoryActivationRadius"].get<float>());
+        if (jp.contains("copyMemoryEssenceScale")) p.copyMemoryEssenceScale = jp["copyMemoryEssenceScale"].get<float>();
+        if (jp.contains("copyMemoryHoverAmount")) p.copyMemoryHoverAmount = jp["copyMemoryHoverAmount"].get<float>();
+        if (jp.contains("copyMemoryGlow")) p.copyMemoryGlow = jp["copyMemoryGlow"].get<float>();
         if (jp.contains("copyMemoryUnlimitedDuration")) p.copyMemoryUnlimitedDuration = jp["copyMemoryUnlimitedDuration"];
         if (!isManagedCharacter) {
             p.maxHp = (std::max)(p.maxHp, 1.0f);
@@ -719,6 +742,7 @@ void Object3d::ImportFromJson(const json& j) {
             if (jw.contains("effectScaleX")) water->effectScaleX = jw["effectScaleX"];
             if (jw.contains("effectScaleY")) water->effectScaleY = jw["effectScaleY"];
             if (jw.contains("effectScaleZ")) water->effectScaleZ = jw["effectScaleZ"];
+            if (jw.contains("topDownDetail")) water->topDownDetail = jw["topDownDetail"];
             if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
             if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
             if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];

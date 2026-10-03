@@ -5,25 +5,29 @@
 #include <d3d12.h>
 #include <stdint.h>
 
-// Skyboxは、シーン背景として表示するキューブマップ用メッシュと描画処理を管理します。
+/// <summary>シーン背景のキューブマップ用メッシュと描画処理を管理する。</summary>
 class Skybox {
 public:
-    // スカイボックス用の頂点構造体 (POSITIONのみ)
-        // スカイボックス用キューブメッシュの頂点情報です。
-struct VertexData {
+    /// <summary>背景用キューブメッシュの頂点位置。</summary>
+    struct VertexData {
         Vector4 position;
     };
 
-        // 共通描画機能とキューブマップテクスチャを受け取り、背景描画を初期化します。
-void Initialize(Object3dCommon* common, uint32_t textureHandle);
+    /// <summary>共通描画機能とキューブマップテクスチャで初期化する。</summary>
+    void Initialize(Object3dCommon* common, uint32_t textureHandle);
+
+    /// <summary>描画に使うキューブマップのハンドルを変更する。</summary>
     void SetTextureHandle(uint32_t textureHandle) { textureHandle_ = textureHandle; }
+
+    /// <summary>現在のキューブマップのハンドルを返す。</summary>
     uint32_t GetTextureHandle() const { return textureHandle_; }
-        // ビュープロジェクション行列を使ってスカイボックスを描画します。
-void Draw(ID3D12Resource* vpResource);
+
+    /// <summary>ビュー・射影行列を使って背景を描画する。</summary>
+    void Draw(ID3D12Resource* vpResource);
 
 private:
-        // 背景用の立方体メッシュとインデックスを作成します。
-void CreateMesh();
+    // 背景用の立方体メッシュとインデックスを作成する。
+    void CreateMesh();
 
 private:
     Object3dCommon* common_ = nullptr;

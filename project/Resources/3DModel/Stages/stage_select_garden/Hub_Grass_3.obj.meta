@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "541117d3baa8933559ab6e5b93b80ea5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/stage_select_garden/Hub_Grass_3.obj",
+  "version": 1
+}

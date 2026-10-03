@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "4b1ae11e1ca030571bee9397a56b34d1",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/magma_lift_rock/magma_lift_rock.obj",
+  "version": 1
+}

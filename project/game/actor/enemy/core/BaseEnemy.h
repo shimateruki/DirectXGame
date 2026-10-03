@@ -1,7 +1,7 @@
 #pragma once
 #include "Character.h"
-#include "AttackTelegraph.h"
-#include "EnemyAttackProfile.h"
+#include "game/actor/enemy/combat/AttackTelegraph.h"
+#include "game/actor/enemy/combat/EnemyAttackProfile.h"
 #include <cstdint>
 #include <memory>
 #include <cstddef>
@@ -35,7 +35,12 @@ virtual void Update(float deltaTime) override;
 virtual bool OnCollision(Object3d* other) override;
 
     // 追跡や攻撃の基準になるターゲットを登録する
-    void SetTarget(Object3d* target) { target_ = target; }
+    void SetTarget(Object3d* target) {
+        if (target_ != target) {
+            bossTargetEngaged_ = false;
+        }
+        target_ = target;
+    }
 
     // シーン演出などで敵のAI・重力・当たり判定を一時停止します。
     void SetDormant(bool dormant);
@@ -53,6 +58,8 @@ virtual void SetCarried(bool isCarried);
 virtual void BeginThrown(const Vector3& initialVelocity);
     bool IsThrownPhysics() const { return isThrownPhysics_; }
     bool IsDefeatEffectPlaying() const { return isDefeatEffectPlaying_; }
+    // 敵本体への通常接触は無害。体を使う技の有効区間だけ威力を返します。
+    float GetActiveBodyAttackDamage() const;
     // 中ボスなど、フック命中演出は受けても持ち運びへ移行しない敵が上書きします。
     virtual bool IsPullImmune() const { return false; }
     // DamageEventを受けた敵へ、攻撃方向に応じた潰れと反発を開始します。
@@ -67,6 +74,8 @@ virtual void BeginThrown(const Vector3& initialVelocity);
 
 
 protected:
+    // 弾・範囲攻撃は独立した判定を使い、本体攻撃を持つ敵だけ上書きします。
+    virtual float GetBodyAttackDamage() const { return 0.0f; }
     void CaptureReplayCustomState(json& state) const override;
     void RestoreReplayCustomState(const json& state) override;
 
@@ -87,10 +96,13 @@ void ShowAttackTelegraphCircle(const Vector3& center, float radius, float progre
     void ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color);
     void ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth, float endWidth, float progress, const Vector4& color);
     void ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color);
+    void ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color);
     void ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color);
     void TriggerAttackTelegraphCue(const Vector4& color = { 1.0f, 0.05f, 0.02f, 1.0f });
     void HideAttackTelegraph();
     bool UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection);
+    void UpdateBossTargetEngagement(float targetDistance);
+    bool IsBossTargetEngaged() const { return bossTargetEngaged_; }
     void CancelNoticeReaction();
     void SpawnDefeatCoinDrops();
     const EnemyAttackDefinition& GetAttackDefinition(const std::string& attackId) const;
@@ -174,6 +186,7 @@ void BeginDefeatEffect();
     std::unique_ptr<AttackTelegraph> attackTelegraph_;
     std::unique_ptr<Object3d> noticeMarkObject_;
     bool wasTargetDetected_ = false;
+    bool bossTargetEngaged_ = false;
     bool isNoticeReactionActive_ = false;
     NoticeReactionKind noticeReactionKind_ = NoticeReactionKind::None;
     float noticeReactionTimer_ = 0.0f;

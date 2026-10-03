@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "545c2a0215a22081d40cb071b72cc40a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/mouse_0.png",
+  "version": 1
+}

@@ -23,6 +23,12 @@ mono_crash.*
 [Rr]eleases/
 x64/
 generated/
+# タイトル・ロード・メニューで実行時参照する生成済み文字画像だけはGit管理する。
+!project/Resources/sprite/generated/
+project/Resources/sprite/generated/*
+!project/Resources/sprite/generated/text/
+project/Resources/sprite/generated/text/*
+!project/Resources/sprite/generated/text/**
 x86/
 [Ww][Ii][Nn]32/
 [Aa][Rr][Mm]/

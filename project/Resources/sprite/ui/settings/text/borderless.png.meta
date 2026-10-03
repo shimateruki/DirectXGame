@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "f222cb16bf02d551d0ae9e0a7a187812",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/settings/text/borderless.png",
+  "version": 1
+}

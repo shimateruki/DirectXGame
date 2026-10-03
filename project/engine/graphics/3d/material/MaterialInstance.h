@@ -49,7 +49,10 @@ struct MaterialInstanceData {
 // MaterialInstanceAssetは、継承可能なMaterial Instance JSONの入出力とObject3dへの適用を担当します。
 class MaterialInstanceAsset final {
 public:
+    /// <summary>オブジェクトの現在のマテリアル設定を共有アセット用データに取り出す。</summary>
     static MaterialInstanceData Capture(const Object3d& object);
+
+    /// <summary>共有アセットのマテリアル設定をオブジェクトへ適用する。</summary>
     static void Apply(const MaterialInstanceData& material, Object3d& object);
 
     // baseAssetを再帰的に解決します。循環参照と深すぎる継承はエラーにします。

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d205aa73abaeea2295dc61346d1d002b",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/scenario/stage1_coaster.json",
+  "version": 1
+}
