@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "DebugEditor.h"
 #include "EditorToolSettings.h"
 #include "game/ui/SettingsMenuOverlay.h"
@@ -116,7 +116,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -389,7 +389,9 @@ namespace {
         if (objects.empty()) return;
 
         std::vector<std::string> reservedNames;
-        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
+        const json& preset = PresetManager::GetInstance()->GetPreset(presetName);
+        const std::string displayName = preset.value("presetDisplayName", GetLeafName(presetName));
+        std::string rootName = MakeUniquePresetObjectName(scene, displayName, reservedNames);
         objects.front()->SetName(rootName);
         reservedNames.push_back(rootName);
 
@@ -454,6 +456,13 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     projectWindow_.Initialize(this, dxCommon);
     PresetEditor::GetInstance()->SetThumbnailProvider([this](const std::string& presetName) {
         return projectWindow_.GetPresetThumbnailGpuPtr(presetName);
+    });
+    PresetEditor::GetInstance()->SetSelectionCallback([this]() {
+        SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
+    });
+    PresetEditor::GetInstance()->SetThumbnailInvalidator([this](const std::string& name) {
+        projectWindow_.InvalidatePresetThumbnail(name);
     });
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
@@ -671,7 +680,7 @@ void DebugEditor::Update() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     EffectPreviewStage::GetInstance()->Update();
-    enemyAttackPreviewWindow_.Update(1.0f / 60.0f);
+    enemyAttackPreviewWindow_.Update(enemyAttackPreviewWindow_.IsCrownMovieMode() ? ImGui::GetIO().DeltaTime : 1.0f / 60.0f);
     animationWorkbench_.Update(1.0f / 60.0f);
     textSpriteGenerator_.Update();
     text3DGenerator_.Update();
@@ -722,6 +731,10 @@ void DebugEditor::Update() {
     }
 
     ClearInvalidSelectedObject();
+
+    // 毎フレーム更新とシーン切替時の参照整理を済ませ、通常Sceneへの入力だけを止めます。
+    // 攻撃編集中も再生時計・隔離空間は更新し続けます。
+    if (enemyAttackPreviewWindow_.IsAuthoringViewportActive()) return;
 
     CameraEditor::GetInstance()->SetGameViewHovered(isGameViewHovered_);
 
@@ -1057,6 +1070,7 @@ void DebugEditor::Update() {
     }
 #endif
 }
+
 // ========================================================================
 // 終了処理
 // ========================================================================
@@ -1541,6 +1555,7 @@ void DebugEditor::DrawHierarchy() {
     hierarchyWindow_.Draw();
     propertyMatrixWindow_.DrawWindow();
 }
+
 // ==========================================================================================
 // 2. 右パネル：Inspector (選択したオブジェクトの詳細設定)
 // ==========================================================================================
@@ -1580,8 +1595,6 @@ void DebugEditor::DrawImGui() {
     TrackInspectorEdit(beforeStates);
 #endif
 }
-
-
 
 #ifdef USE_IMGUI
 void DebugEditor::DrawProjectWindow() {

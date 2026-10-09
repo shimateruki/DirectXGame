@@ -15,10 +15,9 @@ constexpr float kGravity = 18.0f;
 constexpr float kLaunchHopHeight = 1.05f;
 constexpr float kFirstBounceHeight = 0.48f;
 constexpr float kSecondBounceHeight = 0.22f;
-}
+} // namespace
 
-void PlayerGateReturnAnimation::Start(Player* player, const Route& route)
-{
+void PlayerGateReturnAnimation::Start(Player* player, const Route& route) {
     if (player && collisionSuspended_) {
         RestoreCollision(player);
     }
@@ -36,14 +35,13 @@ void PlayerGateReturnAnimation::Start(Player* player, const Route& route)
 
     player->SetIsVisible(true);
     player->SetIsControlActive(false);
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
     SuspendCollision(player);
     player->SetMoveYaw(std::atan2(route_.direction.x, route_.direction.z));
     ApplyPose(player, 0.0f);
 }
 
-void PlayerGateReturnAnimation::Update(Player* player, float deltaTime)
-{
+void PlayerGateReturnAnimation::Update(Player* player, float deltaTime) {
     if (!active_ || !player) {
         return;
     }
@@ -55,68 +53,54 @@ void PlayerGateReturnAnimation::Update(Player* player, float deltaTime)
     if (normalizedTime >= 1.0f) {
         active_ = false;
         finished_ = true;
+        // 帰還先の選択 UI が操作を解放するため、自然終了では衝突だけ戻す。
         ApplyFinishedPose(player, false);
     }
 }
 
-void PlayerGateReturnAnimation::Stop(Player* player, bool restoreControl)
-{
+void PlayerGateReturnAnimation::Stop(Player* player, bool restoreControl) {
     active_ = false;
     finished_ = false;
     ApplyFinishedPose(player, restoreControl);
 }
 
-Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) const
-{
-    Vector3 flat{ direction.x, 0.0f, direction.z };
+Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) const {
+    Vector3 flat{direction.x, 0.0f, direction.z};
     const float lengthSq = flat.x * flat.x + flat.z * flat.z;
     if (lengthSq <= 0.000001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
 
     const float invLength = 1.0f / std::sqrt(lengthSq);
-    return { flat.x * invLength, 0.0f, flat.z * invLength };
+    return {flat.x * invLength, 0.0f, flat.z * invLength};
 }
 
-Vector3 PlayerGateReturnAnimation::Lerp(const Vector3& a, const Vector3& b, float t) const
-{
+Vector3 PlayerGateReturnAnimation::Lerp(const Vector3& a, const Vector3& b, float t) const {
     t = Clamp01(t);
-    return {
-        a.x + (b.x - a.x) * t,
-        a.y + (b.y - a.y) * t,
-        a.z + (b.z - a.z) * t
-    };
+    return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
-Vector3 PlayerGateReturnAnimation::Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const
-{
+Vector3 PlayerGateReturnAnimation::Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3,
+                                          float t) const {
     t = Clamp01(t);
     const float inv = 1.0f - t;
     const float b0 = inv * inv * inv;
     const float b1 = 3.0f * inv * inv * t;
     const float b2 = 3.0f * inv * t * t;
     const float b3 = t * t * t;
-    return {
-        p0.x * b0 + p1.x * b1 + p2.x * b2 + p3.x * b3,
-        p0.y * b0 + p1.y * b1 + p2.y * b2 + p3.y * b3,
-        p0.z * b0 + p1.z * b1 + p2.z * b2 + p3.z * b3
-    };
+    return {p0.x * b0 + p1.x * b1 + p2.x * b2 + p3.x * b3, p0.y * b0 + p1.y * b1 + p2.y * b2 + p3.y * b3,
+            p0.z * b0 + p1.z * b1 + p2.z * b2 + p3.z * b3};
 }
 
-float PlayerGateReturnAnimation::Clamp01(float value) const
-{
-    return std::clamp(value, 0.0f, 1.0f);
-}
+float PlayerGateReturnAnimation::Clamp01(float value) const { return std::clamp(value, 0.0f, 1.0f); }
 
-float PlayerGateReturnAnimation::EaseOutCubic(float value) const
-{
+float PlayerGateReturnAnimation::EaseOutCubic(float value) const {
     value = Clamp01(value);
     const float inv = 1.0f - value;
     return 1.0f - inv * inv * inv;
 }
 
-float PlayerGateReturnAnimation::EaseInOutCubic(float value) const
-{
+float PlayerGateReturnAnimation::EaseInOutCubic(float value) const {
     value = Clamp01(value);
     if (value < 0.5f) {
         return 4.0f * value * value * value;
@@ -125,8 +109,7 @@ float PlayerGateReturnAnimation::EaseInOutCubic(float value) const
     return 1.0f - (f * f * f) * 0.5f;
 }
 
-void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
-{
+void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) {
     if (!player) {
         return;
     }
@@ -146,21 +129,17 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
         const float moveT = EaseOutCubic(phaseT);
         const Vector3 controlA = Lerp(route_.start, route_.gateCenter, 0.46f);
         const Vector3 controlB = Lerp(route_.gateCenter, landing, 0.58f);
-        position = Bezier(
-            route_.start,
-            { controlA.x, controlA.y + 0.30f, controlA.z },
-            { controlB.x, controlB.y + 0.55f, controlB.z },
-            landing,
-            moveT
-        );
+        position = Bezier(route_.start, {controlA.x, controlA.y + 0.30f, controlA.z},
+                          {controlB.x, controlB.y + 0.55f, controlB.z}, landing, moveT);
         const float groundY = route_.end.y;
-        const float fallStartY = (std::max)({ route_.start.y, route_.gateCenter.y, groundY + kLaunchHopHeight });
+        const float fallStartY = (std::max)({route_.start.y, route_.gateCenter.y, groundY + kLaunchHopHeight});
         if (phaseT < kGateExitNoGravityTime) {
             const float gateExitT = EaseOutCubic(Clamp01(phaseT / kGateExitNoGravityTime));
             position.y = route_.start.y + (fallStartY - route_.start.y) * gateExitT;
         } else {
             const float fallT = Clamp01((phaseT - kGateExitNoGravityTime) / (1.0f - kGateExitNoGravityTime));
-            const float fallDuration = (std::max)(kDuration * kLandingPhaseEnd * (1.0f - kGateExitNoGravityTime), 0.01f);
+            const float fallDuration =
+                (std::max)(kDuration * kLandingPhaseEnd * (1.0f - kGateExitNoGravityTime), 0.01f);
             const float fallTime = fallT * fallDuration;
             const float fallHeight = (std::max)(fallStartY - groundY, 0.0f);
             const float landingGravity = (std::max)(kGravity, (fallHeight * 2.0f) / (fallDuration * fallDuration));
@@ -176,11 +155,9 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
         const float launchSquash = 1.0f - Clamp01(phaseT / 0.22f);
         const float airborneStretch = std::sin(phaseT * std::numbers::pi_v<float>);
         const float landingSquash = std::sin(Clamp01((phaseT - 0.78f) / 0.22f) * std::numbers::pi_v<float>);
-        scale = {
-            route_.baseScale.x * (1.0f + launchSquash * 0.20f - airborneStretch * 0.06f + landingSquash * 0.32f),
-            route_.baseScale.y * (1.0f - launchSquash * 0.22f + airborneStretch * 0.20f - landingSquash * 0.38f),
-            route_.baseScale.z * (1.0f + launchSquash * 0.24f - airborneStretch * 0.05f + landingSquash * 0.26f)
-        };
+        scale = {route_.baseScale.x * (1.0f + launchSquash * 0.20f - airborneStretch * 0.06f + landingSquash * 0.32f),
+                 route_.baseScale.y * (1.0f - launchSquash * 0.22f + airborneStretch * 0.20f - landingSquash * 0.38f),
+                 route_.baseScale.z * (1.0f + launchSquash * 0.24f - airborneStretch * 0.05f + landingSquash * 0.26f)};
         pitch = -route_.direction.z * std::sin(phaseT * std::numbers::pi_v<float>) * 0.18f;
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.16f;
     } else if (normalizedTime < kFirstBounceEnd) {
@@ -191,11 +168,9 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
 
         const float stretch = std::sin(phaseT * std::numbers::pi_v<float>);
         const float landingSquash = std::sin(Clamp01((phaseT - 0.72f) / 0.28f) * std::numbers::pi_v<float>);
-        scale = {
-            route_.baseScale.x * (1.0f - stretch * 0.08f + landingSquash * 0.22f),
-            route_.baseScale.y * (1.0f + stretch * 0.18f - landingSquash * 0.28f),
-            route_.baseScale.z * (1.0f - stretch * 0.06f + landingSquash * 0.18f)
-        };
+        scale = {route_.baseScale.x * (1.0f - stretch * 0.08f + landingSquash * 0.22f),
+                 route_.baseScale.y * (1.0f + stretch * 0.18f - landingSquash * 0.28f),
+                 route_.baseScale.z * (1.0f - stretch * 0.06f + landingSquash * 0.18f)};
         pitch = -route_.direction.z * std::sin(phaseT * std::numbers::pi_v<float>) * 0.12f;
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.10f;
     } else {
@@ -207,18 +182,16 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
         const float stretch = std::sin(phaseT * std::numbers::pi_v<float>);
         const float landingSquash = std::sin(Clamp01((phaseT - 0.70f) / 0.30f) * std::numbers::pi_v<float>);
         const float recover = EaseInOutCubic(phaseT);
-        scale = {
-            route_.baseScale.x * (1.0f - stretch * 0.05f + landingSquash * 0.12f) * (1.0f - recover * 0.00f),
-            route_.baseScale.y * (1.0f + stretch * 0.10f - landingSquash * 0.16f),
-            route_.baseScale.z * (1.0f - stretch * 0.04f + landingSquash * 0.10f)
-        };
+        scale = {route_.baseScale.x * (1.0f - stretch * 0.05f + landingSquash * 0.12f) * (1.0f - recover * 0.00f),
+                 route_.baseScale.y * (1.0f + stretch * 0.10f - landingSquash * 0.16f),
+                 route_.baseScale.z * (1.0f - stretch * 0.04f + landingSquash * 0.10f)};
         pitch = -route_.direction.z * std::sin(phaseT * std::numbers::pi_v<float>) * 0.06f;
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.05f;
     }
 
     player->SetIsVisible(true);
     player->SetIsControlActive(false);
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetMoveYaw(std::atan2(route_.direction.x, route_.direction.z));
 
     if (Transform* transform = player->GetTransform()) {
@@ -232,13 +205,12 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime)
     player->UpdateWorldMatrix();
 }
 
-void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreControl)
-{
+void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreControl) {
     if (!player) {
         return;
     }
 
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetIsVisible(true);
     RestoreCollision(player);
     if (restoreControl) {
@@ -256,8 +228,7 @@ void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreCo
     player->UpdateWorldMatrix();
 }
 
-void PlayerGateReturnAnimation::SuspendCollision(Player* player)
-{
+void PlayerGateReturnAnimation::SuspendCollision(Player* player) {
     if (!player || collisionSuspended_) {
         return;
     }
@@ -271,8 +242,7 @@ void PlayerGateReturnAnimation::SuspendCollision(Player* player)
     collisionSuspended_ = true;
 }
 
-void PlayerGateReturnAnimation::RestoreCollision(Player* player)
-{
+void PlayerGateReturnAnimation::RestoreCollision(Player* player) {
     if (!player || !collisionSuspended_) {
         return;
     }

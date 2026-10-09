@@ -18,7 +18,7 @@ constexpr float kDefaultFallDuration = 2.0f;
 constexpr float kDefaultFallGravity = 38.0f;
 constexpr float kReturnDelaySeconds = 5.0f;
 constexpr int kDefaultHazardCount = 4;
-}
+} // namespace
 
 void GimmickHazardRideFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -26,8 +26,8 @@ void GimmickHazardRideFloor::Initialize(Object3dCommon* common, const std::strin
     SetClassName("Gimmick");
     SetGimmickType("HazardRideFloor");
     SetName("Gimmick_HazardRideFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetStatic(false);
 
     if (!param_.has_value()) {
@@ -66,10 +66,10 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         const float delay = GetStartDelay();
         const float normalized = delay > 0.0f ? (std::min)(stateTimer_ / delay, 1.0f) : 1.0f;
         const float intensity = 0.025f + normalized * 0.045f;
-        GetTransform()->translate.x = startPosition_.x +
-            (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
-        GetTransform()->translate.z = startPosition_.z +
-            (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        GetTransform()->translate.x =
+            startPosition_.x + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        GetTransform()->translate.z =
+            startPosition_.z + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
         if (stateTimer_ >= delay) {
             GetTransform()->translate = startPosition_;
             ChangeState(State::Moving);
@@ -93,10 +93,8 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         const float intensity = 0.04f + (std::min)(stateTimer_ / GetEndWarningDuration(), 1.0f) * 0.08f;
         const Vector3 endPosition = startPosition_ + GetTravelDirection() * GetTravelDistance();
         GetTransform()->translate = endPosition;
-        GetTransform()->translate.x +=
-            (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
-        GetTransform()->translate.z +=
-            (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        GetTransform()->translate.x += (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        GetTransform()->translate.z += (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
         if (stateTimer_ >= GetEndWarningDuration()) {
             ChangeState(State::Falling);
         }
@@ -145,9 +143,7 @@ bool GimmickHazardRideFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-void GimmickHazardRideFloor::OnTrigger() {
-    BeginRide();
-}
+void GimmickHazardRideFloor::OnTrigger() { BeginRide(); }
 
 std::unique_ptr<Object3d> GimmickHazardRideFloor::Clone() const {
     auto clone = std::make_unique<GimmickHazardRideFloor>();
@@ -200,8 +196,8 @@ void GimmickHazardRideFloor::ResetForRetry() {
     nextHazardIndex_ = 0;
     frameDelta_ = {};
     SetIsVisible(true);
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     GetTransform()->translate = startPosition_;
     GetTransform()->rotate = startRotation_;
     GetTransform()->isQuaternionMaster = false;
@@ -213,8 +209,7 @@ void GimmickHazardRideFloor::ChangeState(State nextState) {
 
     if (state_ == State::Falling) {
         fallVelocityY_ = 0.0f;
-    }
-    else if (state_ == State::Hidden) {
+    } else if (state_ == State::Hidden) {
         SetIsVisible(false);
         SetCollisionAttribute(0);
         SetCollisionMask(0);
@@ -222,13 +217,11 @@ void GimmickHazardRideFloor::ChangeState(State nextState) {
     }
 }
 
-bool GimmickHazardRideFloor::ShouldReturnAfterRide() const {
-    return param_.has_value() && param_->returnOnOff;
-}
+bool GimmickHazardRideFloor::ShouldReturnAfterRide() const { return param_.has_value() && param_->returnOnOff; }
 
 Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
     const float yaw = startRotation_.y;
-    Vector3 direction = { std::cos(yaw), 0.0f, std::sin(yaw) };
+    Vector3 direction = {std::cos(yaw), 0.0f, std::sin(yaw)};
     if (param_.has_value() && param_->actionMode == 1) {
         direction = direction * -1.0f;
     }

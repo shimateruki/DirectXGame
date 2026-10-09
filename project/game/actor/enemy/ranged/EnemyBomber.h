@@ -5,7 +5,7 @@
 
 // 距離を保ちながら爆弾を生成して投げる、ボム使いの敵。
 class EnemyBomber : public BaseEnemy {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
@@ -16,18 +16,15 @@ public:
         SetScale(scale);
     }
 
-    void SetSpawnCallback(std::function<void(std::unique_ptr<BaseEnemy>)> callback) {
-        spawnCallback_ = callback;
-    }
+    // 生成した爆弾の所有権を受け取るコールバックです。
+    // 未登録時は現在シーンへ直接追加するため、生成先を制御する場合に登録します。
+    void SetSpawnCallback(std::function<void(std::unique_ptr<BaseEnemy>)> callback) { spawnCallback_ = callback; }
 
-private:
-    enum class ThrowState {
-        Idle,
-        Windup,
-        LeapThrow,
-        Landing
-    };
+  private:
+    // 溜め、跳躍投擲、着地までの攻撃段階です。
+    enum class ThrowState { Idle, Windup, LeapThrow, Landing };
 
+    // 移動制限と敵の射程を先に評価し、投擲状態を進めます。
     bool UpdateBlockedState(float deltaTime);
     void EnsureBaseScaleForAnimation();
     void UpdateThrowTimers(float deltaTime);
@@ -38,6 +35,7 @@ private:
     void UpdateFacing(const Vector3& direction);
     void UpdateFootwork(float deltaTime, const Vector3& direction, float distance, bool inRange);
     void ApplySlimeAnimation(float deltaTime);
+    // 手元の爆弾は予備動作の表示用で、実際の爆弾生成とは分けます。
     void UpdateHeldBombVisual(float deltaTime);
     void EnsureHeldBombVisual();
     void HideHeldBombVisual();
@@ -51,6 +49,7 @@ private:
     void ThrowBomb();
     void SpawnBombObject(std::unique_ptr<BaseEnemy> bomb);
 
+    // 次の投擲までの待機時間と、現在の投擲アニメーションの進行です。
     float throwTimer_ = 0.0f;
     float throwInterval_ = 2.45f;
     float windupTimer_ = 0.0f;
@@ -69,10 +68,7 @@ private:
     bool throwBombReleased_ = false;
     std::function<void(std::unique_ptr<BaseEnemy>)> spawnCallback_ = nullptr;
     Object3dCommon* common_ = nullptr;
-    Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f };
+    Vector3 baseScale_ = {2.0f, 2.0f, 2.0f};
     bool hasBaseScale_ = false;
     std::unique_ptr<Object3d> heldBombVisual_ = nullptr;
 };
-
-
-

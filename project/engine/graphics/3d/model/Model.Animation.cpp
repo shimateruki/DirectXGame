@@ -609,6 +609,7 @@ Quaternion Model::CalculateValue(const std::vector<KeyframeQuaternion>& keyframe
 
     return keyframes.back().value;
 }
+
 // ノード階層から指定名のノードを再帰的に探し、アニメーション適用先を見つける。
 Model::Node* Model::FindNode(Node& node, const std::string& name) {
     if (node.name == name) return &node;
@@ -623,6 +624,7 @@ Model::Node* Model::FindNode(Node& node, const std::string& name) {
 void Model::ApplyAnimation(const Animation& animation, float time) {
     ApplyAnimationToSkeleton(modelData_.skeleton, animation, time);
 }
+
 // アニメーション名からAnimationデータを探し、見つからない場合はnullptrを返す。
 const Model::Animation* Model::GetAnimation(const std::string& name) const {
     for (const auto& animation : modelData_.animations) {

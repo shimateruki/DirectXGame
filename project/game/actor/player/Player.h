@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Character.h"
 #include "game/actor/player/combat/PlayerAttackInputBuffer.h"
 #include "game/actor/player/movement/PlayerLaunchStarController.h"
@@ -22,10 +22,9 @@ class IMoveStrategy; // 前方宣言
 class SpriteCommon;
 class BaseEnemy;
 
-// プレイヤーキャラクターの入力、移動、状態、敵変身をまとめて扱うクラス
-class Player : public Character
-{
-public:
+/// <summary>プレイヤーの入力、移動、戦闘状態、コピー能力を統合します。</summary>
+class Player : public Character {
+  public:
     enum class EnemyMorphType {
         None = 0,
         Slime = 1,
@@ -44,18 +43,23 @@ public:
     // 基本サイクル
     // ==================================================
     ~Player() override;
-    void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon = nullptr);
+    /// <summary>モデルと入力・粒子への参照を設定してプレイヤーを初期化します。</summary>
+    /// <param name="common">3D描画の共通基盤。</param>
+    /// <param name="inputManager">操作入力の参照元。</param>
+    /// <param name="particleSystem">プレイヤー演出に使う粒子システム。</param>
+    /// <param name="spriteCommon">UIスプライトの描画基盤。省略可能です。</param>
+    void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem,
+                    SpriteCommon* spriteCommon = nullptr);
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
-    void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0) override;
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+                       int previewBufferIndex = 0) override;
+    void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                      int previewBufferIndex = 0) override;
     bool HasOwnedSpecialMaterialVisuals() const override;
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
-    void DrawOwnedSpecialMaterialVisualsForCamera(
-        Camera* camera,
-        uint32_t depthSrvHandle,
-        uint32_t grabSrvHandle,
-        int previewBufferIndex = 0) override;
+    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                                  int previewBufferIndex = 0) override;
     void DrawUI(); // プレイヤー専用 UI の描画。
     void ApplyManagedScale(const Vector3& scale) override;
 
@@ -67,10 +71,14 @@ public:
     // ==================================================
     // アニメーション・状態管理 (State Pattern)
     // ==================================================
+    /// <summary>現在の状態を終了し、新しいアニメーション状態へ移ります。</summary>
+    /// <param name="newState">所有権を受け取る次の状態。</param>
     void ChangeState(std::unique_ptr<IAnimationState> newState);
     void PlayAnimation(const std::string& animName, bool loop = true);
     bool ReloadSlimeAnimatorController() { return slimeAnimator_.ReloadController(); }
-    const AnimatorControllerAsset* GetSlimeAnimatorControllerAsset() const { return slimeAnimator_.GetControllerAsset(); }
+    const AnimatorControllerAsset* GetSlimeAnimatorControllerAsset() const {
+        return slimeAnimator_.GetControllerAsset();
+    }
     void SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode);
     void SetSlimeAnimationDirection(const Vector3& direction);
     void SetSlimePullDirection(const Vector3& direction);
@@ -78,9 +86,14 @@ public:
     void SetSlimeJumpCharge(float chargeRate);
     void SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength = 1.0f);
     void TriggerSlimeImpulse(const Vector3& scale, float duration);
-    bool PlaySlimeAbilityMotion(const std::string& clipName, bool loop = false,
-        float playbackSpeed = 1.0f, float blendInDuration = 0.06f,
-        float blendOutDuration = 0.10f);
+    /// <summary>スライム本体に能力モーションを再生します。</summary>
+    /// <param name="clipName">Animator内のクリップ名。</param>
+    /// <param name="loop">末尾で繰り返す場合は true。</param>
+    /// <param name="playbackSpeed">再生速度の倍率。</param>
+    /// <param name="blendInDuration">開始時のブレンド秒数。</param>
+    /// <param name="blendOutDuration">終了時のブレンド秒数。</param>
+    bool PlaySlimeAbilityMotion(const std::string& clipName, bool loop = false, float playbackSpeed = 1.0f,
+                                float blendInDuration = 0.06f, float blendOutDuration = 0.10f);
     void StopSlimeAbilityMotion(float blendOutDuration = 0.08f);
     void ClearSlimeAbilityMotion();
     void ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction);
@@ -88,17 +101,33 @@ public:
     bool IsGateReturnAnimationActive() const;
     bool IsGateReturnAnimationFinished() const;
     void StopGateReturnAnimation(bool restoreControl);
+    /// <summary>ムービー中の操作をロックし、必要ならコピー能力を保持します。</summary>
+    /// <param name="preserveCopyAbility">true のとき、ムービー開始時にコピー能力を解除しません。</param>
     void BeginCinematicLock(bool preserveCopyAbility = false);
+    /// <summary>入力・衝突を止めた演出中に、通常の吸い込み姿勢だけを評価します。</summary>
+    void StepCinematicPullVisual(float deltaTime, const Vector3& direction, float progress);
+    void EndCinematicPullVisual();
     void EndCinematicLock(bool restoreControl);
     bool IsCinematicLocked() const { return isCinematicLocked_; }
 
     // ==================================================
     // 移動制御 (Strategy Pattern)
     // ==================================================
+    // 移動戦略の所有権を受け取り、以後の移動計算に使用する。
     void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
+    /// <summary>ダッシュパネルの速度・旋回補正を指定時間だけ適用します。</summary>
+    /// <param name="duration">効果時間（秒）。</param>
+    /// <param name="speedMultiplier">移動速度の倍率。</param>
+    /// <param name="turnMultiplier">旋回速度の倍率。</param>
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
+    // 氷床の移動補正を指定秒数だけ適用する。摩擦と旋回量は移動側で使用する係数。
     void ApplyIceSurface(float duration, float friction, float steering);
+    /// <summary>指定位置まで放物線状に移動するスターランチャーを開始します。</summary>
+    /// <param name="destination">着地点のワールド座標。</param>
+    /// <param name="arcHeight">軌道の最高点に加える高さ。</param>
+    /// <param name="duration">移動時間（秒）。</param>
     void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
+    // 発射移動を中断する。restoreControl=true なら開始前の操作状態へ戻す。
     void CancelLaunchStar(bool restoreControl);
     bool IsLaunchStarActive() const { return launchStarController_.IsActive(); }
     // 通常攻撃または対応コピー突進が、衝撃ゲートを破壊できる攻撃中か返します。
@@ -116,36 +145,61 @@ public:
     void SetRespawnPosition(const Vector3& pos) { respawnPosition_ = pos; }
     Vector3 GetRespawnPosition() const { return respawnPosition_; }
     void ActivateCheckpoint(const Vector3& position);
-    // 敵オブジェクトを生成せず、保存済みのコピー能力を直接適用します。
+    /// <summary>敵を生成せず、保存済みのコピー能力を直接適用します。</summary>
+    /// <param name="enemyType">コピー元の敵種別。</param>
+    /// <param name="unlimitedDuration">時間制限を設けない場合は true。</param>
     bool ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration = true);
     // 隔離エディター専用。実入力を混ぜず、通常の能力処理へ一フレーム分を渡します。
     void SetCopyPreviewInput(const PlayerCopyAbilityInput& input) {
-        if (IsEditorInternal()) { copyPreviewActive_ = true; copyPreviewInput_ = input; }
+        if (IsEditorInternal()) {
+            copyPreviewActive_ = true;
+            copyPreviewInput_ = input;
+        }
     }
-    void ReleaseCopyPreview() { if (IsEditorInternal()) BeginEnemyMorphRelease(false); }
-    void SetCopyPreviewGroundHeight(float height) { if (IsEditorInternal()) copyPreviewGroundHeight_ = height; }
-    void AddCopyPreviewObject(std::unique_ptr<Object3d> object) { if (IsEditorInternal()) copyPreviewObjects_.push_back(std::move(object)); }
+    void ReleaseCopyPreview() {
+        if (IsEditorInternal())
+            BeginEnemyMorphRelease(false);
+    }
+    void SetCopyPreviewGroundHeight(float height) {
+        if (IsEditorInternal())
+            copyPreviewGroundHeight_ = height;
+    }
+    void AddCopyPreviewObject(std::unique_ptr<Object3d> object) {
+        if (IsEditorInternal())
+            copyPreviewObjects_.push_back(std::move(object));
+    }
     void StepCopyPreviewObjects(float deltaTime, float groundY);
-    const char* GetCopyAbilityStateLabel() const { return copyAbilityController_ ? copyAbilityController_->GetStateLabel() : "未コピー"; }
+    const char* GetCopyAbilityStateLabel() const {
+        return copyAbilityController_ ? copyAbilityController_->GetStateLabel() : "未コピー";
+    }
+    void SetCopyPreviewAttackId(const std::string& id) {
+        if (IsEditorInternal() && copyAbilityController_) copyAbilityController_->SetPreviewAttackId(id);
+    }
+    // 生成した隔離Actorの能力セッションを、保存前の設定で準備します。
+    void SetCopyPreviewProfile(const EnemyAttackProfile& profile) {
+        if (IsEditorInternal() && copyAbilityController_) {
+            copyAbilityController_->Cancel(*this);
+            copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), profile);
+        }
+    }
     void ClearCrownPower();
 
     Vector3 GetRotation() const { return transform_.rotate; }
     float GetVisualYawOffset() const;
     float GetMoveYaw() const;
     Vector3 GetForwardDirection() const;
+    // 水平面での進行向きを Y 回転のラジアン値で指定する。
     void SetMoveYaw(float yaw);
 
     // Euler 回転を設定し、内部のクォータニオンも同期する
-    void SetRotation(const Vector3& r)
-    {
+    void SetRotation(const Vector3& r) {
         transform_.rotate = r;
         transform_.quaternion = Math::EulerToQuaternion(r);
         transform_.isQuaternionMaster = true;
     }
 
     // Y 軸だけを更新し、クォータニオンも同期する
-    void SetRotationY(float y)
-    {
+    void SetRotationY(float y) {
         transform_.rotate.y = y;
         transform_.quaternion = Math::EulerToQuaternion(transform_.rotate);
         transform_.isQuaternionMaster = true;
@@ -155,7 +209,10 @@ public:
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
     // 対象は座標だけを受け取り、削除される敵のポインターを保持しません。
-    void SetLockOnAimPoint(const Vector3& point, bool valid) { lockOnAimPoint_ = point; lockOnAimValid_ = valid; }
+    void SetLockOnAimPoint(const Vector3& point, bool valid) {
+        lockOnAimPoint_ = point;
+        lockOnAimValid_ = valid;
+    }
     Vector3 GetLockOnAttackDirection() const;
     void SetIsControlActive(bool active) { isControlActive_ = active; }
     bool IsControlActive() const { return isControlActive_; }
@@ -170,7 +227,11 @@ public:
 
     // コンボ受付中に次の攻撃を予約する
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
-    bool ConsumePendingAttack2() { bool v = pendingAttack2_; pendingAttack2_ = false; return v; }
+    bool ConsumePendingAttack2() {
+        bool v = pendingAttack2_;
+        pendingAttack2_ = false;
+        return v;
+    }
 
     // コンボ受付時間の管理
     void StartComboWindow(float duration);
@@ -185,28 +246,28 @@ public:
     InputManager* GetInputManager() { return inputManager_; }
     ParticleSystem* GetParticleSystem() { return particleSystem_; }
 
-    float GetJumpPower() const
-    {
-        return param_.has_value() ? param_->jumpPower : 24.0f;
-    }
+    float GetJumpPower() const { return param_.has_value() ? param_->jumpPower : 24.0f; }
 
-    float GetMoveSpeed() const
-    {
-        return param_.has_value() ? param_->speed : 27.7f;
-    }
+    float GetMoveSpeed() const { return param_.has_value() ? param_->speed : 27.7f; }
 
     // ==================================================
     // 無敵フレーム (Invincibility) 管理
     // ==================================================
-    void SetDamageInvincible(bool inv); // ダメージ被弾後の無敵フラグ。
-    void SetDashInvincible(bool inv);   // 回避ダッシュ中の無敵フラグ。
-    void SetGuardInvincible(bool inv);  // ガード中だけ有効な、防御専用の無敵フラグ。
+    void SetDamageInvincible(bool inv);             // ダメージ被弾後の無敵フラグ。
+    void SetDashInvincible(bool inv);               // 回避ダッシュ中の無敵フラグ。
+    void SetGuardInvincible(bool inv);              // ガード中だけ有効な、防御専用の無敵フラグ。
     void StartEvasionInvincibility(float duration); // 能力回避用。攻撃判定を伴わない無敵時間を開始します。
+    /// <summary>被弾演出とノックバック、被弾後の無敵時間を開始します。</summary>
+    /// <param name="knockbackDirection">吹き飛ばす方向。</param>
+    /// <param name="invincibleDuration">無敵時間（秒）。</param>
     void StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration = 1.0f);
     void StartElectricShockFeedback(float duration = 0.78f, float invincibleDuration = 1.0f);
 
     // いずれかの無敵状態が有効なら、ダメージを受けない状態として扱う
-    bool IsInvincible() const { return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ || isGuardInvincible_; }
+    bool IsInvincible() const {
+        return tutorialSafetyEnabled_ || isDamageInvincible_ || isDashInvincible_ || isEvasionInvincible_ ||
+               isGuardInvincible_;
+    }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     // 乗車型床の水平速度。ジャンプ時だけ一部を引き継ぐ。
     void SetPlatformMotion(const Vector3& velocity);
@@ -232,11 +293,11 @@ public:
     void DebugPrepareForTeleport();
 #endif
 
-protected:
+  protected:
     void CaptureReplayCustomState(json& state) const override;
     void RestoreReplayCustomState(const json& state) override;
 
-private:
+  private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;     // 移動処理の委譲先。
     std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアクション状態。
@@ -250,20 +311,20 @@ private:
     void UpdateCopyAdornment();
     PlayerCopyAbilityInput copyPreviewInput_{};
     std::vector<std::unique_ptr<Object3d>> copyPreviewObjects_;
-    Vector3 managedBaseScale_ = { 2.0f, 2.0f, 2.0f };
+    Vector3 managedBaseScale_ = {2.0f, 2.0f, 2.0f};
 
     // --- 外部システム参照 ---
     InputManager* inputManager_ = nullptr;
     ParticleSystem* particleSystem_ = nullptr;
 
     // --- プレイヤー状態フラグ ---
-    bool isLockingOn_ = false;       // 敵をロックオンしているか。
+    bool isLockingOn_ = false; // 敵をロックオンしているか。
     Vector3 lockOnAimPoint_{};
     bool lockOnAimValid_ = false;
-    bool isControlActive_ = true;    // 入力を受け付ける状態か。
+    bool isControlActive_ = true; // 入力を受け付ける状態か。
     bool forcedSlimeAnimationModeActive_ = false;
     PlayerSlimeAnimator::Mode forcedSlimeAnimationMode_ = PlayerSlimeAnimator::Mode::Idle;
-    Vector3 forcedSlimeAnimationDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 forcedSlimeAnimationDirection_{0.0f, 0.0f, 1.0f};
     bool isCinematicLocked_ = false;
     bool cinematicSavedControlActive_ = true;
     uint32_t cinematicSavedCollisionAttribute_ = 0;
@@ -284,7 +345,7 @@ private:
 
     // --- 無敵関連 ---
     bool isInvincible_ = false;
-    Vector4 savedColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 無敵解除時に戻す色。
+    Vector4 savedColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 無敵解除時に戻す色。
 
     // 子パーツの色を保存して、無敵解除時に復元する
     std::unordered_map<Object3d*, Vector4> childSavedColors_;
@@ -310,8 +371,8 @@ private:
     void UpdateColor();
 
     // 落下復帰用
-    Vector3 respawnPosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f }; // 初期回転。モデル姿勢補正にも使う。
+    Vector3 respawnPosition_ = {0.0f, 0.0f, 0.0f};
+    Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f}; // 初期回転。モデル姿勢補正にも使う。
     bool isFirstUpdate_ = true;
     bool checkpointActivated_ = false;
     std::string checkpointMorphEnemyType_;
@@ -321,9 +382,9 @@ private:
 
     // 現在頭に乗せている敵と、狙い先の情報
     Object3d* carriedEnemy_ = nullptr;
-    Vector3 carriedEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 carriedEnemyBaseRotation_ = { 0.0f, 0.0f, 0.0f };
-    Quaternion carriedEnemyBaseQuaternion_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+    Vector3 carriedEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 carriedEnemyBaseRotation_ = {0.0f, 0.0f, 0.0f};
+    Quaternion carriedEnemyBaseQuaternion_ = {0.0f, 0.0f, 0.0f, 1.0f};
     bool carriedEnemyBaseQuaternionMaster_ = true;
     bool hasCarriedEnemyBaseScale_ = false;
     Object3d* aimTargetObject_ = nullptr;
@@ -344,11 +405,11 @@ private:
     float enemyMorphReleaseDuration_ = 0.42f;
     float enemyMorphReleaseBurstTime_ = 0.11f;
     float enemyMorphReleaseParticleTimer_ = 0.0f;
-    Vector3 enemyMorphReleasePlayerScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 enemyMorphReleaseVisualScale_ = { 0.5f, 0.5f, 0.5f };
-    Vector3 enemyMorphReleaseStartPosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 enemyMorphReleaseDirection_ = { 0.0f, 0.0f, -1.0f };
-    Vector4 enemyMorphReleaseTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector3 enemyMorphReleasePlayerScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 enemyMorphReleaseVisualScale_ = {0.5f, 0.5f, 0.5f};
+    Vector3 enemyMorphReleaseStartPosition_ = {0.0f, 0.0f, 0.0f};
+    Vector3 enemyMorphReleaseDirection_ = {0.0f, 0.0f, -1.0f};
+    Vector4 enemyMorphReleaseTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
     std::unique_ptr<Object3d> enemyMorphReleaseVisual_;
     float electricShockFeedbackTimer_ = 0.0f;
     float electricShockFeedbackEmitTimer_ = 0.0f;
@@ -356,31 +417,32 @@ private:
     float electricShockPendingInvincibleDuration_ = 0.0f;
     bool electricShockControlLocked_ = false;
     bool electricShockWasControlActive_ = true;
-    Vector3 electricShockLockedPosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 electricShockBaseScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 electricShockBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 electricShockLockedPosition_ = {0.0f, 0.0f, 0.0f};
+    Vector3 electricShockBaseScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 electricShockBaseRotation_ = {0.0f, 0.0f, 0.0f};
     std::unique_ptr<EffectObject3d> electricShockAuraEffect_;
     std::string savedMorphModelName_;
     std::string savedMorphTexturePath_;
     std::string savedMorphAnimName_;
     bool savedMorphAnimLoop_ = true;
-    Vector4 savedMorphColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Vector3 savedMorphScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector4 savedMorphColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    Vector3 savedMorphScale_ = {1.0f, 1.0f, 1.0f};
     int savedMorphMaterialType_ = 0;
     float savedMorphEmissive_ = 1.0f;
-    Vector4 enemyMorphTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 enemyMorphTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
     std::vector<bool> savedMorphChildVisible_;
     bool savedMorphSourceVisible_ = true;
     BaseEnemy* pendingAbsorbEnemy_ = nullptr;
     EnemyMorphType pendingAbsorbType_ = EnemyMorphType::None;
-    Vector3 pendingAbsorbEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 pendingAbsorbEnemyStartPos_ = { 0.0f, 0.0f, 0.0f };
-    Vector4 pendingAbsorbTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Vector4 pendingAbsorbPlayerBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector3 pendingAbsorbEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 pendingAbsorbEnemyStartPos_ = {0.0f, 0.0f, 0.0f};
+    Vector4 pendingAbsorbTint_ = {1.0f, 1.0f, 1.0f, 1.0f};
+    Vector4 pendingAbsorbPlayerBaseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
     float absorbEffectTimer_ = 0.0f;
     float absorbEffectEmitTimer_ = 0.0f;
     bool absorbEffectActive_ = false;
 
+    // コピー能力の開始、更新、解除。元の姿と敵モデルの表示状態を復元します。
     void StartEnemyMorph(BaseEnemy* enemy);
     void SaveEnemyMorphBaseAppearance(bool sourceVisible);
     void CompleteEnemyMorphStart(float moveYaw);
@@ -392,6 +454,7 @@ private:
     void RestoreEnemyMorphAppearance();
     void ResetEnemyMorphRelease();
     void CancelEnemyMorph();
+    // 吸い込みの演出は対象の可視状態を退避してから開始します。
     bool ShouldPlayAbsorbEffect(BaseEnemy* enemy) const;
     void BeginAbsorbEffect(BaseEnemy* enemy);
     void UpdateAbsorbEffect(float deltaTime);
@@ -403,10 +466,10 @@ private:
     std::string GetEnemyTypeForCurrentMorph() const;
     void RefreshCheckpointMorphSnapshot();
 
-public:
+  public:
     Object3d* GetHookMarker() const { return hookMarker_.get(); }
 
-private:
+  private:
     // ギミック同期用
     uint32_t jumpCount_ = 0;
 };

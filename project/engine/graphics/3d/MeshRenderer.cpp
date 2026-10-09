@@ -19,12 +19,14 @@
 namespace {
 namespace fs = std::filesystem;
 
+// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
 struct BakedShaderTextureSet {
     uint32_t slot0 = 0;
     uint32_t slot1 = 0;
     uint32_t slot2 = 0;
 };
 
+// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
 struct BakedShaderTextureCache {
     BakedShaderTextureSet fallback;
     BakedShaderTextureSet water;
@@ -205,8 +207,6 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     wvpData_->WVP = Math::MakeIdentity4x4();
     wvpData_->world = Math::MakeIdentity4x4();
 
-
-
     // 3. Cameraバッファ
     if (!CreateMappedBuffer(dxCommon, sizeof(CameraForGPU), cameraResource_, cameraData_, "Camera")) {
         common_ = nullptr;
@@ -351,7 +351,8 @@ Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
     shearLocal.m[3][2] = -visualShearPivotY_ * visualShear_.z;
 
     const Matrix4x4 visualAffine = Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
-    const Matrix4x4 visualLocal = Math::Multiply(shearLocal, visualAffine);
+    Matrix4x4 visualLocal = Math::Multiply(shearLocal, visualAffine);
+    if (const auto timelinePose = timelineVisualPose_.lock()) visualLocal = Math::Multiply(*timelinePose, visualLocal);
     return Math::Multiply(visualLocal, transform_->matWorld);
 }
 

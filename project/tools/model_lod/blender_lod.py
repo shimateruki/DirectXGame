@@ -1,3 +1,8 @@
+"""Blender の Decimate で入力モデルを指定比率へ簡略化して出力する。
+
+Blender 内で実行し、--input/--output/--ratio をコマンド引数として受け取る。
+"""
+
 import argparse
 import os
 import sys

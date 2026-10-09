@@ -411,6 +411,7 @@ std::vector<float> TerrainEditorWindow::BuildPreviewHeightField(int previewResol
         }
     }
 
+    // Editor のリアルタイム表示では平滑化回数を抑え、生成前の操作応答を保つ。
     const int previewSmooth = std::clamp(smoothSteps_, 0, 4);
     for (int i = 0; i < previewSmooth; ++i) {
         std::vector<float> smoothed = field;
@@ -540,6 +541,7 @@ bool TerrainEditorWindow::RunTerrainBuilder() {
 
     isGenerating_ = true;
     previewAfterAsyncGenerate_ = autoPreviewAfterGenerate_;
+    // 外部生成処理を別スレッドへ逃がし、ImGui の更新を止めない。
     SetNotice("Terrain生成ツールをバックグラウンドで実行中...", true);
     generationFuture_ = std::async(std::launch::async, [command]() -> uint32_t {
         DWORD exitCode = 1;
@@ -573,6 +575,7 @@ void TerrainEditorWindow::PollTerrainBuilder() {
     }
 
     SetNotice("Terrain生成が完了しました。", true);
+    // 生成結果のシーン配置は成功レポートを読めた後だけ行う。
     if (previewAfterAsyncGenerate_) {
         CreateTerrainPreview();
     }
@@ -649,7 +652,7 @@ void TerrainEditorWindow::CreateTerrainPreview() {
                 std::max(0.05f, JsonFloat(latestReport_, "sizeZ", sizeZ_) * 0.5f),
             };
             object->SetColliderConfig(config);
-            object->SetCollisionAttribute(CollisionAttribute::kGround);
+            object->SetCollisionAttribute(CollisionCategories::Get("ground"));
             object->SetCollisionMask(0xFFFFFFFF);
             object->SetStatic(true);
             collisionConfigured = true;
@@ -673,7 +676,7 @@ void TerrainEditorWindow::CreateTerrainPreview() {
             };
         }
         object->SetColliderConfig(config);
-        object->SetCollisionAttribute(CollisionAttribute::kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
         object->SetCollisionMask(0xFFFFFFFF);
         object->SetStatic(true);
         collisionConfigured = true;

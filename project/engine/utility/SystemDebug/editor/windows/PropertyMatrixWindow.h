@@ -24,6 +24,7 @@ public:
     void DrawWindow();
 
 private:
+    // 連続編集の開始時点を Undo 用に保持します。object は現在シーン所有の非所有参照です。
     struct EditSnapshot {
         Object3d* object = nullptr;
         nlohmann::json state;
@@ -45,6 +46,7 @@ private:
     std::vector<Object3d*> CollectTargets() const;
     std::vector<const EditorPropertyDescriptor*> CollectProperties(const std::vector<Object3d*>& targets) const;
 
+    // ドラッグ中の変更を一つの履歴にまとめ、終了時に開始状態との差分を確定します。
     void BeginActiveEdit(const std::string& editId, const std::vector<Object3d*>& targets);
     void CommitActiveEdit(const std::string& label);
     void RefreshBulkDraft(const std::vector<Object3d*>& targets,

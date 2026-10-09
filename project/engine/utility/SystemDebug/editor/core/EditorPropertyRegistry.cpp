@@ -342,6 +342,7 @@ bool EditorPropertyRegistry::RegisterComponent(EditorComponentDescriptor descrip
         }
         presetIds.push_back(preset.id);
     }
+    // 削除可能Componentが旧JSONにも対応できるよう、保存状態の判定・更新を補う。
     if (descriptor.removable && !descriptor.serializedPresent) {
         const std::string typeId = descriptor.typeId;
         descriptor.serializedPresent = [typeId](const json& source) {
@@ -365,6 +366,7 @@ bool EditorPropertyRegistry::Register(EditorPropertyDescriptor descriptor) {
         return false;
     }
 
+    // 定義ごとの重複設定を減らしつつ、明示指定があればそれを優先する。
     if (descriptor.componentTypeId.empty()) {
         descriptor.componentTypeId = ResolveComponentTypeId(descriptor.path);
     }
@@ -535,6 +537,7 @@ json EditorPropertyRegistry::GetValue(const Object3d* object, const std::string&
 }
 
 bool EditorPropertyRegistry::SetValue(Object3d* object, const std::string& path, const json& value) const {
+    // Inspector以外からの呼び出しでもReadOnlyと適用条件を守る。
     const EditorPropertyDescriptor* property = Find(path);
     if (!object || !property || !property->setter || !IsApplicable(object, path) ||
         HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly)) {

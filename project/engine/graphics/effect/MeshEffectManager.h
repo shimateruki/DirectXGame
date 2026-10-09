@@ -52,6 +52,11 @@ public:
     /// <summary>指定スコープに属するエフェクトだけを停止する。</summary>
     void StopEffectScope(EffectScopeId scopeId);
 
+    // 攻撃タイムラインが所有する表示物。管理側のdtを加算せず、指定秒の姿を描画します。
+    bool StartTimelineEffect(EffectScopeId scopeId, const std::string& path);
+    void EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
+        const Vector3& position, const Vector3& rotation, const Vector3& scale);
+
     /// <summary>対象Object3dに追従するメッシュエフェクトを生成する。</summary>
     void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
 
@@ -69,10 +74,10 @@ public:
     void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
 
     /// <summary>初期化状態とプリロードを維持し、再生中のエフェクトだけを消す。</summary>
-    void ClearActiveEffects() { activeEffects_.clear(); effectScopes_.clear(); previewEffectForDebug_ = nullptr; }
+    void ClearActiveEffects();
 
     /// <summary>シーン切り替え時にエフェクト・プリロード・生成元参照を破棄する。</summary>
-    void Clear() { activeEffects_.clear(); effectScopes_.clear(); preloadedEffects_.clear(); common_ = nullptr; }
+    void Clear();
 
     /// <summary>現在再生中のエフェクトを返す。</summary>
     const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
@@ -93,10 +98,13 @@ private:
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
     std::unordered_map<EffectObject3d*, EffectScopeId> effectScopes_;
+    std::unordered_set<EffectScopeId> timelineScopes_;
     EffectScopeId nextEffectScopeId_ = 1;
     EffectObject3d* previewEffectForDebug_ = nullptr;
     std::unordered_set<std::string> preloadedEffects_;
     bool updatedThisFrame_ = false;
     float timeScale_ = 1.0f;
+    struct TimelineOffset { Vector3 position, rotation; };
+    std::unordered_map<EffectObject3d*, TimelineOffset> timelineOffsets_;
 
 };

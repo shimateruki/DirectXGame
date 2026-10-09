@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>通過方向によって衝突の有無が変わる床です。</summary>
 class GimmickOneWayFloor : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickOneWayFloor() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;

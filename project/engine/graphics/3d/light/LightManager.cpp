@@ -642,6 +642,7 @@ bool LightManager::LoadState(const std::string& filename) {
     lastLoadSucceeded_ = true;
     return true;
 }
+
 LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() const {
     EnvironmentProfileState profile;
     profile.directionalLight = directionalLightData_;

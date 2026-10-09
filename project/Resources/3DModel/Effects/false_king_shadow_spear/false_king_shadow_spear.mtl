@@ -1,0 +1,30 @@
+# Dark crystal body and restrained internal red cracks
+newmtl NightfallObsidian
+Ka 0.012 0.006 0.020
+Kd 0.052 0.030 0.090
+Ks 0.28 0.13 0.35
+Ke 0.006 0.002 0.016
+Ns 120
+Pr 0.34
+Pm 0.52
+illum 2
+
+newmtl NightfallFacet
+Ka 0.036 0.010 0.050
+Kd 0.17 0.055 0.24
+Ks 0.58 0.22 0.68
+Ke 0.035 0.006 0.055
+Ns 180
+Pr 0.23
+Pm 0.68
+illum 2
+
+newmtl NightfallRift
+Ka 0.20 0.008 0.035
+Kd 0.85 0.035 0.16
+Ks 1.0 0.35 0.52
+Ke 0.58 0.012 0.105
+Ns 190
+Pr 0.18
+Pm 0.16
+illum 2

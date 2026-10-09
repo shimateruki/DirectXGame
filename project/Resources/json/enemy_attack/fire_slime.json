@@ -1,13 +1,23 @@
 {
-  "version": 2,
+  "version": 7,
   "enemyType": "FireSlime",
   "displayName": "炎スライム",
   "attacks": [
     {
       "id": "flame_breath",
       "displayName": "近距離炎ブレス",
-      "targeting": { "minRange": 0.0, "maxRange": 4.3, "radius": 1.65 },
-      "timing": { "windup": 0.0, "active": 0.62, "recovery": 0.0, "cooldown": 1.55, "warningLead": 0.18 },
+      "targeting": {
+        "minRange": 0.0,
+        "maxRange": 4.3,
+        "radius": 1.65
+      },
+      "timing": {
+        "windup": 0.0,
+        "active": 0.62,
+        "recovery": 0.0,
+        "cooldown": 1.55,
+        "warningLead": 0.18
+      },
       "combat": {
         "damage": 1.0,
         "statusEffect": {
@@ -18,15 +28,38 @@
           "vfx": "status_burning_flame"
         }
       },
-      "movement": { "minSpeed": 0.0, "maxSpeed": 0.0, "lifetime": 0.0 },
-      "preview": { "targetDistance": 3.2, "duration": 3.0 },
-      "presentation": { "animation": "", "windupVfx": "", "activeVfx": "fire_slime_breath", "impactVfx": "", "audioCue": "" }
+      "movement": {
+        "minSpeed": 0.0,
+        "maxSpeed": 0.0,
+        "lifetime": 0.0
+      },
+      "preview": {
+        "targetDistance": 3.2,
+        "duration": 3.0
+      },
+      "presentation": {
+        "animation": "",
+        "windupVfx": "",
+        "activeVfx": "fire_slime_breath",
+        "impactVfx": "",
+        "audioCue": ""
+      }
     },
     {
       "id": "fireball",
       "displayName": "中距離火球",
-      "targeting": { "minRange": 6.2, "maxRange": 20.0, "radius": 0.5 },
-      "timing": { "windup": 0.42, "active": 0.0, "recovery": 0.38, "cooldown": 1.45, "warningLead": 0.18 },
+      "targeting": {
+        "minRange": 6.2,
+        "maxRange": 20.0,
+        "radius": 0.5
+      },
+      "timing": {
+        "windup": 0.42,
+        "active": 0.0,
+        "recovery": 0.38,
+        "cooldown": 1.45,
+        "warningLead": 0.18
+      },
       "combat": {
         "damage": 1.0,
         "statusEffect": {
@@ -37,9 +70,279 @@
           "vfx": "status_burning_flame"
         }
       },
-      "movement": { "minSpeed": 15.0, "maxSpeed": 28.0, "lifetime": 2.65 },
-      "preview": { "targetDistance": 8.0, "duration": 3.35 },
-      "presentation": { "animation": "", "windupVfx": "", "activeVfx": "fire_slime_cast", "impactVfx": "", "audioCue": "" }
+      "movement": {
+        "minSpeed": 15.0,
+        "maxSpeed": 28.0,
+        "lifetime": 2.65
+      },
+      "preview": {
+        "targetDistance": 8.0,
+        "duration": 3.35
+      },
+      "presentation": {
+        "animation": "",
+        "windupVfx": "",
+        "activeVfx": "fire_slime_cast",
+        "impactVfx": "",
+        "audioCue": ""
+      },
+      "sequence": {
+        "enabled": true,
+        "binding": "enemy",
+        "priority": 0,
+        "duration": 0.8,
+        "projectileStyle": "fire",
+        "visualScale": 1.2,
+        "events": [
+          {
+            "time": 0.42,
+            "operation": "projectile",
+            "condition": "always",
+            "stopOnFalse": false,
+            "offset": [
+              0,
+              1.05,
+              0.65
+            ],
+            "aimAtTarget": true,
+            "targetHeight": 0.35,
+            "distanceSpeedScale": 1.65,
+            "verticalSpeed": 0,
+            "count": 1,
+            "spreadDegrees": 0,
+            "preset": "",
+            "name": "火球 1",
+            "enabled": true,
+            "projectile": {
+              "model": "Primitives/sphere",
+              "style": "fire",
+              "collisionEnabled": true,
+              "radius": 0.6,
+              "lifetime": 2.65,
+              "minSpeed": 15.0,
+              "maxSpeed": 28.0,
+              "damage": 1.0,
+              "visualScale": 1.2,
+              "trail": "fireball_trail_flame",
+              "secondaryTrail": "fireball_trail_embers",
+              "impact": "fireball_impact_flame",
+              "secondaryImpact": "fireball_impact_sparks",
+              "appearance": {
+                "color": [
+                  1,
+                  0.34,
+                  0.07,
+                  0.96
+                ],
+                "emissive": 2.8,
+                "effectScale": 1.15,
+                "softness": 0.42,
+                "intensity": 0.96,
+                "billboardScale": 0.68,
+                "trailInterval": 0.03,
+                "trailSpeedScale": 1.0
+              }
+            }
+          },
+          {
+            "time": 0.42,
+            "operation": "gpu_vfx",
+            "condition": "always",
+            "stopOnFalse": false,
+            "offset": [
+              0,
+              1.05,
+              0.65
+            ],
+            "aimAtTarget": true,
+            "targetHeight": 0.35,
+            "distanceSpeedScale": 1.65,
+            "verticalSpeed": 0,
+            "count": 1,
+            "spreadDegrees": 0,
+            "preset": "fire_slime_cast",
+            "name": "発射エフェクト 2",
+            "enabled": true
+          }
+        ],
+        "actorControl": {
+          "enabled": true,
+          "stopMovement": true,
+          "faceTarget": true,
+          "aimLockTime": 0.24,
+          "modelYawOffset": 180,
+          "telegraph": true,
+          "telegraphEnd": 0.42,
+          "telegraphWidth": 1.0,
+          "cueTime": 0.24,
+          "tint": true,
+          "color": [
+            1,
+            0.72,
+            0.48,
+            1
+          ],
+          "telegraphColor": [
+            1,
+            0.34,
+            0.06,
+            0.8
+          ]
+        },
+        "tracks": [
+          {
+            "name": "術者：溜めと発射後の反動",
+            "type": "body_animation",
+            "preset": "enemy_fireball_action",
+            "begin": 0,
+            "end": 0.8,
+            "blendIn": 0,
+            "blendOut": 0.05,
+            "keys": [
+              {
+                "time": 0,
+                "position": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotation": [
+                  0,
+                  0,
+                  0
+                ],
+                "scale": [
+                  1,
+                  1,
+                  1
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "player_fireball",
+      "displayName": "プレイヤー炎火球",
+      "targeting": {
+        "minRange": 0,
+        "maxRange": 40,
+        "radius": 0.52
+      },
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 0.58,
+        "cooldown": 0.58,
+        "warningLead": 0
+      },
+      "combat": {
+        "damage": 14,
+        "statusEffect": {
+          "type": "burning",
+          "duration": 2.8,
+          "tickInterval": 0.55,
+          "tickDamage": 0.16,
+          "vfx": "status_burning_flame"
+        }
+      },
+      "movement": {
+        "minSpeed": 15.0,
+        "maxSpeed": 28.0,
+        "lifetime": 2.65
+      },
+      "preview": {
+        "targetDistance": 8.0,
+        "duration": 3.35
+      },
+      "presentation": {
+        "animation": "player_ability_fireball",
+        "windupVfx": "",
+        "activeVfx": "fire_slime_cast",
+        "impactVfx": "",
+        "audioCue": ""
+      },
+      "sequence": {
+        "enabled": true,
+        "binding": "player_special",
+        "priority": 0,
+        "duration": 0.58,
+        "projectileStyle": "fire",
+        "visualScale": 1.28,
+        "events": [
+          {
+            "time": 0,
+            "operation": "projectile",
+            "condition": "always",
+            "stopOnFalse": false,
+            "offset": [
+              0,
+              1.35,
+              1.75
+            ],
+            "aimAtTarget": false,
+            "targetHeight": 0.35,
+            "distanceSpeedScale": 0,
+            "verticalSpeed": 1.4,
+            "count": 1,
+            "spreadDegrees": 0,
+            "preset": "",
+            "name": "火球 1",
+            "enabled": true,
+            "projectile": {
+              "model": "Primitives/sphere",
+              "style": "fire",
+              "collisionEnabled": true,
+              "radius": 0.6656000000000001,
+              "lifetime": 2.65,
+              "minSpeed": 15.0,
+              "maxSpeed": 28.0,
+              "damage": 14,
+              "visualScale": 1.28,
+              "trail": "fireball_trail_flame",
+              "secondaryTrail": "fireball_trail_embers",
+              "impact": "fireball_impact_flame",
+              "secondaryImpact": "fireball_impact_sparks",
+              "appearance": {
+                "color": [
+                  1,
+                  0.34,
+                  0.07,
+                  0.96
+                ],
+                "emissive": 2.8,
+                "effectScale": 1.15,
+                "softness": 0.42,
+                "intensity": 0.96,
+                "billboardScale": 0.68,
+                "trailInterval": 0.03,
+                "trailSpeedScale": 1.0
+              }
+            }
+          },
+          {
+            "time": 0,
+            "operation": "gpu_vfx",
+            "condition": "always",
+            "stopOnFalse": false,
+            "offset": [
+              0,
+              1.35,
+              1.75
+            ],
+            "aimAtTarget": false,
+            "targetHeight": 0.35,
+            "distanceSpeedScale": 0,
+            "verticalSpeed": 1.4,
+            "count": 1,
+            "spreadDegrees": 0,
+            "preset": "fire_slime_cast",
+            "name": "発射エフェクト 2",
+            "enabled": true
+          }
+        ]
+      }
     }
   ]
 }

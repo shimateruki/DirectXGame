@@ -8,32 +8,34 @@
 
 // 警告、噴出、休止を周期的に繰り返すマグマ噴出口です。
 class GimmickMagmaGeyser : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
+    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+                       int previewBufferIndex = 0) override;
     bool OnCollision(Object3d* other) override;
     void OnTrigger() override;
     void OnSwitchEvent(bool active) override;
 
     bool HasOwnedSpecialMaterialVisuals() const override;
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
-    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0) override;
+    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                                  int previewBufferIndex = 0) override;
 
     std::unique_ptr<Object3d> Clone() const override;
 
     // 移動床は同じ周期から上昇量を取得し、独立したタイマーを持たない。
+    // ワールド距離の上昇量と、0～1 に収まる予兆/圧力の進行率を同一周期から返します。
     float GetLiftOffset() const;
     float GetWarningProgress() const;
     float GetPressureEnvelope() const;
 
     void ResetEscapeCycle(bool active);
-    // Timelineの信号で、泡の予兆から垂直噴出を一度だけ行う。
+    // Timeline の信号で単発噴出へ切り替えます。編集中または処理中の重複要求は無視します。
     void RequestFireballEruption();
 
-
-private:
+  private:
     void FireMagmaProjectiles();
     void UpdateSingleEruption(float deltaTime);
     bool singleEruption_ = false;
@@ -92,6 +94,6 @@ private:
     bool initializedForPlay_ = false;
     bool active_ = true;
     bool simulationSleeping_ = false;
-    Vector4 baseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
     float baseEmissive_ = 1.0f;
 };

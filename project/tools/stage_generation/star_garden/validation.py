@@ -55,6 +55,7 @@ from .geometry import (
 )
 
 def validate_route_support(objects: list[dict[str, Any]]) -> list[str]:
+    """主要地点の床コライダーを標本検査する。ルート全域の連続性までは保証しない。"""
     errors: list[str] = []
     terrain_colliders = [
         entry

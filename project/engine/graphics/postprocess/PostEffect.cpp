@@ -113,6 +113,7 @@ bool PostEffect::SetLUTTexturePath(const std::string& path) {
     lutTexturePath_ = path;
     return true;
 }
+
 void PostEffect::ResetToNeutral() {
     if (!paramsData_) {
         return;
@@ -252,7 +253,7 @@ void PostEffect::CreateRootSignature() {
 void PostEffect::CreatePipelineState() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    // ★ VSは1つ、PSは用途に合わせて5つコンパイルする！
+    // 全画面パスの VS を共有し、抽出・縮小・加算・合成ごとに PS を切り替えます。
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.VS.hlsl", L"vs_6_0", L"main");
     auto psCopy = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
     auto psExtract = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
@@ -265,7 +266,7 @@ void PostEffect::CreatePipelineState() {
     // ==========================================================
     GraphicsPipelineBuilder builder;
     builder.SetRootSignature(rootSignature_.Get());
-    builder.SetInputLayout(nullptr, 0); // 頂点バッファレス方式に変更！
+    builder.SetInputLayout(nullptr, 0); // 頂点を SV_VertexID から生成する全画面パスです。
 
     // カリングなし、Zテストなし
     builder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
@@ -325,9 +326,7 @@ void PostEffect::CreatePipelineState() {
     pipelineStates_.push_back(pso);
 }
 
-// ==========================================================
-// ★ リソースバリア（テクスチャの状態切り替え）関数
-// ==========================================================
+// 同一テクスチャを描画先とサンプリング元に使い分けるため、現在状態を追跡して遷移します。
 void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex) {
     RenderTexture& rt = renderTextures_[texIndex];
     if (rt.currentState == D3D12_RESOURCE_STATE_RENDER_TARGET) return; // 既にRTVなら何もしない
@@ -363,13 +362,13 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
     commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
-    // ★ 引数が true の時だけ画面をクリアする (加算合成のときはクリアしない)
+    // 前段の結果へ加算するパスでは clear=false にして内容を保持します。
     if (clear) {
         float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
         commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     }
 
-    // ★ テクスチャ自身のサイズを取得して、ビューポート(描画範囲)を合わせる！
+    // ウィンドウサイズではなく、このレンダーターゲットの実寸を描画範囲に使います。
     D3D12_RESOURCE_DESC resDesc = rt.resource->GetDesc();
     float width = (float)resDesc.Width;
     float height = (float)resDesc.Height;
@@ -508,6 +507,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     RenderStats::GetInstance()->RecordNonIndexedDraw(3, 1, 1);
     RenderStats::GetInstance()->RecordPostProcessPass();
 }
+
 void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要
     constBuffer_ = dxCommon_->CreateBufferResource((sizeof(Params) + 0xff) & ~0xff);

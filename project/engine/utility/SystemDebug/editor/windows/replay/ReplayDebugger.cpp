@@ -82,6 +82,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
     frames_.push_front(baseline);
     ApplyFrame(0);
 
+    // Play中に生まれたObjectは基準フレームへ戻すだけでは残るため、記録時のIDで差分を探す。
     std::unordered_set<uint64_t> baselineObjectIds;
     baselineObjectIds.reserve(baseline.objects.size());
     for (const ObjectSnapshot& snapshot : baseline.objects) {
@@ -103,6 +104,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
         }
     }
 
+    // SpriteもObjectとは別に寿命を管理するので、同じ基準との差分を削除・無効化する。
     std::unordered_set<uint64_t> baselineSpriteIds;
     baselineSpriteIds.reserve(baseline.sprites.size());
     for (const SpriteSnapshot& snapshot : baseline.sprites) {
@@ -198,6 +200,7 @@ void ReplayDebugger::UpdateBeforeSimulation(float realDeltaTime, bool isPlaying)
         return;
     }
 
+    // アドレスが再利用されても古い履歴を別シーンへ適用しないよう、ポインタと世代を両方確認する。
     if (activeScene_ != scene || activeSceneGeneration_ != sceneManager_->GetSceneGeneration()) {
         const bool replacedScene = activeScene_ != nullptr;
         ResetForSceneChange();
@@ -260,6 +263,7 @@ void ReplayDebugger::CaptureAfterSimulation(float simulationDeltaTime, bool isPl
 
     const float safeDeltaTime = (std::max)(0.0f, simulationDeltaTime);
 
+    // 入力は毎ゲーム更新で記録し、Objectの状態はcaptureRate_の間隔で間引いて保持する。
     if (safeDeltaTime > 0.0f) {
         InputSample sample;
         sample.time = timelineTime_ + safeDeltaTime;
@@ -393,6 +397,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
 
     index = (std::min)(index, frames_.size() - 1);
     FrameSnapshot& frame = frames_[index];
+    // Scene固有の状態を先に戻し、その後でObject・Sprite・Cameraの個別状態を復元する。
     scene->RestoreReplaySceneState(frame.sceneState);
     auto& objects = scene->GetObjects();
 
@@ -463,6 +468,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
         sprite->RefreshAfterReplayRestore();
     }
 
+    // 選択フレームに存在しない保持Objectは破棄せず隠し、未来フレームで再利用できるようにする。
     CollisionManager* collisionManager = CollisionManager::GetInstance();
     for (auto& [replayId, object] : currentObjects) {
         if (!object->IsReplayRetained() || snapshotIds.contains(replayId)) {
@@ -611,6 +617,7 @@ void ReplayDebugger::ResumeFromCursor() {
             return;
         }
     }
+    // 分岐後に古い未来の履歴や入力が混ざらないよう、カーソルより後ろを両方破棄する。
     while (frames_.size() > cursor_ + 1) {
         estimatedMemoryBytes_ -= (std::min)(estimatedMemoryBytes_, frames_.back().estimatedBytes);
         frames_.pop_back();
@@ -706,6 +713,7 @@ void ReplayDebugger::ReleaseRetainedObjects() {
 }
 
 void ReplayDebugger::ClearTransientRuntime() {
+    // 履歴に含めない一時エフェクトは巻き戻し直後の画面に残さない。
     BulletManager::GetInstance()->Clear();
     MeshEffectManager::GetInstance()->Clear();
     DebrisEffectManager::GetInstance()->Clear();

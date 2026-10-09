@@ -17,7 +17,7 @@
 
 namespace {
 Vector2 CalculatePlayerIrisCenter(Player* player) {
-    Vector2 irisCenter = { 0.5f, 0.5f };
+    Vector2 irisCenter = {0.5f, 0.5f};
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (!player || !cam) {
         return irisCenter;
@@ -26,18 +26,10 @@ Vector2 CalculatePlayerIrisCenter(Player* player) {
     Vector3 worldPos = player->GetWorldPosition();
     worldPos.y += 1.0f;
     Vector3 ndc = Math::Transform(worldPos, cam->GetViewProjectionMatrix());
-    const bool isOnScreen =
-        std::isfinite(ndc.x) &&
-        std::isfinite(ndc.y) &&
-        std::isfinite(ndc.z) &&
-        ndc.z >= 0.0f &&
-        std::abs(ndc.x) <= 1.15f &&
-        std::abs(ndc.y) <= 1.15f;
+    const bool isOnScreen = std::isfinite(ndc.x) && std::isfinite(ndc.y) && std::isfinite(ndc.z) && ndc.z >= 0.0f &&
+                            std::abs(ndc.x) <= 1.15f && std::abs(ndc.y) <= 1.15f;
     if (isOnScreen) {
-        irisCenter = {
-            std::clamp((ndc.x + 1.0f) * 0.5f, 0.18f, 0.82f),
-            std::clamp((1.0f - ndc.y) * 0.5f, 0.16f, 0.78f)
-        };
+        irisCenter = {std::clamp((ndc.x + 1.0f) * 0.5f, 0.18f, 0.82f), std::clamp((1.0f - ndc.y) * 0.5f, 0.16f, 0.78f)};
     }
     return irisCenter;
 }
@@ -56,9 +48,7 @@ void StartLifeLostPresentationOnScene() {
         scene->StartLifeLostPresentation(afterLives + 1, afterLives);
     }
 }
-}
-
-
+} // namespace
 
 // ========================================================
 // 死亡状態 (Dead)
@@ -69,6 +59,12 @@ void PlayerStateDead::Enter(Player* player) {
     sceneChangeRequested_ = false;
     lifePresentationStarted_ = false;
     finalDeath_ = GameDataManager::GetInstance()->GetLives() <= 1;
+    // プレビューの死亡演出は隔離し、実戦のカメラ・暗転・シーン遷移を操作しません。
+    if (player && player->IsEditorInternal()) {
+        deathAnimation_.Start(player, false);
+        player->SetIsControlActive(false);
+        return;
+    }
     Fade::GetInstance()->Stop();
     if (player) {
         player->SetDamageInvincible(false);
@@ -77,10 +73,10 @@ void PlayerStateDead::Enter(Player* player) {
             hookMarker->SetIsVisible(false);
         }
         Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-        if (cam) {
+        if (cam && !(GetCurrentGamePlayScene() && GetCurrentGamePlayScene()->IsSealBarrageMovieActive())) {
             cam->SetFreezeEye(true);
             if (finalDeath_) {
-                const Vector3 focus = player->GetWorldPosition() + Vector3{ 0.0f, 0.58f, 0.0f };
+                const Vector3 focus = player->GetWorldPosition() + Vector3{0.0f, 0.58f, 0.0f};
                 Vector3 focusEye = Math::Lerp(cam->GetEye(), focus, 0.16f);
                 focusEye.y += 0.10f;
 
@@ -97,23 +93,38 @@ void PlayerStateDead::Enter(Player* player) {
                 cameraOverride.trackTargetY = false;
                 cameraOverride.trackTargetZ = false;
                 cam->StartOverride(cameraOverride);
-                cam->StartShake(0.22f, 0.085f, 30.0f, { 0.85f, 0.60f, 0.35f });
+                cam->StartShake(0.22f, 0.085f, 30.0f, {0.85f, 0.60f, 0.35f});
             }
         }
         irisCenter_ = CalculatePlayerIrisCenter(player);
     }
-    if (player) player->SetIsControlActive(false);
+    if (player)
+        player->SetIsControlActive(false);
 }
 
 void PlayerStateDead::Update(Player* player, float deltaTime) {
-    if (!player || sceneChangeRequested_) return;
+    if (!player || sceneChangeRequested_)
+        return;
 
+    if (player->IsEditorInternal()) {
+        deathAnimation_.Update(player, deltaTime);
+        return;
+    }
+
+    // 即死のHP判定は済んでいても、全域放電と槍の崩壊が終わるまで暗転を待ちます。
+    if (auto* scene = GetCurrentGamePlayScene(); scene && scene->IsSealBarrageMovieActive())
+        return;
+
+    if (timer_ == 0.0f)
+        if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera())
+            camera->SetFreezeEye(true);
     timer_ += deltaTime;
     finalDeath_ = finalDeath_ || GameDataManager::GetInstance()->GetLives() <= 0;
     deathAnimation_.Update(player, deltaTime);
 
     const float irisDuration = finalDeath_ ? 1.45f : 1.25f;
-    if (deathAnimation_.IsReadyForFade() && !lifePresentationStarted_ && Fade::GetInstance()->GetStatus() == Fade::Status::None) {
+    if (deathAnimation_.IsReadyForFade() && !lifePresentationStarted_ &&
+        Fade::GetInstance()->GetStatus() == Fade::Status::None) {
         Fade::GetInstance()->StartIrisOut(irisDuration, irisCenter_);
     }
 
@@ -150,6 +161,7 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
         SceneManager::GetInstance()->ChangeSceneWithoutLoading("GAMEPLAY", true);
     }
 }
+
 void PlayerStateDead::Exit(Player* player) {
     if (player) {
         deathAnimation_.RestoreVisual(player);
@@ -164,13 +176,12 @@ void PlayerStateDead::Exit(Player* player) {
     }
 }
 
-
-
 // ========================================================
 // 落下演出状態 (FallingOut)
 // ========================================================
 void PlayerStateFallingOut::Enter(Player* player) {
-    if (!player) return;
+    if (!player)
+        return;
     player->SetIsControlActive(false);
     irisCenter_ = CalculatePlayerIrisCenter(player);
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
@@ -183,7 +194,8 @@ void PlayerStateFallingOut::Enter(Player* player) {
 }
 
 void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
-    if (!player) return;
+    if (!player)
+        return;
 
     // 共通処理: アイリスの中心をプレイヤーに合わせ続ける (IrisOut/IrisIn中)
     if (phase_ == Phase::IrisOut || phase_ == Phase::IrisIn) {
@@ -208,7 +220,6 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
             StartLifeLostPresentationOnScene();
             phase_ = Phase::LifeLost;
             break;
-
         }
         break;
 
@@ -227,7 +238,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
         }
 
         player->SetTranslate(player->GetRespawnPosition());
-        player->SetVelocity({ 0,0,0 });
+        player->SetVelocity({0, 0, 0});
 
         CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
         CameraManager::GetInstance()->GetActiveCamera()->Update(deltaTime);

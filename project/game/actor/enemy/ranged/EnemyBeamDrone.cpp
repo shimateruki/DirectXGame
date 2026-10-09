@@ -43,9 +43,9 @@ Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
 
 Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback) {
@@ -59,38 +59,38 @@ Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback) {
 Quaternion MakeYAxisToDirectionQuaternion(const Vector3& direction) {
     Vector3 to = direction;
     if (Math::Length(to) < 0.001f) {
-        return { 0.0f, 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 0.0f, 1.0f};
     }
     to = Math::Normalize(to);
 
-    const Vector3 from = { 0.0f, 1.0f, 0.0f };
+    const Vector3 from = {0.0f, 1.0f, 0.0f};
     const float dot = std::clamp(Math::Dot(from, to), -1.0f, 1.0f);
     if (dot > 0.9999f) {
-        return { 0.0f, 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 0.0f, 1.0f};
     }
     if (dot < -0.9999f) {
-        return { 1.0f, 0.0f, 0.0f, 0.0f };
+        return {1.0f, 0.0f, 0.0f, 0.0f};
     }
 
     Vector3 axis = Math::Cross(from, to);
     const float s = std::sqrt((1.0f + dot) * 2.0f);
     const float invS = 1.0f / s;
-    return { axis.x * invS, axis.y * invS, axis.z * invS, s * 0.5f };
+    return {axis.x * invS, axis.y * invS, axis.z * invS, s * 0.5f};
 }
-}
+} // namespace
 
 // ビーム用の見た目オブジェクトを生成し、敵本体を初期化する
 void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_BeamDrone");
     SetEnemyType("BeamDrone");
-    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     SetEmissive(1.4f);
     defaultColor_ = GetColor();
-    SetScale({ 0.85f, 0.85f, 0.85f });
+    SetScale({0.85f, 0.85f, 0.85f});
 
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(1.1f);
 
@@ -102,9 +102,9 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
     beamVisual_->SetTexture("Resources/sprite/common/white.png");
     beamVisual_->SetBlendMode(BlendMode::kAdd);
     beamVisual_->SetMaterialType(12);
-    beamVisual_->SetColor({ 0.15f, 0.9f, 1.0f, 0.9f });
+    beamVisual_->SetColor({0.15f, 0.9f, 1.0f, 0.9f});
     beamVisual_->SetEmissive(8.0f);
-    beamVisual_->SetScale({ 0.0f, 0.0f, 0.0f });
+    beamVisual_->SetScale({0.0f, 0.0f, 0.0f});
     beamVisual_->SetCollisionAttribute(0);
     beamVisual_->SetCollisionMask(0);
     beamVisual_->SetIsVisible(false);
@@ -117,9 +117,9 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
     beamCoreVisual_->SetTexture("Resources/sprite/common/white.png");
     beamCoreVisual_->SetBlendMode(BlendMode::kAdd);
     beamCoreVisual_->SetMaterialType(12);
-    beamCoreVisual_->SetColor({ 0.85f, 1.0f, 1.0f, 1.0f });
+    beamCoreVisual_->SetColor({0.85f, 1.0f, 1.0f, 1.0f});
     beamCoreVisual_->SetEmissive(12.0f);
-    beamCoreVisual_->SetScale({ 0.0f, 0.0f, 0.0f });
+    beamCoreVisual_->SetScale({0.0f, 0.0f, 0.0f});
     beamCoreVisual_->SetCollisionAttribute(0);
     beamCoreVisual_->SetCollisionMask(0);
     beamCoreVisual_->SetIsVisible(false);
@@ -162,17 +162,16 @@ void EnemyBeamDrone::UpdateEnemyTimers(float deltaTime) {
 
 void EnemyBeamDrone::UpdateEnemyMovement(float deltaTime) {
     if (state_ == BeamState::Beam) {
-        smoothedVelocity_ = { 0.0f, 0.0f, 0.0f };
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
-    }
-    else {
+        smoothedVelocity_ = {0.0f, 0.0f, 0.0f};
+        SetVelocity({0.0f, 0.0f, 0.0f});
+    } else {
         UpdateHover(deltaTime);
     }
 }
 
 void EnemyBeamDrone::UpdateEnemyBeamState(float deltaTime) {
-    Vector3 toTarget = { 0.0f, 0.0f, 1.0f };
-    Vector3 direction = { 0.0f, 0.0f, 1.0f };
+    Vector3 toTarget = {0.0f, 0.0f, 1.0f};
+    Vector3 direction = {0.0f, 0.0f, 1.0f};
     float distance = 9999.0f;
     if (target_) {
         toTarget = target_->GetTranslate() - GetTranslate();
@@ -195,7 +194,7 @@ void EnemyBeamDrone::UpdateEnemyBeamState(float deltaTime) {
         break;
     case BeamState::Charge:
         chargeTimer_ -= deltaTime;
-        SetColor({ 0.75f, 0.98f, 1.0f, 1.0f });
+        SetColor({0.75f, 0.98f, 1.0f, 1.0f});
         if (target_) {
             UpdateFacing(direction);
         }
@@ -283,17 +282,13 @@ void EnemyBeamDrone::UpdateCarriedAbility(Player* player, float deltaTime) {
     case BeamState::Charge:
         chargeTimer_ -= deltaTime;
         playerBeamEffectTimer_ -= deltaTime;
-        SetColor({ 0.65f, 0.95f, 1.0f, 1.0f });
+        SetColor({0.65f, 0.95f, 1.0f, 1.0f});
         SetEmissive(3.5f + std::sin(chargeTimer_ * 36.0f) * 0.8f);
         if (playerBeamEffectTimer_ <= 0.0f) {
             const Vector3 muzzle = GetPlayerBeamMuzzlePosition(player);
             if (MeshEffectManager::GetInstance()) {
                 MeshEffectManager::GetInstance()->SpawnEffectAt(
-                    kPlayerBeamChargeEffect,
-                    muzzle,
-                    { 1.5707963f, player->GetMoveYaw(), 0.0f },
-                    { 1.0f, 1.0f, 1.0f }
-                );
+                    kPlayerBeamChargeEffect, muzzle, {1.5707963f, player->GetMoveYaw(), 0.0f}, {1.0f, 1.0f, 1.0f});
             }
             if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
                 gpuParticleManager->Emit(kPlayerBeamChargeSparkPreset, muzzle);
@@ -331,7 +326,8 @@ void EnemyBeamDrone::UpdateCarriedAbility(Player* player, float deltaTime) {
 
 // 浮遊AIと敵自身のビーム処理
 void EnemyBeamDrone::CaptureHomePosition() {
-    if (hasHomePosition_) return;
+    if (hasHomePosition_)
+        return;
     homePosition_ = GetTranslate();
     if (homePosition_.y < kHoverHeight) {
         homePosition_.y += kHoverHeight;
@@ -344,7 +340,7 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
     Vector3 desired = GetWanderTargetPosition(deltaTime, 0.55f);
     desired.y += std::sin(hoverTimer_ * 2.1f) * 0.45f;
     bool isCombatPosition = false;
-    Vector3 combatFacingDirection = { 0.0f, 0.0f, 1.0f };
+    Vector3 combatFacingDirection = {0.0f, 0.0f, 1.0f};
 
     if (target_) {
         Vector3 toTarget = target_->GetTranslate() - GetTranslate();
@@ -353,7 +349,7 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
         if (distance <= detectionRange_) {
             combatFacingDirection = direction;
             Vector3 targetPos = target_->GetTranslate();
-            const Vector3 sideDirection = { direction.z, 0.0f, -direction.x };
+            const Vector3 sideDirection = {direction.z, 0.0f, -direction.x};
             const float sideOffset = std::sin(hoverTimer_ * 0.85f) * kOrbitSideOffset;
             targetPos.y += kHoverHeight + std::sin(hoverTimer_ * 2.4f) * 0.35f;
             desired = targetPos - direction * kPreferredDistance + sideDirection * sideOffset;
@@ -364,14 +360,14 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
     if (!isCombatPosition) {
         const Vector3 toWander = desired - GetTranslate();
         const Vector3 wanderDirection = NormalizePlanar(toWander);
-        const Vector3 sideDirection = { wanderDirection.z, 0.0f, -wanderDirection.x };
+        const Vector3 sideDirection = {wanderDirection.z, 0.0f, -wanderDirection.x};
         desired = desired + sideDirection * (std::sin(hoverTimer_ * 1.15f) * 2.0f);
     }
 
     Vector3 toDesired = desired - GetTranslate();
     const float distanceToDesired = Math::Length(toDesired);
     const float speed = param_.has_value() ? (std::max)(1.0f, param_->speed) : 5.0f;
-    Vector3 desiredVelocity = { 0.0f, 0.0f, 0.0f };
+    Vector3 desiredVelocity = {0.0f, 0.0f, 0.0f};
     if (distanceToDesired > 0.001f) {
         const float arrival = std::clamp(distanceToDesired / 5.0f, 0.18f, 1.0f);
         desiredVelocity = (toDesired / distanceToDesired) * speed * arrival;
@@ -385,18 +381,18 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
     facingDirection.y = 0.0f;
     if (isCombatPosition && state_ == BeamState::Idle) {
         UpdateFacing(combatFacingDirection);
-    }
-    else if (Math::Length(facingDirection) > 0.08f && state_ == BeamState::Idle) {
+    } else if (Math::Length(facingDirection) > 0.08f && state_ == BeamState::Idle) {
         UpdateFacing(facingDirection);
     }
 }
 
 void EnemyBeamDrone::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
-    if (lengthSq <= 0.0001f) return;
+    if (lengthSq <= 0.0001f)
+        return;
 
     const float targetYaw = std::atan2(direction.x, direction.z) + kEyeModelYawOffset;
-    SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f), 0.0f });
+    SetRotation({0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f), 0.0f});
 }
 
 void EnemyBeamDrone::StartCharge() {
@@ -433,7 +429,8 @@ void EnemyBeamDrone::FireBeam() {
 }
 
 void EnemyBeamDrone::UpdateBeamVisual() {
-    if (!beamVisual_ || !beamCoreVisual_) return;
+    if (!beamVisual_ || !beamCoreVisual_)
+        return;
 
     beamEnd_ = beamStart_ + beamDirection_ * beamLength_;
 
@@ -445,12 +442,15 @@ void EnemyBeamDrone::UpdateBeamVisual() {
     }
 
     const float pulse = 0.92f + std::sin(beamTimer_ * 80.0f) * 0.08f;
-    ApplyBeamVisualTransform(beamVisual_.get(), beamStart_, beamEnd_, kBeamOuterThickness * pulse, { 0.08f, 0.85f, 1.0f, 0.58f }, 8.0f);
-    ApplyBeamVisualTransform(beamCoreVisual_.get(), beamStart_, beamEnd_, kBeamCoreThickness * pulse, { 0.85f, 1.0f, 1.0f, 0.98f }, 14.0f);
+    ApplyBeamVisualTransform(beamVisual_.get(), beamStart_, beamEnd_, kBeamOuterThickness * pulse,
+                             {0.08f, 0.85f, 1.0f, 0.58f}, 8.0f);
+    ApplyBeamVisualTransform(beamCoreVisual_.get(), beamStart_, beamEnd_, kBeamCoreThickness * pulse,
+                             {0.85f, 1.0f, 1.0f, 0.98f}, 14.0f);
 }
 
 void EnemyBeamDrone::UpdateBeamDamage() {
-    if (beamDamageDone_ || !target_) return;
+    if (beamDamageDone_ || !target_)
+        return;
 
     Vector3 damageStart = beamStart_;
     Vector3 damageEnd = beamEnd_;
@@ -469,7 +469,7 @@ void EnemyBeamDrone::UpdateBeamDamage() {
     damageEvent.target = target_;
     damageEvent.attacker = this;
     damageEvent.damageAmount = kBeamDamage;
-    damageEvent.knockbackVelocity = { knockback.x * 14.0f, 7.0f, knockback.z * 14.0f };
+    damageEvent.knockbackVelocity = {knockback.x * 14.0f, 7.0f, knockback.z * 14.0f};
     EventManager::GetInstance()->Dispatch(damageEvent);
     HitEffectDirector::SpawnEnemyAbilityHit(targetPoint);
     beamDamageDone_ = true;
@@ -484,8 +484,10 @@ void EnemyBeamDrone::HideBeamVisuals() {
     }
 }
 
-void EnemyBeamDrone::ApplyBeamVisualTransform(Object3d* visual, const Vector3& source, const Vector3& target, float thickness, const Vector4& color, float emissive) {
-    if (!visual) return;
+void EnemyBeamDrone::ApplyBeamVisualTransform(Object3d* visual, const Vector3& source, const Vector3& target,
+                                              float thickness, const Vector4& color, float emissive) {
+    if (!visual)
+        return;
 
     Vector3 diff = target - source;
     const float length = Math::Length(diff);
@@ -495,7 +497,7 @@ void EnemyBeamDrone::ApplyBeamVisualTransform(Object3d* visual, const Vector3& s
     }
 
     visual->SetTranslate(source + diff * 0.5f);
-    visual->SetScale({ thickness, length * 0.5f, thickness });
+    visual->SetScale({thickness, length * 0.5f, thickness});
     visual->GetTransform()->quaternion = MakeYAxisToDirectionQuaternion(diff);
     visual->GetTransform()->isQuaternionMaster = true;
     visual->SetColor(color);
@@ -561,16 +563,12 @@ void EnemyBeamDrone::FirePlayerBeam(Player* player) {
     beamEnd_ = beamStart_ + beamDirection_ * beamLength_;
     beamTimer_ = kPlayerBeamActiveTime;
     state_ = BeamState::Beam;
-    SetColor({ 0.78f, 1.0f, 1.0f, 1.0f });
+    SetColor({0.78f, 1.0f, 1.0f, 1.0f});
     SetEmissive(5.0f);
     playerBeamEffectTimer_ = 0.0f;
     if (MeshEffectManager::GetInstance()) {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(
-            kPlayerBeamMuzzleEffect,
-            beamStart_,
-            { 1.5707963f, player->GetMoveYaw(), 0.0f },
-            { 1.0f, 1.0f, 1.0f }
-        );
+        MeshEffectManager::GetInstance()->SpawnEffectAt(kPlayerBeamMuzzleEffect, beamStart_,
+                                                        {1.5707963f, player->GetMoveYaw(), 0.0f}, {1.0f, 1.0f, 1.0f});
     }
     if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
         gpuParticleManager->Emit(kPlayerBeamSparkPreset, beamStart_);
@@ -596,8 +594,10 @@ void EnemyBeamDrone::UpdatePlayerBeamVisual() {
     }
 
     const float pulse = 0.96f + std::sin(beamTimer_ * 92.0f) * 0.08f;
-    ApplyBeamVisualTransform(beamVisual_.get(), beamStart_, beamEnd_, 0.46f * pulse, { 0.08f, 0.55f, 1.0f, 0.62f }, 10.0f);
-    ApplyBeamVisualTransform(beamCoreVisual_.get(), beamStart_, beamEnd_, 0.15f * pulse, { 0.9f, 1.0f, 1.0f, 1.0f }, 16.0f);
+    ApplyBeamVisualTransform(beamVisual_.get(), beamStart_, beamEnd_, 0.46f * pulse, {0.08f, 0.55f, 1.0f, 0.62f},
+                             10.0f);
+    ApplyBeamVisualTransform(beamCoreVisual_.get(), beamStart_, beamEnd_, 0.15f * pulse, {0.9f, 1.0f, 1.0f, 1.0f},
+                             16.0f);
 }
 
 void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
@@ -620,7 +620,7 @@ void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
         if (!object || object == this || object == player || object->isDead) {
             continue;
         }
-        if (!(object->GetCollisionAttribute() & kEnemy)) {
+        if (!(object->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
             continue;
         }
 
@@ -634,11 +634,7 @@ void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
         damageEvent.target = object;
         damageEvent.attacker = player;
         damageEvent.damageAmount = kPlayerBeamDamage;
-        damageEvent.knockbackVelocity = {
-            beamDirection_.x * 20.0f,
-            5.0f,
-            beamDirection_.z * 20.0f
-        };
+        damageEvent.knockbackVelocity = {beamDirection_.x * 20.0f, 5.0f, beamDirection_.z * 20.0f};
         EventManager::GetInstance()->Dispatch(damageEvent);
         HitEffectDirector::SpawnEnemyAbilityHit(targetPoint);
     }
@@ -659,9 +655,9 @@ Vector3 EnemyBeamDrone::GetPlayerBeamDirection(Player* player) const {
     Vector3 direction = player->GetForwardDirection();
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { direction.x / length, 0.0f, direction.z / length };
+    return {direction.x / length, 0.0f, direction.z / length};
 }
 
 float EnemyBeamDrone::CalcDistancePointToSegment(const Vector3& point, const Vector3& start, const Vector3& end) const {
@@ -676,4 +672,3 @@ float EnemyBeamDrone::CalcDistancePointToSegment(const Vector3& point, const Vec
     const Vector3 closest = start + segment * t;
     return Math::Length(point - closest);
 }
-

@@ -1,3 +1,8 @@
+"""入力案内 UI の PNG 群と対応する manifest を生成する。
+
+Resources/sprite/ui/input の同名画像と manifest を更新する。
+"""
+
 from __future__ import annotations
 
 import json

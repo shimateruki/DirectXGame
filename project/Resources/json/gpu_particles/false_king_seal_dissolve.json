@@ -1,0 +1,69 @@
+{
+  "emitPos": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "emitArea": [
+    0.3,
+    1.8,
+    0.3
+  ],
+  "emitVelocity": [
+    0,
+    2.8,
+    0
+  ],
+  "emitCount": 28,
+  "emitLife": 0.85,
+  "velocityVariance": 2.8,
+  "baseColor": [
+    2.8,
+    0.05,
+    0.008,
+    0.65
+  ],
+  "midColor": [
+    4,
+    0.48,
+    0.05,
+    0.9
+  ],
+  "endColor": [
+    0.2,
+    0.002,
+    0.001,
+    0
+  ],
+  "colorMidTime": 0.42,
+  "colorEaseType": 2,
+  "colorIntensity": 2.8,
+  "baseSize": 0.075,
+  "midSize": 0.15,
+  "endSize": 0.01,
+  "sizeMidTime": 0.45,
+  "sizeEaseType": 2,
+  "rotSpeed": 3.5,
+  "blendModeIndex": 1,
+  "envGravity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "envDrag": 0.2,
+  "envWind": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "envTurbulence": 0.4,
+  "isLooping": false,
+  "emitInterval": 0.04,
+  "shapeType": 1,
+  "shapeRadius": 0.04,
+  "shapeAngle": 9.0,
+  "softParticleFade": 1.0,
+  "alignToVelocity": false,
+  "velocityStretch": 2.8,
+  "texturePath": "Resources/sprite/particle/spark_star.png"
+}

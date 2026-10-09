@@ -55,11 +55,13 @@ public:
     /// <summary>共有アセットのマテリアル設定をオブジェクトへ適用する。</summary>
     static void Apply(const MaterialInstanceData& material, Object3d& object);
 
-    // baseAssetを再帰的に解決します。循環参照と深すぎる継承はエラーにします。
+    // baseAsset を親から先に読み、子 JSON にある値だけ上書きする。
+    // 循環参照と 16 段を超える継承は失敗する。失敗時の material は部分的に更新され得る。
     static bool LoadResolved(
         const std::string& assetPath,
         MaterialInstanceData& material,
         std::string* errorMessage = nullptr);
+    // 現在の値を全項目保存する。baseAsset 指定時も差分だけの保存にはならない。
     static bool Save(
         const std::string& assetPath,
         const MaterialInstanceData& material,

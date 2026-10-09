@@ -1,4 +1,5 @@
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.Internal.h"
+#include "engine/utility/SystemDebug/editor/windows/ProjectWindow.h"
 
 using namespace InspectorWindowImplementation;
 
@@ -658,6 +659,20 @@ void InspectorWindow::Draw() {
                     }
                 }
 
+                // 文字一覧と球ギャラリーで同じ適用処理を使い、複数選択にも同じ結果を渡す。
+                const auto applyPbrPreset = [&](const InspectorTextureCatalog::PbrPreset& preset) {
+                    for (Object3d* target : inspectorTargets) {
+                        if (!target) continue;
+                        target->SetTexture(preset.albedoPath);
+                        target->SetNormalMap(preset.normalPath);
+                        target->SetOrmMap(preset.ormPath);
+                        target->SetEnableNormalMap(true);
+                    }
+                    MarkInspectorTargetsDirty(editor_, inspectorTargets);
+                    DebugConsole::GetInstance()->AddLog("PBR preset applied: " + preset.name);
+                    isGraphicsChanged = true;
+                };
+
                 if (ImGui::BeginCombo(ICON_FA_IMAGE " PBRプリセット (Albedo/Normal/ORM)", currentPresetName.c_str())) {
                     if (pbrPresets.empty()) {
                         ImGui::TextDisabled("同名の3枚セットが見つかりません。");
@@ -668,18 +683,64 @@ void InspectorWindow::Draw() {
                             preset.normalPath == currentNormalPath &&
                             preset.ormPath == currentOrmPathForPreset;
                         if (ImGui::Selectable(preset.name.c_str(), isSelected)) {
-                            selectedObject->SetTexture(preset.albedoPath);
-                            selectedObject->SetNormalMap(preset.normalPath);
-                            selectedObject->SetOrmMap(preset.ormPath);
-                            selectedObject->SetEnableNormalMap(true);
-                            DebugConsole::GetInstance()->AddLog("PBR preset applied: " + preset.name);
-                            isGraphicsChanged = true;
+                            applyPbrPreset(preset);
                         }
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
                         }
                     }
                     ImGui::EndCombo();
+                }
+                if (ImGui::Button(ICON_FA_IMAGES " 球プレビューから選ぶ")) {
+                    ImGui::OpenPopup("PBR球プレビュー");
+                }
+                ImGui::SetNextWindowSize(ImVec2(510.0f, 430.0f), ImGuiCond_Appearing);
+                if (ImGui::BeginPopup("PBR球プレビュー")) {
+                    ProjectWindow* projectWindow = editor_->GetProjectWindow();
+                    if (ImGui::Button(ICON_FA_SYNC " 素材を再読込")) {
+                        textureCatalog.Refresh();
+                        if (projectWindow) projectWindow->InvalidatePbrThumbnails();
+                    }
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("同じ照明で球に貼った見た目を比較します");
+                    ImGui::Separator();
+                    if (pbrPresets.empty()) ImGui::TextDisabled("Albedo・Normal・ORMの3枚セットがありません。");
+                    const float cardWidth = 112.0f;
+                    const int columns = (std::max)(1, static_cast<int>(ImGui::GetContentRegionAvail().x / cardWidth));
+                    if (ImGui::BeginTable("PbrSphereGrid", columns)) {
+                        for (const auto& preset : pbrPresets) {
+                            ImGui::TableNextColumn();
+                            ImGui::PushID(preset.name.c_str());
+                            const uint64_t thumbnail = projectWindow && ImGui::IsRectVisible(ImVec2(96.0f, 96.0f))
+                                ? projectWindow->GetPbrThumbnailGpuPtr(preset.name,
+                                    preset.albedoPath, preset.normalPath, preset.ormPath) : 0;
+                            const bool selected = preset.albedoPath == currentTexturePath &&
+                                preset.normalPath == currentNormalPath && preset.ormPath == currentOrmPathForPreset;
+                            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.38f, 0.60f, 1.0f));
+                            const bool clicked = thumbnail
+                                ? ImGui::ImageButton("##sphere", (ImTextureID)(uintptr_t)thumbnail, ImVec2(96.0f, 96.0f))
+                                : ImGui::Button("撮影中...", ImVec2(96.0f, 96.0f));
+                            if (selected) ImGui::PopStyleColor();
+                            if (clicked) {
+                                applyPbrPreset(preset);
+                                ImGui::CloseCurrentPopup();
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::BeginTooltip();
+                                ImGui::TextUnformatted(preset.name.c_str());
+                                ImGui::TextDisabled("Albedo: %s", preset.albedoPath.c_str());
+                                ImGui::TextDisabled("Normal: %s", preset.normalPath.c_str());
+                                ImGui::TextDisabled("ORM: %s", preset.ormPath.c_str());
+                                ImGui::EndTooltip();
+                            }
+                            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 100.0f);
+                            ImGui::TextWrapped("%s", preset.name.c_str());
+                            ImGui::PopTextWrapPos();
+                            ImGui::PopID();
+                        }
+                        ImGui::EndTable();
+                    }
+                    ImGui::EndPopup();
                 }
                 if (!pbrPresets.empty()) {
                     ImGui::TextDisabled("同じベース名の3枚をまとめて適用します。");
@@ -1002,11 +1063,17 @@ void InspectorWindow::Draw() {
             ImGui::Separator();
             uint32_t currentAttr = selectedObject->GetCollisionAttribute();
             DrawAttributeSelector(ICON_FA_TAGS " 自分の属性 (Attribute)", &currentAttr);
-            if (currentAttr != selectedObject->GetCollisionAttribute()) selectedObject->SetCollisionAttribute(currentAttr);
+            if (currentAttr != selectedObject->GetCollisionAttribute()) {
+                selectedObject->SetCollisionAttribute(currentAttr);
+                MarkInspectorTargetsDirty(editor_, inspectorTargets);
+            }
 
             uint32_t currentMask = selectedObject->GetCollisionMask();
             DrawAttributeSelector(ICON_FA_TAGS " 衝突対象 (Mask)", &currentMask);
-            if (currentMask != selectedObject->GetCollisionMask()) selectedObject->SetCollisionMask(currentMask);
+            if (currentMask != selectedObject->GetCollisionMask()) {
+                selectedObject->SetCollisionMask(currentMask);
+                MarkInspectorTargetsDirty(editor_, inspectorTargets);
+            }
         }
 
         if (HasRegisteredComponent(selectedObject, "Animator")) {

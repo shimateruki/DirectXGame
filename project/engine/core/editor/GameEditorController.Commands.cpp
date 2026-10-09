@@ -169,6 +169,7 @@ void GameEditorController::RegisterEditorCommands() {
         { "event", "trace", "feedback", "vfx", "animation", "演出" }, {},
         []() { GameplayEventTrace::GetInstance()->Open(); }, this });
 }
+
 // ゲームエディタで使う各種ツールとウィンドウを生成し、SceneManagerへ接続する。
 
 void GameEditorController::RegisterEditorTools() {
@@ -224,6 +225,12 @@ void GameEditorController::RegisterEditorTools() {
         EditorManager::GetInstance()->SetSelectedObject(preview);
     };
     settings.AddTool("tool.enemy", "敵攻撃プレビュー", "戦闘", [openPreview]() { openPreview(false); }, available);
+    settings.AddTool("tool.crownMovie", "王冠継承ムービープレビュー", "演出", [this]() {
+        showDebugWindows_ = true; SetReplayDebuggerVisible(false);
+        auto* preview = debugEditor_->GetEnemyAttackPreviewWindow();
+        preview->SetCrownMovieMode(); debugEditor_->SetSelectedObject(nullptr);
+        EditorManager::GetInstance()->SetSelectedObject(preview);
+    }, available);
     settings.AddTool("tool.player", "プレイヤー能力プレビュー", "戦闘", [openPreview]() { openPreview(true); }, available);
     settings.AddTool("tool.recorder", "移動軌跡の記録（Ghost Recorder）", "演出", [this]() {
         showDebugWindows_ = true; SetReplayDebuggerVisible(false);

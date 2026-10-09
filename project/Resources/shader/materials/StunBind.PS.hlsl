@@ -24,6 +24,7 @@ float ElectricSegment(float2 p, float2 start, float2 end, float seed, float line
     float2 tangent = normalize(axis);
     float2 normal = float2(-tangent.y, tangent.x);
 
+    // Quantized cells hold each kink briefly while the fine sine terms keep the bolt alive.
     float cell = floor(t * 9.0f + seed * 2.0f);
     float jitter = (Hash12(float2(cell, seed * 19.13f)) - 0.5f) * 0.065f;
     jitter += sin(t * 37.0f + seed * 8.0f + time * speed * 13.0f) * 0.018f;
@@ -70,6 +71,7 @@ float4 main(VSOutput input) : SV_TARGET
     float radialMask = 1.0f - smoothstep(0.92f + softness * 0.08f, 1.12f + softness * 0.10f, radial);
     float lineWidth = 0.009f + saturate(width * 0.45f) * 0.015f + softness * 0.006f;
 
+    // The modes vary the restraint silhouette from orbiting arcs to crossing bolts and a rim.
     if (mode < 0.5f)
     {
         float arcGate = pow(saturate(0.5f + 0.5f * sin(angle * (5.0f + detail * 0.12f) - time * speed * 8.0f)), 8.0f);

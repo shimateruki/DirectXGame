@@ -230,6 +230,7 @@ bool PresetManager::ApplyPrefabProperty(
         prefabName = assetIt->first;
     }
 
+    // 更新前の有効値をAsset別に退避し、後で手動上書きしていないInstanceだけ同期する。
     std::unordered_map<std::string, json> oldEffectiveValues;
     for (const auto& [name, asset] : prefabs_) {
         (void)name;
@@ -629,6 +630,7 @@ int PresetManager::ApplyAllPrefabOverrides(Object3d* object, const std::vector<O
     const json beforeAsset = assetIt->second;
 
     int applied = 0;
+    // 各PropertyごとのUndo履歴を抑え、階層全体のApplyを一操作として登録する。
     suppressPrefabAssetTransaction_ = true;
     for (Object3d* candidate : sceneObjects) {
         if (!candidate || !candidate->IsPrefabInstance() ||

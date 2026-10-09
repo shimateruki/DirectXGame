@@ -10,7 +10,7 @@ class Player;
 
 // ボス前で最大4種類のコピー能力から一つを、実物のコアへ触れて選択する記憶台です。
 class GimmickCopyMemoryStation final : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
@@ -20,7 +20,7 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     static constexpr size_t kCoreCount = 4;
 
     void BeginPlayState();

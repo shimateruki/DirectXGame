@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "e771d991a76a64c75c69cf56359ff649",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/attack_assets/authoring_double_sweep.json",
+  "version": 1
+}

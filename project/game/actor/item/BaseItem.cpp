@@ -17,12 +17,12 @@ void BaseItem::Initialize(Object3dCommon* common, const std::string& modelName) 
 
     ColliderConfig config;
     config.type = ColliderType::kSphere;
-    config.size = { 1.0f, 1.0f, 1.0f };
+    config.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(config);
     SetCollisionRadius(1.0f);
 
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 }
 
 void BaseItem::Update(float deltaTime) {
@@ -44,6 +44,7 @@ void BaseItem::Update(float deltaTime) {
     Object3d::Update(deltaTime);
 }
 
+// 対象がプレイヤーで実際に重なった時だけ、派生クラスの取得処理を呼びます。
 bool BaseItem::OnCollision(Object3d* other) {
     if (isCollected_ || !other) {
         return false;
@@ -68,6 +69,7 @@ void BaseItem::Collect(Player* player) {
     MarkCollected();
 }
 
+// 同じフレームの二重取得を防ぐため、取得直後に衝突と表示を無効化します。
 void BaseItem::MarkCollected() {
     isCollected_ = true;
     SetCollisionAttribute(0);

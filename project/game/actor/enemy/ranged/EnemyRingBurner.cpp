@@ -45,11 +45,11 @@ float PlanarDistance(const Vector3& first, const Vector3& second) {
 Vector3 NormalizePlanar(const Vector3& value) {
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
-}
+} // namespace
 
 void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
@@ -59,17 +59,17 @@ void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& mode
     SetMaterialType(0);
     SetMetallic(0.72f);
     SetRoughness(0.24f);
-    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     SetEmissive(1.35f);
     defaultColor_ = GetColor();
 
-    // kGroundを併記し、上面だけは安全な足場として押し戻せるようにします。
-    SetCollisionAttribute(kEnemy | kGround);
-    SetCollisionMask(kPlayer | kPlayerAttack | kAttributePlayerBullet);
+    // groundを併記し、上面だけは安全な足場として押し戻せるようにします。
+    SetCollisionAttribute(CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kOBB);
-    SetCollisionSize({ 1.25f, kModelHeight * 0.5f, 1.25f });
+    SetCollisionSize({1.25f, kModelHeight * 0.5f, 1.25f});
     ColliderConfig collider = GetColliderConfig();
-    collider.center = { 0.0f, kModelHeight * 0.5f, 0.0f };
+    collider.center = {0.0f, kModelHeight * 0.5f, 0.0f};
     SetColliderConfig(collider);
 
     baseScale_ = GetScale();
@@ -86,7 +86,7 @@ void EnemyRingBurner::Update(float deltaTime) {
     EnsureBaseScale();
     idleTimer_ += deltaTime;
     particleTimer_ = (std::max)(0.0f, particleTimer_ - deltaTime);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
 
     if (IsTargetStandingOnTop()) {
         if (state_ != State::Suppressed) {
@@ -96,8 +96,7 @@ void EnemyRingBurner::Update(float deltaTime) {
         }
         stateTimer_ = kSuppressedReleaseDuration;
         cooldownTimer_ = GetCooldownDuration() * 0.38f;
-    }
-    else {
+    } else {
         UpdateCombat(deltaTime);
     }
 
@@ -147,7 +146,7 @@ void EnemyRingBurner::BeginCharge() {
     EnterState(State::Charge, GetChargeDuration());
     waveRadius_ = 0.0f;
     SpawnChargeEffects();
-    TriggerAttackTelegraphCue({ 1.0f, 0.20f, 0.025f, 1.0f });
+    TriggerAttackTelegraphCue({1.0f, 0.20f, 0.025f, 1.0f});
 }
 
 void EnemyRingBurner::BeginWave() {
@@ -175,14 +174,12 @@ void EnemyRingBurner::UpdateCombat(float deltaTime) {
         stateTimer_ -= deltaTime;
         const float progress = 1.0f - (std::max)(0.0f, stateTimer_) / stateDuration_;
         const float pulseRadius = Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
-        ShowAttackTelegraphCircle(
-            GetWorldPosition() + Vector3{ 0.0f, 0.06f, 0.0f },
-            pulseRadius * (std::max)(baseScale_.x, baseScale_.z),
-            progress,
-            { 1.0f, 0.20f, 0.025f, 0.92f });
+        ShowAttackTelegraphCircle(GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f},
+                                  pulseRadius * (std::max)(baseScale_.x, baseScale_.z), progress,
+                                  {1.0f, 0.20f, 0.025f, 0.92f});
         if (particleTimer_ <= 0.0f) {
             if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-                particles->Emit(kChargeParticle, GetWorldPosition() + Vector3{ 0.0f, 1.12f * baseScale_.y, 0.0f });
+                particles->Emit(kChargeParticle, GetWorldPosition() + Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
             }
             particleTimer_ = 0.12f;
         }
@@ -232,11 +229,10 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float bandWidth = (std::max)(kWaveBandHalfWidth * horizontalScale, waveRadius_ * 0.045f);
     // フレーム間に通過した帯も調べ、処理落ちで輪がプレイヤーを飛び越えないようにします。
-    const bool crossesRing = targetDistance >= previousRadius - bandWidth &&
-        targetDistance <= waveRadius_ + bandWidth;
+    const bool crossesRing = targetDistance >= previousRadius - bandWidth && targetDistance <= waveRadius_ + bandWidth;
     // 下段の救済床には届かせず、同じ高さのプレイヤーだけを対象にします。
-    const bool isLowEnough = targetRelativeHeight >= -0.65f * baseScale_.y &&
-        targetRelativeHeight <= kWaveJumpClearHeight * baseScale_.y;
+    const bool isLowEnough =
+        targetRelativeHeight >= -0.65f * baseScale_.y && targetRelativeHeight <= kWaveJumpClearHeight * baseScale_.y;
     if (!crossesRing || !isLowEnough) {
         return;
     }
@@ -247,12 +243,9 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     damageEvent.attacker = this;
     damageEvent.damageAmount = kWaveDamage;
     damageEvent.damageType = DamageType::Fire;
-    damageEvent.knockbackVelocity = {
-        knockbackDirection.x * 13.0f,
-        6.0f,
-        knockbackDirection.z * 13.0f };
+    damageEvent.knockbackVelocity = {knockbackDirection.x * 13.0f, 6.0f, knockbackDirection.z * 13.0f};
     EventManager::GetInstance()->Dispatch(damageEvent);
-    HitEffectDirector::SpawnEnemyAbilityHit(targetPosition + Vector3{ 0.0f, 0.55f, 0.0f });
+    HitEffectDirector::SpawnEnemyAbilityHit(targetPosition + Vector3{0.0f, 0.55f, 0.0f});
     waveDamageDone_ = true;
 }
 
@@ -276,7 +269,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
         targetScale.x *= 1.0f + pulse;
         targetScale.y *= 0.94f - progress * 0.10f;
         targetScale.z *= 1.0f + pulse;
-        targetColor = { 1.0f, 0.54f + progress * 0.32f, 0.30f, 1.0f };
+        targetColor = {1.0f, 0.54f + progress * 0.32f, 0.30f, 1.0f};
         emissive = 2.2f + progress * 4.8f;
         break;
     }
@@ -286,7 +279,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
         targetScale.x *= 1.0f + recoil * 0.13f;
         targetScale.y *= 0.84f + (1.0f - recoil) * 0.16f;
         targetScale.z *= 1.0f + recoil * 0.13f;
-        targetColor = { 1.0f, 0.48f, 0.22f, 1.0f };
+        targetColor = {1.0f, 0.48f, 0.22f, 1.0f};
         emissive = 4.2f - progress * 2.2f;
         break;
     }
@@ -298,7 +291,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
         targetScale.x *= 1.05f;
         targetScale.y *= 0.82f;
         targetScale.z *= 1.05f;
-        targetColor = { 0.38f, 0.92f, 1.0f, 1.0f };
+        targetColor = {0.38f, 0.92f, 1.0f, 1.0f};
         emissive = 0.72f;
         break;
     }
@@ -321,9 +314,8 @@ bool EnemyRingBurner::IsTargetStandingOnTop() const {
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float distance = PlanarDistance(origin, targetPosition);
     const float relativeHeight = targetPosition.y - origin.y;
-    return distance <= kTopRadius * horizontalScale &&
-        relativeHeight >= kModelHeight * baseScale_.y * 0.62f &&
-        relativeHeight <= kModelHeight * baseScale_.y + 2.4f;
+    return distance <= kTopRadius * horizontalScale && relativeHeight >= kModelHeight * baseScale_.y * 0.62f &&
+           relativeHeight <= kModelHeight * baseScale_.y + 2.4f;
 }
 
 float EnemyRingBurner::GetPlanarTargetDistance() const {
@@ -345,29 +337,29 @@ float EnemyRingBurner::GetWaveMaximumRadius() const {
 }
 
 void EnemyRingBurner::SpawnChargeEffects() {
-    const Vector3 origin = GetWorldPosition() + Vector3{ 0.0f, 0.18f * baseScale_.y, 0.0f };
+    const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
     const float scale = (std::max)(baseScale_.x, baseScale_.z);
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(kChargeEffect, origin, { 0.0f, 0.0f, 0.0f }, { scale, baseScale_.y, scale });
+        meshEffects->SpawnEffectAt(kChargeEffect, origin, {0.0f, 0.0f, 0.0f}, {scale, baseScale_.y, scale});
     }
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-        particles->Emit(kChargeParticle, origin + Vector3{ 0.0f, 1.12f * baseScale_.y, 0.0f });
+        particles->Emit(kChargeParticle, origin + Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
     }
 }
 
 void EnemyRingBurner::SpawnWaveEffects() {
-    const Vector3 origin = GetWorldPosition() + Vector3{ 0.0f, 0.34f * baseScale_.y, 0.0f };
+    const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.34f * baseScale_.y, 0.0f};
     const float authoredRadius = 11.0f;
     const float effectScale = GetWaveMaximumRadius() / authoredRadius;
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
         StopWaveEffects();
         waveEffectScope_ = meshEffects->CreateEffectScope();
-        const Vector3 scale = { effectScale, baseScale_.y * 3.0f, effectScale };
-        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
-        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, { 0.0f, 0.0f, 0.0f }, scale);
+        const Vector3 scale = {effectScale, baseScale_.y * 3.0f, effectScale};
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveHeatEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
+        meshEffects->SpawnEffectAtScoped(waveEffectScope_, kWaveEffect, origin, {0.0f, 0.0f, 0.0f}, scale);
     }
     if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-        particles->Emit(kFireParticle, origin + Vector3{ 0.0f, 1.05f * baseScale_.y, 0.0f });
+        particles->Emit(kFireParticle, origin + Vector3{0.0f, 1.05f * baseScale_.y, 0.0f});
     }
 }
 

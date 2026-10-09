@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "aef02be0518c1b792fb7ae378630df72",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/tutorial/tutorial_lock_on.dds",
+  "version": 1
+}

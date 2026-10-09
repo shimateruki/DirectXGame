@@ -206,6 +206,7 @@ NodeLink* NodeGraphCore::AddLink(int startPinId, int endPinId) {
         return nullptr;
     }
     if (CountIncomingLinks(endPinId) > 0) {
+        // 入力を単一値として扱うため、複数の出力から同じ入力への接続は許可しない。
         return nullptr;
     }
 
@@ -233,6 +234,7 @@ bool NodeGraphCore::RemoveNode(int nodeId) {
         pinIds.insert(pin.id);
     }
 
+    // ノードを消してもリンクだけ残らないよう、所属ピンへの接続を先に除去する。
     links_.erase(std::remove_if(links_.begin(), links_.end(), [&](const NodeLink& link) {
         return pinIds.count(link.startPinId) > 0 || pinIds.count(link.endPinId) > 0;
     }), links_.end());
@@ -431,6 +433,7 @@ bool NodeGraphCore::LoadFromFile(const std::string& path, std::string* errorMess
 
         Json root;
         input >> root;
+        // 読み込み成功時に既存グラフを置き換える。途中で例外が出た場合もcatchで空に戻す。
         Clear();
 
         int maxNodeId = 0;
@@ -509,6 +512,7 @@ std::vector<NodeGraphIssue> NodeGraphCore::Validate() const {
         }
     }
 
+    // 値リンクでは実行入口に到達できないため、EventからFlowリンクだけを辿る。
     while (!queue.empty()) {
         const NodeData* node = FindNode(queue.front());
         queue.pop();
@@ -637,6 +641,7 @@ std::vector<NodeGraphIssue> NodeGraphCore::Validate() const {
 }
 
 std::vector<NodeExecutionStep> NodeGraphCore::BuildExecutionPreview() const {
+    // 分岐の条件や実行時の値は評価せず、接続構造から説明用の順序だけを作る。
     std::vector<NodeExecutionStep> steps;
     const NodeGraphTemplateRegistry& registry = NodeGraphTemplateRegistry::Instance();
     std::set<int> visited;

@@ -10,6 +10,7 @@
 #include "game/scene/tutorial/TutorialScene.h"
 #include <utility>
 
+// 文字列キーは SceneManager の遷移先と対応します。登録順はエディタの一覧表示にも使います。
 SceneFactory::SceneFactory() {
     RegisterScene("TITLE", [] { return std::make_unique<TitleScene>(); });
     RegisterScene("SETTING", [] { return std::make_unique<SettingsScene>(); });
@@ -34,6 +35,7 @@ std::vector<std::string> SceneFactory::GetRegisteredSceneNames() const {
     return registrationOrder_;
 }
 
+// 同名登録は生成関数だけ差し替え、一覧上の位置は変えません。
 bool SceneFactory::RegisterScene(const std::string& sceneName, SceneCreator creator) {
     if (sceneName.empty() || !creator) {
         return false;

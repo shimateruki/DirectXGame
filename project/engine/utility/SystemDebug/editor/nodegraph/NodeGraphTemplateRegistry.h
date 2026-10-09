@@ -36,6 +36,7 @@ enum class NodeDryRunBehavior {
     Timed,
 };
 
+// テンプレートが生成するピン。required はグラフ検証時の未接続判定に使います。
 struct NodePinDefinition {
     std::string name;
     NodePinKind kind = NodePinKind::Flow;
@@ -43,6 +44,7 @@ struct NodePinDefinition {
     bool required = false;
 };
 
+// テンプレートのプロパティ既定値と、編集時の必須項目判定を定義します。
 struct NodePropertyDefinition {
     std::string name;
     std::string displayName;

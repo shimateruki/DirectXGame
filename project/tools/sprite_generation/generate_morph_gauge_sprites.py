@@ -1,3 +1,8 @@
+"""変身ゲージの背景・枠・アイコン・段階別塗り画像を PNG で生成する。
+
+同名のゲージ画像を更新する。表示寸法は下の縮小処理で決まる。
+"""
+
 from __future__ import annotations
 
 import math

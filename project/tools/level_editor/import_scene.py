@@ -87,6 +87,7 @@ class MYADDON_OT_import_scene(bpy.types.Operator, bpy_extras.io_utils.ImportHelp
             return {"CANCELLED"}
 
         if self.replace_imported:
+            # Blender 内の手作業オブジェクトを守るため、前回の取込印があるものだけ置き換える。
             imported_objects = [obj for obj in bpy.data.objects if obj.get("cg2_imported") is True]
             for obj in imported_objects:
                 bpy.data.objects.remove(obj, do_unlink=True)
@@ -109,6 +110,7 @@ class MYADDON_OT_import_scene(bpy.types.Operator, bpy_extras.io_utils.ImportHelp
             obj["cg2_imported"] = True
             obj["cg2_type"] = object_type
             obj["cg2_save_category"] = str(data.get("saveCategory", ""))
+            # 未編集の拡張フィールドも再出力できるよう、元の JSON 一式を保持する。
             obj["cg2_source_json"] = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
             guid = data.get("guid")
@@ -141,6 +143,7 @@ class MYADDON_OT_import_scene(bpy.types.Operator, bpy_extras.io_utils.ImportHelp
             objects_by_name.setdefault(name, obj)
 
         for obj, data in created:
+            # 同名オブジェクトがあり得るので GUID を優先し、旧データだけ名前で補う。
             parent = None
             parent_guid = data.get("parentGuid")
             parent_name = data.get("parentName")

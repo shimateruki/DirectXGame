@@ -210,6 +210,9 @@ protected:
     bool IsSpecialMaterialType(int materialType) const;
     bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
 
+    // 敵の予兆を不透明モデルの後、パーティクルや特殊材質の前に描画します。
+    void DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight);
+
     /// <summary>対象一覧からローカルフォグを描画し、描画したか返す。</summary>
     bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
 

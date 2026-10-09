@@ -73,6 +73,7 @@ void GPUParticleSystem::CreateBuffer() {
     );
     assert(SUCCEEDED(hr));
 
+    // Computeのu0～u4を一つのDescriptor Tableで渡すため、以下の5つは連続した順序で確保する。
     uavIndex_ = SRVManager::GetInstance()->Allocate();
     freeListIndexUav_ = SRVManager::GetInstance()->Allocate();
     freeListUav_ = SRVManager::GetInstance()->Allocate();
@@ -114,6 +115,7 @@ void GPUParticleSystem::CreateBuffer() {
     srvDesc.Buffer.StructureByteStride = sizeof(uint32_t);
     SRVManager::GetInstance()->CreateSRVforResource(aliveParticleIndexSrv_, aliveParticleIndexBuffer_.Get(), srvDesc);
 
+    // 0番は更新用、1番以降は各Emit用。CSConfigの256バイト境界により各CBVの先頭位置を揃える。
     configBuffer_ = dxCommon_->CreateBufferResource(sizeof(CSConfig) * (kMaxEmitRequests + 1));
     configBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&configData_));
     configData_->deltaTime = 0.0f;
@@ -250,6 +252,7 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
 }
 
 void GPUParticleSystem::Update(float deltaTime) {
+    // CPU側は時間だけを蓄積する。Drawを挟まない複数回のUpdateは、GPU上の複数ステップとは異なる。
     float scaledDeltaTime = deltaTime * timeScale_;
     totalTime_ += scaledDeltaTime;
     frameDeltaTime_ += scaledDeltaTime;
@@ -342,6 +345,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     updateBarriers[4].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
     updateBarriers[4].UAV.pResource = indirectDrawArgumentBuffer_.Get();
 
+    // 生存数を0に戻して容量全体を走査し、描画対象番号を詰め直す。粒子本体の配列順は変えない。
+    // dt=0でも色・サイズの再評価と深度衝突判定を通るため、純粋な番号列コピーではない。
     const auto rebuildAliveParticleList = [&](float simulationDeltaTime) {
         commandList->SetPipelineState(computePipelineStateResetDrawArguments_.Get());
         commandList->Dispatch(1, 1, 1);
@@ -388,6 +393,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
             req.config.inverseViewProj = math.Inverse(vp);
             req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
             req.config.deltaTime = 0.0f; // Emit pass does not progress physics
+            // シーク中にCPU側へ溜めた要求は、初回Drawで年齢を付けて生成する。
+            // Shaderは重力・風・減衰による近似復元で、途中の衝突やFieldの履歴を再実行しない。
             req.config.initialAge = rebuiltSimulationThisDraw ?
                 (std::max)(0.0f, totalTime_ - req.config.time) : 0.0f;
             req.config.meshVertexCount = req.vb ? req.vCount : 1;
@@ -533,6 +540,7 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     }
     commandList->ResourceBarrier(3, drawBarriers);
 }
+
 void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     if (emitRequests_.size() >= kMaxEmitRequests) return;
 

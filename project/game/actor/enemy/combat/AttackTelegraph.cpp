@@ -27,9 +27,9 @@ Vector3 NormalizePlanar(Vector3 direction) {
     direction.y = 0.0f;
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { direction.x / length, 0.0f, direction.z / length };
+    return {direction.x / length, 0.0f, direction.z / length};
 }
 
 float EaseOut(float t) {
@@ -37,7 +37,7 @@ float EaseOut(float t) {
     const float inv = 1.0f - t;
     return 1.0f - inv * inv;
 }
-}
+} // namespace
 
 void AttackTelegraph::Initialize(Object3dCommon* common) {
     common_ = common;
@@ -104,14 +104,14 @@ void AttackTelegraph::EnsureWarningEffect(Object3dCommon* common) {
         warningEffect_->SetEdgeFadeStrength(0.35f);
         warningEffect_->SetAlphaReference(0.008f);
         warningEffect_->SetProceduralType(7);
-        warningEffect_->editPlaneSize_ = { 1.0f, 1.0f };
+        warningEffect_->editPlaneSize_ = {1.0f, 1.0f};
         warningEffect_->editMeshSegments_ = 1;
         warningEffect_->UpdateProceduralMesh();
         warningEffect_->SetTexture(kAttackWarningTexturePath);
-        warningEffect_->SetStartScale({ 0.52f, 0.52f, 0.52f });
-        warningEffect_->SetEndScale({ 1.18f, 1.18f, 1.18f });
-        warningEffect_->SetStartColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        warningEffect_->SetEndColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        warningEffect_->SetStartScale({0.52f, 0.52f, 0.52f});
+        warningEffect_->SetEndScale({1.18f, 1.18f, 1.18f});
+        warningEffect_->SetStartColor({1.0f, 1.0f, 1.0f, 1.0f});
+        warningEffect_->SetEndColor({1.0f, 1.0f, 1.0f, 0.0f});
         warningEffect_->SetEasingType(5);
         warningEffect_->Play(0.18f);
     }
@@ -233,7 +233,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
         effect->SetEdgeFadeStrength(shape == Shape::ImpactDisc ? 0.0f : (isCue ? 0.35f : 1.0f));
     } else if (shape == Shape::DecalCircle) {
         effect->SetProceduralType(7);
-        effect->editPlaneSize_ = { 2.0f, 2.0f };
+        effect->editPlaneSize_ = {2.0f, 2.0f};
         effect->editMeshSegments_ = 1;
         effect->SetTexture(decalTexturePath_);
         effect->SetBlendMode(isCue ? BlendMode::kAdd : BlendMode::kNormal);
@@ -241,7 +241,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
         effect->SetEdgeFadeStrength(0.0f);
     } else {
         effect->SetProceduralType(7);
-        effect->editPlaneSize_ = { 1.0f, 1.0f };
+        effect->editPlaneSize_ = {1.0f, 1.0f};
         effect->editMeshSegments_ = 1;
         effect->SetTexture(kWhiteTexturePath);
         effect->SetBlendMode(BlendMode::kAdd);
@@ -290,34 +290,28 @@ Vector4 AttackTelegraph::MakeDisplayColor(const Vector4& color, float progress) 
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.55f + std::sin(pulseTimer_ * (8.0f + progress * 8.0f)) * 0.45f;
     const float alpha = std::clamp(color.w * (0.42f + progress * 0.42f + pulse * 0.16f), 0.0f, 1.0f);
-    return {
-        std::clamp(color.x + progress * 0.18f, 0.0f, 1.0f),
-        std::clamp(color.y * (1.0f - progress * 0.22f), 0.0f, 1.0f),
-        std::clamp(color.z * (1.0f - progress * 0.20f), 0.0f, 1.0f),
-        alpha
-    };
+    return {std::clamp(color.x + progress * 0.18f, 0.0f, 1.0f),
+            std::clamp(color.y * (1.0f - progress * 0.22f), 0.0f, 1.0f),
+            std::clamp(color.z * (1.0f - progress * 0.20f), 0.0f, 1.0f), alpha};
 }
 
 Vector4 AttackTelegraph::MakeDecalColor(const Vector4& color, float progress) const {
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.5f + std::sin(pulseTimer_ * (5.0f + progress * 3.0f)) * 0.5f;
     const float alpha = std::clamp(color.w * (0.54f + progress * 0.30f + pulse * 0.10f), 0.0f, 1.0f);
-    return { color.x, color.y, color.z, alpha };
+    return {color.x, color.y, color.z, alpha};
 }
 
 Vector4 AttackTelegraph::MakeCueColor(const Vector4& color, float progress) const {
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float flash = 1.0f - progress;
     const float alpha = std::clamp(color.w * flash * flash, 0.0f, 1.0f);
-    return {
-        std::clamp(color.x + flash * 0.35f, 0.0f, 1.0f),
-        std::clamp(color.y * 0.25f + flash * 0.35f, 0.0f, 1.0f),
-        std::clamp(color.z * 0.22f + flash * 0.20f, 0.0f, 1.0f),
-        alpha
-    };
+    return {std::clamp(color.x + flash * 0.35f, 0.0f, 1.0f), std::clamp(color.y * 0.25f + flash * 0.35f, 0.0f, 1.0f),
+            std::clamp(color.z * 0.22f + flash * 0.20f, 0.0f, 1.0f), alpha};
 }
 
-void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress, const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
+                                  const Vector4& color, float scaleMultiplier) const {
     if (!effect) {
         return;
     }
@@ -329,14 +323,15 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center,
     Vector3 pos = center;
     pos.y += kGroundLift;
     effect->SetTranslate(pos);
-    effect->SetRotation({ 0.0f, 0.0f, 0.0f });
-    effect->SetScale({ radius * scaleRate, 1.0f, radius * scaleRate });
+    effect->SetRotation({0.0f, 0.0f, 0.0f});
+    effect->SetScale({radius * scaleRate, 1.0f, radius * scaleRate});
     effect->SetColor(color);
     effect->UpdateLocalMatrix();
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress, const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
+                                       const Vector4& color, float scaleMultiplier) const {
     if (!effect) {
         return;
     }
@@ -348,8 +343,8 @@ void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& ce
     Vector3 position = center;
     position.y += kGroundLift + 0.006f;
     effect->SetTranslate(position);
-    effect->SetRotation({ 0.0f, pulseTimer_ * 0.12f + progress * 0.08f, 0.0f });
-    effect->SetScale({ radius * scaleMultiplier, 1.0f, radius * scaleMultiplier });
+    effect->SetRotation({0.0f, pulseTimer_ * 0.12f + progress * 0.08f, 0.0f});
+    effect->SetScale({radius * scaleMultiplier, 1.0f, radius * scaleMultiplier});
     effect->SetColor(color);
     effect->UpdateLocalMatrix();
     effect->UpdateWorldMatrix();
@@ -361,15 +356,14 @@ Vector4 AttackTelegraph::MakeTimingColor(const Vector4& color, float progress) c
     const float urgencySmooth = urgency * urgency * (3.0f - 2.0f * urgency);
     const float pulse = 0.5f + std::sin(pulseTimer_ * (10.0f + urgencySmooth * 22.0f)) * 0.5f;
     const float whiteRate = 0.20f + urgencySmooth * 0.56f;
-    return {
-        std::clamp(color.x + (1.0f - color.x) * whiteRate, 0.0f, 1.0f),
-        std::clamp(color.y + (1.0f - color.y) * whiteRate, 0.0f, 1.0f),
-        std::clamp(color.z + (1.0f - color.z) * whiteRate, 0.0f, 1.0f),
-        std::clamp(color.w * (0.72f + urgencySmooth * 0.18f + pulse * 0.10f), 0.0f, 1.0f)
-    };
+    return {std::clamp(color.x + (1.0f - color.x) * whiteRate, 0.0f, 1.0f),
+            std::clamp(color.y + (1.0f - color.y) * whiteRate, 0.0f, 1.0f),
+            std::clamp(color.z + (1.0f - color.z) * whiteRate, 0.0f, 1.0f),
+            std::clamp(color.w * (0.72f + urgencySmooth * 0.18f + pulse * 0.10f), 0.0f, 1.0f)};
 }
 
-void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color, float scaleMultiplier) const {
+void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length,
+                                float width, float progress, const Vector4& color, float scaleMultiplier) const {
     if (!effect) {
         return;
     }
@@ -384,21 +378,15 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, c
     Vector3 pos = center + dir * (length * 0.5f * scaleRate);
     pos.y += kGroundLift;
     effect->SetTranslate(pos);
-    effect->SetRotation({ 0.0f, yaw, 0.0f });
-    effect->SetScale({ width * scaleMultiplier, 1.0f, length * scaleRate });
+    effect->SetRotation({0.0f, yaw, 0.0f});
+    effect->SetScale({width * scaleMultiplier, 1.0f, length * scaleRate});
     effect->SetColor(color);
     effect->UpdateLocalMatrix();
     effect->UpdateWorldMatrix();
 }
 
-void AttackTelegraph::ApplyLineTimingMarker(
-    EffectObject3d* effect,
-    const Vector3& origin,
-    const Vector3& direction,
-    float length,
-    float width,
-    float progress,
-    const Vector4& color) const {
+void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector3& origin, const Vector3& direction,
+                                            float length, float width, float progress, const Vector4& color) const {
     if (!effect) {
         return;
     }
@@ -408,60 +396,31 @@ void AttackTelegraph::ApplyLineTimingMarker(
     progress = std::clamp(progress, 0.0f, 1.0f);
     const Vector3 normalizedDirection = NormalizePlanar(direction);
     const float markerLength = std::clamp(length * 0.075f, kTimingMarkerMinLength, kTimingMarkerMaxLength);
-    const float startDistance = std::clamp(
-        length * progress - markerLength * 0.5f,
-        0.0f,
-        (std::max)(0.0f, length - markerLength));
-    ApplyLine(
-        effect,
-        origin + normalizedDirection * startDistance,
-        normalizedDirection,
-        markerLength,
-        width * 1.08f,
-        1.0f,
-        color,
-        1.0f);
+    const float startDistance =
+        std::clamp(length * progress - markerLength * 0.5f, 0.0f, (std::max)(0.0f, length - markerLength));
+    ApplyLine(effect, origin + normalizedDirection * startDistance, normalizedDirection, markerLength, width * 1.08f,
+              1.0f, color, 1.0f);
 }
 
-void AttackTelegraph::ShowCircleTiming(
-    const Vector3& center,
-    float radius,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowCircleTiming(const Vector3& center, float radius, float progress, const Vector4& color) {
     progress = std::clamp(progress, 0.0f, 1.0f);
     BeginTiming(Shape::Circle, 1);
     const float countdownScale = kCountdownOuterScale - (kCountdownOuterScale - 1.0f) * progress;
     Vector3 timingCenter = center;
     timingCenter.y += kTimingLayerLift;
-    ApplyCircle(
-        timingEffects_[0].get(),
-        timingCenter,
-        radius,
-        1.0f,
-        MakeTimingColor(color, progress),
-        countdownScale);
+    ApplyCircle(timingEffects_[0].get(), timingCenter, radius, 1.0f, MakeTimingColor(color, progress), countdownScale);
 }
 
-void AttackTelegraph::ShowLineTiming(
-    const Vector3& origin,
-    const Vector3& direction,
-    float length,
-    float width,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowLineTiming(const Vector3& origin, const Vector3& direction, float length, float width,
+                                     float progress, const Vector4& color) {
     BeginTiming(Shape::Line, 1);
     Vector3 timingOrigin = origin;
     timingOrigin.y += kTimingLayerLift;
-    ApplyLineTimingMarker(
-        timingEffects_[0].get(),
-        timingOrigin,
-        direction,
-        length,
-        width,
-        progress,
-        MakeTimingColor(color, progress));
+    ApplyLineTimingMarker(timingEffects_[0].get(), timingOrigin, direction, length, width, progress,
+                          MakeTimingColor(color, progress));
 }
 
+// 予兆の形と進行率を描画へ渡します。攻撃判定の半径は呼び出し側が同じ値で管理します。
 void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
     EnsureEffect(common_);
     if (!effect_) {
@@ -481,12 +440,8 @@ void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float prog
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowDecalCircle(
-    const Vector3& center,
-    float radius,
-    float progress,
-    const Vector4& color,
-    const std::string& texturePath) {
+void AttackTelegraph::ShowDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color,
+                                      const std::string& texturePath) {
     EnsureEffect(common_);
     if (!effect_ || texturePath.empty()) {
         return;
@@ -510,7 +465,8 @@ void AttackTelegraph::ShowDecalCircle(
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color) {
+void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, float length, float width,
+                               float progress, const Vector4& color) {
     EnsureEffect(common_);
     if (!effect_) {
         return;
@@ -531,14 +487,8 @@ void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, 
     lastColor_ = color;
 }
 
-void AttackTelegraph::ShowCone(
-    const Vector3& origin,
-    const Vector3& direction,
-    float length,
-    float startWidth,
-    float endWidth,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, float length, float startWidth,
+                               float endWidth, float progress, const Vector4& color) {
     length = (std::max)(length, 0.05f);
     startWidth = (std::max)(startWidth, 0.05f);
     endWidth = (std::max)(endWidth, startWidth);
@@ -556,15 +506,8 @@ void AttackTelegraph::ShowCone(
         const float segmentWidth = startWidth + (endWidth - startWidth) * centerRate;
         Vector4 segmentColor = displayColor;
         segmentColor.w *= 0.72f + centerRate * 0.28f;
-        ApplyLine(
-            segment,
-            origin + normalizedDirection * (length * startRate),
-            normalizedDirection,
-            segmentLength * 1.08f,
-            segmentWidth,
-            1.0f,
-            segmentColor,
-            1.0f);
+        ApplyLine(segment, origin + normalizedDirection * (length * startRate), normalizedDirection,
+                  segmentLength * 1.08f, segmentWidth, 1.0f, segmentColor, 1.0f);
         segment->SetIsVisible(true);
     }
 
@@ -572,12 +515,8 @@ void AttackTelegraph::ShowCone(
     ShowLineTiming(origin, normalizedDirection, length, timingWidth, progress, color);
 }
 
-void AttackTelegraph::ShowImpactAreas(
-    const Vector3* centers,
-    std::size_t centerCount,
-    float radius,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress,
+                                      const Vector4& color) {
     if (!centers || centerCount == 0) {
         Hide();
         return;
@@ -588,41 +527,26 @@ void AttackTelegraph::ShowImpactAreas(
     BeginPattern(Shape::Circle, centerCount);
     BeginTiming(Shape::Circle, centerCount);
     const Vector4 displayColor = MakeDisplayColor(color, progress);
-    const float sequenceStep = centerCount > 1
-        ? (std::min)(0.105f, 0.38f / static_cast<float>(centerCount - 1))
-        : 0.0f;
+    const float sequenceStep = centerCount > 1 ? (std::min)(0.105f, 0.38f / static_cast<float>(centerCount - 1)) : 0.0f;
 
     for (std::size_t index = 0; index < centerCount; ++index) {
-        const float localProgress = std::clamp(
-            progress - static_cast<float>(index) * sequenceStep,
-            0.0f,
-            1.0f);
+        const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
         EffectObject3d* area = patternEffects_[index].get();
         Vector4 areaColor = displayColor;
         areaColor.w *= 0.68f + localProgress * 0.32f;
         ApplyCircle(area, centers[index], radius, 1.0f, areaColor, 1.0f);
         area->SetIsVisible(true);
 
-        const float countdownScale = kCountdownOuterScale -
-            (kCountdownOuterScale - 1.0f) * localProgress;
+        const float countdownScale = kCountdownOuterScale - (kCountdownOuterScale - 1.0f) * localProgress;
         Vector3 timingCenter = centers[index];
         timingCenter.y += kTimingLayerLift;
-        ApplyCircle(
-            timingEffects_[index].get(),
-            timingCenter,
-            radius,
-            1.0f,
-            MakeTimingColor(color, localProgress),
-            countdownScale);
+        ApplyCircle(timingEffects_[index].get(), timingCenter, radius, 1.0f, MakeTimingColor(color, localProgress),
+                    countdownScale);
     }
 }
 
-void AttackTelegraph::ShowReadableImpactAreas(
-    const Vector3* centers,
-    std::size_t centerCount,
-    float radius,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
+                                              float progress, const Vector4& color) {
     if (!centers || centerCount == 0) {
         Hide();
         return;
@@ -633,14 +557,9 @@ void AttackTelegraph::ShowReadableImpactAreas(
     BeginPattern(Shape::ImpactDisc, centerCount);
     BeginTiming(Shape::Circle, centerCount);
 
-    const float sequenceStep = centerCount > 1
-        ? (std::min)(0.072f, 0.32f / static_cast<float>(centerCount - 1))
-        : 0.0f;
+    const float sequenceStep = centerCount > 1 ? (std::min)(0.072f, 0.32f / static_cast<float>(centerCount - 1)) : 0.0f;
     for (std::size_t index = 0; index < centerCount; ++index) {
-        const float localProgress = std::clamp(
-            progress - static_cast<float>(index) * sequenceStep,
-            0.0f,
-            1.0f);
+        const float localProgress = std::clamp(progress - static_cast<float>(index) * sequenceStep, 0.0f, 1.0f);
         const float urgencyT = std::clamp((localProgress - 0.58f) / 0.42f, 0.0f, 1.0f);
         const float urgency = urgencyT * urgencyT * (3.0f - 2.0f * urgencyT);
 
@@ -658,26 +577,13 @@ void AttackTelegraph::ShowReadableImpactAreas(
         timingColor.w *= 0.38f + localProgress * 0.54f;
         Vector3 timingCenter = centers[index];
         timingCenter.y += kTimingLayerLift;
-        ApplyCircle(
-            timingEffects_[index].get(),
-            timingCenter,
-            radius,
-            1.0f,
-            timingColor,
-            countdownScale);
+        ApplyCircle(timingEffects_[index].get(), timingCenter, radius, 1.0f, timingColor, countdownScale);
     }
 }
 
-void AttackTelegraph::ShowLaneFan(
-    const Vector3& origin,
-    const Vector3& direction,
-    float length,
-    float width,
-    int laneCount,
-    float lateralSpacing,
-    float angleStep,
-    float progress,
-    const Vector4& color) {
+void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& direction, float length, float width,
+                                  int laneCount, float lateralSpacing, float angleStep, float progress,
+                                  const Vector4& color) {
     laneCount = (std::max)(1, laneCount);
     length = (std::max)(length, 0.05f);
     width = (std::max)(width, 0.05f);
@@ -686,7 +592,7 @@ void AttackTelegraph::ShowLaneFan(
     BeginPattern(Shape::Line, static_cast<std::size_t>(laneCount));
     BeginTiming(Shape::Line, static_cast<std::size_t>(laneCount));
     const Vector3 baseDirection = NormalizePlanar(direction);
-    const Vector3 side = { baseDirection.z, 0.0f, -baseDirection.x };
+    const Vector3 side = {baseDirection.z, 0.0f, -baseDirection.x};
     const float centerIndex = static_cast<float>(laneCount - 1) * 0.5f;
     const Vector4 displayColor = MakeDisplayColor(color, progress);
 
@@ -700,23 +606,12 @@ void AttackTelegraph::ShowLaneFan(
             0.0f,
             -baseDirection.x * sine + baseDirection.z * cosine,
         });
-        ApplyLine(
-            patternEffects_[static_cast<std::size_t>(index)].get(),
-            origin + side * (centeredIndex * lateralSpacing),
-            laneDirection,
-            length,
-            width,
-            1.0f,
-            displayColor,
-            1.0f);
-        ApplyLineTimingMarker(
-            timingEffects_[static_cast<std::size_t>(index)].get(),
-            origin + side * (centeredIndex * lateralSpacing) + Vector3{ 0.0f, kTimingLayerLift, 0.0f },
-            laneDirection,
-            length,
-            width,
-            progress,
-            MakeTimingColor(color, progress));
+        ApplyLine(patternEffects_[static_cast<std::size_t>(index)].get(),
+                  origin + side * (centeredIndex * lateralSpacing), laneDirection, length, width, 1.0f, displayColor,
+                  1.0f);
+        ApplyLineTimingMarker(timingEffects_[static_cast<std::size_t>(index)].get(),
+                              origin + side * (centeredIndex * lateralSpacing) + Vector3{0.0f, kTimingLayerLift, 0.0f},
+                              laneDirection, length, width, progress, MakeTimingColor(color, progress));
     }
 }
 
@@ -767,7 +662,8 @@ void AttackTelegraph::TriggerCueAt(const Vector3& center, float radius, const Ve
     cueEffect_->SetIsVisible(true);
 }
 
-void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset, float size, const Vector4& accentColor) {
+void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset, float size,
+                                        const Vector4& accentColor) {
     EnsureWarningEffect(common_);
     if (!warningEffect_) {
         return;
@@ -777,12 +673,8 @@ void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset,
     warningOffset_ = offset;
     warningCenter_ = target ? target->GetWorldPosition() + offset : offset;
     warningSize_ = (std::max)(size, 0.1f);
-    warningAccentColor_ = {
-        std::clamp(accentColor.x, 0.0f, 1.0f),
-        std::clamp(accentColor.y, 0.0f, 1.0f),
-        std::clamp(accentColor.z, 0.0f, 1.0f),
-        std::clamp(accentColor.w, 0.0f, 1.0f)
-    };
+    warningAccentColor_ = {std::clamp(accentColor.x, 0.0f, 1.0f), std::clamp(accentColor.y, 0.0f, 1.0f),
+                           std::clamp(accentColor.z, 0.0f, 1.0f), std::clamp(accentColor.w, 0.0f, 1.0f)};
     warningEffect_->Restart();
     warningEffect_->SetIsVisible(true);
 }
@@ -834,7 +726,8 @@ void AttackTelegraph::Update(float deltaTime) {
         } else if (lastShape_ == Shape::DecalCircle) {
             ApplyDecalCircle(cueEffect_.get(), lastCenter_, lastRadius_, 1.0f, cueColor, scaleMultiplier);
         } else {
-            ApplyLine(cueEffect_.get(), lastCenter_, lastDirection_, lastLength_, lastWidth_, 1.0f, cueColor, scaleMultiplier);
+            ApplyLine(cueEffect_.get(), lastCenter_, lastDirection_, lastLength_, lastWidth_, 1.0f, cueColor,
+                      scaleMultiplier);
         }
         cueEffect_->SetIsVisible(cueTimer_ > 0.0f);
     } else if (cueEffect_) {
@@ -857,17 +750,14 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
 
     const Vector3 presetScale = warningEffect_->GetScale();
     const auto* material = warningEffect_->GetMaterialData();
-    const Vector4 presetColor = material ? material->color : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f - progress };
+    const Vector4 presetColor = material ? material->color : Vector4{1.0f, 1.0f, 1.0f, 1.0f - progress};
 
     // 最初は全敵共通の白金色、消える直前だけ属性色を残して判別しやすくします。
     const float accentRate = progress * progress;
-    const Vector4 commonColor = { 1.0f, 0.96f, 0.64f, 1.0f };
-    const Vector4 tint = {
-        commonColor.x + (warningAccentColor_.x - commonColor.x) * accentRate,
-        commonColor.y + (warningAccentColor_.y - commonColor.y) * accentRate,
-        commonColor.z + (warningAccentColor_.z - commonColor.z) * accentRate,
-        warningAccentColor_.w
-    };
+    const Vector4 commonColor = {1.0f, 0.96f, 0.64f, 1.0f};
+    const Vector4 tint = {commonColor.x + (warningAccentColor_.x - commonColor.x) * accentRate,
+                          commonColor.y + (warningAccentColor_.y - commonColor.y) * accentRate,
+                          commonColor.z + (warningAccentColor_.z - commonColor.z) * accentRate, warningAccentColor_.w};
 
     warningCenter_ = warningTarget_ ? warningTarget_->GetWorldPosition() + warningOffset_ : warningCenter_;
     Vector3 position = warningCenter_;
@@ -887,43 +777,40 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
     }
 
     warningEffect_->SetTranslate(position);
-    warningEffect_->SetRotation({ kHalfPi - pitch, yaw, 0.0f });
-    warningEffect_->SetScale({
-        presetScale.x * warningSize_,
-        presetScale.y,
-        presetScale.z * warningSize_
-    });
-    warningEffect_->SetColor({
-        presetColor.x * tint.x,
-        presetColor.y * tint.y,
-        presetColor.z * tint.z,
-        presetColor.w * tint.w
-    });
+    warningEffect_->SetRotation({kHalfPi - pitch, yaw, 0.0f});
+    warningEffect_->SetScale({presetScale.x * warningSize_, presetScale.y, presetScale.z * warningSize_});
+    warningEffect_->SetColor(
+        {presetColor.x * tint.x, presetColor.y * tint.y, presetColor.z * tint.z, presetColor.w * tint.w});
     warningEffect_->UpdateLocalMatrix();
     warningEffect_->UpdateWorldMatrix();
 }
 
 void AttackTelegraph::DrawGround(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (effect_ && isVisible_ && effect_->GetIsVisible()) {
+        effect_->RefreshRenderCameraData();
         effect_->Draw(pointLightResource, spotLightResource);
     }
     for (std::size_t index = 0; index < patternActiveCount_; ++index) {
         if (patternEffects_[index]->GetIsVisible()) {
+            patternEffects_[index]->RefreshRenderCameraData();
             patternEffects_[index]->Draw(pointLightResource, spotLightResource);
         }
     }
     for (std::size_t index = 0; index < timingActiveCount_; ++index) {
         if (timingEffects_[index]->GetIsVisible()) {
+            timingEffects_[index]->RefreshRenderCameraData();
             timingEffects_[index]->Draw(pointLightResource, spotLightResource);
         }
     }
     if (cueEffect_ && cueEffect_->GetIsVisible()) {
+        cueEffect_->RefreshRenderCameraData();
         cueEffect_->Draw(pointLightResource, spotLightResource);
     }
 }
 
 void AttackTelegraph::DrawWarning(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (warningEffect_ && warningEffect_->GetIsVisible()) {
+        warningEffect_->RefreshRenderCameraData();
         warningEffect_->Draw(pointLightResource, spotLightResource);
     }
 }

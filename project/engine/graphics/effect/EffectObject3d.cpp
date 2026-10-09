@@ -51,6 +51,7 @@ float ApplyEasing1(int type, float t) {
     default: return Easing::Linear(t);
     }
 }
+
 void EffectObject3d::Initialize(Object3dCommon* common) {
     if (!common || !common->GetDxCommon() || !common->GetDxCommon()->GetDevice()) {
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] Initialize failed: invalid Object3dCommon.");
@@ -339,6 +340,7 @@ void EffectObject3d::GenerateSlashVertices(float angleDeg, float inRad, float ou
         proceduralIndices_.push_back(curr + 3); proceduralIndices_.push_back(next + 2); proceduralIndices_.push_back(next + 3);
     }
 }
+
 // ② 円錐形（突き）の頂点生成：底面にフタをして、両面ポリゴン化
 void EffectObject3d::GenerateThrustVertices(float length, float radius, int segments) {
     proceduralVertices_.clear();
@@ -744,7 +746,7 @@ void EffectObject3d::UpdateProceduralMesh() {
     else if (type == 6) { // 箱
         GenerateBoxVertices(editBoxSize_);
     }
-    else if (type == 7) { // 平面
+    else if (type == 7 || type == 13 || type == 14) { // 平面と動的放電
         GeneratePlaneVertices(editPlaneSize_, editMeshSegments_);
     }
     else if (type == 8) { // トーラス

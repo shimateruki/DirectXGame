@@ -5,12 +5,13 @@
 
 class DirectXCommon;
 
-// DebugEditorからお引越しした構造体
+// 定数バッファの一スロットを 256 バイトにするための余白付き行列。要素を並べても CBV の間隔を保つ。
 struct AlignedMatrix4x4 {
     Matrix4x4 matrix;
     char padding[256 - sizeof(Matrix4x4)];
 };
 
+// 定数バッファの一スロットを 256 バイトにするための余白付き Vector4。
 struct AlignedVector4 {
     Vector4 vector;
     char padding[256 - sizeof(Vector4)];

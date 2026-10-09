@@ -52,6 +52,7 @@ float LinearizeDepth(float z)
 
 float2 TriplanarGelUV(float3 worldPos, float3 normal)
 {
+    // World-space projection keeps membrane noise from stretching with mesh UV seams.
     float3 n = abs(normalize(normal));
     n = max(n, float3(0.001f, 0.001f, 0.001f));
     n /= (n.x + n.y + n.z);
@@ -92,6 +93,7 @@ float4 main(VSOutput input) : SV_TARGET
     float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
     float gelDepth = input.screenPos.z / input.screenPos.w;
     float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(gelDepth);
+    // Attenuate refraction at intersections to avoid sampling through nearby opaque objects.
     float depthFade = (bgDepth >= 0.999f) ? 1.0f : saturate(depthDiff / lerp(0.18f, 1.1f, softness));
 
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;

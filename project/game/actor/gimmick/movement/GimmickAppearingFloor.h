@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>トリガー後に一定時間だけ出現し、消滅前に点滅する床です。</summary>
 class GimmickAppearingFloor : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickAppearingFloor() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -11,7 +12,8 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
+    // 表示だけでなく衝突判定も同時に切り替えます。
     void SetFloorActive(bool active);
 
     float visibleTimer_ = 0.0f;

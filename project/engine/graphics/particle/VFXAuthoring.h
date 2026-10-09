@@ -73,7 +73,7 @@ public:
     }
 
     /// <summary>指定した再生割合で値を評価する。キーがなければfallbackを返す。</summary>
-    /// <remarks>区間の補間には左側キーのイージングを使う。</remarks>
+    /// <remarks>keysはNormalize等で昇順にしておく。範囲外は端の値、区間の補間には左側キーのイージングを使う。</remarks>
     float Evaluate(float time, float fallback = 1.0f) const {
         if (keys.empty()) return fallback;
         if (keys.size() == 1 || time <= keys.front().time) return keys.front().value;
@@ -134,7 +134,7 @@ public:
     }
 
     /// <summary>指定した再生割合で色を評価する。キーがなければfallbackを返す。</summary>
-    /// <remarks>区間の補間には左側キーのイージングを使う。</remarks>
+    /// <remarks>keysはNormalize等で昇順にしておく。RGBA各成分を補間し、色空間変換は行わない。</remarks>
     Vector4 Evaluate(float time, const Vector4& fallback = { 1.0f, 1.0f, 1.0f, 1.0f }) const {
         if (keys.empty()) return fallback;
         if (keys.size() == 1 || time <= keys.front().time) return keys.front().color;

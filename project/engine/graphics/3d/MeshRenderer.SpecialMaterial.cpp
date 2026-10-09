@@ -17,12 +17,14 @@
 namespace {
 namespace fs = std::filesystem;
 
+// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
 struct BakedShaderTextureSet {
     uint32_t slot0 = 0;
     uint32_t slot1 = 0;
     uint32_t slot2 = 0;
 };
 
+// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
 struct BakedShaderTextureCache {
     BakedShaderTextureSet fallback;
     BakedShaderTextureSet water;
@@ -205,7 +207,8 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     // ModelのDrawを呼ぶ
     drawModel->Draw(
         wvpResource_.Get(),
-        LightManager::GetInstance()->GetDirectionalLightResource(),
+        isUIPreview_ && previewDirectionalLightResource_
+            ? previewDirectionalLightResource_ : LightManager::GetInstance()->GetDirectionalLightResource(),
         cameraResource_.Get(),
         pointLightResource,
         spotLightResource,
@@ -237,7 +240,8 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
 
     drawModel->Draw(
         previewWvpResource,
-        LightManager::GetInstance()->GetDirectionalLightResource(),
+        isUIPreview_ && previewDirectionalLightResource_
+            ? previewDirectionalLightResource_ : LightManager::GetInstance()->GetDirectionalLightResource(),
         previewCameraResource,
         pointLightResource,
         spotLightResource,
@@ -370,6 +374,7 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
     drawModel = (useWaterGrid && waterProxyModel_) ? waterProxyModel_.get() : drawModel;
     drawModel->DrawMeshOnly((useWaterGrid && waterProxyModel_) ? -1 : meshDrawIndex_);
 }
+
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawMagmaWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
@@ -410,6 +415,7 @@ void MeshRenderer::DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrv
     BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
     drawModel->DrawMeshOnly(meshDrawIndex_);
 }
+
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawFireWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
@@ -454,10 +460,18 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint3
     Model* proxyModel = nullptr;
     if (useProxyModel) {
         if (bakedTextureMode == 1) {
-            if (!gatePortalProxyModel_) {
-                InitializeGatePortalProxyModel();
+            const bool cylindricalBarrier = waterParamData_ && waterParamData_->effectType >= 3.5f;
+            if (cylindricalBarrier) {
+                if (!gateBarrierCylinderProxyModel_) {
+                    InitializeGateBarrierCylinderProxyModel();
+                }
+                proxyModel = gateBarrierCylinderProxyModel_.get();
+            } else {
+                if (!gatePortalProxyModel_) {
+                    InitializeGatePortalProxyModel();
+                }
+                proxyModel = gatePortalProxyModel_.get();
             }
-            proxyModel = gatePortalProxyModel_.get();
         } else {
             if (!fireProxyModel_) {
                 InitializeFireProxyModel();
@@ -703,5 +717,41 @@ void MeshRenderer::InitializeGatePortalProxyModel() {
     }
 
     gatePortalProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
+}
+
+void MeshRenderer::InitializeGateBarrierCylinderProxyModel() {
+    ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
+    if (!modelCommon) {
+        return;
+    }
+
+    constexpr int kSegments = 96;
+    std::vector<Model::VertexData> vertices;
+    std::vector<uint32_t> indices;
+    vertices.reserve((kSegments + 1) * 2);
+    indices.reserve(kSegments * 6);
+    for (int row = 0; row <= 1; ++row) {
+        const float y = row == 0 ? -1.0f : 1.0f;
+        for (int segment = 0; segment <= kSegments; ++segment) {
+            const float u = static_cast<float>(segment) / static_cast<float>(kSegments);
+            const float angle = u * 6.2831853f;
+            const float x = std::sin(angle);
+            const float z = std::cos(angle);
+            Model::VertexData vertex{};
+            vertex.position = {x, y, z, 1.0f};
+            vertex.texcoord = {u, static_cast<float>(row)};
+            vertex.normal = {x, 0.0f, z};
+            vertex.tangent = {z, 0.0f, -x};
+            vertices.push_back(vertex);
+        }
+    }
+    for (int segment = 0; segment < kSegments; ++segment) {
+        const uint32_t lower = static_cast<uint32_t>(segment);
+        const uint32_t upper = lower + kSegments + 1;
+        indices.insert(indices.end(), {lower, upper, lower + 1, lower + 1, upper, upper + 1});
+    }
+
+    gateBarrierCylinderProxyModel_ = std::make_unique<Model>();
+    gateBarrierCylinderProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 

@@ -156,8 +156,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
           static_cast<EventType>(currentItemIndex);
       selectedObject->SetEventType(selectedEventType);
       if (selectedEventType == EventType::Goal) {
-        selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-        selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
 
         if (selectedObject->GetColliderType() == ColliderType::kNone) {
           Object3d::ColliderConfig colConfig;
@@ -203,8 +203,8 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         selectedObject->SetColor({1.0f, 0.15f, 0.35f, 1.0f});
         selectedObject->SetEmissive(1.8f);
         selectedObject->SetScale({0.8f, 0.8f, 0.8f});
-        selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-        selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
         selectedObject->SetStatic(false);
 
         Object3d::ColliderConfig colConfig;

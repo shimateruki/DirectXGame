@@ -23,7 +23,8 @@ public:
     /// <param name="currentPosition">現在のワールド座標。</param>
     /// <param name="targetPosition">目標のワールド座標。</param>
     /// <param name="deltaTime">前回更新からの経過秒数。</param>
-    /// <returns>次のウェイポイントへの移動方向。</returns>
+    /// <returns>XZ 平面の単位方向。到着時はゼロ、無効時や探索失敗時は目標への直接方向。</returns>
+    /// <remarks>速度や位置は変更しない。返した方向の先が安全とは限らず、移動側で衝突を解決する。</remarks>
     Vector3 CalculateDirection(
         Object3d* owner, const Vector3& currentPosition,
         const Vector3& targetPosition, float deltaTime);
@@ -105,7 +106,7 @@ private:
     float searchPadding_ = 5.0f;
     float repathInterval_ = 0.35f;
     float stoppingDistance_ = 0.25f;
-    uint32_t obstacleMask_ = kAllSolid;
+    uint32_t obstacleMask_ = CollisionCategories::Get("ground");
     bool allowDiagonal_ = true;
 
     // 再探索間隔中は前回のグリッドと経路を再利用する。

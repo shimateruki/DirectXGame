@@ -28,11 +28,11 @@
 SceneLoadManifest GameClearScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
-        ? GetSceneLoadContext().objectLayoutPath
-        : "Resources/json/3Dobject/gameClearScene.json");
+                                 ? GetSceneLoadContext().objectLayoutPath
+                                 : "Resources/json/3Dobject/gameClearScene.json");
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
-        ? GetSceneLoadContext().spriteLayoutPath
-        : "Resources/json/sprite/gameClearScene.json");
+                                 ? GetSceneLoadContext().spriteLayoutPath
+                                 : "Resources/json/sprite/gameClearScene.json");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
@@ -47,8 +47,7 @@ void GameClearScene::Initialize() {
     // --- 2. リソースロード ---
     LOG("GameClearScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile(
-        ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
+    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
     // --- 3. 共通クラス・マネージャの初期化 ---
     CameraManager::GetInstance()->Initialize();
@@ -90,8 +89,8 @@ void GameClearScene::Initialize() {
     uint32_t monsterBallHandle = Sprite::LoadTexture("ui/result/monsterBall.png");
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
-    monsterBallSprite->SetPosition({ 200.0f, 360.0f });
-    monsterBallSprite->SetSize({ 100.0f, 100.0f });
+    monsterBallSprite->SetPosition({200.0f, 360.0f});
+    monsterBallSprite->SetSize({100.0f, 100.0f});
     monsterBallSprite->SetName("MonsterBall");
     sprites_.push_back(std::move(monsterBallSprite));
 
@@ -100,11 +99,9 @@ void GameClearScene::Initialize() {
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameClearScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameClearScene.json");
 
-    LightManager::GetInstance()->LoadState(
-        ResolveSceneLightPath("Resources/json/light/gameClearScene.json"));
+    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/gameClearScene.json"));
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameClear_camera.json"));
-
 }
 
 void GameClearScene::Finalize() {
@@ -158,18 +155,22 @@ void GameClearScene::Draw() {
 
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue; // フォグ(7)も不透明パスから除外
+        if (isFirstPerson && obj.get() == player_)
+            continue;
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
+            continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
     // --- 2. 中間描画 (弾・デバッグ) ---
+    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
     // --- 3. 透明描画 ---
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
+        if (isFirstPerson && obj.get() == player_)
+            continue;
         if (obj->GetMaterialType() == 1) { // 透明のみ描画
             obj->Draw(pointLightRes, spotLightRes);
         }
@@ -184,11 +185,10 @@ void GameClearScene::Draw() {
     // =======================================================
     // 5. GPUパーティクルの描画！
     // =======================================================
-    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    const bool grabUpdated =
+        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
     DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
-
-
 
 // ====================================================================
 // UI描画専用の関数

@@ -36,6 +36,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
+// 画像保存へ渡す CPU 側 BGRA 画素列。width と height はピクセル数。
 struct CapturedImage {
     int width = 0;
     int height = 0;
@@ -156,6 +157,7 @@ bool ResolveClientRect(RECT& outRect, std::string& errorMessage) {
     outRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
     return true;
 }
+
 bool ResolveCaptureRect(DebugEditor* editor, CaptureToolWindow::CaptureArea area, bool forceGameViewClientCapture, RECT& outRect, std::string& errorMessage) {
     // ウィンドウ全体と Game View の座標系を区別し、画面内の有効な矩形へ解決します。
     switch (area) {    case CaptureToolWindow::CaptureArea::GameView: {

@@ -32,6 +32,7 @@ using ExecutablePackageInternal::kTextureModeLabels;
 using ExecutablePackageInternal::TexturePackageMode;
 
 namespace {
+// 配布用 Resources のコピー量と除外理由別の集計。Bytes 系は圧縮前のバイト数。
 struct ResourceCopyStats {
     uint64_t sourceFiles = 0;
     uint64_t sourceBytes = 0;
@@ -47,6 +48,7 @@ struct ResourceCopyStats {
     uint64_t omittedUnusedBytes = 0;
 };
 
+// プロジェクトコピーの結果集計。コピー・除外したファイル数と圧縮前バイト数を分ける。
 struct ProjectCopyStats {
     uint64_t copiedFiles = 0;
     uint64_t copiedBytes = 0;
@@ -55,6 +57,7 @@ struct ProjectCopyStats {
     uint64_t skippedDirectories = 0;
 };
 
+// コピー元の実パスと配布先に使う相対パス、容量見積り用のバイト数。
 struct ResourceFile {
     fs::path source;
     fs::path relative;

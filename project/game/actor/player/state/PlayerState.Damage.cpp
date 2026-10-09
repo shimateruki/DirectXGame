@@ -8,7 +8,6 @@
 
 // 被弾時のノックバックとスライムらしい変形演出をまとめています。
 
-
 // ========================================================
 // 被弾・ノックバック状態 (Damage)
 // ========================================================
@@ -17,7 +16,7 @@ void PlayerStateDamage::Enter(Player* player) {
     if (player) {
         player->ReleaseCarriedEnemy(true);
         player->SetIsControlActive(false); // 操作不能にする
-        
+
         // 初速をノックバック方向に与える
         timer_ = 0.0f;
         baseScale_ = player->GetScale();
@@ -29,7 +28,7 @@ void PlayerStateDamage::Enter(Player* player) {
             knockbackDir_ = knockbackDir_ * (1.0f / dirLength);
         } else {
             Vector3 forward = player->GetForwardDirection();
-            knockbackDir_ = { -forward.x, 0.0f, -forward.z };
+            knockbackDir_ = {-forward.x, 0.0f, -forward.z};
         }
 
         float force = 18.0f;
@@ -40,12 +39,14 @@ void PlayerStateDamage::Enter(Player* player) {
 }
 
 void PlayerStateDamage::Update(Player* player, float deltaTime) {
-    if (!player) return;
+    if (!player)
+        return;
 
     timer_ += deltaTime;
 
     float t = timer_ / duration_;
-    if (t > 1.0f) t = 1.0f;
+    if (t > 1.0f)
+        t = 1.0f;
 
     Vector3 targetScale = baseScale_;
     Vector3 targetRotation = baseRotation_;
@@ -55,28 +56,21 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
     if (t < 0.16f) {
         float p = t / 0.16f;
         float ease = 1.0f - (1.0f - p) * (1.0f - p);
-        targetScale = {
-            baseScale_.x * (1.0f + 0.62f * ease),
-            baseScale_.y * (1.0f - 0.52f * ease),
-            baseScale_.z * (1.0f + 0.62f * ease)
-        };
+        targetScale = {baseScale_.x * (1.0f + 0.62f * ease), baseScale_.y * (1.0f - 0.52f * ease),
+                       baseScale_.z * (1.0f + 0.62f * ease)};
     } else if (t < 0.48f) {
         float p = (t - 0.16f) / 0.32f;
         float ease = 1.0f - (1.0f - p) * (1.0f - p);
-        targetScale = {
-            Math::Lerp(baseScale_.x * 1.62f, baseScale_.x * 0.72f, ease),
-            Math::Lerp(baseScale_.y * 0.48f, baseScale_.y * 1.48f, ease),
-            Math::Lerp(baseScale_.z * 1.62f, baseScale_.z * 0.72f, ease)
-        };
+        targetScale = {Math::Lerp(baseScale_.x * 1.62f, baseScale_.x * 0.72f, ease),
+                       Math::Lerp(baseScale_.y * 0.48f, baseScale_.y * 1.48f, ease),
+                       Math::Lerp(baseScale_.z * 1.62f, baseScale_.z * 0.72f, ease)};
     } else {
         float p = (t - 0.48f) / 0.52f;
-        if (p > 1.0f) p = 1.0f;
+        if (p > 1.0f)
+            p = 1.0f;
         float wobble = std::sin(p * 3.14159265f * 4.0f) * (1.0f - p);
-        targetScale = {
-            baseScale_.x * (1.0f + wobble * 0.28f),
-            baseScale_.y * (1.0f - wobble * 0.22f),
-            baseScale_.z * (1.0f + wobble * 0.28f)
-        };
+        targetScale = {baseScale_.x * (1.0f + wobble * 0.28f), baseScale_.y * (1.0f - wobble * 0.22f),
+                       baseScale_.z * (1.0f + wobble * 0.28f)};
     }
 
     targetRotation.x += knockbackDir_.z * roll;

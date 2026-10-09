@@ -137,6 +137,8 @@ void VFXSequencerEditor::Update(float deltaTime) {
         const float previousScale = gpuManager->GetTimeScale();
         gpuManager->SetTimeScale(1.0f);
         float simulatedTime = 0.0f;
+        // SequencerとMeshはここで順に更新するが、GPU粒子は要求・時刻の蓄積だけを行う。
+        // GPU側の経路積分や過去の深度衝突まで固定刻みで復元できるわけではない。
         while (simulatedTime + (1.0f / 60.0f) < targetTime) {
             previewSequencer_.Update(1.0f / 60.0f);
             meshManager->UpdateEditorPreviewStep(1.0f / 60.0f);
@@ -493,11 +495,13 @@ void VFXSequencerEditor::DrawTimelinePreview() {
             if (mouse.x >= start && mouse.x <= end) {
                 draggingEvent_ = row;
                 dragStartTime_ = events[row].triggerTime;
+                // ドラッグ中に表示秒数が変わると換算率が跳ねるため、開始時の「画素→秒」の尺度を固定する。
                 dragTimelineDuration_ = maxTime;
             }
         }
     }
     if (ImGui::IsItemActive() && draggingEvent_ >= 0 && draggingEvent_ < static_cast<int>(events.size())) {
+        // MouseDragDeltaは押下開始からの総移動量。現在値へ毎フレーム足すと移動を重複計上する。
         float time = dragStartTime_ + ImGui::GetMouseDragDelta().x / width * maxTime;
         if (snapTimeline_) time = std::round(time / 0.05f) * 0.05f;
         events[draggingEvent_].triggerTime = std::clamp(time, 0.0f, 120.0f);

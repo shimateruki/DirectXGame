@@ -1,3 +1,8 @@
+"""王冠ゲートの鍵モデルを OBJ/MTL として再生成する。
+
+同名アセットとそのメタ情報を更新するため、形状変更は生成式側で行う。
+"""
+
 from __future__ import annotations
 
 import math

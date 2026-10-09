@@ -112,7 +112,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -550,6 +550,7 @@ void DebugEditor::RegisterObjectEdited(Object3d* object, const nlohmann::json& b
 }
 
 void DebugEditor::RegisterObjectsEdited(const std::vector<ObjectStateSnapshot>& beforeStates, const std::string& label) {
+    // 一括編集の前後を GUID に結び付ける。名前変更後も同じ対象へ Undo/Redo を適用するための記録。
     struct StateChange {
         std::string guid;
         std::string beforeName;
@@ -962,6 +963,7 @@ void DebugEditor::DuplicateSelected() {
 
     AddEditorObject(std::move(newObj), "Duplicate Object");
 }
+
 // 削除
 void DebugEditor::DeleteSelected() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
@@ -1079,6 +1081,7 @@ void DebugEditor::DeleteSelected() {
         DebugConsole::GetInstance()->AddLog("Deleted Object: " + deletedName);
     }
 }
+
 void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
     switch (command.type) {
     case EditorCommandType::ObjectCreated: {
@@ -1163,7 +1166,5 @@ void DebugEditor::PerformRedo() {
         DebugConsole::GetInstance()->AddLog("Redo: " + label);
     }
 }
-
-
 
 // マウス位置からワールド空間へのレイを作成

@@ -317,7 +317,7 @@ void Object3d::DeserializeFeatureComponents(const json& objectData) {
             component->SetSearchPadding(navPayload->value("searchPadding", 5.0f));
             component->SetRepathInterval(navPayload->value("repathInterval", 0.35f));
             component->SetStoppingDistance(navPayload->value("stoppingDistance", 0.25f));
-            component->SetObstacleMask(navPayload->value("obstacleMask", kAllSolid));
+            component->SetObstacleMask(navPayload->value("obstacleMask", CollisionCategories::Get("ground")));
             component->SetAllowDiagonal(navPayload->value("allowDiagonal", true));
             component->SetEnabled(navPayload->value("enabled", true));
         }
@@ -381,6 +381,10 @@ json Object3d::ExportToJson() {
     }
     d["collisionAttribute"] = GetCollisionAttribute();
     d["collisionMask"] = GetCollisionMask();
+    d["collisionAttributeIds"] = CollisionCategories::GetIds(GetCollisionAttribute());
+    d["collisionMaskIds"] = CollisionCategories::GetIds(GetCollisionMask());
+    d["collisionAttributeUnknownBits"] = GetCollisionAttribute() & ~CollisionCategories::GetKnownMask();
+    d["collisionMaskUnknownBits"] = GetCollisionMask() & ~CollisionCategories::GetKnownMask();
     if (!terrainCollisionPath_.empty()) {
         d["terrainCollisionPath"] = terrainCollisionPath_;
     }
@@ -622,8 +626,27 @@ void Object3d::ImportFromJson(const json& j) {
         if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
         collider_->SetConfig(config);
     }
-    if (j.contains("collisionAttribute")) SetCollisionAttribute(j["collisionAttribute"]);
-    if (j.contains("collisionMask")) SetCollisionMask(j["collisionMask"]);
+    auto loadCategoryMask = [&j](const char* idsKey, const char* legacyKey, uint32_t fallback) {
+        if (j.contains(idsKey) && j[idsKey].is_array()) {
+            std::vector<std::string> ids;
+            for (const auto& id : j[idsKey]) {
+                if (id.is_string()) ids.push_back(id.get<std::string>());
+            }
+            const std::string unknownKey = std::string(idsKey) == "collisionAttributeIds"
+                ? "collisionAttributeUnknownBits" : "collisionMaskUnknownBits";
+            const uint32_t unknown = j.value(unknownKey, uint32_t{0});
+            return CollisionCategories::FromIds(ids) | unknown;
+        }
+        if (j.contains(legacyKey) && j[legacyKey].is_number_unsigned()) {
+            return CollisionCategories::FromLegacyMask(j[legacyKey].get<uint32_t>());
+        }
+        if (j.contains(legacyKey) && j[legacyKey].is_number_integer()) {
+            return CollisionCategories::FromLegacyMask(static_cast<uint32_t>(j[legacyKey].get<int>()));
+        }
+        return fallback;
+    };
+    SetCollisionAttribute(loadCategoryMask("collisionAttributeIds", "collisionAttribute", GetCollisionAttribute()));
+    SetCollisionMask(loadCategoryMask("collisionMaskIds", "collisionMask", GetCollisionMask()));
     if (j.contains("terrainCollisionPath") && j["terrainCollisionPath"].is_string()) {
         LoadTerrainCollisionFromFile(j["terrainCollisionPath"].get<std::string>());
     }

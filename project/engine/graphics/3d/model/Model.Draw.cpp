@@ -583,8 +583,6 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
     }
 }
 
-
-
 // 頂点配列から一時的なモデルデータを構築し、プリミティブやデバッグ表示に使える形へ変換する。
 void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices) {
     computeSkinningAvailable_ = false;

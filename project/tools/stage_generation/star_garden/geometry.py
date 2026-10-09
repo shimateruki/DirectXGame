@@ -161,6 +161,7 @@ def projected_interval(vertices: list[tuple[float, float]], axis: tuple[float, f
 
 
 def oriented_boxes_overlap(first: dict[str, Any], second: dict[str, Any], tolerance: float = 1.0e-6) -> bool:
+    """両 OBB の辺方向を分離軸として投影し、XZ 平面での重なりを調べる。"""
     axes = (*first["axes"], *second["axes"])
     for axis in axes:
         first_min, first_max = projected_interval(first["vertices"], axis)

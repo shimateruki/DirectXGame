@@ -12,10 +12,10 @@ void GimmickHookPullBlock::Initialize(Object3dCommon* common, const std::string&
     SetClassName("Gimmick");
     SetGimmickType("HookPullBlock");
     SetName("Gimmick_HookPullBlock");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetStatic(false);
-    SetColor({ 0.55f, 0.85f, 1.0f, 1.0f });
+    SetColor({0.55f, 0.85f, 1.0f, 1.0f});
 
     if (!param_.has_value()) {
         param_.emplace();
@@ -46,8 +46,10 @@ void GimmickHookPullBlock::Update(float deltaTime) {
     } else {
         velocity_.x *= 0.86f;
         velocity_.z *= 0.86f;
-        if (std::abs(velocity_.x) < 0.02f) velocity_.x = 0.0f;
-        if (std::abs(velocity_.z) < 0.02f) velocity_.z = 0.0f;
+        if (std::abs(velocity_.x) < 0.02f)
+            velocity_.x = 0.0f;
+        if (std::abs(velocity_.z) < 0.02f)
+            velocity_.z = 0.0f;
     }
 
     velocity_.y -= param_->gravity * deltaTime;
@@ -69,12 +71,16 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 }
 
 bool GimmickHookPullBlock::OnCollision(Object3d* other) {
-    if (!other || other == this) return false;
-    if (!(other->GetCollisionAttribute() & kAllSolid)) return true;
-    if (other->GetGimmickType() == "HookPullBlock") return true;
+    if (!other || other == this)
+        return false;
+    if (!(other->GetCollisionAttribute() & CollisionCategories::Get("ground")))
+        return true;
+    if (other->GetGimmickType() == "HookPullBlock")
+        return true;
 
     CollisionInfo info = CheckCollision(other);
-    if (!info.isColliding) return false;
+    if (!info.isColliding)
+        return false;
 
     GetTransform()->translate += info.normal * info.penetration;
 
@@ -91,9 +97,11 @@ bool GimmickHookPullBlock::OnCollision(Object3d* other) {
 }
 
 void GimmickHookPullBlock::StartHookPull(const Vector3& hookOwnerPos) {
+    // フックを掴んだ瞬間の使用者位置を固定し、移動中に目標が揺れないようにします。
     Vector3 toOwner = hookOwnerPos - GetWorldPosition();
     toOwner.y = 0.0f;
-    if (Math::Length(toOwner) < 0.05f) return;
+    if (Math::Length(toOwner) < 0.05f)
+        return;
 
     Vector3 dir = Math::Normalize(toOwner);
     pullTarget_ = hookOwnerPos - dir * 4.0f;
@@ -103,7 +111,8 @@ void GimmickHookPullBlock::StartHookPull(const Vector3& hookOwnerPos) {
     float pullSpeed = param_.has_value() ? std::max(1.0f, param_->speed) : 42.0f;
     velocity_.x = dir.x * pullSpeed;
     velocity_.z = dir.z * pullSpeed;
-    if (velocity_.y < 3.0f) velocity_.y = 3.0f;
+    if (velocity_.y < 3.0f)
+        velocity_.y = 3.0f;
 
     DebugConsole::GetInstance()->AddLog("HookPullBlock pulled");
 }

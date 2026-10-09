@@ -419,7 +419,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
     });
     Register({
         "component.nav.obstacleMask", "障害物Mask", "Component", EditorPropertyType::Integer, CommonFlags(),
-        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetObstacleMask() : kAllSolid); },
+        [](const Object3d& object) { return json(object.GetNavAgentComponent() ? object.GetNavAgentComponent()->GetObstacleMask() : CollisionCategories::Get("ground")); },
         [](Object3d& object, const json& value) {
             if (!value.is_number_integer() && !value.is_number_unsigned()) return false;
             object.EnsureNavAgentComponent()->SetObstacleMask(value.get<std::uint32_t>());

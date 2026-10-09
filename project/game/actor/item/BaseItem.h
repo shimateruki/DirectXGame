@@ -7,7 +7,7 @@ class Player;
 
 // プレイヤーが拾って効果を発動するアイテムの基底クラス
 class BaseItem : public Object3d {
-public:
+  public:
     virtual ~BaseItem() = default;
 
     virtual void Initialize(Object3dCommon* common, const std::string& modelName);
@@ -16,7 +16,8 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-protected:
+  protected:
+    // 派生アイテムで取得効果を実装し、MarkCollected で重複取得を防ぎます。
     virtual void Collect(Player* player);
     void MarkCollected();
 

@@ -17,20 +17,20 @@ void GimmickBreakableBlock::Initialize(Object3dCommon* common, const std::string
         SetNormalMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_normal.png");
         SetOrmMap("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_orm.png");
         SetMaterialType(0);
-        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        SetColor({1.0f, 1.0f, 1.0f, 1.0f});
         SetMetallic(0.0f);
         SetRoughness(0.72f);
         SetEnableEnvMap(false);
         SetEmissive(1.0f);
     }
-    
-    // 地形（足場）として振る舞うため、属性を kGround に設定
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111); // すべてのオブジェクトと衝突して押し戻す
-    
+
+    // 地形（足場）として振る舞うため、属性を ground に設定
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask()); // すべてのオブジェクトと衝突して押し戻す
+
     // OBBコライダーでモデルの大きさに自動フィットさせる
     SetColliderType(ColliderType::kOBB);
-    
+
     isBroken_ = false;
     SetClassName("Gimmick");
     SetGimmickType("BreakableBlock");
@@ -45,21 +45,21 @@ void GimmickBreakableBlock::Update(float deltaTime) {
         isDead = true;
         return;
     }
-    
+
     BaseGimmick::Update(deltaTime);
 }
 
 bool GimmickBreakableBlock::OnCollision(Object3d* other) {
-    if (isBroken_) return false;
+    if (isBroken_)
+        return false;
 
     const uint32_t attribute = other->GetCollisionAttribute();
     const auto* bomb = dynamic_cast<const EnemyBomb*>(other);
 
     // プレイヤーが生成したボムの爆風だけを破壊条件にする。
-    if (bomb && bomb->IsPlayerOwned() &&
-        (attribute & kPlayerAttack) &&
+    if (bomb && bomb->IsPlayerOwned() && (attribute & CollisionCategories::Get("player_attack")) &&
         other->GetColliderType() == ColliderType::kSphere) {
-        
+
         Break();
         return true;
     }
@@ -78,13 +78,11 @@ bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
         if (!player->IsPinkBounceSlamImpactActive()) {
             return false;
         }
-    }
-    else if (actionMode == 6) {
+    } else if (actionMode == 6) {
         if (!player->IsImpactBreakActive()) {
             return false;
         }
-    }
-    else {
+    } else {
         return false;
     }
 
@@ -122,12 +120,8 @@ void GimmickBreakableBlock::Break() {
 
     // 石ブロックは従来どおり小規模な爆発と火花で破壊する。
     if (MeshEffectManager::GetInstance()) {
-        MeshEffectManager::GetInstance()->SpawnEffectAt(
-            "Resources/json/effect/effect_bakuhatu.json", 
-            myPos, 
-            { 0.0f, 0.0f, 0.0f }, 
-            { 0.5f, 0.5f, 0.5f }
-        );
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_bakuhatu.json", myPos,
+                                                        {0.0f, 0.0f, 0.0f}, {0.5f, 0.5f, 0.5f});
     }
 
     DebrisEffectManager::GetInstance()->Spawn("bomb_hit_fragment_burst", myPos);

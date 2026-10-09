@@ -16,19 +16,19 @@ void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& m
     SetGimmickType("MagmaHazard");
     SetName("Gimmick_MagmaHazard");
     SetMaterialType(9);
-    SetColor({ 1.0f, 0.24f, 0.015f, 1.0f });
+    SetColor({1.0f, 0.24f, 0.015f, 1.0f});
     SetEmissive(1.8f);
     SetRoughness(0.38f);
     SetMetallic(0.0f);
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
     // マグマ面は移動しないため、巨大Colliderを静的グリッドへ一度だけ登録する。
     SetStatic(true);
 
     Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.center = { 0.0f, 0.0f, 0.0f };
-    collider.size = { 1.0f, 1.0f, 1.0f };
+    collider.center = {0.0f, 0.0f, 0.0f};
+    collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
 
     if (!param_.has_value()) {
@@ -73,9 +73,7 @@ bool GimmickMagmaHazard::OnCollision(Object3d* /*other*/) {
     return true;
 }
 
-float GimmickMagmaHazard::GetDamage() const {
-    return param_.has_value() ? (std::max)(0.0f, param_->speed) : 12.0f;
-}
+float GimmickMagmaHazard::GetDamage() const { return param_.has_value() ? (std::max)(0.0f, param_->speed) : 12.0f; }
 
 float GimmickMagmaHazard::GetDamageInterval() const {
     return param_.has_value() ? (std::max)(0.1f, param_->interval) : 0.8f;

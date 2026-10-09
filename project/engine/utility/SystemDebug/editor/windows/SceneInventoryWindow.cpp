@@ -401,7 +401,7 @@ std::string SceneInventoryWindow::ClassifyCategory(const Object3d& object) const
         ContainsAny(saveCategory, { "particle", "effect", "vfx" })) {
         return "エフェクト";
     }
-    if ((object.GetCollisionAttribute() & kGround) != 0 || object.GetColliderConfig().type == ColliderType::kTerrain ||
+    if ((object.GetCollisionAttribute() & CollisionCategories::Get("ground")) != 0 || object.GetColliderConfig().type == ColliderType::kTerrain ||
         IsTerrainVisual(object)) {
         return "通常地形";
     }
@@ -437,7 +437,7 @@ std::string SceneInventoryWindow::ClassifyCollision(const Object3d& object) cons
     const std::string& name = object.GetName();
 
     if (config.type == ColliderType::kNone) return "当たり判定なし";
-    if ((attribute & kTrigger) != 0 || ContainsAny(name, { "trigger", "eventarea", "goalarea" })) {
+    if ((attribute & CollisionCategories::Get("trigger")) != 0 || ContainsAny(name, { "trigger", "eventarea", "goalarea" })) {
         return std::string("トリガー / ") + GetColliderShapeName(config.type);
     }
     if (config.type == ColliderType::kTerrain) return "地形コライダー / Terrain";
@@ -458,6 +458,6 @@ std::string SceneInventoryWindow::ClassifyCollision(const Object3d& object) cons
         return std::string("透明な判定ボリューム / ") + GetColliderShapeName(config.type);
     }
 
-    std::string role = (attribute & kGround) != 0 ? "地形" : "通常";
+    std::string role = (attribute & CollisionCategories::Get("ground")) != 0 ? "地形" : "通常";
     return role + " / " + GetColliderShapeName(config.type);
 }

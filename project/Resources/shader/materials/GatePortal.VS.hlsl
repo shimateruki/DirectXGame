@@ -19,7 +19,14 @@ VSOutput main(VSInput input)
     float portalDepthScale = max(effectScaleZ, 0.0f);
     float3 axisZNormal = axisZ / axisZLength;
     float3 portalLocalPos;
-    if (effectType > 2.5f)
+    if (effectType > 3.5f)
+    {
+        // The arena barrier uses a continuous cylindrical proxy and unwrapped UVs.
+        portalLocalPos = float3(input.pos.x * portalScale.x,
+            input.pos.y * portalScale.y, input.pos.z * max(effectScaleZ, 0.05f)) *
+            max(billboardScale, 0.05f);
+    }
+    else if (effectType > 2.5f)
     {
         // Arena barriers must preserve the authored rectangular wall dimensions.
         // The circular gate path intentionally uses the largest axis instead.
@@ -42,8 +49,12 @@ VSOutput main(VSInput input)
     output.pos = mul(float4(portalLocalPos, 1.0f), WVP);
     output.worldPos = portalWorldPos;
     output.screenPos = output.pos;
-    output.localPos = float3(quad, layerDepth);
-    output.normal = axisZNormal;
+    output.localPos = effectType > 3.5f
+        ? float3(input.uv.x * 2.0f - 1.0f, input.uv.y * 2.0f - 1.0f, layerDepth)
+        : float3(quad, layerDepth);
+    output.normal = effectType > 3.5f
+        ? normalize(mul(float4(input.normal, 0.0f), WorldInverseTranspose).xyz)
+        : axisZNormal;
     output.uv = input.uv;
 
     return output;

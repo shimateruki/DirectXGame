@@ -23,10 +23,10 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     // ==========================================
     for (int i = 0; i < 6; ++i) {
         auto beam = std::make_unique<Object3d>();
-        beam->Initialize(common_);         // エンジンの共通データで初期化
-        beam->SetModel("Primitives/cylinder");        // ※円柱モデルのファイル名に合わせてください！
-        beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
-        beam->SetCollisionAttribute(0);    // 当たり判定なし
+        beam->Initialize(common_);             // エンジンの共通データで初期化
+        beam->SetModel("Primitives/cylinder"); // ※円柱モデルのファイル名に合わせてください！
+        beam->SetScale({0.0f, 0.0f, 0.0f});    // 最初は見えないようにする
+        beam->SetCollisionAttribute(0);        // 当たり判定なし
         beam->SetCollisionMask(0);
         laserBeams_.push_back(std::move(beam));
     }
@@ -47,8 +47,7 @@ void BossCore::Update(float deltaTime) {
 
         if (s_isTimeStopped_) {
             DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
-        }
-        else {
+        } else {
             DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
         }
     }
@@ -71,9 +70,10 @@ void BossCore::Update(float deltaTime) {
         // ② 振られている剣を見つけたら、ブロックとの当たり判定をチェック！
         if (weapon) {
             for (Object3d* block : armorBlocks_) {
-                if (!block) continue;
+                if (!block)
+                    continue;
 
-                // 待機中のブロックは「壁(kGround)」になっているので、一瞬だけ判定を全開放
+                // 待機中のブロックは「壁(ground)」になっているので、一瞬だけ判定を全開放
                 uint32_t originalMask = block->GetCollisionMask();
                 block->SetCollisionMask(0xFFFFFFFF);
 
@@ -93,7 +93,8 @@ void BossCore::Update(float deltaTime) {
     // ブロックの色を元に戻す処理
     if (preTimer > 0.0f && colorResetTimer_ <= 0.0f) {
         for (Object3d* block : armorBlocks_) {
-            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            if (block)
+                block->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
         }
     }
 
@@ -113,16 +114,16 @@ void BossCore::Update(float deltaTime) {
     }
 
     // ==========================================
-     // 4. 通常のステート更新（アニメーション中以外に動く）
-     // ==========================================
+    // 4. 通常のステート更新（アニメーション中以外に動く）
+    // ==========================================
     if (isFirstFrame_) {
         originalColor_ = GetColor();
         // ① まず、子供たちの中から WarningArea を見つけ出す！
         for (Object3d* child : GetChildren()) {
             if (child->GetName() == "WarningArea") {
                 warningArea_ = child;
-                warningArea_->SetParent(nullptr); // 親子関係を解除
-                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+                warningArea_->SetParent(nullptr);           // 親子関係を解除
+                warningArea_->SetScale({0.0f, 0.0f, 0.0f}); // 最初は見えないようにする
 
                 // ==========================================
                 // WarningArea の当たり判定を完全に処刑する（幽霊化）！！
@@ -133,17 +134,16 @@ void BossCore::Update(float deltaTime) {
                 // ==========================================
                 // 絶対に斜めにならないよう、角度を完全に平ら(0,0,0)に強制リセット！
                 // ==========================================
-                warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                warningArea_->SetRotation({0.0f, 0.0f, 0.0f});
                 warningArea_->GetTransform()->isQuaternionMaster = false;
 
                 // ==========================================
                 // ② 見つけたら、装甲ブロックのリスト（armorBlocks_）から完全に追放（はく奪）する！
                 // ==========================================
-                for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
+                for (auto it = armorBlocks_.begin(); it != armorBlocks_.end();) {
                     if (*it == warningArea_) {
                         it = armorBlocks_.erase(it); // リストから消去！
-                    }
-                    else {
+                    } else {
                         ++it;
                     }
                 }
@@ -160,9 +160,15 @@ void BossCore::Update(float deltaTime) {
     }
 
     switch (state_) {
-    case State::Idle:   UpdateIdle(deltaTime);   break;
-    case State::Attack: UpdateAttack(deltaTime); break;
-    case State::Weak:   UpdateWeak(deltaTime);   break;
+    case State::Idle:
+        UpdateIdle(deltaTime);
+        break;
+    case State::Attack:
+        UpdateAttack(deltaTime);
+        break;
+    case State::Weak:
+        UpdateWeak(deltaTime);
+        break;
     }
 }
 
@@ -177,15 +183,13 @@ void BossCore::ChangeState(State nextState) {
     uint32_t coreAttribute;
     if (state_ == State::Attack) {
         // 攻撃中：触れるとダメージ ＋ 絶対すり抜けない壁
-        coreAttribute = kEnemyAttack | kGround;
-    }
-    else if (state_ == State::Weak) {
+        coreAttribute = CollisionCategories::Get("enemy_attack") | CollisionCategories::Get("ground");
+    } else if (state_ == State::Weak) {
         // ダウン中：剣で殴れる ＋ 絶対すり抜けない壁
-        coreAttribute = kEnemy | kGround;
-    }
-    else {
+        coreAttribute = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
+    } else {
         // 待機中：ただの壁（体当たりしてもノーダメージ）
-        coreAttribute = kGround;
+        coreAttribute = CollisionCategories::Get("ground");
     }
 
     // ① コア本体の属性を設定し、さらに「全ての子パーツ」にも属性を同期させる！
@@ -203,13 +207,13 @@ void BossCore::ChangeState(State nextState) {
 
     // ② 周りのブロックの属性（攻撃中は「敵の攻撃＋壁」、それ以外は「ただの壁」）
     // 装甲ブロックは上で子パーツとしても処理されますが、念のためここで確実に上書きします。
-    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+    uint32_t blockAttribute = (state_ == State::Attack) ? (CollisionCategories::Get("enemy_attack") | CollisionCategories::Get("ground")) : CollisionCategories::Get("ground");
 
     for (Object3d* block : armorBlocks_) {
         if (block) {
             block->SetCollisionAttribute(blockAttribute);
             if (state_ == State::Attack) {
-                block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                block->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
             }
         }
     }
@@ -240,21 +244,16 @@ void BossCore::ChangeState(State nextState) {
 
         if (attackMode_ == 1) {
             animPhase_ = 1;
-        }
-        else if (attackMode_ == 2) {
+        } else if (attackMode_ == 2) {
             animPhase_ = 10;
-        }
-        else if (attackMode_ == 3) {
+        } else if (attackMode_ == 3) {
             animPhase_ = 20;
-        }
-        else if (attackMode_ == 4) {
+        } else if (attackMode_ == 4) {
             animPhase_ = 39;
-        }
-        else if (attackMode_ == 5) {
+        } else if (attackMode_ == 5) {
             animPhase_ = 50;
-        }
-        else if (attackMode_ == 6) {
-            animPhase_ = 60; 
+        } else if (attackMode_ == 6) {
+            animPhase_ = 60;
         }
         break;
     }
@@ -264,6 +263,7 @@ void BossCore::ChangeState(State nextState) {
         break;
     }
 }
+
 // =================================================================
 // 各ステートの個別更新処理
 // =================================================================
@@ -296,10 +296,10 @@ void BossCore::UpdateWeak(float deltaTime) {
     // --- 演出1：ボス本体のシェイク ---
     float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
     float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
-    SetRotation({ shakeX, GetRotation().y, shakeZ });
+    SetRotation({shakeX, GetRotation().y, shakeZ});
 
     // --- 演出2：全体の色を暗くする ---
-    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
+    SetColor({0.3f, 0.3f, 0.3f, 1.0f});
 
     // ブロックを飛散させるアニメーション
     // ==========================================
@@ -318,14 +318,14 @@ void BossCore::UpdateWeak(float deltaTime) {
             rot.x += 1.0f * deltaTime;
             rot.y += 1.5f * deltaTime;
             armorBlocks_[i]->SetRotation(rot);
-            armorBlocks_[i]->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックも暗くする
+            armorBlocks_[i]->SetColor({0.3f, 0.3f, 0.3f, 1.0f}); // ブロックも暗くする
         }
     }
 
     // --- 3秒経過で復帰 ---
     if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
-        SetRotation({ 0.0f, GetRotation().y, 0.0f });
+        SetRotation({0.0f, GetRotation().y, 0.0f});
         SetColor(originalColor_);
         ChangeState(State::Idle); // ここで各ブロックは IdleOrbit に戻るようになります
     }
@@ -351,7 +351,8 @@ void BossCore::TakeBarrierDamage(float damage) {
     barrierHp_ -= damage;
 
     // デバッグコンソールに分かりやすく残りHPを表示！
-    DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
+    DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " +
+                                        std::to_string(maxBarrierHp_));
 
     // 無敵タイマーと色リセットタイマーをセット
     damageCooldownTimer_ = 0.5f;
@@ -359,7 +360,8 @@ void BossCore::TakeBarrierDamage(float damage) {
 
     // 全ブロックを赤く光らせてダメージを受けた感を出す！
     for (Object3d* block : armorBlocks_) {
-        if (block) block->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+        if (block)
+            block->SetColor({1.0f, 0.0f, 0.0f, 1.0f});
     }
 
     if (barrierHp_ <= 0.0f) {
@@ -391,28 +393,22 @@ void BossCore::TakeBarrierDamage(float damage) {
                 float distance = 10.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
                 float height = ((static_cast<float>(rand()) / RAND_MAX) * 10.0f) - 5.0f; // 上下にもばらけさせる
 
-                Vector3 scatterPos = {
-                    std::cos(angle) * distance,
-                    height,
-                    std::sin(angle) * distance
-                };
+                Vector3 scatterPos = {std::cos(angle) * distance, height, std::sin(angle) * distance};
                 blockTargetPos_.push_back(scatterPos);
             }
         }
 
-        SetRotation({ 0.0f, GetRotation().y, 0.0f });
+        SetRotation({0.0f, GetRotation().y, 0.0f});
         ChangeState(State::Weak);
     }
 }
 
-
-
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 
-    // プレイヤーの剣(kPlayerAttack)が当たった場合は、衝突判定を確認して
+    // プレイヤーの剣(player_attack)が当たった場合は、衝突判定を確認して
     // BaseEnemy のダメージ処理に委譲する（＝剣でダメージを受ける）
-    if (attribute & kPlayerAttack) {
+    if (attribute & CollisionCategories::Get("player_attack")) {
         CollisionInfo info = CheckCollision(other);
         if (!info.isColliding) {
             return false;

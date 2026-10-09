@@ -89,6 +89,7 @@ float4 main(VSOutput input) : SV_TARGET
     float primary = 1.0f - smoothstep(ringWidth, ringWidth * 2.25f, abs(radial - progress));
     primary *= smoothstep(0.03f, 0.18f, progress) * (1.0f - smoothstep(0.82f, 1.08f, progress));
 
+    // The trailing ring is suppressed in focused charge mode to keep one readable cue.
     float secondaryCenter = saturate(progress - 0.23f);
     float secondary = 1.0f - smoothstep(ringWidth * 1.2f, ringWidth * 3.0f, abs(radial - secondaryCenter));
     secondary *= smoothstep(0.28f, 0.45f, progress) * 0.55f;
@@ -107,6 +108,7 @@ float4 main(VSOutput input) : SV_TARGET
     float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
     float waveDepth = input.screenPos.z / input.screenPos.w;
     float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(waveDepth);
+    // Fade the ring where opaque geometry intersects its proxy instead of drawing through it.
     float depthFade = (bgDepth >= 0.999f) ? 1.0f : saturate(depthDiff / 0.9f + 0.35f);
 
     float2 push = normalize(planeUV + 0.0001f) * energy * (0.018f + softness * 0.018f);

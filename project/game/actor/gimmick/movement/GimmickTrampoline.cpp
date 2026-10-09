@@ -8,31 +8,31 @@ void GimmickTrampoline::Initialize(Object3dCommon* common, const std::string& mo
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("Trampoline");
-    
-    if (!param_.has_value()) param_.emplace();
+
+    if (!param_.has_value())
+        param_.emplace();
     param_->jumpPower = 30.0f; // デフォルトのジャンプ力
-    
+
     // 見た目と当たり判定
     ColliderConfig config = GetColliderConfig();
     config.type = ColliderType::kOBB;
-    config.size = { 1.0f, 0.2f, 1.0f }; // 半径（中心から各辺まで）
+    config.size = {1.0f, 0.2f, 1.0f}; // 半径（中心から各辺まで）
     SetColliderConfig(config);
-    
+
     // 衝突属性の設定 (地面属性を持たせることで足場として機能させる)
-    SetCollisionAttribute(kGround);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0b1111); // 全てと当たる
 }
 
-void GimmickTrampoline::Update(float deltaTime) {
-    BaseGimmick::Update(deltaTime);
-}
+void GimmickTrampoline::Update(float deltaTime) { BaseGimmick::Update(deltaTime); }
 
 bool GimmickTrampoline::OnCollision(Object3d* other) {
-    if (!other) return false;
+    if (!other)
+        return false;
 
     // 相手がプレイヤーかどうかを判定 (ClassName または dynamic_cast)
     bool isPlayer = (other->GetClassName() == "Player");
-    
+
     if (isPlayer) {
         CollisionInfo info = CheckCollision(other);
         if (info.isColliding) {
@@ -44,7 +44,7 @@ bool GimmickTrampoline::OnCollision(Object3d* other) {
                     Vector3 velocity = player->GetVelocity();
                     velocity.y = param_->jumpPower;
                     player->SetVelocity(velocity);
-                    
+
                     DebugConsole::GetInstance()->AddLog("Trampoline JUMP! Power: " + std::to_string(param_->jumpPower));
                 }
             }

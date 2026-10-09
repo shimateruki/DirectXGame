@@ -426,11 +426,13 @@ void Object3d::DrawShadow() {
         meshRenderer_->DrawShadow();
     }
 }
+
 void Object3d::SetShadowCommonState() {
     if (meshRenderer_) {
         meshRenderer_->SetShadowCommonState();
     }
 }
+
 void Object3d::DrawShadowOnly() {
     if (!GetIsRenderVisible() || IsCameraObject()) return;
     if (meshRenderer_) {

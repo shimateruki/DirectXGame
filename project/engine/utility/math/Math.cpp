@@ -28,7 +28,7 @@ Vector3 operator/(const Vector3& v, float scalar) {
 	if (scalar != 0.0f) {
 		return { v.x / scalar, v.y / scalar, v.z / scalar };
 	}
-	// 0で割ろうとした場合は、とりあえずゼロベクトルを返す
+	// 呼び出し側へ非有限値を伝播させず、ゼロベクトルを返します。
 	return { 0.0f, 0.0f, 0.0f };
 }
 
@@ -240,7 +240,7 @@ Matrix4x4 Math::MakeOrthographicMatrix(float left, float top, float right, float
 	return result;
 }
 
-// ★追加: ビューポート行列
+// NDC を画面ピクセル座標と指定した深度範囲へ写します。
 Matrix4x4 Math::MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth)
 {
 	Matrix4x4 result = {};
@@ -576,6 +576,7 @@ Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, f
 
 	return result;
 }
+
 Quaternion Math::EulerToQuaternion(const Vector3& rot) {
 	// 各軸の半角のサイン・コサインを計算
 	float cx = std::cos(rot.x * 0.5f);
@@ -673,7 +674,7 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 		q.z = 0.25f * s;
 	}
 
-	// 3. 念のため正規化（ゼロ除算や誤差の蓄積による爆発を防ぐ）
+	// 行列からの変換で生じた丸め誤差を除き、ゼロ長なら単位クォータニオンへ戻します。
 	float len = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 	if (len > 0.0001f) {
 		q.x /= len;

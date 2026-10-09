@@ -6,7 +6,7 @@
 namespace {
 // 落下復帰後にプレイヤーと床が重ならないよう、十分な退避時間を確保する。
 constexpr float kReturnDelaySeconds = 5.0f;
-}
+} // namespace
 
 void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -14,13 +14,14 @@ void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::st
     SetClassName("Gimmick");
     SetGimmickType("ChainCollapseFloor");
     SetName("Gimmick_ChainCollapseFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.75f, 0.92f, 1.0f, 0.82f });
-    SetScale({ 2.0f, 0.25f, 2.0f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.75f, 0.92f, 1.0f, 0.82f});
+    SetScale({2.0f, 0.25f, 2.0f});
     SetStatic(false);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->shakeDuration = 0.45f;
     param_->fallDuration = 1.4f;
     param_->interval = 0.18f;
@@ -101,12 +102,11 @@ bool GimmickChainCollapseFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-void GimmickChainCollapseFloor::OnTrigger() {
-    QueueCollapse();
-}
+void GimmickChainCollapseFloor::OnTrigger() { QueueCollapse(); }
 
 void GimmickChainCollapseFloor::StartCollapse() {
-    if (state_ != State::Idle && state_ != State::Pending) return;
+    if (state_ != State::Idle && state_ != State::Pending)
+        return;
     ChangeState(State::Shaking);
 }
 
@@ -115,14 +115,13 @@ void GimmickChainCollapseFloor::QueueCollapse() {
     if (state_ == State::Hidden && ShouldReturnAfterCollapse()) {
         ResetForRetry();
     }
-    if (state_ != State::Idle) return;
+    if (state_ != State::Idle)
+        return;
     pendingTimer_ = GetChainDelay();
     ChangeState(State::Pending);
 }
 
-void GimmickChainCollapseFloor::ResetForRetry() {
-    ChangeState(State::Idle);
-}
+void GimmickChainCollapseFloor::ResetForRetry() { ChangeState(State::Idle); }
 
 void GimmickChainCollapseFloor::ChangeState(State state) {
     state_ = state;
@@ -131,8 +130,8 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
     switch (state_) {
     case State::Idle:
         SetIsVisible(true);
-        SetCollisionAttribute(kGround);
-        SetCollisionMask(0b11111111);
+        SetCollisionAttribute(CollisionCategories::Get("ground"));
+        SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
         GetTransform()->translate = startPosition_;
         GetTransform()->rotate = startRotation_;
         GetTransform()->isQuaternionMaster = false;
@@ -140,15 +139,15 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         pendingTimer_ = 0.0f;
         returnTimer_ = 0.0f;
         triggeredNext_ = false;
-        SetColor({ 0.75f, 0.92f, 1.0f, 0.82f });
+        SetColor({0.75f, 0.92f, 1.0f, 0.82f});
         break;
 
     case State::Pending:
-        SetColor({ 0.95f, 0.85f, 0.35f, 0.9f });
+        SetColor({0.95f, 0.85f, 0.35f, 0.9f});
         break;
 
     case State::Shaking:
-        SetColor({ 1.0f, 0.95f, 0.45f, 0.9f });
+        SetColor({1.0f, 0.95f, 0.45f, 0.9f});
         triggeredNext_ = false;
         break;
 
@@ -168,37 +167,29 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
     }
 }
 
-bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const {
-    return param_.has_value() && param_->returnOnOff;
-}
+bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const { return param_.has_value() && param_->returnOnOff; }
 
 void GimmickChainCollapseFloor::TriggerNextFloor() {
-    if (triggeredNext_) return;
+    if (triggeredNext_)
+        return;
 
     triggeredNext_ = true;
     int targetID = GetTargetID();
-    if (targetID == -1) return;
+    if (targetID == -1)
+        return;
 
     if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
         scene->TriggerEvent(targetID);
     }
 }
 
-float GimmickChainCollapseFloor::GetShakeDuration() const {
-    return param_.has_value() ? param_->shakeDuration : 0.45f;
-}
+float GimmickChainCollapseFloor::GetShakeDuration() const { return param_.has_value() ? param_->shakeDuration : 0.45f; }
 
-float GimmickChainCollapseFloor::GetFallDuration() const {
-    return param_.has_value() ? param_->fallDuration : 1.4f;
-}
+float GimmickChainCollapseFloor::GetFallDuration() const { return param_.has_value() ? param_->fallDuration : 1.4f; }
 
-float GimmickChainCollapseFloor::GetChainDelay() const {
-    return param_.has_value() ? param_->interval : 0.18f;
-}
+float GimmickChainCollapseFloor::GetChainDelay() const { return param_.has_value() ? param_->interval : 0.18f; }
 
-float GimmickChainCollapseFloor::GetGravity() const {
-    return param_.has_value() ? param_->gravity : 48.0f;
-}
+float GimmickChainCollapseFloor::GetGravity() const { return param_.has_value() ? param_->gravity : 48.0f; }
 
 std::unique_ptr<Object3d> GimmickChainCollapseFloor::Clone() const {
     auto newObj = std::make_unique<GimmickChainCollapseFloor>();

@@ -50,8 +50,6 @@ void Object3dCommon::SetPipelineState(BlendMode blendMode) {
     commandList->SetPipelineState(graphicsPipelineStates_[static_cast<size_t>(blendMode)].Get());
 }
 
-
-
 void Object3dCommon::CreateRootSignature() {
     RootSignatureBuilder builder;
 
@@ -224,6 +222,7 @@ void Object3dCommon::CreateShadowRootSignature() {
     // ビルド実行
     builder.Build(dxCommon_->GetDevice(), shadowRootSignature_.GetAddressOf());
 }
+
 void Object3dCommon::CreateLocalFogPipeline() {
     auto device = dxCommon_->GetDevice();
 
@@ -341,6 +340,7 @@ void Object3dCommon::CreateEffectRootSignature() {
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
     );
 }
+
 // ==========================================================
 // ★ エフェクト用パイプラインの構築 (ブレンドモード全対応版)
 // ==========================================================
@@ -442,6 +442,7 @@ void Object3dCommon::CreateWaterPipeline() {
     // 引数でポインタを渡して構築結果を受け取る
     psoBuilder.Build(dxCommon_->GetDevice(), waterPipelineState_.GetAddressOf());
 }
+
 // 描画コマンドセット
 void Object3dCommon::SetWaterGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
@@ -450,7 +451,7 @@ void Object3dCommon::SetWaterGraphicsCommand() {
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-void Object3dCommon::CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState) {
+void Object3dCommon::CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState, bool shaderDepthTest) {
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -466,7 +467,8 @@ void Object3dCommon::CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPa
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
     psoBuilder.SetRasterizerState(cullMode, D3D12_FILL_MODE_SOLID);
     psoBuilder.SetBlendMode(blendMode);
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+    // 深度をSRVとして読む材質はDSVが接続されないため、シェーダーで遮蔽を判定します。
+    psoBuilder.SetDepthStencilState(!shaderDepthTest, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
@@ -590,7 +592,7 @@ void Object3dCommon::CreateLaserPipeline() {
         L"Resources/shader/materials/LaserBeam.PS.hlsl",
         BlendMode::kAdd,
         D3D12_CULL_MODE_NONE,
-        laserPipelineState_.GetAddressOf()
+        laserPipelineState_.GetAddressOf(), true
     );
 }
 

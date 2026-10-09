@@ -11,17 +11,17 @@ void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& mod
     SetClassName("Gimmick");
     SetGimmickType("DashPanel");
     SetName("Gimmick_DashPanel");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetMaterialType(24);
     SetBlendMode(BlendMode::kNone);
-    SetColor({ 1.0f, 0.38f, 0.04f, 1.0f });
+    SetColor({1.0f, 0.38f, 0.04f, 1.0f});
     SetRoughness(0.42f);
     SetMetallic(0.28f);
     SetEmissive(1.2f);
-    SetTextureTiling({ 1.0f, 1.0f });
+    SetTextureTiling({1.0f, 1.0f});
     SetAutoTextureTiling(false);
-    SetScale({ 2.0f, 0.25f, 1.2f });
+    SetScale({2.0f, 0.25f, 1.2f});
 }
 
 void GimmickDashPanel::Update(float deltaTime) {
@@ -40,7 +40,7 @@ void GimmickDashPanel::Update(float deltaTime) {
     SetEmissive(baseEmissive_ + idlePulse + easedPulse * 3.4f);
 
     const float flashBlend = easedPulse * 0.62f;
-    const Vector4 flashColor = { 1.0f, 0.86f, 0.30f, baseColor_.w };
+    const Vector4 flashColor = {1.0f, 0.86f, 0.30f, baseColor_.w};
     SetColor({
         baseColor_.x + (flashColor.x - baseColor_.x) * flashBlend,
         baseColor_.y + (flashColor.y - baseColor_.y) * flashBlend,
@@ -51,9 +51,11 @@ void GimmickDashPanel::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
+// 上面に乗ったプレイヤーへ加速を与え、発光パルスは短いクールダウンで抑えます。
 bool GimmickDashPanel::OnCollision(Object3d* other) {
     Player* player = dynamic_cast<Player*>(other);
-    if (!player) return true;
+    if (!player)
+        return true;
 
     CollisionInfo info = CheckCollision(other);
     if (info.isColliding && info.normal.y < -0.5f) {

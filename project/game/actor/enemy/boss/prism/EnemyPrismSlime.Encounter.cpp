@@ -22,7 +22,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
     }
 
     if (encounterState_ == EncounterState::Dormant) {
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         ClearPrismAttackVisuals();
         HideAttackTelegraph();
         return true;
@@ -43,7 +43,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
     // 登場演出中も地面との衝突だけは維持し、床抜けを防ぎます。
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismAppearanceCollisionMask);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     SetMaterialType(4);
     SetTranslate({
         encounterBasePosition_.x,
@@ -136,7 +136,7 @@ void EnemyPrismSlime::ResetEncounterStateForEditor() {
     attackCycleCount_ = 0;
     attackCycleIndex_ = 0;
     lastAutomaticAttack_ = AttackKind::None;
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);
@@ -152,16 +152,13 @@ void EnemyPrismSlime::BeginEncounterAppearance() {
     // 演出中は攻撃・プレイヤー接触を無効にし、地面との衝突だけ有効にします。
     SetCollisionAttribute(kPrismActiveCollisionAttribute);
     SetCollisionMask(kPrismAppearanceCollisionMask);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     ClearPrismAttackVisuals();
     HideAttackTelegraph();
 
     Vector3 effectPosition = encounterBasePosition_;
     effectPosition.y += 0.15f;
-    VFXSequencer::PlayOneShot(
-        kEncounterAppearanceSequence,
-        effectPosition,
-        { 1.65f, 1.65f, 1.65f });
+    VFXSequencer::PlayOneShot(kEncounterAppearanceSequence, effectPosition, {1.65f, 1.65f, 1.65f});
 }
 
 void EnemyPrismSlime::ApplyDormantEncounterState() {
@@ -171,7 +168,7 @@ void EnemyPrismSlime::ApplyDormantEncounterState() {
     SetScale(encounterBaseScale_);
     SetColor(encounterBaseColor_);
     SetMaterialType(encounterMaterialType_);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     repositionTimer_ = 0.0f;
     repositionDuration_ = 0.0f;
     repositionJumpPending_ = false;
@@ -192,7 +189,7 @@ void EnemyPrismSlime::FinishEncounterAppearance() {
     SetEmissive(encounterBaseEmissive_);
     SetCollisionAttribute(encounterCollisionAttribute_);
     SetCollisionMask(encounterCollisionMask_);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     SetIsVisible(true);
     SyncCollisionRadius();
 }
@@ -202,9 +199,7 @@ bool EnemyPrismSlime::IsEncounterControlled() const {
 }
 
 float EnemyPrismSlime::GetEncounterAppearanceDuration() const {
-    return param_.has_value()
-        ? (std::clamp)(param_->shakeDuration, 0.35f, 3.0f)
-        : kDefaultEncounterAppearanceDuration;
+    return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.35f, 3.0f) : kDefaultEncounterAppearanceDuration;
 }
 
 bool EnemyPrismSlime::IsEncounterHudActive() const {
@@ -244,8 +239,7 @@ void EnemyPrismSlime::TriggerDebugDefeat() {
     repositionTimer_ = 0.0f;
     repositionDuration_ = 0.0f;
     repositionJumpPending_ = false;
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     ClearPrismAttackVisuals();
     HideAttackTelegraph();
 }
-

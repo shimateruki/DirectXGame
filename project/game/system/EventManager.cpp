@@ -1,6 +1,5 @@
 #include "EventManager.h"
 
-
 EventManager* EventManager::GetInstance() {
     static EventManager instance;
     return &instance;
@@ -14,7 +13,7 @@ void EventManager::Subscribe(std::function<void(const PlayerHitEvent&)> callback
 }
 
 void EventManager::Dispatch(const PlayerHitEvent& event) {
-    // 登録されている全てのリスナー（コールバック関数）を実行する
+    // 登録順にその場で通知する。通知中に ClearAllListeners() を呼ばない。
     for (auto& listener : playerHitListeners_) {
         listener(event);
     }
@@ -32,9 +31,7 @@ void EventManager::Dispatch(const BulletHitEvent& event) {
     }
 }
 
-void EventManager::Subscribe(std::function<void(const DamageEvent&)> callback) {
-    damageListeners_.push_back(callback);
-}
+void EventManager::Subscribe(std::function<void(const DamageEvent&)> callback) { damageListeners_.push_back(callback); }
 
 void EventManager::Dispatch(const DamageEvent& event) {
     for (auto& listener : damageListeners_) {
@@ -62,6 +59,7 @@ void EventManager::Dispatch(const PlayerJumpEvent& event) {
     }
 }
 
+// シーン切り替えで古いオブジェクトを指すコールバックを残さないよう、購読をまとめて解除します。
 void EventManager::ClearAllListeners() {
     playerHitListeners_.clear();
     bulletHitListeners_.clear();

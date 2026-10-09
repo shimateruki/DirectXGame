@@ -40,6 +40,8 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         const float clampedSeek = std::clamp(seekTime, 0.0f, previewDuration);
         const float previousScale = manager->GetTimeScale();
         manager->SetTimeScale(1.0f);
+        // このループはManagerの時計を進める。GPU DispatchはDraw側であり、物理の固定刻み再計算ではない。
+        // シーク後のGPU状態はEmit要求のinitialAgeで近似復元される。
         while (previewTime_ + (1.0f / 60.0f) < clampedSeek) {
             manager->UpdateEditorPreviewStep(1.0f / 60.0f);
             previewTime_ += 1.0f / 60.0f;
@@ -132,6 +134,7 @@ void GPUParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         events,
         performance);
 }
+
 void GPUParticleEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text("--- GPUパーティクルエディタ ---");

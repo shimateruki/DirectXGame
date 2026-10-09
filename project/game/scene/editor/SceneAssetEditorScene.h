@@ -20,7 +20,7 @@ class SpriteCommon;
 /// Scene Assetをゲームロジックから分離して編集するための専用シーン。
 /// </summary>
 class SceneAssetEditorScene : public BaseScene {
-public:
+  public:
     SceneAssetEditorScene() = default;
     ~SceneAssetEditorScene() override = default;
 
@@ -47,7 +47,7 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
-private:
+  private:
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
 

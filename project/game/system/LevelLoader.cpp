@@ -1,5 +1,5 @@
 #include "LevelLoader.h"
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
@@ -11,6 +11,7 @@
 
 // 生成するクラス群のインクルード
 #include "Object3d.h"
+#include "CollisionConfig.h"
 #include "Sprite.h"
 #include "Player.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
@@ -94,14 +95,9 @@ void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
 }
 
 bool IsSlimeEnemyType(const std::string& enemyType) {
-    return enemyType == "Slime" ||
-        enemyType == "Bomber" ||
-        enemyType == "FireSlime" ||
-        enemyType == "ThunderSlime" ||
-        enemyType == "WindSlime" ||
-        enemyType == "GiantSlime" ||
-        enemyType == "PrismSlime" ||
-        enemyType == "MagmaSlime";
+    return enemyType == "Slime" || enemyType == "Bomber" || enemyType == "FireSlime" || enemyType == "ThunderSlime" ||
+           enemyType == "WindSlime" || enemyType == "GiantSlime" || enemyType == "PrismSlime" ||
+           enemyType == "MagmaSlime";
 }
 
 bool IsSlimeModelName(std::string modelName) {
@@ -174,8 +170,8 @@ void ApplyLodConfig(Object3d* object, const json& objData) {
 }
 
 bool TryReadVector3(const json& value, float& x, float& y, float& z) {
-    if (!value.is_array() || value.size() < 3 ||
-        !value[0].is_number() || !value[1].is_number() || !value[2].is_number()) {
+    if (!value.is_array() || value.size() < 3 || !value[0].is_number() || !value[1].is_number() ||
+        !value[2].is_number()) {
         return false;
     }
 
@@ -194,9 +190,9 @@ json ConvertBlenderVector(const json& value, bool negate) {
     }
 
     if (negate) {
-        return json::array({ -x, -z, -y });
+        return json::array({-x, -z, -y});
     }
-    return json::array({ x, z, y });
+    return json::array({x, z, y});
 }
 
 json NormalizeLevelObject(const json& source, const std::string& inheritedParentName) {
@@ -247,16 +243,16 @@ json NormalizeLevelObject(const json& source, const std::string& inheritedParent
             enemyType = source.value("enemy_type", "Slime");
         }
         normalized["enemyType"] = enemyType.empty() ? "Slime" : enemyType;
-    } else if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" ||
-        sourceType == "SURFACE" || sourceType == "META" || sourceType == "FONT") {
+    } else if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" || sourceType == "SURFACE" ||
+               sourceType == "META" || sourceType == "FONT") {
         normalized["type"] = "Model";
         if (!normalized.contains("saveCategory")) {
             normalized["saveCategory"] = "Object";
         }
     }
 
-    if (!inheritedParentName.empty() &&
-        (!normalized.contains("parentName") || !normalized["parentName"].is_string() || normalized["parentName"].get<std::string>().empty())) {
+    if (!inheritedParentName.empty() && (!normalized.contains("parentName") || !normalized["parentName"].is_string() ||
+                                         normalized["parentName"].get<std::string>().empty())) {
         normalized["parentName"] = inheritedParentName;
     }
 
@@ -269,10 +265,8 @@ json NormalizeLevelObject(const json& source, const std::string& inheritedParent
     return normalized;
 }
 
-void AppendNormalizedLevelObjects(
-    const json& sourceObjects,
-    json& destination,
-    const std::string& inheritedParentName = "") {
+void AppendNormalizedLevelObjects(const json& sourceObjects, json& destination,
+                                  const std::string& inheritedParentName = "") {
     if (!sourceObjects.is_array()) {
         return;
     }
@@ -302,14 +296,14 @@ bool RequiresLevelObjectNormalization(const json& sourceObjects) {
             continue;
         }
 
-        if (source.contains("transform") || source.contains("file_name") ||
-            source.contains("spawn") || source.contains("enemy")) {
+        if (source.contains("transform") || source.contains("file_name") || source.contains("spawn") ||
+            source.contains("enemy")) {
             return true;
         }
 
         const std::string sourceType = source.value("type", "Model");
-        if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" ||
-            sourceType == "SURFACE" || sourceType == "META" || sourceType == "FONT") {
+        if (sourceType == "MESH" || sourceType == "EMPTY" || sourceType == "CURVE" || sourceType == "SURFACE" ||
+            sourceType == "META" || sourceType == "FONT") {
             return true;
         }
 
@@ -319,27 +313,19 @@ bool RequiresLevelObjectNormalization(const json& sourceObjects) {
     }
     return false;
 }
-}
+} // namespace
 
+// シーンJSONから配置物を生成し、参照を接続します。生成と紐付けを分け、読み込み順に依存する敵・ギミックを扱います。
 
-// ========================================================================
-// 1. 自動で3つのファイルを読み込み、無ければ旧仕様で読み込み、最後に親子関係を解決する
-// ========================================================================
-void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) {
-    ConfigureEnemyRuntimeReferencesInternal(scene);
-}
+void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) { ConfigureEnemyRuntimeReferencesInternal(scene); }
 
-void LevelLoader::LoadObjectLayout(
-    BaseScene* scene,
-    const std::string& filename,
-    bool resolveSceneAssetPath) {
-    // ロード前にプリセットを最新の状態にする
+void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
+    // 配置物の生成前に編集済みプリセットとステータスを読み、生成直後の適用値をそろえます。
     PresetManager::GetInstance()->Initialize();
     GameplayStatusManager::GetInstance()->Initialize();
 
-    const std::string resolvedFilename = scene && resolveSceneAssetPath
-        ? scene->ResolvePrimaryObjectLayoutPath(filename)
-        : filename;
+    const std::string resolvedFilename =
+        scene && resolveSceneAssetPath ? scene->ResolvePrimaryObjectLayoutPath(filename) : filename;
     std::string justName = resolvedFilename;
     size_t slashPos = justName.find_last_of("/\\");
     if (slashPos != std::string::npos) {
@@ -348,25 +334,23 @@ void LevelLoader::LoadObjectLayout(
     if (scene && resolveSceneAssetPath) {
         scene->SetLoadedFilename(justName);
     }
-    // filename は "Resources/json/3Dobject/scene_layout.json" のようになっている
     std::string baseFilename = resolvedFilename;
-
 
     size_t extPos = baseFilename.find(".json");
     if (extPos != std::string::npos) {
         baseFilename = baseFilename.substr(0, extPos);
     }
 
-    // 以前のリストをクリア
+    // 親子リンクは全ファイルの生成が終わるまで保留します。
     parentPendingList_.clear();
 
-    // 確認用のファイルパスを作成
+    // 分割形式のファイル名を同じベース名から導出します。
     std::string playerFile = baseFilename + "_player.json";
     std::string enemyFile = baseFilename + "_enemy.json";
     std::string objectFile = baseFilename + "_object.json";
     std::string cameraFile = baseFilename + "_camera.json";
 
-    // 分割ファイルの存在チェック
+    // どれか一つでも存在すれば分割形式を優先します。
     bool useSplitFiles = false;
     std::ifstream pFile(playerFile);
     std::ifstream eFile(enemyFile);
@@ -377,26 +361,27 @@ void LevelLoader::LoadObjectLayout(
         useSplitFiles = true;
     }
 
-    // チェック用に開いたファイルを閉じる（この後 LoadSingleJson で開くため）
-    if (pFile.is_open()) pFile.close();
-    if (eFile.is_open()) eFile.close();
-    if (oFile.is_open()) oFile.close();
-    if (cFile.is_open()) cFile.close();
+    // 実際の読み込みは LoadSingleJson に任せるため、存在確認用のストリームを閉じます。
+    if (pFile.is_open())
+        pFile.close();
+    if (eFile.is_open())
+        eFile.close();
+    if (oFile.is_open())
+        oFile.close();
+    if (cFile.is_open())
+        cFile.close();
 
-    // 分岐処理：分割ファイルがあればそれを、無ければ単一ファイルを読み込む
-    // ========================================================
+    // 新しい分割形式を優先し、旧形式の単一JSONも読み込み可能にします。
     if (useSplitFiles) {
-        // 新仕様：分割ファイルを読み込む
         LoadSingleJson(scene, playerFile);
         LoadSingleJson(scene, enemyFile);
         LoadSingleJson(scene, objectFile);
         LoadSingleJson(scene, cameraFile);
     } else {
-        // 旧仕様：過去の単一ファイル (scene_layout.json など) をそのまま読み込む
         LoadSingleJson(scene, resolvedFilename);
     }
 
-    // 全ファイルを読み込み後、親子関係を解決
+    // GUIDを優先して親を探し、古いシーンだけ名前による参照へフォールバックします。
     auto& objects = scene->GetObjects();
     scene->EnsureUniquePersistentObjectGuids();
     for (auto const& [childObj, parentReference] : parentPendingList_) {
@@ -416,10 +401,8 @@ void LevelLoader::LoadObjectLayout(
 
     ConfigureEnemyRuntimeReferences(scene);
 }
-// ========================================================================
-// 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
-// ========================================================================
 
+// JSON一件ごとに種類別のFactoryで生成し、保存値の復元後にランタイム参照をつなぎます。
 void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
     json sceneData;
     auto& objects = scene->GetObjects();
@@ -443,7 +426,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
             }
 
             for (const auto& objData : *objectsToLoad) {
-                if (!objData.contains("name") || !objData["name"].is_string()) continue;
+                if (!objData.contains("name") || !objData["name"].is_string())
+                    continue;
                 std::string name = objData["name"].get<std::string>();
 
                 // 1. 既存チェック
@@ -455,7 +439,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     }
                 }
 
-                // 2. 新規生成 
+                // 2. 新規生成
                 if (!targetObject && object3dCommon) {
                     std::unique_ptr<Object3d> newObj = nullptr;
 
@@ -502,7 +486,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     // パターンB: プレイヤー
                     else if (type == "Player" || name == "Player") {
                         auto player = std::make_unique<Player>();
-                        player->Initialize(object3dCommon, InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
+                        player->Initialize(object3dCommon, InputManager::GetInstance(), scene->GetParticleSystem(),
+                                           scene->GetSpriteCommon());
                         player->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 
                         // シーンにプレイヤーを登録
@@ -519,9 +504,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                         if (objData.contains("param") && objData["param"].is_object()) {
                             auto& p = objData["param"];
-                            if (p.contains("enemyType") && p["enemyType"].is_string()) spawnEnemyType = p["enemyType"];
-                            if (p.contains("interval") && p["interval"].is_number()) interval = p["interval"];
-                            if (p.contains("maxCount") && p["maxCount"].is_number()) maxCount = p["maxCount"];
+                            if (p.contains("enemyType") && p["enemyType"].is_string())
+                                spawnEnemyType = p["enemyType"];
+                            if (p.contains("interval") && p["interval"].is_number())
+                                interval = p["interval"];
+                            if (p.contains("maxCount") && p["maxCount"].is_number())
+                                maxCount = p["maxCount"];
                         }
 
                         spawner->Initialize(object3dCommon, spawnEnemyType, interval, maxCount);
@@ -531,7 +519,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                         // スポーン時のコールバック
                         spawner->SetOnSpawnCallback([scene, spawnEnemyType](const Vector3& spawnPos) {
-                            auto newEnemy = EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3dCommon());
+                            auto newEnemy =
+                                EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3dCommon());
                             if (newEnemy) {
                                 newEnemy->GetTransform()->translate = spawnPos;
                                 newEnemy->UpdateLocalMatrix();
@@ -550,7 +539,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                                 CollisionManager::GetInstance()->AddObject(newEnemy.get());
                                 scene->GetObjects().push_back(std::move(newEnemy));
                             }
-                            });
+                        });
                         newObj = std::move(spawner);
                     }
                     // パターンD: アイテム (Factory)
@@ -584,7 +573,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (newObj) {
                         newObj->SetName(name);
                         std::string currentClass = newObj->GetClassName();
-                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner" && currentClass != "Gimmick" && currentClass != "Item") {
+                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner" &&
+                            currentClass != "Gimmick" && currentClass != "Item") {
                             newObj->SetClassName(type);
                         }
 
@@ -615,7 +605,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     }
                 }
 
-                if (!targetObject) continue;
+                if (!targetObject)
+                    continue;
 
                 if (objData.contains("guid") && objData["guid"].is_string()) {
                     targetObject->SetPersistentGuid(objData["guid"].get<std::string>());
@@ -638,7 +629,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetClassName("Camera");
                     targetObject->SetSaveCategory("Camera");
                     targetObject->SetModel("Editor/camera_gizmo");
-                    targetObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
+                    targetObject->SetColor({0.25f, 0.75f, 1.0f, 1.0f});
                     targetObject->SetCastShadow(false);
                     Object3d::ColliderConfig cameraCollider;
                     cameraCollider.type = ColliderType::kNone;
@@ -673,7 +664,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 // 4. Transform
                 Transform* transform = targetObject->GetTransform();
-                if (objData.contains("position")) { transform->translate.x = objData["position"][0]; transform->translate.y = objData["position"][1]; transform->translate.z = objData["position"][2]; }
+                if (objData.contains("position")) {
+                    transform->translate.x = objData["position"][0];
+                    transform->translate.y = objData["position"][1];
+                    transform->translate.z = objData["position"][2];
+                }
                 if (objData.contains("quaternion")) {
                     transform->quaternion.x = objData["quaternion"][0];
                     transform->quaternion.y = objData["quaternion"][1];
@@ -695,153 +690,269 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     transform->rotate.z = objData["rotation"][2];
                     transform->isQuaternionMaster = false; // UpdateMatrix時にクォータニオンを作らせる
                 }
-                if (objData.contains("scale")) { transform->scale.x = objData["scale"][0]; transform->scale.y = objData["scale"][1]; transform->scale.z = objData["scale"][2]; }
+                if (objData.contains("scale")) {
+                    transform->scale.x = objData["scale"][0];
+                    transform->scale.y = objData["scale"][1];
+                    transform->scale.z = objData["scale"][2];
+                }
 
                 // ロード直後に行列更新
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
-                if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
-                if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
-                if (objData.contains("meshDrawIndex")) targetObject->SetMeshDrawIndex(objData["meshDrawIndex"].get<int>());
+                if (objData.contains("blendMode"))
+                    targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
+                if (objData.contains("materialType"))
+                    targetObject->SetMaterialType(objData["materialType"].get<int>());
+                if (objData.contains("meshDrawIndex"))
+                    targetObject->SetMeshDrawIndex(objData["meshDrawIndex"].get<int>());
 
                 if (objData.contains("color")) {
-                    targetObject->SetColor({
-                        objData["color"][0],
-                        objData["color"][1],
-                        objData["color"][2],
-                        objData["color"][3]
-                        });
+                    targetObject->SetColor(
+                        {objData["color"][0], objData["color"][1], objData["color"][2], objData["color"][3]});
                 }
                 // マテリアル / グラフィック関連
-                if (objData.contains("metallic")) targetObject->SetMetallic(objData["metallic"].get<float>());
-                if (objData.contains("roughness")) targetObject->SetRoughness(objData["roughness"].get<float>());
-                if (objData.contains("enableNormalMap")) targetObject->SetEnableNormalMap(objData["enableNormalMap"].get<bool>());
-                if (objData.contains("normalMapPath")) targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
-                if (objData.contains("ormMapPath")) targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
-                if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
+                if (objData.contains("metallic"))
+                    targetObject->SetMetallic(objData["metallic"].get<float>());
+                if (objData.contains("roughness"))
+                    targetObject->SetRoughness(objData["roughness"].get<float>());
+                if (objData.contains("enableNormalMap"))
+                    targetObject->SetEnableNormalMap(objData["enableNormalMap"].get<bool>());
+                if (objData.contains("normalMapPath"))
+                    targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
+                if (objData.contains("ormMapPath"))
+                    targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
+                if (objData.contains("texturePath"))
+                    targetObject->SetTexture(objData["texturePath"].get<std::string>());
                 if (targetObject->GetMaterialType() == 0 &&
                     (IsSlimeEnemyType(targetObject->GetEnemyType()) || IsSlimeModelName(loadedModelName))) {
                     targetObject->SetMaterialType(kSlimeSoftMaterialType);
                 }
-                if (objData.contains("textureTiling") && objData["textureTiling"].is_array() && objData["textureTiling"].size() >= 2) {
-                    targetObject->SetTextureTiling({
-                        objData["textureTiling"][0].get<float>(),
-                        objData["textureTiling"][1].get<float>()
-                    });
+                if (objData.contains("textureTiling") && objData["textureTiling"].is_array() &&
+                    objData["textureTiling"].size() >= 2) {
+                    targetObject->SetTextureTiling(
+                        {objData["textureTiling"][0].get<float>(), objData["textureTiling"][1].get<float>()});
                 }
-                if (objData.contains("autoTextureTiling")) targetObject->SetAutoTextureTiling(objData["autoTextureTiling"].get<bool>());
-                if (objData.contains("enableLighting")) targetObject->SetEnableLighting(objData["enableLighting"].get<bool>());
-                if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
-                if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
-                if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
-                if (objData.contains("castShadow")) targetObject->SetCastShadow(objData["castShadow"].get<bool>());
+                if (objData.contains("autoTextureTiling"))
+                    targetObject->SetAutoTextureTiling(objData["autoTextureTiling"].get<bool>());
+                if (objData.contains("enableLighting"))
+                    targetObject->SetEnableLighting(objData["enableLighting"].get<bool>());
+                if (objData.contains("enableEnvMap"))
+                    targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
+                if (objData.contains("envIntensity"))
+                    targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
+                if (objData.contains("emissive"))
+                    targetObject->SetEmissive(objData["emissive"].get<float>());
+                if (objData.contains("castShadow"))
+                    targetObject->SetCastShadow(objData["castShadow"].get<bool>());
                 if (objData.contains("localFog")) {
                     if (auto* fogData = targetObject->GetLocalFogData()) {
                         auto& f = objData["localFog"];
                         if (f.contains("color")) {
-                            fogData->fogColor = { f["color"][0], f["color"][1], f["color"][2], f["color"][3] };
+                            fogData->fogColor = {f["color"][0], f["color"][1], f["color"][2], f["color"][3]};
                         }
-                        if (f.contains("density")) fogData->fogDensity = f["density"];
-                        if (f.contains("edgeFade")) fogData->edgeFade = f["edgeFade"];
-                        if (f.contains("noiseSpeed")) fogData->noiseSpeed = f["noiseSpeed"];
-                        if (f.contains("noiseScale")) fogData->noiseScale = f["noiseScale"];
-                        if (f.contains("scatteringG")) fogData->scatteringG = f["scatteringG"];
-                        if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
+                        if (f.contains("density"))
+                            fogData->fogDensity = f["density"];
+                        if (f.contains("edgeFade"))
+                            fogData->edgeFade = f["edgeFade"];
+                        if (f.contains("noiseSpeed"))
+                            fogData->noiseSpeed = f["noiseSpeed"];
+                        if (f.contains("noiseScale"))
+                            fogData->noiseScale = f["noiseScale"];
+                        if (f.contains("scatteringG"))
+                            fogData->scatteringG = f["scatteringG"];
+                        if (f.contains("scatteringIntensity"))
+                            fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
                 }
-                if (objData.contains("waterParam") && ((targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) || targetObject->GetMaterialType() == 26)) {
+                if (objData.contains("waterParam") &&
+                    ((targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) ||
+                     targetObject->GetMaterialType() == 26)) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
                         const auto& jw = objData["waterParam"];
 
-                        if (jw.contains("waveSpeed"))     water->waveSpeed = jw["waveSpeed"];
-                        if (jw.contains("waveHeight"))    water->waveHeight = jw["waveHeight"];
-                        if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
-                        if (jw.contains("flowSpeedX"))    water->flowSpeedX = jw["flowSpeedX"];
-                        if (jw.contains("flowSpeedY"))    water->flowSpeedY = jw["flowSpeedY"];
-                        if (jw.contains("effectType"))    water->effectType = jw["effectType"];
-                        if (jw.contains("effectScale"))   water->effectScale = jw["effectScale"];
-                        if (jw.contains("effectScaleX"))  water->effectScaleX = jw["effectScaleX"];
-                        if (jw.contains("effectScaleY"))  water->effectScaleY = jw["effectScaleY"];
-                        if (jw.contains("effectScaleZ"))  water->effectScaleZ = jw["effectScaleZ"];
-                        if (jw.contains("topDownDetail")) water->topDownDetail = jw["topDownDetail"];
-                        if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
-                        if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
-                        if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
+                        if (jw.contains("waveSpeed"))
+                            water->waveSpeed = jw["waveSpeed"];
+                        if (jw.contains("waveHeight"))
+                            water->waveHeight = jw["waveHeight"];
+                        if (jw.contains("waveFrequency"))
+                            water->waveFrequency = jw["waveFrequency"];
+                        if (jw.contains("flowSpeedX"))
+                            water->flowSpeedX = jw["flowSpeedX"];
+                        if (jw.contains("flowSpeedY"))
+                            water->flowSpeedY = jw["flowSpeedY"];
+                        if (jw.contains("effectType"))
+                            water->effectType = jw["effectType"];
+                        if (jw.contains("effectScale"))
+                            water->effectScale = jw["effectScale"];
+                        if (jw.contains("effectScaleX"))
+                            water->effectScaleX = jw["effectScaleX"];
+                        if (jw.contains("effectScaleY"))
+                            water->effectScaleY = jw["effectScaleY"];
+                        if (jw.contains("effectScaleZ"))
+                            water->effectScaleZ = jw["effectScaleZ"];
+                        if (jw.contains("topDownDetail"))
+                            water->topDownDetail = jw["topDownDetail"];
+                        if (jw.contains("effectSoftness"))
+                            water->effectSoftness = jw["effectSoftness"];
+                        if (jw.contains("effectIntensity"))
+                            water->effectIntensity = jw["effectIntensity"];
+                        if (jw.contains("billboardScale"))
+                            water->billboardScale = jw["billboardScale"];
                     }
                 }
                 // 5. Collider
                 if (!targetObject->IsCameraObject() && objData.contains("collider")) {
                     json colData = objData["collider"];
                     Object3d::ColliderConfig config = targetObject->GetColliderConfig();
-                    if (colData.contains("type")) config.type = (ColliderType)colData["type"].get<int>();
-                    if (colData.contains("center")) { config.center.x = colData["center"][0]; config.center.y = colData["center"][1]; config.center.z = colData["center"][2]; }
-                    if (colData.contains("size")) { config.size.x = colData["size"][0]; config.size.y = colData["size"][1]; config.size.z = colData["size"][2]; }
-                    if (colData.contains("rotation")) { config.rotation.x = colData["rotation"][0]; config.rotation.y = colData["rotation"][1]; config.rotation.z = colData["rotation"][2]; }
+                    if (colData.contains("type"))
+                        config.type = (ColliderType)colData["type"].get<int>();
+                    if (colData.contains("center")) {
+                        config.center.x = colData["center"][0];
+                        config.center.y = colData["center"][1];
+                        config.center.z = colData["center"][2];
+                    }
+                    if (colData.contains("size")) {
+                        config.size.x = colData["size"][0];
+                        config.size.y = colData["size"][1];
+                        config.size.z = colData["size"][2];
+                    }
+                    if (colData.contains("rotation")) {
+                        config.rotation.x = colData["rotation"][0];
+                        config.rotation.y = colData["rotation"][1];
+                        config.rotation.z = colData["rotation"][2];
+                    }
                     targetObject->SetColliderConfig(config);
                 }
 
-                if (!targetObject->IsCameraObject() && objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
-                if (!targetObject->IsCameraObject() && objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
-                if (!targetObject->IsCameraObject() && objData.contains("isStatic")) targetObject->SetStatic(objData["isStatic"].get<bool>());
-                if (!targetObject->IsCameraObject() && objData.contains("terrainCollisionPath") && objData["terrainCollisionPath"].is_string()) {
+                if (!targetObject->IsCameraObject()) {
+                    auto loadCategoryMask = [&objData](const char* idsKey, const char* legacyKey, uint32_t fallback) {
+                        if (objData.contains(idsKey) && objData[idsKey].is_array()) {
+                            std::vector<std::string> ids;
+                            for (const auto& id : objData[idsKey]) {
+                                if (id.is_string()) ids.push_back(id.get<std::string>());
+                            }
+                            const std::string unknownKey = std::string(idsKey) == "collisionAttributeIds"
+                                ? "collisionAttributeUnknownBits" : "collisionMaskUnknownBits";
+                            const uint32_t unknown = objData.value(unknownKey, uint32_t{0});
+                            return CollisionCategories::FromIds(ids) | unknown;
+                        }
+                        if (objData.contains(legacyKey) && objData[legacyKey].is_number_unsigned()) {
+                            return CollisionCategories::FromLegacyMask(objData[legacyKey].get<uint32_t>());
+                        }
+                        if (objData.contains(legacyKey) && objData[legacyKey].is_number_integer()) {
+                            return CollisionCategories::FromLegacyMask(static_cast<uint32_t>(objData[legacyKey].get<int>()));
+                        }
+                        return fallback;
+                    };
+                    targetObject->SetCollisionAttribute(loadCategoryMask("collisionAttributeIds", "collisionAttribute", targetObject->GetCollisionAttribute()));
+                    targetObject->SetCollisionMask(loadCategoryMask("collisionMaskIds", "collisionMask", targetObject->GetCollisionMask()));
+                }
+                if (!targetObject->IsCameraObject() && objData.contains("isStatic"))
+                    targetObject->SetStatic(objData["isStatic"].get<bool>());
+                if (!targetObject->IsCameraObject() && objData.contains("terrainCollisionPath") &&
+                    objData["terrainCollisionPath"].is_string()) {
                     targetObject->LoadTerrainCollisionFromFile(objData["terrainCollisionPath"].get<std::string>());
                 }
 
                 // 6. Events & Params
-                if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
+                if (objData.contains("eventID"))
+                    targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
                 if (objData.contains("itemType") && objData["itemType"].is_string()) {
                     targetObject->SetItemType(objData["itemType"].get<std::string>());
                 }
 
                 if (objData.contains("param") && objData["param"].is_object()) {
-                    if (!targetObject->param_.has_value()) targetObject->param_.emplace();
+                    if (!targetObject->param_.has_value())
+                        targetObject->param_.emplace();
                     json p = objData["param"];
                     auto& param = targetObject->param_.value();
                     const bool isManagedCharacter = GameplayStatusManager::IsManagedCharacter(targetObject);
                     const bool hasHp = !isManagedCharacter && p.contains("hp");
                     const bool hasMaxHp = !isManagedCharacter && p.contains("maxHp");
-                    if (hasHp) param.hp = p["hp"];
-                    if (hasMaxHp) param.maxHp = p["maxHp"];
-                    if (!isManagedCharacter && p.contains("attackPower")) param.attackPower = p["attackPower"];
-                    if (!isManagedCharacter && p.contains("speed")) param.speed = p["speed"];
-                    if (!isManagedCharacter && p.contains("gravity")) param.gravity = p["gravity"];
-                    if (!isManagedCharacter && p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
-                    if (!isManagedCharacter && p.contains("morphLimited")) param.morphLimited = p["morphLimited"];
-                    if (!isManagedCharacter && p.contains("morphDuration")) param.morphDuration = p["morphDuration"];
-                    if (!isManagedCharacter && p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
-                    if (p.contains("enemyType")) param.enemyType = p["enemyType"];
-                    if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
-                    if (p.contains("itemType")) param.itemType = p["itemType"];
-                    if (p.contains("healAmount")) param.healAmount = p["healAmount"];
-                    if (p.contains("interval")) param.interval = p["interval"];
-                    if (p.contains("maxCount")) param.maxCount = p["maxCount"];
-                    if (p.contains("shakeDuration")) param.shakeDuration = p["shakeDuration"];
-                    if (p.contains("fallDuration")) param.fallDuration = p["fallDuration"];
-                    if (p.contains("colorType")) param.colorType = p["colorType"];
-                    if (!isManagedCharacter && p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
-                    if (p.contains("switchMode")) param.switchMode = p["switchMode"];
-                    if (p.contains("actionMode")) param.actionMode = p["actionMode"];
-                    if (p.contains("targetScene")) param.targetScene = p["targetScene"].get<std::string>();
-                    if (p.contains("moveAmount")) param.moveAmount = p["moveAmount"];
-                    if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
-                    if (p.contains("startActive")) param.startActive = p["startActive"];
-                    if (p.contains("returnOnOff")) param.returnOnOff = p["returnOnOff"];
-                    if (p.contains("volumeMode")) param.volumeMode = p["volumeMode"];
-                    if (p.contains("volumePayload") && p["volumePayload"].is_string()) param.volumePayload = p["volumePayload"].get<std::string>();
-                    if (p.contains("volumeTriggerOnce")) param.volumeTriggerOnce = p["volumeTriggerOnce"];
-                    if (p.contains("volumeTriggerOnExit")) param.volumeTriggerOnExit = p["volumeTriggerOnExit"];
-                    if (p.contains("volumeRearmDelay")) param.volumeRearmDelay = (std::max)(0.0f, p["volumeRearmDelay"].get<float>());
-                    if (p.contains("volumeBlendDuration")) param.volumeBlendDuration = (std::max)(0.0f, p["volumeBlendDuration"].get<float>());
-                    if (p.contains("copyMemoryTypeA") && p["copyMemoryTypeA"].is_string()) param.copyMemoryTypeA = p["copyMemoryTypeA"].get<std::string>();
-                    if (p.contains("copyMemoryTypeB") && p["copyMemoryTypeB"].is_string()) param.copyMemoryTypeB = p["copyMemoryTypeB"].get<std::string>();
-                    if (p.contains("copyMemoryTypeC") && p["copyMemoryTypeC"].is_string()) param.copyMemoryTypeC = p["copyMemoryTypeC"].get<std::string>();
-                    if (p.contains("copyMemoryTypeD") && p["copyMemoryTypeD"].is_string()) param.copyMemoryTypeD = p["copyMemoryTypeD"].get<std::string>();
-                    if (p.contains("copyMemoryActivationRadius")) param.copyMemoryActivationRadius = (std::max)(0.1f, p["copyMemoryActivationRadius"].get<float>());
-                    if (p.contains("copyMemoryEssenceScale")) param.copyMemoryEssenceScale = p["copyMemoryEssenceScale"].get<float>();
-                    if (p.contains("copyMemoryHoverAmount")) param.copyMemoryHoverAmount = p["copyMemoryHoverAmount"].get<float>();
-                    if (p.contains("copyMemoryGlow")) param.copyMemoryGlow = p["copyMemoryGlow"].get<float>();
-                    if (p.contains("copyMemoryUnlimitedDuration")) param.copyMemoryUnlimitedDuration = p["copyMemoryUnlimitedDuration"];
+                    if (hasHp)
+                        param.hp = p["hp"];
+                    if (hasMaxHp)
+                        param.maxHp = p["maxHp"];
+                    if (!isManagedCharacter && p.contains("attackPower"))
+                        param.attackPower = p["attackPower"];
+                    if (!isManagedCharacter && p.contains("speed"))
+                        param.speed = p["speed"];
+                    if (!isManagedCharacter && p.contains("gravity"))
+                        param.gravity = p["gravity"];
+                    if (!isManagedCharacter && p.contains("jumpPower"))
+                        param.jumpPower = p["jumpPower"];
+                    if (!isManagedCharacter && p.contains("morphLimited"))
+                        param.morphLimited = p["morphLimited"];
+                    if (!isManagedCharacter && p.contains("morphDuration"))
+                        param.morphDuration = p["morphDuration"];
+                    if (!isManagedCharacter && p.contains("maxFallSpeed"))
+                        param.maxFallSpeed = p["maxFallSpeed"];
+                    if (p.contains("enemyType"))
+                        param.enemyType = p["enemyType"];
+                    if (p.contains("gimmickType"))
+                        param.gimmickType = p["gimmickType"];
+                    if (p.contains("itemType"))
+                        param.itemType = p["itemType"];
+                    if (p.contains("healAmount"))
+                        param.healAmount = p["healAmount"];
+                    if (p.contains("interval"))
+                        param.interval = p["interval"];
+                    if (p.contains("maxCount"))
+                        param.maxCount = p["maxCount"];
+                    if (p.contains("shakeDuration"))
+                        param.shakeDuration = p["shakeDuration"];
+                    if (p.contains("fallDuration"))
+                        param.fallDuration = p["fallDuration"];
+                    if (p.contains("colorType"))
+                        param.colorType = p["colorType"];
+                    if (!isManagedCharacter && p.contains("detectionRange"))
+                        param.detectionRange = p["detectionRange"];
+                    if (p.contains("switchMode"))
+                        param.switchMode = p["switchMode"];
+                    if (p.contains("actionMode"))
+                        param.actionMode = p["actionMode"];
+                    if (p.contains("targetScene"))
+                        param.targetScene = p["targetScene"].get<std::string>();
+                    if (p.contains("moveAmount"))
+                        param.moveAmount = p["moveAmount"];
+                    if (p.contains("moveSpeed"))
+                        param.moveSpeed = p["moveSpeed"];
+                    if (p.contains("startActive"))
+                        param.startActive = p["startActive"];
+                    if (p.contains("returnOnOff"))
+                        param.returnOnOff = p["returnOnOff"];
+                    if (p.contains("volumeMode"))
+                        param.volumeMode = p["volumeMode"];
+                    if (p.contains("volumePayload") && p["volumePayload"].is_string())
+                        param.volumePayload = p["volumePayload"].get<std::string>();
+                    if (p.contains("volumeTriggerOnce"))
+                        param.volumeTriggerOnce = p["volumeTriggerOnce"];
+                    if (p.contains("volumeTriggerOnExit"))
+                        param.volumeTriggerOnExit = p["volumeTriggerOnExit"];
+                    if (p.contains("volumeRearmDelay"))
+                        param.volumeRearmDelay = (std::max)(0.0f, p["volumeRearmDelay"].get<float>());
+                    if (p.contains("volumeBlendDuration"))
+                        param.volumeBlendDuration = (std::max)(0.0f, p["volumeBlendDuration"].get<float>());
+                    if (p.contains("copyMemoryTypeA") && p["copyMemoryTypeA"].is_string())
+                        param.copyMemoryTypeA = p["copyMemoryTypeA"].get<std::string>();
+                    if (p.contains("copyMemoryTypeB") && p["copyMemoryTypeB"].is_string())
+                        param.copyMemoryTypeB = p["copyMemoryTypeB"].get<std::string>();
+                    if (p.contains("copyMemoryTypeC") && p["copyMemoryTypeC"].is_string())
+                        param.copyMemoryTypeC = p["copyMemoryTypeC"].get<std::string>();
+                    if (p.contains("copyMemoryTypeD") && p["copyMemoryTypeD"].is_string())
+                        param.copyMemoryTypeD = p["copyMemoryTypeD"].get<std::string>();
+                    if (p.contains("copyMemoryActivationRadius"))
+                        param.copyMemoryActivationRadius =
+                            (std::max)(0.1f, p["copyMemoryActivationRadius"].get<float>());
+                    if (p.contains("copyMemoryEssenceScale"))
+                        param.copyMemoryEssenceScale = p["copyMemoryEssenceScale"].get<float>();
+                    if (p.contains("copyMemoryHoverAmount"))
+                        param.copyMemoryHoverAmount = p["copyMemoryHoverAmount"].get<float>();
+                    if (p.contains("copyMemoryGlow"))
+                        param.copyMemoryGlow = p["copyMemoryGlow"].get<float>();
+                    if (p.contains("copyMemoryUnlimitedDuration"))
+                        param.copyMemoryUnlimitedDuration = p["copyMemoryUnlimitedDuration"];
                     if (!isManagedCharacter) {
                         param.maxHp = (std::max)(param.maxHp, 1.0f);
                         if (hasMaxHp && !hasHp) {
@@ -853,7 +964,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         }
                         param.attackPower = (std::max)(param.attackPower, 0.0f);
                     }
-                    if (!isManagedCharacter && (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty())) {
+                    if (!isManagedCharacter &&
+                        (targetObject->GetClassName() == "Enemy" || !targetObject->GetEnemyType().empty())) {
                         param.morphDuration = (std::max)(param.morphDuration, 0.1f);
                     }
                 }
@@ -869,14 +981,18 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 // ==========================================
 
                 // 古いフラットな形式の読み込み（後方互換性用）
-                if (objData.contains("animName")) targetObject->animName_ = objData["animName"];
-                if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"];
+                if (objData.contains("animName"))
+                    targetObject->animName_ = objData["animName"];
+                if (objData.contains("isAnimLoop"))
+                    targetObject->isAnimLoop_ = objData["isAnimLoop"];
 
                 // ネストされた形式の読み込み（最新仕様）
                 if (objData.contains("animation")) {
                     const auto& anim = objData["animation"];
-                    if (anim.contains("animName")) targetObject->animName_ = anim["animName"];
-                    if (anim.contains("isAnimLoop")) targetObject->isAnimLoop_ = anim["isAnimLoop"];
+                    if (anim.contains("animName"))
+                        targetObject->animName_ = anim["animName"];
+                    if (anim.contains("isAnimLoop"))
+                        targetObject->isAnimLoop_ = anim["isAnimLoop"];
                     if (anim.contains("animatorController")) {
                         targetObject->SetAnimatorController(anim.value("animatorController", ""));
                     }
@@ -886,15 +1002,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 // パスデータが存在する場合に再生を開始
                 if (!targetObject->GetRecordPathName().empty() && targetObject->recorder_) {
-                    targetObject->recorder_->Play(
-                        targetObject->GetRecordPathName(),
-                        targetObject->IsRecordLoop(),
-                        targetObject->IsRecordRelative(),
-                        isCinematic
-                    );
+                    targetObject->recorder_->Play(targetObject->GetRecordPathName(), targetObject->IsRecordLoop(),
+                                                  targetObject->IsRecordRelative(), isCinematic);
                 }
 
-                // 8. 親子関係保留 (一括解決のためにメンバ変数のリストに追加しておく)
+                // 他のカテゴリ JSON に親がある場合も解決できるよう、全件生成まで親子付けを保留する。
                 PendingParentReference parentReference;
                 if (objData.contains("parentGuid") && objData["parentGuid"].is_string()) {
                     parentReference.guid = objData["parentGuid"].get<std::string>();
@@ -907,20 +1019,14 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 }
             }
         }
-    }
-    catch (const json::parse_error& e) {
+    } catch (const json::parse_error& e) {
         std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
         OutputDebugStringA(message.c_str());
     }
 }
 
-
-
-
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
-    const std::string resolvedFilename = scene
-        ? scene->ResolvePrimarySpriteLayoutPath(filename)
-        : filename;
+    const std::string resolvedFilename = scene ? scene->ResolvePrimarySpriteLayoutPath(filename) : filename;
     std::string justName = resolvedFilename;
     size_t slashPos = justName.find_last_of("/\\");
     if (slashPos != std::string::npos) {
@@ -943,7 +1049,8 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
         if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
             std::vector<std::pair<Sprite*, std::string>> spriteParentPending;
             for (const auto& spriteData : layoutData["sprites"]) {
-                if (!spriteData.contains("name")) continue;
+                if (!spriteData.contains("name"))
+                    continue;
                 std::string name = spriteData["name"];
 
                 Sprite* targetSprite = nullptr;
@@ -956,7 +1063,8 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
 
                 if (!targetSprite && spriteCommon) {
                     std::string textureFile = "";
-                    if (spriteData.contains("texture")) textureFile = spriteData["texture"];
+                    if (spriteData.contains("texture"))
+                        textureFile = spriteData["texture"];
                     uint32_t handle = textureFile.empty() ? 0 : Sprite::LoadTexture(textureFile);
 
                     auto newSprite = std::make_unique<Sprite>();
@@ -971,28 +1079,24 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     if (spriteData.contains("position")) {
                         targetSprite->SetPosition(SpriteLayoutScaler::ScalePosition(
                             SpriteLayoutScaler::ReadVector2(spriteData["position"], targetSprite->GetPosition()),
-                            layoutScale
-                        ));
+                            layoutScale));
                     }
                     if (spriteData.contains("size")) {
                         targetSprite->SetSize(SpriteLayoutScaler::ScaleSize(
-                            SpriteLayoutScaler::ReadVector2(spriteData["size"], targetSprite->GetSize()),
-                            layoutScale
-                        ));
+                            SpriteLayoutScaler::ReadVector2(spriteData["size"], targetSprite->GetSize()), layoutScale));
                     }
-                    if (spriteData.contains("anchor")) targetSprite->SetAnchorPoint({ spriteData["anchor"][0], spriteData["anchor"][1] });
+                    if (spriteData.contains("anchor"))
+                        targetSprite->SetAnchorPoint({spriteData["anchor"][0], spriteData["anchor"][1]});
                     if (spriteData.contains("color")) {
                         Vector4 currentColor = targetSprite->GetColor();
                         float alpha = currentColor.w;
                         if (spriteData["color"].is_array() && spriteData["color"].size() >= 4) {
                             alpha = spriteData["color"][3];
                         }
-                        targetSprite->SetColor({
-                            spriteData["color"][0], // R
-                            spriteData["color"][1], // G
-                            spriteData["color"][2], // B
-                            alpha
-                            });
+                        targetSprite->SetColor({spriteData["color"][0], // R
+                                                spriteData["color"][1], // G
+                                                spriteData["color"][2], // B
+                                                alpha});
                     }
                     if (spriteData.contains("emissive")) {
                         targetSprite->SetEmissive(spriteData["emissive"].get<float>());
@@ -1006,7 +1110,8 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                 }
             }
             for (const auto& [sprite, parentName] : spriteParentPending) {
-                if (!sprite) continue;
+                if (!sprite)
+                    continue;
 
                 Sprite* parentSprite = nullptr;
                 if (!parentName.empty()) {
@@ -1021,6 +1126,6 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                 sprite->Update();
             }
         }
+    } catch (...) {
     }
-    catch (...) {}
 }

@@ -1,12 +1,12 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
+#include "ParticleSystem.h"
+#include "ParticleCommon.h"
 #include "SpriteDebugEditor.h"
 #include "Player.h"
 #include "Text.h"
@@ -18,7 +18,7 @@
 #include "game/ui/SaveIndicatorOverlay.h"
 
 #include "ObjectManager.h"
-#include "DebugEditor.h" 
+#include "DebugEditor.h"
 #include <GhostRecorder.h>
 
 #include <memory>
@@ -35,20 +35,19 @@ class GameRule;
 class BossCore;
 class TutorialDirector;
 
-
 /// <summary>
-/// チュートリアルシーン (GamePlaySceneのコピーから仕切り直し)
+/// TutorialDirector の手順進行と、プレイヤー・配置・操作ガイド・完了後の遷移をまとめるシーン。
 /// </summary>
 class TutorialScene : public BaseScene {
-public:
+  public:
     TutorialScene();
     ~TutorialScene() override;
 
-	void Initialize() override;
-	void BeginLoadingInitialize() override;
-	bool InitializeLoadingStep() override;
-	float GetLoadingInitializeProgress() const override;
-	SceneLoadManifest BuildAsyncLoadManifest() const override;
+    void Initialize() override;
+    void BeginLoadingInitialize() override;
+    bool InitializeLoadingStep() override;
+    float GetLoadingInitializeProgress() const override;
+    SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
     void Update(float deltaTime) override;
     void UpdateUI();
@@ -77,8 +76,8 @@ public:
     void RestoreReplaySceneState(const json& state) override;
 
     // 各種コモンクラス
-	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-	Skybox* GetSkybox() override { return skybox_.get(); }
+    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -98,31 +97,28 @@ public:
         }
     }
 
-private:
+  private:
     bool HandleControlsGuideOverlay(float deltaTime);
     bool IsControlsGuideOpenTriggered() const;
     void HandleTutorialFlowCompleted();
 
-    enum class MovieState {
-        kNone,
-        kBridgeDrop
-    };
+    enum class MovieState { kNone, kBridgeDrop };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
     Vector3 movieStartCameraEye_;
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
 
-private:
+  private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム (機能を委譲するクラスたち) ---
-    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;   // 配置読み込み
-    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr; // ロックオン管理
-    std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理 
+    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;     // 配置読み込み
+    std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr;   // ロックオン管理
+    std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理
 
     // --- ゲームオブジェクト共通基盤 ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
@@ -131,7 +127,7 @@ private:
 
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
-    std::unique_ptr<Text>  debugText_;
+    std::unique_ptr<Text> debugText_;
     std::unique_ptr<GameRule> gameRule_;
 
     Player* player_ = nullptr;
@@ -155,7 +151,7 @@ private:
 
     bool isGoal_ = false;
     bool goalSavePerformed_ = false;
-    bool sessionStarCoins_[3] = { false, false, false };
+    bool sessionStarCoins_[3] = {false, false, false};
     std::unique_ptr<TutorialDirector> tutorialDirector_;
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;

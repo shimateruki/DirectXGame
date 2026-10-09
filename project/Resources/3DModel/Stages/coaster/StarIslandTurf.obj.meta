@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "18211277694d5b17b1e280db668827f9",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/coaster/StarIslandTurf.obj",
+  "version": 1
+}

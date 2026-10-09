@@ -10,16 +10,18 @@ void GimmickAppearingFloor::Initialize(Object3dCommon* common, const std::string
     SetClassName("Gimmick");
     SetGimmickType("AppearingFloor");
     SetName("Gimmick_AppearingFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.55f, 1.0f, 0.7f, 1.0f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.55f, 1.0f, 0.7f, 1.0f});
     SetStatic(false);
 }
 
+// Play中だけタイマーを進め、Editorでは足場を常に見える状態に戻します。
 void GimmickAppearingFloor::Update(float deltaTime) {
     if (param_.has_value()) {
         appearDuration_ = param_->interval;
-        if (appearDuration_ <= 0.0f) appearDuration_ = 3.0f;
+        if (appearDuration_ <= 0.0f)
+            appearDuration_ = 3.0f;
     }
 
     bool isPlaying = false;
@@ -35,10 +37,13 @@ void GimmickAppearingFloor::Update(float deltaTime) {
     }
 
     if (!initializedForPlay_) {
+        // 初回だけEditorで設定された衝突属性を退避し、待機中の当たり判定を外します。
         originalCollisionAttribute_ = GetCollisionAttribute();
         originalCollisionMask_ = GetCollisionMask();
-        if (originalCollisionAttribute_ == 0) originalCollisionAttribute_ = kGround;
-        if (originalCollisionMask_ == 0) originalCollisionMask_ = 0b11111111;
+        if (originalCollisionAttribute_ == 0)
+            originalCollisionAttribute_ = CollisionCategories::Get("ground");
+        if (originalCollisionMask_ == 0)
+            originalCollisionMask_ = CollisionCategories::GetDefaultGameplayMask();
 
         visibleTimer_ = 0.0f;
         SetFloorActive(false);
@@ -47,22 +52,23 @@ void GimmickAppearingFloor::Update(float deltaTime) {
 
     if (visibleTimer_ > 0.0f) {
         visibleTimer_ -= deltaTime;
-        if (visibleTimer_ < 0.0f) visibleTimer_ = 0.0f;
+        if (visibleTimer_ < 0.0f)
+            visibleTimer_ = 0.0f;
     }
 
     bool shouldBeActive = visibleTimer_ > 0.0f;
     SetFloorActive(shouldBeActive);
 
     if (shouldBeActive) {
+        // 消滅直前に点滅させ、プレイヤーに残り時間を知らせます。
         float warningTime = (std::min)(blinkWarningTime_, appearDuration_ * 0.5f);
         if (visibleTimer_ <= warningTime) {
             bool blinkOn = std::fmod(visibleTimer_, blinkInterval_ * 2.0f) >= blinkInterval_;
             SetIsVisible(blinkOn);
-            SetColor(blinkOn ? Vector4{ 0.9f, 1.0f, 0.35f, 1.0f } : Vector4{ 0.55f, 1.0f, 0.7f, 1.0f });
-        }
-        else {
+            SetColor(blinkOn ? Vector4{0.9f, 1.0f, 0.35f, 1.0f} : Vector4{0.55f, 1.0f, 0.7f, 1.0f});
+        } else {
             SetIsVisible(true);
-            SetColor({ 0.55f, 1.0f, 0.7f, 1.0f });
+            SetColor({0.55f, 1.0f, 0.7f, 1.0f});
         }
     }
 
@@ -76,17 +82,17 @@ void GimmickAppearingFloor::OnTrigger() {
 }
 
 void GimmickAppearingFloor::SetFloorActive(bool active) {
-    if (isActive_ == active && GetIsVisible() == active) return;
+    if (isActive_ == active && GetIsVisible() == active)
+        return;
 
     isActive_ = active;
     SetIsVisible(active);
 
     if (active) {
-        SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : kGround);
-        SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : 0b11111111);
-        SetColor({ 0.55f, 1.0f, 0.7f, 1.0f });
-    }
-    else {
+        SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : CollisionCategories::Get("ground"));
+        SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
+        SetColor({0.55f, 1.0f, 0.7f, 1.0f});
+    } else {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
     }

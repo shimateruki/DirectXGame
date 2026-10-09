@@ -5,82 +5,33 @@
 #include <utility>
 #include <vector>
 #include "json.hpp"
+#include "game/system/StageCatalog.h"
 
-struct StageData {
-    std::string id;
-    std::string name;
-    std::string levelPath;
-    std::string spritePath;
-    std::string bgmPath;
-    std::string description;
-    int unlockStageIndex = -1;
-    bool defaultUnlocked = false;
-    std::string lightPath;
-    std::string skyboxPath;
-};
-
+// ステージ一覧と現在の選択を管理します。JSON が読めない場合は内蔵の一覧へ戻します。
 class StageManager {
-public:
+  public:
     static StageManager* GetInstance() {
         static StageManager instance;
         return &instance;
     }
 
+    // ステージ一覧を読み込み、Development の選択履歴を復元します。
     void Initialize() {
         if (LoadFromJson("Resources/json/stage_select/stages.json")) {
             LoadDevelopmentStageIndex();
             return;
         }
 
-        stages_.clear();
-        stages_.push_back({ "stage1", "Stage 1", "Resources/json/3Dobject/stage1.json", "Resources/json/sprite/stage1_sprite.json", "Resources/bgm/Alarm02.mp3", "", -1, true });
-        stages_.push_back({ "stage2", "Stage 2", "Resources/json/3Dobject/stage2.json", "Resources/json/sprite/stage2_sprite.json", "Resources/bgm/Alarm02.mp3", "", 0, false });
-        stages_.push_back({ "stage3", "Stage 3", "Resources/json/3Dobject/stage3.json", "Resources/json/sprite/stage3_sprite.json", "Resources/bgm/Alarm02.mp3", "", 1, false });
-        stages_.push_back({ "stage4", "Stage 4", "Resources/json/3Dobject/stage4.json", "Resources/json/sprite/stage4_sprite.json", "Resources/bgm/Alarm02.mp3", "", 2, false });
-        stages_.push_back({ "stage5", "Stage 5", "Resources/json/3Dobject/stage5.json", "Resources/json/sprite/stage5_sprite.json", "Resources/bgm/Alarm02.mp3", "", 3, false });
+        stages_ = StageCatalog::CreateFallback();
         currentStageIndex_ = 0;
         LoadDevelopmentStageIndex();
     }
 
+    /// <summary>ステージ一覧を JSON から読み込みます。失敗時は既存の一覧を維持します。</summary>
+    /// <param name="path">ステージ一覧 JSON のパス</param>
     bool LoadFromJson(const std::string& path) {
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            return false;
-        }
-
-        nlohmann::json root;
-        try {
-            file >> root;
-        }
-        catch (...) {
-            return false;
-        }
-
-        if (!root.contains("stages") || !root["stages"].is_array()) {
-            return false;
-        }
-
         std::vector<StageData> loadedStages;
-        for (const auto& stageJson : root["stages"]) {
-            StageData data;
-            data.id = stageJson.value("id", "");
-            data.name = stageJson.value("name", data.id);
-            data.levelPath = stageJson.value("levelPath", "");
-            data.spritePath = stageJson.value("spritePath", "Resources/json/sprite/stage1_sprite.json");
-            data.bgmPath = stageJson.value("bgmPath", "Resources/bgm/Alarm02.mp3");
-            data.description = stageJson.value("description", "");
-            data.unlockStageIndex = stageJson.value("unlockStageIndex", -1);
-            data.defaultUnlocked = stageJson.value("defaultUnlocked", false);
-            data.lightPath = stageJson.value("lightPath", "");
-            data.skyboxPath = stageJson.value("skyboxPath", "");
-
-            if (data.id.empty() || data.levelPath.empty()) {
-                continue;
-            }
-            loadedStages.push_back(std::move(data));
-        }
-
-        if (loadedStages.empty()) {
+        if (!StageCatalog::LoadFromJson(path, loadedStages)) {
             return false;
         }
 
@@ -91,7 +42,9 @@ public:
         return true;
     }
 
+    // Initialize() 後に呼び出します。参照の寿命は次の一覧再読み込みまでです。
     const StageData& GetCurrentStage() const { return stages_[currentStageIndex_]; }
+    // 範囲外の index は無視します。開発用ビルドでは有効な選択を user_config.json に記録します。
     void SetCurrentStage(int index) {
         if (index >= 0 && index < static_cast<int>(stages_.size())) {
             currentStageIndex_ = index;
@@ -100,6 +53,7 @@ public:
     }
     int GetCurrentStageIndex() const { return currentStageIndex_; }
     const std::vector<StageData>& GetStages() const { return stages_; }
+    // 未登録の ID は -1 を返します。ID は配列の位置とは別に保存データとの対応へ使います。
     int FindStageIndexById(const std::string& stageId) const {
         for (int index = 0; index < static_cast<int>(stages_.size()); ++index) {
             if (stages_[index].id == stageId) {
@@ -108,6 +62,7 @@ public:
         }
         return -1;
     }
+    // ID が見つからない場合は選択と開発用設定ファイルを変更しません。
     bool SetCurrentStageById(const std::string& stageId) {
         const int index = FindStageIndexById(stageId);
         if (index < 0) {
@@ -117,12 +72,14 @@ public:
         return true;
     }
 
-private:
+  private:
     StageManager() = default;
     ~StageManager() = default;
     StageManager(const StageManager&) = delete;
     StageManager& operator=(const StageManager&) = delete;
 
+    // ImGui 有効の Development ビルドだけで前回の配列位置を復元します。
+    // 保存 ID では照合しないため、一覧の並びを変更すると別のステージを指す可能性があります。
     void LoadDevelopmentStageIndex() {
 #if defined(USE_IMGUI) && defined(NDEBUG) && !defined(DD)
         std::ifstream file(kUserConfigPath);
@@ -141,8 +98,7 @@ private:
             if (savedIndex >= 0 && savedIndex < static_cast<int>(stages_.size())) {
                 currentStageIndex_ = savedIndex;
             }
-        }
-        catch (...) {
+        } catch (...) {
         }
 #endif
     }
@@ -155,8 +111,7 @@ private:
             if (input.is_open()) {
                 try {
                     input >> root;
-                }
-                catch (...) {
+                } catch (...) {
                     root = nlohmann::json::object();
                 }
             }

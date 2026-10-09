@@ -10,31 +10,28 @@
 
 using json = nlohmann::json;
 
+// Editorの軌跡表示と再生器で、同じアンカー基準の座標変換を使います。
 Vector3 CinematicAnchorPosition(const Vector3& local, const Vector3& origin, float yaw) {
     const float c = std::cos(yaw), s = std::sin(yaw);
-    return { origin.x + local.x * c + local.z * s, origin.y + local.y,
-        origin.z - local.x * s + local.z * c };
+    return {origin.x + local.x * c + local.z * s, origin.y + local.y, origin.z - local.x * s + local.z * c};
 }
 
 Vector3 CinematicAnchorLocalPosition(const Vector3& world, const Vector3& origin, float yaw) {
-    return CinematicAnchorPosition({ world.x - origin.x, world.y - origin.y, world.z - origin.z }, {}, -yaw);
+    return CinematicAnchorPosition({world.x - origin.x, world.y - origin.y, world.z - origin.z}, {}, -yaw);
 }
 
 namespace {
+// 配列長が不足する旧データでは、個別の既定値を維持します。
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
-    return {
-        value[0].get<float>(),
-        value[1].get<float>(),
-        value[2].get<float>()
-    };
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
-json WriteVector3(const Vector3& value) {
-    return json::array({ value.x, value.y, value.z });
-}
+// 演出トラックの保存形式と並び順を扱います。再生時の時刻評価に使える形へ読み込みデータを整えます。
+
+json WriteVector3(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
 
 void ReadBinding(const json& value, CinematicObjectBinding& binding) {
     binding.targetName = value.value("targetName", "");
@@ -45,13 +42,13 @@ void WriteBinding(json& value, const CinematicObjectBinding& binding) {
     value["targetName"] = binding.targetName;
     value["targetEventId"] = binding.targetEventId;
 }
-}
+} // namespace
 
 void CinematicSequence::Clear() {
     anchor = {};
     anchorYawOffset = 0.0f;
     roleBindings = {};
-    previewModels = { "Characters/slime_pink", "Primitives/cube" };
+    previewModels = {"Characters/slime_pink", "Primitives/cube"};
     version = kCurrentVersion;
     duration = 0.0f;
     transformTracks.clear();
@@ -63,29 +60,28 @@ void CinematicSequence::Clear() {
     events.clear();
 }
 
+// 再生側が時刻順に走査できるよう、評価に順序が必要な項目だけ並べ替えます。
 void CinematicSequence::Sort() {
     for (auto& track : transformTracks) {
-        std::sort(track.keys.begin(), track.keys.end(), [](const CinematicTransformKey& a, const CinematicTransformKey& b) {
-            return a.time < b.time;
-        });
+        std::sort(track.keys.begin(), track.keys.end(),
+                  [](const CinematicTransformKey& a, const CinematicTransformKey& b) { return a.time < b.time; });
     }
-    std::sort(events.begin(), events.end(), [](const CinematicEventMarker& a, const CinematicEventMarker& b) {
-        return a.time < b.time;
-    });
-    std::sort(cameraShots.begin(), cameraShots.end(), [](const CinematicCameraShot& a, const CinematicCameraShot& b) {
-        return a.startTime < b.startTime;
-    });
-    std::sort(animationClips.begin(), animationClips.end(), [](const CinematicAnimationClipData& a, const CinematicAnimationClipData& b) {
-        return a.startTime < b.startTime;
-    });
-    std::sort(audioClips.begin(), audioClips.end(), [](const CinematicAudioClipData& a, const CinematicAudioClipData& b) {
-        return a.startTime < b.startTime;
-    });
-    std::sort(signals.begin(), signals.end(), [](const CinematicSignalMarker& a, const CinematicSignalMarker& b) {
-        return a.time < b.time;
-    });
+    std::sort(events.begin(), events.end(),
+              [](const CinematicEventMarker& a, const CinematicEventMarker& b) { return a.time < b.time; });
+    std::sort(cameraShots.begin(), cameraShots.end(),
+              [](const CinematicCameraShot& a, const CinematicCameraShot& b) { return a.startTime < b.startTime; });
+    std::sort(animationClips.begin(), animationClips.end(),
+              [](const CinematicAnimationClipData& a, const CinematicAnimationClipData& b) {
+                  return a.startTime < b.startTime;
+              });
+    std::sort(
+        audioClips.begin(), audioClips.end(),
+        [](const CinematicAudioClipData& a, const CinematicAudioClipData& b) { return a.startTime < b.startTime; });
+    std::sort(signals.begin(), signals.end(),
+              [](const CinematicSignalMarker& a, const CinematicSignalMarker& b) { return a.time < b.time; });
 }
 
+// 入力されたdurationより長いトラックがあれば、末尾まで再生時間を延ばします。
 float CinematicSequence::GetAuthoredDuration() const {
     float result = std::max(0.0f, duration);
     for (const auto& track : transformTracks) {
@@ -114,6 +110,7 @@ float CinematicSequence::GetAuthoredDuration() const {
     return std::max(result, 0.1f);
 }
 
+// 互換性のある項目名で各トラックを書き出し、最後に一つのJSONへまとめます。
 bool CinematicSequence::Save(const std::string& filePath) const {
     json root;
     root["version"] = kCurrentVersion;
@@ -151,13 +148,11 @@ bool CinematicSequence::Save(const std::string& filePath) const {
         item["holdLast"] = track.holdLast;
         item["keys"] = json::array();
         for (const auto& key : track.keys) {
-            item["keys"].push_back({
-                { "time", key.time },
-                { "position", WriteVector3(key.position) },
-                { "rotation", WriteVector3(key.rotation) },
-                { "scale", WriteVector3(key.scale) },
-                { "easingToNext", key.easingToNext }
-            });
+            item["keys"].push_back({{"time", key.time},
+                                    {"position", WriteVector3(key.position)},
+                                    {"rotation", WriteVector3(key.rotation)},
+                                    {"scale", WriteVector3(key.scale)},
+                                    {"easingToNext", key.easingToNext}});
         }
         root["tracks"].push_back(item);
     }
@@ -208,16 +203,14 @@ bool CinematicSequence::Save(const std::string& filePath) const {
     }
 
     for (const auto& clip : audioClips) {
-        root["audioClips"].push_back({
-            { "name", clip.name },
-            { "audioId", clip.audioId },
-            { "startTime", clip.startTime },
-            { "duration", clip.duration },
-            { "volume", clip.volume },
-            { "loop", clip.loop },
-            { "enabled", clip.enabled },
-            { "muted", clip.muted }
-        });
+        root["audioClips"].push_back({{"name", clip.name},
+                                      {"audioId", clip.audioId},
+                                      {"startTime", clip.startTime},
+                                      {"duration", clip.duration},
+                                      {"volume", clip.volume},
+                                      {"loop", clip.loop},
+                                      {"enabled", clip.enabled},
+                                      {"muted", clip.muted}});
     }
 
     for (const auto& signal : signals) {
@@ -252,6 +245,7 @@ bool CinematicSequence::Save(const std::string& filePath) const {
     return file.good();
 }
 
+// トラック復元中の例外ではClearし、中途半端な内容を残しません。
 bool CinematicSequence::Load(const std::string& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
@@ -274,13 +268,14 @@ bool CinematicSequence::Load(const std::string& filePath) {
         anchorYawOffset = root.value("anchorYawOffset", 0.0f);
         const auto roles = root.value("roleBindings", json::array());
         // 旧データの入口サンプルは従来の仮ゲートを維持する。
-        previewModels = { "Characters/slime_pink", "Gimmicks/portal_gate" };
+        previewModels = {"Characters/slime_pink", "Gimmicks/portal_gate"};
         const auto models = root.value("previewModels", json::array());
         for (size_t index = 0; index < previewModels.size() && index < models.size(); ++index)
             previewModels[index] = models[index].get<std::string>();
         for (size_t index = 0; index < roleBindings.size() && index < roles.size(); ++index)
             ReadBinding(roles[index], roleBindings[index]);
 
+        // 旧キー名 delayTime / vfxTracks も読み、既存の演出データを維持します。
         const json transformItems = root.value("tracks", json::array());
         for (const auto& item : transformItems) {
             CinematicTransformTrack track;
@@ -319,6 +314,7 @@ bool CinematicSequence::Load(const std::string& filePath) {
             vfxTracks.push_back(track);
         }
 
+        // カメラ・アニメーション・音声はそれぞれ独立した時間列です。
         for (const auto& item : root.value("cameraShots", json::array())) {
             CinematicCameraShot shot;
             ReadBinding(item, shot.binding);
@@ -364,6 +360,7 @@ bool CinematicSequence::Load(const std::string& filePath) {
             audioClips.push_back(clip);
         }
 
+        // SignalとEventは同時刻でも役割が異なるので、別配列のまま復元します。
         for (const auto& item : root.value("signals", json::array())) {
             CinematicSignalMarker signal;
             signal.time = item.value("time", 0.0f);

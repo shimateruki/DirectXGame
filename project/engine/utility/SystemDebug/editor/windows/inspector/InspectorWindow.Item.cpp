@@ -2,8 +2,11 @@
 #include "DebugEditor.h"
 #include "game/actor/item/DroppedCopyStar.h"
 #include "Object3d.h"
+#include "CollisionConfig.h"
+#include "SceneManager.h"
 #include "imgui.h"
 
+// 一時ドロップの星は実体の寿命だけを調整し、通常アイテムは初回選択時に必要な外観と判定を補います。
 void InspectorWindow::DrawItemTypeSelector() {
 #ifdef USE_IMGUI
     Object3d* selectedObject = editor_->GetSelectedObject();
@@ -36,8 +39,8 @@ void InspectorWindow::DrawItemTypeSelector() {
         selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
         selectedObject->SetEmissive(1.8f);
         selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-        selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-        selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+        selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+        selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
         selectedObject->SetStatic(false);
 
         Object3d::ColliderConfig colConfig;
@@ -69,8 +72,8 @@ void InspectorWindow::DrawItemTypeSelector() {
             selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
             selectedObject->SetEmissive(1.8f);
             selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             selectedObject->param_->healAmount = 1.0f;
@@ -87,18 +90,40 @@ void InspectorWindow::DrawItemTypeSelector() {
 #endif
 }
 
+// JSONのカテゴリ一覧で既知ビットを編集し、未登録ビットは変更せず保持します。
 void InspectorWindow::DrawAttributeSelector(const char* label, uint32_t* attribute) {
 #ifdef USE_IMGUI
     if (ImGui::TreeNode(label)) {
+        if (!CollisionCategories::IsDefinitionLoaded()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f),
+                "カテゴリ定義JSONを読めません。既存カテゴリで一時的に動作しています。");
+        }
         int flags = static_cast<int>(*attribute);
-        ImGui::CheckboxFlags("プレイヤー (Player)", &flags, 1 << 0);
-        ImGui::CheckboxFlags("敵 (Enemy)", &flags, 1 << 1);
-        ImGui::CheckboxFlags("床・地形 (Ground)", &flags, 1 << 2);
-        ImGui::CheckboxFlags("弾 (Bullet)", &flags, 1 << 3);
-        ImGui::CheckboxFlags("トリガー (Trigger)", &flags, 1 << 4);
-        ImGui::CheckboxFlags("プレイヤー攻撃 (PlayerAttack)", &flags, 1 << 6);
-        ImGui::CheckboxFlags("敵攻撃 (EnemyAttack)", &flags, 1 << 7);
+        for (const auto& category : CollisionCategories::GetDefinitions()) {
+            const std::string itemLabel = category.displayName + " (" + category.id + ")##" + category.id;
+            ImGui::CheckboxFlags(itemLabel.c_str(), &flags, static_cast<int>(category.bit));
+        }
         *attribute = static_cast<uint32_t>(flags);
+        if (ImGui::Button("カテゴリを追加")) ImGui::OpenPopup("AddCollisionCategory");
+        if (ImGui::BeginPopup("AddCollisionCategory")) {
+            static char idBuffer[64]{};
+            static char nameBuffer[128]{};
+            static std::string error;
+            ImGui::InputText("ID (英小文字)", idBuffer, sizeof(idBuffer));
+            ImGui::InputText("表示名", nameBuffer, sizeof(nameBuffer));
+            const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
+            ImGui::BeginDisabled(isPlaying);
+            if (ImGui::Button("追加してJSONへ保存")) {
+                if (CollisionCategories::Add(idBuffer, nameBuffer, &error)) {
+                    idBuffer[0] = nameBuffer[0] = '\0';
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndDisabled();
+            if (isPlaying) ImGui::TextDisabled("Playを停止してから追加してください。");
+            if (!error.empty()) ImGui::TextWrapped("%s", error.c_str());
+            ImGui::EndPopup();
+        }
         ImGui::TreePop();
     }
 #endif

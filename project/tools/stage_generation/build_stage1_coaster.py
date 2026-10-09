@@ -55,9 +55,14 @@ def validate(scene,enemies,sequence):
     assert not floor['recorder']['recordPathName']
     keys=sequence['tracks'][0]['keys']
     assert all(a['time']<b['time'] for a,b in zip(keys,keys[1:]))
-    assert keys[0]['position']==floor['position']
+    assert all(math.isclose(a, b, abs_tol=1e-4) for a, b in zip(keys[0]['position'], floor['position']))
     assert keys[-1]['position']==[763,16.4,13]
-    assert all(k['rotation']==[0,0,0] for k in keys)
+    # 乗り場の縁に揃えた床の向きは全区間で固定し、回転による乗員のずれを防ぐ。
+    yaw = math.atan2(14.405, 24.009)
+    assert math.isclose(floor['rotation'][1], yaw, abs_tol=1e-5)
+    assert all(math.isclose(k['rotation'][1], yaw, abs_tol=1e-5) and
+               math.isclose(k['rotation'][0], 0.0, abs_tol=1e-5) and
+               math.isclose(k['rotation'][2], 0.0, abs_tol=1e-5) for k in keys)
     assert all(k['scale']==[1,1,1] for k in keys)
     names={o['name'] for o in enemies['objects']}
     assert len(sequence['signals'])==2
@@ -124,9 +129,7 @@ def main():
         by[PREFIX+'StarIslandCollision']['position']=[756,30,51]
         by[PREFIX+'StarIslandCollision']['collider']['size']=[12,2,9]
         by['Stage1_StarCoin_03']['position']=[756,34.5,51]
-        m=Mesh();m.block((0,-2,0),(24,4,18),'Stone')
-        m.block((0,.025,0),(23.6,.05,17.6),'Gold')
-        mesh_file(m,'StarIsland')
+        # 見た目のモデルはEditor側で調整するため、位置調整時には上書きしない。
         validate(scene,enemies,read(ASSET));write(SCENE,scene);return
     if any(o['name'].startswith(PREFIX) for o in scene['objects']):
         raise SystemExit('配置済みです。再生成せずEditorで調整してください。')
@@ -164,8 +167,9 @@ def main():
     for x in (-9.65,9.65):deck.block((x,.38,0),(.7,.44,12.6),'Gold')
     deck.block((0,.61,0),(2,.04,4),'Cyan')
     floor=copy.deepcopy(by['Stage1_V4_MovingIntro_A'])
+    yaw=math.atan2(14.405,24.009)
     floor.update(name=PREFIX+'Deck',guid=str(uuid.uuid5(uuid.NAMESPACE_URL,PREFIX+'Deck')),
-        position=[632,11.4,-14],rotation=[0,0,0],quaternion=[0,0,0,1],scale=[1,1,1],
+        position=[632,11.4,-14],rotation=[0,yaw,0],quaternion=[0,math.sin(yaw/2),0,math.cos(yaw/2)],scale=[1,1,1],
         modelName=mesh_file(deck,'deck'),color=[1,1,1,1],isStatic=False,
         collider=dict(type=3,center=[0,-.4,0],size=[10,1,7],rotation=[0,0,0]),
         recorder=dict(recordPathName='',isRecordLoop=False,isRecordRelative=False),
@@ -190,7 +194,7 @@ def main():
         (14,[706,23,-8],0),(15.7,[706,23,-8],4),(19,[718,36,14],4),
         (22,[727,50,29],0),(23,[727,50,29],1),(24.8,[752,23,18],2),
         (26.3,[763,16.4,13],0)]
-    keys=[dict(time=t,position=p,rotation=[0,0,0],scale=[1,1,1],easingToNext=e) for t,p,e in points]
+    keys=[dict(time=t,position=p,rotation=[0,yaw,0],scale=[1,1,1],easingToNext=e) for t,p,e in points]
     sequence=dict(version=6,name='stage1_coaster',duration=26.3,
         tracks=[dict(name='乗車床：出発・乗り込み停車・上昇・急降下',targetName=PREFIX+'Deck',targetEventId=-1,
             startTime=0,enabled=True,muted=False,relative=False,holdLast=True,keys=keys)],

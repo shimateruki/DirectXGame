@@ -23,13 +23,12 @@ void AudioPlayer::Initialize() {
 	assert(SUCCEEDED(result));
 }
 
+// デコードスレッドの終了を待ってから SourceVoice を破棄し、XAudio2/MF の寿命を逆順に閉じます。
 void AudioPlayer::Finalize() {
 	for (auto& [handle, data] : transientSoundDatas_) {
 		DestroyStreamingData(data.get());
 	}
 	transientSoundDatas_.clear();
-
-
 
 	for (auto const& [handle, dataPtr] : streamingSoundDatas_) {
 		SoundDataStreaming* data = dataPtr.get();
@@ -37,11 +36,11 @@ void AudioPlayer::Finalize() {
 			continue;
 		}
 
-		// 1. もし再生中 (スレッドが動作中) なら、まず Stop を呼ぶ
+		// 再生中は StopSe がデコードスレッドの join と Voice 破棄をまとめて行います。
 		if (data->isPlaying) {
 			StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 		}
-		// 2. 再生中でなくても、古いボイスが残っている場合 (ワンショット再生終了後など)
+		// 自然終了したワンショットにも Voice が残り得るため、終了後の分も回収します。
 		else if (data->sourceVoice) {
 			if (data->decodeThread.joinable()) {
 				data->decodeThread.join();
@@ -51,7 +50,7 @@ void AudioPlayer::Finalize() {
 			data->sourceVoice->DestroyVoice();
 			data->sourceVoice = nullptr;
 		}
-		// 3. スレッドだけ残っている場合 (ほぼないはずだが念のため)
+		// Voice が先に解放されていても、残るデコードスレッドの終了を待ちます。
 		else if (data->decodeThread.joinable()) {
 			data->decodeThread.join();
 		}
@@ -62,8 +61,7 @@ void AudioPlayer::Finalize() {
 		}
 	}
 
-	// ★ マップ自体もクリアして、unique_ptr がデストラクタを呼ぶのを防ぐ
-	// これでプログラム終了時にデストラクタが走っても、中身は空になっている
+	// SoundDataStreaming を先に破棄し、保持する Media Foundation 形式情報も解放します。
 	streamingSoundDatas_.clear();
 
 	MFShutdown();
@@ -137,6 +135,7 @@ void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
 	}
 	data->sourceReader.Reset();
 }
+
 AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
 	std::lock_guard<std::mutex> lock(audioDataMutex_);
 	auto existing = audioHandleMap_.find(filename);
@@ -180,17 +179,16 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 	SoundDataStreaming* data = it->second.get();
 
 
-	// 1. もし今まさに再生中 (スレッドが動作中) なら、まず Stop する
+	// 同じロード済み音源を再生し直す前に、前回のデコードと Voice を閉じます。
 	if (data->isPlaying) {
 		StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
 	}
-	// 2. 再生中でなくても、古いボイスが残っている場合 (ワンショット再生終了後など)
+	// 自然終了後に残った Voice も使い回さず破棄します。
 	else if (data->sourceVoice) {
-		// (念のため) スレッドがもし万が一 joinable なら終了を待つ
+		// 以前のデコードがまだ終了処理中なら、バッファ解放より先に待ちます。
 		if (data->decodeThread.joinable()) {
 			data->decodeThread.join();
 		}
-		// 古いボイスを明示的に破棄する
 		data->sourceVoice->Stop(0);
 		data->sourceVoice->FlushSourceBuffers();
 		data->sourceVoice->DestroyVoice();
@@ -207,12 +205,12 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 
 	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
 
-	// ★ 新しい引数 volume を設定 ★
+	// 呼び出し側の音量を 0～1 に収めて新しい Voice へ適用します。
 	data->sourceVoice->SetVolume(std::clamp(volume, 0.0f, 1.0f));
 
 	data->sourceVoice->Start(0);
 
-	// 状態をリセット
+	// 次のデコードループ用に再生中・終端・ループの状態を確定します。
 	data->isPlaying = true;
 	data->isEndOfStream = false;
 	data->loop = loop;
@@ -251,6 +249,7 @@ void AudioPlayer::StopSe(AudioHandle handle) {
 
 	data->isEndOfStream = false;
 }
+
 void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 	if (!data) return;
 
@@ -324,7 +323,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 // --- 既存のWAV再生関数（変更なし） ---
 SoundData AudioPlayer::SoundLoadWave(const char* filename)
 {
-	// (省略: 変更なし)
+	// RIFF/WAVE、fmt、任意の JUNK、data の順を想定する簡易読込。任意のチャンク列を走査する実装ではない。
 	std::ifstream file;
 	file.open(filename, std::ios::binary);
 	assert(file.is_open());
@@ -353,10 +352,18 @@ SoundData AudioPlayer::SoundLoadWave(const char* filename)
 	soundData.bufferSize = data.size;
 	return soundData;
 }
-void AudioPlayer::SoundUnload(SoundData* soundData) {/* (省略) */ delete[] soundData->pBuffer; soundData->pBuffer = 0; soundData->bufferSize = 0; soundData->wfex = {}; }
+
+// SoundLoadWave が確保した音声を解放する。再生側がバッファを参照しなくなってから呼ぶ。
+void AudioPlayer::SoundUnload(SoundData* soundData) {
+	delete[] soundData->pBuffer;
+	soundData->pBuffer = 0;
+	soundData->bufferSize = 0;
+	soundData->wfex = {};
+}
+
 void AudioPlayer::SoundPlayWave(const SoundData& soundData, bool loop)
 {
-	// (省略: 変更なし)
+	// SubmitSourceBuffer は音声データを後から参照するため、再生中は soundData のバッファを保持する。
 	HRESULT result;
 	IXAudio2SourceVoice* pSourceVoice = nullptr;
 	result = xAudio2_->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
@@ -428,6 +435,7 @@ void AudioPlayer::ApplyCurrentBGMVolume() {
 
 	it->second->sourceVoice->SetVolume(currentBgmBaseVolume_ * bgmMasterVolume_);
 }
+
 AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 	const std::string& filename,
 	float volume,

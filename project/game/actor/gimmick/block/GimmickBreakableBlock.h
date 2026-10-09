@@ -5,7 +5,7 @@ class Player;
 
 // 爆発のみで破壊可能なブロックギミック
 class GimmickBreakableBlock : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickBreakableBlock() = default;
 
     // 初期化
@@ -22,9 +22,9 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     void Break(); // 破壊処理
 
-private:
+  private:
     bool isBroken_ = false;
 };

@@ -9,9 +9,9 @@ void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) 
 
     SetName("Item_Heal");
     SetItemType("Heal");
-    SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
+    SetColor({1.0f, 0.15f, 0.35f, 1.0f});
     SetEmissive(1.8f);
-    SetScale({ 0.8f, 0.8f, 0.8f });
+    SetScale({0.8f, 0.8f, 0.8f});
     SetCollisionRadius(1.2f);
 
     if (!param_.has_value()) {
@@ -21,6 +21,7 @@ void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) 
     param_->healAmount = 1.0f;
 }
 
+// 回復後のHPは最大値を超えないよう制限し、最後に二重取得を防ぎます。
 void HealItem::Collect(Player* player) {
     if (!player) {
         MarkCollected();
@@ -40,10 +41,8 @@ void HealItem::Collect(Player* player) {
     float maxHp = (std::max)(1.0f, player->param_->maxHp);
     player->param_->hp = (std::min)(maxHp, beforeHp + healAmount);
 
-    DebugConsole::GetInstance()->AddLog(
-        "Heal Item: +" + std::to_string(healAmount) +
-        " HP (" + std::to_string(beforeHp) + " -> " + std::to_string(player->param_->hp) + ")"
-    );
+    DebugConsole::GetInstance()->AddLog("Heal Item: +" + std::to_string(healAmount) + " HP (" +
+                                        std::to_string(beforeHp) + " -> " + std::to_string(player->param_->hp) + ")");
 
     MarkCollected();
 }

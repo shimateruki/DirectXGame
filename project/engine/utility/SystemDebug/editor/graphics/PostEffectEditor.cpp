@@ -214,9 +214,6 @@ void PostEffectEditor::DrawImGui() {
 #endif
 }
 
-
-
-
 void PostEffectEditor::SaveParams(const std::string& filename) {
     if (!targetEffect_) return;
 

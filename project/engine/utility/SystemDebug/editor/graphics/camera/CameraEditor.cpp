@@ -186,6 +186,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
         }
     }
 }
+
 void CameraEditor::UpdateFreeCamera(Camera* camera) {
     InputManager* input = InputManager::GetInstance();
 

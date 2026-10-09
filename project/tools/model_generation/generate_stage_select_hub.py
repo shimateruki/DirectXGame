@@ -1,3 +1,8 @@
+"""ステージセレクトの島と接続モデルを生成し、必要に応じてシーン JSON を更新する。
+
+--models-only はモデルだけを更新する。通常実行ではシーンへの配置も行う。
+"""
+
 from __future__ import annotations
 
 import argparse

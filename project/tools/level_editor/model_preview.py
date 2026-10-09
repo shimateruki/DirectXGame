@@ -27,6 +27,7 @@ def _read_source_data(obj):
 
 
 def _load_managed_model_names(project_root):
+    """共有ステータスのモデル名を取得し、設定ファイルの更新時刻まで再読込を省く。"""
     settings_path = os.path.join(project_root, "Resources", "json", "gameplay", "status_settings.json")
     try:
         settings_mtime = os.path.getmtime(settings_path)
@@ -72,6 +73,7 @@ def _load_managed_model_names(project_root):
 
 
 def effective_model_name(obj, project_root):
+    """明示名、取込元 JSON、共有ステータスの順にプレビュー用モデルを決める。"""
     explicit_name = obj.get("file_name")
     if isinstance(explicit_name, str) and explicit_name:
         return explicit_name
@@ -108,6 +110,7 @@ def _find_cached_collection(model_path):
 
 
 def clear_model_cache():
+    """アドオンが作成した試作用 Collection と Object だけを破棄する。"""
     cached_collections = [
         collection
         for collection in bpy.data.collections
@@ -132,6 +135,7 @@ def _import_model_file(model_path):
 
 
 def load_model_collection(model_name, project_root):
+    """同じモデルファイルの読込結果を共有 Collection として再利用する。"""
     model_path = resolve_model_path(model_name, project_root)
     if not model_path:
         return None, f"モデルが見つかりません: {model_name}"

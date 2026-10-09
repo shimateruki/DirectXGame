@@ -20,10 +20,7 @@ class SceneManager;
 class Sprite;
 class SpriteCommon;
 
-/// <summary>
-/// 入力テキストから透明PNGを生成し、必要に応じてSpriteとしてシーンへ追加するエディタツール。
-/// </summary>
-/// 入力テキストを透明PNGとして生成し、Spriteとしてプレビュー・配置できるエディタツール。
+/// <summary>入力テキストを透明 PNG にし、Sprite としてプレビュー・配置する編集ツール。</summary>
 class TextSpriteGenerator : public IEditable {
 public:
     TextSpriteGenerator() = default;

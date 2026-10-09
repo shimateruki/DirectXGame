@@ -42,13 +42,13 @@ SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
         manifest.AddSpriteLayout(GetSceneLoadContext().spriteLayoutPath);
     }
     manifest.AddTexture("Resources/sprite/common/white.png");
-    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty()
-        ? "Resources/output_skybox.dds"
-        : GetSceneLoadContext().skyboxPath);
+    manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
+                                                                 : GetSceneLoadContext().skyboxPath);
     return manifest;
 }
 
 void SceneAssetEditorScene::Initialize() {
+    // シーン資産を単独で編集できるよう、ゲーム本編と同じ表示基盤をこの場で初期化します。
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
 
@@ -76,22 +76,17 @@ void SceneAssetEditorScene::Initialize() {
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTextureHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
-    const uint32_t skyboxTexture = TextureManager::GetInstance()->Load(
-        ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
+    const uint32_t skyboxTexture =
+        TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTexture);
 
-    const std::string objectLayoutPath = sceneManager_
-        ? sceneManager_->GetEditorSceneAssetObjectPath()
-        : std::string();
-    const std::string spriteLayoutPath = sceneManager_
-        ? sceneManager_->GetEditorSceneAssetSpritePath()
-        : std::string();
+    const std::string objectLayoutPath = sceneManager_ ? sceneManager_->GetEditorSceneAssetObjectPath() : std::string();
+    const std::string spriteLayoutPath = sceneManager_ ? sceneManager_->GetEditorSceneAssetSpritePath() : std::string();
 
     if (!objectLayoutPath.empty() && fs::exists(objectLayoutPath)) {
         levelLoader_->LoadObjectLayout(this, objectLayoutPath);
-    }
-    else {
+    } else {
         SetLoadedFilename("untitled_scene.json");
     }
 
@@ -99,12 +94,10 @@ void SceneAssetEditorScene::Initialize() {
         levelLoader_->LoadSpriteLayout(this, spriteLayoutPath);
     }
 
-    LightManager::GetInstance()->LoadState(
-        ResolveSceneLightPath("Resources/json/light/light_layout.json"));
+    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
-
 }
 
 void SceneAssetEditorScene::Finalize() {
@@ -160,6 +153,7 @@ void SceneAssetEditorScene::Draw() {
     ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
     object3dCommon_->SetGraphicsCommand();
     objectManager_->Draw(pointLight, spotLight);
+    DrawEnemyTelegraphs(pointLight, spotLight);
     BulletManager::GetInstance()->Draw(pointLight, spotLight);
     LightEditor::GetInstance()->Draw3D();
 
@@ -169,17 +163,8 @@ void SceneAssetEditorScene::Draw() {
 
     auto& objects = objectManager_->GetObjects();
     DrawLocalFogObjects(objects, dxCommon_, player_, false);
-    bool grabUpdated = DrawSpecialMaterialObjects(
-        objects,
-        dxCommon_,
-        BulletManager::GetInstance(),
-        player_,
-        false);
-    grabUpdated = DrawGPUParticles(
-        dxCommon_,
-        camera,
-        gpuParticleTextureHandle_,
-        grabUpdated);
+    bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, false);
+    grabUpdated = DrawGPUParticles(dxCommon_, camera, gpuParticleTextureHandle_, grabUpdated);
 
     bool hasAttachedEffects = false;
     for (const auto& object : objects) {
@@ -218,14 +203,10 @@ void SceneAssetEditorScene::DrawShadow() {
     }
 }
 
-std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() {
-    return objectManager_->GetObjects();
-}
+std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() { return objectManager_->GetObjects(); }
 
 void SceneAssetEditorScene::AddObject(std::unique_ptr<Object3d> object) {
     objectManager_->AddObject(std::move(object));
 }
 
-void SceneAssetEditorScene::RequestRemoveObject(Object3d* object) {
-    objectManager_->RequestRemove(object);
-}
+void SceneAssetEditorScene::RequestRemoveObject(Object3d* object) { objectManager_->RequestRemove(object); }

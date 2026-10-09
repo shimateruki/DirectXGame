@@ -107,6 +107,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera);
 void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Object3d* selectedObject);
 
 }
+
 // GameEditorControllerの既定コンストラクタ。メンバ生成はInitializeで行う。
 
 

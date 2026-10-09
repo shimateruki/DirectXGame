@@ -1,18 +1,17 @@
 #include "Character.h"
 
 namespace {
-json ToJson(const Vector3& value) {
-    return json::array({ value.x, value.y, value.z });
-}
+json ToJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
 
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
-    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
-}
+} // namespace
 
+// 位置だけでなく外力の残り時間も保存し、巻き戻し後の移動を再現します。
 void Character::CaptureReplayCustomState(json& state) const {
     Object3d::CaptureReplayCustomState(state);
     state["characterVelocity"] = ToJson(velocity_);

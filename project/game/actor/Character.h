@@ -8,19 +8,19 @@
 /// </summary>
 // Characterは、重力、速度、接地判定、物理衝突補正を持つ移動キャラクターの基底クラスです。
 class Character : public Object3d {
-public:
+  public:
     // 衝突時の基本的な押し戻しを行う
-        // 衝突相手から必要な物理補正やイベント処理を行います。
-bool OnCollision(Object3d* other) override;
+    // 衝突相手から必要な物理補正やイベント処理を行います。
+    bool OnCollision(Object3d* other) override;
 
     /// <summary>
     /// 速度と重力を反映して座標を更新する。
     /// </summary>
-        // 速度、重力、接地状態を反映してTransformを更新します。
-void Update(float deltaTime) override;
+    // 速度、重力、接地状態を反映してTransformを更新します。
+    void Update(float deltaTime) override;
 
-        // キャラクター本体をライト情報付きで描画します。
-void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+    // キャラクター本体をライト情報付きで描画します。
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     Vector3 GetVelocity() const { return velocity_; }
     void SetVelocity(const Vector3& v) { velocity_ = v; }
@@ -53,19 +53,19 @@ void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
         this->param_->maxFallSpeed = maxFallSpeed;
     }
 
-        // 衝突情報に基づいて押し戻しや速度の補正を適用します。
-void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
+    // 衝突情報に基づいて押し戻しや速度の補正を適用します。
+    void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
     std::unique_ptr<Object3d> Clone() const override;
 
-protected:
+  protected:
     void CaptureReplayCustomState(json& state) const override;
     void SyncCharacterMotorSettings();
     void RestoreReplayCustomState(const json& state) override;
 
-    Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 現在速度。
-    bool isGrounded_ = false;                 // 最後の更新で接地しているか。
-    Vector3 externalImpulseVelocity_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
+    bool isGrounded_ = false;               // 最後の更新で接地しているか。
+    Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
     float externalImpulseTimer_ = 0.0f;
     float externalImpulseDuration_ = 0.0f;
     CharacterMotor characterMotor_;

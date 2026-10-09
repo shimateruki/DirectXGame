@@ -6,8 +6,10 @@
 
 using namespace EnemyFalseKingSlimeImplementation;
 
+// 偽王の戦闘フェーズと攻撃状態を進めます。登場・幕間・撃破中は通常AIへ流さず専用演出を優先します。
+
 EnemyFalseKingSlime::EnemyFalseKingSlime() = default;
-EnemyFalseKingSlime::~EnemyFalseKingSlime() = default;
+EnemyFalseKingSlime::~EnemyFalseKingSlime() { ResetCrownFinale(); }
 
 void EnemyFalseKingSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
@@ -22,8 +24,8 @@ void EnemyFalseKingSlime::Initialize(Object3dCommon* common, const std::string& 
     SetEnableEnvMap(true);
     SetEnvIntensity(0.68f);
     SetEmissive(1.0f);
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kOBB);
     defaultColor_ = GetColor();
     SyncCollisionBounds();
@@ -31,6 +33,9 @@ void EnemyFalseKingSlime::Initialize(Object3dCommon* common, const std::string& 
 
 void EnemyFalseKingSlime::Update(float deltaTime) {
     deltaTime = (std::max)(0.0f, deltaTime);
+    // 編集へ戻った時には通常の配置復元へ進ませます。
+    if (finalDefeatHeld_ && SceneManager::GetInstance()->IsPlaying()) return;
+    if (finalDefeatHeld_) CancelFinalDefeat();
     if (UpdateEncounterState(deltaTime)) {
         // 登場演出中はCharacterの重力を止めつつ、変更したTransformだけ描画へ反映します。
         Object3d::Update(deltaTime);
@@ -41,6 +46,10 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
         SetVelocity({});
         Object3d::Update(deltaTime);
         return;
+    }
+    if (finalArenaStarted_ && battlePhase_ == 3 && param_ && param_->hp <= 0 && !isDead) {
+        auto* scene=dynamic_cast<GamePlayScene*>(SceneManager::GetInstance()->GetCurrentScene());
+        if (scene && scene->StartCrownDefeat(this)) return;
     }
     UpdateCrownLances(deltaTime);
     UpdateRoyalWaves(deltaTime);
@@ -53,19 +62,26 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     }
     if (pendingDebugSeals_ && debugPreviewAttackId_.empty()) {
         pendingDebugSeals_ = false;
-        if (param_) param_->hp = GetEncounterMaximumHp() * 0.67f;
+        if (param_)
+            param_->hp = GetEncounterMaximumHp() * 0.67f;
         BeginPhaseShift(2);
     }
     if (pendingDebugInterlude_ && debugPreviewAttackId_.empty()) {
         pendingDebugInterlude_ = false;
-        if (battlePhase_ != 2) { battlePhase_ = 2; InitializeCrownSeals(); }
-        for (int i = 0; i < 3; ++i) TryBreakCrownSeal(crownSeals_[i].position, i);
+        if (battlePhase_ != 2) {
+            battlePhase_ = 2;
+            InitializeCrownSeals();
+        }
+        for (int i = 0; i < 3; ++i)
+            TryBreakCrownSeal(crownSeals_[i].position, i, true);
     }
-    if (battlePhase_ == 2 && debugPreviewAttackId_.empty() && !isDead) {
+    if (battlePhase_ == 2 &&
+        (debugPreviewAttackId_.empty() || debugPreviewAttackId_ == kSealBarragePreviewId) && !isDead) {
         UpdateCrownSeals(deltaTime);
         SetVelocity({});
         ApplyBossAnimation(deltaTime);
         Object3d::Update(deltaTime);
+        UpdateSpellChant(deltaTime);
         return;
     }
 
@@ -100,9 +116,8 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     UpdateBehavior(deltaTime, targetDirection, targetDistance, velocity);
     if (attackState_ == AttackState::Idle && target_ && param_.has_value()) {
         velocity = CombatMath::SmoothPlanarVelocity(previousVelocity, velocity, deltaTime, 4.5f);
-        const Vector3 candidate = GetTranslate() + Vector3{ velocity.x * 0.48f, 0.0f, velocity.z * 0.48f };
-        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(
-            GetTranslate(), candidate, this, { 5.0f, 14.0f }, 1.4f)) {
+        const Vector3 candidate = GetTranslate() + Vector3{velocity.x * 0.48f, 0.0f, velocity.z * 0.48f};
+        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(GetTranslate(), candidate, this, {5.0f, 14.0f}, 1.4f)) {
             velocity.x = 0.0f;
             velocity.z = 0.0f;
         }
@@ -116,12 +131,11 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
     UpdateSpellChant(deltaTime);
 }
 
-void EnemyFalseKingSlime::Draw(
-    ID3D12Resource* pointLightResource,
-    ID3D12Resource* spotLightResource) {
+void EnemyFalseKingSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     BaseEnemy::Draw(pointLightResource, spotLightResource);
     for (const auto& seal : crownSeals_) {
-        for (Object3d* visual : { seal.crystal.get(), seal.ring.get(), seal.link.get(), seal.gem.get() }) {
+        for (Object3d* visual : {static_cast<Object3d*>(seal.crystal.get()), seal.ring.get(), seal.link.get(),
+                                 seal.gem.get()}) {
             if (visual && visual->GetIsVisible()) {
                 visual->RefreshRenderCameraData();
                 visual->Draw(pointLightResource, spotLightResource);
@@ -138,7 +152,7 @@ void EnemyFalseKingSlime::Draw(
         }
     }
     for (const RoyalWave& wave : royalWaves_) {
-        for (Object3d* visual : { wave.visual.get(), wave.glow.get() }) {
+        for (Object3d* visual : {wave.visual.get(), wave.glow.get()}) {
             if (visual && visual->GetIsVisible()) {
                 visual->RefreshRenderCameraData();
                 visual->Draw(pointLightResource, spotLightResource);
@@ -169,44 +183,80 @@ void EnemyFalseKingSlime::Draw(
         }
     }
     for (const AstralReaverOrb& orb : astralReaverOrbs_) {
-        for (EffectObject3d* effect : { orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get() }) {
-            if (effect && effect->GetIsVisible()) effect->Draw(pointLightResource, spotLightResource);
+        for (EffectObject3d* effect : {orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get()}) {
+            if (effect && effect->GetIsVisible())
+                effect->Draw(pointLightResource, spotLightResource);
         }
     }
     for (const auto& ring : astralReaverImpactRings_) {
-        if (ring && ring->GetIsVisible()) ring->Draw(pointLightResource, spotLightResource);
+        if (ring && ring->GetIsVisible())
+            ring->Draw(pointLightResource, spotLightResource);
     }
-    for (EffectObject3d* effect : { astralReaverTargetRing_.get(), astralReaverImpactCore_.get() }) {
-        if (effect && effect->GetIsVisible()) effect->Draw(pointLightResource, spotLightResource);
+    for (EffectObject3d* effect : {astralReaverTargetRing_.get(), astralReaverImpactCore_.get()}) {
+        if (effect && effect->GetIsVisible())
+            effect->Draw(pointLightResource, spotLightResource);
     }
-    for (EffectObject3d* effect : { nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(),
-            nightfallLances_.innerRing.get(), nightfallLances_.spearGlow.get(), nightfallLances_.spearCore.get(),
-            nightfallLances_.impactRing.get(), nightfallLances_.impactCore.get(),
-            nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get() }) {
-        if (effect && effect->GetIsVisible()) effect->Draw(pointLightResource, spotLightResource);
+    for (EffectObject3d* effect :
+         {nightfallLances_.skySigil.get(), nightfallLances_.skyCounterSigil.get(),
+          nightfallLances_.skyOuterRing.get(), nightfallLances_.skyInnerRing.get(),
+          nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(), nightfallLances_.innerRing.get(),
+          nightfallLances_.spearGlow.get(), nightfallLances_.spearCore.get(), nightfallLances_.impactRing.get(),
+          nightfallLances_.impactCore.get(), nightfallLances_.groundArc.get(), nightfallLances_.impactBeam.get(),
+          nightfallLances_.impactBeamHalo.get(), nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get()}) {
+        if (effect && effect->GetIsVisible())
+            effect->Draw(pointLightResource, spotLightResource);
     }
     for (const auto& barb : nightfallLances_.barbs) {
-        if (barb && barb->GetIsVisible()) barb->Draw(pointLightResource, spotLightResource);
+        if (barb && barb->GetIsVisible())
+            barb->Draw(pointLightResource, spotLightResource);
+    }
+    for (const auto& lightning : nightfallLances_.impactLightning) {
+        if (lightning && lightning->GetIsVisible())
+            lightning->Draw(pointLightResource, spotLightResource);
+    }
+    for (const auto& lightning : nightfallLances_.groundLightning) {
+        if (lightning && lightning->GetIsVisible())
+            lightning->Draw(pointLightResource, spotLightResource);
     }
     for (const auto& satellite : sealNightfallSatellites_) {
-        for (EffectObject3d* effect : { satellite.sigil.get(), satellite.core.get(), satellite.glow.get() }) {
-            if (effect && effect->GetIsVisible()) effect->Draw(pointLightResource, spotLightResource);
+        for (EffectObject3d* effect : {satellite.sigil.get(), satellite.core.get(), satellite.glow.get()}) {
+            if (effect && effect->GetIsVisible())
+                effect->Draw(pointLightResource, spotLightResource);
         }
     }
-    for (EffectObject3d* effect : { crownShieldRing_.get(), crownShieldShell_.get() }) {
-        if (effect && effect->GetIsVisible()) effect->Draw(pointLightResource, spotLightResource);
+    for (EffectObject3d* effect : {crownShieldRing_.get(), crownShieldShell_.get(),
+                                   crownCastFloor_.get(), crownArenaRing_.get(), crownBarrageFlash_.get(),
+                                   crownBarrageSkySigil_.get(), crownBarrageSkyCounterSigil_.get(),
+                                   crownBarrageSkyOuterRing_.get(), crownBarrageSkyInnerRing_.get()}) {
+        if (effect && effect->GetIsVisible())
+            effect->Draw(pointLightResource, spotLightResource);
     }
+    for (const auto& effect : crownBarrageLayers_) {
+        if (effect && effect->GetIsVisible())
+            effect->Draw(pointLightResource, spotLightResource);
+    }
+    for (const auto& spear : sealBarrage_) {
+        if (spear.model && spear.model->GetIsVisible())
+            spear.model->Draw(pointLightResource, spotLightResource);
+        for (EffectObject3d* effect : {spear.glow.get(), spear.portal.get(), spear.impactLightning.get(),
+                                       spear.groundArc.get(), spear.impactArc.get(), spear.impactBeam.get()})
+            if (effect && effect->GetIsVisible())
+                effect->Draw(pointLightResource, spotLightResource);
+    }
+    for (const auto& seal : crownSeals_)
+        for (const auto& pulse : seal.energyPulses)
+            if (pulse && pulse->GetIsVisible())
+                pulse->Draw(pointLightResource, spotLightResource);
 }
 
-void EnemyFalseKingSlime::DrawForCamera(
-    Camera* camera,
-    ID3D12Resource* pointLightResource,
-    ID3D12Resource* spotLightResource,
-    int previewBufferIndex) {
+void EnemyFalseKingSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+                                        ID3D12Resource* spotLightResource, int previewBufferIndex) {
     Object3d::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     for (const auto& seal : crownSeals_) {
-        for (Object3d* visual : { seal.crystal.get(), seal.ring.get(), seal.link.get(), seal.gem.get() }) {
-            if (visual && visual->GetIsVisible()) visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        for (Object3d* visual : {static_cast<Object3d*>(seal.crystal.get()), seal.ring.get(), seal.link.get(),
+                                 seal.gem.get()}) {
+            if (visual && visual->GetIsVisible())
+                visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
 
@@ -218,7 +268,7 @@ void EnemyFalseKingSlime::DrawForCamera(
         }
     }
     for (const RoyalWave& wave : royalWaves_) {
-        for (Object3d* visual : { wave.visual.get(), wave.glow.get() }) {
+        for (Object3d* visual : {wave.visual.get(), wave.glow.get()}) {
             if (visual && visual->GetIsVisible()) {
                 visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
             }
@@ -244,7 +294,7 @@ void EnemyFalseKingSlime::DrawForCamera(
         }
     }
     for (const AstralReaverOrb& orb : astralReaverOrbs_) {
-        for (EffectObject3d* effect : { orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get() }) {
+        for (EffectObject3d* effect : {orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get()}) {
             if (effect && effect->GetIsVisible()) {
                 effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
             }
@@ -255,15 +305,18 @@ void EnemyFalseKingSlime::DrawForCamera(
             ring->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
-    for (EffectObject3d* effect : { astralReaverTargetRing_.get(), astralReaverImpactCore_.get() }) {
+    for (EffectObject3d* effect : {astralReaverTargetRing_.get(), astralReaverImpactCore_.get()}) {
         if (effect && effect->GetIsVisible()) {
             effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
-    for (EffectObject3d* effect : { nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(),
-            nightfallLances_.innerRing.get(), nightfallLances_.spearGlow.get(), nightfallLances_.spearCore.get(),
-            nightfallLances_.impactRing.get(), nightfallLances_.impactCore.get(),
-            nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get() }) {
+    for (EffectObject3d* effect :
+         {nightfallLances_.skySigil.get(), nightfallLances_.skyCounterSigil.get(),
+          nightfallLances_.skyOuterRing.get(), nightfallLances_.skyInnerRing.get(),
+          nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(), nightfallLances_.innerRing.get(),
+          nightfallLances_.spearGlow.get(), nightfallLances_.spearCore.get(), nightfallLances_.impactRing.get(),
+          nightfallLances_.impactCore.get(), nightfallLances_.groundArc.get(), nightfallLances_.impactBeam.get(),
+          nightfallLances_.impactBeamHalo.get(), nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get()}) {
         if (effect && effect->GetIsVisible()) {
             effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
@@ -273,16 +326,45 @@ void EnemyFalseKingSlime::DrawForCamera(
             barb->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
+    for (const auto& lightning : nightfallLances_.impactLightning) {
+        if (lightning && lightning->GetIsVisible()) {
+            lightning->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        }
+    }
+    for (const auto& lightning : nightfallLances_.groundLightning) {
+        if (lightning && lightning->GetIsVisible()) {
+            lightning->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        }
+    }
     for (const auto& satellite : sealNightfallSatellites_) {
-        for (EffectObject3d* effect : { satellite.sigil.get(), satellite.core.get(), satellite.glow.get() }) {
+        for (EffectObject3d* effect : {satellite.sigil.get(), satellite.core.get(), satellite.glow.get()}) {
             if (effect && effect->GetIsVisible())
                 effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     }
-    for (EffectObject3d* effect : { crownShieldRing_.get(), crownShieldShell_.get() }) {
+    for (EffectObject3d* effect : {crownShieldRing_.get(), crownShieldShell_.get(),
+                                   crownCastFloor_.get(), crownArenaRing_.get(), crownBarrageFlash_.get(),
+                                   crownBarrageSkySigil_.get(), crownBarrageSkyCounterSigil_.get(),
+                                   crownBarrageSkyOuterRing_.get(), crownBarrageSkyInnerRing_.get()}) {
         if (effect && effect->GetIsVisible())
             effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     }
+    for (const auto& effect : crownBarrageLayers_) {
+        if (effect && effect->GetIsVisible())
+            effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    }
+    for (const auto& spear : sealBarrage_) {
+        if (spear.model && spear.model->GetIsVisible())
+            spear.model->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+        for (EffectObject3d* effect : {spear.glow.get(), spear.portal.get(), spear.impactLightning.get(),
+                                       spear.groundArc.get(), spear.impactArc.get(), spear.impactBeam.get()})
+            if (effect && effect->GetIsVisible())
+                effect->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    }
+    for (const auto& seal : crownSeals_)
+        for (const auto& pulse : seal.energyPulses)
+            if (pulse && pulse->GetIsVisible())
+                pulse->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
 }
 
 void EnemyFalseKingSlime::OnSwitchEvent(bool active) {
@@ -327,25 +409,34 @@ bool EnemyFalseKingSlime::HasOwnedSpecialMaterialVisuals() const {
     if (!GetIsVisible()) {
         return false;
     }
+    if (crownShieldBarrier_ && crownShieldBarrier_->GetIsVisible()) {
+        return true;
+    }
     for (const CrownLance& lance : crownLances_) {
-        if (lance.portal && lance.portal->GetIsVisible()) return true;
-        if (lance.aura && lance.aura->GetIsVisible()) return true;
+        if (lance.portal && lance.portal->GetIsVisible())
+            return true;
+        if (lance.aura && lance.aura->GetIsVisible())
+            return true;
     }
     if (shockwaveChargeVisual_ && shockwaveChargeVisual_->GetIsVisible()) {
         return true;
     }
     for (const RoyalBeam& beam : royalBeams_) {
-        if (beam.glow && beam.glow->GetIsVisible()) return true;
+        if (beam.glow && beam.glow->GetIsVisible())
+            return true;
     }
     for (const UmbraFlamePortal& portal : umbraFlames_) {
-        if (portal.flame && portal.flame->GetIsVisible()) return true;
+        if (portal.flame && portal.flame->GetIsVisible())
+            return true;
     }
     return false;
 }
 
-void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisuals(
-    uint32_t depthSrvHandle,
-    uint32_t grabSrvHandle) {
+void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (crownShieldBarrier_ && crownShieldBarrier_->GetIsVisible()) {
+        crownShieldBarrier_->RefreshRenderCameraData();
+        crownShieldBarrier_->DrawGatePortal(depthSrvHandle, grabSrvHandle);
+    }
     for (const CrownLance& lance : crownLances_) {
         if (lance.portal && lance.portal->GetIsVisible()) {
             lance.portal->RefreshRenderCameraData();
@@ -381,45 +472,65 @@ void EnemyFalseKingSlime::SetDebugPreviewAttackId(const std::string& attackId) {
         CaptureAuthoredState(true);
     }
     debugPreviewAttackId_ = attackId;
-    if (attackId == kCrownDominionAttackId || attackId == kUmbraFlameAttackId ||
-        attackId == kAstralReaverAttackId || attackId == kNightfallLancesAttackId) {
-        battlePhase_ = 3;
-    } else if (attackId == kRoyalCrossAttackId) {
-        battlePhase_ = (std::max)(battlePhase_, 2);
-    }
     currentAttack_ = AttackKind::None;
     attackState_ = AttackState::Idle;
     attackCooldown_ = 0.05f;
     attackTimer_ = 0.0f;
     HideAttackTelegraph();
     ClearTransientVisuals();
+    if (attackId == kSealBarragePreviewId) {
+        battlePhase_ = 2;
+        InitializeCrownSeals();
+        // 結晶の出現、制限時間の詠唱、失敗後の墜槍を本番と同じ秒数で再生します。
+    } else if (attackId == kCrownDominionAttackId || attackId == kUmbraFlameAttackId || attackId == kAstralReaverAttackId ||
+        attackId == kNightfallLancesAttackId) {
+        battlePhase_ = 3;
+    } else if (attackId == kRoyalCrossAttackId) {
+        battlePhase_ = (std::max)(battlePhase_, 2);
+    }
 }
 
 const char* EnemyFalseKingSlime::GetDebugAttackPhaseName() const {
     switch (attackState_) {
-    case AttackState::Windup: return "予兆";
-    case AttackState::Active: return "攻撃";
-    case AttackState::Recovery: return "硬直";
-    case AttackState::PhaseShift: return "形態移行";
-    default: return "待機";
+    case AttackState::Windup:
+        return "予兆";
+    case AttackState::Active:
+        return "攻撃";
+    case AttackState::Recovery:
+        return "硬直";
+    case AttackState::PhaseShift:
+        return "形態移行";
+    default:
+        return "待機";
     }
 }
 
 const char* EnemyFalseKingSlime::GetDebugAttackBodyName() const {
+    if (debugPreviewAttackId_ == kSealBarragePreviewId)
+        return "Crown Seal Barrage";
     AttackKind kind = currentAttack_;
     if (kind == AttackKind::None) {
         kind = ResolveDebugAttack();
     }
     switch (kind) {
-    case AttackKind::CrownLanceRain: return "Crown Lance Mesh";
-    case AttackKind::RoyalShockwave: return "Spiked Royal Wave Mesh";
-    case AttackKind::KingRush: return "Rush Wings + Boss Body";
-    case AttackKind::RoyalCross: return "Sweeping Royal Blade Mesh";
-    case AttackKind::CrownDominion: return "Dominion Sigil + Blades + Lances";
-    case AttackKind::UmbraFlame: return "Umbra Flame Sigils + Violet Flame Volumes";
-    case AttackKind::AstralReaver: return "Astral Reaver Ring Cutters + Orbital Impact Rings";
-    case AttackKind::NightfallLances: return "Nightfall Lance + Target Sigil";
-    default: return "None";
+    case AttackKind::CrownLanceRain:
+        return "Crown Lance Mesh";
+    case AttackKind::RoyalShockwave:
+        return "Spiked Royal Wave Mesh";
+    case AttackKind::KingRush:
+        return "Rush Wings + Boss Body";
+    case AttackKind::RoyalCross:
+        return "Sweeping Royal Blade Mesh";
+    case AttackKind::CrownDominion:
+        return "Dominion Sigil + Blades + Lances";
+    case AttackKind::UmbraFlame:
+        return "Umbra Flame Sigils + Violet Flame Volumes";
+    case AttackKind::AstralReaver:
+        return "Astral Reaver Ring Cutters + Orbital Impact Rings";
+    case AttackKind::NightfallLances:
+        return "Nightfall Lance + Target Sigil";
+    default:
+        return "None";
     }
 }
 
@@ -431,8 +542,7 @@ size_t EnemyFalseKingSlime::GetDebugVisibleAttackVisualCount() const {
         }
     }
     for (const RoyalWave& wave : royalWaves_) {
-        if ((wave.visual && wave.visual->GetIsVisible()) ||
-            (wave.glow && wave.glow->GetIsVisible())) {
+        if ((wave.visual && wave.visual->GetIsVisible()) || (wave.glow && wave.glow->GetIsVisible())) {
             ++visibleCount;
         }
     }
@@ -454,28 +564,62 @@ size_t EnemyFalseKingSlime::GetDebugVisibleAttackVisualCount() const {
         visibleCount += static_cast<size_t>(spellChant_->GetVisibleLayerCount());
     }
     for (const UmbraFlamePortal& portal : umbraFlames_) {
-        if ((portal.sigil && portal.sigil->GetIsVisible()) ||
-            (portal.flame && portal.flame->GetIsVisible())) ++visibleCount;
+        if ((portal.sigil && portal.sigil->GetIsVisible()) || (portal.flame && portal.flame->GetIsVisible()))
+            ++visibleCount;
     }
     for (const AstralReaverOrb& orb : astralReaverOrbs_) {
-        for (EffectObject3d* effect : { orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get() }) {
-            if (effect && effect->GetIsVisible()) ++visibleCount;
+        for (EffectObject3d* effect : {orb.halo.get(), orb.blade.get(), orb.arc.get(), orb.core.get()}) {
+            if (effect && effect->GetIsVisible())
+                ++visibleCount;
         }
     }
     for (const auto& ring : astralReaverImpactRings_) {
-        if (ring && ring->GetIsVisible()) ++visibleCount;
+        if (ring && ring->GetIsVisible())
+            ++visibleCount;
     }
-    for (EffectObject3d* effect : { astralReaverTargetRing_.get(), astralReaverImpactCore_.get() }) {
-        if (effect && effect->GetIsVisible()) ++visibleCount;
+    for (EffectObject3d* effect : {astralReaverTargetRing_.get(), astralReaverImpactCore_.get()}) {
+        if (effect && effect->GetIsVisible())
+            ++visibleCount;
     }
-    for (EffectObject3d* effect : { nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(),
-            nightfallLances_.innerRing.get(), nightfallLances_.spearCore.get(), nightfallLances_.spearGlow.get(),
-            nightfallLances_.impactRing.get(), nightfallLances_.impactCore.get(),
-            nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get() }) {
-        if (effect && effect->GetIsVisible()) ++visibleCount;
+    for (EffectObject3d* effect :
+         {nightfallLances_.skySigil.get(), nightfallLances_.skyCounterSigil.get(),
+          nightfallLances_.skyOuterRing.get(), nightfallLances_.skyInnerRing.get(),
+          nightfallLances_.targetSigil.get(), nightfallLances_.targetRing.get(), nightfallLances_.innerRing.get(),
+          nightfallLances_.spearCore.get(), nightfallLances_.spearGlow.get(), nightfallLances_.impactRing.get(),
+          nightfallLances_.impactCore.get(), nightfallLances_.groundArc.get(), nightfallLances_.impactBeam.get(),
+          nightfallLances_.impactBeamHalo.get(), nightfallLances_.blastRing.get(), nightfallLances_.blastShell.get()}) {
+        if (effect && effect->GetIsVisible())
+            ++visibleCount;
     }
     for (const auto& barb : nightfallLances_.barbs) {
-        if (barb && barb->GetIsVisible()) ++visibleCount;
+        if (barb && barb->GetIsVisible())
+            ++visibleCount;
+    }
+    for (const auto& lightning : nightfallLances_.impactLightning) {
+        if (lightning && lightning->GetIsVisible())
+            ++visibleCount;
+    }
+    for (const auto& lightning : nightfallLances_.groundLightning) {
+        if (lightning && lightning->GetIsVisible())
+            ++visibleCount;
+    }
+    for (const auto& effect : crownBarrageLayers_) {
+        if (effect && effect->GetIsVisible())
+            ++visibleCount;
+    }
+    for (const auto& spear : sealBarrage_) {
+        if (spear.model && spear.model->GetIsVisible())
+            ++visibleCount;
+        for (EffectObject3d* effect : {spear.glow.get(), spear.portal.get(), spear.impactLightning.get(),
+                                       spear.groundArc.get(), spear.impactArc.get(), spear.impactBeam.get()}) {
+            if (effect && effect->GetIsVisible())
+                ++visibleCount;
+        }
+    }
+    for (EffectObject3d* effect : {crownBarrageSkySigil_.get(), crownBarrageSkyCounterSigil_.get(),
+                                   crownBarrageSkyOuterRing_.get(), crownBarrageSkyInnerRing_.get()}) {
+        if (effect && effect->GetIsVisible())
+            ++visibleCount;
     }
     return visibleCount;
 }
@@ -489,11 +633,9 @@ void EnemyFalseKingSlime::EnsureBaseScale() {
     hasBaseScale_ = true;
 }
 
-void EnemyFalseKingSlime::UpdateBehavior(
-    float deltaTime,
-    const Vector3& targetDirection,
-    float targetDistance,
-    Vector3& velocity) {
+// 攻撃と形態移行を優先し、待機中だけ次の技の射程に合わせて位置を調整します。
+void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const Vector3& targetDirection, float targetDistance,
+                                         Vector3& velocity) {
     if (attackState_ == AttackState::PhaseShift) {
         UpdatePhaseShift(deltaTime, velocity);
         return;
@@ -525,9 +667,8 @@ void EnemyFalseKingSlime::UpdateBehavior(
     }
 
     const AttackKind debugAttack = ResolveDebugAttack();
-    const AttackKind plannedAttack = debugAttack != AttackKind::None
-        ? debugAttack
-        : ResolveAutomaticAttack(targetDistance);
+    const AttackKind plannedAttack =
+        debugAttack != AttackKind::None ? debugAttack : ResolveAutomaticAttack(targetDistance);
     const EnemyAttackDefinition& planned = GetAttackDefinition(GetAttackId(plannedAttack));
     const bool inRange = targetDistance >= planned.minRange && targetDistance <= planned.maxRange;
     if (IsBossTargetEngaged() && attackCooldown_ <= 0.0f && inRange) {
@@ -537,17 +678,17 @@ void EnemyFalseKingSlime::UpdateBehavior(
 
     // 攻撃範囲外の時だけゆっくり間合いを詰め、広い闘技場を使わせます。
     const float moveSpeed = targetDistance > planned.maxRange
-        ? (std::max)(6.5f, param_->speed * 3.0f)
-        : (std::max)(0.85f, param_->speed * (battlePhase_ >= 3 ? 1.15f : 0.90f));
+                                ? (std::max)(6.5f, param_->speed * 3.0f)
+                                : (std::max)(0.85f, param_->speed * (battlePhase_ >= 3 ? 1.15f : 0.90f));
     const float preferredDistance = (std::clamp)(planned.recommendedTargetDistance, 7.0f, 15.0f);
-    const Vector3 spacing = CombatMath::MakePacedSpacingVelocity(
-        targetDirection, targetDistance, preferredDistance - 3.0f,
-        preferredDistance + 2.0f, moveSpeed, 0.48f, 0.42f,
-        idleTimer_, 7.0f);
+    const Vector3 spacing =
+        CombatMath::MakePacedSpacingVelocity(targetDirection, targetDistance, preferredDistance - 3.0f,
+                                             preferredDistance + 2.0f, moveSpeed, 0.48f, 0.42f, idleTimer_, 7.0f);
     velocity.x = spacing.x;
     velocity.z = spacing.z;
 }
 
+// 予兆開始時に照準と各演出タイマーを固定し、技ごとの配置物を準備します。
 void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDirection) {
     if (kind == AttackKind::None) {
         return;
@@ -556,9 +697,8 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
     currentAttack_ = kind;
     attackState_ = AttackState::Windup;
     lockedDirection_ = NormalizePlanar(targetDirection);
-    lockedTargetPosition_ = target_
-        ? FindGroundPoint(target_->GetWorldPosition())
-        : FindGroundPoint(GetTranslate() + lockedDirection_ * 9.0f);
+    lockedTargetPosition_ = target_ ? FindGroundPoint(target_->GetWorldPosition())
+                                    : FindGroundPoint(GetTranslate() + lockedDirection_ * 9.0f);
     attackStartPosition_ = FindGroundPoint(GetTranslate());
     attackEndPosition_ = attackStartPosition_;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
@@ -578,25 +718,17 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
         const float firstGateDelay = attackStateDuration_ * 0.08f;
         const float gateSequenceDuration = attackStateDuration_ * 0.62f;
         for (int index = 0; index < count; ++index) {
-            const float sequenceRate = count > 1
-                ? static_cast<float>(index) / static_cast<float>(count - 1)
-                : 0.0f;
+            const float sequenceRate = count > 1 ? static_cast<float>(index) / static_cast<float>(count - 1) : 0.0f;
             const float gateDelay = firstGateDelay + gateSequenceDuration * sequenceRate;
             const float launchAt = attackStateDuration_ + static_cast<float>(index) * kLanceInterval;
-            const float readyDuration = (std::max)(
-                0.08f,
-                launchAt - gateDelay - 0.24f);
+            const float readyDuration = (std::max)(0.08f, launchAt - gateDelay - 0.24f);
             SpawnCrownLance(lanceTargets_[static_cast<size_t>(index)], gateDelay, readyDuration);
         }
         actionIndex_ = count;
     } else if (kind == AttackKind::RoyalShockwave) {
         // 白い柔らかな輪は攻撃判定ではなく、外から中心へ力が集まる充填層に限定します。
-        shockwaveChargeVisual_ = CreateRoyalVisual(
-            "FalseKing_ShockwaveCharge",
-            "Primitives/cylinder",
-            kShockwaveMaterialType,
-            { 1.0f, 0.92f, 0.76f, 0.0f },
-            1.65f);
+        shockwaveChargeVisual_ = CreateRoyalVisual("FalseKing_ShockwaveCharge", "Primitives/cylinder",
+                                                   kShockwaveMaterialType, {1.0f, 0.92f, 0.76f, 0.0f}, 1.65f);
         if (shockwaveChargeVisual_) {
             shockwaveChargeVisual_->SetIsVisible(false);
             if (MeshRenderer* renderer = shockwaveChargeVisual_->GetMeshRenderer()) {
@@ -614,7 +746,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
     } else if (kind == AttackKind::CrownDominion) {
         PrepareLanceTargets(true);
     } else if (kind == AttackKind::UmbraFlame || kind == AttackKind::AstralReaver ||
-        kind == AttackKind::NightfallLances) {
+               kind == AttackKind::NightfallLances) {
         if (kind == AttackKind::UmbraFlame) {
             PrepareUmbraFlames();
         } else if (kind == AttackKind::AstralReaver) {
@@ -624,16 +756,16 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
         }
         BossChantStyle style;
         style.sigilEffectPath = kUmbraFlameSigilEffect;
-        style.motePreset = kind == AttackKind::NightfallLances
-            ? kNightfallLancesChargePreset : "false_king_chant_motes";
+        style.motePreset =
+            kind == AttackKind::NightfallLances ? kNightfallLancesChargePreset : "false_king_chant_motes";
         style.accentColor = kind == AttackKind::NightfallLances
-            ? Vector4{ 0.90f, 0.08f, 0.24f, 1.0f }
-            : (kind == AttackKind::AstralReaver
-                ? Vector4{ 0.82f, 0.22f, 1.0f, 1.0f }
-                : Vector4{ 0.80f, 0.30f, 1.0f, 1.0f });
+                                ? Vector4{0.90f, 0.08f, 0.24f, 1.0f}
+                                : (kind == AttackKind::AstralReaver ? Vector4{0.82f, 0.22f, 1.0f, 1.0f}
+                                                                    : Vector4{0.80f, 0.30f, 1.0f, 1.0f});
         style.radius = std::clamp(baseScale_.x * 1.45f, 2.4f, 4.2f);
         style.fadeStart = kind == AttackKind::AstralReaver || kind == AttackKind::NightfallLances
-            ? 0.16f : (std::max)(0.0f, attack.activeDuration - 0.24f);
+                              ? 0.16f
+                              : (std::max)(0.0f, attack.activeDuration - 0.24f);
         spellChant_ = std::make_unique<BossChantVisual>();
         if (!spellChant_->Start(common_, std::move(style))) {
             spellChant_.reset();
@@ -646,11 +778,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
     }
 }
 
-void EnemyFalseKingSlime::UpdateAttack(
-    float deltaTime,
-    const Vector3& targetDirection,
-    float,
-    Vector3& velocity) {
+void EnemyFalseKingSlime::UpdateAttack(float deltaTime, const Vector3& targetDirection, float, Vector3& velocity) {
     if (attackState_ == AttackState::Windup) {
         UpdateWindup(deltaTime, targetDirection);
         return;
@@ -674,16 +802,13 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDir
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     effectTimer_ -= deltaTime;
-    const float progress = 1.0f - std::clamp(
-        attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
-    const Vector4 warningColor = battlePhase_ >= 3
-        ? Vector4{ 0.90f, 0.18f, 1.0f, 0.86f }
-        : Vector4{ 1.0f, 0.72f, 0.12f, 0.86f };
+    const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
+    const Vector4 warningColor =
+        battlePhase_ >= 3 ? Vector4{0.90f, 0.18f, 1.0f, 0.86f} : Vector4{1.0f, 0.72f, 0.12f, 0.86f};
 
-    if (attackTimer_ > attack.warningLeadTime && target_ &&
-        currentAttack_ != AttackKind::CrownLanceRain &&
-        currentAttack_ != AttackKind::UmbraFlame &&
-        currentAttack_ != AttackKind::AstralReaver && currentAttack_ != AttackKind::NightfallLances) {
+    if (attackTimer_ > attack.warningLeadTime && target_ && currentAttack_ != AttackKind::CrownLanceRain &&
+        currentAttack_ != AttackKind::UmbraFlame && currentAttack_ != AttackKind::AstralReaver &&
+        currentAttack_ != AttackKind::NightfallLances) {
         lockedDirection_ = NormalizePlanar(targetDirection);
         lockedTargetPosition_ = FindGroundPoint(target_->GetWorldPosition());
         if (currentAttack_ == AttackKind::CrownLanceRain) {
@@ -700,20 +825,17 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDir
     }
     case AttackKind::RoyalShockwave: {
         // 溜めはボス直下の一層だけに絞り、着地後の攻撃リングと混同させません。
-        const Vector3 chargeCenter = FindGroundPoint(GetTranslate()) + Vector3{ 0.0f, 0.06f, 0.0f };
+        const Vector3 chargeCenter = FindGroundPoint(GetTranslate()) + Vector3{0.0f, 0.06f, 0.0f};
         const float contraction = SmoothStep01(progress);
         const float pulse = 1.0f + std::sin(progress * kPi * 8.0f) * 0.06f * progress;
         if (shockwaveChargeVisual_) {
             const float radius = Math::Lerp(5.8f, 2.75f, contraction) * pulse;
             shockwaveChargeVisual_->SetIsVisible(progress > 0.02f);
             shockwaveChargeVisual_->SetTranslate(chargeCenter);
-            shockwaveChargeVisual_->SetScale({ radius, 0.045f + progress * 0.035f, radius });
+            shockwaveChargeVisual_->SetScale({radius, 0.045f + progress * 0.035f, radius});
             shockwaveChargeVisual_->SetRotationY(-idleTimer_ * (0.45f + progress * 1.35f));
-            shockwaveChargeVisual_->SetColor({
-                1.0f,
-                battlePhase_ >= 3 ? 0.78f : 0.94f,
-                battlePhase_ >= 3 ? 1.0f : 0.78f,
-                0.34f + progress * 0.46f });
+            shockwaveChargeVisual_->SetColor(
+                {1.0f, battlePhase_ >= 3 ? 0.78f : 0.94f, battlePhase_ >= 3 ? 1.0f : 0.78f, 0.34f + progress * 0.46f});
             shockwaveChargeVisual_->Update(deltaTime);
             shockwaveChargeVisual_->UpdateWorldMatrix(true);
         }
@@ -723,35 +845,36 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDir
             const float chargeRadius = Math::Lerp(5.8f, 2.75f, contraction) * pulse;
             const float rotationOffset = idleTimer_ * (0.55f + progress * 0.65f);
             for (int pointIndex = 0; pointIndex < kChargePointCount; ++pointIndex) {
-                const float angle = rotationOffset +
-                    static_cast<float>(pointIndex) * kTwoPi / static_cast<float>(kChargePointCount);
-                const Vector3 radial{ std::sin(angle), 0.0f, std::cos(angle) };
-                const Vector3 particlePosition = chargeCenter +
-                    radial * chargeRadius + Vector3{ 0.0f, 0.14f, 0.0f };
-                EmitDirectedPreset(
-                    kShockwaveChargeRingPreset,
-                    particlePosition,
-                    { -radial.x, 0.16f + progress * 0.10f, -radial.z },
-                    0.46f + progress * 0.38f);
+                const float angle =
+                    rotationOffset + static_cast<float>(pointIndex) * kTwoPi / static_cast<float>(kChargePointCount);
+                const Vector3 radial{std::sin(angle), 0.0f, std::cos(angle)};
+                const Vector3 particlePosition = chargeCenter + radial * chargeRadius + Vector3{0.0f, 0.14f, 0.0f};
+                EmitDirectedPreset(kShockwaveChargeRingPreset, particlePosition,
+                                   {-radial.x, 0.16f + progress * 0.10f, -radial.z}, 0.46f + progress * 0.38f);
             }
             effectTimer_ += 0.13f;
         }
         break;
     }
     case AttackKind::KingRush:
-        ShowAttackTelegraphLine(
-            FindGroundPoint(GetTranslate()), lockedDirection_,
-            (std::min)(attack.maxRange, 13.0f + static_cast<float>(battlePhase_) * 2.6f),
-            attack.radius * 2.0f, progress, warningColor);
+        ShowAttackTelegraphLine(FindGroundPoint(GetTranslate()), lockedDirection_,
+                                (std::min)(attack.maxRange, 13.0f + static_cast<float>(battlePhase_) * 2.6f),
+                                attack.radius * 2.0f, progress, warningColor);
         break;
     case AttackKind::RoyalCross:
-        ShowAttackTelegraphLaneFan(
-            FindGroundPoint(GetTranslate()), lockedDirection_, attack.maxRange, attack.radius * 2.0f,
-            battlePhase_ >= 3 ? 6 : 4, attack.radius * 3.0f, kPi * 0.5f, progress, warningColor);
+    case AttackKind::CrownDominion: {
+        const bool dominion = currentAttack_ == AttackKind::CrownDominion;
+        const int count = RoyalBeamCount(dominion, battlePhase_);
+        const float step = kTwoPi / static_cast<float>(count);
+        const float fanCenter = std::atan2(lockedDirection_.x, lockedDirection_.z) +
+                                static_cast<float>(count - 1) * 0.5f * step;
+        // 横ずらしをなくし、ボスの足元から実際の初期射線へ放射状に予告します。
+        ShowAttackTelegraphLaneFan(FindGroundPoint(GetTranslate()),
+                                   {std::sin(fanCenter), 0.0f, std::cos(fanCenter)}, attack.maxRange,
+                                   RoyalBeamHalfWidth(dominion, attack.radius) * 2.0f,
+                                   count, 0.0f, step, progress, warningColor);
         break;
-    case AttackKind::CrownDominion:
-        ShowAttackTelegraphCircle(FindGroundPoint(GetTranslate()), attack.maxRange, progress, warningColor);
-        break;
+    }
     case AttackKind::UmbraFlame:
         UpdateUmbraFlames(deltaTime, false);
         break;
@@ -768,11 +891,9 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDir
     if (effectTimer_ <= 0.0f && currentAttack_ != AttackKind::RoyalShockwave &&
         currentAttack_ != AttackKind::UmbraFlame && currentAttack_ != AttackKind::AstralReaver &&
         currentAttack_ != AttackKind::NightfallLances) {
-        EmitDirectedPreset(
-            currentAttack_ == AttackKind::CrownDominion ? kDominionPreset : kChargePreset,
-            GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 1.5f, 0.0f },
-            { -lockedDirection_.x * 0.12f, 1.0f, -lockedDirection_.z * 0.12f },
-            0.92f + progress * 0.78f);
+        EmitDirectedPreset(currentAttack_ == AttackKind::CrownDominion ? kDominionPreset : kChargePreset,
+                           GetWorldPosition() + Vector3{0.0f, baseScale_.y * 1.5f, 0.0f},
+                           {-lockedDirection_.x * 0.12f, 1.0f, -lockedDirection_.z * 0.12f}, 0.92f + progress * 0.78f);
         effectTimer_ += (std::max)(0.12f, 0.24f - progress * 0.08f);
     }
     if (!warningTriggered_ && attackTimer_ <= attack.warningLeadTime) {
@@ -791,9 +912,8 @@ void EnemyFalseKingSlime::BeginActive() {
     attackTimer_ = attackStateDuration_;
     actionTimer_ = 0.0f;
     effectTimer_ = 0.0f;
-    actionIndex_ = currentAttack_ == AttackKind::CrownLanceRain
-        ? (battlePhase_ == 1 ? 10 : (battlePhase_ == 2 ? 14 : 18))
-        : 0;
+    actionIndex_ =
+        currentAttack_ == AttackKind::CrownLanceRain ? (battlePhase_ == 1 ? 10 : (battlePhase_ == 2 ? 14 : 18)) : 0;
     HideAttackTelegraph();
 
     switch (currentAttack_) {
@@ -808,17 +928,14 @@ void EnemyFalseKingSlime::BeginActive() {
         break;
     case AttackKind::CrownDominion:
         SpawnRoyalBeams(true);
-        dominionSigilVisual_ = CreateRoyalMesh(
-            "FalseKing_DominionSigil",
-            kDominionSigilModel,
-            { 1.0f, 1.0f, 1.0f, 1.0f },
-            2.15f);
+        dominionSigilVisual_ =
+            CreateRoyalMesh("FalseKing_DominionSigil", kDominionSigilModel, {1.0f, 1.0f, 1.0f, 1.0f}, 2.15f);
         if (dominionSigilVisual_) {
             dominionSigilVisual_->SetIsVisible(false);
             dominionSigilVisual_->UpdateWorldMatrix(true);
         }
         dominionLanceTimer_ = 0.32f;
-        VFXSequencer::PlayOneShot(kDominionSequence, FindGroundPoint(GetTranslate()), { 2.4f, 2.4f, 2.4f });
+        VFXSequencer::PlayOneShot(kDominionSequence, FindGroundPoint(GetTranslate()), {2.4f, 2.4f, 2.4f});
         break;
     case AttackKind::UmbraFlame:
         umbraFlameFanHit_ = false;
@@ -842,10 +959,7 @@ void EnemyFalseKingSlime::BeginActive() {
     }
 }
 
-void EnemyFalseKingSlime::UpdateActive(
-    float deltaTime,
-    const Vector3& targetDirection,
-    Vector3& velocity) {
+void EnemyFalseKingSlime::UpdateActive(float deltaTime, const Vector3& targetDirection, Vector3& velocity) {
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     actionTimer_ -= deltaTime;
     effectTimer_ -= deltaTime;
@@ -905,7 +1019,7 @@ void EnemyFalseKingSlime::BeginRecovery() {
     attackStateDuration_ = (std::max)(0.18f, attack.recoveryDuration);
     attackTimer_ = attackStateDuration_;
     HideAttackTelegraph();
-    SetVelocity({ 0.0f, GetVelocity().y, 0.0f });
+    SetVelocity({0.0f, GetVelocity().y, 0.0f});
     rushWingsVisual_.reset();
     dominionSigilVisual_.reset();
     if (currentAttack_ == AttackKind::UmbraFlame) {
@@ -919,7 +1033,8 @@ void EnemyFalseKingSlime::BeginRecovery() {
             orb.arc.reset();
             orb.core.reset();
         }
-        for (auto& ring : astralReaverImpactRings_) ring.reset();
+        for (auto& ring : astralReaverImpactRings_)
+            ring.reset();
         astralReaverTargetRing_.reset();
         astralReaverImpactCore_.reset();
     }
@@ -931,7 +1046,8 @@ void EnemyFalseKingSlime::BeginRecovery() {
 
 void EnemyFalseKingSlime::FinishAttack() {
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    attackCooldown_ = (std::max)(0.35f, attack.cooldown * (battlePhase_ == 1 ? 1.0f : (battlePhase_ == 2 ? 0.88f : 0.78f)));
+    attackCooldown_ =
+        (std::max)(0.35f, attack.cooldown * (battlePhase_ == 1 ? 1.0f : (battlePhase_ == 2 ? 0.88f : 0.78f)));
     currentAttack_ = AttackKind::None;
     attackState_ = AttackState::Idle;
     attackTimer_ = 0.0f;
@@ -941,52 +1057,44 @@ void EnemyFalseKingSlime::FinishAttack() {
 }
 
 void EnemyFalseKingSlime::UpdateSpellChant(float deltaTime) {
-    if (!spellChant_) return;
+    if (!spellChant_)
+        return;
     BossChantFrame frame;
     frame.casterPosition = GetWorldPosition();
     frame.groundPosition = FindGroundPoint(frame.casterPosition);
     const AABB bounds = GetModelWorldAABB();
-    frame.casterRadius = (std::max)({
-        (bounds.max.x - bounds.min.x) * 0.5f,
-        (bounds.max.z - bounds.min.z) * 0.5f,
-        baseScale_.x * 0.84f });
-    frame.casterHeight = (std::max)(bounds.max.y - bounds.min.y,
-        baseScale_.y * 1.2f);
-    frame.sigilCenter = frame.casterPosition + lockedDirection_ *
-        std::clamp(frame.casterRadius * 1.55f, 2.5f, 5.4f) +
-        Vector3{ 0.0f, frame.casterHeight * 0.48f, 0.0f };
+    frame.casterRadius =
+        (std::max)({(bounds.max.x - bounds.min.x) * 0.5f, (bounds.max.z - bounds.min.z) * 0.5f, baseScale_.x * 0.84f});
+    frame.casterHeight = (std::max)(bounds.max.y - bounds.min.y, baseScale_.y * 1.2f);
+    frame.sigilCenter = frame.casterPosition + lockedDirection_ * std::clamp(frame.casterRadius * 1.55f, 2.5f, 5.4f) +
+                        Vector3{0.0f, frame.casterHeight * 0.48f, 0.0f};
     frame.forward = lockedDirection_;
-    frame.casting = (currentAttack_ == AttackKind::UmbraFlame ||
-        currentAttack_ == AttackKind::AstralReaver || currentAttack_ == AttackKind::NightfallLances) &&
-        attackState_ == AttackState::Windup;
-    frame.releasing = (currentAttack_ == AttackKind::UmbraFlame ||
-        currentAttack_ == AttackKind::AstralReaver || currentAttack_ == AttackKind::NightfallLances) &&
-        attackState_ == AttackState::Active;
-    frame.windupProgress = frame.casting
-        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f)
-        : 1.0f;
-    frame.activeElapsed = frame.releasing
-        ? (std::max)(0.0f, attackStateDuration_ - attackTimer_) : 0.0f;
+    frame.casting = (currentAttack_ == AttackKind::UmbraFlame || currentAttack_ == AttackKind::AstralReaver ||
+                     currentAttack_ == AttackKind::NightfallLances) &&
+                    attackState_ == AttackState::Windup;
+    frame.releasing = (currentAttack_ == AttackKind::UmbraFlame || currentAttack_ == AttackKind::AstralReaver ||
+                       currentAttack_ == AttackKind::NightfallLances) &&
+                      attackState_ == AttackState::Active;
+    frame.windupProgress =
+        frame.casting ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f) : 1.0f;
+    frame.activeElapsed = frame.releasing ? (std::max)(0.0f, attackStateDuration_ - attackTimer_) : 0.0f;
     frame.time = idleTimer_;
     frame.deltaTime = deltaTime;
     spellChant_->Update(frame);
 }
 
 void EnemyFalseKingSlime::PrepareAttackCycle() {
-    static constexpr std::array<AttackKind, 3> phaseOne = {
-        AttackKind::CrownLanceRain, AttackKind::RoyalShockwave, AttackKind::KingRush };
-    static constexpr std::array<AttackKind, 4> phaseTwo = {
-        AttackKind::RoyalCross, AttackKind::CrownLanceRain,
-        AttackKind::KingRush, AttackKind::RoyalShockwave };
+    static constexpr std::array<AttackKind, 3> phaseOne = {AttackKind::CrownLanceRain, AttackKind::RoyalShockwave,
+                                                           AttackKind::KingRush};
+    static constexpr std::array<AttackKind, 4> phaseTwo = {AttackKind::RoyalCross, AttackKind::CrownLanceRain,
+                                                           AttackKind::KingRush, AttackKind::RoyalShockwave};
     static constexpr std::array<AttackKind, 8> phaseThree = {
-        AttackKind::CrownDominion, AttackKind::KingRush, AttackKind::UmbraFlame,
-        AttackKind::AstralReaver, AttackKind::NightfallLances,
-        AttackKind::CrownLanceRain, AttackKind::RoyalCross, AttackKind::RoyalShockwave };
+        AttackKind::CrownDominion,   AttackKind::KingRush,       AttackKind::UmbraFlame, AttackKind::AstralReaver,
+        AttackKind::NightfallLances, AttackKind::CrownLanceRain, AttackKind::RoyalCross, AttackKind::RoyalShockwave};
 
-    attackCycleCount_ = battlePhase_ <= 1 ? phaseOne.size()
-        : (battlePhase_ == 2 ? phaseTwo.size() : phaseThree.size());
-    const AttackKind* source = battlePhase_ <= 1 ? phaseOne.data()
-        : (battlePhase_ == 2 ? phaseTwo.data() : phaseThree.data());
+    attackCycleCount_ = battlePhase_ <= 1 ? phaseOne.size() : (battlePhase_ == 2 ? phaseTwo.size() : phaseThree.size());
+    const AttackKind* source =
+        battlePhase_ <= 1 ? phaseOne.data() : (battlePhase_ == 2 ? phaseTwo.data() : phaseThree.data());
     std::copy_n(source, attackCycleCount_, attackCycle_.begin());
     std::shuffle(attackCycle_.begin(), attackCycle_.begin() + attackCycleCount_, attackRandom_);
     if (attackCycleCount_ > 1 && attackCycle_[0] == lastAutomaticAttack_) {
@@ -1015,28 +1123,45 @@ EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveAutomaticAttack(floa
 }
 
 EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveDebugAttack() const {
-    if (debugPreviewAttackId_ == kCrownLanceRainAttackId) return AttackKind::CrownLanceRain;
-    if (debugPreviewAttackId_ == kRoyalShockwaveAttackId) return AttackKind::RoyalShockwave;
-    if (debugPreviewAttackId_ == kKingRushAttackId) return AttackKind::KingRush;
-    if (debugPreviewAttackId_ == kRoyalCrossAttackId) return AttackKind::RoyalCross;
-    if (debugPreviewAttackId_ == kCrownDominionAttackId) return AttackKind::CrownDominion;
-    if (debugPreviewAttackId_ == kUmbraFlameAttackId) return AttackKind::UmbraFlame;
-    if (debugPreviewAttackId_ == kAstralReaverAttackId) return AttackKind::AstralReaver;
-    if (debugPreviewAttackId_ == kNightfallLancesAttackId) return AttackKind::NightfallLances;
+    if (debugPreviewAttackId_ == kCrownLanceRainAttackId)
+        return AttackKind::CrownLanceRain;
+    if (debugPreviewAttackId_ == kRoyalShockwaveAttackId)
+        return AttackKind::RoyalShockwave;
+    if (debugPreviewAttackId_ == kKingRushAttackId)
+        return AttackKind::KingRush;
+    if (debugPreviewAttackId_ == kRoyalCrossAttackId)
+        return AttackKind::RoyalCross;
+    if (debugPreviewAttackId_ == kCrownDominionAttackId)
+        return AttackKind::CrownDominion;
+    if (debugPreviewAttackId_ == kUmbraFlameAttackId)
+        return AttackKind::UmbraFlame;
+    if (debugPreviewAttackId_ == kAstralReaverAttackId)
+        return AttackKind::AstralReaver;
+    if (debugPreviewAttackId_ == kNightfallLancesAttackId)
+        return AttackKind::NightfallLances;
     return AttackKind::None;
 }
 
 const char* EnemyFalseKingSlime::GetAttackId(AttackKind kind) const {
     switch (kind) {
-    case AttackKind::CrownLanceRain: return kCrownLanceRainAttackId;
-    case AttackKind::RoyalShockwave: return kRoyalShockwaveAttackId;
-    case AttackKind::KingRush: return kKingRushAttackId;
-    case AttackKind::RoyalCross: return kRoyalCrossAttackId;
-    case AttackKind::CrownDominion: return kCrownDominionAttackId;
-    case AttackKind::UmbraFlame: return kUmbraFlameAttackId;
-    case AttackKind::AstralReaver: return kAstralReaverAttackId;
-    case AttackKind::NightfallLances: return kNightfallLancesAttackId;
-    default: return kCrownLanceRainAttackId;
+    case AttackKind::CrownLanceRain:
+        return kCrownLanceRainAttackId;
+    case AttackKind::RoyalShockwave:
+        return kRoyalShockwaveAttackId;
+    case AttackKind::KingRush:
+        return kKingRushAttackId;
+    case AttackKind::RoyalCross:
+        return kRoyalCrossAttackId;
+    case AttackKind::CrownDominion:
+        return kCrownDominionAttackId;
+    case AttackKind::UmbraFlame:
+        return kUmbraFlameAttackId;
+    case AttackKind::AstralReaver:
+        return kAstralReaverAttackId;
+    case AttackKind::NightfallLances:
+        return kNightfallLancesAttackId;
+    default:
+        return kCrownLanceRainAttackId;
     }
 }
 
@@ -1047,8 +1172,10 @@ const EnemyAttackDefinition& EnemyFalseKingSlime::GetCurrentAttackDefinition() c
 int EnemyFalseKingSlime::ResolveDesiredBattlePhase() const {
     const float maximumHp = GetEncounterMaximumHp();
     const float hpRate = maximumHp > 0.0f ? GetEncounterCurrentHp() / maximumHp : 1.0f;
-    if (finalArenaStarted_) return 3;
-    if (hpRate <= 0.6701f) return 2;
+    if (finalArenaStarted_)
+        return 3;
+    if (hpRate <= 0.6701f)
+        return 2;
     return 1;
 }
 
@@ -1057,32 +1184,39 @@ void EnemyFalseKingSlime::BeginPhaseShift(int nextPhase) {
     attackState_ = AttackState::PhaseShift;
     currentAttack_ = AttackKind::None;
     phaseTransitionTimer_ = 0.0f;
+    phaseShiftStartPosition_ = GetTranslate();
     attackTimer_ = 0.0f;
     ClearTransientVisuals();
     HideAttackTelegraph();
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    VFXSequencer::PlayOneShot(
-        kPhaseShiftSequence,
-        FindGroundPoint(GetTranslate()) + Vector3{ 0.0f, 0.15f, 0.0f },
-        { 2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f,
-          2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f,
-          2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
+    VFXSequencer::PlayOneShot(kPhaseShiftSequence, FindGroundPoint(GetTranslate()) + Vector3{0.0f, 0.15f, 0.0f},
+                              {2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f,
+                               2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f,
+                               2.1f + static_cast<float>(pendingBattlePhase_) * 0.25f});
 }
 
 void EnemyFalseKingSlime::UpdatePhaseShift(float deltaTime, Vector3& velocity) {
     phaseTransitionTimer_ += deltaTime;
-    velocity = { 0.0f, 0.0f, 0.0f };
+    velocity = {0.0f, 0.0f, 0.0f};
     const float progress = GetPhaseTransitionProgress();
+    if (pendingBattlePhase_ == 2) {
+        // 形態変化の間に舞台中央へ移動し、結晶召喚より先に立ち位置を確定させます。
+        const Vector3 center = FindGroundPoint(
+            authoredPosition_ + Vector3{0.0f, 0.0f, CrownFinaleTuning::Get().sealCenterOffsetZ});
+        SetTranslate(LerpVector3(phaseShiftStartPosition_, center, SmoothStep01(progress)));
+    }
     effectTimer_ -= deltaTime;
     if (effectTimer_ <= 0.0f) {
         const float angle = idleTimer_ * (4.0f + static_cast<float>(pendingBattlePhase_));
-        const Vector3 direction = { std::sin(angle) * 0.45f, 1.0f, std::cos(angle) * 0.45f };
-        EmitDirectedPreset(kDominionPreset, GetWorldPosition() + Vector3{ 0.0f, 1.4f, 0.0f }, direction, 1.0f + progress * 0.9f);
+        const Vector3 direction = {std::sin(angle) * 0.45f, 1.0f, std::cos(angle) * 0.45f};
+        EmitDirectedPreset(kDominionPreset, GetWorldPosition() + Vector3{0.0f, 1.4f, 0.0f}, direction,
+                           1.0f + progress * 0.9f);
         effectTimer_ += 0.14f;
     }
     if (phaseTransitionTimer_ >= phaseTransitionDuration_) {
         battlePhase_ = pendingBattlePhase_;
-        if (battlePhase_ == 2 && debugPreviewAttackId_.empty()) InitializeCrownSeals();
+        if (battlePhase_ == 2 && debugPreviewAttackId_.empty())
+            InitializeCrownSeals();
         attackState_ = AttackState::Idle;
         phaseTransitionTimer_ = phaseTransitionDuration_;
         attackCooldown_ = 0.72f;
@@ -1109,9 +1243,8 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
     params.verticalStretch = 0.23f;
     params.airborneStretch = 0.33f;
 
-    Vector3 targetScale = SlimeBounceAnimator::MakeScale(
-        baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
-    Vector3 targetRotation = { authoredRotation_.x, GetRotation().y, authoredRotation_.z };
+    Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    Vector3 targetRotation = {authoredRotation_.x, GetRotation().y, authoredRotation_.z};
     if (attackState_ == AttackState::Windup) {
         const float progress = SmoothStep01(1.0f - attackTimer_ / (std::max)(attackStateDuration_, 0.01f));
         const float tremble = std::sin(progress * kPi * 18.0f) * progress * 0.045f;
@@ -1124,8 +1257,8 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
     } else if (attackState_ == AttackState::Active) {
         const float progress = 1.0f - attackTimer_ / (std::max)(attackStateDuration_, 0.01f);
         if (currentAttack_ == AttackKind::RoyalShockwave) {
-            const float jumpProgress = std::clamp(
-                shockwaveJumpTimer_ / (std::max)(shockwaveJumpDuration_, 0.01f), 0.0f, 1.0f);
+            const float jumpProgress =
+                std::clamp(shockwaveJumpTimer_ / (std::max)(shockwaveJumpDuration_, 0.01f), 0.0f, 1.0f);
             if (!shockwaveLanded_) {
                 const float airStretch = std::sin(jumpProgress * kPi);
                 targetScale = {
@@ -1181,9 +1314,8 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
         };
     }
     if (attackState_ == AttackState::Idle) {
-        SlimeBounceAnimator::ApplyTravelPose(targetScale, targetRotation,
-            baseScale_, GetVelocity(), GetRotation().y - kModelYawOffset,
-            4.2f, 0.045f, 0.060f);
+        SlimeBounceAnimator::ApplyTravelPose(targetScale, targetRotation, baseScale_, GetVelocity(),
+                                             GetRotation().y - kModelYawOffset, 4.2f, 0.045f, 0.060f);
     }
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float follow = 1.0f - std::exp(-deltaTime * 11.0f);
@@ -1203,29 +1335,27 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
 
 void EnemyFalseKingSlime::UpdateRoyalGlow(float deltaTime) {
     ambientSparkTimer_ -= deltaTime;
-    const bool attacking = attackState_ == AttackState::Windup || attackState_ == AttackState::Active || attackState_ == AttackState::PhaseShift;
+    const bool attacking = attackState_ == AttackState::Windup || attackState_ == AttackState::Active ||
+                           attackState_ == AttackState::PhaseShift;
     const float pulse = 0.5f + std::sin(idleTimer_ * (attacking ? 8.2f : 3.4f)) * 0.5f;
     Vector4 phaseColor = authoredColor_;
     if (battlePhase_ == 2) {
-        phaseColor = { 1.0f, 0.90f, 1.0f, authoredColor_.w };
+        phaseColor = {1.0f, 0.90f, 1.0f, authoredColor_.w};
     } else if (battlePhase_ >= 3) {
-        phaseColor = armorOpenTimer_ > 0.0f
-            ? Vector4{ 1.0f, 0.92f, 0.50f, authoredColor_.w }
-            : Vector4{ 0.74f, 0.58f, 1.0f, authoredColor_.w };
+        phaseColor = armorOpenTimer_ > 0.0f ? Vector4{1.0f, 0.92f, 0.50f, authoredColor_.w}
+                                            : Vector4{0.74f, 0.58f, 1.0f, authoredColor_.w};
     }
     defaultColor_ = phaseColor;
     SetColor(phaseColor);
-    SetEmissive(authoredEmissive_ + static_cast<float>(battlePhase_ - 1) * 0.34f + (attacking ? 0.52f : 0.0f) + pulse * 0.12f);
+    SetEmissive(authoredEmissive_ + static_cast<float>(battlePhase_ - 1) * 0.34f + (attacking ? 0.52f : 0.0f) +
+                pulse * 0.12f);
     if (!attacking) {
         ambientSparkTimer_ = 0.0f;
         return;
     }
     if (ambientSparkTimer_ <= 0.0f) {
-        EmitDirectedPreset(
-            battlePhase_ >= 3 ? kDominionPreset : kChargePreset,
-            GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 1.28f, 0.0f },
-            { 0.0f, 1.0f, 0.0f },
-            1.12f);
+        EmitDirectedPreset(battlePhase_ >= 3 ? kDominionPreset : kChargePreset,
+                           GetWorldPosition() + Vector3{0.0f, baseScale_.y * 1.28f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.12f);
         ambientSparkTimer_ += battlePhase_ >= 3 ? 0.14f : 0.18f;
     }
 }
@@ -1237,11 +1367,8 @@ void EnemyFalseKingSlime::EmitPreset(const char* presetName, const Vector3& posi
     }
 }
 
-void EnemyFalseKingSlime::EmitDirectedPreset(
-    const char* presetName,
-    const Vector3& position,
-    const Vector3& direction,
-    float speedScale) const {
+void EnemyFalseKingSlime::EmitDirectedPreset(const char* presetName, const Vector3& position, const Vector3& direction,
+                                             float speedScale) const {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);
@@ -1262,7 +1389,8 @@ void EnemyFalseKingSlime::ClearTransientVisuals() {
         orb.arc.reset();
         orb.core.reset();
     }
-    for (auto& ring : astralReaverImpactRings_) ring.reset();
+    for (auto& ring : astralReaverImpactRings_)
+        ring.reset();
     astralReaverTargetRing_.reset();
     astralReaverImpactCore_.reset();
     astralReaverElapsed_ = 0.0f;
@@ -1277,36 +1405,32 @@ void EnemyFalseKingSlime::ClearTransientVisuals() {
     shockwaveLanded_ = false;
 }
 
-void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisualsForCamera(
-    Camera* camera,
-    uint32_t depthSrvHandle,
-    uint32_t grabSrvHandle,
-    int previewBufferIndex) {
+void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle,
+                                                                   uint32_t grabSrvHandle, int previewBufferIndex) {
     if (!camera) {
         return;
     }
+    if (crownShieldBarrier_ && crownShieldBarrier_->GetIsVisible()) {
+        crownShieldBarrier_->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+    }
     for (const CrownLance& lance : crownLances_) {
-        for (Object3d* visual : { lance.portal.get(), lance.aura.get() }) {
+        for (Object3d* visual : {lance.portal.get(), lance.aura.get()}) {
             if (visual && visual->GetIsVisible()) {
-                visual->DrawSpecialMaterialForCamera(
-                    camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+                visual->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
             }
         }
     }
     if (shockwaveChargeVisual_ && shockwaveChargeVisual_->GetIsVisible()) {
-        shockwaveChargeVisual_->DrawSpecialMaterialForCamera(
-            camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+        shockwaveChargeVisual_->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
     }
     for (const RoyalBeam& beam : royalBeams_) {
         if (beam.glow && beam.glow->GetIsVisible()) {
-            beam.glow->DrawSpecialMaterialForCamera(
-                camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+            beam.glow->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
         }
     }
     for (const UmbraFlamePortal& portal : umbraFlames_) {
         if (portal.flame && portal.flame->GetIsVisible()) {
-            portal.flame->DrawSpecialMaterialForCamera(
-                camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
+            portal.flame->DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
         }
     }
 }

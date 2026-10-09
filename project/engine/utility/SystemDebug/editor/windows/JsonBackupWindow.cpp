@@ -220,6 +220,7 @@ void JsonBackupWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
     LoadLatestReport();
 
+    // ウィンドウの再初期化で監視プロセスを重複起動しない。
     if (!watcherStartAttempted_) {
         watcherStartAttempted_ = true;
         StartWatcher(true);
@@ -264,6 +265,7 @@ void JsonBackupWindow::DrawImGui() {
 }
 
 bool JsonBackupWindow::RunBackupOnce() {
+    // 単発実行は終了まで待ち、出力済みレポートを読み直して件数を表示する。
     DWORD exitCode = 1;
     const bool ok = RunHiddenProcessAndWait(BuildToolCommand(false), &exitCode);
     LoadLatestReport();
@@ -285,6 +287,7 @@ bool JsonBackupWindow::RunBackupOnce() {
 }
 
 bool JsonBackupWindow::StartWatcher(bool quiet) {
+    // 常駐監視は分離起動し、Editor の画面更新を待たせない。
     const bool ok = RunHiddenProcessDetached(BuildToolCommand(true));
     LoadLatestReport();
     if (!ok) {

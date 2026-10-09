@@ -10,10 +10,10 @@
 namespace {
 constexpr float kFlightDuration = 0.45f;
 constexpr float kPickupDelay = 0.70f;
-}
+} // namespace
 
-void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& enemyType,
-    bool unlimitedDuration, const Vector3& start, const Vector3& destination) {
+void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
+                                     const Vector3& start, const Vector3& destination) {
     enemyType_ = enemyType;
     unlimitedDuration_ = unlimitedDuration;
     start_ = start;
@@ -39,9 +39,11 @@ void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& 
 }
 
 void DroppedCopyStar::Update(float deltaTime) {
-    if (isDead || isCollected_) return;
+    if (isDead || isCollected_)
+        return;
     auto* manager = SceneManager::GetInstance();
-    if (!manager || !manager->IsPlaying()) return;
+    if (!manager || !manager->IsPlaying())
+        return;
     deltaTime = std::isfinite(deltaTime) ? (std::max)(0.0f, deltaTime) : 0.0f;
     elapsed_ += deltaTime;
     if (elapsed_ >= lifetime_) {
@@ -51,7 +53,8 @@ void DroppedCopyStar::Update(float deltaTime) {
     const float t = std::clamp(elapsed_ / kFlightDuration, 0.0f, 1.0f);
     Vector3 position = start_ * (1.0f - t) + destination_ * t;
     position.y += std::sin(t * 3.14159265f) * 0.85f;
-    if (t >= 1.0f) position.y += std::sin((elapsed_ - kFlightDuration) * 2.15f) * 0.10f;
+    if (t >= 1.0f)
+        position.y += std::sin((elapsed_ - kFlightDuration) * 2.15f) * 0.10f;
     SetTranslate(position);
     const float remaining = lifetime_ - elapsed_;
     // 点滅中も拾える判定は維持し、消える瞬間にだけ判定も取り除きます。
@@ -61,14 +64,16 @@ void DroppedCopyStar::Update(float deltaTime) {
 }
 
 void DroppedCopyStar::Collect(Player* player) {
-    if (!player || isCollected_ || isDead || elapsed_ < kPickupDelay || elapsed_ >= lifetime_) return;
+    if (!player || isCollected_ || isDead || elapsed_ < kPickupDelay || elapsed_ >= lifetime_)
+        return;
     auto* manager = SceneManager::GetInstance();
-    if (!manager || !manager->IsPlaying()) return;
-    if (!player->ApplyStoredCopy(enemyType_, unlimitedDuration_)) return;
+    if (!manager || !manager->IsPlaying())
+        return;
+    if (!player->ApplyStoredCopy(enemyType_, unlimitedDuration_))
+        return;
     // 成功した瞬間に消費し、同フレームの重複衝突でも二重取得させません。
     MarkCollected();
-    VFXSequencer::PlayOneShot("copy_memory_station_activate_cue",
-        player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
+    VFXSequencer::PlayOneShot("copy_memory_station_activate_cue", player->GetWorldPosition(), {0.65f, 0.65f, 0.65f});
 }
 
 std::unique_ptr<Object3d> DroppedCopyStar::Clone() const {

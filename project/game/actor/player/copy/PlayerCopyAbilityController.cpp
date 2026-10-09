@@ -28,18 +28,25 @@ std::unique_ptr<ICopyAbilitySession> CreateSession(int morphType, const EnemyAtt
 }
 
 const char* GetEnemyTypeForMorph(int morphType) {
-    if (morphType == static_cast<int>(Player::EnemyMorphType::Crown)) return "FalseKingSlime";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::Slime)) return "Slime";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::FireSlime)) return "FireSlime";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::ThunderSlime)) return "ThunderSlime";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::WindSlime)) return "WindSlime";
-    if (morphType == static_cast<int>(Player::EnemyMorphType::Bomber)) return "Bomber";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::Crown))
+        return "FalseKingSlime";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::Slime))
+        return "Slime";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::FireSlime))
+        return "FireSlime";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::ThunderSlime))
+        return "ThunderSlime";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::WindSlime))
+        return "WindSlime";
+    if (morphType == static_cast<int>(Player::EnemyMorphType::Bomber))
+        return "Bomber";
     return "";
 }
-}
+} // namespace
 
+// 現在のコピー種別と能力セッションの所有者。具体的な能力型を公開ヘッダーから隠す。
 class PlayerCopyAbilityController::Impl {
-public:
+  public:
     int morphType = static_cast<int>(Player::EnemyMorphType::None);
     std::unique_ptr<ICopyAbilitySession> session;
 };
@@ -59,7 +66,9 @@ void PlayerCopyAbilityController::ActivateDefault(int morphType) {
         impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
         return;
     }
-    Activate(morphType, EnemyAttackProfile::CreateDefault(enemyType));
+    EnemyAttackProfile profile;
+    EnemyAttackProfile::LoadCachedForEnemy(enemyType, profile);
+    Activate(morphType, profile);
 }
 
 void PlayerCopyAbilityController::ProcessInput(Player& player, const PlayerCopyAbilityInput& input) {
@@ -82,8 +91,10 @@ void PlayerCopyAbilityController::Cancel(Player& player) {
     impl_->morphType = static_cast<int>(Player::EnemyMorphType::None);
 }
 
-void PlayerCopyAbilityController::Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight, Camera* camera, int previewBufferIndex) {
-    if (impl_->session) impl_->session->Draw(player, pointLight, spotLight, camera, previewBufferIndex);
+void PlayerCopyAbilityController::Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight,
+                                       Camera* camera, int previewBufferIndex) {
+    if (impl_->session)
+        impl_->session->Draw(player, pointLight, spotLight, camera, previewBufferIndex);
 }
 
 bool PlayerCopyAbilityController::HasOwnedVisuals() const {
@@ -94,37 +105,31 @@ const char* PlayerCopyAbilityController::GetStateLabel() const {
     return impl_->session ? impl_->session->GetStateLabel() : "未コピー";
 }
 
-void PlayerCopyAbilityController::DrawOwnedVisuals(
-    Player& player,
-    uint32_t depthSrvHandle,
-    uint32_t grabSrvHandle,
-    Camera* camera,
-    int previewBufferIndex) {
+void PlayerCopyAbilityController::SetPreviewAttackId(const std::string& id) {
+    if (impl_->session) impl_->session->SetPreviewAttackId(id);
+}
+
+void PlayerCopyAbilityController::DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                                   Camera* camera, int previewBufferIndex) {
     if (impl_->session) {
-        impl_->session->DrawOwnedVisuals(
-            player, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
+        impl_->session->DrawOwnedVisuals(player, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
     }
 }
 
-bool PlayerCopyAbilityController::NotifyGuardedHit(
-    Player& player, const Vector3& sourcePosition) {
-    return impl_->session &&
-        impl_->session->NotifyGuardedHit(player, sourcePosition);
+bool PlayerCopyAbilityController::NotifyGuardedHit(Player& player, const Vector3& sourcePosition) {
+    return impl_->session && impl_->session->NotifyGuardedHit(player, sourcePosition);
 }
 
 bool PlayerCopyAbilityController::HandlesMorphType(int morphType) const {
     return impl_->session && impl_->morphType == morphType;
 }
 
-bool PlayerCopyAbilityController::IsActive() const {
-    return impl_->session != nullptr;
-}
+bool PlayerCopyAbilityController::IsActive() const { return impl_->session != nullptr; }
 
 bool PlayerCopyAbilityController::CanBreakImpactGate() const {
     return impl_->session && impl_->session->CanBreakImpactGate();
 }
 
 bool PlayerCopyAbilityController::IsPinkBounceSlamImpactActive() const {
-    return impl_->session &&
-        impl_->session->IsPinkBounceSlamImpactActive();
+    return impl_->session && impl_->session->IsPinkBounceSlamImpactActive();
 }

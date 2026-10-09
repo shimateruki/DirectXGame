@@ -28,7 +28,23 @@
                 "type": 2
             },
             "collisionAttribute": 1,
+            "collisionAttributeIds": [
+                "player"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -81,7 +97,7 @@
             ],
             "quaternion": [
                 0.0,
-                -0.7071067690849304,
+                0.7071067690849304,
                 0.0,
                 0.7071068286895752
             ],
@@ -92,8 +108,8 @@
             },
             "rotation": [
                 -0.0,
-                -1.570796251296997,
-                0.0
+                1.570796251296997,
+                -0.0
             ],
             "roughness": 0.6000000238418579,
             "saveCategory": "Player",

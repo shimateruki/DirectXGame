@@ -438,6 +438,7 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
         return;
     }
 
+    // 検索結果から開くツールへの借用参照と検索語。ツールの寿命はエディター側で管理する。
     struct WindowTarget {
         const char* id;
         const char* label;

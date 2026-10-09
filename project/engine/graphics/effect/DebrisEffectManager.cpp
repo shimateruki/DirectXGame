@@ -126,6 +126,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         DebrisPiece& piece = activePieces_[index];
         piece.age += deltaTime;
         if (piece.age >= piece.lifetime) {
+            // RecyclePieceは末尾の要素を現在位置へ移すため、ここではindexを進めない。
             RecyclePiece(index);
             continue;
         }
@@ -149,6 +150,7 @@ void DebrisEffectManager::Update(float deltaTime) {
                 piece.velocity.z *= piece.friction;
                 piece.angularVelocity = piece.angularVelocity * piece.friction;
                 if (std::abs(piece.velocity.y) < 0.7f && Math::Length(piece.velocity) < 2.0f) {
+                    // 小さな跳ね返りをいつまでも計算しないよう、十分遅くなった破片を休止する。
                     piece.sleeping = true;
                 }
             }
@@ -484,6 +486,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
     }
 
     size_t requiredRoom = activePieces_.size() + static_cast<size_t>(count);
+    // 同時表示数の上限を守るため、既存の破片を再利用して新しい破片の枠を確保する。
     while (requiredRoom > kMaxActiveDebrisPieces && !activePieces_.empty()) {
         RecyclePiece(0);
         --requiredRoom;
@@ -567,6 +570,7 @@ void DebrisEffectManager::RecyclePiece(size_t index) {
 
     size_t lastIndex = activePieces_.size() - 1;
     if (index != lastIndex) {
+        // 順序を維持する必要がないため、末尾を詰めて削除コストを一定にする。
         activePieces_[index] = std::move(activePieces_[lastIndex]);
     }
     activePieces_.pop_back();

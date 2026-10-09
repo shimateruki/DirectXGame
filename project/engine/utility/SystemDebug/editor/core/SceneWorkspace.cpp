@@ -281,6 +281,7 @@ std::size_t SceneWorkspace::GetTemporaryHiddenCount() const {
 }
 
 std::string SceneWorkspace::GetCurrentSceneKey() const {
+    // 同名の実行時SceneとScene Assetのブックマークを混ぜないため、種類をキーへ含める。
     if (!sceneManager_) {
         return "scene:unknown";
     }
@@ -302,6 +303,7 @@ const std::array<SceneWorkspace::CameraBookmark, SceneWorkspace::kBookmarkCount>
 }
 
 void SceneWorkspace::CaptureBookmark(std::size_t index) {
+    // Play中の視点を編集用の保存地点へ混ぜない。
     if (index >= kBookmarkCount || !sceneManager_ || sceneManager_->IsPlaying()) {
         return;
     }
@@ -342,6 +344,7 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
         camera->Update();
     }
 
+    // 名前が重複・変更されても同じObjectを選べるよう、永続GUIDで再選択する。
     if (editor_ && sceneManager_->GetCurrentScene() &&
         Object3d::IsPersistentGuidValid(bookmark.objectGuid)) {
         if (Object3d* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(bookmark.objectGuid)) {

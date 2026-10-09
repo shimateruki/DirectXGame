@@ -81,6 +81,7 @@ void OverlayMaterial(const json& source, MaterialInstanceData& material) {
 }
 
 fs::path ResolveBasePath(const fs::path& ownerPath, const std::string& baseAsset) {
+    // 作業ディレクトリから参照できるパスを優先し、次に子アセットからの相対パスを試す。
     fs::path basePath(baseAsset);
     if (basePath.is_absolute() || fs::exists(basePath)) return basePath;
     const fs::path relativeToOwner = ownerPath.parent_path() / basePath;
@@ -100,6 +101,7 @@ bool LoadResolvedInternal(
     }
 
     const std::string normalizedPath = NormalizePath(assetPath);
+    // 現在の再帰経路だけを記録し、親子の循環参照を検出する。
     if (!loading.insert(normalizedPath).second) {
         SetError(errorMessage, "Material Instanceの継承が循環しています: " + normalizedPath);
         return false;
@@ -129,6 +131,7 @@ bool LoadResolvedInternal(
     }
 
     const std::string baseAsset = root.value("baseAsset", "");
+    // 親の解決済み値へ子の明示フィールドを重ねる。
     if (!baseAsset.empty()) {
         if (!LoadResolvedInternal(ResolveBasePath(assetPath, baseAsset), material, loading, depth + 1, errorMessage)) {
             loading.erase(normalizedPath);

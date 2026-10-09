@@ -36,17 +36,20 @@ class GimmickStageGate;
 /// ステージ選択シーン。ステージゲート、解放演出、王冠/スター/コイン HUD を扱う。
 /// </summary>
 class GameSelectScene : public BaseScene {
-public:
+  public:
     GameSelectScene();
     ~GameSelectScene() override;
 
+    // 通常起動と非同期読み込みで、同じ初期化段階を共有します。
     void Initialize() override;
     void BeginLoadingInitialize() override;
     bool InitializeLoadingStep() override;
     float GetLoadingInitializeProgress() const override;
+
     void OnActivated() override;
     SceneLoadManifest BuildAsyncLoadManifest() const override;
     void Finalize() override;
+
     void Update(float deltaTime) override;
     void UpdateUI();
     void Draw() override;
@@ -61,38 +64,52 @@ public:
 
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-	Skybox* GetSkybox() override { return skybox_.get(); }
+    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+    // デバッグ設定の変更を、現在表示中のゲートとHUDに反映します。
     void RefreshDebugStageStates();
 
-private:
-    // ステージゲートの選択、解放、遷移処理
+  private:
+    // ステージゲートの選択、解放、遷移処理。
     void UpdateStageGateSelection(float deltaTime);
     void ApplyStageGateStates();
     bool IsStageUnlocked(int stageIndex) const;
     void EnterSelectedStage();
+
+    /// <summary>ゲートへ入るカメラ演出と画面遷移を開始します。</summary>
+    /// <param name="stageIndex">入場するステージの番号。</param>
     void StartGateEntryCinematic(int stageIndex);
     void UpdateGateEntryCinematic(float deltaTime);
     void UpdateGateCinematicBars(float deltaTime);
     void ResetGateCinematicBars();
+
+    // 演出中だけゲート材質を変更するため、変更前の状態を保持・復元します。
     void CaptureGateEntryMaterialState(Object3d* rootObject);
     void ApplyGateEntryDissolveMaterial(float progress, const Vector3& gatePosition, const Vector3& direction);
     void RestoreGateEntryMaterialState();
+
+    /// <summary>クリア後のゲート帰還演出を、保存済みの要求から開始します。</summary>
+    /// <param name="request">戻り元ステージと今回獲得した報酬。</param>
+    /// <returns>演出を開始できた場合は true。</returns>
     bool StartStageReturnPresentation(const GameDataManager::StageSelectReturnPresentation& request);
     void UpdateStageReturnPresentation(float deltaTime);
     void FinishStageReturnPresentation();
     void UpdateGatePrompt(Object3d* nearestGate, bool canEnterGate, float deltaTime);
+
+    // 名前と距離から、プレイヤーが操作できるゲートを特定します。
     bool IsStageGateObject(const Object3d* object) const;
     int GetStageGateIndex(const Object3d* object) const;
     Object3d* FindStageGateByIndex(int stageIndex) const;
     Object3d* FindNearestStageGate(float* outDistance) const;
     bool IsPlayerTouchingStageGate(Object3d* gate) const;
+
+    // 解放条件が成立した未表示ステージを選び、解放演出を進めます。
     int FindPendingUnlockStage() const;
     void BeginUnlockPresentation();
     void UpdateUnlockPresentation(float deltaTime);
@@ -108,7 +125,7 @@ private:
     Object3d* EnsureStageClearCrown(int stageIndex);
     void UpdateStageClearCrownDisplays(float deltaTime);
 
-    // ステージクリア後に戻ってきた時の王冠獲得演出
+    // ステージクリア後に戻ってきた時の王冠獲得演出。
     void StartStageClearRewardPresentation(const GameDataManager::StageClearRewardPresentation& request);
     void UpdateStageClearRewardPresentation(float deltaTime);
     void UpdateStageClearRewardCrown(Object3d* crown, int stageIndex, float deltaTime);
@@ -119,25 +136,23 @@ private:
     Object3d* FindObjectByName(const std::string& name) const;
     Vector3 GetStageNodePosition(int stageIndex) const;
 
-    // HUD 初期化と数値描画
+    // HUD 初期化と数値描画。
     void InitializeStageSelectHUD();
     Sprite* FindSpriteByName(const std::string& name) const;
+    // HUD の借用 Sprite と基準位置・サイズ・色。表示演出の変化を初期値から計算する。
     struct StageSelectHudSprite {
         Sprite* sprite = nullptr;
-        Vector2 basePosition = { 0.0f, 0.0f };
-        Vector2 baseSize = { 0.0f, 0.0f };
-        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector2 basePosition = {0.0f, 0.0f};
+        Vector2 baseSize = {0.0f, 0.0f};
+        Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
     };
-    StageSelectHudSprite BindStageSelectHUDSprite(
-        const std::string& name,
-        const std::string& texturePath,
-        const Vector2& position,
-        const Vector2& size,
-        const Vector2& anchor,
-        const Vector4& color);
-    void SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, const Vector4& color, bool visible);
+    StageSelectHudSprite BindStageSelectHUDSprite(const std::string& name, const std::string& texturePath,
+                                                  const Vector2& position, const Vector2& size, const Vector2& anchor,
+                                                  const Vector4& color);
+    void SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, const Vector4& color,
+                                 bool visible);
 
-private:
+  private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -187,18 +202,19 @@ private:
     float gateSelectRadius_ = 8.0f;
     float stageDecisionCooldown_ = 0.0f;
     bool isChangingStage_ = false;
+    // 入場演出で変える材質の復元用コピー。Object は借用し、演出終了後に元の値を戻す。
     struct GateEntryMaterialSnapshot {
         Object3d* object = nullptr;
-        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f};
         int32_t materialType = 0;
         float emissive = 1.0f;
         float portalClipEnabled = 0.0f;
         float portalClipProgress = 0.0f;
-        Vector3 portalClipCenter = { 0.0f, 0.0f, 0.0f };
+        Vector3 portalClipCenter = {0.0f, 0.0f, 0.0f};
         float portalClipEdgeWidth = 0.0f;
-        Vector3 portalClipNormal = { 0.0f, 0.0f, 1.0f };
+        Vector3 portalClipNormal = {0.0f, 0.0f, 1.0f};
         float portalClipDissolve = 0.0f;
-        Vector4 portalClipColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector4 portalClipColor = {1.0f, 1.0f, 1.0f, 1.0f};
     };
     bool gateEntryCinematicActive_ = false;
     float gateEntryCinematicTimer_ = 0.0f;
@@ -208,12 +224,12 @@ private:
     Vector3 gateEntryTargetPlayerPosition_{};
     Vector3 gateEntrySurfacePlayerPosition_{};
     Vector3 gateEntryInsidePlayerPosition_{};
-    Vector3 gateEntryDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 gateEntryDirection_{0.0f, 0.0f, 1.0f};
     Vector3 gateEntryCameraStartEye_{};
     Vector3 gateEntryCameraStartTarget_{};
     Vector3 gateEntryCameraEndEye_{};
     Vector3 gateEntryCameraEndTarget_{};
-    Vector3 gateEntryStartPlayerScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 gateEntryStartPlayerScale_{1.0f, 1.0f, 1.0f};
     bool gateEntryHadPlayerControl_ = true;
     float gateEntrySparkTimer_ = 0.0f;
     float gateEntryMistTimer_ = 0.0f;
@@ -223,12 +239,12 @@ private:
     float gateReturnPresentationTimer_ = 0.0f;
     int gateReturnStageIndex_ = -1;
     Object3d* gateReturnTargetGate_ = nullptr;
-    Vector3 gateReturnDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 gateReturnDirection_{0.0f, 0.0f, 1.0f};
     Vector3 gateReturnInsidePlayerPosition_{};
     Vector3 gateReturnCenterPlayerPosition_{};
     Vector3 gateReturnSurfacePlayerPosition_{};
     Vector3 gateReturnEndPlayerPosition_{};
-    Vector3 gateReturnPlayerScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 gateReturnPlayerScale_{1.0f, 1.0f, 1.0f};
     Vector3 gateReturnCameraStartEye_{};
     Vector3 gateReturnCameraStartTarget_{};
     Vector3 gateReturnCameraEndEye_{};
@@ -258,11 +274,11 @@ private:
     Object3d* unlockLockObject_ = nullptr;
     Vector3 unlockKeyBasePosition_{};
     Vector3 unlockKeyBaseRotation_{};
-    Vector3 unlockKeyBaseScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 unlockKeyBaseScale_{1.0f, 1.0f, 1.0f};
     Vector3 unlockLockBasePosition_{};
     Vector3 unlockLockBaseRotation_{};
-    Vector3 unlockLockBaseScale_{ 1.0f, 1.0f, 1.0f };
-    Vector3 unlockGateDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 unlockLockBaseScale_{1.0f, 1.0f, 1.0f};
+    Vector3 unlockGateDirection_{0.0f, 0.0f, 1.0f};
     Vector3 unlockCameraStartEye_{};
     Vector3 unlockCameraStartTarget_{};
     Vector3 unlockCameraCinematicEye_{};

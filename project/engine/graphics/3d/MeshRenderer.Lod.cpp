@@ -17,12 +17,14 @@
 namespace {
 namespace fs = std::filesystem;
 
+// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
 struct BakedShaderTextureSet {
     uint32_t slot0 = 0;
     uint32_t slot1 = 0;
     uint32_t slot2 = 0;
 };
 
+// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
 struct BakedShaderTextureCache {
     BakedShaderTextureSet fallback;
     BakedShaderTextureSet water;

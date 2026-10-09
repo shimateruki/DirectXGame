@@ -64,6 +64,7 @@ float4 main(VSOutput input) : SV_TARGET
     float bandA = RibbonMask(latitude, curveA, ribbonWidth, ribbonSoftness);
     float bandB = RibbonMask(latitude, -curveB, ribbonWidth * 0.82f, ribbonSoftness);
 
+    // A second tilted coordinate frame prevents every wind ribbon from sharing one equator.
     float3 tiltedAxis = normalize(float3(0.58f, 0.72f, -0.38f));
     float3 tiltedEast = normalize(cross(float3(0.0f, 1.0f, 0.0f), tiltedAxis));
     float3 tiltedForward = normalize(cross(tiltedAxis, tiltedEast));
@@ -92,6 +93,7 @@ float4 main(VSOutput input) : SV_TARGET
     screenUV = saturate(screenUV);
     float orbDepth = input.screenPos.z / input.screenPos.w;
     float sceneDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
+    // Suppress refraction and opacity near opaque intersections so the orb does not cut through them.
     float intersectionFade = sceneDepth >= 0.999f ? 1.0f : saturate((sceneDepth - orbDepth) * 180.0f + 0.22f);
 
     float2 flowDirection = float2(

@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>接触すると一定時間だけ有効になるスイッチです。</summary>
 class GimmickTimedSwitch : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickTimedSwitch() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -11,6 +12,6 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     float contactTimer_ = 0.0f;
 };

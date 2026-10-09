@@ -1,0 +1,164 @@
+[
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_0.obj",
+    "pivot": [
+      -1.46552505,
+      3.6539,
+      0.6341319
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_1.obj",
+    "pivot": [
+      -1.1401993,
+      3.3600000000000003,
+      1.08263295
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_10.obj",
+    "pivot": [
+      -0.8660254,
+      3.36291795,
+      -0.9610253999999999
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_11.obj",
+    "pivot": [
+      -1.685,
+      4.0528,
+      -0.48707
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_2.obj",
+    "pivot": [
+      -0.3036624,
+      3.51,
+      1.55522735
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_3.obj",
+    "pivot": [
+      0.3061788,
+      3.51,
+      1.55522735
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_4.obj",
+    "pivot": [
+      1.1401993,
+      3.37,
+      1.10792205
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_5.obj",
+    "pivot": [
+      1.44945845,
+      3.5689,
+      0.5873687
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_6.obj",
+    "pivot": [
+      1.785,
+      3.9063,
+      -0.58076185
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_7.obj",
+    "pivot": [
+      0.8660254,
+      3.36291795,
+      -0.9610253999999999
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_8.obj",
+    "pivot": [
+      0.4616854,
+      3.46,
+      -1.095
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_frame_9.obj",
+    "pivot": [
+      -0.3607222,
+      3.46,
+      -1.095
+    ],
+    "gem": false
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemBlue.obj",
+    "pivot": [
+      2.55,
+      3.7268,
+      -0.28
+    ],
+    "gem": true
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemCyan.obj",
+    "pivot": [
+      1.86,
+      4.1208,
+      0.6799999999999999
+    ],
+    "gem": true
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemGreen.obj",
+    "pivot": [
+      -2.45,
+      3.8116000000000003,
+      -0.32
+    ],
+    "gem": true
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemOrange.obj",
+    "pivot": [
+      1.02,
+      4.7236,
+      -0.32
+    ],
+    "gem": true
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemRed.obj",
+    "pivot": [
+      -0.9199999999999999,
+      4.9716000000000005,
+      -0.3
+    ],
+    "gem": true
+  },
+  {
+    "model": "Characters/false_king_slime/false_king_defeat_gem_GemViolet.obj",
+    "pivot": [
+      -1.88,
+      4.2908,
+      0.62
+    ],
+    "gem": true
+  }
+]

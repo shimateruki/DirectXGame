@@ -13,16 +13,16 @@ void GimmickLaunchStar::Initialize(Object3dCommon* common, const std::string& mo
     SetGimmickType("LaunchStar");
     SetName("Gimmick_LaunchStar");
     SetModel(modelName);
-    SetColor({ 1.0f, 0.92f, 0.28f, 1.0f });
+    SetColor({1.0f, 0.92f, 0.28f, 1.0f});
     SetEmissive(2.2f);
     SetRoughness(0.34f);
     SetMetallic(0.12f);
-    SetCollisionAttribute(CollisionAttribute::kGround);
-    SetCollisionMask(0b11111111);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
     ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.size = { 1.35f, 0.35f, 1.35f };
+    collider.size = {1.35f, 0.35f, 1.35f};
     SetColliderConfig(collider);
 
     if (!param_.has_value()) {
@@ -47,6 +47,7 @@ void GimmickLaunchStar::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
+// プレイヤーが上から接触した場合だけ発射し、着地までの再接触を無視します。
 bool GimmickLaunchStar::OnCollision(Object3d* other) {
     if (!other || other->GetClassName() != "Player" || retriggerCooldown_ > 0.0f) {
         return true;
@@ -74,16 +75,13 @@ bool GimmickLaunchStar::OnCollision(Object3d* other) {
     return true;
 }
 
+// 設置角度の前方へ飛ばすため、ピッチも含めた方向を正規化します。
 Vector3 GimmickLaunchStar::CalculateDestination(const Vector3& start) const {
     const Vector3 rotation = GetRotation();
     const float cosPitch = std::cos(rotation.x);
-    Vector3 forward = {
-        std::sin(rotation.y) * cosPitch,
-        -std::sin(rotation.x),
-        std::cos(rotation.y) * cosPitch
-    };
+    Vector3 forward = {std::sin(rotation.y) * cosPitch, -std::sin(rotation.x), std::cos(rotation.y) * cosPitch};
     if (Math::Length(forward) < 0.001f) {
-        forward = { 0.0f, 0.0f, 1.0f };
+        forward = {0.0f, 0.0f, 1.0f};
     }
     forward = Math::Normalize(forward);
 

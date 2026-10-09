@@ -36,6 +36,7 @@ public:
     /// <param name="goal">目標位置。通行不可なら近くの通行可能セルへ移します。</param>
     /// <param name="outPath">成功時の経路。失敗時は空になります。</param>
     /// <returns>経路が見つかった場合は true。</returns>
+    /// <remarks>範囲外の入力は端のセルへ丸める。高さは planeY 固定で、上下階や坂の経路は解かない。</remarks>
     bool FindPath(const Vector3& start, const Vector3& goal, std::vector<Vector3>& outPath) const;
 
     /// <summary>使用できるグリッドが構築済みか返します。</summary>
@@ -63,7 +64,8 @@ private:
     // ワールド位置を最寄りのセルへ丸め、グリッド端に収めます。
     bool WorldToCell(const Vector3& position, int& outX, int& outZ) const;
 
-    // 指定セルが塞がっている場合、周囲を正方形状に広げて代替セルを探します。
+    // 指定セルが塞がっている場合、周囲を正方形状に広げて最初の空きセルを返します。
+    // 同じ輪の中で距離順には並べないため、ユークリッド距離での最寄り点を保証しません。
     bool FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ) const;
 
     // 直線上の中間セルを取り除き、曲がり角を残します。

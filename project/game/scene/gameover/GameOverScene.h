@@ -1,12 +1,12 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
+#include "ParticleSystem.h"
+#include "ParticleCommon.h"
 #include "Player.h"
 #include "Text.h"
 #include "BulletManager.h"
@@ -31,7 +31,7 @@ class InputManager;
 /// ゲームオーバーシーン
 /// </summary>
 class GameOverScene : public BaseScene {
-public:
+  public:
     GameOverScene() = default;
     ~GameOverScene() override = default;
 
@@ -77,24 +77,22 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
-private:
-    enum class MenuItem {
-        Retry,
-        Title,
-        Count
-    };
+  private:
+    enum class MenuItem { Retry, Title, Count };
 
+    // メニュー行の背景・ラベルを借用する。基準サイズを残し、選択演出の拡縮を累積させない。
     struct MenuRow {
         Sprite* backdrop = nullptr;
         Sprite* label = nullptr;
-        Vector2 backdropBaseSize = { 0.0f, 0.0f };
-        Vector2 labelBaseSize = { 0.0f, 0.0f };
+        Vector2 backdropBaseSize = {0.0f, 0.0f};
+        Vector2 labelBaseSize = {0.0f, 0.0f};
     };
 
+    // 背景王冠 Sprite の借用参照と落下周期。基準位置から毎回評価し、流れ続ける表示を作る。
     struct FallingCrown {
         Sprite* sprite = nullptr;
-        Vector2 basePosition = { 0.0f, 0.0f };
-        Vector2 size = { 0.0f, 0.0f };
+        Vector2 basePosition = {0.0f, 0.0f};
+        Vector2 size = {0.0f, 0.0f};
         float timeOffset = 0.0f;
         float cycleDuration = 1.0f;
         float fallDistance = 0.0f;
@@ -105,6 +103,7 @@ private:
         float alpha = 1.0f;
     };
 
+    // 頭上を回る星の借用 Sprite と位相差。depthOffset は重なりの見せ方に使う。
     struct DizzyStar {
         Sprite* sprite = nullptr;
         float baseAngle = 0.0f;
@@ -112,14 +111,15 @@ private:
         float depthOffset = 0.0f;
     };
 
+    // ゲームオーバーのカメラ演出値。時間は秒、FOV はラジアン、各 Offset は相対位置。
     struct PresentationTuning {
         float cameraSettleTime = 1.55f;
         float titleRevealStartTime = 0.15f;
-        Vector3 introEyeOffset = { 0.75f, 1.28f, -5.10f };
-        Vector3 impactEyeOffset = { 0.34f, 1.04f, -4.25f };
-        Vector3 settleEyeOffset = { -0.82f, 1.05f, -5.20f };
-        Vector3 introTargetOffset = { 0.0f, 0.50f, 0.0f };
-        Vector3 settleTargetOffset = { -0.82f, 1.05f, 0.0f };
+        Vector3 introEyeOffset = {0.75f, 1.28f, -5.10f};
+        Vector3 impactEyeOffset = {0.34f, 1.04f, -4.25f};
+        Vector3 settleEyeOffset = {-0.82f, 1.05f, -5.20f};
+        Vector3 introTargetOffset = {0.0f, 0.50f, 0.0f};
+        Vector3 settleTargetOffset = {-0.82f, 1.05f, 0.0f};
         float introFov = 0.50f;
         float impactFov = 0.43f;
         float settleFov = 0.58f;
@@ -168,8 +168,8 @@ private:
     std::vector<std::unique_ptr<Sprite>> sprites_;
     Object3d* gameOverSlimeObject_ = nullptr;
     GameOverSlimeAnimator gameOverSlimeAnimator_;
-    Vector3 gameOverSlimeBasePosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 gameOverSlimeBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 gameOverSlimeBasePosition_ = {0.0f, 0.0f, 0.0f};
+    Vector3 gameOverSlimeBaseScale_ = {1.0f, 1.0f, 1.0f};
     float gameOverPresentationTimer_ = 0.0f;
     PresentationTuning presentationTuning_;
     bool gameOverImpactCuePlayed_ = false;

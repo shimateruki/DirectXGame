@@ -281,11 +281,13 @@ int MaterialPreviewBoard::CountBoardObjects() const {
 }
 
 std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::GetEntries() const {
+    // 同じ MaterialType 内の effectType と表示ラベルの対応。
     struct Mode {
         float value;
         const char* label;
         const char* shortLabel;
     };
+    // 比較ボードに並べる MaterialType と、その材質内で切り替えるモード一覧。
     struct BaseEntry {
         int type;
         const char* label;

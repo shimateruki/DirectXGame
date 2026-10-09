@@ -360,6 +360,7 @@ void LightEditor::DrawEnvironmentProfilePanel() {
     }
 #endif
 }
+
 void LightEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!lightManager_) return;

@@ -69,6 +69,7 @@ bool IsTextureFile(const std::filesystem::path& path) {
     return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
         extension == ".tga" || extension == ".dds" || extension == ".hdr";
 }
+
 bool IsAudioFile(const std::filesystem::path& path) {
     const std::string extension = ToLower(path.extension().string());
     return extension == ".wav" || extension == ".mp3" ||
@@ -85,6 +86,7 @@ void RecordDependency(
         return;
     }
 
+    // 同じ種類・パスの参照を一度だけ記録し、欠落警告も重複させない。
     const auto found = std::find_if(
         data.dependencyReport.assets.begin(),
         data.dependencyReport.assets.end(),
@@ -390,6 +392,7 @@ void SceneLoadManifest::AddTexture(const std::string& path, bool linear) {
         return item.path + (item.linear ? "|linear" : "|color");
     });
 }
+
 void SceneLoadManifest::AddAudio(const std::string& path) {
     AddUniquePath(audioPaths, path);
 }
@@ -480,6 +483,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
             CollectDependencies(document, "", *result);
             result->jsonDocuments.emplace(NormalizePath(path), std::move(document));
 
+            // 参照先JSONが増えた分だけ進捗の総数を伸ばし、割合が早く100%にならないようにする。
             const std::size_t previousCount = jsonPaths.size();
             for (const SceneDependencyRecord& dependency :
                 result->dependencyReport.assets) {
@@ -503,6 +507,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     for (const std::string& modelName : manifest.modelNames) {
         AddUniquePath(result->modelNames, modelName);
     }
+    // 同一パスでも線形色空間と色テクスチャは別の準備要求として扱う。
     for (const SceneLoadManifest::TextureRequest& texture : manifest.textures) {
         AddUnique(result->textures, texture, [](const SceneLoadManifest::TextureRequest& item) {
             return NormalizePath(item.path) + (item.linear ? "|linear" : "|color");
@@ -577,6 +582,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
 
 SceneDependencyReport ScenePreloader::Inspect(
     const SceneLoadManifest& manifest) {
+    // 調査結果と実際の先読み結果を一致させるため、Prepareと同じ経路を使う。
     const std::shared_ptr<ScenePreloadData> data = Prepare(manifest, nullptr);
     return data ? data->dependencyReport : SceneDependencyReport{};
 }

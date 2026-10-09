@@ -1,3 +1,8 @@
+<#
+モデルの LOD1/LOD2 を生成し、距離設定と削減結果を JSON に記録する。
+AnalyzeOnly でも統計とレポートは出力する。既存 LOD は Force 指定時だけ作り直す。
+auto は Blender を探し、使えなければ native の簡略化へ切り替える。
+#>
 param(
     [string]$Root = (Get-Location).Path,
     [string]$Model = "",
@@ -105,6 +110,7 @@ function Find-BundledBlenderExecutable {
 }
 
 function Resolve-LodBackend {
+    # 明示された Blender パスが無効な場合、auto と blender では異なる扱いにする。
     param(
         [string]$RequestedBackend,
         [bool]$IsAnalyzeOnly,
@@ -1516,6 +1522,7 @@ elseif (-not $AnalyzeOnly) {
         $outputExtension = if ($isGltfOutput) { ".gltf" } else { ".obj" }
         $outputPath = Join-Path $sourceDirectory ("{0}_lod{1}{2}" -f $sourceStem, $level, $outputExtension)
 
+        # 既存の LOD は再生成せず解析のみ行い、利用者が調整したメッシュを保持する。
         if ((Test-Path -LiteralPath $outputPath) -and -not $Force) {
             $stats = if ($isGltfOutput) { Analyze-Gltf $outputPath } else { Analyze-Obj $outputPath }
             $stats["fileSizeBytes"] = Get-ModelStorageBytes $outputPath

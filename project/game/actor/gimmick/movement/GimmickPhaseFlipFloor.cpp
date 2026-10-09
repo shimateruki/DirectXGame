@@ -10,13 +10,14 @@ void GimmickPhaseFlipFloor::Initialize(Object3dCommon* common, const std::string
     SetClassName("Gimmick");
     SetGimmickType("PhaseFlipFloor");
     SetName("Gimmick_PhaseFlipFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.35f, 0.75f, 1.0f, 1.0f });
-    SetScale({ 2.0f, 0.25f, 2.0f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.35f, 0.75f, 1.0f, 1.0f});
+    SetScale({2.0f, 0.25f, 2.0f});
     SetStatic(false);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->colorType = 0;
     param_->maxCount = 3;
     param_->interval = 1.0f;
@@ -24,7 +25,8 @@ void GimmickPhaseFlipFloor::Initialize(Object3dCommon* common, const std::string
 }
 
 void GimmickPhaseFlipFloor::Update(float deltaTime) {
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 
     bool isPlaying = false;
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
@@ -36,8 +38,8 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
         cycleTimer_ = 0.0f;
         flipCount_ = 0;
         wasOwnPhase_ = false;
-        SetCollisionAttribute(kGround);
-        SetCollisionMask(0b11111111);
+        SetCollisionAttribute(CollisionCategories::Get("ground"));
+        SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
         SetIsVisible(true);
         SetColor(GetPhaseColor(1.0f));
         BaseGimmick::Update(deltaTime);
@@ -47,8 +49,10 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
     if (!initializedForPlay_) {
         originalCollisionAttribute_ = GetCollisionAttribute();
         originalCollisionMask_ = GetCollisionMask();
-        if (originalCollisionAttribute_ == 0) originalCollisionAttribute_ = kGround;
-        if (originalCollisionMask_ == 0) originalCollisionMask_ = 0b11111111;
+        if (originalCollisionAttribute_ == 0)
+            originalCollisionAttribute_ = CollisionCategories::Get("ground");
+        if (originalCollisionMask_ == 0)
+            originalCollisionMask_ = CollisionCategories::GetDefaultGameplayMask();
         baseRotation_ = GetTransform()->rotate;
         cycleTimer_ = 0.0f;
         flipCount_ = 0;
@@ -79,8 +83,9 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
 }
 
 void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
-    SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : kGround);
-    SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : 0b11111111);
+    // 回転中も元の衝突設定を維持し、床が抜けないようにします。
+    SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : CollisionCategories::Get("ground"));
+    SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
     SetIsVisible(true);
 
     const float direction = param_.has_value() && !param_->startActive ? -1.0f : 1.0f;
@@ -99,13 +104,13 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
 Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
     switch (GetPhaseIndex() % 4) {
     case 0:
-        return { 0.35f, 0.75f, 1.0f, alpha };
+        return {0.35f, 0.75f, 1.0f, alpha};
     case 1:
-        return { 1.0f, 0.65f, 0.25f, alpha };
+        return {1.0f, 0.65f, 0.25f, alpha};
     case 2:
-        return { 0.45f, 1.0f, 0.45f, alpha };
+        return {0.45f, 1.0f, 0.45f, alpha};
     default:
-        return { 0.95f, 0.55f, 1.0f, alpha };
+        return {0.95f, 0.55f, 1.0f, alpha};
     }
 }
 

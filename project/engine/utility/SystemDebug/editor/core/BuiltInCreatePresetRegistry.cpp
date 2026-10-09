@@ -1,4 +1,4 @@
-#include "BuiltInCreatePresetRegistry.h"
+﻿#include "BuiltInCreatePresetRegistry.h"
 
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "GimmickFactory.h"
@@ -18,6 +18,13 @@
 using json = nlohmann::json;
 
 namespace {
+// 自動更新される組み込み定義でも、ユーザーの表示名・用途・お気に入りを保ちます。
+void PreservePresetCatalogFields(const json& current, json& replacement) {
+    for (auto it = current.begin(); it != current.end(); ++it) {
+        if (it.key().rfind("preset", 0) == 0) replacement[it.key()] = it.value();
+    }
+}
+
 bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
     if (!object) {
         return false;
@@ -39,6 +46,7 @@ bool RegisterOrRefreshEnemyPreset(const std::string& presetName, std::unique_ptr
     data["name"] = displayName;
     data["builtinCreateTemplate"] = true;
 
+    if (manager->HasPreset(presetName)) PreservePresetCatalogFields(manager->GetPreset(presetName), data);
     if (manager->HasPreset(presetName) && manager->GetPreset(presetName) == data) {
         return false;
     }
@@ -70,6 +78,7 @@ bool RegisterOrRefreshPresetData(const std::string& presetName, json data) {
         if (!current.value("builtinCreateTemplate", false)) {
             return false;
         }
+        PreservePresetCatalogFields(current, data);
         if (current == data) {
             return false;
         }
@@ -84,6 +93,7 @@ enum class Stage1PresetVariant {
     FixedPlatform,
 };
 
+// ステージ配置から生成ライブラリーへ取り込む定義。経路・対象 ID を引き継ぐかも個別に指定する。
 struct Stage1PresetDefinition {
     const char* presetName;
     const char* sourceObjectName;

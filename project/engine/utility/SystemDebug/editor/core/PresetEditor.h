@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "IEditable.h"
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
@@ -34,6 +34,18 @@ public:
 
     std::string GetName() override;
 
+    /// ProjectとInspectorで、同じカタログ・選択・配置操作を共有します。
+    void DrawLibrary(bool fromProject = false);
+    /// 下部のAssetドックを広げる予約を、レイアウト管理側で1回だけ受け取ります。
+    bool ConsumeLibraryDockExpandRequest() { const bool requested = requestLibraryDockExpand_; requestLibraryDockExpand_ = false; return requested; }
+    void SetSelectionCallback(std::function<void()> callback);
+    void SetThumbnailInvalidator(std::function<void(const std::string&)> callback);
+    const std::string& GetSelectedPresetName() const { return selectedName_; }
+    std::string GetDisplayName(const std::string& key, const json& data) const;
+    void SelectPreset(const std::string& name, bool notify = true);
+    void NotifyPresetUsed(const std::string& name);
+
+
 private:
     enum class Category {
         All,
@@ -44,6 +56,7 @@ private:
         Model
     };
 
+    // 保存に使う識別文字列と UI に表示するラベルの対応。
     struct TypeOption {
         const char* value;
         const char* label;
@@ -63,7 +76,7 @@ private:
 
     void DrawPresetListItem(const std::string& name, const json& data);
 
-    void DrawThumbnailButton(const std::string& name, const ImVec4& accent);
+    void DrawThumbnailButton(const std::string& name, const ImVec4& accent, float size = 128.0f);
 
     // 選択中プリセットの詳細編集。
     void DrawSettingsPane();
@@ -124,7 +137,7 @@ private:
 
     bool MatchesCategory(const json& data, Category category) const;
 
-    bool IsStage1Preset(const json& data) const;
+    bool IsStageLibraryPreset(const json& data) const;
 
     Category DetectCategory(const json& data) const;
 
@@ -162,7 +175,18 @@ private:
     std::vector<std::string> modelNames_;
     std::string selectedName_;
     Category activeCategory_ = Category::Stage1;
+    // ステージ別パレットの選択。種類・検索条件とは独立して保持します。
+    std::string stageCollection_ = "";
     char searchBuffer_[128]{};
     char newName_[64] = "NewPreset";
     bool requestDelete_ = false;
+    std::function<void()> selectionCallback_;
+    std::function<void(const std::string&)> thumbnailInvalidator_;
+    std::vector<std::string> recentPresets_;
+    int libraryCategory_ = 0;
+    int thumbnailSize_ = 128;
+    bool listView_ = false;
+    bool requestLibraryDockExpand_ = false;
+    bool selectionFromProject_ = false;
+
 };

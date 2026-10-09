@@ -57,6 +57,7 @@ public:
     void RemoveObject(Object3d* object);
 
     /// <summary>オブジェクトを衝突管理対象へ追加します。</summary>
+    /// <remarks>所有権は受け取らない。破棄前に RemoveObject で登録を解除する。</remarks>
     void AddObject(Object3d* object);
 
     /// <summary>登録オブジェクトと接触状態をすべてクリアします。</summary>
@@ -88,16 +89,19 @@ public:
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
     /// <summary>カプセルと重なる対象の押し戻し情報を取得します。</summary>
+    /// <remarks>線分上に並べた球で近似する。同一 Object の結果は重複を除いて返す。</remarks>
     std::vector<PhysicsOverlapHit> OverlapCapsule(
         const Vector3& pointA, const Vector3& pointB, float radius,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
-    /// <summary>球を方向へ移動させ、最初の衝突を返します。</summary>
+    /// <summary>球を一定間隔で移動させ、最初に重なったサンプル位置の衝突を返します。</summary>
+    /// <remarks>連続時間の厳密な接触時刻ではない。刻みは半径に依存し、薄い形状等には近似誤差がある。</remarks>
     RaycastHit SphereCast(
         const Vector3& start, float radius, const Vector3& direction, float maxDistance,
         const PhysicsQueryFilter& filter = PhysicsQueryFilter{}) const;
 
-    /// <summary>カプセルを方向へ移動させ、最初の衝突を返します。</summary>
+    /// <summary>カプセルの近似 Overlap を一定間隔で評価し、最初のヒットを返します。</summary>
+    /// <remarks>球の列による形状近似と移動の離散化を使う。方向は内部で正規化する。</remarks>
     RaycastHit CapsuleCast(
         const Vector3& pointA, const Vector3& pointB, float radius,
         const Vector3& direction, float maxDistance,

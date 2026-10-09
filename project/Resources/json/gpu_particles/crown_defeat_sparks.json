@@ -1,0 +1,69 @@
+{
+  "emitPos": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "emitArea": [
+    0.16,
+    0.1,
+    0.16
+  ],
+  "emitVelocity": [
+    0,
+    3,
+    0
+  ],
+  "emitCount": 140,
+  "emitLife": 1.6,
+  "velocityVariance": 7,
+  "baseColor": [
+    2.6,
+    1.9,
+    4,
+    1
+  ],
+  "midColor": [
+    1,
+    0.12,
+    2.4,
+    0.8
+  ],
+  "endColor": [
+    0.12,
+    0.015,
+    0.3,
+    0
+  ],
+  "colorMidTime": 0.3,
+  "colorEaseType": 2,
+  "colorIntensity": 1.3,
+  "baseSize": 0.075,
+  "midSize": 0.13,
+  "endSize": 0.005,
+  "sizeMidTime": 0.27,
+  "sizeEaseType": 2,
+  "rotSpeed": 5.5,
+  "blendModeIndex": 1,
+  "envGravity": [
+    0,
+    -3,
+    0
+  ],
+  "envDrag": 0.23,
+  "envWind": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "envTurbulence": 0.9,
+  "isLooping": false,
+  "emitInterval": 0.02,
+  "shapeType": 1,
+  "shapeRadius": 0.78,
+  "shapeAngle": 90.0,
+  "softParticleFade": 1.0,
+  "texturePath": "Resources/sprite/particle/spark_streak.png",
+  "alignToVelocity": true,
+  "velocityStretch": 0.1
+}

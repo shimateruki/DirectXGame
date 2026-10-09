@@ -99,7 +99,7 @@ private:
 
     /// <summary>シェーダー、合成方式、カリング方式を指定して特殊マテリアル用PipelineStateを作る。</summary>
     /// <param name="outPipelineState">生成したパイプラインの出力先。</param>
-    void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
+    void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState, bool shaderDepthTest = false);
 
 private:
     // DirectX基盤への参照。Object3dCommonは所有しない。

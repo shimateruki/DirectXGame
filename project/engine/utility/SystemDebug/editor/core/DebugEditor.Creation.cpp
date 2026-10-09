@@ -110,7 +110,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -477,6 +477,7 @@ void DebugEditor::DropToFloor() {
     selectedObject_->UpdateWorldMatrix();
     RegisterObjectEdited(selectedObject_, beforeState, "Drop To Floor");
 }
+
 // 指定したモデルをマウス位置(GameView)に配置
 // ========================================================================
 void DebugEditor::SplitSelectedModelIntoMeshChildren() {

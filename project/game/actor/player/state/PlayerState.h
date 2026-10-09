@@ -1,5 +1,6 @@
 #pragma once
 
+// プレイヤーの状態クラスをまとめて利用するためのインクルード入口です。
 #include "game/actor/player/state/PlayerState.Basic.h"
 #include "game/actor/player/state/PlayerState.Carry.h"
 #include "game/actor/player/state/PlayerState.Damage.h"

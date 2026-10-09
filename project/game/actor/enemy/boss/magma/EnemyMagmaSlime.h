@@ -12,9 +12,9 @@
 class BossChantVisual;
 class EffectObject3d;
 
-// マグマ弾幕、灼熱突進、火山プレス、追尾間欠泉、螺旋溶岩波を使い分けるステージ2中ボスです。
+/// <summary>ステージ2中ボス。攻撃AI、溶岩系攻撃、登場演出を統括します。</summary>
 class EnemyMagmaSlime final : public BaseEnemy {
-public:
+  public:
     EnemyMagmaSlime();
     ~EnemyMagmaSlime() override;
 
@@ -29,17 +29,19 @@ public:
     bool HasOwnedSpecialMaterialVisuals() const override;
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
 
-    // 敵攻撃プレビューで指定した攻撃だけを繰り返します。
+    /// <summary>指定した技だけを再生する敵攻撃プレビューへ切り替えます。</summary>
+    /// <param name="attackId">敵攻撃プロファイル中の攻撃ID。空文字は通常AIです。</param>
     void SetDebugPreviewAttackId(const std::string& attackId);
+    /// <summary>プレビューの現在フェーズ名を返します。</summary>
     const char* GetDebugAttackPhaseName() const;
 
-    // 中ボスHUDから、遭遇状態と実HPを参照します。
+    // 中ボスHUDが参照する遭遇状態とHPです。
     bool IsEncounterHudActive() const;
     float GetEncounterCurrentHp() const;
     float GetEncounterMaximumHp() const;
     float GetEncounterAppearanceProgress() const;
 
-private:
+  private:
     enum class EncounterState {
         Normal,
         Dormant,
@@ -65,6 +67,7 @@ private:
         Recovery,
     };
 
+    // 放物線を飛ぶマグマ弾の、着弾までの位置と時間を保持します。
     struct MagmaBlob {
         std::unique_ptr<Object3d> visual;
         Vector3 start{};
@@ -76,6 +79,7 @@ private:
         bool impacted = false;
     };
 
+    // 着弾後に残る溶岩床。damageTimer は継続ダメージの次回判定までの秒数です。
     struct MagmaPool {
         std::unique_ptr<Object3d> visual;
         Vector3 position{};
@@ -85,6 +89,7 @@ private:
         float damageTimer = 0.0f;
     };
 
+    // 火山プレスから広がる波。previousRadius は高速フレームでの判定抜けを防ぎます。
     struct MagmaRing {
         std::unique_ptr<Object3d> visual;
         Vector3 position{};
@@ -97,6 +102,7 @@ private:
         bool hitTarget = false;
     };
 
+    // 間欠泉の予告、噴出、消滅を個別に管理します。
     struct MagmaPillar {
         std::unique_ptr<Object3d> visual;
         Vector3 position{};
@@ -111,11 +117,12 @@ private:
         bool damageApplied = false;
     };
 
+    // 螺旋溶岩波の進行方向、軌道、溶岩床生成状態です。
     struct MagmaSurge {
         std::unique_ptr<Object3d> visual;
         std::unique_ptr<Object3d> crestVisual;
         Vector3 origin{};
-        Vector3 direction{ 0.0f, 0.0f, 1.0f };
+        Vector3 direction{0.0f, 0.0f, 1.0f};
         float age = 0.0f;
         float delay = 0.0f;
         float lifetime = 1.18f;
@@ -128,11 +135,12 @@ private:
         bool poolSpawned = false;
     };
 
+    // 地面を進むマグマ魔法の一区画です。delay で順番に噴出させます。
     struct MagmaFloodCell {
         std::unique_ptr<Object3d> surface;
         std::unique_ptr<Object3d> crest;
         Vector3 position{};
-        Vector3 direction{ 0.0f, 0.0f, 1.0f };
+        Vector3 direction{0.0f, 0.0f, 1.0f};
         float delay = 0.0f;
         float age = 0.0f;
         float lifetime = 2.2f;
@@ -141,12 +149,19 @@ private:
         bool leavesPool = false;
     };
 
+    // AIと攻撃フェーズ。攻撃時間・射程は EnemyAttackProfile の設定を基準にします。
     void EnsureBaseScale();
+    /// <summary>標的距離と現在フェーズから、移動速度と攻撃開始を決めます。</summary>
     void UpdateBehavior(float deltaTime, const Vector3& targetDirection, float targetDistance, Vector3& velocity);
+    /// <summary>攻撃状態と予備動作を初期化します。</summary>
     void StartAttack(AttackKind kind, const Vector3& targetDirection);
+    /// <summary>予備動作、攻撃、硬直の更新先を切り替えます。</summary>
     void UpdateAttack(float deltaTime, const Vector3& targetDirection, float targetDistance, Vector3& velocity);
+    /// <summary>魔法陣や攻撃予告を更新します。</summary>
     void UpdateWindup(float deltaTime, const Vector3& targetDirection);
+    /// <summary>予備動作完了時に各技の攻撃本体を開始します。</summary>
     void BeginActive();
+    /// <summary>進行中の攻撃を更新し、終了時に硬直へ移します。</summary>
     void UpdateActive(float deltaTime, float targetDistance, Vector3& velocity);
     void BeginRecovery();
     void FinishAttack();
@@ -158,70 +173,68 @@ private:
     const char* GetAttackId(AttackKind kind) const;
     const EnemyAttackDefinition& GetCurrentAttackDefinition() const;
 
+    // マグマ弾と着弾床。ターゲット位置を確定してから弾を逐次発射します。
     void PrepareMortarTargets();
     void LaunchNextMagmaBlob();
     void UpdateMagmaBlobs(float deltaTime);
     void ImpactMagmaBlob(MagmaBlob& blob);
     void SpawnMagmaPool(const Vector3& position, float radius, float lifetime);
     void UpdateMagmaPools(float deltaTime);
+    // 突進とその炎の残像は同じ進行率から更新します。
     void BeginRush();
     void UpdateRush(float deltaTime, float targetDistance, Vector3& velocity);
     void FinishRush();
     void EnsureRushFlameVisuals();
     void UpdateRushFlameVisuals(const Vector3& position, float progress, float deltaTime);
     void ClearRushFlameVisuals();
+    // 火山プレスは着地を一度だけ判定し、波を別オブジェクトとして広げます。
     void BeginVolcanicSlam();
     void UpdateVolcanicSlam(float deltaTime, Vector3& velocity);
     void ImpactVolcanicSlam();
     void SpawnSlamRings(const Vector3& position);
     void UpdateMagmaRings(float deltaTime);
+    // 間欠泉の候補位置を地面へ投影してから、時間差で柱を生成します。
     void PrepareEruptionTargets();
     void SpawnNextMagmaPillar();
-    void SpawnMagmaPillar(
-        const Vector3& position,
-        float radius,
-        float height,
-        float lifetime,
-        float delay,
-        const char* attackId);
+    void SpawnMagmaPillar(const Vector3& position, float radius, float height, float lifetime, float delay,
+                          const char* attackId);
     void UpdateMagmaPillars(float deltaTime);
+    // 螺旋溶岩波は複数の進行体を使い、通過した位置に溶岩床を残します。
     void BeginLavaSpiral();
     void UpdateMagmaSurges(float deltaTime);
+    // 三柱の炎魔法。各魔法陣と柱の順序を同じターゲット配列で管理します。
     void PrepareFireColumnTargets();
     void CreateFireColumnSigils();
     void UpdateFireColumnSigils(float deltaTime);
     void BeginFireColumn();
     void UpdateFireColumn(float deltaTime);
+    // マグマ流は複数セルを順番に出し、最後のセルまで攻撃を維持します。
     void BeginMagmaFlood();
     void UpdateMagmaFlood(float deltaTime);
     void UpdateChantVisual(float deltaTime);
 
-    std::unique_ptr<Object3d> CreateMagmaVisual(
-        const std::string& name,
-        const std::string& model,
-        int materialType,
-        const Vector4& color,
-        float emissive) const;
+    /// <summary>攻撃用モデルを作り、描画材質・色・発光を設定します。</summary>
+    std::unique_ptr<Object3d> CreateMagmaVisual(const std::string& name, const std::string& model, int materialType,
+                                                const Vector4& color, float emissive) const;
     Vector3 FindGroundPoint(const Vector3& samplePosition) const;
-    void DamageTargetAt(
-        const Vector3& center,
-        float radius,
-        float damage,
-        const Vector3& knockback,
-        float burnDuration,
-        float burnTickInterval,
-        float burnTickDamage);
+    /// <summary>指定範囲の標的へダメージと燃焼を適用します。</summary>
+    /// <param name="center">地面上の判定中心。</param>
+    /// <param name="radius">水平面の判定半径。</param>
+    /// <param name="burnDuration">燃焼の継続秒数。0 は燃焼なしです。</param>
+    void DamageTargetAt(const Vector3& center, float radius, float damage, const Vector3& knockback, float burnDuration,
+                        float burnTickInterval, float burnTickDamage);
     void ApplySlimeAnimation(float deltaTime);
     void UpdateFacing(const Vector3& direction);
     void UpdateBodyHeat(float deltaTime);
     void EmitPreset(const char* presetName, const Vector3& position) const;
-    void EmitDirectedPreset(
-        const char* presetName,
-        const Vector3& position,
-        const Vector3& direction,
-        float speedScale) const;
+    void EmitDirectedPreset(const char* presetName, const Vector3& position, const Vector3& direction,
+                            float speedScale) const;
+    /// <summary>見た目のスケールを本体の衝突半径へ反映します。</summary>
     void SyncCollisionRadius();
+    /// <summary>中断・形態変更時に残った攻撃オブジェクトを破棄します。</summary>
     void ClearTransientVisuals();
+
+    // 登場から戦闘開始までの状態を管理します。Editor配置値は別に保持します。
     bool UpdateEncounterState(float deltaTime);
     void CaptureEncounterAuthoredState(bool refreshVisualTransform = false);
     void InitializeEncounterState();
@@ -232,10 +245,11 @@ private:
     bool IsEncounterControlled() const;
     float GetEncounterAppearanceDuration() const;
 
+    // 攻撃中の位置・弾・演出オブジェクトです。
     AttackKind currentAttack_ = AttackKind::None;
     AttackState attackState_ = AttackState::Idle;
-    Vector3 baseScale_{ 1.0f, 1.0f, 1.0f };
-    Vector3 lockedDirection_{ 0.0f, 0.0f, 1.0f };
+    Vector3 baseScale_{1.0f, 1.0f, 1.0f};
+    Vector3 lockedDirection_{0.0f, 0.0f, 1.0f};
     Vector3 lockedTargetPosition_{};
     Vector3 attackStartPosition_{};
     Vector3 attackEndPosition_{};
@@ -255,6 +269,7 @@ private:
     std::array<Vector3, 3> fireColumnOuterPositions_{};
     std::unique_ptr<BossChantVisual> chantVisual_;
 
+    // タイマーはすべて秒単位です。attackTimer_ は現在フェーズの残り時間です。
     float idleTimer_ = 0.0f;
     float locomotionHopTimer_ = 0.0f;
     float locomotionLandingTimer_ = 0.0f;
@@ -274,7 +289,7 @@ private:
     std::array<AttackKind, 7> attackCycle_{};
     std::size_t attackCycleIndex_ = attackCycle_.size();
     AttackKind lastAutomaticAttack_ = AttackKind::None;
-    std::mt19937 attackRandom_{ std::random_device{}() };
+    std::mt19937 attackRandom_{std::random_device{}()};
     bool hasBaseScale_ = false;
     bool warningTriggered_ = false;
     bool attackDamageApplied_ = false;
@@ -282,11 +297,12 @@ private:
     bool slamImpactSpawned_ = false;
     std::string debugPreviewAttackId_;
 
+    // Editorで指定した登場前の状態。Playの開始・停止で安全に復元します。
     EncounterState encounterState_ = EncounterState::Normal;
     Vector3 encounterBasePosition_{};
-    Vector3 encounterBaseScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 encounterBaseScale_{1.0f, 1.0f, 1.0f};
     Vector3 encounterBaseRotation_{};
-    Vector4 encounterBaseColor_{ 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 encounterBaseColor_{1.0f, 1.0f, 1.0f, 1.0f};
     float encounterBaseEmissive_ = 1.18f;
     uint32_t encounterCollisionAttribute_ = 0;
     uint32_t encounterCollisionMask_ = 0;

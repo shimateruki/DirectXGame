@@ -1,3 +1,7 @@
+<#
+能力ガイドの日本語テキストを TextPngTool で PNG 化する。
+UpdateLayout/UpdateBasics を指定すると対応する UI レイアウト JSON も更新する。
+#>
 param([switch]$UpdateLayout, [switch]$UpdateBasics)
 
 $ErrorActionPreference = 'Stop'

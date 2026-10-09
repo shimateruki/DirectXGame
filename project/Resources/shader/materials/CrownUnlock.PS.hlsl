@@ -17,6 +17,7 @@ float StarRay(float angle, float count, float phase)
     return pow(saturate(ray), 8.0f);
 }
 
+// effectType selects the ring, crown crest, or outward sweep from the same material.
 float4 main(VSOutput input) : SV_TARGET
 {
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
@@ -37,6 +38,7 @@ float4 main(VSOutput input) : SV_TARGET
     float energy = 0.0f;
     float core = 0.0f;
 
+    // Separate mode branches preserve each cue's silhouette while sharing timing and intensity controls.
     if (mode < 0.5f)
     {
         float ringA = 1.0f - smoothstep(0.015f, 0.055f + softness * 0.10f, abs(radial - 0.38f));

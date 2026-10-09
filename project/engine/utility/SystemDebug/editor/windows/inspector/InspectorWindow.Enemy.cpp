@@ -34,8 +34,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 0.72f, 0.72f, 0.72f });
                     selectedObject->animName_ = "ArmatureAction";
                     selectedObject->isAnimLoop_ = true;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(1.25f);
                 }
@@ -46,8 +46,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 0.85f, 0.85f, 0.85f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(1.1f);
                 }
@@ -58,8 +58,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 2.8f, 2.8f, 2.8f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(2.2f);
                 }
@@ -70,8 +70,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 4.2f, 4.2f, 4.2f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.78f);
                 }
@@ -83,8 +83,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 3.8f, 3.8f, 3.8f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.96f);
                 }
@@ -95,8 +95,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.95f);
                 }
@@ -107,8 +107,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.95f);
                 }
@@ -119,8 +119,8 @@ void InspectorWindow::DrawEnemyTypeSelector() {
                     selectedObject->SetScale({ 0.95f, 0.95f, 0.95f });
                     selectedObject->animName_.clear();
                     selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
-                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
                     selectedObject->SetColliderType(ColliderType::kSphere);
                     selectedObject->SetCollisionRadius(0.95f);
                 }

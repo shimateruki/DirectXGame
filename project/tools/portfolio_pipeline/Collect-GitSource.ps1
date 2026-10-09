@@ -1,4 +1,8 @@
-﻿function Assert-PortfolioChildPath {
+﻿<#
+提出用に指定ブランチのソースだけを別の作業領域へ取得する内部処理。
+コピー対象を設定の includePaths と許可拡張子へ絞り、既存の提出物は完成後に入れ替える。
+#>
+function Assert-PortfolioChildPath {
     param([string]$Parent, [string]$Child)
     $parentFull = [System.IO.Path]::GetFullPath($Parent).TrimEnd('\') + '\'
     $childFull = [System.IO.Path]::GetFullPath($Child)

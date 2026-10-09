@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "sequence": {
+    "enabled": true,
+    "duration": 1.5,
+    "binding": "enemy",
+    "priority": 0,
+    "projectileStyle": "plain",
+    "visualScale": 1.0,
+    "events": [],
+    "tracks": [
+      {
+        "name": "斬撃表示 1",
+        "type": "mesh_vfx",
+        "preset": "Resources/json/effect/effect_attack_warning_flash.json",
+        "condition": "always",
+        "enabled": true,
+        "followOwner": true,
+        "begin": 0.0,
+        "end": 0.5,
+        "radius": 0.5,
+        "damageScale": 1.0,
+        "keys": [
+          {
+            "time": 0.0,
+            "position": [
+              -1.0,
+              1.0,
+              1.5
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              0.8,
+              0.8,
+              0.8
+            ],
+            "interpolation": 2
+          },
+          {
+            "time": 0.5,
+            "position": [
+              1.0,
+              1.0,
+              1.5
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.2,
+              1.2,
+              1.2
+            ],
+            "interpolation": 1
+          }
+        ]
+      },
+      {
+        "name": "斬撃判定 1",
+        "type": "hitbox",
+        "preset": "",
+        "condition": "always",
+        "enabled": true,
+        "followOwner": true,
+        "begin": 0.1,
+        "end": 0.4,
+        "radius": 0.65,
+        "damageScale": 1.0,
+        "keys": [
+          {
+            "time": 0.0,
+            "position": [
+              -0.8,
+              1.0,
+              1.5
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "interpolation": 1
+          },
+          {
+            "time": 0.3,
+            "position": [
+              0.8,
+              1.0,
+              1.5
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "interpolation": 1
+          }
+        ]
+      }
+    ]
+  }
+}

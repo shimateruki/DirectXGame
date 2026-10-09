@@ -20,24 +20,24 @@ Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
-}
+} // namespace
 
 // キノコ敵の初期化
 void EnemyMushroom::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_Mushroom");
     SetEnemyType("Mushroom");
-    SetColor({ 0.86f, 0.18f, 0.24f, 1.0f });
+    SetColor({0.86f, 0.18f, 0.24f, 1.0f});
     defaultColor_ = GetColor();
 
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kCylinder);
-    SetCollisionSize({ 0.8f, 1.1f, 0.8f });
+    SetCollisionSize({0.8f, 1.1f, 0.8f});
 }
 
 // 中距離を保ちながら胞子攻撃を行うAI
@@ -109,7 +109,7 @@ void EnemyMushroom::UpdateCombatBehavior(float deltaTime, Vector3& velocity, con
 
     if (attackTimer_ > 0.0f) {
         attackTimer_ -= deltaTime;
-        SetColor({ 0.72f, 0.12f, 0.62f, 1.0f });
+        SetColor({0.72f, 0.12f, 0.62f, 1.0f});
         if (attackTimer_ <= 0.0f) {
             SetColor(defaultColor_);
         }
@@ -134,7 +134,7 @@ void EnemyMushroom::UpdateCombatBehavior(float deltaTime, Vector3& velocity, con
 void EnemyMushroom::UpdateWanderBehavior(float deltaTime, Vector3& velocity) {
     const float speed = (std::max)(0.55f, param_->speed * 0.42f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.65f);
-    UpdateFacing({ velocity.x, 0.0f, velocity.z });
+    UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
 
 std::unique_ptr<Object3d> EnemyMushroom::Clone() const {
@@ -155,7 +155,7 @@ void EnemyMushroom::ExecuteAbility(Player* player) {
 
     Vector3 direction = player->GetForwardDirection();
     if (Math::Length(direction) <= 0.001f) {
-        direction = { 0.0f, 0.0f, 1.0f };
+        direction = {0.0f, 0.0f, 1.0f};
     }
     direction = Math::Normalize(direction);
 
@@ -166,18 +166,12 @@ void EnemyMushroom::ExecuteAbility(Player* player) {
     Vector3 velocity = direction * kCarriedSporeSpeed;
     velocity.y = 2.5f;
 
-    BulletManager::GetInstance()->Fire(
-        spawnPos,
-        velocity,
-        kPlayerAttack,
-        kEnemy | kAllSolid,
-        "Primitives/sphere",
-        0.38f,
-        kCarriedSporeLifetime);
+    BulletManager::GetInstance()->Fire(spawnPos, velocity, CollisionCategories::Get("player_attack"), CollisionCategories::Get("enemy") | CollisionCategories::Get("ground"), "Primitives/sphere",
+                                       0.38f, kCarriedSporeLifetime);
 
     carriedSporeCooldown_ = kCarriedSporeCooldown;
     carriedEffectTimer_ = 0.18f;
-    SetColor({ 1.0f, 0.34f, 0.72f, 1.0f });
+    SetColor({1.0f, 0.34f, 0.72f, 1.0f});
 }
 
 void EnemyMushroom::UpdateCarriedAbility(Player* player, float deltaTime) {
@@ -191,7 +185,7 @@ void EnemyMushroom::UpdateCarriedAbility(Player* player, float deltaTime) {
 
     if (carriedEffectTimer_ > 0.0f) {
         const float pulse = 0.08f + std::sin(carriedEffectTimer_ * 48.0f) * 0.06f;
-        SetColor({ 1.0f, 0.34f + pulse, 0.72f, 1.0f });
+        SetColor({1.0f, 0.34f + pulse, 0.72f, 1.0f});
     } else {
         SetColor(defaultColor_);
     }
@@ -200,24 +194,27 @@ void EnemyMushroom::UpdateCarriedAbility(Player* player, float deltaTime) {
 // 胞子攻撃と見た目の補助処理
 void EnemyMushroom::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
-    if (lengthSq <= 0.0001f) return;
+    if (lengthSq <= 0.0001f)
+        return;
     const float targetYaw = std::atan2(direction.x, direction.z);
     SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.12f));
 }
 
 void EnemyMushroom::DispatchSporeDamage(const Vector3& direction, float distance) {
-    if (!target_ || distance > kAttackRange + 0.4f) return;
+    if (!target_ || distance > kAttackRange + 0.4f)
+        return;
 
     DamageEvent damageEvent;
     damageEvent.target = target_;
     damageEvent.attacker = this;
     damageEvent.damageAmount = kSporeDamage;
-    damageEvent.knockbackVelocity = { direction.x * 10.0f, 5.0f, direction.z * 10.0f };
+    damageEvent.knockbackVelocity = {direction.x * 10.0f, 5.0f, direction.z * 10.0f};
     EventManager::GetInstance()->Dispatch(damageEvent);
 }
 
 void EnemyMushroom::FireSporeProjectile(const Vector3& direction, float distance) {
-    if (!target_) return;
+    if (!target_)
+        return;
 
     Vector3 spawnPos = GetTranslate();
     spawnPos.y += 1.15f;
@@ -225,19 +222,13 @@ void EnemyMushroom::FireSporeProjectile(const Vector3& direction, float distance
     Vector3 aim = target_->GetTranslate() - spawnPos;
     aim.y += 0.45f;
     if (Math::Length(aim) <= 0.001f) {
-        aim = { direction.x, 0.15f, direction.z };
+        aim = {direction.x, 0.15f, direction.z};
     }
     aim = Math::Normalize(aim);
 
     const float speed = std::clamp(distance * 1.8f, 14.0f, 26.0f);
-    BulletManager::GetInstance()->Fire(
-        spawnPos,
-        aim * speed,
-        kEnemyAttack,
-        kPlayer | kAllSolid,
-        "Primitives/sphere",
-        0.45f,
-        3.2f);
+    BulletManager::GetInstance()->Fire(spawnPos, aim * speed, CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Primitives/sphere",
+                                       0.45f, 3.2f);
 }
 
 void EnemyMushroom::ApplySquashAnimation(float deltaTime) {

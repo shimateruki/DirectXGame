@@ -5,8 +5,9 @@
 using namespace PlayerImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
-void Player::SetCarriedEnemy(Object3d* enemy)
-{
+// 敵の運搬・吸収からコピー開始までを扱います。途中キャンセルでも敵とプレイヤーの見た目を戻せる順序にします。
+
+void Player::SetCarriedEnemy(Object3d* enemy) {
     if (carriedEnemy_ == enemy) {
         if (enemy && !hasCarriedEnemyBaseScale_) {
             carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
@@ -31,18 +32,16 @@ void Player::SetCarriedEnemy(Object3d* enemy)
             carriedEnemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
         }
         hasCarriedEnemyBaseScale_ = true;
-    }
-    else {
-        carriedEnemyBaseScale_ = { 1.0f, 1.0f, 1.0f };
-        carriedEnemyBaseRotation_ = { 0.0f, 0.0f, 0.0f };
-        carriedEnemyBaseQuaternion_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+    } else {
+        carriedEnemyBaseScale_ = {1.0f, 1.0f, 1.0f};
+        carriedEnemyBaseRotation_ = {0.0f, 0.0f, 0.0f};
+        carriedEnemyBaseQuaternion_ = {0.0f, 0.0f, 0.0f, 1.0f};
         carriedEnemyBaseQuaternionMaster_ = true;
         hasCarriedEnemyBaseScale_ = false;
     }
 }
 
-void Player::ReleaseCarriedEnemy(bool restorePose)
-{
+void Player::ReleaseCarriedEnemy(bool restorePose) {
     if (absorbEffectActive_) {
         CancelAbsorbEffect(restorePose);
     }
@@ -54,10 +53,9 @@ void Player::ReleaseCarriedEnemy(bool restorePose)
 
     if (auto* enemyBase = dynamic_cast<BaseEnemy*>(enemy)) {
         enemyBase->SetCarried(false);
-    }
-    else {
-        enemy->SetCollisionAttribute(kEnemy);
-        enemy->SetCollisionMask(kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack);
+    } else {
+        enemy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+        enemy->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack"));
     }
 
     enemy->SetIsVisible(true);
@@ -76,8 +74,7 @@ void Player::ReleaseCarriedEnemy(bool restorePose)
     SetCarriedEnemy(nullptr);
 }
 
-bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const
-{
+bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const {
     if (!enemy) {
         return false;
     }
@@ -86,8 +83,7 @@ bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const
     return type == EnemyMorphType::Slime || type == EnemyMorphType::FireSlime;
 }
 
-void Player::BeginAbsorbEffect(BaseEnemy* enemy)
-{
+void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
     if (!enemy) {
         return;
     }
@@ -101,9 +97,8 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy)
     pendingAbsorbEnemy_ = enemy;
     pendingAbsorbEnemyBaseScale_ = hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : GetStableEnemyCarryScale(enemy);
     pendingAbsorbEnemyStartPos_ = enemy->GetWorldPosition();
-    pendingAbsorbTint_ = pendingAbsorbType_ == EnemyMorphType::Slime
-        ? Vector4{ 1.0f, 0.42f, 0.82f, 1.0f }
-        : GetEnemyMorphTint(pendingAbsorbType_);
+    pendingAbsorbTint_ = pendingAbsorbType_ == EnemyMorphType::Slime ? Vector4{1.0f, 0.42f, 0.82f, 1.0f}
+                                                                     : GetEnemyMorphTint(pendingAbsorbType_);
     pendingAbsorbPlayerBaseColor_ = GetColor();
     absorbEffectTimer_ = 0.0f;
     absorbEffectEmitTimer_ = 0.0f;
@@ -113,12 +108,11 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy)
     enemy->SetCollisionAttribute(0);
     enemy->SetCollisionMask(0);
     enemy->SetIsVisible(true);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    transform_.scale = { 2.35f, 1.65f, 2.35f };
+    SetVelocity({0.0f, 0.0f, 0.0f});
+    transform_.scale = {2.35f, 1.65f, 2.35f};
 }
 
-void Player::UpdateAbsorbEffect(float deltaTime)
-{
+void Player::UpdateAbsorbEffect(float deltaTime) {
     if (!absorbEffectActive_) {
         return;
     }
@@ -136,13 +130,11 @@ void Player::UpdateAbsorbEffect(float deltaTime)
     const float t = std::clamp(absorbEffectTimer_ / kAbsorbEffectDuration, 0.0f, 1.0f);
     const float ease = t * t * (3.0f - 2.0f * t);
     const Vector3 playerPos = GetWorldPosition();
-    const Vector3 targetPos = playerPos + Vector3{ 0.0f, 1.35f, 0.0f };
+    const Vector3 targetPos = playerPos + Vector3{0.0f, 1.35f, 0.0f};
 
-    Vector3 absorbPos{
-        Math::Lerp(pendingAbsorbEnemyStartPos_.x, targetPos.x, ease),
-        Math::Lerp(pendingAbsorbEnemyStartPos_.y, targetPos.y, ease),
-        Math::Lerp(pendingAbsorbEnemyStartPos_.z, targetPos.z, ease)
-    };
+    Vector3 absorbPos{Math::Lerp(pendingAbsorbEnemyStartPos_.x, targetPos.x, ease),
+                      Math::Lerp(pendingAbsorbEnemyStartPos_.y, targetPos.y, ease),
+                      Math::Lerp(pendingAbsorbEnemyStartPos_.z, targetPos.z, ease)};
     absorbPos.y += std::sin(t * kPi) * 0.22f;
 
     const float scaleRate = Math::Lerp(1.0f, 0.06f, ease);
@@ -150,11 +142,9 @@ void Player::UpdateAbsorbEffect(float deltaTime)
     Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform();
     if (enemyTransform) {
         enemyTransform->translate = absorbPos;
-        enemyTransform->scale = {
-            pendingAbsorbEnemyBaseScale_.x * scaleRate * (1.0f + squash),
-            pendingAbsorbEnemyBaseScale_.y * scaleRate * (1.0f - squash * 0.75f),
-            pendingAbsorbEnemyBaseScale_.z * scaleRate * (1.0f + squash)
-        };
+        enemyTransform->scale = {pendingAbsorbEnemyBaseScale_.x * scaleRate * (1.0f + squash),
+                                 pendingAbsorbEnemyBaseScale_.y * scaleRate * (1.0f - squash * 0.75f),
+                                 pendingAbsorbEnemyBaseScale_.z * scaleRate * (1.0f + squash)};
         enemyTransform->rotate.x += 9.0f * deltaTime;
         enemyTransform->rotate.y += 18.0f * deltaTime;
         enemyTransform->rotate.z += 7.0f * deltaTime;
@@ -169,12 +159,16 @@ void Player::UpdateAbsorbEffect(float deltaTime)
 
     const float flash = std::sin(t * kPi);
     const float colorRate = 0.35f + flash * 0.55f;
-    Vector4 flashColor{
-        std::clamp(pendingAbsorbPlayerBaseColor_.x * (1.0f - colorRate) + pendingAbsorbTint_.x * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        std::clamp(pendingAbsorbPlayerBaseColor_.y * (1.0f - colorRate) + pendingAbsorbTint_.y * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        std::clamp(pendingAbsorbPlayerBaseColor_.z * (1.0f - colorRate) + pendingAbsorbTint_.z * colorRate + flash * 0.18f, 0.0f, 1.0f),
-        1.0f
-    };
+    Vector4 flashColor{std::clamp(pendingAbsorbPlayerBaseColor_.x * (1.0f - colorRate) +
+                                      pendingAbsorbTint_.x * colorRate + flash * 0.18f,
+                                  0.0f, 1.0f),
+                       std::clamp(pendingAbsorbPlayerBaseColor_.y * (1.0f - colorRate) +
+                                      pendingAbsorbTint_.y * colorRate + flash * 0.18f,
+                                  0.0f, 1.0f),
+                       std::clamp(pendingAbsorbPlayerBaseColor_.z * (1.0f - colorRate) +
+                                      pendingAbsorbTint_.z * colorRate + flash * 0.18f,
+                                  0.0f, 1.0f),
+                       1.0f};
     SetColor(flashColor);
     for (Object3d* child : GetChildren()) {
         if (child) {
@@ -183,11 +177,7 @@ void Player::UpdateAbsorbEffect(float deltaTime)
     }
 
     const float bodyPulse = std::sin(t * kPi);
-    transform_.scale = {
-        2.0f + bodyPulse * 0.55f,
-        2.0f - bodyPulse * 0.38f,
-        2.0f + bodyPulse * 0.55f
-    };
+    transform_.scale = {2.0f + bodyPulse * 0.55f, 2.0f - bodyPulse * 0.38f, 2.0f + bodyPulse * 0.55f};
 
     if (particleSystem_ && absorbEffectEmitTimer_ <= 0.0f) {
         Vector3 toPlayer = targetPos - absorbPos;
@@ -195,23 +185,13 @@ void Player::UpdateAbsorbEffect(float deltaTime)
         if (length > 0.001f) {
             toPlayer = toPlayer / length;
         } else {
-            toPlayer = { 0.0f, 1.0f, 0.0f };
+            toPlayer = {0.0f, 1.0f, 0.0f};
         }
 
         const int count = pendingAbsorbType_ == EnemyMorphType::FireSlime ? 14 : 12;
-        particleSystem_->SpawnParticles(
-            absorbPos,
-            count,
-            1.4f,
-            &toPlayer,
-            26.0f,
-            pendingAbsorbTint_,
-            { pendingAbsorbTint_.x, pendingAbsorbTint_.y, pendingAbsorbTint_.z, 0.0f },
-            0.08f,
-            0.24f,
-            0.34f,
-            0.035f
-        );
+        particleSystem_->SpawnParticles(absorbPos, count, 1.4f, &toPlayer, 26.0f, pendingAbsorbTint_,
+                                        {pendingAbsorbTint_.x, pendingAbsorbTint_.y, pendingAbsorbTint_.z, 0.0f}, 0.08f,
+                                        0.24f, 0.34f, 0.035f);
         absorbEffectEmitTimer_ = kAbsorbEffectParticleInterval;
     }
 
@@ -220,8 +200,7 @@ void Player::UpdateAbsorbEffect(float deltaTime)
     }
 }
 
-void Player::FinishAbsorbEffect()
-{
+void Player::FinishAbsorbEffect() {
     BaseEnemy* enemy = pendingAbsorbEnemy_;
     if (!enemy) {
         CancelAbsorbEffect(false);
@@ -247,8 +226,7 @@ void Player::FinishAbsorbEffect()
     StartEnemyMorph(enemy);
 }
 
-void Player::CancelAbsorbEffect(bool restoreEnemy)
-{
+void Player::CancelAbsorbEffect(bool restoreEnemy) {
     if (restoreEnemy && pendingAbsorbEnemy_) {
         if (Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform()) {
             enemyTransform->scale = pendingAbsorbEnemyBaseScale_;
@@ -275,8 +253,7 @@ void Player::CancelAbsorbEffect(bool restoreEnemy)
     absorbEffectEmitTimer_ = 0.0f;
 }
 
-void Player::StartEnemyMorph(BaseEnemy* enemy)
-{
+void Player::StartEnemyMorph(BaseEnemy* enemy) {
     if (!enemy) {
         return;
     }
@@ -300,9 +277,8 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     enemyMorphType_ = resolvedType;
     enemyMorphSource_ = enemy;
     enemyMorphHasTimeLimit_ = !enemy->param_.has_value() || enemy->param_->morphLimited;
-    enemyMorphDuration_ = enemy->param_.has_value()
-        ? (std::max)(0.1f, enemy->param_->morphDuration)
-        : kEnemyMorphDuration;
+    enemyMorphDuration_ =
+        enemy->param_.has_value() ? (std::max)(0.1f, enemy->param_->morphDuration) : kEnemyMorphDuration;
     enemyMorphTimer_ = enemyMorphHasTimeLimit_ ? enemyMorphDuration_ : 0.0f;
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
@@ -352,8 +328,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy)
     }
 }
 
-void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible)
-{
+void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
     if (isEnemyMorphed_) {
         return;
     }
@@ -374,8 +349,7 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible)
     }
 }
 
-void Player::CompleteEnemyMorphStart(float moveYaw)
-{
+void Player::CompleteEnemyMorphStart(float moveYaw) {
     if (checkpointActivated_ && enemyMorphType_ != EnemyMorphType::Crown) {
         const std::string currentMorph = GetEnemyTypeForCurrentMorph();
         if (!currentMorph.empty()) {
@@ -399,16 +373,26 @@ void Player::CompleteEnemyMorphStart(float moveYaw)
     }
 }
 
-void Player::EmitEnemyMorphStartEffects()
-{
+void Player::EmitEnemyMorphStartEffects() {
     const char* cue = nullptr;
     switch (enemyMorphType_) {
-    case EnemyMorphType::Slime: cue = "player_copy_pink"; break;
-    case EnemyMorphType::FireSlime: cue = "player_copy_fire"; break;
-    case EnemyMorphType::ThunderSlime: cue = "player_copy_thunder"; break;
-    case EnemyMorphType::WindSlime: cue = "player_copy_wind"; break;
-    case EnemyMorphType::Bomber: cue = "player_copy_bomb"; break;
-    default: break;
+    case EnemyMorphType::Slime:
+        cue = "player_copy_pink";
+        break;
+    case EnemyMorphType::FireSlime:
+        cue = "player_copy_fire";
+        break;
+    case EnemyMorphType::ThunderSlime:
+        cue = "player_copy_thunder";
+        break;
+    case EnemyMorphType::WindSlime:
+        cue = "player_copy_wind";
+        break;
+    case EnemyMorphType::Bomber:
+        cue = "player_copy_bomb";
+        break;
+    default:
+        break;
     }
     if (cue) {
         // 見た目だけの変形。速度・操作・当たり判定・コピー成立時刻は変更しない。
@@ -422,26 +406,14 @@ void Player::EmitEnemyMorphStartEffects()
     }
     // 王冠などの特殊コピーは既存演出を維持する。
     if (particleSystem_ && enemyMorphType_ != EnemyMorphType::Slime) {
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        Vector3 up = {0.0f, 1.0f, 0.0f};
         particleSystem_->SpawnParticles(
-            GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f },
-            32,
-            2.2f,
-            &up,
-            22.0f,
-            enemyMorphTint_,
-            { enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f },
-            0.14f,
-            0.45f,
-            0.42f,
-            0.08f
-        );
+            GetWorldPosition() + Vector3{0.0f, 1.0f, 0.0f}, 32, 2.2f, &up, 22.0f, enemyMorphTint_,
+            {enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f}, 0.14f, 0.45f, 0.42f, 0.08f);
     }
-
 }
 
-void Player::UpdateEnemyMorph(float deltaTime)
-{
+void Player::UpdateEnemyMorph(float deltaTime) {
     if (enemyMorphReleaseActive_) {
         UpdateEnemyMorphRelease(deltaTime);
         return;
@@ -486,49 +458,34 @@ void Player::UpdateEnemyMorph(float deltaTime)
             EmitOuterThunderParticles(GetWorldPosition(), GetScale(), morphElapsed * 2.6f, 1);
             enemyMorphEffectTimer_ = 0.48f;
             return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::Slime) {
-            EmitCopyMorphPreset(kPinkSlimeMorphIdlePreset, GetWorldPosition() + Vector3{ 0.0f, GetScale().y * 0.82f, 0.0f });
+        } else if (enemyMorphType_ == EnemyMorphType::Slime) {
+            EmitCopyMorphPreset(kPinkSlimeMorphIdlePreset,
+                                GetWorldPosition() + Vector3{0.0f, GetScale().y * 0.82f, 0.0f});
             enemyMorphEffectTimer_ = kPinkSlimeMorphParticleInterval;
             return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::Bomber) {
-            EmitCopyMorphPreset(kBomberMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, GetScale().y * 0.96f, 0.0f });
+        } else if (enemyMorphType_ == EnemyMorphType::Bomber) {
+            EmitCopyMorphPreset(kBomberMorphAuraPreset, GetWorldPosition() + Vector3{0.0f, GetScale().y * 0.96f, 0.0f});
             enemyMorphEffectTimer_ = 0.68f;
             return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
-            EmitCopyMorphPreset(kFireMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, GetScale().y * 0.88f, 0.0f });
+        } else if (enemyMorphType_ == EnemyMorphType::FireSlime) {
+            EmitCopyMorphPreset(kFireMorphAuraPreset, GetWorldPosition() + Vector3{0.0f, GetScale().y * 0.88f, 0.0f});
             enemyMorphEffectTimer_ = 0.48f;
             return;
-        }
-        else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
-            EmitCopyMorphPreset(kWindMorphAuraPreset, GetWorldPosition() + Vector3{ 0.0f, GetScale().y * 0.82f, 0.0f });
+        } else if (enemyMorphType_ == EnemyMorphType::WindSlime) {
+            EmitCopyMorphPreset(kWindMorphAuraPreset, GetWorldPosition() + Vector3{0.0f, GetScale().y * 0.82f, 0.0f});
             enemyMorphEffectTimer_ = 0.62f;
             return;
-        }
-        else if (particleSystem_) {
-            Vector3 up = { 0.0f, 1.0f, 0.0f };
+        } else if (particleSystem_) {
+            Vector3 up = {0.0f, 1.0f, 0.0f};
             particleSystem_->SpawnParticles(
-                GetWorldPosition() + Vector3{ 0.0f, 1.1f, 0.0f },
-                6,
-                1.2f,
-                &up,
-                12.0f,
-                enemyMorphTint_,
-                { enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f },
-                0.08f,
-                0.22f,
-                0.26f,
-                0.03f
-            );
+                GetWorldPosition() + Vector3{0.0f, 1.1f, 0.0f}, 6, 1.2f, &up, 12.0f, enemyMorphTint_,
+                {enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f}, 0.08f, 0.22f, 0.26f, 0.03f);
         }
         enemyMorphEffectTimer_ = kEnemyMorphParticleInterval;
     }
 }
 
-float Player::GetEnemyMorphRate() const
-{
+float Player::GetEnemyMorphRate() const {
     if (!isEnemyMorphed_) {
         return 0.0f;
     }
@@ -540,4 +497,3 @@ float Player::GetEnemyMorphRate() const
     }
     return std::clamp(enemyMorphTimer_ / enemyMorphDuration_, 0.0f, 1.0f);
 }
-

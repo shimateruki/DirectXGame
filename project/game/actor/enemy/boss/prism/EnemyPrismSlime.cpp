@@ -1,4 +1,4 @@
-﻿#include "game/actor/combat/CombatGroundQuery.h"
+#include "game/actor/combat/CombatGroundQuery.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.Internal.h"
 #include "game/actor/enemy/boss/core/BossChantVisual.h"
 #include "game/actor/enemy/animation/BossGroundHopVfx.h"
@@ -10,7 +10,9 @@ constexpr float kLocomotionHopInterval = 0.62f;
 constexpr float kLocomotionAnticipationDuration = 0.24f;
 constexpr float kLocomotionHopPowerScale = 0.52f;
 constexpr float kLocomotionLandingDuration = 0.25f;
-}
+} // namespace
+
+// プリズムボスの属性フェーズと攻撃状態を管理します。詠唱・移動・攻撃の優先順位を保って更新します。
 
 EnemyPrismSlime::EnemyPrismSlime() = default;
 EnemyPrismSlime::~EnemyPrismSlime() = default;
@@ -21,7 +23,7 @@ void EnemyPrismSlime::Initialize(Object3dCommon* common, const std::string& mode
     SetEnemyType("PrismSlime");
     ReloadAttackProfile();
     SetMaterialType(kPrismCrystalMaterialType);
-    SetColor({ 0.34f, 0.22f, 0.62f, 1.0f });
+    SetColor({0.34f, 0.22f, 0.62f, 1.0f});
     SetMetallic(0.84f);
     SetRoughness(0.12f);
     SetEnableEnvMap(true);
@@ -76,9 +78,8 @@ void EnemyPrismSlime::Update(float deltaTime) {
     const float locomotionIntentSpeed = SlimeBounceAnimator::PlanarSpeed(velocity);
     if (attackState_ == AttackState::Idle && target_ && param_.has_value()) {
         velocity = CombatMath::SmoothPlanarVelocity(previousVelocity, velocity, deltaTime, 7.5f);
-        const Vector3 candidate = GetTranslate() + Vector3{ velocity.x * 0.38f, 0.0f, velocity.z * 0.38f };
-        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(
-            GetTranslate(), candidate, this, { 4.0f, 12.0f }, 1.4f)) {
+        const Vector3 candidate = GetTranslate() + Vector3{velocity.x * 0.38f, 0.0f, velocity.z * 0.38f};
+        if (isGrounded_ && !CombatGroundQuery::CanWalkTo(GetTranslate(), candidate, this, {4.0f, 12.0f}, 1.4f)) {
             velocity.x = 0.0f;
             velocity.z = 0.0f;
         }
@@ -88,18 +89,19 @@ void EnemyPrismSlime::Update(float deltaTime) {
             locomotionLandingTimer_ = kLocomotionLandingDuration;
             locomotionAirborne_ = false;
             BossGroundHopVfx::EmitPuff(
-                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, { 4.0f, 12.0f }, GetTranslate().y) + Vector3{ 0.0f, 0.04f, 0.0f },
-                { 0.62f, 0.92f, 1.0f, 0.72f }, 2.5f, true);
+                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, {4.0f, 12.0f}, GetTranslate().y) +
+                    Vector3{0.0f, 0.04f, 0.0f},
+                {0.62f, 0.92f, 1.0f, 0.72f}, 2.5f, true);
         }
-        if (SlimeBounceAnimator::StepBossGroundHop(locomotionHopTimer_, velocity,
-            locomotionIntentSpeed, isGrounded_ && param_.has_value(), deltaTime, kLocomotionHopInterval,
-            kLocomotionAnticipationDuration, 0.22f)) {
-            velocity.y = (std::max)(velocity.y,
-                std::clamp(param_->jumpPower * kLocomotionHopPowerScale, 9.0f, 14.5f));
+        if (SlimeBounceAnimator::StepBossGroundHop(locomotionHopTimer_, velocity, locomotionIntentSpeed,
+                                                   isGrounded_ && param_.has_value(), deltaTime, kLocomotionHopInterval,
+                                                   kLocomotionAnticipationDuration, 0.22f)) {
+            velocity.y = (std::max)(velocity.y, std::clamp(param_->jumpPower * kLocomotionHopPowerScale, 9.0f, 14.5f));
             locomotionAirborne_ = true;
             BossGroundHopVfx::EmitPuff(
-                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, { 4.0f, 12.0f }, GetTranslate().y) + Vector3{ 0.0f, 0.04f, 0.0f },
-                { 0.62f, 0.92f, 1.0f, 0.58f }, 2.2f, false);
+                CombatGroundQuery::FindGroundPoint(GetTranslate(), this, {4.0f, 12.0f}, GetTranslate().y) +
+                    Vector3{0.0f, 0.04f, 0.0f},
+                {0.62f, 0.92f, 1.0f, 0.58f}, 2.2f, false);
         }
     } else {
         locomotionHopTimer_ = 0.0f;
@@ -118,9 +120,7 @@ void EnemyPrismSlime::Update(float deltaTime) {
     UpdateFaceParts(deltaTime);
 }
 
-void EnemyPrismSlime::Draw(
-    ID3D12Resource* pointLightResource,
-    ID3D12Resource* spotLightResource) {
+void EnemyPrismSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (debugPreviewChantOnly_) {
         if (chantVisual_) {
             chantVisual_->Draw(pointLightResource, spotLightResource);
@@ -168,8 +168,10 @@ void EnemyPrismSlime::Draw(
     for (const WindVortexVisual& vortex : windVortices_) {
         drawWindEffect(vortex.circle);
         drawWindEffect(vortex.circleGlow);
-        for (const auto& effect : vortex.outer) drawWindEffect(effect);
-        for (const auto& effect : vortex.inner) drawWindEffect(effect);
+        for (const auto& effect : vortex.outer)
+            drawWindEffect(effect);
+        for (const auto& effect : vortex.inner)
+            drawWindEffect(effect);
     }
     if (chantVisual_) {
         chantVisual_->Draw(pointLightResource, spotLightResource);
@@ -309,6 +311,7 @@ void EnemyPrismSlime::EnsureBaseScale() {
     }
 }
 
+// HP 段階から属性を選びます。攻撃プレビュー中は選択技の属性を優先します。
 void EnemyPrismSlime::UpdateElementPhase() {
     ElementPhase nextPhase = ElementPhase::Neutral;
     if (param_.has_value() && param_->maxHp > 0.001f) {
@@ -324,10 +327,18 @@ void EnemyPrismSlime::UpdateElementPhase() {
 
     if (const AttackKind previewAttack = ResolveDebugAttack(); previewAttack != AttackKind::None) {
         switch (previewAttack) {
-        case AttackKind::FireFan: nextPhase = ElementPhase::Fire; break;
-        case AttackKind::ThunderChain: nextPhase = ElementPhase::Thunder; break;
-        case AttackKind::WindWave: nextPhase = ElementPhase::Wind; break;
-        default: nextPhase = ElementPhase::Neutral; break;
+        case AttackKind::FireFan:
+            nextPhase = ElementPhase::Fire;
+            break;
+        case AttackKind::ThunderChain:
+            nextPhase = ElementPhase::Thunder;
+            break;
+        case AttackKind::WindWave:
+            nextPhase = ElementPhase::Wind;
+            break;
+        default:
+            nextPhase = ElementPhase::Neutral;
+            break;
         }
     }
 
@@ -335,15 +346,12 @@ void EnemyPrismSlime::UpdateElementPhase() {
         elementPhase_ = nextPhase;
         UpdatePhaseAppearance();
         impactPulseTimer_ = 0.32f;
-        EmitPreset(kPrismPhasePulsePreset, GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.48f, 0.0f });
+        EmitPreset(kPrismPhasePulsePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.48f, 0.0f});
     }
 }
 
-void EnemyPrismSlime::UpdateBehavior(
-    float deltaTime,
-    const Vector3& direction,
-    float distance,
-    Vector3& velocity) {
+// 再配置・攻撃中の更新を優先し、待機中は次の技の射程へ移動します。
+void EnemyPrismSlime::UpdateBehavior(float deltaTime, const Vector3& direction, float distance, Vector3& velocity) {
     if (attackState_ == AttackState::Reposition) {
         UpdateReposition(deltaTime, velocity);
         return;
@@ -368,28 +376,34 @@ void EnemyPrismSlime::UpdateBehavior(
 
     const AttackKind debugAttack = ResolveDebugAttack();
     const AttackKind plannedAttack = debugAttack != AttackKind::None ? debugAttack : ResolveAutomaticAttack(distance);
-    const EnemyAttackDefinition& plannedDefinition = GetAttackDefinition(GetAttackId(plannedAttack));
-    const bool isInAttackRange =
-        distance >= plannedDefinition.minRange && distance <= plannedDefinition.maxRange;
+    const EnemyAttackDefinition& plannedDefinition = plannedAttack == AttackKind::FireFan
+        ? SelectFireFanDefinition(distance) : GetAttackDefinition(GetAttackId(plannedAttack));
+    const bool isInAttackRange = distance >= plannedDefinition.minRange && distance <= plannedDefinition.maxRange;
     if ((!locomotionAirborne_ || isGrounded_) && IsBossTargetEngaged() && attackCooldown_ <= 0.0f && isInAttackRange) {
         StartAttack(plannedAttack, direction, distance);
         return;
     }
 
     // 射程外では待機用の歩速を使わず、次の技が届く位置まで詰めます。
-    const float moveSpeed = distance > plannedDefinition.maxRange
-        ? (std::max)(5.5f, param_->speed * 3.0f)
-        : (std::max)(0.75f, param_->speed);
+    const float moveSpeed = distance > plannedDefinition.maxRange ? (std::max)(5.5f, param_->speed * 3.0f)
+                                                                  : (std::max)(0.75f, param_->speed);
     const float approachDistance = (std::min)(9.0f, (std::max)(2.0f, plannedDefinition.maxRange * 0.86f));
-    const Vector3 spacing = CombatMath::MakePacedSpacingVelocity(
-        direction, distance, 4.2f, approachDistance, moveSpeed,
-        0.62f, 0.58f, idleTimer_, 4.6f);
+    const Vector3 spacing = CombatMath::MakePacedSpacingVelocity(direction, distance, 4.2f, approachDistance, moveSpeed,
+                                                                 0.62f, 0.58f, idleTimer_, 4.6f);
     velocity.x = spacing.x;
     velocity.z = spacing.z;
 }
 
+// 攻撃開始時の方向と距離を保存し、予兆から実行へ進む基準にします。
 void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, float distance) {
     if (kind == AttackKind::None) {
+        return;
+    }
+    if (kind == AttackKind::FireFan && debugPreviewAttackId_.empty() && attackProfile_.selectionMode != "priority" &&
+        !attackProfile_.SelectSequence(distance, 100000.0f, {}, 0.0f)) {
+        // 全候補が重み0・射程外なら旧火球へ戻さず、外側の行動サイクルを次へ進めます。
+        ++attackCycleIndex_;
+        attackCooldown_ = 0.1f;
         return;
     }
 
@@ -397,6 +411,8 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
     attackState_ = AttackState::Windup;
     lockedDirection_ = NormalizePlanar(direction);
     lockedTargetDistance_ = distance;
+    attackSequence_.Cancel();
+    if (kind == AttackKind::FireFan) selectedFireFan_ = SelectFireFanDefinition(distance);
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackStateDuration_ = (std::max)(0.08f, attack.windupDuration);
     attackTimer_ = attackStateDuration_;
@@ -413,11 +429,10 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
     } else if (kind == AttackKind::ThunderChain) {
         PrepareThunderPoints();
     } else if (kind == AttackKind::WindWave) {
-        const float distanceToCircle = std::clamp(lockedTargetDistance_, 3.2f,
-            (std::max)(3.2f, attack.maxRange));
+        const float distanceToCircle = std::clamp(lockedTargetDistance_, 3.2f, (std::max)(3.2f, attack.maxRange));
         windSpellOrigin_ = FindGroundPoint(GetWorldPosition() + lockedDirection_ * distanceToCircle);
         windTornadoAge_ = 0.0f;
-        const Vector3 right = { lockedDirection_.z, 0.0f, -lockedDirection_.x };
+        const Vector3 right = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
         for (std::size_t index = 0; index < windVortices_.size(); ++index) {
             WindVortexVisual& vortex = windVortices_[index];
             const float side = index == 0 ? 0.0f : (index == 1 ? -attack.radius * 2.1f : attack.radius * 2.1f);
@@ -425,12 +440,10 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
             Vector3 sample = windSpellOrigin_ + right * side + lockedDirection_ * forward;
             if (IsEncounterControlled()) {
                 const float margin = attack.radius * 0.72f;
-                sample.x = std::clamp(sample.x,
-                    encounterBasePosition_.x - kRepositionArenaHalfExtentX + margin,
-                    encounterBasePosition_.x + kRepositionArenaHalfExtentX - margin);
-                sample.z = std::clamp(sample.z,
-                    encounterBasePosition_.z - kRepositionArenaHalfExtentZ + margin,
-                    encounterBasePosition_.z + kRepositionArenaHalfExtentZ - margin);
+                sample.x = std::clamp(sample.x, encounterBasePosition_.x - kRepositionArenaHalfExtentX + margin,
+                                      encounterBasePosition_.x + kRepositionArenaHalfExtentX - margin);
+                sample.z = std::clamp(sample.z, encounterBasePosition_.z - kRepositionArenaHalfExtentZ + margin,
+                                      encounterBasePosition_.z + kRepositionArenaHalfExtentZ - margin);
             }
             vortex.origin = FindGroundPoint(sample);
             vortex.position = vortex.origin;
@@ -438,9 +451,12 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
             vortex.driftTimer = 0.0f;
             vortex.circle = CreateSpellEffect(kWindChantSigilEffect);
             vortex.circleGlow = CreateSpellEffect(kWindChantSigilEffect);
-            if (vortex.circleGlow) vortex.circleGlow->SetBlendMode(BlendMode::kAdd);
-            for (auto& effect : vortex.outer) effect = CreateSpellEffect(kPrismWindTornadoOuterEffect);
-            for (auto& effect : vortex.inner) effect = CreateSpellEffect(kPrismWindTornadoInnerEffect);
+            if (vortex.circleGlow)
+                vortex.circleGlow->SetBlendMode(BlendMode::kAdd);
+            for (auto& effect : vortex.outer)
+                effect = CreateSpellEffect(kPrismWindTornadoOuterEffect);
+            for (auto& effect : vortex.inner)
+                effect = CreateSpellEffect(kPrismWindTornadoInnerEffect);
         }
     } else if (kind == AttackKind::SlimeSummon) {
         PrepareSummonPortals();
@@ -453,10 +469,12 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
     chantStyle.motePreset = kPrismSpellMotesPreset;
     chantStyle.glintPreset = "prism_chant_glints";
     chantStyle.releasePreset = kPrismLanceReleasePreset;
-    chantStyle.accentColor = { 0.40f, 0.75f, 1.0f, 1.0f };
+    chantStyle.accentColor = {0.40f, 0.75f, 1.0f, 1.0f};
     chantStyle.radius = std::clamp(baseScale_.x * 1.55f, 2.2f, 3.0f);
     // 詠唱陣は攻撃を放つ間も残し、終了直前にだけ薄くします。
-    chantStyle.fadeStart = (std::max)(0.0f, attack.activeDuration - 0.24f);
+    const float releaseDuration = kind == AttackKind::FireFan && attack.sequence.enabled
+        ? (std::max)(attack.activeDuration, attack.sequence.duration) : attack.activeDuration;
+    chantStyle.fadeStart = (std::max)(0.0f, releaseDuration - 0.24f);
     if (kind == AttackKind::PrismSpikes) {
         chantStyle.releasePreset = kPrismSpikeBurstPreset;
     } else if (kind == AttackKind::SlimeSummon) {
@@ -466,19 +484,19 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const Vector3& direction, flo
         chantStyle.sigilEffectPath = kFireChantSigilEffect;
         chantStyle.motePreset = kFireChantMotesPreset;
         chantStyle.releasePreset = kFireCastPreset;
-        chantStyle.accentColor = { 1.0f, 0.35f, 0.08f, 1.0f };
+        chantStyle.accentColor = {1.0f, 0.35f, 0.08f, 1.0f};
     } else if (kind == AttackKind::ThunderChain) {
         chantStyle.glintPreset.clear();
         chantStyle.sigilEffectPath = kThunderChantSigilEffect;
         chantStyle.motePreset = kThunderChantMotesPreset;
         chantStyle.releasePreset = "thunder_slime_discharge";
-        chantStyle.accentColor = { 1.0f, 0.90f, 0.28f, 1.0f };
+        chantStyle.accentColor = {1.0f, 0.90f, 0.28f, 1.0f};
     } else if (kind == AttackKind::WindWave) {
         chantStyle.glintPreset.clear();
         chantStyle.sigilEffectPath = kWindChantSigilEffect;
         chantStyle.motePreset = kWindChantMotesPreset;
         chantStyle.releasePreset = kWindImpactPreset;
-        chantStyle.accentColor = { 0.45f, 1.0f, 0.78f, 1.0f };
+        chantStyle.accentColor = {0.45f, 1.0f, 0.78f, 1.0f};
     }
     chantVisual_ = std::make_unique<BossChantVisual>();
     if (!chantVisual_->Start(common_, std::move(chantStyle))) {
@@ -498,14 +516,12 @@ int EnemyPrismSlime::GetDebugChantVisibleLayerCount() const {
     return chantVisual_ ? chantVisual_->GetVisibleLayerCount() : -1;
 }
 
-void EnemyPrismSlime::UpdateAttack(
-    float deltaTime,
-    const Vector3& direction,
-    float distance) {
+void EnemyPrismSlime::UpdateAttack(float deltaTime, const Vector3& direction, float distance) {
     if (attackState_ == AttackState::Windup) {
         // 着弾位置を先に決める攻撃は、表示・判定・発生位置の向きを固定します。
         const bool hasFixedGroundTarget = currentAttack_ == AttackKind::PrismSpikes ||
-            currentAttack_ == AttackKind::ThunderChain || currentAttack_ == AttackKind::WindWave;
+                                          currentAttack_ == AttackKind::ThunderChain ||
+                                          currentAttack_ == AttackKind::WindWave;
         if (!hasFixedGroundTarget && attackTimer_ > GetCurrentAttackDefinition().warningLeadTime) {
             lockedDirection_ = NormalizePlanar(direction);
             lockedTargetDistance_ = distance;
@@ -538,44 +554,30 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
     switch (currentAttack_) {
     case AttackKind::PrismSpikes: {
         if (effectTimer_ <= 0.0f) {
-            const char* windupPreset = attack.windupVfx.empty()
-                ? kPrismSpikeWarningPreset
-                : attack.windupVfx.c_str();
-            EmitPreset(windupPreset, prismSpellCenter_ + Vector3{ 0.0f, 0.08f, 0.0f });
+            const char* windupPreset = attack.windupVfx.empty() ? kPrismSpikeWarningPreset : attack.windupVfx.c_str();
+            EmitPreset(windupPreset, prismSpellCenter_ + Vector3{0.0f, 0.08f, 0.0f});
             const float orbit = idleTimer_ * (2.2f + progress * 2.6f);
-            EmitPreset(kPrismSpellMotesPreset, prismSpellCenter_ + Vector3{
-                std::cos(orbit) * 1.65f, 0.12f,
-                std::sin(orbit) * 1.65f });
-            EmitPreset(kPrismChargePreset, GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.50f, 0.0f });
+            EmitPreset(kPrismSpellMotesPreset,
+                       prismSpellCenter_ + Vector3{std::cos(orbit) * 1.65f, 0.12f, std::sin(orbit) * 1.65f});
+            EmitPreset(kPrismChargePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.50f, 0.0f});
             effectTimer_ += 0.15f - progress * 0.035f;
         }
         break;
     }
     case AttackKind::CrystalLanceVolley: {
-        const float predictedDistance = std::clamp(
-            lockedTargetDistance_ + attack.radius,
-            attack.minRange,
-            attack.maxRange);
-        ShowAttackTelegraphLaneFan(
-            center,
-            lockedDirection_,
-            predictedDistance,
-            attack.radius * 1.20f,
-            kCrystalLanceCount,
-            1.08f,
-            -0.060f,
-            progress,
-            { 0.50f, 0.78f, 1.0f, 0.72f });
+        const float predictedDistance =
+            std::clamp(lockedTargetDistance_ + attack.radius, attack.minRange, attack.maxRange);
+        ShowAttackTelegraphLaneFan(center, lockedDirection_, predictedDistance, attack.radius * 1.20f,
+                                   kCrystalLanceCount, 1.08f, -0.060f, progress, {0.50f, 0.78f, 1.0f, 0.72f});
         if (effectTimer_ <= 0.0f) {
-            EmitPreset(kPrismChargePreset,
-                GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.66f, 0.0f });
+            EmitPreset(kPrismChargePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.66f, 0.0f});
             effectTimer_ += 0.10f - progress * 0.03f;
         }
         break;
     }
     case AttackKind::FireFan: {
         if (effectTimer_ <= 0.0f) {
-            const Vector3 corePosition = GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.48f, 0.0f };
+            const Vector3 corePosition = GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.48f, 0.0f};
             EmitDirectedPreset(kFireCastPreset, corePosition, lockedDirection_, 0.72f + progress * 0.55f);
             effectTimer_ += 0.085f;
         }
@@ -583,22 +585,20 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
     }
     case AttackKind::ThunderChain:
         if (effectTimer_ <= 0.0f) {
-            EmitPreset(kThunderChargePreset, GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.58f, 0.0f });
+            EmitPreset(kThunderChargePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.58f, 0.0f});
             effectTimer_ += 0.065f - progress * 0.025f;
         }
         break;
     case AttackKind::WindWave:
         if (effectTimer_ <= 0.0f) {
-            EmitDirectedPreset(kWindChargePreset,
-                GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.42f, 0.0f },
-                lockedDirection_ * -1.0f + Vector3{ 0.0f, 0.16f, 0.0f }, 0.85f + progress * 0.70f);
+            EmitDirectedPreset(kWindChargePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.42f, 0.0f},
+                               lockedDirection_ * -1.0f + Vector3{0.0f, 0.16f, 0.0f}, 0.85f + progress * 0.70f);
             effectTimer_ += 0.07f;
         }
         break;
     case AttackKind::SlimeSummon:
         if (effectTimer_ <= 0.0f) {
-            EmitPreset(kPrismChargePreset,
-                GetWorldPosition() + Vector3{ 0.0f, baseScale_.y * 0.52f, 0.0f });
+            EmitPreset(kPrismChargePreset, GetWorldPosition() + Vector3{0.0f, baseScale_.y * 0.52f, 0.0f});
             effectTimer_ += 0.12f - progress * 0.035f;
         }
         break;
@@ -607,12 +607,17 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
     }
 
     if (!warningTriggered_ && attackTimer_ <= attack.warningLeadTime) {
-        Vector4 cueColor = { 0.52f, 0.96f, 1.0f, 1.0f };
-        if (currentAttack_ == AttackKind::FireFan) cueColor = { 1.0f, 0.28f, 0.05f, 1.0f };
-        if (currentAttack_ == AttackKind::ThunderChain) cueColor = { 1.0f, 0.92f, 0.12f, 1.0f };
-        if (currentAttack_ == AttackKind::WindWave) cueColor = { 0.58f, 1.0f, 0.86f, 1.0f };
-        if (currentAttack_ == AttackKind::SlimeSummon) cueColor = { 0.96f, 0.58f, 1.0f, 1.0f };
-        if (currentAttack_ == AttackKind::CrystalLanceVolley) cueColor = { 0.58f, 0.82f, 1.0f, 1.0f };
+        Vector4 cueColor = {0.52f, 0.96f, 1.0f, 1.0f};
+        if (currentAttack_ == AttackKind::FireFan)
+            cueColor = {1.0f, 0.28f, 0.05f, 1.0f};
+        if (currentAttack_ == AttackKind::ThunderChain)
+            cueColor = {1.0f, 0.92f, 0.12f, 1.0f};
+        if (currentAttack_ == AttackKind::WindWave)
+            cueColor = {0.58f, 1.0f, 0.86f, 1.0f};
+        if (currentAttack_ == AttackKind::SlimeSummon)
+            cueColor = {0.96f, 0.58f, 1.0f, 1.0f};
+        if (currentAttack_ == AttackKind::CrystalLanceVolley)
+            cueColor = {0.58f, 0.82f, 1.0f, 1.0f};
         TriggerAttackTelegraphCue(cueColor);
         warningTriggered_ = true;
     }
@@ -620,6 +625,11 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
     if (attackTimer_ <= 0.0f) {
         attackState_ = AttackState::Active;
         attackStateDuration_ = (std::max)(0.08f, attack.activeDuration);
+        if (currentAttack_ == AttackKind::FireFan && attack.sequence.enabled) {
+            // この接続先では詠唱完了を時刻0とします。予備動作の長さを変えても発射間隔は変わりません。
+            attackStateDuration_ = (std::max)(attackStateDuration_, attack.sequence.duration);
+            attackSequence_.Start(attack, MakeSequenceContext());
+        }
         attackTimer_ = attackStateDuration_;
         effectTimer_ = 0.0f;
         actionTimer_ = 0.0f;
@@ -630,12 +640,11 @@ void EnemyPrismSlime::UpdateWindup(float deltaTime) {
                 WindVortexVisual& vortex = windVortices_[index];
                 vortex.position = vortex.origin;
                 vortex.driftTimer = 0.0f;
-                EmitPreset(kWindImpactPreset, vortex.origin + Vector3{ 0.0f, 0.12f, 0.0f });
+                EmitPreset(kWindImpactPreset, vortex.origin + Vector3{0.0f, 0.12f, 0.0f});
                 if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
                     const float radius = attack.radius * (index == 0 ? 1.0f : 0.72f);
-                    effects->SpawnEffectAt(kWindRingEffect,
-                        vortex.origin + Vector3{ 0.0f, 0.06f, 0.0f },
-                        { 0.0f, 0.0f, 0.0f }, { radius, 1.0f, radius });
+                    effects->SpawnEffectAt(kWindRingEffect, vortex.origin + Vector3{0.0f, 0.06f, 0.0f},
+                                           {0.0f, 0.0f, 0.0f}, {radius, 1.0f, radius});
                 }
             }
         }
@@ -665,6 +674,10 @@ void EnemyPrismSlime::UpdateActive(float deltaTime) {
         }
         break;
     case AttackKind::FireFan:
+        if (attack.sequence.enabled) {
+            attackSequence_.Update(deltaTime, MakeSequenceContext());
+            break;
+        }
         while (actionIndex_ < kFireFanProjectileCount && actionTimer_ <= 0.0f) {
             FireNextFanProjectile();
             ++actionIndex_;
@@ -683,32 +696,35 @@ void EnemyPrismSlime::UpdateActive(float deltaTime) {
         for (std::size_t index = 0; index < windVortices_.size(); ++index) {
             WindVortexVisual& vortex = windVortices_[index];
             if (windTornadoAge_ <= 0.16f + static_cast<float>(index) * 0.15f ||
-                windTornadoAge_ >= attack.activeDuration - 0.18f) continue;
+                windTornadoAge_ >= attack.activeDuration - 0.18f)
+                continue;
             vortex.driftTimer -= deltaTime;
             if (vortex.driftTimer <= 0.0f) {
                 const float angle = NextSummonRandom01(windRandomState_) * kPi * 2.0f;
-                vortex.direction = { std::sin(angle), 0.0f, std::cos(angle) };
+                vortex.direction = {std::sin(angle), 0.0f, std::cos(angle)};
                 vortex.driftTimer += 0.26f;
             }
             Vector3 candidate = vortex.position + vortex.direction * (deltaTime * 2.3f);
             Vector3 fromOrigin = candidate - vortex.origin;
             fromOrigin.y = 0.0f;
             const float drift = Math::Length(fromOrigin);
-            if (drift > 1.35f) candidate = vortex.origin + fromOrigin * (1.35f / drift);
+            if (drift > 1.35f)
+                candidate = vortex.origin + fromOrigin * (1.35f / drift);
             vortex.position = FindGroundPoint(candidate);
         }
         if (effectTimer_ <= 0.0f) {
             for (std::size_t index = 0; index < windVortices_.size(); ++index) {
-                if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f) continue;
+                if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
+                    continue;
                 const float orbit = windTornadoAge_ * 12.0f + static_cast<float>(index) * 2.1f;
                 const WindVortexVisual& vortex = windVortices_[index];
                 const float radius = index == 0 ? 1.6f : 1.1f;
-                const Vector3 origin = vortex.position + Vector3{
-                    std::cos(orbit) * radius, 0.35f + std::fmod(windTornadoAge_ * 3.2f, 3.8f),
-                    std::sin(orbit) * radius };
-                EmitDirectedPreset(kWindStreamPreset, origin,
-                    Vector3{ -std::sin(orbit), 0.75f, std::cos(orbit) }, index == 0 ? 1.15f : 0.92f);
-                EmitPreset(kWindDustPreset, vortex.position + Vector3{ 0.0f, 0.12f, 0.0f });
+                const Vector3 origin =
+                    vortex.position + Vector3{std::cos(orbit) * radius, 0.35f + std::fmod(windTornadoAge_ * 3.2f, 3.8f),
+                                              std::sin(orbit) * radius};
+                EmitDirectedPreset(kWindStreamPreset, origin, Vector3{-std::sin(orbit), 0.75f, std::cos(orbit)},
+                                   index == 0 ? 1.15f : 0.92f);
+                EmitPreset(kWindDustPreset, vortex.position + Vector3{0.0f, 0.12f, 0.0f});
             }
             effectTimer_ += 0.09f;
         }
@@ -744,18 +760,22 @@ void EnemyPrismSlime::BeginRecovery() {
 }
 
 void EnemyPrismSlime::FinishAttack() {
+    attackSequence_.Cancel();
     if (currentAttack_ == AttackKind::SlimeSummon) {
         summonPortalVisuals_.clear();
     }
     crystalCircle_.reset();
     crystalCircleGlow_.reset();
     prismSpikeSector_.reset();
-    for (auto& sigil : prismSpikeSigil_) sigil.reset();
+    for (auto& sigil : prismSpikeSigil_)
+        sigil.reset();
     for (WindVortexVisual& vortex : windVortices_) {
         vortex.circle.reset();
         vortex.circleGlow.reset();
-        for (auto& effect : vortex.outer) effect.reset();
-        for (auto& effect : vortex.inner) effect.reset();
+        for (auto& effect : vortex.outer)
+            effect.reset();
+        for (auto& effect : vortex.inner)
+            effect.reset();
     }
     chantVisual_.reset();
     currentAttack_ = AttackKind::None;
@@ -771,10 +791,8 @@ void EnemyPrismSlime::BeginReposition() {
     attackState_ = AttackState::Reposition;
 
     const float angle = NextSummonRandom01(repositionRandomState_) * kPi * 2.0f;
-    const float moveDistance = Math::Lerp(
-        kRepositionMinimumDistance,
-        kRepositionMaximumDistance,
-        NextSummonRandom01(repositionRandomState_));
+    const float moveDistance =
+        Math::Lerp(kRepositionMinimumDistance, kRepositionMaximumDistance, NextSummonRandom01(repositionRandomState_));
     const Vector3 current = GetTranslate();
     const Vector3 arenaCenter = IsEncounterControlled() ? encounterBasePosition_ : current;
     Vector3 candidate = {
@@ -782,14 +800,10 @@ void EnemyPrismSlime::BeginReposition() {
         current.y,
         current.z + std::cos(angle) * moveDistance,
     };
-    candidate.x = std::clamp(
-        candidate.x,
-        arenaCenter.x - kRepositionArenaHalfExtentX,
-        arenaCenter.x + kRepositionArenaHalfExtentX);
-    candidate.z = std::clamp(
-        candidate.z,
-        arenaCenter.z - kRepositionArenaHalfExtentZ,
-        arenaCenter.z + kRepositionArenaHalfExtentZ);
+    candidate.x = std::clamp(candidate.x, arenaCenter.x - kRepositionArenaHalfExtentX,
+                             arenaCenter.x + kRepositionArenaHalfExtentX);
+    candidate.z = std::clamp(candidate.z, arenaCenter.z - kRepositionArenaHalfExtentZ,
+                             arenaCenter.z + kRepositionArenaHalfExtentZ);
 
     Vector3 displacement = candidate - current;
     displacement.y = 0.0f;
@@ -798,16 +812,13 @@ void EnemyPrismSlime::BeginReposition() {
         displacement = arenaCenter - current;
         displacement.y = 0.0f;
         const float centerDistance = std::sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
-        const Vector3 fallbackDirection = centerDistance > 0.001f
-            ? displacement * (1.0f / centerDistance)
-            : Vector3{ 1.0f, 0.0f, 0.0f };
+        const Vector3 fallbackDirection =
+            centerDistance > 0.001f ? displacement * (1.0f / centerDistance) : Vector3{1.0f, 0.0f, 0.0f};
         candidate = current + fallbackDirection * kRepositionMinimumDistance;
-        candidate.x = std::clamp(candidate.x,
-            arenaCenter.x - kRepositionArenaHalfExtentX,
-            arenaCenter.x + kRepositionArenaHalfExtentX);
-        candidate.z = std::clamp(candidate.z,
-            arenaCenter.z - kRepositionArenaHalfExtentZ,
-            arenaCenter.z + kRepositionArenaHalfExtentZ);
+        candidate.x = std::clamp(candidate.x, arenaCenter.x - kRepositionArenaHalfExtentX,
+                                 arenaCenter.x + kRepositionArenaHalfExtentX);
+        candidate.z = std::clamp(candidate.z, arenaCenter.z - kRepositionArenaHalfExtentZ,
+                                 arenaCenter.z + kRepositionArenaHalfExtentZ);
         displacement = candidate - current;
         displacement.y = 0.0f;
         actualDistance = std::sqrt(displacement.x * displacement.x + displacement.z * displacement.z);
@@ -824,16 +835,14 @@ void EnemyPrismSlime::UpdateReposition(float deltaTime, Vector3& velocity) {
     repositionTimer_ = (std::max)(0.0f, repositionTimer_ - deltaTime);
     Vector3 toDestination = repositionDestination_ - GetTranslate();
     toDestination.y = 0.0f;
-    const float distance = std::sqrt(
-        toDestination.x * toDestination.x + toDestination.z * toDestination.z);
+    const float distance = std::sqrt(toDestination.x * toDestination.x + toDestination.z * toDestination.z);
     if (repositionTimer_ <= 0.0f || distance <= 0.35f) {
         FinishReposition(velocity);
         return;
     }
 
     const Vector3 moveDirection = toDestination * (1.0f / (std::max)(distance, 0.001f));
-    const float progress = 1.0f - std::clamp(
-        repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
+    const float progress = 1.0f - std::clamp(repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
     const float stride = 0.82f + std::sin(progress * kPi) * 0.18f;
     velocity.x = moveDirection.x * kRepositionMoveSpeed * stride;
     velocity.z = moveDirection.z * kRepositionMoveSpeed * stride;
@@ -857,10 +866,17 @@ void EnemyPrismSlime::FinishReposition(Vector3& velocity) {
 void EnemyPrismSlime::PrepareAttackCycle() {
     AttackKind elementalAttack = AttackKind::PrismSpikes;
     switch (elementPhase_) {
-    case ElementPhase::Fire: elementalAttack = AttackKind::FireFan; break;
-    case ElementPhase::Thunder: elementalAttack = AttackKind::ThunderChain; break;
-    case ElementPhase::Wind: elementalAttack = AttackKind::WindWave; break;
-    default: break;
+    case ElementPhase::Fire:
+        elementalAttack = AttackKind::FireFan;
+        break;
+    case ElementPhase::Thunder:
+        elementalAttack = AttackKind::ThunderChain;
+        break;
+    case ElementPhase::Wind:
+        elementalAttack = AttackKind::WindWave;
+        break;
+    default:
+        break;
     }
 
     attackCycle_[0] = elementalAttack;
@@ -878,15 +894,15 @@ void EnemyPrismSlime::PrepareAttackCycle() {
 }
 
 EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveAutomaticAttack(float targetDistance) {
-    if (attackCycleCount_ == 0 || attackCycleIndex_ >= attackCycleCount_ ||
-        attackCyclePhase_ != elementPhase_) {
+    if (attackCycleCount_ == 0 || attackCycleIndex_ >= attackCycleCount_ || attackCyclePhase_ != elementPhase_) {
         PrepareAttackCycle();
     }
     for (std::size_t index = attackCycleIndex_; index < attackCycleCount_; ++index) {
         if (attackCycleIndex_ == 0 && attackCycle_[index] == lastAutomaticAttack_) {
             continue;
         }
-        const EnemyAttackDefinition& attack = GetAttackDefinition(GetAttackId(attackCycle_[index]));
+        const EnemyAttackDefinition& attack = attackCycle_[index] == AttackKind::FireFan
+            ? SelectFireFanDefinition(targetDistance) : GetAttackDefinition(GetAttackId(attackCycle_[index]));
         if (targetDistance >= attack.minRange && targetDistance <= attack.maxRange) {
             std::swap(attackCycle_[attackCycleIndex_], attackCycle_[index]);
             break;
@@ -896,66 +912,88 @@ EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveAutomaticAttack(float target
 }
 
 EnemyPrismSlime::AttackKind EnemyPrismSlime::ResolveDebugAttack() const {
-    if (debugPreviewAttackId_ == kCrystalSpikesAttackId) return AttackKind::PrismSpikes;
-    if (debugPreviewAttackId_ == kCrystalLanceVolleyAttackId) return AttackKind::CrystalLanceVolley;
-    if (debugPreviewAttackId_ == kFireFanAttackId) return AttackKind::FireFan;
-    if (debugPreviewAttackId_ == kThunderChainAttackId) return AttackKind::ThunderChain;
-    if (debugPreviewAttackId_ == kWindWaveAttackId) return AttackKind::WindWave;
-    if (debugPreviewAttackId_ == kSlimeSummonAttackId) return AttackKind::SlimeSummon;
+    if (debugPreviewAttackId_ == kCrystalSpikesAttackId)
+        return AttackKind::PrismSpikes;
+    if (debugPreviewAttackId_ == kCrystalLanceVolleyAttackId)
+        return AttackKind::CrystalLanceVolley;
+    if (debugPreviewAttackId_ == kFireFanAttackId)
+        return AttackKind::FireFan;
+    if (debugPreviewAttackId_ == kThunderChainAttackId)
+        return AttackKind::ThunderChain;
+    if (debugPreviewAttackId_ == kWindWaveAttackId)
+        return AttackKind::WindWave;
+    if (debugPreviewAttackId_ == kSlimeSummonAttackId)
+        return AttackKind::SlimeSummon;
+    if (const auto* selected = attackProfile_.FindAttack(debugPreviewAttackId_);
+        selected && selected->sequence.binding == "enemy" && (!selected->sequence.events.empty() || !selected->sequence.tracks.empty()))
+        return AttackKind::FireFan;
     return AttackKind::None;
 }
 
 const EnemyAttackDefinition& EnemyPrismSlime::GetCurrentAttackDefinition() const {
+    if (currentAttack_ == AttackKind::FireFan) return selectedFireFan_;
     return GetAttackDefinition(GetAttackId(currentAttack_));
+}
+
+const EnemyAttackDefinition& EnemyPrismSlime::SelectFireFanDefinition(float distance) const {
+    if (const auto* selected = attackProfile_.FindAttack(debugPreviewAttackId_);
+        selected && selected->sequence.binding == "enemy" &&
+        (selected->id == kFireFanAttackId || (!selected->sequence.events.empty() || !selected->sequence.tracks.empty()))) return *selected;
+    const auto* selected = attackProfile_.SelectSequence(distance, 100000.0f);
+    return selected ? *selected : GetAttackDefinition(kFireFanAttackId);
+}
+
+AttackSequenceContext EnemyPrismSlime::MakeSequenceContext() {
+    AttackSequenceContext context;
+    context.owner = this;
+    context.position = GetWorldPosition();
+    context.forward = lockedDirection_;
+    // 従来の発射口は前方に横幅の0.48倍、上方に高さの0.48倍です。
+    context.ownerSize = {baseScale_.x, baseScale_.y, baseScale_.x};
+    context.hasTarget = target_ != nullptr;
+    if (target_) context.targetPosition = target_->GetWorldPosition();
+    context.targetDistance = lockedTargetDistance_;
+    context.grounded = isGrounded_;
+    return context;
+}
+
+const char* EnemyPrismSlime::GetSequenceStateLabel() const {
+    return currentAttack_ == AttackKind::FireFan && selectedFireFan_.sequence.enabled && attackState_ == AttackState::Active
+        ? attackSequence_.GetStateLabel() : nullptr;
 }
 
 const char* EnemyPrismSlime::GetAttackId(AttackKind kind) const {
     switch (kind) {
-    case AttackKind::CrystalLanceVolley: return kCrystalLanceVolleyAttackId;
-    case AttackKind::FireFan: return kFireFanAttackId;
-    case AttackKind::ThunderChain: return kThunderChainAttackId;
-    case AttackKind::WindWave: return kWindWaveAttackId;
-    case AttackKind::SlimeSummon: return kSlimeSummonAttackId;
-    default: return kCrystalSpikesAttackId;
+    case AttackKind::CrystalLanceVolley:
+        return kCrystalLanceVolleyAttackId;
+    case AttackKind::FireFan:
+        return kFireFanAttackId;
+    case AttackKind::ThunderChain:
+        return kThunderChainAttackId;
+    case AttackKind::WindWave:
+        return kWindWaveAttackId;
+    case AttackKind::SlimeSummon:
+        return kSlimeSummonAttackId;
+    default:
+        return kCrystalSpikesAttackId;
     }
 }
 
 Vector3 EnemyPrismSlime::FindGroundPoint(const Vector3& samplePosition) const {
-    return CombatGroundQuery::FindGroundPoint(
-        samplePosition, this, { 11.0f, 24.0f }, GetTranslate().y);
+    return CombatGroundQuery::FindGroundPoint(samplePosition, this, {11.0f, 24.0f}, GetTranslate().y);
 }
 
 void EnemyPrismSlime::InitializeFaceParts() {
-    coreFramePart_ = CreatePart(
-        "PrismSlime_CoreFrame",
-        "Characters/prism_slime_frame",
-        { 0.0f, 0.51f, 0.505f },
-        { 0.19f, 0.17f, 0.17f },
-        { 0.58f, 0.34f, 0.90f, 1.0f },
-        1.55f);
-    corePart_ = CreatePart(
-        "PrismSlime_Core",
-        "Characters/prism_slime_core",
-        { 0.0f, 0.51f, 0.518f },
-        { 0.17f, 0.16f, 0.12f },
-        { 0.94f, 0.42f, 0.88f, 1.0f },
-        2.15f);
-    eyeParts_[0] = CreatePart(
-        "PrismSlime_EyeLeft",
-        "Primitives/sphere",
-        { -0.19f, 0.555f, 0.442f },
-        { 0.055f, 0.078f, 0.040f },
-        { 0.07f, 0.20f, 0.39f, 1.0f },
-        1.12f);
-    eyeParts_[1] = CreatePart(
-        "PrismSlime_EyeRight",
-        "Primitives/sphere",
-        { 0.19f, 0.555f, 0.442f },
-        { 0.055f, 0.078f, 0.040f },
-        { 0.07f, 0.20f, 0.39f, 1.0f },
-        1.12f);
+    coreFramePart_ = CreatePart("PrismSlime_CoreFrame", "Characters/prism_slime_frame", {0.0f, 0.51f, 0.505f},
+                                {0.19f, 0.17f, 0.17f}, {0.58f, 0.34f, 0.90f, 1.0f}, 1.55f);
+    corePart_ = CreatePart("PrismSlime_Core", "Characters/prism_slime_core", {0.0f, 0.51f, 0.518f},
+                           {0.17f, 0.16f, 0.12f}, {0.94f, 0.42f, 0.88f, 1.0f}, 2.15f);
+    eyeParts_[0] = CreatePart("PrismSlime_EyeLeft", "Primitives/sphere", {-0.19f, 0.555f, 0.442f},
+                              {0.055f, 0.078f, 0.040f}, {0.07f, 0.20f, 0.39f, 1.0f}, 1.12f);
+    eyeParts_[1] = CreatePart("PrismSlime_EyeRight", "Primitives/sphere", {0.19f, 0.555f, 0.442f},
+                              {0.055f, 0.078f, 0.040f}, {0.07f, 0.20f, 0.39f, 1.0f}, 1.12f);
 
-    for (Object3d* prismPart : { coreFramePart_.get(), corePart_.get() }) {
+    for (Object3d* prismPart : {coreFramePart_.get(), corePart_.get()}) {
         if (!prismPart) {
             continue;
         }
@@ -967,13 +1005,9 @@ void EnemyPrismSlime::InitializeFaceParts() {
     }
 }
 
-std::unique_ptr<Object3d> EnemyPrismSlime::CreatePart(
-    const std::string& name,
-    const std::string& modelName,
-    const Vector3& localPosition,
-    const Vector3& localScale,
-    const Vector4& color,
-    float emissive) {
+std::unique_ptr<Object3d> EnemyPrismSlime::CreatePart(const std::string& name, const std::string& modelName,
+                                                      const Vector3& localPosition, const Vector3& localScale,
+                                                      const Vector4& color, float emissive) {
     if (!common_) {
         return nullptr;
     }
@@ -998,56 +1032,59 @@ std::unique_ptr<Object3d> EnemyPrismSlime::CreatePart(
 void EnemyPrismSlime::UpdateFaceParts(float deltaTime) {
     const bool visible = GetIsVisible();
     const float pulse = 1.0f + std::sin(idleTimer_ * 4.2f) * 0.055f +
-        (impactPulseTimer_ > 0.0f ? std::sin(impactPulseTimer_ * 46.0f) * 0.10f : 0.0f);
+                        (impactPulseTimer_ > 0.0f ? std::sin(impactPulseTimer_ * 46.0f) * 0.10f : 0.0f);
 
     if (corePart_) {
         corePart_->SetIsVisible(visible);
-        corePart_->SetScale({ 0.17f * pulse, 0.16f * pulse, 0.12f * pulse });
-        corePart_->SetRotation({ idleTimer_ * 0.28f, idleTimer_ * 0.44f, idleTimer_ * 0.62f });
+        corePart_->SetScale({0.17f * pulse, 0.16f * pulse, 0.12f * pulse});
+        corePart_->SetRotation({idleTimer_ * 0.28f, idleTimer_ * 0.44f, idleTimer_ * 0.62f});
         corePart_->Update(deltaTime);
     }
     if (coreFramePart_) {
         coreFramePart_->SetIsVisible(visible);
         const float framePulse = 1.0f + (pulse - 1.0f) * 0.62f;
-        coreFramePart_->SetScale({ 0.19f * framePulse, 0.17f * framePulse, 0.17f });
-        coreFramePart_->SetRotation({ 0.0f, 0.0f, std::sin(idleTimer_ * 2.1f) * 0.055f });
+        coreFramePart_->SetScale({0.19f * framePulse, 0.17f * framePulse, 0.17f});
+        coreFramePart_->SetRotation({0.0f, 0.0f, std::sin(idleTimer_ * 2.1f) * 0.055f});
         coreFramePart_->Update(deltaTime);
     }
 
-    const float eyeSquash = attackState_ == AttackState::Windup
-        ? 1.0f - SmoothStep01(1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_)) * 0.22f
-        : 1.0f;
+    const float eyeSquash =
+        attackState_ == AttackState::Windup
+            ? 1.0f - SmoothStep01(1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_)) * 0.22f
+            : 1.0f;
     for (auto& eye : eyeParts_) {
         if (!eye) {
             continue;
         }
         eye->SetIsVisible(visible);
-        eye->SetScale({ 0.055f, 0.078f * eyeSquash, 0.040f });
+        eye->SetScale({0.055f, 0.078f * eyeSquash, 0.040f});
         eye->Update(deltaTime);
     }
 }
 
 void EnemyPrismSlime::UpdatePhaseAppearance() {
-    Vector4 coreColor = { 0.94f, 0.42f, 0.88f, 1.0f };
-    Vector4 frameColor = { 0.58f, 0.34f, 0.90f, 1.0f };
+    Vector4 coreColor = {0.94f, 0.42f, 0.88f, 1.0f};
+    Vector4 frameColor = {0.58f, 0.34f, 0.90f, 1.0f};
     switch (elementPhase_) {
     case ElementPhase::Fire:
-        coreColor = { 1.0f, 0.32f, 0.08f, 1.0f };
-        frameColor = { 1.0f, 0.68f, 0.18f, 1.0f };
+        coreColor = {1.0f, 0.32f, 0.08f, 1.0f};
+        frameColor = {1.0f, 0.68f, 0.18f, 1.0f};
         break;
     case ElementPhase::Thunder:
-        coreColor = { 1.0f, 0.94f, 0.16f, 1.0f };
-        frameColor = { 0.72f, 0.94f, 1.0f, 1.0f };
+        coreColor = {1.0f, 0.94f, 0.16f, 1.0f};
+        frameColor = {0.72f, 0.94f, 1.0f, 1.0f};
         break;
     case ElementPhase::Wind:
-        coreColor = { 0.35f, 1.0f, 0.72f, 1.0f };
-        frameColor = { 0.66f, 1.0f, 0.88f, 1.0f };
+        coreColor = {0.35f, 1.0f, 0.72f, 1.0f};
+        frameColor = {0.66f, 1.0f, 0.88f, 1.0f};
         break;
     default:
         break;
     }
-    if (corePart_) corePart_->SetColor(coreColor);
-    if (coreFramePart_) coreFramePart_->SetColor(frameColor);
+    if (corePart_)
+        corePart_->SetColor(coreColor);
+    if (coreFramePart_)
+        coreFramePart_->SetColor(frameColor);
 }
 
 void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
@@ -1060,9 +1097,8 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
     params.verticalStretch = 0.20f;
     params.airborneStretch = 0.29f;
 
-    Vector3 targetScale = SlimeBounceAnimator::MakeScale(
-        baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
-    Vector3 targetRotation = { 0.0f, GetRotation().y, 0.0f };
+    Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, isGrounded_, params);
+    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
     if (attackState_ == AttackState::Windup) {
         const float progress = SmoothStep01(1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_));
@@ -1083,7 +1119,8 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
         const float progress = 1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_);
         const float pulse = std::sin(progress * kPi * 5.0f);
         if (currentAttack_ == AttackKind::PrismSpikes) {
-            targetScale = { baseScale_.x * (1.28f + pulse * 0.06f), baseScale_.y * 0.74f, baseScale_.z * (1.28f - pulse * 0.04f) };
+            targetScale = {baseScale_.x * (1.28f + pulse * 0.06f), baseScale_.y * 0.74f,
+                           baseScale_.z * (1.28f - pulse * 0.04f)};
         } else if (currentAttack_ == AttackKind::CrystalLanceVolley) {
             const float recoil = std::sin(progress * kPi * static_cast<float>(kCrystalLanceCount));
             targetScale = {
@@ -1093,19 +1130,22 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
             };
             targetRotation.x = -0.075f + recoil * 0.025f;
         } else if (currentAttack_ == AttackKind::FireFan) {
-            targetScale = { baseScale_.x * (1.08f + std::abs(pulse) * 0.05f), baseScale_.y * 0.88f, baseScale_.z * (1.22f - pulse * 0.06f) };
+            targetScale = {baseScale_.x * (1.08f + std::abs(pulse) * 0.05f), baseScale_.y * 0.88f,
+                           baseScale_.z * (1.22f - pulse * 0.06f)};
             targetRotation.x = -0.08f + pulse * 0.025f;
         } else if (currentAttack_ == AttackKind::ThunderChain) {
             const float jitter = std::sin(progress * kPi * 18.0f) * 0.045f;
-            targetScale = { baseScale_.x * (1.14f + jitter), baseScale_.y * (0.82f - std::abs(jitter) * 0.4f), baseScale_.z * (1.14f - jitter) };
+            targetScale = {baseScale_.x * (1.14f + jitter), baseScale_.y * (0.82f - std::abs(jitter) * 0.4f),
+                           baseScale_.z * (1.14f - jitter)};
             targetRotation.z = jitter * 1.5f;
         } else if (currentAttack_ == AttackKind::WindWave) {
-            targetScale = { baseScale_.x * (1.06f + pulse * 0.04f), baseScale_.y * 0.86f, baseScale_.z * (1.30f - pulse * 0.05f) };
+            targetScale = {baseScale_.x * (1.06f + pulse * 0.04f), baseScale_.y * 0.86f,
+                           baseScale_.z * (1.30f - pulse * 0.05f)};
             targetRotation.x = -0.10f;
         }
     } else if (attackState_ == AttackState::Reposition) {
-        const float progress = 1.0f - std::clamp(
-            repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
+        const float progress =
+            1.0f - std::clamp(repositionTimer_ / (std::max)(repositionDuration_, 0.001f), 0.0f, 1.0f);
         const float hop = std::sin(progress * kPi);
         const float landingSquash = std::pow((std::max)(0.0f, (progress - 0.78f) / 0.22f), 2.0f);
         targetScale = {
@@ -1117,8 +1157,8 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
         targetRotation.z = std::sin(progress * kPi * 2.0f) * 0.025f;
     } else if (attackState_ == AttackState::Recovery || impactPulseTimer_ > 0.0f) {
         const float remaining = attackState_ == AttackState::Recovery
-            ? std::clamp(attackTimer_ / (std::max)(0.01f, attackStateDuration_), 0.0f, 1.0f)
-            : std::clamp(impactPulseTimer_ / 0.32f, 0.0f, 1.0f);
+                                    ? std::clamp(attackTimer_ / (std::max)(0.01f, attackStateDuration_), 0.0f, 1.0f)
+                                    : std::clamp(impactPulseTimer_ / 0.32f, 0.0f, 1.0f);
         const float bounce = std::sin((1.0f - remaining) * kPi * 2.5f) * remaining;
         targetScale = {
             baseScale_.x * (1.0f + bounce * 0.12f),
@@ -1128,12 +1168,11 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
     }
 
     if (attackState_ == AttackState::Idle) {
-        SlimeBounceAnimator::ApplyTravelPose(targetScale, targetRotation,
-            baseScale_, GetVelocity(), GetRotation().y, 4.0f, 0.055f, 0.075f);
-        SlimeBounceAnimator::ApplyGroundHopPose(targetScale, baseScale_,
-            isGrounded_, locomotionHopTimer_, kLocomotionHopInterval,
-            kLocomotionAnticipationDuration,
-            locomotionLandingTimer_, kLocomotionLandingDuration);
+        SlimeBounceAnimator::ApplyTravelPose(targetScale, targetRotation, baseScale_, GetVelocity(), GetRotation().y,
+                                             4.0f, 0.055f, 0.075f);
+        SlimeBounceAnimator::ApplyGroundHopPose(targetScale, baseScale_, isGrounded_, locomotionHopTimer_,
+                                                kLocomotionHopInterval, kLocomotionAnticipationDuration,
+                                                locomotionLandingTimer_, kLocomotionLandingDuration);
     }
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float rate = 1.0f - std::exp(-deltaTime * 11.0f);
@@ -1166,11 +1205,8 @@ void EnemyPrismSlime::EmitPreset(const char* presetName, const Vector3& position
     }
 }
 
-void EnemyPrismSlime::EmitDirectedPreset(
-    const char* presetName,
-    const Vector3& position,
-    const Vector3& direction,
-    float speedScale) {
+void EnemyPrismSlime::EmitDirectedPreset(const char* presetName, const Vector3& position, const Vector3& direction,
+                                         float speedScale) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);

@@ -24,7 +24,8 @@ inline float PlanarSpeed(const Vector3& velocity) {
     return std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 }
 
-inline bool StepGroundHop(float& hopTimer, const Vector3& velocity, bool grounded, float deltaTime, float interval, float speedThreshold) {
+inline bool StepGroundHop(float& hopTimer, const Vector3& velocity, bool grounded, float deltaTime, float interval,
+                          float speedThreshold) {
     if (!grounded) {
         return false;
     }
@@ -50,9 +51,8 @@ inline float BossHopAnticipation(float hopTimer, float interval, float anticipat
 }
 
 // ボスの移動意図を保ちながら、跳ぶ直前だけ足を止めて力をためます。
-inline bool StepBossGroundHop(float& hopTimer, Vector3& velocity, float intentSpeed,
-    bool grounded, float deltaTime, float interval, float anticipationDuration,
-    float speedThreshold) {
+inline bool StepBossGroundHop(float& hopTimer, Vector3& velocity, float intentSpeed, bool grounded, float deltaTime,
+                              float interval, float anticipationDuration, float speedThreshold) {
     if (!grounded) {
         return false;
     }
@@ -72,8 +72,10 @@ inline bool StepBossGroundHop(float& hopTimer, Vector3& velocity, float intentSp
     return false;
 }
 
-inline Vector3 MakeScale(const Vector3& baseScale, const Vector3& velocity, float timer, bool grounded, const Params& params = {}) {
-    const float speedRate = std::clamp(PlanarSpeed(velocity) / (std::max)(params.speedForFullBounce, 0.01f), 0.0f, 1.0f);
+inline Vector3 MakeScale(const Vector3& baseScale, const Vector3& velocity, float timer, bool grounded,
+                         const Params& params = {}) {
+    const float speedRate =
+        std::clamp(PlanarSpeed(velocity) / (std::max)(params.speedForFullBounce, 0.01f), 0.0f, 1.0f);
     const float idlePulse = std::sin(timer * 3.1f) * params.idleAmplitude;
 
     Vector3 scale = baseScale;
@@ -93,26 +95,26 @@ inline Vector3 MakeScale(const Vector3& baseScale, const Vector3& velocity, floa
     const float sideWobble = std::sin(phase * 0.5f + 0.8f) * params.moveAmplitude * 0.22f * speedRate;
     const float movingBody = params.moveAmplitude * speedRate;
 
-    scale.x = baseScale.x * (1.0f + idlePulse * 0.55f + movingBody * 0.35f + squash * params.horizontalSquash - stretch * 0.06f + sideWobble);
-    scale.y = baseScale.y * (1.0f - idlePulse * 0.85f - movingBody * 0.10f - squash * params.horizontalSquash * 0.92f + stretch * params.verticalStretch);
-    scale.z = baseScale.z * (1.0f + idlePulse * 0.55f + movingBody * 0.28f + squash * params.horizontalSquash * 0.78f - stretch * 0.05f - sideWobble * 0.7f);
+    scale.x = baseScale.x * (1.0f + idlePulse * 0.55f + movingBody * 0.35f + squash * params.horizontalSquash -
+                             stretch * 0.06f + sideWobble);
+    scale.y = baseScale.y * (1.0f - idlePulse * 0.85f - movingBody * 0.10f - squash * params.horizontalSquash * 0.92f +
+                             stretch * params.verticalStretch);
+    scale.z = baseScale.z * (1.0f + idlePulse * 0.55f + movingBody * 0.28f + squash * params.horizontalSquash * 0.78f -
+                             stretch * 0.05f - sideWobble * 0.7f);
     return scale;
 }
 
 inline Vector3 MakeChargeSquash(const Vector3& baseScale, float chargeRate, float timer, float strength = 1.0f) {
     chargeRate = std::clamp(chargeRate, 0.0f, 1.0f);
     const float pulse = std::sin(timer * 18.0f) * 0.04f * chargeRate * strength;
-    return {
-        baseScale.x * (1.0f + chargeRate * 0.34f * strength + pulse),
-        baseScale.y * (1.0f - chargeRate * 0.34f * strength),
-        baseScale.z * (1.0f + chargeRate * 0.34f * strength - pulse)
-    };
+    return {baseScale.x * (1.0f + chargeRate * 0.34f * strength + pulse),
+            baseScale.y * (1.0f - chargeRate * 0.34f * strength),
+            baseScale.z * (1.0f + chargeRate * 0.34f * strength - pulse)};
 }
 
 // 移動方向に応じて身体を傾け、横移動でもただ滑って見えないようにします。
-inline void ApplyTravelPose(Vector3& scale, Vector3& rotation,
-    const Vector3& baseScale, const Vector3& velocity, float facingYaw,
-    float fullSpeed, float forwardLean, float sideLean) {
+inline void ApplyTravelPose(Vector3& scale, Vector3& rotation, const Vector3& baseScale, const Vector3& velocity,
+                            float facingYaw, float fullSpeed, float forwardLean, float sideLean) {
     const float safeSpeed = (std::max)(fullSpeed, 0.01f);
     const float forward = velocity.x * std::sin(facingYaw) + velocity.z * std::cos(facingYaw);
     const float side = velocity.x * std::cos(facingYaw) - velocity.z * std::sin(facingYaw);
@@ -125,9 +127,9 @@ inline void ApplyTravelPose(Vector3& scale, Vector3& rotation,
 }
 
 // 跳躍前のためと着地後のつぶれを、実際の跳躍タイミングに合わせて加えます。
-inline void ApplyGroundHopPose(Vector3& scale, const Vector3& baseScale,
-    bool grounded, float hopTimer, float hopInterval,
-    float anticipationDuration, float landingTimer, float landingDuration) {
+inline void ApplyGroundHopPose(Vector3& scale, const Vector3& baseScale, bool grounded, float hopTimer,
+                               float hopInterval, float anticipationDuration, float landingTimer,
+                               float landingDuration) {
     if (!grounded) {
         return;
     }
@@ -143,13 +145,8 @@ inline void ApplyGroundHopPose(Vector3& scale, const Vector3& baseScale,
 }
 
 // 減衰比を指定できる安定したスプリング補間です。1未満では少し反発し、1で臨界減衰になります。
-inline void StepDampedSpring(
-    Vector3& value,
-    Vector3& velocity,
-    const Vector3& target,
-    float deltaTime,
-    float frequency,
-    float dampingRatio) {
+inline void StepDampedSpring(Vector3& value, Vector3& velocity, const Vector3& target, float deltaTime, float frequency,
+                             float dampingRatio) {
     const float safeDelta = std::clamp(deltaTime, 0.0f, 0.05f);
     if (safeDelta <= 0.0f) {
         return;
@@ -165,7 +162,8 @@ inline void StepDampedSpring(
 
     const auto stepComponent = [&](float& current, float& currentVelocity, float targetValue) {
         const float previous = current;
-        current = (f * previous + safeDelta * currentVelocity + deltaSquaredOmegaSquared * targetValue) * inverseDeterminant;
+        current =
+            (f * previous + safeDelta * currentVelocity + deltaSquaredOmegaSquared * targetValue) * inverseDeterminant;
         currentVelocity = (currentVelocity + deltaOmegaSquared * (targetValue - previous)) * inverseDeterminant;
     };
 

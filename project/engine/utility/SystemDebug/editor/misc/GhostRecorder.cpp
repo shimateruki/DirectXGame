@@ -120,6 +120,7 @@ float ApplyEasing(int type, float t) {
 	default: return Easing::Linear(t);
 	}
 }
+
 // ==========================================================================
 // 初期化・基本機能
 // ==========================================================================
@@ -278,6 +279,7 @@ void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative
 
 	StartPlayingInternal();
 }
+
 void GhostRecorder::Stop(bool autoReset) {
 
 	if (autoReset && state_ == State::Playing && isRelative_ && target_) {
@@ -1066,9 +1068,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			}
 			CommitHistory("Ghost Recorder Add Waypoint");
 		}
-	
-			
-		
+
 		else {
 			selectedPinType_ = SelectedPinType::None;
 			selectedWaypointIndex_ = -1;
@@ -1316,6 +1316,7 @@ void GhostRecorder::DrawImGui() {
 					genParams_.anchorOffsetRot = { 0, 0, 0 };
 				}
 
+				// 始点・中継点・終点を同じ生成ループで処理する一時データ。待機時間と区間時間は秒。
 				struct PointData {
 					Vector3 pos, rot, scale; int eventID; float waitTime, durationToNext; int easingToNext;
 				};
@@ -1659,6 +1660,7 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 		}
 	}
 }
+
 void GhostRecorder::CaptureBasePose() {
 	ClearTargetIfMissingFromScene();
 	if (!target_) {

@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "sequence": {
+    "enabled": true,
+    "duration": 2.5,
+    "binding": "enemy",
+    "priority": 0,
+    "projectileStyle": "plain",
+    "visualScale": 1.0,
+    "events": [],
+    "tracks": [
+      {
+        "name": "追尾する表示Object",
+        "type": "mesh_vfx",
+        "preset": "Resources/json/effect/effect_false_king_astral_reaver_orb.json",
+        "condition": "always",
+        "enabled": true,
+        "followOwner": false,
+        "begin": 0.0,
+        "end": 2.5,
+        "radius": 0.5,
+        "damageScale": 1.0,
+        "keys": [
+          {
+            "time": 0.0,
+            "position": [
+              0.0,
+              1.0,
+              0.8
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              0.35,
+              0.35,
+              0.35
+            ],
+            "interpolation": 2
+          }
+        ],
+        "turnDegreesPerSecond": 100.0,
+        "launchDelay": 0.5,
+        "moveSpeed": 4.0,
+        "targetHeight": 0.7,
+        "motion": "homing",
+        "homingDuration": 1.2
+      },
+      {
+        "name": "表示Objectに追従する判定",
+        "type": "hitbox",
+        "preset": "",
+        "condition": "always",
+        "enabled": true,
+        "followOwner": true,
+        "begin": 0.5,
+        "end": 2.5,
+        "radius": 0.3,
+        "damageScale": 1.0,
+        "keys": [
+          {
+            "time": 0.0,
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "interpolation": 1
+          }
+        ],
+        "parentTrack": 0
+      }
+    ]
+  }
+}

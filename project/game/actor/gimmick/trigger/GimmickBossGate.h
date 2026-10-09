@@ -4,7 +4,7 @@
 
 // ボス戦開始時に上から閉じる、実体モデル付きの格子ゲートです。
 class GimmickBossGate final : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void OnTrigger() override;
@@ -17,7 +17,7 @@ public:
     // 崩壊演出中はシーン側に配置制御を渡し、開閉状態は保持します。
     void SetCinematicOverride(bool enabled) { cinematicOverride_ = enabled; }
 
-private:
+  private:
     void CaptureAuthoredState(bool force = false);
     void ResetForEditor();
     void ApplyRuntimeState();
@@ -26,7 +26,7 @@ private:
     float GetTravelDistance() const;
 
     Vector3 authoredPosition_{};
-    Vector3 authoredScale_{ 1.0f, 1.0f, 1.0f };
+    Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
     uint32_t authoredCollisionAttribute_ = 0;
     uint32_t authoredCollisionMask_ = 0;
     float closure_ = 0.0f;

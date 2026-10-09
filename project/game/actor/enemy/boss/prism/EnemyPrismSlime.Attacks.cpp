@@ -8,8 +8,8 @@ using namespace EnemyPrismSlimeImplementation;
 void EnemyPrismSlime::PreparePrismSpikePoints() {
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const Vector3 casterPosition = GetWorldPosition();
-    Vector3 requestedCenter = casterPosition + lockedDirection_ *
-        std::clamp(lockedTargetDistance_, 0.0f, (std::max)(attack.maxRange, 0.1f));
+    Vector3 requestedCenter =
+        casterPosition + lockedDirection_ * std::clamp(lockedTargetDistance_, 0.0f, (std::max)(attack.maxRange, 0.1f));
     if (target_) {
         requestedCenter = target_->GetWorldPosition();
         Vector3 fromCaster = requestedCenter - casterPosition;
@@ -32,7 +32,8 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
     for (std::size_t sigilIndex = 0; sigilIndex < prismSpikeSigil_.size(); ++sigilIndex) {
         auto& sigil = prismSpikeSigil_[sigilIndex];
         sigil = CreateSpellEffect(kPrismSpikeSectorEffect);
-        if (!sigil) continue;
+        if (!sigil)
+            continue;
         sigil->SetBlendMode(BlendMode::kAdd);
         sigil->editInnerRadius_ = sigilIndex < 3 ? 0.975f : 0.06f;
         sigil->editSlashAngle_ = sigilIndex < 3 ? sectorAngle * (180.0f / kPi) : 1.25f;
@@ -46,8 +47,8 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
         const int columns = 4 + row * 2;
         const float distance = attack.maxRange * (0.14f + static_cast<float>(row) * 0.118f);
         for (int column = 0; column < columns; ++column) {
-            const float fraction = (static_cast<float>(column) + (row % 2 == 0 ? 0.5f : 0.22f)) /
-                static_cast<float>(columns);
+            const float fraction =
+                (static_cast<float>(column) + (row % 2 == 0 ? 0.5f : 0.22f)) / static_cast<float>(columns);
             const float angle = halfAngle * (fraction * 2.0f - 1.0f);
             const Vector3 direction = RotatePlanar(lockedDirection_, angle);
             prismSpikePositions_[index++] = FindGroundPoint(prismSpellOrigin_ + direction * distance);
@@ -73,9 +74,9 @@ std::unique_ptr<Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int index) con
     spike->SetMaterialType(kPrismCrystalMaterialType);
 
     constexpr std::array<Vector4, 3> kCrystalTints = {
-        Vector4{ 0.34f, 0.20f, 0.74f, 1.0f },
-        Vector4{ 0.20f, 0.43f, 0.78f, 1.0f },
-        Vector4{ 0.66f, 0.22f, 0.70f, 1.0f },
+        Vector4{0.34f, 0.20f, 0.74f, 1.0f},
+        Vector4{0.20f, 0.43f, 0.78f, 1.0f},
+        Vector4{0.66f, 0.22f, 0.70f, 1.0f},
     };
     spike->SetColor(kCrystalTints[static_cast<std::size_t>(index) % kCrystalTints.size()]);
     spike->SetMetallic(0.94f);
@@ -100,42 +101,33 @@ void EnemyPrismSlime::SpawnNextPrismSpike() {
     visual.index = actionIndex_;
 
     const bool isCenterSpike = actionIndex_ == static_cast<int>(prismSpikePositions_.size()) - 1;
-    const float heightVariation = isCenterSpike
-        ? 1.58f
-        : 0.78f + static_cast<float>((actionIndex_ * 5) % 7) * 0.075f;
-    const float widthVariation = isCenterSpike
-        ? 1.38f
-        : 0.92f + static_cast<float>((actionIndex_ * 7) % 5) * 0.06f;
+    const float heightVariation = isCenterSpike ? 1.58f : 0.78f + static_cast<float>((actionIndex_ * 5) % 7) * 0.075f;
+    const float widthVariation = isCenterSpike ? 1.38f : 0.92f + static_cast<float>((actionIndex_ * 7) % 5) * 0.06f;
     visual.groundPosition = prismSpikePositions_[actionIndex_];
-    visual.fullScale = { widthVariation, 1.22f * heightVariation, widthVariation * 1.86f };
-    visual.object->SetTranslate(visual.groundPosition + Vector3{ 0.0f, -0.24f, 0.0f });
+    visual.fullScale = {widthVariation, 1.22f * heightVariation, widthVariation * 1.86f};
+    visual.object->SetTranslate(visual.groundPosition + Vector3{0.0f, -0.24f, 0.0f});
     visual.object->SetRotation({
         0.0f,
         std::atan2(lockedDirection_.x, lockedDirection_.z) + static_cast<float>(actionIndex_ - 2) * 0.13f,
         0.0f,
     });
-    visual.object->SetScale({ visual.fullScale.x * 0.42f, 0.015f, visual.fullScale.z * 0.42f });
+    visual.object->SetScale({visual.fullScale.x * 0.42f, 0.015f, visual.fullScale.z * 0.42f});
     visual.object->Update(0.0f);
     visual.object->UpdateWorldMatrix(true);
 
     const float groundEffectScale = isCenterSpike ? 1.34f : 0.74f;
     if ((isCenterSpike || actionIndex_ % 2 == 0) && MeshEffectManager::GetInstance()) {
         MeshEffectManager* effects = MeshEffectManager::GetInstance();
-        effects->SpawnEffectAt(
-            kPrismSpikeGroundEffect,
-            visual.groundPosition + Vector3{ 0.0f, 0.045f, 0.0f },
-            { 0.0f, static_cast<float>(actionIndex_) * 0.37f, 0.0f },
-            { groundEffectScale, 1.0f, groundEffectScale });
+        effects->SpawnEffectAt(kPrismSpikeGroundEffect, visual.groundPosition + Vector3{0.0f, 0.045f, 0.0f},
+                               {0.0f, static_cast<float>(actionIndex_) * 0.37f, 0.0f},
+                               {groundEffectScale, 1.0f, groundEffectScale});
     }
 
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    const char* activePreset = attack.activeVfx.empty()
-        ? kPrismSpikeBurstPreset
-        : attack.activeVfx.c_str();
+    const char* activePreset = attack.activeVfx.empty() ? kPrismSpikeBurstPreset : attack.activeVfx.c_str();
     if (isCenterSpike || actionIndex_ % 3 == 0) {
-        EmitDirectedPreset(activePreset,
-            visual.groundPosition + Vector3{ 0.0f, 0.12f, 0.0f },
-            { 0.0f, 1.0f, 0.0f }, isCenterSpike ? 1.04f : 0.68f);
+        EmitDirectedPreset(activePreset, visual.groundPosition + Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f},
+                           isCenterSpike ? 1.04f : 0.68f);
     }
     Vector3 fromOrigin = visual.groundPosition - prismSpellOrigin_;
     fromOrigin.y = 0.0f;
@@ -189,43 +181,32 @@ void EnemyPrismSlime::UpdatePrismSpikeVisuals(float deltaTime) {
 void EnemyPrismSlime::SpawnPrismSpikeShatter(const PrismSpikeVisual& spike) {
     const bool isMainSpike = spike.index == static_cast<int>(prismSpikePositions_.size()) - 1;
     const Vector3 burstPosition = spike.groundPosition + Vector3{
-        0.0f,
-        spike.fullScale.y * 1.18f,
-        0.0f,
-    };
+                                                             0.0f,
+                                                             spike.fullScale.y * 1.18f,
+                                                             0.0f,
+                                                         };
 
     // 多数の棘を同時に消すため、破片は間引いて描画負荷を抑えます。
     const bool showShatter = isMainSpike || spike.index % 3 == 0;
     if (showShatter && DebrisEffectManager::GetInstance()) {
         DebrisEffectManager* debris = DebrisEffectManager::GetInstance();
-        debris->SpawnOnGround(
-            kPrismSpikeShatterDebrisPreset,
-            burstPosition,
-            spike.groundPosition.y + 0.02f);
+        debris->SpawnOnGround(kPrismSpikeShatterDebrisPreset, burstPosition, spike.groundPosition.y + 0.02f);
         if (isMainSpike) {
-            debris->SpawnOnGround(
-                kPrismSpikeShatterDebrisPreset,
-                burstPosition + Vector3{ 0.0f, spike.fullScale.y * 0.82f, 0.0f },
-                spike.groundPosition.y + 0.02f);
+            debris->SpawnOnGround(kPrismSpikeShatterDebrisPreset,
+                                  burstPosition + Vector3{0.0f, spike.fullScale.y * 0.82f, 0.0f},
+                                  spike.groundPosition.y + 0.02f);
         }
     }
 
     if (showShatter) {
-        EmitDirectedPreset(
-            kPrismSpikeBurstPreset,
-            burstPosition,
-            { 0.0f, 1.0f, 0.0f },
-            isMainSpike ? 1.34f : 0.92f);
+        EmitDirectedPreset(kPrismSpikeBurstPreset, burstPosition, {0.0f, 1.0f, 0.0f}, isMainSpike ? 1.34f : 0.92f);
     }
 
     if (showShatter && MeshEffectManager::GetInstance()) {
         MeshEffectManager* effects = MeshEffectManager::GetInstance();
         const float groundFlashScale = isMainSpike ? 1.28f : 0.78f;
-        effects->SpawnEffectAt(
-            kPrismSpikeGroundEffect,
-            spike.groundPosition + Vector3{ 0.0f, 0.05f, 0.0f },
-            { 0.0f, spike.age * 0.71f, 0.0f },
-            { groundFlashScale, 1.0f, groundFlashScale });
+        effects->SpawnEffectAt(kPrismSpikeGroundEffect, spike.groundPosition + Vector3{0.0f, 0.05f, 0.0f},
+                               {0.0f, spike.age * 0.71f, 0.0f}, {groundFlashScale, 1.0f, groundFlashScale});
     }
 }
 
@@ -245,7 +226,7 @@ void EnemyPrismSlime::PrepareCrystalLances() {
         }
 
         lance.object->SetName("PrismCrystalLance_" + std::to_string(index));
-        lance.object->SetScale({ 0.01f, 0.01f, 0.01f });
+        lance.object->SetScale({0.01f, 0.01f, 0.01f});
         lance.object->SetTranslate(GetWorldPosition());
         lance.object->Update(0.0f);
         lance.object->UpdateWorldMatrix(true);
@@ -269,7 +250,7 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool 
         effect->SetUseTextureColor(false);
     }
     effect->SetRevealProgress(0.0f);
-    effect->SetColor({ 0.92f, 0.97f, 1.0f, 0.0f });
+    effect->SetColor({0.92f, 0.97f, 1.0f, 0.0f});
     return effect;
 }
 
@@ -290,43 +271,45 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSpellEffect(const char* p
 void EnemyPrismSlime::UpdatePrismSpikeSectorVisual(float deltaTime) {
     if (currentAttack_ != AttackKind::PrismSpikes ||
         (attackState_ != AttackState::Windup && attackState_ != AttackState::Active)) {
-        if (prismSpikeSector_) prismSpikeSector_->SetIsVisible(false);
-        for (auto& sigil : prismSpikeSigil_) if (sigil) sigil->SetIsVisible(false);
+        if (prismSpikeSector_)
+            prismSpikeSector_->SetIsVisible(false);
+        for (auto& sigil : prismSpikeSigil_)
+            if (sigil)
+                sigil->SetIsVisible(false);
         return;
     }
     const bool windup = attackState_ == AttackState::Windup;
-    const float progress = windup
-        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f)
-        : 1.0f;
-    const float fade = windup ? 1.0f :
-        0.48f + 0.52f * SmoothStep01(std::clamp(attackTimer_ / 0.24f, 0.0f, 1.0f));
+    const float progress =
+        windup ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f) : 1.0f;
+    const float fade = windup ? 1.0f : 0.48f + 0.52f * SmoothStep01(std::clamp(attackTimer_ / 0.24f, 0.0f, 1.0f));
     const float yaw = std::atan2(lockedDirection_.x, lockedDirection_.z);
     const float extent = GetCurrentAttackDefinition().maxRange;
     if (prismSpikeSector_) {
         prismSpikeSector_->Update(deltaTime);
         prismSpikeSector_->SetIsVisible(progress > 0.01f && fade > 0.01f);
-        prismSpikeSector_->SetTranslate(prismSpellOrigin_ + Vector3{ 0.0f, 0.045f, 0.0f });
-        prismSpikeSector_->SetRotation({ 0.0f, yaw, 0.0f });
-        prismSpikeSector_->SetScale({ extent, 1.0f, extent });
-        prismSpikeSector_->SetColor({ 0.32f, 0.68f, 1.0f, fade * (0.12f + progress * 0.18f) });
+        prismSpikeSector_->SetTranslate(prismSpellOrigin_ + Vector3{0.0f, 0.045f, 0.0f});
+        prismSpikeSector_->SetRotation({0.0f, yaw, 0.0f});
+        prismSpikeSector_->SetScale({extent, 1.0f, extent});
+        prismSpikeSector_->SetColor({0.32f, 0.68f, 1.0f, fade * (0.12f + progress * 0.18f)});
         prismSpikeSector_->UpdateLocalMatrix();
         prismSpikeSector_->UpdateWorldMatrix();
     }
-    const float halfAngle = std::asin(std::clamp(
-        GetCurrentAttackDefinition().radius / (std::max)(extent, 0.1f), 0.0f, 0.95f));
+    const float halfAngle =
+        std::asin(std::clamp(GetCurrentAttackDefinition().radius / (std::max)(extent, 0.1f), 0.0f, 0.95f));
     for (std::size_t index = 0; index < prismSpikeSigil_.size(); ++index) {
         auto& sigil = prismSpikeSigil_[index];
-        if (!sigil) continue;
+        if (!sigil)
+            continue;
         sigil->Update(deltaTime);
-        const float assembly = SmoothStep01(std::clamp(
-            (progress - static_cast<float>(index) * 0.08f) / 0.60f, 0.0f, 1.0f));
+        const float assembly =
+            SmoothStep01(std::clamp((progress - static_cast<float>(index) * 0.08f) / 0.60f, 0.0f, 1.0f));
         const float distance = extent * (index < 3 ? (index == 0 ? 0.38f : (index == 1 ? 0.68f : 1.0f)) : 1.0f);
         const float rotation = yaw + (index == 3 ? -halfAngle : (index == 4 ? halfAngle : 0.0f));
         sigil->SetIsVisible(assembly > 0.01f && fade > 0.01f);
-        sigil->SetTranslate(prismSpellOrigin_ + Vector3{ 0.0f, 0.072f + static_cast<float>(index) * 0.002f, 0.0f });
-        sigil->SetRotation({ 0.0f, rotation, 0.0f });
-        sigil->SetScale({ distance, 1.0f, distance });
-        sigil->SetColor({ 0.47f, 0.86f, 1.0f, assembly * fade * (index == 2 ? 0.80f : 0.55f) });
+        sigil->SetTranslate(prismSpellOrigin_ + Vector3{0.0f, 0.072f + static_cast<float>(index) * 0.002f, 0.0f});
+        sigil->SetRotation({0.0f, rotation, 0.0f});
+        sigil->SetScale({distance, 1.0f, distance});
+        sigil->SetColor({0.47f, 0.86f, 1.0f, assembly * fade * (index == 2 ? 0.80f : 0.55f)});
         sigil->SetIntensity(1.65f);
         sigil->UpdateLocalMatrix();
         sigil->UpdateWorldMatrix();
@@ -337,77 +320,84 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
     if (currentAttack_ != AttackKind::WindWave ||
         (attackState_ != AttackState::Windup && attackState_ != AttackState::Active)) {
         for (WindVortexVisual& vortex : windVortices_) {
-            if (vortex.circle) vortex.circle->SetIsVisible(false);
-            if (vortex.circleGlow) vortex.circleGlow->SetIsVisible(false);
-            for (auto& effect : vortex.outer) if (effect) effect->SetIsVisible(false);
-            for (auto& effect : vortex.inner) if (effect) effect->SetIsVisible(false);
+            if (vortex.circle)
+                vortex.circle->SetIsVisible(false);
+            if (vortex.circleGlow)
+                vortex.circleGlow->SetIsVisible(false);
+            for (auto& effect : vortex.outer)
+                if (effect)
+                    effect->SetIsVisible(false);
+            for (auto& effect : vortex.inner)
+                if (effect)
+                    effect->SetIsVisible(false);
         }
         return;
     }
 
     const bool assembling = attackState_ == AttackState::Windup;
-    const float progress = assembling
-        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f)
-        : 1.0f;
-    const float fade = assembling ? 1.0f :
-        0.55f + 0.45f * SmoothStep01(std::clamp(attackTimer_ / 0.26f, 0.0f, 1.0f));
+    const float progress =
+        assembling ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f) : 1.0f;
+    const float fade = assembling ? 1.0f : 0.55f + 0.45f * SmoothStep01(std::clamp(attackTimer_ / 0.26f, 0.0f, 1.0f));
 
     for (std::size_t vortexIndex = 0; vortexIndex < windVortices_.size(); ++vortexIndex) {
         WindVortexVisual& vortex = windVortices_[vortexIndex];
         const bool primary = vortexIndex == 0;
-        const float delayedProgress = std::clamp(
-            (progress - static_cast<float>(vortexIndex) * 0.11f) / 0.78f, 0.0f, 1.0f);
+        const float delayedProgress =
+            std::clamp((progress - static_cast<float>(vortexIndex) * 0.11f) / 0.78f, 0.0f, 1.0f);
         const float reveal = SmoothStep01(delayedProgress);
         const float circleRadius = GetCurrentAttackDefinition().radius * (primary ? 1.0f : 0.72f);
         // 陣は召喚地点に固定し、移動する竜巻とは別の存在として見せます。
         const Vector3 circlePosition = vortex.origin;
         auto updateCircle = [&](std::unique_ptr<EffectObject3d>& circle, bool glow) {
-            if (!circle) return;
+            if (!circle)
+                return;
             circle->Update(deltaTime);
             circle->SetRevealProgress(reveal);
             circle->SetIsVisible(reveal > 0.01f);
-            circle->SetTranslate(circlePosition + Vector3{ 0.0f, glow ? 0.077f : 0.065f, 0.0f });
-            circle->SetRotation({ 0.0f, idleTimer_ * (glow ? -0.70f : 0.46f), 0.0f });
+            circle->SetTranslate(circlePosition + Vector3{0.0f, glow ? 0.077f : 0.065f, 0.0f});
+            circle->SetRotation({0.0f, idleTimer_ * (glow ? -0.70f : 0.46f), 0.0f});
             const float radius = circleRadius * (0.72f + reveal * 0.28f);
-            circle->SetScale({ radius, 1.0f, radius });
-            circle->SetColor(glow
-                ? Vector4{ 0.45f, 1.0f, 0.78f, reveal * fade * 0.24f }
-                : Vector4{ 0.88f, 1.0f, 0.94f, reveal * fade * 0.78f });
+            circle->SetScale({radius, 1.0f, radius});
+            circle->SetColor(glow ? Vector4{0.45f, 1.0f, 0.78f, reveal * fade * 0.24f}
+                                  : Vector4{0.88f, 1.0f, 0.94f, reveal * fade * 0.78f});
             circle->UpdateLocalMatrix();
             circle->UpdateWorldMatrix();
         };
         updateCircle(vortex.circle, false);
         updateCircle(vortex.circleGlow, true);
 
-        if (assembling) continue;
+        if (assembling)
+            continue;
         const float localAge = windTornadoAge_ - static_cast<float>(vortexIndex) * 0.15f;
         const float appear = SmoothStep01(std::clamp(localAge / 0.26f, 0.0f, 1.0f));
         for (std::size_t layer = 0; layer < vortex.outer.size(); ++layer) {
             auto& effect = vortex.outer[layer];
-            if (!effect) continue;
+            if (!effect)
+                continue;
             effect->Update(deltaTime);
             effect->SetIsVisible(appear > 0.01f);
-            const float height = (primary ? 0.42f : 0.32f) +
-                static_cast<float>(layer) * (primary ? 1.42f : 1.08f);
-            const float radius = (primary ? 1.18f + static_cast<float>(layer) * 0.74f
-                : 0.86f + static_cast<float>(layer) * 0.49f) * appear;
-            effect->SetTranslate(vortex.position + Vector3{ 0.0f, height, 0.0f });
-            effect->SetRotation({ 0.0f, localAge * (primary ? 14.0f : -16.0f) +
-                static_cast<float>(layer) * 1.65f, 0.0f });
-            effect->SetScale({ radius, primary ? 2.2f : 1.8f, radius });
-            effect->SetColor({ 0.74f, 1.0f, 0.92f, fade * appear * 0.72f });
+            const float height = (primary ? 0.42f : 0.32f) + static_cast<float>(layer) * (primary ? 1.42f : 1.08f);
+            const float radius =
+                (primary ? 1.18f + static_cast<float>(layer) * 0.74f : 0.86f + static_cast<float>(layer) * 0.49f) *
+                appear;
+            effect->SetTranslate(vortex.position + Vector3{0.0f, height, 0.0f});
+            effect->SetRotation(
+                {0.0f, localAge * (primary ? 14.0f : -16.0f) + static_cast<float>(layer) * 1.65f, 0.0f});
+            effect->SetScale({radius, primary ? 2.2f : 1.8f, radius});
+            effect->SetColor({0.74f, 1.0f, 0.92f, fade * appear * 0.72f});
             effect->UpdateLocalMatrix();
             effect->UpdateWorldMatrix();
         }
         for (auto& effect : vortex.inner) {
-            if (!effect) continue;
+            if (!effect)
+                continue;
             effect->Update(deltaTime);
             effect->SetIsVisible(appear > 0.01f);
-            effect->SetTranslate(vortex.position + Vector3{ 0.0f, primary ? 2.90f : 2.15f, 0.0f });
-            effect->SetRotation({ 0.0f, -localAge * 20.0f + static_cast<float>(vortexIndex) * 1.4f, 0.0f });
+            effect->SetTranslate(vortex.position + Vector3{0.0f, primary ? 2.90f : 2.15f, 0.0f});
+            effect->SetRotation({0.0f, -localAge * 20.0f + static_cast<float>(vortexIndex) * 1.4f, 0.0f});
             const float radius = (primary ? 2.62f : 1.78f) * appear;
-            effect->SetScale({ radius, primary ? 3.4f : 2.6f, radius });
-            effect->SetColor({ 0.38f, 0.86f, 1.0f, fade * appear * 0.60f });
+            effect->SetScale({radius, primary ? 3.4f : 2.6f, radius});
+            effect->SetColor({0.38f, 0.86f, 1.0f, fade * appear * 0.60f});
             effect->UpdateLocalMatrix();
             effect->UpdateWorldMatrix();
         }
@@ -416,7 +406,7 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
 
 Vector3 EnemyPrismSlime::GetChantSigilCenter() const {
     return GetWorldPosition() + lockedDirection_ * std::clamp(baseScale_.x * 1.75f, 1.7f, 2.8f) +
-        Vector3{ 0.0f, baseScale_.y * 0.55f + 1.05f, 0.0f };
+           Vector3{0.0f, baseScale_.y * 0.55f + 1.05f, 0.0f};
 }
 
 void EnemyPrismSlime::UpdateChantSigilVisual(float deltaTime) {
@@ -427,21 +417,16 @@ void EnemyPrismSlime::UpdateChantSigilVisual(float deltaTime) {
     frame.casterPosition = GetWorldPosition();
     frame.groundPosition = FindGroundPoint(frame.casterPosition);
     const AABB bodyBounds = GetModelWorldAABB();
-    frame.casterRadius = (std::max)({
-        (bodyBounds.max.x - bodyBounds.min.x) * 0.5f,
-        (bodyBounds.max.z - bodyBounds.min.z) * 0.5f,
-        baseScale_.x * 0.84f });
-    frame.casterHeight = (std::max)(bodyBounds.max.y - bodyBounds.min.y,
-        baseScale_.y * 1.20f);
+    frame.casterRadius = (std::max)({(bodyBounds.max.x - bodyBounds.min.x) * 0.5f,
+                                     (bodyBounds.max.z - bodyBounds.min.z) * 0.5f, baseScale_.x * 0.84f});
+    frame.casterHeight = (std::max)(bodyBounds.max.y - bodyBounds.min.y, baseScale_.y * 1.20f);
     frame.sigilCenter = GetChantSigilCenter();
     frame.forward = lockedDirection_;
     frame.casting = attackState_ == AttackState::Windup;
     frame.releasing = attackState_ == AttackState::Active;
-    frame.windupProgress = frame.casting
-        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f)
-        : 1.0f;
-    frame.activeElapsed = frame.releasing
-        ? (std::max)(0.0f, attackStateDuration_ - attackTimer_) : 0.0f;
+    frame.windupProgress =
+        frame.casting ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f) : 1.0f;
+    frame.activeElapsed = frame.releasing ? (std::max)(0.0f, attackStateDuration_ - attackTimer_) : 0.0f;
     frame.time = idleTimer_;
     frame.deltaTime = deltaTime;
     chantVisual_->Update(frame);
@@ -461,14 +446,12 @@ void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
     }
 
     const bool assembling = attackState_ == AttackState::Windup;
-    const float windupProgress = assembling
-        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f)
-        : 1.0f;
+    const float windupProgress =
+        assembling ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f) : 1.0f;
     // 予備動作で描き上げ、発射後の余光を短く残します。
     const float assembly = SmoothStep01(std::clamp((windupProgress - 0.04f) / 0.84f, 0.0f, 1.0f));
     const float activeElapsed = assembling ? 0.0f : (std::max)(0.0f, attackStateDuration_ - attackTimer_);
-    const float fade = assembling ? 1.0f :
-        1.0f - SmoothStep01(std::clamp(activeElapsed / 0.32f, 0.0f, 1.0f));
+    const float fade = assembling ? 1.0f : 1.0f - SmoothStep01(std::clamp(activeElapsed / 0.32f, 0.0f, 1.0f));
 
     crystalCircle_->Update(deltaTime);
     crystalCircle_->SetRevealProgress(assembly);
@@ -476,24 +459,22 @@ void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
     const Vector3 ground = FindGroundPoint(GetWorldPosition());
     const float radiusScale = std::clamp(baseScale_.x * 1.45f, 1.8f, 3.1f);
     const float completionPulse = SmoothStep01(std::clamp((windupProgress - 0.82f) / 0.18f, 0.0f, 1.0f));
-    crystalCircle_->SetTranslate(ground + Vector3{ 0.0f, 0.08f, 0.0f });
-    crystalCircle_->SetRotation({ 0.0f, idleTimer_ * 0.11f, 0.0f });
-    crystalCircle_->SetScale({ radiusScale * (0.91f + assembly * 0.09f), 1.0f,
-        radiusScale * (0.91f + assembly * 0.09f) });
-    crystalCircle_->SetColor({ 0.92f, 0.97f, 1.0f,
-        (0.35f + assembly * 0.40f + completionPulse * 0.15f) * fade });
+    crystalCircle_->SetTranslate(ground + Vector3{0.0f, 0.08f, 0.0f});
+    crystalCircle_->SetRotation({0.0f, idleTimer_ * 0.11f, 0.0f});
+    crystalCircle_->SetScale(
+        {radiusScale * (0.91f + assembly * 0.09f), 1.0f, radiusScale * (0.91f + assembly * 0.09f)});
+    crystalCircle_->SetColor({0.92f, 0.97f, 1.0f, (0.35f + assembly * 0.40f + completionPulse * 0.15f) * fade});
     crystalCircle_->UpdateLocalMatrix();
     crystalCircle_->UpdateWorldMatrix();
     if (crystalCircleGlow_) {
         crystalCircleGlow_->Update(deltaTime);
         crystalCircleGlow_->SetRevealProgress(assembly);
         crystalCircleGlow_->SetIsVisible(fade > 0.01f && assembly > 0.24f);
-        crystalCircleGlow_->SetTranslate(ground + Vector3{ 0.0f, 0.092f, 0.0f });
-        crystalCircleGlow_->SetRotation({ 0.0f, idleTimer_ * 0.11f, 0.0f });
-        crystalCircleGlow_->SetScale({ radiusScale * (0.94f + assembly * 0.09f), 1.0f,
-            radiusScale * (0.94f + assembly * 0.09f) });
-        crystalCircleGlow_->SetColor({ 0.42f, 0.78f, 1.0f,
-            (0.10f + assembly * 0.12f + completionPulse * 0.11f) * fade });
+        crystalCircleGlow_->SetTranslate(ground + Vector3{0.0f, 0.092f, 0.0f});
+        crystalCircleGlow_->SetRotation({0.0f, idleTimer_ * 0.11f, 0.0f});
+        crystalCircleGlow_->SetScale(
+            {radiusScale * (0.94f + assembly * 0.09f), 1.0f, radiusScale * (0.94f + assembly * 0.09f)});
+        crystalCircleGlow_->SetColor({0.42f, 0.78f, 1.0f, (0.10f + assembly * 0.12f + completionPulse * 0.11f) * fade});
         crystalCircleGlow_->SetIntensity(1.7f);
         crystalCircleGlow_->UpdateLocalMatrix();
         crystalCircleGlow_->UpdateWorldMatrix();
@@ -513,7 +494,7 @@ void EnemyPrismSlime::LaunchNextCrystalLance() {
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     Vector3 aimPosition = lance.position + lockedDirection_ * (std::max)(attack.maxRange, 1.0f);
     if (target_) {
-        aimPosition = target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
+        aimPosition = target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f};
     }
 
     Vector3 launchDirection = aimPosition - lance.position;
@@ -528,14 +509,11 @@ void EnemyPrismSlime::LaunchNextCrystalLance() {
     lance.age = 0.0f;
     lance.trailTimer = 0.0f;
     lance.object->SetRotation(MakeUpAxisAimRotation(launchDirection));
-    lance.object->SetScale({ 0.42f, 0.72f, 0.42f });
+    lance.object->SetScale({0.42f, 0.72f, 0.42f});
     lance.object->SetEmissive(3.1f);
     // 陣を抜ける位置で閃光を出し、晶槍が魔法陣から射出されたようにつなぎます。
-    EmitDirectedPreset(kPrismLanceReleasePreset, lance.position + lockedDirection_ * 0.40f,
-        launchDirection, 1.0f);
-    const char* trailPreset = attack.activeVfx.empty()
-        ? kPrismLanceTrailPreset
-        : attack.activeVfx.c_str();
+    EmitDirectedPreset(kPrismLanceReleasePreset, lance.position + lockedDirection_ * 0.40f, launchDirection, 1.0f);
+    const char* trailPreset = attack.activeVfx.empty() ? kPrismLanceTrailPreset : attack.activeVfx.c_str();
     EmitDirectedPreset(trailPreset, lance.position, launchDirection * -1.0f, 1.25f);
 }
 
@@ -547,10 +525,9 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kCrystalLanceVolleyAttackId);
     float revealProgress = 1.0f;
     if (currentAttack_ == AttackKind::CrystalLanceVolley && attackState_ == AttackState::Windup) {
-        revealProgress = 1.0f - std::clamp(
-            attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f);
+        revealProgress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f);
     }
-    const Vector3 side = { lockedDirection_.z, 0.0f, -lockedDirection_.x };
+    const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
 
     auto lance = crystalLanceVisuals_.begin();
     while (lance != crystalLanceVisuals_.end()) {
@@ -560,19 +537,19 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
         }
 
         if (!lance->launched) {
-            const float centeredSlot = static_cast<float>(lance->slotIndex) -
-                static_cast<float>(kCrystalLanceCount - 1) * 0.5f;
+            const float centeredSlot =
+                static_cast<float>(lance->slotIndex) - static_cast<float>(kCrystalLanceCount - 1) * 0.5f;
             const float arch = 1.0f - std::abs(centeredSlot) * 0.17f;
             const float bob = std::sin(idleTimer_ * 4.6f + static_cast<float>(lance->slotIndex) * 0.9f) * 0.10f;
             const float buildStart = 0.10f + static_cast<float>(lance->slotIndex) * 0.095f;
             const float lanceBuild = SmoothStep01(std::clamp((revealProgress - buildStart) / 0.50f, 0.0f, 1.0f));
             // 陣の奥で結晶を作り、完成するにつれて射出口へ寄せます。
             lance->position = GetChantSigilCenter() - lockedDirection_ * (0.82f - lanceBuild * 0.42f) +
-                side * centeredSlot * 1.02f + Vector3{ 0.0f, arch * 0.22f + bob, 0.0f };
+                              side * centeredSlot * 1.02f + Vector3{0.0f, arch * 0.22f + bob, 0.0f};
 
             Vector3 aimPosition = lance->position + lockedDirection_ * (std::max)(attack.maxRange, 1.0f);
             if (target_) {
-                aimPosition = target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
+                aimPosition = target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f};
             }
             Vector3 aimDirection = aimPosition - lance->position;
             if (Math::Length(aimDirection) <= 0.001f) {
@@ -589,14 +566,14 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
                 (0.38f + pulse + charge * 0.035f) * lanceBuild,
             });
             lance->object->SetEmissive(0.65f + charge * 2.05f);
-            if (currentAttack_ == AttackKind::CrystalLanceVolley &&
-                attackState_ == AttackState::Windup && lanceBuild > 0.16f) {
+            if (currentAttack_ == AttackKind::CrystalLanceVolley && attackState_ == AttackState::Windup &&
+                lanceBuild > 0.16f) {
                 lance->trailTimer -= deltaTime;
                 if (lance->trailTimer <= 0.0f) {
                     const float orbit = idleTimer_ * 5.2f + static_cast<float>(lance->slotIndex) * 2.4f;
-                    const Vector3 motePosition = lance->position + Vector3{
-                        std::cos(orbit) * 0.48f, std::sin(orbit * 1.3f) * 0.32f,
-                        std::sin(orbit) * 0.48f };
+                    const Vector3 motePosition =
+                        lance->position +
+                        Vector3{std::cos(orbit) * 0.48f, std::sin(orbit * 1.3f) * 0.32f, std::sin(orbit) * 0.48f};
                     EmitPreset(kPrismSpellMotesPreset, motePosition);
                     lance->trailTimer += 0.17f - charge * 0.045f;
                 }
@@ -615,23 +592,17 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
         lance->position += lance->velocity * deltaTime;
 
         if (lance->trailTimer <= 0.0f) {
-            const char* trailPreset = attack.activeVfx.empty()
-                ? kPrismLanceTrailPreset
-                : attack.activeVfx.c_str();
-            EmitDirectedPreset(
-                trailPreset,
-                lance->position,
-                lance->velocity * -1.0f,
-                1.0f);
+            const char* trailPreset = attack.activeVfx.empty() ? kPrismLanceTrailPreset : attack.activeVfx.c_str();
+            EmitDirectedPreset(trailPreset, lance->position, lance->velocity * -1.0f, 1.0f);
             lance->trailTimer += kCrystalLanceTrailInterval;
         }
 
         bool hitTarget = false;
         if (target_) {
-            const Vector3 targetCenter = target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
+            const Vector3 targetCenter = target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f};
             const float hitRadius = (std::max)(0.90f, target_->GetCollisionRadius() + 0.34f);
-            hitTarget = DistanceSquaredToSegment(targetCenter, previousPosition, lance->position) <=
-                hitRadius * hitRadius;
+            hitTarget =
+                DistanceSquaredToSegment(targetCenter, previousPosition, lance->position) <= hitRadius * hitRadius;
         }
 
         if (hitTarget && !crystalVolleyDamageApplied_) {
@@ -669,33 +640,29 @@ void EnemyPrismSlime::SpawnCrystalLanceShatter(const CrystalLanceVisual& lance) 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kCrystalLanceVolleyAttackId);
     const Vector3 groundPosition = FindGroundPoint(lance.position);
     if (DebrisEffectManager* debris = DebrisEffectManager::GetInstance()) {
-        debris->SpawnOnGround(
-            kPrismSpikeShatterDebrisPreset,
-            lance.position,
-            groundPosition.y + 0.02f);
+        debris->SpawnOnGround(kPrismSpikeShatterDebrisPreset, lance.position, groundPosition.y + 0.02f);
     }
-    const char* impactPreset = attack.impactVfx.empty()
-        ? kPrismSpikeBurstPreset
-        : attack.impactVfx.c_str();
-    EmitDirectedPreset(
-        impactPreset,
-        lance.position,
-        lance.velocity * -1.0f,
-        1.08f);
+    const char* impactPreset = attack.impactVfx.empty() ? kPrismSpikeBurstPreset : attack.impactVfx.c_str();
+    EmitDirectedPreset(impactPreset, lance.position, lance.velocity * -1.0f, 1.08f);
 }
 
 void EnemyPrismSlime::ClearPrismAttackVisuals() {
+    // 死亡・遭遇演出・プレビューの再生成では、未発射のイベントも取り消します。
+    attackSequence_.Cancel();
     prismSpikeVisuals_.clear();
     crystalLanceVisuals_.clear();
     crystalCircle_.reset();
     crystalCircleGlow_.reset();
     prismSpikeSector_.reset();
-    for (auto& sigil : prismSpikeSigil_) sigil.reset();
+    for (auto& sigil : prismSpikeSigil_)
+        sigil.reset();
     for (WindVortexVisual& vortex : windVortices_) {
         vortex.circle.reset();
         vortex.circleGlow.reset();
-        for (auto& effect : vortex.outer) effect.reset();
-        for (auto& effect : vortex.inner) effect.reset();
+        for (auto& effect : vortex.outer)
+            effect.reset();
+        for (auto& effect : vortex.inner)
+            effect.reset();
     }
     chantVisual_.reset();
     summonPortalVisuals_.clear();
@@ -740,24 +707,14 @@ void EnemyPrismSlime::FireNextFanProjectile() {
 
     Vector3 spawnPosition = GetWorldPosition() + direction * (baseScale_.x * 0.48f);
     spawnPosition.y += baseScale_.y * 0.48f + std::abs(static_cast<float>(actionIndex_) - centerIndex) * 0.10f;
-    const float speed = std::clamp(
-        lockedTargetDistance_ * 1.55f + 4.0f,
-        (std::max)(11.0f, attack.minSpeed),
-        (std::max)(22.0f, attack.maxSpeed));
+    const float speed = std::clamp(lockedTargetDistance_ * 1.55f + 4.0f, (std::max)(11.0f, attack.minSpeed),
+                                   (std::max)(22.0f, attack.maxSpeed));
     const float lifetime = attack.lifetime > 0.0f ? attack.lifetime : 2.8f;
 
-    BulletManager::GetInstance()->Fire(
-        spawnPosition,
-        direction * speed + Vector3{ 0.0f, 0.45f, 0.0f },
-        kEnemyAttack,
-        kPlayer | kAllSolid,
-        "Primitives/sphere",
-        (std::max)(0.42f, attack.radius),
-        lifetime,
-        MakePrismFireVisual(),
-        attack.damage,
-        MakeBurningStatus(attack),
-        DamageType::Fire);
+    BulletManager::GetInstance()->Fire(spawnPosition, direction * speed + Vector3{0.0f, 0.45f, 0.0f}, CollisionCategories::Get("enemy_attack"),
+                                       CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Primitives/sphere", (std::max)(0.42f, attack.radius),
+                                       lifetime, MakePrismFireVisual(), attack.damage, MakeBurningStatus(attack),
+                                       DamageType::Fire);
     EmitDirectedPreset(kFireCastPreset, spawnPosition, direction, 1.15f);
 }
 
@@ -772,14 +729,14 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
     strikeCenter.y += strikeHeight * 0.5f;
 
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
-        effects->SpawnEffectAt(kThunderBoltEffect, strikeCenter, { kHalfPi, yaw, 0.0f }, { 1.15f, 1.18f, 1.15f });
-        effects->SpawnEffectAt(kThunderBoltEffect, strikeCenter, { kHalfPi, yaw + kHalfPi, 0.0f }, { 0.76f, 1.18f, 0.90f });
-        effects->SpawnEffectAt(kThunderCoreEffect, strikeCenter, { 0.0f, 0.0f, 0.0f }, { 1.18f, 1.18f, 1.18f });
-        effects->SpawnEffectAt(kThunderImpactEffect, groundPosition + Vector3{ 0.0f, 0.055f, 0.0f },
-            { 0.0f, yaw, 0.0f }, { 1.35f, 1.0f, 1.35f });
-        effects->SpawnEffectAt(kThunderScorchEffect, groundPosition + Vector3{ 0.0f, 0.04f, 0.0f }, { 0.0f, yaw, 0.0f });
+        effects->SpawnEffectAt(kThunderBoltEffect, strikeCenter, {kHalfPi, yaw, 0.0f}, {1.15f, 1.18f, 1.15f});
+        effects->SpawnEffectAt(kThunderBoltEffect, strikeCenter, {kHalfPi, yaw + kHalfPi, 0.0f}, {0.76f, 1.18f, 0.90f});
+        effects->SpawnEffectAt(kThunderCoreEffect, strikeCenter, {0.0f, 0.0f, 0.0f}, {1.18f, 1.18f, 1.18f});
+        effects->SpawnEffectAt(kThunderImpactEffect, groundPosition + Vector3{0.0f, 0.055f, 0.0f}, {0.0f, yaw, 0.0f},
+                               {1.35f, 1.0f, 1.35f});
+        effects->SpawnEffectAt(kThunderScorchEffect, groundPosition + Vector3{0.0f, 0.04f, 0.0f}, {0.0f, yaw, 0.0f});
     }
-    EmitPreset(kThunderImpactPreset, groundPosition + Vector3{ 0.0f, 0.22f, 0.0f });
+    EmitPreset(kThunderImpactPreset, groundPosition + Vector3{0.0f, 0.22f, 0.0f});
 
     if (!target_ || damageApplied_) {
         return;
@@ -796,7 +753,7 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Electric;
-    event.knockbackVelocity = { lockedDirection_.x * 8.0f, 7.5f, lockedDirection_.z * 8.0f };
+    event.knockbackVelocity = {lockedDirection_.x * 8.0f, 7.5f, lockedDirection_.z * 8.0f};
     EventManager::GetInstance()->Dispatch(event);
     damageApplied_ = true;
 }
@@ -811,7 +768,8 @@ void EnemyPrismSlime::ApplyWindTornado() {
     float hitRadius = 0.0f;
     bool hit = false;
     for (std::size_t index = 0; index < windVortices_.size(); ++index) {
-        if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f) continue;
+        if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
+            continue;
         const WindVortexVisual& vortex = windVortices_[index];
         Vector3 candidate = target_->GetWorldPosition() - vortex.position;
         const float verticalDistance = candidate.y;
@@ -834,20 +792,23 @@ void EnemyPrismSlime::ApplyWindTornado() {
     const Vector3 pushDirection = distance > 0.001f ? NormalizePlanar(difference) : lockedDirection_;
     const float falloff = 1.0f - std::clamp(distance / (std::max)(hitRadius, 0.1f), 0.0f, 1.0f);
     if (Character* character = dynamic_cast<Character*>(target_)) {
-        character->ApplyExternalImpulse({
-            pushDirection.x * (13.0f + falloff * 6.0f),
-            4.8f + falloff * 2.0f,
-            pushDirection.z * (13.0f + falloff * 6.0f),
-        }, 0.25f);
+        character->ApplyExternalImpulse(
+            {
+                pushDirection.x * (13.0f + falloff * 6.0f),
+                4.8f + falloff * 2.0f,
+                pushDirection.z * (13.0f + falloff * 6.0f),
+            },
+            0.25f);
     }
 
-    EmitDirectedPreset(kWindImpactPreset, target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f }, pushDirection, 1.25f);
+    EmitDirectedPreset(kWindImpactPreset, target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, pushDirection,
+                       1.25f);
     DamageEvent event;
     event.target = target_;
     event.attacker = this;
     event.damageAmount = attack.damage;
     event.damageType = DamageType::Physical;
-    event.knockbackVelocity = { pushDirection.x * 15.0f, 7.0f, pushDirection.z * 15.0f };
+    event.knockbackVelocity = {pushDirection.x * 15.0f, 7.0f, pushDirection.z * 15.0f};
     EventManager::GetInstance()->Dispatch(event);
     damageApplied_ = true;
 }
@@ -860,10 +821,9 @@ void EnemyPrismSlime::PrepareThunderPoints() {
         const float distance = 3.2f + spacing * static_cast<float>(index);
         thunderStrikePositions_[index] = FindGroundPoint(origin + lockedDirection_ * distance);
         if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
-            effects->SpawnEffectAt(kThunderWarningEffect,
-                thunderStrikePositions_[index] + Vector3{ 0.0f, 0.045f, 0.0f },
-                { 0.0f, std::atan2(lockedDirection_.x, lockedDirection_.z), 0.0f },
-                { attack.radius, 1.0f, attack.radius });
+            effects->SpawnEffectAt(kThunderWarningEffect, thunderStrikePositions_[index] + Vector3{0.0f, 0.045f, 0.0f},
+                                   {0.0f, std::atan2(lockedDirection_.x, lockedDirection_.z), 0.0f},
+                                   {attack.radius, 1.0f, attack.radius});
         }
     }
 }
@@ -879,17 +839,16 @@ void EnemyPrismSlime::PrepareSummonPortals() {
     const float startAngle = NextSummonRandom01(randomState) * kPi * 2.0f;
 
     for (int index = 0; index < kSummonPortalCount; ++index) {
-        const float spreadAngle = (kPi * 2.0f * static_cast<float>(index)) /
-            static_cast<float>(kSummonPortalCount);
+        const float spreadAngle = (kPi * 2.0f * static_cast<float>(index)) / static_cast<float>(kSummonPortalCount);
         const float angleJitter = (NextSummonRandom01(randomState) - 0.5f) * 0.58f;
         const float distanceRate = 0.62f + NextSummonRandom01(randomState) * 0.32f;
         const float angle = startAngle + spreadAngle + angleJitter;
 
         Vector3 samplePosition = center + Vector3{
-            std::sin(angle) * placementRadius * distanceRate,
-            0.0f,
-            std::cos(angle) * placementRadius * distanceRate,
-        };
+                                              std::sin(angle) * placementRadius * distanceRate,
+                                              0.0f,
+                                              std::cos(angle) * placementRadius * distanceRate,
+                                          };
 
         SummonPortalVisual portal;
         portal.groundPosition = FindGroundPoint(samplePosition);
@@ -906,24 +865,24 @@ void EnemyPrismSlime::PrepareSummonPortals() {
         portal.slimeKind = static_cast<SummonSlimeKind>(kindIndex);
         switch (portal.slimeKind) {
         case SummonSlimeKind::Fire:
-            portal.color = { 1.0f, 0.20f, 0.035f, 0.90f };
+            portal.color = {1.0f, 0.20f, 0.035f, 0.90f};
             break;
         case SummonSlimeKind::Bomber:
             // 暗い敵色は発光層で読めなくなるため、紫のハイライトで種類を示します。
-            portal.color = { 0.62f, 0.33f, 0.92f, 0.90f };
+            portal.color = {0.62f, 0.33f, 0.92f, 0.90f};
             break;
         case SummonSlimeKind::Pink:
-            portal.color = { 1.0f, 0.24f, 0.68f, 0.90f };
+            portal.color = {1.0f, 0.24f, 0.68f, 0.90f};
             break;
         case SummonSlimeKind::Thunder:
-            portal.color = { 1.0f, 0.86f, 0.055f, 0.94f };
+            portal.color = {1.0f, 0.86f, 0.055f, 0.94f};
             break;
         }
 
         if (portal.effect) {
-            portal.effect->SetTranslate(portal.groundPosition + Vector3{ 0.0f, 0.065f, 0.0f });
-            portal.effect->SetScale({ 0.48f, 1.0f, 0.48f });
-            portal.effect->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+            portal.effect->SetTranslate(portal.groundPosition + Vector3{0.0f, 0.065f, 0.0f});
+            portal.effect->SetScale({0.48f, 1.0f, 0.48f});
+            portal.effect->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
             portal.effect->UpdateLocalMatrix();
             portal.effect->UpdateWorldMatrix();
         }
@@ -963,8 +922,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
         if (portal.glow) {
             portal.glow->Update(deltaTime);
         }
-        const float assembly = SmoothStep01(std::clamp(
-            (revealProgress - 0.04f) / 0.84f, 0.0f, 1.0f));
+        const float assembly = SmoothStep01(std::clamp((revealProgress - 0.04f) / 0.84f, 0.0f, 1.0f));
         portal.effect->SetRevealProgress(assembly);
         if (portal.glow) {
             portal.glow->SetRevealProgress(assembly);
@@ -991,42 +949,41 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
                 continue;
             }
         } else {
-            const float pulse = std::sin(portal.age * (5.5f + easedReveal * 7.0f) +
-                static_cast<float>(index) * 1.7f);
+            const float pulse = std::sin(portal.age * (5.5f + easedReveal * 7.0f) + static_cast<float>(index) * 1.7f);
             scale *= 1.0f + pulse * (0.015f + easedReveal * 0.035f);
             alpha *= 0.91f + pulse * 0.09f;
             glowAlpha *= 0.85f + pulse * 0.15f;
             intensity += (0.5f + pulse * 0.5f) * assembly * 0.30f;
-            if (currentAttack_ == AttackKind::SlimeSummon &&
-                attackState_ == AttackState::Windup && easedReveal > 0.10f) {
+            if (currentAttack_ == AttackKind::SlimeSummon && attackState_ == AttackState::Windup &&
+                easedReveal > 0.10f) {
                 portal.moteTimer -= deltaTime;
                 if (portal.moteTimer <= 0.0f) {
                     const float orbit = portal.age * 4.0f + static_cast<float>(index) * 2.1f;
                     const float orbitRadius = scale * 0.78f;
-                    EmitPreset(kPrismSpellMotesPreset, portal.groundPosition + Vector3{
-                        std::cos(orbit) * orbitRadius, 0.13f,
-                        std::sin(orbit) * orbitRadius });
+                    EmitPreset(kPrismSpellMotesPreset,
+                               portal.groundPosition +
+                                   Vector3{std::cos(orbit) * orbitRadius, 0.13f, std::sin(orbit) * orbitRadius});
                     portal.moteTimer += 0.23f - easedReveal * 0.12f;
                 }
             }
         }
 
         portal.effect->SetIsVisible(assembly > 0.001f);
-        portal.effect->SetTranslate(portal.groundPosition + Vector3{ 0.0f, 0.065f, 0.0f });
-        portal.effect->SetRotation({ 0.0f,
-            portal.age * (0.46f + easedReveal * 0.92f) * (index == 1 ? -1.0f : 1.0f), 0.0f });
-        portal.effect->SetScale({ scale, 1.0f, scale });
-        portal.effect->SetColor({ 0.94f, 0.98f, 1.0f, alpha });
+        portal.effect->SetTranslate(portal.groundPosition + Vector3{0.0f, 0.065f, 0.0f});
+        portal.effect->SetRotation(
+            {0.0f, portal.age * (0.46f + easedReveal * 0.92f) * (index == 1 ? -1.0f : 1.0f), 0.0f});
+        portal.effect->SetScale({scale, 1.0f, scale});
+        portal.effect->SetColor({0.94f, 0.98f, 1.0f, alpha});
         portal.effect->SetIntensity(intensity);
         portal.effect->UpdateLocalMatrix();
         portal.effect->UpdateWorldMatrix();
         if (portal.glow) {
             portal.glow->SetIsVisible(assembly > 0.24f);
-            portal.glow->SetTranslate(portal.groundPosition + Vector3{ 0.0f, 0.077f, 0.0f });
-            portal.glow->SetRotation({ 0.0f,
-                portal.age * (0.46f + easedReveal * 0.92f) * (index == 1 ? -1.0f : 1.0f), 0.0f });
-            portal.glow->SetScale({ scale * 1.035f, 1.0f, scale * 1.035f });
-            portal.glow->SetColor({ portal.color.x, portal.color.y, portal.color.z, glowAlpha });
+            portal.glow->SetTranslate(portal.groundPosition + Vector3{0.0f, 0.077f, 0.0f});
+            portal.glow->SetRotation(
+                {0.0f, portal.age * (0.46f + easedReveal * 0.92f) * (index == 1 ? -1.0f : 1.0f), 0.0f});
+            portal.glow->SetScale({scale * 1.035f, 1.0f, scale * 1.035f});
+            portal.glow->SetColor({portal.color.x, portal.color.y, portal.color.z, glowAlpha});
             portal.glow->SetIntensity(1.65f + assembly * 0.50f);
             portal.glow->UpdateLocalMatrix();
             portal.glow->UpdateWorldMatrix();
@@ -1072,21 +1029,21 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
         return;
     }
 
-    enemy->SetName(std::string("PrismSummon_") + nameSuffix + "_" +
-        std::to_string(summonRandomSerial_) + "_" + std::to_string(actionIndex_));
-    enemy->SetTranslate(portal.groundPosition + Vector3{ 0.0f, 0.12f, 0.0f });
-    enemy->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    enemy->SetName(std::string("PrismSummon_") + nameSuffix + "_" + std::to_string(summonRandomSerial_) + "_" +
+                   std::to_string(actionIndex_));
+    enemy->SetTranslate(portal.groundPosition + Vector3{0.0f, 0.12f, 0.0f});
+    enemy->SetVelocity({0.0f, 0.0f, 0.0f});
     enemy->SetGrounded(true);
     enemy->SetDetectionRange(24.0f);
     enemy->SetTarget(target_);
 
     portal.spawned = true;
     portal.spawnedAge = 0.0f;
-    EmitPreset(spawnPreset, portal.groundPosition + Vector3{ 0.0f, 0.24f, 0.0f });
+    EmitPreset(spawnPreset, portal.groundPosition + Vector3{0.0f, 0.24f, 0.0f});
     for (int mote = 0; mote < 4; ++mote) {
         const float angle = (kPi * 2.0f * static_cast<float>(mote)) / 4.0f;
-        EmitPreset(kPrismSpellMotesPreset, portal.groundPosition + Vector3{
-            std::cos(angle) * 0.72f, 0.18f, std::sin(angle) * 0.72f });
+        EmitPreset(kPrismSpellMotesPreset,
+                   portal.groundPosition + Vector3{std::cos(angle) * 0.72f, 0.18f, std::sin(angle) * 0.72f});
     }
     SpawnSummonedSlime(std::move(enemy));
 }
@@ -1107,4 +1064,3 @@ void EnemyPrismSlime::SpawnSummonedSlime(std::unique_ptr<BaseEnemy> enemy) {
     enemy->SetTarget(sceneManager->GetCurrentScene()->GetPlayer());
     sceneManager->GetCurrentScene()->AddObject(std::move(enemy));
 }
-

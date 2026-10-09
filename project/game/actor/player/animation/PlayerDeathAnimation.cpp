@@ -22,9 +22,7 @@ constexpr const char* kDeathSplashArcEffect = "Resources/json/effect/effect_play
 constexpr const char* kDeathSplashStreakPreset = "player_death_slime_splash_streaks";
 constexpr const char* kDeathSoftMistPreset = "player_death_slime_soft_mist";
 
-float Clamp01(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
-}
+float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
 
 float EaseOutCubic(float value) {
     value = Clamp01(value);
@@ -38,13 +36,10 @@ float EaseInOut(float value) {
 }
 
 Vector3 MakeSafeScale(const Vector3& scale) {
-    return {
-        std::abs(scale.x) > 0.001f ? scale.x : 1.0f,
-        std::abs(scale.y) > 0.001f ? scale.y : 1.0f,
-        std::abs(scale.z) > 0.001f ? scale.z : 1.0f
-    };
+    return {std::abs(scale.x) > 0.001f ? scale.x : 1.0f, std::abs(scale.y) > 0.001f ? scale.y : 1.0f,
+            std::abs(scale.z) > 0.001f ? scale.z : 1.0f};
 }
-}
+} // namespace
 
 void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
     timer_ = 0.0f;
@@ -79,16 +74,18 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
             child->SetIsVisible(true);
         }
     }
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
 }
 
 void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
+    // 破裂前の予兆と破裂後のフェードを、同じタイマー上で進めます。
     if (!active_ || !player) {
         return;
     }
 
-    timer_ += std::max(0.0f, deltaTime);
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    const float safeDeltaTime = std::max(0.0f, deltaTime);
+    timer_ += safeDeltaTime;
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
 
     if (timer_ < kBurstTime) {
         ApplyPreBurstPose(player);
@@ -101,7 +98,7 @@ void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
         HidePlayerBody(player);
     }
 
-    puddleEmitTimer_ -= deltaTime;
+    puddleEmitTimer_ -= safeDeltaTime;
     if (timer_ < kFadeReadyTime && puddleEmitTimer_ <= 0.0f) {
         EmitPuddle(player);
         puddleEmitTimer_ = finalDeath_ ? 0.065f : 0.085f;
@@ -109,6 +106,7 @@ void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
 }
 
 void PlayerDeathAnimation::RestoreVisual(Player* player) {
+    // 復活時に死亡演出が変更した表示状態を戻します。
     active_ = false;
     if (!player) {
         return;
@@ -123,7 +121,7 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
         }
         const bool visible = i < childVisible_.size() ? childVisible_[i] : true;
         child->SetIsVisible(visible);
-        child->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        child->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
 
     player->SetScale(baseScale_);
@@ -132,18 +130,14 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
         player->SetCollisionAttribute(baseCollisionAttribute_);
         player->SetCollisionMask(baseCollisionMask_);
     }
-    player->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    player->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
 }
 
-bool PlayerDeathAnimation::IsReadyForFade() const {
-    return active_ && timer_ >= kFadeReadyTime;
-}
+bool PlayerDeathAnimation::IsReadyForFade() const { return active_ && timer_ >= kFadeReadyTime; }
 
-bool PlayerDeathAnimation::IsFinished() const {
-    return active_ && timer_ >= kFinishTime;
-}
+bool PlayerDeathAnimation::IsFinished() const { return active_ && timer_ >= kFinishTime; }
 
 void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     if (!player) {
@@ -173,12 +167,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     rotation.x += std::sin(timer_ * 50.0f) * (1.0f - chargeT) * 0.025f;
 
     const float flash = std::max(0.0f, 1.0f - timer_ / 0.20f);
-    const Vector4 color = {
-        0.42f + flash * 0.58f,
-        0.92f + flash * 0.08f,
-        1.00f,
-        1.0f
-    };
+    const Vector4 color = {0.42f + flash * 0.58f, 0.92f + flash * 0.08f, 1.00f, 1.0f};
 
     player->SetScale(scale);
     player->SetRotation(rotation);
@@ -199,45 +188,26 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
 
     ParticleSystem* particle = player->GetParticleSystem();
     const Vector3 origin = player->GetWorldPosition();
-    const Vector3 center = origin + Vector3{ 0.0f, baseScale_.y * 0.45f, 0.0f };
-    const Vector3 foot = origin + Vector3{ 0.0f, 0.08f, 0.0f };
+    const Vector3 center = origin + Vector3{0.0f, baseScale_.y * 0.45f, 0.0f};
+    const Vector3 foot = origin + Vector3{0.0f, 0.08f, 0.0f};
 
     if (particle) {
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
-        particle->SpawnParticles(
-            center,
-            finalDeath_ ? 24 : 18,
-            finalDeath_ ? 5.6f : 4.8f,
-            &up,
-            124.0f,
-            finalDeath_ ? Vector4{ 0.38f, 0.72f, 0.95f, 0.98f } : Vector4{ 0.38f, 0.95f, 1.0f, 0.96f },
-            finalDeath_ ? Vector4{ 0.02f, 0.10f, 0.18f, 0.0f } : Vector4{ 0.08f, 0.42f, 0.72f, 0.0f },
-            0.22f,
-            finalDeath_ ? 0.82f : 0.68f,
-            0.30f,
-            0.035f
-        );
+        Vector3 up = {0.0f, 1.0f, 0.0f};
+        particle->SpawnParticles(center, finalDeath_ ? 24 : 18, finalDeath_ ? 5.6f : 4.8f, &up, 124.0f,
+                                 finalDeath_ ? Vector4{0.38f, 0.72f, 0.95f, 0.98f} : Vector4{0.38f, 0.95f, 1.0f, 0.96f},
+                                 finalDeath_ ? Vector4{0.02f, 0.10f, 0.18f, 0.0f} : Vector4{0.08f, 0.42f, 0.72f, 0.0f},
+                                 0.22f, finalDeath_ ? 0.82f : 0.68f, 0.30f, 0.035f);
 
-        Vector3 low = { 0.0f, 0.08f, 0.0f };
-        particle->SpawnParticles(
-            foot,
-            finalDeath_ ? 14 : 10,
-            finalDeath_ ? 2.7f : 2.25f,
-            &low,
-            178.0f,
-            finalDeath_ ? Vector4{ 0.25f, 0.58f, 0.78f, 0.80f } : Vector4{ 0.26f, 0.88f, 1.0f, 0.78f },
-            Vector4{ 0.04f, 0.22f, 0.34f, 0.0f },
-            0.38f,
-            0.92f,
-            0.20f,
-            0.055f
-        );
+        Vector3 low = {0.0f, 0.08f, 0.0f};
+        particle->SpawnParticles(foot, finalDeath_ ? 14 : 10, finalDeath_ ? 2.7f : 2.25f, &low, 178.0f,
+                                 finalDeath_ ? Vector4{0.25f, 0.58f, 0.78f, 0.80f} : Vector4{0.26f, 0.88f, 1.0f, 0.78f},
+                                 Vector4{0.04f, 0.22f, 0.34f, 0.0f}, 0.38f, 0.92f, 0.20f, 0.055f);
     }
 
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager* meshEffects = MeshEffectManager::GetInstance();
-        meshEffects->SpawnEffectAt(kDeathCoreFlashEffect, center, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
-        meshEffects->SpawnEffectAt(kDeathSplashRingEffect, foot, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f });
+        meshEffects->SpawnEffectAt(kDeathCoreFlashEffect, center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
+        meshEffects->SpawnEffectAt(kDeathSplashRingEffect, foot, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
         meshEffects->SpawnRingWaveEffect(foot);
 
         const int arcCount = finalDeath_ ? 7 : 5;
@@ -249,20 +219,16 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
             arcPos.y += 0.08f + 0.05f * static_cast<float>(i % 2);
             arcPos.z += std::sin(angle) * 0.20f;
 
-            Vector3 arcRot = {
-                0.32f + 0.08f * static_cast<float>(i % 2),
-                angle,
-                (i % 2 == 0 ? 0.26f : -0.22f)
-            };
+            Vector3 arcRot = {0.32f + 0.08f * static_cast<float>(i % 2), angle, (i % 2 == 0 ? 0.26f : -0.22f)};
             const float arcScale = finalDeath_ ? 1.18f : 1.0f;
-            meshEffects->SpawnEffectAt(kDeathSplashArcEffect, arcPos, arcRot, { arcScale, arcScale, arcScale });
+            meshEffects->SpawnEffectAt(kDeathSplashArcEffect, arcPos, arcRot, {arcScale, arcScale, arcScale});
         }
     }
 
     GPUParticleManager* gpuParticles = GPUParticleManager::GetInstance();
     if (gpuParticles && gpuParticles->IsInitialized()) {
         gpuParticles->Emit(kDeathSplashStreakPreset, center);
-        gpuParticles->Emit(kDeathSplashStreakPreset, center + Vector3{ 0.0f, 0.22f, 0.0f });
+        gpuParticles->Emit(kDeathSplashStreakPreset, center + Vector3{0.0f, 0.22f, 0.0f});
         gpuParticles->Emit(kDeathSoftMistPreset, foot);
     }
 }
@@ -272,21 +238,12 @@ void PlayerDeathAnimation::EmitPuddle(Player* player) {
         return;
     }
 
-    Vector3 low = { 0.0f, 0.05f, 0.0f };
-    const Vector3 foot = player->GetWorldPosition() + Vector3{ 0.0f, 0.06f, 0.0f };
-    player->GetParticleSystem()->SpawnParticles(
-        foot,
-        finalDeath_ ? 6 : 5,
-        finalDeath_ ? 1.25f : 1.05f,
-        &low,
-        175.0f,
-        finalDeath_ ? Vector4{ 0.18f, 0.48f, 0.70f, 0.44f } : Vector4{ 0.20f, 0.82f, 1.0f, 0.46f },
-        Vector4{ 0.04f, 0.18f, 0.28f, 0.0f },
-        0.34f,
-        0.76f,
-        0.22f,
-        0.04f
-    );
+    Vector3 low = {0.0f, 0.05f, 0.0f};
+    const Vector3 foot = player->GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f};
+    player->GetParticleSystem()->SpawnParticles(foot, finalDeath_ ? 6 : 5, finalDeath_ ? 1.25f : 1.05f, &low, 175.0f,
+                                                finalDeath_ ? Vector4{0.18f, 0.48f, 0.70f, 0.44f}
+                                                            : Vector4{0.20f, 0.82f, 1.0f, 0.46f},
+                                                Vector4{0.04f, 0.18f, 0.28f, 0.0f}, 0.34f, 0.76f, 0.22f, 0.04f);
 }
 
 void PlayerDeathAnimation::HidePlayerBody(Player* player) {

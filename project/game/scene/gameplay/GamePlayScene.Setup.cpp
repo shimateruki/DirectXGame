@@ -47,8 +47,7 @@ constexpr const char* kControlsGuidePortraitsToPreload[] = {
     "Resources/sprite/ui/control_guide/portraits/bomb_slime.png",
     "Resources/sprite/ui/control_guide/portraits/wind_slime.png",
     "Resources/sprite/ui/control_guide/portraits/fire_slime.png",
-    "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"
-};
+    "Resources/sprite/ui/control_guide/portraits/thunder_slime.png"};
 
 constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
     "Resources/sprite/ui/control_guide/labels/absorb.png",
@@ -69,8 +68,7 @@ constexpr const char* kControlsGuideAbilityLabelsToPreload[] = {
     "Resources/sprite/ui/control_guide/labels/thunder_step.png",
     "Resources/sprite/ui/control_guide/labels/updraft.png",
     "Resources/sprite/ui/control_guide/labels/wind_breath.png",
-    "Resources/sprite/ui/control_guide/labels/wind_dash.png"
-};
+    "Resources/sprite/ui/control_guide/labels/wind_dash.png"};
 
 constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_bakuhatu.json",
@@ -161,180 +159,175 @@ constexpr const char* kGameplayMeshEffectsToPreload[] = {
     "Resources/json/effect/effect_player_wind_soar_land.json",
     "Resources/json/effect/effect_ring_burner_charge.json",
     "Resources/json/effect/effect_ring_burner_wave.json",
-    "Resources/json/effect/effect_ring_burner_wave_heat.json"
-};
+    "Resources/json/effect/effect_ring_burner_wave_heat.json"};
 
-constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {
-    "hit_bomb_fire_core",
-    "hit_bomb_flash_core",
-    "hit_bomb_fire_mushroom",
-    "hit_bomb_fire_sparks",
-    "hit_bomb_golden_sparks",
-    "hit_bomb_black_smoke",
-    "hit_bomb_orange_smoke",
-    "hit_bomb_gray_smoke",
-    "hit_damage_puni_mist",
-    "hit_damage_puni_splash",
-    "hit_damage_pop_stars",
-    "hit_damage_galaxy_streaks",
-    "hit_damage_galaxy_glints",
-    "hitfx_kickpunch_spark_particles",
-    "hitfx_kickpunch_thin_streaks",
-    "enemy_defeat_pop_smoke",
-    "enemy_defeat_smoke_trail",
-    "enemy_defeat_gold_stars",
-    "enemy_defeat_rainbow_twinkles",
-    "enemy_defeat_after_twinkle",
-    "hit_enemy_ability",
-    "hit_pull_bind",
-    "hit_pull_catch",
-    "hit_slime_elastic",
-    "player_base_bash_droplets",
-    "player_base_press_splash",
-    "hit_throw_slam_dust",
-    "carry_bomber_throw_sparks",
-    "carry_eye_charge_sparks",
-    "carry_eye_beam_sparks",
-    "carry_bat_glide_wisp",
-    "thunder_slime_aura",
-    "thunder_slime_radial_charge",
-    "thunder_slime_charge",
-    "thunder_slime_discharge",
-    "thunder_slime_idle_spark",
-    "player_thunder_strike_impact",
-    "player_thunder_evade_sparks",
-    "prism_slime_charge",
-    "prism_slime_pulse",
-    "prism_spell_motes",
-    "prism_chant_glints",
-    "prism_lance_release",
-    "prism_spike_warning",
-    "prism_spike_burst",
-    "prism_spike_shatter",
-    "fire_slime_breath",
-    "fire_slime_breath_embers",
-    "fire_slime_cast",
-    "fireball_trail_flame",
-    "fireball_trail_embers",
-    "fireball_impact_flame",
-    "fireball_impact_sparks",
-    "fire_slime_head_flame",
-    "fire_slime_head_embers",
-    "status_burning_flame",
-    "hit_player_fire_flame",
-    "hit_player_fire_embers",
-    "hit_player_explosion_core",
-    "hit_player_explosion_sparks",
-    "hit_player_explosion_smoke",
-    "player_jump_dust",
-    "player_land_dust",
-    "crown_get_burst",
-    "crown_get_rays",
-    "crown_get_twinkle_fountain",
-    "crown_get_afterglow",
-    "crown_idle_twinkle",
-    "crown_idle_sparkle",
-    "crown_goal_idle_sparkle",
-    "goal_clear_gold_burst",
-    "goal_clear_gold_motes",
-    "goal_clear_silver_burst",
-    "goal_clear_silver_motes",
-    "player_thunder_discharge_charge",
-    "player_thunder_discharge_burst",
-    "player_fire_blaze_trail",
-    "player_fire_blaze_burst",
-    "player_pink_straight_splash",
-    "player_pink_bounce_droplets",
-    "pink_slime_morph_glint",
-    "player_bomb_place_fuse",
-    "player_bomb_blast_jump",
-    "player_bomb_morph_aura",
-    "player_fire_morph_aura",
-    "player_wind_morph_aura",
-    "player_wind_updraft",
-    "player_wind_dash",
-    "wind_slime_gust_impact",
-    "checkpoint_active_motes",
-    "copy_memory_transfer_sparks",
-    "checkpoint_flag_capture_stars",
-    "ring_burner_charge_sparks",
-    "ring_burner_discharge_embers",
-    "magma_slime_core_embers",
-    "magma_slime_charge",
-    "magma_slime_mortar_trail",
-    "magma_slime_impact",
-    "magma_slime_rush_wake",
-    "magma_slime_rush_splash",
-    "magma_slime_slam_burst",
-    "magma_slime_geyser_burst",
-    "magma_slime_geyser_stream",
-    "magma_slime_spiral_surge",
-    "magma_slime_spiral_trail",
-    "magma_slime_fire_column_stream",
-    "magma_slime_flood_splash",
-    "false_king_charge",
-    "false_king_lance_trail",
-    "false_king_lance_impact",
-    "false_king_astral_reaver_charge",
-    "false_king_astral_reaver_trail",
-    "false_king_astral_reaver_impact",
-    "false_king_nightfall_lances_charge",
-    "false_king_nightfall_lances_trail",
-    "false_king_nightfall_lances_impact",
-    "false_king_rush_wake",
-    "false_king_shockwave",
-    "false_king_shockwave_charge_ring",
-    "false_king_dominion"
-};
+constexpr const char* kGameplayGpuParticlePresetsToPreload[] = {"hit_bomb_fire_core",
+                                                                "hit_bomb_flash_core",
+                                                                "hit_bomb_fire_mushroom",
+                                                                "hit_bomb_fire_sparks",
+                                                                "hit_bomb_golden_sparks",
+                                                                "hit_bomb_black_smoke",
+                                                                "hit_bomb_orange_smoke",
+                                                                "hit_bomb_gray_smoke",
+                                                                "hit_damage_puni_mist",
+                                                                "hit_damage_puni_splash",
+                                                                "hit_damage_pop_stars",
+                                                                "hit_damage_galaxy_streaks",
+                                                                "hit_damage_galaxy_glints",
+                                                                "hitfx_kickpunch_spark_particles",
+                                                                "hitfx_kickpunch_thin_streaks",
+                                                                "enemy_defeat_pop_smoke",
+                                                                "enemy_defeat_smoke_trail",
+                                                                "enemy_defeat_gold_stars",
+                                                                "enemy_defeat_rainbow_twinkles",
+                                                                "enemy_defeat_after_twinkle",
+                                                                "hit_enemy_ability",
+                                                                "hit_pull_bind",
+                                                                "hit_pull_catch",
+                                                                "hit_slime_elastic",
+                                                                "player_base_bash_droplets",
+                                                                "player_base_press_splash",
+                                                                "hit_throw_slam_dust",
+                                                                "carry_bomber_throw_sparks",
+                                                                "carry_eye_charge_sparks",
+                                                                "carry_eye_beam_sparks",
+                                                                "carry_bat_glide_wisp",
+                                                                "thunder_slime_aura",
+                                                                "thunder_slime_radial_charge",
+                                                                "thunder_slime_charge",
+                                                                "thunder_slime_discharge",
+                                                                "thunder_slime_idle_spark",
+                                                                "player_thunder_strike_impact",
+                                                                "player_thunder_evade_sparks",
+                                                                "prism_slime_charge",
+                                                                "prism_slime_pulse",
+                                                                "prism_spell_motes",
+                                                                "prism_chant_glints",
+                                                                "prism_lance_release",
+                                                                "prism_spike_warning",
+                                                                "prism_spike_burst",
+                                                                "prism_spike_shatter",
+                                                                "fire_slime_breath",
+                                                                "fire_slime_breath_embers",
+                                                                "fire_slime_cast",
+                                                                "fireball_trail_flame",
+                                                                "fireball_trail_embers",
+                                                                "fireball_impact_flame",
+                                                                "fireball_impact_sparks",
+                                                                "fire_slime_head_flame",
+                                                                "fire_slime_head_embers",
+                                                                "status_burning_flame",
+                                                                "hit_player_fire_flame",
+                                                                "hit_player_fire_embers",
+                                                                "hit_player_explosion_core",
+                                                                "hit_player_explosion_sparks",
+                                                                "hit_player_explosion_smoke",
+                                                                "player_jump_dust",
+                                                                "player_land_dust",
+                                                                "crown_get_burst",
+                                                                "crown_get_rays",
+                                                                "crown_get_twinkle_fountain",
+                                                                "crown_get_afterglow",
+                                                                "crown_idle_twinkle",
+                                                                "crown_idle_sparkle",
+                                                                "crown_goal_idle_sparkle",
+                                                                "goal_clear_gold_burst",
+                                                                "goal_clear_gold_motes",
+                                                                "goal_clear_silver_burst",
+                                                                "goal_clear_silver_motes",
+                                                                "player_thunder_discharge_charge",
+                                                                "player_thunder_discharge_burst",
+                                                                "player_fire_blaze_trail",
+                                                                "player_fire_blaze_burst",
+                                                                "player_pink_straight_splash",
+                                                                "player_pink_bounce_droplets",
+                                                                "pink_slime_morph_glint",
+                                                                "player_bomb_place_fuse",
+                                                                "player_bomb_blast_jump",
+                                                                "player_bomb_morph_aura",
+                                                                "player_fire_morph_aura",
+                                                                "player_wind_morph_aura",
+                                                                "player_wind_updraft",
+                                                                "player_wind_dash",
+                                                                "wind_slime_gust_impact",
+                                                                "checkpoint_active_motes",
+                                                                "copy_memory_transfer_sparks",
+                                                                "checkpoint_flag_capture_stars",
+                                                                "ring_burner_charge_sparks",
+                                                                "ring_burner_discharge_embers",
+                                                                "magma_slime_core_embers",
+                                                                "magma_slime_charge",
+                                                                "magma_slime_mortar_trail",
+                                                                "magma_slime_impact",
+                                                                "magma_slime_rush_wake",
+                                                                "magma_slime_rush_splash",
+                                                                "magma_slime_slam_burst",
+                                                                "magma_slime_geyser_burst",
+                                                                "magma_slime_geyser_stream",
+                                                                "magma_slime_spiral_surge",
+                                                                "magma_slime_spiral_trail",
+                                                                "magma_slime_fire_column_stream",
+                                                                "magma_slime_flood_splash",
+                                                                "false_king_charge",
+                                                                "false_king_lance_trail",
+                                                                "false_king_lance_impact",
+                                                                "false_king_astral_reaver_charge",
+                                                                "false_king_astral_reaver_trail",
+                                                                "false_king_astral_reaver_impact",
+                                                                "false_king_nightfall_lances_charge",
+                                                                "false_king_nightfall_lances_trail",
+                                                                "false_king_nightfall_lances_impact",
+                                                                "false_king_rush_wake",
+                                                                "false_king_shockwave",
+                                                                "false_king_shockwave_charge_ring",
+                                                                "false_king_dominion"};
 
-constexpr const char* kGameplayVfxSequencesToPreload[] = {
-    "bomb_explosion_cue",
-    "player_base_bash_hit_cue",
-    "player_base_press_enemy_hit_cue",
-    "player_base_press_land_cue",
-    "player_pink_bounce_slam_cue",
-    "player_fire_dash_hit_cue",
-    "player_wind_soar_land_cue",
-    "damage_puni_burst_cue",
-    "enemy_defeat_pop_cue",
-    "slime_elastic_hit_cue",
-    "pull_bind_cue",
-    "pull_catch_cue",
-    "throw_slam_cue",
-    "enemy_ability_hit_cue",
-    "crown_get_cue",
-    "crown_focus_cue",
-    "crown_result_cue",
-    "crown_victory_land_cue",
-    "crown_focus_silver_cue",
-    "crown_get_silver_cue",
-    "crown_result_silver_cue",
-    "crown_victory_land_silver_cue",
-    "prism_arena_seal_cue",
-    "prism_midboss_appear_cue",
-    "prism_arena_release_cue",
-    "magma_arena_seal_cue",
-    "magma_midboss_appear_cue",
-    "magma_arena_release_cue",
-    "false_king_appear_cue",
-    "false_king_phase_shift_cue",
-    "false_king_dominion_cue",
-    "checkpoint_activate_cue",
-    "checkpoint_idle_cue",
-    "copy_memory_station_activate_cue"
-};
+constexpr const char* kGameplayVfxSequencesToPreload[] = {"bomb_explosion_cue",
+                                                          "player_base_bash_hit_cue",
+                                                          "player_base_press_enemy_hit_cue",
+                                                          "player_base_press_land_cue",
+                                                          "player_pink_bounce_slam_cue",
+                                                          "player_fire_dash_hit_cue",
+                                                          "player_wind_soar_land_cue",
+                                                          "damage_puni_burst_cue",
+                                                          "enemy_defeat_pop_cue",
+                                                          "slime_elastic_hit_cue",
+                                                          "pull_bind_cue",
+                                                          "pull_catch_cue",
+                                                          "throw_slam_cue",
+                                                          "enemy_ability_hit_cue",
+                                                          "crown_get_cue",
+                                                          "crown_focus_cue",
+                                                          "crown_result_cue",
+                                                          "crown_victory_land_cue",
+                                                          "crown_focus_silver_cue",
+                                                          "crown_get_silver_cue",
+                                                          "crown_result_silver_cue",
+                                                          "crown_victory_land_silver_cue",
+                                                          "prism_arena_seal_cue",
+                                                          "prism_midboss_appear_cue",
+                                                          "prism_arena_release_cue",
+                                                          "magma_arena_seal_cue",
+                                                          "magma_midboss_appear_cue",
+                                                          "magma_arena_release_cue",
+                                                          "false_king_appear_cue",
+                                                          "false_king_phase_shift_cue",
+                                                          "false_king_dominion_cue",
+                                                          "checkpoint_activate_cue",
+                                                          "checkpoint_idle_cue",
+                                                          "copy_memory_station_activate_cue"};
 
-constexpr const char* kGameplayDebrisPresetsToPreload[] = {
-    "bomb_hit_fragment_burst",
-    "prism_crystal_shatter",
-    "throw_slam_pebble_burst",
-    "pink_slime_charge_pebble_pull",
-    "pink_slime_landing_pebble_burst",
-    "rock_burst",
-    "small_pebble_scatter",
-    "wood_splinter_burst"
-};
-}
+constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_burst",
+                                                           "prism_crystal_shatter",
+                                                           "throw_slam_pebble_burst",
+                                                           "pink_slime_charge_pebble_pull",
+                                                           "pink_slime_landing_pebble_burst",
+                                                           "rock_burst",
+                                                           "small_pebble_scatter",
+                                                           "wood_splinter_burst"};
+} // namespace
+
+// 非同期ロードは段階ごとに依存を満たしてから進めます。再入場時の状態復元はロード完了後に行います。
 
 SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
@@ -349,8 +342,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
         if (!GetSceneLoadContext().spriteLayoutPath.empty()) {
             spriteLayoutPath = GetSceneLoadContext().spriteLayoutPath;
         }
-    }
-    else {
+    } else {
         const auto& stages = StageManager::GetInstance()->GetStages();
         const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
         if (stageIndex >= 0 && stageIndex < static_cast<int>(stages.size())) {
@@ -369,25 +361,16 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddJson("Resources/json/animator/player_slime.json");
     manifest.AddJson("Resources/json/cinematic/goal_clear.json");
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
-        manifest.AddJson(
-            "Resources/json/gpu_particles/" +
-            std::string(presetName) +
-            ".json");
+        manifest.AddJson("Resources/json/gpu_particles/" + std::string(presetName) + ".json");
     }
     for (const char* path : kGameplayMeshEffectsToPreload) {
         manifest.AddJson(path);
     }
     for (const char* presetName : kGameplayDebrisPresetsToPreload) {
-        manifest.AddJson(
-            "Resources/json/debris/" +
-            std::string(presetName) +
-            ".json");
+        manifest.AddJson("Resources/json/debris/" + std::string(presetName) + ".json");
     }
     for (const char* sequenceName : kGameplayVfxSequencesToPreload) {
-        manifest.AddJson(
-            "Resources/json/vfx_sequence/" +
-            std::string(sequenceName) +
-            ".json");
+        manifest.AddJson("Resources/json/vfx_sequence/" + std::string(sequenceName) + ".json");
     }
     for (const char* path : kControlsGuidePortraitsToPreload) {
         manifest.AddTexture(path);
@@ -398,9 +381,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
-    manifest.AddTexture(skyboxPath.empty()
-        ? "Resources/output_skybox.dds"
-        : skyboxPath);
+    manifest.AddTexture(skyboxPath.empty() ? "Resources/output_skybox.dds" : skyboxPath);
     manifest.AddTexture("Resources/sprite/particle/glow_core.png");
     manifest.AddTexture("Resources/sprite/particle/diamond_shard.png");
     manifest.AddTexture("Resources/sprite/effect/prism/prism_spell_circle.dds");
@@ -424,8 +405,7 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     if (preloadBgmPath.empty()) {
         const auto& preloadStages = StageManager::GetInstance()->GetStages();
         const int preloadStageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
-        if (preloadStageIndex >= 0 &&
-            preloadStageIndex < static_cast<int>(preloadStages.size())) {
+        if (preloadStageIndex >= 0 && preloadStageIndex < static_cast<int>(preloadStages.size())) {
             preloadBgmPath = preloadStages[preloadStageIndex].bgmPath;
         }
     }
@@ -457,17 +437,14 @@ void GamePlayScene::BeginLoadingInitialize() {
     stageEntryPresentationRetryTimer_ = 0.0f;
     stageEntryGate_ = nullptr;
     loadingInitializeTotalUnits_ =
-        13 +
-        std::size(kGameplayGpuParticlePresetsToPreload) +
-        std::size(kGameplayMeshEffectsToPreload) +
-        std::size(kGameplayDebrisPresetsToPreload) +
-        std::size(kGameplayVfxSequencesToPreload);
+        13 + std::size(kGameplayGpuParticlePresetsToPreload) + std::size(kGameplayMeshEffectsToPreload) +
+        std::size(kGameplayDebrisPresetsToPreload) + std::size(kGameplayVfxSequencesToPreload);
 }
 
 bool GamePlayScene::InitializeLoadingStep() {
-    auto completeUnit = [this]() {
-        ++loadingInitializeCompletedUnits_;
-    };
+    // 一回の呼び出しで原則一単位だけ処理し、ロード画面へ進捗を返します。
+    // リストを使い切った段階だけ次のフェーズへ進み、依存順は崩しません。
+    auto completeUnit = [this]() { ++loadingInitializeCompletedUnits_; };
 
     for (;;) {
         switch (loadingInitializePhase_) {
@@ -553,6 +530,7 @@ bool GamePlayScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         case 11:
+            // 参照元となるランタイムと演出を準備してから、ステージの実オブジェクトを生成します。
             LoadCurrentStageObjects(StageManager::GetInstance()->GetCurrentStage());
             ++loadingInitializePhase_;
             completeUnit();
@@ -573,9 +551,8 @@ bool GamePlayScene::InitializeLoadingStep() {
             completeUnit();
             return false;
         case 15: {
-            const std::string controllerName = GetSceneLoadContext().controllerName.empty()
-                ? "DEFAULT"
-                : GetSceneLoadContext().controllerName;
+            const std::string controllerName =
+                GetSceneLoadContext().controllerName.empty() ? "DEFAULT" : GetSceneLoadContext().controllerName;
             sceneController_ = SceneControllerFactory::GetInstance()->Create(controllerName);
             if (!sceneController_) {
                 LOG("Scene Controller not registered: " + controllerName + ". Falling back to DEFAULT.");
@@ -601,13 +578,10 @@ bool GamePlayScene::InitializeLoadingStep() {
 }
 
 float GamePlayScene::GetLoadingInitializeProgress() const {
-    return loadingInitializeTotalUnits_ == 0
-        ? 1.0f
-        : std::clamp(
-            static_cast<float>(loadingInitializeCompletedUnits_) /
-                static_cast<float>(loadingInitializeTotalUnits_),
-            0.0f,
-            1.0f);
+    return loadingInitializeTotalUnits_ == 0 ? 1.0f
+                                             : std::clamp(static_cast<float>(loadingInitializeCompletedUnits_) /
+                                                              static_cast<float>(loadingInitializeTotalUnits_),
+                                                          0.0f, 1.0f);
 }
 
 void GamePlayScene::OnActivated() {
@@ -729,8 +703,8 @@ void GamePlayScene::InitializeGameplayObjectSystems() {
     lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
     lockOnSprite_->SetName("HUD_LockOn");
     lockOnSprite_->SetTextureName("ui/hud/lockOn.png");
-    lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f });
-    lockOnSprite_->SetSize({ 64.0f, 64.0f });
+    lockOnSprite_->SetAnchorPoint({0.5f, 0.5f});
+    lockOnSprite_->SetSize({64.0f, 64.0f});
     lockOnSprite_->SetVisible(false);
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
@@ -757,16 +731,14 @@ void GamePlayScene::InitializeGameplaySkybox() {
         skyboxPath = "Resources/output_skybox.dds";
     }
 
-    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(
-        skyboxPath, TextureManager::TextureColorSpace::SRGB);
+    skyboxTextureHandle_ = TextureManager::GetInstance()->Load(skyboxPath, TextureManager::TextureColorSpace::SRGB);
     skybox_ = std::make_unique<Skybox>();
     skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 }
 
 void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
-    const std::string defaultLightPath = currentStage.lightPath.empty()
-        ? "Resources/json/light/light_layout.json"
-        : currentStage.lightPath;
+    const std::string defaultLightPath =
+        currentStage.lightPath.empty() ? "Resources/json/light/light_layout.json" : currentStage.lightPath;
 
     LightManager* lightManager = LightManager::GetInstance();
     lightManager->LoadState(ResolveSceneLightPath(defaultLightPath));
@@ -838,13 +810,13 @@ void GamePlayScene::ApplyGoalCrownState() {
 
         if (isCleared) {
             object->SetTexture("Resources/sprite/common/white.png");
-            object->SetColor({ 0.48f, 0.52f, 0.58f, 1.0f });
+            object->SetColor({0.48f, 0.52f, 0.58f, 1.0f});
             object->SetMetallic(0.38f);
             object->SetRoughness(0.72f);
             object->SetEnableEnvMap(false);
             object->SetEmissive(0.42f);
         } else {
-            object->SetColor({ 1.0f, 0.78f, 0.22f, 1.0f });
+            object->SetColor({1.0f, 0.78f, 0.22f, 1.0f});
             object->SetEmissive(1.65f);
         }
     }
@@ -881,20 +853,16 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
 
     const GameDataManager::StageCheckpointRespawn checkpoint =
         GameDataManager::GetInstance()->ConsumeStageCheckpointRespawn();
-    if (checkpoint.active && player_ &&
-        checkpoint.stageIndex == StageManager::GetInstance()->GetCurrentStageIndex()) {
-        const Vector3 respawnPosition{
-            checkpoint.positionX,
-            checkpoint.positionY,
-            checkpoint.positionZ
-        };
+    if (checkpoint.active && player_ && checkpoint.stageIndex == StageManager::GetInstance()->GetCurrentStageIndex()) {
+        const Vector3 respawnPosition{checkpoint.positionX, checkpoint.positionY, checkpoint.positionZ};
         player_->SetTranslate(respawnPosition);
         player_->ActivateCheckpoint(respawnPosition);
         for (int id : checkpoint.clearedEncounterIds) {
             GameDataManager::GetInstance()->RememberCheckpointEncounter(checkpoint.stageIndex, id);
-            if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventID(id))) encounter->RestoreCheckpointClear();
+            if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventID(id)))
+                encounter->RestoreCheckpointClear();
         }
-        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
         if (!checkpoint.morphEnemyType.empty()) {
             // チェックポイントのコピー状態は敵を仮生成せず、保存情報から直接復元します。
@@ -903,24 +871,17 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     }
 
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-    Vector2 irisCenter = { 0.5f, 0.5f };
+    Vector2 irisCenter = {0.5f, 0.5f};
     if (cam && player_) {
         cam->Update();
         Vector3 worldPos = player_->GetWorldPosition();
         worldPos.y += 1.0f;
         Vector3 ndc = Math::Transform(worldPos, cam->GetViewProjectionMatrix());
-        const bool isOnScreen =
-            std::isfinite(ndc.x) &&
-            std::isfinite(ndc.y) &&
-            std::isfinite(ndc.z) &&
-            ndc.z >= 0.0f &&
-            std::abs(ndc.x) <= 1.15f &&
-            std::abs(ndc.y) <= 1.15f;
+        const bool isOnScreen = std::isfinite(ndc.x) && std::isfinite(ndc.y) && std::isfinite(ndc.z) && ndc.z >= 0.0f &&
+                                std::abs(ndc.x) <= 1.15f && std::abs(ndc.y) <= 1.15f;
         if (isOnScreen) {
-            irisCenter = {
-                std::clamp((ndc.x + 1.0f) * 0.5f, 0.15f, 0.85f),
-                std::clamp((1.0f - ndc.y) * 0.5f, 0.12f, 0.88f)
-            };
+            irisCenter = {std::clamp((ndc.x + 1.0f) * 0.5f, 0.15f, 0.85f),
+                          std::clamp((1.0f - ndc.y) * 0.5f, 0.12f, 0.88f)};
         }
     }
 
@@ -928,13 +889,15 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     return true;
 }
 
-void GamePlayScene::InitializeDebugAnimationPreview() {
-
-}
+void GamePlayScene::InitializeDebugAnimationPreview() {}
 
 void GamePlayScene::FinalizeGameplayResources() {
+    EndCrownMoviePreview();
+    FinishSealBarrageMovie();
+    ResetCrownDefeat();
     ResetCrownFinaleWorld();
-    for (auto& message : crownFinaleMessages_) message.reset();
+    for (auto& message : crownFinaleMessages_)
+        message.reset();
 #ifdef USE_IMGUI
     ClearDebugPlayerMorph();
 #endif
@@ -1006,8 +969,8 @@ void GamePlayScene::FinalizeGameplayResources() {
         slot = {};
     }
     hudStageStarFlyParticles_.clear();
-    hudStageStarPulseTimers_ = { 0.0f, 0.0f, 0.0f };
-    hudStageStarVisualCollected_ = { false, false, false };
+    hudStageStarPulseTimers_ = {0.0f, 0.0f, 0.0f};
+    hudStageStarVisualCollected_ = {false, false, false};
     hudLifeGainPulseTimer_ = 0.0f;
     hudCoinPulseTimer_ = 0.0f;
     hudPreviousLives_ = 0;

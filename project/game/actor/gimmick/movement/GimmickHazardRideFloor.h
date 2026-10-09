@@ -6,7 +6,7 @@
 /// プレイヤーの乗車で動き始め、道中の妨害を順番に起動して終点で落下する輸送床。
 /// </summary>
 class GimmickHazardRideFloor : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     bool OnCollision(Object3d* other) override;
@@ -14,7 +14,7 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     enum class State {
         Waiting,
         Starting,
@@ -40,7 +40,7 @@ private:
     float GetFallGravity() const;
     int GetHazardCount() const;
 
-private:
+  private:
     State state_ = State::Waiting;
     Vector3 startPosition_{};
     Vector3 startRotation_{};

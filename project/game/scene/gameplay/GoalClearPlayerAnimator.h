@@ -9,7 +9,8 @@
 // 王冠取得時のプレイヤー勝利モーションを管理します。
 // 位置と拡縮は滑らかな5次補間、回転はクォータニオン補間で接続します。
 class GoalClearPlayerAnimator {
-public:
+  public:
+    // 王冠取得から勝利着地までの演出時刻と姿勢調整値。Time 系は演出開始からの秒。
     struct Tuning {
         float crownLandTime = 2.28f;
         float anticipationStartTime = 2.48f;
@@ -43,11 +44,11 @@ public:
         currentScale_ = baseScale_;
 
         player_->SetIsControlActive(false);
-        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetVelocity({0.0f, 0.0f, 0.0f});
 
-        const Vector3 crownForward = NormalizePlanarDirection(
-            { crownPosition.x - basePosition_.x, 0.0f, crownPosition.z - basePosition_.z },
-            DirectionFromYaw(baseRotation_.y - player_->GetVisualYawOffset()));
+        const Vector3 crownForward =
+            NormalizePlanarDirection({crownPosition.x - basePosition_.x, 0.0f, crownPosition.z - basePosition_.z},
+                                     DirectionFromYaw(baseRotation_.y - player_->GetVisualYawOffset()));
         const Vector3 desiredForward = NormalizePlanarDirection(preferredForward, crownForward);
         const float faceYaw = std::atan2(desiredForward.x, desiredForward.z);
         baseRotation_.y = NormalizeYaw(faceYaw + player_->GetVisualYawOffset());
@@ -66,13 +67,13 @@ public:
         isActive_ = false;
         savedControlActive_ = true;
         basePosition_ = {};
-        baseScale_ = { 1.0f, 1.0f, 1.0f };
+        baseScale_ = {1.0f, 1.0f, 1.0f};
         baseRotation_ = {};
         resultRotation_ = {};
         posePosition_ = basePosition_;
         currentScale_ = baseScale_;
-        moveForward_ = { 0.0f, 0.0f, 1.0f };
-        moveRight_ = { 1.0f, 0.0f, 0.0f };
+        moveForward_ = {0.0f, 0.0f, 1.0f};
+        moveRight_ = {1.0f, 0.0f, 0.0f};
     }
 
     void RestoreInitialPose() {
@@ -82,7 +83,7 @@ public:
         player_->SetTranslate(basePosition_);
         player_->SetScale(baseScale_);
         player_->SetRotation(baseRotation_);
-        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetVelocity({0.0f, 0.0f, 0.0f});
         player_->UpdateLocalMatrix();
         player_->UpdateWorldMatrix();
     }
@@ -128,7 +129,8 @@ public:
             rotation.z -= moveForward_.x * 0.070f * p;
         } else if (time < c.apexTime) {
             const float raw = AnimationInterpolation::SegmentRate(time, c.jumpStartTime, c.apexTime);
-            const float travel = AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
+            const float travel =
+                AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
             position.x += moveForward_.x * c.forwardDistance * travel;
             position.z += moveForward_.z * c.forwardDistance * travel;
             const float sideArc = std::sin(raw * kPi * 0.5f) * c.forwardDistance * 0.18f;
@@ -136,27 +138,23 @@ public:
             position.z += moveRight_.z * sideArc;
             position.y += AnimationInterpolation::Lerp(-c.anticipationDepth, c.jumpHeight, travel);
 
-            Vector3 squashScale = {
-                baseScale_.x * (1.0f + c.anticipationSquash),
-                baseScale_.y * (1.0f - c.anticipationSquash * 0.92f),
-                baseScale_.z * (1.0f + c.anticipationSquash)
-            };
-            Vector3 stretchScale = {
-                baseScale_.x * (1.0f - c.takeoffStretch * 0.48f),
-                baseScale_.y * (1.0f + c.takeoffStretch),
-                baseScale_.z * (1.0f - c.takeoffStretch * 0.48f)
-            };
-            Vector3 resultScale = {
-                baseScale_.x * (1.0f - c.resultStretch * 0.36f),
-                baseScale_.y * (1.0f + c.resultStretch),
-                baseScale_.z * (1.0f - c.resultStretch * 0.36f)
-            };
+            Vector3 squashScale = {baseScale_.x * (1.0f + c.anticipationSquash),
+                                   baseScale_.y * (1.0f - c.anticipationSquash * 0.92f),
+                                   baseScale_.z * (1.0f + c.anticipationSquash)};
+            Vector3 stretchScale = {baseScale_.x * (1.0f - c.takeoffStretch * 0.48f),
+                                    baseScale_.y * (1.0f + c.takeoffStretch),
+                                    baseScale_.z * (1.0f - c.takeoffStretch * 0.48f)};
+            Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
+                                   baseScale_.y * (1.0f + c.resultStretch),
+                                   baseScale_.z * (1.0f - c.resultStretch * 0.36f)};
 
             if (raw < 0.24f) {
-                const float stretchRate = AnimationInterpolation::ApplyEasing(raw / 0.24f, AnimationInterpolation::EasingType::EaseOut);
+                const float stretchRate =
+                    AnimationInterpolation::ApplyEasing(raw / 0.24f, AnimationInterpolation::EasingType::EaseOut);
                 scale = AnimationInterpolation::Lerp(squashScale, stretchScale, stretchRate);
             } else {
-                const float settleRate = AnimationInterpolation::ApplyEasing((raw - 0.24f) / 0.76f, AnimationInterpolation::EasingType::SmootherStep);
+                const float settleRate = AnimationInterpolation::ApplyEasing(
+                    (raw - 0.24f) / 0.76f, AnimationInterpolation::EasingType::SmootherStep);
                 scale = AnimationInterpolation::Lerp(stretchScale, resultScale, settleRate);
             }
 
@@ -170,7 +168,8 @@ public:
             rotation.y = NormalizeYaw(rotation.y + std::sin(raw * kPi) * 0.20f);
         } else if (time < c.victoryLandTime) {
             const float raw = AnimationInterpolation::SegmentRate(time, c.apexTime, c.victoryLandTime);
-            const float fall = AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
+            const float fall =
+                AnimationInterpolation::ApplyEasing(raw, AnimationInterpolation::EasingType::SmootherStep);
             position.x += moveForward_.x * c.forwardDistance;
             position.z += moveForward_.z * c.forwardDistance;
             const float sideArc = (1.0f - fall) * c.forwardDistance * 0.18f;
@@ -179,16 +178,12 @@ public:
             position.y += AnimationInterpolation::Lerp(c.jumpHeight, 0.0f, fall);
             position.y -= c.landingSquash * 0.08f * fall;
 
-            const Vector3 resultScale = {
-                baseScale_.x * (1.0f - c.resultStretch * 0.36f),
-                baseScale_.y * (1.0f + c.resultStretch),
-                baseScale_.z * (1.0f - c.resultStretch * 0.36f)
-            };
-            const Vector3 landingScale = {
-                baseScale_.x * (1.0f + c.landingSquash * 0.45f),
-                baseScale_.y * (1.0f - c.landingSquash * 0.40f),
-                baseScale_.z * (1.0f + c.landingSquash * 0.45f)
-            };
+            const Vector3 resultScale = {baseScale_.x * (1.0f - c.resultStretch * 0.36f),
+                                         baseScale_.y * (1.0f + c.resultStretch),
+                                         baseScale_.z * (1.0f - c.resultStretch * 0.36f)};
+            const Vector3 landingScale = {baseScale_.x * (1.0f + c.landingSquash * 0.45f),
+                                          baseScale_.y * (1.0f - c.landingSquash * 0.40f),
+                                          baseScale_.z * (1.0f + c.landingSquash * 0.45f)};
             scale = AnimationInterpolation::Lerp(resultScale, landingScale, fall);
             rotation = resultRotation_;
             const float descentLean = std::sin(raw * kPi) * 0.055f;
@@ -241,44 +236,42 @@ public:
     const Vector3& GetMoveForward() const { return moveForward_; }
     const Vector3& GetMoveRight() const { return moveRight_; }
 
-private:
+  private:
     static constexpr float kPi = 3.1415926535f;
     static constexpr float kTwoPi = kPi * 2.0f;
 
     static float NormalizeYaw(float yaw) {
-        while (yaw > kPi) yaw -= kTwoPi;
-        while (yaw < -kPi) yaw += kTwoPi;
+        while (yaw > kPi)
+            yaw -= kTwoPi;
+        while (yaw < -kPi)
+            yaw += kTwoPi;
         return yaw;
     }
 
-    static Vector3 DirectionFromYaw(float yaw) {
-        return { std::sin(yaw), 0.0f, std::cos(yaw) };
-    }
+    static Vector3 DirectionFromYaw(float yaw) { return {std::sin(yaw), 0.0f, std::cos(yaw)}; }
 
     static Vector3 NormalizePlanarDirection(const Vector3& direction, const Vector3& fallback) {
-        Vector3 result = { direction.x, 0.0f, direction.z };
+        Vector3 result = {direction.x, 0.0f, direction.z};
         const float length = std::sqrt(result.x * result.x + result.z * result.z);
         if (length <= 0.0001f) {
             return fallback;
         }
-        return { result.x / length, 0.0f, result.z / length };
+        return {result.x / length, 0.0f, result.z / length};
     }
 
-    static Vector3 RightFromForward(const Vector3& forward) {
-        return { forward.z, 0.0f, -forward.x };
-    }
+    static Vector3 RightFromForward(const Vector3& forward) { return {forward.z, 0.0f, -forward.x}; }
 
-private:
+  private:
     Player* player_ = nullptr;
     Tuning tuning_{};
     bool isActive_ = false;
     bool savedControlActive_ = true;
     Vector3 basePosition_{};
-    Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
     Vector3 baseRotation_{};
     Vector3 resultRotation_{};
     Vector3 posePosition_{};
-    Vector3 currentScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 moveForward_ = { 0.0f, 0.0f, 1.0f };
-    Vector3 moveRight_ = { 1.0f, 0.0f, 0.0f };
+    Vector3 currentScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 moveForward_ = {0.0f, 0.0f, 1.0f};
+    Vector3 moveRight_ = {1.0f, 0.0f, 0.0f};
 };

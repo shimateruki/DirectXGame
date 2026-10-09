@@ -1,3 +1,8 @@
+"""ステージゲートの錠モデルを生成し、OBJ/MTL とメタ情報を更新する。
+
+再実行で同名の生成物が置き換わるため、手編集した形状は保持されない。
+"""
+
 from __future__ import annotations
 
 import json

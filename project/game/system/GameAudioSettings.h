@@ -8,7 +8,7 @@
 
 // 効果音/BGM の個別音量と再生ハンドルを管理する
 class GameAudioSettings {
-public:
+  public:
     // JSON に保存する音声1件分の設定
     struct SoundEntry {
         std::string id;
@@ -22,6 +22,7 @@ public:
     static GameAudioSettings* GetInstance();
 
     void Initialize();
+    // JSON の不正な項目・重複 ID は読み飛ばし、欠けた既定音声を補う。
     void Load();
     void Save() const;
 
@@ -31,15 +32,18 @@ public:
     SoundEntry* FindEntry(const std::string& id);
     const SoundEntry* FindEntry(const std::string& id) const;
 
+    // 見つからない ID は fallback を返す。返す音量と設定する音量は 0～1 に収める。
     float GetVolume(const std::string& id, float fallback = 1.0f) const;
     void SetVolume(const std::string& id, float volume);
 
+    // id ごとに音声ファイルのハンドルを再利用する。ファイルがなければ無効ハンドルを返す。
     AudioPlayer::AudioHandle LoadHandle(const SoundEntry& entry);
+    // volumeScale は登録音量へ乗算する倍率。loopOverride はループ再生を追加指定する。
     void PlaySE(const std::string& id, float volumeScale = 1.0f, bool loopOverride = false);
     void PlayBGM(const std::string& id, float volumeScale = 1.0f, bool loopOverride = true);
     void Stop(const std::string& id);
 
-private:
+  private:
     GameAudioSettings() = default;
     GameAudioSettings(const GameAudioSettings&) = delete;
     GameAudioSettings& operator=(const GameAudioSettings&) = delete;
@@ -50,6 +54,6 @@ private:
 
     std::string filePath_ = "Resources/json/audio/audio_settings.json";
     bool initialized_ = false;
-    std::vector<SoundEntry> entries_; // 登録されている音声設定。
+    std::vector<SoundEntry> entries_;                                   // 登録されている音声設定。
     std::unordered_map<std::string, AudioPlayer::AudioHandle> handles_; // id ごとのロード済みハンドル。
 };

@@ -46,6 +46,7 @@ constexpr const char* kToolExeName = "TextPngTool.exe";
 constexpr const char* kToolRequestPath = "Resources/generated/editor/text_png_request.json";
 constexpr const char* kToolReportPath = "Resources/generated/editor/text_png_result.json";
 
+// 独自フォント集合のキーに並んだパスを列挙する COM オブジェクト。参照数で寿命を管理する。
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
     ResourceFontFileEnumerator(IDWriteFactory* factory, const void* collectionKey, UINT32 collectionKeySize)
@@ -112,6 +113,7 @@ private:
     Microsoft::WRL::ComPtr<IDWriteFontFile> currentFile_;
 };
 
+// DirectWrite に独自フォントの列挙器を提供する COM 実装。OS 全体へのフォント登録は行わない。
 class ResourceFontCollectionLoader final : public IDWriteFontCollectionLoader {
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
@@ -1068,6 +1070,7 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
     }
 #endif
 }
+
 void TextSpriteGenerator::UpdatePreviewTexture() {
     if (!previewDirty_) return;
     if (textBuffer_[0] == '\0') {

@@ -1,3 +1,7 @@
+<#
+UTF-8 の設定 JSON から透過文字 PNG を生成する。config と out は必須。
+設定の reportPath があれば出力寸法を JSON に記録し、同名ファイルは更新する。
+#>
 param(
     [Parameter(Position = 0)]
     [string]$Command = "render",

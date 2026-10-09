@@ -24,15 +24,9 @@ constexpr int kSlimeSoftMaterialType = 25;
 constexpr int kPrismCrystalMaterialType = 27;
 
 bool IsSlimeEnemyType(const std::string& enemyType) {
-    return enemyType == "Slime" ||
-        enemyType == "Bomber" ||
-        enemyType == "FireSlime" ||
-        enemyType == "ThunderSlime" ||
-        enemyType == "WindSlime" ||
-        enemyType == "GiantSlime" ||
-        enemyType == "PrismSlime" ||
-        enemyType == "MagmaSlime" ||
-        enemyType == "FalseKingSlime";
+    return enemyType == "Slime" || enemyType == "Bomber" || enemyType == "FireSlime" || enemyType == "ThunderSlime" ||
+           enemyType == "WindSlime" || enemyType == "GiantSlime" || enemyType == "PrismSlime" ||
+           enemyType == "MagmaSlime" || enemyType == "FalseKingSlime";
 }
 
 void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
@@ -43,11 +37,9 @@ void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
     if (enemy->GetEnemyType() == "MagmaSlime") {
         return;
     }
-    enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime"
-        ? kPrismCrystalMaterialType
-        : kSlimeSoftMaterialType);
+    enemy->SetMaterialType(enemy->GetEnemyType() == "PrismSlime" ? kPrismCrystalMaterialType : kSlimeSoftMaterialType);
 }
-}
+} // namespace
 
 EnemyFactory* EnemyFactory::GetInstance() {
     static EnemyFactory instance;
@@ -64,9 +56,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         slime->Initialize(common, "Characters/slime_pink");
 
         newEnemy = std::move(slime);
-    }
-    else if (enemyName == "BossCore") 
-    {
+    } else if (enemyName == "BossCore") {
         auto boss = std::make_unique<BossCore>();
 
         boss->SetSceneManager(SceneManager::GetInstance());
@@ -74,95 +64,70 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         boss->Initialize(common, "Stages/block");
 
         newEnemy = std::move(boss);
-    }
-    else if (enemyName == "Bomb")
-    {
+    } else if (enemyName == "Bomb") {
         auto bomb = std::make_unique<EnemyBomb>();
-        
+
         bomb->Initialize(common, "Gimmicks/blob");
 
         newEnemy = std::move(bomb);
     }
 
-    else if (enemyName == "Bomber")
-    {
+    else if (enemyName == "Bomber") {
         auto bomber = std::make_unique<EnemyBomber>();
 
         bomber->Initialize(common, "Characters/slime_black");
 
         newEnemy = std::move(bomber);
-    }
-    else if (enemyName == "Mushroom")
-    {
+    } else if (enemyName == "Mushroom") {
         auto mushroom = std::make_unique<EnemyMushroom>();
         mushroom->Initialize(common, "Primitives/cylinder");
 
         newEnemy = std::move(mushroom);
-    }
-    else if (enemyName == "FireSlime")
-    {
+    } else if (enemyName == "FireSlime") {
         auto fireSlime = std::make_unique<EnemyFireSlime>();
         fireSlime->Initialize(common, "Characters/slime_red");
 
         newEnemy = std::move(fireSlime);
-    }
-    else if (enemyName == "ThunderSlime")
-    {
+    } else if (enemyName == "ThunderSlime") {
         auto thunderSlime = std::make_unique<EnemyThunderSlime>();
         thunderSlime->Initialize(common, "Characters/slime_yellow");
 
         newEnemy = std::move(thunderSlime);
-    }
-    else if (enemyName == "WindSlime")
-    {
+    } else if (enemyName == "WindSlime") {
         auto windSlime = std::make_unique<EnemyWindSlime>();
         windSlime->Initialize(common, "Characters/slime_wind");
 
         newEnemy = std::move(windSlime);
-    }
-    else if (enemyName == "GiantSlime")
-    {
+    } else if (enemyName == "GiantSlime") {
         auto giantSlime = std::make_unique<EnemyGiantSlime>();
         giantSlime->Initialize(common, "Characters/slime");
 
         newEnemy = std::move(giantSlime);
-    }
-    else if (enemyName == "PrismSlime")
-    {
+    } else if (enemyName == "PrismSlime") {
         auto prismSlime = std::make_unique<EnemyPrismSlime>();
         prismSlime->Initialize(common, "Characters/prism_slime");
 
         newEnemy = std::move(prismSlime);
-    }
-    else if (enemyName == "MagmaSlime")
-    {
+    } else if (enemyName == "MagmaSlime") {
         auto magmaSlime = std::make_unique<EnemyMagmaSlime>();
         magmaSlime->Initialize(common, "Characters/magma_slime");
 
         newEnemy = std::move(magmaSlime);
-    }
-    else if (enemyName == "FalseKingSlime")
-    {
+    } else if (enemyName == "FalseKingSlime") {
         auto falseKing = std::make_unique<EnemyFalseKingSlime>();
         falseKing->Initialize(common, "Characters/false_king_slime");
         newEnemy = std::move(falseKing);
-    }
-    else if (enemyName == "Bat")
-    {
+    } else if (enemyName == "Bat") {
         auto bat = std::make_unique<EnemyBat>();
         bat->Initialize(common, "Characters/bat");
 
         newEnemy = std::move(bat);
-    }
-    else if (enemyName == "BeamDrone")
-    {
+    } else if (enemyName == "BeamDrone") {
         auto beamDrone = std::make_unique<EnemyBeamDrone>();
         beamDrone->Initialize(common, "Characters/eye");
 
         newEnemy = std::move(beamDrone);
-    }
-    else if (enemyName == "RingBurner")
-    {
+    } else if (enemyName == "RingBurner") {
         auto ringBurner = std::make_unique<EnemyRingBurner>();
         ringBurner->Initialize(common, "Characters/ring_burner");
 

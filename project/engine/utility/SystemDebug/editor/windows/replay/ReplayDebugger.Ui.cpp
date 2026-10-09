@@ -487,6 +487,7 @@ void ReplayDebugger::DrawRegressionPanel() {
         ImGui::TextWrapped("Report: %s", regressionResult_.reportPath.c_str());
     }
 }
+
 void ReplayDebugger::DrawSummaryCards() {
     if (!ImGui::BeginTable("ReplaySummaryCards", 4, ImGuiTableFlags_SizingStretchSame)) {
         return;

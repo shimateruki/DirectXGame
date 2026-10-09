@@ -1,3 +1,8 @@
+"""火鉢ギミックの OBJ/MTL と付属テクスチャを生成する。
+
+Resources/3DModel/Gimmicks/brazier の同名出力を更新する。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

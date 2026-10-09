@@ -10,16 +10,18 @@ void GimmickEventReceiver::Initialize(Object3dCommon* common, const std::string&
     SetClassName("Gimmick");
     SetGimmickType("EventReceiver");
     SetName("Gimmick_EventReceiver");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.65f, 1.0f, 0.65f, 1.0f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.65f, 1.0f, 0.65f, 1.0f});
     SetStatic(false);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 }
 
 void GimmickEventReceiver::Update(float deltaTime) {
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 
     bool isPlaying = false;
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
@@ -44,8 +46,10 @@ void GimmickEventReceiver::Update(float deltaTime) {
         originalCollisionAttribute_ = GetCollisionAttribute();
         originalCollisionMask_ = GetCollisionMask();
         originalColor_ = GetColor();
-        if (originalCollisionAttribute_ == 0) originalCollisionAttribute_ = kGround;
-        if (originalCollisionMask_ == 0) originalCollisionMask_ = 0b11111111;
+        if (originalCollisionAttribute_ == 0)
+            originalCollisionAttribute_ = CollisionCategories::Get("ground");
+        if (originalCollisionMask_ == 0)
+            originalCollisionMask_ = CollisionCategories::GetDefaultGameplayMask();
 
         active_ = hasPendingActive_ ? pendingActive_ : param_->startActive;
         hasPendingActive_ = false;
@@ -62,13 +66,12 @@ void GimmickEventReceiver::Update(float deltaTime) {
         pos.y = Math::Lerp(pos.y, targetPosition_.y, t);
         pos.z = Math::Lerp(pos.z, targetPosition_.z, t);
         GetTransform()->translate = pos;
-    }
-    else if (actionMode == 6 && active_) {
+    } else if (actionMode == 6 && active_) {
         activationTimer_ += (std::max)(0.0f, deltaTime);
         const float duration = (std::max)(0.35f, param_->fallDuration);
         const float progress = (std::clamp)(activationTimer_ / duration, 0.0f, 1.0f);
         const float eased = progress * progress * (3.0f - 2.0f * progress);
-        const Vector3 startPosition = basePosition_ + Vector3{ 0.0f, 4.05f, -param_->moveAmount };
+        const Vector3 startPosition = basePosition_ + Vector3{0.0f, 4.05f, -param_->moveAmount};
         Vector3 position = startPosition * (1.0f - eased) + basePosition_ * eased;
         position.y += std::sin(progress * 3.1415926535f) * (std::max)(0.0f, param_->jumpPower);
         SetTranslate(position);
@@ -95,14 +98,14 @@ void GimmickEventReceiver::RelocateRuntimeBase(const Vector3& position) {
     UpdateWorldMatrix(true);
 }
 
-void GimmickEventReceiver::OnTrigger() {
-    OnSwitchEvent(true);
-}
+void GimmickEventReceiver::OnTrigger() { OnSwitchEvent(true); }
 
 void GimmickEventReceiver::OnSwitchEvent(bool active) {
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 
-    if (!active && !param_->returnOnOff) return;
+    if (!active && !param_->returnOnOff)
+        return;
     if (!initializedForPlay_) {
         pendingActive_ = active;
         hasPendingActive_ = true;
@@ -122,29 +125,28 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
         SetCollisionEnabled(active);
         // エディタで設定した色を尊重し、報酬王冠などを汎用緑色へ上書きしません。
         SetColor(originalColor_);
-    }
-    else if (actionMode >= 1 && actionMode <= 3) {
+    } else if (actionMode >= 1 && actionMode <= 3) {
         Vector3 offset{};
-        if (actionMode == 1) offset.y = moveAmount;
-        if (actionMode == 2) offset.x = moveAmount;
-        if (actionMode == 3) offset.z = moveAmount;
+        if (actionMode == 1)
+            offset.y = moveAmount;
+        if (actionMode == 2)
+            offset.x = moveAmount;
+        if (actionMode == 3)
+            offset.z = moveAmount;
         targetPosition_ = active ? basePosition_ + offset : basePosition_;
         SetIsVisible(true);
         SetCollisionEnabled(true);
-    }
-    else if (actionMode == 4) {
+    } else if (actionMode == 4) {
         SetIsVisible(active);
         SetCollisionEnabled(active);
-    }
-    else if (actionMode == 5) {
+    } else if (actionMode == 5) {
         SetIsVisible(!active);
         SetCollisionEnabled(!active);
-    }
-    else if (actionMode == 6) {
+    } else if (actionMode == 6) {
         SetScale(baseScale_);
         SetRotation(baseRotation_);
         if (active) {
-            SetTranslate(basePosition_ + Vector3{ 0.0f, 4.05f, -moveAmount });
+            SetTranslate(basePosition_ + Vector3{0.0f, 4.05f, -moveAmount});
             SetIsVisible(true);
             SetCollisionEnabled(false);
         } else {
@@ -157,10 +159,9 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
 
 void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
     if (enabled) {
-        SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : kGround);
-        SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : 0b11111111);
-    }
-    else {
+        SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : CollisionCategories::Get("ground"));
+        SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
+    } else {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
     }

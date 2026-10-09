@@ -1,6 +1,7 @@
 #include "SceneSerializer.h"
 #include "DebugEditor.h"
 #include "Object3d.h"
+#include "CollisionConfig.h"
 #include "BaseScene.h"
 #include "SceneManager.h"
 #include "DebugConsole.h"
@@ -110,6 +111,7 @@ bool WriteJsonObject(const fs::path& path, const json& data, std::string& errorM
 bool RegenerateCopiedSceneObjectGuids(
     const std::vector<fs::path>& paths,
     std::string& errorMessage) {
+    // GUID の付け替えを行う文書と保存先。複数ファイル間の参照を同じ remap で更新する。
     struct SceneDocument {
         fs::path path;
         json data;
@@ -301,7 +303,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     std::vector<SaveTarget> targets;
     if (!editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) return targets;
 
-    // ベース名の取得 (stage1.json -> stage1)
+    // 同じベース名からカテゴリ別 JSON とメタデータのパスを組み立てる。
     std::string baseName = currentFilename;
     size_t extPos = baseName.find(".json");
     if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
@@ -316,6 +318,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     cameraSceneData["objects"] = json::array();
 
     BaseScene* currentScene = editor_->GetSceneManager()->GetCurrentScene();
+    // 保存対象間で GUID が衝突しないよう、シリアライズ前にシーン全体を検査する。
     currentScene->EnsureUniquePersistentObjectGuids();
     auto& allObjects = currentScene->GetObjects();
 
@@ -402,7 +405,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     // 3. データの構築
     json currentData = SerializeObject(object);
 
-    // 4. 配列内を探して更新 or 追加
+    // GUID を優先し、旧形式で GUID がない行だけ名前で照合する。
     bool found = false;
     if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
         sceneData["objects"] = json::array();
@@ -431,6 +434,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
 std::string SceneSerializer::SaveTargets(const std::vector<SaveTarget>& targets) {
     std::string savedFilesMsg;
 
+    // 表示用ラベルを返すだけで、個々の書き込み成否はこの関数では集計しない。
     for (const auto& target : targets) {
         SaveToFile(target.path, target.data);
         if (!target.label.empty()) {
@@ -519,6 +523,10 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     // 5. 衝突属性
     d["collisionAttribute"] = obj->GetCollisionAttribute();
     d["collisionMask"] = obj->GetCollisionMask();
+    d["collisionAttributeIds"] = CollisionCategories::GetIds(obj->GetCollisionAttribute());
+    d["collisionMaskIds"] = CollisionCategories::GetIds(obj->GetCollisionMask());
+    d["collisionAttributeUnknownBits"] = obj->GetCollisionAttribute() & ~CollisionCategories::GetKnownMask();
+    d["collisionMaskUnknownBits"] = obj->GetCollisionMask() & ~CollisionCategories::GetKnownMask();
     if (!obj->GetTerrainCollisionPath().empty()) {
         d["terrainCollisionPath"] = obj->GetTerrainCollisionPath();
     }
@@ -796,6 +804,7 @@ bool SceneSerializer::CreateSceneAsset(
         const std::string currentId = GetSceneBaseName(editor_->GetCurrentSceneFilenameBuffer());
         const std::string currentSpritePath = ResolveExistingSpritePath(currentId);
         const fs::path newSpritePath = fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json");
+        // Object 側の複製だけでは UI レイアウトを失うため、Sprite JSON も同じ Scene ID へ複製する。
         if (!currentSpritePath.empty()) {
             std::error_code copyError;
             fs::copy_file(currentSpritePath, newSpritePath, fs::copy_options::none, copyError);
@@ -811,6 +820,7 @@ bool SceneSerializer::CreateSceneAsset(
         }
     }
     else {
+        // 空テンプレートは複数ファイルで構成される。途中失敗時はこの呼び出しで作った分だけ戻す。
         std::vector<fs::path> createdPaths;
         auto writeAndTrack = [&](const fs::path& path, const json& data) {
             if (!WriteJsonObject(path, data, errorMessage)) {
@@ -971,6 +981,7 @@ bool SceneSerializer::RenameSceneAsset(
         return false;
     }
 
+    // 移動済みの組を記録し、後続の名前変更が失敗したときに逆順で元へ戻す。
     struct MovedPath {
         fs::path source;
         fs::path destination;

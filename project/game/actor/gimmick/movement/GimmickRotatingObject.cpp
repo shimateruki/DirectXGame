@@ -9,21 +9,24 @@ void GimmickRotatingObject::Initialize(Object3dCommon* common, const std::string
     SetClassName("Gimmick");
     SetGimmickType("RotatingFloor");
     SetName("Gimmick_RotatingFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.95f, 0.65f, 0.35f, 1.0f });
-    SetScale({ 3.0f, 0.3f, 1.2f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.95f, 0.65f, 0.35f, 1.0f});
+    SetScale({3.0f, 0.3f, 1.2f});
     SetStatic(false);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->speed = 45.0f;
     param_->actionMode = 1;
     param_->startActive = true;
     param_->returnOnOff = true;
 }
 
+// Editorでは配置角度を維持し、Play中だけ設定軸の回転を進めます。
 void GimmickRotatingObject::Update(float deltaTime) {
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 
     bool isPlaying = false;
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
@@ -47,11 +50,9 @@ void GimmickRotatingObject::Update(float deltaTime) {
 
         if (param_->actionMode == 0) {
             rot.x += radiansPerSecond * deltaTime;
-        }
-        else if (param_->actionMode == 2) {
+        } else if (param_->actionMode == 2) {
             rot.z += radiansPerSecond * deltaTime;
-        }
-        else {
+        } else {
             rot.y += radiansPerSecond * deltaTime;
         }
 
@@ -62,13 +63,14 @@ void GimmickRotatingObject::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickRotatingObject::OnTrigger() {
-    OnSwitchEvent(true);
-}
+void GimmickRotatingObject::OnTrigger() { OnSwitchEvent(true); }
 
+// returnOnOff が無効なら、スイッチ解除後も回転を続けます。
 void GimmickRotatingObject::OnSwitchEvent(bool active) {
-    if (!param_.has_value()) param_.emplace();
-    if (!active && !param_->returnOnOff) return;
+    if (!param_.has_value())
+        param_.emplace();
+    if (!active && !param_->returnOnOff)
+        return;
     active_ = active;
 }
 

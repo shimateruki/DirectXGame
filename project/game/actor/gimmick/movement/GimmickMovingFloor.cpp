@@ -23,18 +23,20 @@ constexpr float kMaxFloatAmplitude = 2.0f;
 constexpr float kFloatPitchScale = 0.025f;
 constexpr float kFloatRollScale = 0.035f;
 constexpr float kTwoPi = 6.28318530718f;
-}
+} // namespace
 
 void GimmickMovingFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("MovingFloor");
-    
-    if (!param_.has_value()) param_.emplace();
-    if (param_->speed == 0.0f) param_->speed = 2.0f; // デフォルト速度
-    
+
+    if (!param_.has_value())
+        param_.emplace();
+    if (param_->speed == 0.0f)
+        param_->speed = 2.0f; // デフォルト速度
+
     // 当たり判定設定 (地面として扱う)
-    SetCollisionAttribute(kGround);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
 }
 
 void GimmickMovingFloor::Update(float deltaTime) {
@@ -45,12 +47,14 @@ void GimmickMovingFloor::Update(float deltaTime) {
         hasCapturedStartTransform_ = true;
         time_ = 0.0f;
         frameDelta_ = {};
-        if (param_ && param_->actionMode == 5) SetEmissive(0.10f);
+        if (param_ && param_->actionMode == 5)
+            SetEmissive(0.10f);
         BaseGimmick::Update(deltaTime);
         return;
     }
     if (IsRidePlatform()) {
-        if (!ride_) ride_ = std::make_unique<RidingPlatformController>();
+        if (!ride_)
+            ride_ = std::make_unique<RidingPlatformController>();
         ride_->Update(*this, deltaTime);
         BaseGimmick::Update(deltaTime);
         return;
@@ -60,7 +64,8 @@ void GimmickMovingFloor::Update(float deltaTime) {
     if (scene && SceneManager::GetInstance()->IsPlaying() && deltaTime > 0.0f) {
         for (auto& object : scene->GetObjects()) {
             auto* actor = object && !object->IsReplayRemoved() ? dynamic_cast<Character*>(object.get()) : nullptr;
-            if (actor && IsStandingOnMovingFloor(*this, *actor)) passengers.push_back(actor);
+            if (actor && IsStandingOnMovingFloor(*this, *actor))
+                passengers.push_back(actor);
         }
     }
     const auto carryPassengers = [&]() {
@@ -69,7 +74,8 @@ void GimmickMovingFloor::Update(float deltaTime) {
             actor->SetTranslate(actor->GetTranslate() + frameDelta_);
             actor->UpdateLocalMatrix();
             actor->UpdateWorldMatrix(false);
-            if (auto* player = dynamic_cast<Player*>(actor)) player->SetPlatformMotion(frameDelta_ * (1.0f / deltaTime));
+            if (auto* player = dynamic_cast<Player*>(actor))
+                player->SetPlatformMotion(frameDelta_ * (1.0f / deltaTime));
         }
     };
     // Ghost RecorderのPathが割り当てられている床は、記録済みの軌道を唯一の移動元にする。
@@ -113,7 +119,8 @@ void GimmickMovingFloor::Update(float deltaTime) {
                     SetEmissive(0.10f + geyser->GetWarningProgress() * 0.65f);
                     const float desiredY = startPosition_.y + geyser->GetLiftOffset();
                     const float maxStep = 12.0f * (std::max)(0.0f, deltaTime);
-                    transform->translate.y = std::clamp(desiredY, previousPosition.y - maxStep, previousPosition.y + maxStep);
+                    transform->translate.y =
+                        std::clamp(desiredY, previousPosition.y - maxStep, previousPosition.y + maxStep);
                     break;
                 }
             }
@@ -130,9 +137,12 @@ void GimmickMovingFloor::Update(float deltaTime) {
         // ステージ制作用の往復移動。振幅と速度はInspectorから調整できる。
         const float travel = (std::max)(0.0f, std::abs(param_->moveAmount));
         const float offset = std::sin(waveTime) * travel;
-        if (actionMode == 2) transform->translate.x += offset;
-        if (actionMode == 3) transform->translate.z += offset;
-        if (actionMode == 4) transform->translate.y += offset;
+        if (actionMode == 2)
+            transform->translate.x += offset;
+        if (actionMode == 3)
+            transform->translate.z += offset;
+        if (actionMode == 4)
+            transform->translate.y += offset;
     } else {
         // 従来ステージとの互換性を保つ通常の上下移動。
         transform->translate.y += std::sin(waveTime) * kLegacyMoveRange;

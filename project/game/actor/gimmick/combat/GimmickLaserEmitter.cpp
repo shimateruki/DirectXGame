@@ -15,22 +15,23 @@ void GimmickLaserEmitter::Initialize(Object3dCommon* common, const std::string& 
     SetClassName("Gimmick");
     SetGimmickType("LaserEmitter");
     SetName("Gimmick_LaserEmitter");
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
-    SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
+    SetColor({1.0f, 0.08f, 0.05f, 0.9f});
     SetBlendMode(BlendMode::kAdd);
     SetMaterialType(12);
     SetTexture("Resources/sprite/common/white.png");
     SetEmissive(6.0f);
-    SetScale({ 0.25f, 0.25f, 1.0f });
+    SetScale({0.25f, 0.25f, 1.0f});
     SetStatic(false);
 
     Object3d::ColliderConfig colConfig;
     colConfig.type = ColliderType::kOBB;
-    colConfig.size = { 1.0f, 1.0f, 1.0f };
+    colConfig.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(colConfig);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->speed = 10.0f;
     param_->interval = 0.7f;
     param_->moveAmount = 0.14f;
@@ -39,7 +40,9 @@ void GimmickLaserEmitter::Initialize(Object3dCommon* common, const std::string& 
 }
 
 void GimmickLaserEmitter::Update(float deltaTime) {
-    if (!param_.has_value()) param_.emplace();
+    // ターゲットへ向けたビームの長さと衝突状態を、スイッチの有効状態に同期させます。
+    if (!param_.has_value())
+        param_.emplace();
 
     bool isPlaying = false;
     if (SceneManager* sceneManager = SceneManager::GetInstance()) {
@@ -80,7 +83,7 @@ void GimmickLaserEmitter::Update(float deltaTime) {
         SetTranslate(basePosition_);
         SetRotation(baseRotation_);
         SetScale(baseScale_);
-        SetColor({ 0.75f, 0.05f, 0.04f, hasTarget ? 0.35f : 0.75f });
+        SetColor({0.75f, 0.05f, 0.04f, hasTarget ? 0.35f : 0.75f});
         SetIsVisible(true);
         ApplyCollisionState(false);
         BaseGimmick::Update(deltaTime);
@@ -92,25 +95,28 @@ void GimmickLaserEmitter::Update(float deltaTime) {
     ApplyCollisionState(true);
 
     const float pulse = 0.78f + std::sin(pulseTimer_ * 12.0f) * 0.14f;
-    SetColor({ 1.0f, 0.04f + pulse * 0.08f, 0.02f, 0.84f + pulse * 0.12f });
+    SetColor({1.0f, 0.04f + pulse * 0.08f, 0.02f, 0.84f + pulse * 0.12f});
     SetIsVisible(true);
 
     BaseGimmick::Update(deltaTime);
 }
 
 bool GimmickLaserEmitter::OnCollision(Object3d* other) {
-    if (!active_ || damageCooldownTimer_ > 0.0f) return true;
+    if (!active_ || damageCooldownTimer_ > 0.0f)
+        return true;
 
     Player* player = dynamic_cast<Player*>(other);
-    if (!player) return true;
+    if (!player)
+        return true;
 
     CollisionInfo info = CheckCollision(other);
-    if (!info.isColliding) return true;
+    if (!info.isColliding)
+        return true;
 
     Vector3 knockbackDir = player->GetWorldPosition() - basePosition_;
     knockbackDir.y = 0.0f;
     if (Math::Length(knockbackDir) < 0.001f) {
-        knockbackDir = { 0.0f, 0.0f, 1.0f };
+        knockbackDir = {0.0f, 0.0f, 1.0f};
     }
     knockbackDir = Math::Normalize(knockbackDir);
 
@@ -118,39 +124,42 @@ bool GimmickLaserEmitter::OnCollision(Object3d* other) {
     damageEvent.target = player;
     damageEvent.attacker = this;
     damageEvent.damageAmount = GetDamage();
-    damageEvent.knockbackVelocity = { knockbackDir.x * 12.0f, 8.0f, knockbackDir.z * 12.0f };
+    damageEvent.knockbackVelocity = {knockbackDir.x * 12.0f, 8.0f, knockbackDir.z * 12.0f};
     EventManager::GetInstance()->Dispatch(damageEvent);
 
     damageCooldownTimer_ = GetDamageInterval();
     return true;
 }
 
-void GimmickLaserEmitter::OnTrigger() {
-    OnSwitchEvent(!active_);
-}
+void GimmickLaserEmitter::OnTrigger() { OnSwitchEvent(!active_); }
 
 void GimmickLaserEmitter::OnSwitchEvent(bool active) {
-    if (!param_.has_value()) param_.emplace();
-    if (!active && !param_->returnOnOff) return;
+    if (!param_.has_value())
+        param_.emplace();
+    if (!active && !param_->returnOnOff)
+        return;
     active_ = active;
 }
 
 bool GimmickLaserEmitter::FindTargetPosition(Vector3& outTarget) const {
-    if (GetTargetID() == -1) return false;
+    if (GetTargetID() == -1)
+        return false;
 
     SceneManager* sceneManager = SceneManager::GetInstance();
-    if (!sceneManager) return false;
+    if (!sceneManager)
+        return false;
 
     BaseScene* scene = sceneManager->GetCurrentScene();
-    if (!scene) return false;
+    if (!scene)
+        return false;
 
     Object3d* target = scene->FindObjectByEventID(GetTargetID());
-    if (!target || target == this) return false;
+    if (!target || target == this)
+        return false;
 
     if (GimmickLaserNode* targetNode = dynamic_cast<GimmickLaserNode*>(target)) {
         outTarget = targetNode->GetLaserAnchorPosition();
-    }
-    else {
+    } else {
         outTarget = target->GetWorldPosition();
     }
     return true;
@@ -172,24 +181,22 @@ void GimmickLaserEmitter::ApplyBeamTransform(const Vector3& source, const Vector
     const float pitch = std::atan2(-diff.y, horizontalLength);
 
     SetTranslate(midpoint);
-    SetRotation({ pitch, yaw, 0.0f });
-    SetScale({ thickness, thickness, length * 0.5f });
+    SetRotation({pitch, yaw, 0.0f});
+    SetScale({thickness, thickness, length * 0.5f});
 }
 
 void GimmickLaserEmitter::ApplyCollisionState(bool enabled) {
+    // 非表示のビームがプレイヤーへ当たらないよう、描画と判定を連動させます。
     if (enabled) {
-        SetCollisionAttribute(CollisionAttribute::kTrigger);
-        SetCollisionMask(CollisionAttribute::kPlayer);
-    }
-    else {
+        SetCollisionAttribute(CollisionCategories::Get("trigger"));
+        SetCollisionMask(CollisionCategories::Get("player"));
+    } else {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
     }
 }
 
-float GimmickLaserEmitter::GetDamage() const {
-    return param_.has_value() ? (std::max)(0.0f, param_->speed) : 10.0f;
-}
+float GimmickLaserEmitter::GetDamage() const { return param_.has_value() ? (std::max)(0.0f, param_->speed) : 10.0f; }
 
 float GimmickLaserEmitter::GetDamageInterval() const {
     return param_.has_value() ? (std::max)(0.05f, param_->interval) : 0.7f;

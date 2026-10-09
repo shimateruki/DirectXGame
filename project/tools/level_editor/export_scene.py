@@ -50,6 +50,7 @@ def _object_type(obj, source):
 
 
 def _ensure_unique_guids(objects):
+    """出力対象に未設定・重複 GUID があれば Blender 側にも新しい値を記録する。"""
     used_guids = set()
     for obj in objects:
         guid = obj.get("cg2_guid")
@@ -61,6 +62,7 @@ def _ensure_unique_guids(objects):
 
 def _export_object(obj):
     data = _source_data(obj)
+    # 保存済み JSON の未知の項目を引き継ぎ、Blender で編集する項目だけ上書きする。
     data.pop("children", None)
     data.pop("transform", None)
     data.pop("quaternion", None)
@@ -158,6 +160,7 @@ class MYADDON_OT_export_scene(bpy.types.Operator, bpy_extras.io_utils.ExportHelp
 
         try:
             if self.split_files:
+                # LevelLoader が読むカテゴリ別のファイル名へ分配する。
                 base_path = split_base_path(self.filepath)
                 categorized = {category: [] for category in SPLIT_CATEGORIES}
                 for data in exported_objects:

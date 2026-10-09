@@ -487,66 +487,79 @@ void Object3d::SetModel(const std::string& modelName) {
         }
     }
 }
+
 void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawMagma(depthSrvHandle, colorSrvHandle);
     }
 }
+
 void Object3d::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawIce(depthSrvHandle, colorSrvHandle);
     }
 }
+
 void Object3d::DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawFire(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLaser(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawShockwave(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawUpdraft(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawStunBind(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
     }
 }
+
 void Object3d::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);

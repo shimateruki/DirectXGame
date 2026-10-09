@@ -4,11 +4,13 @@
 #include "engine/utility/math/Math.h"
 
 Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
-    Vector3 move = { 0.0f, 0.0f, 0.0f };
-    float moveSpeed = player->GetMoveSpeed(); 
+    Vector3 move = {0.0f, 0.0f, 0.0f};
+    float moveSpeed = player->GetMoveSpeed();
 
     InputManager* inputManager = player->GetInputManager();
-    if (!inputManager) { return move; }
+    if (!inputManager) {
+        return move;
+    }
 
     // --- 2D の移動 (カメラを無視し、X軸 (左右) のみ) ---
     if (inputManager->IsKeyPressed(DIK_A)) {

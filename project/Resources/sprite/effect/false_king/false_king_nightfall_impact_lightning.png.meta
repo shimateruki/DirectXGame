@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "808f74c1cb01bf1c9fe3734e09331705",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/false_king/false_king_nightfall_impact_lightning.png",
+  "version": 1
+}

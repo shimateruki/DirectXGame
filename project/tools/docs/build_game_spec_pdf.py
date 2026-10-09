@@ -1,3 +1,8 @@
+"""ゲーム仕様書をページ PNG と PDF に描画する。
+
+実行時に docs/game_spec_pages と PDF の既存出力を同じ名前で更新する。
+"""
+
 from __future__ import annotations
 
 import math

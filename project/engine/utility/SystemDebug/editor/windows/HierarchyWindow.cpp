@@ -268,7 +268,7 @@ namespace {
         colConfig.type = ColliderType::kAABB;
         colConfig.size = { 1.0f, 1.0f, 1.0f };
         object->SetColliderConfig(colConfig);
-        object->SetCollisionAttribute(CollisionAttribute::kTrigger);
+        object->SetCollisionAttribute(CollisionCategories::Get("trigger"));
         AddCreatedObject(editor, scene, std::move(object), "Trigger_Box", "Create Trigger Box", useGameViewCursor);
     }
 
@@ -284,7 +284,7 @@ namespace {
         colConfig.type = ColliderType::kAABB;
         colConfig.size = { 1.0f, 1.0f, 1.0f };
         object->SetColliderConfig(colConfig);
-        object->SetCollisionAttribute(CollisionAttribute::kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
         AddCreatedObject(editor, scene, std::move(object), "Collision_Box", "Create Collision Box", useGameViewCursor);
     }
 
@@ -440,8 +440,6 @@ void HierarchyWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
 }
 
-
-
 void HierarchyWindow::Draw() {
 #ifdef USE_IMGUI
     // プロジェクトウィンドウ (Asset Browserなど) の描画
@@ -547,13 +545,18 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEffectPreviewStage());
         }
-        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() && !editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
+        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " 敵攻撃プレビュー (Enemy Attack Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() && !editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode() && !editor_->GetEnemyAttackPreviewWindow()->IsCrownMovieMode())) {
             editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(false);
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
         }
         if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_PAW " プレイヤー能力プレビュー (Player Ability Preview)", currentObj == editor_->GetEnemyAttackPreviewWindow() && editor_->GetEnemyAttackPreviewWindow()->IsPlayerCopyMode())) {
             editor_->GetEnemyAttackPreviewWindow()->SetPlayerCopyMode(true);
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
+        }
+        if (editor_->GetEnemyAttackPreviewWindow() && ImGui::Selectable("  " ICON_FA_FILM " 王冠・撃破ムービープレビュー", currentObj == editor_->GetEnemyAttackPreviewWindow() && editor_->GetEnemyAttackPreviewWindow()->IsCrownMovieMode())) {
+            editor_->GetEnemyAttackPreviewWindow()->SetCrownMovieMode();
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEnemyAttackPreviewWindow());
         }
@@ -804,7 +807,7 @@ void HierarchyWindow::Draw() {
             auto newObj = std::make_unique<Object3d>();
             newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("Trigger_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kTrigger); newObj->SetTranslate({ 0, 2.0f, 0 });
+            newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionCategories::Get("trigger")); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->AddEditorObject(std::move(newObj), "Create Trigger Box");
         }
     }
@@ -814,7 +817,7 @@ void HierarchyWindow::Draw() {
             auto newObj = std::make_unique<Object3d>();
             newObj->Initialize(common); newObj->SetModel(nullptr);newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("collision_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kGround); newObj->SetTranslate({ 0, 2.0f, 0 });
+            newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionCategories::Get("ground")); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->AddEditorObject(std::move(newObj), "Create Collision Box");
         }
     }

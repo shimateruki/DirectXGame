@@ -19,16 +19,16 @@ void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string
     SetName("Gimmick_GameplayVolume");
     SetStatic(false);
     SetCastShadow(false);
-    SetColor({ 0.15f, 0.75f, 1.0f, 0.3f });
+    SetColor({0.15f, 0.75f, 1.0f, 0.3f});
     SetBlendMode(BlendMode::kNormal);
-    SetScale({ 3.0f, 3.0f, 3.0f });
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetScale({3.0f, 3.0f, 3.0f});
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 
     Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.center = { 0.0f, 0.0f, 0.0f };
-    collider.size = { 1.0f, 1.0f, 1.0f };
+    collider.center = {0.0f, 0.0f, 0.0f};
+    collider.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(collider);
 
     if (!param_.has_value()) {
@@ -67,9 +67,7 @@ void GimmickGameplayVolume::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickGameplayVolume::Draw(
-    ID3D12Resource* pointLightResource,
-    ID3D12Resource* spotLightResource) {
+void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager || !sceneManager->IsPlaying()) {
         BaseGimmick::Draw(pointLightResource, spotLightResource);
@@ -94,9 +92,7 @@ bool GimmickGameplayVolume::OnCollision(Object3d* other) {
     return false;
 }
 
-void GimmickGameplayVolume::OnTrigger() {
-    OnSwitchEvent(true);
-}
+void GimmickGameplayVolume::OnTrigger() { OnSwitchEvent(true); }
 
 void GimmickGameplayVolume::OnSwitchEvent(bool active) {
     runtimeEnabled_ = active;
@@ -127,8 +123,8 @@ void GimmickGameplayVolume::InitializeForPlay() {
     rearmTimer_ = 0.0f;
     occupant_ = nullptr;
     SetIsVisible(false);
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 }
 
 void GimmickGameplayVolume::ResetForEditor() {
@@ -140,8 +136,8 @@ void GimmickGameplayVolume::ResetForEditor() {
     rearmTimer_ = 0.0f;
     occupant_ = nullptr;
     SetIsVisible(true);
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 }
 
 void GimmickGameplayVolume::HandleEnter(Player* player) {
@@ -162,6 +158,7 @@ void GimmickGameplayVolume::HandleExit(Player* player) {
 }
 
 void GimmickGameplayVolume::Activate(Player* player) {
+    // ボリュームの用途に応じてチェックポイント、VFX、BGM、環境光を切り替えます。
     if (!CanActivate() || !param_.has_value()) {
         return;
     }
@@ -189,7 +186,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
             Vector3 position = player->GetTranslate();
             position.y = -19.0f;
             player->SetTranslate(position);
-            player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            player->SetVelocity({0.0f, 0.0f, 0.0f});
         }
         break;
     case Mode::FeedbackCue:
@@ -204,12 +201,9 @@ void GimmickGameplayVolume::Activate(Player* player) {
         break;
     case Mode::Environment:
         if (!param_->volumePayload.empty()) {
-            previousEnvironment_ =
-                LightManager::GetInstance()->CaptureEnvironmentProfile();
+            previousEnvironment_ = LightManager::GetInstance()->CaptureEnvironmentProfile();
             hasPreviousEnvironment_ = true;
-            LightManager::GetInstance()->ApplyEnvironmentProfile(
-                param_->volumePayload,
-                param_->volumeBlendDuration);
+            LightManager::GetInstance()->ApplyEnvironmentProfile(param_->volumePayload, param_->volumeBlendDuration);
         }
         break;
     }
@@ -228,11 +222,8 @@ void GimmickGameplayVolume::Deactivate() {
         scene->SetEventActive(GetTargetID(), false);
     } else if (GetMode() == Mode::Bgm && !param_->volumePayload.empty()) {
         GameAudioSettings::GetInstance()->Stop(param_->volumePayload);
-    }
-    else if (GetMode() == Mode::Environment && hasPreviousEnvironment_) {
-        LightManager::GetInstance()->ApplyEnvironmentProfile(
-            previousEnvironment_,
-            param_->volumeBlendDuration);
+    } else if (GetMode() == Mode::Environment && hasPreviousEnvironment_) {
+        LightManager::GetInstance()->ApplyEnvironmentProfile(previousEnvironment_, param_->volumeBlendDuration);
         hasPreviousEnvironment_ = false;
     }
 }

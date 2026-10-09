@@ -157,19 +157,22 @@ public:
     /// <param name="maxParticles">このシステムが確保する粒子数。</param>
     void Initialize(DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
 
-    /// <summary>発生要求を反映し、粒子の寿命・移動・色をGPUで更新する。</summary>
-    /// <param name="deltaTime">今回の更新時間（秒）。</param>
+    /// <summary>時間倍率を掛けた経過秒を蓄積する。Compute命令はまだ発行しない。</summary>
+    /// <param name="deltaTime">倍率適用前の経過秒。通常は0以上。</param>
+    /// <remarks>Drawまでの複数回分を加算し、次のDrawで一回のGPU更新として消費する。</remarks>
     void Update(float deltaTime);
 
-    /// <summary>更新済み粒子を描画する。</summary>
+    /// <summary>蓄積時間のCompute更新、発生要求の処理、生存粒子のIndirect Drawを記録する。</summary>
     /// <param name="commandList">描画先のコマンドリスト。</param>
     /// <param name="viewMatrix">現在のビュー行列。</param>
     /// <param name="projectionMatrix">現在の射影行列。</param>
     /// <param name="dummyTex">テクスチャ未指定時に使用するSRV。</param>
-    /// <param name="depthSrvHandle">ソフトパーティクル用の深度SRV。</param>
+    /// <param name="depthSrvHandle">現カメラの深度SRV。画面深度衝突、遮蔽、Soft Particleに使う。</param>
+    /// <remarks>コマンド記録後に発生要求と蓄積秒を消費する。Updateだけの反復はGPUの固定刻み再計算ではない。</remarks>
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex = 0, uint32_t depthSrvHandle = 0);
 
-    /// <summary>プリセット設定から次回更新分の粒子発生を予約する。</summary>
+    /// <summary>設定をコピーし、次のDrawで発生させる。要求が256件に達した場合は追加しない。</summary>
+    /// <remarks>頂点バッファは借用。描画設定はSystemで共有するため、Managerの共有キーが一致する設定を渡す。</remarks>
     void EmitFromConfig(const GPUParticleConfig& config);
 
     /// <summary>以後の描画に使用するテクスチャを切り替える。</summary>

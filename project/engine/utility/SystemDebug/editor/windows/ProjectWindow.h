@@ -1,9 +1,10 @@
-#pragma once
+﻿#pragma once
 #include <d3d12.h>
 #include "Camera.h"
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include <wrl.h>
 
 class DebugEditor;
@@ -28,6 +29,11 @@ struct ThumbnailData {
     float portraitScale = 1.0f;
     float portraitOffsetY = 0.0f;
     std::shared_ptr<Object3d> previewObject;
+    // セットの各ノードを所有し、親子関係と元の相対サイズを保持します。
+    std::vector<std::shared_ptr<Object3d>> previewObjects;
+    // 再撮影直前のGPU参照が残り得るため、旧プレビューはGPUの処理完了まで保持します。
+    std::vector<std::shared_ptr<Object3d>> retiredPreviewObjects;
+    uint64_t retiredPreviewFence = 0;
 };
 
 /// <summary>
@@ -63,11 +69,20 @@ public:
     void ExportCapturedHudPortraits();
 
     uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
+    // エフェクトJSONを独立した描画Objectで撮影します。ゲームのSceneへは登録しません。
+    uint64_t GetEffectThumbnailGpuPtr(const std::string& path) { return GetPresetThumbnailGpuPtr("@effect:" + path); }
+    void InvalidatePresetThumbnail(const std::string& presetName);
+    /// PBRの3枚セットを球で撮影したサムネイルを取得する。未撮影なら次の描画時に生成する。
+    uint64_t GetPbrThumbnailGpuPtr(const std::string& name, const std::string& albedoPath,
+        const std::string& normalPath, const std::string& ormPath);
+    /// テクスチャの再読込後に、表示済みの球を撮り直す。
+    void InvalidatePbrThumbnails();
 
 private:
     /// 指定モデルのプレビューObjectと描画先を作り、サムネイル撮影の準備をする。
     void CreateThumbnailResource(const std::string& modelName);
     void CreatePresetThumbnailResource(const std::string& presetName);
+    void CreatePbrThumbnailResource(const std::string& name);
     void QueueHudPortraitExports(bool forceAll);
 
     // EditorとDirectX基盤への参照。ProjectWindowは所有しない。
@@ -79,6 +94,17 @@ private:
     // モデル/プリセット名からサムネイル情報を引くキャッシュ。
     std::map<std::string, ThumbnailData> thumbnailAlbum_;
     std::map<std::string, ThumbnailData> presetThumbnailAlbum_;
+    struct PbrThumbnailData {
+        ThumbnailData thumbnail;
+        std::string albedoPath;
+        std::string normalPath;
+        std::string ormPath;
+        uint64_t lastUseFence = 0;
+    };
+    std::map<std::string, PbrThumbnailData> pbrThumbnailAlbum_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewLightResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewPointLightsResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pbrPreviewSpotLightsResource_;
     const int kThumbnailSize = 256;
 
     std::string currentModelDirectory_ = "Resources/3DModel/";

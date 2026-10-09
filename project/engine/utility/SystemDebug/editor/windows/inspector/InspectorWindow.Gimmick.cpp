@@ -74,8 +74,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetRoughness(0.48f);
             selectedObject->SetMetallic(0.12f);
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             selectedObject->param_->speed = 7.5f;
@@ -109,8 +109,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetEmissive(1.0f);
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
             
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -124,8 +124,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 1.0f, 0.9f, 0.0f, 1.0f }); // ゴールドイエロー
             selectedObject->SetScale({ 0.6f, 0.6f, 0.15f }); // 薄いコインの形
             
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kSphere;
@@ -140,8 +140,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.2f, 1.2f, 1.2f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kHookAnchor);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("hook_anchor"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kSphere;
@@ -162,8 +162,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->jumpPower = 14.0f;
             selectedObject->param_->speed = 38.0f;
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -177,8 +177,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.55f, 0.75f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -192,8 +192,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.9f, 0.75f, 0.35f, 1.0f });
             selectedObject->SetScale({ 4.0f, 0.35f, 1.4f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -214,8 +214,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetAutoTextureTiling(false);
             selectedObject->SetScale({ 2.0f, 0.25f, 1.2f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -229,8 +229,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.65f, 0.9f, 1.0f, 0.9f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -244,8 +244,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.5f, 0.25f, 1.5f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -259,8 +259,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.55f, 1.0f, 0.7f, 1.0f });
             selectedObject->SetScale({ 2.0f, 0.35f, 2.0f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -274,8 +274,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.5f, 0.25f, 1.5f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
             selectedObject->param_->switchMode = 0;
@@ -293,8 +293,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.65f, 1.0f, 0.65f, 1.0f });
             selectedObject->SetScale({ 2.0f, 0.35f, 2.0f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
             selectedObject->param_->actionMode = 0;
@@ -315,8 +315,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.55f, 0.85f, 1.0f, 1.0f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -336,8 +336,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.85f, 0.9f, 0.65f, 0.9f });
             selectedObject->SetScale({ 2.5f, 0.22f, 2.5f });
 
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -377,8 +377,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetRoughness(0.38f);
             selectedObject->SetMetallic(0.0f);
             selectedObject->SetScale({ 4.0f, 0.2f, 4.0f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(true);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -431,8 +431,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 0.42f, 0.24f, 1.0f, 0.22f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
             selectedObject->SetCastShadow(false);
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             selectedObject->param_->maxCount = 4;
@@ -454,8 +454,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetScale({ 3.0f, 3.0f, 3.0f });
             selectedObject->SetBlendMode(BlendMode::kNormal);
             selectedObject->SetCastShadow(false);
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             selectedObject->param_->volumeMode = 0;
@@ -483,8 +483,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetRoughness(0.34f);
             selectedObject->SetMetallic(0.18f);
             selectedObject->SetCastShadow(true);
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             selectedObject->param_->copyMemoryTypeA = "FireSlime";
@@ -511,7 +511,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetScale({ 8.0f, 3.0f, 1.0f });
             selectedObject->SetCastShadow(false);
             selectedObject->SetEnableEnvMap(false);
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(0xffffffffu);
             selectedObject->SetStatic(false);
 
@@ -565,8 +565,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.75f, 0.92f, 1.0f, 0.82f });
             selectedObject->SetScale({ 2.0f, 0.25f, 2.0f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -586,8 +586,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.95f, 0.65f, 0.35f, 1.0f });
             selectedObject->SetScale({ 3.0f, 0.3f, 1.2f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -607,8 +607,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.95f, 0.65f, 0.35f, 1.0f });
             selectedObject->SetScale({ 0.75f, 3.0f, 0.75f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -628,8 +628,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.35f, 0.75f, 1.0f, 1.0f });
             selectedObject->SetScale({ 2.0f, 0.25f, 2.0f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -652,8 +652,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetMaterialType(0);
             selectedObject->SetEmissive(1.1f);
             selectedObject->SetScale({ 0.55f, 0.55f, 1.1f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
-            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
+            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -681,8 +681,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetEmissive(1.8f);
             selectedObject->SetEnableEnvMap(false);
             selectedObject->SetScale({ 1.4f, 1.4f, 1.4f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
@@ -707,8 +707,8 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetTexture("Resources/sprite/common/white.png");
             selectedObject->SetEmissive(6.0f);
             selectedObject->SetScale({ 0.25f, 0.25f, 1.0f });
-            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
-            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
             selectedObject->SetStatic(false);
 
             if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();

@@ -72,6 +72,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
             keys_.push_back(key);
         }
 
+        // JSON の記述順には依存せず、隣り合うキーで補間できるよう時刻順へ並べる。
         std::sort(keys_.begin(), keys_.end(), [](const Key& lhs, const Key& rhs) {
             return lhs.time < rhs.time;
         });
@@ -93,6 +94,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
     }
 
     float sampleTime = std::max(0.0f, timeSeconds);
+    // ループ時は duration を周期にし、単発時は末尾の姿勢を維持する。
     if (loop && duration_ > kTimeEpsilon) {
         sampleTime = std::fmod(sampleTime, duration_);
         if (sampleTime < 0.0f) {
@@ -128,6 +130,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
 
         const float segmentDuration = std::max(kTimeEpsilon, to.time - from.time);
         const float rawRate = (sampleTime - from.time) / segmentDuration;
+        // 補間方法は区間の開始キーに保存された設定を使う。
         const float rate = AnimationInterpolation::ApplyEasing(rawRate, ToEasing(from.easingToNext));
         sampleOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
         sampleOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);

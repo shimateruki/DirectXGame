@@ -240,6 +240,7 @@ bool ReplayDebugger::DeserializeInputSample(
     }
     return DeserializeInputState(data.at("state"), sample.state, error);
 }
+
 bool ReplayDebugger::SaveCurrentReplayArchive() {
     if (!HasFrames() || loadedArchiveReadOnly_) {
         statusMessage_ = loadedArchiveReadOnly_
@@ -261,6 +262,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
     for (int suffix = 1; std::filesystem::exists(archivePath); ++suffix) {
         archivePath = archiveDirectory / (fileStem + "_" + std::to_string(suffix) + ".cgr");
     }
+    // 書き込み途中のファイルを完成済みArchiveと取り違えないよう、一時名で作る。
     const std::filesystem::path temporaryPath = archivePath.string() + ".tmp";
 
     const SceneLoadContext sceneContext = sceneManager_->GetActiveSceneLoadContext();
@@ -317,6 +319,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
         return false;
     }
 
+    // 全データを書き終えてから正式名へ移し、一覧に不完全なArchiveを出さない。
     std::filesystem::rename(temporaryPath, archivePath, fileError);
     if (fileError) {
         std::filesystem::remove(temporaryPath, fileError);
@@ -380,6 +383,7 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
 
     const std::filesystem::path archivePath(entry.filePath);
     std::error_code fileError;
+    // 外部ファイルを一括でメモリに読むため、先にサイズ上限を設ける。
     constexpr std::uintmax_t kMaximumArchiveBytes = 512ull * 1024ull * 1024ull;
     const std::uintmax_t archiveBytes = std::filesystem::file_size(archivePath, fileError);
     if (fileError || archiveBytes > kMaximumArchiveBytes) {
@@ -446,6 +450,7 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
                 archive.inputSamples.push_back(std::move(sample));
             }
         }
+        // 元シーンを読み込むまで現在の履歴へ適用せず、保留データとして保持する。
         pendingReplayArchive_ = std::move(archive);
     } catch (const std::exception& exception) {
         statusMessage_ = std::string("保存リプレイ読込失敗: ") + exception.what();
@@ -581,7 +586,5 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
     }
     return true;
 }
-
-
 
 #endif

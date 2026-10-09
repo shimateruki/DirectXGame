@@ -1,3 +1,8 @@
+<#
+JSON の SHA-256 とサイズを比較し、変更されたファイルだけ時刻別のバックアップへ保存する。
+Watch は定期実行用。古い世代は MaxVersionsPerFile の範囲で整理する。
+入力・出力パスはプロジェクト内に制限する。
+#>
 param(
     [string[]]$Root = @("Resources/json"),
     [string]$BackupRoot = "Resources/.backup/json",
@@ -23,6 +28,7 @@ function Get-FullPathSafe([string]$path) {
 }
 
 function Assert-InProject([string]$path) {
+    # バックアップ先の指定ミスでプロジェクト外へ書き込まないようにする。
     $full = Get-FullPathSafe $path
     $root = [System.IO.Path]::GetFullPath($projectRoot)
     if (-not $root.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
@@ -206,6 +212,7 @@ function Invoke-JsonBackupScan {
                 $reason = "new"
             }
 
+            # 更新日時だけが変わった JSON は複製しない。
             if (-not $Force -and $previous -and $previous.hash -eq $hash -and [int64]$previous.size -eq $size) {
                 $unchanged++
                 continue

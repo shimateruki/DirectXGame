@@ -48,6 +48,7 @@ private:
         CollisionFilter,
     };
 
+    // 修正プレビューと Undo で受け渡す値。修正種別に対応するフィールドだけを使う。
     struct FixState {
         Vector3 translate{};
         Vector3 rotation{};
@@ -89,6 +90,7 @@ private:
         bool hasProposedBounds = false;
     };
 
+    // 検査中の Object を借用し、形状を OBB として近似した診断用データ。
     struct AuditCollider {
         const Object3d* object = nullptr;
         OBB bounds{};

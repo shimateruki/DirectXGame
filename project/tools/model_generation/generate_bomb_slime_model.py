@@ -1,3 +1,8 @@
+"""ボムスライムの OBJ/MTL と参照テクスチャを同じ出力先へ再生成する。
+
+モデルと画像の既存ファイルは上書きするため、手調整は元データへ反映する。
+"""
+
 from __future__ import annotations
 
 import math

@@ -15,25 +15,24 @@
 #include "MeshEffectManager.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 
+// 移動入力と接地状態を統合します。ジャンプ入力はPlayer本体で先に採取し、更新順による取りこぼしを避けます。
+
 PlayerMover::PlayerMover() {}
 
-PlayerMover::~PlayerMover()
-{
+PlayerMover::~PlayerMover() {
     // 念のためデストラクタでも子の衝突属性を復帰する
-    if (player_)
-    {
-        for (auto& kv : childOriginalAttributes_)
-        {
+    if (player_) {
+        for (auto& kv : childOriginalAttributes_) {
             Object3d* child = kv.first;
             uint32_t attr = kv.second;
-            if (child) child->SetCollisionAttribute(attr);
+            if (child)
+                child->SetCollisionAttribute(attr);
         }
         childOriginalAttributes_.clear();
     }
 }
 
-void PlayerMover::StopDashOnImpact()
-{
+void PlayerMover::StopDashOnImpact() {
     if (!isDashing_) {
         return;
     }
@@ -44,8 +43,7 @@ void PlayerMover::StopDashOnImpact()
         player_->SetDashInvincible(false);
     }
 
-    for (auto& kv : childOriginalAttributes_)
-    {
+    for (auto& kv : childOriginalAttributes_) {
         Object3d* child = kv.first;
         if (child) {
             child->SetCollisionAttribute(kv.second);
@@ -54,8 +52,7 @@ void PlayerMover::StopDashOnImpact()
     childOriginalAttributes_.clear();
 }
 
-void PlayerMover::ResetTransientState()
-{
+void PlayerMover::ResetTransientState() {
     platformVelocity_ = {};
     platformAirVelocity_ = {};
     jumpRequest_.Reset();
@@ -83,23 +80,23 @@ void PlayerMover::ResetTransientState()
     }
 }
 
-void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem)
-{
+void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem) {
     player_ = player;
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
 
     // デフォルト戦略
     strategy_ = std::make_unique<MoveStrategy3D>();
-    
+
     // 基本スケールを保存 (基準は2.0)
-    baseScale_ = { 2.0f, 2.0f, 2.0f };
-    if (player_) player_->GetTransform()->scale = baseScale_;
+    baseScale_ = {2.0f, 2.0f, 2.0f};
+    if (player_)
+        player_->GetTransform()->scale = baseScale_;
 }
 
-void PlayerMover::SampleJumpInput(float deltaTime, bool discard)
-{
-    if (!player_ || !inputManager_) return;
+void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
+    if (!player_ || !inputManager_)
+        return;
     if (discard) {
         jumpRequest_.Reset();
         isJumpCharging_ = false;
@@ -107,18 +104,20 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard)
         jumpStatus_ = "死亡・演出・コピー切替中：予約破棄";
         return;
     }
-    if (deltaTime <= 0.0f || !std::isfinite(deltaTime)) return;
+    if (deltaTime <= 0.0f || !std::isfinite(deltaTime))
+        return;
     const bool hadRequest = jumpRequest_.BufferRemaining() > 0.0f;
-    jumpRequest_.Advance(deltaTime, inputManager_->IsActionPressed("Jump"),
-        inputManager_->IsActionTriggered("Jump"),
-        player_->IsGrounded() && player_->GetVelocity().y <= 0.0f, player_->IsPinkSlimeMorphed());
-    jumpStatus_ = jumpRequest_.IsCharging() ? "溜め中" :
-        (jumpRequest_.BufferRemaining() > 0.0f ? "入力予約：接地または操作復帰待ち" : "入力待ち／予約期限切れ");
+    jumpRequest_.Advance(deltaTime, inputManager_->IsActionPressed("Jump"), inputManager_->IsActionTriggered("Jump"),
+                         player_->IsGrounded() && player_->GetVelocity().y <= 0.0f, player_->IsPinkSlimeMorphed());
+    jumpStatus_ =
+        jumpRequest_.IsCharging()
+            ? "溜め中"
+            : (jumpRequest_.BufferRemaining() > 0.0f ? "入力予約：接地または操作復帰待ち" : "入力待ち／予約期限切れ");
 #ifdef USE_IMGUI
     if (inputManager_->IsActionTriggered("Jump")) {
         DebugConsole::GetInstance()->AddLog(std::string("[Jump] 入力受付 / ") +
-            (player_->IsGrounded() ? "接地" : "空中") +
-            (player_->IsControlActive() ? " / 操作有効" : " / 操作制限中"));
+                                            (player_->IsGrounded() ? "接地" : "空中") +
+                                            (player_->IsControlActive() ? " / 操作有効" : " / 操作制限中"));
     }
     if (hadRequest && jumpRequest_.BufferRemaining() <= 0.0f) {
         DebugConsole::GetInstance()->AddLog("[Jump] 予約期限切れ：接地または操作復帰が間に合いませんでした");
@@ -126,24 +125,22 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard)
 #endif
 }
 
-void PlayerMover::Update(float deltaTime)
-{
-    if (!player_ || !inputManager_ || !strategy_) return;
+// 水平移動とジャンプ要求を確定します。重力・衝突を含む Character の更新は呼び出し側で行います。
+void PlayerMover::Update(float deltaTime) {
+    if (!player_ || !inputManager_ || !strategy_)
+        return;
 
-    // --- 0. 死亡時は移動を完全停止 ---
+    // 死亡時も落下速度は維持し、水平移動だけ止めます。
     if (player_->param_.has_value() && player_->param_->hp <= 0.0f) {
         Vector3 v = player_->GetVelocity();
-        player_->SetVelocity({ 0.0f, v.y, 0.0f });
+        player_->SetVelocity({0.0f, v.y, 0.0f});
         return;
     }
 
-    // --- 2. 現在の速度を取得 (Character クラスの重力計算等は別) ---
     Vector3 velocity = player_->GetVelocity();
 
-    // --- 3. 入力に基づく移動ベクトルの計算 ---
     Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
-    // --- 4. 移動入力の有無を確認 ---
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
     if (dashPanelTimer_ > 0.0f) {
@@ -161,25 +158,20 @@ void PlayerMover::Update(float deltaTime)
     const float moveSpeedMultiplier = isDashPanelActive ? dashPanelSpeedMultiplier_ : 1.0f;
     const float turnMultiplier = isDashPanelActive ? dashPanelTurnMultiplier_ : 1.0f;
 
-    // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
-    if (isDashing_)
-    {
+    // ダッシュ中は入力より既存の進行方向を優先し、終了時に通常移動へ戻します。
+    if (isDashing_) {
         float tRatio = dashTimer_ / currentDashDuration_; // 1.0 -> 0.0
         float currentSpeed = currentDashSpeed_ * (tRatio * tRatio);
 
         velocity.x = dashDirection_.x * currentSpeed;
         velocity.z = dashDirection_.z * currentSpeed;
 
-        // ダッシュタイマー更新
         dashTimer_ -= deltaTime;
-        if (dashTimer_ <= 0.0f)
-        {
+        if (dashTimer_ <= 0.0f) {
             StopDashOnImpact();
         }
-    }
-    else
-    {
-        // 通常時はキー入力による移動をそのまま適用
+    } else {
+        // 氷上では操舵と減速を徐々に反映し、それ以外では入力速度を直接適用します。
         Vector3 targetMove = inputMove * moveSpeedMultiplier;
 
         if (isIceActive) {
@@ -192,28 +184,22 @@ void PlayerMover::Update(float deltaTime)
                 velocity.x *= frictionDecay;
                 velocity.z *= frictionDecay;
             }
-        }
-        else {
+        } else {
             velocity.x = targetMove.x;
             velocity.z = targetMove.z;
         }
     }
 
-    // --- 6. 回転処理 (移動方向へ滑らかに向ける) ---
-    if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
-    {
+    // 表示方向は実際の水平速度を追従し、氷上とダッシュパネルで応答を変えます。
+    if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
         const float targetAngle = std::atan2(velocity.x, velocity.z);
         const float currentY = player_->GetMoveYaw();
         const float iceTurnMultiplier = isIceActive ? (std::max)(0.25f, iceSteering_) : 1.0f;
         const float turnResponse = 6.5f * turnMultiplier * iceTurnMultiplier;
-        player_->SetMoveYaw(AnimationInterpolation::DampAngle(
-            currentY,
-            targetAngle,
-            turnResponse,
-            deltaTime));
+        player_->SetMoveYaw(AnimationInterpolation::DampAngle(currentY, targetAngle, turnResponse, deltaTime));
     }
 
-    // --- 7. ジャンプ・溜め攻撃処理 ---
+    // 接地した瞬間に着地演出を出し、空中ダッシュ権を戻します。
     bool isGrounded = player_->IsGrounded();
     if (hasGroundedHistory_ && isGrounded && !wasGroundedLastFrame_ && landingDustCooldown_ <= 0.0f) {
         EmitGroundDust("player_land_dust", 0.035f);
@@ -253,8 +239,8 @@ void PlayerMover::Update(float deltaTime)
             Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
             effectPos.y += 0.08f;
             MeshEffectManager::GetInstance()->SpawnEffectAt(
-                "Resources/json/effect/effect_pink_slime_launch_kick_ring.json",
-                effectPos, {0.0f, 0.0f, 0.0f}, {1.25f, 0.9f, 1.25f});
+                "Resources/json/effect/effect_pink_slime_launch_kick_ring.json", effectPos, {0.0f, 0.0f, 0.0f},
+                {1.25f, 0.9f, 1.25f});
         } else {
             EmitGroundDust("player_jump_dust", 0.035f);
         }
@@ -274,8 +260,10 @@ void PlayerMover::Update(float deltaTime)
         // 下降速度は渡さない。水平の勢いだけを残し、空中操作も維持する。
         platformAirVelocity_ = platformVelocity_ * 0.55f;
         platformAirVelocity_.y = 0.0f;
-        const float carrySpeed = std::sqrt(platformAirVelocity_.x * platformAirVelocity_.x + platformAirVelocity_.z * platformAirVelocity_.z);
-        if (carrySpeed > 24.0f) platformAirVelocity_ = platformAirVelocity_ * (24.0f / carrySpeed);
+        const float carrySpeed = std::sqrt(platformAirVelocity_.x * platformAirVelocity_.x +
+                                           platformAirVelocity_.z * platformAirVelocity_.z);
+        if (carrySpeed > 24.0f)
+            platformAirVelocity_ = platformAirVelocity_ * (24.0f / carrySpeed);
         player_->ChangeState(std::make_unique<PlayerStateJump>());
     }
 
@@ -294,42 +282,40 @@ void PlayerMover::Update(float deltaTime)
     hasGroundedHistory_ = true;
 }
 
-void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const
-{
-    if (!player_ || !presetName) return;
+void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
+    if (!player_ || !presetName)
+        return;
 
     GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
-    if (!particleManager || !particleManager->IsInitialized()) return;
+    if (!particleManager || !particleManager->IsInitialized())
+        return;
 
     Vector3 emitPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
     emitPos.y += yOffset;
     particleManager->Emit(presetName, emitPos);
 }
 
-void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy)
-{
-    strategy_ = std::move(strategy);
-}
+void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy) { strategy_ = std::move(strategy); }
 
-void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier)
-{
+void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier) {
     dashPanelTimer_ = (std::max)(dashPanelTimer_, duration);
     dashPanelSpeedMultiplier_ = (std::max)(1.0f, speedMultiplier);
     dashPanelTurnMultiplier_ = std::clamp(turnMultiplier, 0.05f, 1.0f);
 
-    if (!player_) return;
+    if (!player_)
+        return;
 
     Vector3 velocity = player_->GetVelocity();
     float horizontalSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
     float targetSpeed = player_->GetMoveSpeed() * dashPanelSpeedMultiplier_;
-    if (horizontalSpeed >= targetSpeed) return;
+    if (horizontalSpeed >= targetSpeed)
+        return;
 
     Vector3 dir{};
     if (horizontalSpeed > 0.05f) {
         dir.x = velocity.x / horizontalSpeed;
         dir.z = velocity.z / horizontalSpeed;
-    }
-    else {
+    } else {
         float yaw = player_->GetMoveYaw();
         dir.x = std::sin(yaw);
         dir.z = std::cos(yaw);
@@ -340,8 +326,7 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
     player_->SetVelocity(velocity);
 }
 
-void PlayerMover::ApplyIceSurface(float duration, float friction, float steering)
-{
+void PlayerMover::ApplyIceSurface(float duration, float friction, float steering) {
     iceTimer_ = (std::max)(iceTimer_, duration);
     iceFriction_ = std::clamp(friction, 0.02f, 8.0f);
     iceSteering_ = std::clamp(steering, 0.05f, 1.0f);

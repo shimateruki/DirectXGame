@@ -61,16 +61,19 @@ namespace {
     }
 
     std::vector<std::unique_ptr<VFXSequencer>>& ActiveOneShotSequences() {
+        // 呼び出し元がインスタンスを保持しない単発演出を、再生終了まで生存させる。
         static std::vector<std::unique_ptr<VFXSequencer>> sequences;
         return sequences;
     }
 
+    // 停止要求一件の残り秒と時間倍率。停止を解除できるよう残り時間は非スケール時間で減らす。
     struct HitStopLayer {
         float remaining = 0.0f;
         float timeScale = 0.0f;
     };
 
     std::vector<HitStopLayer>& ActiveHitStops() {
+        // 複数のヒットストップを重ねられるよう、各要求の残り時間を独立して保持する。
         static std::vector<HitStopLayer> layers;
         return layers;
     }
@@ -347,6 +350,7 @@ void VFXSequencer::Reset() {
     currentTime_ = 0.0f;
     isPlaying_ = false;
     for (auto& event : events_) {
+        // 加算型の画面効果を取り除いてから発火状態を戻し、再生し直しても効果を積み残さない。
         RemovePostPulseContribution(event);
         event.hasFired = false;
         event.isFinished = false;
@@ -387,6 +391,7 @@ void VFXSequencer::Update(float deltaTime) {
                     " @ " + std::to_string(event.triggerTime) + " sec");
         }
 
+        // 継続型の効果は発火後も毎フレーム更新し、単発型は最初の1回だけ発行する。
         if (event.type == VFXEventType::PostEffectPulse) {
             ApplyPostPulse(event, currentTime_);
         }
@@ -410,6 +415,7 @@ void VFXSequencer::Update(float deltaTime) {
         else if (event.type == VFXEventType::MovingParticle) {
             event.hasFired = true;
 
+            // 軌道上に粒子を発生させるため、イベントの継続時間中は毎フレーム放出する。
             float duration = (std::max)(event.duration, 0.01f);
             float progress = (currentTime_ - event.triggerTime) / duration;
             if (progress >= 1.0f) {
@@ -742,6 +748,7 @@ void VFXSequencer::UpdateOneShots(float deltaTime) {
         }
     }
 
+    // 再生が終わった単発演出だけを解放する。呼び出し元による寿命管理は不要。
     sequences.erase(
         std::remove_if(
             sequences.begin(),
@@ -759,6 +766,7 @@ void VFXSequencer::ClearOneShots() {
         }
     }
     ActiveOneShotSequences().clear();
+    // シーン切替後にヒットストップや振動が残らないよう、共有フィードバックも戻す。
     ActiveHitStops().clear();
     gameplayTimeScale = 1.0f;
     InputManager::GetInstance()->StopRumble();
@@ -772,6 +780,7 @@ void VFXSequencer::RequestHitStop(float duration, float timeScale) {
 }
 
 void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
+    // ゲーム時間で減らすとヒットストップ自身が解除されにくくなるため、実時間で寿命を進める。
     const float timeStep = (std::max)(unscaledDeltaTime, 0.0f);
     auto& layers = ActiveHitStops();
     for (HitStopLayer& layer : layers) {
@@ -783,6 +792,7 @@ void VFXSequencer::UpdateFeedbackRuntime(float unscaledDeltaTime) {
         }),
         layers.end());
 
+    // 重なっている要求のうち、最も強い減速を現在のゲーム時間倍率に採用する。
     gameplayTimeScale = 1.0f;
     for (const HitStopLayer& layer : layers) {
         gameplayTimeScale = (std::min)(gameplayTimeScale, layer.timeScale);

@@ -8,7 +8,8 @@
 /// PlayerとEnemyのタイプ共通ステータスを一元管理します。
 /// シーンJSONや配置プリセットには個体別ステータスを持たせません。
 class GameplayStatusManager {
-public:
+  public:
+    // キャラクター種ごとの共通調整値。配置個体の現在 HP ではなく、適用時の基準値を保持する。
     struct CharacterStatus {
         float maxHp = 100.0f;
         float attackPower = 1.0f;
@@ -17,7 +18,7 @@ public:
         float maxFallSpeed = 60.0f;
         float jumpPower = 10.0f;
         float detectionRange = 20.0f;
-        Vector3 scale = { 1.0f, 1.0f, 1.0f };
+        Vector3 scale = {1.0f, 1.0f, 1.0f};
         std::string modelName;
         bool morphLimited = true;
         float morphDuration = 5.0f;
@@ -41,13 +42,16 @@ public:
     /// ゲーム側の標準値へ戻します。
     void ResetToDefaults();
 
+    // 可変参照を編集した呼び出し側は MarkDirty() を呼び、後で SaveIfDirty() する。
     CharacterStatus& GetMutablePlayerStatus() { return playerStatus_; }
     const CharacterStatus& GetPlayerStatus() const { return playerStatus_; }
+    // 未登録の敵種別なら nullptr。可変参照の編集後は MarkDirty を呼ぶ。
     CharacterStatus* FindMutableEnemyStatus(const std::string& enemyType);
     const CharacterStatus* FindEnemyStatus(const std::string& enemyType) const;
 
     void MarkDirty() { dirty_ = true; }
     bool IsDirty() const { return dirty_; }
+    // 未変更なら書き込まず true。変更があれば保存結果を返す。
     bool SaveIfDirty();
 
     /// resetCurrentHpがtrueなら出現時として全回復し、falseなら現在HP率を維持します。
@@ -58,7 +62,7 @@ public:
     static bool IsManagedCharacter(const Object3d* object);
     static const char* GetSettingsPath();
 
-private:
+  private:
     GameplayStatusManager() = default;
     GameplayStatusManager(const GameplayStatusManager&) = delete;
     GameplayStatusManager& operator=(const GameplayStatusManager&) = delete;
@@ -67,7 +71,7 @@ private:
     static void Normalize(CharacterStatus& status);
     static void ApplyStatus(Object3d* object, const CharacterStatus& status, bool resetCurrentHp);
 
-private:
+  private:
     CharacterStatus playerStatus_;
     std::unordered_map<std::string, CharacterStatus> enemyStatuses_;
     bool initialized_ = false;

@@ -14,6 +14,7 @@ struct EditorAssetDragPayload {
     char path[512]{};
 };
 
+// 固定長バッファに収まらない文字列は末尾を切り詰め、必ず NUL 終端します。
 inline EditorAssetDragPayload MakeEditorAssetDragPayload(
     const std::string& guid,
     const std::string& path) {
@@ -27,6 +28,7 @@ inline EditorAssetDragPayload MakeEditorAssetDragPayload(
     return payload;
 }
 
+// サイズと識別子が一致する新形式だけを受け付けます。戻り値は入力バッファ内を指します。
 inline const EditorAssetDragPayload* TryReadEditorAssetDragPayload(
     const void* data,
     int dataSize) {
@@ -37,6 +39,7 @@ inline const EditorAssetDragPayload* TryReadEditorAssetDragPayload(
     return payload->magic == EditorAssetDragPayload::kMagic ? payload : nullptr;
 }
 
+// 旧形式のパス文字列も受け付けます。NUL がなければ payload のバイト数を上限に読みます。
 inline std::string ReadEditorAssetDragPath(const void* data, int dataSize) {
     if (const EditorAssetDragPayload* payload = TryReadEditorAssetDragPayload(data, dataSize)) {
         return payload->path;
@@ -53,6 +56,7 @@ inline std::string ReadEditorAssetDragPath(const void* data, int dataSize) {
     return std::string(legacyPath, length);
 }
 
+// 旧形式は GUID を持たないため空文字列を返します。
 inline std::string ReadEditorAssetDragGuid(const void* data, int dataSize) {
     if (const EditorAssetDragPayload* payload = TryReadEditorAssetDragPayload(data, dataSize)) {
         return payload->guid;

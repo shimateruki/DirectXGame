@@ -87,6 +87,7 @@ void PlayModeChangeTracker::CaptureBaseline() {
     if (!sceneManager_ || !editor_ || sceneManager_->IsTransitioning()) return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene) return;
+    // 復元後も同じ対象を探せるよう、Object のアドレスではなく永続 GUID で記録する。
     for (const auto& object : scene->GetObjects()) {
         if (!IsEligible(object.get())) continue;
         const std::string guid = object->EnsurePersistentGuid();
@@ -108,6 +109,7 @@ void PlayModeChangeTracker::CaptureRuntimeChanges() {
         const auto baseline = baselineByGuid_.find(object->GetPersistentGuid());
         if (baseline == baselineByGuid_.end()) continue;
         const nlohmann::json runtimeState = editor_->CaptureObjectState(object.get());
+        // Gimmick 等の実行時移動を編集差分と誤認しない。
         const bool transformChanged = !IsRuntimeDrivenTransform(object.get()) &&
             ExtractTransform(baseline->second.state) != ExtractTransform(runtimeState);
         const bool propertiesChanged = ExtractProperties(baseline->second.state) != ExtractProperties(runtimeState);
@@ -150,6 +152,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
         const nlohmann::json beforeApply = editor_->CaptureObjectState(object);
         nlohmann::json merged = candidate.applyProperties ? candidate.runtimeState : beforeApply;
 
+        // GUID・名前・親子識別子は復元後の編集シーンのものを維持する。
         for (auto iterator = beforeApply.begin(); iterator != beforeApply.end(); ++iterator) {
             if (IsIdentityKey(iterator.key())) merged[iterator.key()] = iterator.value();
             if (!candidate.applyTransform && IsTransformKey(iterator.key())) merged[iterator.key()] = iterator.value();

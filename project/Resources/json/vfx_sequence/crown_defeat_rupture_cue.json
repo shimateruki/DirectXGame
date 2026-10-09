@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 0,
+      "presetName": "crown_defeat_sparks",
+      "triggerTime": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0,
+      "duration": 0.55,
+      "intensity": 4,
+      "lightRadius": 22,
+      "lightDecay": 1.8,
+      "lightColor": [
+        0.7,
+        0.25,
+        1,
+        1
+      ]
+    }
+  ]
+}

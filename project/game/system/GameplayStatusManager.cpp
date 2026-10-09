@@ -16,18 +16,10 @@ using json = nlohmann::json;
 constexpr const char* kSettingsPath = "Resources/json/gameplay/status_settings.json";
 constexpr const char* kLegacySettingsPath = "Resources/json/gameplay/status_presets.json";
 
-GameplayStatusManager::CharacterStatus MakeStatus(
-    float maxHp,
-    float attackPower,
-    float speed,
-    float gravity,
-    float maxFallSpeed,
-    float jumpPower,
-    float detectionRange,
-    const Vector3& scale,
-    const char* modelName,
-    bool morphLimited,
-    float morphDuration) {
+GameplayStatusManager::CharacterStatus MakeStatus(float maxHp, float attackPower, float speed, float gravity,
+                                                  float maxFallSpeed, float jumpPower, float detectionRange,
+                                                  const Vector3& scale, const char* modelName, bool morphLimited,
+                                                  float morphDuration) {
     GameplayStatusManager::CharacterStatus status;
     status.maxHp = maxHp;
     status.attackPower = attackPower;
@@ -74,11 +66,7 @@ void ReadScale(const json& source, Vector3& value) {
         return;
     }
 
-    const Vector3 candidate = {
-        array[0].get<float>(),
-        array[1].get<float>(),
-        array[2].get<float>()
-    };
+    const Vector3 candidate = {array[0].get<float>(), array[1].get<float>(), array[2].get<float>()};
     // 旧設定の0スケールは「クラス側の値を維持」という意味だったため、
     // 一元管理移行後はタイプ標準値を残します。
     if (candidate.x > 0.0f && candidate.y > 0.0f && candidate.z > 0.0f) {
@@ -110,42 +98,37 @@ void JsonToStatus(const json& source, GameplayStatusManager::CharacterStatus& st
 }
 
 json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
-    return json{
-        { "maxHp", status.maxHp },
-        { "attackPower", status.attackPower },
-        { "speed", status.speed },
-        { "gravity", status.gravity },
-        { "maxFallSpeed", status.maxFallSpeed },
-        { "jumpPower", status.jumpPower },
-        { "detectionRange", status.detectionRange },
-        { "scale", json::array({ status.scale.x, status.scale.y, status.scale.z }) },
-        { "modelName", status.modelName },
-        { "morphLimited", status.morphLimited },
-        { "morphDuration", status.morphDuration },
-        { "characterMotor", {
-            { "continuousCollision", status.motorContinuousCollision },
-            { "snapToGround", status.motorSnapToGround },
-            { "maxSlopeDegrees", status.motorMaxSlopeDegrees },
-            { "stepHeight", status.motorStepHeight },
-            { "groundProbeDistance", status.motorGroundProbeDistance },
-            { "skinWidth", status.motorSkinWidth }
-        } }
-    };
+    return json{{"maxHp", status.maxHp},
+                {"attackPower", status.attackPower},
+                {"speed", status.speed},
+                {"gravity", status.gravity},
+                {"maxFallSpeed", status.maxFallSpeed},
+                {"jumpPower", status.jumpPower},
+                {"detectionRange", status.detectionRange},
+                {"scale", json::array({status.scale.x, status.scale.y, status.scale.z})},
+                {"modelName", status.modelName},
+                {"morphLimited", status.morphLimited},
+                {"morphDuration", status.morphDuration},
+                {"characterMotor",
+                 {{"continuousCollision", status.motorContinuousCollision},
+                  {"snapToGround", status.motorSnapToGround},
+                  {"maxSlopeDegrees", status.motorMaxSlopeDegrees},
+                  {"stepHeight", status.motorStepHeight},
+                  {"groundProbeDistance", status.motorGroundProbeDistance},
+                  {"skinWidth", status.motorSkinWidth}}}};
 }
 
-bool NearlyEqual(float lhs, float rhs) {
-    return std::abs(lhs - rhs) <= 0.0001f;
-}
-}
+// キャラクターの調整値を読み書きし、既存のHPを保つか初期化するかを呼び出し側へ委ねます。
+
+bool NearlyEqual(float lhs, float rhs) { return std::abs(lhs - rhs) <= 0.0001f; }
+} // namespace
 
 GameplayStatusManager* GameplayStatusManager::GetInstance() {
     static GameplayStatusManager instance;
     return &instance;
 }
 
-GameplayStatusManager::~GameplayStatusManager() {
-    SaveIfDirty();
-}
+GameplayStatusManager::~GameplayStatusManager() { SaveIfDirty(); }
 
 void GameplayStatusManager::Initialize() {
     if (initialized_) {
@@ -210,40 +193,42 @@ bool GameplayStatusManager::Save() {
 }
 
 void GameplayStatusManager::ResetToDefaults() {
-    playerStatus_ = MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f,
-        { 2.0f, 2.0f, 2.0f }, "Characters/slime", false, 5.0f);
+    playerStatus_ =
+        MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f, {2.0f, 2.0f, 2.0f}, "Characters/slime", false, 5.0f);
 
     enemyStatuses_.clear();
-    enemyStatuses_.emplace("Slime", MakeStatus(50.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f,
-        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_pink", false, 5.0f));
+    enemyStatuses_.emplace("Slime", MakeStatus(50.0f, 1.0f, 0.1f, 60.0f, 60.0f, 18.0f, 20.0f, Vector3{2.0f, 2.0f, 2.0f},
+                                               "Characters/slime_pink", false, 5.0f));
     enemyStatuses_.emplace("Bomb", MakeStatus(30.0f, 1.0f, 0.04f, 60.0f, 60.0f, 16.0f, 20.0f,
-        Vector3{ 0.16f, 0.16f, 0.16f }, "Gimmicks/blob", true, 5.0f));
+                                              Vector3{0.16f, 0.16f, 0.16f}, "Gimmicks/blob", true, 5.0f));
     enemyStatuses_.emplace("Bomber", MakeStatus(60.0f, 1.15f, 0.0f, 60.0f, 60.0f, 16.0f, 32.0f,
-        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_black", true, 5.0f));
+                                                Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_black", true, 5.0f));
     enemyStatuses_.emplace("Mushroom", MakeStatus(35.0f, 1.0f, 2.1f, 60.0f, 60.0f, 16.0f, 16.0f,
-        Vector3{ 1.0f, 1.0f, 1.0f }, "Primitives/cylinder", true, 5.0f));
+                                                  Vector3{1.0f, 1.0f, 1.0f}, "Primitives/cylinder", true, 5.0f));
     enemyStatuses_.emplace("FireSlime", MakeStatus(45.0f, 1.0f, 2.35f, 60.0f, 60.0f, 18.0f, 24.0f,
-        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_red", true, 5.0f));
-    enemyStatuses_.emplace("ThunderSlime", MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f,
-        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_yellow", true, 5.0f));
+                                                   Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_red", true, 5.0f));
+    enemyStatuses_.emplace("ThunderSlime",
+                           MakeStatus(45.0f, 1.0f, 3.0f, 62.0f, 60.0f, 18.0f, 20.0f, Vector3{2.0f, 2.0f, 2.0f},
+                                      "Characters/slime_yellow", true, 5.0f));
     enemyStatuses_.emplace("WindSlime", MakeStatus(42.0f, 0.9f, 3.4f, 54.0f, 58.0f, 19.0f, 22.0f,
-        Vector3{ 2.0f, 2.0f, 2.0f }, "Characters/slime_wind", false, 5.0f));
+                                                   Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_wind", false, 5.0f));
     enemyStatuses_.emplace("GiantSlime", MakeStatus(160.0f, 1.25f, 0.0f, 70.0f, 60.0f, 24.0f, 26.0f,
-        Vector3{ 3.6f, 3.6f, 3.6f }, "Characters/slime_pink", true, 5.0f));
+                                                    Vector3{3.6f, 3.6f, 3.6f}, "Characters/slime_pink", true, 5.0f));
     enemyStatuses_.emplace("PrismSlime", MakeStatus(420.0f, 1.35f, 1.35f, 72.0f, 62.0f, 22.0f, 90.0f,
-        Vector3{ 4.2f, 4.2f, 4.2f }, "Characters/prism_slime", true, 5.0f));
+                                                    Vector3{4.2f, 4.2f, 4.2f}, "Characters/prism_slime", true, 5.0f));
     enemyStatuses_.emplace("MagmaSlime", MakeStatus(360.0f, 1.45f, 1.45f, 72.0f, 62.0f, 22.0f, 90.0f,
-        Vector3{ 3.8f, 3.8f, 3.8f }, "Characters/magma_slime", true, 5.0f));
-    enemyStatuses_.emplace("FalseKingSlime", MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f,
-        Vector3{ 1.3f, 1.3f, 1.3f }, "Characters/false_king_slime", true, 5.0f));
+                                                    Vector3{3.8f, 3.8f, 3.8f}, "Characters/magma_slime", true, 5.0f));
+    enemyStatuses_.emplace("FalseKingSlime",
+                           MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, Vector3{1.3f, 1.3f, 1.3f},
+                                      "Characters/false_king_slime", true, 5.0f));
     enemyStatuses_.emplace("Bat", MakeStatus(16.0f, 0.45f, 1.8f, 0.0f, 60.0f, 10.0f, 17.0f,
-        Vector3{ 0.72f, 0.72f, 0.72f }, "Characters/bat", true, 5.0f));
+                                             Vector3{0.72f, 0.72f, 0.72f}, "Characters/bat", true, 5.0f));
     enemyStatuses_.emplace("BeamDrone", MakeStatus(45.0f, 1.0f, 4.0f, 0.0f, 60.0f, 10.0f, 30.0f,
-        Vector3{ 0.85f, 0.85f, 0.85f }, "Characters/eye", true, 5.0f));
+                                                   Vector3{0.85f, 0.85f, 0.85f}, "Characters/eye", true, 5.0f));
     enemyStatuses_.emplace("RingBurner", MakeStatus(180.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
-        Vector3{ 1.0f, 1.0f, 1.0f }, "Characters/ring_burner", true, 5.0f));
+                                                    Vector3{1.0f, 1.0f, 1.0f}, "Characters/ring_burner", true, 5.0f));
     enemyStatuses_.emplace("BossCore", MakeStatus(1000.0f, 1.5f, 0.05f, 0.0f, 60.0f, 10.0f, 20.0f,
-        Vector3{ 1.0f, 1.0f, 1.0f }, "Stages/block", true, 5.0f));
+                                                  Vector3{1.0f, 1.0f, 1.0f}, "Stages/block", true, 5.0f));
 
     dirty_ = true;
 }
@@ -254,14 +239,13 @@ GameplayStatusManager::CharacterStatus* GameplayStatusManager::FindMutableEnemyS
     return it != enemyStatuses_.end() ? &it->second : nullptr;
 }
 
-const GameplayStatusManager::CharacterStatus* GameplayStatusManager::FindEnemyStatus(const std::string& enemyType) const {
+const GameplayStatusManager::CharacterStatus*
+GameplayStatusManager::FindEnemyStatus(const std::string& enemyType) const {
     const auto it = enemyStatuses_.find(enemyType);
     return it != enemyStatuses_.end() ? &it->second : nullptr;
 }
 
-bool GameplayStatusManager::SaveIfDirty() {
-    return !dirty_ || Save();
-}
+bool GameplayStatusManager::SaveIfDirty() { return !dirty_ || Save(); }
 
 bool GameplayStatusManager::ApplyPlayerStatus(Object3d* object, bool resetCurrentHp) const {
     if (!object || object->GetClassName() != "Player") {
@@ -314,9 +298,7 @@ bool GameplayStatusManager::IsManagedCharacter(const Object3d* object) {
     return object->GetClassName() == "Player" || object->GetClassName() == "Enemy";
 }
 
-const char* GameplayStatusManager::GetSettingsPath() {
-    return kSettingsPath;
-}
+const char* GameplayStatusManager::GetSettingsPath() { return kSettingsPath; }
 
 bool GameplayStatusManager::LoadFromFile(const std::string& path) {
     std::ifstream file(path);
@@ -353,6 +335,7 @@ bool GameplayStatusManager::LoadFromFile(const std::string& path) {
 }
 
 void GameplayStatusManager::Normalize(CharacterStatus& status) {
+    // JSON や Editor 入力の極端な値で移動・当たり判定が破綻しないよう範囲を制限する。
     status.maxHp = (std::max)(status.maxHp, 1.0f);
     status.attackPower = (std::max)(status.attackPower, 0.0f);
     status.speed = (std::max)(status.speed, 0.0f);
@@ -369,6 +352,7 @@ void GameplayStatusManager::Normalize(CharacterStatus& status) {
     status.motorSkinWidth = std::clamp(status.motorSkinWidth, 0.0f, 0.25f);
 }
 
+// 最大 HP の変更時は現在の残量比を保ち、全快中または明示的なリセット時だけ全快させます。
 void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus& source, bool resetCurrentHp) {
     if (!object) {
         return;
@@ -413,8 +397,7 @@ void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus&
     }
 
     const Vector3 currentScale = object->GetScale();
-    if (!NearlyEqual(currentScale.x, status.scale.x) ||
-        !NearlyEqual(currentScale.y, status.scale.y) ||
+    if (!NearlyEqual(currentScale.x, status.scale.x) || !NearlyEqual(currentScale.y, status.scale.y) ||
         !NearlyEqual(currentScale.z, status.scale.z)) {
         object->ApplyManagedScale(status.scale);
     }

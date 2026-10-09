@@ -690,8 +690,6 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 #endif
 }
 
-
-
 // =========================================================================
 // 3. Project (下パネル / アセットブラウザ) の描画 [階層フォルダ対応・完全防弾版]
 // =========================================================================
@@ -847,6 +845,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 	ImGui::End();
 #endif
 }
+
 void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 	using json = nlohmann::json;
 
@@ -899,8 +898,6 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 	}
 }
 
-
-
 bool SpriteDebugEditor::IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const {
 	if (sprite == nullptr) return false;
 
@@ -917,6 +914,7 @@ bool SpriteDebugEditor::IsMouseOver(Sprite* sprite, const Vector2& localMousePos
 	return (localMousePos.x >= minX && localMousePos.x <= maxX &&
 		localMousePos.y >= minY && localMousePos.y <= maxY);
 }
+
 bool SpriteDebugEditor::IsMouseBusy() const {
 	// ImGui操作中かどうか
 #ifdef USE_IMGUI

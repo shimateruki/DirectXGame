@@ -65,7 +65,7 @@ void ApplyGroundDefaultsIfNeeded(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -73,6 +73,10 @@ void ApplyGroundDefaultsIfNeeded(Object3d* object) {
 }
 
 std::string ResolveEnemyType(const json& node) {
+    // 古い汎用Paramの敵種別より、明示されたオブジェクト種別を優先します。
+    const std::string type = ReadString(node, "type");
+    if (!type.empty() && type != "Enemy")
+        return {};
     std::string enemyType = ReadString(node, "enemyType");
     if (enemyType.empty() && node.contains("param") && node["param"].is_object()) {
         enemyType = ReadString(node["param"], "enemyType");
@@ -515,9 +519,11 @@ void CreateObjectFromPresetNode(
         statusManager->Initialize();
         statusManager->ApplyEnemyStatus(object.get(), true);
     }
-    ApplyGroundDefaultsIfNeeded(object.get());
+    // 明示された当たり判定と衝突属性を優先し、旧テンプレートの省略値だけ補完します。
+    if (!node.contains("collider") && !node.contains("collisionAttribute") && !node.contains("collisionMask"))
+        ApplyGroundDefaultsIfNeeded(object.get());
     if (node.contains("name") && node["name"].is_string()) {
-        object->SetName(node["name"].get<std::string>());
+        object->SetName(node.value("presetDisplayName", node["name"].get<std::string>()));
     }
 
     if (prefabContext) {

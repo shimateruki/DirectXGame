@@ -8,7 +8,7 @@ class Object3dCommon;
 
 // 一定間隔で敵を発生させるための配置用オブジェクト
 class EnemySpawner : public Object3d {
-public:
+  public:
     /// <summary>
     /// スポナーの初期化
     /// </summary>
@@ -21,17 +21,17 @@ public:
     // 実際の敵生成はシーン側へ任せるため、座標だけコールバックで通知する
     void SetOnSpawnCallback(SpawnCallback callback) { onSpawnCallback_ = callback; }
 
-private:
+  private:
     void Spawn();
 
-private:
+  private:
     // Factory に渡す共通描画情報。スポーン時の敵初期化で使う。
     Object3dCommon* common_ = nullptr;
 
-    std::string enemyType_; // 生成したい敵タイプ名。
+    std::string enemyType_;      // 生成したい敵タイプ名。
     float spawnInterval_ = 1.0f; // 次のスポーンまでの間隔。
     float timer_ = 0.0f;         // 経過時間。
     SpawnCallback onSpawnCallback_ = nullptr;
-    int maxCount_ = 0;    // 最大生成数。0以下なら無制限扱い。
-    int spawnCount_ = 0;  // 生成済みカウント。
+    int maxCount_ = 0;   // 最大生成数。0以下なら無制限扱い。
+    int spawnCount_ = 0; // 生成済みカウント。
 };

@@ -72,6 +72,7 @@ void Fade::LoadSequence(FrameSequence& sequence, const std::string& directory, i
         return;
     }
 
+    // 1枚でも欠けていたら系列を確定せず、描画側の黒フェードに任せる。
     std::vector<uint32_t> resolvedHandles;
     resolvedHandles.reserve(frameCount);
     for (int i = 0; i < frameCount; ++i) {
@@ -112,6 +113,7 @@ void Fade::Update(float deltaTime) {
 
     counter_ += deltaTime;
     const float t = GetNormalizedTime();
+    // 開閉を同じ被覆率で表し、連番画像のフレーム選択に使う。
     coverage_ = IsClosing() ? EaseInOut(t) : 1.0f - EaseInOut(t);
 
     ResetPostEffectFade();
@@ -197,6 +199,7 @@ void Fade::DrawFallbackBlack(float alpha) {
     }
 
     fallbackBlack_->SetPosition({ ScreenW() * 0.5f, ScreenH() * 0.5f });
+    // 画面端に隙間が出ないよう、フォールバックの黒板だけ少し大きく描く。
     fallbackBlack_->SetSize({ ScreenW() + 8.0f, ScreenH() + 8.0f });
     fallbackBlack_->SetRotation(0.0f);
     fallbackBlack_->SetColor({ 0.0f, 0.0f, 0.0f, Clamp01(alpha) });

@@ -239,6 +239,7 @@ void AssetReferenceExplorer::ScanJsonAsset(const EditorAssetRecord& owner) {
 std::vector<std::size_t> AssetReferenceExplorer::FindRepairCandidates(const MissingReference& missing) const {
     const auto& assets = AssetDatabase::GetInstance()->GetAssets();
     const std::string wanted = FileStemLower(missing.value);
+    // 欠落参照の代替候補を並べる索引と類似度。高得点でも同一アセットと確定したわけではない。
     struct Scored { std::size_t index; int score; };
     std::vector<Scored> scored;
     scored.reserve(assets.size());

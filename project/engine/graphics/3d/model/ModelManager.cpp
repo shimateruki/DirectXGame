@@ -21,6 +21,7 @@ ModelManager* ModelManager::GetInstance() {
     }
     return instance;
 }
+
 // モデル共通描画基盤を初期化し、各Modelが共有するDirectXリソースを準備する。
 
 void ModelManager::Initialize(DirectXCommon* dxCommon) {
@@ -28,6 +29,7 @@ void ModelManager::Initialize(DirectXCommon* dxCommon) {
     modelCommon_ = std::make_unique<ModelCommon>();
     modelCommon_->Initialize(dxCommon);
 }
+
 // 読み込み済みモデルと共通リソースを解放し、シングルトンを破棄する。
 
 void ModelManager::Finalize() {
@@ -37,6 +39,7 @@ void ModelManager::Finalize() {
     delete instance;
     instance = nullptr;
 }
+
 // モデル名から実ファイルを解決して読み込み、同じキーのモデルは再利用する。
 
 
@@ -285,6 +288,7 @@ bool ModelManager::ResolveModelPath(
 
     return !fileName.empty() && std::filesystem::exists(directoryPath + fileName);
 }
+
 // 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
 
 bool ModelManager::ReloadModel(const std::string& modelName) {
@@ -294,6 +298,7 @@ bool ModelManager::ReloadModel(const std::string& modelName) {
     }
     return LoadModel(modelName) != nullptr;
 }
+
 // 現在読み込み済みのモデルキー一覧を返し、エディタやデバッグ表示で使えるようにする。
 
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {

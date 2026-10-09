@@ -7,11 +7,13 @@
 #include <queue>
 
 namespace {
+// A* の未処理候補。index は一次元セル番号、score は到達コストと残距離推定の合計。
 struct OpenNode {
     int index = -1;
     float score = 0.0f;
 };
 
+// priority_queue の先頭を最小 score にする比較。通常の最大値優先を反転する。
 struct OpenNodeGreater {
     bool operator()(const OpenNode& lhs, const OpenNode& rhs) const {
         return lhs.score > rhs.score;

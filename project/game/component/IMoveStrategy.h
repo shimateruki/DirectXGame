@@ -4,14 +4,14 @@
 // 前方宣言
 class InputManager;
 class Camera;
-struct Transform; 
-class Player; 
+struct Transform;
+class Player;
 
 /// <summary>
 /// プレイヤーの移動戦略（アルゴリズム）を定義するインターフェース
 /// </summary>
 class IMoveStrategy {
-public:
+  public:
     virtual ~IMoveStrategy() = default;
 
     /// <summary>

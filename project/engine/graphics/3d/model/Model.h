@@ -353,8 +353,6 @@ private:
     // Compute出力が使える場合はスキニング済み頂点、それ以外は元の頂点を選ぶ。
     const D3D12_VERTEX_BUFFER_VIEW& GetActiveVertexBufferView(const Mesh& mesh) const;
 
-
-
 private:
     ModelCommon* common_ = nullptr;
     ModelData modelData_{};

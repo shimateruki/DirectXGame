@@ -1,12 +1,12 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
+#include "ParticleSystem.h"
+#include "ParticleCommon.h"
 #include "Player.h"
 #include "Text.h"
 #include "BulletManager.h"
@@ -32,7 +32,7 @@ class InputManager;
 /// タイトルシーン
 /// </summary>
 class TitleScene : public BaseScene {
-public:
+  public:
     TitleScene() = default;
     ~TitleScene() override = default;
 
@@ -60,17 +60,10 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+  private:
+    enum class TitleMode { MainMenu, SaveSelect };
 
-private:
-    enum class TitleMode {
-        MainMenu,
-        SaveSelect
-    };
-
-    enum class SaveSelectMode {
-        Browse,
-        DeleteConfirm
-    };
+    enum class SaveSelectMode { Browse, DeleteConfirm };
 
     void InitializeSaveSlotUI();
     void InitializeTitleLogoUI();
@@ -83,7 +76,8 @@ private:
     void DrawSaveSlotUI();
     void StartSelectedSaveSlot();
     void DeleteSelectedSaveSlot();
-    Sprite* CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector4& color);
+    Sprite* CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size,
+                           const Vector4& color);
     void SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector4& color, bool visible);
 
     // --- システムポインタ ---
@@ -114,7 +108,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
-
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 
@@ -142,27 +135,28 @@ private:
     Sprite* mainMenuArrowSprite_ = nullptr;
     Sprite* mainMenuCursorSprite_ = nullptr;
     Sprite* mainMenuPromptSprite_ = nullptr;
-    Vector2 startTextBaseSize_ = { 0.0f, 0.0f };
-    Vector2 settingTextBaseSize_ = { 0.0f, 0.0f };
-    Vector2 startTextBasePosition_ = { 0.0f, 0.0f };
-    Vector2 settingTextBasePosition_ = { 0.0f, 0.0f };
-    Vector2 mainMenuArrowBaseSize_ = { 0.0f, 0.0f };
-    Vector2 mainMenuCursorBaseSize_ = { 0.0f, 0.0f };
-    Vector2 mainMenuPromptBaseSize_ = { 0.0f, 0.0f };
-    Vector2 mainMenuArrowOffset_ = { 0.0f, 0.0f };
-    Vector2 mainMenuCursorOffset_ = { 0.0f, 0.0f };
-    Vector2 mainMenuPromptBasePosition_ = { 0.0f, 0.0f };
+    Vector2 startTextBaseSize_ = {0.0f, 0.0f};
+    Vector2 settingTextBaseSize_ = {0.0f, 0.0f};
+    Vector2 startTextBasePosition_ = {0.0f, 0.0f};
+    Vector2 settingTextBasePosition_ = {0.0f, 0.0f};
+    Vector2 mainMenuArrowBaseSize_ = {0.0f, 0.0f};
+    Vector2 mainMenuCursorBaseSize_ = {0.0f, 0.0f};
+    Vector2 mainMenuPromptBaseSize_ = {0.0f, 0.0f};
+    Vector2 mainMenuArrowOffset_ = {0.0f, 0.0f};
+    Vector2 mainMenuCursorOffset_ = {0.0f, 0.0f};
+    Vector2 mainMenuPromptBasePosition_ = {0.0f, 0.0f};
     Object3d* titleHeroSlime_ = nullptr;
     std::unique_ptr<Object3d> titleCameraAnchor_ = nullptr;
-    Vector3 titleHeroBasePosition_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 titleHeroBaseScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 titleHeroBaseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 titleHeroBasePosition_ = {0.0f, 0.0f, 0.0f};
+    Vector3 titleHeroBaseScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 titleHeroBaseRotation_ = {0.0f, 0.0f, 0.0f};
     bool titleHeroBaseCaptured_ = false;
     float titleHeroSequenceTime_ = 0.0f;
+    // 文字 Sprite の借用参照と基準配置。導入アニメーションはこの基準へオフセットを加える。
     struct TitleLogoGlyph {
         Sprite* sprite = nullptr;
-        Vector2 basePosition = { 0.0f, 0.0f };
-        Vector2 baseSize = { 0.0f, 0.0f };
+        Vector2 basePosition = {0.0f, 0.0f};
+        Vector2 baseSize = {0.0f, 0.0f};
         float delay = 0.0f;
     };
     std::array<TitleLogoGlyph, 8> titleLogoGlyphs_{};
@@ -170,22 +164,22 @@ private:
     bool titleIntroComplete_ = false;
     std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
     Sprite* saveSelectBackdrop_ = nullptr;
-    std::array<Sprite*, 3> saveSlotCards_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotCards_ = {nullptr, nullptr, nullptr};
     std::array<std::array<Sprite*, 4>, 3> saveSlotFrames_{};
-    std::array<Sprite*, 3> saveSlotIcons_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotNumberSprites_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotFileNameTexts_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotStatusTexts_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotLifeIcons_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotLifeXIcons_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotIcons_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotNumberSprites_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotFileNameTexts_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotStatusTexts_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotLifeIcons_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotLifeXIcons_ = {nullptr, nullptr, nullptr};
     std::array<std::array<Sprite*, 2>, 3> saveSlotLifeDigits_{};
-    std::array<Sprite*, 3> saveSlotCrownIcons_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotCrownXIcons_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotCrownIcons_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotCrownXIcons_ = {nullptr, nullptr, nullptr};
     std::array<std::array<Sprite*, 2>, 3> saveSlotCrownDigits_{};
-    std::array<Sprite*, 3> saveSlotStarIcons_ = { nullptr, nullptr, nullptr };
-    std::array<Sprite*, 3> saveSlotStarXIcons_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotStarIcons_ = {nullptr, nullptr, nullptr};
+    std::array<Sprite*, 3> saveSlotStarXIcons_ = {nullptr, nullptr, nullptr};
     std::array<std::array<Sprite*, 2>, 3> saveSlotStarDigits_{};
-    std::array<Sprite*, 3> saveSlotPlayTimeLabels_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotPlayTimeLabels_ = {nullptr, nullptr, nullptr};
     std::array<std::array<Sprite*, 5>, 3> saveSlotPlayTimeDigits_{};
     Sprite* saveSelectHeader_ = nullptr;
     Sprite* saveDeleteButtonBack_ = nullptr;

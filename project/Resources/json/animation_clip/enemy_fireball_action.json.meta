@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d7958f6e83644f5867b2fb338fbf9956",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/enemy_fireball_action.json",
+  "version": 1
+}

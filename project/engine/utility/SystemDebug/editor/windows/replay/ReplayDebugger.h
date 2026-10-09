@@ -19,7 +19,8 @@ class CaptureToolWindow;
 class DebugEditor;
 class SceneManager;
 
-// ReplayDebuggerは、実行中シーンの短時間履歴を保持して停止・巻き戻し・分岐再開を行います。
+// 実行中シーンの短時間履歴を保持し、停止・巻き戻し・分岐再開を行う。
+// SceneManagerとDebugEditorは借用し、記録はシーンの世代が変わると破棄する。
 class ReplayDebugger {
 public:
     enum class Mode {
@@ -30,15 +31,22 @@ public:
         Regression,
     };
 
+    /// <summary>シーンとエディターへの参照を借用し、保存済みリプレイ一覧を更新する。</summary>
     void Initialize(SceneManager* sceneManager, DebugEditor* debugEditor);
+    /// <summary>保持オブジェクトを通常管理へ戻し、参照と履歴を解放する。</summary>
     void Finalize();
 
-    // ゲーム更新より前に、履歴再生とシーン変更検知を行います。
+    /// <summary>ゲーム更新より前に、履歴再生とシーン変更を処理する。</summary>
+    /// <param name="realDeltaTime">時間倍率を掛ける前の経過秒数。</param>
+    /// <param name="isPlaying">現在Play中ならtrue。</param>
     void UpdateBeforeSimulation(float realDeltaTime, bool isPlaying);
-    // ゲーム更新が完了した後に、現在状態を一定間隔で記録します。
+    /// <summary>ゲーム更新後に入力を記録し、設定した間隔でシーンの状態を記録する。</summary>
+    /// <param name="simulationDeltaTime">実際にゲーム更新へ渡した経過秒数。</param>
+    /// <param name="isPlaying">現在Play中ならtrue。</param>
     void CaptureAfterSimulation(float simulationDeltaTime, bool isPlaying);
     void Draw(bool* open);
 
+    /// <summary>有効なシーンの履歴を停止・再生表示中で、通常のゲーム更新を止めるべきか返す。</summary>
     bool ShouldFreezeSimulation() const;
     bool IsRecording() const { return mode_ == Mode::Recording; }
     bool HasFrames() const;
@@ -46,20 +54,25 @@ public:
     // Main Menu Barから、実行を停止または選択時点から分岐再開します。
     void ToggleSimulationPause();
 
-    // Play開始直前の編集状態を保持し、Stop時に同じSceneインスタンスへ復元します。
+    /// <summary>Play開始直前の編集状態を通常の巻き戻し履歴とは別に保持する。</summary>
+    /// <returns>シーンが有効で、基準フレームを取得できた場合にtrue。</returns>
     bool BeginPlayInEditorSnapshot();
+    /// <summary>Play中に生成したObjectやSpriteを除き、同じSceneへ編集状態を復元する。</summary>
+    /// <returns>保存した基準フレームを同じシーンへ適用できた場合にtrue。</returns>
     bool RestorePlayInEditorSnapshot();
     bool HasPlayInEditorSnapshot() const { return playInEditorSnapshot_.has_value(); }
 
     // 再生停止やシーン再読み込みの直前に、保持オブジェクトを通常管理へ戻します。
     void ResetForSceneChange();
 
-    // 回帰テスト中は記録時のフレーム時間をGame更新へ渡します。
+    // 回帰テスト中は記録時のフレーム時間をGame更新へ渡す。
+    /// <param name="defaultDeltaTime">通常更新で使う経過秒数。</param>
     float ResolveSimulationDeltaTime(float defaultDeltaTime) const;
     // 描画完了後に、回帰テストで予約されたGame View画像を保存します。
     void CapturePendingRegressionScreenshot(CaptureToolWindow* captureTool);
 
 private:
+    // Object を再特定する ID と記録時の状態。実行中生成物は生成情報も使って復元する。
     struct ObjectSnapshot {
         uint64_t replayId = 0;
         std::string persistentGuid;
@@ -73,6 +86,7 @@ private:
         Object3d::ReplayState state;
     };
 
+    // Sprite を再特定するキーと再生状態の値コピー。Sprite 本体の所有権は持たない。
     struct SpriteSnapshot {
         uint64_t replayId = 0;
         std::string bindingKey;
@@ -81,6 +95,7 @@ private:
         Sprite::ReplayState state;
     };
 
+    // 記録フレームの差分件数。再生状態そのものではなく、変更箇所を探すための統計。
     struct FrameDiagnostics {
         std::size_t activeObjects = 0;
         std::size_t changedObjects = 0;
@@ -92,6 +107,7 @@ private:
         std::size_t changedSprites = 0;
     };
 
+    // 記録した視点・注視点と投影設定。valid が false のときは復元可能なカメラ情報がない。
     struct CameraSnapshot {
         bool valid = false;
         Vector3 eye = { 0.0f, 0.0f, 0.0f };
@@ -102,6 +118,7 @@ private:
         float farClip = 1000.0f;
     };
 
+    // 記録時刻（秒）の Object・Sprite・Camera・Scene 状態。外部リソース全部の複製ではない。
     struct FrameSnapshot {
         double time = 0.0;
         std::vector<ObjectSnapshot> objects;
@@ -113,12 +130,14 @@ private:
     };
 
 
+    // 再シミュレーションに渡す入力と更新幅。time と deltaTime は秒で、描画用姿勢記録とは別。
     struct InputSample {
         double time = 0.0;
         float deltaTime = 0.0f;
         InputManager::ReplayState state;
     };
 
+    // 回帰比較の許容値。位置はワールド単位、性能予算はミリ秒で、性能超過の失敗扱いは任意。
     struct RegressionSettings {
         float maxPositionError = 1.0f;
         float worldPositionLimit = 10000.0f;
@@ -128,6 +147,7 @@ private:
         int screenshotCount = 4;
     };
 
+    // 回帰実行の進行・比較値・成果物。available と running を確認してから passed を解釈する。
     struct RegressionResult {
         bool available = false;
         bool passed = false;
@@ -148,6 +168,7 @@ private:
         std::vector<std::string> failures;
         std::vector<std::string> screenshotPaths;
     };
+    // 保存済み記録の一覧表示用メタ情報。valid と error はアーカイブの読込診断。
     struct ReplayArchiveEntry {
 
         std::string fileName;
@@ -162,6 +183,7 @@ private:
         std::string error;
     };
 
+    // シーン準備完了まで保留する記録内容。フレームと入力サンプルを別々に保持する。
     struct PendingReplayArchive {
         std::string filePath;
         std::string createdAt;
@@ -253,7 +275,9 @@ private:
 
     bool autoRecord_ = true;
     bool wasPlaying_ = false;
+    // 1秒あたりの履歴フレーム数。入力サンプルはゲーム更新ごとに別途保存する。
     float captureRate_ = 15.0f;
+    // メモリ上で保持する履歴の長さ。単位は秒。
     float historySeconds_ = 20.0f;
     float playbackSpeed_ = 1.0f;
     float captureAccumulator_ = 0.0f;

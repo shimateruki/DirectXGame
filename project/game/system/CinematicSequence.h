@@ -12,14 +12,16 @@ struct CinematicObjectBinding {
     int targetEventId = -1;
 };
 
+// 一つの時刻における位置・回転・拡縮と、次のキーまでの補間方法です。
 struct CinematicTransformKey {
     float time = 0.0f;
-    Vector3 position = { 0.0f, 0.0f, 0.0f };
-    Vector3 rotation = { 0.0f, 0.0f, 0.0f };
-    Vector3 scale = { 1.0f, 1.0f, 1.0f };
+    Vector3 position = {0.0f, 0.0f, 0.0f};
+    Vector3 rotation = {0.0f, 0.0f, 0.0f};
+    Vector3 scale = {1.0f, 1.0f, 1.0f};
     int easingToNext = 4;
 };
 
+// 対象Objectへ適用する変形の時間列。relative 系フラグは座標の基準を指定します。
 struct CinematicTransformTrack {
     std::string name;
     CinematicObjectBinding binding;
@@ -34,6 +36,7 @@ struct CinematicTransformTrack {
     std::vector<CinematicTransformKey> keys;
 };
 
+// 指定時刻から VFX シーケンスを再生するトラックです。
 struct CinematicVFXTrackData {
     std::string name;
     CinematicObjectBinding binding;
@@ -75,6 +78,7 @@ struct CinematicAnimationClipData {
     bool muted = false;
 };
 
+// 再生開始時刻・長さ・音量を持つ音声クリップです。
 struct CinematicAudioClipData {
     std::string name;
     std::string audioId;
@@ -96,6 +100,7 @@ struct CinematicSignalMarker {
     bool enabled = true;
 };
 
+// イベントIDを持つObjectに対して、指定時刻のイベントを通知します。
 struct CinematicEventMarker {
     float time = 0.0f;
     int eventId = 0;
@@ -103,14 +108,29 @@ struct CinematicEventMarker {
     CinematicObjectBinding binding;
 };
 
+/// <summary>カットシーンの各トラックとマーカーを、保存・再生用に保持します。</summary>
 class CinematicSequence {
-public:
+  public:
     static constexpr int kCurrentVersion = 6;
 
+    // 各トラックを消去して制作時の初期値へ戻します。
     void Clear();
+
+    // 時刻順で評価するトラックとマーカーを並べ替えます。
     void Sort();
+
+    /// <summary>設定された長さと全トラックの最終時刻から、必要な再生時間を求めます。</summary>
+    /// <returns>少なくとも 0.1 秒の再生時間。</returns>
     float GetAuthoredDuration() const;
+
+    /// <summary>現在のシーケンスを JSON ファイルへ保存します。</summary>
+    /// <param name="filePath">保存先のファイルパス。</param>
+    /// <returns>ファイルを開いて保存できた場合は true。</returns>
     bool Save(const std::string& filePath) const;
+
+    /// <summary>JSON ファイルを読み込み、各トラックの時刻順を整えます。</summary>
+    /// <param name="filePath">読み込むファイルパス。</param>
+    /// <returns>読み込みと形式の検証に成功した場合は true。</returns>
     bool Load(const std::string& filePath);
 
     int version = kCurrentVersion;
@@ -122,7 +142,8 @@ public:
     // 役割名で作った演出を実シーンへ接続する。プレビュー専用Object名は保存しない。
     std::array<CinematicObjectBinding, 3> roleBindings;
     // 制作空間の仮モデル。ゲーム側の対象モデルは変更しない。
-    std::array<std::string, 2> previewModels = { "Characters/slime_pink", "Primitives/cube" };
+    std::array<std::string, 2> previewModels = {"Characters/slime_pink", "Primitives/cube"};
+    // 編集と保存の対象となるトラックと時刻マーカーです。
     std::vector<CinematicTransformTrack> transformTracks;
     std::vector<CinematicVFXTrackData> vfxTracks;
     std::vector<CinematicCameraShot> cameraShots;

@@ -736,7 +736,7 @@ void SceneValidator::CheckFloorPenetrations() {
         const Object3d* object = objectPtr.get();
         if (!object || IsEditorOnlyObject(object) || object->GetClassName() != "InvisibleBox") continue;
         if (object->GetColliderConfig().type == ColliderType::kNone) continue;
-        if ((object->GetCollisionAttribute() & kGround) == 0) continue;
+        if ((object->GetCollisionAttribute() & CollisionCategories::Get("ground")) == 0) continue;
 
         const std::string& name = object->GetName();
         if (name.find("WallCollision") != std::string::npos || name.find("Trigger") != std::string::npos) continue;
@@ -827,7 +827,7 @@ std::vector<SceneValidator::AuditCollider> SceneValidator::CollectAuditColliders
         const bool structuralName = ContainsAnyToken(name, {
             "Floor", "Block", "Gate", "Barrier", "Platform", "Pillar", "Wall", "Bridge", "Glass"
         });
-        if ((attribute & kGround) == 0 && object->GetClassName() != "InvisibleBox" &&
+        if ((attribute & CollisionCategories::Get("ground")) == 0 && object->GetClassName() != "InvisibleBox" &&
             !structuralGimmick && !structuralName) {
             continue;
         }
@@ -835,8 +835,8 @@ std::vector<SceneValidator::AuditCollider> SceneValidator::CollectAuditColliders
         AuditCollider collider;
         collider.object = object;
         collider.bounds = GetAuditBounds(object);
-        collider.isGround = (attribute & kGround) != 0;
-        collider.isTrigger = (attribute & kTrigger) != 0 || name.find("Trigger") != std::string::npos;
+        collider.isGround = (attribute & CollisionCategories::Get("ground")) != 0;
+        collider.isTrigger = (attribute & CollisionCategories::Get("trigger")) != 0 || name.find("Trigger") != std::string::npos;
         collider.isDynamic = !object->GetRecordPathName().empty() ||
             gimmickType == "RotatingFloor" || gimmickType == "RotatingPillar";
         result.push_back(collider);
@@ -1034,6 +1034,7 @@ void SceneValidator::CheckDynamicPathOverlaps() {
     const std::vector<AuditCollider> colliders = CollectAuditColliders();
     const int sampleCount = std::clamp(dynamicSampleCount_, 4, 32);
 
+    // 移動経路の静的監査に使う時刻（秒）付き姿勢。実ゲームの全更新を実行した結果ではない。
     struct SamplePose {
         Vector3 position{};
         Vector3 rotation{};
@@ -1120,6 +1121,7 @@ void SceneValidator::CheckDynamicPathOverlaps() {
             }
         }
 
+        // 同一相手への候補接触から代表を残す。対象は借用し、検出時刻と検査した OBB を保持する。
         struct BestHit {
             const Object3d* other = nullptr;
             OBB movingBounds{};
@@ -1207,6 +1209,7 @@ Object3d* SceneValidator::FindObjectByName(const std::string& name) const {
     }
     return nullptr;
 }
+
 Object3d* SceneValidator::FindObjectByGuid(const std::string& guid, const std::string& fallbackName) const {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     if (!guid.empty()) {
@@ -1299,6 +1302,7 @@ void SceneValidator::DrawFixPreview(Issue& issue) {
 #endif
 }
 
+// 選択された修正を一つの Undo グループへまとめ、適用後は最新のシーン状態で再監査します。
 void SceneValidator::ApplySelectedFixes() {
     std::vector<std::size_t> selected;
     for (std::size_t index = 0; index < issues_.size(); ++index) {
@@ -1350,6 +1354,8 @@ bool SceneValidator::ApplyIssueFix(std::size_t issueIndex) {
     return true;
 }
 
+// GUID を優先して修正対象を再解決します。Undo/Redo でも現在のオブジェクトへ適用するため、
+// 監査時の Object3d* を履歴に捕まえません。
 bool SceneValidator::ApplyFixState(
     const std::string& objectGuid, const std::string& objectName,
     FixKind kind, const FixState& state) {
@@ -1399,6 +1405,7 @@ std::vector<std::string> SceneValidator::FindAssetCandidates(
     const std::string& missingValue, bool modelAsset, std::size_t maxCount) const {
     const auto& assets = AssetDatabase::GetInstance()->GetAssets();
     const std::string wanted = FileStemLower(missingValue);
+    // 欠落した参照名の置換候補と類似度。適用前に利用者が候補を確認する。
     struct ScoredCandidate {
         std::string value;
         int score = 0;

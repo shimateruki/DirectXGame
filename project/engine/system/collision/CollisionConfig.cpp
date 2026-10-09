@@ -1,8 +1,210 @@
 #include "CollisionConfig.h"
 #include "engine/utility/math/Math.h"
+#include "json.hpp"
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <limits>
+#include <unordered_map>
+#include <unordered_set>
+#include <Windows.h>
+
+namespace {
+constexpr const char* kCategoryPath = "Resources/json/collision/categories.json";
+// 古いシーンの数値マスクを読むための対応表。新しいカテゴリ定義には使いません。
+constexpr std::array<std::pair<const char*, unsigned>, 9> kLegacyCategories = {{
+    {"player", 0}, {"enemy", 1}, {"ground", 2}, {"player_bullet", 3},
+    {"trigger", 4}, {"map_block", 5}, {"player_attack", 6},
+    {"enemy_attack", 7}, {"hook_anchor", 8},
+}};
+
+struct CategoryState {
+    struct StringHash {
+        using is_transparent = void;
+        size_t operator()(std::string_view value) const noexcept {
+            return std::hash<std::string_view>{}(value);
+        }
+    };
+    std::vector<CollisionCategoryDefinition> definitions;
+    std::unordered_map<std::string, uint32_t, StringHash, std::equal_to<>> bitsById;
+    bool loadedFromJson = false;
+};
+
+void RebuildLookup(CategoryState& state) {
+    state.bitsById.clear();
+    for (const auto& definition : state.definitions) {
+        state.bitsById.emplace(definition.id, definition.bit);
+    }
+}
+
+bool IsValidId(const std::string& id) {
+    if (id.empty() || !std::islower(static_cast<unsigned char>(id[0]))) return false;
+    return std::all_of(id.begin() + 1, id.end(), [](unsigned char ch) {
+        return std::islower(ch) || std::isdigit(ch) || ch == '_';
+    });
+}
+
+bool LoadCategories(CategoryState& state) {
+    std::ifstream file(kCategoryPath, std::ios::binary);
+    if (!file) return false;
+    try {
+        const auto root = nlohmann::json::parse(file);
+        if (!root.is_object() || root.value("version", 0) != 1 ||
+            !root.contains("categories") || !root["categories"].is_array()) return false;
+
+        std::vector<CollisionCategoryDefinition> parsed;
+        std::unordered_set<std::string> ids;
+        uint32_t usedBits = 0;
+        for (const auto& item : root["categories"]) {
+            if (!item.is_object() || !item.contains("id") || !item["id"].is_string() ||
+                !item.contains("displayName") || !item["displayName"].is_string() ||
+                !item.contains("bitIndex") || !item["bitIndex"].is_number_integer()) return false;
+            const std::string id = item["id"].get<std::string>();
+            const std::string name = item["displayName"].get<std::string>();
+            const int index = item["bitIndex"].get<int>();
+            if (!IsValidId(id) || name.empty() || index < 0 || index >= 32 || !ids.insert(id).second) return false;
+            const uint32_t bit = uint32_t{1} << index;
+            if ((usedBits & bit) != 0) return false;
+            usedBits |= bit;
+            parsed.push_back({id, name, bit});
+        }
+        for (const auto& [id, ignoredIndex] : kLegacyCategories) {
+            if (ids.count(id) == 0) return false;
+        }
+        state.definitions = std::move(parsed);
+        RebuildLookup(state);
+        state.loadedFromJson = true;
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+CategoryState& Categories() {
+    static CategoryState state = [] {
+        CategoryState loaded;
+        if (!LoadCategories(loaded)) {
+            // 配布時にJSONが欠けても既存の判定だけは維持し、追加操作は失敗として知らせます。
+            for (const auto& [id, index] : kLegacyCategories) {
+                loaded.definitions.push_back({id, id, uint32_t{1} << index});
+            }
+            RebuildLookup(loaded);
+        }
+        return loaded;
+    }();
+    return state;
+}
+
+bool SaveCategories(const std::vector<CollisionCategoryDefinition>& definitions) {
+    namespace fs = std::filesystem;
+    const fs::path path(kCategoryPath);
+    std::error_code ec;
+    fs::create_directories(path.parent_path(), ec);
+    if (ec) return false;
+    nlohmann::json root;
+    root["version"] = 1;
+    root["categories"] = nlohmann::json::array();
+    for (const auto& definition : definitions) {
+        unsigned index = 0;
+        while ((definition.bit >> index) != 1u) ++index;
+        root["categories"].push_back({
+            {"id", definition.id}, {"displayName", definition.displayName}, {"bitIndex", index},
+        });
+    }
+    fs::path temporary = path;
+    temporary += L".tmp";
+    {
+        std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
+        if (!file) return false;
+        file << root.dump(2) << '\n';
+        if (!file.good()) return false;
+    }
+    if (!MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        fs::remove(temporary, ec);
+        return false;
+    }
+    return true;
+}
+} // namespace
+
+uint32_t CollisionCategories::Get(std::string_view id) {
+    const auto& lookup = Categories().bitsById;
+    const auto it = lookup.find(id);
+    return it == lookup.end() ? 0 : it->second;
+}
+
+std::vector<CollisionCategoryDefinition> CollisionCategories::GetDefinitions() {
+    return Categories().definitions;
+}
+
+bool CollisionCategories::IsDefinitionLoaded() {
+    return Categories().loadedFromJson;
+}
+
+bool CollisionCategories::Add(const std::string& id, const std::string& displayName, std::string* error) {
+    auto fail = [error](const char* message) {
+        if (error) *error = message;
+        return false;
+    };
+    if (!IsValidId(id) || displayName.empty()) return fail("IDは英小文字で始まる英小文字・数字・_、表示名は空欄不可です。");
+    auto& definitions = Categories().definitions;
+    if (!Categories().loadedFromJson) return fail("カテゴリ定義JSONを読み込めません。ファイルを確認してください。");
+    if (Get(id) != 0) return fail("同じIDのカテゴリが既に存在します。");
+    uint32_t used = 0;
+    for (const auto& definition : definitions) used |= definition.bit;
+    uint32_t freeBit = 0;
+    for (unsigned index = 0; index < 32; ++index) {
+        const uint32_t candidate = uint32_t{1} << index;
+        if ((used & candidate) == 0) { freeBit = candidate; break; }
+    }
+    if (freeBit == 0) return fail("32個の衝突カテゴリを使い切っています。");
+    auto updated = definitions;
+    updated.push_back({id, displayName, freeBit});
+    if (!SaveCategories(updated)) return fail("カテゴリ定義JSONへの保存に失敗しました。");
+    definitions = std::move(updated);
+    RebuildLookup(Categories());
+    if (error) error->clear();
+    return true;
+}
+
+uint32_t CollisionCategories::FromLegacyMask(uint32_t legacyMask) {
+    uint32_t resolved = legacyMask & ~((uint32_t{1} << 9) - 1);
+    for (const auto& [id, index] : kLegacyCategories) {
+        if ((legacyMask & (uint32_t{1} << index)) != 0) resolved |= Get(id);
+    }
+    return resolved;
+}
+
+std::vector<std::string> CollisionCategories::GetIds(uint32_t mask) {
+    std::vector<std::string> ids;
+    for (const auto& definition : Categories().definitions) {
+        if ((mask & definition.bit) != 0) ids.push_back(definition.id);
+    }
+    return ids;
+}
+
+uint32_t CollisionCategories::FromIds(const std::vector<std::string>& ids) {
+    uint32_t mask = 0;
+    for (const auto& id : ids) mask |= Get(id);
+    return mask;
+}
+
+uint32_t CollisionCategories::GetKnownMask() {
+    uint32_t mask = 0;
+    for (const auto& definition : Categories().definitions) mask |= definition.bit;
+    return mask;
+}
+
+uint32_t CollisionCategories::GetDefaultGameplayMask() {
+    uint32_t mask = 0;
+    for (const auto& [id, index] : kLegacyCategories) {
+        if (index < 8) mask |= Get(id);
+    }
+    return mask;
+}
 
 // [1] AABB vs AABB 判定
 CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
@@ -283,6 +485,7 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     info.normal = minAxis;
     return info;
 }
+
 // ========================================================================
 // AABB vs OBB 衝突判定
 // ========================================================================
@@ -299,6 +502,7 @@ CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
     // OBB同士として判定
     return CheckOBBCollision(obbA, b);
 }
+
 // -----------------------------------------------------------------
 // Ring vs Sphere
 // -----------------------------------------------------------------

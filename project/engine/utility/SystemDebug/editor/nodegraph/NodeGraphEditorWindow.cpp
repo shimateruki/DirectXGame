@@ -674,5 +674,3 @@ NodeData* NodeGraphEditorWindow::GetSelectedNode() {
     return graph_.FindNode(selectedNodeId_);
 }
 
-
-

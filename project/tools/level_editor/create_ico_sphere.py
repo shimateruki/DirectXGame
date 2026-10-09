@@ -1,3 +1,5 @@
+"""Blender の操作履歴に残る ICO 球追加オペレータを登録する。"""
+
 import bpy
 
 class MYADDON_OT_create_ico_sphere(bpy.types.Operator):

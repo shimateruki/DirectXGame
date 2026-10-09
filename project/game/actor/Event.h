@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include "engine/utility/math/Math.h"
 #include <string>
 class Object3d;
@@ -8,9 +8,9 @@ class Bullet;
 /// </summary>
 // PlayerHitEventは、プレイヤーが何かに接触したときの通知データです。
 struct PlayerHitEvent {
-    Object3d* me = nullptr;        
+    Object3d* me = nullptr;
     Object3d* hitObject = nullptr; // ぶつかった相手（罠、アイテムなど）
-    Vector3 normal = { 0,0,0 };
+    Vector3 normal = {0, 0, 0};
 };
 
 // BulletHitEventは、弾がObject3dへ当たったときの通知データです。
@@ -43,38 +43,41 @@ struct StatusEffectApplication {
     float tickDamage = 0.0f;
     std::string vfxPreset;
 
-    bool IsValid() const {
-        return type != StatusEffectType::None && duration > 0.0f;
-    }
+    bool IsValid() const { return type != StatusEffectType::None && duration > 0.0f; }
 };
 
 // DamageEventは、ダメージ対象、攻撃者、ダメージ量、ノックバックをまとめます。
 struct DamageEvent {
-    Object3d* target = nullptr;   // ダメージを受ける人
-    Object3d* attacker = nullptr; // 攻撃した人
-    float damageAmount = 0.0f;    // ダメージ量
-    Vector3 knockbackVelocity = { 0,0,0 }; // 追加：吹き飛ばしベクトル
-    float invincibilityDuration = 1.0f; // 被弾後に操作を守る無敵時間
+    Object3d* target = nullptr;            // ダメージを受ける人
+    Object3d* attacker = nullptr;          // 攻撃した人
+    float damageAmount = 0.0f;             // ダメージ量
+    Vector3 knockbackVelocity = {0, 0, 0}; // 追加：吹き飛ばしベクトル
+    float invincibilityDuration = 1.0f;    // 被弾後に操作を守る無敵時間
+    bool bypassPlayerInvincibility = false; // 強制攻撃だけ回避・被弾無敵を貫通します。演出中は引き続き無効です。
+    // プレイヤー専用の即死攻撃。攻撃力倍率によらず残りHPを全て減らします。
+    bool lethalPlayerDamage = false;
     DamageType damageType = DamageType::Physical;
     StatusEffectApplication statusEffect;
 };
 
+// 死亡した Player の借用参照を同期通知する。通知データが Player を所有するわけではない。
 struct PlayerDeathEvent {
     class Player* player;
 };
 
+// ジャンプ通知の発生元を借用する。イベントを保存して Player の寿命を延ばすものではない。
 struct PlayerJumpEvent {
     class Player* player = nullptr;
 };
 
 // EventTypeは、ゲーム内イベント通知の種類を表します。
 enum class EventType {
-    None = 0,       // なし
-    Damage,         // ダメージ
-    Warp,           // ワープ
-    Movie_Bridge,   // 映像演出
-    Checkpoint,     // 中間地点
-    Goal,           // ゴール
-    StageSelect,    // ステージセレクト
-    StarCoin,       // スターコイン
+    None = 0,     // なし
+    Damage,       // ダメージ
+    Warp,         // ワープ
+    Movie_Bridge, // 映像演出
+    Checkpoint,   // 中間地点
+    Goal,         // ゴール
+    StageSelect,  // ステージセレクト
+    StarCoin,     // スターコイン
 };

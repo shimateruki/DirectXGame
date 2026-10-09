@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "f779cb22109057b8b940ea52682eb13c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_CoasterApproach_soil.obj",
+  "version": 1
+}

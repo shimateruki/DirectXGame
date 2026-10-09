@@ -34,6 +34,7 @@ void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
     RefreshTextureList();
     RefreshJsonFileList();
 }
+
 void MeshEffectEditor::RefreshTextureList() {
     textureFileList_.clear();
     std::string path = "Resources/sprite/"; // テクスチャフォルダのパス
@@ -71,6 +72,7 @@ void MeshEffectEditor::RefreshTextureList() {
     }
     SyncTextureIndices();
 }
+
 void MeshEffectEditor::RefreshJsonFileList() {
     jsonFileList_.clear();
     std::string path = "Resources/json/effect/";
@@ -87,6 +89,7 @@ void MeshEffectEditor::RefreshJsonFileList() {
 
     currentJsonIndex_ = -1; // 初期状態は未選択（新規作成）
 }
+
 void MeshEffectEditor::Update(float deltaTime) {
     if (!sceneManager_) return;
 
@@ -318,6 +321,7 @@ void MeshEffectEditor::Update(float deltaTime) {
             events);
     }
 }
+
 void MeshEffectEditor::Draw() {
     if (!sceneManager_ || sceneManager_->IsTransitioning()) {
         return;
@@ -426,7 +430,7 @@ void MeshEffectEditor::DrawImGui() {
         previewEffect_->SetEasingType(editEasingType_);
     }
     ImGui::Separator();
-    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)", "12: 槍 (Lance)" };
+    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)", "12: 槍 (Lance)", "13: 地表の全域放電", "14: 空間の雷撃バースト" };
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
         previewEffect_->SetProceduralType(editProceduralType_);
 
@@ -471,7 +475,7 @@ void MeshEffectEditor::DrawImGui() {
         else if (editProceduralType_ == 6) {
             changed |= ImGui::DragFloat3("サイズ (W,H,D)", &previewEffect_->editBoxSize_.x, 0.1f);
         }
-        else if (editProceduralType_ == 7) {
+        else if (editProceduralType_ == 7 || editProceduralType_ == 13 || editProceduralType_ == 14) {
             changed |= ImGui::DragFloat2("サイズ (W,D)", &previewEffect_->editPlaneSize_.x, 0.1f);
         }
         else if (editProceduralType_ == 8) {
@@ -660,12 +664,15 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_SLIDERS_H " シェーダーパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragFloat2("スクロール速度", &editScrollSpeed_.x, 0.01f);
         ImGui::DragFloat("発光強度 (HDR)", &editIntensity_, 0.01f, 0.0f, 100.0f);
-        ImGui::SliderFloat("詠唱の光の流れ", &editChantFlowStrength_, 0.0f, 1.0f);
+        ImGui::SliderFloat(editProceduralType_ >= 13 ? "電流の走行量" : "詠唱の光の流れ", &editChantFlowStrength_, 0.0f, 1.0f);
         ImGui::SliderFloat("術者を巻く光帯", &editChantRibbonStrength_, 0.0f, 1.0f);
         ImGui::TextDisabled("平面の光の流れ／回転切りの光帯で有効。スクロール速度で流れを調整します。");
-        ImGui::SliderFloat("リング刃のエネルギー密度", &editRingEnergyStrength_, 0.0f, 1.0f);
-        ImGui::SliderFloat("リング刃の周回速度", &editRingSpinSpeed_, -40.0f, 40.0f);
-        ImGui::TextDisabled("トーラス形状で有効。輪郭に明暗を作り、発光部を周回させます。");
+        ImGui::SliderFloat(editProceduralType_ >= 13 ? "放電の密度" : "リング刃のエネルギー密度", &editRingEnergyStrength_, 0.0f, 1.0f);
+        ImGui::SliderFloat(editProceduralType_ >= 13 ? "雷撃の更新速度" : "リング刃の周回速度", &editRingSpinSpeed_, -40.0f, 40.0f);
+        if (editProceduralType_ >= 13)
+            ImGui::TextDisabled("放電形状はUVを流さず、分岐の更新と電流の走行で動きを作ります。");
+        else
+            ImGui::TextDisabled("トーラス形状で有効。輪郭に明暗を作り、発光部を周回させます。");
 
         ImGui::Separator();
 
@@ -762,6 +769,7 @@ void MeshEffectEditor::DrawImGui() {
     }
 #endif
 }
+
 // ==========================================
 // JSON 保存処理
 // ==========================================

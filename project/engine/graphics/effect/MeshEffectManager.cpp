@@ -15,6 +15,7 @@
 using json = nlohmann::json;
 
 namespace {
+// 解析済みのプリセットと取得できた更新時刻。時刻が一致するときだけ再読込を省く。
 struct EffectJsonCacheEntry {
     json data;
     std::filesystem::file_time_type writeTime{};
@@ -59,7 +60,31 @@ MeshEffectManager* MeshEffectManager::GetInstance() {
 }
 
 void MeshEffectManager::Initialize(Object3dCommon* common) {
+    // エフェクト自身も生成時のcommonを保持します。管理側のポインタだけを
+    // 差し替えると、前Sceneの描画基盤を参照したエフェクトが描画されます。
+    if (common_ != common) Clear();
     common_ = common;
+    timeScale_ = 1.0f;
+}
+
+void MeshEffectManager::ClearActiveEffects() {
+    // 所有物を消す前に、衝突管理とデバッグ表示の非所有参照を解除します。
+    for (const auto& effect : activeEffects_) {
+        // 編集途中で判定フラグをOFFにした場合も、以前の登録を残しません。
+        if (effect) CollisionManager::GetInstance()->RemoveObject(effect.get());
+    }
+    previewEffectForDebug_ = nullptr;
+    activeEffects_.clear();
+    effectScopes_.clear();
+    timelineScopes_.clear();
+    timelineOffsets_.clear();
+    updatedThisFrame_ = false;
+}
+
+void MeshEffectManager::Clear() {
+    ClearActiveEffects();
+    preloadedEffects_.clear();
+    common_ = nullptr;
     timeScale_ = 1.0f;
 }
 
@@ -182,6 +207,11 @@ void MeshEffectManager::Update(float deltaTime) {
 
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
+        const auto scope = effectScopes_.find(it->get());
+        if (scope != effectScopes_.end() && timelineScopes_.count(scope->second)) {
+            ++it; // 寿命も攻撃側が管理するので、一時停止中に勝手に消さない。
+            continue;
+        }
         if (!(*it)->IsPlaying()) {
             EffectObject3d* finishedEffect = it->get();
             if ((*it)->editHasCollision_) {
@@ -212,6 +242,11 @@ void MeshEffectManager::UpdateEditorPreviewStep(float deltaTime) {
 
 void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {
     for (auto& effect : activeEffects_) {
+        const auto scope = effectScopes_.find(effect.get());
+        if (scope != effectScopes_.end() && timelineScopes_.count(scope->second)) {
+            // 再生停止中でも、プレビューカメラを動かした結果は描画へ反映します。
+            effect->RefreshRenderCameraData();
+        }
         effect->Draw(pLight, sLight);
     }
 }
@@ -237,6 +272,7 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
     if (scopeId == kInvalidEffectScope) {
         return;
     }
+    timelineScopes_.erase(scopeId);
 
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
         EffectObject3d* effect = it->get();
@@ -253,9 +289,61 @@ void MeshEffectManager::StopEffectScope(EffectScopeId scopeId) {
             previewEffectForDebug_ = nullptr;
         }
         effectScopes_.erase(scopeIt);
+        timelineOffsets_.erase(effect);
         it = activeEffects_.erase(it);
     }
 }
+
+bool MeshEffectManager::StartTimelineEffect(EffectScopeId scopeId, const std::string& path) {
+    if (scopeId == kInvalidEffectScope) return false;
+    StopEffectScope(scopeId);
+    const size_t firstEffect = activeEffects_.size();
+    try {
+        SpawnEffectAtScoped(scopeId, path, {}, {}, {1, 1, 1});
+    } catch (const std::exception& exception) {
+        while (activeEffects_.size() > firstEffect) {
+            effectScopes_.erase(activeEffects_.back().get());
+            activeEffects_.pop_back();
+        }
+        StopEffectScope(scopeId);
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[AttackTimeline] " + path + ": " + exception.what());
+        return false;
+    }
+    bool found = false;
+    for (auto& effect : activeEffects_) {
+        const auto it = effectScopes_.find(effect.get());
+        if (it == effectScopes_.end() || it->second != scopeId) continue;
+        // 表示物のプリセットに衝突設定があっても、判定は専用トラックだけが担当します。
+        if (effect->editHasCollision_) CollisionManager::GetInstance()->RemoveObject(effect.get());
+        effect->editHasCollision_ = false;
+        effect->SetTargetObject(nullptr);
+        effect->SetAutoLoop(false);
+        timelineOffsets_[effect.get()] = {effect->GetTranslate(), effect->GetRotation()};
+        found = true;
+    }
+    if (found) timelineScopes_.insert(scopeId);
+    return found;
+}
+
+void MeshEffectManager::EvaluateTimelineEffect(EffectScopeId scopeId, float time, float duration,
+    const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+    if (!timelineScopes_.count(scopeId)) return;
+    for (auto& effect : activeEffects_) {
+        const auto it = effectScopes_.find(effect.get());
+        if (it == effectScopes_.end() || it->second != scopeId) continue;
+        effect->Play(duration);
+        effect->Update(std::clamp(time, 0.0f, duration));
+        // プリセット内部の位置・スケールアニメーションに重ねず、制作者のキーを優先します。
+        const auto& offset = timelineOffsets_.at(effect.get());
+        // VolumeModeの交差面・厚み用の相対配置を残して、部品全体を動かします。
+        effect->SetTranslate(Math::Transform(offset.position, Math::MakeAffineMatrix(scale, rotation, position)));
+        effect->SetRotation(rotation + offset.rotation);
+        effect->SetScale(scale);
+        effect->UpdateLocalMatrix();
+        effect->UpdateWorldMatrix();
+    }
+}
+
 void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale) {
     // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
     if (!common_) {
@@ -458,8 +546,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 effect->SetColliderConfig(cConfig);
 
                 // --- 属性とマスクの設定 ---
-                effect->SetCollisionAttribute(kPlayerAttack); // 例: kPlayerAttack 相当
-                effect->SetCollisionMask(kEnemy);      // 例: kEnemy 相当
+                effect->SetCollisionAttribute(CollisionCategories::Get("player_attack")); // 例: player_attack 相当
+                effect->SetCollisionMask(CollisionCategories::Get("enemy"));      // 例: enemy 相当
 
                 CollisionManager::GetInstance()->AddObject(effect.get());
             }

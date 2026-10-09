@@ -201,6 +201,71 @@ float4 main(VertexOutput input) : SV_TARGET
             mainColor.r = max(mainColor.r, mainColor.a);
     }
 
+    if (proceduralType == 13 || proceduralType == 14)
+    {
+        // Keep the field anchored in world space. Only the bolt topology and
+        // travelling energy packets change; the surface never slides as a decal.
+        float phase = time * max(abs(ringSpinSpeed), 1.0f);
+        float epoch = floor(phase);
+        float core = 0.0f;
+        float halo = 0.0f;
+        float density = saturate(ringEnergyStrength);
+        if (proceduralType == 13)
+        {
+            float2 grid = input.uv * 9.0f;
+            float2 cell = floor(grid);
+            float2 local = frac(grid);
+            float seed = hash(cell + 19.0f);
+            float activity = smoothstep(1.0f - density, 1.06f - density,
+                hash(cell + epoch * 0.17f));
+            [unroll] for (int branch = 0; branch < 3; ++branch)
+            {
+                float2 q = branch == 1 ? local.yx : local;
+                float segment = q.x * 7.0f;
+                float left = floor(segment);
+                float y0 = hash(cell + float2(left + branch * 23.0f, epoch)) * 0.72f + 0.14f;
+                float y1 = hash(cell + float2(left + 1.0f + branch * 23.0f, epoch)) * 0.72f + 0.14f;
+                float bolt = abs(q.y - lerp(y0, y1, frac(segment)));
+                float packet = frac(q.x - time * (1.7f + seed) + seed + branch * 0.31f);
+                float travel = lerp(0.42f, 1.0f, 1.0f - smoothstep(0.04f, 0.38f, packet));
+                float flicker = 0.55f + 0.45f * hash(cell + float2(floor(phase * 2.0f), branch));
+                float energy = activity * flicker * lerp(1.0f, travel, chantFlowStrength);
+                float aa = max(fwidth(bolt), 0.003f);
+                core = max(core, (1.0f - smoothstep(0.006f, 0.014f + aa, bolt)) * energy);
+                halo = max(halo, exp(-bolt * 27.0f) * energy);
+            }
+            float edge = 1.0f - smoothstep(0.90f, 1.0f, length((input.uv - 0.5f) * 2.0f));
+            core *= edge;
+            halo *= edge;
+        }
+        else
+        {
+            // Layer jagged radial bolts with sharp impact rays and a soft red
+            // energy volume. Billboards make the burst readable from every angle.
+            float2 p = (input.uv - 0.5f) * 2.0f;
+            float radius = length(p);
+            float angle = atan2(p.y, p.x);
+            float spoke = angle / 6.2831853f * 11.0f;
+            float index = floor(spoke + 0.5f);
+            float segment = radius * 9.0f;
+            float j0 = hash(float2(floor(segment), index + epoch * 13.0f)) - 0.5f;
+            float j1 = hash(float2(floor(segment) + 1.0f, index + epoch * 13.0f)) - 0.5f;
+            float jag = lerp(j0, j1, frac(segment)) * 0.48f;
+            float bolt = abs(spoke - index - jag) * max(radius, 0.12f);
+            float fade = 1.0f - smoothstep(0.63f, 1.0f, radius);
+            float packet = frac(radius * 0.65f - time * 2.8f + hash(float2(index, 7.0f)));
+            float energy = (0.55f + 0.45f * (1.0f - smoothstep(0.0f, 0.4f, packet))) * fade;
+            float aa = max(fwidth(bolt), 0.002f);
+            core = (1.0f - smoothstep(0.008f, 0.024f + aa, bolt)) * energy;
+            float ray = pow(saturate(1.0f - abs(spoke - index) * 6.0f), 8.0f) * fade;
+            core = max(core, ray * (0.3f + 0.7f * density));
+            halo = exp(-bolt * 22.0f) * fade + exp(-radius * radius * 6.0f) * 0.20f;
+        }
+        alphaMask = saturate(core * 0.95f + halo * 0.58f);
+        distMask = alphaMask;
+        mainColor.rgb = lerp(float3(1.0f, 0.012f, 0.006f), float3(1.8f, 1.15f, 0.95f), saturate(core * 1.7f));
+    }
+
     // A polar flow mask turns a simple plane into rotating ground energy.
     // It is opt-in so existing mesh effects keep their authored appearance.
     if (chantFlowStrength > 0.001f && proceduralType == 7)

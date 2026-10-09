@@ -6,12 +6,13 @@
 
 // 倒れ姿勢 → 起き上がり → 画面右への退場を一つの状態機械で管理する。
 class GameOverSlimeAnimator {
-public:
+  public:
     void Reset(Object3d* slime) {
         timer_ = exitTimer_ = 0.0f;
         phase_ = Phase::Downed;
         hasBaseTransform_ = false;
-        if (!slime) return;
+        if (!slime)
+            return;
         basePosition_ = slime->GetTranslate();
         baseScale_ = slime->GetScale();
         baseRotation_ = slime->GetRotation();
@@ -24,7 +25,8 @@ public:
         Update(slime, 0.0f);
     }
     void Update(Object3d* slime, float deltaTime) {
-        if (!slime || !hasBaseTransform_) return;
+        if (!slime || !hasBaseTransform_)
+            return;
         const float dt = std::isfinite(deltaTime) ? (std::max)(deltaTime, 0.0f) : 0.0f;
         timer_ += dt;
         if (phase_ != Phase::Downed) {
@@ -35,14 +37,18 @@ public:
         currentPosition_ = basePosition_;
         // 顔(-Z)を床へ伏せ、床の法線になるローカルZを潰す。
         // 上下反転だけでは開いた目が見えるため、倒れ姿勢はうつ伏せにする。
-        currentScale_ = {baseScale_.x * (1.32f - breathe * 0.003f),
-            baseScale_.y * 1.08f, baseScale_.z * (0.22f + breathe * 0.003f)};
+        currentScale_ = {baseScale_.x * (1.32f - breathe * 0.003f), baseScale_.y * 1.08f,
+                         baseScale_.z * (0.22f + breathe * 0.003f)};
         currentRotation_ = {-kPi * 0.5f, baseRotation_.y, 0.0f};
         ApplyGroundedPose(slime, 0.0f);
     }
     void StartExitRight(Object3d* slime, const Vector3& direction, float distance) {
-        if (phase_ != Phase::Downed) return;
-        if (!slime || !hasBaseTransform_) { phase_ = Phase::ExitFinished; return; }
+        if (phase_ != Phase::Downed)
+            return;
+        if (!slime || !hasBaseTransform_) {
+            phase_ = Phase::ExitFinished;
+            return;
+        }
         exitTimer_ = 0.0f;
         exitStartScale_ = currentScale_;
         exitStartRotation_ = currentRotation_;
@@ -51,7 +57,8 @@ public:
         if (std::isfinite(length) && length > 0.001f) {
             exitDirection_.x /= length;
             exitDirection_.z /= length;
-        } else exitDirection_ = {1.0f, 0.0f, 0.0f};
+        } else
+            exitDirection_ = {1.0f, 0.0f, 0.0f};
         exitDistance_ = std::isfinite(distance) ? (std::max)(distance, 0.0f) : 10.0f;
         phase_ = Phase::ExitRight;
     }
@@ -65,11 +72,14 @@ public:
     static constexpr float GetImpactTime() { return 0.0f; }
     bool HasBaseTransform() const { return hasBaseTransform_; }
 
-private:
+  private:
     enum class Phase { Downed, ExitRight, ExitFinished };
     static constexpr float kPi = 3.14159265f;
     static float Clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
-    static float Smooth(float v) { v = Clamp01(v); return v * v * (3.0f - 2.0f * v); }
+    static float Smooth(float v) {
+        v = Clamp01(v);
+        return v * v * (3.0f - 2.0f * v);
+    }
     void ApplyGroundedPose(Object3d* slime, float hop) {
         slime->SetScale(currentScale_);
         slime->SetRotation(currentRotation_);
@@ -85,11 +95,12 @@ private:
         slime->UpdateWorldMatrix(false);
         const AABB bounds = slime->GetModelWorldAABB();
         dizzyAnchor_ = {(bounds.min.x + bounds.max.x) * 0.5f, bounds.max.y + 0.14f,
-            (bounds.min.z + bounds.max.z) * 0.5f};
+                        (bounds.min.z + bounds.max.z) * 0.5f};
         slime->RefreshRenderCameraData();
     }
     void UpdateExitRight(Object3d* slime, float dt) {
-        if (phase_ == Phase::ExitFinished) return;
+        if (phase_ == Phase::ExitFinished)
+            return;
         exitTimer_ += dt;
         constexpr float standDuration = 0.80f;
         constexpr float turnDuration = 0.22f;
@@ -118,11 +129,12 @@ private:
             currentScale_.y *= 1.0f + std::abs(bounce) * 0.06f;
         }
         ApplyGroundedPose(slime, hop);
-        if (exitTimer_ >= standDuration + turnDuration + runDuration) phase_ = Phase::ExitFinished;
+        if (exitTimer_ >= standDuration + turnDuration + runDuration)
+            phase_ = Phase::ExitFinished;
     }
-    Vector3 basePosition_{}, baseScale_{1,1,1}, baseRotation_{};
-    Vector3 currentPosition_{}, currentScale_{1,1,1}, currentRotation_{}, dizzyAnchor_{};
-    Vector3 exitStartScale_{1,1,1}, exitStartRotation_{}, exitDirection_{1,0,0};
+    Vector3 basePosition_{}, baseScale_{1, 1, 1}, baseRotation_{};
+    Vector3 currentPosition_{}, currentScale_{1, 1, 1}, currentRotation_{}, dizzyAnchor_{};
+    Vector3 exitStartScale_{1, 1, 1}, exitStartRotation_{}, exitDirection_{1, 0, 0};
     float floorY_ = 0.0f, exitDistance_ = 10.0f, timer_ = 0.0f, exitTimer_ = 0.0f;
     bool hasBaseTransform_ = false;
     Phase phase_ = Phase::Downed;

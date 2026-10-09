@@ -7,7 +7,6 @@
 
 // 基本移動系の状態をまとめています。
 
-
 // ========================================================
 // 待機状態 (Idle)
 // ========================================================
@@ -21,7 +20,8 @@ void PlayerStateIdle::Enter(Player* player) {
 
 void PlayerStateIdle::Update(Player* player, float deltaTime) {
     (void)deltaTime;
-    if (!player) return;
+    if (!player)
+        return;
 
     if (!player->IsGrounded()) {
         player->ChangeState(std::make_unique<PlayerStateJump>());
@@ -50,7 +50,8 @@ void PlayerStateRun::Enter(Player* player) {
 
 void PlayerStateRun::Update(Player* player, float deltaTime) {
     (void)deltaTime;
-    if (!player) return;
+    if (!player)
+        return;
 
     if (!player->IsGrounded()) {
         player->ChangeState(std::make_unique<PlayerStateJump>());
@@ -79,7 +80,8 @@ void PlayerStateJump::Enter(Player* player) {
 
 void PlayerStateJump::Update(Player* player, float deltaTime) {
     (void)deltaTime;
-    if (!player) return;
+    if (!player)
+        return;
 
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
 
@@ -104,7 +106,8 @@ void PlayerStateDash::Enter(Player* player) {
 }
 
 void PlayerStateDash::Update(Player* player, float deltaTime) {
-    if (!player) return;
+    if (!player)
+        return;
 
     // 約0.2秒(ダッシュ時間)経過で Idle へ戻す
     timer_ += deltaTime;
@@ -115,6 +118,6 @@ void PlayerStateDash::Update(Player* player, float deltaTime) {
 
 void PlayerStateDash::Exit(Player* player) {
     if (player) {
-        player->TriggerSlimeImpulse({ 2.55f, 1.25f, 2.55f }, 0.16f);
+        player->TriggerSlimeImpulse({2.55f, 1.25f, 2.55f}, 0.16f);
     }
 }

@@ -65,6 +65,7 @@ void EnsurePrefabObjectIds(json& node, const std::string& assetId, const std::st
 
 void EnsurePrefabVariantFields(json& asset);
 
+// Prefab 内の元ノード位置。親 ID と同階層内の順番を保持して差分適用に使います。
 struct PrefabNodeLocation {
     const json* node = nullptr;
     std::string parentObjectId;
@@ -97,6 +98,7 @@ void MigrateLegacyComponentOverrides(json& asset);
 
 json NormalizePrefabAsset(const std::string& prefabName, const json& value);
 
+// 一回の Prefab 展開で共有するアセット ID とインスタンス ID です。
 struct PrefabCreationContext {
     std::string prefabName;
     std::string assetId;

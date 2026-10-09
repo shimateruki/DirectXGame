@@ -4,7 +4,7 @@
 
 // 全てのギミックが共有する初期化、更新、衝突処理の基底クラス
 class BaseGimmick : public Object3d {
-public:
+  public:
     virtual ~BaseGimmick() = default;
 
     // モデル名を指定してギミック本体を初期化する

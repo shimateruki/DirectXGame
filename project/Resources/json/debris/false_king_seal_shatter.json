@@ -1,0 +1,55 @@
+{
+  "name": "false_king_seal_shatter",
+  "modelNames": [
+    "Effects/prism_crystal_fragment_a",
+    "Effects/prism_crystal_fragment_b",
+    "Effects/prism_crystal_fragment_c"
+  ],
+  "spawnCount": 18,
+  "spawnOffset": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "baseDirection": [
+    0.0,
+    0.0,
+    1.0
+  ],
+  "horizontalSpread": 1.65,
+  "verticalMin": 0.18,
+  "verticalMax": 1.2,
+  "speedMin": 5,
+  "speedMax": 11,
+  "angularSpeedMin": 8.0,
+  "angularSpeedMax": 20.0,
+  "scaleMin": 0.24,
+  "scaleMax": 0.68,
+  "lifetimeMin": 1.1,
+  "lifetimeMax": 1.8,
+  "gravity": 14,
+  "airDrag": 0.08,
+  "restitution": 0.24,
+  "friction": 0.74,
+  "groundY": 0.0,
+  "fadeStartRatio": 0.58,
+  "color": [
+    0.1,
+    0.015,
+    0.023,
+    1
+  ],
+  "materialType": 0,
+  "roughness": 0.24,
+  "metallic": 0.66,
+  "enableEnvMap": true,
+  "envIntensity": 1.18,
+  "emissive": 0.5,
+  "collideGround": true,
+  "shrinkOnFade": true,
+  "spawnBoxHalfExtents": [
+    0.6,
+    1.5,
+    0.6
+  ]
+}

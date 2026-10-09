@@ -52,7 +52,7 @@ const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
     }
 }
 #endif
-}
+} // namespace
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: GamePlay");
@@ -95,7 +95,8 @@ void GamePlayScene::DrawImGui() {
         ImGui::Separator();
 
         std::vector<const char*> stageNames;
-        for (const auto& s : stages) stageNames.push_back(s.name.c_str());
+        for (const auto& s : stages)
+            stageNames.push_back(s.name.c_str());
 
         if (ImGui::Combo("Select Stage", &currentIndex, stageNames.data(), (int)stageNames.size())) {
             StageManager::GetInstance()->SetCurrentStage(currentIndex);
@@ -112,8 +113,10 @@ void GamePlayScene::DrawImGui() {
 
         ImGui::Text("Stage ID: %d", currentStage);
         ImGui::SameLine();
-        if (isCleared) ImGui::TextColored(ImVec4(0, 1, 0, 1), "[ CLEARED ]");
-        else ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "[ NOT CLEARED ]");
+        if (isCleared)
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "[ CLEARED ]");
+        else
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "[ NOT CLEARED ]");
 
         ImGui::Separator();
         ImGui::Text("Star Coins (Session):");
@@ -121,11 +124,11 @@ void GamePlayScene::DrawImGui() {
             ImGui::SameLine();
             if (sessionStarCoins_[i]) {
                 ImGui::TextColored(ImVec4(1, 0.9f, 0, 1), ICON_FA_STAR);
-            }
-            else {
+            } else {
                 ImGui::TextDisabled(ICON_FA_STAR);
             }
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Star Coin %d", i);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Star Coin %d", i);
         }
     }
 
@@ -133,7 +136,7 @@ void GamePlayScene::DrawImGui() {
         if (player_) {
             Vector3 pos = player_->GetTranslate();
             ImGui::Text("Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
-            
+
             float hp = player_->GetHp();
             float maxHp = player_->GetMaxHp();
             ImGui::ProgressBar(hp / maxHp, ImVec2(-1, 0), "HP");
@@ -166,15 +169,11 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
             ImGui::Text("デバッグ移動");
-            const bool debugRuntimePlaying =
-                GetSceneManager() && GetSceneManager()->IsPlaying();
-            const bool teleportRequestPending =
-                pendingDebugTeleportDestination_ != DebugTeleportDestination::None;
+            const bool debugRuntimePlaying = GetSceneManager() && GetSceneManager()->IsPlaying();
+            const bool teleportRequestPending = pendingDebugTeleportDestination_ != DebugTeleportDestination::None;
             const bool teleportStateReady =
                 (debugRuntimePlaying || EditorCommandRegistry::GetInstance()->CanExecute(EditorCommandId::Play)) &&
-                !player_->isDead &&
-                !isGoal_ &&
-                !teleportRequestPending;
+                !player_->isDead && !isGoal_ && !teleportRequestPending;
             const bool hasPrismAnchor = FindDebugObjectByName(kDebugPrismArenaAnchorName) != nullptr;
             const bool hasGoalAnchor = FindDebugObjectByName(kDebugGoalEntryAnchorName) != nullptr;
             const float teleportSpacing = ImGui::GetStyle().ItemSpacing.x;
@@ -195,7 +194,8 @@ void GamePlayScene::DrawImGui() {
             if (!teleportStateReady || !hasGoalAnchor) {
                 ImGui::BeginDisabled();
             }
-            if (ImGui::Button(ICON_FA_FLAG_CHECKERED " ゴール前へ##DebugTeleport", ImVec2(teleportButtonWidth, 32.0f))) {
+            if (ImGui::Button(ICON_FA_FLAG_CHECKERED " ゴール前へ##DebugTeleport",
+                              ImVec2(teleportButtonWidth, 32.0f))) {
                 QueueDebugTeleport(DebugTeleportDestination::GoalApproach);
             }
             if (!teleportStateReady || !hasGoalAnchor) {
@@ -247,8 +247,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::EndDisabled();
             }
             ImGui::TextDisabled("吸収演出を省略し、能力実装済みのスライムは固有技まで直接確認できます。");
-        }
-        else {
+        } else {
             ImGui::TextDisabled("Player not found");
         }
     }
@@ -260,10 +259,8 @@ void GamePlayScene::DrawImGui() {
             const float bossMaxHp = prismBoss->GetEncounterMaximumHp();
             char bossHpLabel[64]{};
             std::snprintf(bossHpLabel, sizeof(bossHpLabel), "HP %.0f / %.0f", bossHp, bossMaxHp);
-            ImGui::ProgressBar(
-                std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f),
-                ImVec2(-1.0f, 0.0f),
-                bossHpLabel);
+            ImGui::ProgressBar(std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f),
+                               bossHpLabel);
 
             if (ImGui::Button(ICON_FA_SKULL " 撃破演出を確認##DebugDefeatPrismSlime", ImVec2(-1.0f, 32.0f))) {
                 prismBoss->TriggerDebugDefeat();
@@ -281,35 +278,41 @@ void GamePlayScene::DrawImGui() {
             const float bossMaxHp = falseKing->GetEncounterMaximumHp();
             char bossHpLabel[64]{};
             std::snprintf(bossHpLabel, sizeof(bossHpLabel), "HP %.0f / %.0f", bossHp, bossMaxHp);
-            ImGui::ProgressBar(
-                std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f),
-                ImVec2(-1.0f, 0.0f),
-                bossHpLabel);
+            ImGui::ProgressBar(std::clamp(bossHp / (std::max)(bossMaxHp, 1.0f), 0.0f, 1.0f), ImVec2(-1.0f, 0.0f),
+                               bossHpLabel);
 
-            ImGui::Text("現在: 第%d形態 / 封印 %d / 3",
-                falseKing->GetBattlePhase(), falseKing->GetBrokenSealCount());
+            ImGui::Text("現在: 第%d形態 / 封印 %d / 3", falseKing->GetBattlePhase(), falseKing->GetBrokenSealCount());
             ImGui::TextDisabled("見たい区間を選ぶと、実際の形態遷移処理を通して再生します。");
 
             const bool canEndPhaseOne = falseKing->CanTriggerDebugPhaseTwoTransition();
-            if (!canEndPhaseOne) ImGui::BeginDisabled();
-            if (ImGui::Button(ICON_FA_PLAY " 第一形態を終了（形態移行を見る）##DebugFalseKingPhase2", ImVec2(-1.0f, 34.0f))) {
+            if (!canEndPhaseOne)
+                ImGui::BeginDisabled();
+            if (ImGui::Button(ICON_FA_PLAY " 第一形態を終了（形態移行を見る）##DebugFalseKingPhase2",
+                              ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugPhaseTwoTransition();
             }
-            if (!canEndPhaseOne) ImGui::EndDisabled();
+            if (!canEndPhaseOne)
+                ImGui::EndDisabled();
 
             const bool canStartInterlude = falseKing->CanTriggerDebugCrownInterlude();
-            if (!canStartInterlude) ImGui::BeginDisabled();
-            if (ImGui::Button(ICON_FA_CROWN " 封印戦を終了（王冠継承・脱出を見る）##DebugFalseKingInterlude", ImVec2(-1.0f, 34.0f))) {
+            if (!canStartInterlude)
+                ImGui::BeginDisabled();
+            if (ImGui::Button(ICON_FA_CROWN " 封印戦を終了（王冠継承・脱出を見る）##DebugFalseKingInterlude",
+                              ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugCrownInterlude();
             }
-            if (!canStartInterlude) ImGui::EndDisabled();
+            if (!canStartInterlude)
+                ImGui::EndDisabled();
 
             const bool canDefeatFinalPhase = falseKing->CanTriggerDebugFinalDefeat();
-            if (!canDefeatFinalPhase) ImGui::BeginDisabled();
-            if (ImGui::Button(ICON_FA_SKULL " 最終形態を撃破（撃破演出を見る）##DebugDefeatFalseKing", ImVec2(-1.0f, 34.0f))) {
+            if (!canDefeatFinalPhase)
+                ImGui::BeginDisabled();
+            if (ImGui::Button(ICON_FA_SKULL " 最終形態を撃破（撃破演出を見る）##DebugDefeatFalseKing",
+                              ImVec2(-1.0f, 34.0f))) {
                 falseKing->TriggerDebugDefeat();
             }
-            if (!canDefeatFinalPhase) ImGui::EndDisabled();
+            if (!canDefeatFinalPhase)
+                ImGui::EndDisabled();
             ImGui::TextDisabled("上から順に確認できます。王冠継承・脱出は第1形態から直接再生することもできます。");
         } else {
             ImGui::TextDisabled("ステージ3のボス登場後に使用できます。");
@@ -322,12 +325,13 @@ void GamePlayScene::DrawImGui() {
         }
     }
 
-    if (saveIndicatorOverlay_ && ImGui::CollapsingHeader(ICON_FA_SAVE " Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (saveIndicatorOverlay_ &&
+        ImGui::CollapsingHeader(ICON_FA_SAVE " Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
         saveIndicatorOverlay_->DrawImGui();
     }
 
     DrawGoalPresentationEditor();
-    
+
     ImGui::Separator();
     ImGui::TextDisabled("※この項目は GamePlayScene::DrawImGui() で編集可能です");
 #endif
@@ -385,8 +389,8 @@ void GamePlayScene::QueueDebugTeleport(DebugTeleportDestination destination) {
 
     // 通常の再生開始を通して編集状態を保存した後、次の更新で移動します。
     if (!GetSceneManager() || !GetSceneManager()->IsPlaying()) {
-        if (!EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::Play) ||
-            !GetSceneManager() || !GetSceneManager()->IsPlaying()) {
+        if (!EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::Play) || !GetSceneManager() ||
+            !GetSceneManager()->IsPlaying()) {
             return;
         }
     }
@@ -417,18 +421,10 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
 
     switch (destination) {
     case DebugTeleportDestination::PrismArena:
-        TeleportPlayerToDebugTarget(
-            kDebugPrismArenaAnchorName,
-            { 18.0f, 0.0f, 5.0f },
-            kDebugPrismSlimeName,
-            "中ボス前");
+        TeleportPlayerToDebugTarget(kDebugPrismArenaAnchorName, {18.0f, 0.0f, 5.0f}, kDebugPrismSlimeName, "中ボス前");
         break;
     case DebugTeleportDestination::GoalApproach:
-        TeleportPlayerToDebugTarget(
-            kDebugGoalEntryAnchorName,
-            { 0.0f, 0.0f, 0.0f },
-            kDebugGoalName,
-            "ゴール前");
+        TeleportPlayerToDebugTarget(kDebugGoalEntryAnchorName, {0.0f, 0.0f, 0.0f}, kDebugGoalName, "ゴール前");
         break;
     case DebugTeleportDestination::None:
     default:
@@ -464,11 +460,8 @@ Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
     return nullptr;
 }
 
-bool GamePlayScene::TeleportPlayerToDebugTarget(
-    const char* anchorName,
-    const Vector3& anchorOffset,
-    const char* facingObjectName,
-    const char* destinationLabel) {
+bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const Vector3& anchorOffset,
+                                                const char* facingObjectName, const char* destinationLabel) {
     if (!player_ || player_->isDead || isGoal_) {
         DebugConsole::GetInstance()->AddLog("Debug teleport skipped: player is unavailable.");
         return false;
@@ -476,8 +469,8 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
 
     Object3d* anchor = FindDebugObjectByName(anchorName);
     if (!anchor) {
-        DebugConsole::GetInstance()->AddLog(
-            std::string("Debug teleport anchor not found: ") + (anchorName ? anchorName : "(null)"));
+        DebugConsole::GetInstance()->AddLog(std::string("Debug teleport anchor not found: ") +
+                                            (anchorName ? anchorName : "(null)"));
         return false;
     }
 
@@ -494,17 +487,17 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
         destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
     }
 
-    Vector3 facingDirection = { 1.0f, 0.0f, 0.0f };
+    Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
     if (Object3d* facingObject = FindDebugObjectByName(facingObjectName)) {
         facingDirection = facingObject->GetWorldPosition() - destination;
         facingDirection.y = 0.0f;
-        const float facingLength = std::sqrt(
-            facingDirection.x * facingDirection.x + facingDirection.z * facingDirection.z);
+        const float facingLength =
+            std::sqrt(facingDirection.x * facingDirection.x + facingDirection.z * facingDirection.z);
         if (facingLength > 0.001f) {
             facingDirection.x /= facingLength;
             facingDirection.z /= facingLength;
         } else {
-            facingDirection = { 1.0f, 0.0f, 0.0f };
+            facingDirection = {1.0f, 0.0f, 0.0f};
         }
     }
 
@@ -515,7 +508,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
     // プレイヤー内部の各コントローラーを一括解除し、次フレームの座標上書きを防ぎます。
     player_->DebugPrepareForTeleport();
     debugPlayerMorphSource_.reset();
-    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player_->SetVelocity({0.0f, 0.0f, 0.0f});
     player_->SetGrounded(false);
     player_->SetTranslate(destination);
     player_->SetRespawnPosition(destination);
@@ -538,21 +531,13 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(
         camera->SetInputEnabled(true);
         camera->SetFollowTarget(player_);
         camera->SetFollowMode(Camera::FollowMode::kAimable);
-        camera->SetRotation({
-            kDebugTeleportCameraPitch,
-            std::atan2(facingDirection.x, facingDirection.z),
-            0.0f });
-        camera->SnapToThirdPerson(
-            kDebugTeleportCameraDistance,
-            kDebugTeleportCameraHeight,
-            kDebugTeleportCameraPitch);
+        camera->SetRotation({kDebugTeleportCameraPitch, std::atan2(facingDirection.x, facingDirection.z), 0.0f});
+        camera->SnapToThirdPerson(kDebugTeleportCameraDistance, kDebugTeleportCameraHeight, kDebugTeleportCameraPitch);
         camera->Update(0.0f);
     }
 
-    DebugConsole::GetInstance()->AddLog(
-        std::string("Debug teleport completed: ") +
-        (destinationLabel ? destinationLabel : "unknown"));
+    DebugConsole::GetInstance()->AddLog(std::string("Debug teleport completed: ") +
+                                        (destinationLabel ? destinationLabel : "unknown"));
     return true;
 }
 #endif
-

@@ -186,6 +186,7 @@ class ObjBuilder:
         target_normal: Vec3,
         uvs: Sequence[Vec2] | None = None,
     ) -> None:
+        """指定法線へ向くよう頂点順を直し、面単位の法線・UVを OBJ に追加する。"""
         if len(points) < 3:
             raise ValueError("面には3頂点以上が必要です")
 
@@ -209,6 +210,7 @@ class ObjBuilder:
         self.faces.append((material, indices))
 
     def write(self, directory: Path) -> None:
+        """OBJ/MTL を UTF-8 で書き、既存 GUID を維持した asset meta を用意する。"""
         directory.mkdir(parents=True, exist_ok=True)
         obj_path = directory / f"{self.name}.obj"
         mtl_path = directory / f"{self.name}.mtl"

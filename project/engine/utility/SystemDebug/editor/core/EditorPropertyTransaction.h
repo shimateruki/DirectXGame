@@ -12,7 +12,8 @@
 
 namespace EditorPropertyTransaction {
 
-// ImGuiの連続Dragを一つのUndo/Redoへまとめます。
+// ImGui の直前に描いた項目の有効化から編集終了までを一つの Undo/Redo にまとめます。
+// apply は保存値だけでなく編集対象への再適用まで行い、Undo/Redo 時にも呼ばれます。
 template <class TValue, class TApply>
 void TrackLastItem(
     const std::string& label,

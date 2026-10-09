@@ -121,6 +121,7 @@ public:
     std::vector<const EditorAssetRecord*> GetAssetsInDirectory(
         const std::string& directory,
         bool recursive = false) const;
+    // 索引に含まれる直下の子ディレクトリを返す。未登録なら空。
     std::vector<std::string> GetSubdirectories(const std::string& directory) const;
 
     /// ソースと対応する .meta を一緒に移動し、索引を更新します。
@@ -138,6 +139,7 @@ public:
         std::string* recoveredPath = nullptr,
         std::string* errorMessage = nullptr);
 
+    // GUID は区切り記号なしの32桁の16進文字列として検査する。
     static bool IsGuidValid(const std::string& guid);
     static const char* GetAssetTypeName(EditorAssetType type);
 

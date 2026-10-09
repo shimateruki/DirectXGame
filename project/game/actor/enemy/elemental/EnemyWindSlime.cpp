@@ -57,7 +57,8 @@ constexpr const char* kUpdraftPreset = "player_wind_updraft";
 constexpr const char* kSoarTrailPreset = "player_wind_dash";
 constexpr const char* kBurstRingEffectPath = "Resources/json/effect/effect_wind_gust_ring.json";
 constexpr const char* kUpdraftSpiralEffectPath = "Resources/json/effect/effect_player_wind_updraft_spiral.json";
-constexpr const char* kUpdraftCounterSpiralEffectPath = "Resources/json/effect/effect_player_wind_updraft_spiral_counter.json";
+constexpr const char* kUpdraftCounterSpiralEffectPath =
+    "Resources/json/effect/effect_player_wind_updraft_spiral_counter.json";
 constexpr const char* kSoarLaunchEffectPath = "Resources/json/effect/effect_player_wind_soar_launch.json";
 constexpr const char* kSlowFallEffectPath = "Resources/json/effect/effect_player_wind_slow_fall.json";
 constexpr const char* kSoarLandEffectPath = "Resources/json/effect/effect_player_wind_soar_land.json";
@@ -71,7 +72,7 @@ BulletVisualConfig MakeWindOrbVisual() {
     BulletVisualConfig visual;
     visual.materialType = kWindOrbMaterialType;
     visual.blendMode = BlendMode::kNormal;
-    visual.color = { 0.42f, 1.0f, 0.80f, 0.96f };
+    visual.color = {0.42f, 1.0f, 0.80f, 0.96f};
     visual.emissive = 1.9f;
     visual.visualScale = 0.82f;
     visual.waveSpeed = 2.65f;
@@ -93,9 +94,9 @@ Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
 
 Object3d* FindEnemyRoot(Object3d* object) {
@@ -106,17 +107,17 @@ Object3d* FindEnemyRoot(Object3d* object) {
     }
     return nullptr;
 }
-}
+} // namespace
 
 void EnemyWindSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_WindSlime");
     SetEnemyType("WindSlime");
     ReloadAttackProfile();
-    SetColor({ 0.78f, 1.0f, 0.92f, 1.0f });
+    SetColor({0.78f, 1.0f, 0.92f, 1.0f});
     defaultColor_ = GetColor();
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
     SyncGroundCollisionRadius();
 }
@@ -133,8 +134,8 @@ void EnemyWindSlime::Update(float deltaTime) {
     volleyRecoilTimer_ = (std::max)(0.0f, volleyRecoilTimer_ - deltaTime);
 
     if (ambientParticleTimer_ <= 0.0f) {
-        EmitDirectedWindPreset(kIdlePreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f },
-            { 0.15f, 1.0f, 0.08f }, 0.55f);
+        EmitDirectedWindPreset(kIdlePreset, GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, {0.15f, 1.0f, 0.08f},
+                               0.55f);
         ambientParticleTimer_ = 0.18f;
     }
 
@@ -143,8 +144,8 @@ void EnemyWindSlime::Update(float deltaTime) {
     velocity.z = 0.0f;
     UpdateWildBehavior(deltaTime, velocity);
 
-    if (attackState_ == AttackState::Idle &&
-        SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval, 0.10f)) {
+    if (attackState_ == AttackState::Idle && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_,
+                                                                                deltaTime, kMoveHopInterval, 0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
     SetVelocity(velocity);
@@ -172,11 +173,12 @@ void EnemyWindSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, ui
 
 bool EnemyWindSlime::UpdateInactiveState(float deltaTime) {
     if (isDead || !GetIsVisible()) {
+        // 非表示・死亡時は予告と手持ち弾を消し、復帰時に攻撃の途中から再開しない。
         HideAttackTelegraph();
         HideHeldWindOrbs();
         attackState_ = AttackState::Idle;
         attackStateTimer_ = 0.0f;
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         return true;
     }
     if (ShouldHandleDefeatEffect()) {
@@ -223,6 +225,7 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
     }
 
     if (attackState_ != AttackState::Idle) {
+        // 攻撃中は通常の追跡移動を止め、攻撃フェーズごとに向きと予告を制御する。
         UpdateAttackState(deltaTime, velocity, direction, distance);
         return;
     }
@@ -248,27 +251,21 @@ void EnemyWindSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
 
     if (allowGust && distance >= gust.minRange && distance <= gust.maxRange && attackCooldown_ <= 0.0f) {
         StartGustBreath(direction);
-    }
-    else if (allowVolley && distance >= volley.minRange && distance <= volley.maxRange && attackCooldown_ <= 0.0f) {
+    } else if (allowVolley && distance >= volley.minRange && distance <= volley.maxRange && attackCooldown_ <= 0.0f) {
         StartAerialWindVolley(direction, distance);
-    }
-    else if (distance <= detectionRange_) {
+    } else if (distance <= detectionRange_) {
+        // 近付き過ぎた場合は後退し、息攻撃に適した距離を取り直す。
         const float speed = (std::max)(0.0f, param_->speed) * 1.12f;
         const float approach = distance > gust.maxRange * 0.78f ? 1.0f : -0.46f;
         velocity.x = direction.x * speed * approach;
         velocity.z = direction.z * speed * approach;
-    }
-    else {
+    } else {
         velocity = CalculateWanderVelocity(deltaTime, (std::max)(0.55f, param_->speed * 0.48f), 0.72f);
         UpdateFacing(velocity);
     }
 }
 
-void EnemyWindSlime::UpdateAttackState(
-    float deltaTime,
-    Vector3& velocity,
-    const Vector3& direction,
-    float distance) {
+void EnemyWindSlime::UpdateAttackState(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
@@ -286,13 +283,12 @@ void EnemyWindSlime::UpdateAttackState(
         attackStateTimer_ = (std::max)(0.0f, attackStateTimer_ - deltaTime);
         breathParticleTimer_ -= deltaTime;
         breathPushTimer_ -= deltaTime;
-        const Vector3 origin = GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f };
-        const float pushProgress = breathPushTimer_ <= 0.0f
-            ? 1.0f
-            : 1.0f - std::clamp(breathPushTimer_ / kBreathPushInterval, 0.0f, 1.0f);
+        const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f};
+        const float pushProgress =
+            breathPushTimer_ <= 0.0f ? 1.0f : 1.0f - std::clamp(breathPushTimer_ / kBreathPushInterval, 0.0f, 1.0f);
 
-        ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-            0.72f, attack.radius * 2.0f, pushProgress, { 0.46f, 1.0f, 0.84f, 0.72f });
+        ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange, 0.72f,
+                                attack.radius * 2.0f, pushProgress, {0.46f, 1.0f, 0.84f, 0.72f});
         if (breathParticleTimer_ <= 0.0f) {
             EmitWindBreathParticles(origin, lockedAttackDirection_, attack.maxRange);
             breathParticleTimer_ += kBreathParticleInterval;
@@ -315,6 +311,7 @@ void EnemyWindSlime::UpdateAttackState(
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
 
         if (progress < 0.64f) {
+            // 離陸前半だけ追尾し、後半は着弾予告の中心を固定する。
             lockedAttackDirection_ = direction;
             lockedTargetDistance_ = distance;
             UpdateVolleyImpactCenters();
@@ -326,16 +323,16 @@ void EnemyWindSlime::UpdateAttackState(
         UpdateHeldWindOrbs(deltaTime, SmoothStep01((progress - 0.38f) / 0.52f));
 
         if (breathParticleTimer_ <= 0.0f) {
-            const Vector3 liftOrigin = { GetWorldPosition().x, volleyGroundY_ + 0.12f, GetWorldPosition().z };
+            const Vector3 liftOrigin = {GetWorldPosition().x, volleyGroundY_ + 0.12f, GetWorldPosition().z};
             EmitDirectedWindPreset(kUpdraftPreset, liftOrigin,
-                { -lockedAttackDirection_.x * 0.12f, 1.0f, -lockedAttackDirection_.z * 0.12f },
-                1.0f + progress * 0.72f);
-            EmitDirectedWindPreset(kChargePreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f },
-                { 0.0f, 1.0f, 0.0f }, 0.88f + progress * 0.64f);
+                                   {-lockedAttackDirection_.x * 0.12f, 1.0f, -lockedAttackDirection_.z * 0.12f},
+                                   1.0f + progress * 0.72f);
+            EmitDirectedWindPreset(kChargePreset, GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, {0.0f, 1.0f, 0.0f},
+                                   0.88f + progress * 0.64f);
             breathParticleTimer_ += 0.065f;
         }
         if (!warningTriggered_ && attackStateTimer_ <= attack.warningLeadTime) {
-            TriggerAttackTelegraphCue({ 0.72f, 1.0f, 0.92f, 1.0f });
+            TriggerAttackTelegraphCue({0.72f, 1.0f, 0.92f, 1.0f});
             warningTriggered_ = true;
         }
         if (attackStateTimer_ <= 0.0f) {
@@ -345,7 +342,7 @@ void EnemyWindSlime::UpdateAttackState(
             volleyShotTimer_ = kVolleyFirstShotDelay;
             volleyShotCount_ = 0;
             volleyVisualTimer_ = 0.0f;
-            EmitWindPreset(kBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.82f, 0.0f });
+            EmitWindPreset(kBurstPreset, GetWorldPosition() + Vector3{0.0f, 0.82f, 0.0f});
         }
         return;
     }
@@ -360,9 +357,8 @@ void EnemyWindSlime::UpdateAttackState(
         lockedAttackDirection_ = direction;
         lockedTargetDistance_ = distance;
         if (volleyShotCount_ < kVolleyOrbCount) {
-            const float shotInterval = volleyShotCount_ == 0
-                ? (std::max)(kVolleyFirstShotDelay, 0.01f)
-                : (std::max)(kVolleyShotInterval, 0.01f);
+            const float shotInterval = volleyShotCount_ == 0 ? (std::max)(kVolleyFirstShotDelay, 0.01f)
+                                                             : (std::max)(kVolleyShotInterval, 0.01f);
             const float shotProgress = 1.0f - std::clamp(volleyShotTimer_ / shotInterval, 0.0f, 1.0f);
             ShowVolleyImpactTelegraphs(shotProgress);
         } else {
@@ -392,7 +388,7 @@ void EnemyWindSlime::UpdateAttackState(
         HideHeldWindOrbs();
         breathParticleTimer_ -= deltaTime;
         if (breathParticleTimer_ <= 0.0f) {
-            EmitDirectedWindPreset(kUpdraftPreset, GetWorldPosition(), { 0.0f, -1.0f, 0.0f }, 0.78f);
+            EmitDirectedWindPreset(kUpdraftPreset, GetWorldPosition(), {0.0f, -1.0f, 0.0f}, 0.78f);
             breathParticleTimer_ += 0.09f;
         }
         if (attackStateTimer_ <= 0.0f) {
@@ -401,7 +397,7 @@ void EnemyWindSlime::UpdateAttackState(
             SetTranslate(position);
             velocity.y = 0.0f;
             SetGrounded(true);
-            EmitWindPreset(kImpactPreset, position + Vector3{ 0.0f, 0.16f, 0.0f });
+            EmitWindPreset(kImpactPreset, position + Vector3{0.0f, 0.16f, 0.0f});
             attackState_ = AttackState::Recover;
             recoveryDuration_ = 0.18f;
             attackStateTimer_ = recoveryDuration_;
@@ -420,15 +416,15 @@ void EnemyWindSlime::UpdateAttackState(
         lockedTargetDistance_ = distance;
         UpdateFacing(direction);
     }
-    ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange,
-        0.72f, attack.radius * 2.0f, progress, { 0.42f, 1.0f, 0.86f, 0.82f });
+    ShowAttackTelegraphCone(GetWorldPosition(), lockedAttackDirection_, attack.maxRange, 0.72f, attack.radius * 2.0f,
+                            progress, {0.42f, 1.0f, 0.86f, 0.82f});
     if (!warningTriggered_ && attackStateTimer_ <= attack.warningLeadTime) {
-        TriggerAttackTelegraphCue({ 0.70f, 1.0f, 0.94f, 1.0f });
+        TriggerAttackTelegraphCue({0.70f, 1.0f, 0.94f, 1.0f});
         warningTriggered_ = true;
     }
     if (breathParticleTimer_ <= 0.0f) {
-        EmitDirectedWindPreset(kChargePreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f },
-            lockedAttackDirection_ * -1.0f + Vector3{ 0.0f, 0.18f, 0.0f }, 0.82f + progress * 0.75f);
+        EmitDirectedWindPreset(kChargePreset, GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f},
+                               lockedAttackDirection_ * -1.0f + Vector3{0.0f, 0.18f, 0.0f}, 0.82f + progress * 0.75f);
         breathParticleTimer_ += 0.07f;
     }
 
@@ -438,7 +434,7 @@ void EnemyWindSlime::UpdateAttackState(
         breathParticleTimer_ = 0.0f;
         breathPushTimer_ = 0.0f;
         breathParticleCursor_ = 0;
-        EmitWindPreset(kBurstPreset, GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f });
+        EmitWindPreset(kBurstPreset, GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f});
     }
 }
 
@@ -495,15 +491,15 @@ void EnemyWindSlime::BeginVolleyLanding(const EnemyAttackDefinition& attack) {
 void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
     const Vector3 spawnPosition = ComputeHeldWindOrbPosition(orbIndex);
-    Vector3 aim = lockedAttackDirection_ + Vector3{ 0.0f, -0.08f, 0.0f };
+    Vector3 aim = lockedAttackDirection_ + Vector3{0.0f, -0.08f, 0.0f};
     float targetDistance = lockedTargetDistance_;
     if (orbIndex >= 0 && orbIndex < static_cast<int>(volleyImpactCenters_.size())) {
         // 地上の予告円と実際の弾着点を一致させます。
-        aim = volleyImpactCenters_[orbIndex] + Vector3{ 0.0f, 0.24f, 0.0f } - spawnPosition;
+        aim = volleyImpactCenters_[orbIndex] + Vector3{0.0f, 0.24f, 0.0f} - spawnPosition;
         targetDistance = Math::Length(aim);
     }
     if (Math::Length(aim) <= 0.001f) {
-        aim = { lockedAttackDirection_.x, -0.08f, lockedAttackDirection_.z };
+        aim = {lockedAttackDirection_.x, -0.08f, lockedAttackDirection_.z};
     }
     aim = Math::Normalize(aim);
 
@@ -512,18 +508,9 @@ void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
     const float speed = std::clamp(targetDistance * 1.65f, minimumSpeed, maximumSpeed);
     const float lifetime = attack.lifetime > 0.0f ? attack.lifetime : 2.8f;
     const float radius = (std::max)(0.32f, attack.radius);
-    BulletManager::GetInstance()->Fire(
-        spawnPosition,
-        aim * speed,
-        kEnemyAttack,
-        kPlayer | kAllSolid,
-        "Primitives/sphere",
-        radius,
-        lifetime,
-        MakeWindOrbVisual(),
-        attack.damage,
-        {},
-        DamageType::Physical);
+    BulletManager::GetInstance()->Fire(spawnPosition, aim * speed, CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"),
+                                       "Primitives/sphere", radius, lifetime, MakeWindOrbVisual(), attack.damage, {},
+                                       DamageType::Physical);
 
     EmitDirectedWindPreset(kBurstPreset, spawnPosition, aim, 1.12f);
     if (orbIndex >= 0 && orbIndex < static_cast<int>(heldWindOrbVisuals_.size()) && heldWindOrbVisuals_[orbIndex]) {
@@ -534,12 +521,10 @@ void EnemyWindSlime::FireAerialWindOrb(int orbIndex) {
 void EnemyWindSlime::UpdateVolleyImpactCenters() {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
     const Vector3 forward = NormalizePlanar(lockedAttackDirection_);
-    const Vector3 right = { forward.z, 0.0f, -forward.x };
+    const Vector3 right = {forward.z, 0.0f, -forward.x};
 
-    Vector3 targetPosition = GetWorldPosition() + forward * std::clamp(
-        lockedTargetDistance_,
-        attack.minRange,
-        attack.maxRange);
+    Vector3 targetPosition =
+        GetWorldPosition() + forward * std::clamp(lockedTargetDistance_, attack.minRange, attack.maxRange);
     Vector3 targetVelocity = {};
     if (const Character* targetCharacter = dynamic_cast<const Character*>(target_)) {
         targetPosition = targetCharacter->GetWorldPosition();
@@ -571,28 +556,20 @@ void EnemyWindSlime::ShowVolleyImpactTelegraphs(float progress) {
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
     const std::size_t firstIndex = static_cast<std::size_t>((std::max)(0, volleyShotCount_));
-    ShowAttackTelegraphImpactAreas(
-        volleyImpactCenters_.data() + firstIndex,
-        volleyImpactCenters_.size() - firstIndex,
-        attack.radius * 1.48f,
-        progress,
-        { 0.48f, 1.0f, 0.82f, 0.80f });
+    ShowAttackTelegraphImpactAreas(volleyImpactCenters_.data() + firstIndex, volleyImpactCenters_.size() - firstIndex,
+                                   attack.radius * 1.48f, progress, {0.48f, 1.0f, 0.82f, 0.80f});
 }
 
 float EnemyWindSlime::ResolveVolleyHoverY() {
     constexpr float kProbeHeight = 0.92f;
-    const Vector3 origin = GetWorldPosition() + Vector3{ 0.0f, kProbeHeight, 0.0f };
+    const Vector3 origin = GetWorldPosition() + Vector3{0.0f, kProbeHeight, 0.0f};
     PhysicsQueryFilter filter;
-    filter.mask = kAllSolid;
+    filter.mask = CollisionCategories::Get("ground");
     filter.ignoredObject = this;
     filter.ignoreDescendants = true;
     filter.includeTriggers = false;
     const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(
-        origin,
-        0.46f,
-        { 0.0f, 1.0f, 0.0f },
-        kVolleyPreferredHoverHeight + kVolleyCeilingClearance,
-        filter);
+        origin, 0.46f, {0.0f, 1.0f, 0.0f}, kVolleyPreferredHoverHeight + kVolleyCeilingClearance, filter);
 
     float hoverHeight = kVolleyPreferredHoverHeight;
     if (hit.isHit) {
@@ -626,7 +603,7 @@ void EnemyWindSlime::EnsureHeldWindOrbs() {
         orb->SetCollisionMask(0);
         orb->SetMaterialType(kWindOrbMaterialType);
         orb->SetBlendMode(BlendMode::kNormal);
-        orb->SetColor({ 0.46f, 1.0f, 0.82f, 0.94f });
+        orb->SetColor({0.46f, 1.0f, 0.82f, 0.94f});
         orb->SetEmissive(1.8f);
         orb->SetMetallic(0.0f);
         orb->SetRoughness(0.24f);
@@ -641,7 +618,7 @@ void EnemyWindSlime::EnsureHeldWindOrbs() {
                 param->effectIntensity = 1.58f;
             }
         }
-        orb->SetScale({ kVolleyOrbVisualScale, kVolleyOrbVisualScale, kVolleyOrbVisualScale });
+        orb->SetScale({kVolleyOrbVisualScale, kVolleyOrbVisualScale, kVolleyOrbVisualScale});
         orb->SetIsVisible(false);
         heldWindOrbVisuals_[index] = std::move(orb);
     }
@@ -662,18 +639,20 @@ void EnemyWindSlime::UpdateHeldWindOrbs(float deltaTime, float appearProgress) {
             continue;
         }
 
-        const float localAppear = SmoothStep01((appearProgress - appearThreshold) * static_cast<float>(kVolleyOrbCount));
+        const float localAppear =
+            SmoothStep01((appearProgress - appearThreshold) * static_cast<float>(kVolleyOrbCount));
         const float pulse = 1.0f + std::sin(idleTimer_ * 9.0f + static_cast<float>(index) * 1.8f) * 0.07f;
         const float scale = kVolleyOrbVisualScale * (0.32f + localAppear * 0.68f) * pulse;
         const Vector3 position = ComputeHeldWindOrbPosition(index);
         orb->SetTranslate(position);
-        orb->SetScale({ scale, scale, scale });
-        orb->SetRotation({ idleTimer_ * 1.8f, idleTimer_ * 2.7f + static_cast<float>(index), idleTimer_ * 1.2f });
+        orb->SetScale({scale, scale, scale});
+        orb->SetRotation({idleTimer_ * 1.8f, idleTimer_ * 2.7f + static_cast<float>(index), idleTimer_ * 1.2f});
         orb->Update(deltaTime);
 
         if (volleyVisualTimer_ <= 0.0f) {
-            const Vector3 tangent = NormalizePlanar(lockedAttackDirection_ + Vector3{
-                static_cast<float>(index - 1) * 0.28f, 0.22f, static_cast<float>(1 - index) * 0.18f });
+            const Vector3 tangent =
+                NormalizePlanar(lockedAttackDirection_ + Vector3{static_cast<float>(index - 1) * 0.28f, 0.22f,
+                                                                 static_cast<float>(1 - index) * 0.18f});
             EmitDirectedWindPreset(kOrbHoldPreset, position, tangent, 0.88f + static_cast<float>(index) * 0.08f);
         }
     }
@@ -692,12 +671,11 @@ void EnemyWindSlime::HideHeldWindOrbs() {
 
 Vector3 EnemyWindSlime::ComputeHeldWindOrbPosition(int orbIndex) const {
     const Vector3 direction = NormalizePlanar(lockedAttackDirection_);
-    const Vector3 right = { direction.z, 0.0f, -direction.x };
+    const Vector3 right = {direction.z, 0.0f, -direction.x};
     const float sideOffset = static_cast<float>(orbIndex - 1) * 0.92f;
     const float centerLift = orbIndex == 1 ? 0.18f : 0.0f;
     const float bob = std::sin(idleTimer_ * 5.8f + static_cast<float>(orbIndex) * 1.9f) * 0.10f;
-    return GetWorldPosition() + right * sideOffset + direction * 0.18f +
-        Vector3{ 0.0f, 1.82f + centerLift + bob, 0.0f };
+    return GetWorldPosition() + right * sideOffset + direction * 0.18f + Vector3{0.0f, 1.82f + centerLift + bob, 0.0f};
 }
 
 void EnemyWindSlime::DispatchEnemyBreathPush(const Vector3& direction, float distance) {
@@ -716,9 +694,9 @@ void EnemyWindSlime::DispatchEnemyBreathPush(const Vector3& direction, float dis
 
     const float falloff = 1.0f - std::clamp(distance / (attack.maxRange + 0.75f), 0.0f, 1.0f);
     const float planarForce = 22.0f + falloff * 8.0f;
-    character->ApplyExternalImpulse(
-        { direction.x * planarForce, 6.0f + falloff * 2.5f, direction.z * planarForce }, 0.24f);
-    EmitDirectedWindPreset(kImpactPreset, target_->GetWorldPosition() + Vector3{ 0.0f, 0.72f, 0.0f }, direction, 1.15f);
+    character->ApplyExternalImpulse({direction.x * planarForce, 6.0f + falloff * 2.5f, direction.z * planarForce},
+                                    0.24f);
+    EmitDirectedWindPreset(kImpactPreset, target_->GetWorldPosition() + Vector3{0.0f, 0.72f, 0.0f}, direction, 1.15f);
 }
 
 void EnemyWindSlime::BeginThrown(const Vector3& initialVelocity) {
@@ -753,14 +731,20 @@ void EnemyWindSlime::SetDebugPreviewAttackId(const std::string& attackId) {
 
 const char* EnemyWindSlime::GetDebugAttackPhaseName() const {
     switch (attackState_) {
-    case AttackState::GustWindup: return "暴風ブレス・溜め";
-    case AttackState::GustActive: return "暴風ブレス・吹き飛ばし中";
-    case AttackState::VolleyTakeoff: return "三連風弾・風で上昇";
+    case AttackState::GustWindup:
+        return "暴風ブレス・溜め";
+    case AttackState::GustActive:
+        return "暴風ブレス・吹き飛ばし中";
+    case AttackState::VolleyTakeoff:
+        return "三連風弾・風で上昇";
     case AttackState::VolleyActive:
         return volleyShotCount_ == 0 ? "三連風弾・頭上に形成" : "三連風弾・順番に投射";
-    case AttackState::VolleyLanding: return "三連風弾・着地";
-    case AttackState::Recover: return "攻撃後・反動";
-    default: return attackCooldown_ > 0.0f ? "再使用待ち" : "待機・移動";
+    case AttackState::VolleyLanding:
+        return "三連風弾・着地";
+    case AttackState::Recover:
+        return "攻撃後・反動";
+    default:
+        return attackCooldown_ > 0.0f ? "再使用待ち" : "待機・移動";
     }
 }
 
@@ -780,7 +764,7 @@ void EnemyWindSlime::UpdateFacing(const Vector3& direction) {
 
 void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
     Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = { 0.0f, GetRotation().y, 0.0f };
+    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
     if (attackState_ == AttackState::GustWindup) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kGustAttackId);
         const float duration = (std::max)(0.01f, attack.windupDuration);
@@ -792,8 +776,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
             baseScale_.z * (1.0f + charge * 0.18f - flutter),
         };
         targetRotation.z = flutter * 1.4f;
-    }
-    else if (attackState_ == AttackState::VolleyTakeoff) {
+    } else if (attackState_ == AttackState::VolleyTakeoff) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.01f, attack.windupDuration);
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
@@ -805,8 +788,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
             baseScale_.z * (1.0f + launchSquash - airborneStretch * 0.42f),
         };
         targetRotation.x = -std::sin(progress * 3.14159265f) * 0.10f;
-    }
-    else if (attackState_ == AttackState::VolleyActive) {
+    } else if (attackState_ == AttackState::VolleyActive) {
         const float hoverWave = std::sin(idleTimer_ * 6.2f);
         const float recoilRate = std::clamp(volleyRecoilTimer_ / 0.18f, 0.0f, 1.0f);
         const float recoil = std::sin((1.0f - recoilRate) * 3.14159265f) * 0.16f;
@@ -817,8 +799,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
         };
         targetRotation.x = -recoil * 0.72f;
         targetRotation.z = hoverWave * 0.055f;
-    }
-    else if (attackState_ == AttackState::VolleyLanding) {
+    } else if (attackState_ == AttackState::VolleyLanding) {
         const EnemyAttackDefinition& attack = GetAttackDefinition(kVolleyAttackId);
         const float duration = (std::max)(0.16f, attack.recoveryDuration);
         const float progress = std::clamp(1.0f - attackStateTimer_ / duration, 0.0f, 1.0f);
@@ -829,8 +810,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
             baseScale_.z * (1.0f - fallingStretch * 0.38f),
         };
         targetRotation.x = 0.08f * progress;
-    }
-    else if (attackState_ == AttackState::GustActive) {
+    } else if (attackState_ == AttackState::GustActive) {
         const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kGustAttackId).activeDuration);
         const float progress = 1.0f - std::clamp(attackStateTimer_ / activeDuration, 0.0f, 1.0f);
         const float pulse = std::sin(progress * 31.4159265f) * 0.045f;
@@ -840,8 +820,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
             baseScale_.z * (1.38f - pulse * 0.60f),
         };
         targetRotation.x = -0.08f;
-    }
-    else if (attackState_ == AttackState::Recover) {
+    } else if (attackState_ == AttackState::Recover) {
         const float duration = (std::max)(0.01f, recoveryDuration_ > 0.0f ? recoveryDuration_ : 0.28f);
         const float remaining = std::clamp(attackStateTimer_ / duration, 0.0f, 1.0f);
         const float rebound = std::sin((1.0f - remaining) * 3.14159265f);
@@ -850,8 +829,7 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
             baseScale_.y * (1.0f + rebound * 0.16f),
             baseScale_.z * (1.0f + rebound * 0.12f),
         };
-    }
-    else {
+    } else {
         SlimeBounceAnimator::Params params;
         params.speedForFullBounce = 1.9f;
         params.idleAmplitude = 0.09f;
@@ -873,18 +851,15 @@ void EnemyWindSlime::ApplySlimeAnimation(float deltaTime) {
     });
 }
 
-void EnemyWindSlime::EmitWindBreathParticles(
-    const Vector3& origin,
-    const Vector3& direction,
-    float range) {
+void EnemyWindSlime::EmitWindBreathParticles(const Vector3& origin, const Vector3& direction, float range) {
     const float step = (static_cast<float>(breathParticleCursor_ % kWindAnimationPhaseCount) + 0.5f) /
-        static_cast<float>(kWindAnimationPhaseCount);
+                       static_cast<float>(kWindAnimationPhaseCount);
     const Vector3 planarDirection = NormalizePlanar(direction);
-    const Vector3 side = { -planarDirection.z, 0.0f, planarDirection.x };
+    const Vector3 side = {-planarDirection.z, 0.0f, planarDirection.x};
     const float lateral = std::sin(idleTimer_ * 11.0f + step * 15.0f) * (0.08f + step * 0.34f);
     Vector3 position = origin + planarDirection * (0.34f + step * range * 0.86f) + side * lateral;
     position.y += std::sin(idleTimer_ * 8.0f + step * 9.1f) * 0.12f;
-    Vector3 streamDirection = planarDirection + Vector3{ 0.0f, 0.06f + step * 0.06f, 0.0f };
+    Vector3 streamDirection = planarDirection + Vector3{0.0f, 0.06f + step * 0.06f, 0.0f};
     streamDirection = Math::Normalize(streamDirection);
     EmitDirectedWindPreset(kBreathStreamPreset, position, streamDirection, 1.25f + step * 1.05f);
 
@@ -902,11 +877,8 @@ void EnemyWindSlime::EmitWindPreset(const char* presetName, const Vector3& posit
     }
 }
 
-void EnemyWindSlime::EmitDirectedWindPreset(
-    const char* presetName,
-    const Vector3& position,
-    const Vector3& direction,
-    float speedScale) {
+void EnemyWindSlime::EmitDirectedWindPreset(const char* presetName, const Vector3& position, const Vector3& direction,
+                                            float speedScale) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);
@@ -915,14 +887,10 @@ void EnemyWindSlime::EmitDirectedWindPreset(
 
 void EnemyWindSlime::SyncWorldCollisionRadius(float worldRadius) {
     const Vector3 scale = GetScale();
-    const float maxScale = (std::max)({ 0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     SetCollisionRadius(worldRadius / maxScale);
 }
 
-void EnemyWindSlime::SyncGroundCollisionRadius() {
-    SyncWorldCollisionRadius(kGroundCollisionWorldRadius);
-}
+void EnemyWindSlime::SyncGroundCollisionRadius() { SyncWorldCollisionRadius(kGroundCollisionWorldRadius); }
 
-void EnemyWindSlime::SyncThrownCollisionRadius() {
-    SyncWorldCollisionRadius(kThrownCollisionWorldRadius);
-}
+void EnemyWindSlime::SyncThrownCollisionRadius() { SyncWorldCollisionRadius(kThrownCollisionWorldRadius); }

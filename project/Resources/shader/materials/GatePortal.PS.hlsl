@@ -129,9 +129,21 @@ float4 main(VSOutput input) : SV_TARGET
         float3 barrierNormal = normalize(input.normal);
         float cameraPlaneDistance = abs(dot(cameraWorldPosition - input.worldPos, barrierNormal));
         float cameraSurfaceFade = smoothstep(1.25f, 4.50f, cameraPlaneDistance);
+        if (mode > 3.5f)
+        {
+            // Distance fade is independent of the viewing angle on the curved wall.
+            float3 barrierCenter = float3(world._41, world._42, world._43);
+            float barrierRadius = length(input.worldPos.xz - barrierCenter.xz);
+            bool cameraOutside = length(cameraWorldPosition.xz - barrierCenter.xz) >= barrierRadius;
+            float facing = dot(barrierNormal, normalize(cameraWorldPosition - input.worldPos));
+            if (cameraOutside ? facing <= 0.0f : facing >= 0.0f)
+                discard;
+            cameraSurfaceFade = smoothstep(1.25f, 4.50f,
+                length(cameraWorldPosition - input.worldPos));
+        }
 
         float2 absP = abs(p);
-        float edgeDistance = 1.0f - max(absP.x, absP.y);
+        float edgeDistance = 1.0f - (mode > 3.5f ? absP.y : max(absP.x, absP.y));
         float outerMask = smoothstep(0.0f, 0.055f, edgeDistance);
         float border = 1.0f - smoothstep(0.018f, 0.115f, edgeDistance);
 
@@ -139,7 +151,8 @@ float4 main(VSOutput input) : SV_TARGET
         float revealMask = 1.0f - smoothstep(revealTop - 0.045f, revealTop + 0.075f, p.y);
         revealMask *= outerMask;
 
-        float2 barrierUV = p * float2(8.0f + detail * 0.11f, 4.2f + detail * 0.045f);
+        float2 barrierUV = p * float2(mode > 3.5f ? 20.0f : 8.0f + detail * 0.11f,
+            4.2f + detail * 0.045f);
         float2 barrierCell = frac(barrierUV + float2(t * 0.08f, -t * 0.13f)) - 0.5f;
         float diamondDistance = abs(abs(barrierCell.x) + abs(barrierCell.y) - 0.43f);
         float diamondLattice = 1.0f - smoothstep(0.025f, 0.085f, diamondDistance);

@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "DebugEditor.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
@@ -111,7 +111,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -387,7 +387,9 @@ namespace {
         if (objects.empty()) return;
 
         std::vector<std::string> reservedNames;
-        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
+        const json& preset = PresetManager::GetInstance()->GetPreset(presetName);
+        const std::string displayName = preset.value("presetDisplayName", GetLeafName(presetName));
+        std::string rootName = MakeUniquePresetObjectName(scene, displayName, reservedNames);
         objects.front()->SetName(rootName);
         reservedNames.push_back(rootName);
 

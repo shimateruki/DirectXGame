@@ -1,12 +1,12 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
+#include "ParticleSystem.h"
+#include "ParticleCommon.h"
 #include "Player.h"
 #include "Text.h"
 #include "BulletManager.h"
@@ -28,7 +28,7 @@ class InputManager;
 /// ゲームクリアシーン
 /// </summary>
 class GameClearScene : public BaseScene {
-public:
+  public:
     GameClearScene() = default;
     ~GameClearScene() override = default;
 
@@ -73,7 +73,7 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
-private:
+  private:
     // --- エンジンシステム ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;

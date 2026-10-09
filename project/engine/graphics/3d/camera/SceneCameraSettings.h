@@ -42,24 +42,26 @@ enum class SceneCameraEasing {
     kSmootherStep = 4,
 };
 
-/// <summary>シーンに保存する視点、注視点、画角と切替時間の設定。</summary>
+/// <summary>シーンに保存するカメラ設定。描画カメラそのものは所有しない。</summary>
 struct SceneCameraSettings {
     int version = 1;
     bool enabled = true;
     SceneCameraRole role = SceneCameraRole::kCinematic;
 
-    // Camera::SetFovYと同じくラジアンで保持します。
+    // Camera::SetFovYと同じく縦画角をラジアンで保持する。クリップ距離はワールド座標の距離。
     float fovY = 0.45f;
     float nearClip = 0.1f;
     float farClip = 1000.0f;
 
     SceneCameraEyeSource eyeSource = SceneCameraEyeSource::kCameraObject;
+    // kSceneObjectのときだけ名前で参照先を探す。オフセットは参照先の位置へ加算する。
     std::string eyeObjectName;
     Vector3 eyeOffset = { 0.0f, 0.0f, 0.0f };
     SceneCameraFollowMode eyeFollowMode = SceneCameraFollowMode::kSnap;
     float eyeFollowResponse = 12.0f;
 
     SceneCameraTargetMode targetMode = SceneCameraTargetMode::kCameraForward;
+    // kSceneObjectでは名前とオフセット、kFixedPointでは固定のワールド座標を使用する。
     std::string targetObjectName;
     Vector3 targetOffset = { 0.0f, 0.0f, 0.0f };
     Vector3 fixedTarget = { 0.0f, 0.0f, 0.0f };
@@ -69,6 +71,7 @@ struct SceneCameraSettings {
 
     float blendInDuration = 0.30f;
     float blendOutDuration = 0.30f;
+    // 切替時間は秒。0は補間なしの即時切替を表す。
     SceneCameraEasing easing = SceneCameraEasing::kSmootherStep;
 };
 
@@ -100,6 +103,7 @@ inline nlohmann::json SerializeSceneCameraSettings(const SceneCameraSettings& se
 }
 
 /// <summary>JSONにある項目だけを既存設定へ読み込み、数値を有効範囲に収める。</summary>
+/// <remarks>入力がオブジェクトでなければ何もしない。欠けた項目はsettingsの現在値を維持する。</remarks>
 inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCameraSettings& settings) {
     if (!camera.is_object()) {
         return;

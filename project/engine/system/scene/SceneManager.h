@@ -84,12 +84,15 @@ public:
     }
 
     // 以下はEditor用Scene Assetの切り替え。実行時シーン型とは別にレイアウトを管理する。
+    // Play中・遷移中・未登録の実行時シーン名では開けず false を返す。
     bool OpenSceneAsset(
         const std::string& objectLayoutPath,
         const std::string& spriteLayoutPath,
         const std::string& runtimeSceneName);
     bool OpenSceneAsset(const SceneLoadContext& context);
+    // 実行時シーン名を SCENE_EDITOR に固定して開く。
     bool OpenEditorSceneAsset(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
+    // 現在の編集対象パスだけを更新する。シーンの再読込や保存は行わない。
     void SetEditorSceneAssetPaths(const std::string& objectLayoutPath, const std::string& spriteLayoutPath);
     const std::string& GetEditorSceneAssetObjectPath() const { return activeSceneLoadContext_.objectLayoutPath; }
     const std::string& GetEditorSceneAssetSpritePath() const { return activeSceneLoadContext_.spriteLayoutPath; }

@@ -30,9 +30,6 @@
 #include <unordered_set>
 #include <utility>
 
-
-
-
 // 命中・演出の共通処理。能力の状態は保持せず、各セッションが管理します。
 namespace CopyAbilityDetail {
 constexpr float kPi = 3.1415926535f;
@@ -42,15 +39,14 @@ using CombatMath::NormalizePlanar;
 inline float SmoothStep(float value) { return CombatMath::SmoothStep01(value); }
 
 inline void SpawnEffect(const char* path, const Vector3& position, const Vector3& rotation = {},
-    const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+                        const Vector3& scale = {1.0f, 1.0f, 1.0f}) {
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
         effects->SpawnEffectAt(path, position, rotation, scale);
     }
 }
 
-inline void SpawnScopedEffect(MeshEffectManager::EffectScopeId scopeId, const char* path,
-    const Vector3& position, const Vector3& rotation = {},
-    const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+inline void SpawnScopedEffect(MeshEffectManager::EffectScopeId scopeId, const char* path, const Vector3& position,
+                              const Vector3& rotation = {}, const Vector3& scale = {1.0f, 1.0f, 1.0f}) {
     if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
         effects->SpawnEffectAtScoped(scopeId, path, position, rotation, scale);
     }
@@ -63,7 +59,8 @@ inline void EmitPreset(const char* preset, const Vector3& position) {
     }
 }
 
-inline void EmitDirectedPreset(const char* preset, const Vector3& position, const Vector3& direction, float scale = 1.0f) {
+inline void EmitDirectedPreset(const char* preset, const Vector3& position, const Vector3& direction,
+                               float scale = 1.0f) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
         particles->EmitDirected(preset, position, direction, scale);
@@ -88,8 +85,8 @@ inline Object3d* FindEnemyRoot(Object3d* object) {
     return nullptr;
 }
 
-inline void DamageEnemy(Player& player, Object3d* target, float damage, DamageType type,
-    const Vector3& knockback, const StatusEffectApplication& status = {}) {
+inline void DamageEnemy(Player& player, Object3d* target, float damage, DamageType type, const Vector3& knockback,
+                        const StatusEffectApplication& status = {}) {
     if (!target) {
         return;
     }
@@ -103,10 +100,11 @@ inline void DamageEnemy(Player& player, Object3d* target, float damage, DamageTy
     EventManager::GetInstance()->Dispatch(event);
 }
 
+// 重複 Collider を持つ敵には一度だけダメージを送ります。
 inline void DamageSphere(Player& player, const Vector3& center, float radius, float damage, DamageType type,
-    float horizontalKnockback, float verticalKnockback) {
+                         float horizontalKnockback, float verticalKnockback) {
     PhysicsQueryFilter filter;
-    filter.mask = kEnemy;
+    filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
     std::unordered_set<Object3d*> damaged;
     for (const PhysicsOverlapHit& hit : CollisionManager::GetInstance()->OverlapSphere(center, radius, filter)) {
@@ -116,12 +114,12 @@ inline void DamageSphere(Player& player, const Vector3& center, float radius, fl
         }
         const Vector3 direction = NormalizePlanar(target->GetWorldPosition() - center);
         DamageEnemy(player, target, damage, type,
-            { direction.x * horizontalKnockback, verticalKnockback, direction.z * horizontalKnockback });
+                    {direction.x * horizontalKnockback, verticalKnockback, direction.z * horizontalKnockback});
     }
 }
 
-inline const EnemyAttackDefinition& FindAttackOrFallback(
-    const EnemyAttackProfile& profile, const char* id, const EnemyAttackDefinition& fallback) {
+inline const EnemyAttackDefinition& FindAttackOrFallback(const EnemyAttackProfile& profile, const char* id,
+                                                         const EnemyAttackDefinition& fallback) {
     const EnemyAttackDefinition* attack = profile.FindAttack(id);
     return attack ? *attack : fallback;
 }
@@ -138,10 +136,11 @@ inline StatusEffectApplication MakeBurnStatus(const EnemyAttackDefinition& attac
     return status;
 }
 
+// 炎スライムのコピー能力が発射する弾の見た目と着弾演出を組み立てます。
 inline BulletVisualConfig MakeFireVisual() {
     BulletVisualConfig visual;
     visual.materialType = 11;
-    visual.color = { 1.0f, 0.34f, 0.07f, 0.96f };
+    visual.color = {1.0f, 0.34f, 0.07f, 0.96f};
     visual.emissive = 2.8f;
     visual.visualScale = 1.28f;
     visual.effectType = 1.0f;
@@ -160,4 +159,4 @@ inline BulletVisualConfig MakeFireVisual() {
     return visual;
 }
 
-}
+} // namespace CopyAbilityDetail

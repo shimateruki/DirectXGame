@@ -16,6 +16,7 @@ enum class ManualSpecial {
     Materials,
 };
 
+// 用途・開き方・手順・保存先・注意事項を、一つのヘルプページとして表示する定義。
 struct ManualPage {
     const char* category;
     const char* title;

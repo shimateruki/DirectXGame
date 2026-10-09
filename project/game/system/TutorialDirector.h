@@ -23,17 +23,19 @@ class Sprite;
 
 // チュートリアルの手順、短時間演出、操作表示、チェックポイントをJSONから進行します。
 class TutorialDirector {
-public:
+  public:
     using CompletionCallback = std::function<void()>;
 
-    bool Initialize(
-        BaseScene* scene,
-        Player* player,
-        InputManager* inputManager,
-        const std::string& flowPath = "Resources/json/tutorial/tutorial_flow.json");
+    /// <summary>進行 JSON を読み込み、対象シーンとプレイヤーに紐付けます。</summary>
+    /// <param name="flowPath">チュートリアルの手順と演出を記述した JSON</param>
+    /// <returns>参照先と JSON を準備できた場合は true。scene、player、inputManager は借用します。</returns>
+    bool Initialize(BaseScene* scene, Player* player, InputManager* inputManager,
+                    const std::string& flowPath = "Resources/json/tutorial/tutorial_flow.json");
     void Finalize();
+    // 経過秒数で課題・演出・案内を進める。0 秒なら編集停止中の開始演出を起動しない。
     void Update(float deltaTime);
 
+    // UI とロックオンの外部イベントを、現在の手順の達成条件へ反映します。
     void NotifyControlsGuideOpened();
     void NotifyLockOnTarget(const Object3d* target);
     void SetCompletionCallback(CompletionCallback callback) { completionCallback_ = std::move(callback); }
@@ -44,17 +46,20 @@ public:
     int GetCurrentStepIndex() const { return currentStepIndex_; }
     const std::string& GetCurrentStepId() const;
 
+    // リプレイに必要な進行状態だけを保存・復元します。
     void CaptureReplayState(nlohmann::json& state) const;
     void RestoreReplayState(const nlohmann::json& state);
 
+    // 最初から開始するか、編集用に指定した手順へ移動します。
     void Restart();
+    // 該当 ID がなければ false。移動時は手順に応じて敵の生成状態も復元する。
     bool JumpToStep(const std::string& stepId);
 
 #ifdef USE_IMGUI
     void DrawImGui();
 #endif
 
-private:
+  private:
     enum class CompletionCondition {
         kTimer,
         kCinematicFinished,
@@ -70,6 +75,7 @@ private:
         kControlsGuideOpened,
     };
 
+    // JSON の一手順。完了条件と、その間に表示・生成・解除する対象をまとめます。
     struct Step {
         std::string id;
         CompletionCondition condition = CompletionCondition::kTimer;
@@ -83,8 +89,8 @@ private:
         std::vector<std::string> targetEnemyObjects;
         std::vector<std::string> spawnEnemyObjects;
         std::vector<std::string> despawnEnemyObjects;
-        Vector3 targetPosition = { 0.0f, 0.0f, 0.0f };
-        Vector3 checkpointPosition = { 0.0f, 0.0f, 0.0f };
+        Vector3 targetPosition = {0.0f, 0.0f, 0.0f};
+        Vector3 checkpointPosition = {0.0f, 0.0f, 0.0f};
         float threshold = 0.0f;
         float radius = 3.0f;
         float objectiveOffsetY = 0.75f;
@@ -105,10 +111,11 @@ private:
         std::string wrongActionRetryStep;
     };
 
+    // 手順を戻した際にも同じ敵を再利用できるよう、初期状態を控えます。
     struct SpawnEnemySlot {
         std::string objectName;
         BaseEnemy* enemy = nullptr;
-        Vector3 initialPosition = { 0.0f, 0.0f, 0.0f };
+        Vector3 initialPosition = {0.0f, 0.0f, 0.0f};
         uint32_t collisionAttribute = 0;
         uint32_t collisionMask = 0;
         float maxHpOverride = -1.0f;
@@ -116,18 +123,21 @@ private:
         bool active = false;
     };
 
+    // JSON 配置を維持したまま、手順中の表示とフェードだけ更新します。
     struct PromptVisual {
         Sprite* sprite = nullptr;
-        Vector2 basePosition = { 0.0f, 0.0f };
-        Vector2 baseSize = { 0.0f, 0.0f };
-        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        Vector2 basePosition = {0.0f, 0.0f};
+        Vector2 baseSize = {0.0f, 0.0f};
+        Vector4 baseColor = {1.0f, 1.0f, 1.0f, 1.0f};
         bool requestedVisible = false;
     };
 
+    // 読み込みと条件名の解析。失敗した場合は未ロード状態のままにします。
     bool LoadFlow(const std::string& flowPath);
     static CompletionCondition ParseCondition(const std::string& conditionName);
     static bool ReadVector3(const nlohmann::json& value, Vector3& destination);
 
+    // ステップの入退場で敵、ゲート、演出の状態を切り替えます。
     void BeginFlowIfNeeded();
     void EnterStep(int stepIndex);
     void LeaveCurrentStep();
@@ -138,6 +148,7 @@ private:
     bool IsActionTriggered(const std::string& action) const;
     void CompleteFlow();
 
+    // ステップ専用の短い演出を再生し、終了時に通常操作へ戻します。
     void BeginStepCinematic(const Step& step);
     void EndStepCinematic(bool skipped);
     void UpdateCinematic(float deltaTime);
@@ -150,6 +161,7 @@ private:
     void RestoreSpawnEnemyStateBeforeStep(int stepIndex);
     Object3d* FindObjectByName(const std::string& name) const;
 
+    // 操作案内と目標マーカーは JSON から取得した Sprite を更新します。
     void BindPromptSprites();
     void ApplyStepPrompt(const Step* step);
     void UpdatePrompt(float deltaTime);
@@ -158,7 +170,8 @@ private:
     void UpdateObjectiveMarker(float deltaTime);
     void SetObjectiveMarkerVisible(bool visible);
 
-private:
+  private:
+    // シーン上のオブジェクトは所有せず、実体の寿命はシーンに従います。
     BaseScene* scene_ = nullptr;
     Player* player_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -170,12 +183,13 @@ private:
     std::vector<std::string> spawnEnemyObjectNames_;
     std::unordered_map<std::string, float> spawnEnemyMaxHpOverrides_;
     std::unordered_map<std::string, float> spawnEnemyDetectionRangeOverrides_;
+    // 読み込み済みの敵スロットと現在の手順。再生中の巻き戻しでも保持します。
     std::vector<SpawnEnemySlot> spawnEnemies_;
     std::vector<Step> steps_;
     int currentStepIndex_ = -1;
     float stepTimer_ = 0.0f;
     float conditionSatisfiedTimer_ = 0.0f;
-    Vector3 stepStartPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 stepStartPosition_ = {0.0f, 0.0f, 0.0f};
     bool started_ = false;
     bool loaded_ = false;
     bool completed_ = false;
@@ -186,6 +200,7 @@ private:
     bool morphWasActiveOnStepEntry_ = false;
     Object3d* carriedEnemyOnStepEntry_ = nullptr;
 
+    // ステップごとの演出再生と、操作案内・目標表示の独立した状態です。
     CinematicSequence cinematicSequence_;
     CinematicPlayer cinematicPlayer_;
 

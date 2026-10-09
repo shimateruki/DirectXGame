@@ -27,6 +27,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
+// 独自フォントのパス列を DirectWrite へ順に渡す COM 列挙器。参照数で寿命を管理する。
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
     ResourceFontFileEnumerator(IDWriteFactory* factory, const void* collectionKey, UINT32 collectionKeySize)
@@ -93,6 +94,7 @@ private:
     ComPtr<IDWriteFontFile> currentFile_;
 };
 
+// 指定フォント集合の列挙器を生成する。OS 全体へのインストールをせず、生成処理内だけで使う。
 class ResourceFontCollectionLoader final : public IDWriteFontCollectionLoader {
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
@@ -132,6 +134,7 @@ private:
     std::atomic<ULONG> refCount_{ 1 };
 };
 
+// 文字 PNG 一枚の生成条件。自動キャンバスの可否と装飾を保持し、結果は RenderResult へ分ける。
 struct RenderConfig {
     std::wstring text = L" ";
     std::wstring fontPath;
@@ -158,6 +161,7 @@ struct RenderConfig {
     std::wstring reportPath;
 };
 
+// 確定した画像のピクセル寸法と実際のフォント。指定フォントを使えなかったかも報告する。
 struct RenderResult {
     int width = 1;
     int height = 1;

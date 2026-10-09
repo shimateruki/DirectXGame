@@ -9,6 +9,7 @@
 /// ファイル走査を描画処理から分離し、必要なときだけカタログを再構築する。
 class InspectorTextureCatalog {
 public:
+  // 同じ材質として選択する Albedo・Normal・ORM のファイル参照。画像本体は所有しない。
   struct PbrPreset {
     std::string name;
     std::string albedoPath;

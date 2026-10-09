@@ -722,6 +722,7 @@ Object3d* AnimationWorkbench::FindPreviewObject() const {
 void AnimationWorkbench::ApplyTimelinePose() {
     if (!previewModel_ || !previewObject_) return;
 
+    // UI の一時調整を保存済みキーより優先し、未確定の姿勢をその場で確認できるようにする。
     BodyAnimationClip::Key bodyPose;
     const bool hasBodyPose = bodyEditOverrideActive_
         ? (bodyPose = BuildBodyKeyFromUi(), true)
@@ -750,6 +751,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
         renderer->SetVisualShear(hasBodyPose ? bodyPose.shear : Vector3{}, hasBodyPose ? bodyPose.shearPivotY : 0.0f);
     }
 
+    // 毎フレーム基準姿勢から組み立て直し、前フレームの関節回転を蓄積させない。
     previewModel_->ResetSkeletonPose();
 
     if (useBaseAnimation_ && animationNameBuffer_[0] != '\0') {
@@ -775,6 +777,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
         ApplyPoseKey(key);
     }
 
+    // 個別関節の一時編集は、ベースアニメと補間済みキーを適用した最後に重ねる。
     for (const auto& [jointIndex, key] : editPoseOverrides_) {
         (void)jointIndex;
         ApplyPoseKey(key);
@@ -1213,6 +1216,8 @@ void AnimationWorkbench::ClearAllEditOverrides() {
     editPoseOverrides_.clear();
 }
 
+// 順再生・逆再生の双方で、前回時刻と今回時刻の間を横切ったイベントだけをプレビューします。
+// 終端から先頭へループした場合は区間を二つに分け、境界での二重発火を避けます。
 void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTime) {
     if (events_.empty()) return;
 

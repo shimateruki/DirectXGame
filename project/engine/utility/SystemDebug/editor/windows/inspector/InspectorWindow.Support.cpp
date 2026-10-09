@@ -1,5 +1,7 @@
 ﻿#include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.Internal.h"
 
+#ifdef USE_IMGUI
+
 using namespace InspectorWindowImplementation;
 
 // 補助処理の定義を一か所に保持し、共有状態と呼び出し順を維持します。
@@ -1034,3 +1036,5 @@ void DrawDecalPanel(
     ImGui::TextDisabled("Game View配置では地面・壁の法線へ自動整列します。回転はTransformで調整できます。");
 }
 }
+
+#endif // USE_IMGUI

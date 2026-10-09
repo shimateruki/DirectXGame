@@ -1,3 +1,8 @@
+"""壊せるブロックの形状、材質、テクスチャを一組のアセットとして生成する。
+
+実行すると出力先の同名 OBJ/MTL/画像を更新する。
+"""
+
 from __future__ import annotations
 
 import math

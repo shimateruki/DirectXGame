@@ -10,6 +10,7 @@ bool ReplayDebugger::StartRegression() {
         return false;
     }
 
+    // 前回の一時エフェクトが再実行の比較や撮影に混ざらないよう、基準フレームから始める。
     ClearTransientRuntime();
     ApplyFrame(0);
     regressionResult_ = {};
@@ -73,6 +74,7 @@ void ReplayDebugger::UpdateRegressionBeforeSimulation() {
     }
 
     const InputSample& sample = inputSamples_[regressionInputIndex_];
+    // 記録時の入力と時間刻みをGame更新の前に再現する。
     regressionStepDeltaTime_ = (std::clamp)(sample.deltaTime, 0.0001f, 0.25f);
     InputManager::GetInstance()->ApplyReplayState(sample.state);
     regressionStepPrepared_ = true;
@@ -94,6 +96,7 @@ void ReplayDebugger::CaptureRegressionAfterSimulation() {
     regressionResult_.maximumGpuMs = (std::max)(regressionResult_.maximumGpuMs, gpuMs);
     ++regressionPerformanceSamples_;
 
+    // 入力は毎更新、比較用スナップショットは低頻度なので、到達済みの基準フレームをここで消化する。
     while (regressionExpectedFrameIndex_ < frames_.size() &&
         frames_[regressionExpectedFrameIndex_].time <= regressionElapsedTime_ + 0.0001) {
         CompareRegressionFrame(frames_[regressionExpectedFrameIndex_]);
@@ -211,6 +214,7 @@ void ReplayDebugger::FinishRegression() {
     if (regressionResult_.comparedFrames == 0) {
         regressionResult_.failures.push_back("プレイヤー軌跡を比較できるReplayフレームがありませんでした。");
     }
+    // 現状の軌跡判定はPlayerの最大位置誤差で行い、ゴール・Errorログ・任意の性能条件を別に評価する。
     if (regressionResult_.maxPositionError > regressionSettings_.maxPositionError) {
         std::ostringstream message;
         message << "プレイヤー軌跡の最大誤差 " << std::fixed << std::setprecision(3)

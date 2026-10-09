@@ -78,6 +78,18 @@ float4 main(VSOutput input) : SV_TARGET
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
     screenUV = saturate(screenUV);
 
+    // Reject hidden pixels before evaluating noise, sine waves, and beam geometry.
+    if (color.a < 0.006f)
+    {
+        discard;
+    }
+    float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
+    float beamDepth = input.screenPos.z / input.screenPos.w;
+    if (bgDepth < 0.999999f && beamDepth > bgDepth + 0.000001f)
+    {
+        discard;
+    }
+
     float speed = max(waveSpeed, 0.05f);
     float detail = max(waveFrequency, 0.1f);
     float patternScale = max(effectScale, 0.05f);
@@ -96,7 +108,8 @@ float4 main(VSOutput input) : SV_TARGET
     float axisCoord = dot(toPixel, axisDir);
     float3 radialVec = toPixel - axisDir * axisCoord;
     float radial = length(radialVec) / thickness;
-    float axis01 = axisCoord / axisLength + 0.5f;
+    // Cube/cylinder primitives span [-1, 1]; the world axis stores a half length.
+    float axis01 = axisCoord / (axisLength * 2.0f) + 0.5f;
     float angle = atan2(dot(radialVec, sideB), dot(radialVec, sideA));
 
     float shellNoise = Noise2D(float2(axis01 * (32.0f + detail * 3.0f) - time * speed * 5.0f, angle * 1.7f));
@@ -115,10 +128,8 @@ float4 main(VSOutput input) : SV_TARGET
     float scanLine = pow(scan, 5.0f) * inner;
     float energy = saturate(core * (1.95f + scan * 0.35f) + scanLine * 1.15f + glow * 0.38f + shell * 0.42f) * endFade;
 
-    float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
-    float beamDepth = input.screenPos.z / input.screenPos.w;
     float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(beamDepth);
-    float depthFade = (bgDepth >= 0.999f) ? 1.0f : saturate(depthDiff / 0.65f + 0.45f);
+    float depthFade = (bgDepth >= 0.999999f) ? 1.0f : saturate(depthDiff / 0.20f);
     energy *= depthFade;
 
     float3 tint = lerp(float3(0.12f, 0.78f, 1.75f), saturate(color.rgb), 0.58f);

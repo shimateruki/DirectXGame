@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "categories": [
+    { "id": "player", "displayName": "プレイヤー", "bitIndex": 0 },
+    { "id": "enemy", "displayName": "敵", "bitIndex": 1 },
+    { "id": "ground", "displayName": "床・地形", "bitIndex": 2 },
+    { "id": "player_bullet", "displayName": "プレイヤー弾", "bitIndex": 3 },
+    { "id": "trigger", "displayName": "トリガー", "bitIndex": 4 },
+    { "id": "map_block", "displayName": "吸収可能ブロック", "bitIndex": 5 },
+    { "id": "player_attack", "displayName": "プレイヤー攻撃", "bitIndex": 6 },
+    { "id": "enemy_attack", "displayName": "敵攻撃", "bitIndex": 7 },
+    { "id": "hook_anchor", "displayName": "フックアンカー", "bitIndex": 8 }
+  ]
+}

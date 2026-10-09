@@ -53,6 +53,7 @@ float BakedFireMask(float4 texel)
 
 float3 TonalFireRamp(float heat, float ember, float3 artistTint)
 {
+    // Keep the hottest regions above display white so bloom can shape the flame core.
     float3 deepCoal = float3(0.060f, 0.006f, 0.002f);
     float3 redCore = lerp(float3(0.95f, 0.040f, 0.008f), artistTint, 0.18f);
     float3 orange = float3(1.62f, 0.42f, 0.050f);
@@ -99,6 +100,7 @@ float4 main(VSOutput input) : SV_TARGET
     float3 cameraToCenter = centerWorld - cameraWorldPosition;
     float cameraDistance = max(length(cameraToCenter), 0.0001f);
     float3 viewForward = cameraToCenter / cameraDistance;
+    // Change the reference axis near a vertical view to avoid a degenerate cross product.
     float3 upSeed = (abs(viewForward.y) > 0.96f) ? float3(0.0f, 0.0f, 1.0f) : float3(0.0f, 1.0f, 0.0f);
     float3 viewRight = normalize(cross(upSeed, viewForward));
     float3 viewUp = normalize(cross(viewForward, viewRight));

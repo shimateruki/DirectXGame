@@ -28,15 +28,18 @@ private:
         Error,
     };
 
+    // チャンク同士の接続位置。配置 Transform を掛ける前のチャンク内座標。
     struct Socket {
         Vector3 position{};
     };
 
+    // 視界の遮蔽検査に使う局所的な箱。halfExtents は各軸の半分の大きさ。
     struct SightBound {
         Vector3 center{};
         Vector3 halfExtents{ 1.0f, 1.0f, 1.0f };
     };
 
+    // カタログの再利用単位。モデル・衝突寸法・接続位置・通行と遮蔽の分類をまとめる。
     struct ChunkDefinition {
         std::string id;
         std::string displayName;
@@ -52,6 +55,7 @@ private:
         bool blocksSight = true;
     };
 
+    // Plan の一配置。position はワールド座標、rotationY は度単位、scale は倍率です。
     struct Operation {
         std::string name;
         std::string chunkId;
@@ -61,6 +65,7 @@ private:
         bool allowOverlap = false;
     };
 
+    // 操作名で結ぶ通行可能性の要求。maxGap はワールド距離です。
     struct Link {
         std::string from;
         std::string to;
@@ -68,12 +73,14 @@ private:
         float maxGap = 2.0f;
     };
 
+    // 配置プランの診断結果。重大度とカテゴリを表示し、修正判断の材料にする。
     struct ValidationIssue {
         Severity severity = Severity::Info;
         std::string category;
         std::string message;
     };
 
+    // 配置後の範囲を最小・最大座標で表す軸平行箱。半径や全幅ではない。
     struct Bounds {
         Vector3 min{};
         Vector3 max{};
@@ -82,6 +89,7 @@ private:
     bool LoadCatalog();
     bool LoadPlan();
     void ValidatePlan();
+    // 検証済み Plan を Game View の配置プレビューへ渡します。確定操作まではシーンを変更しません。
     void StartPlanPreview();
     void ResetLoadedPlan();
 

@@ -110,7 +110,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -743,6 +743,4 @@ void DebugEditor::ResolveCrashRecoveryCandidate(const std::string& resolution) {
     manifest["resolvedAt"] = NowIsoString();
     WriteJsonFileSafe(manifestPathText, manifest);
 }
-
-
 

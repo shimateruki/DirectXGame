@@ -21,10 +21,7 @@ struct ID3D12Resource;
 class Object3d;
 class SceneManager;
 
-/// <summary>
-/// 入力テキストから3Dモデル用OBJを生成し、シーンへ追加するEditorツール。
-/// </summary>
-/// 入力テキストから押し出しOBJモデルを生成し、3D文字としてプレビュー・配置するエディタツール。
+/// <summary>入力テキストを押し出しOBJへ変換し、3D文字をプレビュー・配置する編集ツール。</summary>
 class Text3DGenerator : public IEditable {
 public:
     Text3DGenerator() = default;
@@ -40,20 +37,14 @@ public:
     std::string GetName() override { return "Text 3D Generator"; }
 
 private:
-    /// <summary>
-    /// DirectWriteで描いた文字のアルファマスク。
-    /// </summary>
-    /// DirectWriteで描いた文字をOBJ化するためのアルファマスク情報。
+    /// DirectWrite の文字描画結果から OBJ を作るためのアルファマスク。
     struct TextMask {
         int width = 0;
         int height = 0;
         std::vector<unsigned char> alpha;
     };
 
-    /// <summary>
-    /// 生成したモデルファイルと統計情報。
-    /// </summary>
-    /// 生成された3D文字モデルのパス、サイズ、頂点数などの結果情報。
+    /// 生成した OBJ のパスと、プレビュー・結果表示に使う統計情報。
     struct GeneratedModelInfo {
         std::string modelName;
         std::string objPath;

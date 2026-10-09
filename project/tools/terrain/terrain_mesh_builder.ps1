@@ -1,3 +1,8 @@
+<#
+ノイズと任意の高さ画像から OBJ 地形・衝突高さデータ・生成レポートを作る。
+同名の出力先は上書きする。GeneratePaintMap 指定時は高さと傾斜から確認用 PNG も生成する。
+Name はファイル名に使える文字へ置換され、解像度などの数値は下記の範囲に丸められる。
+#>
 param(
     [string]$Name = "terrain",
     [int]$Resolution = 32,
@@ -124,6 +129,7 @@ $HeightMapStrength = Clamp-Double $HeightMapStrength 0.0 8.0
 $PaintStrength = Clamp-Double $PaintStrength 0.0 1.0
 
 $safeName = Sanitize-Name $Name
+# 出力名を正規化してから、モデル・ペイント画像・レポートの保存先をそろえる。
 $outputDir = Join-Path $OutputRoot $safeName
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
@@ -328,6 +334,7 @@ $modelName = "GeneratedTerrain/$safeName"
 $vertexCount = ($Resolution + 1) * ($Resolution + 1)
 $triangleCount = $Resolution * $Resolution * 2
 
+# 地形描画だけでなく、ゲーム側が表面高度を補間するための格子値をメタデータへ残す。
 $heightSamples = New-Object System.Collections.Generic.List[object]
 for ($z = 0; $z -le $Resolution; $z++) {
     $row = New-Object System.Collections.Generic.List[double]

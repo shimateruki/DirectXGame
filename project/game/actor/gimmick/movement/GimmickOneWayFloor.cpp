@@ -8,12 +8,13 @@ void GimmickOneWayFloor::Initialize(Object3dCommon* common, const std::string& m
     SetClassName("Gimmick");
     SetGimmickType("OneWayFloor");
     SetName("Gimmick_OneWayFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetColor({ 0.85f, 0.9f, 0.65f, 0.9f });
-    SetScale({ 2.5f, 0.22f, 2.5f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetColor({0.85f, 0.9f, 0.65f, 0.9f});
+    SetScale({2.5f, 0.22f, 2.5f});
 }
 
+// このギミックでは接触時の追加処理を行わず、衝突結果だけを返します。
 bool GimmickOneWayFloor::OnCollision(Object3d* other) {
     (void)other;
     return true;

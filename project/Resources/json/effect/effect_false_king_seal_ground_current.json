@@ -1,0 +1,61 @@
+{
+  "AlphaReference": 0.002,
+  "AutoLoop": true,
+  "BlendMode": 2,
+  "EdgeFadeStrength": 0.0,
+  "EnableReveal": false,
+  "EndColor": [
+    1.0,
+    1.0,
+    1.0,
+    0.62
+  ],
+  "EndScale": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "Intensity": 3.0,
+  "Lifetime": 600.0,
+  "MeshSegments": 3,
+  "PlaneSize": [
+    2,
+    2
+  ],
+  "Position": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ProceduralType": 13,
+  "Rotation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ScrollSpeed": [
+    0,
+    0
+  ],
+  "StartColor": [
+    1.0,
+    1.0,
+    1.0,
+    0.62
+  ],
+  "StartScale": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "TexturePath": "Resources/sprite/particle/white.png",
+  "UseTextureColor": true,
+  "UvTiling": [
+    1.0,
+    1.0
+  ],
+  "VolumeMode": 0,
+  "ChantFlowStrength": 1.0,
+  "RingEnergyStrength": 0.83,
+  "RingSpinSpeed": 8.0
+}

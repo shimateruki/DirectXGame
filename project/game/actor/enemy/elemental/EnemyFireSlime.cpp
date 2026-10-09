@@ -37,16 +37,16 @@ Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
 
 BulletVisualConfig MakeFireVisual(float scale) {
     BulletVisualConfig visual;
     visual.materialType = 11;
     visual.blendMode = BlendMode::kNormal;
-    visual.color = { 1.0f, 0.34f, 0.07f, 0.96f };
+    visual.color = {1.0f, 0.34f, 0.07f, 0.96f};
     visual.emissive = 2.8f;
     visual.visualScale = scale;
     visual.effectType = 1.0f;
@@ -85,7 +85,7 @@ Object3d* FindEnemyDamageTarget(Object3d* object) {
     }
     return nullptr;
 }
-}
+} // namespace
 
 // 炎スライムの初期化
 void EnemyFireSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -93,11 +93,11 @@ void EnemyFireSlime::Initialize(Object3dCommon* common, const std::string& model
     SetName("Enemy_FireSlime");
     SetEnemyType("FireSlime");
     ReloadAttackProfile();
-    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     defaultColor_ = GetColor();
 
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
     SyncGroundCollisionRadius();
 }
@@ -105,11 +105,15 @@ void EnemyFireSlime::Initialize(Object3dCommon* common, const std::string& model
 // 近距離ブレスと中距離火球を切り替えるAI
 void EnemyFireSlime::Update(float deltaTime) {
     if (UpdateInactiveState(deltaTime)) {
+        fireballSequence_.Cancel();
+        fireballWindupTimer_ = 0;
         return;
     }
 
     idleTimer_ += deltaTime;
     if (UpdateThrowRecoveryState(deltaTime)) {
+        fireballSequence_.Cancel();
+        fireballWindupTimer_ = 0;
         UpdateHeadFlame(deltaTime);
         return;
     }
@@ -138,13 +142,14 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         fireballAimLocked_ = false;
         RequestRemoveHeadFlameVisual();
         RequestRemoveBreathFlameVisuals();
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         return true;
     }
 
     if (isCarried_) {
         HideAttackTelegraph();
-        if (headFlameVisual_) headFlameVisual_->SetIsVisible(false);
+        if (headFlameVisual_)
+            headFlameVisual_->SetIsVisible(false);
         HideBreathFlameVisuals();
         idleTimer_ += deltaTime;
         return true;
@@ -186,45 +191,54 @@ void EnemyFireSlime::UpdateWildTimers(float deltaTime) {
 }
 
 void EnemyFireSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
+    if (!target_ && fireballSequence_.ControlsActor()) {
+        // 対象を失っても時計を止めず、条件評価と終了・後片付けまで進めます。
+        UpdateFireballWindup(deltaTime, velocity, {0, 0, 1}, 0);
+        return;
+    }
     if (target_ && param_.has_value()) {
         Vector3 toTarget = target_->GetTranslate() - GetTranslate();
         Vector3 direction = NormalizePlanar(toTarget);
         const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
 
-        UpdateFacing(direction);
+        if (!fireballSequence_.ControlsActor()) UpdateFacing(direction);
         UpdateCombatBehavior(deltaTime, velocity, direction, distance);
     }
 }
 
-void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction,
+                                          float distance) {
     const EnemyAttackDefinition& breathAttack = GetAttackDefinition(kBreathAttackId);
     const EnemyAttackDefinition& fireballAttack = GetAttackDefinition(kFireballAttackId);
-    if (breathTimer_ <= 0.0f && fireballWindupTimer_ <= 0.0f && UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
+    const EnemyAttackDefinition* sequenceAttack = SelectSequenceAttack(distance);
+    if (breathTimer_ <= 0.0f && fireballWindupTimer_ <= 0.0f && !fireballSequence_.IsRunning() &&
+        UpdateNoticeReaction(deltaTime, distance, detectionRange_, direction)) {
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         UpdateFacing(direction);
         return;
     }
 
-    if (fireballWindupTimer_ > 0.0f) {
+    if (fireballWindupTimer_ > 0.0f || fireballSequence_.IsRunning()) {
         UpdateFireballWindup(deltaTime, velocity, direction, distance);
-    }
-    else if (breathTimer_ > 0.0f) {
+    } else if (breathTimer_ > 0.0f) {
         UpdateBreath(deltaTime, direction, distance);
-    }
-    else if (distance >= breathAttack.minRange && distance <= breathAttack.maxRange && attackCooldown_ <= 0.0f) {
-        StartBreath();
-    }
-    else if (distance <= (std::min)(detectionRange_, fireballAttack.maxRange) && distance >= fireballAttack.minRange && attackCooldown_ <= 0.0f) {
+    } else if (sequenceAttack && attackCooldown_ <= 0.0f) {
+        selectedFireball_ = *sequenceAttack;
         StartFireballWindup(direction, distance);
-    }
-    else if (distance <= detectionRange_) {
+    } else if (distance >= breathAttack.minRange && distance <= breathAttack.maxRange && attackCooldown_ <= 0.0f) {
+        StartBreath();
+    } else if (distance <= (std::min)(detectionRange_, fireballAttack.maxRange) &&
+               distance >= fireballAttack.minRange && attackCooldown_ <= 0.0f &&
+               !fireballAttack.sequence.enabled && previewAttackId_.empty()) {
+        selectedFireball_ = fireballAttack;
+        StartFireballWindup(direction, distance);
+    } else if (distance <= detectionRange_) {
         const float speed = (std::max)(0.0f, param_->speed);
         const float approach = distance > breathAttack.maxRange * 0.78f ? 1.0f : -0.55f;
         velocity.x = direction.x * speed * approach;
         velocity.z = direction.z * speed * approach;
-    }
-    else {
+    } else {
         UpdateWanderBehavior(deltaTime, velocity);
     }
 }
@@ -232,12 +246,13 @@ void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, co
 void EnemyFireSlime::UpdateWanderBehavior(float deltaTime, Vector3& velocity) {
     const float speed = (std::max)(0.55f, param_->speed * 0.42f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.72f);
-    UpdateFacing({ velocity.x, 0.0f, velocity.z });
+    UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
 
 void EnemyFireSlime::ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity) {
     velocity.y = (std::min)(GetVelocity().y, 0.0f);
-    if (breathTimer_ <= 0.0f && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval, 0.10f)) {
+    if (!fireballSequence_.ControlsActor() && breathTimer_ <= 0.0f && SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime,
+                                                                   kMoveHopInterval, 0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
     SetVelocity(velocity);
@@ -246,11 +261,13 @@ void EnemyFireSlime::ApplyGroundMovementAndAnimation(float deltaTime, Vector3& v
 }
 
 void EnemyFireSlime::BeginThrown(const Vector3& initialVelocity) {
+    fireballSequence_.Cancel();
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
-        const float capturedMaxScale = (std::max)({ std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z) });
+        const float capturedMaxScale =
+            (std::max)({std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z)});
         if (capturedMaxScale < 1.2f) {
-            baseScale_ = { 2.0f, 2.0f, 2.0f };
+            baseScale_ = {2.0f, 2.0f, 2.0f};
         }
         hasBaseScale_ = true;
     }
@@ -286,12 +303,14 @@ std::unique_ptr<Object3d> EnemyFireSlime::Clone() const {
 // ブレス攻撃、火球、炎演出の補助処理
 void EnemyFireSlime::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
-    if (lengthSq <= 0.0001f) return;
+    if (lengthSq <= 0.0001f)
+        return;
     const float targetYaw = std::atan2(direction.x, direction.z) + kFireSlimeModelYawOffset;
     SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
 }
 
 void EnemyFireSlime::StartBreath() {
+    selectedFireball_ = {};
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
     breathTimer_ = attack.activeDuration;
     breathParticleTimer_ = 0.0f;
@@ -301,7 +320,7 @@ void EnemyFireSlime::StartBreath() {
     breathWarningTriggered_ = false;
     attackCooldown_ = attack.cooldown;
     attackTimer_ = attack.activeDuration;
-    SetColor({ 1.0f, 0.82f, 0.62f, 1.0f });
+    SetColor({1.0f, 0.82f, 0.62f, 1.0f});
 }
 
 void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, float distance) {
@@ -313,26 +332,17 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, flo
     const float progress = attack.GetPhaseProgressFromRemaining(AttackAbilityPhase::Active, breathTimer_);
     const float damageTriggerTime = activeDuration * 0.62f;
     const float damageTriggerProgress = 1.0f - damageTriggerTime / activeDuration;
-    const float timingProgress = std::clamp(
-        progress / (std::max)(damageTriggerProgress, 0.01f),
-        0.0f,
-        1.0f);
+    const float timingProgress = std::clamp(progress / (std::max)(damageTriggerProgress, 0.01f), 0.0f, 1.0f);
     if (!breathDamageDone_) {
-        ShowAttackTelegraphCone(
-            GetTranslate(),
-            direction,
-            attack.maxRange + 0.55f,
-            0.62f,
-            attack.radius * 2.0f,
-            timingProgress,
-            { 1.0f, 0.30f, 0.05f, 0.78f });
+        ShowAttackTelegraphCone(GetTranslate(), direction, attack.maxRange + 0.55f, 0.62f, attack.radius * 2.0f,
+                                timingProgress, {1.0f, 0.30f, 0.05f, 0.78f});
     } else {
         HideAttackTelegraph();
     }
     UpdateBreathFlameVisuals(direction, deltaTime);
 
     if (!breathWarningTriggered_ && breathTimer_ <= damageTriggerTime + attack.warningLeadTime) {
-        TriggerAttackTelegraphCue({ 1.0f, 0.28f, 0.04f, 1.0f });
+        TriggerAttackTelegraphCue({1.0f, 0.28f, 0.04f, 1.0f});
         breathWarningTriggered_ = true;
     }
 
@@ -357,20 +367,67 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const Vector3& direction, flo
 }
 
 void EnemyFireSlime::StartFireballWindup(const Vector3& direction, float distance) {
-    const EnemyAttackDefinition& attack = GetAttackDefinition(kFireballAttackId);
+    const EnemyAttackDefinition& attack = selectedFireball_;
+    if (attack.sequence.enabled && attack.sequence.actorControl.enabled) {
+        // 開始に失敗したデータを毎フレーム再試行しません。失敗理由は状態表示に残ります。
+        if (!fireballSequence_.Start(attack, MakeSequenceContext(direction, distance)))
+            attackCooldown_ = (std::max)(0.25f, attack.cooldown);
+        fireballWindupTimer_ = attackTimer_ = 0;
+        return;
+    }
     fireballWindupTimer_ = (std::max)(0.01f, attack.windupDuration);
     pendingFireballDirection_ = direction;
     pendingFireballDistance_ = distance;
     fireballWarningTriggered_ = false;
     fireballAimLocked_ = false;
     attackTimer_ = fireballWindupTimer_;
-    SetColor({ 1.0f, 0.72f, 0.48f, 1.0f });
+    SetColor({1.0f, 0.72f, 0.48f, 1.0f});
+    if (attack.sequence.enabled) {
+        fireballSequence_.Start(attack, MakeSequenceContext(direction, distance));
+        fireballWindupTimer_ = (std::max)(0.0001f, attack.sequence.duration);
+    }
 }
 
-void EnemyFireSlime::UpdateFireballWindup(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
-    const EnemyAttackDefinition& attack = GetAttackDefinition(kFireballAttackId);
+void EnemyFireSlime::UpdateFireballWindup(float deltaTime, Vector3& velocity, const Vector3& direction,
+                                          float distance) {
+    const EnemyAttackDefinition& attack = selectedFireball_;
+    if (attack.sequence.enabled && attack.sequence.actorControl.enabled) {
+        fireballSequence_.Update(deltaTime, MakeSequenceContext(direction, distance));
+        if (attack.sequence.actorControl.stopMovement) velocity.x = velocity.z = 0;
+        if (!fireballSequence_.IsRunning()) attackCooldown_ = attack.cooldown;
+        return;
+    }
     velocity.x = 0.0f;
     velocity.z = 0.0f;
+
+    if (attack.sequence.enabled) {
+        const float elapsed = fireballSequence_.GetElapsed();
+        if (!fireballAimLocked_) {
+            pendingFireballDirection_ = direction;
+            pendingFireballDistance_ = distance;
+            UpdateFacing(direction);
+        }
+        if (elapsed < attack.windupDuration) {
+            ShowAttackTelegraphLine(GetWorldPosition(), pendingFireballDirection_,
+                std::clamp(pendingFireballDistance_, attack.minRange, attack.maxRange), attack.radius * 2,
+                elapsed / (std::max)(0.001f, attack.windupDuration), {1, 0.34f, 0.06f, 0.8f});
+            if (!fireballWarningTriggered_ && elapsed + deltaTime >= attack.windupDuration - attack.warningLeadTime) {
+                TriggerAttackTelegraphCue({1, 0.32f, 0.04f, 1});
+                fireballWarningTriggered_ = fireballAimLocked_ = true;
+            }
+        } else HideAttackTelegraph();
+        fireballSequence_.Update(deltaTime, MakeSequenceContext(pendingFireballDirection_, distance));
+        // 既存の溜め姿勢も共通時計へ追従させ、残り時間を二重に積算しません。
+        fireballWindupTimer_ = (std::max)(0.0f, attack.windupDuration - fireballSequence_.GetElapsed());
+        if (!fireballSequence_.IsRunning()) {
+            fireballWindupTimer_ = 0;
+            attackCooldown_ = attack.cooldown;
+            attackTimer_ = attack.recoveryDuration;
+            HideAttackTelegraph();
+            SetColor(defaultColor_);
+        }
+        return;
+    }
 
     if (!fireballAimLocked_) {
         pendingFireballDirection_ = direction;
@@ -381,19 +438,12 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, Vector3& velocity, co
     fireballWindupTimer_ = (std::max)(0.0f, fireballWindupTimer_ - deltaTime);
     const float windupDuration = (std::max)(0.01f, attack.windupDuration);
     const float progress = attack.GetPhaseProgressFromRemaining(AttackAbilityPhase::Windup, fireballWindupTimer_);
-    const float predictedDistance = std::clamp(
-        pendingFireballDistance_ + attack.radius,
-        attack.minRange,
-        attack.maxRange);
-    ShowAttackTelegraphLine(
-        GetWorldPosition(),
-        pendingFireballDirection_,
-        predictedDistance,
-        attack.radius * 2.0f,
-        progress,
-        { 1.0f, 0.34f, 0.06f, 0.80f });
+    const float predictedDistance =
+        std::clamp(pendingFireballDistance_ + attack.radius, attack.minRange, attack.maxRange);
+    ShowAttackTelegraphLine(GetWorldPosition(), pendingFireballDirection_, predictedDistance, attack.radius * 2.0f,
+                            progress, {1.0f, 0.34f, 0.06f, 0.80f});
     if (!fireballWarningTriggered_ && fireballWindupTimer_ <= attack.warningLeadTime) {
-        TriggerAttackTelegraphCue({ 1.0f, 0.32f, 0.04f, 1.0f });
+        TriggerAttackTelegraphCue({1.0f, 0.32f, 0.04f, 1.0f});
         fireballWarningTriggered_ = true;
         fireballAimLocked_ = true;
     }
@@ -426,7 +476,7 @@ void EnemyFireSlime::DispatchBreathDamage(const Vector3& direction, float distan
     damageEvent.target = target_;
     damageEvent.attacker = this;
     damageEvent.damageAmount = attack.damage;
-    damageEvent.knockbackVelocity = attack.ResolveKnockback(direction, { direction.x * 9.5f, 4.4f, direction.z * 9.5f });
+    damageEvent.knockbackVelocity = attack.ResolveKnockback(direction, {direction.x * 9.5f, 4.4f, direction.z * 9.5f});
     damageEvent.damageType = DamageType::Fire;
     damageEvent.statusEffect = MakeStatusEffect(attack);
     damageEvent.invincibilityDuration = attack.ResolveInvincibilityDuration();
@@ -437,7 +487,8 @@ void EnemyFireSlime::DispatchBreathDamage(const Vector3& direction, float distan
 }
 
 void EnemyFireSlime::FireFireball(const Vector3& direction, float distance) {
-    if (!target_) return;
+    if (!target_)
+        return;
 
     Vector3 spawnPos = GetTranslate() + direction * 0.65f;
     spawnPos.y += 1.05f;
@@ -445,31 +496,36 @@ void EnemyFireSlime::FireFireball(const Vector3& direction, float distance) {
     Vector3 aim = target_->GetTranslate() - spawnPos;
     aim.y += 0.35f;
     if (Math::Length(aim) <= 0.001f) {
-        aim = { direction.x, 0.12f, direction.z };
+        aim = {direction.x, 0.12f, direction.z};
     }
     aim = Math::Normalize(aim);
 
     const EnemyAttackDefinition& attack = GetAttackDefinition(kFireballAttackId);
     const float speed = std::clamp(distance * 1.65f, attack.minSpeed, attack.maxSpeed);
-    BulletManager::GetInstance()->Fire(
-        spawnPos,
-        aim * speed,
-        kEnemyAttack,
-        kPlayer | kAllSolid,
-        "Primitives/sphere",
-        0.5f,
-        attack.lifetime,
-        MakeFireVisual(1.2f),
-        attack.damage,
-        MakeStatusEffect(attack),
-        DamageType::Fire);
+    BulletManager::GetInstance()->Fire(spawnPos, aim * speed, CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Primitives/sphere",
+                                       0.5f, attack.lifetime, MakeFireVisual(1.2f), attack.damage,
+                                       MakeStatusEffect(attack), DamageType::Fire);
 
     EmitFirePreset(attack.activeVfx.empty() ? kCastPreset : attack.activeVfx.c_str(), spawnPos);
 }
 
-void EnemyFireSlime::UpdateHeadFlame(float deltaTime) {
-    UpdateHeadFlameVisual(deltaTime);
+AttackSequenceContext EnemyFireSlime::MakeSequenceContext(const Vector3& direction, float distance) {
+    AttackSequenceContext context;
+    context.owner = this;
+    context.position = GetWorldPosition();
+    context.forward = direction;
+    context.hasTarget = target_ != nullptr;
+    if (target_) context.targetPosition = target_->GetWorldPosition();
+    context.targetDistance = distance;
+    context.grounded = isGrounded_;
+    return context;
 }
+
+const EnemyAttackDefinition* EnemyFireSlime::SelectSequenceAttack(float distance) const {
+    return attackProfile_.SelectSequence(distance, detectionRange_, previewAttackId_);
+}
+
+void EnemyFireSlime::UpdateHeadFlame(float deltaTime) { UpdateHeadFlameVisual(deltaTime); }
 
 void EnemyFireSlime::EnsureHeadFlameVisual() {
     if (headFlameVisual_ || headFlameRemoveRequested_) {
@@ -494,7 +550,7 @@ void EnemyFireSlime::EnsureHeadFlameVisual() {
     flame->SetMaterialType(kHeadFlameMaterialType);
     flame->SetSelectedLighting(0);
     flame->SetEnableLighting(false);
-    flame->SetColor({ 1.0f, 0.24f, 0.04f, 0.82f });
+    flame->SetColor({1.0f, 0.24f, 0.04f, 0.82f});
     flame->SetEmissive(1.7f);
 
     if (auto* renderer = flame->GetMeshRenderer()) {
@@ -526,7 +582,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     }
 
     const Vector3 scale = GetScale();
-    const float bodyScale = (std::max)({ 0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     Vector3 velocity = GetVelocity();
     velocity.y = 0.0f;
     const float velocityResponse = 1.0f - std::exp(-(std::max)(0.0f, deltaTime) * 9.0f);
@@ -541,7 +597,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
 
     // 炎の向きを本体へ固定し、カメラ移動時にも内部の奥行きが保たれるようにします。
     const float yaw = GetRotation().y;
-    const Vector3 localRight = { std::cos(yaw), 0.0f, -std::sin(yaw) };
+    const Vector3 localRight = {std::cos(yaw), 0.0f, -std::sin(yaw)};
     const float flowX = (std::clamp)(-Math::Dot(smoothedFlameVelocity_, localRight) * 0.12f, -1.0f, 1.0f);
 
     const float pulse = std::sin(idleTimer_ * 8.0f) * 0.06f;
@@ -551,9 +607,9 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
 
     headFlameVisual_->SetIsVisible(GetIsVisible() && !isDead);
     headFlameVisual_->SetTranslate(pos);
-    headFlameVisual_->SetRotation({ 0.0f, yaw, 0.0f });
-    headFlameVisual_->SetScale({ width, height, width });
-    headFlameVisual_->SetColor({ 1.0f, 0.24f + std::sin(idleTimer_ * 5.3f) * 0.035f, 0.04f, 0.80f });
+    headFlameVisual_->SetRotation({0.0f, yaw, 0.0f});
+    headFlameVisual_->SetScale({width, height, width});
+    headFlameVisual_->SetColor({1.0f, 0.24f + std::sin(idleTimer_ * 5.3f) * 0.035f, 0.04f, 0.80f});
 
     if (auto* renderer = headFlameVisual_->GetMeshRenderer()) {
         if (auto* water = renderer->GetWaterParamData()) {
@@ -572,7 +628,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     headFlameParticleTimer_ -= deltaTime;
     headEmberParticleTimer_ -= deltaTime;
     if (headFlameVisual_->GetIsVisible()) {
-        Vector3 particleDirection = { -smoothedFlameVelocity_.x * 0.075f, 0.78f, -smoothedFlameVelocity_.z * 0.075f };
+        Vector3 particleDirection = {-smoothedFlameVelocity_.x * 0.075f, 0.78f, -smoothedFlameVelocity_.z * 0.075f};
         if (headFlameParticleTimer_ <= 0.0f) {
             constexpr float kGoldenAngle = 2.39996323f;
             const float phase = idleTimer_ * 2.8f + static_cast<float>(headFlameParticleCursor_) * kGoldenAngle;
@@ -656,7 +712,7 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
         flame->SetSelectedLighting(0);
         flame->SetEnableLighting(false);
         flame->SetIsVisible(false);
-        flame->SetColor({ 1.0f, 0.31f, 0.05f, 0.0f });
+        flame->SetColor({1.0f, 0.31f, 0.05f, 0.0f});
         flame->SetEmissive(1.8f);
 
         if (auto* renderer = flame->GetMeshRenderer()) {
@@ -688,12 +744,12 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
     const float activeDuration = (std::max)(0.01f, attack.activeDuration);
     const Vector3 scale = GetScale();
     const Vector3 origin = GetTranslate();
-    const float bodyScale = (std::max)({ 0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     const float progress = 1.0f - (std::clamp)(breathTimer_ / activeDuration, 0.0f, 1.0f);
     const float fadeIn = (std::clamp)(progress / 0.16f, 0.0f, 1.0f);
     const float fadeOut = (std::clamp)(breathTimer_ / (activeDuration * 0.18f), 0.0f, 1.0f);
     const float breathAlpha = fadeIn * fadeOut;
-    const Vector3 side = { -direction.z, 0.0f, direction.x };
+    const Vector3 side = {-direction.z, 0.0f, direction.x};
 
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
         Object3d* flame = breathFlameVisuals_[i];
@@ -716,9 +772,9 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const Vector3& direction, float de
 
         flame->SetIsVisible(alpha > 0.02f);
         flame->SetTranslate(pos);
-        flame->SetRotation({ 0.0f, yaw, 0.0f });
-        flame->SetScale({ width, (std::max)(height, width * 0.68f), width * 1.12f });
-        flame->SetColor({ 1.0f, 0.30f + step * 0.06f, 0.045f, alpha });
+        flame->SetRotation({0.0f, yaw, 0.0f});
+        flame->SetScale({width, (std::max)(height, width * 0.68f), width * 1.12f});
+        flame->SetColor({1.0f, 0.30f + step * 0.06f, 0.045f, alpha});
 
         if (auto* renderer = flame->GetMeshRenderer()) {
             if (auto* water = renderer->GetWaterParamData()) {
@@ -769,7 +825,7 @@ void EnemyFireSlime::RequestRemoveBreathFlameVisuals() {
 void EnemyFireSlime::EmitBreathParticles(const Vector3& origin, const Vector3& direction) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kBreathAttackId);
     const float step = (static_cast<float>(breathParticleCursor_ % kBreathFlameVisualCount) + 0.5f) /
-        static_cast<float>(kBreathFlameVisualCount);
+                       static_cast<float>(kBreathFlameVisualCount);
     Vector3 emitPosition = origin + direction * (0.48f + step * attack.maxRange * 0.82f);
     emitPosition.y += std::sin(idleTimer_ * 8.0f + step * 9.1f) * 0.08f;
 
@@ -794,11 +850,8 @@ void EnemyFireSlime::EmitFirePreset(const char* presetName, const Vector3& posit
     particles->Emit(presetName, position);
 }
 
-void EnemyFireSlime::EmitDirectedFirePreset(
-    const char* presetName,
-    const Vector3& position,
-    const Vector3& direction,
-    float speedScale) {
+void EnemyFireSlime::EmitDirectedFirePreset(const char* presetName, const Vector3& position, const Vector3& direction,
+                                            float speedScale) {
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (!particles || !particles->IsInitialized()) {
         return;
@@ -808,8 +861,11 @@ void EnemyFireSlime::EmitDirectedFirePreset(
 
 void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
     Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = { 0.0f, GetRotation().y, 0.0f };
-    if (breathTimer_ > 0.0f) {
+    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
+    if (fireballSequence_.ControlsActor()) {
+        // 攻撃姿勢はAnimation Workbenchのクリップが描画に重ねます。
+        // 専用の溜め・反動式を二重に適用しないよう、物理スケールを基準へ戻します。
+    } else if (breathTimer_ > 0.0f) {
         const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kBreathAttackId).activeDuration);
         const float t = std::clamp(1.0f - (breathTimer_ / activeDuration), 0.0f, 1.0f);
         const float inhale = std::sin(std::clamp(t / 0.24f, 0.0f, 1.0f) * 3.14159265f);
@@ -819,9 +875,8 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.y = baseScale_.y * (1.0f + inhale * 0.10f - exhale * 0.20f - pulse * 0.30f);
         targetScale.z = baseScale_.z * (1.0f - inhale * 0.12f + exhale * 0.30f - pulse * 0.55f);
         targetRotation.x = inhale * 0.09f - exhale * 0.07f;
-    }
-    else if (fireballWindupTimer_ > 0.0f) {
-        const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kFireballAttackId).windupDuration);
+    } else if (fireballWindupTimer_ > 0.0f) {
+        const float windupDuration = (std::max)(0.01f, selectedFireball_.windupDuration);
         const float charge = std::clamp(1.0f - fireballWindupTimer_ / windupDuration, 0.0f, 1.0f);
         const float tremble = std::sin(idleTimer_ * 31.0f) * 0.025f * charge;
         targetScale.x = baseScale_.x * (1.0f + charge * 0.18f + tremble);
@@ -829,17 +884,16 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.0f - charge * 0.08f - tremble * 0.6f);
         targetRotation.x = charge * 0.12f;
         targetRotation.z = tremble * 1.6f;
-    }
-    else if (attackTimer_ > 0.0f) {
-        const float recoveryDuration = (std::max)(0.01f, GetAttackDefinition(kFireballAttackId).recoveryDuration);
+    } else if (attackTimer_ > 0.0f) {
+        const float recoveryDuration = (std::max)(0.01f, selectedFireball_.id.empty()
+            ? GetAttackDefinition(kFireballAttackId).recoveryDuration : selectedFireball_.recoveryDuration);
         const float remaining = std::clamp(attackTimer_ / recoveryDuration, 0.0f, 1.0f);
         const float recoil = std::sin((1.0f - remaining) * 3.14159265f);
         targetScale.x = baseScale_.x * (1.0f - recoil * 0.08f);
         targetScale.y = baseScale_.y * (1.0f + recoil * 0.12f);
         targetScale.z = baseScale_.z * (1.0f + recoil * 0.20f);
         targetRotation.x = -recoil * 0.16f;
-    }
-    else {
+    } else {
         SlimeBounceAnimator::Params params;
         params.speedForFullBounce = 1.85f;
         params.idleAmplitude = 0.075f;
@@ -856,23 +910,16 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
     Vector3 scale = Math::Lerp(GetScale(), targetScale, poseRate);
     SetScale(scale);
     const Vector3 currentRotation = GetRotation();
-    SetRotation({
-        currentRotation.x + (targetRotation.x - currentRotation.x) * poseRate,
-        currentRotation.y,
-        currentRotation.z + (targetRotation.z - currentRotation.z) * poseRate
-    });
+    SetRotation({currentRotation.x + (targetRotation.x - currentRotation.x) * poseRate, currentRotation.y,
+                 currentRotation.z + (targetRotation.z - currentRotation.z) * poseRate});
 }
 
 void EnemyFireSlime::SyncWorldCollisionRadius(float worldRadius) {
     const Vector3 scale = GetScale();
-    const float maxScale = (std::max)({ 0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     SetCollisionRadius(worldRadius / maxScale);
 }
 
-void EnemyFireSlime::SyncGroundCollisionRadius() {
-    SyncWorldCollisionRadius(kGroundCollisionWorldRadius);
-}
+void EnemyFireSlime::SyncGroundCollisionRadius() { SyncWorldCollisionRadius(kGroundCollisionWorldRadius); }
 
-void EnemyFireSlime::SyncThrownCollisionRadius() {
-    SyncWorldCollisionRadius(kThrownCollisionWorldRadius);
-}
+void EnemyFireSlime::SyncThrownCollisionRadius() { SyncWorldCollisionRadius(kThrownCollisionWorldRadius); }

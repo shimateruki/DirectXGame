@@ -1,3 +1,8 @@
+"""全天周画像を六面のキューブマップへ変換する。
+
+--face-size は各面の画素数。--preview 指定時は確認用画像も別途出力する。
+"""
+
 from __future__ import annotations
 
 import argparse

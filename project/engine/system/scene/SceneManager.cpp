@@ -4,6 +4,7 @@
 #include "LoadingScene.h"
 #include "ModelManager.h"
 #include "TextureManager.h"
+#include "MeshEffectManager.h"
 #include "engine/graphics/postprocess/Fade.h"
 #ifdef USE_IMGUI
 #include "engine/utility/SystemDebug/editor/graphics/camera/CameraEditor.h"
@@ -19,6 +20,14 @@
 #include <Windows.h>
 
 using json = nlohmann::json;
+
+namespace {
+// GPU待機後、SceneのObject3dCommonを破棄する前に呼びます。
+// LoadingSceneは描画基盤を持たないため、準備済みの次Sceneの演出は消しません。
+void ReleaseSceneMeshEffects(BaseScene* scene) {
+    if (scene && scene->GetObject3dCommon()) MeshEffectManager::GetInstance()->Clear();
+}
+}
 
 SceneManager* SceneManager::instance_ = nullptr;
 
@@ -72,6 +81,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
             textureManager->SubmitAsyncUploadBatch();
             textureManager->WaitForAsyncUploadBatch();
         }
+        ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_.reset();
         currentSceneName_.clear();
         throw;
@@ -109,11 +119,13 @@ void SceneManager::Finalize() {
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
+        ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
     ++sceneGeneration_;
 
+    ReleaseSceneMeshEffects(preparedScene_.get());
     if (preparedScene_ && preparedSceneInitialized_) {
         preparedScene_->Finalize();
     }
@@ -369,6 +381,7 @@ void SceneManager::BeginLoadingTransition() {
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
+        ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
@@ -663,6 +676,7 @@ void SceneManager::SwapToPreparedScene() {
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
+        ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }
@@ -707,6 +721,7 @@ void SceneManager::SwapToDirectNextScene() {
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
+        ReleaseSceneMeshEffects(currentScene_.get());
         currentScene_->Finalize();
         currentScene_.reset();
     }

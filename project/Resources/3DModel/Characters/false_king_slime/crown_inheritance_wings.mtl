@@ -1,0 +1,9 @@
+newmtl CrownGold
+Kd 0.925490 0.737255 0.298039
+Pr 0.26
+Pm 0.7
+
+newmtl SlimeHighlight
+Kd 1 0.988235 1
+Pr 0.5
+Pm 0

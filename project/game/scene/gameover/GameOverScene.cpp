@@ -44,9 +44,7 @@ constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
 constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
 
-float Clamp01(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
-}
+float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
 
 float EaseOutCubic(float t) {
     t = Clamp01(t);
@@ -71,37 +69,29 @@ float EaseInOutCubic(float t) {
     return 1.0f - inv * inv * inv * 0.5f;
 }
 
-float LerpFloat(float start, float end, float t) {
-    return start + (end - start) * Clamp01(t);
-}
+float LerpFloat(float start, float end, float t) { return start + (end - start) * Clamp01(t); }
 
 Vector3 MakeLookAtEuler(const Vector3& eye, const Vector3& target) {
     const Vector3 direction = target - eye;
     const float planarLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
-    return {
-        std::atan2(-direction.y, planarLength),
-        std::atan2(direction.x, direction.z),
-        0.0f
-    };
+    return {std::atan2(-direction.y, planarLength), std::atan2(direction.x, direction.z), 0.0f};
 }
 
 bool IsFadePlayingForSceneIntro() {
     const Fade::Status status = Fade::GetInstance()->GetStatus();
-    return status == Fade::Status::FadeIn ||
-        status == Fade::Status::FadeOut ||
-        status == Fade::Status::IrisIn ||
-        status == Fade::Status::IrisOut;
+    return status == Fade::Status::FadeIn || status == Fade::Status::FadeOut || status == Fade::Status::IrisIn ||
+           status == Fade::Status::IrisOut;
 }
-}
+} // namespace
 
 SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
-        ? GetSceneLoadContext().objectLayoutPath
-        : "Resources/json/3Dobject/gameOverScene.json");
+                                 ? GetSceneLoadContext().objectLayoutPath
+                                 : "Resources/json/3Dobject/gameOverScene.json");
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
-        ? GetSceneLoadContext().spriteLayoutPath
-        : "Resources/json/sprite/gameOverScene.json");
+                                 ? GetSceneLoadContext().spriteLayoutPath
+                                 : "Resources/json/sprite/gameOverScene.json");
     manifest.AddModel("Characters/player");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
@@ -116,8 +106,7 @@ void GameOverScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile(
-        ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
+    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -154,14 +143,12 @@ void GameOverScene::Initialize() {
     // 背景にも王冠があるため、前景へ重ねて降らせない。
     InitializeDizzyStars();
 
-    LightManager::GetInstance()->LoadState(
-        ResolveSceneLightPath("Resources/json/light/gameOverScene.json"));
+    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/gameOverScene.json"));
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameOver_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
     CameraEditor::GetInstance()->Update(nullptr, false);
     CameraManager::GetInstance()->Update();
-
 }
 
 void GameOverScene::OnActivated() {
@@ -181,8 +168,10 @@ void GameOverScene::OnActivated() {
     UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(0.0f);
     UpdateMenuSprites(0.0f);
-    for (auto& object : objectManager_->GetObjects()) object->RefreshRenderCameraData();
-    for (auto& sprite : sprites_) sprite->Update();
+    for (auto& object : objectManager_->GetObjects())
+        object->RefreshRenderCameraData();
+    for (auto& sprite : sprites_)
+        sprite->Update();
     dxCommon_->SetRenderClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
@@ -197,8 +186,8 @@ void GameOverScene::Finalize() {
     gameOverSlimeAnimator_.Reset(nullptr);
     backgroundSprite_ = nullptr;
     titleLetters_.fill(nullptr);
-    titleLetterBasePositions_.fill(Vector2{ 0.0f, 0.0f });
-    titleLetterBaseSizes_.fill(Vector2{ 0.0f, 0.0f });
+    titleLetterBasePositions_.fill(Vector2{0.0f, 0.0f});
+    titleLetterBaseSizes_.fill(Vector2{0.0f, 0.0f});
     menuRows_ = {};
     fallingCrowns_.clear();
     dizzyStars_.clear();
@@ -209,13 +198,15 @@ void GameOverScene::Finalize() {
     object3dCommon_.reset();
 }
 
+// 導入フェード中は演出時計とメニュー入力を止め、シーンの通常更新だけ継続します。
 void GameOverScene::Update(float deltaTime) {
     const bool canAdvanceIntro = !IsFadePlayingForSceneIntro();
     const float introDeltaTime = canAdvanceIntro ? deltaTime : 0.0f;
     sceneTime_ += introDeltaTime;
     titleRevealTimer_ = std::max(0.0f, sceneTime_ - presentationTuning_.titleRevealStartTime);
 
-    if (SceneManager::GetInstance()->IsPlaying() && canAdvanceIntro && !retryExitActive_ && !retrySceneChangeRequested_ && IsTitleRevealComplete()) {
+    if (SceneManager::GetInstance()->IsPlaying() && canAdvanceIntro && !retryExitActive_ &&
+        !retrySceneChangeRequested_ && IsTitleRevealComplete()) {
         UpdateMenuInput();
     }
 
@@ -230,7 +221,8 @@ void GameOverScene::Update(float deltaTime) {
     UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(deltaTime);
     // カメラ更新後の行列で同一フレームのモデルを描画する。
-    for (auto& object : objectManager_->GetObjects()) object->RefreshRenderCameraData();
+    for (auto& object : objectManager_->GetObjects())
+        object->RefreshRenderCameraData();
     UpdateDizzyStars(introDeltaTime);
 
     particleSystem_->Update(deltaTime);
@@ -262,16 +254,20 @@ void GameOverScene::Draw() {
     auto& objects = objectManager_->GetObjects();
 
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue;
+        if (isFirstPerson && obj.get() == player_)
+            continue;
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
+            continue;
         obj->Draw(pointLightRes, spotLightRes);
     }
 
+    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
+        if (isFirstPerson && obj.get() == player_)
+            continue;
         if (obj->GetMaterialType() == 1) {
             obj->Draw(pointLightRes, spotLightRes);
         }
@@ -281,7 +277,8 @@ void GameOverScene::Draw() {
 
     DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
-    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    const bool grabUpdated =
+        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
     DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
@@ -326,7 +323,8 @@ void GameOverScene::DrawImGui() {
         ImGui::DragFloat3("固定カメラ位置", &presentationTuning_.settleEyeOffset.x, 0.03f);
         ImGui::DragFloat3("固定注視位置", &presentationTuning_.settleTargetOffset.x, 0.03f);
         ImGui::SliderFloat("固定FOV", &presentationTuning_.settleFov, 0.30f, 1.00f, "%.3f");
-        if (ImGui::Button("演出調整を既定値に戻す")) presentationTuning_ = PresentationTuning{};
+        if (ImGui::Button("演出調整を既定値に戻す"))
+            presentationTuning_ = PresentationTuning{};
         ImGui::TextUnformatted("UI配置はSprite Editorで調整できます。");
     }
     ImGui::End();
@@ -336,16 +334,9 @@ void GameOverScene::DrawImGui() {
 void GameOverScene::BindLayoutSprites() {
     backgroundSprite_ = FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 8> titleNames = {
-        "gameover_letter_g",
-        "gameover_letter_a",
-        "gameover_letter_m",
-        "gameover_letter_e1",
-        "gameover_letter_o",
-        "gameover_letter_v",
-        "gameover_letter_e2",
-        "gameover_letter_r"
-    };
+    constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
+                                                       "gameover_letter_e1", "gameover_letter_o", "gameover_letter_v",
+                                                       "gameover_letter_e2", "gameover_letter_r"};
 
     for (size_t i = 0; i < titleNames.size(); ++i) {
         titleLetters_[i] = FindSprite(titleNames[i]);
@@ -355,10 +346,7 @@ void GameOverScene::BindLayoutSprites() {
         }
     }
 
-    constexpr std::array<const char*, 2> rowPrefixes = {
-        "gameover_retry",
-        "gameover_title"
-    };
+    constexpr std::array<const char*, 2> rowPrefixes = {"gameover_retry", "gameover_title"};
 
     for (size_t i = 0; i < rowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
@@ -377,16 +365,9 @@ void GameOverScene::BindLayoutSprites() {
 void GameOverScene::RefreshLayoutSpritePointers() {
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
 
-    constexpr std::array<const char*, 8> titleNames = {
-        "gameover_letter_g",
-        "gameover_letter_a",
-        "gameover_letter_m",
-        "gameover_letter_e1",
-        "gameover_letter_o",
-        "gameover_letter_v",
-        "gameover_letter_e2",
-        "gameover_letter_r"
-    };
+    constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
+                                                       "gameover_letter_e1", "gameover_letter_o", "gameover_letter_v",
+                                                       "gameover_letter_e2", "gameover_letter_r"};
 
     for (size_t i = 0; i < titleNames.size(); ++i) {
         if (!IsAlive(titleLetters_[i])) {
@@ -394,29 +375,25 @@ void GameOverScene::RefreshLayoutSpritePointers() {
             if (titleLetters_[i]) {
                 titleLetterBasePositions_[i] = titleLetters_[i]->GetPosition();
                 titleLetterBaseSizes_[i] = titleLetters_[i]->GetSize();
-            }
-            else {
-                titleLetterBasePositions_[i] = { 0.0f, 0.0f };
-                titleLetterBaseSizes_[i] = { 0.0f, 0.0f };
+            } else {
+                titleLetterBasePositions_[i] = {0.0f, 0.0f};
+                titleLetterBaseSizes_[i] = {0.0f, 0.0f};
             }
         }
     }
 
-    constexpr std::array<const char*, 2> rowPrefixes = {
-        "gameover_retry",
-        "gameover_title"
-    };
+    constexpr std::array<const char*, 2> rowPrefixes = {"gameover_retry", "gameover_title"};
 
     for (size_t i = 0; i < rowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
         const std::string prefix = rowPrefixes[i];
         if (!IsAlive(row.backdrop)) {
             row.backdrop = FindSprite(prefix + "_row");
-            row.backdropBaseSize = row.backdrop ? row.backdrop->GetSize() : Vector2{ 0.0f, 0.0f };
+            row.backdropBaseSize = row.backdrop ? row.backdrop->GetSize() : Vector2{0.0f, 0.0f};
         }
         if (!IsAlive(row.label)) {
             row.label = FindSprite(prefix + "_label");
-            row.labelBaseSize = row.label ? row.label->GetSize() : Vector2{ 0.0f, 0.0f };
+            row.labelBaseSize = row.label ? row.label->GetSize() : Vector2{0.0f, 0.0f};
         }
     }
 }
@@ -436,6 +413,7 @@ void GameOverScene::InitializeFallingCrowns() {
         return;
     }
 
+    // 背景を落下する王冠の初期レイアウトと周期差。個々の開始時刻をずらして同時に落ちるのを避ける。
     struct CrownSetup {
         float x;
         float y;
@@ -450,16 +428,16 @@ void GameOverScene::InitializeFallingCrowns() {
     };
 
     constexpr std::array<CrownSetup, 10> setups = {
-        CrownSetup{ 170.0f, -170.0f, 122.0f, 1.5f, 24.0f, 26.0f, 0.55f, 0.10f, 0.1f, 0.68f },
-        CrownSetup{ 380.0f, -220.0f, 86.0f, 9.2f, 27.0f, 18.0f, 0.62f, -0.08f, 1.4f, 0.48f },
-        CrownSetup{ 650.0f, -185.0f, 104.0f, 14.0f, 29.0f, 22.0f, 0.48f, 0.07f, 2.1f, 0.52f },
-        CrownSetup{ 950.0f, -260.0f, 76.0f, 4.4f, 25.0f, 16.0f, 0.68f, -0.06f, 2.9f, 0.40f },
-        CrownSetup{ 1250.0f, -190.0f, 112.0f, 12.5f, 28.0f, 24.0f, 0.52f, 0.08f, 3.8f, 0.58f },
-        CrownSetup{ 1535.0f, -235.0f, 92.0f, 6.8f, 26.0f, 20.0f, 0.58f, -0.09f, 4.4f, 0.46f },
-        CrownSetup{ 1745.0f, -155.0f, 132.0f, 18.3f, 31.0f, 28.0f, 0.44f, 0.06f, 5.2f, 0.60f },
-        CrownSetup{ 290.0f, -360.0f, 72.0f, 20.5f, 30.0f, 16.0f, 0.70f, 0.11f, 5.9f, 0.30f },
-        CrownSetup{ 1380.0f, -325.0f, 70.0f, 22.0f, 32.0f, 14.0f, 0.66f, -0.10f, 6.6f, 0.34f },
-        CrownSetup{ 1110.0f, -300.0f, 82.0f, 24.0f, 33.0f, 18.0f, 0.50f, 0.07f, 7.4f, 0.36f },
+        CrownSetup{170.0f, -170.0f, 122.0f, 1.5f, 24.0f, 26.0f, 0.55f, 0.10f, 0.1f, 0.68f},
+        CrownSetup{380.0f, -220.0f, 86.0f, 9.2f, 27.0f, 18.0f, 0.62f, -0.08f, 1.4f, 0.48f},
+        CrownSetup{650.0f, -185.0f, 104.0f, 14.0f, 29.0f, 22.0f, 0.48f, 0.07f, 2.1f, 0.52f},
+        CrownSetup{950.0f, -260.0f, 76.0f, 4.4f, 25.0f, 16.0f, 0.68f, -0.06f, 2.9f, 0.40f},
+        CrownSetup{1250.0f, -190.0f, 112.0f, 12.5f, 28.0f, 24.0f, 0.52f, 0.08f, 3.8f, 0.58f},
+        CrownSetup{1535.0f, -235.0f, 92.0f, 6.8f, 26.0f, 20.0f, 0.58f, -0.09f, 4.4f, 0.46f},
+        CrownSetup{1745.0f, -155.0f, 132.0f, 18.3f, 31.0f, 28.0f, 0.44f, 0.06f, 5.2f, 0.60f},
+        CrownSetup{290.0f, -360.0f, 72.0f, 20.5f, 30.0f, 16.0f, 0.70f, 0.11f, 5.9f, 0.30f},
+        CrownSetup{1380.0f, -325.0f, 70.0f, 22.0f, 32.0f, 14.0f, 0.66f, -0.10f, 6.6f, 0.34f},
+        CrownSetup{1110.0f, -300.0f, 82.0f, 24.0f, 33.0f, 18.0f, 0.50f, 0.07f, 7.4f, 0.36f},
     };
 
     const uint32_t textureHandle = Sprite::LoadTexture("ui/gameover/gameover_crown_falling.png");
@@ -468,26 +446,17 @@ void GameOverScene::InitializeFallingCrowns() {
         auto sprite = std::make_unique<Sprite>();
         sprite->Initialize(spriteCommon_.get(), textureHandle);
         sprite->SetName(std::string(kFallingCrownSpritePrefix) + std::to_string(i));
-        sprite->SetAnchorPoint({ 0.5f, 0.5f });
-        sprite->SetSize({ setup.width, setup.width * 0.75f });
-        sprite->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        sprite->SetAnchorPoint({0.5f, 0.5f});
+        sprite->SetSize({setup.width, setup.width * 0.75f});
+        sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         sprite->SetVisible(false);
 
         Sprite* spritePtr = sprite.get();
         sprites_.push_back(std::move(sprite));
-        fallingCrowns_.push_back(FallingCrown{
-            spritePtr,
-            Vector2{ setup.x, setup.y },
-            Vector2{ setup.width, setup.width * 0.75f },
-            setup.timeOffset,
-            setup.cycleDuration,
-            1420.0f,
-            setup.driftAmplitude,
-            setup.driftSpeed,
-            setup.rotationSpeed,
-            setup.phase,
-            setup.alpha
-        });
+        fallingCrowns_.push_back(FallingCrown{spritePtr, Vector2{setup.x, setup.y},
+                                              Vector2{setup.width, setup.width * 0.75f}, setup.timeOffset,
+                                              setup.cycleDuration, 1420.0f, setup.driftAmplitude, setup.driftSpeed,
+                                              setup.rotationSpeed, setup.phase, setup.alpha});
     }
 
     UpdateFallingCrowns(0.0f);
@@ -510,17 +479,18 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
 
         const float fallRate = localTime / crown.cycleDuration;
         const float y = crown.basePosition.y + crown.fallDistance * fallRate;
-        const float x = crown.basePosition.x + std::sin(localTime * crown.driftSpeed + crown.phase) * crown.driftAmplitude;
+        const float x =
+            crown.basePosition.x + std::sin(localTime * crown.driftSpeed + crown.phase) * crown.driftAmplitude;
         const float fadeIn = Clamp01((y + 120.0f) / 220.0f);
         const float fadeOut = Clamp01((1180.0f - y) / 260.0f);
         const float alpha = std::min(fadeIn, fadeOut) * crown.alpha * presentationAlpha;
         const float slowTilt = std::sin(localTime * 0.42f + crown.phase) * 0.16f;
 
         crown.sprite->SetVisible(alpha > 0.02f);
-        crown.sprite->SetPosition({ x, y });
+        crown.sprite->SetPosition({x, y});
         crown.sprite->SetSize(crown.size);
         crown.sprite->SetRotation(slowTilt + localTime * crown.rotationSpeed);
-        crown.sprite->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+        crown.sprite->SetColor({1.0f, 1.0f, 1.0f, alpha});
     }
 }
 
@@ -531,34 +501,21 @@ void GameOverScene::InitializeDizzyStars() {
     }
 
     const uint32_t textureHandle = Sprite::LoadTexture("ui/gameover/gameover_dizzy_star.png");
-    constexpr std::array<float, 3> baseAngles = {
-        0.0f,
-        2.0943951f,
-        4.1887902f
-    };
-    constexpr std::array<float, 3> sizes = {
-        42.0f,
-        34.0f,
-        38.0f
-    };
+    constexpr std::array<float, 3> baseAngles = {0.0f, 2.0943951f, 4.1887902f};
+    constexpr std::array<float, 3> sizes = {42.0f, 34.0f, 38.0f};
 
     for (size_t i = 0; i < baseAngles.size(); ++i) {
         auto sprite = std::make_unique<Sprite>();
         sprite->Initialize(spriteCommon_.get(), textureHandle);
         sprite->SetName(std::string(kDizzyStarSpritePrefix) + std::to_string(i));
-        sprite->SetAnchorPoint({ 0.5f, 0.5f });
-        sprite->SetSize({ sizes[i], sizes[i] });
-        sprite->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        sprite->SetAnchorPoint({0.5f, 0.5f});
+        sprite->SetSize({sizes[i], sizes[i]});
+        sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         sprite->SetVisible(false);
 
         Sprite* spritePtr = sprite.get();
         sprites_.push_back(std::move(sprite));
-        dizzyStars_.push_back(DizzyStar{
-            spritePtr,
-            baseAngles[i],
-            sizes[i],
-            static_cast<float>(i) * 0.18f
-        });
+        dizzyStars_.push_back(DizzyStar{spritePtr, baseAngles[i], sizes[i], static_cast<float>(i) * 0.18f});
     }
 
     UpdateDizzyStars(0.0f);
@@ -567,28 +524,21 @@ void GameOverScene::InitializeDizzyStars() {
 void GameOverScene::UpdateDizzyStars(float deltaTime) {
     (void)deltaTime;
 
-    Vector2 center = {
-        static_cast<float>(WinApp::kClientWidth) * 0.5f,
-        static_cast<float>(WinApp::kClientHeight) * 0.57f
-    };
+    Vector2 center = {static_cast<float>(WinApp::kClientWidth) * 0.5f,
+                      static_cast<float>(WinApp::kClientHeight) * 0.57f};
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera && IsAlive(gameOverSlimeObject_)) {
         const Vector3 headWorld = gameOverSlimeAnimator_.GetDizzyAnchorWorld();
 
         const Matrix4x4 viewProjection = camera->GetViewProjectionMatrix();
-        const Matrix4x4 viewport = Math::MakeViewportMatrix(
-            0.0f,
-            0.0f,
-            static_cast<float>(WinApp::kClientWidth),
-            static_cast<float>(WinApp::kClientHeight),
-            0.0f,
-            1.0f);
+        const Matrix4x4 viewport = Math::MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(WinApp::kClientWidth),
+                                                            static_cast<float>(WinApp::kClientHeight), 0.0f, 1.0f);
         const Matrix4x4 screenMatrix = Math::Multiply(viewProjection, viewport);
         const Vector3 screen = Math::Transform(headWorld, screenMatrix);
 
         if (screen.z >= 0.0f && screen.z <= 1.0f) {
-            center = { screen.x, screen.y + 10.0f };
+            center = {screen.x, screen.y + 10.0f};
         }
     }
 
@@ -609,16 +559,13 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
         const float depth = 0.5f + 0.5f * std::sin(angle);
         const float size = star.size * (1.0f + depth * 0.15f) * uiScale;
         const float wobble = std::sin(animationTime * 3.0f + star.baseAngle) * 1.5f * uiScale;
-        const Vector2 position = {
-            center.x + std::cos(angle) * radiusX,
-            center.y + std::sin(angle) * radiusY + wobble
-        };
+        const Vector2 position = {center.x + std::cos(angle) * radiusX, center.y + std::sin(angle) * radiusY + wobble};
 
         star.sprite->SetVisible(introAlpha > 0.02f);
         star.sprite->SetPosition(position);
-        star.sprite->SetSize({ size, size });
+        star.sprite->SetSize({size, size});
         star.sprite->SetRotation(-angle * 0.45f);
-        star.sprite->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f * introAlpha });
+        star.sprite->SetColor({1.0f, 1.0f, 1.0f, 1.0f * introAlpha});
     }
 }
 
@@ -627,14 +574,10 @@ void GameOverScene::UpdateMenuInput() {
         return;
     }
 
-    const bool up =
-        inputManager_->IsKeyTriggered(DIK_UP) ||
-        inputManager_->IsKeyTriggered(DIK_W) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
-    const bool down =
-        inputManager_->IsKeyTriggered(DIK_DOWN) ||
-        inputManager_->IsKeyTriggered(DIK_S) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+    const bool up = inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsKeyTriggered(DIK_W) ||
+                    inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+    const bool down = inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsKeyTriggered(DIK_S) ||
+                      inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
 
     if (up) {
         ChangeSelection(-1);
@@ -643,13 +586,13 @@ void GameOverScene::UpdateMenuInput() {
         ChangeSelection(1);
     }
 
-    if (inputManager_->IsKeyTriggered(DIK_SPACE) ||
-        inputManager_->IsKeyTriggered(DIK_RETURN) ||
+    if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsKeyTriggered(DIK_RETURN) ||
         inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
         ConfirmSelection();
     }
 }
 
+// リトライ時は残機を戻し、スライムの退場動作を待ってからゲームへ遷移します。
 void GameOverScene::StartRetryExit() {
     if (retryExitActive_ || retrySceneChangeRequested_) {
         return;
@@ -664,21 +607,16 @@ void GameOverScene::StartRetryExit() {
         FindGameOverSlimeObject();
     }
 
-    Vector3 exitDirection = { 1.0f, 0.0f, 0.0f };
+    Vector3 exitDirection = {1.0f, 0.0f, 0.0f};
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
         const Vector3 rotation = camera->GetRotation();
-        exitDirection = {
-            std::cos(rotation.y),
-            0.0f,
-            -std::sin(rotation.y)
-        };
+        exitDirection = {std::cos(rotation.y), 0.0f, -std::sin(rotation.y)};
     }
 
     if (gameOverSlimeObject_) {
         gameOverSlimeAnimator_.StartExitRight(gameOverSlimeObject_, exitDirection, 11.5f);
-    }
-    else {
+    } else {
         retrySceneChangeRequested_ = true;
         SceneManager::GetInstance()->ChangeSceneWithoutLoading("GAMEPLAY");
     }
@@ -708,10 +646,10 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
 
     backgroundSprite_ = FindSprite("gameover_background");
     if (backgroundSprite_) {
-        backgroundSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        backgroundSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
 
-    const Vector4 hiddenTitleColor = { 0.72f, 0.94f, 1.0f, 0.0f };
+    const Vector4 hiddenTitleColor = {0.72f, 0.94f, 1.0f, 0.0f};
 
     for (size_t i = 0; i < titleLetters_.size(); ++i) {
         Sprite* letter = titleLetters_[i];
@@ -729,7 +667,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         if (revealElapsed <= 0.0f) {
             letter->SetVisible(false);
             letter->SetPosition(basePos);
-            letter->SetSize({ baseSize.x * 0.65f, baseSize.y * 0.65f });
+            letter->SetSize({baseSize.x * 0.65f, baseSize.y * 0.65f});
             letter->SetColor(hiddenTitleColor);
             continue;
         }
@@ -743,21 +681,17 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         const float scale = revealRate < 1.0f ? revealScale : idleScale;
         const float dropOffset = (1.0f - revealEase) * -34.0f;
 
-        letter->SetPosition({ basePos.x, basePos.y + dropOffset + wave * 4.0f * revealEase });
-        letter->SetSize({ baseSize.x * scale, baseSize.y * scale });
-        letter->SetColor({
-            0.84f + pulse * 0.16f,
-            0.95f + pulse * 0.05f,
-            1.0f,
-            revealEase
-        });
+        letter->SetPosition({basePos.x, basePos.y + dropOffset + wave * 4.0f * revealEase});
+        letter->SetSize({baseSize.x * scale, baseSize.y * scale});
+        letter->SetColor({0.84f + pulse * 0.16f, 0.95f + pulse * 0.05f, 1.0f, revealEase});
     }
 
     const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 5.4f);
-    const Vector4 normalText = { 0.18f, 0.20f, 0.34f, 1.0f };
-    const Vector4 selectedText = { 0.10f, 0.12f, 0.23f, 1.0f };
+    const Vector4 normalText = {0.18f, 0.20f, 0.34f, 1.0f};
+    const Vector4 selectedText = {0.10f, 0.12f, 0.23f, 1.0f};
     const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
-    const float retryMenuFade = retryExitActive_ && !layoutPreview ? (1.0f - EaseOutCubic(retryExitTimer_ / 0.28f)) : 1.0f;
+    const float retryMenuFade =
+        retryExitActive_ && !layoutPreview ? (1.0f - EaseOutCubic(retryExitTimer_ / 0.28f)) : 1.0f;
     const float menuAlpha = EaseOutCubic((visibleTitleTime - menuStartTime) / 0.28f) * retryMenuFade;
     const bool menuVisible = menuAlpha > 0.0f;
 
@@ -769,21 +703,21 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
 
         if (row.backdrop) {
             row.backdrop->SetVisible(menuVisible);
-            const uint32_t handle = Sprite::LoadTexture(selected ? "ui/gameover/gameover_button_selected.png" : "ui/gameover/gameover_button_normal.png");
+            const uint32_t handle = Sprite::LoadTexture(selected ? "ui/gameover/gameover_button_selected.png"
+                                                                 : "ui/gameover/gameover_button_normal.png");
             row.backdrop->SetTextureHandle(handle);
             const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
-            row.backdrop->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
-            row.backdrop->SetSize({ row.backdropBaseSize.x * rowScale, row.backdropBaseSize.y * rowScale });
-            Vector4 backdropColor = selected
-                ? Vector4{ 1.0f, 1.0f, 1.0f, 0.98f }
-                : Vector4{ 1.0f, 1.0f, 1.0f, 0.90f };
+            row.backdrop->SetTextureRect({0.0f, 0.0f},
+                                         {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
+            row.backdrop->SetSize({row.backdropBaseSize.x * rowScale, row.backdropBaseSize.y * rowScale});
+            Vector4 backdropColor = selected ? Vector4{1.0f, 1.0f, 1.0f, 0.98f} : Vector4{1.0f, 1.0f, 1.0f, 0.90f};
             backdropColor.w *= menuAlpha;
             row.backdrop->SetColor(backdropColor);
         }
 
         if (row.label) {
             row.label->SetVisible(menuVisible);
-            row.label->SetSize({ row.labelBaseSize.x * labelScale, row.labelBaseSize.y * labelScale });
+            row.label->SetSize({row.labelBaseSize.x * labelScale, row.labelBaseSize.y * labelScale});
             Vector4 labelColor = selected ? selectedText : normalText;
             labelColor.w *= menuAlpha;
             row.label->SetColor(labelColor);
@@ -831,7 +765,8 @@ void GameOverScene::FindGameOverSlimeObject() {
 
         const std::string& name = object->GetName();
         const std::string modelName = object->GetModelName();
-        if (name == "Characters/slime_1" || modelName == "Characters/slime" || modelName.find("Characters/slime") != std::string::npos) {
+        if (name == "Characters/slime_1" || modelName == "Characters/slime" ||
+            modelName.find("Characters/slime") != std::string::npos) {
             gameOverSlimeObject_ = object.get();
             return;
         }
@@ -856,8 +791,7 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
     gameOverPresentationTimer_ += std::max(0.0f, deltaTime);
     gameOverSlimeAnimator_.Update(gameOverSlimeObject_, deltaTime);
 
-    if (!gameOverImpactCuePlayed_ &&
-        gameOverPresentationTimer_ >= GameOverSlimeAnimator::GetImpactTime()) {
+    if (!gameOverImpactCuePlayed_ && gameOverPresentationTimer_ >= GameOverSlimeAnimator::GetImpactTime()) {
         // 倒れた状態から始めるため、着地VFXは発生させない。
         gameOverImpactCuePlayed_ = true;
     }
@@ -867,7 +801,8 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
 
 void GameOverScene::UpdateGameOverCamera() {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    if (!camera || !gameOverSlimeObject_) return;
+    if (!camera || !gameOverSlimeObject_)
+        return;
     // 2D背景の床と3Dキャラクターがずれないよう、退場まで同じ構図を維持する。
     const Vector3 eye = gameOverSlimeBasePosition_ + presentationTuning_.settleEyeOffset;
     const Vector3 target = gameOverSlimeBasePosition_ + presentationTuning_.settleTargetOffset;
@@ -896,11 +831,7 @@ void GameOverScene::EmitGameOverImpactCue() {
     VFXSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
-        camera->StartShake(
-            0.24f,
-            presentationTuning_.impactShake,
-            28.0f,
-            { 0.85f, 0.55f, 0.35f });
+        camera->StartShake(0.24f, presentationTuning_.impactShake, 28.0f, {0.85f, 0.55f, 0.35f});
     }
 }
 

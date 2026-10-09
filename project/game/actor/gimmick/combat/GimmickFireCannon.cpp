@@ -19,7 +19,7 @@ constexpr float kDefaultFireInterval = 1.35f;
 constexpr float kDefaultProjectileRadius = 0.55f;
 constexpr float kDefaultDetectionRange = 45.0f;
 constexpr float kDefaultTurnSpeedDegrees = 360.0f;
-}
+} // namespace
 
 void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -29,18 +29,18 @@ void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& mo
     SetGimmickType("FireCannon");
     SetName("Gimmick_FireCannon");
     SetModel(modelName);
-    SetColor({ 0.22f, 0.11f, 0.08f, 1.0f });
+    SetColor({0.22f, 0.11f, 0.08f, 1.0f});
     SetRoughness(0.65f);
     SetMetallic(0.05f);
     SetEmissive(1.1f);
-    SetScale({ 0.55f, 0.55f, 1.1f });
-    SetCollisionAttribute(CollisionAttribute::kGround);
-    SetCollisionMask(0b11111111);
+    SetScale({0.55f, 0.55f, 1.1f});
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
     SetStatic(false);
 
     Object3d::ColliderConfig colConfig;
     colConfig.type = ColliderType::kOBB;
-    colConfig.size = { 1.0f, 1.0f, 1.0f };
+    colConfig.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(colConfig);
 
     if (!param_.has_value()) {
@@ -56,6 +56,7 @@ void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& mo
     param_->returnOnOff = true;
 }
 
+// 編集停止中は配置時の Transform へ戻し、Play 中だけ通常砲・迫撃砲の周期を進めます。
 void GimmickFireCannon::Update(float deltaTime) {
     if (!param_.has_value()) {
         param_.emplace();
@@ -105,17 +106,14 @@ void GimmickFireCannon::Update(float deltaTime) {
             FireProjectile(fireDirection);
             fireTimer_ = GetFireInterval();
         }
-    }
-    else {
+    } else {
         fireTimer_ = (std::min)(fireTimer_, GetFireInterval() * 0.35f);
     }
 
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickFireCannon::OnTrigger() {
-    OnSwitchEvent(!active_);
-}
+void GimmickFireCannon::OnTrigger() { OnSwitchEvent(!active_); }
 
 void GimmickFireCannon::OnSwitchEvent(bool active) {
     if (!param_.has_value()) {
@@ -125,7 +123,10 @@ void GimmickFireCannon::OnSwitchEvent(bool active) {
         return;
     }
     active_ = active;
-    if (!active) { targetLocked_ = false; landingWarning_.Hide(); }
+    if (!active) {
+        targetLocked_ = false;
+        landingWarning_.Hide();
+    }
 }
 
 bool GimmickFireCannon::IsPlaying() const {
@@ -172,14 +173,10 @@ bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
 Vector3 GimmickFireCannon::GetForwardDirection() const {
     const Vector3 rot = GetRotation();
     const float cosPitch = std::cos(rot.x);
-    Vector3 forward = {
-        std::sin(rot.y) * cosPitch,
-        -std::sin(rot.x),
-        std::cos(rot.y) * cosPitch
-    };
+    Vector3 forward = {std::sin(rot.y) * cosPitch, -std::sin(rot.x), std::cos(rot.y) * cosPitch};
 
     if (Math::Length(forward) < 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
     return Math::Normalize(forward);
 }
@@ -217,7 +214,7 @@ void GimmickFireCannon::FireProjectile(const Vector3& direction) {
     BulletVisualConfig visual;
     visual.materialType = 11;
     visual.blendMode = BlendMode::kAdd;
-    visual.color = { 1.0f, 0.42f, 0.10f, 0.95f };
+    visual.color = {1.0f, 0.42f, 0.10f, 0.95f};
     visual.emissive = 5.0f;
     visual.visualScale = radius * 1.75f;
     visual.effectType = 1.0f;
@@ -227,18 +224,9 @@ void GimmickFireCannon::FireProjectile(const Vector3& direction) {
     visual.billboardScale = 1.0f;
     visual.texturePath = "Resources/sprite/common/white.png";
 
-    BulletManager::GetInstance()->Fire(
-        GetMuzzlePosition(direction),
-        direction * speed,
-        CollisionAttribute::kEnemyAttack,
-        CollisionAttribute::kPlayer | kAllSolid,
-        "Primitives/sphere",
-        radius,
-        life,
-        visual,
-        1.0f,
-        {},
-        DamageType::Fire);
+    BulletManager::GetInstance()->Fire(GetMuzzlePosition(direction), direction * speed,
+                                       CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"),
+                                       "Primitives/sphere", radius, life, visual, 1.0f, {}, DamageType::Fire);
 }
 
 float GimmickFireCannon::GetProjectileSpeed() const {
@@ -284,53 +272,65 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
     landingWarning_.Update(dt);
     if (flightTimer_ > 0.0f) {
         flightTimer_ -= dt;
-        if (flightTimer_ <= 0.0f) landingWarning_.Hide();
+        if (flightTimer_ <= 0.0f)
+            landingWarning_.Hide();
         return;
     }
-    if (!active_) { landingWarning_.Hide(); targetLocked_ = false; return; }
+    if (!active_) {
+        landingWarning_.Hide();
+        targetLocked_ = false;
+        return;
+    }
     if (!targetLocked_) {
         fireTimer_ -= dt;
-        if (fireTimer_ > 0.0f) return;
+        if (fireTimer_ > 0.0f)
+            return;
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
         auto* player = scene ? scene->GetPlayer() : nullptr;
-        if (!player) return;
+        if (!player)
+            return;
         const Vector3 target = player->GetWorldPosition();
-        if (Math::Length(target - GetWorldPosition()) > param_->detectionRange) return;
+        if (Math::Length(target - GetWorldPosition()) > param_->detectionRange)
+            return;
         PhysicsQueryFilter filter;
-        filter.mask = kAllSolid;
+        filter.mask = CollisionCategories::Get("ground");
         filter.ignoredObject = this;
-        const auto ground = CollisionManager::GetInstance()->Raycast(target + Vector3{0,1,0}, {0,-1,0}, 18.0f, filter);
-        if (!ground.isHit) return;
+        const auto ground =
+            CollisionManager::GetInstance()->Raycast(target + Vector3{0, 1, 0}, {0, -1, 0}, 18.0f, filter);
+        if (!ground.isHit)
+            return;
         lockedTarget_ = ground.hitPoint;
         Vector3 direction = lockedTarget_ - GetWorldPosition();
-        if (direction.x * direction.x + direction.z * direction.z < 100.0f) return;
+        if (direction.x * direction.x + direction.z * direction.z < 100.0f)
+            return;
         // 予告開始時に狙いを固定し、回避後のプレイヤーを追いかけない。
         SetRotation({0.0f, std::atan2(direction.x, direction.z), 0.0f});
         targetLocked_ = true;
         warningTimer_ = warning;
     }
     warningTimer_ -= dt;
-    landingWarning_.ShowCircle(lockedTarget_ + Vector3{0,0.08f,0}, blast,
-        std::clamp(1.0f - warningTimer_ / warning, 0.0f, 1.0f), {1.0f,0.34f,0.05f,0.65f});
-    if (warningTimer_ > 0.0f) return;
+    landingWarning_.ShowCircle(lockedTarget_ + Vector3{0, 0.08f, 0}, blast,
+                               std::clamp(1.0f - warningTimer_ / warning, 0.0f, 1.0f), {1.0f, 0.34f, 0.05f, 0.65f});
+    if (warningTimer_ > 0.0f)
+        return;
     const Vector3 forward = GetForwardDirection();
-    const Vector3 muzzle = GetWorldPosition() + forward * (2.55f * baseScale_.z)
-        + Vector3{0,2.73f * baseScale_.y,0};
-    const Vector3 target = lockedTarget_ + Vector3{0,radius + 0.03f,0};
+    const Vector3 muzzle = GetWorldPosition() + forward * (2.55f * baseScale_.z) + Vector3{0, 2.73f * baseScale_.y, 0};
+    const Vector3 target = lockedTarget_ + Vector3{0, radius + 0.03f, 0};
+    // 頂点高度から上向き初速と飛行時間を逆算し、水平速度をロック済み着弾点へ合わせます。
     const float apex = (std::max)(muzzle.y, target.y) + std::clamp(param_->jumpPower, 3.0f, 20.0f);
     const float vy = std::sqrt(2.0f * gravity * (apex - muzzle.y));
     const float flight = vy / gravity + std::sqrt(2.0f * (apex - target.y) / gravity);
-    const Vector3 velocity = {(target.x-muzzle.x)/flight, vy, (target.z-muzzle.z)/flight};
+    const Vector3 velocity = {(target.x - muzzle.x) / flight, vy, (target.z - muzzle.z) / flight};
     BulletVisualConfig visual;
     visual.visualScale = radius;
     visual.explosionRadius = blast;
-    visual.color = {1,1,1,1};
+    visual.color = {1, 1, 1, 1};
     visual.emissive = 1.0f;
-    BulletManager::GetInstance()->Fire(muzzle, velocity, CollisionAttribute::kEnemyAttack,
-        CollisionAttribute::kPlayer | kAllSolid, "Gimmicks/volcanic_shell", radius,
-        flight + 2.0f, visual, 1.0f, {}, DamageType::Explosion, gravity);
+    BulletManager::GetInstance()->Fire(muzzle, velocity, CollisionCategories::Get("enemy_attack"),
+                                       CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Gimmicks/volcanic_shell", radius,
+                                       flight + 2.0f, visual, 1.0f, {}, DamageType::Explosion, gravity);
     if (auto* effects = MeshEffectManager::GetInstance())
-        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", muzzle, {0,0,0}, {.4f,.4f,.4f});
+        effects->SpawnEffectAt("Resources/json/effect/effect_bomb_core_flash.json", muzzle, {0, 0, 0}, {.4f, .4f, .4f});
     if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized())
         particles->EmitDirected("hit_bomb_fire_sparks", muzzle, forward, 0.6f);
     targetLocked_ = false;

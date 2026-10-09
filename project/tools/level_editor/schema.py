@@ -22,6 +22,7 @@ def _vector3(value, fallback):
 
 
 def blender_to_engine_position(value):
+    """Blender の Z 軸高さをエンジンの Y 軸高さへ入れ替える。"""
     x, y, z = _vector3(value, (0.0, 0.0, 0.0))
     return [x, z, y]
 
@@ -32,6 +33,7 @@ def engine_to_blender_position(value):
 
 
 def blender_to_engine_rotation(value):
+    """軸交換に加えて回転符号を反転し、両座標系の向きを合わせる。"""
     x, y, z = _vector3(value, (0.0, 0.0, 0.0))
     return [-x, -z, -y]
 
@@ -52,7 +54,7 @@ def engine_to_blender_scale(value):
 
 
 def normalize_object(source, inherited_parent_name=""):
-    """旧Blender形式を、現行LevelLoader形式の1オブジェクトへ変換する。"""
+    """旧 Blender 形式を LevelLoader 形式へ変換する。元の辞書は変更せず、子要素は別に返す。"""
 
     data = copy.deepcopy(source) if isinstance(source, dict) else {}
     children = data.pop("children", [])
@@ -108,6 +110,7 @@ def normalize_object(source, inherited_parent_name=""):
 
 
 def flatten_objects(objects, inherited_parent_name=""):
+    """子要素の階層を parentName 参照付きの一次元リストに展開する。"""
     flattened = []
     if not isinstance(objects, list):
         return flattened
@@ -122,6 +125,7 @@ def flatten_objects(objects, inherited_parent_name=""):
 
 
 def split_base_path(filepath):
+    """単一 JSON と _player 等の分割 JSON から共通の絶対ベースパスを返す。"""
     absolute_path = os.path.abspath(filepath)
     root, extension = os.path.splitext(absolute_path)
     if extension.lower() != ".json":

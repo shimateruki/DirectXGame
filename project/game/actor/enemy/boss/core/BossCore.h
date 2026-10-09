@@ -9,7 +9,7 @@ class SceneManager; // 前方宣言
 
 // ボス本体、装甲ブロック、攻撃フェーズ、バリアHPをまとめて制御する中核クラス
 class BossCore : public BaseEnemy {
-public:
+  public:
     // ==================================================
     // 状態定義
     // ==================================================
@@ -35,10 +35,10 @@ public:
     void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
 
     // エディタで配置した装甲ブロックをボスの攻撃パーツとして登録する
-    void AddArmorBlock (Object3d *block) { 
-        armorBlocks_.push_back (block);
-        block->SetCollisionAttribute(kEnemyAttack);
-        block->SetCollisionMask(kPlayer);
+    void AddArmorBlock(Object3d* block) {
+        armorBlocks_.push_back(block);
+        block->SetCollisionAttribute(CollisionCategories::Get("enemy_attack"));
+        block->SetCollisionMask(CollisionCategories::Get("player"));
     }
 
     float GetHp() const { return param_.has_value() ? param_->hp : 1000.0f; }
@@ -47,7 +47,8 @@ public:
     // バリアHP
     float GetBarrierHp() const { return barrierHp_; }
     float GetMaxBarrierHp() const { return maxBarrierHp_; }
-private:
+
+  private:
     BossArmorFlightController armorFlight_; // 射出後の装甲状態は専用コンポーネントが所有します。
 
     // ==================================================
@@ -58,7 +59,7 @@ private:
     void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
     // ボスの攻撃フェーズを animPhase_ と animTimer_ で進める
-    void UpdateAnimationSequence (float deltaTime);
+    void UpdateAnimationSequence(float deltaTime);
     // 分岐本体と攻撃別フェーズ処理を分離します。
     void UpdateChargeSequence(float deltaTime);
     void UpdateBlockShotSequence(float deltaTime);
@@ -67,34 +68,33 @@ private:
     void UpdateCollapseSequence(float deltaTime);
     void UpdateLaserSequence(float deltaTime);
 
-
     // 射出された装甲ブロックの飛翔・地面待機・帰還を更新する
-    void UpdateFlyingBlocks (float deltaTime);
+    void UpdateFlyingBlocks(float deltaTime);
     void TakeBarrierDamage(float damage);
 
     // 攻撃フェーズ中に使う一時メモ
     int animPhase_ = 0;
     float animTimer_ = 0.0f;
-    Vector3 animStartPos_ = { 0,0,0 };
-    Vector3 animTargetPos_ = { 0,0,0 };
-    Vector3 animStartRot_ = { 0,0,0 };
+    Vector3 animStartPos_ = {0, 0, 0};
+    Vector3 animTargetPos_ = {0, 0, 0};
+    Vector3 animStartRot_ = {0, 0, 0};
     bool wasPlaying_ = false;
 
-    int attackMode_ = 0;         // 0=待機, 1以降=各攻撃パターン。
-    int shotCount_ = 0;          // 射出済みブロック数。
-    float shotInterval_ = 0.0f;  // 連射インターバル計測用。
+    int attackMode_ = 0;        // 0=待機, 1以降=各攻撃パターン。
+    int shotCount_ = 0;         // 射出済みブロック数。
+    float shotInterval_ = 0.0f; // 連射インターバル計測用。
 
     // ==================================================
     // 内部コンポーネント・変数
     // ==================================================
     std::unique_ptr<GhostDirector> director_; // 演出・モーション制御用の監督
 
-    SceneManager* sceneManager_ = nullptr;    // エディタ操作/プレイ状態の判定用
+    SceneManager* sceneManager_ = nullptr; // エディタ操作/プレイ状態の判定用
 
-    State state_ = State::Idle;               // 現在のステート
-    bool isFirstFrame_ = true;                // 初回更新フラグ
+    State state_ = State::Idle; // 現在のステート
+    bool isFirstFrame_ = true;  // 初回更新フラグ
 
-    std::vector<Object3d *> armorBlocks_; // ボスの周囲を構成する装甲ブロック。
+    std::vector<Object3d*> armorBlocks_; // ボスの周囲を構成する装甲ブロック。
 
     // 形態変化アニメーション用の座標メモ
     std::vector<Vector3> blockStartPos_;
@@ -116,7 +116,7 @@ private:
     // エディターで作った予兆エリアを参照するためのポインタ
     Object3d* warningArea_ = nullptr;
 
-    Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 originalColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
 
     // 攻撃モード6のレーザービーム用円柱オブジェクト
     std::vector<std::unique_ptr<Object3d>> laserBeams_;

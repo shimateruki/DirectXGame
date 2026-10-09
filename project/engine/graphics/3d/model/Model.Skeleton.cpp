@@ -584,8 +584,6 @@ void Model::RebuildSkeletonForEditor() {
     UpdateBoneBuffer();
 }
 
-
-
 // ノード情報からジョイントを作成し、親子関係と名前インデックスを登録する。
 int32_t Model::CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints) {
     Joint joint;

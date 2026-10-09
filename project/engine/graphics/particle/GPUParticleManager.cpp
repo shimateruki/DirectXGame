@@ -16,6 +16,8 @@ namespace fs = std::filesystem;
 
 namespace {
 std::string MakeParticleSystemKey(const GPUParticleConfig& config) {
+    // 粒子ごとに持たない描画設定をキーに含め、同じSystemへ異なる材質状態が混ざるのを防ぐ。
+    // softParticleFadeや衝突設定など、このキーに含まれない値の共有範囲にも注意する。
     std::ostringstream key;
     key << config.texturePath
         << "_blend" << config.blendModeIndex
@@ -123,7 +125,7 @@ void GPUParticleManager::Update(float deltaTime) {
         }
     }
 
-    // ★ 全ての独立した部隊(System)のUpdateを呼ぶ
+    // テクスチャ・ブレンドごとの System に同じ時間倍率を渡してから更新します。
     for (auto& pair : systems_) {
         pair.second->SetTimeScale(timeScale_);
         pair.second->Update(deltaTime);
@@ -139,7 +141,7 @@ void GPUParticleManager::UpdateEditorPreviewStep(float deltaTime) {
 }
 
 void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummy, uint32_t depthSrvHandle) {
-    if (systems_.empty()) {
+    if (systems_.empty() && !authoringPreviewVisible_) {
         lastDrawCpuTimeMs_ = 0.0f;
         return;
     }
@@ -147,25 +149,25 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     const auto cpuStart = std::chrono::high_resolution_clock::now();
     dxCommon_->StartGpuProfile("Particle GPU pass");
 
-    // ★ 共通の状態設定はループの外で行う（軽量化）
+    // 全 System が使うディスクリプタヒープを一度だけ設定します。
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
 
     for (auto& pair : systems_) {
-        // 各部隊が自分のテクスチャとブレンドを使う
+        // 各 System が自身のテクスチャとブレンド設定を使います。
         pair.second->Draw(commandList, viewMatrix, projectionMatrix, dummy, depthSrvHandle);
     }
 
+    if (authoringPreviewVisible_) {
+        for (auto& [key, system] : authoringSystems_)
+            system->Draw(commandList, viewMatrix, projectionMatrix, dummy, depthSrvHandle);
+    }
     dxCommon_->EndGpuProfile("Particle GPU pass");
     const auto cpuEnd = std::chrono::high_resolution_clock::now();
     lastDrawCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
 
-// ====================================================================
-// ★ オートルーティングの心臓部
-// 新しいテクスチャやブレンドの組み合わせが来たら、勝手に新しい部隊を作る！
-// ====================================================================
+// 描画設定・容量を含むMakeParticleSystemKeyで共有し、未登録の組み合わせだけ生成する。
 GPUParticleSystem* GPUParticleManager::GetOrCreateSystem(const GPUParticleConfig& config) {
-    // キーの作成（例: "Resources/sprite/Fire.png_0"）
     std::string key = MakeParticleSystemKey(config);
 
     if (systems_.find(key) == systems_.end()) {
@@ -197,6 +199,7 @@ void GPUParticleManager::PreloadPresetSystems(const std::vector<std::string>& pr
 }
 
 bool GPUParticleManager::IsEmpty() const {
+    if (authoringPreviewVisible_) return false;
     for (const auto& pair : systems_) {
         if (pair.second && pair.second->IsActive()) {
             return false;
@@ -224,6 +227,8 @@ size_t GPUParticleManager::GetEstimatedMemoryBytesForConfig(const GPUParticleCon
 }
 
 bool GPUParticleManager::RequiresSceneColorCopy() const {
+    if (authoringPreviewVisible_) for (const auto& [key, system] : authoringSystems_)
+        if (system && system->RequiresSceneColorCopy()) return true;
     for (const auto& pair : systems_) {
         if (pair.second && pair.second->RequiresSceneColorCopy()) {
             return true;
@@ -418,15 +423,18 @@ uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, cons
     Matrix4x4 identity = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
     return PlayAutoEmitter(presetName, position, identity);
 }
+
 uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform) {
     AutoEmitter em; em.id = nextAutoEmitterId_++; em.presetName = presetName; em.position = position; em.transform = transform; em.timer = 0.0f;
     autoEmitters_.push_back(em);
     Emit(presetName, position, transform);
     return em.id;
 }
+
 void GPUParticleManager::StopAutoEmitter(uint32_t id) {
     autoEmitters_.erase(std::remove_if(autoEmitters_.begin(), autoEmitters_.end(), [id](const AutoEmitter& e) { return e.id == id; }), autoEmitters_.end());
 }
+
 void GPUParticleManager::ClearAllAutoEmitters() { autoEmitters_.clear(); }
 
 void GPUParticleManager::ResetSimulation() {
@@ -441,6 +449,7 @@ void GPUParticleManager::ResetSimulation() {
 }
 
 void GPUParticleManager::ClearSceneRuntime() {
+    ClearAuthoringPreview();
     autoEmitters_.clear();
     for (auto& [key, system] : systems_) {
         (void)key;
@@ -459,4 +468,39 @@ void GPUParticleManager::ClearSceneRuntime() {
     meshVCount_ = 0;
     meshVStride_ = 0;
     meshBoneSrv_ = 0;
+}
+
+void GPUParticleManager::ClearAuthoringPreview() {
+    authoringPreviewVisible_ = false;
+    for (auto& [key, system] : authoringSystems_) system->ResetForSceneTransition();
+}
+
+bool GPUParticleManager::ShowAuthoringPreview(const std::string& preset, const Vector3& position,
+    const Vector3& direction, bool directed, float speedScale, float age) {
+    const auto found = presets_.find(preset);
+    if (!dxCommon_ || found == presets_.end()) return false;
+    auto config = found->second;
+    // メッシュ頂点発生には所有モデルが必要です。他Objectの頂点バッファを借りて誤表示しません。
+    if (config.shapeType == 3) return false;
+    config.emitPos = position;
+    config.emitterWorldMatrix = Math::MakeIdentity4x4();
+    if (directed && Math::Length(direction) > 0.0001f)
+        config.emitVelocity = direction / Math::Length(direction) *
+            ((std::max)(0.01f, Math::Length(config.emitVelocity)) * (std::max)(0.0f, speedScale));
+    // 配置では素材ごとに分離し、補助素材の設定や放出年齢が主素材へ混ざるのを防ぎます。
+    const auto key = preset + "|" + MakeParticleSystemKey(config);
+    auto& system = authoringSystems_[key];
+    const bool created = !system;
+    if (!system) {
+        system = std::make_unique<GPUParticleSystem>();
+        system->Initialize(dxCommon_, ResolveParticleCapacity(config));
+    }
+    system->SetCurrentTexture(config.texturePath);
+    system->SetTimeScale(1);
+    const bool firstEmission = created || !system->IsActive();
+    system->EmitFromConfig(config);
+    // GPU側は次のDrawで経過時間をまとめて消費します。固定刻みの再現とは区別します。
+    if (firstEmission) system->Update(std::clamp(age, 0.0f, 5.0f));
+    authoringPreviewVisible_ = true;
+    return true;
 }

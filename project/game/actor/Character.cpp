@@ -6,10 +6,7 @@
 #include <cmath>
 #include "GhostRecorder.h"
 
-// =================================================================
-// 更新・描画処理
-// =================================================================
-
+// 派生キャラクターが決めた速度へ重力と外力を加え、最後に Motor で衝突込みの移動を行います。
 void Character::Update(float deltaTime) {
     Object3d::Update(deltaTime);
 
@@ -34,7 +31,7 @@ void Character::Update(float deltaTime) {
         externalImpulseTimer_ = (std::max)(0.0f, externalImpulseTimer_ - deltaTime);
     }
 
-    // 死亡判定
+    // HP の死亡状態を移動前に同期します。
     if (param_->hp <= 0) {
         isDead = true;
     }
@@ -54,7 +51,7 @@ void Character::SyncCharacterMotorSettings() {
     settings.stepHeight = param_->motorStepHeight;
     settings.groundProbeDistance = param_->motorGroundProbeDistance;
     settings.skinWidth = param_->motorSkinWidth;
-    settings.collisionMask = kAllSolid;
+    settings.collisionMask = CollisionCategories::Get("ground");
     characterMotor_.SetSettings(settings);
 }
 
@@ -69,7 +66,7 @@ void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
     }
 
     const float currentPlanarSq = externalImpulseVelocity_.x * externalImpulseVelocity_.x +
-        externalImpulseVelocity_.z * externalImpulseVelocity_.z;
+                                  externalImpulseVelocity_.z * externalImpulseVelocity_.z;
     const float nextPlanarSq = velocity.x * velocity.x + velocity.z * velocity.z;
     if (nextPlanarSq >= currentPlanarSq * 0.72f) {
         externalImpulseVelocity_ = velocity;
@@ -83,8 +80,7 @@ void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 
-        Object3d::Draw(pointLightResource, spotLightResource);
-    
+    Object3d::Draw(pointLightResource, spotLightResource);
 }
 
 // =================================================================
@@ -106,30 +102,22 @@ bool Character::OnCollision(Object3d* other) {
 
 void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute) {
     // 地面や壁(ソリッド属性)以外は物理的な押し出しを行わない
-    if (!(attribute & kAllSolid)) {
+    if (!(attribute & CollisionCategories::Get("ground"))) {
         return;
     }
 
     SyncCharacterMotorSettings();
-    characterMotor_.ResolveCollision(
-        transform_.translate,
-        velocity_,
-        isGrounded_,
-        info,
-        attribute);
+    characterMotor_.ResolveCollision(transform_.translate, velocity_, isGrounded_, info, attribute);
 }
 
-// =================================================================
-// オブジェクト複製 (Clone)
-// =================================================================
-
+// 編集用の複製ではステータスと移動設定を引き継ぎ、経路レコーダーは新しい実体として初期化します。
 std::unique_ptr<Object3d> Character::Clone() const {
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
     newObj->Initialize(common_);
 
-    // 1. 基本設定とTransformのコピー
+    // 表示と Transform を元の配置から複製します。
     if (!GetModelName().empty()) {
         newObj->SetModel(GetModelName());
     }
@@ -138,12 +126,12 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->SetClassName(GetClassName());
     newObj->SetEnemyType(GetEnemyType());
 
-    // 2. 衝突判定・属性のコピー
+    // 衝突属性は複製後も同じ接触相手を持つように引き継ぎます。
     newObj->SetColliderConfig(GetColliderConfig());
     newObj->SetCollisionAttribute(GetCollisionAttribute());
     newObj->SetCollisionMask(GetCollisionMask());
 
-    // 3. ステータスと状態フラグのコピー
+    // ステータスと現在の移動状態を引き継ぎます。
     newObj->SetEventType(eventType_);
     if (param_.has_value()) {
         newObj->param_ = param_.value();
@@ -152,11 +140,11 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->isGrounded_ = isGrounded_;
 
     newObj->characterMotor_ = characterMotor_;
-    // 4. アニメーション設定のコピー
+    // アニメーションの選択とループ設定を引き継ぎます。
     newObj->animName_ = animName_;
     newObj->isAnimLoop_ = isAnimLoop_;
 
-    // 5. ゴーストレコーダー(パス移動)のコピーと初期化
+    // 経路設定を複製し、再生器は複製先専用に作り直します。
     if (HasPathMoverComponent()) {
         newObj->EnsurePathMoverComponent();
         newObj->SetRecordPathName(GetRecordPathName());
@@ -169,12 +157,8 @@ std::unique_ptr<Object3d> Character::Clone() const {
     // パス名が設定されていれば自動再生を開始
     if (!newObj->GetRecordPathName().empty() && newObj->recorder_) {
         bool isCinematic = newObj->IsCameraObject();
-        newObj->recorder_->Play(
-            newObj->GetRecordPathName(),
-            newObj->IsRecordLoop(),
-            newObj->IsRecordRelative(),
-            isCinematic
-        );
+        newObj->recorder_->Play(newObj->GetRecordPathName(), newObj->IsRecordLoop(), newObj->IsRecordRelative(),
+                                isCinematic);
     }
 
     return newObj;

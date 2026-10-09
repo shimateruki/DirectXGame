@@ -30,6 +30,7 @@ void Framework::Initialize() {
     LightManager::GetInstance()->Initialize(dxCommon_);
 
 }
+
 // GPU処理の完了を待ってから、音声・ImGui・モデル・DirectXなどを終了する。
 
 void Framework::Finalize() {
@@ -44,9 +45,8 @@ void Framework::Finalize() {
     dxCommon_->Finalize();
     CoUninitialize();
 }
+
 // ウィンドウが閉じられるまで、更新と描画を毎フレーム実行する。
-
-
 
 void Framework::Run() {
     while (winApp_->Update() == false) {

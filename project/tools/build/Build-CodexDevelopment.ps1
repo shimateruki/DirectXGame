@@ -1,4 +1,8 @@
-﻿[CmdletBinding()]
+﻿<#
+Development x64 を直列ビルドし、MSBuild の追跡情報を共有キャッシュで再利用する。
+PrimeOnly はビルドをせず、完了済みビルドの追跡情報だけを退避する。
+#>
+[CmdletBinding()]
 param(
     [switch]$PrimeOnly
 )
@@ -6,6 +10,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# 増分ビルド用の追跡情報を共有キャッシュへ保持し、次回の再コンパイル量を抑える。
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $solutionPath = Join-Path $projectRoot 'DirectXGame.sln'
 $trackingSource = [System.IO.Path]::GetFullPath((Join-Path $projectRoot '..\generated\obj\DirectXGame\DirectXGame\Development\v145\DirectXGame\DirectXGame.tlog'))
@@ -21,6 +26,7 @@ if (-not $msBuild) {
 }
 
 function Copy-TrackingState {
+    # Robocopy の 0～7 はコピー状態を表す正常終了として扱う。
     param(
         [Parameter(Mandatory = $true)]
         [string]$Source,

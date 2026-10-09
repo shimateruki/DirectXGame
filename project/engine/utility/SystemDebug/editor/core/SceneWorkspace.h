@@ -15,25 +15,33 @@ class DebugEditor;
 class Object3d;
 class SceneManager;
 
-// SceneWorkspaceは、Sceneデータを変更しない一時表示と編集地点ブックマークを管理します。
+// Sceneデータを変更しない一時表示と、シーンごとの編集地点ブックマークを管理する。
+// SceneManagerとDebugEditorは借用し、非表示状態はObjectのEditor専用フラグへ反映する。
 class SceneWorkspace {
 public:
+    // SceneManager と DebugEditor を借用し、編集用ブックマークを読み込む。
     void Initialize(SceneManager* sceneManager, DebugEditor* editor);
     void Finalize();
     void Update();
+    // Play 中は編集地点の記録・復帰を行わない。
     void HandleHotkeys();
     void DrawHierarchyPanel();
 
+    // 選択階層以外を一時的に隠す。選択階層のレイヤー・手動非表示は解除する。
     void IsolateSelection();
     void HideSelectionTemporarily();
+    // 選択対象の隔離・レイヤー・手動非表示理由をすべて解除する。
     void ShowSelectionTemporarily();
+    // 隔離・手動非表示・レイヤー非表示を解除する。保存済み可視性は変更しない。
     void RestoreAllTemporaryVisibility();
+    // 指定レイヤーのEditor上の可視性だけを切り替える。Sceneの保存データは変更しない。
     void SetLayerVisible(const std::string& layer, bool visible);
 
     bool IsIsolationActive() const { return isolationActive_; }
     std::size_t GetTemporaryHiddenCount() const;
 
 private:
+    // 編集視点の位置・回転と注視対象の識別情報。valid が false の枠は未登録。
     struct CameraBookmark {
         bool valid = false;
         Vector3 position = { 0.0f, 0.0f, 0.0f };

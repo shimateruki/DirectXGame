@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "a507812e5eb0597f5c5ff3df073c07ad",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/false_king/false_king_nightfall_ground_arc.dds",
+  "version": 1
+}

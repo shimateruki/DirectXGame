@@ -163,6 +163,9 @@
     <ClCompile Include="game\scene\gameplay\GamePlayScene.HUD.cpp">
       <Filter>Scenes\gameplay</Filter>
     </ClCompile>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.LifeLost.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="game\scene\gameplay\GamePlayScene.Setup.cpp">
       <Filter>Scenes\gameplay</Filter>
     </ClCompile>
@@ -336,6 +339,9 @@
     <ClCompile Include="game\system\GameRule.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\system\StageCatalog.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
     <ClCompile Include="game\system\HitEffectDirector.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -369,6 +375,9 @@
     <ClCompile Include="game\actor\enemy\combat\EnemyAttackProfile.cpp">
       <Filter>Enemies\combat</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\enemy\combat\AttackAbilityRuntime.cpp">
+      <Filter>Enemies\combat</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\enemy\normal\EnemySlime.cpp">
       <Filter>Enemies\normal</Filter>
     </ClCompile>
@@ -392,6 +401,8 @@
     </ClCompile>
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Attacks.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Encounter.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp">
       <Filter>Enemies\flying</Filter>
@@ -1372,6 +1383,12 @@
     <ClInclude Include="game\system\GameRule.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\system\StageCatalog.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\StageManager.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
     <ClInclude Include="game\system\HitEffectDirector.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1409,6 +1426,7 @@
     </ClInclude>
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.h"><Filter>Enemies\boss\prism</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h"><Filter>Enemies\boss\magma</Filter></ClInclude>
+    <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Internal.h"><Filter>Enemies\boss\magma</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.h"><Filter>Enemies\boss\false_king</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\flying\EnemyBat.h">
       <Filter>Enemies\flying</Filter>
@@ -2286,6 +2304,10 @@
     <ClInclude Include="game\scene\gameover\GameOverSlimeAnimator.h">
       <Filter>Scenes\gameover</Filter>
     </ClInclude>
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownDefeat.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinalePreview.cpp">
+      <Filter>Scenes\gameplay</Filter>
+    </ClCompile>
     <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinale.cpp">
       <Filter>Scenes\gameplay</Filter>
     </ClCompile>
@@ -2325,6 +2347,7 @@
     <ClCompile Include="game\actor\player\combat\Player.Feedback.cpp"><Filter>Player\combat</Filter></ClCompile>
     <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Internal.h"><Filter>Enemies\boss\false_king</Filter></ClInclude>
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Attacks.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.UmbraFlames.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Encounter.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Finale.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h"><Filter>Enemies\boss\prism</Filter></ClInclude>
@@ -2376,6 +2399,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\combat\CombatMath.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClInclude Include="game\actor\combat\AttackSequence.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClInclude Include="game\actor\combat\AttackSequenceData.h"><Filter>CombatShared</Filter></ClInclude>
+    <ClCompile Include="game\actor\combat\AttackSequence.cpp"><Filter>CombatShared</Filter></ClCompile>
     <ClInclude Include="game\actor\combat\CombatGroundQuery.h"><Filter>CombatShared</Filter></ClInclude>
     <ClCompile Include="game\actor\combat\CombatGroundQuery.cpp"><Filter>CombatShared</Filter></ClCompile>
     <Filter Include="CombatShared"><UniqueIdentifier>{506a94b9-a9f2-4c6e-8d2f-b38e19474524}</UniqueIdentifier></Filter>

@@ -9,9 +9,7 @@
 
 namespace cg2::editor {
 
-// ドライラン中にアクションノードへ渡す情報です。
-// 実ゲームへ接続する前でも、処理順や待ち時間を確認できるようにします。
-// NodeActionContextは、ノード実行中に待機要求やログ出力を行うためのコンテキストです。
+// ドライラン中のアクションノードへ渡す参照と、次の更新までの待機要求を保持する。
 struct NodeActionContext {
     const NodeGraphCore* graph = nullptr;
     const NodeData* node = nullptr;
@@ -28,21 +26,21 @@ struct NodeActionContext {
 
 using NodeActionHandler = std::function<bool(NodeActionContext&)>;
 
-// Effect Sequence Graph の簡易実行器です。
-// まだ実ゲーム演出を直接動かす段階ではなく、Editor 上で流れを確認するための直列 Executor です。
-// NodeGraphExecutorは、NodeGraphCoreの内容を順番に実行し、ドライランや簡易演出確認を行います。
+// Effect Sequence Graph の直列ドライラン実行器。分岐とループは実行対象外とする。
 class NodeGraphExecutor {
 public:
-        // 実行状態、待機状態、メッセージを初期状態に戻します。
-void Reset();
+    // 実行状態と参照中のグラフを破棄する。登録済みハンドラは維持する。
+    void Reset();
     void ClearActionHandlers();
-        // ノード種別ごとの実処理を外部から登録します。
-void RegisterActionHandler(const std::string& nodeType, NodeActionHandler handler);
+    // ノード種別ごとの処理を登録する。処理が false を返すとドライランを終了する。
+    void RegisterActionHandler(const std::string& nodeType, NodeActionHandler handler);
     void SetLogHandler(std::function<void(const std::string&)> handler);
 
+    // eventType が空なら最初のイベントを起点にする。graph はドライラン終了まで存続させる。
+    // 対応しない分岐やループがあれば false を返し、errorMessage に理由を書く。
     bool Start(const NodeGraphCore& graph, const std::string& eventType, std::string* errorMessage = nullptr);
-        // 待機時間を進めながら、次に実行可能なノードを処理します。
-void Update(float deltaTime);
+    // deltaTime は秒。待機が終わると次のノードから実行を再開する。
+    void Update(float deltaTime);
 
     bool IsRunning() const { return running_; }
     bool IsFinished() const { return finished_; }
@@ -52,8 +50,8 @@ void Update(float deltaTime);
 
 private:
     bool BuildLinearExecutionList(const NodeGraphCore& graph, const std::string& eventType, std::string* errorMessage);
-        // 1ノード分のアクションを実行し、必要なら待機やログを反映します。
-bool ExecuteNode(const NodeData& node);
+    // 1ノード分のアクションを実行し、必要なら待機やログを反映する。
+    bool ExecuteNode(const NodeData& node);
     float ReadFloatProperty(const NodeData& node, const std::string& name, float fallback) const;
     std::string ReadStringProperty(const NodeData& node, const std::string& name, const std::string& fallback) const;
 

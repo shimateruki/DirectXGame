@@ -5,6 +5,7 @@ SRVManager* SRVManager::GetInstance() {
     static SRVManager instance;
     return &instance;
 }
+
 void SRVManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     device_ = dxCommon->GetDevice();
@@ -37,12 +38,14 @@ void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* comma
     gpuHandle.ptr += (descriptorSize_ * srvHandle);
     commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
+
 void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     assert(srvDescriptorHeap_);
 
     ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
     commandList->SetDescriptorHeaps(1, pHeaps);
 }
+
 uint32_t SRVManager::Allocate() {
     std::lock_guard<std::mutex> lock(mutex_);
     assert(nextIndex_ < kMaxSRVCount);
@@ -57,6 +60,7 @@ void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource,
     cpuHandle.ptr += (static_cast<unsigned long long>(descriptorSize_) * index);
     device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
 }
+
 D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
     if (index >= kMaxSRVCount) {
         assert(false && "SRV Index out of range!");
@@ -67,10 +71,12 @@ D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
 
     return handle;
 }
+
 void SRVManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = GetGPUDescriptorHandle(srvHandle);
     commandList->SetComputeRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
+
 D3D12_CPU_DESCRIPTOR_HANDLE SRVManager::GetCPUDescriptorHandle(uint32_t index) {
     if (index >= kMaxSRVCount) {
         assert(false && "SRV Index out of range!");

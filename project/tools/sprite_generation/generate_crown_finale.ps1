@@ -1,5 +1,5 @@
-# 王冠最終戦の日本語案内を、プロジェクト標準の文字PNGツールで生成します。
-param([switch]$SealsOnly)
+﻿# 王冠最終戦の日本語案内を、プロジェクト標準の文字PNGツールで生成します。
+param([switch]$SealsOnly, [switch]$InheritanceOnly, [switch]$ReleaseOnly)
 $ErrorActionPreference = 'Stop'
 $taskRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $taskTool = Join-Path $taskRoot '../generated/outputs/Development/TextPngTool.exe'
@@ -14,6 +14,10 @@ function Render-CrownText($name, $text, $size = 32) {
         textColor = @(1.0, 0.95, 0.75, 1.0)
         outline = @{ enabled = $true; width = 3; color = @(0.06,0.05,0.18,1.0) }
         shadow = @{ enabled = $true; offsetX = 1; offsetY = 3; color = @(0.02,0.02,0.08,0.85) }
+    }
+    # DDSの圧縮ブロックに合わせ、継承の文字画像は4の倍数のキャンバスへ収めます。
+    if ($name -eq 'inherit') {
+        $taskData.autoCanvas = $false; $taskData.canvasWidth = 720; $taskData.canvasHeight = 80
     }
     [IO.File]::WriteAllText($taskConfig, ($taskData | ConvertTo-Json -Depth 5), $taskEncoding)
     & $taskTool render -config $taskConfig -out (Join-Path $taskOutput ($name + '.png'))
@@ -34,11 +38,19 @@ function Render-CrownBookText($name, $text, $width, $height, $size, $white) {
 
 try {
     New-Item -ItemType Directory -Force -Path $taskOutput | Out-Null
+    if ($ReleaseOnly) {
+        Render-CrownText 'release' "最後の封印が砕け、王冠に亀裂が走る――"
+        return
+    }
+    if ($InheritanceOnly) {
+        Render-CrownText 'inherit' "落ちた王冠の欠片を、吸い込みで取り込む――"
+        return
+    }
     Render-CrownText 'seals' "光る封印へ攻撃を誘導！ 狙いが止まったら回避！`n① 槍を当てる　② 着地させる　③ 突進を通す"
     if ($SealsOnly) { return }
-    Render-CrownText 'inherit' "王冠の欠片が、スライムに新しい力を託す――"
+    Render-CrownText 'inherit' "落ちた王冠の欠片を、吸い込みで取り込む――"
     Render-CrownText 'boss_intro' "天空城の支配者　偽王スライム" 58
-    Render-CrownText 'release' "偽王の一撃が、天空城を揺るがす――"
+    Render-CrownText 'release' "最後の封印が砕け、王冠に亀裂が走る――"
     Render-CrownText 'awaken' "王冠の力を受け継いだ姿　覇王スライム" 48
     Render-CrownText 'controls' "左クリック：王冠槍 ／ 長押しして離す：槍の雨`n右クリック：王威の波で装甲を開く　E：王翼突進"
 

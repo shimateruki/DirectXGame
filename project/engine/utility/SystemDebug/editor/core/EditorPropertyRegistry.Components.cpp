@@ -38,7 +38,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
                 config.size = { 1.0f, 1.0f, 1.0f };
             }
             object.SetColliderConfig(config);
-            object.SetCollisionAttribute(CollisionAttribute::kGround);
+            object.SetCollisionAttribute(CollisionCategories::Get("ground"));
             object.SetCollisionMask(0xFFFFFFFFu);
             object.SetStatic(true);
             object.SetComponentPresenceMarker("Collider", true);
@@ -66,8 +66,8 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
                 config.size = { 1.0f, 1.0f, 1.0f };
             }
             object.SetColliderConfig(config);
-            object.SetCollisionAttribute(CollisionAttribute::kTrigger);
-            object.SetCollisionMask(CollisionAttribute::kPlayer);
+            object.SetCollisionAttribute(CollisionCategories::Get("trigger"));
+            object.SetCollisionMask(CollisionCategories::Get("player"));
             object.SetStatic(false);
             object.SetComponentPresenceMarker("Collider", true);
             return true;

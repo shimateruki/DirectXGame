@@ -3,8 +3,9 @@
 
 // 横スクロール風の 2D 入力に制限するためのプレイヤー移動戦略
 class MoveStrategy2D : public IMoveStrategy {
-public:
+  public:
     Vector3 CalculateVelocity(Player* player) override;
-private:
+
+  private:
     Math math;
 };

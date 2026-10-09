@@ -1,26 +1,21 @@
-﻿#include "game/actor/player/Player.Internal.h"
+#include "game/actor/player/Player.Internal.h"
 
 using namespace PlayerImplementation;
 
 Player::~Player() = default;
 
-bool Player::IsImpactBreakActive() const
-{
-    const bool baseImpact =
-        baseCombatController_ && baseCombatController_->CanBreakImpactGate();
-    const bool copyImpact =
-        copyAbilityController_ && copyAbilityController_->CanBreakImpactGate();
+bool Player::IsImpactBreakActive() const {
+    const bool baseImpact = baseCombatController_ && baseCombatController_->CanBreakImpactGate();
+    const bool copyImpact = copyAbilityController_ && copyAbilityController_->CanBreakImpactGate();
     return baseImpact || copyImpact;
 }
 
-bool Player::IsPinkBounceSlamImpactActive() const
-{
-    return copyAbilityController_ &&
-        copyAbilityController_->IsPinkBounceSlamImpactActive();
+bool Player::IsPinkBounceSlamImpactActive() const {
+    return copyAbilityController_ && copyAbilityController_->IsPinkBounceSlamImpactActive();
 }
 
-void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon)
-{
+void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem,
+                        SpriteCommon* spriteCommon) {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
 
@@ -61,13 +56,13 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_->Initialize(common);
         hookMarker_->SetModel("Characters/slimeBody");
         // スライムっぽい半透明な緑色
-        hookMarker_->SetColor({ 0.3f, 1.0f, 0.5f, 0.6f });
+        hookMarker_->SetColor({0.3f, 1.0f, 0.5f, 0.6f});
         hookMarker_->SetIsVisible(false);
         // 当たり判定は不要
         hookMarker_->SetCollisionAttribute(0);
         hookMarker_->SetCollisionMask(0);
         // マーカーサイズを少し小さめに
-        hookMarker_->GetTransform()->scale = { 0.5f, 0.5f, 0.5f };
+        hookMarker_->GetTransform()->scale = {0.5f, 0.5f, 0.5f};
 
         // 解除時に排出するスライム成分。シーンへ登録せず、Playerが描画まで管理します。
         enemyMorphReleaseVisual_ = std::make_unique<Object3d>();
@@ -102,13 +97,13 @@ Vector3 Player::GetLockOnAttackDirection() const {
     return length > 0.001f ? direction / length : GetForwardDirection();
 }
 
-void Player::Update(float deltaTime)
-{
+// 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
+void Player::Update(float deltaTime) {
     if (mover_ && deltaTime > 0.0f) {
-        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ ||
-            launchStarController_.IsActive() || gateReturnAnimation_.IsActive() ||
-            absorbEffectActive_ || enemyMorphReleaseActive_ || copyPreviewActive_ ||
-            electricShockControlLocked_);
+        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ || launchStarController_.IsActive() ||
+                                               gateReturnAnimation_.IsActive() || absorbEffectActive_ ||
+                                               enemyMorphReleaseActive_ || copyPreviewActive_ ||
+                                               electricShockControlLocked_);
     }
     // 隔離プレビューは固定刻み側だけが状態を進めます。Scene側のUpdate(0)で
     // 接地や保留入力を再評価すると、コマ送り結果が同じフレーム内で壊れます。
@@ -116,7 +111,8 @@ void Player::Update(float deltaTime)
         UpdateWorldMatrix(true);
         return;
     }
-    if (copyPreviewActive_) SetIsControlActive(false);
+    if (copyPreviewActive_)
+        SetIsControlActive(false);
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = transform_.translate;
@@ -133,7 +129,7 @@ void Player::Update(float deltaTime)
 
     if (isCinematicLocked_) {
         SetIsControlActive(false);
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         return;
     }
 
@@ -144,10 +140,7 @@ void Player::Update(float deltaTime)
     }
 
     const bool copyAbilityInputMode =
-        isEnemyMorphed_ &&
-        enemyMorphType_ != EnemyMorphType::None &&
-        !enemyMorphReleaseActive_ &&
-        !absorbEffectActive_;
+        isEnemyMorphed_ && enemyMorphType_ != EnemyMorphType::None && !enemyMorphReleaseActive_ && !absorbEffectActive_;
     const bool hookAimHeld =
         inputManager_ && inputManager_->IsActionPressed("SecondaryAction") && !copyAbilityInputMode;
 
@@ -159,10 +152,9 @@ void Player::Update(float deltaTime)
         aimTargetObject_ = nullptr;
     }
 
-    // 時間が進んでいる（ポーズ中ではない）時だけ、操作や状態を更新
-    if (deltaTime > 0.0f)
-    {
-        // 1. 無敵タイマーの管理 (ダメージ被弾時)
+    // 停止フレームでは入力・タイマー・状態遷移を進めず、表示用の更新だけを残します。
+    if (deltaTime > 0.0f) {
+        // 被弾無敵と回避無敵は別の発生源なので、期限も独立して管理します。
         if (damageCooldownTimer_ > 0.0f) {
             damageCooldownTimer_ -= deltaTime;
             if (damageCooldownTimer_ <= 0.0f) {
@@ -182,22 +174,23 @@ void Player::Update(float deltaTime)
 
         if (electricShockControlLocked_) {
             SetIsControlActive(false);
-            SetVelocity({ 0.0f, 0.0f, 0.0f });
+            SetVelocity({0.0f, 0.0f, 0.0f});
             SetTranslate(electricShockLockedPosition_);
         }
 
-        // 2. 移動制御の更新
+        // コピー能力に右クリックを渡す間は、通常形態のフック照準を開始しません。
         if (isControlActive_ && mover_) {
             // 右クリック中は移動入力を受け付けず、水平移動を停止させる
             if (hookAimHeld) {
                 SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::AimHook);
                 Vector3 v = GetVelocity();
-                SetVelocity({ 0.0f, v.y, 0.0f });
+                SetVelocity({0.0f, v.y, 0.0f});
 
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera) {
                     Vector3 camRot = camera->GetRotation();
-                    SetRotation({ baseRotation_.x + camRot.x, NormalizeYaw(camRot.y + GetVisualYawOffset()), baseRotation_.z });
+                    SetRotation(
+                        {baseRotation_.x + camRot.x, NormalizeYaw(camRot.y + GetVisualYawOffset()), baseRotation_.z});
 
                     // --- フック到達地点の計算とマーカー表示 ---
                     if (hookMarker_) {
@@ -210,7 +203,9 @@ void Player::Update(float deltaTime)
 
                         float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
                         if (length > 0.0f) {
-                            dir.x /= length; dir.y /= length; dir.z /= length;
+                            dir.x /= length;
+                            dir.y /= length;
+                            dir.z /= length;
                         }
 
                         // ロック中はカメラからではなく、自機から対象の判定中心へ狙います。
@@ -219,13 +214,15 @@ void Player::Update(float deltaTime)
                             const AABB bounds = GetAABB();
                             start = (bounds.min + bounds.max) * 0.5f;
                             const Vector3 toTarget = lockOnAimPoint_ - start;
-                            if (Math::Length(toTarget) > 0.001f) dir = Math::Normalize(toTarget);
+                            if (Math::Length(toTarget) > 0.001f)
+                                dir = Math::Normalize(toTarget);
                             const float planarLength = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-                            SetRotation({ baseRotation_.x - std::atan2(dir.y, planarLength),
-                                NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()), baseRotation_.z });
+                            SetRotation({baseRotation_.x - std::atan2(dir.y, planarLength),
+                                         NormalizeYaw(std::atan2(dir.x, dir.z) + GetVisualYawOffset()),
+                                         baseRotation_.z});
                         }
                         float maxDistance = 150.0f;
-                        uint32_t mask = kAllSolid | kEnemy | kHookAnchor;
+                        uint32_t mask = CollisionCategories::Get("ground") | CollisionCategories::Get("enemy") | CollisionCategories::Get("hook_anchor");
 
                         RaycastHit hit;
                         if (isLockingOn_) {
@@ -247,30 +244,26 @@ void Player::Update(float deltaTime)
                             hookMarker_->GetTransform()->translate = hit.hitPoint;
                             aimTargetObject_ = hit.hitObject;
 
-                            // 【案A：エイムフィードバック】
-                            // 敵をロックオンしている時はマーカーを強調する（赤色に変える）
+                            // 命中先の種類を色と脈動で示し、フック可能な対象を照準中に判別できるようにします。
                             if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
-                                hookMarker_->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
+                                hookMarker_->SetColor({0.2f, 0.85f, 1.0f, 1.0f});
                                 static float pulseTimer = 0.0f;
                                 pulseTimer += deltaTime;
                                 float pulse = 1.25f + std::sin(pulseTimer * 10.0f) * 0.25f;
-                                hookMarker_->GetTransform()->scale = { pulse, pulse, pulse };
-                            }
-                            else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
-                                hookMarker_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f }); // 赤色に変更
+                                hookMarker_->GetTransform()->scale = {pulse, pulse, pulse};
+                            } else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
+                                hookMarker_->SetColor({1.0f, 0.2f, 0.2f, 1.0f}); // 赤色に変更
                                 static float pulseTimer = 0.0f;
                                 pulseTimer += deltaTime;
                                 float pulse = 1.2f + std::sin(pulseTimer * 15.0f) * 0.3f;
-                                hookMarker_->GetTransform()->scale = { pulse, pulse, pulse };
-                            }
-                            else {
-                                hookMarker_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白
-                                hookMarker_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+                                hookMarker_->GetTransform()->scale = {pulse, pulse, pulse};
+                            } else {
+                                hookMarker_->SetColor({1.0f, 1.0f, 1.0f, 1.0f}); // 白
+                                hookMarker_->GetTransform()->scale = {1.0f, 1.0f, 1.0f};
                             }
 
-                            hookMarker_->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
-                        }
-                        else {
+                            hookMarker_->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
+                        } else {
                             hookMarker_->SetIsVisible(false);
                             aimTargetObject_ = nullptr;
                         }
@@ -280,8 +273,7 @@ void Player::Update(float deltaTime)
                         hookMarker_->UpdateWorldMatrix();
                     }
                 }
-            }
-            else {
+            } else {
                 // 右クリック解除時にフックアクションへ移行
                 if (hookMarker_) {
                     if (hookMarker_->GetIsVisible()) {
@@ -290,15 +282,11 @@ void Player::Update(float deltaTime)
                         // フック移動は地面全体では停止中。HookAnchor だけ旧フック移動を使う。
                         if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
                             ChangeState(std::make_unique<PlayerStateHook>(targetPos));
-                        }
-                        else if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
+                        } else if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
                             ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
-                        }
-                        else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
+                        } else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
                             ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
-                        }
-                        else {
-                            // ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+                        } else {
                             hookMarker_->SetIsVisible(false);
                             aimTargetObject_ = nullptr;
                         }
@@ -315,7 +303,7 @@ void Player::Update(float deltaTime)
             }
         }
 
-        // 3. 状態(State)の更新
+        // 移動を決めた後に状態を進め、攻撃・被弾による制御変更を反映します。
         if (state_) {
             state_->Update(this, deltaTime);
         }
@@ -327,8 +315,8 @@ void Player::Update(float deltaTime)
 
         // 液面への接触は無敵や残HPに関係なく死亡します。安全チュートリアルは従来どおり保護します。
         float liquidY = 0.0f;
-        if (!isDead && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get())
-            && FindLethalLiquidSurface(*this, liquidY) && param_.has_value()) {
+        if (!isDead && !tutorialSafetyEnabled_ && !dynamic_cast<PlayerStateFallingOut*>(state_.get()) &&
+            FindLethalLiquidSurface(*this, liquidY) && param_.has_value()) {
             const float footY = GetModelWorldAABB().min.y;
             Vector3 position = GetTranslate();
             position.y += liquidY - footY + 0.04f;
@@ -339,7 +327,7 @@ void Player::Update(float deltaTime)
             param_->hp = 0.0f;
         }
 
-        // 4. 死亡判定
+        // 死亡へ入る前に攻撃とコピーを解除し、イベントを一度だけ通知します。
         if (GetHp() <= 0.0f && !isDead) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
@@ -354,27 +342,24 @@ void Player::Update(float deltaTime)
             EventManager::GetInstance()->Dispatch(deathEvent);
         }
 
-        // 5. 落下判定
+        // チュートリアル中の落下だけは残機を減らさず、その場で復帰させます。
         if (transform_.translate.y < -18.0f && !isDead && isControlActive_) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
             if (tutorialSafetyEnabled_) {
                 SetTranslate(respawnPosition_);
-                SetVelocity({ 0.0f, 0.0f, 0.0f });
-            }
-            else {
+                SetVelocity({0.0f, 0.0f, 0.0f});
+            } else {
                 ChangeState(std::make_unique<PlayerStateFallingOut>());
                 GameDataManager::GetInstance()->SubtractLife();
             }
         }
 
-        // 6. ポストエフェクト：HPが1の時に赤枠（ピンチ演出）を出す
+        // ピンチ表示は毎フレーム明示的に設定し、回復後の赤枠を残しません。
         if (!isDead && GetHp() <= 1.0f && GetHp() > 0.0f) {
-            // 脈打つ赤枠を有効化 (1.0f だと少し強いかもしれないので 0.8f 程度に調整)
             PostEffect::GetInstance()->GetParams()->dangerVignette = 0.8f;
-        }
-        else {
+        } else {
             PostEffect::GetInstance()->GetParams()->dangerVignette = 0.0f;
         }
     }
@@ -391,9 +376,7 @@ void Player::Update(float deltaTime)
     bool hasTemporaryPhysicsOverride = false;
 
     if (isControlActive_) {
-        float gravity = hookAimHeld
-            ? (std::min)(configuredGravity, 10.0f)
-            : configuredGravity;
+        float gravity = hookAimHeld ? (std::min)(configuredGravity, 10.0f) : configuredGravity;
         float maxFallSpeed = configuredMaxFallSpeed;
 
         if (isCarryingBat && velocity_.y < 0.0f) {
@@ -411,7 +394,7 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 6. 親クラスの更新
+    // 状態と入力を確定してから物理を進め、能力入力に必要な接地を再確認します。
     // 破裂中は物理移動を止め、液面に残して演出を見せます。
     if (isDead) {
         SetVelocity({0.0f, 0.0f, 0.0f});
@@ -421,11 +404,11 @@ void Player::Update(float deltaTime)
         // 互換モーターは接地をリセットし、シーン末尾の衝突解決まで未接地になります。
         // 能力判定より先に実際の足元接触を確認します。押し戻し・衝突イベントは
         // 従来のCollisionManagerに任せ、ここでは位置や速度を変更しません。
-        if (!copyPreviewActive_ && deltaTime > 0.0f && param_.has_value() &&
-            !param_->motorContinuousCollision && !IsGrounded() && GetVelocity().y <= 0.0f) {
+        if (!copyPreviewActive_ && deltaTime > 0.0f && param_.has_value() && !param_->motorContinuousCollision &&
+            !IsGrounded() && GetVelocity().y <= 0.0f) {
             UpdateWorldMatrix(false);
             PhysicsQueryFilter filter;
-            filter.mask = kAllSolid & GetCollisionMask();
+            filter.mask = CollisionCategories::Get("ground") & GetCollisionMask();
             filter.ignoredObject = this;
             const float maxSlope = std::clamp(param_->motorMaxSlopeDegrees, 0.0f, 89.9f);
             const float minimumGroundNormalY = std::cos(maxSlope * kPi / 180.0f);
@@ -457,7 +440,7 @@ void Player::Update(float deltaTime)
     }
 
     if (electricShockControlLocked_) {
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         SetTranslate(electricShockLockedPosition_);
     }
 
@@ -473,19 +456,15 @@ void Player::Update(float deltaTime)
 
     if (electricShockFeedbackTimer_ <= 0.0f && hasVisibleInvincibility && deltaTime > 0.0f) {
         const float blink = 0.5f + 0.5f * std::sin(invincibleBlinkTimer_ * 42.0f);
-        const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const Vector4 base = isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{1.0f, 1.0f, 1.0f, 1.0f};
         const Vector4 flash = isGuardInvincible_
-            ? Vector4{ 1.0f, 0.42f, 0.84f, 1.0f }
-            : ((isDashInvincible_ || isEvasionInvincible_)
-                ? Vector4{ 0.34f, 0.74f, 1.0f, 1.0f }
-                : Vector4{ 1.0f, 0.78f, 0.32f, 1.0f });
+                                  ? Vector4{1.0f, 0.42f, 0.84f, 1.0f}
+                                  : ((isDashInvincible_ || isEvasionInvincible_) ? Vector4{0.34f, 0.74f, 1.0f, 1.0f}
+                                                                                 : Vector4{1.0f, 0.78f, 0.32f, 1.0f});
         const float flashRate = blink > 0.48f ? 0.72f : 0.12f;
-        const Vector4 color = {
-            base.x * (1.0f - flashRate) + flash.x * flashRate,
-            base.y * (1.0f - flashRate) + flash.y * flashRate,
-            base.z * (1.0f - flashRate) + flash.z * flashRate,
-            1.0f
-        };
+        const Vector4 color = {base.x * (1.0f - flashRate) + flash.x * flashRate,
+                               base.y * (1.0f - flashRate) + flash.y * flashRate,
+                               base.z * (1.0f - flashRate) + flash.z * flashRate, 1.0f};
         SetColor(color);
         if (!isEnemyMorphed_) {
             for (Object3d* child : GetChildren()) {
@@ -503,52 +482,38 @@ void Player::Update(float deltaTime)
         if (carryGlideEffectTimer_ <= 0.0f) {
             const Vector3 playerPos = GetWorldPosition();
             const float yaw = GetMoveYaw();
-            Vector3 windDir = { -std::sin(yaw), 0.18f, -std::cos(yaw) };
+            Vector3 windDir = {-std::sin(yaw), 0.18f, -std::cos(yaw)};
             const float windLength = std::sqrt(windDir.x * windDir.x + windDir.y * windDir.y + windDir.z * windDir.z);
             if (windLength > 0.001f) {
                 windDir = windDir / windLength;
             }
 
             if (particleSystem_) {
-                particleSystem_->SpawnParticles(
-                    playerPos + Vector3{ 0.0f, 1.25f, 0.0f },
-                    10,
-                    2.4f,
-                    &windDir,
-                    34.0f,
-                    { 0.55f, 0.85f, 1.0f, 0.65f },
-                    { 0.75f, 1.0f, 1.0f, 0.0f },
-                    0.22f,
-                    0.5f,
-                    0.32f,
-                    0.04f
-                );
+                particleSystem_->SpawnParticles(playerPos + Vector3{0.0f, 1.25f, 0.0f}, 10, 2.4f, &windDir, 34.0f,
+                                                {0.55f, 0.85f, 1.0f, 0.65f}, {0.75f, 1.0f, 1.0f, 0.0f}, 0.22f, 0.5f,
+                                                0.32f, 0.04f);
             }
 
             if (MeshEffectManager::GetInstance()) {
                 MeshEffectManager::GetInstance()->SpawnEffectAt(
-                    "Resources/json/effect/effect_carry_bat_glide_ring.json",
-                    playerPos + Vector3{ 0.0f, 1.15f, 0.0f },
-                    { 1.5707963f, yaw, 0.0f },
-                    { 1.0f, 1.0f, 1.0f }
-                );
+                    "Resources/json/effect/effect_carry_bat_glide_ring.json", playerPos + Vector3{0.0f, 1.15f, 0.0f},
+                    {1.5707963f, yaw, 0.0f}, {1.0f, 1.0f, 1.0f});
             }
             if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-                gpuParticleManager->Emit("carry_bat_glide_wisp", playerPos + Vector3{ 0.0f, 1.1f, 0.0f });
+                gpuParticleManager->Emit("carry_bat_glide_wisp", playerPos + Vector3{0.0f, 1.1f, 0.0f});
             }
             carryGlideEffectTimer_ = 0.14f;
         }
-    }
-    else {
+    } else {
         carryGlideEffectTimer_ = 0.0f;
     }
 
     const bool carryAbilityTriggered =
-        deltaTime > 0.0f && (copyPreviewActive_ ? copyPreviewInput_.specialTriggered :
-        inputManager_->IsActionTriggered("Ability"));
-    const bool morphRightAbilityTriggered =
         deltaTime > 0.0f &&
-        (copyPreviewActive_ ? copyPreviewInput_.secondaryTriggered : inputManager_->IsActionTriggered("SecondaryAction"));
+        (copyPreviewActive_ ? copyPreviewInput_.specialTriggered : inputManager_->IsActionTriggered("Ability"));
+    const bool morphRightAbilityTriggered =
+        deltaTime > 0.0f && (copyPreviewActive_ ? copyPreviewInput_.secondaryTriggered
+                                                : inputManager_->IsActionTriggered("SecondaryAction"));
     const bool morphRightAbilityHeld =
         deltaTime > 0.0f &&
         (copyPreviewActive_ ? copyPreviewInput_.secondaryHeld : inputManager_->IsActionPressed("SecondaryAction"));
@@ -559,8 +524,7 @@ void Player::Update(float deltaTime)
         deltaTime > 0.0f &&
         (copyPreviewActive_ ? copyPreviewInput_.primaryHeld : inputManager_->IsActionPressed("PrimaryAttack"));
     const bool morphReleaseTriggered =
-        deltaTime > 0.0f &&
-        !copyPreviewActive_ && inputManager_->IsActionTriggered("MorphRelease");
+        deltaTime > 0.0f && !copyPreviewActive_ && inputManager_->IsActionTriggered("MorphRelease");
 
     // 通常形態は左クリック／攻撃アクションで必ず攻撃できます。
     // 運搬中は投げ操作、コピー中はコピー能力を優先します。
@@ -572,81 +536,71 @@ void Player::Update(float deltaTime)
         baseCombatController_->Update(*this, deltaTime);
     }
 
-    if (!absorbEffectActive_ && isEnemyMorphed_ && !enemyMorphReleaseActive_ &&
-        isControlActive_ && !isDead && morphReleaseTriggered) {
+    if (!absorbEffectActive_ && isEnemyMorphed_ && !enemyMorphReleaseActive_ && isControlActive_ && !isDead &&
+        morphReleaseTriggered) {
         BeginEnemyMorphRelease(false);
     }
 
-    if (tutorialCarryThrowEnabled_ &&
-        !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && !isEnemyMorphed_ &&
-        inputManager_->IsActionPressed("PrimaryAttack")) {
+    if (tutorialCarryThrowEnabled_ && !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ &&
+        !isEnemyMorphed_ && inputManager_->IsActionPressed("PrimaryAttack")) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             CancelEnemyMorph();
 
-            // ① カメラの向いている方向（投げる方向）を計算
+            // カメラの水平方向を投擲方向に使い、見下ろし角に応じて上向きの初速を調整します。
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
             Vector3 throwForward = GetForwardDirection();
             float throwUpSpeed = 17.0f;
             if (camera) {
                 Vector3 camRot = camera->GetRotation();
-                throwForward = { std::sin(camRot.y), 0.0f, std::cos(camRot.y) };
+                throwForward = {std::sin(camRot.y), 0.0f, std::cos(camRot.y)};
                 throwUpSpeed = (std::clamp)(17.0f - std::sin(camRot.x) * 7.0f, 10.0f, 21.0f);
             }
             float forwardLength = std::sqrt(throwForward.x * throwForward.x + throwForward.z * throwForward.z);
             if (forwardLength > 0.001f) {
                 throwForward.x /= forwardLength;
                 throwForward.z /= forwardLength;
-            }
-            else {
-                throwForward = { 0.0f, 0.0f, 1.0f };
+            } else {
+                throwForward = {0.0f, 0.0f, 1.0f};
             }
 
-            // ② プレイヤーに自爆ヒットしないように、少し前方にずらして配置
+            // 解除直後の当たり判定がプレイヤーに重ならないよう、前方に離してから投げます。
             Vector3 playerPos = GetWorldPosition();
-            enemyBase->GetTransform()->translate = {
-                playerPos.x + throwForward.x * 2.2f,
-                playerPos.y + 2.2f,
-                playerPos.z + throwForward.z * 2.2f
-            };
+            enemyBase->GetTransform()->translate = {playerPos.x + throwForward.x * 2.2f, playerPos.y + 2.2f,
+                                                    playerPos.z + throwForward.z * 2.2f};
 
-            // ③ 無力化を解除（当たり判定復活）して、初速（Velocity）を与える！
+            // 運搬状態を解除してから、元の大きさと投擲初速を復元します。
             enemyBase->SetCarried(false);
 
             // 投げた時は捕まえた時点の大きさへ戻す
-            enemyBase->GetTransform()->scale = hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemyBase->GetScale();
-            enemyBase->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            enemyBase->GetTransform()->scale =
+                hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemyBase->GetScale();
+            enemyBase->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
             enemyBase->GetTransform()->isQuaternionMaster = true;
 
-            Vector3 throwVelocity = {
-                throwForward.x * 32.0f,
-                throwUpSpeed,
-                throwForward.z * 32.0f
-            };
+            Vector3 throwVelocity = {throwForward.x * 32.0f, throwUpSpeed, throwForward.z * 32.0f};
             enemyBase->BeginThrown(throwVelocity);
 
-            TriggerSlimeImpulse({ 1.4f, 3.6f, 1.4f }, 0.18f);
-            // ② 投げた瞬間の衝撃エフェクト（パーティクル）
+            TriggerSlimeImpulse({1.4f, 3.6f, 1.4f}, 0.18f);
+            // 投擲方向へ衝撃粒子を飛ばし、操作の結果をすぐに示します。
             if (particleSystem_) {
-                Vector3 effectDir = { throwForward.x, 0.35f, throwForward.z };
-                float effectDirLength = std::sqrt(effectDir.x * effectDir.x + effectDir.y * effectDir.y + effectDir.z * effectDir.z);
+                Vector3 effectDir = {throwForward.x, 0.35f, throwForward.z};
+                float effectDirLength =
+                    std::sqrt(effectDir.x * effectDir.x + effectDir.y * effectDir.y + effectDir.z * effectDir.z);
                 if (effectDirLength > 0.001f) {
                     effectDir = effectDir / effectDirLength;
                 }
-                particleSystem_->SpawnParticles(
-                    playerPos + Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
-                    { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
-                    0.1f, 0.3f, 0.8f, 0.1f
-                );
+                particleSystem_->SpawnParticles(playerPos + Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
+                                                {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.0f}, 0.1f, 0.3f, 0.8f,
+                                                0.1f);
             }
         }
 
-        // 手放す
+        // プレイヤーの所有参照を最後に外し、敵の投擲更新へ引き継ぎます。
         SetCarriedEnemy(nullptr);
         DebugConsole::GetInstance()->AddLog("Throw Enemy!");
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && copyAbilityController_ &&
-        copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
+    } else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && copyAbilityController_ &&
+               copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_))) {
         PlayerCopyAbilityInput abilityInput;
         abilityInput.specialTriggered = carryAbilityTriggered;
         abilityInput.primaryTriggered = morphLeftAbilityTriggered;
@@ -654,27 +608,25 @@ void Player::Update(float deltaTime)
         abilityInput.secondaryTriggered = morphRightAbilityTriggered;
         abilityInput.secondaryHeld = morphRightAbilityHeld;
         copyAbilityController_->ProcessInput(*this, abilityInput);
-    }
-    else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && carryAbilityTriggered) {
+    } else if (!enemyMorphReleaseActive_ && !absorbEffectActive_ && activeMorphSource && carryAbilityTriggered) {
         // 非スライム系の旧コピー能力は、専用セッションへ移行するまで従来経路を維持します。
         activeMorphSource->ExecuteAbility(this);
-    }
-    else if (tutorialCarryAbsorbEnabled_ &&
-        !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ && carriedEnemyBase && carryAbilityTriggered) {
-		BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
-		if (enemyBase) {
-			if (!isEnemyMorphed_) {
+    } else if (tutorialCarryAbsorbEnabled_ && !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ &&
+               carriedEnemyBase && carryAbilityTriggered) {
+        BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+        if (enemyBase) {
+            if (!isEnemyMorphed_) {
                 if (ShouldPlayAbsorbEffect(enemyBase)) {
                     BeginAbsorbEffect(enemyBase);
                 } else {
                     StartEnemyMorph(enemyBase);
                 }
-			} else {
-				// 吸収済みのときだけ、拘束中の敵能力を発動する。
-				enemyBase->ExecuteAbility(this);
-			}
-		}
-	}
+            } else {
+                // 吸収済みのときだけ、拘束中の敵能力を発動する。
+                enemyBase->ExecuteAbility(this);
+            }
+        }
+    }
     if (absorbEffectActive_) {
         UpdateAbsorbEffect(deltaTime);
     } else if (carriedEnemy_ && !isEnemyMorphed_) {
@@ -687,18 +639,17 @@ void Player::Update(float deltaTime)
         carriedEnemy_->SetCollisionMask(0);
 
         Vector3 playerPos = GetWorldPosition();
-        
+
         static float struggleTimer_ = 0.0f;
         struggleTimer_ += deltaTime;
 
-        // 【抗っている感の演出（汎用プロシージャルアニメーション）】
+        // 運搬中の敵だけ小さく揺らし、拘束されていることを見た目で示します。
         float offsetX = std::sin(struggleTimer_ * 35.0f) * 0.15f;
         float offsetZ = std::cos(struggleTimer_ * 30.0f) * 0.15f;
         float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
 
-        carriedEnemy_->GetTransform()->translate = { 
-            playerPos.x + offsetX, playerPos.y + 1.55f + offsetY, playerPos.z + offsetZ
-        };
+        carriedEnemy_->GetTransform()->translate = {playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
+                                                    playerPos.z + offsetZ};
 
         Vector3 rot;
         rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
@@ -712,18 +663,13 @@ void Player::Update(float deltaTime)
             hasCarriedEnemyBaseScale_ = true;
         }
         float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
-        const Vector3 targetScale = {
-            carriedEnemyBaseScale_.x * (1.0f - stretch),
-            carriedEnemyBaseScale_.y * (1.0f + stretch),
-            carriedEnemyBaseScale_.z * (1.0f - stretch)
-        };
-        carriedEnemy_->GetTransform()->scale = Math::Lerp(
-            carriedEnemy_->GetScale(),
-            targetScale,
-            std::clamp(deltaTime * 10.0f, 0.0f, 1.0f)
-        );
+        const Vector3 targetScale = {carriedEnemyBaseScale_.x * (1.0f - stretch),
+                                     carriedEnemyBaseScale_.y * (1.0f + stretch),
+                                     carriedEnemyBaseScale_.z * (1.0f - stretch)};
+        carriedEnemy_->GetTransform()->scale =
+            Math::Lerp(carriedEnemy_->GetScale(), targetScale, std::clamp(deltaTime * 10.0f, 0.0f, 1.0f));
 
-        // 行列を強制更新して、1フレームの遅れもなくピタッと追従させる
+        // 親の更新を待たずに行列を確定し、手元への追従を1フレーム遅らせません。
         carriedEnemy_->UpdateLocalMatrix();
         carriedEnemy_->UpdateWorldMatrix();
 
@@ -742,8 +688,7 @@ void Player::Update(float deltaTime)
     if (copyAbilityController_ && copyAbilityController_->HandlesMorphType(static_cast<int>(enemyMorphType_)) &&
         !enemyMorphReleaseActive_) {
         copyAbilityController_->Update(*this, deltaTime);
-    }
-    else if (activeMorphSource && activeMorphSource != carriedEnemy_ && !enemyMorphReleaseActive_) {
+    } else if (activeMorphSource && activeMorphSource != carriedEnemy_ && !enemyMorphReleaseActive_) {
         // 非スライム系だけは旧能力経路を維持します。
         activeMorphSource->SetIsVisible(false);
         activeMorphSource->SetCollisionAttribute(0);
@@ -757,28 +702,24 @@ void Player::Update(float deltaTime)
         forcedSlimeAnimationModeActive_ = false;
     }
 
-    if (!dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ && !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead) {
+    if (!dynamic_cast<PlayerStateDamage*>(state_.get()) && !absorbEffectActive_ && !enemyMorphReleaseActive_ &&
+        electricShockFeedbackTimer_ <= 0.0f && !isDead) {
         slimeAnimator_.Update(this, deltaTime);
     }
 
     UpdateEnemyMorph(deltaTime);
 }
 
+void Player::DrawUI() {}
 
-void Player::DrawUI()
-{
-}
-
-float Player::GetVisualYawOffset() const
-{
+float Player::GetVisualYawOffset() const {
     if (isEnemyMorphed_) {
         return GetEnemyMorphModelYawOffset();
     }
     return kPlayerModelYawOffset;
 }
 
-float Player::GetEnemyMorphModelYawOffset() const
-{
+float Player::GetEnemyMorphModelYawOffset() const {
     switch (enemyMorphType_) {
     case EnemyMorphType::Slime:
     case EnemyMorphType::FireSlime:
@@ -793,42 +734,31 @@ float Player::GetEnemyMorphModelYawOffset() const
     }
 }
 
-float Player::GetMoveYaw() const
-{
-    return NormalizeYaw(transform_.rotate.y - GetVisualYawOffset());
-}
+float Player::GetMoveYaw() const { return NormalizeYaw(transform_.rotate.y - GetVisualYawOffset()); }
 
-Vector3 Player::GetForwardDirection() const
-{
+Vector3 Player::GetForwardDirection() const {
     const float yaw = GetMoveYaw();
-    return { std::sin(yaw), 0.0f, std::cos(yaw) };
+    return {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
-void Player::SetMoveYaw(float yaw)
-{
-    SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset()));
-}
+void Player::SetMoveYaw(float yaw) { SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset())); }
 
 // 外部APIを維持し、スター移動固有の状態と軌道計算を委譲します。
-void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float duration)
-{
+void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float duration) {
     launchStarController_.Start(*this, slimeAnimator_, destination, arcHeight, duration);
 }
 
-void Player::CancelLaunchStar(bool restoreControl)
-{
-    launchStarController_.Cancel(*this, restoreControl);
-}
+void Player::CancelLaunchStar(bool restoreControl) { launchStarController_.Cancel(*this, restoreControl); }
 
-void Player::UpdateLaunchStar(float deltaTime)
-{
-    const bool updateAnimation = !absorbEffectActive_ && !enemyMorphReleaseActive_
-        && electricShockFeedbackTimer_ <= 0.0f && !isDead;
+void Player::UpdateLaunchStar(float deltaTime) {
+    const bool updateAnimation =
+        !absorbEffectActive_ && !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead;
     launchStarController_.Update(*this, slimeAnimator_, deltaTime, updateAnimation);
 }
 
 void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
-    if (!IsEditorInternal()) return;
+    if (!IsEditorInternal())
+        return;
     for (auto& object : copyPreviewObjects_) {
         object->Update(deltaTime);
         if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
@@ -852,16 +782,28 @@ void Player::UpdateCopyAdornment() {
     const char* model = nullptr;
     if (isEnemyMorphed_ && !enemyMorphReleaseActive_) {
         switch (enemyMorphType_) {
-        case EnemyMorphType::Slime: model = "Characters/copy_band_pink"; break;
-        case EnemyMorphType::FireSlime: model = "Characters/copy_band_fire"; break;
-        case EnemyMorphType::ThunderSlime: model = "Characters/copy_band_thunder"; break;
-        case EnemyMorphType::WindSlime: model = "Characters/copy_band_wind"; break;
-        case EnemyMorphType::Bomber: model = "Characters/copy_band_bomb"; break;
-        default: break; // 覇王は既存モデルに王冠を含みます。
+        case EnemyMorphType::Slime:
+            model = "Characters/copy_band_pink";
+            break;
+        case EnemyMorphType::FireSlime:
+            model = "Characters/copy_band_fire";
+            break;
+        case EnemyMorphType::ThunderSlime:
+            model = "Characters/copy_band_thunder";
+            break;
+        case EnemyMorphType::WindSlime:
+            model = "Characters/copy_band_wind";
+            break;
+        case EnemyMorphType::Bomber:
+            model = "Characters/copy_band_bomb";
+            break;
+        default:
+            break; // 覇王は既存モデルに王冠を含みます。
         }
     }
     if (!model || !GetIsVisible()) {
-        if (copyAdornment_) copyAdornment_->SetIsVisible(false);
+        if (copyAdornment_)
+            copyAdornment_->SetIsVisible(false);
         return;
     }
     if (!copyAdornment_) {
@@ -873,40 +815,49 @@ void Player::UpdateCopyAdornment() {
         copyAdornment_->SetMaterialType(0);
         copyAdornment_->SetEnableLighting(true);
     }
-    if (copyAdornment_->GetModelName() != model) copyAdornment_->SetModel(model);
+    if (copyAdornment_->GetModelName() != model)
+        copyAdornment_->SetModel(model);
     copyAdornment_->SetIsVisible(true);
     // 本体の潰れ・伸び・回転を含めて追従。能力解除時は描かず、元敵には付けません。
     *copyAdornment_->GetTransform() = transform_;
     if (auto* decorationRenderer = copyAdornment_->GetMeshRenderer()) {
         if (auto* bodyRenderer = GetMeshRenderer()) {
-            decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(),
-                bodyRenderer->GetVisualRotation(), bodyRenderer->GetVisualOffset());
+            decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(), bodyRenderer->GetVisualRotation(),
+                                                   bodyRenderer->GetVisualOffset());
             decorationRenderer->SetVisualShear(bodyRenderer->GetVisualShear(), bodyRenderer->GetVisualShearPivotY());
         }
     }
     copyAdornment_->UpdateWorldMatrix(true);
 }
 
-void Player::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+void Player::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+                           int previewBufferIndex) {
     Character::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
-    if (!GetIsVisible()) return;
+    if (!GetIsVisible())
+        return;
     UpdateCopyAdornment();
     if (copyAdornment_ && copyAdornment_->GetIsVisible())
         copyAdornment_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
-    if (copyAbilityController_) copyAbilityController_->Draw(*this, pointLightResource, spotLightResource, camera, previewBufferIndex);
+    if (copyAbilityController_)
+        copyAbilityController_->Draw(*this, pointLightResource, spotLightResource, camera, previewBufferIndex);
     if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible())
         enemyMorphReleaseVisual_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
-    for (auto& object : copyPreviewObjects_) object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    for (auto& object : copyPreviewObjects_)
+        object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
 }
 
-void Player::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+void Player::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                          int previewBufferIndex) {
     Character::DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
-    if (!GetIsVisible()) return;
+    if (!GetIsVisible())
+        return;
     auto* lights = LightManager::GetInstance();
     if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible())
-        enemyMorphReleaseVisual_->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(), previewBufferIndex);
+        enemyMorphReleaseVisual_->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(),
+                                                previewBufferIndex);
     for (auto& object : copyPreviewObjects_)
-        object->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(), previewBufferIndex);
+        object->DrawForCamera(camera, lights->GetPointLightResource(), lights->GetSpotLightResource(),
+                              previewBufferIndex);
 }
 
 bool Player::HasOwnedSpecialMaterialVisuals() const {
@@ -919,24 +870,22 @@ void Player::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t g
     }
 }
 
-void Player::DrawOwnedSpecialMaterialVisualsForCamera(
-    Camera* camera,
-    uint32_t depthSrvHandle,
-    uint32_t grabSrvHandle,
-    int previewBufferIndex) {
+void Player::DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+                                                      int previewBufferIndex) {
     if (copyAbilityController_ && GetIsVisible()) {
-        copyAbilityController_->DrawOwnedVisuals(
-            *this, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
+        copyAbilityController_->DrawOwnedVisuals(*this, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
     }
 }
 
-void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
-{
+void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     Character::Draw(pointLightResource, spotLightResource);
     UpdateCopyAdornment();
-    if (copyAdornment_ && copyAdornment_->GetIsVisible()) copyAdornment_->Draw(pointLightResource, spotLightResource);
-    for (auto& object : copyPreviewObjects_) object->Draw(pointLightResource, spotLightResource);
-    if (copyAbilityController_ && GetIsVisible()) copyAbilityController_->Draw(*this, pointLightResource, spotLightResource);
+    if (copyAdornment_ && copyAdornment_->GetIsVisible())
+        copyAdornment_->Draw(pointLightResource, spotLightResource);
+    for (auto& object : copyPreviewObjects_)
+        object->Draw(pointLightResource, spotLightResource);
+    if (copyAbilityController_ && GetIsVisible())
+        copyAbilityController_->Draw(*this, pointLightResource, spotLightResource);
     if (enemyMorphReleaseVisual_ && enemyMorphReleaseVisual_->GetIsVisible()) {
         enemyMorphReleaseVisual_->Draw(pointLightResource, spotLightResource);
     }
@@ -951,13 +900,13 @@ void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightR
 // 衝突処理
 // =================================================================
 
-bool Player::OnCollision(Object3d* other)
-{
+bool Player::OnCollision(Object3d* other) {
     if (isDead || isCinematicLocked_) {
         return false;
     }
 
-    if (!other) return false;
+    if (!other)
+        return false;
 
     if (other == carriedEnemy_) {
         return false;
@@ -973,8 +922,7 @@ bool Player::OnCollision(Object3d* other)
 
     // 衝突相手の属性を取得
     uint32_t attribute = 0;
-    if (other->GetCollider())
-    {
+    if (other->GetCollider()) {
         attribute = other->GetCollider()->GetAttribute();
     }
 
@@ -982,24 +930,21 @@ bool Player::OnCollision(Object3d* other)
     CollisionInfo info = CheckCollision(other);
 
     // ② 子オブジェクト（パーツ）の当たり判定も全てチェックする
-    for (Object3d* child : GetChildren())
-    {
-        if (!child) continue;
+    for (Object3d* child : GetChildren()) {
+        if (!child)
+            continue;
         CollisionInfo childInfo = child->CheckCollision(other);
-        if (childInfo.isColliding)
-        {
+        if (childInfo.isColliding) {
             // パーツがぶつかっていた場合、本体よりめり込みが深ければ
             // そのパーツの押し出し情報（法線とめり込み量）を採用して親を動かす！
-            if (!info.isColliding || childInfo.penetration > info.penetration)
-            {
+            if (!info.isColliding || childInfo.penetration > info.penetration) {
                 info = childInfo;
             }
         }
     }
 
     // 本体もパーツも当たっていなければ終了
-    if (!info.isColliding)
-    {
+    if (!info.isColliding) {
         return false;
     }
 
@@ -1022,38 +967,34 @@ bool Player::OnCollision(Object3d* other)
         }
     }
 
-    if (attribute & kAllSolid)
-    {
+    if (attribute & CollisionCategories::Get("ground")) {
         ApplyPhysicsCollision(info, attribute);
     }
 
     // =======================================================
     // 2. ダメージ処理 / 突進攻撃
     // =======================================================
-    const BaseEnemy* bodyEnemy = (attribute & kEnemy) ? dynamic_cast<const BaseEnemy*>(other) : nullptr;
+    const BaseEnemy* bodyEnemy = (attribute & CollisionCategories::Get("enemy")) ? dynamic_cast<const BaseEnemy*>(other) : nullptr;
     const float bodyAttackDamage = bodyEnemy ? bodyEnemy->GetActiveBodyAttackDamage() : 0.0f;
     // 本体への接触と攻撃への命中は別。物理解決と下のギミック通知は常に維持します。
-    if ((attribute & kEnemyAttack) || bodyAttackDamage > 0.0f)
-    {
+    if ((attribute & CollisionCategories::Get("enemy_attack")) || bodyAttackDamage > 0.0f) {
         // ピンクガードは単にダメージを無視するだけでなく、受け止めた瞬間を
         // コピー能力へ通知して反動モーションと次のバウンド強化へつなげます。
         if (isGuardInvincible_ && copyAbilityController_) {
             copyAbilityController_->NotifyGuardedHit(*this, other->GetWorldPosition());
         }
         // 通常のダメージ処理 (被弾)
-        else if (damageCooldownTimer_ <= 0.0f && !IsInvincible())
-        {
+        else if (damageCooldownTimer_ <= 0.0f && !IsInvincible()) {
             const Bullet* attackBullet = dynamic_cast<const Bullet*>(other);
-            const bool isElectricHit =
-                other->GetEnemyType() == "ThunderSlime" ||
-                (attackBullet && attackBullet->GetDamageType() == DamageType::Electric);
+            const bool isElectricHit = other->GetEnemyType() == "ThunderSlime" ||
+                                       (attackBullet && attackBullet->GetDamageType() == DamageType::Electric);
 
             // ダメージイベントを発行 (GameRule で HP 減少が処理される)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = attackBullet ? attackBullet->GetDamage()
-                : (bodyAttackDamage > 0.0f ? bodyAttackDamage : 1.0f);
+            dmgEvent.damageAmount =
+                attackBullet ? attackBullet->GetDamage() : (bodyAttackDamage > 0.0f ? bodyAttackDamage : 1.0f);
             if (attackBullet) {
                 dmgEvent.damageType = attackBullet->GetDamageType();
                 dmgEvent.statusEffect = attackBullet->GetStatusEffect();
@@ -1062,8 +1003,7 @@ bool Player::OnCollision(Object3d* other)
 
             if (isElectricHit) {
                 damageCooldownTimer_ = 0.8f;
-            }
-            else {
+            } else {
                 // 無敵時間をセット
                 damageCooldownTimer_ = 1.0f;
                 SetDamageInvincible(true);
@@ -1086,155 +1026,121 @@ bool Player::OnCollision(Object3d* other)
 
     return true;
 }
+
 // =================================================================
 // 移動制御 (Strategy Pattern)
 // =================================================================
 
-void Player::SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy)
-{
-    if (mover_)
-    {
+void Player::SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy) {
+    if (mover_) {
         mover_->SetStrategy(std::move(strategy));
     }
 }
 
-void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier)
-{
-    if (mover_)
-    {
+void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier) {
+    if (mover_) {
         mover_->ApplyDashPanelBoost(duration, speedMultiplier, turnMultiplier);
     }
 }
 
-void Player::ApplyIceSurface(float duration, float friction, float steering)
-{
-    if (mover_)
-    {
+void Player::ApplyIceSurface(float duration, float friction, float steering) {
+    if (mover_) {
         mover_->ApplyIceSurface(duration, friction, steering);
     }
 }
 
 void Player::SetPlatformMotion(const Vector3& velocity) {
-    if (mover_) mover_->SetPlatformMotion(velocity);
+    if (mover_)
+        mover_->SetPlatformMotion(velocity);
 }
 
 // =================================================================
 // アニメーション・状態管理 (State Pattern)
 // =================================================================
 
-void Player::ChangeState(std::unique_ptr<IAnimationState> newState)
-{
+void Player::ChangeState(std::unique_ptr<IAnimationState> newState) {
     // 現在の状態を終了
-    if (state_)
-    {
+    if (state_) {
         state_->Exit(this);
     }
 
     // 状態を切り替えて開始
     state_ = std::move(newState);
 
-    if (state_)
-    {
+    if (state_) {
         state_->Enter(this);
-    }
-    else
-    {
+    } else {
         DebugConsole::GetInstance()->AddLog("[ERROR] Failed to set new state.");
     }
 }
 
-void Player::PlayAnimation(const std::string& animName, bool loop)
-{
+void Player::PlayAnimation(const std::string& animName, bool loop) {
     // 既に同じアニメーションが再生中ならリセットしない (滑らかな遷移のため)
-    if (animName_ != animName)
-    {
+    if (animName_ != animName) {
         animName_ = animName;
         animationTime_ = 0.0f;
     }
     isAnimLoop_ = loop;
 }
 
-void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode)
-{
-    slimeAnimator_.SetMode(mode);
-}
+void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode) { slimeAnimator_.SetMode(mode); }
 
-void Player::SetSlimeAnimationDirection(const Vector3& direction)
-{
-    slimeAnimator_.SetMotionDirection(direction);
-}
+void Player::SetSlimeAnimationDirection(const Vector3& direction) { slimeAnimator_.SetMotionDirection(direction); }
 
-void Player::SetSlimePullDirection(const Vector3& direction)
-{
-    slimeAnimator_.SetPullDirection(direction);
-}
+void Player::SetSlimePullDirection(const Vector3& direction) { slimeAnimator_.SetPullDirection(direction); }
 
-void Player::SetSlimePullProgress(float progress)
-{
-    slimeAnimator_.SetPullProgress(progress);
-}
+void Player::SetSlimePullProgress(float progress) { slimeAnimator_.SetPullProgress(progress); }
 
-void Player::SetSlimeJumpCharge(float chargeRate)
-{
-    slimeAnimator_.SetJumpCharge(chargeRate);
-}
+void Player::SetSlimeJumpCharge(float chargeRate) { slimeAnimator_.SetJumpCharge(chargeRate); }
 
-void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength)
-{
+void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength) {
     slimeAnimator_.SetAbilityPose(pose, strength);
 }
 
-void Player::TriggerSlimeImpulse(const Vector3& scale, float duration)
-{
+void Player::TriggerSlimeImpulse(const Vector3& scale, float duration) {
     slimeAnimator_.TriggerImpulse(scale, duration);
 }
 
-bool Player::PlaySlimeAbilityMotion(const std::string& clipName, bool loop,
-    float playbackSpeed, float blendInDuration, float blendOutDuration)
-{
-    return slimeAnimator_.PlayAbilityMotion(
-        clipName, loop, playbackSpeed, blendInDuration, blendOutDuration);
+bool Player::PlaySlimeAbilityMotion(const std::string& clipName, bool loop, float playbackSpeed, float blendInDuration,
+                                    float blendOutDuration) {
+    return slimeAnimator_.PlayAbilityMotion(clipName, loop, playbackSpeed, blendInDuration, blendOutDuration);
 }
 
-void Player::StopSlimeAbilityMotion(float blendOutDuration)
-{
-    slimeAnimator_.StopAbilityMotion(blendOutDuration);
-}
+void Player::StopSlimeAbilityMotion(float blendOutDuration) { slimeAnimator_.StopAbilityMotion(blendOutDuration); }
 
-void Player::ClearSlimeAbilityMotion()
-{
-    slimeAnimator_.ClearAbilityMotion(this);
-}
+void Player::ClearSlimeAbilityMotion() { slimeAnimator_.ClearAbilityMotion(this); }
 
-void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction)
-{
+void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction) {
     forcedSlimeAnimationModeActive_ = true;
     forcedSlimeAnimationMode_ = mode;
     forcedSlimeAnimationDirection_ = direction;
 }
 
-void Player::StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route)
-{
+void Player::StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route) {
     gateReturnAnimation_.Start(this, route);
 }
 
-bool Player::IsGateReturnAnimationActive() const
-{
-    return gateReturnAnimation_.IsActive();
+bool Player::IsGateReturnAnimationActive() const { return gateReturnAnimation_.IsActive(); }
+
+bool Player::IsGateReturnAnimationFinished() const { return gateReturnAnimation_.IsFinished(); }
+
+void Player::StopGateReturnAnimation(bool restoreControl) { gateReturnAnimation_.Stop(this, restoreControl); }
+
+void Player::StepCinematicPullVisual(float deltaTime, const Vector3& direction, float progress) {
+    if (!isCinematicLocked_) return;
+    slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::PullEnemy);
+    slimeAnimator_.SetPullDirection(direction);
+    slimeAnimator_.SetPullProgress(progress);
+    slimeAnimator_.Update(this, deltaTime);
 }
 
-bool Player::IsGateReturnAnimationFinished() const
-{
-    return gateReturnAnimation_.IsFinished();
+void Player::EndCinematicPullVisual() {
+    slimeAnimator_.Reset(managedBaseScale_, this);
+    slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
+    if (hookMarker_) hookMarker_->SetIsVisible(false);
 }
 
-void Player::StopGateReturnAnimation(bool restoreControl)
-{
-    gateReturnAnimation_.Stop(this, restoreControl);
-}
-
-void Player::BeginCinematicLock(bool preserveCopyAbility)
-{
+void Player::BeginCinematicLock(bool preserveCopyAbility) {
     if (isCinematicLocked_ || isDead) {
         return;
     }
@@ -1280,7 +1186,7 @@ void Player::BeginCinematicLock(bool preserveCopyAbility)
         SetScale(managedBaseScale_);
     }
     SetRotation(stableRotation);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     SetIsControlActive(false);
     SetCollisionAttribute(0);
     SetCollisionMask(0);
@@ -1289,8 +1195,7 @@ void Player::BeginCinematicLock(bool preserveCopyAbility)
     UpdateWorldMatrix();
 }
 
-void Player::EndCinematicLock(bool restoreControl)
-{
+void Player::EndCinematicLock(bool restoreControl) {
     if (!isCinematicLocked_) {
         return;
     }
@@ -1298,7 +1203,7 @@ void Player::EndCinematicLock(bool restoreControl)
     isCinematicLocked_ = false;
     SetCollisionAttribute(cinematicSavedCollisionAttribute_);
     SetCollisionMask(cinematicSavedCollisionMask_);
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     slimeAnimator_.Reset(managedBaseScale_, this);
     ChangeState(std::make_unique<PlayerStateIdle>());
     SetIsControlActive(restoreControl && cinematicSavedControlActive_ && !isDead);
@@ -1322,8 +1227,7 @@ void Player::SetGuardInvincible(bool inv) {
     UpdateColor();
 }
 
-void Player::SetTutorialSafetyEnabled(bool enabled)
-{
+void Player::SetTutorialSafetyEnabled(bool enabled) {
     tutorialSafetyEnabled_ = enabled;
     if (enabled && param_.has_value()) {
         param_->maxHp = (std::max)(param_->maxHp, 1.0f);
@@ -1334,8 +1238,7 @@ void Player::SetTutorialSafetyEnabled(bool enabled)
     }
 }
 
-void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb)
-{
+void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb) {
     tutorialCarryThrowEnabled_ = allowThrow;
     tutorialCarryAbsorbEnabled_ = allowAbsorb;
 
@@ -1345,8 +1248,7 @@ void Player::SetTutorialCarryActionPermissions(bool allowThrow, bool allowAbsorb
     }
 }
 
-void Player::ResetTutorialCarryActionState()
-{
+void Player::ResetTutorialCarryActionState() {
     // 誤操作済みの編集再開や工程ジャンプでも再試行できる状態へ戻します。
     CancelEnemyMorph();
     ReleaseCarriedEnemy(true);
@@ -1411,9 +1313,8 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
                 if (!child) {
                     continue;
                 }
-                const bool originalVisible = i < damageBlinkChildVisible_.size()
-                    ? damageBlinkChildVisible_[i]
-                    : child->GetIsVisible();
+                const bool originalVisible =
+                    i < damageBlinkChildVisible_.size() ? damageBlinkChildVisible_[i] : child->GetIsVisible();
                 child->SetIsVisible(originalVisible && blinkVisible);
             }
         }
@@ -1428,23 +1329,22 @@ void Player::UpdateDamageInvincibleBlinkVisibility() {
 }
 
 void Player::UpdateColor() {
-    Vector4 targetColor = isEnemyMorphed_
-        ? GetEnemyMorphTint(enemyMorphType_)
-        : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
+    Vector4 targetColor =
+        isEnemyMorphed_ ? GetEnemyMorphTint(enemyMorphType_) : Vector4{1.0f, 1.0f, 1.0f, 1.0f}; // 基本は白(通常色)
 
     if (isGuardInvincible_) {
         // 通常のピンクと区別できる、身を固めた濃いローズ色。
-        targetColor = { 0.78f, 0.12f, 0.34f, 1.0f };
-    }
-    else if (isDashInvincible_ || isEvasionInvincible_) {
-        targetColor = { 0.18f, 0.82f, 1.0f, 1.0f }; // 回避中は雷を思わせる水色を設定
+        targetColor = {0.78f, 0.12f, 0.34f, 1.0f};
+    } else if (isDashInvincible_ || isEvasionInvincible_) {
+        targetColor = {0.18f, 0.82f, 1.0f, 1.0f}; // 回避中は雷を思わせる水色を設定
     }
 
     // 本体と子パーツの色を一括変更
     SetColor(targetColor);
     if (!isEnemyMorphed_) {
         for (Object3d* child : GetChildren()) {
-            if (child) child->SetColor(targetColor);
+            if (child)
+                child->SetColor(targetColor);
         }
     }
 }
@@ -1452,30 +1352,15 @@ void Player::UpdateColor() {
 // =======================================================
 // コンボ時間窓 API 実装
 // =======================================================
-void Player::StartComboWindow(float duration)
-{
-    attackInputBuffer_.StartComboWindow(duration);
-}
+void Player::StartComboWindow(float duration) { attackInputBuffer_.StartComboWindow(duration); }
 
-bool Player::IsComboWindowActive() const
-{
-    return attackInputBuffer_.IsComboWindowActive();
-}
+bool Player::IsComboWindowActive() const { return attackInputBuffer_.IsComboWindowActive(); }
 
 // =======================================================
 // 攻撃入力バッファ API 実装
 // =======================================================
-void Player::RecordAttackInput(float duration)
-{
-    attackInputBuffer_.Record(duration);
-}
+void Player::RecordAttackInput(float duration) { attackInputBuffer_.Record(duration); }
 
-void Player::MarkAttackBufferUsedForStateStart()
-{
-    attackInputBuffer_.MarkUsedForStateStart();
-}
+void Player::MarkAttackBufferUsedForStateStart() { attackInputBuffer_.MarkUsedForStateStart(); }
 
-bool Player::ConsumeBufferedAttackInput()
-{
-    return attackInputBuffer_.Consume();
-}
+bool Player::ConsumeBufferedAttackInput() { return attackInputBuffer_.Consume(); }

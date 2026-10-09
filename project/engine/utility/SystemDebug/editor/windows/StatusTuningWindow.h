@@ -10,7 +10,8 @@
 class DebugEditor;
 class SceneManager;
 
-/// PlayerとEnemy Typeごとの共通ステータスをリアルタイム調整するウィンドウ。
+/// Player と Enemy Type ごとの共通ステータスを編集するウィンドウ。
+/// 編集結果は現在シーンへ反映され、操作終了時に GameplayStatusManager へ保存されます。
 class StatusTuningWindow : public IEditable {
 public:
     void Initialize(DebugEditor* editor, SceneManager* sceneManager);
@@ -18,6 +19,7 @@ public:
     std::string GetName() override { return "ステータス管理"; }
 
 private:
+    // ステータス保存に使う敵種の識別子と、調整画面の表示名の対応。
     struct EnemyTypeInfo {
         const char* type;
         const char* label;

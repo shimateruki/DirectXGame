@@ -7,24 +7,29 @@ class Player;
 
 // クリア後にステージセレクトへ戻った時、ゲートからプレイヤーを飛び出させる専用アニメーション。
 class PlayerGateReturnAnimation {
-public:
+  public:
+    // ゲート帰還の始点・通過点・終点と基準姿勢。通常移動を再開するまでの専用経路。
     struct Route {
+        // 全点はワールド座標。direction は水平面の進行方向で、ゼロ長なら +Z を使う。
         Vector3 start{};
         Vector3 gateCenter{};
         Vector3 end{};
-        Vector3 direction{ 0.0f, 0.0f, 1.0f };
-        Vector3 baseScale{ 2.0f, 2.0f, 2.0f };
+        Vector3 direction{0.0f, 0.0f, 1.0f};
+        Vector3 baseScale{2.0f, 2.0f, 2.0f};
     };
 
+    // 操作と衝突判定を一時停止し、指定経路の先頭から演出を始める。player は所有しない。
     void Start(Player* player, const Route& route);
+    // 経過秒数で姿勢を進める。完了時は衝突を戻すが、操作の復帰は呼び出し側が決める。
     void Update(Player* player, float deltaTime);
+    // 途中終了時にも姿勢と衝突を戻す。restoreControl=true なら開始前の操作状態へ戻す。
     void Stop(Player* player, bool restoreControl);
 
     bool IsActive() const { return active_; }
     bool IsFinished() const { return finished_; }
     const Vector3& GetEndPosition() const { return route_.end; }
 
-private:
+  private:
     Vector3 NormalizeDirection(const Vector3& direction) const;
     Vector3 Lerp(const Vector3& a, const Vector3& b, float t) const;
     Vector3 Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const;

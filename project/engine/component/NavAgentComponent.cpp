@@ -69,6 +69,7 @@ Vector3 NavAgentComponent::CalculateDirection(
     }
 
     repathTimer_ -= (std::max)(0.0f, deltaTime);
+    // 目標がセル幅の半分以上動いたら、再探索間隔を待たずに経路を更新する。
     const bool targetMoved = !hasLastTarget_ ||
         PlanarDistanceSquared(lastTargetPosition_, targetPosition) > cellSize_ * cellSize_ * 0.25f;
     if (currentPath_.empty() || targetMoved || repathTimer_ <= 0.0f) {
@@ -81,6 +82,7 @@ Vector3 NavAgentComponent::CalculateDirection(
         ++waypointIndex_;
     }
 
+    // 経路が作れない場合も追跡を止めず、目標への直接方向を返す。
     if (waypointIndex_ >= currentPath_.size()) return NormalizePlanar(direct);
     return NormalizePlanar(currentPath_[waypointIndex_] - currentPosition);
 }
@@ -108,6 +110,7 @@ bool NavAgentComponent::RebuildPath(
 
     PhysicsQueryFilter filter;
     filter.mask = obstacleMask_;
+    // 自分自身と子オブジェクトを障害物として取り込まない。
     filter.ignoredObject = owner;
     filter.ignoreDescendants = true;
     filter.includeTriggers = false;

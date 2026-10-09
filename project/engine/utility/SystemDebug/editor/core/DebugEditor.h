@@ -75,26 +75,24 @@ class DebugEditor : public IEditable {
     friend class HierarchyWindow; // 既存の直接参照互換のため残す。
 
 public:
+    // 操作開始時の JSON と対象の借用参照。対象が現在シーンに残っていることを登録時に確認する。
     struct ObjectStateSnapshot {
         Object3d* object = nullptr;
         nlohmann::json beforeState;
     };
 
-    // ライフサイクル。
-        // シーン管理やDirectX関連の参照を受け取り、各エディタ機能を利用できる状態にします。
-void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
-        // 毎フレームの編集入力、選択状態、プレビュー生成、通知表示などを更新します。
-void Update();
+    // シーン管理と描画基盤を借りて編集機能を初期化します。参照先は Finalize() まで有効にします。
+    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+    // 編集入力、選択、配置プレビュー、通知を毎フレーム更新します。
+    void Update();
     void Finalize();
 
-    // Debug描画と配置プレビュー描画。
-        // エディタ用の補助表示やギズモなど、ゲーム本編とは別のデバッグ描画を行います。
-void DrawDebug(ID3D12GraphicsCommandList* commandList);
+    // ゲーム本編とは別の補助表示・ギズモを描画します。
+    void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
-    // IEditableとしてInspectorに表示する内容。
-        // Hierarchy、Inspector、ProjectなどのエディタUIを描画します。
-void DrawImGui() override;
+    // Hierarchy、Inspector、Project などの編集 UI を描画します。
+    void DrawImGui() override;
     std::string GetName() override {
         return (selectedObject_ && IsObjectInCurrentScene(selectedObject_)) ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
     }
@@ -153,15 +151,12 @@ void DrawImGui() override;
     void OpenCreateSceneAssetDialog();
     void RequestOpenSceneAssetFromMenu(const std::string& filename);
 
-    // 選択中オブジェクトへの編集操作。
-        // 選択中オブジェクトを複製し、編集対象として扱えるように登録します。
-void DuplicateSelected();
-        // 選択中オブジェクトを削除し、必要なエディタ状態も同時に整理します。
-void DeleteSelected();
-        // 直前の編集コマンドを取り消して、オブジェクト状態を復元します。
-void PerformUndo();
-        // Undoで戻した編集コマンドを再適用します。
-void PerformRedo();
+    // 選択オブジェクトの作成・削除を編集履歴へ登録します。
+    void DuplicateSelected();
+    void DeleteSelected();
+    // 保存対象の変更を Undo/Redo 履歴に沿って適用します。
+    void PerformUndo();
+    void PerformRedo();
     void SplitSelectedModelIntoMeshChildren();
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
@@ -177,6 +172,7 @@ void PerformRedo();
         playFromPositionCallback_ = callback;
     }
     Vector3 CalculateGameViewCreatePosition(const Object3d* object);
+    // 所有権を受け取り、Game View での配置確定まで一時保持します。キャンセル時は破棄します。
     void StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label);
     void StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
     void AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label);
@@ -512,6 +508,7 @@ enum class EditorCommandType {
         ObjectEdited
     };
 
+    // Object 編集の前後 JSON と名前。Undo は before、Redo は after を使って編集状態を戻す。
     struct EditorCommand {
         EditorCommandType type = EditorCommandType::ObjectEdited;
         std::string label;

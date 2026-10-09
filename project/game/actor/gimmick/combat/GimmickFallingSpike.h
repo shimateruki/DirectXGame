@@ -7,16 +7,17 @@
 /// イベントで警告を開始し、上空から落下してプレイヤーを妨害する棘。
 /// </summary>
 class GimmickFallingSpike : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     bool OnCollision(Object3d* other) override;
+    // 待機中だけ警告段階へ移る。落下中の再トリガーは無視する。
     void OnTrigger() override;
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     enum class State {
         Dormant,
         Warning,
@@ -35,7 +36,7 @@ private:
     float GetGravity() const;
     float GetDamage() const;
 
-private:
+  private:
     AttackTelegraph warningTelegraph_;
     State state_ = State::Dormant;
     Vector3 startPosition_{};

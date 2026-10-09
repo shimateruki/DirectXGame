@@ -12,13 +12,9 @@ namespace {
 constexpr float kMinimumDistance = 0.0001f;
 constexpr float kDegreesToRadians = 3.1415926535f / 180.0f;
 
-float Dot(const Vector3& lhs, const Vector3& rhs) {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
-}
+float Dot(const Vector3& lhs, const Vector3& rhs) { return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z; }
 
-float Length(const Vector3& value) {
-    return std::sqrt(Dot(value, value));
-}
+float Length(const Vector3& value) { return std::sqrt(Dot(value, value)); }
 
 Vector3 NormalizeOrZero(const Vector3& value) {
     const float length = Length(value);
@@ -35,7 +31,7 @@ float ResolveQueryRadius(const Object3d& owner, float skinWidth) {
     const float radius = collider ? collider->GetRadius() : 0.5f;
     return (std::max)(0.05f, radius - skinWidth);
 }
-}
+} // namespace
 
 void CharacterMotor::SetSettings(const CharacterMotorSettings& settings) {
     settings_ = settings;
@@ -49,28 +45,19 @@ void CharacterMotor::BeginFrame(bool& grounded) {
     result_.grounded = false;
     result_.blocked = false;
     result_.steppedUp = false;
-    result_.groundNormal = { 0.0f, 1.0f, 0.0f };
+    result_.groundNormal = {0.0f, 1.0f, 0.0f};
     result_.groundObject = nullptr;
     grounded = false;
 }
 
-void CharacterMotor::ApplyGravity(
-    Vector3& velocity,
-    float gravity,
-    float maxFallSpeed,
-    float deltaTime) const {
+void CharacterMotor::ApplyGravity(Vector3& velocity, float gravity, float maxFallSpeed, float deltaTime) const {
     velocity.y -= gravity * deltaTime;
     if (velocity.y < -maxFallSpeed) {
         velocity.y = -maxFallSpeed;
     }
 }
 
-void CharacterMotor::Move(
-    Object3d& owner,
-    Vector3& position,
-    Vector3& velocity,
-    bool& grounded,
-    float deltaTime) {
+void CharacterMotor::Move(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded, float deltaTime) {
     if (deltaTime <= 0.0f) {
         return;
     }
@@ -85,13 +72,9 @@ void CharacterMotor::Move(
     MoveSwept(owner, position, velocity, grounded, displacement);
 }
 
-void CharacterMotor::ResolveCollision(
-    Vector3& position,
-    Vector3& velocity,
-    bool& grounded,
-    const CollisionInfo& info,
-    std::uint32_t attribute) {
-    if (!(attribute & kAllSolid)) {
+void CharacterMotor::ResolveCollision(Vector3& position, Vector3& velocity, bool& grounded, const CollisionInfo& info,
+                                      std::uint32_t attribute) {
+    if (!(attribute & CollisionCategories::Get("ground"))) {
         return;
     }
 
@@ -118,13 +101,8 @@ bool CharacterMotor::IsWalkable(const Vector3& normal) const {
     return normal.y > minimumNormalY;
 }
 
-bool CharacterMotor::TryStep(
-    Object3d& owner,
-    Vector3& position,
-    Vector3& velocity,
-    bool& grounded,
-    const Vector3& planarDisplacement,
-    float queryRadius) {
+bool CharacterMotor::TryStep(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded,
+                             const Vector3& planarDisplacement, float queryRadius) {
     if (settings_.stepHeight <= 0.0f || Length(planarDisplacement) <= kMinimumDistance) {
         return false;
     }
@@ -136,28 +114,19 @@ bool CharacterMotor::TryStep(
 
     const float planarDistance = Length(planarDisplacement);
     const Vector3 direction = NormalizeOrZero(planarDisplacement);
-    const Vector3 raisedPosition = position + Vector3{ 0.0f, settings_.stepHeight, 0.0f };
+    const Vector3 raisedPosition = position + Vector3{0.0f, settings_.stepHeight, 0.0f};
     const Vector3 raisedCenter = ResolveQueryCenter(owner, raisedPosition);
     const RaycastHit forwardHit = CollisionManager::GetInstance()->SphereCast(
-        raisedCenter,
-        queryRadius,
-        direction,
-        planarDistance + settings_.skinWidth,
-        filter);
+        raisedCenter, queryRadius, direction, planarDistance + settings_.skinWidth, filter);
     if (forwardHit.isHit) {
         return false;
     }
 
     position = raisedPosition + planarDisplacement;
-    SnapToGround(
-        owner,
-        position,
-        velocity,
-        grounded,
-        queryRadius,
-        settings_.stepHeight + settings_.groundProbeDistance);
+    SnapToGround(owner, position, velocity, grounded, queryRadius,
+                 settings_.stepHeight + settings_.groundProbeDistance);
     if (!grounded) {
-        position = position - Vector3{ 0.0f, settings_.stepHeight, 0.0f };
+        position = position - Vector3{0.0f, settings_.stepHeight, 0.0f};
         return false;
     }
 
@@ -165,28 +134,22 @@ bool CharacterMotor::TryStep(
     return true;
 }
 
-void CharacterMotor::MoveSwept(
-    Object3d& owner,
-    Vector3& position,
-    Vector3& velocity,
-    bool& grounded,
-    const Vector3& displacement) {
+void CharacterMotor::MoveSwept(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded,
+                               const Vector3& displacement) {
     PhysicsQueryFilter filter;
     filter.mask = settings_.collisionMask;
     filter.ignoredObject = &owner;
     filter.includeTriggers = false;
 
     const float queryRadius = ResolveQueryRadius(owner, settings_.skinWidth);
-    const Vector3 planarDisplacement = { displacement.x, 0.0f, displacement.z };
+    const Vector3 planarDisplacement = {displacement.x, 0.0f, displacement.z};
     const float planarDistance = Length(planarDisplacement);
     if (planarDistance > kMinimumDistance) {
+        // 横移動を先に Sweep し、遮蔽物があれば段差越えを試してから表面方向へ逃がす。
         const Vector3 planarDirection = planarDisplacement * (1.0f / planarDistance);
-        const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(
-            ResolveQueryCenter(owner, position),
-            queryRadius,
-            planarDirection,
-            planarDistance + settings_.skinWidth,
-            filter);
+        const RaycastHit hit =
+            CollisionManager::GetInstance()->SphereCast(ResolveQueryCenter(owner, position), queryRadius,
+                                                        planarDirection, planarDistance + settings_.skinWidth, filter);
         if (!hit.isHit) {
             position += planarDisplacement;
         } else if (!TryStep(owner, position, velocity, grounded, planarDisplacement, queryRadius)) {
@@ -211,12 +174,9 @@ void CharacterMotor::MoveSwept(
 
     const float verticalDistance = std::abs(displacement.y);
     if (verticalDistance > kMinimumDistance) {
-        const Vector3 verticalDirection = { 0.0f, displacement.y > 0.0f ? 1.0f : -1.0f, 0.0f };
+        const Vector3 verticalDirection = {0.0f, displacement.y > 0.0f ? 1.0f : -1.0f, 0.0f};
         const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(
-            ResolveQueryCenter(owner, position),
-            queryRadius,
-            verticalDirection,
-            verticalDistance + settings_.skinWidth,
+            ResolveQueryCenter(owner, position), queryRadius, verticalDirection, verticalDistance + settings_.skinWidth,
             filter);
         if (!hit.isHit) {
             position.y += displacement.y;
@@ -235,23 +195,13 @@ void CharacterMotor::MoveSwept(
     }
 
     if (settings_.snapToGround && velocity.y <= 0.0f) {
-        SnapToGround(
-            owner,
-            position,
-            velocity,
-            grounded,
-            queryRadius,
-            settings_.groundProbeDistance);
+        // 上昇中は地面へ引き戻さず、下降・水平移動時だけ接地を補正する。
+        SnapToGround(owner, position, velocity, grounded, queryRadius, settings_.groundProbeDistance);
     }
 }
 
-void CharacterMotor::SnapToGround(
-    Object3d& owner,
-    Vector3& position,
-    Vector3& velocity,
-    bool& grounded,
-    float queryRadius,
-    float maximumDistance) {
+void CharacterMotor::SnapToGround(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded,
+                                  float queryRadius, float maximumDistance) {
     if (maximumDistance <= 0.0f) {
         return;
     }
@@ -261,12 +211,9 @@ void CharacterMotor::SnapToGround(
     filter.ignoredObject = &owner;
     filter.includeTriggers = false;
 
-    const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(
-        ResolveQueryCenter(owner, position),
-        queryRadius,
-        { 0.0f, -1.0f, 0.0f },
-        maximumDistance + settings_.skinWidth,
-        filter);
+    const RaycastHit hit =
+        CollisionManager::GetInstance()->SphereCast(ResolveQueryCenter(owner, position), queryRadius,
+                                                    {0.0f, -1.0f, 0.0f}, maximumDistance + settings_.skinWidth, filter);
     if (!hit.isHit || !IsWalkable(hit.normal)) {
         return;
     }

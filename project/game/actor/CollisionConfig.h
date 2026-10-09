@@ -1,28 +1,37 @@
 #pragma once
 #include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
 #include "engine/utility/math/Math.h"
 
-// 衝突判定属性 (ビットフラグで管理)
-// CollisionAttributeは、オブジェクトの衝突カテゴリをビットで表します。
-enum CollisionAttribute : uint32_t {
-    kPlayer = 1 << 0,  // プレイヤー
-    kEnemy = 1 << 1,  // 敵
-    kGround = 1 << 2,  // 通常の地形
-    kAttributePlayerBullet = 1 << 3,
-    kHookAnchor = 1 << 8,
-	kTrigger = 1 << 4, // トリガー 
-	kMapBlock = 1 << 5, // ボスが吸収可能なブロック
-    kPlayerAttack = 1 << 6, // プレイヤーの近接攻撃（剣など）
-    kEnemyAttack = 1 << 7, // 敵の近接攻撃
+/// <summary>JSONで定義する衝突カテゴリ。idは保存用の不変キー、bitは実行時のビット値です。</summary>
+struct CollisionCategoryDefinition {
+    std::string id;
+    std::string displayName;
+    uint32_t bit = 0;
 };
 
-
-
-// 地形属性をまとめたマスク 
-const uint32_t kAllGround = kGround;
-
-// 押し出し処理を適応させるやつを含ませる
-const uint32_t kAllSolid = kGround;
+namespace CollisionCategories {
+/// <summary>カテゴリIDに対応するビットを取得する。未登録の場合は0を返します。</summary>
+uint32_t Get(std::string_view id);
+/// <summary>Inspectorに表示するカテゴリ定義のコピーを返します。</summary>
+std::vector<CollisionCategoryDefinition> GetDefinitions();
+/// <summary>定義JSONが正常に読み込まれたか返します。</summary>
+bool IsDefinitionLoaded();
+/// <summary>未使用ビットでカテゴリを追加し、定義JSONへ保存します。</summary>
+bool Add(const std::string& id, const std::string& displayName, std::string* error = nullptr);
+/// <summary>旧シーンの数値マスクを、現在のカテゴリ配置へ変換します。</summary>
+uint32_t FromLegacyMask(uint32_t legacyMask);
+/// <summary>現在の数値マスクに含まれるカテゴリIDを返します。</summary>
+std::vector<std::string> GetIds(uint32_t mask);
+/// <summary>保存されたカテゴリIDを実行時マスクに変換します。</summary>
+uint32_t FromIds(const std::vector<std::string>& ids);
+/// <summary>定義済みカテゴリが占有するビットをまとめて返します。</summary>
+uint32_t GetKnownMask();
+/// <summary>従来の0～7番ビットを対象にしていた配置物の既定Maskを再現します。</summary>
+uint32_t GetDefaultGameplayMask();
+} // namespace CollisionCategories
 
 /// <summary>
 /// コライダー（あたり判定）の形状タイプ
@@ -56,7 +65,7 @@ struct OBB {
 // リング構造体 (中心、向き、内径、外径)
 struct Ring {
     Vector3 center;
-    Vector3 normal = { 0, 1, 0 }; // リングが乗っている面の法線
+    Vector3 normal = {0, 1, 0}; // リングが乗っている面の法線
     float innerRadius;
     float outerRadius;
     float height; // 厚み (中心から上下に height/2)
@@ -65,7 +74,7 @@ struct Ring {
 // 円柱構造体
 struct Cylinder {
     Vector3 center;
-    Vector3 axis = { 0, 1, 0 }; // 軸方向 (正規化)
+    Vector3 axis = {0, 1, 0}; // 軸方向 (正規化)
     float radius;
     float height; // 全長 (中心から上下に height/2)
 };
@@ -73,9 +82,9 @@ struct Cylinder {
 // 衝突情報（結果）を格納する構造体
 // CollisionInfoは、衝突有無、法線、めり込み量など判定結果をまとめます。
 struct CollisionInfo {
-    bool isColliding = false;      // 衝突しているか
-    Vector3 normal = { 0,0,0 };   // 衝突法線 (押し戻す方向)
-    float penetration = 0.0f;    // めり込み量
+    bool isColliding = false;   // 衝突しているか
+    Vector3 normal = {0, 0, 0}; // 衝突法線 (押し戻す方向)
+    float penetration = 0.0f;   // めり込み量
 };
 /// <summary>
 /// 衝突面（法線）がどの方向を向いているかを示す

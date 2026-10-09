@@ -341,6 +341,8 @@ public:
     /// <summary>自己発光の強度を返す。</summary>
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
+    // エディターの材質撮影だけで使う平行光源。所有権は呼び出し側にある。
+    void SetPreviewDirectionalLightResource(ID3D12Resource* resource) { previewDirectionalLightResource_ = resource; }
 
     /// <summary>ゲーム進行用Transformを変えず、描画時だけローカル姿勢を重ねる。</summary>
     void SetVisualTransform(const Vector3& scale, const Vector3& rotation, const Vector3& offset);
@@ -355,6 +357,10 @@ public:
 
     /// <summary>描画専用姿勢とシアーを初期値へ戻す。</summary>
     void ResetVisualTransform();
+
+    // 共通タイムラインが所有する描画専用の追加姿勢。所有元の終了・破棄で自動解除します。
+    // 通常アニメーションのSetVisualTransformとは別レイヤーなので更新順で消えません。
+    void SetTimelineVisualTransform(const std::shared_ptr<Matrix4x4>& pose) { timelineVisualPose_ = pose; }
 
     // 以下の特殊マテリアル描画は、depthSrvHandle にシーン深度、colorSrvHandle にシーンカラーのSRV番号を受け取る。
     // 個々の関数は対応する描画パイプラインを選び、必要なGPUバッファがなければ描画をスキップする。
@@ -440,6 +446,7 @@ private:
     void InitializeFireProxyModel();
     void InitializeVolumetricFireProxyModel();
     void InitializeGatePortalProxyModel();
+    void InitializeGateBarrierCylinderProxyModel();
 
     // 通常描画用WVPから共通の特殊マテリアル描画へ委譲する。
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
@@ -458,6 +465,7 @@ private:
     Vector3 visualOffset_ = { 0.0f, 0.0f, 0.0f };
     Vector3 visualShear_ = { 0.0f, 0.0f, 0.0f };
     float visualShearPivotY_ = 0.0f;
+    std::weak_ptr<Matrix4x4> timelineVisualPose_;
 
     // 描画モデルとLOD状態。
     Model* model_ = nullptr;
@@ -513,6 +521,7 @@ private:
     std::unique_ptr<Model> fireProxyModel_;
     std::unique_ptr<Model> volumetricFireProxyModel_;
     std::unique_ptr<Model> gatePortalProxyModel_;
+    std::unique_ptr<Model> gateBarrierCylinderProxyModel_;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
@@ -520,4 +529,5 @@ private:
     float time_ = 0.0f;
 
     bool isUIPreview_ = false;
+    ID3D12Resource* previewDirectionalLightResource_ = nullptr;
 };

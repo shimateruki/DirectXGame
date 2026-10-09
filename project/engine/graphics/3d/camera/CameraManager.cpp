@@ -1,12 +1,11 @@
 #include "CameraManager.h"
 
-
-
 CameraManager* CameraManager::GetInstance() {
     static CameraManager instance;
     return &instance;
 }
 
+// メインカメラを作り直します。入力先の設定はこの後に行います。
 void CameraManager::Initialize() {
     mainCamera_ = std::make_unique<Camera>();
     mainCamera_->Initialize();
@@ -24,6 +23,7 @@ void CameraManager::SetInputManager(InputManager* inputManager) {
     }
 }
 
+// 演出は現在のアクティブカメラへ送ります。カメラがなければ要求を破棄します。
 void CameraManager::PlayShake(float duration, float amplitude, float frequency, const Vector3& axisWeight) {
     if (Camera* camera = GetActiveCamera()) {
         camera->StartShake(duration, amplitude, frequency, axisWeight);

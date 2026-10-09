@@ -1,3 +1,8 @@
+<#
+シェーダー用の補助チャンネルを PNG と DDS へ生成し、内容を manifest に記録する。
+DryRun は生成を行わず対象だけ表示する。Force は既存出力を再生成する。
+NoDDS を指定した場合は PNG のみ生成するが、manifest には DDS パスも記録される。
+#>
 param(
     [string]$OutputDir = "Resources\texture\BakedShader",
     [string]$Texconv = "Resources\tools\Texconv.exe",
@@ -400,6 +405,7 @@ foreach ($entry in $selectedPresets) {
     $index++
     $pngPath = Join-Path $OutputDir ($entry.file + ".png")
     $ddsPath = Join-Path $OutputDir ($entry.file + ".dds")
+    # DDS の有無も再生成条件なので、NoDDS 指定時も DDS がなければ次回 PNG を作り直す。
     $needsBake = $Force -or -not (Test-Path -LiteralPath $pngPath) -or -not (Test-Path -LiteralPath $ddsPath)
 
     if ($DryRun) {

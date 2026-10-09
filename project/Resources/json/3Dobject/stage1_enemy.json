@@ -28,7 +28,18 @@
                 "type": 2
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 77,
+            "collisionMaskIds": [
+                "player",
+                "ground",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -137,7 +148,18 @@
                 "type": 3
             },
             "collisionAttribute": 6,
+            "collisionAttributeIds": [
+                "enemy",
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 73,
+            "collisionMaskIds": [
+                "player",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -246,7 +268,19 @@
                 "type": 2
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 199,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -302,9 +336,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.17131927609443665,
+                0.9070512056350708,
                 0.0,
-                0.9852155447006226
+                0.4210203289985657
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -313,7 +347,7 @@
             },
             "rotation": [
                 0.0,
-                0.3443371653556824,
+                2.2724528312683105,
                 0.0
             ],
             "roughness": 0.5,
@@ -355,7 +389,22 @@
                 "type": 2
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.550000011920929,
@@ -464,7 +513,22 @@
                 "type": 2
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.550000011920929,
@@ -573,7 +637,18 @@
                 "type": 3
             },
             "collisionAttribute": 6,
+            "collisionAttributeIds": [
+                "enemy",
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 73,
+            "collisionMaskIds": [
+                "player",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,

@@ -49,9 +49,7 @@ bool SampleTerrainSurface(Object3d* terrainObject, const Vector3& worldPosition,
     const float tx = fx - static_cast<float>(x0);
     const float tz = fz - static_cast<float>(z0);
 
-    auto heightAt = [&](int x, int z) -> float {
-        return data->heights[static_cast<size_t>(z * sampleCount + x)];
-    };
+    auto heightAt = [&](int x, int z) -> float { return data->heights[static_cast<size_t>(z * sampleCount + x)]; };
     const float h00 = heightAt(x0, z0);
     const float h10 = heightAt(x1, z0);
     const float h01 = heightAt(x0, z1);
@@ -59,11 +57,12 @@ bool SampleTerrainSurface(Object3d* terrainObject, const Vector3& worldPosition,
     const float hx0 = h00 + (h10 - h00) * tx;
     const float hx1 = h01 + (h11 - h01) * tx;
 
+    // Terrain の格子点間を双線形補間し、エフェクトが段差状に飛び跳ねるのを防ぐ。
     outPoint = worldPosition;
     outPoint.y = terrainPos.y + (hx0 + (hx1 - hx0) * tz) * scaleY;
     return true;
 }
-}
+} // namespace
 
 Vector3 GroundEffectLocator::ResolveGroundPosition(const Vector3& position) {
     CollisionManager* collisionManager = CollisionManager::GetInstance();
@@ -71,14 +70,9 @@ Vector3 GroundEffectLocator::ResolveGroundPosition(const Vector3& position) {
         return position;
     }
 
-    // Generic floors and map blocks are resolved by the collision raycast first.
-    const Vector3 rayStart = position + Vector3{ 0.0f, kGroundRayStartHeight, 0.0f };
-    RaycastHit hit = collisionManager->Raycast(
-        rayStart,
-        { 0.0f, -1.0f, 0.0f },
-        kGroundRayDistance,
-        kGround | kMapBlock
-    );
+    // 通常の床・マップブロックを先に調べ、Terrain と結果を距離で比較する。
+    const Vector3 rayStart = position + Vector3{0.0f, kGroundRayStartHeight, 0.0f};
+    RaycastHit hit = collisionManager->Raycast(rayStart, {0.0f, -1.0f, 0.0f}, kGroundRayDistance, CollisionCategories::Get("ground") | CollisionCategories::Get("map_block"));
 
     Vector3 bestPoint = position;
     float bestDrop = (std::numeric_limits<float>::max)();
@@ -87,9 +81,9 @@ Vector3 GroundEffectLocator::ResolveGroundPosition(const Vector3& position) {
         bestDrop = hit.distance;
     }
 
-    // Terrain editor surfaces need a separate height lookup because they are stored as height fields.
+    // Terrain は高さマップで管理されるため、レイキャストとは別に表面高度を求める。
     for (Object3d* object : collisionManager->GetObjects()) {
-        if (!object || !(object->GetCollisionAttribute() & kGround)) {
+        if (!object || !(object->GetCollisionAttribute() & CollisionCategories::Get("ground"))) {
             continue;
         }
         Vector3 terrainPoint;

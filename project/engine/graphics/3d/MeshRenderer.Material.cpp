@@ -18,12 +18,14 @@
 namespace {
 namespace fs = std::filesystem;
 
+// 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
 struct BakedShaderTextureSet {
     uint32_t slot0 = 0;
     uint32_t slot1 = 0;
     uint32_t slot2 = 0;
 };
 
+// 水・炎・ポータル用の参照セットと代替画像を保持し、同じキャッシュでの再読込を避ける。
 struct BakedShaderTextureCache {
     BakedShaderTextureSet fallback;
     BakedShaderTextureSet water;
@@ -226,9 +228,11 @@ float MeshRenderer::GetRoughness() const {
 void MeshRenderer::SetEnableNormalMap(bool enable) {
     if (materialData_) materialData_->enableNormalMap = enable ? 1 : 0;
 }
+
 bool MeshRenderer::GetEnableNormalMap() const {
     return materialData_ ? (materialData_->enableNormalMap == 1) : false;
 }
+
 void MeshRenderer::SetNormalMap(const std::string& texturePath) {
     normalMapPath_ = texturePath;
     if (!texturePath.empty()) {
@@ -289,17 +293,18 @@ void MeshRenderer::UpdateUvTransform() {
     materialData_->uvTransform = Math::MakeScaleMatrix({ effectiveTiling.x, effectiveTiling.y, 1.0f });
 }
 
-
-
 void MeshRenderer::SetEnableEnvMap(bool enable) {
     if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;
 }
+
 bool MeshRenderer::GetEnableEnvMap() const {
     return materialData_ ? (materialData_->enableEnvMap == 1) : false;
 }
+
 void MeshRenderer::SetEnvIntensity(float intensity) {
     if (materialData_) materialData_->envIntensity = intensity;
 }
+
 float MeshRenderer::GetEnvIntensity() const {
     return materialData_ ? materialData_->envIntensity : 1.0f;
 }

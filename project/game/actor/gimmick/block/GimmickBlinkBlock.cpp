@@ -38,7 +38,7 @@ void GimmickBlinkBlock::OnPlayerJump(const PlayerJumpEvent& event) {
     if (event.player) {
         uint32_t count = event.player->GetJumpCount();
         bool shouldBeActive = (count % 2 == colorType_);
-        
+
         if (isActive_ != shouldBeActive) {
             isActive_ = shouldBeActive;
             UpdateAppearance();
@@ -50,24 +50,24 @@ void GimmickBlinkBlock::UpdateAppearance() {
     // isActive_ に基づいて見た目と衝突判定を切り替える
     if (isActive_) {
         SetIsVisible(true);
-        SetCollisionAttribute(kGround);
+        SetCollisionAttribute(CollisionCategories::Get("ground"));
         // 不透明
         if (colorType_ == 0) {
             // 青
-            SetColor({ 0.2f, 0.6f, 1.0f, 1.0f });
+            SetColor({0.2f, 0.6f, 1.0f, 1.0f});
         } else {
             // 赤
-            SetColor({ 1.0f, 0.3f, 0.3f, 1.0f });
+            SetColor({1.0f, 0.3f, 0.3f, 1.0f});
         }
     } else {
         // 非アクティブ時は衝突判定を消し、半透明にする
         SetCollisionAttribute(0);
         if (colorType_ == 0) {
             // 青（半透明）
-            SetColor({ 0.2f, 0.6f, 1.0f, 0.2f });
+            SetColor({0.2f, 0.6f, 1.0f, 0.2f});
         } else {
             // 赤（半透明）
-            SetColor({ 1.0f, 0.3f, 0.3f, 0.2f });
+            SetColor({1.0f, 0.3f, 0.3f, 0.2f});
         }
     }
 }

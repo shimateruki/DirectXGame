@@ -17,24 +17,26 @@
 #include <algorithm>
 
 namespace {
-constexpr const char* kNames[] = {
-    "__Editor_Cinematic_Actor", "__Editor_Cinematic_Gate", "__Editor_Cinematic_Camera",
-    "__Editor_Cinematic_Floor"
-};
-constexpr const char* kRoles[] = { "$Actor", "$Gate", "$Camera" };
-constexpr const char* kLabels[] = { "演出対象", "基準オブジェクト", "演出カメラ" };
-constexpr Vector3 kOrigin{ 16000.0f, 10000.0f, 16000.0f };
-}
+constexpr const char* kNames[] = {"__Editor_Cinematic_Actor", "__Editor_Cinematic_Gate", "__Editor_Cinematic_Camera",
+                                  "__Editor_Cinematic_Floor"};
+constexpr const char* kRoles[] = {"$Actor", "$Gate", "$Camera"};
+constexpr const char* kLabels[] = {"演出対象", "基準オブジェクト", "演出カメラ"};
+constexpr Vector3 kOrigin{16000.0f, 10000.0f, 16000.0f};
+} // namespace
 
 int GhostDirector::GetRoleIndex(const std::string& name) {
-    for (int index = 0; index < 3; ++index) if (name == kRoles[index]) return index;
+    for (int index = 0; index < 3; ++index)
+        if (name == kRoles[index])
+            return index;
     return -1;
 }
 
 Object3d* GhostDirector::FindStudioObject(int role) const {
-    if (role < 0 || role >= 4 || !sceneManager_ || sceneManager_->GetCurrentScene() != studioScene_) return nullptr;
+    if (role < 0 || role >= 4 || !sceneManager_ || sceneManager_->GetCurrentScene() != studioScene_)
+        return nullptr;
     for (const auto& object : studioScene_->GetObjects())
-        if (object && object->IsEditorInternal() && object->GetName() == kNames[role]) return object.get();
+        if (object && object->IsEditorInternal() && object->GetName() == kNames[role])
+            return object.get();
     return nullptr;
 }
 
@@ -55,15 +57,15 @@ void GhostDirector::CreateStudioObjects() {
             object->SetEnableLighting(false);
         }
         if (index == 0) {
-            object->SetScale({ 1.7f, 1.7f, 1.7f });
-            object->SetTranslate(kOrigin + Vector3{ 0, 0, 4 });
+            object->SetScale({1.7f, 1.7f, 1.7f});
+            object->SetTranslate(kOrigin + Vector3{0, 0, 4});
         } else if (index == 2) {
-            object->SetTranslate(kOrigin + Vector3{ -6, 4, -10 });
-            object->SetRotation({ 0.2f, 0.4f, 0 });
+            object->SetTranslate(kOrigin + Vector3{-6, 4, -10});
+            object->SetRotation({0.2f, 0.4f, 0});
         } else if (index == 3) {
-            object->SetTranslate(kOrigin + Vector3{ 0, -0.3f, 0 });
-            object->SetScale({ 24, 0.2f, 24 });
-            object->SetColor({ 0.22f, 0.25f, 0.29f, 1 });
+            object->SetTranslate(kOrigin + Vector3{0, -0.3f, 0});
+            object->SetScale({24, 0.2f, 24});
+            object->SetColor({0.22f, 0.25f, 0.29f, 1});
         }
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
@@ -72,19 +74,23 @@ void GhostDirector::CreateStudioObjects() {
 }
 
 bool GhostDirector::BeginStudio() {
-    if (studioEnabled_) return true;
+    if (studioEnabled_)
+        return true;
     if (!sceneManager_ || sceneManager_->IsPlaying() || !sceneManager_->GetCurrentScene() ||
         !sceneManager_->GetCurrentScene()->GetObject3dCommon()) {
         fileOperationStatus_ = "制作空間はゲームを停止した編集モードで開いてください。";
         return false;
     }
     if (EffectPreviewStage::GetInstance()->IsEnabled() ||
-        (editor_ && (editor_->GetAnimationWorkbench()->IsEnabled() || editor_->GetEnemyAttackPreviewWindow()->IsEnabled()))) {
-        fileOperationStatus_ = "他の独立プレビューを終了してから制作空間を開いてください。カメラ・エフェクトの競合を防ぎます。";
+        (editor_ &&
+         (editor_->GetAnimationWorkbench()->IsEnabled() || editor_->GetEnemyAttackPreviewWindow()->IsEnabled()))) {
+        fileOperationStatus_ =
+            "他の独立プレビューを終了してから制作空間を開いてください。カメラ・エフェクトの競合を防ぎます。";
         return false;
     }
     auto* camera = CameraManager::GetInstance()->GetMainCamera();
-    if (!camera) return false;
+    if (!camera)
+        return false;
     player_.Stop(true);
     studioStoredEye_ = camera->GetEye();
     studioStoredTarget_ = camera->GetTargetPoint();
@@ -99,8 +105,8 @@ bool GhostDirector::BeginStudio() {
     studioScene_ = sceneManager_->GetCurrentScene();
     studioEnabled_ = true;
     CreateStudioObjects();
-    if (!FindStudioObject(0) || !FindStudioObject(0)->GetModel() ||
-        !FindStudioObject(1) || !FindStudioObject(1)->GetModel()) {
+    if (!FindStudioObject(0) || !FindStudioObject(0)->GetModel() || !FindStudioObject(1) ||
+        !FindStudioObject(1)->GetModel()) {
         EndStudio();
         fileOperationStatus_ = "仮モデルを読み込めませんでした。モデルアセットを確認してください。";
         return false;
@@ -112,14 +118,15 @@ bool GhostDirector::BeginStudio() {
 }
 
 void GhostDirector::PlaceStudioCamera() {
-    if (!studioEnabled_) return;
+    if (!studioEnabled_)
+        return;
     player_.Stop(true);
     currentScrubTime_ = 0.0f;
     if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFollowTarget(nullptr);
-        camera->SetEye(kOrigin + Vector3{ -10, 7, -15 });
-        camera->SetTarget(kOrigin + Vector3{ 0, 1, 3 });
-        camera->SetRotation({ 0.284f, 0.507f, 0 });
+        camera->SetEye(kOrigin + Vector3{-10, 7, -15});
+        camera->SetTarget(kOrigin + Vector3{0, 1, 3});
+        camera->SetRotation({0.284f, 0.507f, 0});
         camera->SetFovY(0.65f);
         CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
         camera->Update();
@@ -127,12 +134,14 @@ void GhostDirector::PlaceStudioCamera() {
 }
 
 void GhostDirector::EndStudio() {
-    if (!studioEnabled_) return;
+    if (!studioEnabled_)
+        return;
     const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == studioScene_;
     player_.Stop(sameScene);
     if (sameScene) {
         // カメラカットの復帰Blend中に仮Objectを破棄しない。
-        if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) camera->EndOverride(0.0f);
+        if (auto* camera = CameraManager::GetInstance()->GetMainCamera())
+            camera->EndOverride(0.0f);
         if (CameraEditor::GetInstance()->GetSelectedCameraObject() == FindStudioObject(2))
             CameraEditor::GetInstance()->SetSelectedCameraObject(nullptr);
         for (int index = 0; index < 4; ++index) {
@@ -147,7 +156,8 @@ void GhostDirector::EndStudio() {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 Object3d* follow = nullptr;
                 for (const auto& object : studioScene_->GetObjects())
-                    if (object.get() == studioStoredFollow_) follow = object.get();
+                    if (object.get() == studioStoredFollow_)
+                        follow = object.get();
                 camera->SetFollowTarget(follow);
                 camera->SetFollowMode(static_cast<Camera::FollowMode>(studioStoredFollowMode_));
                 camera->SetEye(studioStoredEye_);
@@ -169,13 +179,18 @@ void GhostDirector::EndStudio() {
 
 void GhostDirector::DrawStudioControls() {
 #ifdef USE_IMGUI
-    ImGui::TextWrapped("1. 制作空間を開く → 2. 動作・VFX・カメラを組み合わせる → 3. 保存 → 4. 実ステージへ役割を割り当てて確認");
+    ImGui::TextWrapped(
+        "1. 制作空間を開く → 2. 動作・VFX・カメラを組み合わせる → 3. 保存 → 4. 実ステージへ役割を割り当てて確認");
     if (ImGui::Button(studioEnabled_ ? "制作空間を終了・元の画面へ" : "制作空間を開く（仮モデルを自動準備）")) {
-        if (studioEnabled_) EndStudio(); else BeginStudio();
+        if (studioEnabled_)
+            EndStudio();
+        else
+            BeginStudio();
     }
     if (studioEnabled_) {
         ImGui::TextColored({0.4f, 0.9f, 0.7f, 1}, "制作空間 ON / 実ステージのObjectは操作しません");
-        if (ImGui::Button("全体を見渡す（停止）")) PlaceStudioCamera();
+        if (ImGui::Button("全体を見渡す（停止）"))
+            PlaceStudioCamera();
         for (int index = 0; index < 2; ++index) {
             ImGui::PushID(index);
             if (ImGui::BeginCombo(kLabels[index], sequence_.previewModels[index].c_str())) {
@@ -193,68 +208,92 @@ void GhostDirector::DrawStudioControls() {
             }
             ImGui::PopID();
         }
-        ImGui::TextWrapped("仮モデルはシーケンスと一緒に保存します。対象・基準・カメラの基本構成で、実ステージのモデルは変更しません。");
+        ImGui::TextWrapped("仮モデルはシーケンスと一緒に保存します。対象・基準・カメラの基本構成で、実ステージのモデル"
+                           "は変更しません。");
         if (ImGui::TreeNode("サンプル（任意）")) {
-        if (ImGui::Button("入口サンプルを新規作成")) ImGui::OpenPopup("入口サンプルを作成");
-        if (ImGui::BeginPopupModal("入口サンプルを作成", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextWrapped("現在の未保存シーケンスを置き換えます。シーンや保存済みファイルは変更しません。");
-            if (ImGui::Button("置き換えて作成")) {
-                player_.Stop(true);
-                sequence_.Clear();
-                sequence_.previewModels[1] = "Gimmicks/portal_gate";
-                if (auto* actor = FindStudioObject(0)) actor->SetModel(sequence_.previewModels[0]);
-                if (auto* reference = FindStudioObject(1)) reference->SetModel(sequence_.previewModels[1]);
-                sequence_.name = "entry_studio";
-                strcpy_s(scenarioNameBuf_, "entry_studio");
-                sequence_.anchor = { "$Gate", -1 };
-                templateActor_ = { "$Actor", -1 };
-                templateCamera_ = { "$Camera", -1 };
-                CinematicTransformTrack actor, camera;
-                actor.name = "登場キャラの移動"; actor.binding = templateActor_; actor.anchorRelative = true;
-                camera.name = "演出カメラの移動"; camera.binding = templateCamera_; camera.anchorRelative = true;
-                const Vector3 positions[] = {{0,0,0}, {0,2,2.3f}, {0,0,5}, {0,0,5}};
-                const float times[] = {0, 0.9f, 1.8f, 2.7f};
-                for (int index = 0; index < 4; ++index) {
-                    actor.keys.push_back({times[index], positions[index], {}, {1.7f,1.7f,1.7f}, 4});
-                    const Vector3 eye{-6.0f + index * 0.6f, 4, -10.0f + index};
-                    const Vector3 direction = positions[index] + Vector3{0,1,0} - eye;
-                    Vector3 rotation{-std::atan2(direction.y, std::sqrt(direction.x*direction.x+direction.z*direction.z)),
-                        std::atan2(direction.x, direction.z), 0};
-                    camera.keys.push_back({times[index], eye, rotation, {1,1,1}, 4});
+            if (ImGui::Button("入口サンプルを新規作成"))
+                ImGui::OpenPopup("入口サンプルを作成");
+            if (ImGui::BeginPopupModal("入口サンプルを作成", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextWrapped("現在の未保存シーケンスを置き換えます。シーンや保存済みファイルは変更しません。");
+                if (ImGui::Button("置き換えて作成")) {
+                    player_.Stop(true);
+                    sequence_.Clear();
+                    sequence_.previewModels[1] = "Gimmicks/portal_gate";
+                    if (auto* actor = FindStudioObject(0))
+                        actor->SetModel(sequence_.previewModels[0]);
+                    if (auto* reference = FindStudioObject(1))
+                        reference->SetModel(sequence_.previewModels[1]);
+                    sequence_.name = "entry_studio";
+                    strcpy_s(scenarioNameBuf_, "entry_studio");
+                    sequence_.anchor = {"$Gate", -1};
+                    templateActor_ = {"$Actor", -1};
+                    templateCamera_ = {"$Camera", -1};
+                    CinematicTransformTrack actor, camera;
+                    actor.name = "登場キャラの移動";
+                    actor.binding = templateActor_;
+                    actor.anchorRelative = true;
+                    camera.name = "演出カメラの移動";
+                    camera.binding = templateCamera_;
+                    camera.anchorRelative = true;
+                    const Vector3 positions[] = {{0, 0, 0}, {0, 2, 2.3f}, {0, 0, 5}, {0, 0, 5}};
+                    const float times[] = {0, 0.9f, 1.8f, 2.7f};
+                    for (int index = 0; index < 4; ++index) {
+                        actor.keys.push_back({times[index], positions[index], {}, {1.7f, 1.7f, 1.7f}, 4});
+                        const Vector3 eye{-6.0f + index * 0.6f, 4, -10.0f + index};
+                        const Vector3 direction = positions[index] + Vector3{0, 1, 0} - eye;
+                        Vector3 rotation{
+                            -std::atan2(direction.y, std::sqrt(direction.x * direction.x + direction.z * direction.z)),
+                            std::atan2(direction.x, direction.z), 0};
+                        camera.keys.push_back({times[index], eye, rotation, {1, 1, 1}, 4});
+                    }
+                    sequence_.transformTracks = {actor, camera};
+                    CinematicCameraShot shot;
+                    shot.name = "入口を映す";
+                    shot.binding = templateCamera_;
+                    shot.duration = 2.7f;
+                    shot.blendInDuration = shot.blendOutDuration = 0;
+                    sequence_.cameraShots.push_back(shot);
+                    CinematicAnimationClipData motion;
+                    motion.name = "跳び出しの身体動作";
+                    motion.binding = templateActor_;
+                    motion.driver = "Body";
+                    motion.clipName = "player_jump";
+                    motion.duration = 1.8f;
+                    motion.playbackSpeed = 1.0f / 1.8f;
+                    sequence_.animationClips.push_back(motion);
+                    sequence_.Sort();
+                    currentScrubTime_ = 0;
+                    selectedTrackKind_ = 0;
+                    selectedTrackIndex_ = 0;
+                    selectedKeyIndex_ = 0;
+                    RefreshPlayer(false);
+                    fileOperationStatus_ =
+                        "入口サンプルを作成しました。再生して確認できます。まだファイルには保存していません。";
+                    ImGui::CloseCurrentPopup();
                 }
-                sequence_.transformTracks = {actor, camera};
-                CinematicCameraShot shot;
-                shot.name = "入口を映す"; shot.binding = templateCamera_; shot.duration = 2.7f;
-                shot.blendInDuration = shot.blendOutDuration = 0;
-                sequence_.cameraShots.push_back(shot);
-                CinematicAnimationClipData motion;
-                motion.name = "跳び出しの身体動作"; motion.binding = templateActor_;
-                motion.driver = "Body"; motion.clipName = "player_jump"; motion.duration = 1.8f;
-                motion.playbackSpeed = 1.0f / 1.8f;
-                sequence_.animationClips.push_back(motion);
-                sequence_.Sort();
-                currentScrubTime_ = 0;
-                selectedTrackKind_ = 0; selectedTrackIndex_ = 0; selectedKeyIndex_ = 0;
-                RefreshPlayer(false);
-                fileOperationStatus_ = "入口サンプルを作成しました。再生して確認できます。まだファイルには保存していません。";
-                ImGui::CloseCurrentPopup();
+                ImGui::SameLine();
+                if (ImGui::Button("キャンセル"))
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
             }
-            ImGui::SameLine();
-            if (ImGui::Button("キャンセル")) ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
+            ImGui::TreePop();
         }
-        ImGui::TreePop();
-        }
-        ImGui::TextWrapped("実Object名のトラックは制作空間では再生しません。実シーンを使う場合は制作空間を終了してください。");
+        ImGui::TextWrapped(
+            "実Object名のトラックは制作空間では再生しません。実シーンを使う場合は制作空間を終了してください。");
     } else if (ImGui::TreeNode("実ステージで確認するための役割割り当て")) {
         for (int index = 0; index < 3; ++index) {
             auto& binding = sequence_.roleBindings[index];
             ImGui::PushID(index);
             if (ImGui::BeginCombo(kLabels[index], binding.targetName.empty() ? "未設定" : binding.targetName.c_str())) {
-                if (ImGui::Selectable("未設定に戻す")) { player_.Stop(true); binding = {}; RefreshPlayer(false); }
+                if (ImGui::Selectable("未設定に戻す")) {
+                    player_.Stop(true);
+                    binding = {};
+                    RefreshPlayer(false);
+                }
                 if (sceneManager_ && sceneManager_->GetCurrentScene()) {
                     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-                        if (!object || object->IsEditorInternal() || (index == 2 && !object->IsCameraObject())) continue;
+                        if (!object || object->IsEditorInternal() || (index == 2 && !object->IsCameraObject()))
+                            continue;
                         if (ImGui::Selectable(object->GetName().c_str(), binding.targetName == object->GetName())) {
                             player_.Stop(true);
                             binding = {object->GetName(), object->GetEventID()};
@@ -269,7 +308,8 @@ void GhostDirector::DrawStudioControls() {
         ImGui::TextWrapped("これはエディター上の確認用割り当てです。ゲームの入口処理には接続しません。");
         ImGui::TreePop();
     }
-    if (!fileOperationStatus_.empty()) ImGui::TextWrapped("%s", fileOperationStatus_.c_str());
+    if (!fileOperationStatus_.empty())
+        ImGui::TextWrapped("%s", fileOperationStatus_.c_str());
 #endif
 }
 
@@ -277,10 +317,13 @@ void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::SeparatorText("演出制作");
     ImGui::TextWrapped("中央：映像 / 下：再生とトラック / 右：選択項目の編集");
-    if (ImGui::CollapsingHeader("プレビュー空間と対象", ImGuiTreeNodeFlags_DefaultOpen)) DrawStudioControls();
+    if (ImGui::CollapsingHeader("プレビュー空間と対象", ImGuiTreeNodeFlags_DefaultOpen))
+        DrawStudioControls();
     DrawInspectorContents();
-    if (ImGui::CollapsingHeader("設定チェック")) DrawAuthoringGuide();
-    if (ImGui::CollapsingHeader("補助：基準点・入口テンプレート")) DrawAnchorTemplateEditor();
+    if (ImGui::CollapsingHeader("設定チェック"))
+        DrawAuthoringGuide();
+    if (ImGui::CollapsingHeader("補助：基準点・入口テンプレート"))
+        DrawAnchorTemplateEditor();
 #endif
 }
 

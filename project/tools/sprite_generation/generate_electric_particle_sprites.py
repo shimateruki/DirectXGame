@@ -1,3 +1,8 @@
+"""電気エフェクト用の粒子 PNG を Resources/sprite/particle へ再生成する。
+
+既存の同名画像は上書きされる。
+"""
+
 from pathlib import Path
 import math
 import random

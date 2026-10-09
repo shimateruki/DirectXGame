@@ -74,6 +74,7 @@ float4 main(VSOutput input) : SV_TARGET
     float cloudNoise = Fbm2(p * (1.8f + detail * 0.15f) + drift);
     float fineNoise = Fbm2(p * (4.0f + detail * 0.28f) - drift * 1.6f);
 
+    // The three modes shape a rounded puff, a horizontal band, and low mist.
     float body = 0.0f;
     if (mode < 0.5f)
     {

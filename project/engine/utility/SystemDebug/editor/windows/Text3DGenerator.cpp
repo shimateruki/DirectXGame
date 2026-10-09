@@ -50,6 +50,7 @@ constexpr float kPreviewRebuildDelay = 0.22f;
 constexpr int kPreviewMaxVertices = 240000;
 constexpr int kGeneratedMaxVertices = 480000;
 
+// 独自フォント集合のキーに並んだパスを列挙する COM オブジェクト。参照数で寿命を管理する。
 class ResourceFontFileEnumerator final : public IDWriteFontFileEnumerator {
 public:
     ResourceFontFileEnumerator(IDWriteFactory* factory, const void* collectionKey, UINT32 collectionKeySize)
@@ -116,6 +117,7 @@ private:
     Microsoft::WRL::ComPtr<IDWriteFontFile> currentFile_;
 };
 
+// DirectWrite に独自フォントの列挙器を提供する COM 実装。OS 全体へのフォント登録は行わない。
 class ResourceFontCollectionLoader final : public IDWriteFontCollectionLoader {
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
@@ -305,17 +307,20 @@ std::string MakeUniqueObjectName(BaseScene* scene, const std::string& baseName) 
     return baseName + "_copy";
 }
 
+// 生成 OBJ の位置または法線の三成分。用途は格納する配列で区別する。
 struct ObjVertex {
     float x = 0.0f;
     float y = 0.0f;
     float z = 0.0f;
 };
 
+// 生成 OBJ のテクスチャ座標。位置の索引とは独立して保持する。
 struct ObjUv {
     float u = 0.0f;
     float v = 0.0f;
 };
 
+// 四角面を構成する位置・UV・法線の OBJ 索引。位置と UV は各頂点分を保持する。
 struct ObjFace {
     std::array<int, 4> v{};
     std::array<int, 4> vt{};
@@ -1239,6 +1244,7 @@ void Text3DGenerator::ApplyPreviewTransform() {
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
 }
+
 void Text3DGenerator::RemovePreviewObject() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         previewObject_ = nullptr;

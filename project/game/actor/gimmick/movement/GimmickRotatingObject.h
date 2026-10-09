@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>トリガーやスイッチによって回転状態を切り替えるオブジェクトです。</summary>
 class GimmickRotatingObject : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickRotatingObject() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -12,7 +13,7 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     bool initializedForPlay_ = false;
     bool active_ = true;
 };

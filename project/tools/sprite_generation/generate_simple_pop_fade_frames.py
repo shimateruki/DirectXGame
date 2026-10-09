@@ -1,3 +1,8 @@
+"""ポップ型フェードの連番 PNG を生成する。
+
+再生順は frame_XX.png の番号で決まり、同名フレームを再生成時に更新する。
+"""
+
 from __future__ import annotations
 
 import math

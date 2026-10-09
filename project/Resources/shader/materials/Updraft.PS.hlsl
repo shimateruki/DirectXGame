@@ -59,6 +59,7 @@ float4 main(VSOutput input) : SV_TARGET
     float energy = 0.0f;
     float curl = 0.0f;
 
+    // Select a rising column, an expanding disk, or a lateral wind slash.
     if (mode < 0.5f)
     {
         float sway = sin(p.y * 2.4f + time * speed * 1.4f) * (0.08f + wobble * 0.018f);
@@ -89,6 +90,7 @@ float4 main(VSOutput input) : SV_TARGET
         curl = streaks;
     }
 
+    // Apply screen refraction only inside the animated wind mask.
     float2 distort = normalize(p + 0.0001f) * energy * (0.014f + wobble * 0.006f);
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;
     float3 warped = grabTex.SampleLevel(smp, saturate(screenUV + distort), 0).rgb;

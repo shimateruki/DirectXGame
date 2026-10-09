@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "e1b3efe1856c4398867064c403386416",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Effects/false_king_shadow_spear/false_king_shadow_spear.obj",
+  "version": 1
+}

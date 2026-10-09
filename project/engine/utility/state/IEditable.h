@@ -1,13 +1,14 @@
 #pragma once
 #include <string>
 
+// エディタへ表示する対象の最小契約。描画と表示名は実装側が提供します。
 class IEditable {
 public:
     virtual ~IEditable() = default;
 
-    // Inspectorに表示するUIの描画処理（各クラスで中身を書く）
+    // 現在の Inspector コンテキストへ UI を描画します。
     virtual void DrawImGui() = 0;
 
-    // Inspectorの一番上に表示する名前（各クラスで返す名前を決める）
+    // Inspector 上部に表示する名前を返します。
     virtual std::string GetName() = 0;
 };

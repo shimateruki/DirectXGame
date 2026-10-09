@@ -1,0 +1,21 @@
+{
+  "AutoLoop": false,
+  "BlendMode": 1,
+  "EasingType": 0,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "Intensity": 1.0,
+  "Lifetime": 100.0,
+  "MeshSegments": 24,
+  "Position": [0.0, 0.0, 0.0],
+  "ProceduralType": 4,
+  "Rotation": [0.0, 0.0, 0.0],
+  "SphereRadius": 1.0,
+  "SphereRings": 16,
+  "StartColor": [1.0, 1.0, 1.0, 1.0],
+  "EndColor": [1.0, 1.0, 1.0, 1.0],
+  "StartScale": [1.0, 1.0, 1.0],
+  "EndScale": [1.0, 1.0, 1.0],
+  "TexturePath": "Resources/sprite/common/white.png",
+  "VolumeMode": 0
+}

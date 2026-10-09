@@ -7,13 +7,14 @@ void GimmickChikuwaBlock::Initialize(Object3dCommon* common, const std::string& 
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("ChikuwaBlock");
-    
+
     startPos_ = GetTransform()->translate;
-    
-    if (!param_.has_value()) param_.emplace();
+
+    if (!param_.has_value())
+        param_.emplace();
 
     // 当たり判定設定 (地面属性)
-    SetCollisionAttribute(kGround);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
 }
 
 void GimmickChikuwaBlock::Update(float deltaTime) {
@@ -89,9 +90,9 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
     switch (state_) {
     case State::Idle:
         SetIsVisible(true);
-        SetCollisionAttribute(kGround); // 衝突判定を元に戻す
+        SetCollisionAttribute(CollisionCategories::Get("ground")); // 衝突判定を元に戻す
         GetTransform()->translate = startPos_;
-        GetTransform()->rotate = { 0, 0, 0 };
+        GetTransform()->rotate = {0, 0, 0};
         velocityY_ = 0.0f;
         break;
 

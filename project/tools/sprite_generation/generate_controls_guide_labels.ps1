@@ -1,4 +1,8 @@
-﻿param()
+﻿<#
+操作ガイドに表示する日本語ラベルを TextPngTool で透過 PNG に描画する。
+Resources/sprite/ui/control_guide/labels の同名画像を更新する。
+#>
+param()
 
 $ErrorActionPreference = "Stop"
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))

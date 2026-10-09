@@ -41,6 +41,7 @@ inline constexpr int kReplayArchiveSchemaVersion = 3;
 inline constexpr int kMinimumReplayArchiveSchemaVersion = 1;
 inline constexpr const char* kReplayArchiveMagic = "CG4_REPLAY_ARCHIVE";
 
+// 読み込みは旧スキーマも許すが、書き込み時は常に現在の版を使います。
 bool IsSupportedReplayArchiveSchema(int version);
 
 json Vector2ToJson(const Vector2& value);
@@ -103,6 +104,7 @@ std::filesystem::path GetReplayArchiveDirectory();
 
 std::string MakeLocalTimestamp(const char* format);
 
+// アーカイブ全体を復元する前に識別子・版を確認します。失敗理由は error に返します。
 bool ReadArchiveHeader(const std::filesystem::path& filePath, json& header, std::string& error);
 }
 

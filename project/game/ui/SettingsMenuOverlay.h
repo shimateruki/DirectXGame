@@ -14,7 +14,7 @@ class SpriteCommon;
 
 // ゲーム中・タイトル共通の設定画面。編集中の値と確定済みの値を分離します。
 class SettingsMenuOverlay {
-public:
+  public:
     enum class Result { None, Closed };
     SettingsMenuOverlay();
     ~SettingsMenuOverlay();
@@ -30,8 +30,10 @@ public:
     static bool IsAnyActive() { return activeCount_ > 0; }
     // エディターから描画範囲を受け取り、Game View外のクリックを無視します。
     static void SetEditorViewport(int left, int top, int right, int bottom);
-private:
+
+  private:
     enum class Modal { None, Discard, Reset, Binding, Conflict, Display };
+    // 設定画面の編集値一式。適用・キャンセルに備え、確定済み設定と分けて保持する。
     struct Values {
         float bgm = .8f, se = .8f, sensitivity = 1.0f;
         int width = 1280, height = 720;
@@ -55,10 +57,10 @@ private:
     void CaptureBinding();
     void AcceptBinding(bool swap);
     void BuildFrame();
-    void Rect(float x,float y,float w,float h,const Vector4& color);
-    void Label(const std::string& id,float x,float y,float height=22.0f);
-    void Number(int value,float x,float y,float height=22.0f);
-    void Picture(const std::string& texture,float x,float y,float w,float h,const Vector4& color);
+    void Rect(float x, float y, float w, float h, const Vector4& color);
+    void Label(const std::string& id, float x, float y, float height = 22.0f);
+    void Number(int value, float x, float y, float height = 22.0f);
+    void Picture(const std::string& texture, float x, float y, float w, float h, const Vector4& color);
     Vector2 Pointer() const;
     SpriteCommon* common_ = nullptr;
     InputManager* input_ = nullptr;
@@ -76,9 +78,9 @@ private:
     bool replayOnly_ = false;
     int modalSelection_ = 1;
     bool dragging_ = false;
-    Vector2 previousPointer_{-1000,-1000};
+    Vector2 previousPointer_{-1000, -1000};
     float rowHeight_ = 56.0f;
-    Vector4 panelColor_{.94f,.97f,.95f,1}, selectedColor_{.68f,.93f,.91f,1};
+    Vector4 panelColor_{.94f, .97f, .95f, 1}, selectedColor_{.68f, .93f, .91f, 1};
     inline static int activeCount_ = 0;
     inline static RECT editorViewport_{};
     inline static bool hasEditorViewport_ = false;

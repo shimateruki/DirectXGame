@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "c5e5de7f57e6d9bd7ef0ada97a0f7d15",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/attack_assets/authoring_homing.json",
+  "version": 1
+}

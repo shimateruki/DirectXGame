@@ -132,5 +132,6 @@ public:
     /// <summary>依存ファイルを調べてCPU側の事前準備を行い、存在状態を報告します。</summary>
     /// <param name="manifest">調査対象の依存ファイル。</param>
     /// <returns>検出した依存アセットの一覧。</returns>
+    /// <remarks>Prepareと同じ経路で画像・モデル・音声も準備するため、読み取りだけの検査ではありません。</remarks>
     static SceneDependencyReport Inspect(const SceneLoadManifest& manifest);
 };

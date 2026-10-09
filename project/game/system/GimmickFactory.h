@@ -6,14 +6,14 @@
 
 // 文字列のギミックタイプ名から、対応するギミックを生成するファクトリ
 class GimmickFactory {
-public:
+  public:
     // シングルトンインスタンスを取得する
     static GimmickFactory* GetInstance();
 
     // gimmickName に対応するギミックを生成し、基本初期化まで行う
     std::unique_ptr<BaseGimmick> CreateGimmick(const std::string& gimmickName, Object3dCommon* common);
 
-private:
+  private:
     GimmickFactory() = default;
     ~GimmickFactory() = default;
     GimmickFactory(const GimmickFactory&) = delete;

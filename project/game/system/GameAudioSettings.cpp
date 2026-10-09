@@ -3,13 +3,15 @@
 #include "json.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <unordered_set>
 
 namespace {
 constexpr const char* kCategorySE = "SE";
 constexpr const char* kCategoryBGM = "BGM";
-}
+} // namespace
 
 GameAudioSettings* GameAudioSettings::GetInstance() {
     static GameAudioSettings instance;
@@ -26,6 +28,7 @@ void GameAudioSettings::Initialize() {
 }
 
 void GameAudioSettings::Load() {
+    // 壊れた項目は飛ばし、欠けた音声は既定の一覧から補います。
     entries_.clear();
     handles_.clear();
 
@@ -40,20 +43,26 @@ void GameAudioSettings::Load() {
     }
 
     if (data.is_object() && data.contains("entries") && data["entries"].is_array()) {
+        const auto readString = [](const nlohmann::json& item, const char* key, const std::string& fallback) {
+            return item.contains(key) && item[key].is_string() ? item[key].get<std::string>() : fallback;
+        };
+        std::unordered_set<std::string> usedIds;
         for (const auto& item : data["entries"]) {
             if (!item.is_object()) {
                 continue;
             }
 
             SoundEntry entry;
-            entry.id = item.value("id", "");
-            entry.displayName = item.value("displayName", entry.id);
-            entry.category = item.value("category", kCategorySE);
-            entry.path = item.value("path", "");
-            entry.volume = ClampVolume(item.value("volume", 1.0f));
-            entry.loop = item.value("loop", false);
+            entry.id = readString(item, "id", "");
+            entry.displayName = readString(item, "displayName", entry.id);
+            entry.category = readString(item, "category", kCategorySE);
+            entry.path = readString(item, "path", "");
+            entry.volume = item.contains("volume") && item["volume"].is_number()
+                               ? ClampVolume(item["volume"].get<float>())
+                               : 1.0f;
+            entry.loop = item.contains("loop") && item["loop"].is_boolean() ? item["loop"].get<bool>() : false;
 
-            if (!entry.id.empty() && !entry.path.empty()) {
+            if (!entry.id.empty() && !entry.path.empty() && usedIds.insert(entry.id).second) {
                 entries_.push_back(entry);
             }
         }
@@ -67,14 +76,12 @@ void GameAudioSettings::Save() const {
     data["entries"] = nlohmann::json::array();
 
     for (const auto& entry : entries_) {
-        data["entries"].push_back({
-            { "id", entry.id },
-            { "displayName", entry.displayName },
-            { "category", entry.category },
-            { "path", entry.path },
-            { "volume", ClampVolume(entry.volume) },
-            { "loop", entry.loop }
-        });
+        data["entries"].push_back({{"id", entry.id},
+                                   {"displayName", entry.displayName},
+                                   {"category", entry.category},
+                                   {"path", entry.path},
+                                   {"volume", ClampVolume(entry.volume)},
+                                   {"loop", entry.loop}});
     }
 
     std::filesystem::create_directories(std::filesystem::path(filePath_).parent_path());
@@ -85,16 +92,12 @@ void GameAudioSettings::Save() const {
 }
 
 GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& id) {
-    auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) {
-        return entry.id == id;
-    });
+    auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     return it == entries_.end() ? nullptr : &(*it);
 }
 
 const GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& id) const {
-    auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) {
-        return entry.id == id;
-    });
+    auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     return it == entries_.end() ? nullptr : &(*it);
 }
 
@@ -111,6 +114,7 @@ void GameAudioSettings::SetVolume(const std::string& id, float volume) {
 }
 
 AudioPlayer::AudioHandle GameAudioSettings::LoadHandle(const SoundEntry& entry) {
+    // 同じ音声ファイルを繰り返し読み込まないよう、読み込み済みハンドルを共有します。
     auto cached = handles_.find(entry.id);
     if (cached != handles_.end()) {
         return cached->second;
@@ -176,26 +180,35 @@ void GameAudioSettings::Stop(const std::string& id) {
 }
 
 void GameAudioSettings::EnsureDefaultEntries() {
-    AddDefaultEntry({ "cursor_move", "カーソル移動", kCategorySE, "Resources/audio/se/generated/cursor_move.wav", 0.75f, false });
-    AddDefaultEntry({ "decide", "決定", kCategorySE, "Resources/audio/se/generated/decide.wav", 0.80f, false });
-    AddDefaultEntry({ "cancel", "キャンセル", kCategorySE, "Resources/audio/se/generated/cancel.wav", 0.70f, false });
-    AddDefaultEntry({ "coin_get", "コイン取得", kCategorySE, "Resources/audio/se/generated/coin_get.wav", 0.80f, false });
-    AddDefaultEntry({ "crown_get", "王冠取得", kCategorySE, "Resources/audio/se/generated/crown_get.wav", 0.85f, false });
-    AddDefaultEntry({ "explosion", "爆発", kCategorySE, "Resources/audio/se/generated/explosion.wav", 0.85f, false });
-    AddDefaultEntry({ "hit_damage", "被弾", kCategorySE, "Resources/audio/se/generated/hit_damage.wav", 0.82f, false });
-    AddDefaultEntry({ "enemy_bind_loop", "敵拘束ループ", kCategorySE, "Resources/audio/se/generated/enemy_bind_loop.wav", 0.45f, true });
-    AddDefaultEntry({ "enemy_transform", "敵取り込み変身", kCategorySE, "Resources/audio/se/generated/enemy_transform.wav", 0.82f, false });
-    AddDefaultEntry({ "gate_enter", "ゲート進入", kCategorySE, "Resources/audio/se/generated/gate_enter.wav", 0.78f, false });
-    AddDefaultEntry({ "jump", "ジャンプ", kCategorySE, "Resources/audio/se/generated/jump.wav", 0.70f, false });
-    AddDefaultEntry({ "land", "着地", kCategorySE, "Resources/audio/se/generated/land.wav", 0.58f, false });
-    AddDefaultEntry({ "slime_stretch", "スライム伸び", kCategorySE, "Resources/audio/se/generated/slime_stretch.wav", 0.62f, false });
-    AddDefaultEntry({ "throw", "投げ", kCategorySE, "Resources/audio/se/generated/throw.wav", 0.70f, false });
-    AddDefaultEntry({ "beam_charge", "ビーム溜め", kCategorySE, "Resources/audio/se/generated/beam_charge.wav", 0.68f, false });
-    AddDefaultEntry({ "beam_fire", "ビーム発射", kCategorySE, "Resources/audio/se/generated/beam_fire.wav", 0.75f, false });
-    AddDefaultEntry({ "menu_open", "メニュー開始", kCategorySE, "Resources/audio/se/generated/menu_open.wav", 0.65f, false });
-    AddDefaultEntry({ "menu_close", "メニュー終了", kCategorySE, "Resources/audio/se/generated/menu_close.wav", 0.60f, false });
+    AddDefaultEntry(
+        {"cursor_move", "カーソル移動", kCategorySE, "Resources/audio/se/generated/cursor_move.wav", 0.75f, false});
+    AddDefaultEntry({"decide", "決定", kCategorySE, "Resources/audio/se/generated/decide.wav", 0.80f, false});
+    AddDefaultEntry({"cancel", "キャンセル", kCategorySE, "Resources/audio/se/generated/cancel.wav", 0.70f, false});
+    AddDefaultEntry({"coin_get", "コイン取得", kCategorySE, "Resources/audio/se/generated/coin_get.wav", 0.80f, false});
+    AddDefaultEntry({"crown_get", "王冠取得", kCategorySE, "Resources/audio/se/generated/crown_get.wav", 0.85f, false});
+    AddDefaultEntry({"explosion", "爆発", kCategorySE, "Resources/audio/se/generated/explosion.wav", 0.85f, false});
+    AddDefaultEntry({"hit_damage", "被弾", kCategorySE, "Resources/audio/se/generated/hit_damage.wav", 0.82f, false});
+    AddDefaultEntry({"enemy_bind_loop", "敵拘束ループ", kCategorySE, "Resources/audio/se/generated/enemy_bind_loop.wav",
+                     0.45f, true});
+    AddDefaultEntry({"enemy_transform", "敵取り込み変身", kCategorySE,
+                     "Resources/audio/se/generated/enemy_transform.wav", 0.82f, false});
+    AddDefaultEntry(
+        {"gate_enter", "ゲート進入", kCategorySE, "Resources/audio/se/generated/gate_enter.wav", 0.78f, false});
+    AddDefaultEntry({"jump", "ジャンプ", kCategorySE, "Resources/audio/se/generated/jump.wav", 0.70f, false});
+    AddDefaultEntry({"land", "着地", kCategorySE, "Resources/audio/se/generated/land.wav", 0.58f, false});
+    AddDefaultEntry(
+        {"slime_stretch", "スライム伸び", kCategorySE, "Resources/audio/se/generated/slime_stretch.wav", 0.62f, false});
+    AddDefaultEntry({"throw", "投げ", kCategorySE, "Resources/audio/se/generated/throw.wav", 0.70f, false});
+    AddDefaultEntry(
+        {"beam_charge", "ビーム溜め", kCategorySE, "Resources/audio/se/generated/beam_charge.wav", 0.68f, false});
+    AddDefaultEntry(
+        {"beam_fire", "ビーム発射", kCategorySE, "Resources/audio/se/generated/beam_fire.wav", 0.75f, false});
+    AddDefaultEntry(
+        {"menu_open", "メニュー開始", kCategorySE, "Resources/audio/se/generated/menu_open.wav", 0.65f, false});
+    AddDefaultEntry(
+        {"menu_close", "メニュー終了", kCategorySE, "Resources/audio/se/generated/menu_close.wav", 0.60f, false});
 
-    AddDefaultEntry({ "sample_bgm", "確認用BGM", kCategoryBGM, "Resources/audio/Alarm02.mp3", 0.60f, true });
+    AddDefaultEntry({"sample_bgm", "確認用BGM", kCategoryBGM, "Resources/audio/Alarm02.mp3", 0.60f, true});
 }
 
 void GameAudioSettings::AddDefaultEntry(const SoundEntry& entry) {
@@ -204,6 +217,4 @@ void GameAudioSettings::AddDefaultEntry(const SoundEntry& entry) {
     }
 }
 
-float GameAudioSettings::ClampVolume(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
-}
+float GameAudioSettings::ClampVolume(float value) { return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f; }

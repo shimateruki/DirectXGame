@@ -1,6 +1,7 @@
 #include "BaseScene.h"
 #include "DirectXCommon.h"
 #include "Object3d.h"
+#include "BaseEnemy.h"
 #include "Player.h"
 #include "BulletManager.h"
 #include "Camera.h"
@@ -304,6 +305,14 @@ bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isF
     return false;
 }
 
+void BaseScene::DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight) {
+    for (const auto& object : GetObjects()) {
+        if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
+            enemy->DrawAttackTelegraph(pointLight, spotLight);
+        }
+    }
+}
+
 bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
     if (!dxCommon) {
         return false;
@@ -459,8 +468,6 @@ bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32
 void BaseScene::TriggerEvent(int targetID) {
     // IDが -1 (設定なし) なら何もしない
     if (targetID == -1) return;
-
-
 
     // シーン内の全オブジェクトを取得 
     auto& objects = GetObjects();

@@ -15,10 +15,7 @@ class Object3dCommon;
 class PrimitiveDrawer;
 struct ID3D12GraphicsCommandList;
 
-/// <summary>
-/// ゲームカメラとEditor用自由カメラの切り替え、設定保存、演出カメラ再生を行う。
-/// </summary>
-// CameraEditorは、編集用カメラ、プレビューカメラ、演出用カメラの設定をまとめて扱います。
+/// <summary>ゲーム・自由・演出カメラの切替、設定保存、プレビューを管理する。</summary>
 class CameraEditor : public IEditable {
 public:
     enum class Mode {
@@ -26,6 +23,7 @@ public:
         Editor // WASD操作の自由カメラ。
     };
 
+    // 編集画面のカメラモード別設定。各モードの値を保持し、切替時に使用する設定を選ぶ。
     struct Settings {
         Mode currentMode = Mode::Game;
         Camera::FollowMode gameFollowMode = Camera::FollowMode::kAimable;
@@ -93,10 +91,14 @@ public:
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
     void SetMode(Mode mode);
     Mode GetMode() const { return settings_.currentMode; }
+    // 自由カメラのワールド位置と回転を設定する。変更時は保存を予約し、ブロック中は予約しない。
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+    // 現在シーンにある Object の見た目、なければ当たり判定の範囲へ視点を合わせる。
+    // 対象が無効または有効な範囲を持たなければ false。
     bool FocusSceneObject(Object3d* object);
     bool FocusSelectedCameraObject();
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
+    // blocker のビットを有効・無効化し、編集中の自由カメラ状態の自動保存を抑制する。
     void SetEditorStateSaveBlocker(uint32_t blocker, bool enabled);
     bool IsEditorStateSaveBlocked() const { return editorStateSaveBlockers_ != 0; }
 

@@ -1,4 +1,4 @@
-#include "PresetEditor.h"
+﻿#include "PresetEditor.h"
 
 #include "ModelManager.h"
 #include "imgui.h"
@@ -175,7 +175,12 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawParamBool(param, "OFFで停止", "returnOnOff", true);
         }
         else if (type == "StageGate") {
+            changed |= DrawParamIntCombo(param, "入口の用途", "actionMode", 0,
+                {"ステージ選択の入口", "指定シーンへ遷移", "指定ステージへ遷移"});
+            changed |= DrawStringField(param, "遷移先シーン", "targetScene", "SELECT");
+            changed |= DrawIntField(data, "ステージ選択番号（0始まり）", "targetID", 0);
             changed |= DrawParamInt(param, "ステージ番号", "colorType", 0);
+            changed |= DrawParamBool(param, "遷移を有効にする", "startActive", true);
         }
         else {
             ImGui::TextDisabled("このギミックは追加パラメータなしで配置できます。");
@@ -239,7 +244,9 @@ void PresetEditor::ApplyHiddenCategoryFields(json& data, Category category) {
         data["saveCategory"] = "Object";
     }
     else {
-        data["type"] = "Model";
+        // EffectやInvisibleBoxの数値編集で、種別をModelへ変えてしまわないようにします。
+        if (!data.contains("type") || ReadString(data, "type", "").empty())
+            data["type"] = "Model";
         data["saveCategory"] = "Object";
     }
 }
@@ -290,8 +297,8 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["modelName"] = "Primitives/cube";
             data["scale"] = { 1.0f, 1.0f, 1.0f };
             data["color"] = { 0.42f, 0.24f, 1.0f, 0.22f };
-            data["collisionAttribute"] = CollisionAttribute::kTrigger;
-            data["collisionMask"] = CollisionAttribute::kPlayer;
+            data["collisionAttribute"] = CollisionCategories::Get("trigger");
+            data["collisionMask"] = CollisionCategories::Get("player");
             json& param = EnsureParam(data);
             param["gimmickType"] = "ArenaEncounter";
             param["maxCount"] = 4;
@@ -304,8 +311,8 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["scale"] = { 3.0f, 3.0f, 3.0f };
             data["color"] = { 0.15f, 0.75f, 1.0f, 0.3f };
             data["blendMode"] = 1;
-            data["collisionAttribute"] = CollisionAttribute::kTrigger;
-            data["collisionMask"] = CollisionAttribute::kPlayer;
+            data["collisionAttribute"] = CollisionCategories::Get("trigger");
+            data["collisionMask"] = CollisionCategories::Get("player");
             json& param = EnsureParam(data);
             param["gimmickType"] = "GameplayVolume";
             param["volumeMode"] = 0;
@@ -325,8 +332,8 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["emissive"] = 1.0f;
             data["metallic"] = 0.18f;
             data["roughness"] = 0.34f;
-            data["collisionAttribute"] = CollisionAttribute::kTrigger;
-            data["collisionMask"] = CollisionAttribute::kPlayer;
+            data["collisionAttribute"] = CollisionCategories::Get("trigger");
+            data["collisionMask"] = CollisionCategories::Get("player");
             json& param = EnsureParam(data);
             param["gimmickType"] = "CopyMemoryStation";
             param["copyMemoryTypeA"] = "FireSlime";
@@ -345,8 +352,8 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["blendMode"] = 1;
             data["color"] = { 0.30f, 0.86f, 1.0f, 0.84f };
             data["emissive"] = 2.4f;
-            data["collisionAttribute"] = CollisionAttribute::kGround;
-            data["collisionMask"] = 255;
+            data["collisionAttribute"] = CollisionCategories::Get("ground");
+            data["collisionMask"] = CollisionCategories::GetDefaultGameplayMask();
             json& param = EnsureParam(data);
             param["gimmickType"] = "PrismBarrier";
             param["moveSpeed"] = 0.42f;
@@ -364,6 +371,13 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
         data["modelName"] = "Item/heart.gltf";
         data["scale"] = { 0.8f, 0.8f, 0.8f };
         SetColliderDefaults(data, 1, { 1.2f, 1.2f, 1.2f });
+    }
+    // ここで作った数値Maskは現在のJSON定義の値なので、IDも同時に保存します。
+    if (data.contains("collisionAttribute") && data["collisionAttribute"].is_number_unsigned()) {
+        data["collisionAttributeIds"] = CollisionCategories::GetIds(data["collisionAttribute"].get<uint32_t>());
+    }
+    if (data.contains("collisionMask") && data["collisionMask"].is_number_unsigned()) {
+        data["collisionMaskIds"] = CollisionCategories::GetIds(data["collisionMask"].get<uint32_t>());
     }
 }
 
@@ -467,6 +481,8 @@ bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* k
     float values[3] = { value.x, value.y, value.z };
     if (ImGui::DragFloat3(label, values, speed)) {
         data[key] = { values[0], values[1], values[2] };
+        // 保存されたQuaternionより、今回編集したEuler角を優先します。
+        if (std::string(key) == "rotate") data.erase("quaternion");
         return true;
     }
     return false;
@@ -521,6 +537,8 @@ void PresetEditor::AddBlankPreset(Category category) {
 json PresetEditor::BuildBlankPreset(const std::string& name, Category category) const {
     json data = json::object();
     data["name"] = name;
+    data["presetDisplayName"] = name;
+    data["presetUsage"] = category == Category::Model ? "装飾" : GetCategoryLabel(category);
     if (category != Category::Enemy) {
         data["modelName"] = "Stages/block";
     }

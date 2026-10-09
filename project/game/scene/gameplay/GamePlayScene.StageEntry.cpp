@@ -19,8 +19,7 @@ constexpr float kStageEntryCameraIntroDuration = 0.24f;
 constexpr float kStageEntryGateOpenLeadTime = 0.42f;
 constexpr float kStageEntryCameraRestoreStartTime = 1.62f;
 constexpr float kStageEntryCameraRestoreDuration = 1.05f;
-constexpr float kStageEntryPresentationDuration =
-    kStageEntryCameraRestoreStartTime + kStageEntryCameraRestoreDuration;
+constexpr float kStageEntryPresentationDuration = kStageEntryCameraRestoreStartTime + kStageEntryCameraRestoreDuration;
 constexpr float kStageEntryCameraBackDistance = 15.0f;
 constexpr float kStageEntryCameraHeight = 3.4f;
 constexpr float kStageEntryCameraYawOffset = -0.48f;
@@ -33,9 +32,11 @@ constexpr float kStageEntryCinemaBarHeight = 0.105f;
 constexpr float kStageEntryCinemaBarOpenDuration = 0.22f;
 constexpr const char* kStageEntryCameraObjectName = "Stage1_EntryCamera";
 constexpr const char* kStageEntryCameraFallbackObjectName = "Cinematic_Camera_01";
-}
+} // namespace
 
 // ステージ入場演出の開始・更新・復帰。PlayerとCameraは借用し、終了時の操作復帰とゲート再有効化を維持する。
+// 入口演出中はプレイヤー操作とカメラを一時的に預かり、終了時に元の状態へ戻します。
+
 Object3d* GamePlayScene::FindStageEntryGate() const {
     if (!objectManager_) {
         return nullptr;
@@ -56,6 +57,7 @@ Object3d* GamePlayScene::FindStageEntryGate() const {
     return nameMatchedGate;
 }
 
+// 開始時に通常のスポーン地点を保存し、入口ゲートから出現する演出位置へ一時的に移します。
 bool GamePlayScene::StartStageEntryPresentation() {
     if (stageEntryPresentationActive_) {
         return true;
@@ -81,7 +83,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     const Vector3 playerSpawn = player_->GetWorldPosition();
     player_->SetRespawnPosition(playerSpawn);
     const Vector3 gatePosition = stageEntryGate_->GetWorldPosition();
-    stageEntryDirection_ = NormalizePlanarDirection(playerSpawn - gatePosition, { 1.0f, 0.0f, 0.0f });
+    stageEntryDirection_ = NormalizePlanarDirection(playerSpawn - gatePosition, {1.0f, 0.0f, 0.0f});
 
     PlayerGateReturnAnimation::Route route;
     route.start = gatePosition - stageEntryDirection_ * 1.38f;
@@ -105,42 +107,31 @@ bool GamePlayScene::StartStageEntryPresentation() {
         stageEntryCinemaBarOverrideActive_ = true;
     }
 
-    const Vector3 gateFocus = {
-        gatePosition.x,
-        playerSpawn.y + kStageEntryCameraFocusHeight,
-        gatePosition.z
-    };
-    const Vector3 landingFocus = playerSpawn + Vector3{ 0.0f, kStageEntryCameraFocusHeight, 0.0f };
-    stageEntryCameraFocusTarget_ = AnimationInterpolation::Lerp(
-        gateFocus, landingFocus, kStageEntryCameraLandingFocusRate);
+    const Vector3 gateFocus = {gatePosition.x, playerSpawn.y + kStageEntryCameraFocusHeight, gatePosition.z};
+    const Vector3 landingFocus = playerSpawn + Vector3{0.0f, kStageEntryCameraFocusHeight, 0.0f};
+    stageEntryCameraFocusTarget_ =
+        AnimationInterpolation::Lerp(gateFocus, landingFocus, kStageEntryCameraLandingFocusRate);
     // ステージ内部の中庭へ直進すると地形内へ入るため、入口の外側から斜めに見ます。
     const float thirdPersonYaw =
-        std::atan2(stageEntryDirection_.x, stageEntryDirection_.z)
-        + kStageEntryCameraYawOffset;
+        std::atan2(stageEntryDirection_.x, stageEntryDirection_.z) + kStageEntryCameraYawOffset;
     const Matrix4x4 cinematicYawRotation = Math::MakeRotateYMatrix(thirdPersonYaw);
-    stageEntryCameraFocusEye_ = stageEntryCameraFocusTarget_
-        + Math::TransformNormal(
-            { 0.0f, 0.0f, -kStageEntryCameraBackDistance },
-            cinematicYawRotation)
-        + Vector3{ 0.0f, kStageEntryCameraHeight, 0.0f };
+    stageEntryCameraFocusEye_ =
+        stageEntryCameraFocusTarget_ +
+        Math::TransformNormal({0.0f, 0.0f, -kStageEntryCameraBackDistance}, cinematicYawRotation) +
+        Vector3{0.0f, kStageEntryCameraHeight, 0.0f};
     // 編集中の自由カメラ位置を引き継がず、毎回ゲートを読める決定的な導入ショットから始めます。
-    const Vector3 cinematicBackDirection = NormalizePlanarDirection(
-        stageEntryCameraFocusEye_ - stageEntryCameraFocusTarget_,
-        { -stageEntryDirection_.x, 0.0f, -stageEntryDirection_.z });
+    const Vector3 cinematicBackDirection =
+        NormalizePlanarDirection(stageEntryCameraFocusEye_ - stageEntryCameraFocusTarget_,
+                                 {-stageEntryDirection_.x, 0.0f, -stageEntryDirection_.z});
     stageEntryCameraStartTarget_ = gateFocus;
-    stageEntryCameraStartEye_ = stageEntryCameraFocusEye_
-        + cinematicBackDirection * 2.0f
-        + Vector3{ 0.0f, 0.6f, 0.0f };
+    stageEntryCameraStartEye_ = stageEntryCameraFocusEye_ + cinematicBackDirection * 2.0f + Vector3{0.0f, 0.6f, 0.0f};
     // 復帰先はSnapToThirdPersonと同じ式で作り、演出終了フレームの段差をなくします。
     const Matrix4x4 thirdPersonRotation =
-        Math::MakeRotateXMatrix(kStageEntryThirdPersonPitch)
-        * Math::MakeRotateYMatrix(thirdPersonYaw);
-    stageEntryCameraRestoreTarget_ = playerSpawn
-        + Vector3{ 0.0f, kStageEntryThirdPersonHeight, 0.0f };
-    stageEntryCameraRestoreEye_ = stageEntryCameraRestoreTarget_
-        + Math::TransformNormal(
-            { 0.0f, 0.0f, -kStageEntryThirdPersonDistance },
-            thirdPersonRotation);
+        Math::MakeRotateXMatrix(kStageEntryThirdPersonPitch) * Math::MakeRotateYMatrix(thirdPersonYaw);
+    stageEntryCameraRestoreTarget_ = playerSpawn + Vector3{0.0f, kStageEntryThirdPersonHeight, 0.0f};
+    stageEntryCameraRestoreEye_ =
+        stageEntryCameraRestoreTarget_ +
+        Math::TransformNormal({0.0f, 0.0f, -kStageEntryThirdPersonDistance}, thirdPersonRotation);
 
     // 入口専用名を最優先し、旧データでは入口ゲートに最も近い汎用カメラを採用します。
     // 名前を分けることで、JSON読込時に同名Objectとして上書きされることも防ぎます。
@@ -187,15 +178,13 @@ bool GamePlayScene::StartStageEntryPresentation() {
 
         Vector3 authoredEye{};
         Vector3 authoredTarget{};
-        if (CameraEditor::GetInstance()->ResolveSceneCameraPose(
-                authoredEntryCamera, authoredEye, authoredTarget)) {
+        if (CameraEditor::GetInstance()->ResolveSceneCameraPose(authoredEntryCamera, authoredEye, authoredTarget)) {
             stageEntryCameraStartEye_ = authoredEye;
             stageEntryCameraStartTarget_ = authoredTarget;
             stageEntryCameraFocusEye_ = authoredEye;
             stageEntryCameraFocusTarget_ = authoredTarget;
             stageEntryCameraFocusFov_ = authoredEntryCamera->GetSceneCameraSettings().fovY;
-            DebugConsole::GetInstance()->AddLog(
-                "Stage Entry: using authored camera for Stage1_EntranceGate.");
+            DebugConsole::GetInstance()->AddLog("Stage Entry: using authored camera for Stage1_EntranceGate.");
         }
     }
     // Game Viewが別の一時カメラを参照していても、入口演出中は必ずこのメインカメラを描画します。
@@ -206,8 +195,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     camera->SetFollowMode(Camera::FollowMode::kFixedPoint);
     camera->SetEye(stageEntryCameraStartEye_);
     camera->SetTarget(stageEntryCameraStartTarget_);
-    const Vector3 startRotation = MakeLookAtEuler(
-        stageEntryCameraStartEye_, stageEntryCameraStartTarget_);
+    const Vector3 startRotation = MakeLookAtEuler(stageEntryCameraStartEye_, stageEntryCameraStartTarget_);
     camera->SetRotation(startRotation);
     camera->ConfigFixedPoint(stageEntryCameraStartEye_, startRotation);
     camera->SetFovY(stageEntryCameraFocusFov_);
@@ -228,8 +216,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     }
 
     stageEntryPresentationTimer_ += std::max(deltaTime, 0.0f);
-    if (!stageEntryPlayerEmergenceStarted_
-        && stageEntryPresentationTimer_ >= kStageEntryGateOpenLeadTime) {
+    if (!stageEntryPlayerEmergenceStarted_ && stageEntryPresentationTimer_ >= kStageEntryGateOpenLeadTime) {
         stageEntryPlayerEmergenceStarted_ = true;
         player_->SetIsVisible(true);
     }
@@ -238,7 +225,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     } else {
         player_->SetIsVisible(false);
         player_->SetIsControlActive(false);
-        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
     if (stageEntryGate_) {
         stageEntryGate_->Update(deltaTime);
@@ -247,19 +234,17 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     if (stageEntryCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             const float openRate = AnimationInterpolation::ApplyEasing(
-                AnimationInterpolation::SegmentRate(
-                    stageEntryPresentationTimer_, 0.0f, kStageEntryCinemaBarOpenDuration),
+                AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, 0.0f,
+                                                    kStageEntryCinemaBarOpenDuration),
                 AnimationInterpolation::EasingType::SmootherStep);
             const float closeRate = AnimationInterpolation::ApplyEasing(
-                AnimationInterpolation::SegmentRate(
-                    stageEntryPresentationTimer_,
-                    kStageEntryCameraRestoreStartTime,
-                    kStageEntryPresentationDuration),
+                AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, kStageEntryCameraRestoreStartTime,
+                                                    kStageEntryPresentationDuration),
                 AnimationInterpolation::EasingType::SmootherStep);
             const float blend = openRate * (1.0f - closeRate);
             const float targetHeight = std::max(stageEntryCinemaBarBaseHeight_, kStageEntryCinemaBarHeight);
-            params->cinemaBarHeight = stageEntryCinemaBarBaseHeight_
-                + (targetHeight - stageEntryCinemaBarBaseHeight_) * blend;
+            params->cinemaBarHeight =
+                stageEntryCinemaBarBaseHeight_ + (targetHeight - stageEntryCinemaBarBaseHeight_) * blend;
         }
     }
 
@@ -271,22 +256,20 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         float fov = stageEntryCameraFocusFov_;
         if (stageEntryPresentationTimer_ < kStageEntryCameraRestoreStartTime) {
             const float introRate = AnimationInterpolation::ApplyEasing(
-                AnimationInterpolation::SegmentRate(
-                    stageEntryPresentationTimer_, 0.0f, kStageEntryCameraIntroDuration),
+                AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, 0.0f, kStageEntryCameraIntroDuration),
                 AnimationInterpolation::EasingType::EaseOut);
             eye = AnimationInterpolation::Lerp(stageEntryCameraStartEye_, stageEntryCameraFocusEye_, introRate);
-            target = AnimationInterpolation::Lerp(stageEntryCameraStartTarget_, stageEntryCameraFocusTarget_, introRate);
+            target =
+                AnimationInterpolation::Lerp(stageEntryCameraStartTarget_, stageEntryCameraFocusTarget_, introRate);
         } else {
             const float restoreRate = AnimationInterpolation::ApplyEasing(
-                AnimationInterpolation::SegmentRate(
-                    stageEntryPresentationTimer_,
-                    kStageEntryCameraRestoreStartTime,
-                    kStageEntryPresentationDuration),
+                AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, kStageEntryCameraRestoreStartTime,
+                                                    kStageEntryPresentationDuration),
                 AnimationInterpolation::EasingType::SmootherStep);
             eye = AnimationInterpolation::Lerp(stageEntryCameraFocusEye_, stageEntryCameraRestoreEye_, restoreRate);
-            target = AnimationInterpolation::Lerp(stageEntryCameraFocusTarget_, stageEntryCameraRestoreTarget_, restoreRate);
-            fov = AnimationInterpolation::Lerp(
-                stageEntryCameraFocusFov_, stageEntryCameraBaseFov_, restoreRate);
+            target =
+                AnimationInterpolation::Lerp(stageEntryCameraFocusTarget_, stageEntryCameraRestoreTarget_, restoreRate);
+            fov = AnimationInterpolation::Lerp(stageEntryCameraFocusFov_, stageEntryCameraBaseFov_, restoreRate);
         }
 
         camera->SetInputEnabled(false);
@@ -317,6 +300,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
     }
 }
 
+// 演出の一時設定を解除し、ゲート・プレイヤー・カメラの通常制御を再開します。
 void GamePlayScene::FinishStageEntryPresentation() {
     if (!stageEntryPresentationActive_) {
         return;
@@ -342,7 +326,7 @@ void GamePlayScene::FinishStageEntryPresentation() {
     if (player_) {
         player_->StopGateReturnAnimation(stageEntryHadPlayerControl_);
         player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
-        player_->TriggerSlimeImpulse({ 0.96f, 1.08f, 0.96f }, 0.18f);
+        player_->TriggerSlimeImpulse({0.96f, 1.08f, 0.96f}, 0.18f);
     }
 
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
@@ -357,20 +341,14 @@ void GamePlayScene::FinishStageEntryPresentation() {
             if (player_) {
                 camera->SetFollowTarget(player_);
                 camera->SetFollowMode(Camera::FollowMode::kAimable);
-                camera->SetRotation({
-                    kStageEntryThirdPersonPitch,
-                    std::atan2(stageEntryDirection_.x, stageEntryDirection_.z)
-                        + kStageEntryCameraYawOffset,
-                    0.0f
-                });
-                camera->SnapToThirdPerson(
-                    kStageEntryThirdPersonDistance,
-                    kStageEntryThirdPersonHeight,
-                    kStageEntryThirdPersonPitch);
+                camera->SetRotation(
+                    {kStageEntryThirdPersonPitch,
+                     std::atan2(stageEntryDirection_.x, stageEntryDirection_.z) + kStageEntryCameraYawOffset, 0.0f});
+                camera->SnapToThirdPerson(kStageEntryThirdPersonDistance, kStageEntryThirdPersonHeight,
+                                          kStageEntryThirdPersonPitch);
             }
             camera->SetInputEnabled(true);
         }
     }
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 }
-

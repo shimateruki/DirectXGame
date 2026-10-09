@@ -28,7 +28,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -140,7 +144,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -252,7 +260,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -364,7 +376,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -476,7 +492,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -588,7 +608,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -700,7 +724,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -812,7 +840,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -924,7 +956,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -1036,7 +1072,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -1148,7 +1188,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -1260,7 +1304,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.7799999713897705,
                 0.6899999976158142,
@@ -1372,7 +1420,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.05999999865889549,
                 0.5799999833106995,
@@ -1500,7 +1552,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -1612,7 +1668,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -1723,7 +1795,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -1834,7 +1922,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -1945,7 +2049,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2056,7 +2176,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2167,7 +2303,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2278,7 +2430,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2389,7 +2557,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2500,7 +2684,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2611,7 +2811,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2722,7 +2938,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2833,7 +3065,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -2944,7 +3192,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3055,7 +3319,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3166,7 +3446,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3277,7 +3573,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3388,7 +3700,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3499,7 +3827,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3610,7 +3954,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3721,7 +4081,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3832,7 +4208,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -3943,7 +4335,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -4054,7 +4462,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -4165,7 +4589,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -4276,7 +4716,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -4387,7 +4843,15 @@
                 "type": 3
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.5199999809265137,
@@ -4556,7 +5020,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.2199999988079071,
                 0.23999999463558197,
@@ -4668,7 +5136,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -4780,7 +5252,23 @@
                 "type": 2
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -4892,7 +5380,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.20000000298023224,
@@ -5028,7 +5520,23 @@
                 "type": 2
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -5140,7 +5648,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.20000000298023224,
@@ -5276,7 +5788,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8799999952316284,
@@ -5439,7 +5966,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8799999952316284,
@@ -5602,7 +6144,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8799999952316284,
@@ -5765,7 +6322,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -5918,7 +6483,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -6071,7 +6644,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -6224,7 +6805,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -6377,7 +6966,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -6530,7 +7127,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.550000011920929,
                 0.8399999737739563,
@@ -6699,7 +7311,23 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 0.7400000095367432,
@@ -6834,7 +7462,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -6987,7 +7623,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -7140,7 +7784,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -7293,7 +7945,18 @@
                 "type": 2
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 77,
+            "collisionMaskIds": [
+                "player",
+                "ground",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -7402,7 +8065,18 @@
                 "type": 1
             },
             "collisionAttribute": 2,
+            "collisionAttributeIds": [
+                "enemy"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 77,
+            "collisionMaskIds": [
+                "player",
+                "ground",
+                "player_bullet",
+                "player_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -7458,9 +8132,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.6065444350242615,
+                0.820105254650116,
                 0.0,
-                0.7950496077537537
+                0.5722126960754395
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -7469,7 +8143,7 @@
             },
             "rotation": [
                 0.0,
-                1.303413987159729,
+                1.9231898784637451,
                 0.0
             ],
             "roughness": 0.6000000238418579,
@@ -7511,7 +8185,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -7664,7 +8346,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -7817,7 +8507,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -7970,7 +8668,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -8123,7 +8829,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -8276,7 +8990,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -8429,7 +9151,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -8582,7 +9312,23 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 0.7400000095367432,
@@ -8717,7 +9463,15 @@
                 "type": 3
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -8829,7 +9583,15 @@
                 "type": 3
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -8990,7 +9752,11 @@
                 "type": 1
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.6200000047683716,
                 0.9399999976158142,
@@ -9110,7 +9876,11 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8600000143051147,
@@ -9287,7 +10057,11 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8600000143051147,
@@ -9464,7 +10238,11 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8600000143051147,
@@ -9641,7 +10419,11 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8600000143051147,
@@ -9818,14 +10600,29 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.3799999952316284,
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 1.98424232006073,
+            "emissive": 2.064242362976074,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -9971,14 +10768,29 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.3799999952316284,
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 1.98424232006073,
+            "emissive": 2.064242362976074,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -10124,14 +10936,29 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.3799999952316284,
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 1.98424232006073,
+            "emissive": 2.064242362976074,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -10277,7 +11104,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -10430,7 +11265,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -10583,7 +11426,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -10736,7 +11587,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -10889,7 +11748,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11042,7 +11909,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11195,7 +12070,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11348,7 +12231,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11501,7 +12392,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11654,7 +12553,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11807,7 +12714,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -11960,7 +12875,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -12113,7 +13036,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -12266,7 +13197,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -12419,7 +13358,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -12572,7 +13519,15 @@
                 "type": 3
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -12684,7 +13639,23 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 0.7400000095367432,
@@ -12819,7 +13790,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -12931,7 +13906,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -13043,7 +14022,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -13155,7 +14138,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -13267,7 +14254,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -13420,7 +14415,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -13573,7 +14576,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -13726,7 +14737,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -13879,7 +14898,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14032,7 +15059,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14185,7 +15220,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14338,7 +15381,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14491,7 +15542,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14644,7 +15703,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14797,7 +15864,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -14950,7 +16025,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15103,7 +16186,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15256,7 +16347,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15409,7 +16508,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15562,7 +16669,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15715,7 +16830,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -15868,7 +16991,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16021,7 +17152,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16174,7 +17313,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16327,7 +17474,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16480,7 +17635,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16633,7 +17796,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -16786,7 +17957,23 @@
                 "type": 2
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 0.7799999713897705,
@@ -16921,7 +18108,15 @@
                 "type": 3
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.6000000238418579,
                 0.6000000238418579,
@@ -17074,7 +18269,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17186,7 +18385,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17298,7 +18501,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17410,7 +18617,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17522,7 +18733,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.23999999463558197,
@@ -17538,7 +18753,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "fd39f67f-adef-49f6-90e1-afda10fad598",
+            "guid": "eb102f14-a05d-4349-82a6-f01efb5e7fe9",
             "isStatic": false,
             "itemType": "",
             "layer": "Default",
@@ -17576,9 +18791,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.9374437928199768,
+                0.6065444350242615,
                 0.0,
-                0.34813663363456726
+                0.7950496077537537
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -17587,7 +18802,7 @@
             },
             "rotation": [
                 0.0,
-                2.430427312850952,
+                1.303413987159729,
                 0.0
             ],
             "roughness": 1.0,
@@ -17650,7 +18865,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17762,7 +18981,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17874,7 +19097,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -17986,7 +19213,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18098,7 +19329,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18210,7 +19445,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18322,7 +19561,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18434,7 +19677,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18546,7 +19793,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18658,7 +19909,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18770,7 +20025,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18882,7 +20141,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -18994,7 +20257,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19106,7 +20373,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19218,7 +20489,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19330,7 +20605,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19442,7 +20721,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19554,7 +20837,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19666,7 +20953,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19778,7 +21069,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -19890,7 +21185,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20002,7 +21301,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20114,7 +21417,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20226,7 +21533,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20338,7 +21649,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20450,7 +21765,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20562,7 +21881,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20674,7 +21997,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20786,7 +22113,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -20898,7 +22229,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21010,7 +22345,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21122,7 +22461,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21234,7 +22577,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21346,7 +22693,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21458,7 +22809,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21570,7 +22925,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21682,7 +23041,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21794,7 +23157,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -21906,7 +23273,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22018,7 +23389,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22130,7 +23505,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22242,7 +23621,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22354,7 +23737,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22466,7 +23853,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22578,7 +23969,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22690,7 +24085,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22802,7 +24201,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -22914,7 +24317,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23026,7 +24433,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23138,7 +24549,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23250,7 +24665,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23362,7 +24781,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23474,7 +24897,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23586,7 +25013,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23698,7 +25129,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23810,7 +25245,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -23922,7 +25361,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24034,7 +25477,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24146,7 +25593,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24258,7 +25709,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24370,7 +25825,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24482,7 +25941,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24594,7 +26057,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24706,7 +26173,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24818,7 +26289,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -24930,7 +26405,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25042,7 +26521,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25154,7 +26637,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25266,7 +26753,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25378,7 +26869,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25490,7 +26985,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25602,7 +27101,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25714,7 +27217,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25826,7 +27333,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -25938,7 +27449,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -26050,7 +27565,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26161,7 +27692,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26272,7 +27819,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26383,7 +27946,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26494,7 +28073,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -26606,7 +28189,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26717,7 +28316,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -26829,7 +28432,23 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 4294967295,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack",
+                "hook_anchor"
+            ],
+            "collisionMaskUnknownBits": 4294966784,
             "color": [
                 1.0,
                 1.0,
@@ -26940,7 +28559,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -27052,7 +28675,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -27164,7 +28791,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -27276,7 +28907,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -27387,7 +29033,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -27499,7 +29149,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.20000000298023224,
                 0.6000000238418579,
@@ -27652,7 +29317,20 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.30000001192092896,
@@ -27805,7 +29483,20 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.30000001192092896,
@@ -27958,7 +29649,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.20000000298023224,
                 0.6000000238418579,
@@ -28111,7 +29817,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.20000000298023224,
                 0.6000000238418579,
@@ -28264,7 +29985,20 @@
                 "type": 3
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.30000001192092896,
@@ -28417,7 +30151,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.6800000071525574,
                 0.8199999928474426,
@@ -28570,7 +30319,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.6800000071525574,
                 0.8199999928474426,
@@ -28723,7 +30487,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.6800000071525574,
                 0.8199999928474426,
@@ -28876,7 +30655,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -28988,7 +30771,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29100,7 +30887,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29211,7 +31013,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29323,7 +31129,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29435,7 +31245,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29547,7 +31361,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29658,7 +31487,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29770,7 +31603,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29882,7 +31719,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -29994,7 +31835,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30105,7 +31961,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30217,7 +32077,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30329,7 +32193,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30441,7 +32309,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30552,7 +32435,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30664,7 +32551,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30776,7 +32667,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30888,7 +32783,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -30999,7 +32909,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31111,7 +33025,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31223,7 +33141,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31334,7 +33267,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31446,7 +33383,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31558,7 +33499,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31669,7 +33625,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31781,7 +33741,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -31893,7 +33857,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32004,7 +33983,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32116,7 +34099,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32228,7 +34215,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32339,7 +34341,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32451,7 +34457,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32563,7 +34573,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -32674,7 +34699,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.25,
                 0.75,
@@ -32835,7 +34875,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.550000011920929,
                 1.0,
@@ -32996,7 +35051,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.550000011920929,
                 1.0,
@@ -33157,7 +35227,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.550000011920929,
                 1.0,
@@ -33318,7 +35403,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 0.30000001192092896,
                 0.8799999952316284,
@@ -33471,7 +35571,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -33583,7 +35687,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -33695,7 +35803,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -33807,7 +35919,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -33919,7 +36035,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34031,7 +36151,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34143,7 +36267,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34255,7 +36383,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34367,7 +36499,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34479,7 +36615,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34591,7 +36731,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34703,7 +36847,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34815,7 +36963,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -34927,7 +37079,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35039,7 +37195,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35151,7 +37311,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35263,7 +37427,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35375,7 +37543,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35487,7 +37659,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35599,7 +37775,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35711,7 +37891,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35823,7 +38007,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -35935,7 +38123,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36047,7 +38239,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36159,7 +38355,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36271,7 +38471,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36383,7 +38587,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36495,7 +38703,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36607,7 +38819,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36719,7 +38935,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36831,7 +39051,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -36943,7 +39167,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37055,7 +39283,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37167,7 +39399,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37279,7 +39515,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37391,7 +39631,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37503,7 +39747,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37615,7 +39863,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37727,7 +39979,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37839,7 +40095,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -37951,7 +40211,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -38104,7 +40372,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -38257,7 +40533,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -38410,7 +40694,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -38563,7 +40855,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -38675,7 +40971,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -38786,7 +41097,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -38820,11 +41135,11 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 33,
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.10000000149011612,
+            "metallic": 0.0,
             "modelName": "Stages/coaster/StarIsland.obj",
             "myEventID": -1,
             "name": "Stage1_Coaster_StarIsland",
@@ -38851,14 +41166,14 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
-            "roughness": 0.800000011920929,
+            "roughness": 0.9200000166893005,
             "saveCategory": "Object",
             "scale": [
                 1.0,
-                1.0,
+                1.4383761882781982,
                 1.0
             ],
             "tag": "",
@@ -38898,7 +41213,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -38989,118 +41319,6 @@
             },
             "autoTextureTiling": false,
             "blendMode": 1,
-            "castShadow": true,
-            "collider": {
-                "center": [
-                    0.0,
-                    -1.975000023841858,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    7.0,
-                    2.0250000953674316,
-                    7.0
-                ],
-                "type": 0
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 0,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "4466e17f-a918-5ea1-8117-4daf3787869a",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.10000000149011612,
-            "modelName": "Stages/coaster/StarReturnHigh.obj",
-            "myEventID": -1,
-            "name": "Stage1_Coaster_StarReturnHigh",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "",
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                786.0,
-                28.0,
-                51.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
             "castShadow": false,
             "collider": {
                 "center": [
@@ -39121,7 +41339,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -39232,7 +41465,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -39344,7 +41581,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -39455,7 +41707,22 @@
                 "type": 3
             },
             "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -39556,13 +41823,13 @@
             "position": [
                 632.0,
                 11.399999618530273,
-                -14.0
+                -6.512055397033691
             ],
             "quaternion": [
                 0.0,
+                0.26692768931388855,
                 0.0,
-                0.0,
-                1.0
+                0.9637165665626526
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -39571,7 +41838,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                0.5404072999954224,
                 0.0
             ],
             "roughness": 0.36000001430511475,
@@ -39618,7 +41885,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -39771,7 +42046,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -39924,7 +42207,15 @@
                 "type": 1
             },
             "collisionAttribute": 16,
+            "collisionAttributeIds": [
+                "trigger"
+            ],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 1,
+            "collisionMaskIds": [
+                "player"
+            ],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.8999999761581421,
@@ -40077,7 +42368,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 1.0,
@@ -40172,6 +42467,354 @@
             "castShadow": true,
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "494f1a65-9aab-5e5e-a1a3-733ff2a356d8",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Stage1_CoasterApproach_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_CoasterApproach_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.6000000238418579,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "acc01101-fe8a-51a2-94c6-8ea270c43217",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Stage1_CoasterApproach_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_CoasterApproach_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.6000000238418579,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b3963062-0376-5e68-8c36-3c16663e7c33",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/coaster/StarIslandTurf.obj",
+            "myEventID": -1,
+            "name": "Stage1_Coaster_StarIslandTurf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                756.0,
+                32.0,
+                51.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
                     3.2782554626464844e-07,
                     0.0,
                     3.2782554626464844e-07
@@ -40189,7 +42832,11 @@
                 "type": 0
             },
             "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
             "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
                 0.23999999463558197,
@@ -40205,7 +42852,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
-            "guid": "eb102f14-a05d-4349-82a6-f01efb5e7fe9",
+            "guid": "a54910d6-c926-4c2a-a142-f8f1220595ea",
             "isStatic": false,
             "itemType": "",
             "layer": "Default",
@@ -40243,9 +42890,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.6065444350242615,
+                0.820105254650116,
                 0.0,
-                0.7950496077537537
+                0.5722126960754395
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -40254,7 +42901,7 @@
             },
             "rotation": [
                 0.0,
-                1.303413987159729,
+                1.9231898784637451,
                 0.0
             ],
             "roughness": 1.0,
@@ -40288,6 +42935,122 @@
                 "waveHeight": 0.550000011920929,
                 "waveSpeed": 1.75
             }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -1.975000023841858,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    7.0,
+                    2.0250000953674316,
+                    7.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "4466e17f-a918-5ea1-8117-4daf3787869a",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.10000000149011612,
+            "modelName": "Stages/coaster/StarReturnHigh.obj",
+            "myEventID": -1,
+            "name": "Stage1_Coaster_StarReturnHigh",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                786.0,
+                28.0,
+                51.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.800000011920929,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
         }
     ]
 }

@@ -180,6 +180,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
     ImGui::Separator();
 #endif
 }
+
 void AudioSettingsWindow::DrawImGui() {
     // 現在の設定を表示し、変更操作は Audio の設定管理へ渡します。
 #ifdef USE_IMGUI

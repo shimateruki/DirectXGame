@@ -55,11 +55,11 @@
           "index": 0
         },
         "metallicFactor": 0,
-        "roughnessFactor": 0.28,
+        "roughnessFactor": 0.24,
         "baseColorFactor": [
-          0.58,
-          0.89,
           1,
+          0.77,
+          0.25,
           1
         ]
       }

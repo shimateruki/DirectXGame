@@ -1,5 +1,6 @@
 #include "../common/Water.hlsli"
 
+// Face the proxy quad toward the camera so the unlock cue keeps its silhouette from any view.
 VSOutput main(VSInput input)
 {
     VSOutput output;
@@ -8,6 +9,7 @@ VSOutput main(VSInput input)
     float3 cameraToCenter = centerWorld - cameraWorldPosition;
     float cameraDistance = max(length(cameraToCenter), 0.0001f);
     float3 viewForward = cameraToCenter / cameraDistance;
+    // Switch the up seed near the vertical axis to avoid a degenerate cross product.
     float3 upSeed = (abs(viewForward.y) > 0.96f) ? float3(0.0f, 0.0f, 1.0f) : float3(0.0f, 1.0f, 0.0f);
     float3 viewRight = normalize(cross(upSeed, viewForward));
     float3 viewUp = normalize(cross(viewForward, viewRight));

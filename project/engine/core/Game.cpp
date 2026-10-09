@@ -37,6 +37,9 @@
 #include <array>
 #include <chrono>
 #include <fstream>
+#ifdef USE_IMGUI
+#include "tests/SceneTransitionRuntimeProbe.h"
+#endif
 
 namespace {
 constexpr float kDeltaTimeClamp = 0.1f;
@@ -79,6 +82,7 @@ void RefreshSceneRenderCameraData(SceneManager* sceneManager) {
 }
 #endif
 }
+
 // エンジン基盤、シーン、ポストエフェクト、エディタ、初期プレイ状態を順番に準備する。
 
 void Game::Initialize() {
@@ -92,6 +96,7 @@ void Game::Initialize() {
 	dxCommon_->CreateRenderTexture();
 	lastTime_ = std::chrono::high_resolution_clock::now();
 }
+
 // ゲーム全体で使うマネージャやアセットを初期化し、シーン生成の準備を行う。
 
 void Game::InitializeEngineServices() {
@@ -106,6 +111,7 @@ void Game::InitializeEngineServices() {
 	sceneFactory_ = std::make_unique<SceneFactory>();
 	sceneManager_ = std::make_unique<SceneManager>();
 }
+
 // 開始シーン名を決め、SceneManagerへ初期シーンを生成させる。
 
 void Game::InitializeScene() {
@@ -114,9 +120,13 @@ void Game::InitializeScene() {
 	sceneManager_->Initialize(sceneFactory_.get(), currentSceneName_);
 	ApplyInitialSceneOverrides();
 }
+
 // ビルド設定やエディタの最終シーン情報から、起動時に開くシーン名を決める。
 
 std::string Game::ResolveStartSceneName() const {
+#ifdef USE_IMGUI
+	if (SceneTransitionRuntimeProbe::Enabled()) return "TITLE";
+#endif
 	std::string startScene = "TITLE";
 
 #if defined(USE_IMGUI) && !defined(DD)
@@ -130,6 +140,7 @@ std::string Game::ResolveStartSceneName() const {
 
 	return startScene;
 }
+
 // 起動直後に必要なシーン内オブジェクトの初期上書きを適用する。
 
 void Game::ApplyInitialSceneOverrides() {
@@ -153,6 +164,7 @@ void Game::ApplyInitialSceneOverrides() {
 	}
 	initialSceneOverridesPending_ = false;
 }
+
 // ポストエフェクト、LUT、フェード、キー設定を初期化する。
 
 void Game::InitializePostProcess() {
@@ -168,6 +180,7 @@ void Game::InitializePostProcess() {
 #endif
 	KeyConfig::GetInstance()->Initialize();
 }
+
 // USE_IMGUI時に、ゲームビューや各種エディタを束ねるコントローラを初期化する。
 
 void Game::InitializeEditorTools() {
@@ -176,6 +189,7 @@ void Game::InitializeEditorTools() {
 	editorController_->Initialize(sceneManager_.get(), dxCommon_);
 #endif
 }
+
 // エディタ起動か通常実行かに応じて、再生状態とカメラ入力モードを設定する。
 
 void Game::ConfigureInitialPlayState() {
@@ -190,6 +204,7 @@ void Game::ConfigureInitialPlayState() {
 	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 #endif
 }
+
 // シーンとエディタを終了し、エンジン基盤を解放する。
 
 void Game::Finalize() {
@@ -207,6 +222,7 @@ void Game::Finalize() {
 
 	Framework::Finalize();
 }
+
 // 入力、終了要求、リサイズ、エディタ、ゲームシステムを1フレーム分更新する。
 
 void Game::Update() {
@@ -247,6 +263,7 @@ void Game::Update() {
 
 #ifdef USE_IMGUI
 	UpdateEditorFrame(deltaTime);
+	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get())) isPlaying_ = true;
 #endif
 
 	const float feedbackTimeScale = VFXSequencer::GetGameplayTimeScale();
@@ -255,10 +272,12 @@ void Game::Update() {
 	if (editorController_) {
 		finalDeltaTime = editorController_->ResolveReplaySimulationDeltaTime(finalDeltaTime);
 	}
+	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get())) finalDeltaTime = 1.0f / 60.0f;
 #endif
 	UpdateGameSystems(deltaTime, finalDeltaTime);
 	ApplyInitialSceneOverrides();
 }
+
 // 前フレームからの経過時間を求め、極端に大きい値は固定値へ丸める。
 
 float Game::CalculateDeltaTime() {
@@ -268,6 +287,7 @@ float Game::CalculateDeltaTime() {
 	lastTime_ = currentTime;
 	return deltaTime;
 }
+
 // エディタUI、ゲームビュー、ツールウィンドウ、カメラ入力状態を更新する。
 
 void Game::UpdateEditorFrame(float deltaTime) {
@@ -287,21 +307,22 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		return;
 	}
 
-	editorController_->BeginFrame();	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
+	editorController_->BeginFrame();
+	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
 	if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty()) {
 		currentSceneName_ = sceneManager_->GetCurrentSceneName();
 	}
 	editorController_->DrawMainMenuBar(sceneManager_.get(), isPlaying_, currentSceneName_);
 	editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
+	editorController_->DrawToolWindows(
+		timeScale_,
+		sceneUpdateTimeMs_,
+		cpuCmdTimeMs_,
+		drawTimeMs_,
+		updateTimeHistory_,
+		drawTimeHistory_,
+		timeHistoryIndex_);
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
-		editorController_->DrawToolWindows(
-			timeScale_,
-			sceneUpdateTimeMs_,
-			cpuCmdTimeMs_,
-			drawTimeMs_,
-			updateTimeHistory_,
-			drawTimeHistory_,
-			timeHistoryIndex_);
 		editorController_->ApplyCameraInputState(editorFrameState_, isPlaying_);
 	}
 	else {
@@ -311,6 +332,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 	(void)deltaTime;
 #endif
 }
+
 // シーン、ライト、エフェクト、フェード、ポストエフェクト時刻を更新する。
 
 void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
@@ -443,6 +465,7 @@ void Game::RunFixedUpdates(float finalDeltaTime, bool replayFrozen, bool sceneTr
 		fixedUpdateAccumulator_ = (std::min)(fixedUpdateAccumulator_, kFixedDeltaTime);
 	}
 }
+
 // 更新処理にかかったCPU時間を履歴とProfilerManagerへ記録する。
 
 void Game::RecordUpdateProfile(const std::chrono::high_resolution_clock::time_point& startUpdate) {
@@ -455,11 +478,43 @@ void Game::RecordUpdateProfile(const std::chrono::high_resolution_clock::time_po
 
 	ProfilerManager::GetInstance()->RecordCpuTime("更新処理", sceneUpdateTimeMs_);
 }
+
 // GPUプロファイルを読み戻し、エディタまたは通常実行の描画フローを実行する。
 
 void Game::Draw() {
 	PostEffect* postEffect = PostEffect::GetInstance();
 	dxCommon_->ReadAllGpuProfiles();
+#ifdef USE_IMGUI
+	// 環境変数が指定されたときだけ描画区間の実測値をCSVに記録します。
+	static bool gpuTraceInitialized = false;
+	static std::ofstream gpuTrace;
+	static unsigned gpuTraceFrame = 0;
+	if (!gpuTraceInitialized) {
+		gpuTraceInitialized = true;
+		char tracePath[1024] = {};
+		const DWORD pathLength = GetEnvironmentVariableA("CG2_GPU_PROFILE_CSV", tracePath, sizeof(tracePath));
+		if (pathLength > 0 && pathLength < sizeof(tracePath)) {
+			gpuTrace.open(tracePath, std::ios::out | std::ios::trunc);
+			if (gpuTrace) {
+				gpuTrace << "frame,total_ms,thumbnail_ms,thumbnail_cpu_ms,shadow_ms,scene_ms,game_ui_ms,debug_ms,post_ms,editor_ui_ms\n";
+			}
+		}
+	}
+	if (gpuTrace && ++gpuTraceFrame % 30 == 0) {
+		const auto* profiler = ProfilerManager::GetInstance();
+		gpuTrace << gpuTraceFrame << ','
+			<< profiler->GetLatestGpuTime("Total") << ','
+			<< profiler->GetLatestGpuTime("プリセット撮影") << ','
+			<< profiler->GetLatestCpuTime("プリセット撮影 CPU") << ','
+			<< profiler->GetLatestGpuTime("影描画") << ','
+			<< profiler->GetLatestGpuTime("  3Dシーン") << ','
+			<< profiler->GetLatestGpuTime("  ゲームUI") << ','
+			<< profiler->GetLatestGpuTime("  デバッグ") << ','
+			<< profiler->GetLatestGpuTime("後処理") << ','
+			<< profiler->GetLatestGpuTime("エディタUI") << '\n';
+		gpuTrace.flush();
+	}
+#endif
 	RenderStats* renderStats = RenderStats::GetInstance();
 	renderStats->BeginFrame();
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
@@ -482,7 +537,11 @@ void Game::Draw() {
 	renderStats->EndFrame();
 	RecordDrawProfile(startDraw);
 	RecordFixedFpsProfile();
+#ifdef USE_IMGUI
+	SceneTransitionRuntimeProbe::AfterDraw(sceneManager_.get(), editorController_ ? editorController_->GetDebugEditor() : nullptr);
+#endif
 }
+
 // エディタ用にシーン、ポストエフェクト、カメラプレビュー、ImGuiを描画する。
 
 void Game::DrawEditorFrame(PostEffect* postEffect) {
@@ -516,6 +575,7 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 	(void)postEffect;
 #endif
 }
+
 // 通常実行用にシーンとポストエフェクトを描画し、バックバッファへ表示する。
 
 void Game::DrawRuntimeFrame(PostEffect* postEffect) {
@@ -526,20 +586,27 @@ void Game::DrawRuntimeFrame(PostEffect* postEffect) {
 	prePostDrawTime_ = std::chrono::high_resolution_clock::now();
 	dxCommon_->PostDraw();
 }
+
 // 影、3Dシーン、UI、フェードをレンダーテクスチャへまとめて描画する。
 
 void Game::DrawSceneToRenderTexture(bool editorMode) {
 	dxCommon_->PreDrawRenderTexture();
+	// サムネイル撮影も同じフレームのGPU仕事なので、Total計測に含めます。
+	dxCommon_->StartGpuProfile("Total");
 
 #ifdef USE_IMGUI
 	if (editorMode && editorController_ && (!sceneManager_ || !sceneManager_->IsTransitioning())) {
+		dxCommon_->StartGpuProfile("プリセット撮影");
+		const auto thumbnailStart = std::chrono::high_resolution_clock::now();
 		editorController_->CapturePendingThumbnails();
+		const auto thumbnailEnd = std::chrono::high_resolution_clock::now();
+		ProfilerManager::GetInstance()->RecordCpuTime("プリセット撮影 CPU",
+			std::chrono::duration<float, std::milli>(thumbnailEnd - thumbnailStart).count());
+		dxCommon_->EndGpuProfile("プリセット撮影");
 	}
 #else
 	(void)editorMode;
 #endif
-
-	dxCommon_->StartGpuProfile("Total");
 	dxCommon_->PreDrawShadow();
 	SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
 
@@ -632,6 +699,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	dxCommon_->EndGpuProfile("メイン描画");
 	dxCommon_->PostDrawRenderTexture();
 }
+
 // カメラエディタ用の別視点プレビューを専用テクスチャへ描画する。
 
 void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
@@ -684,6 +752,7 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	(void)postEffect;
 #endif
 }
+
 // レンダーテクスチャへ複数段のポストエフェクトを適用し、最終出力先へ渡す。
 
 void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView) {
@@ -742,6 +811,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 
 	dxCommon_->EndGpuProfile("後処理");
 }
+
 // 描画全体、CPUコマンド発行、GPU待ち時間をProfilerManagerへ記録する。
 
 void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_point& startDraw) {
@@ -762,6 +832,7 @@ void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_poin
 		ProfilerManager::GetInstance()->RecordCpuTime("  GPU待機", drawTimeMs_ - cmdTimeMs);
 	}
 }
+
 // 固定FPS待機時間とフレーム間隔を計測し、負荷表示に反映する。
 
 void Game::RecordFixedFpsProfile() {

@@ -1,8 +1,9 @@
 ﻿#pragma once
 #include "BaseGimmick.h"
 
+// 接触または時間条件によって Target ID のイベントを切り替えるスイッチです。
 class GimmickSwitch : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickSwitch() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -11,10 +12,11 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
+    // 脱出ギミックを再実行できるよう、出力と接触履歴を初期化します。
     void ResetEscapeCycle();
     bool IsOutputActive() const { return isOutputActive_; }
 
-private:
+  private:
     void SendActive(bool active);
     int GetSwitchMode() const;
 

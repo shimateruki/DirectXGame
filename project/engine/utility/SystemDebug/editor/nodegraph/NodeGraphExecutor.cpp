@@ -76,6 +76,7 @@ void NodeGraphExecutor::Update(float deltaTime) {
         waitRemaining_ = 0.0f;
     }
 
+    // 待機ノードへ到達するまでは同じフレーム内で直列に進める。
     while (currentIndex_ < executionList_.size()) {
         const NodeData* node = executionList_[currentIndex_++];
         if (!node) {
@@ -116,6 +117,7 @@ bool NodeGraphExecutor::BuildLinearExecutionList(const NodeGraphCore& graph, con
         return false;
     }
 
+    // ドライランは最初の Flow 出力のみ追跡する。循環と複数リンクはここで拒否する。
     std::vector<int> visited;
     while (current) {
         if (std::find(visited.begin(), visited.end(), current->id) != visited.end()) {
@@ -183,6 +185,7 @@ bool NodeGraphExecutor::ExecuteNode(const NodeData& node) {
 
     const auto handlerIt = actionHandlers_.find(node.type);
     if (handlerIt == actionHandlers_.end()) {
+        // 未登録ノードも流れの確認を継続できるよう、ドライランではスキップする。
         statusMessage_ = "未実装ノードをスキップ: " + node.title;
         return true;
     }

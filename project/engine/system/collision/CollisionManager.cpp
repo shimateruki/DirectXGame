@@ -6,8 +6,6 @@
 #include <limits>
 #include <unordered_map>
 
-
-
 CollisionManager* CollisionManager::GetInstance() {
     static CollisionManager instance;
     return &instance;
@@ -44,7 +42,7 @@ std::pair<Object3d*, Object3d*> MakeContactPair(Object3d* objectA, Object3d* obj
 }
 
 bool IsTriggerObject(const Object3d* object) {
-    return object && (object->GetCollisionAttribute() & CollisionAttribute::kTrigger) != 0;
+    return object && (object->GetCollisionAttribute() & CollisionCategories::Get("trigger")) != 0;
 }
 
 bool IsInIgnoredHierarchy(Object3d* object, Object3d* ignoredRoot) {

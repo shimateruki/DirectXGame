@@ -122,6 +122,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 	drawList->AddCircle(center, radius, IM_COL32(255, 255, 255, 90), 48, 1.5f);
 	DrawTextWithOutline(drawList, ImVec2(center.x - 39.0f, center.y - radius - 20.0f), IM_COL32(230, 240, 255, 230), "Scene Gizmo");
 
+	// 画面隅の方位表示用。worldAxis をビュー空間へ投影し、length は画面上の軸長に使う。
 	struct AxisInfo {
 		Vector3 worldAxis;
 		const char* label;
@@ -171,6 +172,7 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, Obj
 		return;
 	}
 
+	// 選択 Object のローカル軸をワールドへ変換して表示するための色・長さ倍率。
 	struct LocalAxisInfo {
 		Vector3 localAxis;
 		const char* label;

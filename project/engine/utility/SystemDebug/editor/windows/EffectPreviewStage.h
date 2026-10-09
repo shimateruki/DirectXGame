@@ -23,14 +23,18 @@ public:
         Trail
     };
 
+    // プレビュー時間軸へ表示する区間と色。これ自体はゲームのイベントを発火しない。
     struct TimelineEvent {
         std::string label;
+        // プレビュー開始からの秒数。終了時刻は開始時刻以上を想定する。
         float startTime = 0.0f;
         float endTime = 0.0f;
         Vector4 color = { 0.35f, 0.75f, 1.0f, 1.0f };
     };
 
+    // 呼出元が提供したプレビュー計測値。CPU/GPU はミリ秒、frameDeltaSeconds は秒。
     struct PerformanceMetrics {
+        // falseのとき測定値は呼び出し元から提供されていない。
         bool available = false;
         int particleCount = 0;
         float cpuTimeMs = 0.0f;
@@ -63,10 +67,14 @@ public:
     Vector3 GetGroundPosition() const;
     /// Mesh EffectやParticleを半分埋めずに確認するため、床から中心高さを加えた位置を返す。
     Vector3 GetPreviewPosition() const;
+    // 各番号は対応する操作要求のたびに増える。ツール側は前回見た番号との差で新しい要求を検出する。
     int GetPlayRequestSerial() const { return playRequestSerial_; }
     int GetStopRequestSerial() const { return stopRequestSerial_; }
     int GetSeekRequestSerial() const { return seekRequestSerial_; }
+    /// シーク要求先の時刻。単位は秒。
     float GetSeekTargetTime() const { return seekTargetTime_; }
+    /// <summary>ツールの現在状態をタイムラインへ報告する。時刻・長さは秒、性能時間はミリ秒。</summary>
+    /// <remarks>ツールまたはタイトルが変わると計測結果と重複シーク判定をリセットする。</remarks>
     void ReportToolState(
         ToolKind toolKind,
         const std::string& title,
@@ -79,6 +87,7 @@ public:
     /// プレビュー中だけカメラを見やすい位置へ移動し、終了時に戻せるようにする。
     void ApplyCameraOverride();
     void RequestCameraRecenter() { recenterCameraRequested_ = true; }
+    /// <summary>隔離プレビューを開始する。初回入場時だけシーンのカメラ状態を退避する。</summary>
     void EnableForToolPreview();
     /// 隔離プレビューを終了し、開始前のカメラ・照明・Skyboxへ直ちに戻す。
     void ReturnToScene();

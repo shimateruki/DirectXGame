@@ -17,27 +17,25 @@ constexpr float kDropBounceRate = 0.42f;
 constexpr float kDropGroundFriction = 0.86f;
 constexpr float kDropStopSpeed = 0.45f;
 
-json Vector3ToReplayJson(const Vector3& value) {
-    return json::array({ value.x, value.y, value.z });
-}
+json Vector3ToReplayJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
 
 Vector3 ReplayJsonToVector3(const json& value, const Vector3& fallback) {
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
-    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
-}
+} // namespace
 
 void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
     SetColliderType(ColliderType::kSphere);
     SetCollisionRadius(1.0f);
-    SetColor({ 1.0f, 0.9f, 0.0f, 1.0f });
-    SetScale({ 0.6f, 0.6f, 0.15f });
+    SetColor({1.0f, 0.9f, 0.0f, 1.0f});
+    SetScale({0.6f, 0.6f, 0.15f});
 
     isCollected_ = false;
     isTemporaryDrop_ = false;
@@ -48,7 +46,7 @@ void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelNam
     dropGroundY_ = GetTranslate().y;
     dropGroundOffset_ = 0.0f;
     dropSettleTimer_ = 0.0f;
-    dropVelocity_ = { 0.0f, 0.0f, 0.0f };
+    dropVelocity_ = {0.0f, 0.0f, 0.0f};
     collectStartPosition_ = GetTranslate();
     collectStartScale_ = GetScale();
 
@@ -75,12 +73,9 @@ void GimmickCoin::Update(float deltaTime) {
 
         const float popScale = 1.0f + 0.18f * hop;
         const float vanish = 1.0f - std::clamp((t - 0.55f) / 0.45f, 0.0f, 1.0f);
-        SetScale({
-            collectStartScale_.x * popScale * vanish,
-            collectStartScale_.y * popScale * vanish,
-            collectStartScale_.z * popScale * vanish
-        });
-        SetColor({ 1.0f, 0.92f, 0.18f, vanish });
+        SetScale({collectStartScale_.x * popScale * vanish, collectStartScale_.y * popScale * vanish,
+                  collectStartScale_.z * popScale * vanish});
+        SetColor({1.0f, 0.92f, 0.18f, vanish});
 
         if (t >= 1.0f) {
             SetIsVisible(false);
@@ -109,7 +104,8 @@ void GimmickCoin::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float lifetime, float blinkStartTime, float groundY) {
+void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float lifetime, float blinkStartTime,
+                                         float groundY) {
     isTemporaryDrop_ = true;
     dropVelocity_ = initialVelocity;
     dropLifetime_ = (std::max)(0.2f, lifetime);
@@ -121,11 +117,12 @@ void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float l
     dropGroundOffset_ = (std::max)(0.03f, GetTranslate().y - bounds.min.y + 0.03f);
     dropGroundY_ = groundY + dropGroundOffset_;
     dropSettleTimer_ = 0.0f;
-    SetColor({ 1.0f, 0.92f, 0.18f, 1.0f });
+    SetColor({1.0f, 0.92f, 0.18f, 1.0f});
     SetIsVisible(true);
 }
 
 void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
+    // 落下中のコインは地面への接触後に減速し、期限直前だけ点滅させます。
     dropAge_ += deltaTime;
 
     if (dropAge_ >= dropLifetime_) {
@@ -138,7 +135,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     }
 
     Vector3 position = GetTranslate();
-    const Vector3 groundSample = { position.x, dropGroundY_ - dropGroundOffset_, position.z };
+    const Vector3 groundSample = {position.x, dropGroundY_ - dropGroundOffset_, position.z};
     dropGroundY_ = GroundEffectLocator::ResolveGroundPosition(groundSample).y + dropGroundOffset_;
     if (dropSettleTimer_ <= 0.0f) {
         dropVelocity_.y -= kDropGravity * deltaTime;
@@ -171,10 +168,10 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
         const bool visible = std::sin(dropAge_ * blinkSpeed) >= -0.25f;
         SetIsVisible(visible);
         const float alpha = visible ? (0.45f + 0.55f * (1.0f - blinkProgress * 0.35f)) : 0.0f;
-        SetColor({ 1.0f, 0.92f, 0.18f, alpha });
+        SetColor({1.0f, 0.92f, 0.18f, alpha});
     } else {
         SetIsVisible(true);
-        SetColor({ 1.0f, 0.92f, 0.18f, 1.0f });
+        SetColor({1.0f, 0.92f, 0.18f, 1.0f});
     }
 }
 
@@ -183,7 +180,7 @@ bool GimmickCoin::OnCollision(Object3d* other) {
         return false;
     }
 
-    if (other->GetCollisionAttribute() & CollisionAttribute::kPlayer) {
+    if (other->GetCollisionAttribute() & CollisionCategories::Get("player")) {
         Collect();
         return true;
     }
@@ -192,6 +189,7 @@ bool GimmickCoin::OnCollision(Object3d* other) {
 }
 
 void GimmickCoin::Collect() {
+    // 取得演出を開始してからセーブ側の枚数を更新します。
     if (isCollected_) {
         return;
     }
@@ -207,9 +205,8 @@ void GimmickCoin::Collect() {
 
     const int currentCoins = GameDataManager::GetInstance()->GetCoins();
     const int currentLives = GameDataManager::GetInstance()->GetLives();
-    DebugConsole::GetInstance()->AddLog(
-        "Coin Collected! (" + std::to_string(currentCoins) + "/100) Lives: " + std::to_string(currentLives)
-    );
+    DebugConsole::GetInstance()->AddLog("Coin Collected! (" + std::to_string(currentCoins) +
+                                        "/100) Lives: " + std::to_string(currentLives));
 }
 
 void GimmickCoin::RequestSelfRemove() {

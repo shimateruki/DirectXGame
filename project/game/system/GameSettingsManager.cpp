@@ -4,17 +4,15 @@
 #include "json.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 
 namespace {
-float ClampVolume(float value) {
-    return std::clamp(value, 0.0f, 1.0f);
-}
+float ClampVolume(float value) { return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f; }
 
-float ClampSensitivity(float value) {
-    return std::clamp(value, 0.2f, 1.0f);
-}
+float ClampSensitivity(float value) { return std::isfinite(value) ? std::clamp(value, 0.2f, 1.0f) : 1.0f; }
 
 GameSettingsManager::StageSelectWeatherMode ClampStageSelectWeatherMode(int value) {
     if (value < static_cast<int>(GameSettingsManager::StageSelectWeatherMode::Auto) ||
@@ -23,7 +21,7 @@ GameSettingsManager::StageSelectWeatherMode ClampStageSelectWeatherMode(int valu
     }
     return static_cast<GameSettingsManager::StageSelectWeatherMode>(value);
 }
-}
+} // namespace
 
 GameSettingsManager* GameSettingsManager::GetInstance() {
     static GameSettingsManager instance;
@@ -40,7 +38,9 @@ void GameSettingsManager::Initialize() {
     Load();
 }
 
+// 音量は直ちに反映し、操作設定などは利用側が保持値を参照する。
 void GameSettingsManager::Load() {
+    // 保存値を項目ごとに検証し、一つ壊れていても残りの設定を維持します。
     nlohmann::json data = nlohmann::json::object();
     std::ifstream file(filePath_);
     if (file.is_open()) {
@@ -55,14 +55,40 @@ void GameSettingsManager::Load() {
         data = nlohmann::json::object();
     }
 
-    bgmVolume_ = ClampVolume(data.value("bgmVolume", bgmVolume_));
-    seVolume_ = ClampVolume(data.value("seVolume", seVolume_));
-    cameraSensitivity_ = ClampSensitivity(data.value("cameraSensitivity", cameraSensitivity_));
-    cameraInvertX_ = data.value("cameraInvertX", false);
-    cameraInvertY_ = data.value("cameraInvertY", false);
-    stageSelectWeatherMode_ = ClampStageSelectWeatherMode(data.value(
-        "stageSelectWeatherMode",
-        static_cast<int>(stageSelectWeatherMode_)));
+    const auto readFloat = [&](const char* key, float fallback) {
+        const auto it = data.find(key);
+        if (it == data.end() || !it->is_number()) {
+            return fallback;
+        }
+        const float value = it->get<float>();
+        return std::isfinite(value) ? value : fallback;
+    };
+    const auto readBool = [&](const char* key, bool fallback) {
+        const auto it = data.find(key);
+        return it != data.end() && it->is_boolean() ? it->get<bool>() : fallback;
+    };
+
+    bgmVolume_ = ClampVolume(readFloat("bgmVolume", bgmVolume_));
+    seVolume_ = ClampVolume(readFloat("seVolume", seVolume_));
+    cameraSensitivity_ = ClampSensitivity(readFloat("cameraSensitivity", cameraSensitivity_));
+    cameraInvertX_ = readBool("cameraInvertX", false);
+    cameraInvertY_ = readBool("cameraInvertY", false);
+
+    const auto mode = data.find("stageSelectWeatherMode");
+    if (mode != data.end() && mode->is_number_integer()) {
+        const auto maxMode = static_cast<uint64_t>(StageSelectWeatherMode::Rain);
+        if (mode->is_number_unsigned()) {
+            const uint64_t value = mode->get<uint64_t>();
+            if (value <= maxMode) {
+                stageSelectWeatherMode_ = ClampStageSelectWeatherMode(static_cast<int>(value));
+            }
+        } else {
+            const int64_t value = mode->get<int64_t>();
+            if (value >= 0 && static_cast<uint64_t>(value) <= maxMode) {
+                stageSelectWeatherMode_ = ClampStageSelectWeatherMode(static_cast<int>(value));
+            }
+        }
+    }
 
     ApplyAudioSettings();
 }
@@ -88,6 +114,7 @@ bool GameSettingsManager::Save() const {
     data["cameraInvertX"] = cameraInvertX_;
     data["cameraInvertY"] = cameraInvertY_;
     data["stageSelectWeatherMode"] = static_cast<int>(stageSelectWeatherMode_);
+    // 廃止済みの表示設定は再保存時に残さない。
     data.erase("brightness");
     data.erase("resolutionIndex");
     data.erase("fullscreen");

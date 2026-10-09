@@ -49,7 +49,7 @@ void SpawnThunderShockHitBurst(Object3d* target) {
     }
 
     const Vector3 scale = target->GetScale();
-    const float maxXZ = (std::max)({ 1.0f, std::abs(scale.x), std::abs(scale.z) });
+    const float maxXZ = (std::max)({1.0f, std::abs(scale.x), std::abs(scale.z)});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
     const float horizontalDiameter = (std::max)(2.55f, maxXZ * 1.35f);
     const float verticalDiameter = (std::max)(0.46f, yScale * 1.28f);
@@ -71,6 +71,7 @@ void SpawnThunderShockHitBurst(Object3d* target) {
 }
 
 Vector3 ResolveBodyHitPosition(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    // ノックバックが水平にほぼ無い場合は、攻撃者から対象へ向かう方向で打撃面を決める。
     Vector3 awayDirection = knockbackVelocity;
     awayDirection.y = 0.0f;
     if (IsTinyPlanar(awayDirection) && target && attacker) {
@@ -79,8 +80,8 @@ Vector3 ResolveBodyHitPosition(Object3d* target, Object3d* attacker, const Vecto
     }
     awayDirection = NormalizePlanar(awayDirection);
 
-    const Vector3 scale = target ? target->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
-    const float bodyScale = (std::max)({ 1.0f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const Vector3 scale = target ? target->GetScale() : Vector3{1.0f, 1.0f, 1.0f};
+    const float bodyScale = (std::max)({1.0f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     Vector3 position = target ? target->GetWorldPosition() : Vector3{};
     position += awayDirection * bodyScale * 0.34f;
     position.y += (std::max)(0.56f, std::abs(scale.y) * 0.44f);
@@ -97,7 +98,7 @@ void SpawnFireDamageHit(Object3d* target, Object3d* attacker, const Vector3& kno
     Vector3 direction = knockbackVelocity;
     direction.y = (std::max)(direction.y, 0.55f);
     if (Math::Length(direction) <= 0.001f) {
-        direction = { 0.0f, 1.0f, 0.0f };
+        direction = {0.0f, 1.0f, 0.0f};
     }
     manager->EmitDirected(kPlayerFireFlamePreset, position, direction, 1.0f);
     manager->EmitDirected(kPlayerFireEmberPreset, position, direction, 1.0f);
@@ -113,24 +114,22 @@ void SpawnExplosionDamageHit(Object3d* target, Object3d* attacker, const Vector3
     Vector3 direction = knockbackVelocity;
     direction.y = (std::max)(direction.y, 0.42f);
     if (Math::Length(direction) <= 0.001f) {
-        direction = { 0.0f, 1.0f, 0.0f };
+        direction = {0.0f, 1.0f, 0.0f};
     }
     manager->EmitDirected(kPlayerExplosionCorePreset, position, direction, 1.0f);
     manager->EmitDirected(kPlayerExplosionSparkPreset, position, direction, 1.0f);
-    manager->EmitDirected(kPlayerExplosionSmokePreset, position, { 0.0f, 1.0f, 0.0f }, 1.0f);
+    manager->EmitDirected(kPlayerExplosionSmokePreset, position, {0.0f, 1.0f, 0.0f}, 1.0f);
 }
 
-bool IsTinyPlanar(const Vector3& value) {
-    return std::fabs(value.x) < 0.001f && std::fabs(value.z) < 0.001f;
-}
+bool IsTinyPlanar(const Vector3& value) { return std::fabs(value.x) < 0.001f && std::fabs(value.z) < 0.001f; }
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
 
 void SpawnPlayerPuniDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
@@ -146,23 +145,20 @@ void SpawnPlayerPuniDamageHit(Object3d* target, Object3d* attacker, const Vector
     }
     awayDirection = NormalizePlanar(awayDirection);
 
-    const Vector3 incomingDirection = { -awayDirection.x, 0.0f, -awayDirection.z };
+    const Vector3 incomingDirection = {-awayDirection.x, 0.0f, -awayDirection.z};
     const Vector3 scale = target->GetScale();
-    const float bodyScale = (std::max)({ 1.0f, scale.x, scale.y, scale.z });
-    Vector3 worldOffset = {
-        incomingDirection.x * bodyScale * 0.52f,
-        (std::max)(0.92f, bodyScale * 0.70f),
-        incomingDirection.z * bodyScale * 0.52f
-    };
+    const float bodyScale = (std::max)({1.0f, scale.x, scale.y, scale.z});
+    Vector3 worldOffset = {incomingDirection.x * bodyScale * 0.52f, (std::max)(0.92f, bodyScale * 0.70f),
+                           incomingDirection.z * bodyScale * 0.52f};
     const Vector3 effectPosition = target->GetWorldPosition() + worldOffset;
 
     const float readableScale = bodyScale * 1.32f;
-    const Vector3 effectScale = { readableScale, readableScale, readableScale };
-    const Vector3 effectRotation = { 0.0f, std::atan2(incomingDirection.x, incomingDirection.z), 0.0f };
+    const Vector3 effectScale = {readableScale, readableScale, readableScale};
+    const Vector3 effectRotation = {0.0f, std::atan2(incomingDirection.x, incomingDirection.z), 0.0f};
 
     VFXSequencer::PlayOneShot(kDamagePuniBurstSequence, effectPosition, effectScale, effectRotation);
 }
-}
+} // namespace
 
 void HitEffectDirector::SpawnSlimeElasticHit(const Vector3& position) {
     VFXSequencer::PlayOneShot(kSlimeElasticSequence, position);
@@ -177,6 +173,7 @@ void HitEffectDirector::SpawnPullCatchHit(const Vector3& position) {
 }
 
 void HitEffectDirector::SpawnThrowSlamShockwave(const Vector3& position, float impactSpeed) {
+    // 速度による追加リングの有無だけを変え、配置は地面の高さに合わせる。
     const float power = (std::max)(0.75f, (std::min)(1.45f, impactSpeed / 22.0f));
     const Vector3 groundPos = ResolveGroundEffectPosition(position);
     Vector3 effectPos = groundPos;
@@ -188,14 +185,14 @@ void HitEffectDirector::SpawnThrowSlamShockwave(const Vector3& position, float i
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
         meshEffect->SpawnRingWaveEffect(effectPos);
         if (power > 1.1f) {
-            meshEffect->SpawnRingWaveEffect(effectPos + Vector3{ 0.0f, 0.02f, 0.0f });
+            meshEffect->SpawnRingWaveEffect(effectPos + Vector3{0.0f, 0.02f, 0.0f});
         }
     }
 }
 
 void HitEffectDirector::SpawnBombExplosionHit(const Vector3& position) {
     const Vector3 groundPos = ResolveGroundEffectPosition(position);
-    const Vector3 effectBase = groundPos + Vector3{ 0.0f, kGroundEffectLift, 0.0f };
+    const Vector3 effectBase = groundPos + Vector3{0.0f, kGroundEffectLift, 0.0f};
 
     VFXSequencer::PlayOneShot(kBombExplosionSequence, effectBase);
     SpawnDebris(kBombDebrisPreset, effectBase, groundPos.y);
@@ -205,11 +202,8 @@ void HitEffectDirector::SpawnEnemyAbilityHit(const Vector3& position) {
     VFXSequencer::PlayOneShot(kEnemyAbilitySequence, position);
 }
 
-void HitEffectDirector::SpawnDamageEventHit(
-    Object3d* target,
-    Object3d* attacker,
-    const Vector3& knockbackVelocity,
-    DamageType damageType) {
+void HitEffectDirector::SpawnDamageEventHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity,
+                                            DamageType damageType) {
     if (!target || !attacker) {
         return;
     }
@@ -223,11 +217,13 @@ void HitEffectDirector::SpawnDamageEventHit(
             const Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
             const Vector3 direction = NormalizePlanar(target->GetWorldPosition() - attacker->GetWorldPosition());
             const float yaw = std::atan2(direction.x, direction.z);
-            meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_core.json", position, { 0.0f, yaw, 0.0f });
+            meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_core.json", position,
+                                  {0.0f, yaw, 0.0f});
             // 打撃の接触点から短い衝撃線を出し、魔法陣に見える閉じた輪は使いません。
             for (int i = 0; i < 3; ++i) {
-                meshes->SpawnEffectAt("Resources/json/effect/effect_player_pink_hit_spoke.json", position,
-                    { -0.35f - 0.35f * static_cast<float>(i % 2), yaw + (static_cast<float>(i) - 1.0f) * 1.5f, 0.0f });
+                meshes->SpawnEffectAt(
+                    "Resources/json/effect/effect_player_pink_hit_spoke.json", position,
+                    {-0.35f - 0.35f * static_cast<float>(i % 2), yaw + (static_cast<float>(i) - 1.0f) * 1.5f, 0.0f});
             }
         }
         return;

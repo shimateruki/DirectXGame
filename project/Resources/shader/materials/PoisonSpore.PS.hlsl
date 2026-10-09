@@ -62,6 +62,7 @@ float4 main(VSOutput input) : SV_TARGET
     float energy = 0.0f;
     float spores = 0.0f;
 
+    // Shape variants cover a drifting cloud, clustered spores, and an outward sweep.
     if (mode < 0.5f)
     {
         float body = 1.0f - smoothstep(0.35f + softness * 0.22f, 1.04f, radial + (fogA - 0.5f) * 0.18f);
@@ -85,6 +86,7 @@ float4 main(VSOutput input) : SV_TARGET
         energy = saturate((ring * (0.75f + spiral) + spores * ring * 0.55f) * (1.0f - smoothstep(0.92f, 1.12f, radial)));
     }
 
+    // Distort only where poison energy is present so empty proxy pixels retain the scene.
     float2 drift = float2(fogA - 0.5f, fogB - 0.5f) * (0.014f + density * 0.006f) * energy;
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;
     float3 warped = grabTex.SampleLevel(smp, saturate(screenUV + drift), 0).rgb;

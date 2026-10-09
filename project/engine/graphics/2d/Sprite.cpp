@@ -213,6 +213,7 @@ void Sprite::SetColor(const Vector4& color) {
 		materialData_->color = ColorSpace::AuthoringToWorking(color_);
 	}
 }
+
 /// <summary>
 /// 描画
 /// </summary>

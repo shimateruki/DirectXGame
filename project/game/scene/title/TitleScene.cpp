@@ -39,14 +39,12 @@ void SetFullSaveUiTexture(Sprite* sprite, uint32_t handle, bool keepTextScale = 
         const auto& previous = TextureManager::GetInstance()->GetMetadata(sprite->GetTextureHandle());
         if (previous.width > 0 && previous.height > 0) {
             const Vector2 size = sprite->GetSize();
-            sprite->SetSize({
-                size.x * static_cast<float>(metadata.width) / static_cast<float>(previous.width),
-                size.y * static_cast<float>(metadata.height) / static_cast<float>(previous.height) });
+            sprite->SetSize({size.x * static_cast<float>(metadata.width) / static_cast<float>(previous.width),
+                             size.y * static_cast<float>(metadata.height) / static_cast<float>(previous.height)});
         }
     }
     sprite->SetTextureHandle(handle);
-    sprite->SetTextureRect({ 0.0f, 0.0f },
-        { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
+    sprite->SetTextureRect({0.0f, 0.0f}, {static_cast<float>(metadata.width), static_cast<float>(metadata.height)});
 }
 
 constexpr const char* kTextFile1 = "Resources/sprite/generated/text/text_1_3c19efbf.png";
@@ -79,35 +77,26 @@ constexpr float kTitleIntroGlyphDuration = 0.45f;
 constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
 constexpr float kTitleIntroMenuFadeDuration = 0.35f;
 constexpr float kTitleIntroPi = 3.1415926535f;
-const Vector2 kMenuStartFramePosition = { 1536.0f, 712.0f };
-const Vector2 kMenuSettingFramePosition = { 1536.0f, 818.0f };
-const Vector2 kMenuStartTextureLeftTop = { 2.0f, 2.0f };
-const Vector2 kMenuStartTextureSize = { 278.0f, 42.0f };
-const Vector2 kMenuSettingTextureLeftTop = { 5.0f, 3.0f };
-const Vector2 kMenuSettingTextureSize = { 75.0f, 37.0f };
-const Vector2 kMenuCursorTextureLeftTop = { 115.0f, 218.0f };
-const Vector2 kMenuCursorTextureSize = { 1024.0f, 827.0f };
-const Vector3 kTitleHeroDefaultPosition = { 0.0f, -0.42f, 5.5f };
-const Vector3 kTitleHeroDefaultScale = { 3.0f, 3.0f, 3.0f };
+const Vector2 kMenuStartFramePosition = {1536.0f, 712.0f};
+const Vector2 kMenuSettingFramePosition = {1536.0f, 818.0f};
+const Vector2 kMenuStartTextureLeftTop = {2.0f, 2.0f};
+const Vector2 kMenuStartTextureSize = {278.0f, 42.0f};
+const Vector2 kMenuSettingTextureLeftTop = {5.0f, 3.0f};
+const Vector2 kMenuSettingTextureSize = {75.0f, 37.0f};
+const Vector2 kMenuCursorTextureLeftTop = {115.0f, 218.0f};
+const Vector2 kMenuCursorTextureSize = {1024.0f, 827.0f};
+const Vector3 kTitleHeroDefaultPosition = {0.0f, -0.42f, 5.5f};
+const Vector3 kTitleHeroDefaultScale = {3.0f, 3.0f, 3.0f};
 constexpr float kTitleHeroSequenceDuration = 22.0f;
 constexpr float kTitleHeroPatrolStart = 4.8f;
 constexpr float kTitleHeroPatrolEnd = 17.6f;
 const std::array<Vector3, 7> kTitleHeroPatrolOffsets = {
-    Vector3{ 0.0f, 0.0f, 0.0f },
-    Vector3{ -4.8f, 0.0f, -1.2f },
-    Vector3{ -5.6f, 0.0f, 4.1f },
-    Vector3{ -1.4f, 0.0f, 6.4f },
-    Vector3{ 4.6f, 0.0f, 4.6f },
-    Vector3{ 5.2f, 0.0f, -1.8f },
-    Vector3{ 0.0f, 0.0f, 0.0f }
-};
+    Vector3{0.0f, 0.0f, 0.0f}, Vector3{-4.8f, 0.0f, -1.2f}, Vector3{-5.6f, 0.0f, 4.1f}, Vector3{-1.4f, 0.0f, 6.4f},
+    Vector3{4.6f, 0.0f, 4.6f}, Vector3{5.2f, 0.0f, -1.8f},  Vector3{0.0f, 0.0f, 0.0f}};
 
-const std::array<const char*, 3> kFileTextPaths = {
-    kTextFile1,
-    kTextFile2,
-    kTextFile3
-};
+const std::array<const char*, 3> kFileTextPaths = {kTextFile1, kTextFile2, kTextFile3};
 
+// タイトル一文字分の画像と初期配置、出現をずらす遅延秒。
 struct TitleLogoGlyphLayout {
     const char* name;
     const char* texture;
@@ -117,15 +106,22 @@ struct TitleLogoGlyphLayout {
 };
 
 const std::array<TitleLogoGlyphLayout, 8> kTitleLogoGlyphLayouts = {
-    TitleLogoGlyphLayout{ "titleLogoChar_0", "title/logo/slime_adventure_char_00_su.png", { 596.5f, 147.3f }, { 102.8f, 101.1f }, 0.000f },
-    TitleLogoGlyphLayout{ "titleLogoChar_1", "title/logo/slime_adventure_char_01_ra.png", { 699.6f, 142.7f }, { 101.6f, 102.8f }, 0.055f },
-    TitleLogoGlyphLayout{ "titleLogoChar_2", "title/logo/slime_adventure_char_02_i.png", { 801.8f, 146.3f }, { 103.7f, 104.1f }, 0.110f },
-    TitleLogoGlyphLayout{ "titleLogoChar_3", "title/logo/slime_adventure_char_03_mu.png", { 902.3f, 147.7f }, { 108.3f, 102.8f }, 0.165f },
-    TitleLogoGlyphLayout{ "titleLogoChar_4", "title/logo/slime_adventure_char_04_no.png", { 1018.5f, 139.1f }, { 107.4f, 101.6f }, 0.220f },
-    TitleLogoGlyphLayout{ "titleLogoChar_5", "title/logo/slime_adventure_char_05_dai.png", { 1114.9f, 147.3f }, { 109.5f, 110.3f }, 0.275f },
-    TitleLogoGlyphLayout{ "titleLogoChar_6", "title/logo/slime_adventure_char_06_bou.png", { 1221.7f, 150.6f }, { 104.9f, 109.5f }, 0.330f },
-    TitleLogoGlyphLayout{ "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", { 1327.3f, 147.5f }, { 110.4f, 111.6f }, 0.385f }
-};
+    TitleLogoGlyphLayout{
+        "titleLogoChar_0", "title/logo/slime_adventure_char_00_su.png", {596.5f, 147.3f}, {102.8f, 101.1f}, 0.000f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_1", "title/logo/slime_adventure_char_01_ra.png", {699.6f, 142.7f}, {101.6f, 102.8f}, 0.055f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_2", "title/logo/slime_adventure_char_02_i.png", {801.8f, 146.3f}, {103.7f, 104.1f}, 0.110f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_3", "title/logo/slime_adventure_char_03_mu.png", {902.3f, 147.7f}, {108.3f, 102.8f}, 0.165f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_4", "title/logo/slime_adventure_char_04_no.png", {1018.5f, 139.1f}, {107.4f, 101.6f}, 0.220f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_5", "title/logo/slime_adventure_char_05_dai.png", {1114.9f, 147.3f}, {109.5f, 110.3f}, 0.275f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_6", "title/logo/slime_adventure_char_06_bou.png", {1221.7f, 150.6f}, {104.9f, 109.5f}, 0.330f},
+    TitleLogoGlyphLayout{
+        "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", {1327.3f, 147.5f}, {110.4f, 111.6f}, 0.385f}};
 
 float SmoothStep(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
@@ -134,23 +130,18 @@ float SmoothStep(float t) {
 
 Vector3 LerpTitleVector3(const Vector3& from, const Vector3& to, float t) {
     const float clamped = std::clamp(t, 0.0f, 1.0f);
-    return {
-        from.x + (to.x - from.x) * clamped,
-        from.y + (to.y - from.y) * clamped,
-        from.z + (to.z - from.z) * clamped
-    };
+    return {from.x + (to.x - from.x) * clamped, from.y + (to.y - from.y) * clamped, from.z + (to.z - from.z) * clamped};
 }
 
 bool IsFadePlayingForSceneIntro() {
     const Fade::Status status = Fade::GetInstance()->GetStatus();
-    return status == Fade::Status::FadeIn ||
-        status == Fade::Status::FadeOut ||
-        status == Fade::Status::IrisIn ||
-        status == Fade::Status::IrisOut;
+    return status == Fade::Status::FadeIn || status == Fade::Status::FadeOut || status == Fade::Status::IrisIn ||
+           status == Fade::Status::IrisOut;
 }
 
 Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
-    if (!scene) return nullptr;
+    if (!scene)
+        return nullptr;
     for (auto& object : scene->GetObjects()) {
         if (object && object->GetName() == name) {
             return object.get();
@@ -159,14 +150,16 @@ Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
     return nullptr;
 }
 
-}
+} // namespace
+
+// タイトル演出、メニュー、セーブ枠選択を順に扱います。選択した枠を確定してからシーン遷移を要求します。
 
 SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(kTitleBackgroundLayoutPath);
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
-        ? GetSceneLoadContext().spriteLayoutPath
-        : "Resources/json/sprite/titleScene.json");
+                                 ? GetSceneLoadContext().spriteLayoutPath
+                                 : "Resources/json/sprite/titleScene.json");
     manifest.AddModel("Characters/player");
     manifest.AddModel("Characters/slime");
     manifest.AddModel("Samples/teapot");
@@ -188,8 +181,7 @@ void TitleScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("Samples/teapot");
     LOG("TitleScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile(
-        ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
+    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
     // --- 3. マネージャ・共通クラスの初期化 ---
     CameraManager::GetInstance()->Initialize();
@@ -229,8 +221,6 @@ void TitleScene::Initialize() {
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
-
-
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
     // タイトルUIは維持し、3D背景だけをステージセレクトと共有する。
     levelLoader_->LoadObjectLayout(this, kTitleBackgroundLayoutPath, false);
@@ -240,7 +230,7 @@ void TitleScene::Initialize() {
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("title_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
-    
+
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
@@ -252,7 +242,7 @@ void TitleScene::Initialize() {
         hero->SetClassName("Model");
         hero->SetSaveCategory("Object");
         hero->SetModel("Characters/slime");
-        hero->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        hero->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
         hero->SetCollisionAttribute(0);
         hero->SetCollisionMask(0);
         hero->SetTranslate(kTitleHeroDefaultPosition);
@@ -292,7 +282,6 @@ void TitleScene::Initialize() {
     settingsOverlay_->Initialize(spriteCommon_.get());
     InitializeSaveSlotUI();
     UpdateSaveSlotUI();
-
 }
 
 void TitleScene::Finalize() {
@@ -384,11 +373,16 @@ void TitleScene::Update(float deltaTime) {
             for (auto& sprite : sprites_) {
                 sprite->Update();
             }
-            if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->Update();
-            if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->Update();
-            if (mainMenuArrowSprite_) mainMenuArrowSprite_->Update();
-            if (mainMenuCursorSprite_) mainMenuCursorSprite_->Update();
-            if (mainMenuPromptSprite_) mainMenuPromptSprite_->Update();
+            if (mainMenuStartFrameSprite_)
+                mainMenuStartFrameSprite_->Update();
+            if (mainMenuSettingFrameSprite_)
+                mainMenuSettingFrameSprite_->Update();
+            if (mainMenuArrowSprite_)
+                mainMenuArrowSprite_->Update();
+            if (mainMenuCursorSprite_)
+                mainMenuCursorSprite_->Update();
+            if (mainMenuPromptSprite_)
+                mainMenuPromptSprite_->Update();
             for (auto& sprite : titleUiSprites_) {
                 sprite->Update();
             }
@@ -416,11 +410,16 @@ void TitleScene::Update(float deltaTime) {
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
-    if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->Update();
-    if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->Update();
-    if (mainMenuArrowSprite_) mainMenuArrowSprite_->Update();
-    if (mainMenuCursorSprite_) mainMenuCursorSprite_->Update();
-    if (mainMenuPromptSprite_) mainMenuPromptSprite_->Update();
+    if (mainMenuStartFrameSprite_)
+        mainMenuStartFrameSprite_->Update();
+    if (mainMenuSettingFrameSprite_)
+        mainMenuSettingFrameSprite_->Update();
+    if (mainMenuArrowSprite_)
+        mainMenuArrowSprite_->Update();
+    if (mainMenuCursorSprite_)
+        mainMenuCursorSprite_->Update();
+    if (mainMenuPromptSprite_)
+        mainMenuPromptSprite_->Update();
     for (auto& sprite : titleUiSprites_) {
         sprite->Update();
     }
@@ -439,13 +438,14 @@ void TitleScene::InitializeTitleLogoUI() {
         const auto& layout = kTitleLogoGlyphLayouts[i];
         Sprite* sprite = GetSpriteByName(layout.name);
         if (!sprite) {
-            sprite = CreateUISprite("Resources/sprite/" + std::string(layout.texture), layout.position, layout.size, { 1.0f, 1.0f, 1.0f, 0.0f });
+            sprite = CreateUISprite("Resources/sprite/" + std::string(layout.texture), layout.position, layout.size,
+                                    {1.0f, 1.0f, 1.0f, 0.0f});
             sprite->SetName(layout.name);
             sprite->SetTextureName(layout.texture);
         }
 
-        sprite->SetAnchorPoint({ 0.5f, 0.5f });
-        sprite->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        sprite->SetAnchorPoint({0.5f, 0.5f});
+        sprite->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
         sprite->SetVisible(false);
 
         titleLogoGlyphs_[i].sprite = sprite;
@@ -457,14 +457,14 @@ void TitleScene::InitializeTitleLogoUI() {
 
 void TitleScene::InitializeMainMenuUI() {
     if (startTextSprite_) {
-        startTextSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        startTextSprite_->SetAnchorPoint({0.5f, 0.5f});
         startTextSprite_->SetTextureRect(kMenuStartTextureLeftTop, kMenuStartTextureSize);
-        startTextSprite_->SetColor({ 0.41f, 0.91f, 1.0f, 0.0f });
+        startTextSprite_->SetColor({0.41f, 0.91f, 1.0f, 0.0f});
     }
     if (settingTextSprite_) {
-        settingTextSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        settingTextSprite_->SetAnchorPoint({0.5f, 0.5f});
         settingTextSprite_->SetTextureRect(kMenuSettingTextureLeftTop, kMenuSettingTextureSize);
-        settingTextSprite_->SetColor({ 0.62f, 0.74f, 0.82f, 0.0f });
+        settingTextSprite_->SetColor({0.62f, 0.74f, 0.82f, 0.0f});
     }
 
     mainMenuStartFrameSprite_ = GetSpriteByName("mainMenuStartFrame");
@@ -474,41 +474,40 @@ void TitleScene::InitializeMainMenuUI() {
     mainMenuPromptSprite_ = GetSpriteByName("mainMenuPrompt");
 
     if (mainMenuStartFrameSprite_) {
-        mainMenuStartFrameSprite_->SetAnchorPoint({ 0.5f, 0.5f });
-        mainMenuStartFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        mainMenuStartFrameSprite_->SetAnchorPoint({0.5f, 0.5f});
+        mainMenuStartFrameSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
     if (mainMenuSettingFrameSprite_) {
-        mainMenuSettingFrameSprite_->SetAnchorPoint({ 0.5f, 0.5f });
-        mainMenuSettingFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        mainMenuSettingFrameSprite_->SetAnchorPoint({0.5f, 0.5f});
+        mainMenuSettingFrameSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
     if (mainMenuArrowSprite_) {
-        mainMenuArrowSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuArrowSprite_->SetAnchorPoint({0.5f, 0.5f});
         mainMenuArrowBaseSize_ = mainMenuArrowSprite_->GetSize();
-        mainMenuArrowSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        mainMenuArrowSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
     if (mainMenuCursorSprite_) {
-        mainMenuCursorSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuCursorSprite_->SetAnchorPoint({0.5f, 0.5f});
         mainMenuCursorBaseSize_ = mainMenuCursorSprite_->GetSize();
         mainMenuCursorSprite_->SetTextureRect(kMenuCursorTextureLeftTop, kMenuCursorTextureSize);
-        mainMenuCursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        mainMenuCursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
     if (mainMenuPromptSprite_) {
-        mainMenuPromptSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        mainMenuPromptSprite_->SetAnchorPoint({0.5f, 0.5f});
         mainMenuPromptBasePosition_ = mainMenuPromptSprite_->GetPosition();
         mainMenuPromptBaseSize_ = mainMenuPromptSprite_->GetSize();
-        mainMenuPromptSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        mainMenuPromptSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
 
-    const Vector2 startFramePosition = mainMenuStartFrameSprite_
-        ? mainMenuStartFrameSprite_->GetPosition()
-        : kMenuStartFramePosition;
+    const Vector2 startFramePosition =
+        mainMenuStartFrameSprite_ ? mainMenuStartFrameSprite_->GetPosition() : kMenuStartFramePosition;
     if (mainMenuArrowSprite_) {
         const Vector2 arrowPosition = mainMenuArrowSprite_->GetPosition();
-        mainMenuArrowOffset_ = { arrowPosition.x - startFramePosition.x, arrowPosition.y - startFramePosition.y };
+        mainMenuArrowOffset_ = {arrowPosition.x - startFramePosition.x, arrowPosition.y - startFramePosition.y};
     }
     if (mainMenuCursorSprite_) {
         const Vector2 cursorPosition = mainMenuCursorSprite_->GetPosition();
-        mainMenuCursorOffset_ = { cursorPosition.x - startFramePosition.x, cursorPosition.y - startFramePosition.y };
+        mainMenuCursorOffset_ = {cursorPosition.x - startFramePosition.x, cursorPosition.y - startFramePosition.y};
     }
 }
 
@@ -537,7 +536,8 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
 
     for (auto& glyph : titleLogoGlyphs_) {
         Sprite* sprite = glyph.sprite;
-        if (!sprite) continue;
+        if (!sprite)
+            continue;
 
         const float localTime = titleIntroTime_ - glyph.delay;
         if (localTime < 0.0f) {
@@ -554,9 +554,9 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
         const float alpha = std::clamp(localTime / 0.18f, 0.0f, 1.0f);
 
         sprite->SetVisible(true);
-        sprite->SetPosition({ glyph.basePosition.x, glyph.basePosition.y + yOffset });
-        sprite->SetSize({ glyph.baseSize.x * scaleX, glyph.baseSize.y * scaleY });
-        sprite->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+        sprite->SetPosition({glyph.basePosition.x, glyph.basePosition.y + yOffset});
+        sprite->SetSize({glyph.baseSize.x * scaleX, glyph.baseSize.y * scaleY});
+        sprite->SetColor({1.0f, 1.0f, 1.0f, alpha});
     }
 }
 
@@ -574,10 +574,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         return;
     }
 
-    titleHeroSequenceTime_ = std::fmod(
-        titleHeroSequenceTime_ + std::max(0.0f, deltaTime),
-        kTitleHeroSequenceDuration
-    );
+    titleHeroSequenceTime_ = std::fmod(titleHeroSequenceTime_ + std::max(0.0f, deltaTime), kTitleHeroSequenceDuration);
     const float time = titleHeroSequenceTime_;
 
     Vector3 position = titleHeroBasePosition_;
@@ -593,25 +590,16 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
             const float jump = std::sin(jumpT * kTitleIntroPi);
             position.y += jump * 0.48f;
             airborneStretch = jump * 0.045f;
-            squash = std::sin(
-                std::clamp((jumpT - 0.78f) / 0.22f, 0.0f, 1.0f) * kTitleIntroPi
-            ) * 0.16f;
+            squash = std::sin(std::clamp((jumpT - 0.78f) / 0.22f, 0.0f, 1.0f) * kTitleIntroPi) * 0.16f;
         }
         rotation.y += std::sin(time * 0.85f) * 0.15f;
         rotation.z += std::sin(time * 2.9f) * 0.035f;
     } else if (time < kTitleHeroPatrolEnd) {
-        const float patrolT = std::clamp(
-            (time - kTitleHeroPatrolStart) /
-            (kTitleHeroPatrolEnd - kTitleHeroPatrolStart),
-            0.0f,
-            1.0f
-        );
+        const float patrolT =
+            std::clamp((time - kTitleHeroPatrolStart) / (kTitleHeroPatrolEnd - kTitleHeroPatrolStart), 0.0f, 1.0f);
         constexpr size_t kSegmentCount = kTitleHeroPatrolOffsets.size() - 1;
         const float segmentProgress = patrolT * static_cast<float>(kSegmentCount);
-        const size_t segmentIndex = std::min(
-            static_cast<size_t>(segmentProgress),
-            kSegmentCount - 1
-        );
+        const size_t segmentIndex = std::min(static_cast<size_t>(segmentProgress), kSegmentCount - 1);
         const float localT = segmentProgress - static_cast<float>(segmentIndex);
         const Vector3& fromOffset = kTitleHeroPatrolOffsets[segmentIndex];
         const Vector3& toOffset = kTitleHeroPatrolOffsets[segmentIndex + 1];
@@ -636,9 +624,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         const float settleJump = std::sin(settleT * kTitleIntroPi) * (1.0f - settleT * 0.32f);
         position.y += settleJump * 0.38f;
         airborneStretch = settleJump * 0.035f;
-        squash = std::sin(
-            std::clamp((settleTime - 0.76f) / 0.34f, 0.0f, 1.0f) * kTitleIntroPi
-        ) * 0.15f;
+        squash = std::sin(std::clamp((settleTime - 0.76f) / 0.34f, 0.0f, 1.0f) * kTitleIntroPi) * 0.15f;
         rotation.y += std::sin(settleTime * 0.72f) * 0.12f;
         rotation.z += std::sin(settleTime * 2.3f) * 0.026f;
     }
@@ -660,82 +646,71 @@ void TitleScene::UpdateMainMenu() {
 
     if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
         currentMenuIndex_--;
-        if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+        if (currentMenuIndex_ < 0)
+            currentMenuIndex_ = (int)MenuIndex::Max - 1;
     }
     if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
         currentMenuIndex_++;
-        if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+        if (currentMenuIndex_ >= (int)MenuIndex::Max)
+            currentMenuIndex_ = 0;
     }
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 6.0f);
     const float selectedScale = 1.0f + pulse * 0.018f;
-    const float menuAlpha = std::clamp((titleIntroTime_ - kTitleIntroMenuDelay) / kTitleIntroMenuFadeDuration, 0.0f, 1.0f);
-    Vector4 normalColor = { 0.24f, 0.22f, 0.17f, 0.98f * menuAlpha };
-    Vector4 selectColor = { 0.07f, 0.20f, 0.25f, menuAlpha };
+    const float menuAlpha =
+        std::clamp((titleIntroTime_ - kTitleIntroMenuDelay) / kTitleIntroMenuFadeDuration, 0.0f, 1.0f);
+    Vector4 normalColor = {0.24f, 0.22f, 0.17f, 0.98f * menuAlpha};
+    Vector4 selectColor = {0.07f, 0.20f, 0.25f, menuAlpha};
 
     if (startTextSprite_) {
         const bool selected = currentMenuIndex_ == (int)MenuIndex::GameStart;
         startTextSprite_->SetPosition(startTextBasePosition_);
         startTextSprite_->SetColor(selected ? selectColor : normalColor);
-        startTextSprite_->SetSize({
-            startTextBaseSize_.x * (selected ? selectedScale : 0.98f),
-            startTextBaseSize_.y * (selected ? selectedScale : 0.98f)
-        });
+        startTextSprite_->SetSize({startTextBaseSize_.x * (selected ? selectedScale : 0.98f),
+                                   startTextBaseSize_.y * (selected ? selectedScale : 0.98f)});
     }
     if (settingTextSprite_) {
         const bool selected = currentMenuIndex_ == (int)MenuIndex::Setting;
         settingTextSprite_->SetPosition(settingTextBasePosition_);
         settingTextSprite_->SetColor(selected ? selectColor : normalColor);
-        settingTextSprite_->SetSize({
-            settingTextBaseSize_.x * (selected ? selectedScale : 0.98f),
-            settingTextBaseSize_.y * (selected ? selectedScale : 0.98f)
-        });
+        settingTextSprite_->SetSize({settingTextBaseSize_.x * (selected ? selectedScale : 0.98f),
+                                     settingTextBaseSize_.y * (selected ? selectedScale : 0.98f)});
     }
     const bool startSelected = currentMenuIndex_ == (int)MenuIndex::GameStart;
-    const Vector2 startFramePosition = mainMenuStartFrameSprite_
-        ? mainMenuStartFrameSprite_->GetPosition()
-        : kMenuStartFramePosition;
-    const Vector2 settingFramePosition = mainMenuSettingFrameSprite_
-        ? mainMenuSettingFrameSprite_->GetPosition()
-        : kMenuSettingFramePosition;
+    const Vector2 startFramePosition =
+        mainMenuStartFrameSprite_ ? mainMenuStartFrameSprite_->GetPosition() : kMenuStartFramePosition;
+    const Vector2 settingFramePosition =
+        mainMenuSettingFrameSprite_ ? mainMenuSettingFrameSprite_->GetPosition() : kMenuSettingFramePosition;
     const uint32_t selectedFrame = Sprite::LoadTexture("ui/title/title_menu_button_blue.png");
     const uint32_t normalFrame = Sprite::LoadTexture("ui/title/title_menu_button_beige.png");
     if (mainMenuStartFrameSprite_) {
         mainMenuStartFrameSprite_->SetTextureHandle(startSelected ? selectedFrame : normalFrame);
-        mainMenuStartFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, (startSelected ? 1.0f : 0.98f) * menuAlpha });
+        mainMenuStartFrameSprite_->SetColor({1.0f, 1.0f, 1.0f, (startSelected ? 1.0f : 0.98f) * menuAlpha});
         mainMenuStartFrameSprite_->Update();
     }
     if (mainMenuSettingFrameSprite_) {
         mainMenuSettingFrameSprite_->SetTextureHandle(startSelected ? normalFrame : selectedFrame);
-        mainMenuSettingFrameSprite_->SetColor({ 1.0f, 1.0f, 1.0f, (startSelected ? 0.98f : 1.0f) * menuAlpha });
+        mainMenuSettingFrameSprite_->SetColor({1.0f, 1.0f, 1.0f, (startSelected ? 0.98f : 1.0f) * menuAlpha});
         mainMenuSettingFrameSprite_->Update();
     }
     const Vector2 selectedFramePosition = startSelected ? startFramePosition : settingFramePosition;
     if (mainMenuCursorSprite_) {
         const float bob = std::sin(titleUiTime_ * 7.5f) * 5.0f;
         const float squash = 1.0f + pulse * 0.06f;
-        mainMenuCursorSprite_->SetPosition({
-            selectedFramePosition.x + mainMenuCursorOffset_.x,
-            selectedFramePosition.y + mainMenuCursorOffset_.y + bob
-        });
-        mainMenuCursorSprite_->SetSize({
-            mainMenuCursorBaseSize_.x * squash,
-            mainMenuCursorBaseSize_.y * (1.05f - pulse * 0.05f)
-        });
-        mainMenuCursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, menuAlpha });
+        mainMenuCursorSprite_->SetPosition({selectedFramePosition.x + mainMenuCursorOffset_.x,
+                                            selectedFramePosition.y + mainMenuCursorOffset_.y + bob});
+        mainMenuCursorSprite_->SetSize(
+            {mainMenuCursorBaseSize_.x * squash, mainMenuCursorBaseSize_.y * (1.05f - pulse * 0.05f)});
+        mainMenuCursorSprite_->SetColor({1.0f, 1.0f, 1.0f, menuAlpha});
         mainMenuCursorSprite_->Update();
     }
     if (mainMenuArrowSprite_) {
         const float arrowPulse = 1.0f + pulse * 0.06f;
-        mainMenuArrowSprite_->SetPosition({
-            selectedFramePosition.x + mainMenuArrowOffset_.x + std::sin(titleUiTime_ * 8.0f) * 3.0f,
-            selectedFramePosition.y + mainMenuArrowOffset_.y
-        });
-        mainMenuArrowSprite_->SetSize({
-            mainMenuArrowBaseSize_.x * arrowPulse,
-            mainMenuArrowBaseSize_.y * arrowPulse
-        });
-        mainMenuArrowSprite_->SetColor({ 1.0f, 1.0f, 1.0f, menuAlpha });
+        mainMenuArrowSprite_->SetPosition(
+            {selectedFramePosition.x + mainMenuArrowOffset_.x + std::sin(titleUiTime_ * 8.0f) * 3.0f,
+             selectedFramePosition.y + mainMenuArrowOffset_.y});
+        mainMenuArrowSprite_->SetSize({mainMenuArrowBaseSize_.x * arrowPulse, mainMenuArrowBaseSize_.y * arrowPulse});
+        mainMenuArrowSprite_->SetColor({1.0f, 1.0f, 1.0f, menuAlpha});
         mainMenuArrowSprite_->Update();
     }
     if (mainMenuPromptSprite_) {
@@ -743,7 +718,7 @@ void TitleScene::UpdateMainMenu() {
         const float promptAlpha = (0.38f + promptPulse * 0.55f) * menuAlpha;
         mainMenuPromptSprite_->SetPosition(mainMenuPromptBasePosition_);
         mainMenuPromptSprite_->SetSize(mainMenuPromptBaseSize_);
-        mainMenuPromptSprite_->SetColor({ 1.0f, 1.0f, 1.0f, promptAlpha });
+        mainMenuPromptSprite_->SetColor({1.0f, 1.0f, 1.0f, promptAlpha});
         mainMenuPromptSprite_->Update();
     }
 
@@ -755,8 +730,7 @@ void TitleScene::UpdateMainMenu() {
             currentSaveSlotIndex_ = std::clamp(currentSaveSlotIndex_, 0, GameDataManager::kSaveSlotCount - 1);
             saveSelectFocusIndex_ = currentSaveSlotIndex_;
             DebugConsole::GetInstance()->AddLog("[Title] Open save slot select.");
-        }
-        else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
+        } else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
             DebugConsole::GetInstance()->AddLog("[Title] Open settings overlay.");
             if (settingsOverlay_) {
                 settingsOverlay_->SetActive(true);
@@ -768,18 +742,11 @@ void TitleScene::UpdateMainMenu() {
 void TitleScene::UpdateSaveSelect() {
     InputManager* input = InputManager::GetInstance();
 
-    const bool moveUp =
-        input->IsKeyTriggered(DIK_UP) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
-    const bool moveDown =
-        input->IsKeyTriggered(DIK_DOWN) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
-    const bool moveLeft =
-        input->IsKeyTriggered(DIK_LEFT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
+    const bool moveUp = input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+    const bool moveDown = input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+    const bool moveLeft = input->IsKeyTriggered(DIK_LEFT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
     const bool moveRight =
-        input->IsKeyTriggered(DIK_RIGHT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
+        input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
 
     if (saveSelectMode_ == SaveSelectMode::DeleteConfirm) {
         if (moveLeft || moveRight) {
@@ -846,11 +813,12 @@ void TitleScene::UpdateSaveSelect() {
         return;
     }
 
-    const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
+    const GameDataManager::SaveSlotSummary summary =
+        GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
     const bool requestDelete =
         ((input->IsKeyTriggered(DIK_D) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_X)) && summary.exists) ||
         (saveSelectFocusIndex_ == kDeleteFocusIndex && summary.exists &&
-            (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)));
+         (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)));
 
     if (requestDelete) {
         saveSelectMode_ = SaveSelectMode::DeleteConfirm;
@@ -910,10 +878,12 @@ void TitleScene::InitializeSaveSlotUI() {
     const float firstY = screenH * 0.21f;
     const float slotStep = 172.0f;
 
-    auto bindSprite = [&](Sprite*& target, const std::string& name, const std::string& texture, const Vector2& position, const Vector2& size, const Vector4& color) {
+    auto bindSprite = [&](Sprite*& target, const std::string& name, const std::string& texture, const Vector2& position,
+                          const Vector2& size, const Vector4& color) {
         target = GetSpriteByName(name);
         if (!target) {
-            const std::string fullTexture = texture.rfind("Resources/", 0) == 0 ? texture : "Resources/sprite/" + texture;
+            const std::string fullTexture =
+                texture.rfind("Resources/", 0) == 0 ? texture : "Resources/sprite/" + texture;
             target = CreateUISprite(fullTexture, position, size, color);
             target->SetName(name);
             target->SetTextureName(texture);
@@ -926,60 +896,89 @@ void TitleScene::InitializeSaveSlotUI() {
         saveSelectHeader_->SetVisible(false);
     }
 
-    bindSprite(saveSelectBackdrop_, "saveSelectBackdrop", kWhite, { screenW * 0.5f, screenH * 0.5f }, { screenW, screenH }, { 0.04f, 0.08f, 0.13f, 0.42f });
+    bindSprite(saveSelectBackdrop_, "saveSelectBackdrop", kWhite, {screenW * 0.5f, screenH * 0.5f}, {screenW, screenH},
+               {0.04f, 0.08f, 0.13f, 0.42f});
 
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
-        const Vector2 pos = { centerX, firstY + slotStep * static_cast<float>(i) };
+        const Vector2 pos = {centerX, firstY + slotStep * static_cast<float>(i)};
         const std::string suffix = "_" + std::to_string(i);
 
-        bindSprite(saveSlotCards_[i], "saveSlotCard" + suffix, kSaveSlotCard, pos, { 1120.0f, 162.0f }, { 1.0f, 1.0f, 1.0f, 0.92f });
-        bindSprite(saveSlotNumberSprites_[i], "saveSlotNumber" + suffix, "number/big1.png", { pos.x - 470.0f, pos.y - 2.0f }, { 72.0f, 106.0f }, { 1.0f, 0.98f, 0.78f, 1.0f });
-        bindSprite(saveSlotFileNameTexts_[i], "saveSlotFileName" + suffix, kFileTextPaths[i], { pos.x - 260.0f, pos.y - 43.0f }, { 226.0f, 87.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
-        bindSprite(saveSlotStatusTexts_[i], "saveSlotStatus" + suffix, kTextStartFromBeginning, { pos.x - 260.0f, pos.y + 38.0f }, { 210.0f, 92.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
-        bindSprite(saveSlotIcons_[i], "saveSlotIcon" + suffix, kSlimeIcon, { pos.x - 365.0f, pos.y }, { 128.0f, 128.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
-        bindSprite(saveSlotCrownIcons_[i], "saveSlotCrownIcon" + suffix, kCrownIcon, { pos.x + 65.0f, pos.y - 38.0f }, { 58.0f, 58.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
-        bindSprite(saveSlotCrownXIcons_[i], "saveSlotCrownX" + suffix, kXIcon, { pos.x + 114.0f, pos.y - 38.0f }, { 36.0f, 36.0f }, { 1.0f, 0.98f, 0.70f, 1.0f });
+        bindSprite(saveSlotCards_[i], "saveSlotCard" + suffix, kSaveSlotCard, pos, {1120.0f, 162.0f},
+                   {1.0f, 1.0f, 1.0f, 0.92f});
+        bindSprite(saveSlotNumberSprites_[i], "saveSlotNumber" + suffix, "number/big1.png",
+                   {pos.x - 470.0f, pos.y - 2.0f}, {72.0f, 106.0f}, {1.0f, 0.98f, 0.78f, 1.0f});
+        bindSprite(saveSlotFileNameTexts_[i], "saveSlotFileName" + suffix, kFileTextPaths[i],
+                   {pos.x - 260.0f, pos.y - 43.0f}, {226.0f, 87.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+        bindSprite(saveSlotStatusTexts_[i], "saveSlotStatus" + suffix, kTextStartFromBeginning,
+                   {pos.x - 260.0f, pos.y + 38.0f}, {210.0f, 92.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+        bindSprite(saveSlotIcons_[i], "saveSlotIcon" + suffix, kSlimeIcon, {pos.x - 365.0f, pos.y}, {128.0f, 128.0f},
+                   {1.0f, 1.0f, 1.0f, 1.0f});
+        bindSprite(saveSlotCrownIcons_[i], "saveSlotCrownIcon" + suffix, kCrownIcon, {pos.x + 65.0f, pos.y - 38.0f},
+                   {58.0f, 58.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+        bindSprite(saveSlotCrownXIcons_[i], "saveSlotCrownX" + suffix, kXIcon, {pos.x + 114.0f, pos.y - 38.0f},
+                   {36.0f, 36.0f}, {1.0f, 0.98f, 0.70f, 1.0f});
         for (int digit = 0; digit < 2; ++digit) {
-            bindSprite(saveSlotCrownDigits_[i][digit], "saveSlotCrownDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 153.0f + digit * 31.0f, pos.y - 38.0f }, { 28.0f, 42.0f }, { 1.0f, 0.95f, 0.55f, 1.0f });
+            bindSprite(saveSlotCrownDigits_[i][digit], "saveSlotCrownDigit" + std::to_string(digit) + suffix,
+                       "number/0.png", {pos.x + 153.0f + digit * 31.0f, pos.y - 38.0f}, {28.0f, 42.0f},
+                       {1.0f, 0.95f, 0.55f, 1.0f});
         }
 
-        bindSprite(saveSlotStarIcons_[i], "saveSlotStarIcon" + suffix, kStarIcon, { pos.x + 65.0f, pos.y + 28.0f }, { 54.0f, 54.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
-        bindSprite(saveSlotStarXIcons_[i], "saveSlotStarX" + suffix, kXIcon, { pos.x + 114.0f, pos.y + 28.0f }, { 36.0f, 36.0f }, { 1.0f, 0.98f, 0.70f, 1.0f });
+        bindSprite(saveSlotStarIcons_[i], "saveSlotStarIcon" + suffix, kStarIcon, {pos.x + 65.0f, pos.y + 28.0f},
+                   {54.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 1.0f});
+        bindSprite(saveSlotStarXIcons_[i], "saveSlotStarX" + suffix, kXIcon, {pos.x + 114.0f, pos.y + 28.0f},
+                   {36.0f, 36.0f}, {1.0f, 0.98f, 0.70f, 1.0f});
         for (int digit = 0; digit < 2; ++digit) {
-            bindSprite(saveSlotStarDigits_[i][digit], "saveSlotStarDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 153.0f + digit * 31.0f, pos.y + 28.0f }, { 28.0f, 42.0f }, { 1.0f, 0.95f, 0.55f, 1.0f });
+            bindSprite(saveSlotStarDigits_[i][digit], "saveSlotStarDigit" + std::to_string(digit) + suffix,
+                       "number/0.png", {pos.x + 153.0f + digit * 31.0f, pos.y + 28.0f}, {28.0f, 42.0f},
+                       {1.0f, 0.95f, 0.55f, 1.0f});
         }
 
-        bindSprite(saveSlotLifeIcons_[i], "saveSlotLifeIcon" + suffix, kSlimeIcon, { pos.x + 355.0f, pos.y + 28.0f }, { 56.0f, 56.0f }, { 1.0f, 1.0f, 1.0f, 0.95f });
-        bindSprite(saveSlotLifeXIcons_[i], "saveSlotLifeX" + suffix, kXIcon, { pos.x + 404.0f, pos.y + 28.0f }, { 36.0f, 36.0f }, { 1.0f, 0.95f, 0.58f, 0.95f });
+        bindSprite(saveSlotLifeIcons_[i], "saveSlotLifeIcon" + suffix, kSlimeIcon, {pos.x + 355.0f, pos.y + 28.0f},
+                   {56.0f, 56.0f}, {1.0f, 1.0f, 1.0f, 0.95f});
+        bindSprite(saveSlotLifeXIcons_[i], "saveSlotLifeX" + suffix, kXIcon, {pos.x + 404.0f, pos.y + 28.0f},
+                   {36.0f, 36.0f}, {1.0f, 0.95f, 0.58f, 0.95f});
         for (int digit = 0; digit < 2; ++digit) {
-            bindSprite(saveSlotLifeDigits_[i][digit], "saveSlotLifeDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 443.0f + digit * 31.0f, pos.y + 28.0f }, { 28.0f, 42.0f }, { 1.0f, 0.94f, 0.56f, 1.0f });
+            bindSprite(saveSlotLifeDigits_[i][digit], "saveSlotLifeDigit" + std::to_string(digit) + suffix,
+                       "number/0.png", {pos.x + 443.0f + digit * 31.0f, pos.y + 28.0f}, {28.0f, 42.0f},
+                       {1.0f, 0.94f, 0.56f, 1.0f});
         }
 
-        bindSprite(saveSlotPlayTimeLabels_[i], "saveSlotPlayTimeLabel" + suffix, kTextPlayTime, { pos.x + 325.0f, pos.y - 38.0f }, { 150.0f, 54.0f }, { 1.0f, 1.0f, 1.0f, 0.86f });
+        bindSprite(saveSlotPlayTimeLabels_[i], "saveSlotPlayTimeLabel" + suffix, kTextPlayTime,
+                   {pos.x + 325.0f, pos.y - 38.0f}, {150.0f, 54.0f}, {1.0f, 1.0f, 1.0f, 0.86f});
         for (int digit = 0; digit < 5; ++digit) {
             const char* texture = digit == 2 ? "number/colon.png" : "number/0.png";
-            bindSprite(saveSlotPlayTimeDigits_[i][digit], "saveSlotPlayTimeDigit" + std::to_string(digit) + suffix, texture, { pos.x + 418.0f + digit * 24.0f, pos.y - 38.0f }, digit == 2 ? Vector2{ 13.0f, 38.0f } : Vector2{ 21.0f, 38.0f }, { 1.0f, 0.95f, 0.70f, 0.95f });
+            bindSprite(saveSlotPlayTimeDigits_[i][digit], "saveSlotPlayTimeDigit" + std::to_string(digit) + suffix,
+                       texture, {pos.x + 418.0f + digit * 24.0f, pos.y - 38.0f},
+                       digit == 2 ? Vector2{13.0f, 38.0f} : Vector2{21.0f, 38.0f}, {1.0f, 0.95f, 0.70f, 0.95f});
         }
     }
 
-    bindSprite(saveDeleteButtonBack_, "saveDeleteButtonBack", kSaveDeleteButton, { screenW * 0.25f, screenH * 0.82f }, { 430.0f, 86.0f }, { 1.0f, 1.0f, 1.0f, 0.88f });
-    bindSprite(saveDeleteButtonText_, "saveDeleteButtonText", kTextDeleteFile, { screenW * 0.25f, screenH * 0.82f }, { 278.0f, 74.0f }, { 1.0f, 1.0f, 1.0f, 0.96f });
-    bindSprite(savePromptBubble_, "savePromptBubble", "ui/title/save_prompt_bubble.png", { screenW * 0.70f, screenH * 0.82f }, { 720.0f, 190.0f }, { 1.0f, 1.0f, 1.0f, 0.92f });
-    bindSprite(savePromptText_, "savePromptText", kTextStartQuestion, { screenW * 0.70f, screenH * 0.78f }, { 520.0f, 83.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
-    bindSprite(saveDeleteQuestionText_, "saveDeleteQuestionText", kTextDeleteQuestion, { screenW * 0.70f, screenH * 0.76f }, { 300.0f, 92.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
-    bindSprite(saveConfirmYesText_, "saveConfirmYesText", kTextYes, { screenW * 0.64f, screenH * 0.85f }, { 92.0f, 72.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
-    bindSprite(saveConfirmBackText_, "saveConfirmBackText", kTextBack, { screenW * 0.77f, screenH * 0.85f }, { 132.0f, 74.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
+    bindSprite(saveDeleteButtonBack_, "saveDeleteButtonBack", kSaveDeleteButton, {screenW * 0.25f, screenH * 0.82f},
+               {430.0f, 86.0f}, {1.0f, 1.0f, 1.0f, 0.88f});
+    bindSprite(saveDeleteButtonText_, "saveDeleteButtonText", kTextDeleteFile, {screenW * 0.25f, screenH * 0.82f},
+               {278.0f, 74.0f}, {1.0f, 1.0f, 1.0f, 0.96f});
+    bindSprite(savePromptBubble_, "savePromptBubble", "ui/title/save_prompt_bubble.png",
+               {screenW * 0.70f, screenH * 0.82f}, {720.0f, 190.0f}, {1.0f, 1.0f, 1.0f, 0.92f});
+    bindSprite(savePromptText_, "savePromptText", kTextStartQuestion, {screenW * 0.70f, screenH * 0.78f},
+               {520.0f, 83.0f}, {0.28f, 0.20f, 0.14f, 1.0f});
+    bindSprite(saveDeleteQuestionText_, "saveDeleteQuestionText", kTextDeleteQuestion,
+               {screenW * 0.70f, screenH * 0.76f}, {300.0f, 92.0f}, {0.28f, 0.20f, 0.14f, 1.0f});
+    bindSprite(saveConfirmYesText_, "saveConfirmYesText", kTextYes, {screenW * 0.64f, screenH * 0.85f}, {92.0f, 72.0f},
+               {0.28f, 0.20f, 0.14f, 1.0f});
+    bindSprite(saveConfirmBackText_, "saveConfirmBackText", kTextBack, {screenW * 0.77f, screenH * 0.85f},
+               {132.0f, 74.0f}, {0.28f, 0.20f, 0.14f, 1.0f});
 }
 
 void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector4& color, bool visible) {
     value = std::clamp(value, 0, 99);
 
-    std::array<int, 2> digitValues = { value / 10, value % 10 };
+    std::array<int, 2> digitValues = {value / 10, value % 10};
     const int digitCount = value >= 10 ? 2 : 1;
 
     for (int i = 0; i < 2; ++i) {
         Sprite* sprite = digits[i];
-        if (!sprite) continue;
+        if (!sprite)
+            continue;
 
         const bool digitVisible = visible && (digitCount == 2 || i == 1);
         sprite->SetVisible(digitVisible);
@@ -995,13 +994,14 @@ void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, con
     }
 }
 
-Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector4& color) {
+Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size,
+                                   const Vector4& color) {
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(spriteCommon_.get(), texturePath);
     sprite->SetPosition(position);
     sprite->SetSize(size);
     sprite->SetColor(color);
-    sprite->SetAnchorPoint({ 0.5f, 0.5f });
+    sprite->SetAnchorPoint({0.5f, 0.5f});
     sprite->SetVisible(false);
     sprite->Update();
 
@@ -1015,23 +1015,31 @@ void TitleScene::UpdateSaveSlotUI() {
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     const bool showMainMenu = !settingsOpen && !inSaveSelect && titleIntroComplete_;
-    if (titleTextSprite_) titleTextSprite_->SetVisible(false);
-    if (startTextSprite_) startTextSprite_->SetVisible(showMainMenu);
-    if (settingTextSprite_) settingTextSprite_->SetVisible(showMainMenu);
-    if (mainMenuStartFrameSprite_) mainMenuStartFrameSprite_->SetVisible(showMainMenu);
-    if (mainMenuSettingFrameSprite_) mainMenuSettingFrameSprite_->SetVisible(showMainMenu);
-    if (mainMenuArrowSprite_) mainMenuArrowSprite_->SetVisible(showMainMenu);
-    if (mainMenuCursorSprite_) mainMenuCursorSprite_->SetVisible(showMainMenu);
-    if (mainMenuPromptSprite_) mainMenuPromptSprite_->SetVisible(showMainMenu);
-    if (saveSelectHeader_) saveSelectHeader_->SetVisible(false);
+    if (titleTextSprite_)
+        titleTextSprite_->SetVisible(false);
+    if (startTextSprite_)
+        startTextSprite_->SetVisible(showMainMenu);
+    if (settingTextSprite_)
+        settingTextSprite_->SetVisible(showMainMenu);
+    if (mainMenuStartFrameSprite_)
+        mainMenuStartFrameSprite_->SetVisible(showMainMenu);
+    if (mainMenuSettingFrameSprite_)
+        mainMenuSettingFrameSprite_->SetVisible(showMainMenu);
+    if (mainMenuArrowSprite_)
+        mainMenuArrowSprite_->SetVisible(showMainMenu);
+    if (mainMenuCursorSprite_)
+        mainMenuCursorSprite_->SetVisible(showMainMenu);
+    if (mainMenuPromptSprite_)
+        mainMenuPromptSprite_->SetVisible(showMainMenu);
+    if (saveSelectHeader_)
+        saveSelectHeader_->SetVisible(false);
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
 
     if (saveSelectBackdrop_) {
         saveSelectBackdrop_->SetVisible(inSaveSelect);
-        saveSelectBackdrop_->SetColor(deleteConfirm
-            ? Vector4{ 0.03f, 0.05f, 0.08f, 0.52f }
-            : Vector4{ 0.04f, 0.08f, 0.13f, 0.42f });
+        saveSelectBackdrop_->SetColor(deleteConfirm ? Vector4{0.03f, 0.05f, 0.08f, 0.52f}
+                                                    : Vector4{0.04f, 0.08f, 0.13f, 0.42f});
     }
 
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
@@ -1039,22 +1047,18 @@ void TitleScene::UpdateSaveSlotUI() {
         const bool deleteTarget = inSaveSelect && deleteConfirm && i == currentSaveSlotIndex_;
         const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(i);
         const bool emphasized = selected || deleteTarget;
-        const Vector4 cardColor = emphasized
-            ? Vector4{ 1.0f, 1.0f, 1.0f, 0.98f + pulse * 0.02f }
-            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.98f : 1.0f };
-        const Vector4 iconColor = summary.exists
-            ? Vector4{ 1.0f, 1.0f, 1.0f, emphasized ? 1.0f : 0.96f }
-            : Vector4{ 0.95f, 0.95f, 0.95f, emphasized ? 0.86f : 0.72f };
-        const Vector4 numberColor = emphasized
-            ? Vector4{ 1.0f, 0.86f + pulse * 0.08f, 0.30f, 1.0f }
-            : Vector4{ 0.96f, 0.86f, 0.48f, summary.exists ? 0.96f : 0.80f };
-        const Vector4 textColor = emphasized
-            ? Vector4{ 0.32f, 0.16f, 0.20f, 1.0f }
-            : Vector4{ 0.16f, 0.25f, 0.38f, 1.0f };
+        const Vector4 cardColor = emphasized ? Vector4{1.0f, 1.0f, 1.0f, 0.98f + pulse * 0.02f}
+                                             : Vector4{1.0f, 1.0f, 1.0f, summary.exists ? 0.98f : 1.0f};
+        const Vector4 iconColor = summary.exists ? Vector4{1.0f, 1.0f, 1.0f, emphasized ? 1.0f : 0.96f}
+                                                 : Vector4{0.95f, 0.95f, 0.95f, emphasized ? 0.86f : 0.72f};
+        const Vector4 numberColor = emphasized ? Vector4{1.0f, 0.86f + pulse * 0.08f, 0.30f, 1.0f}
+                                               : Vector4{0.96f, 0.86f, 0.48f, summary.exists ? 0.96f : 0.80f};
+        const Vector4 textColor = emphasized ? Vector4{0.32f, 0.16f, 0.20f, 1.0f} : Vector4{0.16f, 0.25f, 0.38f, 1.0f};
 
         if (saveSlotCards_[i]) {
             saveSlotCards_[i]->SetVisible(inSaveSelect);
-            const char* cardTexture = emphasized ? kSaveSlotCardSelected : (summary.exists ? kSaveSlotCard : kSaveSlotCardEmpty);
+            const char* cardTexture =
+                emphasized ? kSaveSlotCardSelected : (summary.exists ? kSaveSlotCard : kSaveSlotCardEmpty);
             saveSlotCards_[i]->SetTextureHandle(Sprite::LoadTexture(cardTexture));
             saveSlotCards_[i]->SetColor(cardColor);
         }
@@ -1078,9 +1082,8 @@ void TitleScene::UpdateSaveSlotUI() {
         }
 
         if (saveSlotStatusTexts_[i]) {
-            const uint32_t handle = Sprite::LoadTexture(summary.exists
-                ? "generated/text/text_text_46356cfa.png"
-                : "generated/text/text_text_c8a6dc24.png");
+            const uint32_t handle = Sprite::LoadTexture(summary.exists ? "generated/text/text_text_46356cfa.png"
+                                                                       : "generated/text/text_text_c8a6dc24.png");
             SetFullSaveUiTexture(saveSlotStatusTexts_[i], handle, true);
             saveSlotStatusTexts_[i]->SetVisible(inSaveSelect);
             saveSlotStatusTexts_[i]->SetColor(textColor);
@@ -1099,12 +1102,8 @@ void TitleScene::UpdateSaveSlotUI() {
             saveSlotCrownXIcons_[i]->SetVisible(inSaveSelect && summary.exists);
             saveSlotCrownXIcons_[i]->SetColor(numberColor);
         }
-        SetNumberSprites(
-            saveSlotCrownDigits_[i],
-            summary.clearedStageCount,
-            numberColor,
-            inSaveSelect && summary.exists
-        );
+        SetNumberSprites(saveSlotCrownDigits_[i], summary.clearedStageCount, numberColor,
+                         inSaveSelect && summary.exists);
 
         if (saveSlotStarIcons_[i]) {
             saveSlotStarIcons_[i]->SetVisible(inSaveSelect && summary.exists);
@@ -1114,12 +1113,8 @@ void TitleScene::UpdateSaveSlotUI() {
             saveSlotStarXIcons_[i]->SetVisible(inSaveSelect && summary.exists);
             saveSlotStarXIcons_[i]->SetColor(numberColor);
         }
-        SetNumberSprites(
-            saveSlotStarDigits_[i],
-            summary.collectedStarCoins,
-            numberColor,
-            inSaveSelect && summary.exists
-        );
+        SetNumberSprites(saveSlotStarDigits_[i], summary.collectedStarCoins, numberColor,
+                         inSaveSelect && summary.exists);
 
         if (saveSlotLifeIcons_[i]) {
             saveSlotLifeIcons_[i]->SetVisible(inSaveSelect && summary.exists);
@@ -1130,12 +1125,7 @@ void TitleScene::UpdateSaveSlotUI() {
             saveSlotLifeXIcons_[i]->SetColor(numberColor);
         }
 
-        SetNumberSprites(
-            saveSlotLifeDigits_[i],
-            summary.lives,
-            numberColor,
-            inSaveSelect && summary.exists
-        );
+        SetNumberSprites(saveSlotLifeDigits_[i], summary.lives, numberColor, inSaveSelect && summary.exists);
 
         if (saveSlotPlayTimeLabels_[i]) {
             saveSlotPlayTimeLabels_[i]->SetVisible(inSaveSelect && summary.exists);
@@ -1145,15 +1135,17 @@ void TitleScene::UpdateSaveSlotUI() {
         const int totalSeconds = std::clamp(summary.playTimeSeconds, 0, 99 * 60 + 59);
         const int minutes = totalSeconds / 60;
         const int seconds = totalSeconds % 60;
-        const std::array<int, 4> timeDigits = { minutes / 10, minutes % 10, seconds / 10, seconds % 10 };
+        const std::array<int, 4> timeDigits = {minutes / 10, minutes % 10, seconds / 10, seconds % 10};
         int digitIndex = 0;
         for (int part = 0; part < 5; ++part) {
             Sprite* sprite = saveSlotPlayTimeDigits_[i][part];
-            if (!sprite) continue;
+            if (!sprite)
+                continue;
 
             const bool visible = inSaveSelect && summary.exists;
             sprite->SetVisible(visible);
-            if (!visible) continue;
+            if (!visible)
+                continue;
 
             if (part == 2) {
                 sprite->SetTextureHandle(Sprite::LoadTexture("number/colon.png"));
@@ -1165,28 +1157,30 @@ void TitleScene::UpdateSaveSlotUI() {
         }
     }
 
-    const GameDataManager::SaveSlotSummary selectedSummary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
-    const bool deleteFocused = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == GameDataManager::kSaveSlotCount;
-    const Vector4 enabledDeleteColor = selectedSummary.exists
-        ? (deleteFocused ? Vector4{ 1.0f, 1.0f, 1.0f, 0.86f + pulse * 0.14f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.86f })
-        : Vector4{ 0.42f, 0.42f, 0.42f, 0.34f };
+    const GameDataManager::SaveSlotSummary selectedSummary =
+        GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
+    const bool deleteFocused =
+        inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == GameDataManager::kSaveSlotCount;
+    const Vector4 enabledDeleteColor =
+        selectedSummary.exists
+            ? (deleteFocused ? Vector4{1.0f, 1.0f, 1.0f, 0.86f + pulse * 0.14f} : Vector4{1.0f, 1.0f, 1.0f, 0.86f})
+            : Vector4{0.42f, 0.42f, 0.42f, 0.34f};
     if (saveDeleteButtonBack_) {
         saveDeleteButtonBack_->SetVisible(inSaveSelect && !deleteConfirm);
-        saveDeleteButtonBack_->SetTextureHandle(Sprite::LoadTexture(deleteFocused ? kSaveDeleteButtonSelected : kSaveDeleteButton));
+        saveDeleteButtonBack_->SetTextureHandle(
+            Sprite::LoadTexture(deleteFocused ? kSaveDeleteButtonSelected : kSaveDeleteButton));
         saveDeleteButtonBack_->SetColor(enabledDeleteColor);
     }
     if (saveDeleteButtonText_) {
         saveDeleteButtonText_->SetVisible(inSaveSelect && !deleteConfirm);
-        saveDeleteButtonText_->SetColor(selectedSummary.exists
-            ? Vector4{ 0.16f, 0.25f, 0.38f, 1.0f }
-            : Vector4{ 0.28f, 0.32f, 0.38f, 0.70f });
+        saveDeleteButtonText_->SetColor(selectedSummary.exists ? Vector4{0.16f, 0.25f, 0.38f, 1.0f}
+                                                               : Vector4{0.28f, 0.32f, 0.38f, 0.70f});
     }
 
     if (savePromptBubble_) {
         savePromptBubble_->SetVisible(inSaveSelect);
-        savePromptBubble_->SetColor(deleteConfirm
-            ? Vector4{ 1.0f, 0.86f, 0.64f, 0.94f }
-            : Vector4{ 1.0f, 0.95f, 0.72f, 0.90f });
+        savePromptBubble_->SetColor(deleteConfirm ? Vector4{1.0f, 0.86f, 0.64f, 0.94f}
+                                                  : Vector4{1.0f, 0.95f, 0.72f, 0.90f});
     }
     if (savePromptText_) {
         savePromptText_->SetVisible(inSaveSelect && !deleteConfirm && !deleteFocused);
@@ -1196,18 +1190,17 @@ void TitleScene::UpdateSaveSlotUI() {
     }
     if (saveConfirmYesText_) {
         saveConfirmYesText_->SetVisible(deleteConfirm);
-        saveConfirmYesText_->SetColor(deleteConfirmIndex_ == 0
-            ? Vector4{ 0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f }
-            : Vector4{ 0.28f, 0.20f, 0.14f, 0.70f });
+        saveConfirmYesText_->SetColor(deleteConfirmIndex_ == 0 ? Vector4{0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f}
+                                                               : Vector4{0.28f, 0.20f, 0.14f, 0.70f});
     }
     if (saveConfirmBackText_) {
         saveConfirmBackText_->SetVisible(deleteConfirm);
-        saveConfirmBackText_->SetColor(deleteConfirmIndex_ == 1
-            ? Vector4{ 0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f }
-            : Vector4{ 0.28f, 0.20f, 0.14f, 0.70f });
+        saveConfirmBackText_->SetColor(deleteConfirmIndex_ == 1 ? Vector4{0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f}
+                                                                : Vector4{0.28f, 0.20f, 0.14f, 0.70f});
     }
 }
 
+// 空スロットは初期データで開始します。チュートリアルの完了記録がない場合は選択画面を飛ばします。
 void TitleScene::StartSelectedSaveSlot() {
     GameDataManager* saveData = GameDataManager::GetInstance();
     const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
@@ -1218,7 +1211,8 @@ void TitleScene::StartSelectedSaveSlot() {
     }
 
     const bool tutorialCleared = saveData->IsStageCleared(-1);
-    DebugConsole::GetInstance()->AddLog(tutorialCleared ? "[Title] Start from stage select." : "[Title] Start tutorial.");
+    DebugConsole::GetInstance()->AddLog(tutorialCleared ? "[Title] Start from stage select."
+                                                        : "[Title] Start tutorial.");
     SceneManager::GetInstance()->ChangeScene(tutorialCleared ? "SELECT" : "TUTORIAL");
 }
 
@@ -1265,18 +1259,22 @@ void TitleScene::Draw() {
 
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue; // フォグ(7)も不透明パスから除外
+        if (isFirstPerson && obj.get() == player_)
+            continue;
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType()))
+            continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
     // --- 2. 中間描画 (弾・デバッグ) ---
+    DrawEnemyTelegraphs(pointLightRes, spotLightRes);
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
     // --- 3. 透明描画 ---
     for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
+        if (isFirstPerson && obj.get() == player_)
+            continue;
         if (obj->GetMaterialType() == 1) { // 透明のみ描画
             obj->Draw(pointLightRes, spotLightRes);
         }
@@ -1284,7 +1282,8 @@ void TitleScene::Draw() {
     particleSystem_->Draw();
 
     DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
-    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    const bool grabUpdated =
+        DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
     DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 

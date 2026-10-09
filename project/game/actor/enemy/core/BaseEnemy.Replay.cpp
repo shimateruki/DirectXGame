@@ -1,30 +1,27 @@
 #include "BaseEnemy.h"
 
 namespace {
-json ToJson(const Vector3& value) {
-    return json::array({ value.x, value.y, value.z });
-}
+json ToJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
 
-json ToJson(const Vector4& value) {
-    return json::array({ value.x, value.y, value.z, value.w });
-}
+json ToJson(const Vector4& value) { return json::array({value.x, value.y, value.z, value.w}); }
 
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
-    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>() };
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
 }
 
 Vector4 ReadVector4(const json& value, const Vector4& fallback) {
     if (!value.is_array() || value.size() < 4) {
         return fallback;
     }
-    return { value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>() };
+    return {value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
 }
-}
+} // namespace
 
 void BaseEnemy::CaptureReplayCustomState(json& state) const {
+    // 再生で行動がずれないよう、基本姿勢だけでなく AI と被弾状態も保存します。
     Character::CaptureReplayCustomState(state);
     state["enemyDamageCooldown"] = damageCooldownTimer_;
     state["enemyColorResetTimer"] = colorResetTimer_;
@@ -72,6 +69,7 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
 }
 
 void BaseEnemy::RestoreReplayCustomState(const json& state) {
+    // 録画にない項目は現在値を維持し、古いリプレイも読めるようにします。
     Character::RestoreReplayCustomState(state);
     damageCooldownTimer_ = state.value("enemyDamageCooldown", damageCooldownTimer_);
     colorResetTimer_ = state.value("enemyColorResetTimer", colorResetTimer_);
@@ -79,20 +77,25 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     damageReactionDuration_ = state.value("enemyDamageReactionDuration", damageReactionDuration_);
     damageReactionStrength_ = state.value("enemyDamageReactionStrength", damageReactionStrength_);
     if (state.contains("enemyDamageReactionDirection")) {
-        damageReactionLocalDirection_ = ReadVector3(state["enemyDamageReactionDirection"], damageReactionLocalDirection_);
+        damageReactionLocalDirection_ =
+            ReadVector3(state["enemyDamageReactionDirection"], damageReactionLocalDirection_);
     }
-    if (state.contains("enemyDefaultColor")) defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
+    if (state.contains("enemyDefaultColor"))
+        defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
     isCarried_ = state.value("enemyCarried", isCarried_);
     isDormant_ = state.value("enemyDormant", isDormant_);
     throwRecoveryTimer_ = state.value("enemyThrowRecoveryTimer", throwRecoveryTimer_);
     isThrownPhysics_ = state.value("enemyThrownPhysics", isThrownPhysics_);
-    if (state.contains("enemyWanderOrigin")) wanderOrigin_ = ReadVector3(state["enemyWanderOrigin"], wanderOrigin_);
-    if (state.contains("enemyWanderTarget")) wanderTarget_ = ReadVector3(state["enemyWanderTarget"], wanderTarget_);
+    if (state.contains("enemyWanderOrigin"))
+        wanderOrigin_ = ReadVector3(state["enemyWanderOrigin"], wanderOrigin_);
+    if (state.contains("enemyWanderTarget"))
+        wanderTarget_ = ReadVector3(state["enemyWanderTarget"], wanderTarget_);
     wanderWaitTimer_ = state.value("enemyWanderWaitTimer", wanderWaitTimer_);
     wanderRetargetTimer_ = state.value("enemyWanderRetargetTimer", wanderRetargetTimer_);
     wanderSeed_ = state.value("enemyWanderSeed", wanderSeed_);
     hasWanderOrigin_ = state.value("enemyHasWanderOrigin", hasWanderOrigin_);
-    if (state.contains("enemyThrownAngularVelocity")) thrownAngularVelocity_ = ReadVector3(state["enemyThrownAngularVelocity"], thrownAngularVelocity_);
+    if (state.contains("enemyThrownAngularVelocity"))
+        thrownAngularVelocity_ = ReadVector3(state["enemyThrownAngularVelocity"], thrownAngularVelocity_);
     thrownTimer_ = state.value("enemyThrownTimer", thrownTimer_);
     thrownSettleTimer_ = state.value("enemyThrownSettleTimer", thrownSettleTimer_);
     throwRecoveryRotateTimer_ = state.value("enemyThrowRecoveryRotateTimer", throwRecoveryRotateTimer_);
@@ -121,14 +124,20 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     noticeReactionCooldown_ = state.value("enemyNoticeCooldown", noticeReactionCooldown_);
     noticeDetectionRange_ = state.value("enemyNoticeDetectionRange", noticeDetectionRange_);
     noticeMarkYaw_ = state.value("enemyNoticeYaw", noticeMarkYaw_);
-    if (state.contains("enemyNoticeBaseScale")) noticeBaseScale_ = ReadVector3(state["enemyNoticeBaseScale"], noticeBaseScale_);
-    if (state.contains("enemyNoticeBaseRotation")) noticeBaseRotation_ = ReadVector3(state["enemyNoticeBaseRotation"], noticeBaseRotation_);
-    if (state.contains("enemyNoticeBaseColor")) noticeBaseColor_ = ReadVector4(state["enemyNoticeBaseColor"], noticeBaseColor_);
+    if (state.contains("enemyNoticeBaseScale"))
+        noticeBaseScale_ = ReadVector3(state["enemyNoticeBaseScale"], noticeBaseScale_);
+    if (state.contains("enemyNoticeBaseRotation"))
+        noticeBaseRotation_ = ReadVector3(state["enemyNoticeBaseRotation"], noticeBaseRotation_);
+    if (state.contains("enemyNoticeBaseColor"))
+        noticeBaseColor_ = ReadVector4(state["enemyNoticeBaseColor"], noticeBaseColor_);
     defeatEffectTimer_ = state.value("enemyDefeatTimer", defeatEffectTimer_);
     defeatEffectParticleTimer_ = state.value("enemyDefeatParticleTimer", defeatEffectParticleTimer_);
-    if (state.contains("enemyDefeatBasePosition")) defeatBasePosition_ = ReadVector3(state["enemyDefeatBasePosition"], defeatBasePosition_);
-    if (state.contains("enemyDefeatBaseScale")) defeatBaseScale_ = ReadVector3(state["enemyDefeatBaseScale"], defeatBaseScale_);
-    if (state.contains("enemyDefeatBaseColor")) defeatBaseColor_ = ReadVector4(state["enemyDefeatBaseColor"], defeatBaseColor_);
+    if (state.contains("enemyDefeatBasePosition"))
+        defeatBasePosition_ = ReadVector3(state["enemyDefeatBasePosition"], defeatBasePosition_);
+    if (state.contains("enemyDefeatBaseScale"))
+        defeatBaseScale_ = ReadVector3(state["enemyDefeatBaseScale"], defeatBaseScale_);
+    if (state.contains("enemyDefeatBaseColor"))
+        defeatBaseColor_ = ReadVector4(state["enemyDefeatBaseColor"], defeatBaseColor_);
 
     if (isNoticeReactionActive_) {
         ConfigureNoticeMarkForReaction();

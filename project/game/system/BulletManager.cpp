@@ -4,9 +4,7 @@
 #include <algorithm>
 
 namespace {
-bool IsSpecialMaterial(int32_t materialType) {
-    return (materialType >= 8 && materialType <= 22) || materialType == 26;
-}
+bool IsSpecialMaterial(int32_t materialType) { return (materialType >= 8 && materialType <= 22) || materialType == 26; }
 
 void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     if (!bullet || bullet->IsDead()) {
@@ -66,7 +64,7 @@ void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrv
         break;
     }
 }
-}
+} // namespace
 
 BulletManager* BulletManager::GetInstance() {
     static BulletManager instance;
@@ -96,11 +94,9 @@ void BulletManager::Clear() {
     bullets_.clear();
 }
 
-void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
-    uint32_t attr, uint32_t mask,
-    const std::string& model, float radius, float life,
-    const BulletVisualConfig& visualConfig, float damage,
-    const StatusEffectApplication& statusEffect, DamageType damageType, float gravity) {
+void BulletManager::Fire(const Vector3& pos, const Vector3& vel, uint32_t attr, uint32_t mask, const std::string& model,
+                         float radius, float life, const BulletVisualConfig& visualConfig, float damage,
+                         const StatusEffectApplication& statusEffect, DamageType damageType, float gravity) {
 
     if (!common_ || !colManager_) {
         return;
@@ -108,8 +104,9 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
 
     auto bullet = std::make_unique<Bullet>();
     bullet->Initialize(common_);
+    if (!visualConfig.debugLabel.empty()) bullet->SetName(visualConfig.debugLabel);
     bullet->SetModel(model);
-    bullet->SetScale({ visualConfig.visualScale, visualConfig.visualScale, visualConfig.visualScale });
+    bullet->SetScale({visualConfig.visualScale, visualConfig.visualScale, visualConfig.visualScale});
     bullet->SetMaterialType(visualConfig.materialType);
     bullet->SetBlendMode(visualConfig.blendMode);
     bullet->SetColor(visualConfig.color);
@@ -128,7 +125,7 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
             param->effectSoftness = visualConfig.effectSoftness;
             param->effectIntensity = visualConfig.effectIntensity;
             param->billboardScale = visualConfig.billboardScale;
-            if (model == "Characters/magma_hopper") {
+            if (visualConfig.magmaHopperPresentation) {
                 // 通常弾と同じ描画経路で、液面より下だけを隠す。
                 param->effectScaleY = pos.y - radius * 0.5f;
             }
@@ -137,30 +134,28 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
 
     bullet->SetColliderType(ColliderType::kSphere);
     bullet->SetCollisionRadius(radius);
-    bullet->SetCollisionSize({ radius, radius, radius });
-    if (model == "Characters/magma_hopper" && bullet->GetCollider()) {
+    bullet->SetCollisionSize({radius, radius, radius});
+    if (visualConfig.collisionRadiusIsWorld && bullet->GetCollider())
+        bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
+    if (visualConfig.magmaHopperPresentation && bullet->GetCollider()) {
         bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
         bullet->SetCastShadow(false);
     }
     bullet->Fire(pos, vel, life, attr, mask, damage, statusEffect, damageType);
+    bullet->SetMagmaHopperPresentation(visualConfig.magmaHopperPresentation);
     bullet->SetExplosionRadius(visualConfig.explosionRadius);
     if (visualConfig.explosionRadius > 0.0f && bullet->GetCollider())
         bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
     bullet->SetGravity((std::max)(0.0f, gravity));
-    bullet->ConfigureVfx(
-        visualConfig.trailPreset,
-        visualConfig.trailSecondaryPreset,
-        visualConfig.impactPreset,
-        visualConfig.impactSecondaryPreset,
-        visualConfig.trailInterval,
-        visualConfig.trailSpeedScale,
-        visualConfig.trailReverseDirection,
-        visualConfig.impactDirected);
+    bullet->ConfigureVfx(visualConfig.trailPreset, visualConfig.trailSecondaryPreset, visualConfig.impactPreset,
+                         visualConfig.impactSecondaryPreset, visualConfig.trailInterval, visualConfig.trailSpeedScale,
+                         visualConfig.trailReverseDirection, visualConfig.impactDirected);
 
     colManager_->AddObject(bullet.get());
     bullets_.push_back(std::move(bullet));
 }
 
+// 弾の寿命と衝突を更新してから消滅対象を整理します。処理中の弾リスト変更を避けます。
 void BulletManager::Update(float deltaTime) {
     if (!colManager_) {
         return;
@@ -178,7 +173,7 @@ void BulletManager::Update(float deltaTime) {
             return true;
         }
         return false;
-        });
+    });
 }
 
 void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {

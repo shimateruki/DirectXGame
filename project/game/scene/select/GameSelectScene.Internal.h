@@ -90,18 +90,20 @@ constexpr float kGateCinematicBarHeight = 0.105f;
 constexpr float kGateCinematicBarOpenSpeed = 5.8f;
 constexpr float kGateCinematicBarCloseSpeed = 4.2f;
 
-
+// ゲート面から中心を経て奥へ抜ける三点。すべてワールド座標です。
 struct SelectGateEntryRoute {
-	Vector3 surface;
-	Vector3 center;
-	Vector3 inside;
+    Vector3 surface;
+    Vector3 center;
+    Vector3 inside;
 };
 
 float SelectClamp01(float value);
 float SelectEaseOutCubic(float value);
 Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target);
 Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fallback);
-float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3& gatePos, const Vector3& stageNodePosition, const Vector3& playerPosition, const Object3d* ignoredObject);
+float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3& gatePos,
+                                     const Vector3& stageNodePosition, const Vector3& playerPosition,
+                                     const Object3d* ignoredObject);
 Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDirection);
 SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vector3& direction, float entryY);
 float SelectEaseInOutCubic(float value);
@@ -115,4 +117,4 @@ float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float
 Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse);
 float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse);
 std::string MakeStageClearCrownName(int stageIndex);
-}
+} // namespace StageSelectDetail

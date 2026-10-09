@@ -17,6 +17,7 @@ void EditorTransactionManager::Register(EditorTransaction transaction) {
     }
 
     if (groupDepth_ > 0) {
+        // Group 内の操作は単独の Undo 履歴へ積まず、終了時にまとめる。
         groupTransactions_.push_back(std::move(transaction));
         return;
     }
@@ -97,6 +98,7 @@ void EditorTransactionManager::EndGroup() {
     EditorTransaction transaction;
     transaction.label = groupLabel_;
     transaction.undo = [grouped]() {
+        // 後から行った編集を先に戻し、依存関係を逆順にたどる。
         for (auto it = grouped->rbegin(); it != grouped->rend(); ++it) {
             if (it->undo) {
                 it->undo();

@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "d30e12f2277e8e252e34417de73947c1",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/collision/categories.json",
+  "version": 1
+}

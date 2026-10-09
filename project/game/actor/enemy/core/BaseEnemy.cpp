@@ -1,6 +1,6 @@
 #include "BaseEnemy.h"
 #include "game/actor/enemy/combat/AttackTelegraph.h"
-#include "CollisionConfig.h" // kEnemyなどの定義を使うため
+#include "CollisionConfig.h" // enemyなどの定義を使うため
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
@@ -47,7 +47,7 @@ constexpr const char* kEnemyDefeatPopSequence = "enemy_defeat_pop_cue";
 constexpr const char* kEnemyDefeatCoreEffect = "Resources/json/effect/effect_enemy_defeat_core_flash.json";
 constexpr const char* kEnemyDefeatRingEffect = "Resources/json/effect/effect_enemy_defeat_pop_ring.json";
 constexpr const char* kEnemyDropCoinModel = "Gimmicks/koin";
-constexpr Vector3 kEnemyDropCoinScale = { 0.055f, 0.055f, 0.014f };
+constexpr Vector3 kEnemyDropCoinScale = {0.055f, 0.055f, 0.014f};
 constexpr float kEnemyDropCoinWorldCollectRadius = 0.50f;
 constexpr float kEnemyDropCoinLifetime = 8.0f;
 constexpr float kEnemyDropCoinBlinkStart = 2.2f;
@@ -65,21 +65,21 @@ float PlanarDistance(const Vector3& a, const Vector3& b) {
     return std::sqrt(dx * dx + dz * dz);
 }
 
-float PlanarLength(const Vector3& value) {
-    return std::sqrt(value.x * value.x + value.z * value.z);
-}
+// 敵共通の移動、被弾、投擲、撃破処理を集約します。個別AIはこの共通更新と衝突契約に従います。
+
+float PlanarLength(const Vector3& value) { return std::sqrt(value.x * value.x + value.z * value.z); }
 
 float MaxAbsScaleComponent(const Vector3& value) {
-    return (std::max)({ std::abs(value.x), std::abs(value.y), std::abs(value.z), 0.001f });
+    return (std::max)({std::abs(value.x), std::abs(value.y), std::abs(value.z), 0.001f});
 }
 
 Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
-    Vector3 result = { value.x, 0.0f, value.z };
+    Vector3 result = {value.x, 0.0f, value.z};
     const float length = PlanarLength(result);
     if (length <= 0.001f) {
         return fallback;
     }
-    return { result.x / length, 0.0f, result.z / length };
+    return {result.x / length, 0.0f, result.z / length};
 }
 
 float EaseOutCubic(float t) {
@@ -88,9 +88,7 @@ float EaseOutCubic(float t) {
     return 1.0f - inv * inv * inv;
 }
 
-float CalculateSlamDamage(float impactSpeed) {
-    return kSlamDamageBase + impactSpeed * kSlamDamageScale;
-}
+float CalculateSlamDamage(float impactSpeed) { return kSlamDamageBase + impactSpeed * kSlamDamageScale; }
 
 float NextDropRandom(uint32_t& seed) {
     seed = seed * 1664525u + 1013904223u;
@@ -108,8 +106,8 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
     if (enemyType == "GiantSlime") {
         return 8;
     }
-    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" ||
-        enemyType == "Bomber" || enemyType == "BeamDrone") {
+    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" || enemyType == "Bomber" ||
+        enemyType == "BeamDrone") {
         return 4;
     }
     if (enemyType == "Bat" || enemyType == "Mushroom") {
@@ -117,7 +115,7 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
     }
     return 3;
 }
-}
+} // namespace
 
 // 基本初期化
 void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -128,8 +126,8 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetModel(modelName);
 
     // 3. 当たり判定の設定
-    SetCollisionAttribute(kEnemy);       // 自分は「敵」グループ
-    SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack);
+    SetCollisionAttribute(CollisionCategories::Get("enemy")); // 自分は「敵」グループ
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack"));
     SetClassName("Enemy");
     defaultColor_ = GetColor();
     hasSpawnedDefeatCoinDrops_ = false;
@@ -144,7 +142,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     damageReactionTimer_ = 0.0f;
     damageReactionDuration_ = 0.0f;
     damageReactionStrength_ = 0.0f;
-    damageReactionLocalDirection_ = { 0.0f, 0.0f, -1.0f };
+    damageReactionLocalDirection_ = {0.0f, 0.0f, -1.0f};
     attackTelegraph_ = std::make_unique<AttackTelegraph>();
     attackTelegraph_->Initialize(common);
 }
@@ -232,7 +230,7 @@ Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radiusScale, f
         Vector3 toOrigin = wanderOrigin_ - GetTranslate();
         toOrigin.y = 0.0f;
         const float length = (std::max)(0.001f, std::sqrt(toOrigin.x * toOrigin.x + toOrigin.z * toOrigin.z));
-        wanderTarget_ = GetTranslate() + Vector3{ toOrigin.x / length, 0.0f, toOrigin.z / length } * (radius * 0.45f);
+        wanderTarget_ = GetTranslate() + Vector3{toOrigin.x / length, 0.0f, toOrigin.z / length} * (radius * 0.45f);
         wanderTarget_.y = wanderOrigin_.y + verticalOffset;
         wanderRetargetTimer_ = 1.2f;
     } else if (distanceToTarget < 0.85f) {
@@ -245,7 +243,8 @@ Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radiusScale, f
     return wanderTarget_;
 }
 
-Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale, float verticalOffset, bool includeVertical) {
+Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale, float verticalOffset,
+                                           bool includeVertical) {
     Vector3 velocity = GetVelocity();
     const Vector3 target = GetWanderTargetPosition(deltaTime, radiusScale, verticalOffset);
 
@@ -307,14 +306,12 @@ void BaseEnemy::BeginThrown(const Vector3& initialVelocity) {
     }
 
     const float planarSpeed = PlanarLength(initialVelocity);
-    thrownAngularVelocity_ = {
-        (std::clamp)(initialVelocity.z * 0.08f, -7.5f, 7.5f),
-        (std::clamp)(planarSpeed * 0.08f, 1.5f, 8.0f),
-        (std::clamp)(-initialVelocity.x * 0.08f, -7.5f, 7.5f)
-    };
+    thrownAngularVelocity_ = {(std::clamp)(initialVelocity.z * 0.08f, -7.5f, 7.5f),
+                              (std::clamp)(planarSpeed * 0.08f, 1.5f, 8.0f),
+                              (std::clamp)(-initialVelocity.x * 0.08f, -7.5f, 7.5f)};
 
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack"));
 }
 
 void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
@@ -330,8 +327,7 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
 
         if (PlanarLength(velocity_) <= kThrownSettleSpeed && std::abs(velocity_.y) <= 1.0f) {
             thrownSettleTimer_ += deltaTime;
-        }
-        else {
+        } else {
             thrownSettleTimer_ = 0.0f;
         }
 
@@ -367,9 +363,7 @@ void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attrib
     }
 
     const float slamSpeedThreshold = slamImpactCount_ == 0 ? kThrownSlamMinSpeed : kThrownFollowUpSlamMinSpeed;
-    if (isGroundLike &&
-        slamImpactCount_ < kMaxSlamImpacts &&
-        slamImpactCooldownTimer_ <= 0.0f &&
+    if (isGroundLike && slamImpactCount_ < kMaxSlamImpacts && slamImpactCooldownTimer_ <= 0.0f &&
         normalSpeed >= slamSpeedThreshold) {
         ++slamImpactCount_;
         slamImpactCooldownTimer_ = kSlamImpactCooldown;
@@ -400,7 +394,7 @@ void BaseEnemy::EndThrownPhysics() {
     isThrownPhysics_ = false;
     thrownTimer_ = 0.0f;
     thrownSettleTimer_ = 0.0f;
-    thrownAngularVelocity_ = { 0.0f, 0.0f, 0.0f };
+    thrownAngularVelocity_ = {0.0f, 0.0f, 0.0f};
     StartThrowRecovery();
     ResetWanderOrigin();
 }
@@ -473,21 +467,11 @@ void BaseEnemy::SpawnSlamImpactEffect(const Vector3& impactPosition, float impac
         return;
     }
 
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
+    Vector3 up = {0.0f, 1.0f, 0.0f};
     const float power = (std::clamp)(impactSpeed / 22.0f, 0.65f, 1.35f);
-    particleSystem->SpawnParticles(
-        groundImpactPosition + Vector3{ 0.0f, 0.04f, 0.0f },
-        static_cast<int>(28.0f * power),
-        5.5f * power,
-        &up,
-        85.0f,
-        { 0.95f, 0.9f, 0.78f, 1.0f },
-        { 0.55f, 0.48f, 0.4f, 0.0f },
-        0.18f,
-        0.45f,
-        0.7f * power,
-        0.05f
-    );
+    particleSystem->SpawnParticles(groundImpactPosition + Vector3{0.0f, 0.04f, 0.0f}, static_cast<int>(28.0f * power),
+                                   5.5f * power, &up, 85.0f, {0.95f, 0.9f, 0.78f, 1.0f}, {0.55f, 0.48f, 0.4f, 0.0f},
+                                   0.18f, 0.45f, 0.7f * power, 0.05f);
 }
 
 void BaseEnemy::DamageSlamTargets(const Vector3& impactPosition, float impactSpeed) {
@@ -503,7 +487,7 @@ void BaseEnemy::DamageSlamTargets(const Vector3& impactPosition, float impactSpe
         if (!object || object == this || object->isDead) {
             continue;
         }
-        if (!(object->GetCollisionAttribute() & kEnemy)) {
+        if (!(object->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
             continue;
         }
 
@@ -514,18 +498,16 @@ void BaseEnemy::DamageSlamTargets(const Vector3& impactPosition, float impactSpe
             continue;
         }
 
-        Vector3 knockbackDir = NormalizePlanarOr(diff, { 0.0f, 0.0f, 1.0f });
+        Vector3 knockbackDir = NormalizePlanarOr(diff, {0.0f, 0.0f, 1.0f});
         const float distanceRate = 1.0f - (std::clamp)(distance / radius, 0.0f, 1.0f);
 
         DamageEvent damageEvent;
         damageEvent.target = object;
         damageEvent.attacker = this;
         damageEvent.damageAmount = damage * (0.55f + distanceRate * 0.45f);
-        damageEvent.knockbackVelocity = {
-            knockbackDir.x * (10.0f + impactSpeed * 0.22f) * distanceRate,
-            7.0f + impactSpeed * 0.10f,
-            knockbackDir.z * (10.0f + impactSpeed * 0.22f) * distanceRate
-        };
+        damageEvent.knockbackVelocity = {knockbackDir.x * (10.0f + impactSpeed * 0.22f) * distanceRate,
+                                         7.0f + impactSpeed * 0.10f,
+                                         knockbackDir.z * (10.0f + impactSpeed * 0.22f) * distanceRate};
         EventManager::GetInstance()->Dispatch(damageEvent);
     }
 }
@@ -537,12 +519,7 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
 
     if (colorResetTimer_ > 0.0f) {
         colorResetTimer_ -= deltaTime;
-        SetColor({
-            1.0f,
-            defaultColor_.y * 0.32f + 0.12f,
-            defaultColor_.z * 0.32f + 0.12f,
-            defaultColor_.w
-        });
+        SetColor({1.0f, defaultColor_.y * 0.32f + 0.12f, defaultColor_.z * 0.32f + 0.12f, defaultColor_.w});
         if (colorResetTimer_ <= 0.0f) {
             SetColor(defaultColor_);
         }
@@ -558,42 +535,32 @@ void BaseEnemy::PlayDamageReaction(Object3d* attacker, const Vector3& knockbackV
         return;
     }
 
-    Vector3 worldDirection = { knockbackVelocity.x, 0.0f, knockbackVelocity.z };
-    float planarLength = std::sqrt(
-        worldDirection.x * worldDirection.x +
-        worldDirection.z * worldDirection.z);
+    Vector3 worldDirection = {knockbackVelocity.x, 0.0f, knockbackVelocity.z};
+    float planarLength = std::sqrt(worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z);
     if (planarLength <= 0.001f && attacker) {
         worldDirection = GetWorldPosition() - attacker->GetWorldPosition();
         worldDirection.y = 0.0f;
-        planarLength = std::sqrt(
-            worldDirection.x * worldDirection.x +
-            worldDirection.z * worldDirection.z);
+        planarLength = std::sqrt(worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z);
     }
     if (planarLength <= 0.001f) {
         const float yaw = GetRotation().y;
-        worldDirection = { -std::sin(yaw), 0.0f, -std::cos(yaw) };
+        worldDirection = {-std::sin(yaw), 0.0f, -std::cos(yaw)};
         planarLength = 1.0f;
     }
     worldDirection.x /= planarLength;
     worldDirection.z /= planarLength;
 
     const float yaw = GetRotation().y;
-    const Vector3 localRight = { std::cos(yaw), 0.0f, -std::sin(yaw) };
-    const Vector3 localForward = { std::sin(yaw), 0.0f, std::cos(yaw) };
-    damageReactionLocalDirection_ = {
-        worldDirection.x * localRight.x + worldDirection.z * localRight.z,
-        0.0f,
-        worldDirection.x * localForward.x + worldDirection.z * localForward.z
-    };
+    const Vector3 localRight = {std::cos(yaw), 0.0f, -std::sin(yaw)};
+    const Vector3 localForward = {std::sin(yaw), 0.0f, std::cos(yaw)};
+    damageReactionLocalDirection_ = {worldDirection.x * localRight.x + worldDirection.z * localRight.z, 0.0f,
+                                     worldDirection.x * localForward.x + worldDirection.z * localForward.z};
 
     const float knockbackStrength = std::clamp(planarLength / 18.0f, 0.0f, 1.0f);
     const float damageStrength = std::clamp(damage / 24.0f, 0.0f, 1.0f);
-    damageReactionStrength_ = std::clamp(
-        0.72f + knockbackStrength * 0.28f + damageStrength * 0.34f,
-        0.72f,
-        1.30f);
-    damageReactionDuration_ = kDamageReactionMinDuration +
-        (kDamageReactionMaxDuration - kDamageReactionMinDuration) * damageStrength;
+    damageReactionStrength_ = std::clamp(0.72f + knockbackStrength * 0.28f + damageStrength * 0.34f, 0.72f, 1.30f);
+    damageReactionDuration_ =
+        kDamageReactionMinDuration + (kDamageReactionMaxDuration - kDamageReactionMinDuration) * damageStrength;
     damageReactionTimer_ = damageReactionDuration_;
     colorResetTimer_ = (std::max)(colorResetTimer_, 0.11f);
 }
@@ -611,8 +578,7 @@ EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
         return pose;
     }
 
-    const float progress = 1.0f - std::clamp(
-        damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
+    const float progress = 1.0f - std::clamp(damageReactionTimer_ / damageReactionDuration_, 0.0f, 1.0f);
     float response = 0.0f;
     if (progress < 0.18f) {
         const float t = progress / 0.18f;
@@ -637,20 +603,12 @@ EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
     pose.scale.z = 1.0f - impulse * 0.14f * alongZ + impulse * 0.075f * alongX;
     pose.rotation.x = -localZ * impulse * 0.13f;
     pose.rotation.z = localX * impulse * 0.13f;
-    pose.offset = {
-        localX * impulse * 0.055f,
-        std::abs(impulse) * 0.018f,
-        localZ * impulse * 0.055f
-    };
+    pose.offset = {localX * impulse * 0.055f, std::abs(impulse) * 0.018f, localZ * impulse * 0.055f};
     pose.weight = std::abs(impulse);
     return pose;
 }
 
-void BaseEnemy::ApplyDamageReactionPose(
-    Vector3& scale,
-    Vector3& rotation,
-    Vector3* offset,
-    float intensity) const {
+void BaseEnemy::ApplyDamageReactionPose(Vector3& scale, Vector3& rotation, Vector3* offset, float intensity) const {
     const EnemyVisualReactionPose reaction = GetDamageReactionPose();
     const float safeIntensity = (std::max)(0.0f, intensity);
     scale.x *= 1.0f + (reaction.scale.x - 1.0f) * safeIntensity;
@@ -679,7 +637,7 @@ void BaseEnemy::EnsureNoticeMarkObject() {
     noticeMarkObject_->SetTexture("Resources/sprite/common/white.png");
     noticeMarkObject_->SetMaterialType(0);
     noticeMarkObject_->SetBlendMode(BlendMode::kNormal);
-    noticeMarkObject_->SetColor({ 1.0f, 0.88f, 0.16f, 1.0f });
+    noticeMarkObject_->SetColor({1.0f, 0.88f, 0.16f, 1.0f});
     noticeMarkObject_->SetEmissive(4.0f);
     noticeMarkObject_->SetCollisionAttribute(0);
     noticeMarkObject_->SetCollisionMask(0);
@@ -694,9 +652,7 @@ void BaseEnemy::ConfigureNoticeMarkForReaction() {
 
     const bool isLost = noticeReactionKind_ == NoticeReactionKind::Lost;
     noticeMarkObject_->SetModel(isLost ? kEnemyLostMarkModel : kEnemyDetectedMarkModel);
-    noticeMarkObject_->SetColor(isLost
-        ? Vector4{ 0.30f, 0.90f, 1.0f, 1.0f }
-        : Vector4{ 1.0f, 0.88f, 0.16f, 1.0f });
+    noticeMarkObject_->SetColor(isLost ? Vector4{0.30f, 0.90f, 1.0f, 1.0f} : Vector4{1.0f, 0.88f, 0.16f, 1.0f});
     noticeMarkObject_->SetEmissive(isLost ? 4.4f : 4.0f);
 }
 
@@ -719,10 +675,9 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
     }
     noticeMarkYaw_ = 0.0f;
 
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
-    TriggerAttackTelegraphCue(kind == NoticeReactionKind::Lost
-        ? Vector4{ 0.20f, 0.82f, 1.0f, 0.82f }
-        : Vector4{ 1.0f, 0.82f, 0.12f, 0.9f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
+    TriggerAttackTelegraphCue(kind == NoticeReactionKind::Lost ? Vector4{0.20f, 0.82f, 1.0f, 0.82f}
+                                                               : Vector4{1.0f, 0.82f, 0.12f, 0.9f});
     ConfigureNoticeMarkForReaction();
     if (noticeMarkObject_) {
         noticeMarkObject_->SetIsVisible(true);
@@ -761,7 +716,8 @@ void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
 
     const float bodyScale = MaxAbsScaleComponent(GetScale());
     const bool isLost = noticeReactionKind_ == NoticeReactionKind::Lost;
-    const float pop = 1.0f + std::sin((std::clamp)(progress / (isLost ? 0.32f : 0.55f), 0.0f, 1.0f) * kWanderPi) * 0.34f;
+    const float pop =
+        1.0f + std::sin((std::clamp)(progress / (isLost ? 0.32f : 0.55f), 0.0f, 1.0f) * kWanderPi) * 0.34f;
     const float hover = std::sin(progress * kWanderPi * (isLost ? 4.0f : 2.0f)) * (isLost ? 0.12f : 0.18f);
     const float markScale = (std::clamp)(bodyScale * 0.34f, 0.32f, 1.15f) * pop;
 
@@ -770,11 +726,10 @@ void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
     noticeMarkYaw_ += deltaTime * (isLost ? 0.75f : 1.6f);
 
     noticeMarkObject_->SetTranslate(position);
-    noticeMarkObject_->SetScale({ markScale, markScale, markScale });
-    noticeMarkObject_->SetRotation({ 0.0f, noticeMarkYaw_, 0.0f });
-    noticeMarkObject_->SetColor(isLost
-        ? Vector4{ 0.24f, 0.82f + std::sin(progress * kWanderPi) * 0.16f, 1.0f, 1.0f }
-        : Vector4{ 1.0f, 0.82f + std::sin(progress * kWanderPi) * 0.14f, 0.12f, 1.0f });
+    noticeMarkObject_->SetScale({markScale, markScale, markScale});
+    noticeMarkObject_->SetRotation({0.0f, noticeMarkYaw_, 0.0f});
+    noticeMarkObject_->SetColor(isLost ? Vector4{0.24f, 0.82f + std::sin(progress * kWanderPi) * 0.16f, 1.0f, 1.0f}
+                                       : Vector4{1.0f, 0.82f + std::sin(progress * kWanderPi) * 0.14f, 0.12f, 1.0f});
     noticeMarkObject_->SetIsVisible(true);
     noticeMarkObject_->UpdateLocalMatrix();
     noticeMarkObject_->UpdateWorldMatrix();
@@ -786,7 +741,8 @@ void BaseEnemy::UpdateBossTargetEngagement(float targetDistance) {
     }
 }
 
-bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const Vector3& targetDirection) {
+bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange,
+                                     const Vector3& targetDirection) {
     (void)deltaTime;
     (void)targetDirection;
 
@@ -810,8 +766,9 @@ bool BaseEnemy::UpdateNoticeReaction(float deltaTime, float targetDistance, floa
 void BaseEnemy::UpdateNoticeAwareness(float deltaTime) {
     noticeReactionCooldown_ = (std::max)(0.0f, noticeReactionCooldown_ - deltaTime);
 
-    const bool detected = target_ && (bossTargetEngaged_ ||
-        PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) <= (std::max)(0.0f, noticeDetectionRange_));
+    const bool detected =
+        target_ && (bossTargetEngaged_ || PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) <=
+                                              (std::max)(0.0f, noticeDetectionRange_));
 
     if (wasTargetDetected_ && !detected) {
         wasTargetDetected_ = false;
@@ -830,14 +787,12 @@ void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
         return;
     }
 
-    const float duration = noticeReactionKind_ == NoticeReactionKind::Lost
-        ? kEnemyLostDuration
-        : kEnemyNoticeDuration;
+    const float duration = noticeReactionKind_ == NoticeReactionKind::Lost ? kEnemyLostDuration : kEnemyNoticeDuration;
     noticeReactionTimer_ = (std::max)(0.0f, noticeReactionTimer_ - deltaTime);
     const float progress = 1.0f - noticeReactionTimer_ / duration;
     const float clampedProgress = (std::clamp)(progress, 0.0f, 1.0f);
 
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     if (noticeReactionKind_ == NoticeReactionKind::Lost) {
         const float rampIn = (std::clamp)(clampedProgress / 0.12f, 0.0f, 1.0f);
         const float rampOut = (std::clamp)((1.0f - clampedProgress) / 0.15f, 0.0f, 1.0f);
@@ -845,24 +800,16 @@ void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
         const float lookYaw = std::sin(clampedProgress * kWanderPi * 3.0f) * 0.62f * envelope;
         const float searchPulse = std::sin(clampedProgress * kWanderPi * 6.0f) * envelope;
 
-        SetRotation({
-            noticeBaseRotation_.x,
-            noticeBaseRotation_.y + lookYaw,
-            noticeBaseRotation_.z - lookYaw * 0.10f
-        });
-        SetScale({
-            noticeBaseScale_.x * (1.0f + std::abs(searchPulse) * 0.035f),
-            noticeBaseScale_.y * (1.0f - std::abs(searchPulse) * 0.025f),
-            noticeBaseScale_.z * (1.0f + std::abs(searchPulse) * 0.035f)
-        });
+        SetRotation({noticeBaseRotation_.x, noticeBaseRotation_.y + lookYaw, noticeBaseRotation_.z - lookYaw * 0.10f});
+        SetScale({noticeBaseScale_.x * (1.0f + std::abs(searchPulse) * 0.035f),
+                  noticeBaseScale_.y * (1.0f - std::abs(searchPulse) * 0.025f),
+                  noticeBaseScale_.z * (1.0f + std::abs(searchPulse) * 0.035f)});
     } else {
         const float squash = std::sin(clampedProgress * kWanderPi);
         const float hopPop = std::sin(clampedProgress * kWanderPi * 2.0f) * 0.035f;
-        SetScale({
-            noticeBaseScale_.x * (1.0f + squash * 0.10f - hopPop),
-            noticeBaseScale_.y * (1.0f + squash * 0.12f + hopPop),
-            noticeBaseScale_.z * (1.0f + squash * 0.10f - hopPop)
-        });
+        SetScale({noticeBaseScale_.x * (1.0f + squash * 0.10f - hopPop),
+                  noticeBaseScale_.y * (1.0f + squash * 0.12f + hopPop),
+                  noticeBaseScale_.z * (1.0f + squash * 0.10f - hopPop)});
     }
 
     UpdateNoticeMark(deltaTime, clampedProgress);
@@ -912,8 +859,9 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
 
     const Vector3 basePosition = GetWorldPosition();
     const Vector3 baseScale = GetScale();
-    const float rawBodyScale = (std::max)({ 0.8f, std::abs(baseScale.x), std::abs(baseScale.y), std::abs(baseScale.z) });
-    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
+    const float rawBodyScale = (std::max)({0.8f, std::abs(baseScale.x), std::abs(baseScale.y), std::abs(baseScale.z)});
+    const float bodyScale =
+        GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
     const float groundY = GroundEffectLocator::ResolveGroundPosition(basePosition).y;
     const float spawnY = basePosition.y + (std::max)(0.65f, bodyScale * 0.32f);
 
@@ -934,16 +882,9 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
         const float speed = 4.2f + NextDropRandom(seed) * 2.8f;
         const float upSpeed = 6.4f + NextDropRandom(seed) * 2.7f;
 
-        Vector3 spawnPosition = {
-            basePosition.x + std::sin(angle) * radialOffset,
-            spawnY,
-            basePosition.z + std::cos(angle) * radialOffset
-        };
-        Vector3 velocity = {
-            std::sin(angle) * speed,
-            upSpeed,
-            std::cos(angle) * speed
-        };
+        Vector3 spawnPosition = {basePosition.x + std::sin(angle) * radialOffset, spawnY,
+                                 basePosition.z + std::cos(angle) * radialOffset};
+        Vector3 velocity = {std::sin(angle) * speed, upSpeed, std::cos(angle) * speed};
 
         coin->SetName("DropCoin_" + GetEnemyType() + "_" + std::to_string(i));
         coin->SetTranslate(spawnPosition);
@@ -972,27 +913,31 @@ void BaseEnemy::BeginDefeatEffect() {
     thrownTimer_ = 0.0f;
     thrownSettleTimer_ = 0.0f;
     slamImpactCooldownTimer_ = 0.0f;
-    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetVelocity({0.0f, 0.0f, 0.0f});
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetSelectedLighting(2);
     SetMaterialType(4);
     SetBlendMode(BlendMode::kNormal);
     SetEmissive(2.4f);
-    SetColor({ 1.0f, 0.96f, 0.72f, 1.0f });
+    SetColor({1.0f, 0.96f, 0.72f, 1.0f});
 
     Vector3 cuePosition = GetWorldPosition();
     cuePosition.y += (std::max)(0.42f, defeatBaseScale_.y * 0.48f);
     VFXSequencer::PlayOneShot(kEnemyDefeatPopSequence, cuePosition);
 
-    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
-    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
+    const float rawBodyScale =
+        (std::max)({0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z)});
+    const float bodyScale =
+        GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
-        meshEffect->SpawnEffectAt(kEnemyDefeatCoreEffect, cuePosition, { 0.0f, 0.0f, 0.0f }, { bodyScale, bodyScale, bodyScale });
+        meshEffect->SpawnEffectAt(kEnemyDefeatCoreEffect, cuePosition, {0.0f, 0.0f, 0.0f},
+                                  {bodyScale, bodyScale, bodyScale});
 
         Vector3 ringPosition = GetWorldPosition();
         ringPosition.y += (std::max)(0.12f, defeatBaseScale_.y * 0.12f);
-        meshEffect->SpawnEffectAt(kEnemyDefeatRingEffect, ringPosition, { 0.0f, 0.0f, 0.0f }, { bodyScale, bodyScale, bodyScale });
+        meshEffect->SpawnEffectAt(kEnemyDefeatRingEffect, ringPosition, {0.0f, 0.0f, 0.0f},
+                                  {bodyScale, bodyScale, bodyScale});
     }
 
     SpawnDefeatStartParticles();
@@ -1023,12 +968,10 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     SetRotation(rotation);
 
     const float dissolveThreshold = 1.0f - (progress * progress * (3.0f - 2.0f * progress));
-    const Vector3 glowColor = {
-        defeatBaseColor_.x * (1.0f - eased) + 1.0f * eased,
-        defeatBaseColor_.y * (1.0f - eased) + 0.92f * eased,
-        defeatBaseColor_.z * (1.0f - eased) + 0.48f * eased
-    };
-    SetColor({ glowColor.x, glowColor.y, glowColor.z, dissolveThreshold });
+    const Vector3 glowColor = {defeatBaseColor_.x * (1.0f - eased) + 1.0f * eased,
+                               defeatBaseColor_.y * (1.0f - eased) + 0.92f * eased,
+                               defeatBaseColor_.z * (1.0f - eased) + 0.48f * eased};
+    SetColor({glowColor.x, glowColor.y, glowColor.z, dissolveThreshold});
 
     if (defeatEffectParticleTimer_ <= 0.0f && progress < 0.96f) {
         SpawnDefeatLoopParticles();
@@ -1058,61 +1001,28 @@ void BaseEnemy::SpawnDefeatStartParticles() {
 
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.35f, defeatBaseScale_.y * 0.45f);
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
-    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
-    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
+    Vector3 up = {0.0f, 1.0f, 0.0f};
+    const float rawBodyScale =
+        (std::max)({0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z)});
+    const float bodyScale =
+        GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
 
-    const Vector3 smokeOffsets[] = {
-        { 0.0f, 0.0f, 0.0f },
-        { 0.42f, 0.08f, 0.10f },
-        { -0.38f, 0.16f, -0.08f },
-        { 0.12f, 0.34f, -0.36f },
-        { -0.18f, 0.52f, 0.30f }
-    };
+    const Vector3 smokeOffsets[] = {{0.0f, 0.0f, 0.0f},
+                                    {0.42f, 0.08f, 0.10f},
+                                    {-0.38f, 0.16f, -0.08f},
+                                    {0.12f, 0.34f, -0.36f},
+                                    {-0.18f, 0.52f, 0.30f}};
 
     for (const Vector3& offset : smokeOffsets) {
         Vector3 smokePos = center + offset * bodyScale;
-        particleSystem->SpawnParticles(
-            smokePos,
-            8,
-            0.85f + offset.y * 0.28f,
-            &up,
-            0.9f,
-            { 1.0f, 0.96f, 0.82f, 0.90f },
-            { 0.74f, 0.72f, 0.60f, 0.0f },
-            0.46f,
-            0.82f,
-            0.34f * bodyScale,
-            1.05f * bodyScale
-        );
+        particleSystem->SpawnParticles(smokePos, 8, 0.85f + offset.y * 0.28f, &up, 0.9f, {1.0f, 0.96f, 0.82f, 0.90f},
+                                       {0.74f, 0.72f, 0.60f, 0.0f}, 0.46f, 0.82f, 0.34f * bodyScale, 1.05f * bodyScale);
     }
 
-    particleSystem->SpawnParticles(
-        center,
-        30,
-        4.9f,
-        nullptr,
-        0.0f,
-        { 1.0f, 0.86f, 0.24f, 1.0f },
-        { 0.52f, 1.0f, 1.0f, 0.0f },
-        0.22f,
-        0.62f,
-        0.22f * bodyScale,
-        0.02f
-    );
-    particleSystem->SpawnParticles(
-        center,
-        16,
-        2.4f,
-        &up,
-        1.0f,
-        { 1.0f, 1.0f, 0.92f, 0.95f },
-        { 1.0f, 0.72f, 0.20f, 0.0f },
-        0.18f,
-        0.48f,
-        0.20f * bodyScale,
-        0.0f
-    );
+    particleSystem->SpawnParticles(center, 30, 4.9f, nullptr, 0.0f, {1.0f, 0.86f, 0.24f, 1.0f},
+                                   {0.52f, 1.0f, 1.0f, 0.0f}, 0.22f, 0.62f, 0.22f * bodyScale, 0.02f);
+    particleSystem->SpawnParticles(center, 16, 2.4f, &up, 1.0f, {1.0f, 1.0f, 0.92f, 0.95f}, {1.0f, 0.72f, 0.20f, 0.0f},
+                                   0.18f, 0.48f, 0.20f * bodyScale, 0.0f);
 }
 
 void BaseEnemy::SpawnDefeatLoopParticles() {
@@ -1124,35 +1034,15 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
     const float progress = (std::clamp)(defeatEffectTimer_ / kDefeatEffectDuration, 0.0f, 1.0f);
     Vector3 center = GetWorldPosition();
     center.y += (std::max)(0.2f, defeatBaseScale_.y * (0.2f + progress * 0.45f));
-    Vector3 up = { 0.0f, 1.0f, 0.0f };
-    const float rawBodyScale = (std::max)({ 0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z) });
-    const float bodyScale = GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
-    particleSystem->SpawnParticles(
-        center,
-        7,
-        1.05f + progress * 0.95f,
-        &up,
-        0.78f,
-        { 1.0f, 0.96f, 0.82f, 0.72f },
-        { 0.72f, 0.72f, 0.62f, 0.0f },
-        0.28f,
-        0.62f,
-        0.24f * bodyScale,
-        0.72f * bodyScale
-    );
-    particleSystem->SpawnParticles(
-        center,
-        5,
-        2.2f + progress * 0.7f,
-        nullptr,
-        0.0f,
-        { 0.75f, 1.0f, 0.98f, 0.86f },
-        { 1.0f, 0.44f, 0.92f, 0.0f },
-        0.14f,
-        0.32f,
-        0.12f * bodyScale,
-        0.0f
-    );
+    Vector3 up = {0.0f, 1.0f, 0.0f};
+    const float rawBodyScale =
+        (std::max)({0.9f, std::abs(defeatBaseScale_.x), std::abs(defeatBaseScale_.y), std::abs(defeatBaseScale_.z)});
+    const float bodyScale =
+        GetEnemyType() == "GiantSlime" ? std::min(rawBodyScale, 3.6f) : std::min(rawBodyScale, 1.45f);
+    particleSystem->SpawnParticles(center, 7, 1.05f + progress * 0.95f, &up, 0.78f, {1.0f, 0.96f, 0.82f, 0.72f},
+                                   {0.72f, 0.72f, 0.62f, 0.0f}, 0.28f, 0.62f, 0.24f * bodyScale, 0.72f * bodyScale);
+    particleSystem->SpawnParticles(center, 5, 2.2f + progress * 0.7f, nullptr, 0.0f, {0.75f, 1.0f, 0.98f, 0.86f},
+                                   {1.0f, 0.44f, 0.92f, 0.0f}, 0.14f, 0.32f, 0.12f * bodyScale, 0.0f);
 }
 
 void BaseEnemy::SetDormant(bool dormant) {
@@ -1160,15 +1050,15 @@ void BaseEnemy::SetDormant(bool dormant) {
     if (dormant) {
         HideAttackTelegraph();
         CancelNoticeReaction();
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
     }
 }
 
-// 全敵共通の最終更新。固有AIの後に呼ばれる想定。
+// 個別AIが速度と状態を決めた後の共通更新です。休眠、撃破、運搬は通常物理より優先します。
 void BaseEnemy::Update(float deltaTime) {
     if (isDormant_) {
         HideAttackTelegraph();
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         Object3d::Update(deltaTime);
         return;
     }
@@ -1189,9 +1079,9 @@ void BaseEnemy::Update(float deltaTime) {
 
     if (isCarried_) {
         HideAttackTelegraph();
-        return; // 重力も、タイマーの減少も全てストップ
+        return; // 運搬中の位置と時間はプレイヤー側が管理します。
     }
-    // 0. パラメータ(JSON)との同期
+    // 調整用JSONの検知距離を、共通の見渡し処理へ反映します。
     if (param_.has_value()) {
         detectionRange_ = param_->detectionRange;
     }
@@ -1206,7 +1096,7 @@ void BaseEnemy::Update(float deltaTime) {
         return;
     }
 
-    // 重力処理などは親クラス(Character)に任せる
+    // 投擲復帰とナビ補正を終えてから Character の物理を進めます。
     if (throwRecoveryTimer_ > 0.0f || isThrowRotationRecovering_) {
         UpdateThrowRecovery(deltaTime);
     }
@@ -1218,8 +1108,8 @@ void BaseEnemy::Update(float deltaTime) {
             Vector3 velocity = GetVelocity();
             const float planarSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
             if (planarSpeed > 0.01f) {
-                const Vector3 direction = navAgent->CalculateDirection(
-                    this, GetWorldPosition(), target_->GetWorldPosition(), deltaTime);
+                const Vector3 direction =
+                    navAgent->CalculateDirection(this, GetWorldPosition(), target_->GetWorldPosition(), deltaTime);
                 velocity.x = direction.x * planarSpeed;
                 velocity.z = direction.z * planarSpeed;
                 SetVelocity(velocity);
@@ -1232,14 +1122,15 @@ void BaseEnemy::Update(float deltaTime) {
 }
 
 void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (attackTelegraph_) {
-        attackTelegraph_->DrawGround(pointLightResource, spotLightResource);
-    }
     Character::Draw(pointLightResource, spotLightResource);
     if (noticeMarkObject_ && noticeMarkObject_->GetIsVisible()) {
         noticeMarkObject_->Draw(pointLightResource, spotLightResource);
     }
-    if (attackTelegraph_) {
+}
+
+void BaseEnemy::DrawAttackTelegraph(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (GetIsRenderVisible() && attackTelegraph_) {
+        attackTelegraph_->DrawGround(pointLightResource, spotLightResource);
         attackTelegraph_->DrawWarning(pointLightResource, spotLightResource);
     }
 }
@@ -1254,12 +1145,8 @@ void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, f
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphDecalCircle(
-    const Vector3& center,
-    float radius,
-    float progress,
-    const Vector4& color,
-    const std::string& texturePath) {
+void BaseEnemy::ShowAttackTelegraphDecalCircle(const Vector3& center, float radius, float progress,
+                                               const Vector4& color, const std::string& texturePath) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1269,7 +1156,8 @@ void BaseEnemy::ShowAttackTelegraphDecalCircle(
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width, float progress, const Vector4& color) {
+void BaseEnemy::ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width,
+                                        float progress, const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1286,25 +1174,22 @@ void BaseEnemy::TriggerAttackTelegraphCue(const Vector4& color) {
     }
     if (attackTelegraph_) {
         const Vector3 scale = GetScale();
-        const float horizontalScale = (std::max)({ 0.75f, std::abs(scale.x), std::abs(scale.z) });
+        const float horizontalScale = (std::max)({0.75f, std::abs(scale.x), std::abs(scale.z)});
         const float verticalScale = (std::max)(0.75f, std::abs(scale.y));
         // 雷スライムなど横潰れする敵は現在Scaleが極端に広がるため、見た目上の体格へ補正します。
         const float bodyScale = (std::min)(horizontalScale, (std::max)(1.5f, verticalScale * 2.4f));
-        const Vector3 bodyOffset = { 0.0f, (std::clamp)(verticalScale * 0.62f, 0.55f, 3.8f), 0.0f };
+        const Vector3 bodyOffset = {0.0f, (std::clamp)(verticalScale * 0.62f, 0.55f, 3.8f), 0.0f};
 
         // 床の範囲強調と、敵本体の入力タイミング表示は別レイヤーとして同時に再生します。
         if (attackTelegraph_->IsVisible()) {
             attackTelegraph_->TriggerCue(color);
         }
-        attackTelegraph_->TriggerWarningCue(
-            this,
-            bodyOffset,
-            (std::clamp)(bodyScale * 1.18f, 1.0f, 5.2f),
-            color);
+        attackTelegraph_->TriggerWarningCue(this, bodyOffset, (std::clamp)(bodyScale * 1.18f, 1.0f, 5.2f), color);
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth, float endWidth, float progress, const Vector4& color) {
+void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth,
+                                        float endWidth, float progress, const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1314,7 +1199,8 @@ void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& di
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color) {
+void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
+                                               float progress, const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1324,7 +1210,8 @@ void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress, const Vector4& color) {
+void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
+                                                       float progress, const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1334,13 +1221,16 @@ void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, s
     }
 }
 
-void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width, int laneCount, float lateralSpacing, float angleStep, float progress, const Vector4& color) {
+void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width,
+                                           int laneCount, float lateralSpacing, float angleStep, float progress,
+                                           const Vector4& color) {
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
     }
     if (attackTelegraph_) {
-        attackTelegraph_->ShowLaneFan(origin, direction, length, width, laneCount, lateralSpacing, angleStep, progress, color);
+        attackTelegraph_->ShowLaneFan(origin, direction, length, width, laneCount, lateralSpacing, angleStep, progress,
+                                      color);
     }
 }
 
@@ -1352,8 +1242,8 @@ void BaseEnemy::HideAttackTelegraph() {
 
 float BaseEnemy::GetActiveBodyAttackDamage() const {
     // 中断前のAI状態が残っていても、演出中・運搬中の本体は攻撃にしません。
-    if (isDead || isDormant_ || isCarried_ || IsThrowRecovering() ||
-        isDefeatEffectPlaying_ || (param_.has_value() && param_->hp <= 0.0f)) {
+    if (isDead || isDormant_ || isCarried_ || IsThrowRecovering() || isDefeatEffectPlaying_ ||
+        (param_.has_value() && param_->hp <= 0.0f)) {
         return 0.0f;
     }
     return (std::max)(0.0f, GetBodyAttackDamage());
@@ -1380,7 +1270,7 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     // プレイヤーの攻撃（剣など）に当たった時の処理
     // ========================================================
-    if (attribute & kPlayerAttack) {
+    if (attribute & CollisionCategories::Get("player_attack")) {
 
         // ★ 追加: クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
@@ -1395,17 +1285,15 @@ bool BaseEnemy::OnCollision(Object3d* other) {
             dmgEvent.damageAmount = attackBullet->GetDamage();
             dmgEvent.damageType = attackBullet->GetDamageType();
             dmgEvent.statusEffect = attackBullet->GetStatusEffect();
-        }
-        else {
+        } else {
             dmgEvent.damageAmount = 10.0f;
         }
         EventManager::GetInstance()->Dispatch(dmgEvent);
 
-   
         damageCooldownTimer_ = 0.5f; // 0.5秒間は次の攻撃を食らわない（剣の持続ヒット防止）
         colorResetTimer_ = 0.15f;    // 0.15秒間だけ赤くする
 
-        SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 真っ赤にする
+        SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 真っ赤にする
 
         // ※もし敵が複数のパーツ(子オブジェクト)でできている場合は以下も有効化してください
         // for (Object3d* child : GetChildren()) { child->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); }
@@ -1413,18 +1301,18 @@ bool BaseEnemy::OnCollision(Object3d* other) {
         return true;
     }
 
-    // 地面や壁（kAllSolid）なら、物理的な押し戻しを実行
-    if (attribute & kAllSolid) {
+    // 地面や壁（ground）なら、物理的な押し戻しを実行
+    if (attribute & CollisionCategories::Get("ground")) {
         if (isThrownPhysics_) {
             HandleThrownCollision(info, attribute);
-        }
-        else {
+        } else {
             ApplyPhysicsCollision(info, attribute);
         }
     }
 
     return true;
 }
+
 // ==========================================
 // 持ち運び状態の切り替え
 // ==========================================
@@ -1441,7 +1329,7 @@ void BaseEnemy::SetCarried(bool isCarried) {
         thrownTimer_ = 0.0f;
         thrownSettleTimer_ = 0.0f;
         throwRecoveryRotateTimer_ = 0.0f;
-        thrownAngularVelocity_ = { 0.0f, 0.0f, 0.0f };
+        thrownAngularVelocity_ = {0.0f, 0.0f, 0.0f};
         throwRecoveryTargetRotation_ = GetRotation();
 
         // --- 無力化 ---
@@ -1450,21 +1338,20 @@ void BaseEnemy::SetCarried(bool isCarried) {
         SetCollisionMask(0);
 
         // 引っ張られるので速度も強制ゼロに
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
-    }
-    else {
+        SetVelocity({0.0f, 0.0f, 0.0f});
+    } else {
         // --- 復活（地面に投げ出された時など） ---
-   
-        SetCollisionAttribute(kEnemy);
+
+        SetCollisionAttribute(CollisionCategories::Get("enemy"));
         if (wasCarried) {
             throwRecoveryTimer_ = 0.75f;
             ResetWanderOrigin();
         }
-        SetCollisionMask(kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack); // 念のため kAllSolid にしておく
+        SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack")); // 念のため ground にしておく
     }
 }
-void BaseEnemy::ExecuteAbility(Player* player) {
-}
+
+void BaseEnemy::ExecuteAbility(Player* player) {}
 
 void BaseEnemy::UpdateCarriedAbility(Player* player, float deltaTime) {
     (void)player;

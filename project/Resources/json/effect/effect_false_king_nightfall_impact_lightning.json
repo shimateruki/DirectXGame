@@ -1,0 +1,60 @@
+{
+  "AlphaReference": 0.08,
+  "AutoLoop": false,
+  "BlendMode": 2,
+  "EasingType": 11,
+  "EdgeFadeStrength": 0.0,
+  "EnableDistortion": false,
+  "EnableReveal": false,
+  "EndColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "EndScale": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "Intensity": 7.0,
+  "Lifetime": 600.0,
+  "MeshSegments": 1,
+  "PlaneSize": [
+    5.0,
+    8.0
+  ],
+  "Position": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ProceduralType": 7,
+  "Rotation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "StartColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "StartScale": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "TexturePath": "Resources/sprite/effect/false_king/false_king_nightfall_impact_lightning.png",
+  "UseTextureColor": true,
+  "UvTiling": [
+    1.0,
+    1.0
+  ],
+  "VolumeMode": 0,
+  "ScrollSpeed": [
+    0,
+    0
+  ]
+}

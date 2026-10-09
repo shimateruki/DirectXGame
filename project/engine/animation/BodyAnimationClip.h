@@ -34,10 +34,11 @@ public:
     /// <summary>クリップのキーと再生時間を初期化する。</summary>
     void Clear();
 
-    /// <summary>指定ファイルから身体アニメーションのキーを読み込む。</summary>
+    /// <summary>既存キーを消してから JSON を読む。開けないか不正な場合は false を返す。</summary>
     bool Load(const std::string& filePath);
 
-    /// <summary>指定秒の姿勢を評価してsampleOutへ書く。loopは末尾での折り返しを指定する。</summary>
+    /// <summary>指定秒の姿勢を評価する。loop は末尾での折り返しを指定し、クリップの loopDefault は参照しない。</summary>
+    /// <returns>有効なキーがなければ false。この場合 sampleOut は既定値に戻る。</returns>
     bool Evaluate(float timeSeconds, bool loop, Sample& sampleOut) const;
 
     bool IsValid() const { return !keys_.empty() && duration_ > 0.0f; }
@@ -47,7 +48,8 @@ public:
     const std::string& GetModelName() const { return modelName_; }
     const std::vector<Key>& GetKeys() const { return keys_; }
 
-    // Asset名だけを受け取った場合は共通Directoryへ解決します。
+    // 名前だけなら現行ディレクトリを優先し、なければ旧ディレクトリを探す。
+    // どちらにもない場合も現行側の候補パスを返し、存在確認は呼び出し側に任せる。
     static std::string ResolveAssetPath(const std::string& assetNameOrPath);
 
 private:

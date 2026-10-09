@@ -161,9 +161,11 @@ public:
     bool IsActionPressed(const std::string& actionName) const;
 
     /// <summary>KeyConfig のアクションがこのフレームで押されたか返します。</summary>
+    // 各デバイスの押下エッジを OR する。統合アクションの前回状態からエッジを作る方式ではない。
     bool IsActionTriggered(const std::string& actionName) const;
 
     /// <summary>KeyConfig のアクションがこのフレームで離されたか返します。</summary>
+    // 別デバイスで押し続けていても、どれか一つの割当入力を離せば true になり得る。
     bool IsActionReleased(const std::string& actionName) const;
 
 private:

@@ -1,3 +1,8 @@
+"""自然物の手続きモデルとテクスチャを生成する。
+
+同じ出力名の生成物は上書きするため、再生成可能な元データとして扱う。
+"""
+
 from __future__ import annotations
 
 import math

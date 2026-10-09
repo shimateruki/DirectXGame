@@ -4,7 +4,7 @@
 
 // プレイヤーの進入を検知し、中ボス・封鎖壁・撃破後の開放を一つの状態で管理します。
 class GimmickArenaEncounter : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
@@ -13,9 +13,10 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
+    // 保存済みチェックポイントから再開する際、ボス戦を再開せず障壁と報酬をクリア状態へ戻します。
     void RestoreCheckpointClear();
 
-private:
+  private:
     enum class State {
         Waiting,
         Sealing,

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "a4b326cb245f50db814d965eed52801c",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/ring_star_court/Stage1_CoasterApproach_turf.obj",
+  "version": 1
+}

@@ -2,8 +2,9 @@
 #include "BaseGimmick.h"
 class RidingPlatformController;
 
+/// <summary>移動床の軌道と、乗っているキャラクターへの移動量を管理します。</summary>
 class GimmickMovingFloor : public BaseGimmick {
-public:
+  public:
     GimmickMovingFloor();
     ~GimmickMovingFloor() override;
     bool IsRidePlatform() const;
@@ -12,9 +13,10 @@ public:
     void Update(float deltaTime) override;
     bool OnCollision(Object3d* other) override;
 
+    // 逃走ギミックで床を再利用するとき、移動周期を初期位置から再開します。
     void ResetEscapeCycle();
 
-private:
+  private:
     std::unique_ptr<RidingPlatformController> ride_;
     Vector3 startPosition_{};
     Vector3 startRotation_{};

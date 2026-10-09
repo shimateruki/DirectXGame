@@ -89,6 +89,7 @@ void Object3d::SetColliderConfig(const ColliderConfig& config) {
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
+
 const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
     return collider_->GetConfig();
 }
@@ -100,6 +101,7 @@ void Object3d::SetColliderType(ColliderType type) {
     collider_->SetConfig(config);
     if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
+
 ColliderType Object3d::GetColliderType() const {
     return collider_ ? collider_->GetType() : ColliderType::kNone;
 }
@@ -111,6 +113,7 @@ void Object3d::SetCollisionSize(const Vector3& size) {
     collider_->SetConfig(config);
     if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
+
 Vector3 Object3d::GetCollisionSize() const {
     return collider_ ? collider_->GetSize() : Vector3{ 0,0,0 };
 }
@@ -118,6 +121,7 @@ Vector3 Object3d::GetCollisionSize() const {
 void Object3d::SetCollisionRadius(float radius) {
     SetCollisionSize({ radius, radius, radius });
 }
+
 float Object3d::GetCollisionRadius() const {
     return collider_ ? collider_->GetRadius() : 0.0f;
 }
@@ -128,6 +132,7 @@ void Object3d::SetCollisionAttribute(uint32_t attribute) {
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
+
 uint32_t Object3d::GetCollisionAttribute() const {
     return collider_ ? collider_->GetAttribute() : 0;
 }
@@ -138,6 +143,7 @@ void Object3d::SetCollisionMask(uint32_t mask) {
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
     }
 }
+
 uint32_t Object3d::GetCollisionMask() const {
     return collider_ ? collider_->GetMask() : 0;
 }
@@ -210,6 +216,7 @@ const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
 AABB Object3d::GetAABB() const {
     return collider_ ? collider_->GetAABB() : AABB{};
 }
+
 OBB Object3d::GetOBB() const {
     return collider_ ? collider_->GetOBB() : OBB{};
 }

@@ -1,10 +1,11 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "DebugEditor.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include "SceneManager.h"    
 #include "BaseScene.h"      
 #include "Object3d.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -111,7 +112,7 @@ void ApplyGroundDefaultsForGeneratedModel(Object3d* object) {
         object->SetColliderConfig(colliderConfig);
     }
     if (object->GetCollisionAttribute() == 0) {
-        object->SetCollisionAttribute(kGround);
+        object->SetCollisionAttribute(CollisionCategories::Get("ground"));
     }
     if (object->GetCollisionMask() == 0) {
         object->SetCollisionMask(0xFFFFFFFFu);
@@ -445,6 +446,7 @@ Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
 
     return ray;
 }
+
 // ---------------------------------------------------------
 // レイと平面(Y=0)の交点を計算する関数
 // 戻り値: 交差したら true, その座標を intersectOut に入れる
@@ -491,10 +493,6 @@ bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
 
     return true;
 }
-
-
-
-
 
 void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     auto drawPreviewObject = [&](Object3d* object) {
@@ -674,7 +672,11 @@ void DebugEditor::Draw3DIcons() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     // 最前面に描画するためのImGuiレイヤーを取得
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    // Game Viewの描画レイヤーに載せ、別ウィンドウの上へアイコンを重ねません。
+    ImGuiWindow* viewWindow = ImGui::FindWindowByName("Game View");
+    if (!viewWindow || !viewWindow->Active) return;
+    ImDrawList* drawList = viewWindow->DrawList;
+    drawList->PushClipRect(ImVec2(gameViewOffset_.x, gameViewOffset_.y), ImVec2(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y), true);
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     for (const auto& obj : objects) {
@@ -732,6 +734,7 @@ void DebugEditor::Draw3DIcons() {
             }
         }
     }
+    drawList->PopClipRect();
 #endif
 }
 
@@ -742,7 +745,11 @@ void DebugEditor::DrawEventIDOverlay() {
 #ifdef USE_IMGUI
     if (!drawEventIDs_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
-    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    // Game Viewの描画レイヤーに載せ、別ウィンドウの上へアイコンを重ねません。
+    ImGuiWindow* viewWindow = ImGui::FindWindowByName("Game View");
+    if (!viewWindow || !viewWindow->Active) return;
+    ImDrawList* drawList = viewWindow->DrawList;
+    drawList->PushClipRect(ImVec2(gameViewOffset_.x, gameViewOffset_.y), ImVec2(gameViewOffset_.x + gameViewSize_.x, gameViewOffset_.y + gameViewSize_.y), true);
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     // 1. EventIDを持つオブジェクトをマップに集める (線を描画するため)
@@ -809,6 +816,7 @@ void DebugEditor::DrawEventIDOverlay() {
             drawList->AddText(NULL, 0.0f, pos, color, label.c_str());
         }
     }
+    drawList->PopClipRect();
 #endif
 }
 

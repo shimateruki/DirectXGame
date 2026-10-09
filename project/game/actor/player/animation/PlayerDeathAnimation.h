@@ -9,7 +9,7 @@ class Player;
 // 状態遷移、残機表示、暗転は PlayerStateDead 側に残し、ここでは
 // 「ヒット停止 -> ふくらみ -> 破裂 -> 飛沫」の流れに集中します。
 class PlayerDeathAnimation {
-public:
+  public:
     void Start(Player* player, bool finalDeath);
     void Update(Player* player, float deltaTime);
     void RestoreVisual(Player* player);
@@ -17,7 +17,7 @@ public:
     bool IsReadyForFade() const;
     bool IsFinished() const;
 
-private:
+  private:
     void ApplyPreBurstPose(Player* player);
     void EmitBurst(Player* player);
     void EmitPuddle(Player* player);
@@ -32,7 +32,7 @@ private:
     bool collisionStored_ = false;
     uint32_t baseCollisionAttribute_ = 0;
     uint32_t baseCollisionMask_ = 0xFFFFFFFF;
-    Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
-    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 baseScale_ = {1.0f, 1.0f, 1.0f};
+    Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f};
     std::vector<bool> childVisible_;
 };

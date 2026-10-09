@@ -228,6 +228,7 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         particles_.push_back(p);
     }
 }
+
 void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& position) {
     const float emissionScale = ResolveEmissionScale(params, position);
     if (emissionScale <= 0.0001f) {
@@ -240,9 +241,6 @@ void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& pos
         SpawnFromParams(params, position);
     }
 }
-
-
-
 
 /// <summary>
 /// パーティクル全体の更新
@@ -328,13 +326,12 @@ void ParticleSystem::Update(float deltaTime) {
         currentColor.z *= p.hdrIntensity;
 
         // --- サイズ更新 (グラフ適用) ---
-        // 配列要素数10と仮定してインデックス計算 (0~9)
+        // 旧形式の10点サイズカーブを寿命の進行率から選びます。
         int graphIndex = (int)(lifeRatio * 9.0f);
         if (graphIndex < 0) graphIndex = 0;
         if (graphIndex > 9) graphIndex = 9;
 
-        // エディタで編集したカーブの値をサイズとして採用
-        // ※ params_.sizeCurve が float配列[10] である前提
+        // 新形式のカーブが有効ならそれを優先し、旧形式の固定10点へフォールバックします。
         float currentSize = p.useAuthoringCurves
             ? p.sizeOverLife.Evaluate(lifeRatio)
             : params_.sizeCurve[graphIndex];
@@ -347,7 +344,7 @@ void ParticleSystem::Update(float deltaTime) {
         p.position.y += p.velocity.y * deltaTime;
         p.position.z += p.velocity.z * deltaTime;
 
-        // --- 回転更新 (★今回の追加) ---
+        // 回転速度を秒単位で積分し、ビルボード面内の向きに反映します。
         p.rotation += p.rotationSpeed * deltaTime;
 
 
@@ -356,8 +353,7 @@ void ParticleSystem::Update(float deltaTime) {
         // 1. スケール行列
         Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize * p.baseScale.x, currentSize * p.baseScale.y, currentSize });
 
-        // 2. 回転行列 (★今回の追加: Z軸回転)
-        // ビルボード面の上でクルクル回る動きを作ります
+        // ビルボード回転より前に Z 回転を置き、常にカメラへ向いた面の中で回します。
         Matrix4x4 rotateMatrix = math.MakeRotateZMatrix(p.rotation);
 
         // 3. 平行移動行列
@@ -385,6 +381,7 @@ void ParticleSystem::Update(float deltaTime) {
     const auto cpuEnd = std::chrono::high_resolution_clock::now();
     lastUpdateCpuTimeMs_ = std::chrono::duration<float, std::milli>(cpuEnd - cpuStart).count();
 }
+
 void ParticleSystem::Draw() {
     if (particleCount_ == 0) {
         lastDrawCpuTimeMs_ = 0.0f;

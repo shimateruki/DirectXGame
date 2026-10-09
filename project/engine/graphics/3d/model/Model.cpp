@@ -719,6 +719,7 @@ void Model::InitializeFromCpuData(
     CreateBoneBuffer();
     CreateComputeSkinningResources();
 }
+
 // ==========================================
 // ボーンバッファの作成とSRV登録 
 // ==========================================
@@ -1086,6 +1087,7 @@ uint32_t Model::GetPolygonCount() const {
     for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.indices.size() / 3);
     return count;
 }
+
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける
 // ==========================================

@@ -85,7 +85,10 @@ void DrawToolWindows(
 	void DrawBackBufferUi();
 	void EndFrame();
 	    // UI操作中や再生中の状態に合わせてカメラ入力を抑制します。
-void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);	void ApplyCameraOverrides();
+    void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);
+
+    // ツールが要求する一時的なカメラを、通常カメラの更新後に反映する。
+    void ApplyCameraOverrides();
 	void SaveAllEditors();
 	void RequestExit();
 

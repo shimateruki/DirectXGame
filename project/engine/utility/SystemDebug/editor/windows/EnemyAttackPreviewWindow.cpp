@@ -1,5 +1,9 @@
 #include "EnemyAttackPreviewWindow.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
+#include "engine/animation/BodyAnimationClip.h"
+#include "game/scene/gameplay/GamePlayScene.h"
+#include "game/system/CrownFinaleTuning.h"
+#include "game/system/CrownDefeatTuning.h"
 
 #include "BaseEnemy.h"
 #include "BaseScene.h"
@@ -13,6 +17,7 @@
 #include "EnemyBomber.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
+#include "game/system/CrownBarrageCamera.h"
 #include "EnemyGiantSlime.h"
 #include "game/actor/enemy/boss/magma/EnemyMagmaSlime.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
@@ -62,15 +67,36 @@ bool HasPreviewPrefix(const Object3d* object) {
 }
 
 void EnemyAttackPreviewWindow::SetPlayerCopyMode(bool enabled) {
-    if (playerCopyMode_ == enabled || (sceneManager_ && sceneManager_->IsPlaying())) return;
+    if (sceneManager_ && sceneManager_->IsPlaying()) return;
+    if (crownMovieMode_) {
+        ClearPreviewTransientState(); RemovePreviewObjects();
+        enabled_ = false; crownMovieMode_ = false;
+    }
+    if (playerCopyMode_ == enabled) return;
     if (enabled_) {
         ClearPreviewTransientState();
         RemovePreviewObjects();
     }
     playerCopyMode_ = enabled;
+    LoadSelectedProfile();
     if (enabled) loopDuration_ = 6.0f;
     else ApplyRecommendedSettings();
     if (enabled_) CreatePreviewObjects();
+}
+
+void EnemyAttackPreviewWindow::SetCrownMovieMode() {
+    if (crownMovieMode_ || (sceneManager_ && sceneManager_->IsPlaying())) return;
+    ClearPreviewTransientState(); RemovePreviewObjects();
+    EffectPreviewStage::GetInstance()->ReturnToScene();
+    enabled_ = false; playing_ = false; playerCopyMode_ = false; crownMovieMode_ = true;
+    loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+}
+
+void EnemyAttackPreviewWindow::StopPreview() {
+    useDraftProfile_ = false;
+    draftRefreshPending_ = false;
+    if (!enabled_) return;
+    ClearPreviewTransientState(); RemovePreviewObjects(); enabled_ = false;
 }
 
 void EnemyAttackPreviewWindow::Initialize(SceneManager* sceneManager) {
@@ -87,10 +113,15 @@ void EnemyAttackPreviewWindow::Finalize() {
 }
 
 void EnemyAttackPreviewWindow::Update(float deltaTime) {
+#ifdef USE_IMGUI
+    if (placementPreview_ && !IsAuthoringViewportActive()) { StopPreview(); return; }
+#endif
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (previewScene_ != currentScene) {
+        StopPlacementPreview();
         // Scene切り替え後は旧Sceneのポインタへ触れず、新しいScene側で作り直す。
         previewScene_ = currentScene;
+        crownMoviePrepared_ = false;
         previewEnemy_ = nullptr;
         previewTarget_ = nullptr;
         previewPlayer_ = nullptr;
@@ -115,11 +146,23 @@ void EnemyAttackPreviewWindow::Update(float deltaTime) {
         return;
     }
 
+    if (crownMovieMode_) loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+    // Sceneの切り替えと本番再生を確認してから、プレビューだけを再構築します。
+    if (draftRefreshPending_ && useDraftProfile_ && !placementPreview_) {
+        draftRefreshDelay_ += (std::max)(0.0f, deltaTime);
+#ifdef USE_IMGUI
+        if (!ImGui::IsAnyItemActive() && draftRefreshDelay_ >= 0.15f) PreviewDraft(true);
+#endif
+    }
     MarkPreviewFamilyEditorInternal();
-    SyncTargetTransform();
+    if (!crownMovieMode_) SyncTargetTransform();
 
     if (!HasPreviewActor() && !previewSequenceCompleted_) {
         CreatePreviewObjects();
+    }
+    if (placementPreview_) {
+        if (playing_) RestartPreview(); // 通常の再生操作は保存済み攻撃の確認に戻ります。
+        else { UpdatePlacementPreview(); return; }
     }
     if (!playing_ || (!HasPreviewActor() && !previewSequenceCompleted_)) {
         return;
@@ -148,6 +191,15 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
         return;
     }
 
+    if (crownMovieMode_) {
+        previewScene_ = sceneManager_->GetCurrentScene();
+        auto* game = dynamic_cast<GamePlayScene*>(previewScene_);
+        crownMoviePrepared_ = game && game->BeginCrownMoviePreview(crownDefeatMode_);
+        if (!crownMoviePrepared_) enabled_ = false;
+        elapsedTime_ = simulationAccumulator_ = 0.0f;
+        loopDuration_ = crownDefeatMode_ ? CrownDefeatTuning::Get().duration : CrownFinaleTuning::Get().movieDuration;
+        return;
+    }
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     previewStage->EnableForToolPreview();
     if (requestCameraRecenter) {
@@ -177,7 +229,8 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
                 break;
             }
         }
-        player->SetCollisionAttribute(0);
+        // 接触応答はmask=0で止め、共通攻撃のPhysics Queryには標的として見える状態にします。
+        player->SetCollisionAttribute(CollisionCategories::Get("player"));
         player->SetCollisionMask(0);
         player->SetMaterialType(25);
         player->SetEnableLighting(true);
@@ -228,6 +281,9 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
         previewPlayer_->SetGravity(50.0f);
         previewPlayer_->SetMaxFallSpeed(60.0f);
         if (copyActionIndex_ != 0) previewPlayer_->ApplyStoredCopy(kCopyTypes[copyTypeIndex_]);
+        if (useDraftProfile_) previewPlayer_->SetCopyPreviewProfile(draftProfile_);
+        if (const auto* attack = GetSelectedAttackDefinition(); attack && attack->sequence.enabled && attack->sequence.binding == "player_special")
+            previewPlayer_->SetCopyPreviewAttackId(attack->id);
         previewBaseScale_ = previewPlayer_->GetScale();
         if (showTarget_) {
             auto dummy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3dCommon());
@@ -236,7 +292,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
                 dummy->SetEditorInternal(true);
                 dummy->SetIsLocked(true);
                 dummy->SetTranslate(ground + Vector3{0,0,targetDistance_});
-                dummy->SetCollisionAttribute(kEnemy);
+                dummy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
                 dummy->SetCollisionMask(0);
                 if (dummy->param_) { dummy->param_->maxHp = dummy->param_->hp = 100000.0f; }
                 dummy->UpdateWorldMatrix(true);
@@ -277,6 +333,10 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
 
 void EnemyAttackPreviewWindow::RemovePreviewObjects() {
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+    if (crownMoviePrepared_ && currentScene && currentScene == previewScene_) {
+        if (auto* game = dynamic_cast<GamePlayScene*>(currentScene)) game->EndCrownMoviePreview();
+    }
+    crownMoviePrepared_ = false;
     if (currentScene && currentScene == previewScene_) {
         std::unordered_set<Object3d*> removalTargets;
         if (previewEnemy_) removalTargets.insert(previewEnemy_);
@@ -308,6 +368,7 @@ void EnemyAttackPreviewWindow::RemovePreviewObjects() {
 }
 
 void EnemyAttackPreviewWindow::RestartPreview() {
+    if (crownMovieMode_ && crownMoviePrepared_) { const bool resume = playing_; SeekPreview(0.0f); playing_ = resume; return; }
     ClearPreviewTransientState();
     RemovePreviewObjects();
     CreatePreviewObjects(false);
@@ -323,8 +384,13 @@ void EnemyAttackPreviewWindow::SeekPreview(float targetTime) {
     const int targetFrame = static_cast<int>(std::round(clampedTime / kFixedPreviewStep));
 
     ClearPreviewTransientState();
-    RemovePreviewObjects();
-    CreatePreviewObjects(false);
+    if (crownMovieMode_ && crownMoviePrepared_) {
+        if (auto* game = dynamic_cast<GamePlayScene*>(previewScene_)) game->RewindCrownMoviePreview();
+        elapsedTime_ = 0.0f;
+    } else {
+        RemovePreviewObjects();
+        CreatePreviewObjects(false);
+    }
     playing_ = false;
 
     for (int frame = 0; frame < targetFrame && (HasPreviewActor() || previewSequenceCompleted_); ++frame) {
@@ -338,6 +404,7 @@ void EnemyAttackPreviewWindow::SeekPreview(float targetTime) {
 }
 
 void EnemyAttackPreviewWindow::ClearPreviewTransientState() {
+    StopPlacementPreview();
     SetEffectSimulationScale(1.0f);
     MeshEffectManager::GetInstance()->ClearActiveEffects();
     DebrisEffectManager::GetInstance()->Clear();
@@ -380,10 +447,26 @@ void EnemyAttackPreviewWindow::ApplyEffectPlaybackState() {
         return;
     }
     // 再生速度は固定刻みの実行回数へ既に反映済みなので、演出側は再生中1、停止中0で統一します。
-    SetEffectSimulationScale(playing_ ? 1.0f : 0.0f);
+    // ムービーは手動の固定刻みで全管理系を進めるため、外側の実時間更新は常に止めます。
+    SetEffectSimulationScale(crownMovieMode_ ? 0.0f : (playing_ ? 1.0f : 0.0f));
 }
 
 void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
+    if (crownMovieMode_) {
+        if (auto* game = dynamic_cast<GamePlayScene*>(previewScene_)) {
+            SetEffectSimulationScale(1.0f);
+            game->StepCrownMoviePreview(deltaTime);
+            VFXSequencer::UpdateOneShots(deltaTime);
+            if (auto* particles = game->GetParticleSystem()) particles->Update(deltaTime);
+            MeshEffectManager::GetInstance()->UpdateEditorPreviewStep(deltaTime);
+            DebrisEffectManager::GetInstance()->Update(deltaTime);
+            if (auto* gpu = GPUParticleManager::GetInstance(); gpu->IsInitialized())
+                gpu->UpdateEditorPreviewStep(deltaTime);
+            elapsedTime_ += deltaTime;
+            ApplyEffectPlaybackState();
+        }
+        return;
+    }
     if (!previewTarget_ || (!HasPreviewActor() && !previewSequenceCompleted_)) {
         return;
     }
@@ -450,9 +533,12 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
     BulletManager::GetInstance()->Update(deltaTime);
     if (playerCopyMode_ && previewEnemy_) {
         for (const auto& bullet : BulletManager::GetInstance()->GetBullets()) {
-            if (!bullet || bullet->IsDead()) continue;
-            const Vector3 point = previewEnemy_->GetWorldPosition() + Vector3{0,0.8f,0};
-            if (Math::Length(point - bullet->GetTranslate()) > 1.5f + bullet->GetCollisionRadius()) continue;
+            if (!bullet || bullet->IsDead() ||
+                !(bullet->GetCollisionAttribute() & CollisionCategories::Get("player_attack")) ||
+                !(bullet->GetCollisionMask() & CollisionCategories::Get("enemy"))) continue;
+            // 隔離Actorのmaskは0なのでObject3dの応答フィルターを通さず、実形状を照合します。
+            if (!bullet->GetCollider() || !previewEnemy_->GetCollider() ||
+                !bullet->GetCollider()->CheckCollision(previewEnemy_->GetCollider()).isColliding) continue;
             DamageEvent event;
             event.target = previewEnemy_;
             event.attacker = previewPlayer_;
@@ -533,10 +619,10 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
                 const auto playerMask = previewPlayer_->GetCollisionMask();
                 const auto enemyAttribute = enemy->GetCollisionAttribute();
                 const auto enemyMask = enemy->GetCollisionMask();
-                previewPlayer_->SetCollisionAttribute(kPlayer);
-                previewPlayer_->SetCollisionMask(kEnemy);
-                enemy->SetCollisionAttribute(kEnemy);
-                enemy->SetCollisionMask(kPlayer);
+                previewPlayer_->SetCollisionAttribute(CollisionCategories::Get("player"));
+                previewPlayer_->SetCollisionMask(CollisionCategories::Get("enemy"));
+                enemy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
+                enemy->SetCollisionMask(CollisionCategories::Get("player"));
                 previewPlayer_->OnCollision(enemy);
                 previewPlayer_->SetCollisionAttribute(playerAttribute);
                 previewPlayer_->SetCollisionMask(playerMask);
@@ -567,8 +653,32 @@ void EnemyAttackPreviewWindow::StepSimulation(float deltaTime) {
     }
 
     elapsedTime_ += deltaTime;
+    ApplySealBarrageMovieCamera();
     MarkPreviewFamilyEditorInternal();
     RecordTimelineSample();
+}
+
+void EnemyAttackPreviewWindow::ApplySealBarrageMovieCamera() {
+    if (!falseKingSealBarragePreview_ || !sealBarrageMovieCameraPreview_ || !previewEnemy_ || !previewTarget_)
+        return;
+    // Reveal と詠唱を省略しない。実戦と同じ失敗確定時刻からカメラを切り替えます。
+    const float movieTime = elapsedTime_ - 1.25f - CrownFinaleTuning::Get().sealCastTime;
+    if (movieTime < 0.0f || movieTime >= CrownFinaleTuning::Get().sealBarrageMovieDuration)
+        return;
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera)
+        return;
+    const auto& tuning = CrownFinaleTuning::Get();
+    const CrownBarrageCameraPose pose = EvaluateCrownBarrageCamera(
+        movieTime, previewEnemy_->GetWorldPosition(), previewTarget_->GetWorldPosition(), tuning);
+    const Vector3 direction = pose.target - pose.eye;
+    const float horizontal = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+    camera->SetFollowTarget(nullptr);
+    camera->SetEye(pose.eye);
+    camera->SetTarget(pose.target);
+    camera->SetRotation({-std::atan2(direction.y, horizontal), std::atan2(direction.x, direction.z), 0.0f});
+    camera->SetFovY(pose.fov);
+    camera->Update();
 }
 
 void EnemyAttackPreviewWindow::ResolvePreviewProjectileHits() {
@@ -577,23 +687,20 @@ void EnemyAttackPreviewWindow::ResolvePreviewProjectileHits() {
     }
 
     const Vector3 targetPosition = previewPlayer_->GetTranslate();
-    const Vector3 targetScale = previewPlayer_->GetScale();
-    const float targetRadius = (std::max)({
-        0.75f,
-        std::abs(targetScale.x) * 0.50f,
-        std::abs(targetScale.y) * 0.42f,
-        std::abs(targetScale.z) * 0.50f
-    });
-
     for (const auto& bulletPtr : BulletManager::GetInstance()->GetBullets()) {
         Bullet* bullet = bulletPtr.get();
-        if (!bullet || bullet->IsDead() || (bullet->GetCollisionAttribute() & kEnemyAttack) == 0) {
+        if (!bullet || bullet->IsDead() ||
+            !(bullet->GetCollisionAttribute() & CollisionCategories::Get("enemy_attack")) ||
+            !(bullet->GetCollisionMask() & CollisionCategories::Get("player"))) {
             continue;
         }
 
         const Vector3 difference = targetPosition - bullet->GetTranslate();
-        const float hitRadius = targetRadius + (std::max)(0.15f, bullet->GetCollisionRadius());
-        if (Math::Length(difference) > hitRadius) {
+        // Bullet::UpdateのSphereCastと同じ実Colliderで命中を確認します。
+        // 原点中心の簡易球だと、中心がずれた標的の手前で弾だけが停止し、ダメージが発生しません。
+        // 標的のmask=0は隔離用のため、Object3d::CheckCollisionによる応答除外は適用しません。
+        if (!bullet->GetCollider() || !previewPlayer_->GetCollider() ||
+            !bullet->GetCollider()->CheckCollision(previewPlayer_->GetCollider()).isColliding) {
             continue;
         }
 
@@ -738,8 +845,10 @@ void EnemyAttackPreviewWindow::RecordTimelineSample() {
 }
 
 const char* EnemyAttackPreviewWindow::GetCurrentPhaseName() const {
-    if (playerCopyMode_) return elapsedTime_ < 0.5f ? "入力前" :
-        (elapsedTime_ < 0.5f + copyHoldTime_ ? kCopyActions[copyActionIndex_] : "解除・余韻");
+    if (playerCopyMode_ && previewPlayer_) return previewPlayer_->GetCopyAbilityStateLabel();
+    if (previewEnemy_) {
+        if (const char* label = previewEnemy_->GetSequenceStateLabel()) return label;
+    }
     if (previewSequenceCompleted_ && !previewEnemy_) {
         return "分裂後";
     }
@@ -822,7 +931,9 @@ void EnemyAttackPreviewWindow::MarkPreviewFamilyEditorInternal() {
         }
         object->SetEditorInternal(true);
         object->SetIsLocked(true);
-        object->SetCollisionAttribute(playerCopyMode_ && object.get() == previewEnemy_ ? kEnemy : 0);
+        const uint32_t attribute = object.get() == previewPlayer_ ? CollisionCategories::Get("player")
+            : (playerCopyMode_ && object.get() == previewEnemy_ ? CollisionCategories::Get("enemy") : 0);
+        object->SetCollisionAttribute(attribute);
         object->SetCollisionMask(0);
     }
 }
@@ -836,6 +947,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
     enemy->SetName(std::string(kPreviewEnemyName) + "_" + GetSelectedEnemyType());
     enemy->SetClassName("EditorOnly");
     enemy->SetEditorInternal(true);
+    if (useDraftProfile_) enemy->SetEditorPreviewProfile(draftProfile_);
     enemy->SetIsLocked(true);
     enemy->SetCollisionAttribute(0);
     enemy->SetCollisionMask(0);
@@ -844,6 +956,7 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
     enemy->SetGrounded(true);
     enemy->SetDetectionRange(30.0f);
     enemy->SetTarget(previewTarget_);
+    if (const auto* attack = GetSelectedAttackDefinition()) enemy->SetSequencePreviewAttackId(attack->id);
 
     if (auto* thunderSlime = dynamic_cast<EnemyThunderSlime*>(enemy)) {
         const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
@@ -901,7 +1014,9 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
     }
     if (auto* falseKingSlime = dynamic_cast<EnemyFalseKingSlime*>(enemy)) {
         const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
-        falseKingSlime->SetDebugPreviewAttackId(selectedAttack ? selectedAttack->id : std::string{});
+        falseKingSlime->SetDebugPreviewAttackId(falseKingSealBarragePreview_
+                                                   ? "seal_barrage_preview"
+                                                   : (selectedAttack ? selectedAttack->id : std::string{}));
     }
 
     if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(enemy); giantSlime && IsGiantHookSplitPreview()) {
@@ -938,10 +1053,20 @@ void EnemyAttackPreviewWindow::ApplyRecommendedSettings() {
 }
 
 void EnemyAttackPreviewWindow::LoadSelectedProfile() {
+    authoringUndo_.clear(); authoringRedo_.clear(); authoringGestureOpen_ = false;
     profileAttackIndex_ = 0;
+    falseKingSealBarragePreview_ = false;
     const std::string enemyType = GetSelectedEnemyType();
     EnemyAttackProfile::InvalidateCache(enemyType);
     const bool loaded = editableProfile_.LoadForEnemy(enemyType, &profileStatus_);
+    if (playerCopyMode_) {
+        for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i) {
+            if (editableProfile_.attacks[i].sequence.enabled && editableProfile_.attacks[i].sequence.binding == "player_special") {
+                profileAttackIndex_ = i;
+                break;
+            }
+        }
+    }
     if (editableProfile_.attacks.empty()) {
         profileStatus_ = enemyType + " は攻撃プロファイル編集の対象外です。";
     } else if (loaded) {
@@ -950,11 +1075,28 @@ void EnemyAttackPreviewWindow::LoadSelectedProfile() {
     profileDirty_ = false;
 }
 
-void EnemyAttackPreviewWindow::SaveSelectedProfile() {
+void EnemyAttackPreviewWindow::SaveSelectedProfile(bool restartPreview) {
     if (editableProfile_.attacks.empty()) {
         return;
     }
 
+    // 調整中の不正なキーを補正で隠さず、保存前に問題を表示します。
+    for (const auto& attack : editableProfile_.attacks) {
+        if (!attack.sequence.Validate(&profileStatus_)) return;
+        if (!attack.sequence.enabled) continue;
+        for (const auto& track : attack.sequence.tracks) {
+            if (!track.enabled || track.type != "body_animation") continue;
+            BodyAnimationClip clip;
+            if (!clip.Load(BodyAnimationClip::ResolveAssetPath(track.preset))) {
+                profileStatus_ = "本体アニメーションを読み込めません: " + track.preset;
+                return;
+            }
+        }
+    }
+    if (const auto* selected = GetSelectedAttackDefinition(); selected && !selected->sequence.assetPath.empty()) {
+        if (!EnemyAttackProfile::SaveSequenceAsset(selected->sequence.assetPath, selected->sequence, &profileStatus_)) return;
+        EnemyAttackProfile::InvalidateCache();
+    }
     editableProfile_.Sanitize();
     const std::string path = EnemyAttackProfile::GetDefaultPath(editableProfile_.enemyType);
     if (editableProfile_.SaveToFile(path, &profileStatus_)) {
@@ -962,7 +1104,9 @@ void EnemyAttackPreviewWindow::SaveSelectedProfile() {
         profileStatus_ = "保存しました: " + path;
         profileDirty_ = false;
         ApplyRecommendedSettings();
-        if (enabled_) {
+        if (enabled_ && restartPreview) {
+            useDraftProfile_ = false;
+            draftRefreshPending_ = false;
             RestartPreview();
         }
     }
@@ -977,7 +1121,7 @@ void EnemyAttackPreviewWindow::ResetSelectedProfile() {
 }
 
 const EnemyAttackDefinition* EnemyAttackPreviewWindow::GetSelectedAttackDefinition() const {
-    if (playerCopyMode_ || editableProfile_.attacks.empty()) {
+    if (falseKingSealBarragePreview_ || editableProfile_.attacks.empty()) {
         return nullptr;
     }
     const int clampedIndex = std::clamp(profileAttackIndex_, 0, static_cast<int>(editableProfile_.attacks.size()) - 1);
@@ -989,6 +1133,9 @@ EnemyAttackDefinition* EnemyAttackPreviewWindow::GetSelectedAttackDefinition() {
 }
 
 float EnemyAttackPreviewWindow::GetRecommendedTargetDistance() const {
+    if (falseKingSealBarragePreview_) {
+        return 15.0f;
+    }
     if (IsGiantHookSplitPreview()) {
         return 8.0f;
     }
@@ -1011,6 +1158,10 @@ float EnemyAttackPreviewWindow::GetRecommendedTargetDistance() const {
 }
 
 float EnemyAttackPreviewWindow::GetRecommendedLoopDuration() const {
+    if (falseKingSealBarragePreview_) {
+        const auto& tuning = CrownFinaleTuning::Get();
+        return 1.25f + tuning.sealCastTime + tuning.sealBarrageMovieDuration + tuning.sealBarrageRecovery;
+    }
     if (IsGiantHookSplitPreview()) {
         return giantPreviewModeIndex_ == 2 ? 4.2f : 3.5f;
     }
@@ -1033,6 +1184,10 @@ float EnemyAttackPreviewWindow::GetRecommendedLoopDuration() const {
 }
 
 const char* EnemyAttackPreviewWindow::GetSelectedEnemyType() const {
+    if (playerCopyMode_) {
+        const int copyIndex = std::clamp(copyTypeIndex_, 0, static_cast<int>(std::size(kCopyTypes)) - 1);
+        return copyIndex == 5 ? "FalseKingSlime" : kCopyTypes[copyIndex];
+    }
     const int index = std::clamp(enemyTypeIndex_, 0, static_cast<int>(std::size(kEnemyTypes)) - 1);
     return kEnemyTypes[index];
 }

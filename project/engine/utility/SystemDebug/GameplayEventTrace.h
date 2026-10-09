@@ -35,7 +35,7 @@ public:
     /// <summary>共有のイベント記録インスタンスを取得する。</summary>
     static GameplayEventTrace* GetInstance();
 
-    /// <summary>演出イベントの段階と発生元を時刻付きで記録する。</summary>
+    /// <summary>演出イベントを基準時刻からの経過秒で記録する。Capture が無効なら記録しない。</summary>
     /// <param name="phase">処理の段階。</param>
     /// <param name="category">イベントの種類。</param>
     /// <param name="source">発火元。</param>
@@ -48,7 +48,7 @@ public:
         std::string asset,
         std::string detail = {});
 
-    /// <summary>記録を破棄し、計測の基準時刻を戻す。</summary>
+    /// <summary>記録を破棄し、計測の基準時刻を戻す。シーケンス番号は継続する。</summary>
     void Clear();
 
     /// <summary>イベント記録画面を開く。</summary>

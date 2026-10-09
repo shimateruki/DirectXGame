@@ -7,15 +7,13 @@
 
 namespace cg2::editor {
 
-// ノードのピンが制御フローを流すのか、値を受け渡すのかを表します。
-// NodePinKindは、ピンが入力側か出力側かを表します。
+// ピンが制御フローか値の受け渡しかを表す。入力・出力の向きは NodePin::isInput で指定する。
 enum class NodePinKind {
     Flow,
     Value,
 };
 
-// 値ピンが扱うデータ型です。Flow は制御ピン用の特別な型として扱います。
-// NodeValueTypeは、ノード間で受け渡す値の種類を表します。
+// 値ピンが扱うデータ型。Flow は制御ピン用の特別な型。
 enum class NodeValueType {
     Flow,
     Bool,
@@ -43,6 +41,7 @@ enum class NodeIssueSeverity {
     Error,
 };
 
+// id はグラフ内で接続先を特定するための識別子。isInput は入出力の向きを表します。
 struct NodePin {
     int id = 0;
     std::string name;
@@ -51,6 +50,7 @@ struct NodePin {
     bool isInput = false;
 };
 
+// ノードの編集値。type に対応する値だけを有効として扱い、表示名と保存名を分ける。
 struct NodeProperty {
     std::string name;
     std::string displayName;
@@ -61,7 +61,7 @@ struct NodeProperty {
     std::string stringValue;
 };
 
-// NodeDataは、1つのノードの表示情報、ピン、プロパティをまとめたデータです。
+// 一つのノードの表示位置、接続ピン、編集可能な値をまとめます。
 struct NodeData {
     int id = 0;
     std::string type;
@@ -74,13 +74,14 @@ struct NodeData {
     std::vector<NodeProperty> properties;
 };
 
-// NodeLinkは、出力ピンと入力ピンの接続関係を保持します。
+// startPinId は出力ピン、endPinId は入力ピンの ID です。
 struct NodeLink {
     int id = 0;
     int startPinId = 0;
     int endPinId = 0;
 };
 
+// 接続検証の診断。nodeId と linkId を使って該当箇所を UI で示す。
 struct NodeGraphIssue {
     NodeIssueSeverity severity = NodeIssueSeverity::Info;
     int nodeId = 0;
@@ -88,6 +89,7 @@ struct NodeGraphIssue {
     std::string message;
 };
 
+// 到達順プレビューの一項目。実行結果やノード処理の完了を記録するものではない。
 struct NodeExecutionStep {
     int index = 0;
     int nodeId = 0;
@@ -96,20 +98,19 @@ struct NodeExecutionStep {
     std::string note;
 };
 
-// Effect Sequence Graph の実体です。
-// UI 表示だけでなく、保存、検証、ドライラン用の実行順作成まで担当します。
-// NodeGraphCoreは、ノード、リンク、検証、保存読み込みを扱うノードグラフのデータ本体です。
+// Effect Sequence Graph のデータ本体。ノード・リンクの編集、保存、検証、実行順プレビューを担当する。
 class NodeGraphCore {
 public:
-        // すべてのノードとリンクを破棄して空のグラフに戻します。
-void Clear();
+    // すべてのノードとリンクを破棄して空のグラフに戻す。
+    void Clear();
     void ResetToSample();
 
-        // 新しいノードを追加し、編集対象として参照できるデータを返します。
-NodeData& AddNode(const std::string& type, const std::string& title, float editorX, float editorY);
+    // 追加したノードへの参照を返す。座標はノードエディター上の位置。
+    NodeData& AddNode(const std::string& type, const std::string& title, float editorX, float editorY);
     NodePin& AddInputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
     NodePin& AddOutputPin(NodeData& node, const std::string& name, NodePinKind kind, NodeValueType valueType = NodeValueType::Flow);
     NodeProperty& AddProperty(NodeData& node, const std::string& name, const std::string& displayName, NodePropertyType type);
+    // 出力から入力への型が合い、入力が未接続の場合だけ追加する。失敗時はnullptr。
     NodeLink* AddLink(int startPinId, int endPinId);
 
     bool RemoveNode(int nodeId);
@@ -129,13 +130,15 @@ NodeData& AddNode(const std::string& type, const std::string& title, float edito
     int CountIncomingLinks(int inputPinId) const;
     int CountOutgoingLinks(int outputPinId) const;
 
+    // 保存先の親ディレクトリを作成する。失敗時はfalseと任意のエラー文を返す。
     bool SaveToFile(const std::string& path, std::string* errorMessage = nullptr) const;
+    // ファイルを開けなければ現状態を維持する。解析エラーではグラフを空にする。
     bool LoadFromFile(const std::string& path, std::string* errorMessage = nullptr);
 
-        // 未接続ピンや型不一致など、実行前に確認すべき問題を収集します。
-std::vector<NodeGraphIssue> Validate() const;
-        // 現在のグラフから、実行順のプレビュー情報を作成します。
-std::vector<NodeExecutionStep> BuildExecutionPreview() const;
+    // 未接続ピン、型不一致、Eventから到達できない制御ノードなどを収集する。
+    std::vector<NodeGraphIssue> Validate() const;
+    // Eventからの制御フローを幅優先で辿る説明用の順序。実行結果は変更しない。
+    std::vector<NodeExecutionStep> BuildExecutionPreview() const;
 
     std::vector<NodeData>& GetNodes() { return nodes_; }
     const std::vector<NodeData>& GetNodes() const { return nodes_; }

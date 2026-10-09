@@ -19,10 +19,11 @@ void GimmickLiquidLevel::Initialize(Object3dCommon* common, const std::string& m
     SetName("Gimmick_LiquidLevel");
     SetCollisionAttribute(0);
     SetCollisionMask(0);
-    SetScale({ 4.0f, 0.08f, 4.0f });
+    SetScale({4.0f, 0.08f, 4.0f});
     SetStatic(false);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->moveAmount = 6.0f;
     param_->moveSpeed = 3.0f;
     param_->startActive = false;
@@ -32,7 +33,8 @@ void GimmickLiquidLevel::Initialize(Object3dCommon* common, const std::string& m
 }
 
 void GimmickLiquidLevel::Update(float deltaTime) {
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
 
     if (param_->actionMode == 1) {
         UpdateEscape(deltaTime);
@@ -71,32 +73,35 @@ void GimmickLiquidLevel::Update(float deltaTime) {
 }
 
 void GimmickLiquidLevel::OnTrigger() {
-    if (param_ && param_->actionMode == 1) return;
+    if (param_ && param_->actionMode == 1)
+        return;
     OnSwitchEvent(true);
 }
 
 void GimmickLiquidLevel::OnSwitchEvent(bool active) {
-    if (!param_.has_value()) param_.emplace();
-    if (param_->actionMode == 1) return;
-    if (!active && !param_->returnOnOff) return;
+    if (!param_.has_value())
+        param_.emplace();
+    if (param_->actionMode == 1)
+        return;
+    if (!active && !param_->returnOnOff)
+        return;
     ApplyTarget(active);
 }
 
 void GimmickLiquidLevel::ApplyTarget(bool active) {
     active_ = active;
     float amount = param_.has_value() ? param_->moveAmount : 6.0f;
-    targetPosition_ = active ? basePosition_ + Vector3{ 0.0f, amount, 0.0f } : basePosition_;
+    targetPosition_ = active ? basePosition_ + Vector3{0.0f, amount, 0.0f} : basePosition_;
 }
 
 void GimmickLiquidLevel::ApplyLiquidVisual() {
     int colorType = param_.has_value() ? param_->colorType : 0;
     if (colorType == 1) {
         SetMaterialType(9);
-        SetColor({ 1.0f, 0.25f, 0.02f, 0.88f });
-    }
-    else {
+        SetColor({1.0f, 0.25f, 0.02f, 0.88f});
+    } else {
         SetMaterialType(8);
-        SetColor({ 0.45f, 0.85f, 1.0f, 0.65f });
+        SetColor({0.45f, 0.85f, 1.0f, 0.65f});
     }
 }
 
@@ -113,7 +118,8 @@ std::unique_ptr<Object3d> GimmickLiquidLevel::Clone() const {
 void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
     auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying()) {
-        if (initializedForPlay_) SetTranslate(basePosition_);
+        if (initializedForPlay_)
+            SetTranslate(basePosition_);
         initializedForPlay_ = false;
         escapeStarted_ = escapeFinished_ = false;
         escapeTime_ = 0.0f;
@@ -121,7 +127,8 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         return;
     }
     auto* scene = manager->GetCurrentScene();
-    if (!scene) return;
+    if (!scene)
+        return;
     if (!initializedForPlay_) {
         basePosition_ = GetTranslate();
         initializedForPlay_ = true;
@@ -129,13 +136,15 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
     }
     Player* player = nullptr;
     for (auto& obj : scene->GetObjects()) {
-        if ((player = dynamic_cast<Player*>(obj.get()))) break;
+        if ((player = dynamic_cast<Player*>(obj.get())))
+            break;
     }
     auto* start = scene->FindObjectByEventID(GetTargetID());
     auto* finish = scene->FindObjectByEventID(GetTargetID() + 1);
     auto* checkpoint = scene->FindObjectByEventID(GetTargetID() + 2);
     const auto inside = [&](Object3d* marker) {
-        if (!marker || !player) return false;
+        if (!marker || !player)
+            return false;
         const Vector3 p = player->GetTranslate() - marker->GetTranslate();
         const Vector3 radius = marker->GetScale();
         return std::abs(p.x) <= radius.x && std::abs(p.y) <= radius.y && std::abs(p.z) <= radius.z;
@@ -145,7 +154,8 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         if (!escapeStarted_ && inside(start)) {
             escapeStarted_ = true;
             escapeTime_ = 0.0f;
-            if (checkpoint) player->ActivateCheckpoint(checkpoint->GetTranslate());
+            if (checkpoint)
+                player->ActivateCheckpoint(checkpoint->GetTranslate());
             ResetEscapeObjects(true);
             if (auto* camera = CameraManager::GetInstance()->GetActiveCamera())
                 camera->StartShake(0.65f, 0.10f, 18.0f, {0.4f, 1.0f, 0.4f});
@@ -156,15 +166,18 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
             // 到達後は追撃を止め、頂上のゴールへ安全に進めるようにします。
             for (auto& obj : scene->GetObjects())
                 if (obj->GetTargetID() == GetEventID()) {
-                    if (auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(obj.get())) geyser->ResetEscapeCycle(false);
-                    else if (auto* cannon = dynamic_cast<GimmickFireCannon*>(obj.get())) cannon->OnSwitchEvent(false);
+                    if (auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(obj.get()))
+                        geyser->ResetEscapeCycle(false);
+                    else if (auto* cannon = dynamic_cast<GimmickFireCannon*>(obj.get()))
+                        cannon->OnSwitchEvent(false);
                 }
         }
     }
     if (escapeStarted_ && !escapeFinished_) {
         escapeTime_ += (std::max)(0.0f, deltaTime);
         const float elapsed = (std::max)(0.0f, escapeTime_ - param_->shakeDuration);
-        const float rise = (std::min)((std::max)(0.0f, param_->moveAmount), elapsed * (std::max)(0.01f, param_->moveSpeed));
+        const float rise =
+            (std::min)((std::max)(0.0f, param_->moveAmount), elapsed * (std::max)(0.01f, param_->moveSpeed));
         SetTranslate(basePosition_ + Vector3{0.0f, rise, 0.0f});
     }
     // 接触判定はPlayerが現在の液面を読むため、ここで行列まで確定します。
@@ -174,17 +187,24 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
 
 void GimmickLiquidLevel::ResetEscapeObjects(bool active) {
     auto* scene = SceneManager::GetInstance()->GetCurrentScene();
-    if (!scene) return;
+    if (!scene)
+        return;
     for (auto& obj : scene->GetObjects()) {
-        if (!obj || obj.get() == this || obj->GetTargetID() != GetEventID()) continue;
-        if (auto* floor = dynamic_cast<GimmickMovingFloor*>(obj.get())) floor->ResetEscapeCycle();
-        else if (auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(obj.get())) geyser->ResetEscapeCycle(active);
-        else if (auto* cannon = dynamic_cast<GimmickFireCannon*>(obj.get())) cannon->OnSwitchEvent(active);
-        else if (obj->GetGimmickType() == "EventReceiver") obj->OnSwitchEvent(false);
+        if (!obj || obj.get() == this || obj->GetTargetID() != GetEventID())
+            continue;
+        if (auto* floor = dynamic_cast<GimmickMovingFloor*>(obj.get()))
+            floor->ResetEscapeCycle();
+        else if (auto* geyser = dynamic_cast<GimmickMagmaGeyser*>(obj.get()))
+            geyser->ResetEscapeCycle(active);
+        else if (auto* cannon = dynamic_cast<GimmickFireCannon*>(obj.get()))
+            cannon->OnSwitchEvent(active);
+        else if (obj->GetGimmickType() == "EventReceiver")
+            obj->OnSwitchEvent(false);
     }
     // 出現床のスイッチは独立したリンクなので、受信側IDから同じ組を探します。
     for (auto& obj : scene->GetObjects())
         if (obj->GetTargetID() == GetEventID() + 4)
-            if (auto* button = dynamic_cast<GimmickSwitch*>(obj.get())) button->ResetEscapeCycle();
+            if (auto* button = dynamic_cast<GimmickSwitch*>(obj.get()))
+                button->ResetEscapeCycle();
     scene->SetEventActive(GetEventID() + 5, active);
 }

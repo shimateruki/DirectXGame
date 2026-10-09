@@ -135,15 +135,48 @@ void GameEditorController::DrawWorkspaceMenu() {
     }
     ImGui::EndMenu();
 }
+
 void GameEditorController::SetupDefaultDockspace() {
 	ImGuiID dockspaceId = ImGui::DockSpaceOverViewport(
 		0,
 		ImGui::GetMainViewport(),
 		ImGuiDockNodeFlags_PassthruCentralNode);
 
-	if (dockspaceInitialized_) {
-		return;
-	}
+    const bool expandAssets = PresetEditor::GetInstance()->ConsumeLibraryDockExpandRequest();
+    if (expandAssets) SetReplayDebuggerVisible(false);
+    if (dockspaceInitialized_ && expandAssets) {
+        ImGuiWindow* project = ImGui::FindWindowByName("Project (Assets)");
+        ImGuiWindow* console = ImGui::FindWindowByName("Debug Console");
+        ImGuiDockNode* bottom = project ? project->DockNode : nullptr;
+        // 旧配置の左右分割だけをまとめ、HierarchyとInspectorの幅は維持します。
+        if (bottom && console && console->DockNode && bottom != console->DockNode &&
+            bottom->ParentNode && bottom->ParentNode == console->DockNode->ParentNode)
+            bottom = bottom->ParentNode;
+        ImGuiWindow* gameView = ImGui::FindWindowByName("Game View");
+        if (bottom && gameView && gameView->DockNode && bottom->ParentNode &&
+            bottom->ParentNode == gameView->DockNode->ParentNode) {
+            const ImGuiID bottomId = bottom->ID;
+            ImGuiDockNode* parent = bottom->ParentNode;
+            const float height = parent->Size.y * 0.50f;
+            ImGui::DockBuilderRemoveNodeChildNodes(bottomId);
+            bottom = ImGui::DockBuilderGetNode(bottomId);
+            bottom->LocalFlags &= ~(ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit);
+            ImGui::DockBuilderSetNodeSize(bottomId, ImVec2(parent->Size.x, height));
+            ImGui::DockBuilderSetNodeSize(gameView->DockNode->ID,
+                ImVec2(parent->Size.x, (std::max)(1.0f, parent->Size.y - height - ImGui::GetStyle().ItemSpacing.y)));
+            ImGui::DockBuilderDockWindow("Project (Assets)", bottomId);
+            ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", bottomId);
+            ImGui::DockBuilderDockWindow("Debug Console", bottomId);
+            ImGui::DockBuilderDockWindow("ステータス", bottomId);
+            ImGui::DockBuilderDockWindow("Camera Object Preview", bottomId);
+            ImGui::DockBuilderFinish(dockspaceId);
+            ImGui::SetWindowFocus("Project (Assets)");
+        } else {
+            // Projectが浮動ウィンドウなどに移された場合は、既定の下部配置へ戻します。
+            dockspaceInitialized_ = false;
+        }
+    }
+    if (dockspaceInitialized_) return;
 
 	dockspaceInitialized_ = true;
 	ImGui::DockBuilderRemoveNode(dockspaceId);
@@ -153,12 +186,10 @@ void GameEditorController::SetupDefaultDockspace() {
 	ImGuiID dockMainId = dockspaceId;
 	ImGuiID dockLeftId = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.22f, nullptr, &dockMainId);
 	ImGuiID dockRightId = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Right, 0.25f, nullptr, &dockMainId);
-	const bool expandedBottomWorkspace = showReplayDebugger_ || showEnemyAttackTimeline_ || showEffectPreviewTimeline_ ||
-        showAnimationTimeline_ || showCinematicTimeline_;
 	ImGuiID dockBottomId = ImGui::DockBuilderSplitNode(
 		dockMainId,
 		ImGuiDir_Down,
-		expandedBottomWorkspace ? 0.42f : 0.30f,
+		expandAssets ? 0.50f : 0.42f,
 		nullptr,
 		&dockMainId);
 
@@ -188,22 +219,17 @@ void GameEditorController::SetupDefaultDockspace() {
             node->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit;
         }
 	} else {
-		ImGuiID dockBottomRightId = dockBottomId;
-		ImGuiID dockBottomLeftId = ImGui::DockBuilderSplitNode(
-			dockBottomId,
-			ImGuiDir_Left,
-			0.60f,
-			nullptr,
-			&dockBottomRightId);
-		ImGui::DockBuilderDockWindow("Project (Assets)", dockBottomLeftId);
-		ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomLeftId);
-		ImGui::DockBuilderDockWindow("Debug Console", dockBottomRightId);
-		ImGui::DockBuilderDockWindow("ステータス", dockBottomRightId);
-		ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomRightId);
+        // Asset一覧は下部の横幅を使い、ログ・計測は同じ領域のタブで切り替えます。
+        ImGui::DockBuilderDockWindow("Project (Assets)", dockBottomId);
+        ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dockBottomId);
+        ImGui::DockBuilderDockWindow("Debug Console", dockBottomId);
+        ImGui::DockBuilderDockWindow("ステータス", dockBottomId);
+        ImGui::DockBuilderDockWindow("Camera Object Preview", dockBottomId);
 	}
 	ImGui::DockBuilderDockWindow("Game View", dockMainId);
 	ImGui::DockBuilderFinish(dockspaceId);
 }
+
 // 編集中はScene View、再生中はGame Viewとして使う単一Viewportを描画する。
 
 void DrawCameraObjectPreviewWindow();

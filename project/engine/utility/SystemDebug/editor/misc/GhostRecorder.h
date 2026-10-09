@@ -10,16 +10,17 @@
 
 class SceneManager;
 
-// ゴースト再生用の1フレーム分のTransformとイベントを保持する。
+// ゴースト再生用の1サンプル分のTransformとイベントを保持する。再生時は60サンプルを1秒として扱う。
 struct GhostFrame {
     Vector3 position;
     Vector3 rotation;
     Vector3 scale = { 1.0f, 1.0f, 1.0f };
-    int eventID = 0;
+    int eventID = 0; // 0はイベントなし。非0なら通過時に対象のOnRecordEventへ渡す。
 };
 
 
-// GhostRecorderは、プレイ中の動きやカメラ軌跡を記録し、エディタ上で再生確認するためのツールです。
+// プレイ中の動きやカメラ軌跡を記録し、エディタ上で再生確認する。
+// 対象とSceneManagerのポインタは借用し、シーンから対象が消えたときは参照を解除する。
 class GhostRecorder : public IEditable {
 public:
     enum class State {
@@ -28,6 +29,7 @@ public:
         Playing     // 再生中
     };
 
+    // 始終点と中継点から記録フレームを生成する設定。相対生成の基準と区間補間方式も保持する。
     struct GenerationParams {
         Vector3 startPos = { 0,0,0 };
         Vector3 startRot = { 0,0,0 };
@@ -43,6 +45,7 @@ public:
         float endWaitTime = 0.0f;
         Vector3 anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
         Vector3 anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
+        // 経路生成の中継点。waitTime はその点での待機秒、durationToNext は次点までの移動秒。
         struct Waypoint {
             Vector3 pos;
             Vector3 rot;
@@ -59,6 +62,7 @@ public:
     };
 
 public:
+    /// <summary>記録内容と再生状態を初期化する。既存のメモリ上の記録は破棄される。</summary>
     void Initialize(SceneManager* sceneManager);
     void Update();
     void DrawImGui() override;
@@ -67,6 +71,7 @@ public:
     void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size, bool isReadOnly = false);
     void DrawObjectGhostPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
+    /// <summary>記録・再生するシーン内Objectを指定する。所有権は移さない。</summary>
     void SetTarget(Object3d* target);
     void ClearTarget();
     Object3d* GetTarget() const { return target_; }
@@ -74,15 +79,28 @@ public:
     bool HasPreviewData() const;
     State GetState() const { return state_; }
 
+    /// <summary>Resources/json/animation内の記録を読み込み、対象へ再生する。</summary>
+    /// <param name="fileName">拡張子を除いたJSONファイル名。</param>
+    /// <param name="loop">終端の次に先頭へ戻す場合はtrue。</param>
+    /// <param name="isRelative">開始時の対象位置を基準に軌跡を適用する場合はtrue。</param>
+    /// <param name="isCinematic">対象を非表示にし、演出カメラとして再生する場合はtrue。</param>
     void Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic);
+    /// <summary>再生を止める。相対再生中にautoResetがtrueなら開始時の姿勢へ戻す。</summary>
     void Stop(bool autoReset = true);
 
+    /// <summary>メモリ上の記録と生成パラメータをResources/json/animationへ保存する。</summary>
+    /// <remarks>記録が空、またはファイルを開けない場合は保存しない。</remarks>
     void Save(const std::string& fileName);
+    /// <summary>同じ場所のJSONを読み込む。ファイルがなければ現在の記録を維持する。</summary>
     void Load(const std::string& fileName);
 
     int GetTotalFrames() const { return static_cast<int>(frames_.size()); }
+    /// <summary>60サンプルを1秒として、最初から最後のサンプルまでの秒数を返す。</summary>
     float GetDurationSeconds() const;
     void EvaluateAtFrame(int frameIndex);
+    /// <summary>指定時刻の姿勢を補間して適用する。時刻は記録範囲に丸める。</summary>
+    /// <param name="dispatchEvents">trueならpreviousTimeSecondsからtimeSecondsまでに通過したイベントを通知する。</param>
+    /// <param name="previousTimeSeconds">イベント検出区間の始点。逆方向の評価では通知しない。</param>
     void EvaluateAtTime(float timeSeconds, bool dispatchEvents = false, float previousTimeSeconds = 0.0f);
     void CaptureBasePose();
     void RestoreBasePose();

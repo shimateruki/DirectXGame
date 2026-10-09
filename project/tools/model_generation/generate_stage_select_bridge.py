@@ -1,3 +1,8 @@
+"""ステージセレクト用の橋モデルと木・ロープ・金具のテクスチャを生成する。
+
+Resources/3DModel/Stages/stage_select_bridge の同名出力を更新する。
+"""
+
 from __future__ import annotations
 
 import math

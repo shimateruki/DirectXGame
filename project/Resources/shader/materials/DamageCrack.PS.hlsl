@@ -39,6 +39,7 @@ float Fbm2(float2 p)
 
 float2 SurfaceUV(float3 worldPos, float3 normal)
 {
+    // Blend planar coordinates by normal weight so cracks remain stable on every face.
     float3 n = abs(normalize(normal));
     n = max(n, float3(0.001f, 0.001f, 0.001f));
     n /= n.x + n.y + n.z;
@@ -103,6 +104,7 @@ float4 main(VSOutput input) : SV_TARGET
     float3 edgeColor = float3(0.38f, 0.30f, 0.20f);
     float alphaBase = 0.62f;
 
+    // Variant 1 adds a cold glass impact; higher variants emphasize a hot weak point.
     if (mode > 0.5f && mode < 1.5f)
     {
         float glassStar = RadialWeakPoint(uv * 1.15f, detail, softness);

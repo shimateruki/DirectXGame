@@ -171,6 +171,9 @@
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomber.cpp" />
     <ClCompile Include="game\actor\enemy\combat\AttackTelegraph.cpp" />
     <ClCompile Include="game\actor\enemy\combat\EnemyAttackProfile.cpp" />
+    <ClCompile Include="game\actor\enemy\combat\AttackAbilityRuntime.cpp" />
+    <ClCompile Include="game\actor\combat\AttackSequence.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Authoring.cpp" />
     <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp" />
@@ -178,6 +181,8 @@
     <ClCompile Include="game\actor\enemy\heavy\EnemyGiantSlime.cpp" />
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.cpp" />
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Attacks.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Encounter.cpp" />
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp" />
     <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp" />
@@ -267,6 +272,7 @@
     <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp" />
     <ClCompile Include="game\system\GameRule.cpp" />
+    <ClCompile Include="game\system\StageCatalog.cpp" />
     <ClCompile Include="game\system\TutorialDirector.cpp" />
     <ClCompile Include="game\system\GroundEffectLocator.cpp" />
     <ClCompile Include="game\system\HitEffectDirector.cpp" />
@@ -332,9 +338,12 @@
     <ClCompile Include="game\scene\gameplay\GamePlayScene.StageEntry.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.ArenaPresentation.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.HUD.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.LifeLost.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.Setup.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.Update.cpp" />
     <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinale.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownFinalePreview.cpp" />
+    <ClCompile Include="game\scene\gameplay\GamePlayScene.CrownDefeat.cpp" />
     <ClCompile Include="game\scene\preview\PreviewScene.cpp" />
     <ClCompile Include="game\scene\editor\SceneAssetEditorScene.cpp" />
     <ClCompile Include="game\scene\SceneController.cpp" />
@@ -563,6 +572,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="Resources\shader\particle\ParticleCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
@@ -653,9 +665,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="game\system\CrownDefeatTuning.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomber.h" />
     <ClInclude Include="game\actor\enemy\combat\AttackTelegraph.h" />
     <ClInclude Include="game\actor\enemy\combat\EnemyAttackProfile.h" />
+    <ClInclude Include="game\actor\combat\AttackSequence.h" />
+    <ClInclude Include="game\actor\combat\AttackSequenceData.h" />
+    <ClInclude Include="game\actor\combat\AttackSequenceTracks.h" />
     <ClInclude Include="engine\graphics\effect\EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyDrawer.h" />
@@ -680,6 +696,7 @@
     <ClInclude Include="game\actor\enemy\boss\core\BossCore.h" />
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.h" />
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h" />
+    <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Internal.h" />
     <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.h" />
     <ClInclude Include="game\actor\enemy\core\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
@@ -931,6 +948,8 @@
     <ClInclude Include="game\scene\gameover\GameOverScene.h" />
     <ClInclude Include="game\scene\clear\GameClearScene.h" />
     <ClInclude Include="game\system\GameRule.h" />
+    <ClInclude Include="game\system\StageCatalog.h" />
+    <ClInclude Include="game\system\StageManager.h" />
     <ClInclude Include="game\system\TutorialDirector.h" />
     <ClInclude Include="game\system\GroundEffectLocator.h" />
     <ClInclude Include="game\system\HitEffectDirector.h" />
@@ -1168,6 +1187,7 @@
     <ClCompile Include="game\actor\player\combat\Player.Feedback.cpp" />
     <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Internal.h" />
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Attacks.cpp" />
+    <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.UmbraFlames.cpp" />
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Encounter.cpp" />
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.Finale.cpp" />
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h" />

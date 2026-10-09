@@ -761,8 +761,6 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
                 DebugConsole::GetInstance()->AddLog(log.c_str());
             }
 
-
-
             // Position
             for (unsigned int k = 0; k < aiChannel->mNumPositionKeys; ++k) {
                 aiVectorKey& key = aiChannel->mPositionKeys[k];
@@ -826,8 +824,6 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
     }
     return result;
 }
-
-
 
 #include "DirectXCommon.h"
 

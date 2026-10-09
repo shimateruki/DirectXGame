@@ -1,12 +1,12 @@
 #pragma once
-#include "BaseScene.h" 
+#include "BaseScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
 #include "Sprite.h"
 #include "AudioPlayer.h"
-#include "ParticleSystem.h" 
-#include "ParticleCommon.h" 
+#include "ParticleSystem.h"
+#include "ParticleCommon.h"
 #include "SpriteDebugEditor.h"
 #include "Player.h"
 #include "Text.h"
@@ -16,7 +16,7 @@
 #include "MeshRenderer.h"
 
 #include "ObjectManager.h"
-#include "DebugEditor.h" 
+#include "DebugEditor.h"
 #include <GhostRecorder.h>
 
 #include <memory>
@@ -34,10 +34,10 @@ class GameRule;
 class BossCore;
 
 /// <summary>
-/// アセット確認・調整用のプレビューシーン (GamePlaySceneの完全クローン)
+/// アセット確認用の独立シーン。配置 Object とプレイヤーを管理し、編集用の更新・描画を行う。
 /// </summary>
 class PreviewScene : public BaseScene {
-public:
+  public:
     PreviewScene();
     ~PreviewScene() override;
 
@@ -63,8 +63,8 @@ public:
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
 
-	Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
-	Skybox* GetSkybox() override { return skybox_.get(); }
+    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 
@@ -81,18 +81,15 @@ public:
         }
     }
 
-private:
-    enum class MovieState {
-        kNone,
-        kBridgeDrop
-    };
+  private:
+    enum class MovieState { kNone, kBridgeDrop };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
     Vector3 movieStartCameraEye_;
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
 
-private:
+  private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -110,7 +107,7 @@ private:
 
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
-    std::unique_ptr<Text>  debugText_;
+    std::unique_ptr<Text> debugText_;
     std::unique_ptr<GameRule> gameRule_;
 
     Player* player_ = nullptr;
@@ -135,7 +132,7 @@ private:
     std::unique_ptr<Object3d> animatedCube_;
 
     bool isGoal_ = false;
-    bool sessionStarCoins_[3] = { false, false, false };
+    bool sessionStarCoins_[3] = {false, false, false};
 
     std::unique_ptr<Sprite> hudHpIcon_;
     std::unique_ptr<Sprite> hudHpFrame_;
@@ -161,11 +158,14 @@ private:
     float hudMorphGaugeTimer_ = 0.0f;
     float hudMorphGaugeVisibleTimer_ = 0.0f;
 
-    std::unique_ptr<Sprite> CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
+    std::unique_ptr<Sprite> CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position,
+                                                   const Vector2& size, const Vector2& anchor, const Vector4& color);
     void InitializePreviewHUD();
     void UpdatePreviewHUD(float deltaTime);
     void DrawPreviewHUD();
-    void SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
+    void SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value,
+                             const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color,
+                             bool visible);
 
     bool IsVisible(Object3d* obj);
 };

@@ -22,28 +22,13 @@ constexpr float kFadeInDuration = 0.16f;
 constexpr float kFadeOutDuration = 0.30f;
 constexpr float kPi = 3.1415926535f;
 
-Vector4 ReadColor(const json& value, const Vector4& fallback) {
-    if (!value.is_array() || value.size() < 3) {
-        return fallback;
-    }
-
-    Vector4 color = fallback;
-    color.x = value[0].get<float>();
-    color.y = value[1].get<float>();
-    color.z = value[2].get<float>();
-    if (value.size() >= 4) {
-        color.w = value[3].get<float>();
-    }
-    return color;
-}
-
 float EaseOutBack(float value) {
     value = std::clamp(value, 0.0f, 1.0f);
     constexpr float c1 = 1.70158f;
     constexpr float c3 = c1 + 1.0f;
     return 1.0f + c3 * std::pow(value - 1.0f, 3.0f) + c1 * std::pow(value - 1.0f, 2.0f);
 }
-}
+} // namespace
 
 void SaveIndicatorOverlay::Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath) {
     spriteCommon_ = spriteCommon;
@@ -71,7 +56,9 @@ void SaveIndicatorOverlay::Play(float holdDuration) {
     ApplyVisibilityAnimation(0.0f);
 }
 
+// 保存通知は表示保持とフェードを分け、連続保存では表示時間を更新します。
 void SaveIndicatorOverlay::Update(float deltaTime) {
+    // 登場・表示維持・退場の順に透明度を変え、保存完了の通知を急に消さないようにします。
     if (!IsActive()) {
         return;
     }
@@ -125,12 +112,7 @@ void SaveIndicatorOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySpri
 }
 
 void SaveIndicatorOverlay::CaptureReplayState(json& state) const {
-    state = {
-        { "active", isActive_ },
-        { "debugHold", debugHold_ },
-        { "timer", timer_ },
-        { "holdDuration", holdDuration_ }
-    };
+    state = {{"active", isActive_}, {"debugHold", debugHold_}, {"timer", timer_}, {"holdDuration", holdDuration_}};
 }
 
 void SaveIndicatorOverlay::RestoreReplayState(const json& state) {
@@ -164,6 +146,7 @@ void SaveIndicatorOverlay::DrawImGui() {
 #endif
 
 void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
+    // レイアウト JSON の座標は基準解像度から実画面へ変換します。
     sprites_.clear();
     if (!spriteCommon_) {
         return;
@@ -187,8 +170,11 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
 
     const auto layoutScale = SpriteLayoutScaler::Make(root);
     for (const auto& spriteData : root["sprites"]) {
-        const std::string name = spriteData.value("name", "save_indicator_sprite");
-        const std::string texture = spriteData.value("texture", "common/white.png");
+        if (!spriteData.is_object()) {
+            continue;
+        }
+        const std::string name = SpriteLayoutScaler::ReadString(spriteData, "name", "save_indicator_sprite");
+        const std::string texture = SpriteLayoutScaler::ReadString(spriteData, "texture", "common/white.png");
         const uint32_t textureHandle = Sprite::LoadTexture(texture.empty() ? "common/white.png" : texture);
 
         auto sprite = std::make_unique<Sprite>();
@@ -197,15 +183,13 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
         sprite->SetTextureName(texture);
         sprite->SetPosition(SpriteLayoutScaler::ScalePosition(
             SpriteLayoutScaler::ReadVector2(spriteData.value("position", json::array()), sprite->GetPosition()),
-            layoutScale
-        ));
+            layoutScale));
         sprite->SetSize(SpriteLayoutScaler::ScaleSize(
-            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()),
-            layoutScale
-        ));
-        sprite->SetAnchorPoint(SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
-        sprite->SetColor(ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
-        sprite->SetEmissive(spriteData.value("emissive", 1.0f));
+            SpriteLayoutScaler::ReadVector2(spriteData.value("size", json::array()), sprite->GetSize()), layoutScale));
+        sprite->SetAnchorPoint(
+            SpriteLayoutScaler::ReadVector2(spriteData.value("anchor", json::array()), sprite->GetAnchorPoint()));
+        sprite->SetColor(SpriteLayoutScaler::ReadColor(spriteData.value("color", json::array()), sprite->GetColor()));
+        sprite->SetEmissive(SpriteLayoutScaler::ReadFloat(spriteData, "emissive", 1.0f));
         sprite->SetVisible(false);
         sprite->Update();
         sprites_.push_back(std::move(sprite));
@@ -258,14 +242,9 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
         Vector4 color = panel_.baseColor;
         color.w *= alpha;
         panel_.sprite->SetColor(color);
-        panel_.sprite->SetSize({
-            panel_.baseSize.x * (0.92f + 0.08f * appear),
-            panel_.baseSize.y * (0.92f + 0.08f * appear)
-        });
-        panel_.sprite->SetPosition({
-            panel_.basePosition.x,
-            panel_.basePosition.y + (1.0f - appear) * 10.0f
-        });
+        panel_.sprite->SetSize(
+            {panel_.baseSize.x * (0.92f + 0.08f * appear), panel_.baseSize.y * (0.92f + 0.08f * appear)});
+        panel_.sprite->SetPosition({panel_.basePosition.x, panel_.basePosition.y + (1.0f - appear) * 10.0f});
     }
 
     if (icon_.sprite) {
@@ -273,14 +252,8 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
         Vector4 color = icon_.baseColor;
         color.w *= alpha;
         icon_.sprite->SetColor(color);
-        icon_.sprite->SetSize({
-            icon_.baseSize.x * iconScale,
-            icon_.baseSize.y * iconScale
-        });
-        icon_.sprite->SetPosition({
-            icon_.basePosition.x,
-            icon_.basePosition.y + std::sin(timer_ * 6.0f) * 2.0f
-        });
+        icon_.sprite->SetSize({icon_.baseSize.x * iconScale, icon_.baseSize.y * iconScale});
+        icon_.sprite->SetPosition({icon_.basePosition.x, icon_.basePosition.y + std::sin(timer_ * 6.0f) * 2.0f});
         icon_.sprite->SetRotation(icon_.baseRotation + timer_ * kPi * 0.72f);
     }
 
@@ -288,13 +261,8 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
         Vector4 color = text_.baseColor;
         color.w *= alpha * (0.88f + 0.12f * std::sin(timer_ * 7.0f));
         text_.sprite->SetColor(color);
-        text_.sprite->SetSize({
-            text_.baseSize.x * (0.94f + 0.06f * appear),
-            text_.baseSize.y * (0.94f + 0.06f * appear)
-        });
-        text_.sprite->SetPosition({
-            text_.basePosition.x + std::sin(timer_ * 3.3f) * 1.5f,
-            text_.basePosition.y
-        });
+        text_.sprite->SetSize(
+            {text_.baseSize.x * (0.94f + 0.06f * appear), text_.baseSize.y * (0.94f + 0.06f * appear)});
+        text_.sprite->SetPosition({text_.basePosition.x + std::sin(timer_ * 3.3f) * 1.5f, text_.basePosition.y});
     }
 }

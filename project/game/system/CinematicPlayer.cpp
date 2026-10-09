@@ -20,13 +20,9 @@ AnimationInterpolation::EasingType ToEasingType(int value) {
     return static_cast<AnimationInterpolation::EasingType>(value);
 }
 
-Vector3 AddVector3(const Vector3& a, const Vector3& b) {
-    return { a.x + b.x, a.y + b.y, a.z + b.z };
-}
+Vector3 AddVector3(const Vector3& a, const Vector3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
 
-Vector3 MultiplyVector3(const Vector3& a, const Vector3& b) {
-    return { a.x * b.x, a.y * b.y, a.z * b.z };
-}
+Vector3 MultiplyVector3(const Vector3& a, const Vector3& b) { return {a.x * b.x, a.y * b.y, a.z * b.z}; }
 
 void ApplyPose(Object3d* object, const Vector3& position, const Vector3& rotation, const Vector3& scale) {
     if (!object) {
@@ -38,7 +34,9 @@ void ApplyPose(Object3d* object, const Vector3& position, const Vector3& rotatio
     object->UpdateLocalMatrix();
     object->UpdateWorldMatrix();
 }
-}
+} // namespace
+
+// シネマティックを時刻から評価します。シークでは姿勢を再計算し、イベントの再発火は呼び出し側が指定します。
 
 void CinematicPlayer::Initialize(SceneManager* sceneManager) {
     sceneManager_ = sceneManager;
@@ -142,8 +140,8 @@ void CinematicPlayer::Resume(bool loop) {
     for (size_t index = 0; index < sequence_->audioClips.size() && index < audioRuntime_.size(); ++index) {
         const auto& clip = sequence_->audioClips[index];
         const float endTime = clip.startTime + std::max(0.05f, clip.duration);
-        if (clip.enabled && !clip.muted && clip.loop && !clip.audioId.empty() &&
-            currentTime_ >= clip.startTime && currentTime_ < endTime) {
+        if (clip.enabled && !clip.muted && clip.loop && !clip.audioId.empty() && currentTime_ >= clip.startTime &&
+            currentTime_ < endTime) {
             GameAudioSettings::GetInstance()->PlaySE(clip.audioId, clip.volume, true);
             audioRuntime_[index].started = true;
         }
@@ -184,6 +182,7 @@ void CinematicPlayer::Stop(bool restorePose) {
 void CinematicPlayer::Update(float deltaTime) {
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (currentScene != boundScene_) {
+        // 別シーンの Object 参照を持ち越さないよう、姿勢復元せず再束縛する。
         Stop(false);
         RefreshBindings();
         return;
@@ -197,6 +196,7 @@ void CinematicPlayer::Update(float deltaTime) {
     float nextTime = currentTime_ + deltaTime;
     if (nextTime >= duration) {
         if (isLooping_) {
+            // 末尾のイベントまで発火させてから基準姿勢を取り直し、次周の先頭を評価する。
             Evaluate(duration, previousTime, true);
             RestoreBasePoses();
             CaptureBasePoses();
@@ -287,7 +287,8 @@ bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& 
 }
 
 Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
-    if (bindingResolver_) return bindingResolver_(binding);
+    if (bindingResolver_)
+        return bindingResolver_(binding);
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return nullptr;
     }
@@ -362,10 +363,12 @@ void CinematicPlayer::CaptureBasePoses() {
 void CinematicPlayer::RestoreBasePoses() {
     anchorCaptured_ = false;
     // 編集でクリップが削除・並べ替えされても、保存した対象から復元する。
-    if (!sceneManager_ || sceneManager_->GetCurrentScene() != boundScene_ || !boundScene_) return;
+    if (!sceneManager_ || sceneManager_->GetCurrentScene() != boundScene_ || !boundScene_)
+        return;
     const auto isAlive = [this](Object3d* target) {
         for (const auto& object : boundScene_->GetObjects()) {
-            if (object.get() == target) return true;
+            if (object.get() == target)
+                return true;
         }
         return false;
     };
@@ -390,10 +393,8 @@ void CinematicPlayer::RestoreBasePoses() {
         } else if (runtime.animatorSnapshot.valid) {
             runtime.target->RestoreAnimatorSnapshot(runtime.animatorSnapshot);
         } else {
-            runtime.target->RestoreAnimationPlayback(
-                runtime.legacyAnimationName,
-                runtime.legacyAnimationTime,
-                runtime.legacyLoop);
+            runtime.target->RestoreAnimationPlayback(runtime.legacyAnimationName, runtime.legacyAnimationTime,
+                                                     runtime.legacyLoop);
         }
         runtime.captured = false;
     }
@@ -412,6 +413,8 @@ void CinematicPlayer::ResetRuntimeEvents() {
 }
 
 void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, bool dispatchEvents) {
+    // 姿勢は時刻から毎回再評価しますが、イベントは通過した区間だけ発火させます。
+    // エディターのシークではdispatchEventsを切り、同じイベントの重複実行を避けます。
     lastEventId_ = 0;
     lastEventTarget_ = nullptr;
 
@@ -435,6 +438,7 @@ void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, boo
         DispatchSignals(timeSeconds, previousTimeSeconds);
     }
 
+    // 音とVFXは実再生中だけ進め、シークでプレビューの副作用を増やしません。
     if (isPlaying_) {
         UpdateVFXTracks(timeSeconds, previousTimeSeconds);
         UpdateAudioClips(timeSeconds, previousTimeSeconds);
@@ -442,7 +446,8 @@ void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, boo
     UpdateCameraTrack(timeSeconds);
 }
 
-void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, float previousTimeSeconds, bool dispatchEvents) {
+void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, float previousTimeSeconds,
+                                             bool dispatchEvents) {
     if (!sequence_ || index >= sequence_->transformTracks.size() || index >= transformRuntime_.size()) {
         return;
     }
@@ -515,26 +520,23 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
         Vector3 origin;
         float yaw = 0.0f;
         // 親付き対象はローカル座標と混同しないよう、明示的に非対応とする。
-        if (runtime.target->GetParent() || !GetAnchorPose(origin, yaw)) return;
+        if (runtime.target->GetParent() || !GetAnchorPose(origin, yaw))
+            return;
         value.position = CinematicAnchorPosition(value.position, origin, yaw);
         value.rotation.y += yaw;
         ApplyPose(runtime.target, value.position, value.rotation, value.scale);
         return;
     }
-    ApplyPose(
-        runtime.target,
-        track.relative ? AddVector3(runtime.basePosition, value.position) : value.position,
-        track.relative ? AddVector3(runtime.baseRotation, value.rotation) : value.rotation,
-        track.relative ? MultiplyVector3(runtime.baseScale, value.scale) : value.scale);
+    ApplyPose(runtime.target, track.relative ? AddVector3(runtime.basePosition, value.position) : value.position,
+              track.relative ? AddVector3(runtime.baseRotation, value.rotation) : value.rotation,
+              track.relative ? MultiplyVector3(runtime.baseScale, value.scale) : value.scale);
 }
 
 void CinematicPlayer::ApplyBodyPose() {
-    if ((isPlaying_ || isPreviewing_) && sceneManager_ &&
-        sceneManager_->GetCurrentScene() == boundScene_) {
+    if ((isPlaying_ || isPreviewing_) && sceneManager_ && sceneManager_->GetCurrentScene() == boundScene_) {
         // 編集用の基準移動も通常更新後に保持する。イベントは再発火しない。
         for (size_t index = 0; sequence_ && index < sequence_->transformTracks.size(); ++index) {
-            if (sequence_->transformTracks[index].anchorRelative &&
-                index < transformRuntime_.size() &&
+            if (sequence_->transformTracks[index].anchorRelative && index < transformRuntime_.size() &&
                 transformRuntime_[index].target == ResolveTarget(sequence_->transformTracks[index].binding))
                 EvaluateTransformTrack(index, currentTime_, currentTime_, false);
         }
@@ -549,7 +551,8 @@ bool CinematicPlayer::GetAnchorPose(Vector3& position, float& yaw) const {
         return true;
     }
     Object3d* anchor = sequence_ ? ResolveTarget(sequence_->anchor) : nullptr;
-    if (!anchor || anchor->GetParent()) return false;
+    if (!anchor || anchor->GetParent())
+        return false;
     position = anchor->GetTranslate();
     yaw = anchor->GetRotation().y + sequence_->anchorYawOffset;
     return true;
@@ -565,7 +568,8 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
         auto& runtime = animationRuntime_[index];
         // シーン内で削除された対象へ保存ポインタからアクセスしない。
         if (index >= sequence_->animationClips.size() ||
-            runtime.target != ResolveTarget(sequence_->animationClips[index].binding)) continue;
+            runtime.target != ResolveTarget(sequence_->animationClips[index].binding))
+            continue;
         if (runtime.target && runtime.bodyCaptured) {
             if (auto* renderer = runtime.target->GetMeshRenderer()) {
                 const auto& base = runtime.baseVisual;
@@ -576,7 +580,8 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
     }
     for (size_t index = 0; index < sequence_->animationClips.size(); ++index) {
         const auto& clip = sequence_->animationClips[index];
-        if (bodyOnly && clip.driver != "Body") continue;
+        if (bodyOnly && clip.driver != "Body")
+            continue;
         if (!clip.enabled || clip.muted) {
             continue;
         }
@@ -589,34 +594,33 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
         if (clip.driver != "Body" && clip.loop && duration > 0.0f) {
             localTime = std::fmod(localTime, duration);
         }
-        Object3d* target = index < animationRuntime_.size() ? animationRuntime_[index].target : ResolveTarget(clip.binding);
-        if (target != ResolveTarget(clip.binding)) continue;
+        Object3d* target =
+            index < animationRuntime_.size() ? animationRuntime_[index].target : ResolveTarget(clip.binding);
+        if (target != ResolveTarget(clip.binding))
+            continue;
         if (target && clip.driver == "Body" && index < animationRuntime_.size()) {
             auto& runtime = animationRuntime_[index];
             BodyAnimationClip::Sample sample;
             auto* renderer = target->GetMeshRenderer();
             if (renderer && runtime.bodyCaptured && runtime.bodyClip.Evaluate(localTime, clip.loop, sample)) {
-                const float weight = clip.blendInDuration > 0.0f
-                    ? AnimationInterpolation::ApplyEasing(std::clamp(elapsed / clip.blendInDuration, 0.0f, 1.0f), ToEasingType(clip.easing))
-                    : 1.0f;
+                const float weight =
+                    clip.blendInDuration > 0.0f
+                        ? AnimationInterpolation::ApplyEasing(std::clamp(elapsed / clip.blendInDuration, 0.0f, 1.0f),
+                                                              ToEasingType(clip.easing))
+                        : 1.0f;
                 const auto& base = runtime.baseVisual;
                 // 物理座標・当たり判定には触れず、描画用の変形だけを上書きする。
-                renderer->SetVisualTransform(
-                    AnimationInterpolation::Lerp(base.scale, sample.scale, weight),
-                    AnimationInterpolation::SlerpEuler(base.rotate, sample.rotate, weight),
-                    AnimationInterpolation::Lerp(base.translate, sample.translate, weight));
+                renderer->SetVisualTransform(AnimationInterpolation::Lerp(base.scale, sample.scale, weight),
+                                             AnimationInterpolation::SlerpEuler(base.rotate, sample.rotate, weight),
+                                             AnimationInterpolation::Lerp(base.translate, sample.translate, weight));
                 renderer->SetVisualShear(AnimationInterpolation::Lerp(base.shear, sample.shear, weight),
-                    base.shearPivotY + (sample.shearPivotY - base.shearPivotY) * weight);
+                                         base.shearPivotY + (sample.shearPivotY - base.shearPivotY) * weight);
             }
         }
-        if (target && (clip.driver.empty() || clip.driver == "Animator" || clip.driver == "Model" || clip.driver == "Skeletal")) {
-            target->EvaluateAnimatorState(
-                clip.clipName,
-                localTime,
-                clip.loop,
-                clip.blendInDuration,
-                clip.easing,
-                isPreviewing_);
+        if (target &&
+            (clip.driver.empty() || clip.driver == "Animator" || clip.driver == "Model" || clip.driver == "Skeletal")) {
+            target->EvaluateAnimatorState(clip.clipName, localTime, clip.loop, clip.blendInDuration, clip.easing,
+                                          isPreviewing_);
         }
         if (animationCallback_ && !bodyOnly) {
             animationCallback_(target, clip, localTime, isPreviewing_);
@@ -702,6 +706,7 @@ void CinematicPlayer::StopAudioClips() {
 }
 
 void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
+    // 重なるカットでは開始時刻が最も新しい有効ショットを採用します。
     if (!sequence_) {
         return;
     }
@@ -734,7 +739,8 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
                 continue;
             }
             const float endTime = track.startTime + GetTransformTrackDuration(index);
-            if (timeSeconds >= track.startTime && (track.holdLast || timeSeconds <= endTime) && track.startTime >= requestedStartTime) {
+            if (timeSeconds >= track.startTime && (track.holdLast || timeSeconds <= endTime) &&
+                track.startTime >= requestedStartTime) {
                 requestedCamera = target;
                 requestedStartTime = track.startTime;
             }
@@ -749,12 +755,12 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
         bool started = false;
         if (requestedShotIndex >= 0) {
             const auto& shot = sequence_->cameraShots[requestedShotIndex];
-            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(
-                CameraManager::GetInstance()->GetMainCamera(), requestedCamera,
-                shot.blendInDuration, shot.blendOutDuration, shot.easing);
+            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(),
+                                                                         requestedCamera, shot.blendInDuration,
+                                                                         shot.blendOutDuration, shot.easing);
         } else {
-            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(
-                CameraManager::GetInstance()->GetMainCamera(), requestedCamera);
+            started = CameraEditor::GetInstance()->PlaySceneObjectCamera(CameraManager::GetInstance()->GetMainCamera(),
+                                                                         requestedCamera);
         }
         if (started) {
             activeCameraObject_ = requestedCamera;

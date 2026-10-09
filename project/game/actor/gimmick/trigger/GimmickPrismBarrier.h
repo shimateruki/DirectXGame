@@ -4,7 +4,7 @@
 
 // 中ボス戦中だけ立ち上がる、当たり判定付きのプリズム障壁です。
 class GimmickPrismBarrier : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void OnTrigger() override;
@@ -12,7 +12,7 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     void CaptureAuthoredState(bool force = false);
     void ResetForEditor();
     void ApplyRuntimeVisual();
@@ -20,8 +20,8 @@ private:
     float GetTransitionDuration() const;
 
     Vector3 authoredPosition_{};
-    Vector3 authoredScale_{ 1.0f, 1.0f, 1.0f };
-    Vector4 authoredColor_{ 0.30f, 0.86f, 1.0f, 0.84f };
+    Vector3 authoredScale_{1.0f, 1.0f, 1.0f};
+    Vector4 authoredColor_{0.30f, 0.86f, 1.0f, 0.84f};
     uint32_t authoredCollisionAttribute_ = 0;
     uint32_t authoredCollisionMask_ = 0;
     float activation_ = 0.0f;

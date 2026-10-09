@@ -34,28 +34,34 @@ void EditorToolSettings::Clear() {
     EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
     tools_.clear(); visibility_.clear(); ownedVisibility_.clear(); open_ = false; status_.clear(); saved_.clear();
 }
+
 void EditorToolSettings::AddTool(const std::string& id, const std::string& name,
     const std::string& category, std::function<void()> open, std::function<bool()> available) {
     tools_.push_back({id, name, category});
     EditorCommandRegistry::GetInstance()->Register({id, name, category, "",
         "エディターを開く", {name, category}, std::move(available), std::move(open), this});
 }
+
 void EditorToolSettings::AddVisibility(const std::string& id, const std::string& name, bool* value) {
     if (value) visibility_.push_back({id, name, value});
 }
+
 void EditorToolSettings::AddVisibility(const std::string& id, const std::string& name) {
     AddVisibility(id, name, &ownedVisibility_.try_emplace(id, true).first->second);
 }
+
 bool EditorToolSettings::IsVisible(const std::string& id) const {
     if (hidden_) return false;
     for (const auto& value : visibility_) if (value.id == id) return *value.value;
     return true;
 }
+
 std::string EditorToolSettings::Label(const Tool& tool) const {
     if (!tool.key) return "未設定";
     return std::string(tool.ctrl ? "Ctrl+" : "") + (tool.shift ? "Shift+" : "") +
         (tool.alt ? "Alt+" : "") + KeyConfig::GetInstance()->GetKeyName(tool.key);
 }
+
 std::string EditorToolSettings::Conflict(const Tool& tool) const {
     if (!tool.key) return {};
     // 修飾キーを確認しない既存の編集操作とは、修飾付きでも競合させません。
@@ -71,6 +77,7 @@ std::string EditorToolSettings::Conflict(const Tool& tool) const {
     }
     return {};
 }
+
 void EditorToolSettings::RefreshCommand(const Tool& tool) {
     auto* registry = EditorCommandRegistry::GetInstance();
     if (const auto* existing = registry->Find(tool.id)) {
@@ -79,6 +86,7 @@ void EditorToolSettings::RefreshCommand(const Tool& tool) {
         registry->Register(std::move(command));
     }
 }
+
 std::string EditorToolSettings::Snapshot() const {
     nlohmann::json data;
     data["version"] = 1;
@@ -87,6 +95,7 @@ std::string EditorToolSettings::Snapshot() const {
     for (const auto& value : visibility_) data["visibility"][value.id] = hidden_ ? value.beforeHide : *value.value;
     return data.dump(2);
 }
+
 void EditorToolSettings::Load() {
     try {
         std::ifstream file(kPath);
@@ -111,6 +120,7 @@ void EditorToolSettings::Load() {
         saved_ = Snapshot(); status_ = "設定を読み込みました。競合がある割当は発動しません。";
     } catch (const std::exception& e) { status_ = "読込失敗（現在の設定を維持）: " + std::string(e.what()); }
 }
+
 void EditorToolSettings::Save() {
     for (const auto& tool : tools_) if (!Conflict(tool).empty()) {
         status_ = "保存できません。予約キー・重複のある行を修正してください。"; return;
@@ -126,15 +136,18 @@ void EditorToolSettings::Save() {
         saved_ = contents; status_ = "保存しました。次回起動時にも適用されます。";
     } catch (const std::exception& e) { status_ = "保存失敗: " + std::string(e.what()); }
 }
+
 void EditorToolSettings::RestoreHidden() {
     if (!hidden_) return;
     for (auto& value : visibility_) *value.value = value.beforeHide;
     hidden_ = false;
 }
+
 void EditorToolSettings::SetAllVisible(bool visible) {
     RestoreHidden();
     for (auto& value : visibility_) *value.value = visible;
 }
+
 void EditorToolSettings::HandleShortcuts(bool editing) {
     const auto& io = ImGui::GetIO();
     if (!editing || open_ || io.WantTextInput || io.WantCaptureKeyboard || ImGui::IsAnyItemActive() ||
@@ -147,6 +160,7 @@ void EditorToolSettings::HandleShortcuts(bool editing) {
         }
     }
 }
+
 void EditorToolSettings::DrawToolsMenu() {
     if (!ImGui::BeginMenu("ツール")) return;
     for (const char* category : {"戦闘", "演出", "ステージ", "素材", "検証・設定"}) {
@@ -162,6 +176,7 @@ void EditorToolSettings::DrawToolsMenu() {
     if (ImGui::MenuItem("ショートカット・補助表示の設定...")) Open();
     ImGui::EndMenu();
 }
+
 void EditorToolSettings::DrawVisibilityMenu() {
     if (!ImGui::BeginMenu("補助表示")) return;
     if (ImGui::MenuItem("すべてON")) SetAllVisible(true);
@@ -181,6 +196,7 @@ void EditorToolSettings::DrawVisibilityMenu() {
     if (!status_.empty()) ImGui::TextWrapped("%s", status_.c_str());
     ImGui::EndMenu();
 }
+
 void EditorToolSettings::DrawWindow() {
     // 個別パネルで変更されても、一時非表示中は補助表示を出さないようにします。
     if (hidden_) for (auto& value : visibility_) *value.value = false;

@@ -16,6 +16,7 @@ class Object3dCommon;
 // PresetManagerは、単体プリセットと複数オブジェクトPrefabの読み書き、生成を管理します。
 class PresetManager {
 public:
+    // 元 Prefab と配置 Instance の同じプロパティの値。安定した propertyPath で比較・適用する。
     struct PrefabPropertyOverride {
         std::string propertyPath;
         std::string displayName;
@@ -23,6 +24,7 @@ public:
         json instanceValue;
     };
 
+    // 元 Prefab と配置 Instance の Component 有無の差。値の差分とは分けて扱う。
     struct PrefabComponentOverride {
         std::string componentTypeId;
         std::string displayName;
@@ -30,6 +32,7 @@ public:
         bool instancePresent = false;
     };
 
+    // 基底 Prefab と Variant の同一プロパティを比較した値の組。propertyPath が適用先を識別する。
     struct PrefabVariantOverride {
         std::string propertyPath;
         std::string displayName;
@@ -37,6 +40,7 @@ public:
         json variantValue;
     };
 
+    // 基底と Variant の Component 有無の差。追加・削除をプロパティ値の変更と区別する。
     struct PrefabVariantComponentOverride {
         std::string componentTypeId;
         std::string displayName;
@@ -44,6 +48,7 @@ public:
         bool variantPresent = false;
     };
 
+    // 追加・削除・親変更など構造差分の集計。個々の差分本体を保持するデータではない。
     struct PrefabStructureOverrideSummary {
         int addedObjects = 0;
         int removedObjects = 0;
@@ -93,6 +98,7 @@ public:
     void RenamePreset(const std::string& oldName, const std::string& newName);
 
     const std::map<std::string, json>& GetPresets() const { return presets_; }
+    // 未登録名なら空の定義を新規作成する。存在確認だけならHasPresetを使う。
     json& GetPreset(const std::string& name) { return presets_[name]; }
     bool HasPreset(const std::string& name) const { return presets_.find(name) != presets_.end(); }
 
@@ -134,12 +140,15 @@ public:
     /// </summary>
     std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPrefab(const std::string& prefabName, Object3dCommon* common) const;
 
+    // Instanceの配置差分やComponent構造差分を除き、SourceとのProperty差分を返す。
     std::vector<PrefabPropertyOverride> GetPrefabOverrides(const Object3d* object) const;
     std::vector<PrefabComponentOverride> GetPrefabComponentOverrides(const Object3d* object) const;
     std::vector<PrefabVariantOverride> GetPrefabVariantOverrides(const Object3d* object) const;
     std::vector<PrefabVariantComponentOverride> GetPrefabVariantComponentOverrides(const Object3d* object) const;
     PrefabStructureOverrideSummary GetPrefabStructureOverrideSummary(const std::string& prefabName) const;
     bool HasValidPrefabSource(const Object3d* object) const;
+    // Instanceの値をSourceへ反映し、Source値のままの別Instanceだけ更新する。
+    // 名前と配置専用PropertyはSourceへ反映しない。
     bool ApplyPrefabProperty(Object3d* object, const std::string& propertyPath, const std::vector<Object3d*>& sceneObjects);
     bool RevertPrefabProperty(Object3d* object, const std::string& propertyPath);
     bool ApplyPrefabComponent(Object3d* object, const std::string& componentTypeId, const std::vector<Object3d*>& sceneObjects);
@@ -152,8 +161,10 @@ public:
         Object3d* object,
         const std::string& componentTypeId,
         const std::vector<Object3d*>& sceneObjects);
+    // 同じinstanceIdの階層全体へ適用し、個別操作をひとつのAsset履歴にまとめる。
     int ApplyAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);
     int RevertAllPrefabOverrides(Object3d* object, const std::vector<Object3d*>& sceneObjects);
+    // 同じinstanceIdの階層からPrefabへの紐付けを外す。戻り値は解除したObject数。
     int UnpackPrefabInstance(Object3d* object, const std::vector<Object3d*>& sceneObjects);
     void AssignNewPrefabInstanceId(const std::vector<Object3d*>& objects) const;
 
@@ -161,6 +172,7 @@ public:
     void RenamePrefab(const std::string& oldName, const std::string& newName);
 
     const std::map<std::string, json>& GetPrefabs() const { return prefabs_; }
+    // 未登録名なら空の定義を新規作成する。存在確認だけならHasPrefabを使う。
     json& GetPrefab(const std::string& name) { return prefabs_[name]; }
     bool HasPrefab(const std::string& name) const { return prefabs_.find(name) != prefabs_.end(); }
 

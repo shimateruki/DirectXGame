@@ -5,6 +5,7 @@
 #include "CollisionConfig.h"
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "BaseEnemy.h"
+#include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "Player.h"
 #include "SceneManager.h"
@@ -24,7 +25,7 @@ constexpr const char* kMagmaSealSequence = "magma_arena_seal_cue";
 constexpr const char* kMagmaReleaseSequence = "magma_arena_release_cue";
 constexpr int kHighCrownActionMode = 2;
 constexpr const char* kHighCrownReleaseSequence = "false_king_defeat_reward_cue";
-}
+} // namespace
 
 void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -34,13 +35,13 @@ void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string
     SetName("Gimmick_ArenaEncounter");
     SetStatic(false);
     SetCastShadow(false);
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 
     Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.center = { 0.0f, 1.5f, 0.0f };
-    collider.size = { 3.0f, 3.0f, 8.0f };
+    collider.center = {0.0f, 1.5f, 0.0f};
+    collider.size = {3.0f, 3.0f, 8.0f};
     SetColliderConfig(collider);
 
     if (!param_.has_value()) {
@@ -78,9 +79,7 @@ void GimmickArenaEncounter::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickArenaEncounter::Draw(
-    ID3D12Resource* pointLightResource,
-    ID3D12Resource* spotLightResource) {
+void GimmickArenaEncounter::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager || !sceneManager->IsPlaying()) {
         // 編集中だけ進入範囲を可視化し、ゲーム中は判定とイベント接続だけを残します。
@@ -121,8 +120,8 @@ void GimmickArenaEncounter::InitializeForPlay() {
     initializedForPlay_ = true;
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
     SetBossActive(false);
     SetBarriersActive(false);
     if (IsHighCrownMode()) {
@@ -135,10 +134,11 @@ void GimmickArenaEncounter::ResetForEditor() {
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
     SetIsVisible(true);
-    SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer);
+    SetCollisionAttribute(CollisionCategories::Get("trigger"));
+    SetCollisionMask(CollisionCategories::Get("player"));
 }
 
+// 入場時にボスと隔離壁を有効化し、撃破後の報酬と解放までを一つの進行として管理します。
 void GimmickArenaEncounter::BeginEncounter() {
     state_ = State::Sealing;
     stateTimer_ = 0.0f;
@@ -146,17 +146,17 @@ void GimmickArenaEncounter::BeginEncounter() {
     SetCollisionMask(0);
     SetBarriersActive(true);
     if (!IsHighCrownMode()) {
-        VFXSequencer::PlayOneShot(
-            IsMagmaMode() ? kMagmaSealSequence : kSealSequence,
-            GetWorldPosition(),
-            { 4.0f, 1.0f, 4.0f });
+        VFXSequencer::PlayOneShot(IsMagmaMode() ? kMagmaSealSequence : kSealSequence, GetWorldPosition(),
+                                  {4.0f, 1.0f, 4.0f});
     }
     StartBossPresentation();
 }
 
 void GimmickArenaEncounter::CompleteEncounter() {
     // マグマ脱出の再挑戦でのみ、中ボス戦をやり直さずに再開します。
-    if (IsMagmaMode()) GameDataManager::GetInstance()->RememberCheckpointEncounter(StageManager::GetInstance()->GetCurrentStageIndex(), GetEventID());
+    if (IsMagmaMode())
+        GameDataManager::GetInstance()->RememberCheckpointEncounter(StageManager::GetInstance()->GetCurrentStageIndex(),
+                                                                    GetEventID());
     state_ = State::Cleared;
     stateTimer_ = 0.0f;
     SetCollisionAttribute(0);
@@ -180,11 +180,8 @@ void GimmickArenaEncounter::CompleteEncounter() {
         }
     }
     VFXSequencer::PlayOneShot(
-        IsHighCrownMode()
-            ? kHighCrownReleaseSequence
-            : (IsMagmaMode() ? kMagmaReleaseSequence : kReleaseSequence),
-        cuePosition,
-        IsHighCrownMode() ? Vector3{ 1.25f, 1.25f, 1.25f } : Vector3{ 4.0f, 1.0f, 4.0f });
+        IsHighCrownMode() ? kHighCrownReleaseSequence : (IsMagmaMode() ? kMagmaReleaseSequence : kReleaseSequence),
+        cuePosition, IsHighCrownMode() ? Vector3{1.25f, 1.25f, 1.25f} : Vector3{4.0f, 1.0f, 4.0f});
 }
 
 bool GimmickArenaEncounter::IsBossDefeated() const {
@@ -197,6 +194,7 @@ bool GimmickArenaEncounter::IsBossDefeated() const {
     if (!boss) {
         return false;
     }
+    if (auto* king=dynamic_cast<EnemyFalseKingSlime*>(boss); king && king->IsFinalDefeatPending()) return false;
     const float hp = boss->param_.has_value() ? boss->param_->hp : 1.0f;
     return boss->isDead || hp <= 0.0f;
 }
@@ -245,15 +243,11 @@ void GimmickArenaEncounter::StartBossPresentation() {
 }
 
 float GimmickArenaEncounter::GetBossRevealDelay() const {
-    return param_.has_value()
-        ? (std::max)(0.05f, param_->shakeDuration)
-        : kDefaultBossRevealDelay;
+    return param_.has_value() ? (std::max)(0.05f, param_->shakeDuration) : kDefaultBossRevealDelay;
 }
 
 int GimmickArenaEncounter::GetBarrierCount() const {
-    return param_.has_value()
-        ? (std::clamp)(param_->maxCount, 1, 16)
-        : kDefaultBarrierCount;
+    return param_.has_value() ? (std::clamp)(param_->maxCount, 1, 16) : kDefaultBarrierCount;
 }
 
 bool GimmickArenaEncounter::IsHighCrownMode() const {
@@ -262,9 +256,7 @@ bool GimmickArenaEncounter::IsHighCrownMode() const {
 
 bool GimmickArenaEncounter::IsMagmaMode() const {
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
-    const Object3d* boss = scene && GetTargetID() > 0
-        ? scene->FindObjectByEventID(GetTargetID())
-        : nullptr;
+    const Object3d* boss = scene && GetTargetID() > 0 ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
     return boss && boss->GetEnemyType() == "MagmaSlime";
 }
 
@@ -276,5 +268,6 @@ void GimmickArenaEncounter::RestoreCheckpointClear() {
     SetCollisionMask(0);
     SetBossActive(false);
     SetBarriersActive(false);
-    if (IsHighCrownMode()) SetRewardActive(true);
+    if (IsHighCrownMode())
+        SetRewardActive(true);
 }

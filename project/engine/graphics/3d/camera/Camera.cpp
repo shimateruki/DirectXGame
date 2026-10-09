@@ -377,7 +377,7 @@ void Camera::Update(float deltaTime) {
                 // ① 壁などのオブジェクトとの判定
                 if (dist > 0.1f) {
                     RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                        rayStartPos, direction, dist, kGround
+                        rayStartPos, direction, dist, CollisionCategories::Get("ground")
                     );
 
                     if (hit.isHit) {
@@ -639,6 +639,7 @@ void Camera::Update(float deltaTime) {
     projectionMatrix_ = math.MakePerspectiveFovMatrix(renderFov, aspectRatio_, nearClip_, farClip_);
     RefreshDerivedMatrices();
 }
+
 void Camera::ConfigFixed(const Vector3& offset) {
     fixedOffset_ = offset;
 }
@@ -728,6 +729,7 @@ void Camera::SyncRotationToCurrentView() {
     // カメラの距離も現在の距離に同期する（一瞬で近づくのを防ぐ）
     aimDistance_ = dist;
 }
+
 void Camera::StartShake(float duration, float amplitude, float frequency, const Vector3& axisWeight) {
     ShakeLayer layer;
     layer.duration = std::max(duration, 0.01f);

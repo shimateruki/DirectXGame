@@ -1,6 +1,7 @@
-﻿#include "engine/core/editor/GameEditorController.Internal.h"
+#include "engine/core/editor/GameEditorController.Internal.h"
 
 #ifdef USE_IMGUI
+#include "engine/utility/SystemDebug/editor/windows/EnemyAttackPreviewWindow.h"
 using namespace GameEditorControllerImplementation;
 
 // プレビュー描画から呼び出す、同じ実装ファイル内の補助処理です。
@@ -29,8 +30,13 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			const bool imageHovered = ImGui::IsItemHovered();
 			const ImVec2 mousePos = ImGui::GetIO().MousePos;
 			const bool canEditViewport = !isPlaying && !sceneTransitioning;
+            const bool attackPlacement = debugEditor_ && debugEditor_->GetEnemyAttackPreviewWindow() &&
+                debugEditor_->GetEnemyAttackPreviewWindow()->IsAuthoringViewportActive();
 
-			if (canEditViewport) {
+            if (canEditViewport && debugEditor_ && debugEditor_->GetEnemyAttackPreviewWindow())
+                debugEditor_->GetEnemyAttackPreviewWindow()->DrawAttackOverlay(area.screenX, area.screenY, area.width, area.height);
+
+			if (canEditViewport && !attackPlacement) {
 				HandleGameViewDropTargets(sceneManager, area);
 			}
 
@@ -40,13 +46,15 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 					debugEditor_->SetGameViewRegion({ area.screenX, area.screenY }, { area.width, area.height });
 					debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 					debugEditor_->SetGameViewHovered(canEditViewport && imageHovered);
-					debugEditor_->Update();
+                    // 攻撃編集中も再生時計・隔離ステージを更新します。
+                    // 通常Sceneへの入力だけをDebugEditor側で止めます。
+                    debugEditor_->Update();
 					const bool openCreateMenu = ImGui::IsKeyPressed(ImGuiKey_Tab, false) ||
 						ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-					if (canEditViewport && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
+					if (canEditViewport && !attackPlacement && imageHovered && !ImGuizmo::IsOver() && openCreateMenu) {
 						debugEditor_->OpenGameViewCreateContextMenu();
 					}
-					if (canEditViewport) {
+					if (canEditViewport && !attackPlacement) {
 						debugEditor_->DrawGameViewCreateContextMenu();
 					}
 					frameState.gizmoBusy = canEditViewport && ImGuizmo::IsUsing();
@@ -56,7 +64,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 				}
 			}
 
-            if (spriteDebugEditor_ && canEditViewport && EditorToolSettings::Get().IsVisible("spriteGuides")) {
+            if (spriteDebugEditor_ && canEditViewport && !attackPlacement && EditorToolSettings::Get().IsVisible("spriteGuides")) {
 				const Vector2 spriteLocalPos = {
 					(mousePos.x - area.screenX) * (static_cast<float>(WinApp::kClientWidth) / area.width),
 					(mousePos.y - area.screenY) * (static_cast<float>(WinApp::kClientHeight) / area.height),
@@ -68,7 +76,7 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			if (canEditViewport) {
 				DrawGhostPreview(false, area);
 				Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
-				Object3d* selectedObject = debugEditor_ ? debugEditor_->GetSelectedObject() : nullptr;
+				Object3d* selectedObject = debugEditor_ && !attackPlacement ? debugEditor_->GetSelectedObject() : nullptr;
 				if (!IsObjectInCurrentScene(sceneManager, selectedObject)) {
 					selectedObject = nullptr;
 				}
@@ -163,6 +171,7 @@ void DrawCameraObjectPreviewWindow() {
 	}
 	ImGui::End();
 }
+
 void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area) {
 	if (!ImGui::BeginDragDropTarget()) {
 		return;
@@ -235,6 +244,7 @@ if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")
 
 	ImGui::EndDragDropTarget();
 }
+
 // ゴーストレコーダーや選択オブジェクトの録画プレビューをゲームビュー上に描画する。
 
 void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& area) {
@@ -293,6 +303,7 @@ void GameEditorController::DrawGhostPreview(bool isPlaying, const GameViewArea& 
 			Vector2{ area.width, area.height });
 	}
 }
+
 // 再生/停止、表示切替、シーン切替、ヘルプなどのメインメニューを描画する。
 
 

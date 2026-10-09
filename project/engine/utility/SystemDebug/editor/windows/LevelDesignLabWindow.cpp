@@ -520,7 +520,7 @@ void LevelDesignLabWindow::StartPlanPreview() {
         collider.center = { 0.0f, 0.0f, 0.0f };
         collider.size = chunk->colliderSize;
         object->SetColliderConfig(collider);
-        object->SetCollisionAttribute(chunk->walkable ? kGround : 0u);
+        object->SetCollisionAttribute(chunk->walkable ? CollisionCategories::Get("ground") : 0u);
         object->SetCollisionMask(chunk->walkable ? 0xFFFFFFFFu : 0u);
 
         if (!rootObject) {
@@ -561,7 +561,7 @@ void LevelDesignLabWindow::StartPlanPreview() {
                 std::abs(sightBound.halfExtents.z * operation.scale.z),
             };
             wallCollider->SetColliderConfig(wallConfig);
-            wallCollider->SetCollisionAttribute(kGround);
+            wallCollider->SetCollisionAttribute(CollisionCategories::Get("ground"));
             wallCollider->SetCollisionMask(0xFFFFFFFFu);
             wallCollider->SetParent(rootObject, false);
             wallCollider->UpdateLocalMatrix();

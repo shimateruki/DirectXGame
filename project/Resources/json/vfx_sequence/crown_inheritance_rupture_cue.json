@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "events": [
+    {
+      "type": 1,
+      "presetName": "effect_crown_inheritance_pressure",
+      "triggerTime": 0,
+      "offset": [
+        0,
+        0.18,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "type": 0,
+      "presetName": "false_king_shockwave_dust",
+      "triggerTime": 0,
+      "offset": [
+        0,
+        0.15,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "type": 0,
+      "presetName": "false_king_dominion",
+      "triggerTime": 0,
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.4,
+        1.4,
+        1.4
+      ]
+    },
+    {
+      "type": 6,
+      "presetName": "",
+      "triggerTime": 0,
+      "duration": 0.7,
+      "intensity": 4,
+      "lightRadius": 24,
+      "lightDecay": 1.4,
+      "lightColor": [
+        1,
+        0.65,
+        0.3,
+        1
+      ]
+    }
+  ]
+}

@@ -192,6 +192,7 @@ std::string KeyConfig::GetKeyName(int keyCode) const {
     sprintf_s(hex, "0x%02X", keyCode);
     return "Unknown (" + std::string(hex) + ")";
 }
+
 std::string KeyConfig::GetPadName(WORD padCode) const {
     if (padCode == 0) return "None";
     switch (padCode) {

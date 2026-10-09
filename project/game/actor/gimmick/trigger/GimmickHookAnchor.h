@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>フックで掴めるアンカーの衝突と待機時の脈動を管理します。</summary>
 class GimmickHookAnchor : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickHookAnchor() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -11,6 +12,6 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     float pulseTimer_ = 0.0f;
 };

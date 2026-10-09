@@ -1,8 +1,9 @@
 #pragma once
 #include "BaseGimmick.h"
 
+/// <summary>フックに引かれた位置へ移動するブロックです。</summary>
 class GimmickHookPullBlock : public BaseGimmick {
-public:
+  public:
     virtual ~GimmickHookPullBlock() = default;
 
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
@@ -10,10 +11,12 @@ public:
     bool OnCollision(Object3d* other) override;
     std::unique_ptr<Object3d> Clone() const override;
 
+    /// <summary>フックを持つキャラクターへ向けてブロックの移動を開始します。</summary>
+    /// <param name="hookOwnerPos">引き寄せ先となるフック使用者のワールド座標。</param>
     void StartHookPull(const Vector3& hookOwnerPos);
 
-private:
-    Vector3 velocity_ = { 0.0f, 0.0f, 0.0f };
-    Vector3 pullTarget_ = { 0.0f, 0.0f, 0.0f };
+  private:
+    Vector3 velocity_ = {0.0f, 0.0f, 0.0f};
+    Vector3 pullTarget_ = {0.0f, 0.0f, 0.0f};
     float pullTimer_ = 0.0f;
 };

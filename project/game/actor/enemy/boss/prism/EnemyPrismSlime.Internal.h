@@ -25,6 +25,7 @@
 #include <cmath>
 
 namespace EnemyPrismSlimeImplementation {
+// 攻撃プロフィールの ID。JSON 側と一致させます。
 inline constexpr const char* kCrystalSpikesAttackId = "crystal_spikes";
 inline constexpr const char* kCrystalLanceVolleyAttackId = "crystal_lance_volley";
 inline constexpr const char* kFireFanAttackId = "fire_fan";
@@ -32,6 +33,7 @@ inline constexpr const char* kThunderChainAttackId = "thunder_chain";
 inline constexpr const char* kWindWaveAttackId = "wind_wave";
 inline constexpr const char* kSlimeSummonAttackId = "slime_summon";
 
+// パーティクル、メッシュ効果、魔法陣の資産名。
 inline constexpr const char* kPrismChargePreset = "prism_slime_charge";
 inline constexpr const char* kPrismPhasePulsePreset = "prism_slime_pulse";
 inline constexpr const char* kPrismSpikeWarningPreset = "prism_spike_warning";
@@ -44,7 +46,8 @@ inline constexpr const char* kThunderChantMotesPreset = "boss_chant_thunder_mote
 inline constexpr const char* kWindChantMotesPreset = "boss_chant_wind_motes";
 inline constexpr const char* kPrismLanceReleasePreset = "prism_lance_release";
 inline constexpr const char* kPrismSpellTelegraphTexture = "Resources/sprite/effect/prism/prism_spell_circle.dds";
-inline constexpr const char* kPrismCrystalLanceCircleEffect = "Resources/json/effect/effect_prism_crystal_lance_circle.json";
+inline constexpr const char* kPrismCrystalLanceCircleEffect =
+    "Resources/json/effect/effect_prism_crystal_lance_circle.json";
 inline constexpr const char* kPrismChantSigilEffect = "Resources/json/effect/effect_prism_chant_sigil.json";
 inline constexpr const char* kFireChantSigilEffect = "Resources/json/effect/effect_boss_chant_fire.json";
 inline constexpr const char* kThunderChantSigilEffect = "Resources/json/effect/effect_boss_chant_thunder.json";
@@ -66,21 +69,24 @@ inline constexpr const char* kThunderImpactEffect = "Resources/json/effect/effec
 inline constexpr const char* kThunderScorchEffect = "Resources/json/effect/effect_thunder_scorch_mark.json";
 inline constexpr const char* kWindRingEffect = "Resources/json/effect/effect_wind_gust_ring.json";
 inline constexpr const char* kPrismWindTornadoOuterEffect = "Resources/json/effect/effect_player_wind_tornado.json";
-inline constexpr const char* kPrismWindTornadoInnerEffect = "Resources/json/effect/effect_player_wind_tornado_inner.json";
+inline constexpr const char* kPrismWindTornadoInnerEffect =
+    "Resources/json/effect/effect_player_wind_tornado_inner.json";
 
+// 素材、衝突、技の発生間隔、遭遇演出に使う調整値。
 inline constexpr int kFireMaterialType = 11;
 inline constexpr int kPrismCrystalMaterialType = 27;
 inline constexpr float kPi = 3.1415926535f;
 inline constexpr float kHalfPi = kPi * 0.5f;
 inline constexpr float kGroundCollisionWorldRadius = 3.25f;
-inline constexpr uint32_t kPrismActiveCollisionAttribute = kEnemy;
-inline constexpr uint32_t kPrismActiveCollisionMask = kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet;
-inline constexpr uint32_t kPrismAppearanceCollisionMask = kGround;
+inline const uint32_t kPrismActiveCollisionAttribute = CollisionCategories::Get("enemy");
+inline const uint32_t kPrismActiveCollisionMask = CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet");
+inline const uint32_t kPrismAppearanceCollisionMask = CollisionCategories::Get("ground");
 inline constexpr float kPrismSpikeInterval = 0.011f;
 inline constexpr float kPrismSpikeRiseDuration = 0.24f;
 inline constexpr float kPrismSpikeHoldDuration = 1.64f;
 inline constexpr float kPrismSpikeFractureDuration = 0.10f;
-inline constexpr float kPrismSpikeLifetime = kPrismSpikeRiseDuration + kPrismSpikeHoldDuration + kPrismSpikeFractureDuration;
+inline constexpr float kPrismSpikeLifetime =
+    kPrismSpikeRiseDuration + kPrismSpikeHoldDuration + kPrismSpikeFractureDuration;
 inline constexpr float kCrystalLanceInterval = 0.12f;
 inline constexpr float kCrystalLanceTrailInterval = 0.045f;
 inline constexpr int kCrystalLanceCount = 5;
@@ -103,6 +109,7 @@ inline constexpr float kRepositionJumpSpeed = 6.2f;
 inline constexpr float kRepositionArenaHalfExtentX = 21.0f;
 inline constexpr float kRepositionArenaHalfExtentZ = 18.0f;
 
+// 召喚位置の選択を再現可能にする疑似乱数です。state を呼び出し元で保持します。
 inline float NextSummonRandom01(std::uint32_t& state) {
     state ^= state << 13;
     state ^= state >> 17;
@@ -114,6 +121,7 @@ using CombatMath::NormalizePlanar;
 
 using CombatMath::SmoothStep01;
 
+// 水平方向の攻撃基準ベクトルを指定角度だけ回転します。
 inline Vector3 RotatePlanar(const Vector3& direction, float angle) {
     const float cosine = std::cos(angle);
     const float sine = std::sin(angle);
@@ -124,10 +132,10 @@ inline Vector3 RotatePlanar(const Vector3& direction, float angle) {
     });
 }
 
+// 上向きのモデル軸を進行方向へ向ける Euler 角を返します。
 inline Vector3 MakeUpAxisAimRotation(const Vector3& direction) {
     const Vector3 normalized = Math::Normalize(direction);
-    const float horizontalLength = std::sqrt(
-        normalized.x * normalized.x + normalized.z * normalized.z);
+    const float horizontalLength = std::sqrt(normalized.x * normalized.x + normalized.z * normalized.z);
     return {
         std::atan2(horizontalLength, normalized.y),
         std::atan2(normalized.x, normalized.z),
@@ -135,6 +143,7 @@ inline Vector3 MakeUpAxisAimRotation(const Vector3& direction) {
     };
 }
 
+// 線分から点までの最短距離の二乗。射線との衝突判定に使用します。
 inline float DistanceSquaredToSegment(const Vector3& point, const Vector3& start, const Vector3& end) {
     const Vector3 segment = end - start;
     const float lengthSquared = Math::Dot(segment, segment);
@@ -148,11 +157,12 @@ inline float DistanceSquaredToSegment(const Vector3& point, const Vector3& start
     return Math::Dot(difference, difference);
 }
 
+// プリズムが放つ火球の素材、軌跡、命中時の表示設定をまとめます。
 inline BulletVisualConfig MakePrismFireVisual() {
     BulletVisualConfig visual;
     visual.materialType = kFireMaterialType;
     visual.blendMode = BlendMode::kNormal;
-    visual.color = { 1.0f, 0.30f, 0.055f, 0.98f };
+    visual.color = {1.0f, 0.30f, 0.055f, 0.98f};
     visual.emissive = 3.0f;
     visual.visualScale = 1.22f;
     visual.effectType = 1.0f;
@@ -171,6 +181,7 @@ inline BulletVisualConfig MakePrismFireVisual() {
     return visual;
 }
 
+// 攻撃プロフィールから燃焼状態異常へ必要な値を移します。
 inline StatusEffectApplication MakeBurningStatus(const EnemyAttackDefinition& attack) {
     StatusEffectApplication status;
     status.type = StatusEffectType::Burning;
@@ -180,5 +191,4 @@ inline StatusEffectApplication MakeBurningStatus(const EnemyAttackDefinition& at
     status.vfxPreset = attack.statusVfx;
     return status;
 }
-}
-
+} // namespace EnemyPrismSlimeImplementation

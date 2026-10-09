@@ -9,11 +9,12 @@ void GimmickSeesawFloor::Initialize(Object3dCommon* common, const std::string& m
     SetClassName("Gimmick");
     SetGimmickType("SeesawFloor");
     SetName("Gimmick_SeesawFloor");
-    SetCollisionAttribute(kGround);
-    SetCollisionMask(0b11111111);
-    SetScale({ 4.0f, 0.35f, 1.4f });
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
+    SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
+    SetScale({4.0f, 0.35f, 1.4f});
 }
 
+// 接触が途切れると目標傾きを水平へ戻し、急な角度変化を補間します。
 void GimmickSeesawFloor::Update(float deltaTime) {
     if (!initializedBase_) {
         baseRotation_ = GetTransform()->rotate;
@@ -22,7 +23,8 @@ void GimmickSeesawFloor::Update(float deltaTime) {
 
     if (contactTimer_ > 0.0f) {
         contactTimer_ -= deltaTime;
-        if (contactTimer_ < 0.0f) contactTimer_ = 0.0f;
+        if (contactTimer_ < 0.0f)
+            contactTimer_ = 0.0f;
     } else {
         targetTilt_ = 0.0f;
     }
@@ -37,6 +39,7 @@ void GimmickSeesawFloor::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
+// プレイヤーの接触位置を床のローカル左右方向へ変換して傾きを決めます。
 bool GimmickSeesawFloor::OnCollision(Object3d* other) {
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);

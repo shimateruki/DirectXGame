@@ -24,14 +24,11 @@ float EaseOut(float t) {
     return 1.0f - (1.0f - t) * (1.0f - t);
 }
 
-float HorizontalLength(const Vector3& v) {
-    return std::sqrt(v.x * v.x + v.z * v.z);
-}
+float HorizontalLength(const Vector3& v) { return std::sqrt(v.x * v.x + v.z * v.z); }
 
-}
+} // namespace
 
-void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player)
-{
+void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player) {
     if (!controllerLoaded_) {
         ReloadController();
     }
@@ -63,8 +60,7 @@ void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player)
     }
 }
 
-void PlayerSlimeAnimator::SetMode(Mode mode)
-{
+void PlayerSlimeAnimator::SetMode(Mode mode) {
     if (mode_ == mode) {
         return;
     }
@@ -83,42 +79,29 @@ void PlayerSlimeAnimator::SetMode(Mode mode)
     jumpChargeRate_ = 0.0f;
 }
 
-void PlayerSlimeAnimator::SetMotionDirection(const Vector3& direction)
-{
+void PlayerSlimeAnimator::SetMotionDirection(const Vector3& direction) {
     motionDirection_ = NormalizeOrForward(direction);
 }
 
-void PlayerSlimeAnimator::SetPullDirection(const Vector3& direction)
-{
-    pullDirection_ = NormalizeOrForward(direction);
-}
+void PlayerSlimeAnimator::SetPullDirection(const Vector3& direction) { pullDirection_ = NormalizeOrForward(direction); }
 
-void PlayerSlimeAnimator::SetPullProgress(float progress)
-{
-    pullProgress_ = std::clamp(progress, 0.0f, 1.0f);
-}
+void PlayerSlimeAnimator::SetPullProgress(float progress) { pullProgress_ = std::clamp(progress, 0.0f, 1.0f); }
 
-void PlayerSlimeAnimator::SetJumpCharge(float chargeRate)
-{
-    jumpChargeRate_ = std::clamp(chargeRate, 0.0f, 1.0f);
-}
+void PlayerSlimeAnimator::SetJumpCharge(float chargeRate) { jumpChargeRate_ = std::clamp(chargeRate, 0.0f, 1.0f); }
 
-void PlayerSlimeAnimator::SetAbilityPose(AbilityPose pose, float strength)
-{
+void PlayerSlimeAnimator::SetAbilityPose(AbilityPose pose, float strength) {
     abilityPose_ = pose;
     abilityPoseStrength_ = std::clamp(strength, 0.0f, 1.0f);
 }
 
-void PlayerSlimeAnimator::TriggerImpulse(const Vector3& scale, float duration)
-{
+void PlayerSlimeAnimator::TriggerImpulse(const Vector3& scale, float duration) {
     impulseScale_ = scale;
     impulseDuration_ = (std::max)(duration, 0.01f);
     impulseTimer_ = impulseDuration_;
 }
 
-bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool loop,
-    float playbackSpeed, float blendInDuration, float blendOutDuration)
-{
+bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool loop, float playbackSpeed,
+                                            float blendInDuration, float blendOutDuration) {
     if (clipName.empty()) {
         return false;
     }
@@ -146,8 +129,7 @@ bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool lo
     return true;
 }
 
-void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration)
-{
+void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration) {
     if (!abilityMotionActive_) {
         return;
     }
@@ -156,8 +138,7 @@ void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration)
     abilityMotionStopping_ = true;
 }
 
-void PlayerSlimeAnimator::ClearAbilityMotion(Player* player)
-{
+void PlayerSlimeAnimator::ClearAbilityMotion(Player* player) {
     abilityMotionClip_.Clear();
     abilityMotionName_.clear();
     abilityMotionTimer_ = 0.0f;
@@ -171,8 +152,7 @@ void PlayerSlimeAnimator::ClearAbilityMotion(Player* player)
     }
 }
 
-void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
-{
+void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     if (!player || deltaTime <= 0.0f || mode_ == Mode::Disabled) {
         return;
     }
@@ -192,12 +172,8 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
                 if (!player->GetPersistentGuid().empty()) {
                     traceSource += " [" + player->GetPersistentGuid() + "]";
                 }
-                GameplayEventTrace::GetInstance()->Record(
-                    GameplayEventTracePhase::Requested,
-                    "Animation Event",
-                    std::move(traceSource),
-                    event.payload,
-                    event.name);
+                GameplayEventTrace::GetInstance()->Record(GameplayEventTracePhase::Requested, "Animation Event",
+                                                          std::move(traceSource), event.payload, event.name);
                 VFXSequencer::PlayOneShotOnTarget(event.payload, player);
             }
         }
@@ -208,9 +184,9 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     const bool isGrounded = player->IsGrounded();
     const float verticalVelocity = player->GetVelocity().y;
     const InputManager* copyInput = InputManager::GetInstance();
-    const bool interruptCopyPose = copyInput && abilityMotionTimer_ > 0.0f &&
-        (copyInput->IsActionTriggered("PrimaryAttack") ||
-         copyInput->IsActionTriggered("SecondaryAction") ||
+    const bool interruptCopyPose =
+        copyInput && abilityMotionTimer_ > 0.0f &&
+        (copyInput->IsActionTriggered("PrimaryAttack") || copyInput->IsActionTriggered("SecondaryAction") ||
          copyInput->IsActionTriggered("Ability"));
     // コピーの見せポーズはジャンプ・ダッシュ・フック・ガードより優先しない。
     // 攻撃クリップへ切替済みなら名前が異なるため解除しない。
@@ -229,11 +205,9 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     wasGrounded_ = isGrounded;
     if (landingHoldTimer_ > 0.0f) {
         landingHoldTimer_ = (std::max)(0.0f, landingHoldTimer_ - deltaTime);
-    }
-    else if (landingSquashTimer_ > 0.0f) {
+    } else if (landingSquashTimer_ > 0.0f) {
         landingSquashTimer_ = (std::max)(0.0f, landingSquashTimer_ - deltaTime);
-    }
-    else if (landingReboundTimer_ > 0.0f) {
+    } else if (landingReboundTimer_ > 0.0f) {
         landingReboundTimer_ = (std::max)(0.0f, landingReboundTimer_ - deltaTime);
     }
     if (jumpTakeoffStretchTimer_ > 0.0f) {
@@ -248,15 +222,13 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
     if (!usesAuthoredBodyClip) {
         targetScale = BuildModeScale(player, deltaTime);
         targetRotation = BuildModeRotation(player);
-    }
-    else if (landingSquashTimer_ > 0.0f) {
+    } else if (landingSquashTimer_ > 0.0f) {
         const float t = landingSquashTimer_ / kLandingSquashDuration;
         const float squash = std::clamp(t * t * 0.72f * landingImpactRate_, 0.0f, 0.82f);
         targetScale.x *= 1.0f + squash * 1.08f;
         targetScale.y *= (std::max)(0.38f, 1.0f - squash * 0.92f);
         targetScale.z *= 1.0f + squash * 1.08f;
-    }
-    else if (usesAuthoredBodyClip && landingReboundTimer_ > 0.0f) {
+    } else if (usesAuthoredBodyClip && landingReboundTimer_ > 0.0f) {
         const float t = 1.0f - (landingReboundTimer_ / kLandingReboundDuration);
         const float damping = std::pow(1.0f - t, 1.25f);
         const float rebound = std::sin(t * kPi * 2.5f) * damping * 0.20f * landingImpactRate_;
@@ -268,34 +240,31 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
         impulseTimer_ = (std::max)(0.0f, impulseTimer_ - deltaTime);
         const float t = impulseTimer_ / (std::max)(impulseDuration_, 0.01f);
         const float rate = EaseOut(t);
-        targetScale = {
-            Math::Lerp(targetScale.x, impulseScale_.x, rate),
-            Math::Lerp(targetScale.y, impulseScale_.y, rate),
-            Math::Lerp(targetScale.z, impulseScale_.z, rate)
-        };
+        targetScale = {Math::Lerp(targetScale.x, impulseScale_.x, rate),
+                       Math::Lerp(targetScale.y, impulseScale_.y, rate),
+                       Math::Lerp(targetScale.z, impulseScale_.z, rate)};
     }
 
     // ガードと近接は専用キーだけで形を作り、待機の弾み・旧ガード姿勢を二重に重ねません。
-    const bool pinkBodyPose = abilityMotionActive_ &&
-        (abilityMotionName_ == "player_ability_pink_guard" ||
-         abilityMotionName_ == "player_ability_pink_guard_hit" ||
-         abilityMotionName_ == "player_ability_pink_elastic_strike" ||
-         abilityMotionName_ == "player_ability_pink_combo_return" ||
-         abilityMotionName_ == "player_ability_pink_combo_press");
+    const bool pinkBodyPose = abilityMotionActive_ && (abilityMotionName_ == "player_ability_pink_guard" ||
+                                                       abilityMotionName_ == "player_ability_pink_guard_hit" ||
+                                                       abilityMotionName_ == "player_ability_pink_elastic_strike" ||
+                                                       abilityMotionName_ == "player_ability_pink_combo_return" ||
+                                                       abilityMotionName_ == "player_ability_pink_combo_press");
     if (pinkBodyPose) {
         targetScale = baseScale_;
-        targetRotation = { 0.0f, player->GetRotation().y, 0.0f };
+        targetRotation = {0.0f, player->GetRotation().y, 0.0f};
         visualOffset = {};
     } else {
         ApplyAbilityPose(targetScale, targetRotation);
     }
 
-    Vector3 abilityVisualScale{ 1.0f, 1.0f, 1.0f };
+    Vector3 abilityVisualScale{1.0f, 1.0f, 1.0f};
     Vector3 abilityVisualRotation{};
     Vector3 abilityVisualShear{};
     float abilityShearPivotY = 0.0f;
-    UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset,
-        abilityVisualShear, abilityShearPivotY);
+    UpdateAbilityMotion(deltaTime, abilityVisualScale, abilityVisualRotation, visualOffset, abilityVisualShear,
+                        abilityShearPivotY);
     if (player->GetMeshRenderer()) {
         player->GetMeshRenderer()->SetVisualTransform(abilityVisualScale, abilityVisualRotation, visualOffset);
         player->GetMeshRenderer()->SetVisualShear(abilityVisualShear, abilityShearPivotY);
@@ -310,18 +279,13 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
         float blend = controllerTransition ? controllerRuntime_.GetTransitionWeight() : 1.0f;
         if (!controllerTransition) {
             const float progress = 1.0f - modeTransitionTimer_ / kModeTransitionBlendDuration;
-            blend = AnimationInterpolation::ApplyEasing(
-                progress,
-                AnimationInterpolation::EasingType::SmootherStep);
+            blend = AnimationInterpolation::ApplyEasing(progress, AnimationInterpolation::EasingType::SmootherStep);
         }
         player->SetScale(AnimationInterpolation::Lerp(modeTransitionStartScale_, targetScale, blend));
         // スライムの傾きは小さいEuler角なので軸ごとに補間します。
         // クォータニオンからEuler角へ戻す際のY=180度付近の折り返しで、
         // 移動方向として使うY回転が0度側へ化けることを防ぎます。
-        player->SetRotation(AnimationInterpolation::LerpEulerAxes(
-            modeTransitionStartRotation_,
-            targetRotation,
-            blend));
+        player->SetRotation(AnimationInterpolation::LerpEulerAxes(modeTransitionStartRotation_, targetRotation, blend));
         if (!controllerTransition) {
             modeTransitionTimer_ = (std::max)(0.0f, modeTransitionTimer_ - deltaTime);
         }
@@ -335,18 +299,14 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime)
             scaleFollowSpeed = 20.0f;
         }
         player->SetScale(AnimationInterpolation::Damp(player->GetScale(), targetScale, scaleFollowSpeed, deltaTime));
-        player->SetRotation(AnimationInterpolation::DampEulerAxes(
-            player->GetRotation(),
-            targetRotation,
-            13.0f,
-            deltaTime));
+        player->SetRotation(
+            AnimationInterpolation::DampEulerAxes(player->GetRotation(), targetRotation, 13.0f, deltaTime));
     }
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
 }
 
-void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) const
-{
+void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) const {
     const float strength = std::clamp(abilityPoseStrength_, 0.0f, 1.0f);
     if (abilityPose_ == AbilityPose::None || strength <= 0.0f) {
         return;
@@ -388,9 +348,8 @@ void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) co
     }
 }
 
-void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualScale,
-    Vector3& visualRotation, Vector3& visualOffset, Vector3& visualShear, float& shearPivotY)
-{
+void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualScale, Vector3& visualRotation,
+                                              Vector3& visualOffset, Vector3& visualShear, float& shearPivotY) {
     if (!abilityMotionActive_ || !abilityMotionClip_.IsValid()) {
         return;
     }
@@ -407,18 +366,14 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualSc
     if (abilityMotionStopping_) {
         abilityMotionStopTimer_ = (std::max)(0.0f, abilityMotionStopTimer_ - deltaTime);
         weight *= abilityMotionStopTimer_ / (std::max)(abilityMotionStopDuration_, 0.01f);
-    }
-    else if (!abilityMotionLoop_ && abilityMotionName_ != "player_ability_pink_guard_hit") {
-        const float remainingSeconds = (std::max)(0.0f, clipDuration - abilityMotionTimer_) /
-            (std::max)(abilityMotionPlaybackSpeed_, 0.01f);
+    } else if (!abilityMotionLoop_ && abilityMotionName_ != "player_ability_pink_guard_hit") {
+        const float remainingSeconds =
+            (std::max)(0.0f, clipDuration - abilityMotionTimer_) / (std::max)(abilityMotionPlaybackSpeed_, 0.01f);
         weight *= std::clamp(remainingSeconds / abilityMotionBlendOutDuration_, 0.0f, 1.0f);
     }
 
-    visualScale = {
-        Math::Lerp(1.0f, sample.scale.x, weight),
-        Math::Lerp(1.0f, sample.scale.y, weight),
-        Math::Lerp(1.0f, sample.scale.z, weight)
-    };
+    visualScale = {Math::Lerp(1.0f, sample.scale.x, weight), Math::Lerp(1.0f, sample.scale.y, weight),
+                   Math::Lerp(1.0f, sample.scale.z, weight)};
     visualRotation = sample.rotate * weight;
     visualOffset += sample.translate * weight;
     visualShear = sample.shear * weight;
@@ -430,8 +385,7 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualSc
     }
 }
 
-bool PlayerSlimeAnimator::ReloadController()
-{
+bool PlayerSlimeAnimator::ReloadController() {
     AnimatorControllerAsset asset;
     if (!asset.Load(kPlayerSlimeControllerPath)) {
         controllerLoaded_ = false;
@@ -447,8 +401,7 @@ bool PlayerSlimeAnimator::ReloadController()
     return true;
 }
 
-void PlayerSlimeAnimator::ReloadBodyClips()
-{
+void PlayerSlimeAnimator::ReloadBodyClips() {
     bodyClips_.clear();
     if (!controllerLoaded_) {
         return;
@@ -466,12 +419,8 @@ void PlayerSlimeAnimator::ReloadBodyClips()
     }
 }
 
-bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(
-    Player* player,
-    Vector3& scaleOut,
-    Vector3& rotationOut,
-    Vector3& visualOffsetOut) const
-{
+bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, Vector3& scaleOut, Vector3& rotationOut,
+                                                   Vector3& visualOffsetOut) const {
     if (!player || !controllerLoaded_) {
         return false;
     }
@@ -507,51 +456,51 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(
         return false;
     }
 
-    scaleOut = {
-        baseScale_.x * sample.scale.x,
-        baseScale_.y * sample.scale.y,
-        baseScale_.z * sample.scale.z
-    };
+    scaleOut = {baseScale_.x * sample.scale.x, baseScale_.y * sample.scale.y, baseScale_.z * sample.scale.z};
     const Vector3 proceduralRotation = BuildModeRotation(player);
-    rotationOut = {
-        proceduralRotation.x + sample.rotate.x,
-        proceduralRotation.y + sample.rotate.y,
-        proceduralRotation.z + sample.rotate.z
-    };
+    rotationOut = {proceduralRotation.x + sample.rotate.x, proceduralRotation.y + sample.rotate.y,
+                   proceduralRotation.z + sample.rotate.z};
     // 位置キーは物理座標ではなく描画専用Transformへ渡します。
     visualOffsetOut = sample.translate;
     return true;
 }
 
-const char* PlayerSlimeAnimator::GetStateName(Mode mode)
-{
+const char* PlayerSlimeAnimator::GetStateName(Mode mode) {
     switch (mode) {
-    case Mode::Idle: return "Idle";
-    case Mode::Run: return "Run";
-    case Mode::Jump: return "Jump";
-    case Mode::Dash: return "Dash";
-    case Mode::AimHook: return "AimHook";
-    case Mode::ShootHook: return "ShootHook";
-    case Mode::PullEnemy: return "PullEnemy";
-    case Mode::Carry: return "Carry";
-    case Mode::GateReturn: return "GateReturn";
-    case Mode::Disabled: return "Disabled";
+    case Mode::Idle:
+        return "Idle";
+    case Mode::Run:
+        return "Run";
+    case Mode::Jump:
+        return "Jump";
+    case Mode::Dash:
+        return "Dash";
+    case Mode::AimHook:
+        return "AimHook";
+    case Mode::ShootHook:
+        return "ShootHook";
+    case Mode::PullEnemy:
+        return "PullEnemy";
+    case Mode::Carry:
+        return "Carry";
+    case Mode::GateReturn:
+        return "GateReturn";
+    case Mode::Disabled:
+        return "Disabled";
     }
     return "Idle";
 }
 
-Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const
-{
-    Vector3 flat = { direction.x, 0.0f, direction.z };
+Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const {
+    Vector3 flat = {direction.x, 0.0f, direction.z};
     const float length = HorizontalLength(flat);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { flat.x / length, 0.0f, flat.z / length };
+    return {flat.x / length, 0.0f, flat.z / length};
 }
 
-Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) const
-{
+Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) const {
     (void)deltaTime;
     const Vector3 velocity = player ? player->GetVelocity() : Vector3{};
     const float speed = HorizontalLength(velocity);
@@ -576,9 +525,12 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
         const float stretch = (std::max)(0.0f, wave);
         const float sideWobble = std::sin(phase * 0.5f) * 0.044f;
         const float delayedRipple = std::sin(phase * 0.35f + 0.8f) * 0.026f * speedRate;
-        scale.x = baseScale_.x * (1.0f + 0.055f * speedRate + squash * 0.20f - stretch * 0.09f + sideWobble + delayedRipple);
-        scale.y = baseScale_.y * (1.0f - 0.040f * speedRate - squash * 0.22f + stretch * 0.28f - std::abs(delayedRipple) * 0.38f);
-        scale.z = baseScale_.z * (1.0f + 0.060f * speedRate + squash * 0.15f - stretch * 0.06f - sideWobble * 0.70f - delayedRipple * 0.35f);
+        scale.x =
+            baseScale_.x * (1.0f + 0.055f * speedRate + squash * 0.20f - stretch * 0.09f + sideWobble + delayedRipple);
+        scale.y = baseScale_.y *
+                  (1.0f - 0.040f * speedRate - squash * 0.22f + stretch * 0.28f - std::abs(delayedRipple) * 0.38f);
+        scale.z = baseScale_.z * (1.0f + 0.060f * speedRate + squash * 0.15f - stretch * 0.06f - sideWobble * 0.70f -
+                                  delayedRipple * 0.35f);
         break;
     }
     case Mode::Jump: {
@@ -605,8 +557,10 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
             const float prepare = std::clamp(-velocity.y * 0.033f, 0.0f, 0.75f);
             const float fallRipple = std::sin(modeTimer_ * 13.5f) * 0.045f * prepare;
             scale.x = baseScale_.x * (1.0f + prepare * 0.42f + apexSquash * 0.65f + fallRipple + sideJelly);
-            scale.y = baseScale_.y * (1.0f - prepare * 0.34f - apexSquash * 0.28f - std::abs(fallRipple) * 0.58f + airJelly * 0.55f);
-            scale.z = baseScale_.z * (1.0f + prepare * 0.42f + apexSquash * 0.65f - fallRipple * 0.65f - sideJelly * 0.70f);
+            scale.y = baseScale_.y *
+                      (1.0f - prepare * 0.34f - apexSquash * 0.28f - std::abs(fallRipple) * 0.58f + airJelly * 0.55f);
+            scale.z =
+                baseScale_.z * (1.0f + prepare * 0.42f + apexSquash * 0.65f - fallRipple * 0.65f - sideJelly * 0.70f);
         }
         break;
     }
@@ -681,8 +635,7 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
         scale.x *= 1.0f + squash * 1.08f;
         scale.y *= (std::max)(0.38f, 1.0f - squash * 0.92f);
         scale.z *= 1.0f + squash * 1.08f;
-    }
-    else if (landingReboundTimer_ > 0.0f) {
+    } else if (landingReboundTimer_ > 0.0f) {
         const float t = 1.0f - (landingReboundTimer_ / kLandingReboundDuration);
         const float damping = std::pow(1.0f - t, 1.25f);
         const float rebound = std::sin(t * kPi * 2.5f) * damping * 0.20f * landingImpactRate_;
@@ -697,10 +650,9 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
     return scale;
 }
 
-Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const
-{
+Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
     Vector3 current = player ? player->GetRotation() : Vector3{};
-    Vector3 rotation = { 0.0f, current.y, 0.0f };
+    Vector3 rotation = {0.0f, current.y, 0.0f};
     const Vector3 velocity = player ? player->GetVelocity() : Vector3{};
     const float speed = HorizontalLength(velocity);
 

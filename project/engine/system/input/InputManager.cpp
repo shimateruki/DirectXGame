@@ -4,8 +4,6 @@
 #include <algorithm>
 #include"DebugConsole.h"
 
-
-
 InputManager* InputManager::GetInstance() {
     static InputManager instance;
     return &instance;
@@ -378,6 +376,7 @@ void InputManager::ApplyReplayState(const ReplayState& state) {
     gyroData_ = state.gyroscope;
     baseAccel_ = state.baseAccelerometer;
 }
+
 // 指定されたキーが押されているか
 bool InputManager::IsKeyPressed(BYTE keyCode) const {
     // キーの状態の最上位ビットが1であれば、キーは押されている
@@ -450,6 +449,7 @@ float InputManager::GetMouseWheelDelta() const {
     // DIMOUSESTATE構造体のlZメンバがホイールの移動量
     return (float)mouseState.lZ;
 }
+
 /// <summary>
 /// マウスカーソルの「絶対座標」（ウィンドウ内）を取得する
 /// </summary>
@@ -609,6 +609,7 @@ Vector2 InputManager::GetRightStick() const {
     // どちらも入力がなければゼロを返す
     return { 0.0f, 0.0f };
 }
+
 bool InputManager::IsGamepadButtonTriggered(WORD button) const {
     // 「今は押されている」かつ「前は押されていなかった」なら true
     return (gamepadState.Gamepad.wButtons & button) && !(prevGamepadState.Gamepad.wButtons & button);
@@ -679,6 +680,7 @@ WORD InputManager::GetPressedGamepadButton() const {
     }
     return 0; // 何も押されていない
 }
+
 // 現在押されているマウスボタンを取得する
 int InputManager::GetPressedMouseButton() const {
     for (int i = 0; i < 4; ++i) { // 標準的な4ボタンをチェック
@@ -688,6 +690,7 @@ int InputManager::GetPressedMouseButton() const {
     }
     return -1; // 何も押されていない
 }
+
 bool InputManager::IsActionPressed(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;

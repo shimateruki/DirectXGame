@@ -42,6 +42,7 @@ namespace fs = std::filesystem;
 namespace InspectorWindowImplementation {
 std::string ToLowerAscii(std::string text);
 
+// 複数選択を含む現在の編集対象を集めます。戻り値はシーン所有オブジェクトへの非所有参照です。
 std::vector<Object3d*> CollectInspectorTargets(DebugEditor* editor, Object3d* primary);
 
 void MarkInspectorTargetsDirty(DebugEditor* editor, const std::vector<Object3d*>& targets);
@@ -50,6 +51,7 @@ void RefreshInspectorTargetMatrices(const std::vector<Object3d*>& targets);
 
 float SafeScaleRatio(float after, float before);
 
+// 主対象で行った移動・回転・拡大率の差分を、他の選択対象へ相対的に適用します。
 void ApplyPrimaryTransformDeltaToTargets(
     const std::vector<Object3d*>& targets,
     Object3d* primary,

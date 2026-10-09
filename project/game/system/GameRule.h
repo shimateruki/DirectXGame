@@ -11,21 +11,23 @@ class Player;
 
 // 衝突イベントからダメージ、ゴール、クリア演出などのゲームルールを処理するクラス
 class GameRule {
-public:
-    // 監視対象のシーンを登録し、ルール処理を開始する
+  public:
+    // 監視対象のシーンを登録し、接触・ダメージ・死亡イベントを購読する。
+    // EventManager が購読を保持する間は、この GameRule と scene を存続させる。
     void Initialize(BaseScene* scene);
-    // 炎上など時間を持つ状態異常を更新する
+    // deltaTime は秒。チェックポイント演出と時間経過型の状態異常を更新する。
     void Update(float deltaTime);
 
-private:
+  private:
     // DamageEvent から HP 減算や撃破判定を行う
-    bool ApplyDamage(Object3d* target, float damage);
+    bool ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility = false);
     void ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale);
     bool IsStatusTargetAlive(Object3d* target) const;
     void EmitStatusVisual(Object3d* target, const std::string& presetName) const;
     void ActivateCheckpoint(Player* player, Object3d* checkpoint);
     void UpdateCheckpointPresentation(float deltaTime);
 
+    // 状態異常の残り秒と継続ダメージ・演出の独立した時計。target はシーン内 Object の借用参照。
     struct ActiveStatusEffect {
         Object3d* target = nullptr;
         StatusEffectType type = StatusEffectType::None;

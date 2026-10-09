@@ -2,7 +2,7 @@
 #include "EventManager.h"
 #include "DebugConsole.h"
 #include "BaseScene.h"
-#include "Event.h" 
+#include "Event.h"
 #include "Player.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/scene/preview/PreviewScene.h"
@@ -48,7 +48,9 @@ DamageType ResolveDamageType(const DamageEvent& event) {
     }
     return DamageType::Physical;
 }
-}
+} // namespace
+
+// チェックポイント、属性効果、ダメージ適用のゲーム規則を管理します。見た目の通知より先に有効性を判定します。
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -60,21 +62,18 @@ void GameRule::Initialize(BaseScene* scene) {
     checkpointParticleTimer_ = 0.0f;
     checkpointAmbientRingTimer_ = 0.0f;
 
-    // --------------------------------------------------------
-    // ① プレイヤーがギミック等に触れたときのイベント (既存のまま)
-    // --------------------------------------------------------
+    // 接触イベントでは対象の EventType を優先し、汎用 TargetID は個別処理の後に使う。
     EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
-
         Object3d* whoHit = event.me;           // プレイヤー
         Object3d* objectHit = event.hitObject; // 当たった物
 
-        if (!whoHit || !objectHit) return;
+        if (!whoHit || !objectHit)
+            return;
 
         EventType type = objectHit->GetEventType();
 
         switch (type) {
-        case EventType::Warp:
-        {
+        case EventType::Warp: {
             int targetID = objectHit->GetTargetID();
             if (scene_ && targetID != -1) {
                 Object3d* exitPoint = scene_->FindObjectByEventID(targetID);
@@ -84,8 +83,7 @@ void GameRule::Initialize(BaseScene* scene) {
                     DebugConsole::GetInstance()->AddLog("Warped to ID: " + std::to_string(targetID));
                 }
             }
-        }
-        break;
+        } break;
 
         case EventType::Damage:
             ApplyDamage(whoHit, 10.0f);
@@ -99,16 +97,13 @@ void GameRule::Initialize(BaseScene* scene) {
             }
             break;
 
-        case EventType::Checkpoint:
-        {
+        case EventType::Checkpoint: {
             if (Player* player = dynamic_cast<Player*>(whoHit)) {
                 ActivateCheckpoint(player, objectHit);
             }
-        }
-        break;
+        } break;
 
-        case EventType::Goal:
-        {
+        case EventType::Goal: {
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
                 Player* player = dynamic_cast<Player*>(whoHit);
                 if (!player || player->isDead || player->GetHp() <= 0.0f) {
@@ -118,19 +113,16 @@ void GameRule::Initialize(BaseScene* scene) {
                     gps->StartGoalPresentation(objectHit);
                 }
                 DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
-            }
-            else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
+            } else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
                 if (!preview->IsGoal()) {
                     PlayCrownGetPresentation(objectHit);
                     preview->SetIsGoal(true);
                     DebugConsole::GetInstance()->AddLog("PREVIEW GOAL! Press Space to Select.");
                 }
             }
-        }
-        break;
+        } break;
 
-        case EventType::StarCoin:
-        {
+        case EventType::StarCoin: {
             int coinIdx = objectHit->GetTargetID();
 
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
@@ -144,15 +136,13 @@ void GameRule::Initialize(BaseScene* scene) {
                 GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
 
                 DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
-            }
-            else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
+            } else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
                 preview->CollectStarCoin(coinIdx);
                 objectHit->StartCollectionAnimation();
                 GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
                 DebugConsole::GetInstance()->AddLog("Preview Star Coin " + std::to_string(coinIdx) + " Collected!");
             }
-        }
-        break;
+        } break;
 
         case EventType::None:
         default:
@@ -174,9 +164,7 @@ void GameRule::Initialize(BaseScene* scene) {
             break;
         }
 
-        // ========================================================
-        // 🚨 ギミック個別の特殊処理 (Trampoline など)
-        // ========================================================
+        // 跳ね返りは TargetID のイベントとは独立した接触法線で判定する。
         std::string gimmickType = objectHit->GetGimmickType();
         if (gimmickType == "Trampoline") {
             if (Player* player = dynamic_cast<Player*>(whoHit)) {
@@ -196,13 +184,12 @@ void GameRule::Initialize(BaseScene* scene) {
                 }
             }
         }
+    });
 
-        });
-
-    // 戦闘のダメージイベントを受信
-    // ========================================================
+    // HP 減算が成立したときだけ、打撃演出・状態異常・ノックバックへ進む。
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
-        if (!event.target) return;
+        if (!event.target)
+            return;
         Player* playerTarget = dynamic_cast<Player*>(event.target);
         if (playerTarget && playerTarget->IsCinematicLocked()) {
             return;
@@ -215,17 +202,16 @@ void GameRule::Initialize(BaseScene* scene) {
             finalDamage *= (std::max)(0.0f, event.attacker->param_->attackPower);
         }
 
-        // 汎用関数 ApplyDamage を呼ぶ！
-        const bool damageApplied = ApplyDamage(event.target, finalDamage);
+        // 即死指定は通常倍率の計算後に適用し、攻撃力0でもHPを確実に0へ落とします。
+        if (event.lethalPlayerDamage && playerTarget)
+            finalDamage = (std::max)(0.0f, playerTarget->GetHp());
+
+        const bool damageApplied = ApplyDamage(event.target, finalDamage, event.bypassPlayerInvincibility);
         if (!damageApplied) {
             return;
         }
 
-        HitEffectDirector::SpawnDamageEventHit(
-            event.target,
-            event.attacker,
-            event.knockbackVelocity,
-            damageType);
+        HitEffectDirector::SpawnDamageEventHit(event.target, event.attacker, event.knockbackVelocity, damageType);
 
         if (BaseEnemy* enemyTarget = dynamic_cast<BaseEnemy*>(event.target)) {
             enemyTarget->PlayDamageReaction(event.attacker, event.knockbackVelocity, event.damageAmount);
@@ -233,19 +219,17 @@ void GameRule::Initialize(BaseScene* scene) {
 
         if (event.statusEffect.IsValid()) {
             ApplyStatusEffect(event.target, event.statusEffect,
-                event.attacker && event.attacker->param_.has_value()
-                    ? (std::max)(0.0f, event.attacker->param_->attackPower)
-                    : 1.0f);
+                              event.attacker && event.attacker->param_.has_value()
+                                  ? (std::max)(0.0f, event.attacker->param_->attackPower)
+                                  : 1.0f);
         }
 
         if (isElectricPlayerHit) {
             playerTarget->StartElectricShockFeedback(0.78f, 1.0f);
-        }
-        else if (playerTarget) {
-            const bool hasKnockback =
-                std::abs(event.knockbackVelocity.x) > 0.001f ||
-                std::abs(event.knockbackVelocity.y) > 0.001f ||
-                std::abs(event.knockbackVelocity.z) > 0.001f;
+        } else if (playerTarget) {
+            const bool hasKnockback = std::abs(event.knockbackVelocity.x) > 0.001f ||
+                                      std::abs(event.knockbackVelocity.y) > 0.001f ||
+                                      std::abs(event.knockbackVelocity.z) > 0.001f;
             if (hasKnockback || damageType != DamageType::Physical) {
                 Vector3 reactionDirection = event.knockbackVelocity;
                 reactionDirection.y = 0.0f;
@@ -253,18 +237,14 @@ void GameRule::Initialize(BaseScene* scene) {
                     reactionDirection = event.target->GetWorldPosition() - event.attacker->GetWorldPosition();
                     reactionDirection.y = 0.0f;
                 }
-                playerTarget->StartDamageFeedback(
-                    reactionDirection,
-                    (std::max)(0.0f, event.invincibilityDuration));
+                playerTarget->StartDamageFeedback(reactionDirection, (std::max)(0.0f, event.invincibilityDuration));
             }
         }
 
         // ノックバック（吹き飛ばし）があれば適用
         if (!isElectricPlayerHit &&
-            (std::abs(event.knockbackVelocity.x) > 0.001f ||
-            std::abs(event.knockbackVelocity.y) > 0.001f ||
-            std::abs(event.knockbackVelocity.z) > 0.001f))
-        {
+            (std::abs(event.knockbackVelocity.x) > 0.001f || std::abs(event.knockbackVelocity.y) > 0.001f ||
+             std::abs(event.knockbackVelocity.z) > 0.001f)) {
             if (Character* character = dynamic_cast<Character*>(event.target)) {
                 character->SetVelocity(event.knockbackVelocity);
             }
@@ -274,6 +254,9 @@ void GameRule::Initialize(BaseScene* scene) {
     // プレイヤー死亡時の処理
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const PlayerDeathEvent& event) {
+        // 隔離プレビューでHPを0にしても、実セーブの残機は消費しません。
+        if (!event.player || event.player->IsEditorInternal())
+            return;
         GameDataManager::GetInstance()->SubtractLife();
         int lives = GameDataManager::GetInstance()->GetLives();
 
@@ -313,6 +296,7 @@ void GameRule::Update(float deltaTime) {
             status.visualTimer += 0.12f;
         }
 
+        // 大きな deltaTime でも、一度の更新で適用する継続ダメージを最大4回に制限する。
         int processedTicks = 0;
         while (status.tickTimer <= 0.0f && status.remainingTime > 0.0f && processedTicks < 4) {
             ApplyDamage(status.target, status.tickDamage);
@@ -322,8 +306,7 @@ void GameRule::Update(float deltaTime) {
 
         if (status.remainingTime <= 0.0f || !IsStatusTargetAlive(status.target)) {
             it = activeStatusEffects_.erase(it);
-        }
-        else {
+        } else {
             ++it;
         }
     }
@@ -338,7 +321,7 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
         return;
     }
 
-    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + Vector3{ 0.0f, 0.35f, 0.0f });
+    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + Vector3{0.0f, 0.35f, 0.0f});
 
     if (activeCheckpoint_ && scene_ && scene_->IsAlive(activeCheckpoint_)) {
         activeCheckpoint_->SetEmissive(checkpointBaseEmissive_);
@@ -354,8 +337,8 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
     }
     // 素材色を残し、到達した瞬間だけ控えめに明るくします。
     checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
-    VFXSequencer::PlayOneShot("checkpoint_activate_cue",
-        checkpoint->GetWorldPosition(), checkpoint->GetScale(), checkpoint->GetRotation());
+    VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+                              checkpoint->GetRotation());
     DebugConsole::GetInstance()->AddLog("Checkpoint activated. Respawn and copy memory updated.");
 }
 
@@ -379,23 +362,24 @@ void GameRule::UpdateCheckpointPresentation(float deltaTime) {
             if (emitMotes) {
                 if (auto* particles = GPUParticleManager::GetInstance(); particles && particles->IsInitialized()) {
                     particles->Emit("checkpoint_active_motes",
-                        Math::Transform(Vector3{ 0.0f, 0.55f, 0.0f }, checkpoint->GetWorldMatrix()));
+                                    Math::Transform(Vector3{0.0f, 0.55f, 0.0f}, checkpoint->GetWorldMatrix()));
                 }
             }
             if (emitRing) {
-                VFXSequencer::PlayOneShot("checkpoint_idle_cue",
-                    checkpoint->GetWorldPosition(), checkpoint->GetScale(), checkpoint->GetRotation());
+                VFXSequencer::PlayOneShot("checkpoint_idle_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
+                                          checkpoint->GetRotation());
             }
         }
-        if (emitMotes) checkpointParticleTimer_ = 0.45f;
-        if (emitRing) checkpointAmbientRingTimer_ = 1.35f;
+        if (emitMotes)
+            checkpointParticleTimer_ = 0.45f;
+        if (emitRing)
+            checkpointAmbientRingTimer_ = 1.35f;
     }
 
     if (raisingCheckpoint_) {
         if (!scene_ || !scene_->IsAlive(raisingCheckpoint_)) {
             raisingCheckpoint_ = nullptr;
-        }
-        else {
+        } else {
             checkpointRaiseDelay_ -= deltaTime;
             if (checkpointRaiseDelay_ <= 0.0f) {
                 // SetModelはコライダーを自動調整するため、起動前の当たり判定を復元します。
@@ -425,8 +409,6 @@ void GameRule::UpdateCheckpointPresentation(float deltaTime) {
     }
     const float emissivePulse = 0.12f + std::sin(checkpointPresentationTimer_ * 2.0f) * 0.025f;
     activeCheckpoint_->SetEmissive((std::max)(checkpointBaseEmissive_, emissivePulse));
-
-
 }
 
 void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication& application, float damageScale) {
@@ -437,11 +419,12 @@ void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication
     const float interval = (std::max)(0.05f, application.tickInterval);
     const float tickDamage = (std::max)(0.0f, application.tickDamage * damageScale);
     const auto existing = std::find_if(activeStatusEffects_.begin(), activeStatusEffects_.end(),
-        [target, &application](const ActiveStatusEffect& status) {
-            return status.target == target && status.type == application.type;
-        });
+                                       [target, &application](const ActiveStatusEffect& status) {
+                                           return status.target == target && status.type == application.type;
+                                       });
 
     if (existing != activeStatusEffects_.end()) {
+        // 同種の状態異常は重複させず、残り時間と威力を弱めないよう更新する。
         existing->remainingTime = (std::max)(existing->remainingTime, application.duration);
         existing->tickInterval = interval;
         existing->tickTimer = (std::min)(existing->tickTimer, interval);
@@ -487,22 +470,23 @@ void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName)
     Vector3 position = target->GetWorldPosition();
     const float height = (std::max)(0.25f, aabb.max.y - aabb.min.y);
     position.y = aabb.min.y + height * 0.48f;
-    particles->EmitDirected(presetName, position, { 0.0f, 1.0f, 0.0f }, 1.0f);
+    particles->EmitDirected(presetName, position, {0.0f, 1.0f, 0.0f}, 1.0f);
 }
 
-// ▼ 汎用ダメージ関数 
-bool GameRule::ApplyDamage(Object3d* target, float damage) {
+// ボス固有の軽減とプレイヤーの無敵判定を通した後、共通 HP を更新します。
+bool GameRule::ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility) {
     if (!target) {
         return false;
     }
     if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(target)) {
         damage = king->FilterFinaleDamage(damage);
-        if (damage <= 0.0f) return false;
+        if (damage <= 0.0f)
+            return false;
     }
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);
         // 被弾無敵または回避ダッシュ中ならダメージを無効化
-        if (player->IsInvincible() || player->IsCinematicLocked()) {
+        if ((player->IsInvincible() && !bypassPlayerInvincibility) || player->IsCinematicLocked()) {
             return false;
         }
     }
@@ -515,13 +499,11 @@ bool GameRule::ApplyDamage(Object3d* target, float damage) {
         target->param_->hp -= damage;
         target->param_->hp = std::clamp(target->param_->hp, 0.0f, target->param_->maxHp);
 
-        DebugConsole::GetInstance()->AddLog(target->GetName() + " に " + std::to_string(damage) + " のダメージ！ 残りHP: " + std::to_string(target->param_->hp));
+        DebugConsole::GetInstance()->AddLog(target->GetName() + " に " + std::to_string(damage) +
+                                            " のダメージ！ 残りHP: " + std::to_string(target->param_->hp));
 
         if (target->param_->hp <= 0.0f) {
             DebugConsole::GetInstance()->AddLog(target->GetName() + " を撃破！");
-         /*   if (scene_) {
-                scene_->RequestRemoveObject(target);
-            }*/
         }
         return true;
     }

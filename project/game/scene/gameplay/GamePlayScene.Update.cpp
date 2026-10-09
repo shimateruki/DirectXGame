@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "game/scene/gameplay/GamePlayScene.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
 #include "SceneController.h"
@@ -47,6 +47,7 @@ constexpr float kPi = 3.1415926535f;
 constexpr float kTwoPi = kPi * 2.0f;
 constexpr const char* kGoalCrownSparklePreset = "crown_goal_idle_sparkle";
 constexpr const char* kGoalCrownTwinklePreset = "crown_idle_twinkle";
+// 頭上の王冠のばね・減衰・移動上限。見た目の揺れを調整し、プレイヤーの物理位置とは分離する。
 struct GoalCrownPhysicsTuning {
     float positionStiffness = 76.0f;
     float positionDamping = 8.8f;
@@ -70,7 +71,8 @@ GoalCrownPhysicsTuning& GetGoalCrownPhysicsTuning() {
 
 #ifdef USE_IMGUI
 void DrawGoalCrownPhysicsTuning() {
-    if (!EditorToolSettings::Get().IsVisible("diagnosticWindows")) return;
+    if (!EditorToolSettings::Get().IsVisible("diagnosticWindows"))
+        return;
     GoalCrownPhysicsTuning& tuning = GetGoalCrownPhysicsTuning();
     if (ImGui::Begin("ゴール王冠・疑似物理調整")) {
         ImGui::TextUnformatted("位置バネ");
@@ -107,13 +109,16 @@ Vector3 QuadraticBezier(const Vector3& start, const Vector3& control, const Vect
 }
 
 float NormalizeYaw(float yaw) {
-    while (yaw > kPi) yaw -= kTwoPi;
-    while (yaw < -kPi) yaw += kTwoPi;
+    while (yaw > kPi)
+        yaw -= kTwoPi;
+    while (yaw < -kPi)
+        yaw += kTwoPi;
     return yaw;
 }
 
-}
+} // namespace
 
+// ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
 void GamePlayScene::SetIsGoal(bool isGoal) {
     if (isGoal_ == isGoal) {
         return;
@@ -122,7 +127,8 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
     isGoal_ = isGoal;
     if (!isGoal_) {
         goalCinematicPlayer_.Stop(false);
-        Camera* restoreCamera = goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
+        Camera* restoreCamera =
+            goalLockedPrimaryCamera_ ? goalLockedPrimaryCamera_ : CameraManager::GetInstance()->GetMainCamera();
         goalClearPlayerAnimator_.RestoreInitialPose();
         if (goalCrownObject_ && goalCrownSnapshotValid_) {
             goalCrownObject_->SetTranslate(goalCrownBasePosition_);
@@ -164,6 +170,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
     }
 }
 
+// ゴール演出の入力ロックと初期姿勢を確定してから、演出用カメラへ制御を渡します。
 void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     if (isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
         return;
@@ -186,7 +193,8 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     goalLandingCuePlayed_ = false;
     goalResultCuePlayed_ = false;
     goalCrownObject_ = crownObject;
-    goalCrownPosition_ = crownObject ? crownObject->GetWorldPosition() : (player_ ? player_->GetWorldPosition() : Vector3{ 0.0f, 0.0f, 0.0f });
+    goalCrownPosition_ = crownObject ? crownObject->GetWorldPosition()
+                                     : (player_ ? player_->GetWorldPosition() : Vector3{0.0f, 0.0f, 0.0f});
     goalCrownSnapshotValid_ = false;
     goalCrownSpringInitialized_ = false;
     goalCrownSpringPosition_ = goalCrownPosition_;
@@ -201,16 +209,13 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
         goalCrownSnapshotValid_ = true;
     }
 
-    Vector3 preferredForward = { 0.0f, 0.0f, 0.0f };
+    Vector3 preferredForward = {0.0f, 0.0f, 0.0f};
     if (player_) {
         Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
         if (activeCamera) {
             const Vector3 playerPosition = player_->GetWorldPosition();
-            const Vector3 toCamera = {
-                activeCamera->GetEye().x - playerPosition.x,
-                0.0f,
-                activeCamera->GetEye().z - playerPosition.z
-            };
+            const Vector3 toCamera = {activeCamera->GetEye().x - playerPosition.x, 0.0f,
+                                      activeCamera->GetEye().z - playerPosition.z};
             preferredForward = NormalizePlanarDirection(toCamera, preferredForward);
         }
     }
@@ -248,8 +253,7 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
                 track.sequenceName = goalWasStageCleared_ ? "crown_victory_land_silver_cue" : "crown_victory_land_cue";
             }
             const bool followsCrown =
-                track.sequenceName.rfind("crown_focus", 0) == 0 ||
-                track.sequenceName.rfind("crown_get", 0) == 0;
+                track.sequenceName.rfind("crown_focus", 0) == 0 || track.sequenceName.rfind("crown_get", 0) == 0;
             Object3d* target = followsCrown ? crownObject : player_;
             if (target) {
                 track.binding.targetName = target->GetName();
@@ -264,8 +268,27 @@ void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
     UpdateGoalPresentationOverlay();
 }
 
+// 演出モードは互いに排他的です。早期終了で通常入力と敵更新の二重実行を防ぎます。
 void GamePlayScene::Update(float deltaTime) {
-    if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying()) ResetCrownFinaleWorld();
+    // ムービープレビューはEditorが時間とエフェクトを所有し、通常AI・衝突を進めません。
+    if (crownMoviePreview_.active) {
+        if (!SceneManager::GetInstance()->IsPlaying()) {
+            StepCrownMoviePreview(0.0f);
+            return;
+        }
+        EndCrownMoviePreview();
+    }
+    if (!SceneManager::GetInstance()->IsPlaying() && (crownDefeat_.active || crownDefeat_.completed)) ResetCrownDefeat();
+    if (crownDefeat_.active) {
+        UpdatePostEffectState(deltaTime);UpdateCrownDefeat(deltaTime);
+        // 演出中は衝突・AIを進めず、描画と粒子だけを更新します。
+        if(particleSystem_)particleSystem_->Update(deltaTime);
+        GPUParticleManager::GetInstance()->Update(deltaTime);
+        for(auto& object:GetObjects())object->UpdateWorldMatrix(true);
+        UpdateUI(deltaTime);return;
+    }
+    if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying())
+        ResetCrownFinaleWorld();
     if (crownFinale_.active) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownFinale(deltaTime);
@@ -288,6 +311,7 @@ void GamePlayScene::Update(float deltaTime) {
 #endif
 
     if (!runtimePlaying) {
+        FinishSealBarrageMovie();
         stageEntryRuntimeWasPlaying_ = false;
         if (stageEntryPresentationActive_) {
             FinishStageEntryPresentation();
@@ -303,15 +327,13 @@ void GamePlayScene::Update(float deltaTime) {
             stageEntryPresentationRetryTimer_ = 0.0f;
         }
 
-        if (stageEntryPresentationPending_ &&
-            !stageEntryPresentationActive_ &&
-            !stageEntryPresentationCompleted_) {
+        if (stageEntryPresentationPending_ && !stageEntryPresentationActive_ && !stageEntryPresentationCompleted_) {
             if (!StartStageEntryPresentation()) {
                 stageEntryPresentationRetryTimer_ += std::max(deltaTime, 0.0f);
                 if (player_) {
                     player_->SetIsVisible(false);
                     player_->SetIsControlActive(false);
-                    player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                    player_->SetVelocity({0.0f, 0.0f, 0.0f});
                 }
 
                 if (stageEntryPresentationRetryTimer_ < kStageEntrySetupRetryTimeout) {
@@ -334,6 +356,7 @@ void GamePlayScene::Update(float deltaTime) {
         }
     }
 
+    // 入口演出は通常のプレイヤー更新より先に進め、操作不能な状態を保ちます。
     if (stageEntryPresentationActive_) {
         UpdatePostEffectState(deltaTime);
         UpdateStageEntryPresentation(deltaTime);
@@ -341,6 +364,7 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // クリア、ボス登場、報酬の順で専用状態を処理し、同じフレームの通常進行を止めます。
     if (HandleGoalClear(deltaTime)) {
         return;
     }
@@ -369,6 +393,7 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // UIが入力を消費しなかったフレームだけ、シーン固有の操作を受け付けます。
     if (sceneController_) {
         sceneController_->OnUpdate(*this, deltaTime);
     }
@@ -379,16 +404,20 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // 描画用のロックオン投影はカメラとオブジェクトが動いた後に行います。
     UpdateLockOnAndCamera(deltaTime);
     UpdateGoalCrownIdleAnimation(deltaTime);
     UpdateSceneSystems(deltaTime);
+    // 敵更新後にカメラを確定し、槍の位置とカットの時刻を同じフレームへ揃えます。
+    UpdateSealBarrageMovie(deltaTime);
     UpdateUI(deltaTime);
     // 対象とカメラの更新が完了してから、実際に描画する視点へマーカーを投影します。
     if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
         UpdateLockOnSprite(CameraManager::GetInstance()->GetActiveCamera(), lockOnSystem_->GetTarget(), deltaTime);
     } else {
         isDrawLockOn_ = false;
-        if (lockOnSprite_) lockOnSprite_->SetVisible(false);
+        if (lockOnSprite_)
+            lockOnSprite_->SetVisible(false);
     }
     UpdateEffectDebugShortcuts();
 
@@ -409,16 +438,10 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     constexpr float kNearSparkleInterval = 0.18f;
     constexpr float kNearDistance = 6.0f;
     constexpr float kFarDistance = 18.0f;
-    constexpr std::array<Vector3, 8> kSparkleOffsets = {
-        Vector3{ 0.00f, 0.52f, -0.05f },
-        Vector3{ -0.58f, 0.39f, -0.08f },
-        Vector3{ 0.58f, 0.39f, -0.08f },
-        Vector3{ -0.92f, 0.05f, -0.10f },
-        Vector3{ 0.92f, 0.05f, -0.10f },
-        Vector3{ -0.70f, -0.20f, 0.16f },
-        Vector3{ 0.70f, -0.20f, 0.16f },
-        Vector3{ 0.00f, 0.28f, 0.58f }
-    };
+    constexpr std::array<Vector3, 8> kSparkleOffsets = {Vector3{0.00f, 0.52f, -0.05f}, Vector3{-0.58f, 0.39f, -0.08f},
+                                                        Vector3{0.58f, 0.39f, -0.08f}, Vector3{-0.92f, 0.05f, -0.10f},
+                                                        Vector3{0.92f, 0.05f, -0.10f}, Vector3{-0.70f, -0.20f, 0.16f},
+                                                        Vector3{0.70f, -0.20f, 0.16f}, Vector3{0.00f, 0.28f, 0.58f}};
 
     const float previousTime = goalCrownIdleTime_;
     goalCrownIdleTime_ += deltaTime;
@@ -429,8 +452,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
     const float bobDelta = currentBob - previousBob;
     const bool emitSparkle = goalCrownSparkleTimer_ <= 0.0f;
     const float emissivePulse = (std::sin(goalCrownIdleTime_ * 2.4f) + 1.0f) * 0.5f;
-    const bool isCleared = GameDataManager::GetInstance()->IsStageCleared(
-        StageManager::GetInstance()->GetCurrentStageIndex());
+    const bool isCleared =
+        GameDataManager::GetInstance()->IsStageCleared(StageManager::GetInstance()->GetCurrentStageIndex());
     bool foundGoalCrown = false;
     float strongestNearRate = 0.0f;
 
@@ -443,14 +466,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         float nearRate = 0.0f;
         if (player_) {
             const Vector3 toCrown = object->GetWorldPosition() - player_->GetWorldPosition();
-            const float distance = std::sqrt(
-                toCrown.x * toCrown.x +
-                toCrown.y * toCrown.y +
-                toCrown.z * toCrown.z);
-            nearRate = 1.0f - std::clamp(
-                (distance - kNearDistance) / (kFarDistance - kNearDistance),
-                0.0f,
-                1.0f);
+            const float distance = std::sqrt(toCrown.x * toCrown.x + toCrown.y * toCrown.y + toCrown.z * toCrown.z);
+            nearRate = 1.0f - std::clamp((distance - kNearDistance) / (kFarDistance - kNearDistance), 0.0f, 1.0f);
             strongestNearRate = std::max(strongestNearRate, nearRate);
         }
 
@@ -461,9 +478,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         Vector3 rotation = object->GetRotation();
         rotation.y += kRotationSpeed * deltaTime;
         object->SetRotation(rotation);
-        object->SetEmissive(isCleared
-            ? 1.20f + emissivePulse * 0.38f + nearRate * 0.14f
-            : 1.62f + emissivePulse * 0.62f + nearRate * 0.48f);
+        object->SetEmissive(isCleared ? 1.20f + emissivePulse * 0.38f + nearRate * 0.14f
+                                      : 1.62f + emissivePulse * 0.62f + nearRate * 0.48f);
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
 
@@ -473,14 +489,12 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
             GPUParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, Math::Transform(localOffset, crownWorld));
 
             const bool emitHeroTwinkle =
-                goalCrownSparklePatternIndex_ % 4 == 0 ||
-                (nearRate >= 0.55f && goalCrownSparklePatternIndex_ % 2 == 0);
+                goalCrownSparklePatternIndex_ % 4 == 0 || (nearRate >= 0.55f && goalCrownSparklePatternIndex_ % 2 == 0);
             if (emitHeroTwinkle) {
-                const Vector3& twinkleOffset = kSparkleOffsets[
-                    (goalCrownSparklePatternIndex_ + 3) % kSparkleOffsets.size()];
-                GPUParticleManager::GetInstance()->Emit(
-                    kGoalCrownTwinklePreset,
-                    Math::Transform(twinkleOffset, crownWorld));
+                const Vector3& twinkleOffset =
+                    kSparkleOffsets[(goalCrownSparklePatternIndex_ + 3) % kSparkleOffsets.size()];
+                GPUParticleManager::GetInstance()->Emit(kGoalCrownTwinklePreset,
+                                                        Math::Transform(twinkleOffset, crownWorld));
             }
         }
     }
@@ -489,8 +503,8 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         return;
     }
     if (emitSparkle) {
-        goalCrownSparkleTimer_ += kFarSparkleInterval +
-            (kNearSparkleInterval - kFarSparkleInterval) * strongestNearRate;
+        goalCrownSparkleTimer_ +=
+            kFarSparkleInterval + (kNearSparkleInterval - kFarSparkleInterval) * strongestNearRate;
         ++goalCrownSparklePatternIndex_;
     }
 }
@@ -526,13 +540,11 @@ bool GamePlayScene::IsControlsGuideOpenTriggered() const {
 #endif
 
     if (lifeLostPresentationActive_ || lifeLostBlackHold_ || isGoal_ ||
-        (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) ||
-        (settingsOverlay_ && settingsOverlay_->IsActive())) {
+        (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) || (settingsOverlay_ && settingsOverlay_->IsActive())) {
         return false;
     }
 
-    return inputManager_->IsKeyTriggered(DIK_TAB) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK);
+    return inputManager_->IsKeyTriggered(DIK_TAB) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_BACK);
 }
 
 bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
@@ -597,8 +609,7 @@ bool GamePlayScene::IsPauseOpenTriggered() const {
         return false;
     }
 
-    return inputManager_->IsKeyTriggered(DIK_P) ||
-        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
+    return inputManager_->IsKeyTriggered(DIK_P) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
 }
 
 bool GamePlayScene::HandleGoalClear(float& deltaTime) {
@@ -629,7 +640,8 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
                 gameData->MarkStarCoinCollected(currentStage, i);
             }
         }
-        gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount, newStarCoinIndices);
+        gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount,
+                                                       newStarCoinIndices);
 
         if (saveIndicatorOverlay_) {
             saveIndicatorOverlay_->Play(1.35f);
@@ -668,6 +680,14 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
 }
 
 void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
+    // 撃破の勝利カットから直接リザルトへ接続し、通常ゴールの王冠取得を重ねません。
+    if (crownDefeat_.completed) {
+        if (goalPresentationState_ == GoalPresentationState::Returning) return;
+        goalPresentationTimer_ += deltaTime;
+        if (goalPresentationTimer_ >= goalClearPlayerAnimator_.GetTuning().readyTime)
+            goalPresentationState_ = GoalPresentationState::ReadyToReturn;
+        UpdateGoalPresentationOverlay();return;
+    }
     if (goalPresentationState_ == GoalPresentationState::Inactive ||
         goalPresentationState_ == GoalPresentationState::Returning) {
         return;
@@ -735,14 +755,12 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     if (Model* crownModel = goalCrownObject_->GetModel()) {
         crownPivotFromBottom = std::max(0.0f, -crownModel->GetLocalAabbMin().y * std::abs(goalCrownBaseScale_.y));
     }
-    const float seatDepth = presentation.crownSeatDepth
-        + std::max(0.0f, squashRate) * 0.10f
-        - stretchRate * 0.035f;
+    const float seatDepth = presentation.crownSeatDepth + std::max(0.0f, squashRate) * 0.10f - stretchRate * 0.035f;
     const float crownPivotHeight = std::max(0.72f, slimeSurfaceHeight - seatDepth + crownPivotFromBottom);
     const Matrix4x4 playerRotationMatrix = Math::MakeRotateMatrix(playerRotation);
-    const Vector3 headOffset = Math::TransformNormal({ 0.0f, crownPivotHeight, 0.0f }, playerRotationMatrix);
+    const Vector3 headOffset = Math::TransformNormal({0.0f, crownPivotHeight, 0.0f}, playerRotationMatrix);
     const Vector3 headPosition = goalPlayerPosePosition_ + headOffset;
-    const Vector3 dropStartPosition = headPosition + Vector3{ 0.0f, presentation.crownDropHeight, 0.0f };
+    const Vector3 dropStartPosition = headPosition + Vector3{0.0f, presentation.crownDropHeight, 0.0f};
 
     Vector3 crownPosition = goalCrownBasePosition_;
     Vector3 crownScale = goalCrownBaseScale_;
@@ -771,8 +789,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
             control = control + goalMoveRight_ * 0.28f;
             crownPosition = QuadraticBezier(goalCrownBasePosition_, control, dropStartPosition, approach);
             crownRotation = AnimationInterpolation::SlerpEuler(
-                { goalCrownBaseRotation_.x, moveStartYaw, goalCrownBaseRotation_.z },
-                { goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f },
+                {goalCrownBaseRotation_.x, moveStartYaw, goalCrownBaseRotation_.z},
+                {goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f},
                 approach);
             const float arcPulse = std::sin(approach * kPi);
             crownScale.x *= 1.0f + arcPulse * 0.018f;
@@ -784,9 +802,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
                 AnimationInterpolation::EasingType::SmootherStep);
             crownPosition = AnimationInterpolation::Lerp(dropStartPosition, headPosition, fall);
             crownRotation = AnimationInterpolation::SlerpEuler(
-                { goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f },
-                { goalCrownBaseRotation_.x, goalCrownBaseRotation_.y + 0.52f, goalCrownBaseRotation_.z },
-                fall);
+                {goalCrownBaseRotation_.x - 0.06f, goalCrownBaseRotation_.y + 0.38f, goalCrownBaseRotation_.z + 0.05f},
+                {goalCrownBaseRotation_.x, goalCrownBaseRotation_.y + 0.52f, goalCrownBaseRotation_.z}, fall);
             const float descentPulse = std::sin(fall * kPi);
             crownScale.x *= 1.0f + descentPulse * 0.016f;
             crownScale.y *= 1.0f + descentPulse * 0.010f;
@@ -801,19 +818,17 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
         if (t >= animation.jumpStartTime && t < animation.victoryLandTime) {
-            const float jumpRate = AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
+            const float jumpRate =
+                AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
             motionEnergy = std::sin(jumpRate * kPi);
         }
 
         if (!goalCrownSpringInitialized_) {
-            goalCrownSpringPosition_ = targetPosition + Vector3{ 0.0f, -0.08f, 0.0f };
-            goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + Vector3{ 0.0f, physics.landingDownVelocity, 0.0f };
-            goalCrownSpringRotation_ = {
-                goalCrownBaseRotation_.x + 0.10f,
-                goalCrownBaseRotation_.y + 0.52f,
-                goalCrownBaseRotation_.z - 0.12f
-            };
-            goalCrownSpringRotationVelocity_ = { 0.0f, 0.0f, physics.landingRollVelocity };
+            goalCrownSpringPosition_ = targetPosition + Vector3{0.0f, -0.08f, 0.0f};
+            goalCrownSpringVelocity_ = goalMoveForward_ * -0.18f + Vector3{0.0f, physics.landingDownVelocity, 0.0f};
+            goalCrownSpringRotation_ = {goalCrownBaseRotation_.x + 0.10f, goalCrownBaseRotation_.y + 0.52f,
+                                        goalCrownBaseRotation_.z - 0.12f};
+            goalCrownSpringRotationVelocity_ = {0.0f, 0.0f, physics.landingRollVelocity};
             goalCrownSpringInitialized_ = true;
         }
 
@@ -822,8 +837,8 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         const float substep = dt / static_cast<float>(substepCount);
         for (int step = 0; step < substepCount; ++step) {
             const Vector3 springDelta = targetPosition - goalCrownSpringPosition_;
-            const Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f)
-                - goalCrownSpringVelocity_ * physics.positionDamping;
+            const Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
+                                         goalCrownSpringVelocity_ * physics.positionDamping;
             goalCrownSpringVelocity_ = goalCrownSpringVelocity_ + acceleration * substep;
             goalCrownSpringPosition_ = goalCrownSpringPosition_ + goalCrownSpringVelocity_ * substep;
         }
@@ -851,31 +866,29 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         const float forwardSpeed = Math::Dot(goalCrownSpringVelocity_, goalMoveForward_);
         const float rightSpeed = Math::Dot(goalCrownSpringVelocity_, goalMoveRight_);
         Vector3 targetRotation = goalCrownBaseRotation_;
-        targetRotation.x += (playerRotation.x - goalPlayerBaseRotation_.x) * physics.bodyTiltFollow
-            - forwardOffset * physics.tiltFromOffset
-            - forwardSpeed * physics.tiltFromVelocity;
-        targetRotation.z += (playerRotation.z - goalPlayerBaseRotation_.z) * physics.bodyTiltFollow
-            + rightOffset * physics.tiltFromOffset
-            + rightSpeed * physics.tiltFromVelocity;
-        targetRotation.x = std::clamp(targetRotation.x, goalCrownBaseRotation_.x - 0.52f, goalCrownBaseRotation_.x + 0.52f);
-        targetRotation.z = std::clamp(targetRotation.z, goalCrownBaseRotation_.z - 0.52f, goalCrownBaseRotation_.z + 0.52f);
+        targetRotation.x += (playerRotation.x - goalPlayerBaseRotation_.x) * physics.bodyTiltFollow -
+                            forwardOffset * physics.tiltFromOffset - forwardSpeed * physics.tiltFromVelocity;
+        targetRotation.z += (playerRotation.z - goalPlayerBaseRotation_.z) * physics.bodyTiltFollow +
+                            rightOffset * physics.tiltFromOffset + rightSpeed * physics.tiltFromVelocity;
+        targetRotation.x =
+            std::clamp(targetRotation.x, goalCrownBaseRotation_.x - 0.52f, goalCrownBaseRotation_.x + 0.52f);
+        targetRotation.z =
+            std::clamp(targetRotation.z, goalCrownBaseRotation_.z - 0.52f, goalCrownBaseRotation_.z + 0.52f);
         const float targetYaw = goalCrownBaseRotation_.y + NormalizeYaw(playerRotation.y - goalPlayerBaseRotation_.y);
         targetRotation.y = goalCrownSpringRotation_.y + NormalizeYaw(targetYaw - goalCrownSpringRotation_.y);
 
         for (int step = 0; step < substepCount; ++step) {
             Vector3 rotationDelta = targetRotation - goalCrownSpringRotation_;
             rotationDelta.y = NormalizeYaw(rotationDelta.y);
-            const Vector3 acceleration = rotationDelta * physics.angularStiffness
-                - goalCrownSpringRotationVelocity_ * physics.angularDamping;
+            const Vector3 acceleration =
+                rotationDelta * physics.angularStiffness - goalCrownSpringRotationVelocity_ * physics.angularDamping;
             goalCrownSpringRotationVelocity_ = goalCrownSpringRotationVelocity_ + acceleration * substep;
             goalCrownSpringRotation_ = goalCrownSpringRotation_ + goalCrownSpringRotationVelocity_ * substep;
         }
         crownRotation = goalCrownSpringRotation_;
 
-        const float compression = std::clamp(
-            -crownOffset.y * 2.2f + std::max(0.0f, -goalCrownSpringVelocity_.y) * 0.045f,
-            0.0f,
-            0.35f);
+        const float compression =
+            std::clamp(-crownOffset.y * 2.2f + std::max(0.0f, -goalCrownSpringVelocity_.y) * 0.045f, 0.0f, 0.35f);
         crownScale.x *= 1.0f + compression * physics.compressionScale;
         crownScale.y *= 1.0f - compression * physics.compressionScale * 0.72f;
         crownScale.z *= 1.0f + compression * physics.compressionScale;
@@ -895,23 +908,20 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
 
     if (!goalLandingCuePlayed_ && t >= animation.crownLandTime) {
-        const float crownScale = std::clamp(
-            std::max({ std::abs(goalCrownBaseScale_.x), std::abs(goalCrownBaseScale_.y), std::abs(goalCrownBaseScale_.z) }) * 0.72f,
-            0.80f,
-            1.80f);
-        VFXSequencer::PlayOneShot(
-            goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue",
-            goalCrownPosition_,
-            { crownScale, crownScale, crownScale });
+        const float crownScale = std::clamp(std::max({std::abs(goalCrownBaseScale_.x), std::abs(goalCrownBaseScale_.y),
+                                                      std::abs(goalCrownBaseScale_.z)}) *
+                                                0.72f,
+                                            0.80f, 1.80f);
+        VFXSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_get_silver_cue" : "crown_get_cue", goalCrownPosition_,
+                                  {crownScale, crownScale, crownScale});
         goalLandingCuePlayed_ = true;
     }
 
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
         Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
-        VFXSequencer::PlayOneShot(
-            goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
-            resultPosition);
+        VFXSequencer::PlayOneShot(goalWasStageCleared_ ? "crown_result_silver_cue" : "crown_result_cue",
+                                  resultPosition);
         goalResultCuePlayed_ = true;
     }
 }
@@ -927,43 +937,34 @@ void GamePlayScene::SetupGoalPresentationCamera() {
 
     const GoalPresentationTuning& camera = goalPresentationTuning_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
-    goalCameraGameplayEye_ = sourceCamera ? sourceCamera->GetEye() : goalPlayerBasePosition_ + Vector3{ 0.0f, 3.0f, 8.0f };
-    goalCameraGameplayTarget_ = sourceCamera ? sourceCamera->GetTargetPoint() : goalPlayerBasePosition_ + Vector3{ 0.0f, 1.0f, 0.0f };
+    goalCameraGameplayEye_ =
+        sourceCamera ? sourceCamera->GetEye() : goalPlayerBasePosition_ + Vector3{0.0f, 3.0f, 8.0f};
+    goalCameraGameplayTarget_ =
+        sourceCamera ? sourceCamera->GetTargetPoint() : goalPlayerBasePosition_ + Vector3{0.0f, 1.0f, 0.0f};
     goalCameraGameplayFov_ = sourceCamera ? sourceCamera->GetFovY() : camera.landingFov;
 
-    goalCameraFocusTarget_ = goalCrownPosition_ + Vector3{ 0.0f, 0.18f, 0.0f };
-    goalCameraFocusEye_ = goalCameraFocusTarget_
-        + goalMoveForward_ * camera.crownFocusDistance
-        + goalMoveRight_ * camera.crownFocusSide
-        + Vector3{ 0.0f, camera.crownFocusHeight, 0.0f };
+    goalCameraFocusTarget_ = goalCrownPosition_ + Vector3{0.0f, 0.18f, 0.0f};
+    goalCameraFocusEye_ = goalCameraFocusTarget_ + goalMoveForward_ * camera.crownFocusDistance +
+                          goalMoveRight_ * camera.crownFocusSide + Vector3{0.0f, camera.crownFocusHeight, 0.0f};
 
-    const Vector3 landingPlayerTarget = goalPlayerBasePosition_ + Vector3{ 0.0f, std::max(1.15f, goalPlayerBaseScale_.y * 0.62f), 0.0f };
+    const Vector3 landingPlayerTarget =
+        goalPlayerBasePosition_ + Vector3{0.0f, std::max(1.15f, goalPlayerBaseScale_.y * 0.62f), 0.0f};
     goalCameraLandingTarget_ = landingPlayerTarget;
-    goalCameraLandingEye_ = landingPlayerTarget
-        + goalMoveForward_ * camera.landingCameraDistance
-        + goalMoveRight_ * camera.landingCameraSide
-        + Vector3{ 0.0f, camera.landingCameraHeight, 0.0f };
+    goalCameraLandingEye_ = landingPlayerTarget + goalMoveForward_ * camera.landingCameraDistance +
+                            goalMoveRight_ * camera.landingCameraSide + Vector3{0.0f, camera.landingCameraHeight, 0.0f};
 
     const float anticipationScaleY = goalPlayerBaseScale_.y * (1.0f - animation.anticipationSquash * 0.92f);
-    goalCameraJumpTarget_ = goalPlayerBasePosition_ + Vector3{
-        0.0f,
-        -animation.anticipationDepth + std::max(0.82f, anticipationScaleY * 0.46f),
-        0.0f
-    };
-    goalCameraJumpEye_ = goalCameraJumpTarget_
-        + goalMoveForward_ * camera.jumpCameraDistance
-        + goalMoveRight_ * camera.jumpCameraSide
-        + Vector3{ 0.0f, camera.jumpCameraHeight, 0.0f };
+    goalCameraJumpTarget_ =
+        goalPlayerBasePosition_ +
+        Vector3{0.0f, -animation.anticipationDepth + std::max(0.82f, anticipationScaleY * 0.46f), 0.0f};
+    goalCameraJumpEye_ = goalCameraJumpTarget_ + goalMoveForward_ * camera.jumpCameraDistance +
+                         goalMoveRight_ * camera.jumpCameraSide + Vector3{0.0f, camera.jumpCameraHeight, 0.0f};
 
-    const Vector3 finalPosePosition = goalPlayerBasePosition_
-        + goalMoveForward_ * animation.forwardDistance;
-    goalCameraResultTarget_ = finalPosePosition
-        + goalMoveRight_ * camera.resultTargetSide
-        + Vector3{ 0.0f, std::max(0.72f, goalPlayerBaseScale_.y * 0.46f), 0.0f };
-    goalCameraResultEye_ = goalCameraResultTarget_
-        + goalMoveForward_ * camera.resultCameraDistance
-        + goalMoveRight_ * camera.resultCameraSide
-        + Vector3{ 0.0f, camera.resultCameraHeight, 0.0f };
+    const Vector3 finalPosePosition = goalPlayerBasePosition_ + goalMoveForward_ * animation.forwardDistance;
+    goalCameraResultTarget_ = finalPosePosition + goalMoveRight_ * camera.resultTargetSide +
+                              Vector3{0.0f, std::max(0.72f, goalPlayerBaseScale_.y * 0.46f), 0.0f};
+    goalCameraResultEye_ = goalCameraResultTarget_ + goalMoveForward_ * camera.resultCameraDistance +
+                           goalMoveRight_ * camera.resultCameraSide + Vector3{0.0f, camera.resultCameraHeight, 0.0f};
 
     goalPresentationCamera_ = std::make_unique<Camera>();
     goalPresentationCamera_->Initialize();
@@ -975,9 +976,8 @@ void GamePlayScene::SetupGoalPresentationCamera() {
     goalPresentationCamera_->SetEye(goalCameraGameplayEye_);
     goalPresentationCamera_->SetTarget(goalCameraGameplayTarget_);
     goalPresentationCamera_->SetRotation(MakeLookAtEuler(goalCameraGameplayEye_, goalCameraGameplayTarget_));
-    goalPresentationCamera_->ConfigFixedPoint(
-        goalCameraGameplayEye_,
-        MakeLookAtEuler(goalCameraGameplayEye_, goalCameraGameplayTarget_));
+    goalPresentationCamera_->ConfigFixedPoint(goalCameraGameplayEye_,
+                                              MakeLookAtEuler(goalCameraGameplayEye_, goalCameraGameplayTarget_));
     goalPresentationCamera_->Update();
 
     goalCameraSnapshotValid_ = true;
@@ -1001,33 +1001,26 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
     Vector3 target = goalCameraGameplayTarget_;
     float fov = goalCameraGameplayFov_;
 
-    Vector3 movingCrownTarget = goalCrownPosition_ + Vector3{ 0.0f, 0.18f, 0.0f };
-    Vector3 movingCrownEye = movingCrownTarget
-        + goalMoveForward_ * camera.crownFocusDistance
-        + goalMoveRight_ * camera.crownFocusSide
-        + Vector3{ 0.0f, camera.crownFocusHeight, 0.0f };
+    Vector3 movingCrownTarget = goalCrownPosition_ + Vector3{0.0f, 0.18f, 0.0f};
+    Vector3 movingCrownEye = movingCrownTarget + goalMoveForward_ * camera.crownFocusDistance +
+                             goalMoveRight_ * camera.crownFocusSide + Vector3{0.0f, camera.crownFocusHeight, 0.0f};
 
     if (t < camera.crownFocusEndTime) {
-        const float p = AnimationInterpolation::ApplyEasing(
-            AnimationInterpolation::SegmentRate(t, 0.0f, camera.crownFocusEndTime),
-            AnimationInterpolation::EasingType::SmootherStep);
+        const float p =
+            AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t, 0.0f, camera.crownFocusEndTime),
+                                                AnimationInterpolation::EasingType::SmootherStep);
         eye = AnimationInterpolation::Lerp(goalCameraGameplayEye_, movingCrownEye, p);
         target = AnimationInterpolation::Lerp(goalCameraGameplayTarget_, movingCrownTarget, p);
         fov = AnimationInterpolation::Lerp(goalCameraGameplayFov_, camera.crownFocusFov, p);
     } else if (t < animation.crownLandTime) {
         // 王冠の弧に小さなパララックスを与え、着地前から次の構図へ受け渡します。
-        const float moveRate = AnimationInterpolation::SegmentRate(
-            t,
-            camera.crownMoveStartTime,
-            animation.crownLandTime);
+        const float moveRate =
+            AnimationInterpolation::SegmentRate(t, camera.crownMoveStartTime, animation.crownLandTime);
         const float orbit = std::sin(moveRate * kPi);
-        movingCrownEye = movingCrownEye
-            + goalMoveRight_ * (orbit * 0.35f)
-            + Vector3{ 0.0f, orbit * 0.12f, 0.0f };
+        movingCrownEye = movingCrownEye + goalMoveRight_ * (orbit * 0.35f) + Vector3{0.0f, orbit * 0.12f, 0.0f};
         const float handoffRaw = std::clamp((moveRate - 0.52f) / 0.48f, 0.0f, 1.0f);
-        const float handoff = AnimationInterpolation::ApplyEasing(
-            handoffRaw,
-            AnimationInterpolation::EasingType::SmootherStep);
+        const float handoff =
+            AnimationInterpolation::ApplyEasing(handoffRaw, AnimationInterpolation::EasingType::SmootherStep);
         eye = AnimationInterpolation::Lerp(movingCrownEye, goalCameraLandingEye_, handoff);
         target = AnimationInterpolation::Lerp(movingCrownTarget, goalCameraLandingTarget_, handoff);
         fov = AnimationInterpolation::Lerp(camera.crownFocusFov, camera.landingFov, handoff);
@@ -1039,27 +1032,21 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(goalCameraLandingTarget_, goalCameraJumpTarget_, p);
         fov = AnimationInterpolation::Lerp(camera.landingFov, camera.jumpFov, p);
     } else if (t < animation.victoryLandTime) {
-        Vector3 jumpTarget = goalPlayerPosePosition_ + Vector3{ 0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f };
-        const float airborneRate = AnimationInterpolation::SegmentRate(
-            t,
-            animation.jumpStartTime,
-            animation.victoryLandTime);
+        Vector3 jumpTarget = goalPlayerPosePosition_ +
+                             Vector3{0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f};
+        const float airborneRate =
+            AnimationInterpolation::SegmentRate(t, animation.jumpStartTime, animation.victoryLandTime);
         const float cameraArc = std::sin(airborneRate * kPi);
-        Vector3 jumpEye = jumpTarget
-            + goalMoveForward_ * camera.jumpCameraDistance
-            + goalMoveRight_ * (camera.jumpCameraSide + cameraArc * 0.55f)
-            + Vector3{ 0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f };
+        Vector3 jumpEye = jumpTarget + goalMoveForward_ * camera.jumpCameraDistance +
+                          goalMoveRight_ * (camera.jumpCameraSide + cameraArc * 0.55f) +
+                          Vector3{0.0f, camera.jumpCameraHeight + cameraArc * 0.30f, 0.0f};
 
         float settle = 0.0f;
         if (t >= animation.apexTime) {
-            const float fallRate = AnimationInterpolation::SegmentRate(
-                t,
-                animation.apexTime,
-                animation.victoryLandTime);
+            const float fallRate =
+                AnimationInterpolation::SegmentRate(t, animation.apexTime, animation.victoryLandTime);
             const float settleRaw = std::clamp((fallRate - 0.28f) / 0.72f, 0.0f, 1.0f);
-            settle = AnimationInterpolation::ApplyEasing(
-                settleRaw,
-                AnimationInterpolation::EasingType::SmootherStep);
+            settle = AnimationInterpolation::ApplyEasing(settleRaw, AnimationInterpolation::EasingType::SmootherStep);
         }
         eye = AnimationInterpolation::Lerp(jumpEye, goalCameraResultEye_, settle);
         target = AnimationInterpolation::Lerp(jumpTarget, goalCameraResultTarget_, settle);
@@ -1162,7 +1149,8 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
 
 void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float deltaTime) {
     isDrawLockOn_ = false;
-    if (lockOnSprite_) lockOnSprite_->SetVisible(false);
+    if (lockOnSprite_)
+        lockOnSprite_->SetVisible(false);
     if (!camera || !target || !lockOnSprite_) {
         isDrawLockOn_ = false;
         return;
@@ -1170,9 +1158,10 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
 
     // 更新中に敵が削除されることもあるため、逆参照前に生存を再確認します。
     const auto& objects = objectManager_->GetObjects();
-    if (std::none_of(objects.begin(), objects.end(),
-        [target](const auto& object) { return object.get() == target; })) return;
-    if (!target->GetIsVisible()) return;
+    if (std::none_of(objects.begin(), objects.end(), [target](const auto& object) { return object.get() == target; }))
+        return;
+    if (!target->GetIsVisible())
+        return;
 
     const AABB aabb = target->GetAABB();
     Vector3 targetCenter;
@@ -1182,11 +1171,8 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
 
     Math math;
     const Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
-    const float w =
-        targetCenter.x * viewProj.m[0][3] +
-        targetCenter.y * viewProj.m[1][3] +
-        targetCenter.z * viewProj.m[2][3] +
-        viewProj.m[3][3];
+    const float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
+                    targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
     if (w <= 0.001f) {
         isDrawLockOn_ = false;
@@ -1194,39 +1180,35 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
     }
 
     Vector3 ndc;
-    ndc.x = (
-        targetCenter.x * viewProj.m[0][0] +
-        targetCenter.y * viewProj.m[1][0] +
-        targetCenter.z * viewProj.m[2][0] +
-        viewProj.m[3][0]
-        ) / w;
-    ndc.y = (
-        targetCenter.x * viewProj.m[0][1] +
-        targetCenter.y * viewProj.m[1][1] +
-        targetCenter.z * viewProj.m[2][1] +
-        viewProj.m[3][1]
-        ) / w;
-    const float depth = (targetCenter.x * viewProj.m[0][2] +
-        targetCenter.y * viewProj.m[1][2] + targetCenter.z * viewProj.m[2][2] + viewProj.m[3][2]) / w;
-    if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y) || !std::isfinite(depth) ||
-        depth < 0.0f || depth > 1.0f || std::abs(ndc.x) > 1.0f || std::abs(ndc.y) > 1.0f) return;
+    ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] +
+             viewProj.m[3][0]) /
+            w;
+    ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] +
+             viewProj.m[3][1]) /
+            w;
+    const float depth = (targetCenter.x * viewProj.m[0][2] + targetCenter.y * viewProj.m[1][2] +
+                         targetCenter.z * viewProj.m[2][2] + viewProj.m[3][2]) /
+                        w;
+    if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y) || !std::isfinite(depth) || depth < 0.0f || depth > 1.0f ||
+        std::abs(ndc.x) > 1.0f || std::abs(ndc.y) > 1.0f)
+        return;
 
     const float screenWidth = static_cast<float>(::WinApp::kClientWidth);
     const float screenHeight = static_cast<float>(::WinApp::kClientHeight);
     const float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
     const float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
-    lockOnSprite_->SetPosition({ screenX, screenY });
+    lockOnSprite_->SetPosition({screenX, screenY});
 
     const float objSizeX = aabb.max.x - aabb.min.x;
     const float objSizeY = aabb.max.y - aabb.min.y;
     const float objSizeZ = aabb.max.z - aabb.min.z;
-    const float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+    const float maxObjSize = std::max({objSizeX, objSizeY, objSizeZ});
     const float baseSize = maxObjSize * 25.0f;
     const float distanceScale = 20.0f / w;
     // 元画像は64px。遠距離でも細い赤線が潰れず、近距離でも敵を覆いすぎないサイズ。
     const float finalSize = std::clamp(baseSize * distanceScale, 72.0f, 112.0f);
 
-    lockOnSprite_->SetSize({ finalSize, finalSize });
+    lockOnSprite_->SetSize({finalSize, finalSize});
     lockOnSprite_->SetRotation(0.0f);
     lockOnSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     lockOnSprite_->SetVisible(true);
@@ -1269,44 +1251,42 @@ void GamePlayScene::UpdateEffectDebugShortcuts() {
 #endif
 
     if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
-        Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnStarHitEffect(effectPos);
         particleSystem_->SpawnSlashEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_RETURN)) {
-        Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnStarHitEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_E)) {
-        Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         particleSystem_->SpawnSlashEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_R)) {
-        Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+        Vector3 effectPos = {0.0f, 2.0f, 0.0f};
         MeshEffectManager::GetInstance()->SpawnRingWaveEffect(effectPos);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_T)) {
-        Vector3 effectPos = { 0.0f, 1.5f, 0.0f };
+        Vector3 effectPos = {0.0f, 1.5f, 0.0f};
         MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);
     }
 
     if (inputManager_->IsKeyTriggered(DIK_Y)) {
-        Vector3 spawnPos = { 0.0f, 0.01f, 10.0f };
+        Vector3 spawnPos = {0.0f, 0.01f, 10.0f};
         if (player_) {
             Vector3 playerPos = player_->GetWorldPosition();
             Vector3 forward = player_->GetForwardDirection();
-            spawnPos = {
-                playerPos.x + forward.x * 3.0f,
-                playerPos.y,
-                playerPos.z + forward.z * 3.0f
-            };
+            spawnPos = {playerPos.x + forward.x * 3.0f, playerPos.y, playerPos.z + forward.z * 3.0f};
         }
 
-        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_floor.json", spawnPos, { 0.0f, 0.0f, 0.0f });
-        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_pillar.json", spawnPos, { 0.0f, 0.0f, 0.0f });
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_floor.json", spawnPos,
+                                                        {0.0f, 0.0f, 0.0f});
+        MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_pillar.json", spawnPos,
+                                                        {0.0f, 0.0f, 0.0f});
     }
 }

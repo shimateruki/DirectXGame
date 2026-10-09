@@ -15,7 +15,7 @@ float SmoothStep01(float value) {
     value = (std::clamp)(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
-}
+} // namespace
 
 void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -28,15 +28,15 @@ void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& 
     SetMaterialType(22);
     SetBlendMode(BlendMode::kNormal);
     SetEnableEnvMap(false);
-    SetColor({ 0.30f, 0.86f, 1.0f, 0.84f });
+    SetColor({0.30f, 0.86f, 1.0f, 0.84f});
     SetEmissive(2.4f);
-    SetCollisionAttribute(CollisionAttribute::kGround);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
     Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.center = { 0.0f, 0.0f, 0.0f };
-    collider.size = { 1.0f, 1.0f, 0.45f };
+    collider.center = {0.0f, 0.0f, 0.0f};
+    collider.size = {1.0f, 1.0f, 0.45f};
     SetColliderConfig(collider);
 
     if (!param_.has_value()) {
@@ -49,6 +49,7 @@ void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& 
     param_->returnOnOff = true;
 }
 
+// 編集時の配置値を基準にして開閉を補間します。再生を止めた後も元の配置へ戻せるようにします。
 void GimmickPrismBarrier::Update(float deltaTime) {
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
@@ -84,9 +85,7 @@ void GimmickPrismBarrier::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickPrismBarrier::OnTrigger() {
-    OnSwitchEvent(true);
-}
+void GimmickPrismBarrier::OnTrigger() { OnSwitchEvent(true); }
 
 void GimmickPrismBarrier::OnSwitchEvent(bool active) {
     if (!param_.has_value()) {
@@ -137,7 +136,7 @@ void GimmickPrismBarrier::CaptureAuthoredState(bool force) {
         authoredCollisionMask_ = collisionMask;
     }
     if (authoredCollisionAttribute_ == 0) {
-        authoredCollisionAttribute_ = CollisionAttribute::kGround;
+        authoredCollisionAttribute_ = CollisionCategories::Get("ground");
     }
     if (authoredCollisionMask_ == 0) {
         authoredCollisionMask_ = 0xffffffffu;
@@ -163,8 +162,8 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
     const float minimumScaleY = (std::max)(0.015f, authoredScale_.y * 0.012f);
     const float currentScaleY = Math::Lerp(minimumScaleY, authoredScale_.y, eased);
     const float authoredBottom = authoredPosition_.y - authoredScale_.y;
-    SetTranslate({ authoredPosition_.x, authoredBottom + currentScaleY, authoredPosition_.z });
-    SetScale({ authoredScale_.x, currentScaleY, authoredScale_.z });
+    SetTranslate({authoredPosition_.x, authoredBottom + currentScaleY, authoredPosition_.z});
+    SetScale({authoredScale_.x, currentScaleY, authoredScale_.z});
 
     const float pulseSpeed = param_.has_value() ? (std::max)(0.1f, param_->interval) : 2.4f;
     const float pulse = 0.5f + 0.5f * std::sin(visualTime_ * pulseSpeed * 6.2831853f);
@@ -206,7 +205,5 @@ void GimmickPrismBarrier::SetCollisionEnabled(bool enabled) {
 }
 
 float GimmickPrismBarrier::GetTransitionDuration() const {
-    return param_.has_value()
-        ? (std::clamp)(param_->moveSpeed, 0.05f, 3.0f)
-        : kDefaultTransitionDuration;
+    return param_.has_value() ? (std::clamp)(param_->moveSpeed, 0.05f, 3.0f) : kDefaultTransitionDuration;
 }

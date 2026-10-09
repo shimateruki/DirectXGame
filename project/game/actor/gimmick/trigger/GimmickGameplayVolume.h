@@ -7,7 +7,7 @@ class Player;
 
 // 配置した範囲への進入・退出を、イベントやチェックポイントなどのゲーム処理へ変換します。
 class GimmickGameplayVolume : public BaseGimmick {
-public:
+  public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
@@ -17,7 +17,7 @@ public:
 
     std::unique_ptr<Object3d> Clone() const override;
 
-private:
+  private:
     enum class Mode {
         Event = 0,
         Checkpoint,
@@ -42,6 +42,7 @@ private:
     bool collisionObserved_ = false;
     bool triggered_ = false;
     float rearmTimer_ = 0.0f;
+    // シーンが所有するプレイヤーへの非所有参照。退出検出後はクリアします。
     Player* occupant_ = nullptr;
     LightManager::EnvironmentProfileState previousEnvironment_{};
     bool hasPreviousEnvironment_ = false;

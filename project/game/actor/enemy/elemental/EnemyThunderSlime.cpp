@@ -44,9 +44,9 @@ Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
-        return { 0.0f, 0.0f, 1.0f };
+        return {0.0f, 0.0f, 1.0f};
     }
-    return { value.x / length, 0.0f, value.z / length };
+    return {value.x / length, 0.0f, value.z / length};
 }
 
 Object3d* FindEnemyDamageTarget(Object3d* object) {
@@ -57,7 +57,7 @@ Object3d* FindEnemyDamageTarget(Object3d* object) {
     }
     return nullptr;
 }
-}
+} // namespace
 
 // 明示的な破棄処理は持たず、unique_ptr に任せる
 EnemyThunderSlime::~EnemyThunderSlime() = default;
@@ -68,11 +68,11 @@ void EnemyThunderSlime::Initialize(Object3dCommon* common, const std::string& mo
     SetName("Enemy_ThunderSlime");
     SetEnemyType("ThunderSlime");
     ReloadAttackProfile();
-    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     defaultColor_ = GetColor();
 
-    SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
+    SetCollisionAttribute(CollisionCategories::Get("enemy"));
+    SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::kSphere);
     SyncGroundCollisionRadius();
     InitializeAuraEffect();
@@ -108,7 +108,7 @@ bool EnemyThunderSlime::UpdateInactiveState(float deltaTime) {
         shockSquashTimer_ = 0.0f;
         idleSparkTimer_ = kIdleSparkInterval;
         HideAuraEffect();
-        SetVelocity({ 0.0f, 0.0f, 0.0f });
+        SetVelocity({0.0f, 0.0f, 0.0f});
         return true;
     }
 
@@ -174,7 +174,8 @@ void EnemyThunderSlime::UpdateWildBehavior(float deltaTime, Vector3& velocity) {
     }
 }
 
-void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction, float distance) {
+void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity, const Vector3& direction,
+                                             float distance) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kShockAttackId);
     const EnemyAttackDefinition& lineAttack = GetAttackDefinition(kWildLineAttackId);
     const bool forceShockPreview = debugPreviewAttackId_ == kShockAttackId;
@@ -188,22 +189,18 @@ void EnemyThunderSlime::UpdateCombatBehavior(float deltaTime, Vector3& velocity,
 
     if (isCharging_) {
         UpdateCharge(deltaTime, direction);
-    }
-    else if (!forceLinePreview &&
-        distance >= attack.minRange && distance <= attack.maxRange && attackCooldown_ <= 0.0f) {
+    } else if (!forceLinePreview && distance >= attack.minRange && distance <= attack.maxRange &&
+               attackCooldown_ <= 0.0f) {
         lastShockDirection_ = direction;
         StartCharge();
-    }
-    else if (!forceShockPreview &&
-        distance >= lineAttack.minRange && distance <= lineAttack.maxRange && attackCooldown_ <= 0.0f) {
+    } else if (!forceShockPreview && distance >= lineAttack.minRange && distance <= lineAttack.maxRange &&
+               attackCooldown_ <= 0.0f) {
         StartWildLightning(direction);
-    }
-    else if (distance <= detectionRange_) {
+    } else if (distance <= detectionRange_) {
         const float speed = (std::max)(0.0f, param_->speed) * kMoveSpeedScale;
         velocity.x = direction.x * speed;
         velocity.z = direction.z * speed;
-    }
-    else {
+    } else {
         UpdateWanderBehavior(deltaTime, velocity);
     }
 }
@@ -257,15 +254,13 @@ void EnemyThunderSlime::StartWildLightning(const Vector3& direction) {
         if (meshEffects) {
             Vector3 warningPosition = wildStrikePositions_[index];
             warningPosition.y += 0.045f;
-            meshEffects->SpawnEffectAt(kLightningWarningEffectPath, warningPosition, { 0.0f, 0.0f, 0.0f });
+            meshEffects->SpawnEffectAt(kLightningWarningEffectPath, warningPosition, {0.0f, 0.0f, 0.0f});
         }
     }
 
     const Vector3 chargeGround = FindStrikeGround(origin, this, origin.y);
     SpawnChargeGroundEffect(chargeGround, 1.12f);
-    EmitLineChargeEffect(
-        attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(),
-        0.0f);
+    EmitLineChargeEffect(attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(), 0.0f);
 }
 
 void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
@@ -280,20 +275,14 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
     if (wildLightningState_ == WildLightningState::Charging) {
         const float windupDuration = (std::max)(0.01f, attack.windupDuration);
         const float progress = 1.0f - std::clamp(wildLightningTimer_ / windupDuration, 0.0f, 1.0f);
-        ShowAttackTelegraphImpactAreas(
-            wildStrikePositions_.data(),
-            wildStrikePositions_.size(),
-            attack.radius,
-            progress,
-            { 1.0f, 0.94f, 0.16f, 0.84f });
+        ShowAttackTelegraphImpactAreas(wildStrikePositions_.data(), wildStrikePositions_.size(), attack.radius,
+                                       progress, {1.0f, 0.94f, 0.16f, 0.84f});
         if (wildLightningEffectTimer_ <= 0.0f) {
-            EmitLineChargeEffect(
-                attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(),
-                progress);
+            EmitLineChargeEffect(attack.windupVfx.empty() ? kLineChargePreset : attack.windupVfx.c_str(), progress);
             wildLightningEffectTimer_ = 0.072f - progress * 0.030f;
         }
         if (!chargeWarningTriggered_ && wildLightningTimer_ <= attack.warningLeadTime) {
-            TriggerAttackTelegraphCue({ 0.92f, 0.98f, 0.20f, 1.0f });
+            TriggerAttackTelegraphCue({0.92f, 0.98f, 0.20f, 1.0f});
             chargeWarningTriggered_ = true;
         }
         if (wildLightningTimer_ <= 0.0f) {
@@ -303,8 +292,7 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
         return;
     }
 
-    while (wildLightningTimer_ <= 0.0f &&
-        wildStrikeIndex_ < static_cast<int>(wildStrikePositions_.size())) {
+    while (wildLightningTimer_ <= 0.0f && wildStrikeIndex_ < static_cast<int>(wildStrikePositions_.size())) {
         SpawnWildLightningStrike(wildStrikePositions_[wildStrikeIndex_]);
         ++wildStrikeIndex_;
         wildLightningTimer_ += kWildStrikeInterval;
@@ -312,16 +300,9 @@ void EnemyThunderSlime::UpdateWildLightning(float deltaTime) {
 
     if (wildStrikeIndex_ < static_cast<int>(wildStrikePositions_.size())) {
         const std::size_t remainingCount = wildStrikePositions_.size() - static_cast<std::size_t>(wildStrikeIndex_);
-        const float strikeProgress = 1.0f - std::clamp(
-            wildLightningTimer_ / kWildStrikeInterval,
-            0.0f,
-            1.0f);
-        ShowAttackTelegraphImpactAreas(
-            wildStrikePositions_.data() + wildStrikeIndex_,
-            remainingCount,
-            attack.radius,
-            strikeProgress,
-            { 1.0f, 0.94f, 0.16f, 0.76f });
+        const float strikeProgress = 1.0f - std::clamp(wildLightningTimer_ / kWildStrikeInterval, 0.0f, 1.0f);
+        ShowAttackTelegraphImpactAreas(wildStrikePositions_.data() + wildStrikeIndex_, remainingCount, attack.radius,
+                                       strikeProgress, {1.0f, 0.94f, 0.16f, 0.76f});
     }
 
     if (wildStrikeIndex_ >= static_cast<int>(wildStrikePositions_.size())) {
@@ -353,8 +334,8 @@ void EnemyThunderSlime::DispatchWildLightningDamage(const Vector3& groundPositio
         targetPosition.z - groundPosition.z,
     };
     const float verticalDistance = targetPosition.y - groundPosition.y;
-    if (Math::Length(horizontal) > attack.radius ||
-        verticalDistance < -0.65f || verticalDistance > kLightningStrikeHeight) {
+    if (Math::Length(horizontal) > attack.radius || verticalDistance < -0.65f ||
+        verticalDistance > kLightningStrikeHeight) {
         return;
     }
 
@@ -383,7 +364,7 @@ void EnemyThunderSlime::ResetWildLightning() {
 void EnemyThunderSlime::UpdateWanderBehavior(float deltaTime, Vector3& velocity) {
     const float speed = (std::max)(0.65f, param_->speed * 0.48f);
     velocity = CalculateWanderVelocity(deltaTime, speed, 0.68f);
-    UpdateFacing({ velocity.x, 0.0f, velocity.z });
+    UpdateFacing({velocity.x, 0.0f, velocity.z});
 }
 
 void EnemyThunderSlime::ApplyGroundMovementAndAnimation(float deltaTime, Vector3& velocity) {
@@ -392,7 +373,8 @@ void EnemyThunderSlime::ApplyGroundMovementAndAnimation(float deltaTime, Vector3
         velocity.x = 0.0f;
         velocity.z = 0.0f;
         groundHopTimer_ = 0.0f;
-    } else if (SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval, 0.10f)) {
+    } else if (SlimeBounceAnimator::StepGroundHop(groundHopTimer_, velocity, isGrounded_, deltaTime, kMoveHopInterval,
+                                                  0.10f)) {
         velocity.y = (std::max)(velocity.y, kMoveHopPower);
     }
     SetVelocity(velocity);
@@ -420,9 +402,10 @@ std::unique_ptr<Object3d> EnemyThunderSlime::Clone() const {
 void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
-        const float capturedMaxScale = (std::max)({ std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z) });
+        const float capturedMaxScale =
+            (std::max)({std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z)});
         if (capturedMaxScale < 1.2f) {
-            baseScale_ = { 2.0f, 2.0f, 2.0f };
+            baseScale_ = {2.0f, 2.0f, 2.0f};
         }
         hasBaseScale_ = true;
     }
@@ -438,18 +421,15 @@ void EnemyThunderSlime::BeginThrown(const Vector3& initialVelocity) {
     BaseEnemy::BeginThrown(initialVelocity);
 }
 
-Vector3 EnemyThunderSlime::FindStrikeGround(
-    const Vector3& samplePosition,
-    Object3d* ignoredObject,
-    float fallbackHeight) const {
+Vector3 EnemyThunderSlime::FindStrikeGround(const Vector3& samplePosition, Object3d* ignoredObject,
+                                            float fallbackHeight) const {
     Vector3 rayStart = samplePosition;
     rayStart.y += 10.0f;
 
     PhysicsQueryFilter filter;
-    filter.mask = kAllGround;
+    filter.mask = CollisionCategories::Get("ground");
     filter.ignoredObject = ignoredObject;
-    const RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-        rayStart, { 0.0f, -1.0f, 0.0f }, 22.0f, filter);
+    const RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, {0.0f, -1.0f, 0.0f}, 22.0f, filter);
     if (hit.isHit) {
         return hit.hitPoint;
     }
@@ -465,43 +445,29 @@ void EnemyThunderSlime::SpawnLightningStrikeVisual(const Vector3& groundPosition
     const float strikeYaw = std::atan2(direction.x, direction.z);
 
     if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
-        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, { kHalfPi, strikeYaw, 0.0f });
-        meshEffects->SpawnEffectAt(
-            kLightningBoltEffectPath,
-            strikeCenter,
-            { kHalfPi, strikeYaw + kHalfPi, 0.0f },
-            { 0.82f, 1.0f, 0.94f });
-        const Vector3 branchSide = { direction.z, 0.0f, -direction.x };
-        meshEffects->SpawnEffectAt(
-            kLightningBoltEffectPath,
-            strikeCenter + branchSide * 0.34f + direction * 0.18f,
-            { kHalfPi, strikeYaw + 0.31f, 0.0f },
-            { 0.46f, 1.0f, 0.76f });
-        meshEffects->SpawnEffectAt(
-            kLightningBoltEffectPath,
-            strikeCenter - branchSide * 0.30f - direction * 0.14f,
-            { kHalfPi, strikeYaw - 0.27f, 0.0f },
-            { 0.38f, 1.0f, 0.68f });
-        meshEffects->SpawnEffectAt(kLightningCoreEffectPath, strikeCenter, { 0.0f, 0.0f, 0.0f });
+        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, {kHalfPi, strikeYaw, 0.0f});
+        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter, {kHalfPi, strikeYaw + kHalfPi, 0.0f},
+                                   {0.82f, 1.0f, 0.94f});
+        const Vector3 branchSide = {direction.z, 0.0f, -direction.x};
+        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter + branchSide * 0.34f + direction * 0.18f,
+                                   {kHalfPi, strikeYaw + 0.31f, 0.0f}, {0.46f, 1.0f, 0.76f});
+        meshEffects->SpawnEffectAt(kLightningBoltEffectPath, strikeCenter - branchSide * 0.30f - direction * 0.14f,
+                                   {kHalfPi, strikeYaw - 0.27f, 0.0f}, {0.38f, 1.0f, 0.68f});
+        meshEffects->SpawnEffectAt(kLightningCoreEffectPath, strikeCenter, {0.0f, 0.0f, 0.0f});
 
         Vector3 impactPosition = groundPosition;
         impactPosition.y += 0.055f;
-        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition, { 0.0f, 0.0f, 0.0f });
-        meshEffects->SpawnEffectAt(
-            kLightningImpactEffectPath,
-            impactPosition + Vector3{ 0.0f, 0.025f, 0.0f },
-            { 0.0f, strikeYaw + 0.35f, 0.0f },
-            { 1.32f, 1.0f, 1.32f });
-        meshEffects->SpawnEffectAt(
-            kScorchMarkEffectPath,
-            impactPosition + Vector3{ 0.0f, 0.012f, 0.0f },
-            { 0.0f, strikeYaw, 0.0f });
+        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition, {0.0f, 0.0f, 0.0f});
+        meshEffects->SpawnEffectAt(kLightningImpactEffectPath, impactPosition + Vector3{0.0f, 0.025f, 0.0f},
+                                   {0.0f, strikeYaw + 0.35f, 0.0f}, {1.32f, 1.0f, 1.32f});
+        meshEffects->SpawnEffectAt(kScorchMarkEffectPath, impactPosition + Vector3{0.0f, 0.012f, 0.0f},
+                                   {0.0f, strikeYaw, 0.0f});
     }
 
     Vector3 particlePosition = groundPosition;
     particlePosition.y += 0.22f;
     EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition);
-    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition + Vector3{ 0.22f, 0.08f, -0.18f });
+    EmitThunderPreset(kLightningStrikeParticlePreset, particlePosition + Vector3{0.22f, 0.08f, -0.18f});
     EmitThunderPreset(kDischargePreset, particlePosition);
 }
 
@@ -509,18 +475,16 @@ void EnemyThunderSlime::SpawnChargeGroundEffect(const Vector3& groundPosition, f
     if (MeshEffectManager* meshEffects = MeshEffectManager::GetInstance()) {
         Vector3 effectPosition = groundPosition;
         effectPosition.y += 0.035f;
-        meshEffects->SpawnEffectAt(
-            kChargeGroundEffectPath,
-            effectPosition,
-            { 0.0f, idleTimer_ * 0.8f, 0.0f },
-            { scale, 1.0f, scale });
+        meshEffects->SpawnEffectAt(kChargeGroundEffectPath, effectPosition, {0.0f, idleTimer_ * 0.8f, 0.0f},
+                                   {scale, 1.0f, scale});
     }
 }
 
 // 放電攻撃と火花演出
 void EnemyThunderSlime::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
-    if (lengthSq <= 0.0001f) return;
+    if (lengthSq <= 0.0001f)
+        return;
     const float targetYaw = std::atan2(direction.x, direction.z) + kThunderSlimeModelYawOffset;
     SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f));
 }
@@ -538,10 +502,7 @@ void EnemyThunderSlime::StartCharge() {
     attackCooldown_ = attack.cooldown;
     const Vector3 origin = GetWorldPosition();
     SpawnChargeGroundEffect(FindStrikeGround(origin, this, origin.y), 1.18f);
-    EmitOuterThunderEffect(
-        attack.windupVfx.empty() ? kRadialChargePreset : attack.windupVfx.c_str(),
-        2,
-        0.18f);
+    EmitOuterThunderEffect(attack.windupVfx.empty() ? kRadialChargePreset : attack.windupVfx.c_str(), 2, 0.18f);
     SyncGroundCollisionRadius();
 }
 
@@ -552,23 +513,17 @@ void EnemyThunderSlime::UpdateCharge(float deltaTime, const Vector3& direction) 
     chargeParticleTimer_ -= deltaTime;
     const float windupDuration = (std::max)(0.01f, attack.windupDuration);
     const float progress = 1.0f - (std::clamp)(chargeTimer_ / windupDuration, 0.0f, 1.0f);
-    ShowAttackTelegraphCircle(
-        GetTranslate(),
-        attack.radius,
-        progress,
-        { 1.0f, 0.95f, 0.16f, 0.82f });
+    ShowAttackTelegraphCircle(GetTranslate(), attack.radius, progress, {1.0f, 0.95f, 0.16f, 0.82f});
 
     if (chargeParticleTimer_ <= 0.0f) {
         const int arcCount = progress >= 0.68f ? 3 : 2;
-        EmitOuterThunderEffect(
-            attack.windupVfx.empty() ? kRadialChargePreset : attack.windupVfx.c_str(),
-            arcCount,
-            0.55f + progress * 1.4f);
+        EmitOuterThunderEffect(attack.windupVfx.empty() ? kRadialChargePreset : attack.windupVfx.c_str(), arcCount,
+                               0.55f + progress * 1.4f);
         chargeParticleTimer_ = 0.070f - progress * 0.032f;
     }
 
     if (!chargeWarningTriggered_ && chargeTimer_ <= attack.warningLeadTime) {
-        TriggerAttackTelegraphCue({ 1.0f, 0.92f, 0.12f, 1.0f });
+        TriggerAttackTelegraphCue({1.0f, 0.92f, 0.12f, 1.0f});
         chargeWarningTriggered_ = true;
     }
 
@@ -581,7 +536,7 @@ void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kShockAttackId);
     isCharging_ = false;
     if (!chargeWarningTriggered_) {
-        TriggerAttackTelegraphCue({ 1.0f, 0.92f, 0.12f, 1.0f });
+        TriggerAttackTelegraphCue({1.0f, 0.92f, 0.12f, 1.0f});
         chargeWarningTriggered_ = true;
     }
     HideAttackTelegraph();
@@ -595,12 +550,14 @@ void EnemyThunderSlime::ReleaseShock(const Vector3& direction) {
         const Vector3 origin = GetWorldPosition();
         Vector3 scorchPosition = FindStrikeGround(origin, this, origin.y);
         scorchPosition.y += 0.045f;
-        meshEffects->SpawnEffectAt(kScorchMarkEffectPath, scorchPosition, { 0.0f, GetRotation().y, 0.0f }, { 1.25f, 1.0f, 1.25f });
+        meshEffects->SpawnEffectAt(kScorchMarkEffectPath, scorchPosition, {0.0f, GetRotation().y, 0.0f},
+                                   {1.25f, 1.0f, 1.25f});
     }
     DispatchShockDamage(center, direction, attack.radius, attack.damage);
 }
 
-void EnemyThunderSlime::DispatchShockDamage(const Vector3& center, const Vector3& direction, float radius, float damage) {
+void EnemyThunderSlime::DispatchShockDamage(const Vector3& center, const Vector3& direction, float radius,
+                                            float damage) {
     if (!target_) {
         return;
     }
@@ -618,11 +575,8 @@ void EnemyThunderSlime::DispatchShockDamage(const Vector3& center, const Vector3
     damageEvent.attacker = this;
     damageEvent.damageAmount = damage;
     damageEvent.damageType = DamageType::Electric;
-    damageEvent.knockbackVelocity = {
-        direction.x * (8.0f + distanceRate * 5.0f),
-        5.8f + distanceRate * 2.0f,
-        direction.z * (8.0f + distanceRate * 5.0f)
-    };
+    damageEvent.knockbackVelocity = {direction.x * (8.0f + distanceRate * 5.0f), 5.8f + distanceRate * 2.0f,
+                                     direction.z * (8.0f + distanceRate * 5.0f)};
     EventManager::GetInstance()->Dispatch(damageEvent);
 }
 
@@ -641,11 +595,9 @@ void EnemyThunderSlime::UpdateIdleSpark(float deltaTime) {
     EmitOuterThunderEffect(kIdleSparkPreset, isCharging_ ? 3 : 2);
     if (isCharging_) {
         idleSparkTimer_ = kIdleSparkInterval * 0.62f;
-    }
-    else if (isCarried_) {
+    } else if (isCarried_) {
         idleSparkTimer_ = kIdleSparkInterval * 0.76f;
-    }
-    else {
+    } else {
         idleSparkTimer_ = kIdleSparkInterval;
     }
 }
@@ -677,9 +629,10 @@ void EnemyThunderSlime::UpdateAuraEffect(float deltaTime) {
 
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
-        const float capturedMaxScale = (std::max)({ std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z) });
+        const float capturedMaxScale =
+            (std::max)({std::abs(baseScale_.x), std::abs(baseScale_.y), std::abs(baseScale_.z)});
         if (capturedMaxScale < 1.2f) {
-            baseScale_ = { 2.0f, 2.0f, 2.0f };
+            baseScale_ = {2.0f, 2.0f, 2.0f};
         }
         hasBaseScale_ = true;
     }
@@ -701,8 +654,8 @@ void EnemyThunderSlime::UpdateAuraEffect(float deltaTime) {
     auraEffect_->SetIsVisible(true);
     auraEffect_->Update(deltaTime);
     auraEffect_->SetTranslate(auraPos);
-    auraEffect_->SetRotation({ 1.5707963f, yaw, 0.0f });
-    auraEffect_->SetScale({ horizontalDiameter, 1.0f, verticalDiameter });
+    auraEffect_->SetRotation({1.5707963f, yaw, 0.0f});
+    auraEffect_->SetScale({horizontalDiameter, 1.0f, verticalDiameter});
     auraEffect_->UpdateLocalMatrix();
     auraEffect_->UpdateWorldMatrix();
 }
@@ -715,7 +668,7 @@ void EnemyThunderSlime::HideAuraEffect() {
 
 void EnemyThunderSlime::CalculateAuraShape(Vector3& center, float& horizontalDiameter, float& verticalDiameter) const {
     const Vector3 scale = GetScale();
-    const float maxXZ = (std::max)({ std::abs(scale.x), std::abs(scale.z), 1.0f });
+    const float maxXZ = (std::max)({std::abs(scale.x), std::abs(scale.z), 1.0f});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
 
     horizontalDiameter = (std::max)(2.55f, maxXZ * 1.35f);
@@ -790,7 +743,7 @@ void EnemyThunderSlime::EmitThunderPreset(const char* presetName, const Vector3&
 
 void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
     Vector3 targetScale = baseScale_;
-    Vector3 targetRotation = { 0.0f, GetRotation().y, 0.0f };
+    Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
     if (isCharging_) {
         const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kShockAttackId).windupDuration);
         const float t = std::clamp(1.0f - (chargeTimer_ / windupDuration), 0.0f, 1.0f);
@@ -802,15 +755,16 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.0f + slam * 0.27f + finalClamp * 0.16f - chargePulse);
         targetRotation.x = chargePulse * 0.8f;
         targetRotation.z = std::sin(t * kTwoPi * 4.0f) * 0.035f * slam;
-        SetColor({ 1.0f, 0.98f, 0.70f + std::sin(t * 58.0f) * 0.08f, 1.0f });
-    }
-    else if (wildLightningState_ != WildLightningState::Idle) {
+        SetColor({1.0f, 0.98f, 0.70f + std::sin(t * 58.0f) * 0.08f, 1.0f});
+    } else if (wildLightningState_ != WildLightningState::Idle) {
         const EnemyAttackDefinition& lineAttack = GetAttackDefinition(kWildLineAttackId);
         const float windupDuration = (std::max)(0.01f, lineAttack.windupDuration);
         const bool isWindup = wildLightningState_ == WildLightningState::Charging;
-        const float progress = isWindup
-            ? std::clamp(1.0f - wildLightningTimer_ / windupDuration, 0.0f, 1.0f)
-            : std::clamp(static_cast<float>(wildStrikeIndex_) / static_cast<float>(wildStrikePositions_.size()), 0.0f, 1.0f);
+        const float progress =
+            isWindup
+                ? std::clamp(1.0f - wildLightningTimer_ / windupDuration, 0.0f, 1.0f)
+                : std::clamp(static_cast<float>(wildStrikeIndex_) / static_cast<float>(wildStrikePositions_.size()),
+                             0.0f, 1.0f);
         const float pulse = std::sin(progress * kTwoPi * (isWindup ? 3.5f : 5.0f));
         const float gather = progress * progress * (3.0f - 2.0f * progress);
         targetScale = {
@@ -820,47 +774,32 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
         };
         targetRotation.x = pulse * 0.045f;
         targetRotation.z = std::sin(progress * kTwoPi * 4.0f) * 0.055f * (0.35f + gather * 0.65f);
-        SetColor({ 1.0f, 0.98f, 0.72f + std::abs(pulse) * 0.18f, 1.0f });
-    }
-    else if (shockSquashTimer_ > 0.0f) {
+        SetColor({1.0f, 0.98f, 0.72f + std::abs(pulse) * 0.18f, 1.0f});
+    } else if (shockSquashTimer_ > 0.0f) {
         const float recoveryDuration = (std::max)(0.01f, GetAttackDefinition(kShockAttackId).recoveryDuration);
         const float remaining = (std::clamp)(shockSquashTimer_ / recoveryDuration, 0.0f, 1.0f);
         const float elapsed = 1.0f - remaining;
-        Vector3 multiplier = { 1.0f, 1.0f, 1.0f };
+        Vector3 multiplier = {1.0f, 1.0f, 1.0f};
         if (elapsed < 0.28f) {
             const float phase = elapsed / 0.28f;
             const float eased = phase * phase * (3.0f - 2.0f * phase);
-            multiplier = {
-                1.82f + (0.90f - 1.82f) * eased,
-                0.48f + (1.25f - 0.48f) * eased,
-                1.76f + (0.94f - 1.76f) * eased
-            };
+            multiplier = {1.82f + (0.90f - 1.82f) * eased, 0.48f + (1.25f - 0.48f) * eased,
+                          1.76f + (0.94f - 1.76f) * eased};
         } else if (elapsed < 0.64f) {
             const float phase = (elapsed - 0.28f) / 0.36f;
             const float eased = phase * phase * (3.0f - 2.0f * phase);
-            multiplier = {
-                0.90f + (1.12f - 0.90f) * eased,
-                1.25f + (0.86f - 1.25f) * eased,
-                0.94f + (1.10f - 0.94f) * eased
-            };
+            multiplier = {0.90f + (1.12f - 0.90f) * eased, 1.25f + (0.86f - 1.25f) * eased,
+                          0.94f + (1.10f - 0.94f) * eased};
         } else {
             const float phase = (elapsed - 0.64f) / 0.36f;
             const float eased = phase * phase * (3.0f - 2.0f * phase);
-            multiplier = {
-                1.12f + (1.0f - 1.12f) * eased,
-                0.86f + (1.0f - 0.86f) * eased,
-                1.10f + (1.0f - 1.10f) * eased
-            };
+            multiplier = {1.12f + (1.0f - 1.12f) * eased, 0.86f + (1.0f - 0.86f) * eased,
+                          1.10f + (1.0f - 1.10f) * eased};
         }
-        targetScale = {
-            baseScale_.x * multiplier.x,
-            baseScale_.y * multiplier.y,
-            baseScale_.z * multiplier.z
-        };
+        targetScale = {baseScale_.x * multiplier.x, baseScale_.y * multiplier.y, baseScale_.z * multiplier.z};
         targetRotation.z = std::sin(elapsed * kTwoPi * 1.5f) * remaining * 0.07f;
-        SetColor({ 1.0f, 0.98f, 0.70f + remaining * 0.16f, 1.0f });
-    }
-    else {
+        SetColor({1.0f, 0.98f, 0.70f + remaining * 0.16f, 1.0f});
+    } else {
         SlimeBounceAnimator::Params params;
         params.speedForFullBounce = 2.1f;
         params.idleAmplitude = 0.085f;
@@ -876,28 +815,21 @@ void EnemyThunderSlime::ApplySlimeAnimation(float deltaTime) {
     ApplyDamageReactionPose(targetScale, targetRotation);
     Vector3 scale = GetScale();
     const float lerpRate = isCharging_ || wildLightningState_ != WildLightningState::Idle || shockSquashTimer_ > 0.0f
-        ? (std::min)(1.0f, deltaTime * 24.0f)
-        : (std::min)(1.0f, deltaTime * 11.0f);
+                               ? (std::min)(1.0f, deltaTime * 24.0f)
+                               : (std::min)(1.0f, deltaTime * 11.0f);
     scale = Math::Lerp(scale, targetScale, lerpRate);
     SetScale(scale);
     const Vector3 currentRotation = GetRotation();
-    SetRotation({
-        currentRotation.x + (targetRotation.x - currentRotation.x) * lerpRate,
-        currentRotation.y,
-        currentRotation.z + (targetRotation.z - currentRotation.z) * lerpRate
-    });
+    SetRotation({currentRotation.x + (targetRotation.x - currentRotation.x) * lerpRate, currentRotation.y,
+                 currentRotation.z + (targetRotation.z - currentRotation.z) * lerpRate});
 }
 
 void EnemyThunderSlime::SyncWorldCollisionRadius(float worldRadius) {
     const Vector3 scale = GetScale();
-    const float maxScale = (std::max)({ 0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     SetCollisionRadius(worldRadius / maxScale);
 }
 
-void EnemyThunderSlime::SyncGroundCollisionRadius() {
-    SyncWorldCollisionRadius(kGroundCollisionWorldRadius);
-}
+void EnemyThunderSlime::SyncGroundCollisionRadius() { SyncWorldCollisionRadius(kGroundCollisionWorldRadius); }
 
-void EnemyThunderSlime::SyncThrownCollisionRadius() {
-    SyncWorldCollisionRadius(kThrownCollisionWorldRadius);
-}
+void EnemyThunderSlime::SyncThrownCollisionRadius() { SyncWorldCollisionRadius(kThrownCollisionWorldRadius); }

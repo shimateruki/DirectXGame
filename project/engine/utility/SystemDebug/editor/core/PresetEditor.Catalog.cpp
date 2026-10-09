@@ -1,4 +1,4 @@
-#include "PresetEditor.h"
+﻿#include "PresetEditor.h"
 
 #include "ModelManager.h"
 #include "imgui.h"
@@ -61,6 +61,8 @@ bool PresetEditor::MatchesSearch(const std::string& name, const json& data) cons
     }
 
     std::string haystack = name + " " +
+        ReadString(data, "presetDisplayName", "") + " " +
+        ReadString(data, "presetUsage", "") + " " +
         ReadString(data, "name", "") + " " +
         ReadString(data, "modelName", "") + " " +
         ReadString(data, "enemyType", "") + " " +
@@ -84,13 +86,14 @@ bool PresetEditor::MatchesCategory(const json& data, Category category) const {
         return true;
     }
     if (category == Category::Stage1) {
-        return IsStage1Preset(data);
+        return IsStageLibraryPreset(data) &&
+            (stageCollection_.empty() || ReadString(data, "presetCollection", "") == stageCollection_);
     }
     return DetectCategory(data) == category;
 }
 
-bool PresetEditor::IsStage1Preset(const json& data) const {
-    return ReadString(data, "presetCollection", "") == "Stage1";
+bool PresetEditor::IsStageLibraryPreset(const json& data) const {
+    return !ReadString(data, "presetCollection", "").empty();
 }
 
 PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
@@ -116,7 +119,7 @@ PresetEditor::Category PresetEditor::DetectCategory(const json& data) const {
 
 const char* PresetEditor::GetCategoryLabel(Category category) const {
     switch (category) {
-    case Category::Stage1: return "ステージ1";
+    case Category::Stage1: return "ステージ別";
     case Category::Enemy: return "敵";
     case Category::Gimmick: return "ギミック";
     case Category::Item: return "アイテム";

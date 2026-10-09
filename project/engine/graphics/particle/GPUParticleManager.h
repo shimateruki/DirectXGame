@@ -52,6 +52,11 @@ public:
     /// <summary>一時的な設定から直接粒子を発生させます。</summary>
     void EmitFromConfig(const GPUParticleConfig& config);
 
+    // 攻撃エディターの単独配置確認。通常の粒子とはGPUバッファと時間を分離します。
+    void ClearAuthoringPreview();
+    bool ShowAuthoringPreview(const std::string& preset, const Vector3& position,
+        const Vector3& direction, bool directed, float speedScale, float age);
+
     /// <summary>シミュレーションの時間倍率を返します。</summary>
     float GetTimeScale() const { return timeScale_; }
 
@@ -133,6 +138,8 @@ private:
     std::vector<AutoEmitter> autoEmitters_;
     uint32_t nextAutoEmitterId_ = 0;
     float timeScale_ = 1.0f;
+    std::unordered_map<std::string, std::unique_ptr<GPUParticleSystem>> authoringSystems_;
+    bool authoringPreviewVisible_ = false;
     bool updatedThisFrame_ = false;
     float lastUpdateCpuTimeMs_ = 0.0f;
     float lastDrawCpuTimeMs_ = 0.0f;

@@ -223,6 +223,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
         effect->Update(deltaTime);
     }
 }
+
 void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!GetIsRenderVisible()) return;
 

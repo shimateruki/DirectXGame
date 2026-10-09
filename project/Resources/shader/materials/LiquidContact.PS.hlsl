@@ -52,6 +52,7 @@ float LinearizeDepth(float z)
 
 float2 GetPlaneUV(float3 localPos, float3 normal)
 {
+    // Choose the dominant plane so the contact band follows horizontal and vertical surfaces.
     float3 n = abs(normalize(normal));
     if (n.y >= n.x && n.y >= n.z)
     {
@@ -100,6 +101,7 @@ float4 main(VSOutput input) : SV_TARGET
     float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
     float liquidDepth = input.screenPos.z / input.screenPos.w;
     float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(liquidDepth);
+    // A missing opaque depth sample keeps the band visible; nearby geometry softens intersections.
     float depthFade = (bgDepth >= 0.999f) ? 1.0f : saturate(depthDiff / 0.75f + 0.35f);
 
     float2 noisePush = float2(broad - 0.5f, fine - 0.5f);

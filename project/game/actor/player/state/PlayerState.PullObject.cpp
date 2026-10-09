@@ -19,10 +19,11 @@
 
 void PlayerStatePullObject::Enter(Player* player) {
     DebugConsole::GetInstance()->AddLog("Enter: PullObject");
-    if (!player) return;
+    if (!player)
+        return;
 
     player->SetIsControlActive(false);
-    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
     player->SetSlimeAnimationDirection(targetPos_ - player->GetWorldPosition());
     hookTipPos_ = player->GetWorldPosition();
@@ -32,14 +33,15 @@ void PlayerStatePullObject::Enter(Player* player) {
     Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(true);
-        marker->SetColor({ 0.35f, 0.9f, 1.0f, 1.0f });
+        marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
         marker->GetTransform()->translate = hookTipPos_;
     }
 }
 
 void PlayerStatePullObject::Update(Player* player, float deltaTime) {
     if (!player || !targetObject_) {
-        if (player) player->ChangeState(std::make_unique<PlayerStateIdle>());
+        if (player)
+            player->ChangeState(std::make_unique<PlayerStateIdle>());
         return;
     }
 
@@ -50,10 +52,12 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
     float dist = Math::Length(toTarget);
 
     if (!pullStarted_) {
+        // フック先端が対象に十分近付くまでは、対象の引き寄せを開始しない。
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
         player->SetSlimeAnimationDirection(targetPos - player->GetWorldPosition());
         if (dist < 3.0f) {
             hookTipPos_ = targetPos;
+            // 専用ブロックだけが位置移動を持ち、通常オブジェクトには演出のみ行う。
             if (auto* block = dynamic_cast<GimmickHookPullBlock*>(targetObject_)) {
                 block->StartHookPull(player->GetWorldPosition());
             }
@@ -73,19 +77,21 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
     player->SetSlimePullProgress(std::clamp(timer_ / 0.35f, 0.0f, 1.0f));
 
     if (timer_ > 0.35f) {
+        // 引き寄せ演出の終了時に Idle へ戻し、Exit で入力とマーカーを復元する。
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     }
 }
 
 void PlayerStatePullObject::Exit(Player* player) {
-    if (!player) return;
+    if (!player)
+        return;
 
     player->SetIsControlActive(true);
     Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(false);
-        marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
-        marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+        marker->GetTransform()->scale = {1.0f, 1.0f, 1.0f};
+        marker->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
         marker->GetTransform()->isQuaternionMaster = true;
         marker->UpdateLocalMatrix();
         marker->UpdateWorldMatrix();
@@ -93,27 +99,26 @@ void PlayerStatePullObject::Exit(Player* player) {
 }
 
 void PlayerStatePullObject::UpdateRopeMarker(Player* player, const Vector3& endPos, float thickness) {
-    if (!player) return;
+    if (!player)
+        return;
 
     Object3d* marker = player->GetHookMarker();
-    if (!marker) return;
+    if (!marker)
+        return;
 
     Vector3 startPos = player->GetWorldPosition();
     Vector3 diff = endPos - startPos;
     float len = Math::Length(diff);
-    if (len < 0.01f) len = 0.01f;
+    if (len < 0.01f)
+        len = 0.01f;
 
     marker->SetIsVisible(true);
-    marker->SetColor({ 0.35f, 0.9f, 1.0f, 1.0f });
+    marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
     marker->GetTransform()->translate = startPos + diff * 0.5f;
-    marker->GetTransform()->rotate = {
-        std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
-        std::atan2(diff.x, diff.z),
-        0.0f
-    };
+    marker->GetTransform()->rotate = {std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
+                                      std::atan2(diff.x, diff.z), 0.0f};
     marker->GetTransform()->isQuaternionMaster = false;
-    marker->GetTransform()->scale = { thickness, thickness, len };
+    marker->GetTransform()->scale = {thickness, thickness, len};
     marker->UpdateLocalMatrix();
     marker->UpdateWorldMatrix();
 }
-

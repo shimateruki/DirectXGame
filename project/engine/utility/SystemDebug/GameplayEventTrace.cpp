@@ -11,6 +11,7 @@
 
 namespace {
 std::string ToLowerAscii(std::string value) {
+    // UTF-8 の多バイト列を破壊しないため、英字の大小変換は ASCII に限る。
     for (char& character : value) {
         const unsigned char byte = static_cast<unsigned char>(character);
         if (byte < 0x80) {
@@ -59,6 +60,7 @@ void GameplayEventTrace::Record(
     entry.detail = std::move(detail);
 
     entries_.push_back(std::move(entry));
+    // 長時間のプレイでも記録数を固定し、最も古い行から捨てる。
     while (entries_.size() > kMaxEntries) {
         entries_.pop_front();
     }
@@ -109,6 +111,7 @@ void GameplayEventTrace::DrawImGui() {
 
     std::vector<GameplayEventTraceEntry> snapshot;
     {
+        // 描画中に別スレッドの Record を待たせないよう、ロック下ではコピーだけ行う。
         std::scoped_lock lock(mutex_);
         snapshot.assign(entries_.begin(), entries_.end());
     }

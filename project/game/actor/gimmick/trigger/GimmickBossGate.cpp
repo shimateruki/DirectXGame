@@ -13,7 +13,7 @@ float SmoothStep01(float value) {
     const float t = std::clamp(value, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
-}
+} // namespace
 
 void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -22,16 +22,17 @@ void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& mode
     SetName("Gimmick_BossGate");
     SetStatic(false);
     SetCastShadow(true);
-    SetCollisionAttribute(kGround);
+    SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(0xffffffffu);
 
     Object3d::ColliderConfig collider;
     collider.type = ColliderType::kOBB;
-    collider.center = { 0.0f, 3.5f, 0.0f };
-    collider.size = { 6.0f, 3.5f, 0.55f };
+    collider.center = {0.0f, 3.5f, 0.0f};
+    collider.size = {6.0f, 3.5f, 0.55f};
     SetColliderConfig(collider);
 
-    if (!param_.has_value()) param_.emplace();
+    if (!param_.has_value())
+        param_.emplace();
     param_->gimmickType = "BossGate";
     param_->moveSpeed = 0.58f;
     param_->moveAmount = 8.0f;
@@ -40,6 +41,7 @@ void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& mode
 }
 
 void GimmickBossGate::Update(float deltaTime) {
+    // エディターでは配置位置へ戻し、プレイ中のみ閉鎖率に応じて門を動かします。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
     if (!isPlaying) {
@@ -72,12 +74,11 @@ void GimmickBossGate::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickBossGate::OnTrigger() {
-    OnSwitchEvent(true);
-}
+void GimmickBossGate::OnTrigger() { OnSwitchEvent(true); }
 
 void GimmickBossGate::OnSwitchEvent(bool active) {
-    if (cinematicOverride_) return;
+    if (cinematicOverride_)
+        return;
     if (!active && param_.has_value() && !param_->returnOnOff) {
         return;
     }
@@ -89,7 +90,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
         if (closure_ <= 0.001f) {
             Vector3 cue = authoredPosition_;
             cue.y += 0.1f;
-            VFXSequencer::PlayOneShot("high_crown_gate_close_cue", cue, { 1.0f, 1.0f, 1.0f });
+            VFXSequencer::PlayOneShot("high_crown_gate_close_cue", cue, {1.0f, 1.0f, 1.0f});
         }
     } else {
         SetCollisionEnabled(false);
@@ -117,8 +118,10 @@ void GimmickBossGate::CaptureAuthoredState(bool force) {
     authoredScale_ = GetScale();
     authoredCollisionAttribute_ = GetCollisionAttribute();
     authoredCollisionMask_ = GetCollisionMask();
-    if (authoredCollisionAttribute_ == 0) authoredCollisionAttribute_ = kGround;
-    if (authoredCollisionMask_ == 0) authoredCollisionMask_ = 0xffffffffu;
+    if (authoredCollisionAttribute_ == 0)
+        authoredCollisionAttribute_ = CollisionCategories::Get("ground");
+    if (authoredCollisionMask_ == 0)
+        authoredCollisionMask_ = 0xffffffffu;
     authoredStateCaptured_ = true;
 }
 

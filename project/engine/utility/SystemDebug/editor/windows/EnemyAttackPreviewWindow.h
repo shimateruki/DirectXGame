@@ -6,6 +6,7 @@
 #include "engine/utility/math/Math.h"
 
 #include <string>
+#include <cstdint>
 #include <vector>
 
 class BaseEnemy;
@@ -13,6 +14,7 @@ class BaseScene;
 class Object3d;
 class Player;
 class SceneManager;
+class ProjectWindow;
 
 /// スライム系敵の実際のAIと攻撃演出を、隔離ステージ上で確認するためのプレビューウィンドウ。
 class EnemyAttackPreviewWindow : public IEditable {
@@ -29,18 +31,76 @@ public:
     void DrawImGui() override;
     /// <summary>選択中だけ下段へ表示する再生・スクラブ用タイムラインを描画します。</summary>
     void DrawTimelineWindow();
-    std::string GetName() override { return playerCopyMode_ ? "Player Ability Preview" : "Enemy Attack Preview"; }
+    bool DrawAttackAuthoringHierarchy();
+    void SetAuthoringAssets(ProjectWindow* assets) { authoringAssets_ = assets; }
+    void DrawAttackOverlay(float x, float y, float width, float height);
+    bool IsAuthoringViewportActive() const;
+    std::string GetName() override { return crownMovieMode_ ? "Crown Movie Preview" : (playerCopyMode_ ? "Player Ability Preview" : "Enemy Attack Preview"); }
     bool IsEnabled() const { return enabled_; }
     bool IsPlayerCopyMode() const { return playerCopyMode_; }
     void SetPlayerCopyMode(bool enabled);
+    bool IsCrownMovieMode() const { return crownMovieMode_; }
+    void SetCrownMovieMode();
+    void StopPreview();
     // 他のVFXツールが設定した時間倍率より後に、敵プレビューの停止状態を優先適用します。
     void ApplyEffectPlaybackState();
 
 private:
+#ifdef USE_IMGUI
+    friend struct AttackEditorRuntimeProbe; // 明示的な検証起動でUIと同じ操作を実行します。
+#endif
+    ProjectWindow* authoringAssets_ = nullptr; // Editorが所有。素材サムネイルだけを借用します。
     /// <summary>選択中の敵またはコピー能力のプレビュー用Actorがあるか調べます。</summary>
-    bool HasPreviewActor() const { return playerCopyMode_ ? previewPlayer_ != nullptr : previewEnemy_ != nullptr; }
+    bool HasPreviewActor() const { return crownMovieMode_ ? crownMoviePrepared_ : (playerCopyMode_ ? previewPlayer_ != nullptr : previewEnemy_ != nullptr); }
     /// <summary>コピー能力に固有の入力と動作を設定するUIを描画します。</summary>
     void DrawPlayerCopySettings();
+    void DrawAttackProfileEditor();
+    void DrawTrackInspector();
+    void DrawTrackTimeline();
+    void RememberSequenceEdit(const AttackSequenceDefinition& before);
+    // 保存前の表示部品だけを隔離ステージに配置します。AI・接触判定は実行しません。
+    void BeginPlacementPreview();
+    void UpdatePlacementPreview();
+    void StopPlacementPreview();
+    void ReloadAuthoringProfile();
+    void DrawProjectileInspector();
+    void PreviewDraft(bool keepTime);
+    void RequestDraftRefresh();
+    void DrawPlacementControls();
+    void DrawPlacementGizmo(float x, float y, float width, float height);
+    bool GetPlacementTransform(Vector3& position, Vector3& rotation, Vector3& scale);
+    void ApplyPlacementTransform(const Vector3& position, const Vector3& rotation, const Vector3& scale);
+    // 術者はSceneの参照、生成Objectは攻撃データの選択。既存JSONの番号とは分けます。
+    enum class AuthoringSelectionKind { Attack, Actor, Event, Track };
+    AuthoringSelectionKind GetAuthoringSelectionKind() const;
+    bool authoringActorSelected_ = false;
+    bool hidePlacementActor_ = false;
+    int placementOperation_ = 0; // 0=移動、1=回転、2=大きさ
+    bool placementGizmoUsing_ = false;
+    AttackSequenceDefinition placementGestureBefore_;
+    Object3d* placementObject_ = nullptr; // Sceneが所有する無害な弾モデルの表示用Object。
+    std::string placementGpuSignature_;
+    std::string placementMessage_;
+    bool useDraftProfile_ = false;
+    bool autoApplyDraft_ = true;
+    bool draftRefreshPending_ = false;
+    bool draftRefreshPlaying_ = false;
+    float draftRefreshTime_ = 0;
+    float draftRefreshDelay_ = 0;
+    bool showAttackRadii_ = true;
+    int projectileSection_ = 0; // 発射・本体・判定・軌跡・着弾の選択。
+    EnemyAttackProfile draftProfile_; // 再生中は編集データと分離したスナップショットを使います。
+    bool placementPreview_ = false;
+    uint64_t placementScope_ = 0;
+    std::string placementPreset_;
+    float placementTime_ = 0.0f; // 選択部品の開始からの秒数。
+    // ムービーも既存の固定刻み・エフェクト停止・下段ドッキングを共有します。
+    bool crownMovieMode_ = false;
+    bool crownMoviePrepared_ = false;
+    bool crownDefeatMode_ = false;
+    void DrawCrownDefeatSettings();
+    void DrawCrownMovieSettings();
+    void DrawCrownMovieTimeline();
     bool playerCopyMode_ = false;
     int copyTypeIndex_ = 0;
     int copyActionIndex_ = 0;
@@ -74,6 +134,8 @@ private:
     void SetEffectSimulationScale(float timeScale);
     /// <summary>敵AIとエフェクトを固定フレームだけ進めます。</summary>
     void StepSimulation(float deltaTime);
+    // 実戦と同じ第二形態のカメラカットを、固定刻みのプレビューへ反映します。
+    void ApplySealBarrageMovieCamera();
     /// <summary>実プレイヤーを対象にした弾の命中を検出します。</summary>
     void ResolvePreviewProjectileHits();
     /// <summary>被弾確認用のイベントを実プレイヤーへ送ります。</summary>
@@ -99,7 +161,7 @@ private:
     void ApplyRecommendedSettings();
     /// <summary>攻撃プロファイルの読込・保存・編集破棄を行います。</summary>
     void LoadSelectedProfile();
-    void SaveSelectedProfile();
+    void SaveSelectedProfile(bool restartPreview = true);
     void ResetSelectedProfile();
     /// <summary>選択中の攻撃定義を参照します。存在しない場合はnullptrです。</summary>
     const EnemyAttackDefinition* GetSelectedAttackDefinition() const;
@@ -129,6 +191,8 @@ private:
     bool previewSequenceCompleted_ = false;
     int enemyTypeIndex_ = 0;
     int profileAttackIndex_ = 0;
+    bool falseKingSealBarragePreview_ = false;
+    bool sealBarrageMovieCameraPreview_ = true;
     int giantPreviewModeIndex_ = 0;
     float elapsedTime_ = 0.0f;
     float simulationAccumulator_ = 0.0f;
@@ -145,4 +209,10 @@ private:
     EnemyAttackProfile editableProfile_;
     std::string profileStatus_;
     bool profileDirty_ = false;
+    int selectedTrack_ = -1;
+    std::string authoringIdentity_;
+    std::string authoringAssetName_ = "new_attack";
+    std::vector<AttackSequenceDefinition> authoringUndo_, authoringRedo_;
+    bool authoringGestureOpen_ = false;
+    int authoringDragMode_ = 0; // 0=全体移動、1=開始端、2=終了端
 };

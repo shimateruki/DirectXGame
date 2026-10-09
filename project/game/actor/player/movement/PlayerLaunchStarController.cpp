@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <cmath>
 
-void PlayerLaunchStarController::Start(Player& player, PlayerSlimeAnimator& animator, const Vector3& destination, float arcHeight, float duration)
-{
+// 発射中の操作と衝突マスクを退避し、終了時に戻せるようにします。
+void PlayerLaunchStarController::Start(Player& player, PlayerSlimeAnimator& animator, const Vector3& destination,
+                                       float arcHeight, float duration) {
     if (launchStarActive_ || player.isDead || player.IsCinematicLocked()) {
         return;
     }
@@ -23,7 +24,7 @@ void PlayerLaunchStarController::Start(Player& player, PlayerSlimeAnimator& anim
     launchStarTrailTimer_ = 0.0f;
 
     player.SetIsControlActive(false);
-    player.SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player.SetVelocity({0.0f, 0.0f, 0.0f});
     player.SetCollisionMask(0);
 
     Vector3 direction = launchStarDestination_ - launchStarStart_;
@@ -34,16 +35,15 @@ void PlayerLaunchStarController::Start(Player& player, PlayerSlimeAnimator& anim
         animator.SetMode(PlayerSlimeAnimator::Mode::Jump);
         animator.SetMotionDirection(direction);
     }
-    player.TriggerSlimeImpulse({ 0.78f, 1.28f, 0.78f }, 0.2f);
+    player.TriggerSlimeImpulse({0.78f, 1.28f, 0.78f}, 0.2f);
     player.StartEvasionInvincibility(launchStarDuration_ + 0.2f);
 
     if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-        gpuParticleManager->Emit("launch_star_burst", launchStarStart_ + Vector3{ 0.0f, 0.7f, 0.0f });
+        gpuParticleManager->Emit("launch_star_burst", launchStarStart_ + Vector3{0.0f, 0.7f, 0.0f});
     }
 }
 
-void PlayerLaunchStarController::Cancel(Player& player, bool restoreControl)
-{
+void PlayerLaunchStarController::Cancel(Player& player, bool restoreControl) {
     if (!launchStarActive_) {
         return;
     }
@@ -53,13 +53,13 @@ void PlayerLaunchStarController::Cancel(Player& player, bool restoreControl)
     launchStarTrailTimer_ = 0.0f;
     player.SetCollisionAttribute(launchStarSavedCollisionAttribute_);
     player.SetCollisionMask(launchStarSavedCollisionMask_);
-    player.SetVelocity({ 0.0f, 0.0f, 0.0f });
-    player.SetIsControlActive(
-        restoreControl && launchStarSavedControlActive_ && !player.isDead && !player.IsCinematicLocked());
+    player.SetVelocity({0.0f, 0.0f, 0.0f});
+    player.SetIsControlActive(restoreControl && launchStarSavedControlActive_ && !player.isDead &&
+                              !player.IsCinematicLocked());
 }
 
-void PlayerLaunchStarController::Update(Player& player, PlayerSlimeAnimator& animator, float deltaTime, bool updateAnimation)
-{
+void PlayerLaunchStarController::Update(Player& player, PlayerSlimeAnimator& animator, float deltaTime,
+                                        bool updateAnimation) {
     if (!launchStarActive_) {
         return;
     }
@@ -71,7 +71,7 @@ void PlayerLaunchStarController::Update(Player& player, PlayerSlimeAnimator& ani
     Vector3 position = launchStarStart_ + (launchStarDestination_ - launchStarStart_) * eased;
     position.y += std::sin(t * 3.14159265f) * launchStarArcHeight_;
     player.SetTranslate(position);
-    player.SetVelocity({ 0.0f, 0.0f, 0.0f });
+    player.SetVelocity({0.0f, 0.0f, 0.0f});
     player.SetIsControlActive(false);
 
     Vector3 direction = launchStarDestination_ - launchStarStart_;
@@ -101,14 +101,13 @@ void PlayerLaunchStarController::Update(Player& player, PlayerSlimeAnimator& ani
     launchStarActive_ = false;
     player.SetTranslate(launchStarDestination_);
     player.SetRespawnPosition(launchStarDestination_);
-    player.SetVelocity({ 0.0f, -1.0f, 0.0f });
+    player.SetVelocity({0.0f, -1.0f, 0.0f});
     player.SetCollisionAttribute(launchStarSavedCollisionAttribute_);
     player.SetCollisionMask(launchStarSavedCollisionMask_);
     player.SetIsControlActive(launchStarSavedControlActive_);
-    player.TriggerSlimeImpulse({ 1.18f, 0.82f, 1.18f }, 0.18f);
+    player.TriggerSlimeImpulse({1.18f, 0.82f, 1.18f}, 0.18f);
 
     if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-        gpuParticleManager->Emit("launch_star_burst", launchStarDestination_ + Vector3{ 0.0f, 0.45f, 0.0f });
+        gpuParticleManager->Emit("launch_star_burst", launchStarDestination_ + Vector3{0.0f, 0.45f, 0.0f});
     }
 }
-

@@ -124,6 +124,7 @@ void CameraEditor::SaveSettings() {
 
   RefreshFileList();
 }
+
 void CameraEditor::LoadSettings() {
   // ディレクトリパス + 入力されたファイル名 を結合
   std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
