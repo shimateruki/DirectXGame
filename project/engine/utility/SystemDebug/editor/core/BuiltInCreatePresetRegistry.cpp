@@ -419,14 +419,10 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "Slime", "ピンクスライム" },
         { "Bomb", "ボム" },
         { "Bomber", "ボムスライム" },
-        { "Mushroom", "キノコ" },
         { "GiantSlime", "巨大スライム" },
         { "PrismSlime", "プリズムスライム（中ボス）" },
         { "FalseKingSlime", "偽王スライム（ステージ3ボス）" },
-        { "Bat", "コウモリ" },
-        { "BeamDrone", "ビームドローン" },
         { "RingBurner", "リングバーナー" },
-        { "BossCore", "ボスコア" },
     };
     for (const auto& [type, label] : enemies) {
         changed |= RegisterOrRefreshEnemyPreset("Builtin/Enemy/" + type, EnemyFactory::GetInstance()->CreateEnemy(type, common), label);
@@ -441,7 +437,6 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "SinkingFloor", "沈む床" },
         { "SeesawFloor", "シーソー床" },
         { "DashPanel", "ダッシュパネル" },
-        { "IceFloor", "氷の床" },
         { "TimedSwitch", "時間スイッチ" },
         { "AppearingFloor", "出現床" },
         { "Switch", "汎用スイッチ" },
@@ -451,19 +446,14 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
         { "CopyMemoryStation", "コピー記憶台" },
         { "PrismBarrier", "プリズム障壁" },
         { "BossGate", "ボス闘技場・黒格子ゲート" },
-        { "HookAnchor", "フックアンカー" },
         { "HookPullBlock", "フック可動ブロック" },
-        { "OneWayFloor", "一方通行床" },
         { "LiquidLevel", "水位/マグマ上下" },
         { "MagmaHazard", "マグマダメージ床" },
         { "MagmaGeyser", "周期式マグマ噴出口" },
-        { "FallingSpike", "落下する棘" },
         { "ChainCollapseFloor", "連鎖崩れ床" },
         { "RotatingFloor", "回転床" },
         { "RotatingPillar", "回転柱" },
         { "PhaseFlipFloor", "時間反転床" },
-        { "LaserEmitter", "レーザー発射" },
-        { "LaserNode", "レーザーノード" },
         { "StageGate", "ステージゲート" },
     };
     for (const auto& [type, label] : gimmicks) {

@@ -133,10 +133,9 @@ void DecalSystem::AlignToSurface(
     object.SetDecalSettings(settings);
     object.SetTranslate(surfacePoint + normal * settings.depthOffset);
     object.SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
-    Transform* transform = object.GetTransform();
-    transform->quaternion = BuildSurfaceQuaternion(normal, rotationRadians);
-    transform->rotate = Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform->quaternion));
-    transform->isQuaternionMaster = true;
+    const Quaternion rotation = BuildSurfaceQuaternion(normal, rotationRadians);
+    object.SetQuaternion(rotation);
+    object.SetEulerAngles(Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(rotation)));
     object.UpdateLocalMatrix();
     object.UpdateWorldMatrix();
 }

@@ -66,12 +66,10 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         const float delay = GetStartDelay();
         const float normalized = delay > 0.0f ? (std::min)(stateTimer_ / delay, 1.0f) : 1.0f;
         const float intensity = 0.025f + normalized * 0.045f;
-        GetTransform()->translate.x =
-            startPosition_.x + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
-        GetTransform()->translate.z =
-            startPosition_.z + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        SetTranslateX(startPosition_.x + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
+        SetTranslateZ(startPosition_.z + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
         if (stateTimer_ >= delay) {
-            GetTransform()->translate = startPosition_;
+            SetTranslate(startPosition_);
             ChangeState(State::Moving);
         }
         break;
@@ -80,8 +78,8 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
     case State::Moving: {
         travelledDistance_ = (std::min)(GetTravelDistance(), travelledDistance_ + GetTravelSpeed() * deltaTime);
         const float progress = GetTravelDistance() > 0.0f ? travelledDistance_ / GetTravelDistance() : 1.0f;
-        GetTransform()->translate = startPosition_ + GetTravelDirection() * travelledDistance_;
-        GetTransform()->translate.y += std::sin(progress * 18.8495559f) * 0.055f;
+        SetTranslate(startPosition_ + GetTravelDirection() * travelledDistance_);
+        SetTranslateY(GetTranslate().y + std::sin(progress * 18.8495559f) * 0.055f);
         TriggerPendingHazards(progress);
         if (travelledDistance_ >= GetTravelDistance()) {
             ChangeState(State::Warning);
@@ -92,9 +90,9 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
     case State::Warning: {
         const float intensity = 0.04f + (std::min)(stateTimer_ / GetEndWarningDuration(), 1.0f) * 0.08f;
         const Vector3 endPosition = startPosition_ + GetTravelDirection() * GetTravelDistance();
-        GetTransform()->translate = endPosition;
-        GetTransform()->translate.x += (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
-        GetTransform()->translate.z += (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity;
+        SetTranslate(endPosition);
+        SetTranslateX(GetTranslate().x + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
+        SetTranslateZ(GetTranslate().z + (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f) * intensity);
         if (stateTimer_ >= GetEndWarningDuration()) {
             ChangeState(State::Falling);
         }
@@ -103,10 +101,10 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
 
     case State::Falling:
         fallVelocityY_ -= GetFallGravity() * deltaTime;
-        GetTransform()->translate.y += fallVelocityY_ * deltaTime;
-        GetTransform()->rotate.x += 0.8f * deltaTime;
-        GetTransform()->rotate.z += 0.55f * deltaTime;
-        GetTransform()->isQuaternionMaster = false;
+        SetTranslateY(GetTranslate().y + fallVelocityY_ * deltaTime);
+        SetEulerX(GetRotation().x + 0.8f * deltaTime);
+        SetEulerZ(GetRotation().z + 0.55f * deltaTime);
+        SetQuaternionMaster(false);
         if (stateTimer_ >= GetFallDuration()) {
             ChangeState(State::Hidden);
         }
@@ -138,7 +136,7 @@ bool GimmickHazardRideFloor::OnCollision(Object3d* other) {
     }
 
     if (state_ != State::Hidden) {
-        other->GetTransform()->translate += frameDelta_;
+        other->SetTranslate(other->GetTranslate() + frameDelta_);
     }
     return true;
 }
@@ -198,9 +196,9 @@ void GimmickHazardRideFloor::ResetForRetry() {
     SetIsVisible(true);
     SetCollisionAttribute(CollisionCategories::Get("ground"));
     SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
-    GetTransform()->translate = startPosition_;
-    GetTransform()->rotate = startRotation_;
-    GetTransform()->isQuaternionMaster = false;
+    SetTranslate(startPosition_);
+    SetEulerAngles(startRotation_);
+    SetQuaternionMaster(false);
 }
 
 void GimmickHazardRideFloor::ChangeState(State nextState) {

@@ -124,8 +124,13 @@ void AnimatorControllerEditor::SaveController() {
             if (target->GetAnimatorControllerPath() == fileNameBuffer_ || target->GetAnimatorControllerPath() == path) {
                 target->SetAnimatorController(fileNameBuffer_);
             }
-            if (Player* player = dynamic_cast<Player*>(target); player && std::string(fileNameBuffer_) == "player_slime") {
-                player->ReloadSlimeAnimatorController();
+        }
+        if (std::string(fileNameBuffer_) == "player_slime" && sceneManager_ && sceneManager_->GetCurrentScene()) {
+            // 選択Objectに依存せず、編集中シーンのPlayerへ保存した設定を反映します。
+            for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+                if (Player* player = dynamic_cast<Player*>(object.get())) {
+                    player->ReloadSlimeAnimatorController();
+                }
             }
         }
     }
@@ -200,6 +205,31 @@ void AnimatorControllerEditor::DrawPreviewTargetControls() {
     }
     Object3d* target = ResolvePreviewTarget();
     if (target) {
+        if (Player* player = dynamic_cast<Player*>(target);
+            player && std::string(fileNameBuffer_) == "player_slime") {
+            AnimatorControllerRuntime* runtime = player->GetSlimeAnimatorControllerRuntime();
+            const AnimatorStateDefinition* state = runtime ? runtime->GetCurrentState() : nullptr;
+            ImGui::Text("Playerの現在State: %s", state ? state->name.c_str() : "(未読込)");
+            if (runtime) {
+                ImGui::Text("LocomotionMode: %d / 切替重み: %.2f",
+                    runtime->GetInt("LocomotionMode"), runtime->GetTransitionWeight());
+            }
+            if (selectedStateIndex_ >= 0 && selectedStateIndex_ < static_cast<int>(controller_.states.size())) {
+                const AnimatorStateDefinition& selected = controller_.states[selectedStateIndex_];
+                if (selected.name.rfind("player_", 0) == 0 && !selected.bodyClipName.empty()) {
+                    if (ImGui::Button("保存して選択した能力モーションを確認", ImVec2(-1.0f, 0.0f))) {
+                        SaveController();
+                        if (!player->PlaySlimeAbilityMotion(selected.name, selected.loop, 1.0f,
+                            selected.blendDuration, selected.blendDuration)) {
+                            DebugConsole::GetInstance()->AddLog("Animator ability preview failed: " + selected.name);
+                        }
+                    }
+                    ImGui::TextDisabled("見た目のみを再生します。攻撃判定とダメージは発生しません。");
+                }
+            }
+            ImGui::TextWrapped("保存するとシーン内のPlayerへ再読込します。通常動作はゲーム側の状態から決まり、Model用のState再生ボタンは使いません。");
+            return;
+        }
         ImGui::Text("割り当て中: %s", target->GetAnimatorControllerPath().empty() ? "(なし)" : target->GetAnimatorControllerPath().c_str());
         if (ImGui::Button("このControllerをObjectへ割り当て", ImVec2(-1.0f, 0.0f))) {
             SaveController();
@@ -268,6 +298,9 @@ void AnimatorControllerEditor::DrawStateEditor() {
             ImGui::EndCombo();
         }
         ImGui::TextDisabled("Body Clip未設定時は従来のコードAnimationを使用します。");
+        if (std::string(fileNameBuffer_) == "player_slime" && state.name.rfind("player_", 0) == 0) {
+            ImGui::TextWrapped("能力モーション: State名がC++の再生キーです。Body ClipとSpeedは本編へ反映します。LoopとBlendは攻撃処理側が指定し、Eventはこの別レイヤーでは未接続です。");
+        }
         ImGui::DragFloat("Speed", &state.speed, 0.01f, 0.0f, 8.0f, "%.2fx");
         ImGui::Checkbox("Loop", &state.loop);
         ImGui::DragFloat("Default Blend", &state.blendDuration, 0.01f, 0.0f, 5.0f, "%.3f sec");
@@ -353,18 +386,26 @@ void AnimatorControllerEditor::DrawParameterEditor() {
     if (parameter.type == AnimatorParameterType::Int) ImGui::DragInt("Default", &parameter.defaultInt);
     if (parameter.type == AnimatorParameterType::Bool) ImGui::Checkbox("Default", &parameter.defaultBool);
     if (Object3d* target = ResolvePreviewTarget()) {
-        if (AnimatorControllerRuntime* runtime = target->GetAnimatorControllerRuntime()) {
-            if (parameter.type == AnimatorParameterType::Float) {
-                float value = runtime->GetFloat(parameter.name);
-                if (ImGui::DragFloat("Runtime Value", &value, 0.01f)) runtime->SetFloat(parameter.name, value);
-            } else if (parameter.type == AnimatorParameterType::Int) {
-                int value = runtime->GetInt(parameter.name);
-                if (ImGui::DragInt("Runtime Value", &value)) runtime->SetInt(parameter.name, value);
-            } else if (parameter.type == AnimatorParameterType::Bool) {
-                bool value = runtime->GetBool(parameter.name);
-                if (ImGui::Checkbox("Runtime Value", &value)) runtime->SetBool(parameter.name, value);
-            } else if (ImGui::Button("Trigger発火")) {
-                runtime->SetTrigger(parameter.name);
+        Player* player = dynamic_cast<Player*>(target);
+        const bool isSlimeController = player && std::string(fileNameBuffer_) == "player_slime";
+        AnimatorControllerRuntime* runtime = isSlimeController
+            ? player->GetSlimeAnimatorControllerRuntime() : target->GetAnimatorControllerRuntime();
+        if (runtime) {
+            if (isSlimeController && parameter.name == "LocomotionMode") {
+                ImGui::TextDisabled("現在値: %d （ゲームの行動状態から毎フレーム設定）", runtime->GetInt(parameter.name));
+            } else {
+                if (parameter.type == AnimatorParameterType::Float) {
+                    float value = runtime->GetFloat(parameter.name);
+                    if (ImGui::DragFloat("Runtime Value", &value, 0.01f)) runtime->SetFloat(parameter.name, value);
+                } else if (parameter.type == AnimatorParameterType::Int) {
+                    int value = runtime->GetInt(parameter.name);
+                    if (ImGui::DragInt("Runtime Value", &value)) runtime->SetInt(parameter.name, value);
+                } else if (parameter.type == AnimatorParameterType::Bool) {
+                    bool value = runtime->GetBool(parameter.name);
+                    if (ImGui::Checkbox("Runtime Value", &value)) runtime->SetBool(parameter.name, value);
+                } else if (ImGui::Button("Trigger発火")) {
+                    runtime->SetTrigger(parameter.name);
+                }
             }
         }
     }

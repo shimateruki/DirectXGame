@@ -5,7 +5,7 @@
     "displayName": "星環宮殿・立体構造テスト",
     "id": "stage4",
     "resources": {
-      "bgm": "Resources/bgm/Alarm02.mp3",
+      "bgm": "",
       "camera": "",
       "light": "Resources/json/light/stage3_high_crown.json",
       "skybox": "Resources/skybox/stage3_high_crown.dds"

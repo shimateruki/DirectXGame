@@ -514,7 +514,7 @@ void LightEditor::DrawImGui() {
         if (ImGui::Button(ICON_FA_PLUS " 追加##Point")) lightManager_->AddPointLight();
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Point")) {
-            lightManager_->GetPointLights().clear();
+            lightManager_->ClearPointLights();
             selectedPointLightIndex_ = -1;
         }
 
@@ -539,7 +539,7 @@ void LightEditor::DrawImGui() {
 
         for (int i = 0; i < pointLights.size(); ++i) {
             ImGui::PushID(i);
-            auto& instance = pointLights[i];
+            LightManager::PointLightInstance instance = pointLights[i];
             auto& data = instance.data;
 
             if (selectedPointLightIndex_ == i) {
@@ -553,7 +553,7 @@ void LightEditor::DrawImGui() {
                 }
 
                 if (ImGui::Button(ICON_FA_TRASH " 削除")) {
-                    pointLights.erase(pointLights.begin() + i);
+                    lightManager_->RemovePointLight(static_cast<std::size_t>(i));
                     selectedPointLightIndex_ = -1;
                     ImGui::TreePop();
                     ImGui::PopID();
@@ -598,6 +598,7 @@ void LightEditor::DrawImGui() {
 
                 ImGui::TreePop();
             }
+            lightManager_->SetPointLight(static_cast<std::size_t>(i), instance);
             ImGui::PopID();
         }
     }
@@ -611,7 +612,7 @@ void LightEditor::DrawImGui() {
         if (ImGui::Button(ICON_FA_PLUS " 追加##Spot")) lightManager_->AddSpotLight();
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Spot")) {
-            lightManager_->GetSpotLights().clear();
+            lightManager_->ClearSpotLights();
             selectedSpotLightIndex_ = -1;
         }
 
@@ -636,7 +637,7 @@ void LightEditor::DrawImGui() {
 
         for (int i = 0; i < spotLights.size(); ++i) {
             ImGui::PushID(i + 1000);
-            auto& instance = spotLights[i];
+            LightManager::SpotLightInstance instance = spotLights[i];
             auto& data = instance.data;
 
             if (selectedSpotLightIndex_ == i) {
@@ -650,7 +651,7 @@ void LightEditor::DrawImGui() {
                 }
 
                 if (ImGui::Button(ICON_FA_TRASH " 削除")) {
-                    spotLights.erase(spotLights.begin() + i);
+                    lightManager_->RemoveSpotLight(static_cast<std::size_t>(i));
                     selectedSpotLightIndex_ = -1;
                     ImGui::TreePop();
                     ImGui::PopID();
@@ -682,6 +683,7 @@ void LightEditor::DrawImGui() {
 
                 ImGui::TreePop();
             }
+            lightManager_->SetSpotLight(static_cast<std::size_t>(i), instance);
             ImGui::PopID();
         }
     }

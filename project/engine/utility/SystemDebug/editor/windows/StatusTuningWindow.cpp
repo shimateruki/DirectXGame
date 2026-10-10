@@ -47,8 +47,6 @@ std::string GetModelDisplayName(const std::string& modelName) {
     if (shortName == "slime_yellow") return "サンダースライム";
     if (shortName == "slime_black") return "ブラックスライム";
     if (shortName == "slime") return "スライム";
-    if (shortName == "bat") return "コウモリ";
-    if (shortName == "eye") return "アイ";
     if (shortName == "ring_burner") return "リングバーナー";
     return shortName;
 }

@@ -1,4 +1,4 @@
-﻿#include "PresetEditor.h"
+#include "PresetEditor.h"
 
 #include "ModelManager.h"
 #include "imgui.h"
@@ -55,11 +55,6 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
 
         if (type == "Trampoline") {
             changed |= DrawParamFloat(param, "ジャンプ力", "jumpPower", 18.0f, 0.5f);
-        }
-        else if (type == "LaunchStar") {
-            changed |= DrawParamFloat(param, "発射距離", "moveAmount", 52.0f, 1.0f);
-            changed |= DrawParamFloat(param, "軌道の高さ", "jumpPower", 14.0f, 0.5f);
-            changed |= DrawParamFloat(param, "飛行速度", "speed", 38.0f, 0.5f);
         }
         else if (type == "MovingFloor") {
             changed |= DrawParamFloat(param, "移動速度", "speed", 3.0f, 0.1f);
@@ -167,13 +162,6 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
             changed |= DrawParamFloat(param, "1フェーズの時間", "interval", 2.0f, 0.05f);
             changed |= DrawParamBool(param, "正方向に回転", "startActive", true);
         }
-        else if (type == "LaserEmitter" || type == "LaserNode") {
-            changed |= DrawParamFloat(param, "ダメージ量", "speed", 1.0f, 0.5f);
-            changed |= DrawParamFloat(param, "ダメージ間隔", "interval", 0.6f, 0.05f);
-            changed |= DrawParamFloat(param, "レーザーの太さ", "moveAmount", 0.25f, 0.01f);
-            changed |= DrawParamBool(param, "開始時に有効", "startActive", true);
-            changed |= DrawParamBool(param, "OFFで停止", "returnOnOff", true);
-        }
         else if (type == "StageGate") {
             changed |= DrawParamIntCombo(param, "入口の用途", "actionMode", 0,
                 {"ステージ選択の入口", "指定シーンへ遷移", "指定ステージへ遷移"});
@@ -253,15 +241,7 @@ void PresetEditor::ApplyHiddenCategoryFields(json& data, Category category) {
 
 void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::string& type) {
     if (category == Category::Enemy) {
-        if (type == "Bat") {
-            data["animation"]["animName"] = "ArmatureAction";
-            data["animation"]["isAnimLoop"] = true;
-            SetColliderDefaults(data, 1, { 0.85f, 0.85f, 0.85f });
-        }
-        else if (type == "BeamDrone") {
-            SetColliderDefaults(data, 1, { 1.1f, 1.1f, 1.1f });
-        }
-        else if (type == "GiantSlime") {
+        if (type == "GiantSlime") {
             SetColliderDefaults(data, 1, { 2.2f, 2.2f, 2.2f });
         }
         else {
@@ -274,11 +254,6 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             data["scale"] = { 0.6f, 0.6f, 0.15f };
             data["color"] = { 1.0f, 0.9f, 0.0f, 1.0f };
             SetColliderDefaults(data, 1, { 1.0f, 1.0f, 1.0f });
-        }
-        else if (type == "HookAnchor" || type == "LaserNode") {
-            data["modelName"] = "Primitives/sphere";
-            data["scale"] = { 1.2f, 1.2f, 1.2f };
-            SetColliderDefaults(data, 1, { 2.5f, 2.5f, 2.5f });
         }
         else if (type == "StageGate") {
             data["modelName"] = "Gimmicks/portal_surface";

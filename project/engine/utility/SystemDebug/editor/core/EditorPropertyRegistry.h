@@ -108,7 +108,7 @@ struct EditorPropertyDescriptor {
     std::string serializedPath;
     /// 旧Assetに値が存在しない場合の既定値です。nullは未定義を表します。
     nlohmann::json defaultValue;
-    /// InspectorとProperty Matrixが共有するUI表示情報です。
+    /// Inspectorなどの編集画面で共有するUI表示情報です。
     EditorPropertyUiHints ui;
 };
 

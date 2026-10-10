@@ -282,7 +282,7 @@ public:
     /// <summary>現在のカメラに合わせて描画定数だけを更新する。</summary>
     void RefreshRenderCameraData();
 
-    Transform* GetTransform() { return &transform_; }
+    const Transform* GetTransform() { return &transform_; }
     const Transform& GetTransform() const { return transform_; }
 
     /// <summary>現在のワールド行列から位置を取り出す。</summary>
@@ -299,7 +299,34 @@ public:
     const Vector3& GetTranslate() const { return transform_.translate; }
 
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
+    void SetTranslateX(float x) { transform_.translate.x = x; }
+    void SetTranslateY(float y) { transform_.translate.y = y; }
+    void SetTranslateZ(float z) { transform_.translate.z = z; }
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
+
+    /// <summary>表示用のEuler角を更新する。回転モードは変更しない。</summary>
+    void SetEulerAngles(const Vector3& rotate) { transform_.rotate = rotate; }
+    void SetEulerX(float x) { transform_.rotate.x = x; }
+    void SetEulerY(float y) { transform_.rotate.y = y; }
+    void SetEulerZ(float z) { transform_.rotate.z = z; }
+
+    /// <summary>Quaternionを設定し、次の行列更新で優先する。</summary>
+    void SetQuaternion(const Quaternion& quaternion) { transform_.quaternion = quaternion; transform_.isQuaternionMaster = true; }
+
+    /// <summary>falseを指定すると次の行列更新でEuler角からQuaternionを作る。</summary>
+    void SetQuaternionMaster(bool isQuaternionMaster) { transform_.isQuaternionMaster = isQuaternionMaster; }
+
+    /// <summary>位置・回転・拡縮を一括設定する。行列と親はコピーしない。</summary>
+    void SetLocalTransform(const Transform& transform) {
+        transform_.translate = transform.translate;
+        transform_.rotate = transform.rotate;
+        transform_.scale = transform.scale;
+        transform_.quaternion = transform.quaternion;
+        transform_.isQuaternionMaster = transform.isQuaternionMaster;
+    }
+
+    /// <summary>オブジェクト階層に属さない外部アンカーを親行列として参照する。</summary>
+    void SetTransformAnchor(const Transform* anchor) { transform_.parent = anchor; }
 
     /// <summary>Euler角を設定し、回転の主表現をEuler角へ切り替える。</summary>
     void SetRotation(const Vector3& rotate) { transform_.rotate = rotate; transform_.isQuaternionMaster = false;
@@ -764,7 +791,7 @@ public:
     std::string GetItemType() const { return itemType_; }
     virtual void OnRecordEvent(int eventID) {}
 
-    // ゲッター・セッターがいっぱい並んでいるあたりに追加
+    // ゲッター・セッター
     void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
     bool GetEnableNormalMap() const { return meshRenderer_ ? meshRenderer_->GetEnableNormalMap() : false; }
     void SetNormalMap(const std::string& texturePath) { if (meshRenderer_) meshRenderer_->SetNormalMap(texturePath); }
@@ -882,7 +909,16 @@ protected:
     /// <summary>派生クラス固有の実行状態をリプレイ用JSONから戻す。</summary>
     virtual void RestoreReplayCustomState(const json& state);
 
+    // 派生オブジェクトの生成時に同じ描画環境を渡すための参照。
     Object3dCommon* common_ = nullptr;
+
+    /// <summary>派生クラスがアニメーションを先頭から再生するときに使用する。</summary>
+    void ResetAnimationTime() { animationTime_ = 0.0f; }
+
+    /// <summary>派生クラスの複製で、行列と外部アンカーを含む姿勢を引き継ぐ。</summary>
+    void CopyTransformStateFrom(const Object3d& source) { transform_ = source.transform_; }
+
+private:
     std::string name_ = "Object";
     std::string persistentGuid_;
 

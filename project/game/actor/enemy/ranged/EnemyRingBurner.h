@@ -19,14 +19,21 @@ class EnemyRingBurner : public BaseEnemy {
     void RestoreReplayCustomState(const json& state) override;
 
   private:
-    enum class State { Idle, Charge, Wave, Recovery, Suppressed };
+    // 数値は Replay JSON に保存されるため変更しない。
+    enum class State { Idle = 0, Charge = 1, Wave = 2, Recovery = 3, Suppressed = 4 };
+
+    class StateBehavior;
+    class IdleBehavior;
+    class ChargeBehavior;
+    class WaveBehavior;
+    class RecoveryBehavior;
+    class SuppressedBehavior;
+    static const StateBehavior& BehaviorFor(State state);
 
     bool UpdateInactiveState(float deltaTime);
     void ResolveRuntimeTarget();
     void EnsureBaseScale();
     void EnterState(State state, float duration);
-    void BeginCharge();
-    void BeginWave();
     void UpdateCombat(float deltaTime);
     void UpdateWaveDamage(float previousRadius);
     void StopWaveEffects();

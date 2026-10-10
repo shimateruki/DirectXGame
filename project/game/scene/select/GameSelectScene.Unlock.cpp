@@ -259,7 +259,6 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath, lockPosition,
                                                         {0.0f, 0.0f, 0.0f}, {0.58f, 0.58f, 0.58f});
         GPUParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, lockPosition);
-        GameAudioSettings::GetInstance()->PlaySE("crown_get", 0.92f);
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
             camera->StartShake(0.22f, 0.065f, 24.0f, {0.62f, 0.50f, 0.18f});
         }

@@ -14,13 +14,13 @@ class SettingsScene : public BaseScene {
     void Update(float deltaTime) override;
     void Draw() override {}
     void DrawUI() override;
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     std::string GetName() override { return "Settings"; }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     std::unique_ptr<SpriteCommon> spriteCommon_;
     std::vector<std::unique_ptr<Sprite>> sprites_;
     SettingsMenuOverlay menu_;
-    AudioPlayer::AudioHandle bgmHandle_ = AudioPlayer::kInvalidAudioHandle;
 };

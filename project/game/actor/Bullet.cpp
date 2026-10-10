@@ -18,7 +18,7 @@ void Bullet::Initialize(Object3dCommon* common) {
 void Bullet::Fire(const Vector3& position, const Vector3& velocity, float life, uint32_t attribute, uint32_t mask,
                   float damage, const StatusEffectApplication& statusEffect, DamageType damageType) {
 
-    transform_.translate = position;
+    SetTranslate(position);
     velocity_ = velocity;
     gravity_ = 0.0f;
     explosionRadius_ = 0.0f;
@@ -101,17 +101,17 @@ void Bullet::Update(float deltaTime) {
     filter.includeTriggers = true;
 
     const Vector3 direction = displacement / travelDistance;
-    const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(transform_.translate, GetCollisionRadius(),
+    const RaycastHit hit = CollisionManager::GetInstance()->SphereCast(GetTranslate(), GetCollisionRadius(),
                                                                        direction, travelDistance, filter);
     if (hit.isHit && hit.hitObject) {
         // SphereCastが重なりを検出した中心へ止め、同フレーム末尾の通常衝突処理へ渡します。
-        transform_.translate += direction * hit.distance;
+        SetTranslate(GetTranslate() + direction * hit.distance);
         if (explosionRadius_ > 0.0f)
             Explode();
         return;
     }
 
-    transform_.translate += displacement;
+    SetTranslate(GetTranslate() + displacement);
 }
 
 bool Bullet::OnCollision(Object3d* other) {

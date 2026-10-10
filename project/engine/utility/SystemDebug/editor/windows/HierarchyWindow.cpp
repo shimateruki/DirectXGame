@@ -24,7 +24,6 @@
 #include "ModelManager.h"
 #include "DebugConsole.h"
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
-#include "PresetEditor.h"
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
 #include "SceneController.h"
@@ -367,11 +366,9 @@ namespace {
             if (ImGui::MenuItem("動く床")) CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
             if (ImGui::MenuItem("破壊ブロック")) CreateGimmick(editor, scene, "BreakableBlock", useGameViewCursor);
             if (ImGui::MenuItem("ジャンプ台")) CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
-            if (ImGui::MenuItem("スターランチャー")) CreateGimmick(editor, scene, "LaunchStar", useGameViewCursor);
             if (ImGui::MenuItem("沈む床")) CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
             if (ImGui::MenuItem("シーソー床")) CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
             if (ImGui::MenuItem("ダッシュパネル")) CreateGimmick(editor, scene, "DashPanel", useGameViewCursor);
-            if (ImGui::MenuItem("氷の床")) CreateGimmick(editor, scene, "IceFloor", useGameViewCursor);
             if (ImGui::MenuItem("時限スイッチ")) CreateGimmick(editor, scene, "TimedSwitch", useGameViewCursor);
             if (ImGui::MenuItem("出現床")) CreateGimmick(editor, scene, "AppearingFloor", useGameViewCursor);
             if (ImGui::MenuItem("汎用スイッチ")) CreateGimmick(editor, scene, "Switch", useGameViewCursor);
@@ -380,17 +377,13 @@ namespace {
             if (ImGui::MenuItem("ゲームプレイボリューム")) CreateGimmick(editor, scene, "GameplayVolume", useGameViewCursor);
             if (ImGui::MenuItem("コピー記憶台")) CreateGimmick(editor, scene, "CopyMemoryStation", useGameViewCursor);
             if (ImGui::MenuItem("プリズム障壁")) CreateGimmick(editor, scene, "PrismBarrier", useGameViewCursor);
-            if (ImGui::MenuItem("フックアンカー")) CreateGimmick(editor, scene, "HookAnchor", useGameViewCursor);
             if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
-            if (ImGui::MenuItem("一方通行床")) CreateGimmick(editor, scene, "OneWayFloor", useGameViewCursor);
             if (ImGui::MenuItem("水位/マグマ上下")) CreateGimmick(editor, scene, "LiquidLevel", useGameViewCursor);
             if (ImGui::MenuItem("マグマダメージ床")) CreateGimmick(editor, scene, "MagmaHazard", useGameViewCursor);
             if (ImGui::MenuItem("連鎖崩れ床")) CreateGimmick(editor, scene, "ChainCollapseFloor", useGameViewCursor);
             if (ImGui::MenuItem("回転床")) CreateGimmick(editor, scene, "RotatingFloor", useGameViewCursor);
             if (ImGui::MenuItem("回転柱")) CreateGimmick(editor, scene, "RotatingPillar", useGameViewCursor);
             if (ImGui::MenuItem("時間反転床")) CreateGimmick(editor, scene, "PhaseFlipFloor", useGameViewCursor);
-            if (ImGui::MenuItem("レーザー発射")) CreateGimmick(editor, scene, "LaserEmitter", useGameViewCursor);
-            if (ImGui::MenuItem("レーザーノード")) CreateGimmick(editor, scene, "LaserNode", useGameViewCursor);
             if (ImGui::MenuItem("ステージゲート")) CreateGimmick(editor, scene, "StageGate", useGameViewCursor);
             ImGui::EndMenu();
         }
@@ -402,14 +395,10 @@ namespace {
             if (ImGui::MenuItem("スライム")) CreateEnemy(editor, scene, "Slime", useGameViewCursor);
             if (ImGui::MenuItem("ボム")) CreateEnemy(editor, scene, "Bomb", useGameViewCursor);
             if (ImGui::MenuItem("ボマー")) CreateEnemy(editor, scene, "Bomber", useGameViewCursor);
-            if (ImGui::MenuItem("キノコ")) CreateEnemy(editor, scene, "Mushroom", useGameViewCursor);
             if (ImGui::MenuItem("巨大スライム")) CreateEnemy(editor, scene, "GiantSlime", useGameViewCursor);
             if (ImGui::MenuItem("プリズムスライム（中ボス）")) CreateEnemy(editor, scene, "PrismSlime", useGameViewCursor);
             if (ImGui::MenuItem("マグマスライム（中ボス）")) CreateEnemy(editor, scene, "MagmaSlime", useGameViewCursor);
-            if (ImGui::MenuItem("コウモリ")) CreateEnemy(editor, scene, "Bat", useGameViewCursor);
-            if (ImGui::MenuItem("目玉ビーム")) CreateEnemy(editor, scene, "BeamDrone", useGameViewCursor);
             if (ImGui::MenuItem("リングバーナー")) CreateEnemy(editor, scene, "RingBurner", useGameViewCursor);
-            if (ImGui::MenuItem("ボスコア")) CreateEnemy(editor, scene, "BossCore", useGameViewCursor);
             ImGui::EndMenu();
         }
 
@@ -521,18 +510,6 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTrailEmitterEditor());
         }
-        if (ImGui::Selectable("  " ICON_FA_DATABASE " プリセットエディタ (Preset Editor)", EditorManager::GetInstance()->GetSelectedObject() == PresetEditor::GetInstance())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
-        }
-        if (editor_->GetSceneValidator() && ImGui::Selectable("  " ICON_FA_CHECK_CIRCLE " シーン視覚監査 (Scene Visual Audit)", currentObj == editor_->GetSceneValidator())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneValidator());
-        }
-        if (editor_->GetLevelDesignLabWindow() && ImGui::Selectable("  " ICON_FA_DRAFTING_COMPASS " レベル設計ラボ (Level Design Lab)", currentObj == editor_->GetLevelDesignLabWindow())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetLevelDesignLabWindow());
-        }
         if (editor_->GetSceneInventoryWindow() && ImGui::Selectable("  " ICON_FA_CHART_BAR " 配置物集計 (Scene Inventory)", currentObj == editor_->GetSceneInventoryWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneInventoryWindow());
@@ -568,46 +545,21 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimatorControllerEditor());
         }
-        if (editor_->GetEventLinkGraph() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " イベントリンク図 (Event Link Graph)", currentObj == editor_->GetEventLinkGraph())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
-        }
-        if (editor_->GetNodeGraphEditorWindow() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " 演出ノード (Effect Sequence Graph)", currentObj == editor_->GetNodeGraphEditorWindow())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetNodeGraphEditorWindow());
-        }
         if (editor_->GetTextSpriteGenerator() && ImGui::Selectable("  " ICON_FA_FONT " テキストPNG生成 (Text PNG)", currentObj == editor_->GetTextSpriteGenerator())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTextSpriteGenerator());
-        }
-        if (editor_->GetText3DGenerator() && ImGui::Selectable("  " ICON_FA_CUBE " 3Dテキスト生成 (Text 3D)", currentObj == editor_->GetText3DGenerator())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetText3DGenerator());
         }
         if (editor_->GetModelOptimizerWindow() && ImGui::Selectable("  " ICON_FA_COMPRESS_ARROWS_ALT " モデル最適化 (Model Optimizer)", currentObj == editor_->GetModelOptimizerWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetModelOptimizerWindow());
         }
-        if (editor_->GetTerrainEditorWindow() && ImGui::Selectable("  " ICON_FA_MOUNTAIN " 地形生成 (Terrain Builder)", currentObj == editor_->GetTerrainEditorWindow())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetTerrainEditorWindow());
-        }
         if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
         }
-        if (editor_->GetPropertyMatrixWindow() && ImGui::Selectable("  " ICON_FA_TABLE " プロパティマトリクス (Property Matrix)", currentObj == editor_->GetPropertyMatrixWindow())) {
-            // 表へ渡す複数選択を維持したまま、専用ウィンドウとInspectorを開きます。
-            editor_->GetPropertyMatrixWindow()->Open();
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetPropertyMatrixWindow());
-        }
         if (editor_->GetStatusTuningWindow() && ImGui::Selectable("  " ICON_FA_SLIDERS_H " ステータス管理 (Status Management)", currentObj == editor_->GetStatusTuningWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetStatusTuningWindow());
-        }
-        if (editor_->GetJsonBackupWindow() && ImGui::Selectable("  " ICON_FA_SAVE " JSONバックアップ (Json Backup)", currentObj == editor_->GetJsonBackupWindow())) {
-            editor_->SetSelectedObject(nullptr);
-            EditorManager::GetInstance()->SetSelectedObject(editor_->GetJsonBackupWindow());
         }
         if (editor_->GetAudioSettingsWindow() && ImGui::Selectable("  " ICON_FA_MUSIC " 音声設定 (Audio Settings)", currentObj == editor_->GetAudioSettingsWindow())) {
             editor_->SetSelectedObject(nullptr);
@@ -843,9 +795,9 @@ void HierarchyWindow::Draw() {
                 sourceObj->SetParent(nullptr, true);
                 Vector3 t, rDeg, s;
                 ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
-                sourceObj->GetTransform()->translate = t;
-                sourceObj->GetTransform()->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
-                sourceObj->GetTransform()->scale = s;
+                sourceObj->SetTranslate(t);
+                sourceObj->SetEulerAngles({ ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
+                sourceObj->SetScale(s);
                 sourceObj->UpdateWorldMatrix();
                 editor_->RegisterObjectEdited(sourceObj, beforeState, "Unparent Object");
             }

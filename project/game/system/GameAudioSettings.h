@@ -22,7 +22,7 @@ class GameAudioSettings {
     static GameAudioSettings* GetInstance();
 
     void Initialize();
-    // JSON の不正な項目・重複 ID は読み飛ばし、欠けた既定音声を補う。
+    // JSON の不正な項目・重複 ID は読み飛ばす。Editor で登録した分だけ有効。
     void Load();
     void Save() const;
 
@@ -31,6 +31,9 @@ class GameAudioSettings {
 
     SoundEntry* FindEntry(const std::string& id);
     const SoundEntry* FindEntry(const std::string& id) const;
+    // Editor で音声を付け直すための登録・削除。重複 ID と空の必須項目を拒否する。
+    bool AddEntry(const SoundEntry& entry);
+    bool RemoveEntry(const std::string& id);
 
     // 見つからない ID は fallback を返す。返す音量と設定する音量は 0～1 に収める。
     float GetVolume(const std::string& id, float fallback = 1.0f) const;
@@ -48,8 +51,6 @@ class GameAudioSettings {
     GameAudioSettings(const GameAudioSettings&) = delete;
     GameAudioSettings& operator=(const GameAudioSettings&) = delete;
 
-    void EnsureDefaultEntries();
-    void AddDefaultEntry(const SoundEntry& entry);
     static float ClampVolume(float value);
 
     std::string filePath_ = "Resources/json/audio/audio_settings.json";

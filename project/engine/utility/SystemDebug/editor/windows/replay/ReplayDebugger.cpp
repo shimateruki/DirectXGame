@@ -945,8 +945,7 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
                         recreated->SetPersistentGuid(snapshot.persistentGuid))) {
                     current = recreated.get();
                     current->SetReplayRetained(true);
-                    CollisionManager::GetInstance()->AddObject(current);
-                    scene->GetObjects().push_back(std::move(recreated));
+                    scene->AddObjectImmediate(std::move(recreated));
                     currentObjectIds.insert(current->EnsureReplayId());
                     if (!snapshot.persistentGuid.empty()) {
                         objectsByGuid[snapshot.persistentGuid] = current;

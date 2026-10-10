@@ -10,6 +10,7 @@ class EnemyBomber : public BaseEnemy {
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     void SetCarried(bool isCarried) override;
+    void BindSceneSpawnContext(BaseScene* scene) override;
     void ApplyManagedScale(const Vector3& scale) override {
         baseScale_ = scale;
         hasBaseScale_ = true;

@@ -15,10 +15,6 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
 
     IEditable* target = nullptr;
     switch (preset) {
-    case WorkspacePreset::Terrain:
-        SetReplayDebuggerVisible(false);
-        target = debugEditor_->GetTerrainEditorWindow();
-        break;
     case WorkspacePreset::Vfx:
         SetReplayDebuggerVisible(false);
         target = vfxSequencerEditor_.get();
@@ -37,8 +33,8 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
     }
 
     activeWorkspacePreset_ = static_cast<int>(preset);
-    const char* key = "terrain";
-    const char* displayName = "地形編集";
+    const char* key = "vfx";
+    const char* displayName = "VFX編集";
     switch (preset) {
     case WorkspacePreset::Vfx: key = "vfx"; displayName = "VFX編集"; break;
     case WorkspacePreset::Animation: key = "animation"; displayName = "アニメーション編集"; break;
@@ -59,8 +55,8 @@ void GameEditorController::ApplyWorkspacePreset(WorkspacePreset preset) {
 }
 
 void GameEditorController::SaveWorkspacePreset(WorkspacePreset preset) {
-    const char* key = "terrain";
-    const char* displayName = "地形編集";
+    const char* key = "vfx";
+    const char* displayName = "VFX編集";
     switch (preset) {
     case WorkspacePreset::Vfx: key = "vfx"; displayName = "VFX編集"; break;
     case WorkspacePreset::Animation: key = "animation"; displayName = "アニメーション編集"; break;
@@ -90,7 +86,7 @@ void GameEditorController::ProcessPendingWorkspaceLayout() {
 
     const WorkspacePreset preset = static_cast<WorkspacePreset>(pendingWorkspaceLayout_);
     pendingWorkspaceLayout_ = -1;
-    const char* key = "terrain";
+    const char* key = "vfx";
     switch (preset) {
     case WorkspacePreset::Vfx: key = "vfx"; break;
     case WorkspacePreset::Animation: key = "animation"; break;
@@ -111,9 +107,6 @@ void GameEditorController::DrawWorkspaceMenu() {
         return;
     }
 
-    DrawEditorCommandMenuItem(
-        EditorCommandId::WorkspaceTerrain, nullptr,
-        activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Terrain));
     DrawEditorCommandMenuItem(
         EditorCommandId::WorkspaceVfx, nullptr,
         activeWorkspacePreset_ == static_cast<int>(WorkspacePreset::Vfx));

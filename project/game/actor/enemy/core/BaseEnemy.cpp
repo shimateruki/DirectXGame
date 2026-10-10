@@ -20,6 +20,10 @@
 #include <cmath>
 #include <memory>
 
+void BaseEnemy::BindSceneSpawnContext(BaseScene* scene) {
+    SetTarget(scene ? scene->GetPlayer() : nullptr);
+}
+
 namespace {
 // 共通の徘徊、投げ物理、叩きつけ、撃破演出で使う調整値
 constexpr float kWanderPi = 3.14159265358979323846f;
@@ -106,12 +110,8 @@ int GetCoinDropCountByEnemyType(const std::string& enemyType) {
     if (enemyType == "GiantSlime") {
         return 8;
     }
-    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" || enemyType == "Bomber" ||
-        enemyType == "BeamDrone") {
+    if (enemyType == "FireSlime" || enemyType == "ThunderSlime" || enemyType == "WindSlime" || enemyType == "Bomber") {
         return 4;
-    }
-    if (enemyType == "Bat" || enemyType == "Mushroom") {
-        return 2;
     }
     return 3;
 }

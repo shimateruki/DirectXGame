@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 #include "BaseScene.h"
+#include "game/system/IStageProgressScene.h"
 #include "AudioPlayer.h"
 #include "BulletManager.h"
 #include "Camera.h"
@@ -20,6 +21,7 @@
 #include "SpriteDebugEditor.h"
 #include "Text.h"
 #include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/CopyStyleHud.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 #include "SceneController.h"
@@ -38,14 +40,13 @@ class SceneManager;
 class LevelLoader;
 class LockOnSystem;
 class GameRule;
-class BossCore;
 class BaseEnemy;
 struct StageData;
 
 /// <summary>
 /// ゲームプレイ本編のシーン。ステージ読み込み、プレイヤー、HUD、ゴール演出を統合する。
 /// </summary>
-class GamePlayScene : public BaseScene {
+class GamePlayScene : public BaseScene, public IStageProgressScene {
   public:
     GamePlayScene();
     ~GamePlayScene() override;
@@ -96,13 +97,15 @@ class GamePlayScene : public BaseScene {
     bool StartSealBarrageMovie(class EnemyFalseKingSlime* boss, const Vector3& strike);
 
     // --- BaseScene インターフェース ---
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
     std::unique_ptr<Object3d> CreateReplayObject(const json& descriptor) override;
     void OnReplayObjectsRecreated() override;
 
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     void CollectReplaySprites(std::vector<Sprite*>& sprites) override;
     void CaptureReplaySceneState(json& state) const override;
     void RestoreReplaySceneState(const json& state) override;
@@ -120,6 +123,8 @@ class GamePlayScene : public BaseScene {
     void SetIsGoal(bool isGoal);
     void StartGoalPresentation(Object3d* crownObject);
     bool IsGoal() const { return isGoal_; }
+    bool TryStartGoalFromContact(Object3d* actor, Object3d* goal) override;
+    void CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) override;
 
     // スターコイン取得と、残機減少時の一時演出。
     void CollectStarCoin(int coinIndex);
@@ -134,6 +139,7 @@ class GamePlayScene : public BaseScene {
     void HideLifeLostPresentationOverlay();
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     enum class MovieState { kNone, kBridgeDrop };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
@@ -145,7 +151,6 @@ class GamePlayScene : public BaseScene {
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- シーン内部システム ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
@@ -313,7 +318,6 @@ class GamePlayScene : public BaseScene {
 #endif
 
     // --- BGM / SE ---
-    uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
@@ -492,6 +496,8 @@ class GamePlayScene : public BaseScene {
 
     // --- プレイ中 HUD ---
     HudSpriteState hudHpIcon_;
+    HudSpriteState hudCopyStyle_;
+    CopyStyleHud copyStyleHud_;
     HudSpriteState hudHpFrame_;
     HudSpriteState hudHpDamageFill_;
     HudSpriteState hudHpFill_;

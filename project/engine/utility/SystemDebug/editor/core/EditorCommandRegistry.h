@@ -67,13 +67,10 @@ inline constexpr const char* ViewRestoreTemporaryVisibility = "view.restoreTempo
 inline constexpr const char* ViewConsole = "view.console";
 inline constexpr const char* ViewStatus = "view.status";
 inline constexpr const char* ViewReplay = "view.replay";
-inline constexpr const char* ViewBossDebug = "view.bossDebug";
 inline constexpr const char* ViewPortfolio = "view.portfolio";
-inline constexpr const char* WorkspaceTerrain = "workspace.terrain";
 inline constexpr const char* WorkspaceVfx = "workspace.vfx";
 inline constexpr const char* WorkspaceAnimation = "workspace.animation";
 inline constexpr const char* WorkspaceReplay = "workspace.replay";
 inline constexpr const char* HelpManual = "help.manual";
 inline constexpr const char* HelpProfiler = "help.profiler";
-inline constexpr const char* HelpGameplayEventTrace = "help.gameplayEventTrace";
 }

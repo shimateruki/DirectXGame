@@ -4,6 +4,7 @@
 #include "Math.h"
 #include <algorithm>
 #include <cmath>
+#include <typeinfo>
 #include "GhostRecorder.h"
 
 // 派生キャラクターが決めた速度へ重力と外力を加え、最後に Motor で衝突込みの移動を行います。
@@ -36,7 +37,9 @@ void Character::Update(float deltaTime) {
         isDead = true;
     }
 
-    characterMotor_.Move(*this, transform_.translate, velocity_, isGrounded_, deltaTime);
+    Vector3 position = GetTranslate();
+    characterMotor_.Move(*this, position, velocity_, isGrounded_, deltaTime);
+    SetTranslate(position);
 }
 
 void Character::SyncCharacterMotorSettings() {
@@ -107,11 +110,16 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 
     SyncCharacterMotorSettings();
-    characterMotor_.ResolveCollision(transform_.translate, velocity_, isGrounded_, info, attribute);
+    Vector3 position = GetTranslate();
+    characterMotor_.ResolveCollision(position, velocity_, isGrounded_, info, attribute);
+    SetTranslate(position);
 }
 
 // 編集用の複製ではステータスと移動設定を引き継ぎ、経路レコーダーは新しい実体として初期化します。
 std::unique_ptr<Object3d> Character::Clone() const {
+    if (typeid(*this) != typeid(Character)) {
+        return nullptr;
+    }
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
@@ -121,8 +129,8 @@ std::unique_ptr<Object3d> Character::Clone() const {
     if (!GetModelName().empty()) {
         newObj->SetModel(GetModelName());
     }
-    newObj->transform_ = transform_;
-    newObj->SetName(name_);
+    newObj->CopyTransformStateFrom(*this);
+    newObj->SetName(GetName());
     newObj->SetClassName(GetClassName());
     newObj->SetEnemyType(GetEnemyType());
 

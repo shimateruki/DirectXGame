@@ -6,6 +6,8 @@
 #include <memory>
 #include <cstddef>
 
+class BaseScene;
+
 // 敵固有の移動・攻撃姿勢へ最後に重ねる、短い被弾リアクションの見た目です。
 // scaleは倍率、rotationとoffsetはローカル空間の加算値です。
 struct EnemyVisualReactionPose {
@@ -41,6 +43,9 @@ class BaseEnemy : public Character {
         }
         target_ = target;
     }
+
+    // 生成・復元後にシーン側の借用参照を接続する。召喚する敵は派生側で追加設定する。
+    virtual void BindSceneSpawnContext(BaseScene* scene);
 
     // シーン演出などで敵のAI・重力・当たり判定を一時停止します。
     void SetDormant(bool dormant);
@@ -78,10 +83,6 @@ class BaseEnemy : public Character {
     void SetEditorPreviewProfile(const EnemyAttackProfile& profile) {
         if (IsEditorInternal()) attackProfile_ = profile;
     }
-    // 共通攻撃の選択と観測。未移行の敵は従来の専用プレビューを継続します。
-    virtual void SetSequencePreviewAttackId(const std::string&) {}
-    virtual const char* GetSequenceStateLabel() const { return nullptr; }
-
   protected:
     // 弾・範囲攻撃は独立した判定を使い、本体攻撃を持つ敵だけ上書きします。
     virtual float GetBodyAttackDamage() const { return 0.0f; }
@@ -134,15 +135,15 @@ class BaseEnemy : public Character {
     Object3d* target_ = nullptr;       // 追いかける対象。基本的にはプレイヤー。
     float detectionRange_ = 20.0f;     // ターゲットを検知して攻撃AIへ入る距離。
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ短い無敵時間。
-    float colorResetTimer_ = 0.0f;     // 被弾時の赤色を元に戻すタイマー。
     EnemyAttackProfile attackProfile_;
     Vector4 defaultColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 被弾演出後に戻す基準色。
     bool isCarried_ = false;
-    bool isDormant_ = false;
     float throwRecoveryTimer_ = 0.0f;
-    bool isThrownPhysics_ = false;
 
   private:
+    float colorResetTimer_ = 0.0f; // 被弾時の赤色を元に戻すタイマー。
+    bool isDormant_ = false;
+    bool isThrownPhysics_ = false;
     enum class NoticeReactionKind : uint8_t {
         None = 0,
         Detected,

@@ -10,6 +10,7 @@
 #include "SceneManager.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace {
@@ -51,6 +52,163 @@ Vector3 NormalizePlanar(const Vector3& value) {
 }
 } // namespace
 
+// 状態ごとの進行と姿勢を同じ実装へ集めます。State の数値は Replay JSON と互換に保ちます。
+class EnemyRingBurner::StateBehavior {
+  public:
+    virtual ~StateBehavior() = default;
+    virtual void Enter(EnemyRingBurner&) const {}
+    virtual void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const = 0;
+    virtual void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+                                 float& emissive) const = 0;
+    virtual void Exit(EnemyRingBurner&) const {}
+};
+
+class EnemyRingBurner::IdleBehavior final : public StateBehavior {
+  public:
+    void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const override {
+        owner.cooldownTimer_ = (std::max)(0.0f, owner.cooldownTimer_ - deltaTime);
+        owner.HideAttackTelegraph();
+        if (owner.target_ && targetDistance <= detectRange && owner.cooldownTimer_ <= 0.0f) {
+            owner.EnterState(State::Charge, owner.GetChargeDuration());
+        }
+    }
+
+    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4&, float& emissive) const override {
+        const float breathe = std::sin(owner.idleTimer_ * 2.8f) * 0.025f;
+        scale.x *= 1.0f + breathe;
+        scale.y *= 1.0f - breathe * 0.45f;
+        scale.z *= 1.0f + breathe;
+        emissive = 1.35f + (breathe + 0.025f) * 8.0f;
+    }
+};
+
+class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
+  public:
+    void Enter(EnemyRingBurner& owner) const override {
+        owner.waveRadius_ = 0.0f;
+        owner.SpawnChargeEffects();
+        owner.TriggerAttackTelegraphCue({1.0f, 0.20f, 0.025f, 1.0f});
+    }
+
+    void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        owner.stateTimer_ -= deltaTime;
+        const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
+        const float pulseRadius = Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
+        owner.ShowAttackTelegraphCircle(owner.GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f},
+                                        pulseRadius * (std::max)(owner.baseScale_.x, owner.baseScale_.z), progress,
+                                        {1.0f, 0.20f, 0.025f, 0.92f});
+        if (owner.particleTimer_ <= 0.0f) {
+            if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
+                particles->Emit(kChargeParticle, owner.GetWorldPosition() +
+                                                 Vector3{0.0f, 1.12f * owner.baseScale_.y, 0.0f});
+            }
+            owner.particleTimer_ = 0.12f;
+        }
+        if (owner.stateTimer_ <= 0.0f) {
+            owner.EnterState(State::Wave, kWaveDuration);
+        }
+    }
+
+    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+                         float& emissive) const override {
+        const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
+        const float pulse = std::sin(progress * kPi * 10.0f) * (0.03f + progress * 0.07f);
+        scale.x *= 1.0f + pulse;
+        scale.y *= 0.94f - progress * 0.10f;
+        scale.z *= 1.0f + pulse;
+        color = {1.0f, 0.54f + progress * 0.32f, 0.30f, 1.0f};
+        emissive = 2.2f + progress * 4.8f;
+    }
+
+    void Exit(EnemyRingBurner& owner) const override { owner.HideAttackTelegraph(); }
+};
+
+class EnemyRingBurner::WaveBehavior final : public StateBehavior {
+  public:
+    void Enter(EnemyRingBurner& owner) const override {
+        owner.waveDamageDone_ = false;
+        owner.waveRadius_ = owner.GetWaveMaximumRadius() * kWaveStartRadiusRatio;
+        owner.SpawnWaveEffects();
+    }
+
+    void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        owner.stateTimer_ -= deltaTime;
+        const float progress = (std::clamp)(1.0f - owner.stateTimer_ / owner.stateDuration_, 0.0f, 1.0f);
+        const float maximumRadius = owner.GetWaveMaximumRadius();
+        const float previousRadius = owner.waveRadius_;
+        // 発射直後に最大半径へ飛ばず、見た目と同じ等速で一周の輪を広げます。
+        owner.waveRadius_ = Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
+        owner.UpdateWaveDamage(previousRadius);
+        if (owner.stateTimer_ <= 0.0f) {
+            owner.EnterState(State::Recovery, kRecoveryDuration);
+        }
+    }
+
+    void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
+                         float& emissive) const override {
+        const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
+        const float recoil = std::exp(-progress * 8.0f);
+        scale.x *= 1.0f + recoil * 0.13f;
+        scale.y *= 0.84f + (1.0f - recoil) * 0.16f;
+        scale.z *= 1.0f + recoil * 0.13f;
+        color = {1.0f, 0.48f, 0.22f, 1.0f};
+        emissive = 4.2f - progress * 2.2f;
+    }
+
+    void Exit(EnemyRingBurner& owner) const override { owner.StopWaveEffects(); }
+};
+
+class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
+  public:
+    void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        owner.stateTimer_ -= deltaTime;
+        if (owner.stateTimer_ <= 0.0f) {
+            owner.EnterState(State::Idle, 0.01f);
+            owner.cooldownTimer_ = owner.GetCooldownDuration();
+        }
+    }
+
+    void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4&, float& emissive) const override {
+        scale.y *= 0.94f;
+        emissive = 1.05f;
+    }
+};
+
+class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
+  public:
+    void Enter(EnemyRingBurner& owner) const override {
+        owner.HideAttackTelegraph();
+        owner.StopWaveEffects();
+    }
+
+    void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        owner.stateTimer_ -= deltaTime;
+        if (owner.stateTimer_ <= 0.0f) {
+            owner.EnterState(State::Recovery, kRecoveryDuration);
+        }
+    }
+
+    void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4& color,
+                         float& emissive) const override {
+        scale.x *= 1.05f;
+        scale.y *= 0.82f;
+        scale.z *= 1.05f;
+        color = {0.38f, 0.92f, 1.0f, 1.0f};
+        emissive = 0.72f;
+    }
+};
+
+const EnemyRingBurner::StateBehavior& EnemyRingBurner::BehaviorFor(State state) {
+    static const IdleBehavior idle;
+    static const ChargeBehavior charge;
+    static const WaveBehavior wave;
+    static const RecoveryBehavior recovery;
+    static const SuppressedBehavior suppressed;
+    static const std::array<const StateBehavior*, 5> behaviors = {
+        &idle, &charge, &wave, &recovery, &suppressed};
+    return *behaviors[static_cast<std::size_t>(state)];
+}
+
 void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_RingBurner");
@@ -91,8 +249,6 @@ void EnemyRingBurner::Update(float deltaTime) {
     if (IsTargetStandingOnTop()) {
         if (state_ != State::Suppressed) {
             EnterState(State::Suppressed, kSuppressedReleaseDuration);
-            HideAttackTelegraph();
-            StopWaveEffects();
         }
         stateTimer_ = kSuppressedReleaseDuration;
         cooldownTimer_ = GetCooldownDuration() * 0.38f;
@@ -134,87 +290,21 @@ void EnemyRingBurner::EnsureBaseScale() {
 }
 
 void EnemyRingBurner::EnterState(State state, float duration) {
+    BehaviorFor(state_).Exit(*this);
     state_ = state;
     stateDuration_ = (std::max)(duration, 0.001f);
     stateTimer_ = stateDuration_;
     if (state != State::Wave) {
         waveDamageDone_ = false;
     }
-}
-
-void EnemyRingBurner::BeginCharge() {
-    EnterState(State::Charge, GetChargeDuration());
-    waveRadius_ = 0.0f;
-    SpawnChargeEffects();
-    TriggerAttackTelegraphCue({1.0f, 0.20f, 0.025f, 1.0f});
-}
-
-void EnemyRingBurner::BeginWave() {
-    EnterState(State::Wave, kWaveDuration);
-    waveDamageDone_ = false;
-    waveRadius_ = GetWaveMaximumRadius() * kWaveStartRadiusRatio;
-    HideAttackTelegraph();
-    SpawnWaveEffects();
+    BehaviorFor(state_).Enter(*this);
 }
 
 void EnemyRingBurner::UpdateCombat(float deltaTime) {
     const float targetDistance = GetPlanarTargetDistance();
     const float configuredRange = param_.has_value() ? param_->detectionRange : detectionRange_;
     const float detectRange = (std::clamp)(configuredRange, 8.0f, 80.0f);
-
-    switch (state_) {
-    case State::Idle:
-        cooldownTimer_ = (std::max)(0.0f, cooldownTimer_ - deltaTime);
-        HideAttackTelegraph();
-        if (target_ && targetDistance <= detectRange && cooldownTimer_ <= 0.0f) {
-            BeginCharge();
-        }
-        break;
-    case State::Charge: {
-        stateTimer_ -= deltaTime;
-        const float progress = 1.0f - (std::max)(0.0f, stateTimer_) / stateDuration_;
-        const float pulseRadius = Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
-        ShowAttackTelegraphCircle(GetWorldPosition() + Vector3{0.0f, 0.06f, 0.0f},
-                                  pulseRadius * (std::max)(baseScale_.x, baseScale_.z), progress,
-                                  {1.0f, 0.20f, 0.025f, 0.92f});
-        if (particleTimer_ <= 0.0f) {
-            if (auto* particles = GPUParticleManager::GetInstance(); particles->IsInitialized()) {
-                particles->Emit(kChargeParticle, GetWorldPosition() + Vector3{0.0f, 1.12f * baseScale_.y, 0.0f});
-            }
-            particleTimer_ = 0.12f;
-        }
-        if (stateTimer_ <= 0.0f) {
-            BeginWave();
-        }
-        break;
-    }
-    case State::Wave: {
-        stateTimer_ -= deltaTime;
-        const float progress = (std::clamp)(1.0f - stateTimer_ / stateDuration_, 0.0f, 1.0f);
-        const float maximumRadius = GetWaveMaximumRadius();
-        const float previousRadius = waveRadius_;
-        // 発射直後に最大半径へ飛ばず、見た目と同じ等速で一周の輪を広げます。
-        waveRadius_ = Math::Lerp(maximumRadius * kWaveStartRadiusRatio, maximumRadius, progress);
-        UpdateWaveDamage(previousRadius);
-        if (stateTimer_ <= 0.0f) {
-            EnterState(State::Recovery, kRecoveryDuration);
-        }
-        break;
-    }
-    case State::Recovery:
-        stateTimer_ -= deltaTime;
-        if (stateTimer_ <= 0.0f) {
-            EnterState(State::Idle, 0.01f);
-            cooldownTimer_ = GetCooldownDuration();
-        }
-        break;
-    case State::Suppressed:
-        stateTimer_ -= deltaTime;
-        if (stateTimer_ <= 0.0f) {
-            EnterState(State::Recovery, kRecoveryDuration);
-        }
-        break;
-    }
+    BehaviorFor(state_).Update(*this, deltaTime, targetDistance, detectRange);
 }
 
 void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
@@ -254,47 +344,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
     Vector4 targetColor = defaultColor_;
     float emissive = 1.35f;
 
-    switch (state_) {
-    case State::Idle: {
-        const float breathe = std::sin(idleTimer_ * 2.8f) * 0.025f;
-        targetScale.x *= 1.0f + breathe;
-        targetScale.y *= 1.0f - breathe * 0.45f;
-        targetScale.z *= 1.0f + breathe;
-        emissive = 1.35f + (breathe + 0.025f) * 8.0f;
-        break;
-    }
-    case State::Charge: {
-        const float progress = 1.0f - (std::max)(0.0f, stateTimer_) / stateDuration_;
-        const float pulse = std::sin(progress * kPi * 10.0f) * (0.03f + progress * 0.07f);
-        targetScale.x *= 1.0f + pulse;
-        targetScale.y *= 0.94f - progress * 0.10f;
-        targetScale.z *= 1.0f + pulse;
-        targetColor = {1.0f, 0.54f + progress * 0.32f, 0.30f, 1.0f};
-        emissive = 2.2f + progress * 4.8f;
-        break;
-    }
-    case State::Wave: {
-        const float progress = 1.0f - (std::max)(0.0f, stateTimer_) / stateDuration_;
-        const float recoil = std::exp(-progress * 8.0f);
-        targetScale.x *= 1.0f + recoil * 0.13f;
-        targetScale.y *= 0.84f + (1.0f - recoil) * 0.16f;
-        targetScale.z *= 1.0f + recoil * 0.13f;
-        targetColor = {1.0f, 0.48f, 0.22f, 1.0f};
-        emissive = 4.2f - progress * 2.2f;
-        break;
-    }
-    case State::Recovery:
-        targetScale.y *= 0.94f;
-        emissive = 1.05f;
-        break;
-    case State::Suppressed:
-        targetScale.x *= 1.05f;
-        targetScale.y *= 0.82f;
-        targetScale.z *= 1.05f;
-        targetColor = {0.38f, 0.92f, 1.0f, 1.0f};
-        emissive = 0.72f;
-        break;
-    }
+    BehaviorFor(state_).ApplyVisualPose(*this, targetScale, targetColor, emissive);
 
     Vector3 currentScale = GetScale();
     currentScale = Math::Lerp(currentScale, targetScale, (std::min)(1.0f, deltaTime * 12.0f));

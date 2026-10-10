@@ -189,7 +189,6 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp">
-    <ClCompile Include="engine\utility\SystemDebug\GameplayEventTrace.cpp" />
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp">
@@ -263,7 +262,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Indexing.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\AssetDatabase.DDSCache.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\DebugEditor.View.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -384,9 +382,6 @@
     <ClCompile Include="game\actor\enemy\ranged\EnemyBomb.cpp">
       <Filter>Enemies\ranged</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp">
-      <Filter>Enemies\normal</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp">
       <Filter>Enemies\elemental</Filter>
     </ClCompile>
@@ -404,12 +399,6 @@
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Attacks.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Encounter.cpp"><Filter>Enemies\boss\magma</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp"><Filter>Enemies\boss\false_king</Filter></ClCompile>
-    <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp">
-      <Filter>Enemies\flying</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp">
-      <Filter>Enemies\ranged</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp">
       <Filter>Enemies\ranged</Filter>
     </ClCompile>
@@ -511,9 +500,6 @@
     <ClCompile Include="game\actor\player\state\PlayerState.Damage.cpp">
       <Filter>Player\state</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\player\state\PlayerState.Hook.cpp">
-      <Filter>Player\state</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\player\state\PlayerState.Life.cpp">
       <Filter>Player\state</Filter>
     </ClCompile>
@@ -556,7 +542,6 @@
     <ClCompile Include="engine\animation\BodyAnimationClip.cpp" />
     <ClCompile Include="game\system\GhostDirector.Studio.cpp" />
     <ClCompile Include="engine\animation\AnimatorController.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\core\BossCore.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -587,9 +572,6 @@
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Timeline.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -609,16 +591,10 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp">
@@ -643,20 +619,10 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.Report.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneInventoryWindow.cpp">
@@ -720,9 +686,6 @@
     <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\movement\GimmickLaunchStar.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\gimmick\block\GimmickChikuwaBlock.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -735,9 +698,6 @@
     <ClCompile Include="game\actor\gimmick\stage\GimmickCoin.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\trigger\GimmickHookAnchor.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\gimmick\movement\GimmickSinkingFloor.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
@@ -745,9 +705,6 @@
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\movement\GimmickDashPanel.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\gimmick\movement\GimmickIceFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\trigger\GimmickTimedSwitch.cpp">
@@ -774,9 +731,6 @@
     <ClCompile Include="game\actor\gimmick\trigger\GimmickHookPullBlock.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\movement\GimmickOneWayFloor.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\gimmick\stage\GimmickLiquidLevel.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
@@ -789,12 +743,6 @@
     <ClCompile Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.cpp">
       <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserEmitter.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserNode.cpp">
-      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClCompile>
     <ClCompile Include="game\actor\gimmick\combat\GimmickFireCannon.cpp">
       <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClCompile>
@@ -802,9 +750,6 @@
       <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp">
-      <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\gimmick\combat\GimmickFallingSpike.cpp">
       <Filter>驛｢・ｧ繝ｻ・ｽ驛｢譎｢・ｽ・ｼ驛｢・ｧ繝ｻ・ｹ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\stage\GimmickStageGate.cpp">
@@ -1015,7 +960,6 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\io</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\particle\ParticleCommon.h">
-    <ClInclude Include="engine\utility\SystemDebug\GameplayEventTrace.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyTransaction.h" />
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\3d</Filter>
     </ClInclude>
@@ -1408,9 +1352,6 @@
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h">
       <Filter>Enemies\ranged</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h">
-      <Filter>Enemies\normal</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h">
       <Filter>Enemies\elemental</Filter>
     </ClInclude>
@@ -1428,12 +1369,6 @@
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h"><Filter>Enemies\boss\magma</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Internal.h"><Filter>Enemies\boss\magma</Filter></ClInclude>
     <ClInclude Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.h"><Filter>Enemies\boss\false_king</Filter></ClInclude>
-    <ClInclude Include="game\actor\enemy\flying\EnemyBat.h">
-      <Filter>Enemies\flying</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h">
-      <Filter>Enemies\ranged</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\enemy\ranged\EnemyRingBurner.h">
       <Filter>Enemies\ranged</Filter>
     </ClInclude>
@@ -1817,9 +1752,6 @@
     <ClInclude Include="game\actor\player\state\PlayerState.Damage.h">
       <Filter>Player\state</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\player\state\PlayerState.Hook.h">
-      <Filter>Player\state</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\player\state\PlayerState.Life.h">
       <Filter>Player\state</Filter>
     </ClInclude>
@@ -1861,7 +1793,6 @@
     </ClInclude>
     <ClInclude Include="engine\animation\BodyAnimationClip.h" />
     <ClInclude Include="engine\animation\AnimatorController.h" />
-    <ClInclude Include="game\actor\enemy\boss\core\BossCore.h"><Filter>Enemies\boss\core</Filter></ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1898,9 +1829,6 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1915,16 +1843,10 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h">
@@ -1946,19 +1868,12 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\core\SceneSerializer.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneInventoryWindow.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -1979,7 +1894,6 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\core\AssetDatabase.Internal.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorAssetDragPayload.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorTransactionManager.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2033,9 +1947,6 @@
     <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\movement\GimmickLaunchStar.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\gimmick\block\GimmickChikuwaBlock.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2048,9 +1959,6 @@
     <ClInclude Include="game\actor\gimmick\stage\GimmickCoin.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\trigger\GimmickHookAnchor.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\gimmick\movement\GimmickSinkingFloor.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
@@ -2058,9 +1966,6 @@
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\movement\GimmickDashPanel.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\gimmick\movement\GimmickIceFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\trigger\GimmickTimedSwitch.h">
@@ -2087,9 +1992,6 @@
     <ClInclude Include="game\actor\gimmick\trigger\GimmickHookPullBlock.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\movement\GimmickOneWayFloor.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\gimmick\stage\GimmickLiquidLevel.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
@@ -2102,12 +2004,6 @@
     <ClInclude Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.h">
       <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserEmitter.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserNode.h">
-      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h">
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
@@ -2115,9 +2011,6 @@
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h">
-      <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\gimmick\combat\GimmickFallingSpike.h">
       <Filter>驛｢譎渉・･郢晢ｽ｣驛｢謨鳴驛｢譎｢・ｽ・ｼ 驛｢譎・ｽｼ譁撰ｼ憺Δ・ｧ繝ｻ・､驛｢譎｢・ｽ・ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h">
@@ -2173,92 +2066,6 @@
     <ResourceCompile Include="DirectXGame.rc">
       <Filter>繝ｪ繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="imgui-node-editor">
-      <UniqueIdentifier>{2c3e60bf-4654-4da5-8e6b-9b623987db8f}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="externals\imgui-node-editor\crude_json.cpp">
-      <Filter>imgui-node-editor</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_canvas.cpp">
-      <Filter>imgui-node-editor</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor.cpp">
-      <Filter>imgui-node-editor</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor_api.cpp">
-      <Filter>imgui-node-editor</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="externals\imgui-node-editor\crude_json.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.inl">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_canvas.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.inl">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.h">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.inl">
-      <Filter>imgui-node-editor</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\nodegraph">
-      <UniqueIdentifier>{91a4df94-a649-4b3f-8567-36f76d822e3c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\nodegraph">
-      <UniqueIdentifier>{6374c075-8740-43a7-9385-1b2f61acdb72}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    
-    
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClCompile>
-    
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClCompile>
-    
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.cpp">
-      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    
-    
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClInclude>
-    
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClInclude>
-    
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h">
-      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ\engine\nodegraph</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\player\copy\PinkSlimeCopyAbility.cpp">
@@ -2353,12 +2160,8 @@
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h"><Filter>Enemies\boss\prism</Filter></ClInclude>
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Attacks.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Encounter.cpp"><Filter>Enemies\boss\prism</Filter></ClCompile>
-    <ClInclude Include="game\actor\enemy\boss\core\BossCore.Internal.h"><Filter>Enemies\boss\core</Filter></ClInclude>
-    <ClCompile Include="game\actor\enemy\boss\core\BossCore.Sequence.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="game\actor\player\movement\PlayerLaunchStarController.cpp"><Filter>Player\movement</Filter></ClCompile>
-    <ClInclude Include="game\actor\player\movement\PlayerLaunchStarController.h"><Filter>Player\movement</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\core\editor\GameEditorController.Internal.h"><Filter>EditorOrganization\Controller</Filter></ClInclude>
@@ -2382,8 +2185,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp"><Filter>EditorOrganization\Replay</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="game\actor\enemy\boss\core\BossArmorFlightController.h"><Filter>Enemies\boss\core</Filter></ClInclude>
-    <ClCompile Include="game\actor\enemy\boss\core\BossArmorFlightController.cpp"><Filter>Enemies\boss\core</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="EditorOrganization"><UniqueIdentifier>{45b7f158-22d4-405b-98bb-ea41549bb6d2}</UniqueIdentifier></Filter>

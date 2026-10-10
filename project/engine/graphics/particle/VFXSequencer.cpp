@@ -3,7 +3,6 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "Easing.h"
-#include "GameplayEventTrace.h"
 #include "InputManager.h"
 #include "GPUParticleManager.h"
 #include "LightManager.h"
@@ -22,43 +21,6 @@ namespace {
     constexpr const char* kSequenceDirectory = "Resources/json/vfx_sequence/";
     constexpr float kDegreesToRadians = 3.14159265358979323846f / 180.0f;
     float gameplayTimeScale = 1.0f;
-
-    const char* GetVFXEventTypeName(VFXEventType type) {
-        switch (type) {
-        case VFXEventType::GPUParticle: return "GPU Particle";
-        case VFXEventType::MeshEffect: return "Mesh Effect";
-        case VFXEventType::SoundEffect: return "Audio Event";
-        case VFXEventType::MovingParticle: return "Moving Particle";
-        case VFXEventType::CameraShake: return "Camera Shake";
-        case VFXEventType::PostEffectPulse: return "Post Effect";
-        case VFXEventType::LightPulse: return "Light Pulse";
-        case VFXEventType::HitStop: return "Hit Stop";
-        case VFXEventType::ControllerRumble: return "Controller Rumble";
-        case VFXEventType::CameraFovPulse: return "Camera FOV";
-        default: return "Unknown";
-        }
-    }
-
-    std::string DescribeTraceTarget(const Object3d* targetObject) {
-        if (!targetObject) {
-            return "World";
-        }
-        std::string source = targetObject->GetName();
-        const std::string& guid = targetObject->GetPersistentGuid();
-        if (!guid.empty()) {
-            source += " [" + guid + "]";
-        }
-        return source;
-    }
-
-    void TraceSequence(
-        GameplayEventTracePhase phase,
-        const std::string& sequenceName,
-        const Object3d* targetObject,
-        const std::string& detail = {}) {
-        GameplayEventTrace::GetInstance()->Record(
-            phase, "Feedback Cue", DescribeTraceTarget(targetObject), sequenceName, detail);
-    }
 
     std::vector<std::unique_ptr<VFXSequencer>>& ActiveOneShotSequences() {
         // 呼び出し元がインスタンスを保持しない単発演出を、再生終了まで生存させる。
@@ -328,21 +290,9 @@ void VFXSequencer::AddEvent(
 void VFXSequencer::Play() {
     Reset();
     isPlaying_ = true;
-    TraceSequence(
-        GameplayEventTracePhase::Started,
-        sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
-        targetObject_,
-        std::to_string(events_.size()) + " events");
 }
 
 void VFXSequencer::Stop() {
-    if (isPlaying_) {
-        TraceSequence(
-            GameplayEventTracePhase::Cancelled,
-            sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
-            targetObject_,
-            "Stopped before completion");
-    }
     Reset();
 }
 
@@ -379,16 +329,6 @@ void VFXSequencer::Update(float deltaTime) {
         if (currentTime_ < event.triggerTime) {
             allFinished = false;
             continue;
-        }
-
-        if (!event.hasFired) {
-            GameplayEventTrace::GetInstance()->Record(
-                GameplayEventTracePhase::Fired,
-                GetVFXEventTypeName(event.type),
-                DescribeTraceTarget(targetObject_),
-                event.presetName,
-                (sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_) +
-                    " @ " + std::to_string(event.triggerTime) + " sec");
         }
 
         // 継続型の効果は発火後も毎フレーム更新し、単発型は最初の1回だけ発行する。
@@ -509,11 +449,6 @@ void VFXSequencer::Update(float deltaTime) {
 
     if (allFinished) {
         isPlaying_ = false;
-        TraceSequence(
-            GameplayEventTracePhase::Completed,
-            sequenceName_.empty() ? "(unsaved sequence)" : sequenceName_,
-            targetObject_,
-            std::to_string(events_.size()) + " events completed");
     }
 }
 
@@ -605,11 +540,6 @@ void VFXSequencer::Load(const std::string& sequenceName) {
 
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        TraceSequence(
-            GameplayEventTracePhase::Failed,
-            sequenceName,
-            targetObject_,
-            "Sequence JSONを開けません");
         return;
     }
 
@@ -657,13 +587,6 @@ void VFXSequencer::Load(const std::string& sequenceName) {
     }
     Reset();
 
-    if (events_.empty()) {
-        TraceSequence(
-            GameplayEventTracePhase::Warning,
-            sequenceName,
-            targetObject_,
-            "再生可能なEventがありません");
-    }
     if (DebugConsole::GetInstance()) {
         DebugConsole::GetInstance()->AddLog("Loaded VFX Sequence: " + sequenceName);
     }
@@ -682,11 +605,6 @@ void VFXSequencer::PlayOneShot(const std::string& sequenceName, const Vector3& p
     sequence->Initialize(nullptr);
     sequence->Load(sequenceName);
     if (sequence->GetEvents().empty()) {
-        TraceSequence(
-            GameplayEventTracePhase::Warning,
-            sequenceName,
-            nullptr,
-            "OneShotを開始できません: Eventがありません");
         return;
     }
 
@@ -713,11 +631,6 @@ void VFXSequencer::PlayOneShotOnTarget(
     const Vector3& scale,
     const Vector3& rotation) {
     if (!targetObject) {
-        TraceSequence(
-            GameplayEventTracePhase::Failed,
-            sequenceName,
-            nullptr,
-            "Target Objectがnullです");
         return;
     }
 
@@ -725,11 +638,6 @@ void VFXSequencer::PlayOneShotOnTarget(
     sequence->Initialize(targetObject);
     sequence->Load(sequenceName);
     if (sequence->GetEvents().empty()) {
-        TraceSequence(
-            GameplayEventTracePhase::Warning,
-            sequenceName,
-            targetObject,
-            "Target OneShotを開始できません: Eventがありません");
         return;
     }
 

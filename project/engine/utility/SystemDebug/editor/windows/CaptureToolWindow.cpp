@@ -482,7 +482,7 @@ bool CaptureToolWindow::CaptureGameViewToFile(const fs::path& path) {
 
     if (succeeded) {
         lastOutputPath_ = path;
-        statusText_ = "シーン視覚監査用のGame Viewを保存しました。";
+        statusText_ = "Game Viewを保存しました。";
     }
     return succeeded;
 }

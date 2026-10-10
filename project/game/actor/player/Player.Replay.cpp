@@ -25,9 +25,6 @@ bool IsSupportedMorphTypeValue(int value) {
     case Player::EnemyMorphType::None:
     case Player::EnemyMorphType::Slime:
     case Player::EnemyMorphType::Bomber:
-    case Player::EnemyMorphType::Bat:
-    case Player::EnemyMorphType::BeamDrone:
-    case Player::EnemyMorphType::Mushroom:
     case Player::EnemyMorphType::FireSlime:
     case Player::EnemyMorphType::ThunderSlime:
     case Player::EnemyMorphType::WindSlime:

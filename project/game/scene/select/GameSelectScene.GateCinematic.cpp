@@ -508,10 +508,8 @@ void GameSelectScene::UpdateGateEntryCinematic(float deltaTime) {
             {controlB.x, controlB.y + kGateEntryLiftHeight * 0.35f, controlB.z}, gateEntryInsidePlayerPosition_, diveT);
         Vector3 playerPos = SelectLerpVector3(alignedStart, divePos, SelectClamp01((t - 0.08f) / 0.28f));
 
-        if (Transform* transform = player_->GetTransform()) {
-            transform->translate = playerPos;
-            transform->scale = gateEntryStartPlayerScale_;
-        }
+        player_->SetTranslate(playerPos);
+        player_->SetScale(gateEntryStartPlayerScale_);
         if (clipT >= 0.995f || t >= 0.94f) {
             player_->SetIsVisible(false);
         }

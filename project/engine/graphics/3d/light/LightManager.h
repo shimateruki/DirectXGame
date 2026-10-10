@@ -2,6 +2,7 @@
 #include "MeshRenderer.h"
 #include "DirectXCommon.h"
 #include <vector>
+#include <cstddef>
 #include <wrl.h>
 #include <string>
 #include "Light.h"
@@ -159,10 +160,10 @@ public:
     ID3D12Resource* GetSpotLightResource() { return spotLightResource_.Get(); }
     ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource_.Get(); }
 
-    // エディタとゲーム側が直接編集するライト設定。
+    // Editor は読み取り一覧から値を作り、SetPointLight/SetSpotLight で適用する。
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
-    std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
-    std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
+    const std::vector<PointLightInstance>& GetPointLights() const { return pointLights_; }
+    const std::vector<SpotLightInstance>& GetSpotLights() const { return spotLights_; }
 
     /// <summary>GPUへ反映済みの有効な点光源数を返す。</summary>
     uint32_t GetActivePointLightCount() const {
@@ -195,10 +196,17 @@ public:
     uint32_t GetSkyboxTextureHandle() const { return skyboxTextureHandle_; }
 
     // ライトの追加・削除と一時的な点光源演出。
-    PointLightInstance* AddPointLight();
+    bool AddPointLight();
 
-    /// <summary>新しいスポットライトを追加し、編集可能な要素を返す。</summary>
-    SpotLightInstance* AddSpotLight();
+    /// <summary>新しいスポットライトを追加する。上限に達した場合は false。</summary>
+    bool AddSpotLight();
+
+    bool SetPointLight(std::size_t index, const PointLightInstance& value);
+    bool SetSpotLight(std::size_t index, const SpotLightInstance& value);
+    bool RemovePointLight(std::size_t index);
+    bool RemoveSpotLight(std::size_t index);
+    void ClearPointLights();
+    void ClearSpotLights();
 
     /// <summary>登録された点光源、スポットライト、一時点光源をすべて削除する。</summary>
     void ClearAllLights();

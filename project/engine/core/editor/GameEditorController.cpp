@@ -455,7 +455,6 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		DrawEditorCommandMenuItem(EditorCommandId::ViewConsole, nullptr, showDebugConsole_);
 		DrawEditorCommandMenuItem(EditorCommandId::ViewStatus, nullptr, showTimeController_);
 		DrawEditorCommandMenuItem(EditorCommandId::ViewReplay, nullptr, showReplayDebugger_);
-		DrawEditorCommandMenuItem(EditorCommandId::ViewBossDebug, nullptr, showBossDebug_);
 		ImGui::EndMenu();
 	}
 
@@ -549,7 +548,6 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		DrawEditorCommandMenuItem(EditorCommandId::HelpProfiler, ICON_FA_CHART_BAR " システムプロファイラ");
 		ImGui::EndMenu();
 	}
-		DrawEditorCommandMenuItem(EditorCommandId::HelpGameplayEventTrace, ICON_FA_PROJECT_DIAGRAM " Gameplay Event Trace");
 
 	ImGui::EndMainMenuBar();
 	DrawUnsavedExitConfirmPopup();
@@ -860,7 +858,6 @@ void GameEditorController::DrawToolWindows(
     if (EditorToolSettings::Get().IsVisible("diagnosticWindows")) ProfilerManager::GetInstance()->DrawImGui();
     if (editorQuickSearch_) {
         editorQuickSearch_->Draw();
-    if (EditorToolSettings::Get().IsVisible("diagnosticWindows")) GameplayEventTrace::GetInstance()->DrawImGui();
     }
     if (assetReferenceExplorer_) {
         assetReferenceExplorer_->Draw();
@@ -1122,7 +1119,8 @@ void GameEditorController::DrawSceneDebug(ID3D12GraphicsCommandList* commandList
 // Sprite編集UIとImGui全体を最終バックバッファへ描画する。
 
 void GameEditorController::DrawBackBufferUi() {
-    if (spriteDebugEditor_ && EditorToolSettings::Get().IsVisible("spriteGuides")) {
+	if (spriteDebugEditor_ && (!sceneManager_ || !sceneManager_->IsPlaying()) &&
+		EditorToolSettings::Get().IsVisible("spriteGuides")) {
 		spriteDebugEditor_->Draw();
 	}
 	ImGuiManager::GetInstance()->Draw();

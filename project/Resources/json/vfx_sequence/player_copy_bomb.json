@@ -17,11 +17,6 @@
       ]
     },
     {
-      "type": 2,
-      "presetName": "copy_acquire.wav",
-      "triggerTime": 0.09
-    },
-    {
       "type": 0,
       "presetName": "copy_acquire_bomb",
       "triggerTime": 0.12,

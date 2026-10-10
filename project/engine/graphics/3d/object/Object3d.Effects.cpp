@@ -75,17 +75,11 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 
 }
 
-// ========================================================================
-// Object3d 付属エフェクト処理
-// ------------------------------------------------------------------------
+
 // Object3dに追従するMeshEffectを生成、更新、描画する処理を担当する。
 // 歪み系エフェクトは描画順が重要なので、通常Drawとは分けて管理する。
 // ========================================================================
 void Object3d::UpdateAttachedEffects(float deltaTime) {
-    // =================================================================
-    // ★ 追加: エフェクト用のアンカーを更新（エディタと同じ挙動を再現）
-    // 親のスケールやX,Z回転を無視し、座標と大元のY軸回転だけを反映する
-    // =================================================================
     effectAnchor_.translate = GetWorldPosition();
     effectAnchor_.scale = { 1.0f, 1.0f, 1.0f };
 
@@ -145,7 +139,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         effect->SetRotation(localRot);
 
                         // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
-                        effect->GetTransform()->parent = &effectAnchor_;
+                        effect->SetTransformAnchor(&effectAnchor_);
 
                         attachedEffects1_.push_back(std::move(effect));
                     }
@@ -201,7 +195,7 @@ void Object3d::UpdateAttachedEffects(float deltaTime) {
                         effect->SetRotation(localRot);
 
                         // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
-                        effect->GetTransform()->parent = &effectAnchor_;
+                        effect->SetTransformAnchor(&effectAnchor_);
 
                         attachedEffects2_.push_back(std::move(effect));
                     }

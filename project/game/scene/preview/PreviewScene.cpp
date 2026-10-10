@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "game/scene/preview/PreviewScene.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
@@ -27,8 +27,8 @@
 #include "LevelLoader.h"
 #include "LockOnSystem.h"
 #include "GameRule.h"
+#include "VFXSequencer.h"
 #include "ObjectManager.h"
-#include "game/actor/enemy/boss/core/BossCore.h"
 #include "MeshEffectManager.h"
 #include "WinApp.h"
 #include "IconsFontAwesome5.h"
@@ -81,12 +81,6 @@ const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon)
             return showHurtIcon ? "ui/portraits/slime_hurt.png" : "ui/portraits/slime.png";
         case Player::EnemyMorphType::Bomber:
             return showHurtIcon ? "ui/portraits/bomber_hurt.png" : "ui/portraits/bomber.png";
-        case Player::EnemyMorphType::Bat:
-            return showHurtIcon ? "ui/portraits/bat_hurt.png" : "ui/portraits/bat.png";
-        case Player::EnemyMorphType::BeamDrone:
-            return showHurtIcon ? "ui/portraits/beam_drone_hurt.png" : "ui/portraits/beam_drone.png";
-        case Player::EnemyMorphType::Mushroom:
-            return showHurtIcon ? "ui/portraits/mushroom_hurt.png" : "ui/portraits/mushroom.png";
         case Player::EnemyMorphType::FireSlime:
             return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
         case Player::EnemyMorphType::ThunderSlime:
@@ -155,12 +149,10 @@ void PreviewScene::Initialize() {
     // --- 1. エンジン基盤・リソース初期化 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
 
     LOG("Preview Scene Initialized!");
 
     const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
 
     // --- 2. 各種マネージャ初期化 ---
     EventManager::GetInstance()->ClearAllListeners();
@@ -243,6 +235,8 @@ void PreviewScene::Finalize() {
     particleSystem_.reset();
     particleCommon_.reset();
     hudHpIcon_.reset();
+    copyStyleHud_.Bind(nullptr);
+    hudCopyStyle_.reset();
     hudHpFrame_.reset();
     hudHpDamageFill_.reset();
     hudHpFill_.reset();
@@ -538,8 +532,14 @@ std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& 
 }
 
 void PreviewScene::InitializePreviewHUD() {
+    for (const char* path : CopyStyleHud::kTexturePaths) {
+        Sprite::LoadTexture(path);
+    }
     hudHpIcon_ = CreatePreviewHUDSprite("Resources/sprite/ui/portraits/player.png", {116.0f, 988.0f}, {78.0f, 78.0f},
                                         {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
+    hudCopyStyle_ = CreatePreviewHUDSprite("Resources/sprite/ui/hud/copy_style/pink.png", {92.0f, 834.0f},
+                                          {390.0f, 98.0f}, {0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 0.0f});
+    copyStyleHud_.Bind(hudCopyStyle_.get());
     hudHpDamageFill_ = CreatePreviewHUDSprite("Resources/sprite/ui/hud/hp_damage_fill.png", {162.0f, 988.0f},
                                               {298.0f, 16.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.92f});
     hudHpFill_ = CreatePreviewHUDSprite("Resources/sprite/ui/hud/hp_fill.png", {162.0f, 988.0f}, {298.0f, 16.0f},
@@ -631,6 +631,7 @@ void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& d
 }
 
 void PreviewScene::UpdatePreviewHUD(float deltaTime) {
+    copyStyleHud_.Update(player_, deltaTime);
     const bool visible = player_ != nullptr;
     const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
     const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
@@ -866,6 +867,8 @@ void PreviewScene::DrawPreviewHUD() {
         hudHpHighlight_->Draw();
     if (hudHpIcon_)
         hudHpIcon_->Draw();
+    if (hudCopyStyle_)
+        hudCopyStyle_->Draw();
     if (hudMorphGaugeBack_)
         hudMorphGaugeBack_->Draw();
     if (hudMorphGaugeFill_)
@@ -911,6 +914,21 @@ void PreviewScene::DrawImGui() {
     ImGui::Separator();
     ImGui::TextDisabled("※PreviewScene is a perfect clone of GamePlayScene.");
 #endif
+}
+
+bool PreviewScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+    (void)actor;
+    if (IsGoal()) return false;
+    if (goal) VFXSequencer::PlayOneShot("crown_get_cue", goal->GetWorldPosition());
+    SetIsGoal(true);
+    DebugConsole::GetInstance()->AddLog("PREVIEW GOAL! Press Space to Select.");
+    return true;
+}
+
+void PreviewScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+    (void)worldPosition;
+    CollectStarCoin(coinIndex);
+    DebugConsole::GetInstance()->AddLog("Preview Star Coin " + std::to_string(coinIndex) + " Collected!");
 }
 
 void PreviewScene::StartBridgeDropMovie() {}

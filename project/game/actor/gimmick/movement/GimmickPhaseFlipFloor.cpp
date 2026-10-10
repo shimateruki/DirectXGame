@@ -97,8 +97,8 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
 
     Vector3 rot = baseRotation_;
     rot.x += direction * turn * 3.14159265f;
-    GetTransform()->rotate = rot;
-    GetTransform()->isQuaternionMaster = false;
+    SetEulerAngles(rot);
+    SetQuaternionMaster(false);
 }
 
 Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {

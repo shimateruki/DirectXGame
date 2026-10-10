@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "game/scene/gameover/GameOverScene.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
@@ -94,19 +94,16 @@ SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
                                  : "Resources/json/sprite/gameOverScene.json");
     manifest.AddModel("Characters/player");
     manifest.AddTexture("Resources/sprite/common/white.png");
-    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
     return manifest;
 }
 
 void GameOverScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
 
     ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/GameOver.mp3"));
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);

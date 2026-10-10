@@ -3,16 +3,13 @@
 #include "GimmickMovingFloor.h"
 #include "GimmickHazardRideFloor.h"
 #include "GimmickTrampoline.h"
-#include "GimmickLaunchStar.h"
 #include "GimmickChikuwaBlock.h"
 #include "GimmickBlinkBlock.h"
 #include "GimmickBreakableBlock.h"
 #include "GimmickCoin.h"
-#include "GimmickHookAnchor.h"
 #include "GimmickSinkingFloor.h"
 #include "GimmickSeesawFloor.h"
 #include "GimmickDashPanel.h"
-#include "GimmickIceFloor.h"
 #include "GimmickTimedSwitch.h"
 #include "GimmickAppearingFloor.h"
 #include "GimmickSwitch.h"
@@ -23,18 +20,14 @@
 #include "GimmickPrismBarrier.h"
 #include "GimmickBossGate.h"
 #include "GimmickHookPullBlock.h"
-#include "GimmickOneWayFloor.h"
 #include "GimmickLiquidLevel.h"
 #include "GimmickChainCollapseFloor.h"
 #include "GimmickRotatingObject.h"
 #include "GimmickPhaseFlipFloor.h"
-#include "GimmickLaserEmitter.h"
-#include "GimmickLaserNode.h"
 #include "GimmickStageGate.h"
 #include "GimmickFireCannon.h"
 #include "GimmickMagmaHazard.h"
 #include "GimmickMagmaGeyser.h"
-#include "GimmickFallingSpike.h"
 
 // シーンに記録された種類名からギミックを生成します。未登録種別は配置確認用の代替表示へ送ります。
 
@@ -66,10 +59,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto trampoline = std::make_unique<GimmickTrampoline>();
         trampoline->Initialize(common, "Primitives/cube"); // とりあえず立方体
         newGimmick = std::move(trampoline);
-    } else if (gimmickName == "LaunchStar") {
-        auto launcher = std::make_unique<GimmickLaunchStar>();
-        launcher->Initialize(common, "Gimmicks/star_launch");
-        newGimmick = std::move(launcher);
     } else if (gimmickName == "ChikuwaBlock") {
         auto chikuwa = std::make_unique<GimmickChikuwaBlock>();
         chikuwa->Initialize(common, "Stages/block"); // 足場用のモデル
@@ -88,10 +77,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto coin = std::make_unique<GimmickCoin>();
         coin->Initialize(common, "Primitives/sphere"); // sphereモデルをデフォルトに設定
         newGimmick = std::move(coin);
-    } else if (gimmickName == "HookAnchor") {
-        auto anchor = std::make_unique<GimmickHookAnchor>();
-        anchor->Initialize(common, "Primitives/sphere");
-        newGimmick = std::move(anchor);
     } else if (gimmickName == "SinkingFloor") {
         auto floor = std::make_unique<GimmickSinkingFloor>();
         floor->Initialize(common, "Stages/block");
@@ -104,10 +89,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto panel = std::make_unique<GimmickDashPanel>();
         panel->Initialize(common, "Stages/block");
         newGimmick = std::move(panel);
-    } else if (gimmickName == "IceFloor") {
-        auto floor = std::make_unique<GimmickIceFloor>();
-        floor->Initialize(common, "Stages/block");
-        newGimmick = std::move(floor);
     } else if (gimmickName == "TimedSwitch") {
         auto switchFloor = std::make_unique<GimmickTimedSwitch>();
         switchFloor->Initialize(common, "Stages/block");
@@ -148,10 +129,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto block = std::make_unique<GimmickHookPullBlock>();
         block->Initialize(common, "Stages/block");
         newGimmick = std::move(block);
-    } else if (gimmickName == "OneWayFloor") {
-        auto floor = std::make_unique<GimmickOneWayFloor>();
-        floor->Initialize(common, "Stages/block");
-        newGimmick = std::move(floor);
     } else if (gimmickName == "LiquidLevel") {
         auto liquid = std::make_unique<GimmickLiquidLevel>();
         liquid->Initialize(common, "Stages/block");
@@ -188,14 +165,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto floor = std::make_unique<GimmickPhaseFlipFloor>();
         floor->Initialize(common, "Stages/block");
         newGimmick = std::move(floor);
-    } else if (gimmickName == "LaserEmitter") {
-        auto emitter = std::make_unique<GimmickLaserEmitter>();
-        emitter->Initialize(common, "Primitives/cube");
-        newGimmick = std::move(emitter);
-    } else if (gimmickName == "LaserNode") {
-        auto node = std::make_unique<GimmickLaserNode>();
-        node->Initialize(common, "Primitives/sphere");
-        newGimmick = std::move(node);
     } else if (gimmickName == "FireCannon") {
         auto cannon = std::make_unique<GimmickFireCannon>();
         cannon->Initialize(common, "Primitives/cube");
@@ -208,10 +177,6 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto geyser = std::make_unique<GimmickMagmaGeyser>();
         geyser->Initialize(common, "Stages/magma_vent");
         newGimmick = std::move(geyser);
-    } else if (gimmickName == "FallingSpike") {
-        auto spike = std::make_unique<GimmickFallingSpike>();
-        spike->Initialize(common, "Effects/prism_crystal_spike");
-        newGimmick = std::move(spike);
     } else if (gimmickName == "StageGate") {
         auto gate = std::make_unique<GimmickStageGate>();
         gate->Initialize(common, "Gimmicks/portal_surface");

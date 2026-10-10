@@ -1,8 +1,10 @@
 {
-    "version": 1,
+    "version": 2,
     "name": "player_slime",
     "entryState": "Idle",
-    "parameters": [],
+    "parameters": [
+        { "name": "LocomotionMode", "type": 1, "defaultInt": 0 }
+    ],
     "states": [
         { "name": "Idle", "clipName": "", "bodyClipName": "player_idle", "speed": 1.0, "loop": true, "blendDuration": 0.16, "blendEasing": 4 },
         { "name": "Run", "clipName": "", "bodyClipName": "player_run", "speed": 1.0, "loop": true, "blendDuration": 0.10, "blendEasing": 4 },
@@ -13,7 +15,41 @@
         { "name": "PullEnemy", "clipName": "", "speed": 1.0, "loop": true, "blendDuration": 0.10, "blendEasing": 4 },
         { "name": "Carry", "clipName": "", "speed": 1.0, "loop": true, "blendDuration": 0.14, "blendEasing": 4 },
         { "name": "GateReturn", "clipName": "", "speed": 1.0, "loop": false, "blendDuration": 0.12, "blendEasing": 4 },
-        { "name": "Disabled", "clipName": "", "speed": 1.0, "loop": true, "blendDuration": 0.0, "blendEasing": 0 }
+        { "name": "Disabled", "clipName": "", "speed": 1.0, "loop": true, "blendDuration": 0.0, "blendEasing": 0 },
+        { "name": "player_base_bash", "bodyClipName": "player_base_bash", "speed": 1.0, "loop": false },
+        { "name": "player_base_press", "bodyClipName": "player_base_press", "speed": 1.0, "loop": false },
+        { "name": "player_base_press_fall", "bodyClipName": "player_base_press_fall", "speed": 1.0, "loop": true },
+        { "name": "player_base_press_land", "bodyClipName": "player_base_press_land", "speed": 1.0, "loop": false },
+        { "name": "player_ability_fire_breath", "bodyClipName": "player_ability_fire_breath", "speed": 1.0, "loop": true },
+        { "name": "player_ability_fire_dash", "bodyClipName": "player_ability_fire_dash", "speed": 1.0, "loop": false },
+        { "name": "player_ability_fireball", "bodyClipName": "player_ability_fireball", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_guard", "bodyClipName": "player_ability_pink_guard", "speed": 1.0, "loop": true },
+        { "name": "player_ability_pink_guard_hit", "bodyClipName": "player_ability_pink_guard_hit", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_combo_press", "bodyClipName": "player_ability_pink_combo_press", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_combo_return", "bodyClipName": "player_ability_pink_combo_return", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_elastic_strike", "bodyClipName": "player_ability_pink_elastic_strike", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_bounce_charge", "bodyClipName": "player_ability_pink_bounce_charge", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_bounce_rise", "bodyClipName": "player_ability_pink_bounce_rise", "speed": 1.0, "loop": false },
+        { "name": "player_ability_pink_rush", "bodyClipName": "player_ability_pink_rush", "speed": 1.0, "loop": false },
+        { "name": "player_ability_thunder_cast", "bodyClipName": "player_ability_thunder_cast", "speed": 1.0, "loop": false },
+        { "name": "player_ability_thunder_charge", "bodyClipName": "player_ability_thunder_charge", "speed": 1.0, "loop": true },
+        { "name": "player_ability_thunder_evade", "bodyClipName": "player_ability_thunder_evade", "speed": 1.0, "loop": false },
+        { "name": "player_ability_wind_tornado", "bodyClipName": "player_ability_wind_tornado", "speed": 1.0, "loop": true },
+        { "name": "player_ability_wind_slow_fall", "bodyClipName": "player_ability_wind_slow_fall", "speed": 1.0, "loop": true },
+        { "name": "player_ability_wind_takeoff", "bodyClipName": "player_ability_wind_takeoff", "speed": 1.0, "loop": false },
+        { "name": "player_ability_wind_land", "bodyClipName": "player_ability_wind_land", "speed": 1.0, "loop": false },
+        { "name": "player_copy_acquire", "bodyClipName": "player_copy_acquire", "speed": 1.0, "loop": false }
     ],
-    "transitions": []
+    "transitions": [
+        { "fromState": "*", "toState": "Idle", "duration": 0.16, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 0 }] },
+        { "fromState": "*", "toState": "Run", "duration": 0.10, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 1 }] },
+        { "fromState": "*", "toState": "Jump", "duration": 0.08, "easing": 2, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 2 }] },
+        { "fromState": "*", "toState": "Dash", "duration": 0.07, "easing": 2, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 3 }] },
+        { "fromState": "*", "toState": "AimHook", "duration": 0.12, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 4 }] },
+        { "fromState": "*", "toState": "ShootHook", "duration": 0.06, "easing": 2, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 5 }] },
+        { "fromState": "*", "toState": "PullEnemy", "duration": 0.10, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 6 }] },
+        { "fromState": "*", "toState": "Carry", "duration": 0.14, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 7 }] },
+        { "fromState": "*", "toState": "GateReturn", "duration": 0.12, "easing": 4, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 8 }] },
+        { "fromState": "*", "toState": "Disabled", "duration": 0.0, "easing": 0, "conditions": [{ "parameter": "LocomotionMode", "mode": 2, "threshold": 9 }] }
+    ]
 }

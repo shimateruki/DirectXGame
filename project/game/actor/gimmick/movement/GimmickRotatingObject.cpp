@@ -56,8 +56,8 @@ void GimmickRotatingObject::Update(float deltaTime) {
             rot.y += radiansPerSecond * deltaTime;
         }
 
-        GetTransform()->rotate = rot;
-        GetTransform()->isQuaternionMaster = false;
+        SetEulerAngles(rot);
+        SetQuaternionMaster(false);
     }
 
     BaseGimmick::Update(deltaTime);

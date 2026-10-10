@@ -1,5 +1,6 @@
 #pragma once
 #include "BaseScene.h"
+#include "game/system/IStageProgressScene.h"
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
@@ -9,6 +10,7 @@
 #include "ParticleCommon.h"
 #include "SpriteDebugEditor.h"
 #include "Player.h"
+#include "game/ui/CopyStyleHud.h"
 #include "Text.h"
 #include "Event.h"
 #include "BulletManager.h"
@@ -31,12 +33,11 @@ class SceneManager;
 class LevelLoader;
 class LockOnSystem;
 class GameRule;
-class BossCore;
 
 /// <summary>
 /// アセット確認用の独立シーン。配置 Object とプレイヤーを管理し、編集用の更新・描画を行う。
 /// </summary>
-class PreviewScene : public BaseScene {
+class PreviewScene : public BaseScene, public IStageProgressScene {
   public:
     PreviewScene();
     ~PreviewScene() override;
@@ -58,10 +59,12 @@ class PreviewScene : public BaseScene {
     void StartBridgeDropMovie();
 
     // --- BaseScene インターフェース実装 ---
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
 
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     Skybox* GetSkybox() override { return skybox_.get(); }
@@ -74,6 +77,8 @@ class PreviewScene : public BaseScene {
 
     void SetIsGoal(bool isGoal) { isGoal_ = isGoal; }
     bool IsGoal() const { return isGoal_; }
+    bool TryStartGoalFromContact(Object3d* actor, Object3d* goal) override;
+    void CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) override;
 
     void CollectStarCoin(int coinIndex) {
         if (coinIndex >= 0 && coinIndex < 3) {
@@ -82,6 +87,7 @@ class PreviewScene : public BaseScene {
     }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     enum class MovieState { kNone, kBridgeDrop };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
@@ -93,7 +99,6 @@ class PreviewScene : public BaseScene {
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
@@ -113,7 +118,6 @@ class PreviewScene : public BaseScene {
     Player* player_ = nullptr;
 
     // --- BGM・SE ---
-    uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
@@ -135,6 +139,8 @@ class PreviewScene : public BaseScene {
     bool sessionStarCoins_[3] = {false, false, false};
 
     std::unique_ptr<Sprite> hudHpIcon_;
+    std::unique_ptr<Sprite> hudCopyStyle_;
+    CopyStyleHud copyStyleHud_;
     std::unique_ptr<Sprite> hudHpFrame_;
     std::unique_ptr<Sprite> hudHpDamageFill_;
     std::unique_ptr<Sprite> hudHpFill_;

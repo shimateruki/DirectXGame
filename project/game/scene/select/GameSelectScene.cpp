@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
 #include "ScenePreloader.h"
 
@@ -29,7 +29,6 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h"
-#include "game/actor/enemy/boss/core/BossCore.h"
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
 #include "WinApp.h"
@@ -85,7 +84,6 @@ SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture("Resources/sprite/ui/gate/gate_prompt_player_e.png");
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
                                                                  : GetSceneLoadContext().skyboxPath);
-    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
 }
 
@@ -108,7 +106,6 @@ bool GameSelectScene::InitializeLoadingStep() {
     case 0:
         dxCommon_ = DirectXCommon::GetInstance();
         inputManager_ = InputManager::GetInstance();
-        audioPlayer_ = AudioPlayer::GetInstance();
         LOG("Game Select Initialized!");
         StageManager::GetInstance()->Initialize();
         selectedStageIndex_ = StageManager::GetInstance()->GetCurrentStageIndex();
@@ -150,7 +147,6 @@ bool GameSelectScene::InitializeLoadingStep() {
         gateReturnStageIndex_ = -1;
         gateReturnTargetGate_ = nullptr;
         pendingStageClearRewardPresentation_ = {};
-        bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
         ++loadingInitializePhase_;
         completeUnit();
         return false;
@@ -1086,7 +1082,7 @@ bool GameSelectScene::IsPlayerTouchingStageGate(Object3d* gate) const {
         kGateEntryPlayerTouchRadius;
 
     float yaw = 0.0f;
-    if (Transform* transform = gate->GetTransform()) {
+    if (const Transform* transform = gate->GetTransform()) {
         yaw = transform->rotate.y;
     }
 

@@ -216,13 +216,9 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetEnemyOptions() const {
         { "ThunderSlime", "Thunder Slime" },
         { "WindSlime", "Wind Slime" },
         { "Slime", "スライム" },
-        { "BossCore", "ボスコア" },
         { "Bomb", "ボム" },
         { "Bomber", "ボマー" },
-        { "Mushroom", "キノコ" },
-        { "GiantSlime", "巨大スライム" },
-        { "Bat", "コウモリ" },
-        { "BeamDrone", "目玉ビーム" }
+        { "GiantSlime", "巨大スライム" }
     };
 }
 
@@ -231,16 +227,13 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
         { "Default", "通常" },
         { "MovingFloor", "移動床" },
         { "Trampoline", "トランポリン" },
-        { "LaunchStar", "スターランチャー" },
         { "ChikuwaBlock", "ちくわブロック" },
         { "BlinkBlock", "点滅ブロック" },
         { "BreakableBlock", "破壊ブロック" },
         { "Coin", "コイン" },
-        { "HookAnchor", "フックアンカー" },
         { "SinkingFloor", "沈む床" },
         { "SeesawFloor", "シーソー床" },
         { "DashPanel", "ダッシュパネル" },
-        { "IceFloor", "氷の床" },
         { "TimedSwitch", "時限スイッチ床" },
         { "AppearingFloor", "出現床" },
         { "Switch", "汎用スイッチ" },
@@ -250,15 +243,12 @@ std::vector<PresetEditor::TypeOption> PresetEditor::GetGimmickOptions() const {
         { "CopyMemoryStation", "コピー記憶台" },
         { "PrismBarrier", "プリズム障壁" },
         { "HookPullBlock", "フック可動ブロック" },
-        { "OneWayFloor", "一方通行床" },
         { "LiquidLevel", "水位・マグマ上下" },
         { "MagmaHazard", "マグマダメージ床" },
         { "ChainCollapseFloor", "連鎖崩れ床" },
         { "RotatingFloor", "回転床" },
         { "RotatingPillar", "回転柱" },
         { "PhaseFlipFloor", "順番反転床" },
-        { "LaserEmitter", "レーザー発生器" },
-        { "LaserNode", "レーザー接続ノード" },
         { "StageGate", "ステージゲート" }
     };
 }

@@ -6,6 +6,7 @@
 #include "game/system/CrownDefeatTuning.h"
 
 #include "BaseEnemy.h"
+#include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
 #include "BaseScene.h"
 #include "Camera.h"
 #include "CameraManager.h"
@@ -846,8 +847,8 @@ void EnemyAttackPreviewWindow::RecordTimelineSample() {
 
 const char* EnemyAttackPreviewWindow::GetCurrentPhaseName() const {
     if (playerCopyMode_ && previewPlayer_) return previewPlayer_->GetCopyAbilityStateLabel();
-    if (previewEnemy_) {
-        if (const char* label = previewEnemy_->GetSequenceStateLabel()) return label;
+    if (const auto* sequence = dynamic_cast<const ISequencePreviewEnemy*>(previewEnemy_)) {
+        if (const char* label = sequence->GetSequenceStateLabel()) return label;
     }
     if (previewSequenceCompleted_ && !previewEnemy_) {
         return "分裂後";
@@ -956,7 +957,10 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
     enemy->SetGrounded(true);
     enemy->SetDetectionRange(30.0f);
     enemy->SetTarget(previewTarget_);
-    if (const auto* attack = GetSelectedAttackDefinition()) enemy->SetSequencePreviewAttackId(attack->id);
+    if (auto* sequence = dynamic_cast<ISequencePreviewEnemy*>(enemy)) {
+        const EnemyAttackDefinition* attack = GetSelectedAttackDefinition();
+        sequence->SetSequencePreviewAttackId(attack ? attack->id : std::string{});
+    }
 
     if (auto* thunderSlime = dynamic_cast<EnemyThunderSlime*>(enemy)) {
         const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
@@ -967,8 +971,6 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
         windSlime->SetDebugPreviewAttackId(selectedAttack ? selectedAttack->id : std::string{});
     }
     if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy)) {
-        const EnemyAttackDefinition* selectedAttack = GetSelectedAttackDefinition();
-        prismSlime->SetDebugPreviewAttackId(selectedAttack ? selectedAttack->id : std::string{});
         prismSlime->SetDebugPreviewChantOnly(prismChantOnly_);
         prismSlime->SetSpawnCallback([this](std::unique_ptr<BaseEnemy> spawnedEnemy) {
             if (!spawnedEnemy || !sceneManager_ || sceneManager_->GetCurrentScene() != previewScene_) {

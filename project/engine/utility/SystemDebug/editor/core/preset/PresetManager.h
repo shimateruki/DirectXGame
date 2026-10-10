@@ -9,6 +9,7 @@
 using json = nlohmann::json;
 
 class Object3dCommon;
+class BaseScene;
 
 /// <summary>
 /// Object3dの設定をPreset/Prefabとして保存し、再生成するための管理クラス。
@@ -123,7 +124,7 @@ public:
     /// Prefab Asset更新前後を比較し、Scene内の未変更Instanceだけを新しいSourceへ同期する。
     int SynchronizePrefabInstances(
         const std::map<std::string, json>& beforePrefabs,
-        std::vector<std::unique_ptr<Object3d>>& sceneObjects,
+        BaseScene& scene,
         Object3dCommon* common);
 
     /// コピー型Presetを、リンク型Prefab Assetへ明示的に変換する。

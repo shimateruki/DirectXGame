@@ -77,7 +77,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     SetMaterialType(resolvedType == EnemyMorphType::Crown ? 0 : 25);
     SetEmissive(1.0f);
     animName_.clear();
-    animationTime_ = 0.0f;
+    ResetAnimationTime();
     SetColor(descriptor->displayColor);
     EmitEnemyMorphStartEffects();
 
@@ -339,7 +339,7 @@ void Player::RestoreEnemyMorphAppearance() {
     SetScale(savedMorphScale_);
     animName_ = savedMorphAnimName_;
     isAnimLoop_ = savedMorphAnimLoop_;
-    animationTime_ = 0.0f;
+    ResetAnimationTime();
 
     const auto& children = GetChildren();
     for (size_t i = 0; i < children.size(); ++i) {
@@ -435,7 +435,6 @@ void Player::DebugPrepareForTeleport() {
     if (mover_) {
         mover_->ResetTransientState();
     }
-    CancelLaunchStar(false);
     if (gateReturnAnimation_.IsActive()) {
         gateReturnAnimation_.Stop(this, false);
     }

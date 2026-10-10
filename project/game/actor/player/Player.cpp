@@ -62,7 +62,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_->SetCollisionAttribute(0);
         hookMarker_->SetCollisionMask(0);
         // マーカーサイズを少し小さめに
-        hookMarker_->GetTransform()->scale = {0.5f, 0.5f, 0.5f};
+        hookMarker_->SetScale({0.5f, 0.5f, 0.5f});
 
         // 解除時に排出するスライム成分。シーンへ登録せず、Playerが描画まで管理します。
         enemyMorphReleaseVisual_ = std::make_unique<Object3d>();
@@ -100,8 +100,8 @@ Vector3 Player::GetLockOnAttackDirection() const {
 // 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
 void Player::Update(float deltaTime) {
     if (mover_ && deltaTime > 0.0f) {
-        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ || launchStarController_.IsActive() ||
-                                               gateReturnAnimation_.IsActive() || absorbEffectActive_ ||
+        mover_->SampleJumpInput(deltaTime, isDead || isCinematicLocked_ || gateReturnAnimation_.IsActive() ||
+                                               absorbEffectActive_ ||
                                                enemyMorphReleaseActive_ || copyPreviewActive_ ||
                                                electricShockControlLocked_);
     }
@@ -115,16 +115,10 @@ void Player::Update(float deltaTime) {
         SetIsControlActive(false);
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
-        respawnPosition_ = transform_.translate;
-        baseRotation_ = ResolveTransformEuler(transform_);
+        respawnPosition_ = GetTranslate();
+        baseRotation_ = ResolveTransformEuler(*GetTransform());
         SetRotation(baseRotation_);
         isFirstUpdate_ = false;
-    }
-
-    if (launchStarController_.IsActive()) {
-        UpdateLaunchStar(deltaTime);
-        Object3d::Update(deltaTime);
-        return;
     }
 
     if (isCinematicLocked_) {
@@ -235,34 +229,28 @@ void Player::Update(float deltaTime) {
                                 hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, filter);
                             }
                         } else {
-                            // 非ロック時の自由照準・フックアンカーの操作は維持します。
+                            // 非ロック時の自由照準は維持します。
                             hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
                         }
 
                         if (hit.isHit) {
                             hookMarker_->SetIsVisible(true);
-                            hookMarker_->GetTransform()->translate = hit.hitPoint;
+                            hookMarker_->SetTranslate(hit.hitPoint);
                             aimTargetObject_ = hit.hitObject;
 
                             // 命中先の種類を色と脈動で示し、フック可能な対象を照準中に判別できるようにします。
-                            if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
-                                hookMarker_->SetColor({0.2f, 0.85f, 1.0f, 1.0f});
-                                static float pulseTimer = 0.0f;
-                                pulseTimer += deltaTime;
-                                float pulse = 1.25f + std::sin(pulseTimer * 10.0f) * 0.25f;
-                                hookMarker_->GetTransform()->scale = {pulse, pulse, pulse};
-                            } else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
+                            if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
                                 hookMarker_->SetColor({1.0f, 0.2f, 0.2f, 1.0f}); // 赤色に変更
                                 static float pulseTimer = 0.0f;
                                 pulseTimer += deltaTime;
                                 float pulse = 1.2f + std::sin(pulseTimer * 15.0f) * 0.3f;
-                                hookMarker_->GetTransform()->scale = {pulse, pulse, pulse};
+                                hookMarker_->SetScale({pulse, pulse, pulse});
                             } else {
                                 hookMarker_->SetColor({1.0f, 1.0f, 1.0f, 1.0f}); // 白
-                                hookMarker_->GetTransform()->scale = {1.0f, 1.0f, 1.0f};
+                                hookMarker_->SetScale({1.0f, 1.0f, 1.0f});
                             }
 
-                            hookMarker_->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
+                            hookMarker_->SetEulerAngles({0.0f, 0.0f, 0.0f});
                         } else {
                             hookMarker_->SetIsVisible(false);
                             aimTargetObject_ = nullptr;
@@ -279,10 +267,7 @@ void Player::Update(float deltaTime) {
                     if (hookMarker_->GetIsVisible()) {
                         Vector3 targetPos = hookMarker_->GetTransform()->translate;
 
-                        // フック移動は地面全体では停止中。HookAnchor だけ旧フック移動を使う。
-                        if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
-                            ChangeState(std::make_unique<PlayerStateHook>(targetPos));
-                        } else if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
+                        if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
                             ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
                         } else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & CollisionCategories::Get("enemy"))) {
                             ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
@@ -343,7 +328,7 @@ void Player::Update(float deltaTime) {
         }
 
         // チュートリアル中の落下だけは残機を減らさず、その場で復帰させます。
-        if (transform_.translate.y < -18.0f && !isDead && isControlActive_) {
+        if (GetTranslate().y < -18.0f && !isDead && isControlActive_) {
             if (baseCombatController_) {
                 baseCombatController_->Cancel(*this, false);
             }
@@ -364,12 +349,9 @@ void Player::Update(float deltaTime) {
         }
     }
 
-    BaseEnemy* carriedEnemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
     BaseEnemy* activeMorphSource = isEnemyMorphed_ ? enemyMorphSource_ : nullptr;
-    const bool isBatMorphActive = isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Bat;
-    const bool isCarryingBat = (carriedEnemyBase && carriedEnemyBase->GetEnemyType() == "Bat") || isBatMorphActive;
 
-    // 照準中やコウモリ能力中の重力は、このフレームの物理計算だけに適用します。
+    // 照準中の重力は、このフレームの物理計算だけに適用します。
     // Character::SetGravityはステータス本体を書き換えるため、一時補正には使用しません。
     const float configuredGravity = param_.has_value() ? param_->gravity : 50.0f;
     const float configuredMaxFallSpeed = param_.has_value() ? param_->maxFallSpeed : 60.0f;
@@ -378,14 +360,6 @@ void Player::Update(float deltaTime) {
     if (isControlActive_) {
         float gravity = hookAimHeld ? (std::min)(configuredGravity, 10.0f) : configuredGravity;
         float maxFallSpeed = configuredMaxFallSpeed;
-
-        if (isCarryingBat && velocity_.y < 0.0f) {
-            gravity = (std::min)(gravity, 12.0f);
-            maxFallSpeed = 12.0f;
-            if (velocity_.y < -maxFallSpeed) {
-                velocity_.y = Math::Lerp(velocity_.y, -maxFallSpeed, 0.22f);
-            }
-        }
 
         if (param_.has_value()) {
             param_->gravity = gravity;
@@ -424,9 +398,9 @@ void Player::Update(float deltaTime) {
         // 隔離空間には物理床がないため、モーターの更新後・能力入力の前に床を解決します。
         // 更新前のSetGroundedだけではBeginFrameで消され、ガードが開始できません。
         if (copyPreviewActive_) {
-            const bool grounded = transform_.translate.y <= copyPreviewGroundHeight_ + 0.001f && velocity_.y <= 0.0f;
+            const bool grounded = GetTranslate().y <= copyPreviewGroundHeight_ + 0.001f && velocity_.y <= 0.0f;
             if (grounded) {
-                transform_.translate.y = copyPreviewGroundHeight_;
+                SetTranslateY(copyPreviewGroundHeight_);
                 velocity_.y = 0.0f;
             }
             SetGrounded(grounded);
@@ -475,37 +449,6 @@ void Player::Update(float deltaTime) {
         }
     } else if (!hasVisibleInvincibility) {
         invincibleBlinkTimer_ = 0.0f;
-    }
-
-    if (isCarryingBat && velocity_.y < -0.25f && deltaTime > 0.0f) {
-        carryGlideEffectTimer_ -= deltaTime;
-        if (carryGlideEffectTimer_ <= 0.0f) {
-            const Vector3 playerPos = GetWorldPosition();
-            const float yaw = GetMoveYaw();
-            Vector3 windDir = {-std::sin(yaw), 0.18f, -std::cos(yaw)};
-            const float windLength = std::sqrt(windDir.x * windDir.x + windDir.y * windDir.y + windDir.z * windDir.z);
-            if (windLength > 0.001f) {
-                windDir = windDir / windLength;
-            }
-
-            if (particleSystem_) {
-                particleSystem_->SpawnParticles(playerPos + Vector3{0.0f, 1.25f, 0.0f}, 10, 2.4f, &windDir, 34.0f,
-                                                {0.55f, 0.85f, 1.0f, 0.65f}, {0.75f, 1.0f, 1.0f, 0.0f}, 0.22f, 0.5f,
-                                                0.32f, 0.04f);
-            }
-
-            if (MeshEffectManager::GetInstance()) {
-                MeshEffectManager::GetInstance()->SpawnEffectAt(
-                    "Resources/json/effect/effect_carry_bat_glide_ring.json", playerPos + Vector3{0.0f, 1.15f, 0.0f},
-                    {1.5707963f, yaw, 0.0f}, {1.0f, 1.0f, 1.0f});
-            }
-            if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
-                gpuParticleManager->Emit("carry_bat_glide_wisp", playerPos + Vector3{0.0f, 1.1f, 0.0f});
-            }
-            carryGlideEffectTimer_ = 0.14f;
-        }
-    } else {
-        carryGlideEffectTimer_ = 0.0f;
     }
 
     const bool carryAbilityTriggered =
@@ -566,17 +509,16 @@ void Player::Update(float deltaTime) {
 
             // 解除直後の当たり判定がプレイヤーに重ならないよう、前方に離してから投げます。
             Vector3 playerPos = GetWorldPosition();
-            enemyBase->GetTransform()->translate = {playerPos.x + throwForward.x * 2.2f, playerPos.y + 2.2f,
-                                                    playerPos.z + throwForward.z * 2.2f};
+            enemyBase->SetTranslate({playerPos.x + throwForward.x * 2.2f, playerPos.y + 2.2f,
+                                                    playerPos.z + throwForward.z * 2.2f});
 
             // 運搬状態を解除してから、元の大きさと投擲初速を復元します。
             enemyBase->SetCarried(false);
 
             // 投げた時は捕まえた時点の大きさへ戻す
-            enemyBase->GetTransform()->scale =
-                hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemyBase->GetScale();
-            enemyBase->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
-            enemyBase->GetTransform()->isQuaternionMaster = true;
+            enemyBase->SetScale(hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemyBase->GetScale());
+            enemyBase->SetEulerAngles({0.0f, 0.0f, 0.0f});
+            enemyBase->SetQuaternionMaster(true);
 
             Vector3 throwVelocity = {throwForward.x * 32.0f, throwUpSpeed, throwForward.z * 32.0f};
             enemyBase->BeginThrown(throwVelocity);
@@ -612,7 +554,7 @@ void Player::Update(float deltaTime) {
         // 非スライム系の旧コピー能力は、専用セッションへ移行するまで従来経路を維持します。
         activeMorphSource->ExecuteAbility(this);
     } else if (tutorialCarryAbsorbEnabled_ && !enemyMorphReleaseActive_ && !absorbEffectActive_ && carriedEnemy_ &&
-               carriedEnemyBase && carryAbilityTriggered) {
+               carryAbilityTriggered) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             if (!isEnemyMorphed_) {
@@ -648,15 +590,15 @@ void Player::Update(float deltaTime) {
         float offsetZ = std::cos(struggleTimer_ * 30.0f) * 0.15f;
         float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
 
-        carriedEnemy_->GetTransform()->translate = {playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
-                                                    playerPos.z + offsetZ};
+        carriedEnemy_->SetTranslate({playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
+                                                    playerPos.z + offsetZ});
 
         Vector3 rot;
         rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
         rot.y = GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
         rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
-        carriedEnemy_->GetTransform()->rotate = rot;
-        carriedEnemy_->GetTransform()->isQuaternionMaster = false;
+        carriedEnemy_->SetEulerAngles(rot);
+        carriedEnemy_->SetQuaternionMaster(false);
 
         if (!hasCarriedEnemyBaseScale_) {
             carriedEnemyBaseScale_ = GetStableEnemyCarryScale(carriedEnemy_);
@@ -666,8 +608,7 @@ void Player::Update(float deltaTime) {
         const Vector3 targetScale = {carriedEnemyBaseScale_.x * (1.0f - stretch),
                                      carriedEnemyBaseScale_.y * (1.0f + stretch),
                                      carriedEnemyBaseScale_.z * (1.0f - stretch)};
-        carriedEnemy_->GetTransform()->scale =
-            Math::Lerp(carriedEnemy_->GetScale(), targetScale, std::clamp(deltaTime * 10.0f, 0.0f, 1.0f));
+        carriedEnemy_->SetScale(Math::Lerp(carriedEnemy_->GetScale(), targetScale, std::clamp(deltaTime * 10.0f, 0.0f, 1.0f)));
 
         // 親の更新を待たずに行列を確定し、手元への追従を1フレーム遅らせません。
         carriedEnemy_->UpdateLocalMatrix();
@@ -726,7 +667,6 @@ float Player::GetEnemyMorphModelYawOffset() const {
     case EnemyMorphType::ThunderSlime:
     case EnemyMorphType::WindSlime:
     case EnemyMorphType::Bomber:
-    case EnemyMorphType::BeamDrone:
     case EnemyMorphType::Crown:
         return kPi;
     default:
@@ -734,7 +674,7 @@ float Player::GetEnemyMorphModelYawOffset() const {
     }
 }
 
-float Player::GetMoveYaw() const { return NormalizeYaw(transform_.rotate.y - GetVisualYawOffset()); }
+float Player::GetMoveYaw() const { return NormalizeYaw(GetRotation().y - GetVisualYawOffset()); }
 
 Vector3 Player::GetForwardDirection() const {
     const float yaw = GetMoveYaw();
@@ -742,19 +682,6 @@ Vector3 Player::GetForwardDirection() const {
 }
 
 void Player::SetMoveYaw(float yaw) { SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset())); }
-
-// 外部APIを維持し、スター移動固有の状態と軌道計算を委譲します。
-void Player::StartLaunchStar(const Vector3& destination, float arcHeight, float duration) {
-    launchStarController_.Start(*this, slimeAnimator_, destination, arcHeight, duration);
-}
-
-void Player::CancelLaunchStar(bool restoreControl) { launchStarController_.Cancel(*this, restoreControl); }
-
-void Player::UpdateLaunchStar(float deltaTime) {
-    const bool updateAnimation =
-        !absorbEffectActive_ && !enemyMorphReleaseActive_ && electricShockFeedbackTimer_ <= 0.0f && !isDead;
-    launchStarController_.Update(*this, slimeAnimator_, deltaTime, updateAnimation);
-}
 
 void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
     if (!IsEditorInternal())
@@ -819,7 +746,8 @@ void Player::UpdateCopyAdornment() {
         copyAdornment_->SetModel(model);
     copyAdornment_->SetIsVisible(true);
     // 本体の潰れ・伸び・回転を含めて追従。能力解除時は描かず、元敵には付けません。
-    *copyAdornment_->GetTransform() = transform_;
+    copyAdornment_->SetLocalTransform(*GetTransform());
+    copyAdornment_->SetTransformAnchor(GetTransform()->parent);
     if (auto* decorationRenderer = copyAdornment_->GetMeshRenderer()) {
         if (auto* bodyRenderer = GetMeshRenderer()) {
             decorationRenderer->SetVisualTransform(bodyRenderer->GetVisualScale(), bodyRenderer->GetVisualRotation(),
@@ -960,13 +888,6 @@ bool Player::OnCollision(Object3d* other) {
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
     // =======================================================
-    if (other->GetGimmickType() == "OneWayFloor") {
-        bool canStand = info.normal.y > 0.55f && velocity_.y <= 1.0f;
-        if (!canStand) {
-            return false;
-        }
-    }
-
     if (attribute & CollisionCategories::Get("ground")) {
         ApplyPhysicsCollision(info, attribute);
     }
@@ -1043,12 +964,6 @@ void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float tu
     }
 }
 
-void Player::ApplyIceSurface(float duration, float friction, float steering) {
-    if (mover_) {
-        mover_->ApplyIceSurface(duration, friction, steering);
-    }
-}
-
 void Player::SetPlatformMotion(const Vector3& velocity) {
     if (mover_)
         mover_->SetPlatformMotion(velocity);
@@ -1078,7 +993,7 @@ void Player::PlayAnimation(const std::string& animName, bool loop) {
     // 既に同じアニメーションが再生中ならリセットしない (滑らかな遷移のため)
     if (animName_ != animName) {
         animName_ = animName;
-        animationTime_ = 0.0f;
+        ResetAnimationTime();
     }
     isAnimLoop_ = loop;
 }

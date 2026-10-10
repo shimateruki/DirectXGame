@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "game/scene/tutorial/TutorialScene.h"
 #include "ScenePreloader.h"
 #include "DirectXCommon.h"
@@ -28,7 +28,6 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h"
-#include "game/actor/enemy/boss/core/BossCore.h"
 #include "DebrisEffectManager.h"
 #include "MeshEffectManager.h"
 #include "VFXSequencer.h"
@@ -254,6 +253,9 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
     for (const char* path : kControlsGuideAbilityLabelsToPreload) {
         manifest.AddTexture(path);
     }
+    for (const char* path : CopyStyleHud::kTexturePaths) {
+        manifest.AddTexture("Resources/sprite/" + std::string(path));
+    }
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
@@ -299,10 +301,8 @@ bool TutorialScene::InitializeLoadingStep() {
         case 0: {
             dxCommon_ = DirectXCommon::GetInstance();
             inputManager_ = InputManager::GetInstance();
-            audioPlayer_ = AudioPlayer::GetInstance();
             LOG("Tutorial Scene Initialized!");
             const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
-            bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
             EventManager::GetInstance()->ClearAllListeners();
             CameraManager::GetInstance()->Initialize();
             CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -411,6 +411,7 @@ bool TutorialScene::InitializeLoadingStep() {
             return false;
         case 11:
             levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/tutorialScene.json");
+            copyStyleHud_.Bind(GetSpriteByName("hud_copy_style"));
             if (player_) {
                 player_->SetTutorialSafetyEnabled(true);
             }
@@ -602,6 +603,7 @@ void TutorialScene::Update(float deltaTime) {
         gameRule_->Update(deltaTime);
     }
     GPUParticleManager::GetInstance()->Update(deltaTime);
+    copyStyleHud_.Update(player_, deltaTime);
     for (auto& sprite : sprites_) {
         sprite->Update();
     }

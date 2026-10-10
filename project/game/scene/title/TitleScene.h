@@ -47,11 +47,13 @@ class TitleScene : public BaseScene {
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     Skybox* GetSkybox() override { return skybox_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
@@ -61,18 +63,19 @@ class TitleScene : public BaseScene {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     enum class TitleMode { MainMenu, SaveSelect };
 
-    enum class SaveSelectMode { Browse, DeleteConfirm };
+    enum class SaveSelectMode { Browse, DeleteConfirm, Launching };
 
     void InitializeSaveSlotUI();
     void InitializeTitleLogoUI();
     void InitializeMainMenuUI();
     void UpdateMainMenu();
-    void UpdateSaveSelect();
+    void UpdateSaveSelect(float deltaTime);
     void UpdateTitleLogoIntro(float deltaTime);
     void UpdateTitleHeroAnimation(float deltaTime);
-    void UpdateSaveSlotUI();
+    void UpdateSaveSlotUI(float deltaTime);
     void DrawSaveSlotUI();
     void StartSelectedSaveSlot();
     void DeleteSelectedSaveSlot();
@@ -83,7 +86,6 @@ class TitleScene : public BaseScene {
     // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム (管理クラス) ---
     std::unique_ptr<ObjectManager> objectManager_ = nullptr;
@@ -101,7 +103,6 @@ class TitleScene : public BaseScene {
     std::unique_ptr<Skybox> skybox_ = nullptr;
     Player* player_ = nullptr;
 
-    uint32_t bgmHandle_ = 0;
     uint32_t skyboxTextureHandle_ = 0;
 
     // --- ライト・GPUリソース ---
@@ -125,6 +126,11 @@ class TitleScene : public BaseScene {
     int saveSelectFocusIndex_ = 0;
     int deleteConfirmIndex_ = 1;
     float titleUiTime_ = 0.0f;
+    float saveSelectOpenTime_ = 0.0f;
+    float saveLaunchTime_ = 0.0f;
+    bool saveLaunchTransitionRequested_ = false;
+    float saveSelectionGlowY_ = 0.0f;
+    std::array<float, 3> saveSlotSelectionWeights_{};
 
     // スプライトのポインタを保持しておく
     Sprite* titleTextSprite_ = nullptr;
@@ -164,9 +170,25 @@ class TitleScene : public BaseScene {
     bool titleIntroComplete_ = false;
     std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
     Sprite* saveSelectBackdrop_ = nullptr;
+    Sprite* saveDetailPanel_ = nullptr;
+    Sprite* saveDetailFileName_ = nullptr;
+    Sprite* saveDetailEmptyLabel_ = nullptr;
+    Sprite* saveLaunchLabel_ = nullptr;
+    Sprite* saveSelectTitle_ = nullptr;
+    Sprite* saveSelectionGlow_ = nullptr;
+    Sprite* saveHintBackdrop_ = nullptr;
+    Sprite* saveKeyboardHint_ = nullptr;
+    Sprite* saveGamepadHint_ = nullptr;
     std::array<Sprite*, 3> saveSlotCards_ = {nullptr, nullptr, nullptr};
+    // JSONで調整した枠サイズを保持し、選択時の拡大を毎フレーム累積させない。
+    std::array<Vector2, 3> saveSlotCardBaseSizes_{};
+    std::array<Vector2, 3> saveSlotCardBasePositions_{};
+    std::array<Vector2, 3> saveSlotNumberBasePositions_{};
+    std::array<Vector2, 3> saveSlotFileNameBasePositions_{};
+    std::array<Vector2, 3> saveSlotStatusBasePositions_{};
+    Vector2 saveDetailPanelBasePosition_{};
+    Vector2 saveSelectTitleBasePosition_{};
     std::array<std::array<Sprite*, 4>, 3> saveSlotFrames_{};
-    std::array<Sprite*, 3> saveSlotIcons_ = {nullptr, nullptr, nullptr};
     std::array<Sprite*, 3> saveSlotNumberSprites_ = {nullptr, nullptr, nullptr};
     std::array<Sprite*, 3> saveSlotFileNameTexts_ = {nullptr, nullptr, nullptr};
     std::array<Sprite*, 3> saveSlotStatusTexts_ = {nullptr, nullptr, nullptr};
@@ -185,7 +207,6 @@ class TitleScene : public BaseScene {
     Sprite* saveDeleteButtonBack_ = nullptr;
     Sprite* saveDeleteButtonText_ = nullptr;
     Sprite* savePromptBubble_ = nullptr;
-    Sprite* savePromptText_ = nullptr;
     Sprite* saveDeleteQuestionText_ = nullptr;
     Sprite* saveConfirmYesText_ = nullptr;
     Sprite* saveConfirmBackText_ = nullptr;

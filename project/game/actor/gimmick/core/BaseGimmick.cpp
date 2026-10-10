@@ -1,5 +1,6 @@
 #include "BaseGimmick.h"
 #include "ModelManager.h"
+#include <typeinfo>
 
 void BaseGimmick::Initialize(Object3dCommon* common, const std::string& modelName) {
     Object3d::Initialize(common);
@@ -31,6 +32,9 @@ bool BaseGimmick::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> BaseGimmick::Clone() const {
+    if (typeid(*this) != typeid(BaseGimmick)) {
+        return nullptr;
+    }
     auto newObj = std::make_unique<BaseGimmick>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

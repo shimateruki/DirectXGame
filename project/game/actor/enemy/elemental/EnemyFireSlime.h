@@ -2,9 +2,10 @@
 #include "BaseEnemy.h"
 #include "game/actor/combat/AttackSequence.h"
 #include "game/actor/enemy/combat/EnemyAttackAction.h"
+#include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
 
 // 近距離では炎ブレス、遠距離では火球で攻撃し、頭上の炎で属性を示すスライム敵です。
-class EnemyFireSlime : public BaseEnemy {
+class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
   public:
     // 炎スライム用モデル、Collider、初期能力値、炎エフェクトを準備します。
     void Initialize(Object3dCommon* common, const std::string& modelName) override;

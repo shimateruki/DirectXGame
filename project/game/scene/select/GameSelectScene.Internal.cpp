@@ -86,7 +86,7 @@ Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDi
         return fallback;
     }
 
-    Transform* transform = gateObject->GetTransform();
+    const Transform* transform = gateObject->GetTransform();
     if (!transform) {
         return fallback;
     }

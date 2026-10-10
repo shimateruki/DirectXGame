@@ -59,7 +59,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     player->SetLockOn(false);
     player->SetLockOnAimPoint({}, false);
     if (!SceneManager::GetInstance()->IsPlaying() || player->isDead || player->IsCinematicLocked() ||
-        player->IsLaunchStarActive() || player->IsGateReturnAnimationActive()) {
+        player->IsGateReturnAnimationActive()) {
         ResetLockOn(camera);
         return;
     }

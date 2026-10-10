@@ -23,9 +23,12 @@ private:
 
     DebugEditor* editor_ = nullptr;
     char searchBuffer_[128] = "";
-    std::string statusText_ = "SE/BGMの音量を調整できます。";
+    char newAudioId_[128] = "";
+    char newAudioName_[128] = "";
+    char newAudioPath_[260] = "";
+    bool newAudioBgm_ = false;
+    std::string statusText_ = "音声を登録するとSE/BGMの音量を調整できます。";
     char audioEventFileName_[128] = "new_audio_event.json";
-    char audioEventClipPath_[260] = "Resources/audio/se/generated/explosion.wav";
+    char audioEventClipPath_[260] = "";
     AudioEventDefinition audioEventDefinition_{};
-    bool audioEventInitialized_ = false;
 };

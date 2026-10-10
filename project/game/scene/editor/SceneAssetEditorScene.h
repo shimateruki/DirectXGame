@@ -34,10 +34,12 @@ class SceneAssetEditorScene : public BaseScene {
 
     std::string GetName() override { return "Scene Asset Editor"; }
 
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override;
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override;
     void AddObject(std::unique_ptr<Object3d> object) override;
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override;
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override;
     void RequestRemoveObject(Object3d* object) override;
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
 
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     Skybox* GetSkybox() override { return skybox_.get(); }
@@ -48,6 +50,7 @@ class SceneAssetEditorScene : public BaseScene {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
 

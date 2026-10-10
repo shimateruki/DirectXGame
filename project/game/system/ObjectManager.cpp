@@ -132,6 +132,33 @@ void ObjectManager::AddObject(std::unique_ptr<Object3d> object) {
     pendingObjects_.push_back(std::move(object));
 }
 
+Object3d* ObjectManager::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    if (!object) return nullptr;
+    Object3d* raw = object.get();
+    CollisionManager::GetInstance()->AddObject(raw);
+    objects_.push_back(std::move(object));
+    return raw;
+}
+
+std::unique_ptr<Object3d> ObjectManager::TakeObjectImmediate(Object3d* object) {
+    if (!object) return nullptr;
+    auto takeFrom = [object](std::vector<std::unique_ptr<Object3d>>& storage) -> std::unique_ptr<Object3d> {
+        auto it = std::find_if(storage.begin(), storage.end(), [object](const auto& candidate) {
+            return candidate.get() == object;
+        });
+        if (it == storage.end()) return nullptr;
+        std::unique_ptr<Object3d> result = std::move(*it);
+        storage.erase(it);
+        return result;
+    };
+    std::unique_ptr<Object3d> result = takeFrom(objects_);
+    if (!result) result = takeFrom(pendingObjects_);
+    if (!result) return nullptr;
+    CollisionManager::GetInstance()->RemoveObject(object);
+    removalList_.erase(std::remove(removalList_.begin(), removalList_.end(), object), removalList_.end());
+    return result;
+}
+
 void ObjectManager::RequestRemove(Object3d* object) {
     if (!object)
         return;

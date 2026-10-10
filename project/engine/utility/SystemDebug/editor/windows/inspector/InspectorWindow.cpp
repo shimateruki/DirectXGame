@@ -280,7 +280,8 @@ void InspectorWindow::Draw() {
         // --- Transform編集 ---
         ImGui::Separator();
         ImGui::Text(ICON_FA_ARROWS_ALT " トランスフォーム (Transform)");
-        Transform* transform = selectedObject->GetTransform();
+        Transform transformValue = *selectedObject->GetTransform();
+        Transform* transform = &transformValue;
         bool isTransformChanged = false;
 
         const Vector3 beforePos = transform->translate;
@@ -348,6 +349,7 @@ void InspectorWindow::Draw() {
         }
 
         if (isTransformChanged) {
+            selectedObject->SetLocalTransform(transformValue);
             RefreshInspectorTargetMatrices(inspectorTargets);
             MarkInspectorTargetsDirty(editor_, inspectorTargets);
         }
@@ -805,12 +807,10 @@ void InspectorWindow::Draw() {
                             isGraphicsChanged = true;
                         }
 
-                        Transform* cardTransform = selectedObject->GetTransform();
+                        const Transform* cardTransform = selectedObject->GetTransform();
                         Vector2 cardSize = { cardTransform->scale.x, cardTransform->scale.y };
                         if (ImGui::DragFloat2("表示サイズ (幅 / 高さ)", &cardSize.x, 0.02f, 0.01f, 100.0f, "%.2f")) {
-                            cardTransform->scale.x = (std::max)(0.01f, cardSize.x);
-                            cardTransform->scale.y = (std::max)(0.01f, cardSize.y);
-                            cardTransform->scale.z = 1.0f;
+                            selectedObject->SetScale({ (std::max)(0.01f, cardSize.x), (std::max)(0.01f, cardSize.y), 1.0f });
                             isTransformChanged = true;
                         }
 

@@ -63,12 +63,14 @@ class GameOverScene : public BaseScene {
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
     // 各種マネージャ・コモンの取得
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
@@ -78,6 +80,7 @@ class GameOverScene : public BaseScene {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     enum class MenuItem { Retry, Title, Count };
 
     // メニュー行の背景・ラベルを借用する。基準サイズを残し、選択演出の拡縮を累積させない。
@@ -152,7 +155,6 @@ class GameOverScene : public BaseScene {
     // --- エンジン基盤 ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム (機能を委譲するクラスたち) ---
     std::unique_ptr<ObjectManager> objectManager_ = nullptr;
@@ -177,7 +179,6 @@ class GameOverScene : public BaseScene {
     Player* player_ = nullptr;
 
     // --- BGM・オーディオ ---
-    uint32_t bgmHandle_ = 0;
 
     // --- ライト ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;

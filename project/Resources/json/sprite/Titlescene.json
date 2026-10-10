@@ -68,7 +68,7 @@
             "name": "gameStartText.png",
             "parentName": "",
             "position": [
-                1582.0,
+                1536.0,
                 712.0
             ],
             "size": [
@@ -92,7 +92,7 @@
             "name": "setting.png",
             "parentName": "",
             "position": [
-                1582.0,
+                1536.0,
                 818.0
             ],
             "size": [
@@ -422,18 +422,66 @@
                 1.0,
                 1.0,
                 1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveDetailPanel",
+            "parentName": "",
+            "position": [
+                1375.0,
+                495.0
+            ],
+            "size": [
+                900.0,
+                560.0
+            ],
+            "texture": "ui/title/save_detail_panel.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.38
+            ],
+            "emissive": 1.0,
+            "name": "saveSelectionGlow",
+            "parentName": "",
+            "position": [
+                495,
+                320
+            ],
+            "size": [
+                807,
+                162
+            ],
+            "texture": "ui/title/save_slot_card_selected.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
                 0.9300000071525574
             ],
             "emissive": 1.0,
             "name": "saveSlotCard_0",
             "parentName": "",
             "position": [
-                782.0,
-                185.0
+                495.0,
+                320.0
             ],
             "size": [
-                1564.0,
-                162.0
+                765.0,
+                142.0
             ],
             "texture": "ui/title/save_slot_card.png"
         },
@@ -452,38 +500,14 @@
             "name": "saveSlotNumber_0",
             "parentName": "",
             "position": [
-                110.0,
-                176.0
+                165.0,
+                320.0
             ],
             "size": [
-                78.0,
-                116.0
+                65.0,
+                90.0
             ],
             "texture": "number/big1.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "name": "saveSlotIcon_0",
-            "parentName": "",
-            "position": [
-                195.0,
-                178.0
-            ],
-            "size": [
-                132.0,
-                132.0
-            ],
-            "texture": "title/slime_save_icon.png"
         },
         {
             "anchor": [
@@ -500,12 +524,12 @@
             "name": "saveSlotFileName_0",
             "parentName": "",
             "position": [
-                370.0,
-                133.0
+                410,
+                288
             ],
             "size": [
-                225.0,
-                86.0
+                250,
+                56
             ],
             "texture": "generated/text/text_1_3c19efbf.png"
         },
@@ -524,14 +548,14 @@
             "name": "saveSlotStatus_0",
             "parentName": "",
             "position": [
-                370.0,
-                215.0
+                410,
+                351
             ],
             "size": [
-                220.0,
-                96.0
+                220,
+                43
             ],
-            "texture": "generated/text/text_text_c8a6dc24.png"
+            "texture": "ui/title/save_beginning_label.png"
         },
         {
             "anchor": [
@@ -548,12 +572,12 @@
             "name": "saveSlotCrownIcon_0",
             "parentName": "",
             "position": [
-                1035.0,
-                134.0
+                1120,
+                475
             ],
             "size": [
-                58.0,
-                58.0
+                58,
+                58
             ],
             "texture": "ui/title/crown_progress_icon.png"
         },
@@ -572,12 +596,12 @@
             "name": "saveSlotCrownX_0",
             "parentName": "",
             "position": [
-                1085.0,
-                134.0
+                1175,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -596,12 +620,12 @@
             "name": "saveSlotCrownDigit0_0",
             "parentName": "",
             "position": [
-                1122.0,
-                134.0
+                1230,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -620,12 +644,12 @@
             "name": "saveSlotCrownDigit1_0",
             "parentName": "",
             "position": [
-                1154.0,
-                134.0
+                1262,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -644,12 +668,12 @@
             "name": "saveSlotStarIcon_0",
             "parentName": "",
             "position": [
-                1035.0,
-                205.0
+                1510,
+                475
             ],
             "size": [
-                56.0,
-                56.0
+                58,
+                58
             ],
             "texture": "ui/hud/stage_star_filled.png"
         },
@@ -668,12 +692,12 @@
             "name": "saveSlotStarX_0",
             "parentName": "",
             "position": [
-                1085.0,
-                205.0
+                1565,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -692,12 +716,12 @@
             "name": "saveSlotStarDigit0_0",
             "parentName": "",
             "position": [
-                1122.0,
-                205.0
+                1620,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -716,12 +740,12 @@
             "name": "saveSlotStarDigit1_0",
             "parentName": "",
             "position": [
-                1154.0,
-                205.0
+                1652,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -740,12 +764,12 @@
             "name": "saveSlotPlayTimeLabel_0",
             "parentName": "",
             "position": [
-                1240.0,
-                134.0
+                1490,
+                620
             ],
             "size": [
-                150.0,
-                54.0
+                140,
+                48
             ],
             "texture": "generated/text/text_text_46271c76.png"
         },
@@ -764,12 +788,12 @@
             "name": "saveSlotPlayTimeDigit0_0",
             "parentName": "",
             "position": [
-                1335.0,
-                134.0
+                1600,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -788,12 +812,12 @@
             "name": "saveSlotPlayTimeDigit1_0",
             "parentName": "",
             "position": [
-                1359.0,
-                134.0
+                1628,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -812,12 +836,12 @@
             "name": "saveSlotPlayTimeDigit2_0",
             "parentName": "",
             "position": [
-                1382.0,
-                134.0
+                1656,
+                620
             ],
             "size": [
-                13.0,
-                38.0
+                13,
+                38
             ],
             "texture": "number/colon.png"
         },
@@ -836,12 +860,12 @@
             "name": "saveSlotPlayTimeDigit3_0",
             "parentName": "",
             "position": [
-                1405.0,
-                134.0
+                1684,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -860,12 +884,12 @@
             "name": "saveSlotPlayTimeDigit4_0",
             "parentName": "",
             "position": [
-                1429.0,
-                134.0
+                1712,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -884,14 +908,14 @@
             "name": "saveSlotLifeIcon_0",
             "parentName": "",
             "position": [
-                1285.0,
-                205.0
+                1125,
+                620
             ],
             "size": [
-                56.0,
-                56.0
+                110,
+                48
             ],
-            "texture": "title/slime_save_icon.png"
+            "texture": "ui/title/save_lives_label.png"
         },
         {
             "anchor": [
@@ -908,12 +932,12 @@
             "name": "saveSlotLifeX_0",
             "parentName": "",
             "position": [
-                1336.0,
-                205.0
+                1210,
+                620
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -932,12 +956,12 @@
             "name": "saveSlotLifeDigit0_0",
             "parentName": "",
             "position": [
-                1373.0,
-                205.0
+                1260,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -956,12 +980,12 @@
             "name": "saveSlotLifeDigit1_0",
             "parentName": "",
             "position": [
-                1405.0,
-                205.0
+                1292,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -980,12 +1004,12 @@
             "name": "saveSlotCard_1",
             "parentName": "",
             "position": [
-                700.0,
-                344.0
+                495.0,
+                490.0
             ],
             "size": [
-                1340.0,
-                162.0
+                765.0,
+                142.0
             ],
             "texture": "ui/title/save_slot_card.png"
         },
@@ -1004,38 +1028,14 @@
             "name": "saveSlotNumber_1",
             "parentName": "",
             "position": [
-                110.0,
-                342.0
+                165.0,
+                490.0
             ],
             "size": [
-                78.0,
-                116.0
+                65.0,
+                90.0
             ],
             "texture": "number/big2.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                0.949999988079071,
-                0.949999988079071,
-                0.949999988079071,
-                0.36000001430511475
-            ],
-            "emissive": 1.0,
-            "name": "saveSlotIcon_1",
-            "parentName": "",
-            "position": [
-                195.0,
-                344.0
-            ],
-            "size": [
-                132.0,
-                132.0
-            ],
-            "texture": "title/slime_save_icon.png"
         },
         {
             "anchor": [
@@ -1052,12 +1052,12 @@
             "name": "saveSlotFileName_1",
             "parentName": "",
             "position": [
-                370.0,
-                299.0
+                410,
+                458
             ],
             "size": [
-                225.0,
-                86.0
+                250,
+                56
             ],
             "texture": "generated/text/text_2_3d19f152.png"
         },
@@ -1076,14 +1076,14 @@
             "name": "saveSlotStatus_1",
             "parentName": "",
             "position": [
-                388.0,
-                381.0
+                410,
+                521
             ],
             "size": [
-                220.0,
-                96.0
+                220,
+                43
             ],
-            "texture": "generated/text/text_text_c8a6dc24.png"
+            "texture": "ui/title/save_beginning_label.png"
         },
         {
             "anchor": [
@@ -1100,12 +1100,12 @@
             "name": "saveSlotCrownIcon_1",
             "parentName": "",
             "position": [
-                1035.0,
-                300.0
+                1120,
+                475
             ],
             "size": [
-                58.0,
-                58.0
+                58,
+                58
             ],
             "texture": "ui/title/crown_progress_icon.png"
         },
@@ -1124,12 +1124,12 @@
             "name": "saveSlotCrownX_1",
             "parentName": "",
             "position": [
-                1085.0,
-                300.0
+                1175,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -1148,12 +1148,12 @@
             "name": "saveSlotCrownDigit0_1",
             "parentName": "",
             "position": [
-                1122.0,
-                300.0
+                1230,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1172,12 +1172,12 @@
             "name": "saveSlotCrownDigit1_1",
             "parentName": "",
             "position": [
-                1154.0,
-                300.0
+                1262,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1196,12 +1196,12 @@
             "name": "saveSlotStarIcon_1",
             "parentName": "",
             "position": [
-                1035.0,
-                371.0
+                1510,
+                475
             ],
             "size": [
-                56.0,
-                56.0
+                58,
+                58
             ],
             "texture": "ui/hud/stage_star_filled.png"
         },
@@ -1220,12 +1220,12 @@
             "name": "saveSlotStarX_1",
             "parentName": "",
             "position": [
-                1085.0,
-                371.0
+                1565,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -1244,12 +1244,12 @@
             "name": "saveSlotStarDigit0_1",
             "parentName": "",
             "position": [
-                1122.0,
-                371.0
+                1620,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1268,12 +1268,12 @@
             "name": "saveSlotStarDigit1_1",
             "parentName": "",
             "position": [
-                1154.0,
-                371.0
+                1652,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1292,12 +1292,12 @@
             "name": "saveSlotPlayTimeLabel_1",
             "parentName": "",
             "position": [
-                1240.0,
-                300.0
+                1490,
+                620
             ],
             "size": [
-                150.0,
-                54.0
+                140,
+                48
             ],
             "texture": "generated/text/text_text_46271c76.png"
         },
@@ -1316,12 +1316,12 @@
             "name": "saveSlotPlayTimeDigit0_1",
             "parentName": "",
             "position": [
-                1335.0,
-                300.0
+                1600,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1340,12 +1340,12 @@
             "name": "saveSlotPlayTimeDigit1_1",
             "parentName": "",
             "position": [
-                1359.0,
-                300.0
+                1628,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1364,12 +1364,12 @@
             "name": "saveSlotPlayTimeDigit2_1",
             "parentName": "",
             "position": [
-                1382.0,
-                300.0
+                1656,
+                620
             ],
             "size": [
-                13.0,
-                38.0
+                13,
+                38
             ],
             "texture": "number/colon.png"
         },
@@ -1388,12 +1388,12 @@
             "name": "saveSlotPlayTimeDigit3_1",
             "parentName": "",
             "position": [
-                1405.0,
-                300.0
+                1684,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1412,12 +1412,12 @@
             "name": "saveSlotPlayTimeDigit4_1",
             "parentName": "",
             "position": [
-                1429.0,
-                300.0
+                1712,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1436,14 +1436,14 @@
             "name": "saveSlotLifeIcon_1",
             "parentName": "",
             "position": [
-                1285.0,
-                371.0
+                1125,
+                620
             ],
             "size": [
-                56.0,
-                56.0
+                110,
+                48
             ],
-            "texture": "title/slime_save_icon.png"
+            "texture": "ui/title/save_lives_label.png"
         },
         {
             "anchor": [
@@ -1460,12 +1460,12 @@
             "name": "saveSlotLifeX_1",
             "parentName": "",
             "position": [
-                1336.0,
-                371.0
+                1210,
+                620
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -1484,12 +1484,12 @@
             "name": "saveSlotLifeDigit0_1",
             "parentName": "",
             "position": [
-                1373.0,
-                371.0
+                1260,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1508,12 +1508,12 @@
             "name": "saveSlotLifeDigit1_1",
             "parentName": "",
             "position": [
-                1405.0,
-                371.0
+                1292,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1532,12 +1532,12 @@
             "name": "saveSlotCard_2",
             "parentName": "",
             "position": [
-                700.0,
-                510.0
+                495.0,
+                660.0
             ],
             "size": [
-                1340.0,
-                162.0
+                765.0,
+                142.0
             ],
             "texture": "ui/title/save_slot_card.png"
         },
@@ -1556,38 +1556,14 @@
             "name": "saveSlotNumber_2",
             "parentName": "",
             "position": [
-                110.0,
-                508.0
+                165.0,
+                660.0
             ],
             "size": [
-                78.0,
-                116.0
+                65.0,
+                90.0
             ],
             "texture": "number/big3.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                0.949999988079071,
-                0.949999988079071,
-                0.949999988079071,
-                0.36000001430511475
-            ],
-            "emissive": 1.0,
-            "name": "saveSlotIcon_2",
-            "parentName": "",
-            "position": [
-                195.0,
-                510.0
-            ],
-            "size": [
-                132.0,
-                132.0
-            ],
-            "texture": "title/slime_save_icon.png"
         },
         {
             "anchor": [
@@ -1604,12 +1580,12 @@
             "name": "saveSlotFileName_2",
             "parentName": "",
             "position": [
-                370.0,
-                465.0
+                410,
+                628
             ],
             "size": [
-                225.0,
-                86.0
+                250,
+                56
             ],
             "texture": "generated/text/text_3_3e19f2e5.png"
         },
@@ -1628,14 +1604,14 @@
             "name": "saveSlotStatus_2",
             "parentName": "",
             "position": [
-                370.0,
-                547.0
+                410,
+                691
             ],
             "size": [
-                220.0,
-                96.0
+                220,
+                43
             ],
-            "texture": "generated/text/text_text_c8a6dc24.png"
+            "texture": "ui/title/save_beginning_label.png"
         },
         {
             "anchor": [
@@ -1652,12 +1628,12 @@
             "name": "saveSlotCrownIcon_2",
             "parentName": "",
             "position": [
-                1035.0,
-                466.0
+                1120,
+                475
             ],
             "size": [
-                58.0,
-                58.0
+                58,
+                58
             ],
             "texture": "ui/title/crown_progress_icon.png"
         },
@@ -1676,12 +1652,12 @@
             "name": "saveSlotCrownX_2",
             "parentName": "",
             "position": [
-                1085.0,
-                466.0
+                1175,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -1700,12 +1676,12 @@
             "name": "saveSlotCrownDigit0_2",
             "parentName": "",
             "position": [
-                1122.0,
-                466.0
+                1230,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1724,12 +1700,12 @@
             "name": "saveSlotCrownDigit1_2",
             "parentName": "",
             "position": [
-                1154.0,
-                466.0
+                1262,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1748,12 +1724,12 @@
             "name": "saveSlotStarIcon_2",
             "parentName": "",
             "position": [
-                1035.0,
-                537.0
+                1510,
+                475
             ],
             "size": [
-                56.0,
-                56.0
+                58,
+                58
             ],
             "texture": "ui/hud/stage_star_filled.png"
         },
@@ -1772,12 +1748,12 @@
             "name": "saveSlotStarX_2",
             "parentName": "",
             "position": [
-                1085.0,
-                537.0
+                1565,
+                475
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -1796,12 +1772,12 @@
             "name": "saveSlotStarDigit0_2",
             "parentName": "",
             "position": [
-                1122.0,
-                537.0
+                1620,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1820,12 +1796,12 @@
             "name": "saveSlotStarDigit1_2",
             "parentName": "",
             "position": [
-                1154.0,
-                537.0
+                1652,
+                475
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -1844,12 +1820,12 @@
             "name": "saveSlotPlayTimeLabel_2",
             "parentName": "",
             "position": [
-                1240.0,
-                466.0
+                1490,
+                620
             ],
             "size": [
-                150.0,
-                54.0
+                140,
+                48
             ],
             "texture": "generated/text/text_text_46271c76.png"
         },
@@ -1868,12 +1844,12 @@
             "name": "saveSlotPlayTimeDigit0_2",
             "parentName": "",
             "position": [
-                1335.0,
-                466.0
+                1600,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1892,12 +1868,12 @@
             "name": "saveSlotPlayTimeDigit1_2",
             "parentName": "",
             "position": [
-                1359.0,
-                466.0
+                1628,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1916,12 +1892,12 @@
             "name": "saveSlotPlayTimeDigit2_2",
             "parentName": "",
             "position": [
-                1382.0,
-                466.0
+                1656,
+                620
             ],
             "size": [
-                13.0,
-                38.0
+                13,
+                38
             ],
             "texture": "number/colon.png"
         },
@@ -1940,12 +1916,12 @@
             "name": "saveSlotPlayTimeDigit3_2",
             "parentName": "",
             "position": [
-                1405.0,
-                466.0
+                1684,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1964,12 +1940,12 @@
             "name": "saveSlotPlayTimeDigit4_2",
             "parentName": "",
             "position": [
-                1429.0,
-                466.0
+                1712,
+                620
             ],
             "size": [
-                21.0,
-                38.0
+                23,
+                38
             ],
             "texture": "number/0.png"
         },
@@ -1988,14 +1964,14 @@
             "name": "saveSlotLifeIcon_2",
             "parentName": "",
             "position": [
-                1285.0,
-                537.0
+                1125,
+                620
             ],
             "size": [
-                56.0,
-                56.0
+                110,
+                48
             ],
-            "texture": "title/slime_save_icon.png"
+            "texture": "ui/title/save_lives_label.png"
         },
         {
             "anchor": [
@@ -2012,12 +1988,12 @@
             "name": "saveSlotLifeX_2",
             "parentName": "",
             "position": [
-                1336.0,
-                537.0
+                1210,
+                620
             ],
             "size": [
-                34.0,
-                34.0
+                30,
+                30
             ],
             "texture": "ui/hud/xUi.png"
         },
@@ -2036,12 +2012,12 @@
             "name": "saveSlotLifeDigit0_2",
             "parentName": "",
             "position": [
-                1373.0,
-                537.0
+                1260,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -2060,12 +2036,12 @@
             "name": "saveSlotLifeDigit1_2",
             "parentName": "",
             "position": [
-                1405.0,
-                537.0
+                1292,
+                620
             ],
             "size": [
-                29.0,
-                43.0
+                28,
+                42
             ],
             "texture": "number/0.png"
         },
@@ -2084,8 +2060,8 @@
             "name": "saveDeleteButtonBack",
             "parentName": "",
             "position": [
-                363.37200927734375,
-                920.2705688476562
+                390.0,
+                905.0
             ],
             "size": [
                 450.0,
@@ -2108,14 +2084,182 @@
             "name": "saveDeleteButtonText",
             "parentName": "",
             "position": [
-                382.2123107910156,
-                915.0278930664062
+                390.0,
+                905.0
             ],
             "size": [
                 286.0,
-                76.0
+                58.0
             ],
             "texture": "generated/text/text_text_1f05b6eb.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.2,
+                0.26,
+                0.38,
+                1
+            ],
+            "emissive": 1.0,
+            "name": "saveDetailFileName",
+            "parentName": "",
+            "position": [
+                1375,
+                330
+            ],
+            "size": [
+                300,
+                66
+            ],
+            "texture": "generated/text/text_1_3c19efbf.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.2,
+                0.32,
+                0.48,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveDetailEmptyLabel",
+            "parentName": "",
+            "position": [
+                1375,
+                565
+            ],
+            "size": [
+                320,
+                68
+            ],
+            "texture": "ui/title/save_beginning_label.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.17,
+                0.39,
+                0.65,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveLaunchLabel",
+            "parentName": "",
+            "position": [
+                1375.0,
+                672.0
+            ],
+            "size": [
+                340.0,
+                70.0
+            ],
+            "texture": "ui/title/save_launch_label.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveSelectTitle",
+            "parentName": "",
+            "position": [
+                960.0,
+                122.0
+            ],
+            "size": [
+                670.0,
+                93.0
+            ],
+            "texture": "ui/title/save_select_title.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.02,
+                0.07,
+                0.14,
+                0.68
+            ],
+            "emissive": 1.0,
+            "name": "saveHintBackdrop",
+            "parentName": "",
+            "position": [
+                960,
+                968
+            ],
+            "size": [
+                1250,
+                80
+            ],
+            "texture": "common/white.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveKeyboardHint",
+            "parentName": "",
+            "position": [
+                960.0,
+                968.0
+            ],
+            "size": [
+                1120.0,
+                52.0
+            ],
+            "texture": "ui/title/save_hint_keyboard.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "saveGamepadHint",
+            "parentName": "",
+            "position": [
+                960.0,
+                968.0
+            ],
+            "size": [
+                1120.0,
+                52.0
+            ],
+            "texture": "ui/title/save_hint_gamepad.png"
         },
         {
             "anchor": [
@@ -2132,38 +2276,14 @@
             "name": "savePromptBubble",
             "parentName": "",
             "position": [
-                1566.4227294921875,
-                920.0279541015625
+                1375.0,
+                830.0
             ],
             "size": [
-                720.0,
-                190.0
+                770.0,
+                150.0
             ],
             "texture": "ui/title/save_prompt_bubble.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                0.2800000011920929,
-                0.20000000298023224,
-                0.14000000059604645,
-                1.0
-            ],
-            "emissive": 1.0,
-            "name": "savePromptText",
-            "parentName": "",
-            "position": [
-                1573.2738037109375,
-                918.6073608398438
-            ],
-            "size": [
-                520.0,
-                83.0
-            ],
-            "texture": "generated/text/text_text_0bbc5855.png"
         },
         {
             "anchor": [
@@ -2180,14 +2300,14 @@
             "name": "saveDeleteQuestionText",
             "parentName": "",
             "position": [
-                1580.124755859375,
-                923.8323364257812
+                1375.0,
+                785.0
             ],
             "size": [
-                300.0,
-                92.0
+                610.0,
+                80.0
             ],
-            "texture": "generated/text/text_text_8aae87df.png"
+            "texture": "ui/title/save_delete_question.png"
         },
         {
             "anchor": [
@@ -2204,12 +2324,12 @@
             "name": "saveConfirmYesText",
             "parentName": "",
             "position": [
-                990.0,
-                842.5
+                1280.0,
+                872.0
             ],
             "size": [
-                92.0,
-                72.0
+                100.0,
+                48.0
             ],
             "texture": "generated/text/text_text_a214f5c6.png"
         },
@@ -2228,12 +2348,12 @@
             "name": "saveConfirmBackText",
             "parentName": "",
             "position": [
-                1311.0526123046875,
-                860.6117553710938
+                1500.0,
+                872.0
             ],
             "size": [
-                132.0,
-                74.0
+                150.0,
+                48.0
             ],
             "texture": "generated/text/text_text_70188c3d.png"
         }

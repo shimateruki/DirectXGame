@@ -49,8 +49,8 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
         float offsetZ = std::cos(struggleTimer_ * 30.0f) * 0.15f;
         float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
 
-        enemy->GetTransform()->translate = {playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
-                                            playerPos.z + offsetZ};
+        enemy->SetTranslate({playerPos.x + offsetX, playerPos.y + 1.55f + offsetY,
+                                            playerPos.z + offsetZ});
 
         // 2. 回転の揺れ（体をよじる、イヤイヤと暴れる動き）
         Vector3 rot;
@@ -58,15 +58,15 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
         // プレイヤーの現在のY軸回転を基準に、首振り角度をオフセットとして適用する
         rot.y = player->GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
         rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
-        enemy->GetTransform()->rotate = rot;
+        enemy->SetEulerAngles(rot);
 
         // 3. スケールの伸縮（息遣いや力を込めるような Squash & Stretch）
         float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
-        enemy->GetTransform()->scale = {carriedBaseScale_.x * (1.0f - stretch), carriedBaseScale_.y * (1.0f + stretch),
-                                        carriedBaseScale_.z * (1.0f - stretch)};
+        enemy->SetScale({carriedBaseScale_.x * (1.0f - stretch), carriedBaseScale_.y * (1.0f + stretch),
+                                        carriedBaseScale_.z * (1.0f - stretch)});
 
         // 追加: クォータニオンを無視させ、手動でマトリックスを更新する
-        enemy->GetTransform()->isQuaternionMaster = false;
+        enemy->SetQuaternionMaster(false);
         enemy->UpdateLocalMatrix();
         enemy->UpdateWorldMatrix();
     }
@@ -80,9 +80,9 @@ void PlayerStateCarry::Exit(Player* player) {
         Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
             // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す
-            enemy->GetTransform()->scale = carriedBaseScale_;
-            enemy->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
-            enemy->GetTransform()->isQuaternionMaster = true; // クォータニオンモードに戻す
+            enemy->SetScale(carriedBaseScale_);
+            enemy->SetEulerAngles({0.0f, 0.0f, 0.0f});
+            enemy->SetQuaternionMaster(true); // クォータニオンモードに戻す
             enemy->UpdateLocalMatrix();
             enemy->UpdateWorldMatrix();
         }

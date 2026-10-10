@@ -43,7 +43,6 @@ class PlayerMover {
     // ワープや演出復帰時に、継続中のダッシュ・床補正・ジャンプ溜めを破棄します。
     void ResetTransientState();
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
-    void ApplyIceSurface(float duration, float friction, float steering);
 
   private:
     Vector3 platformVelocity_{};
@@ -92,9 +91,6 @@ class PlayerMover {
     float dashPanelTimer_ = 0.0f;
     float dashPanelSpeedMultiplier_ = 1.0f;
     float dashPanelTurnMultiplier_ = 1.0f;
-    float iceTimer_ = 0.0f;
-    float iceFriction_ = 1.0f;
-    float iceSteering_ = 1.0f;
 
     bool hasGroundedHistory_ = false;
     bool wasGroundedLastFrame_ = false;

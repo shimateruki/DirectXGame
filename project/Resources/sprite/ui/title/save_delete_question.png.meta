@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "ca96610be0fe904a3b2eb507cd1df3b5",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_delete_question.png",
+  "version": 1
+}

@@ -119,6 +119,23 @@ float NormalizeYaw(float yaw) {
 } // namespace
 
 // ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
+bool GamePlayScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+    Player* player = dynamic_cast<Player*>(actor);
+    if (!player || player->isDead || player->GetHp() <= 0.0f) {
+        return false;
+    }
+    if (!IsGoal()) {
+        StartGoalPresentation(goal);
+    }
+    DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
+    return true;
+}
+
+void GamePlayScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+    CollectStarCoin(coinIndex, worldPosition);
+    DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIndex) + " Collected!");
+}
+
 void GamePlayScene::SetIsGoal(bool isGoal) {
     if (isGoal_ == isGoal) {
         return;

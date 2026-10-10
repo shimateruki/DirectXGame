@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "300e7361d3aac06c0e6d9df44a7452e6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_lives_label.png",
+  "version": 1
+}

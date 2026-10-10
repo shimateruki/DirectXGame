@@ -85,7 +85,7 @@
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/imgui-node-editor;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/nodegraph;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,7 +116,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/imgui-node-editor;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/DirectXTex;$(ProjectDir)externals/nlohmann;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/ImGuiFileDialog;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/nodegraph;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/DirectXTex;$(ProjectDir)externals/nlohmann;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/ImGuiFileDialog;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
@@ -149,7 +149,7 @@
       <ProcessorNumber>2</ProcessorNumber>
       <ForceSynchronousPDBWrites>true</ForceSynchronousPDBWrites>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/imgui-node-editor;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/nodegraph;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor\gimmick;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d;$(ProjectDir)engine/graphics/effect;$(ProjectDir)engine/utility/SystemDebug/editor/core;$(ProjectDir)engine/utility/SystemDebug/editor/windows;$(ProjectDir)engine/utility/SystemDebug/editor/graphics;$(ProjectDir)engine/utility/SystemDebug/editor/vfx;$(ProjectDir)engine/utility/SystemDebug/editor/misc;$(ProjectDir)game/actor/enemy/core;$(ProjectDir)game/actor/enemy/normal;$(ProjectDir)game/actor/enemy/ranged;$(ProjectDir)game/actor/enemy/flying;$(ProjectDir)game/actor/enemy/elemental;$(ProjectDir)game/actor/enemy/heavy;$(ProjectDir)game/actor/enemy/boss;$(ProjectDir)game/actor/gimmick/core;$(ProjectDir)game/actor/gimmick/block;$(ProjectDir)game/actor/gimmick/movement;$(ProjectDir)game/actor/gimmick/trigger;$(ProjectDir)game/actor/gimmick/combat;$(ProjectDir)game/actor/gimmick/stage;</AdditionalIncludeDirectories>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -174,7 +174,6 @@
     <ClCompile Include="game\actor\enemy\combat\AttackAbilityRuntime.cpp" />
     <ClCompile Include="game\actor\combat\AttackSequence.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Authoring.cpp" />
-    <ClCompile Include="game\actor\enemy\normal\EnemyMushroom.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyFireSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyThunderSlime.cpp" />
     <ClCompile Include="game\actor\enemy\elemental\EnemyWindSlime.cpp" />
@@ -184,14 +183,11 @@
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Attacks.cpp" />
     <ClCompile Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Encounter.cpp" />
     <ClCompile Include="game\actor\enemy\boss\false_king\EnemyFalseKingSlime.cpp" />
-    <ClCompile Include="game\actor\enemy\flying\EnemyBat.cpp" />
-    <ClCompile Include="game\actor\enemy\ranged\EnemyBeamDrone.cpp" />
     <ClCompile Include="game\actor\enemy\ranged\EnemyRingBurner.cpp" />
     <ClCompile Include="engine\graphics\effect\EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Ui.cpp" />
-    <ClCompile Include="game\actor\enemy\boss\core\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.cpp" />
     <ClCompile Include="game\actor\enemy\core\BaseEnemy.Replay.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
@@ -201,16 +197,13 @@
     <ClCompile Include="game\actor\gimmick\movement\RidingPlatformController.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickHazardRideFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickTrampoline.cpp" />
-    <ClCompile Include="game\actor\gimmick\movement\GimmickLaunchStar.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickChikuwaBlock.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickBlinkBlock.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickBreakableBlock.cpp" />
     <ClCompile Include="game\actor\gimmick\stage\GimmickCoin.cpp" />
-    <ClCompile Include="game\actor\gimmick\trigger\GimmickHookAnchor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickSinkingFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickSeesawFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickDashPanel.cpp" />
-    <ClCompile Include="game\actor\gimmick\movement\GimmickIceFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickTimedSwitch.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickAppearingFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickSwitch.cpp" />
@@ -221,18 +214,14 @@
     <ClCompile Include="game\actor\gimmick\trigger\GimmickBossGate.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickPrismBarrier.cpp" />
     <ClCompile Include="game\actor\gimmick\trigger\GimmickHookPullBlock.cpp" />
-    <ClCompile Include="game\actor\gimmick\movement\GimmickOneWayFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\stage\GimmickLiquidLevel.cpp" />
     <ClCompile Include="game\actor\gimmick\block\GimmickChainCollapseFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickRotatingObject.cpp" />
     <ClCompile Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.cpp" />
-    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserEmitter.cpp" />
-    <ClCompile Include="game\actor\gimmick\combat\GimmickLaserNode.cpp" />
     <ClCompile Include="game\actor\gimmick\stage\GimmickStageGate.cpp" />
     <ClCompile Include="game\actor\gimmick\combat\GimmickFireCannon.cpp" />
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaHazard.cpp" />
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp" />
-    <ClCompile Include="game\actor\gimmick\combat\GimmickFallingSpike.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\actor\enemy\spawn\EnemyFactory.cpp" />
@@ -357,7 +346,6 @@
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ProfilerManager.cpp" />
     <ClCompile Include="engine\graphics\3d\light\Light.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\GameplayEventTrace.cpp" />
     <ClCompile Include="engine\graphics\3d\light\LightManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\Log.cpp" />
     <ClCompile Include="engine\core\main.cpp">
@@ -439,7 +427,6 @@
     <ClCompile Include="game\actor\player\state\PlayerState.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Basic.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Damage.cpp" />
-    <ClCompile Include="game\actor\player\state\PlayerState.Hook.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.Life.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.PullEnemy.cpp" />
     <ClCompile Include="game\actor\player\state\PlayerState.PullObject.cpp" />
@@ -458,7 +445,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Timeline.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Material.cpp" />
@@ -470,11 +456,8 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.Item.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Packaging.cpp" />
@@ -483,13 +466,9 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.Ui.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneInventoryWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.Report.cpp" />
     <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp" />
     <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
@@ -693,7 +672,6 @@
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="game\actor\enemy\boss\core\BossCore.h" />
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.h" />
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.h" />
     <ClInclude Include="game\actor\enemy\boss\magma\EnemyMagmaSlime.Internal.h" />
@@ -714,16 +692,13 @@
     <None Include="Resources\shader\object3d\FoliageDeformation.hlsli" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickHazardRideFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickTrampoline.h" />
-    <ClInclude Include="game\actor\gimmick\movement\GimmickLaunchStar.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickChikuwaBlock.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickBlinkBlock.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickBreakableBlock.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickCoin.h" />
-    <ClInclude Include="game\actor\gimmick\trigger\GimmickHookAnchor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickSinkingFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickSeesawFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickDashPanel.h" />
-    <ClInclude Include="game\actor\gimmick\movement\GimmickIceFloor.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickTimedSwitch.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickAppearingFloor.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickSwitch.h" />
@@ -734,31 +709,24 @@
     <ClInclude Include="game\actor\gimmick\trigger\GimmickBossGate.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickPrismBarrier.h" />
     <ClInclude Include="game\actor\gimmick\trigger\GimmickHookPullBlock.h" />
-    <ClInclude Include="game\actor\gimmick\movement\GimmickOneWayFloor.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickLiquidLevel.h" />
     <ClInclude Include="game\actor\gimmick\block\GimmickChainCollapseFloor.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickRotatingObject.h" />
     <ClInclude Include="game\actor\gimmick\movement\GimmickPhaseFlipFloor.h" />
-    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserEmitter.h" />
-    <ClInclude Include="game\actor\gimmick\combat\GimmickLaserNode.h" />
     <ClInclude Include="game\actor\gimmick\stage\GimmickStageGate.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickFireCannon.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h" />
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h" />
-    <ClInclude Include="game\actor\gimmick\combat\GimmickFallingSpike.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\actor\enemy\spawn\EnemyFactory.h" />
     <ClInclude Include="game\system\GameplayStatusManager.h" />
     <ClInclude Include="game\actor\enemy\normal\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyBomb.h" />
-    <ClInclude Include="game\actor\enemy\normal\EnemyMushroom.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyFireSlime.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyThunderSlime.h" />
     <ClInclude Include="game\actor\enemy\elemental\EnemyWindSlime.h" />
     <ClInclude Include="game\actor\enemy\heavy\EnemyGiantSlime.h" />
-    <ClInclude Include="game\actor\enemy\flying\EnemyBat.h" />
-    <ClInclude Include="game\actor\enemy\ranged\EnemyBeamDrone.h" />
     <ClInclude Include="game\actor\enemy\ranged\EnemyRingBurner.h" />
     <ClInclude Include="game\actor\enemy\spawn\EnemySpawner.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\camera\CameraEditor.h" />
@@ -1009,7 +977,6 @@
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\ProfilerManager.h" />
     <ClInclude Include="engine\graphics\particle\ParticleCommon.h" />
-    <ClInclude Include="engine\utility\SystemDebug\GameplayEventTrace.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorPropertyTransaction.h" />
     <ClInclude Include="engine\graphics\particle\VFXAuthoring.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\VFXAuthoringEditor.h" />
@@ -1064,7 +1031,6 @@
     <ClInclude Include="game\actor\player\state\PlayerState.Basic.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.Carry.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.Damage.h" />
-    <ClInclude Include="game\actor\player\state\PlayerState.Hook.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.Life.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.PullEnemy.h" />
     <ClInclude Include="game\actor\player\state\PlayerState.PullObject.h" />
@@ -1082,17 +1048,13 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EnemyAttackPreviewWindow.Constants.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EventLinkGraph.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\inspector\InspectorTextureCatalog.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\PropertyMatrixWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\StatusTuningWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\JsonBackupWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AudioSettingsWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ExecutablePackageWindow.Internal.h" />
@@ -1100,12 +1062,9 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneInventoryWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\windows\LevelDesignLabWindow.h" />
     <ClInclude Include="engine\system\input\KeyConfig.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\MeshEffectEditor.h" />
     <ClInclude Include="engine\graphics\effect\MeshEffectManager.h" />
@@ -1137,41 +1096,8 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <ItemGroup>
-    <ClCompile Include="externals\imgui-node-editor\crude_json.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_canvas.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="externals\imgui-node-editor\imgui_node_editor_api.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="externals\imgui-node-editor\crude_json.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_bezier_math.inl" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_canvas.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_extra_math.inl" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.h" />
-    <ClInclude Include="externals\imgui-node-editor\imgui_node_editor_internal.inl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.cpp" />
-    <ClCompile Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphCore.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphEditorWindow.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphExecutor.h" />
-    <ClInclude Include="engine\utility\SystemDebug\editor\nodegraph\NodeGraphTemplateRegistry.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\scene\gameover\GameOverSlimeAnimator.h" />
@@ -1193,12 +1119,8 @@
     <ClInclude Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Internal.h" />
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Attacks.cpp" />
     <ClCompile Include="game\actor\enemy\boss\prism\EnemyPrismSlime.Encounter.cpp" />
-    <ClInclude Include="game\actor\enemy\boss\core\BossCore.Internal.h" />
-    <ClCompile Include="game\actor\enemy\boss\core\BossCore.Sequence.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="game\actor\player\movement\PlayerLaunchStarController.cpp" />
-    <ClInclude Include="game\actor\player\movement\PlayerLaunchStarController.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\core\editor\GameEditorController.Internal.h" />
@@ -1222,8 +1144,6 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\replay\ReplayDebugger.Regression.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="game\actor\enemy\boss\core\BossArmorFlightController.h" />
-    <ClCompile Include="game\actor\enemy\boss\core\BossArmorFlightController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\combat\CombatMath.h" />

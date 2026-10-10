@@ -203,7 +203,16 @@ void SceneAssetEditorScene::DrawShadow() {
     }
 }
 
-std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() { return objectManager_->GetObjects(); }
+const std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() const { return objectManager_->GetObjects(); }
+
+
+Object3d* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    return objectManager_->AddObjectImmediate(std::move(object));
+}
+
+std::unique_ptr<Object3d> SceneAssetEditorScene::TakeObjectImmediate(Object3d* object) {
+    return objectManager_->TakeObjectImmediate(object);
+}
 
 void SceneAssetEditorScene::AddObject(std::unique_ptr<Object3d> object) {
     objectManager_->AddObject(std::move(object));

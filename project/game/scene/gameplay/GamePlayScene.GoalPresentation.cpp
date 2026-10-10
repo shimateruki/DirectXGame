@@ -200,23 +200,6 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         goalCinematicSequence_.vfxTracks.push_back(track);
     }
 
-    // 効果音も同じジャンプ基準時刻へ揃え、編集のたびに重複追加しない。
-    bool hasJumpAudio = false;
-    for (auto& clip : goalCinematicSequence_.audioClips) {
-        if (clip.audioId == "slime_stretch") {
-            clip.startTime = animation.jumpStartTime;
-            hasJumpAudio = true;
-        }
-    }
-    if (!hasJumpAudio) {
-        CinematicAudioClipData clip;
-        clip.name = "Jump Stretch SE";
-        clip.audioId = "slime_stretch";
-        clip.startTime = animation.jumpStartTime;
-        clip.duration = 0.2f;
-        clip.volume = 0.85f;
-        goalCinematicSequence_.audioClips.push_back(clip);
-    }
     goalCinematicSequence_.duration = animation.readyTime;
     goalCinematicSequence_.Sort();
 }

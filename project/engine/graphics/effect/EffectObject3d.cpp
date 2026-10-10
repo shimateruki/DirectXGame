@@ -195,15 +195,15 @@ void EffectObject3d::Update(float deltaTime) {
     // UpdateAttachedEffects や UpdateParticle が再帰的に走ってしまうため）
     UpdateLocalMatrix();
     UpdateWorldMatrix();
-    if (meshRenderer_) {
-        meshRenderer_->Update();
+    if (GetMeshRenderer()) {
+        GetMeshRenderer()->Update();
     }
 }
 
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 
-    if (!common_ || !meshRenderer_) return;
-    Model* model = meshRenderer_->GetModel();
+    if (!common_ || !GetMeshRenderer()) return;
+    Model* model = GetMeshRenderer()->GetModel();
     if (!model)
     {
         // ★ 3. モデルが取得できずに弾かれているか確認
@@ -220,17 +220,17 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     // =======================================================
 
     // [0] CBV b0 (VS用) -> ここにWVP行列を渡す！(先頭64バイトが読まれるのでOK)
-    commandList->SetGraphicsRootConstantBufferView(0, meshRenderer_->GetWvpResource()->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(0, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
 
     // [1] CBV b1 (VS用) -> 空っぽだとクラッシュするので、とりあえずWVPバッファを繋いでおく
-    commandList->SetGraphicsRootConstantBufferView(1, meshRenderer_->GetWvpResource()->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, GetMeshRenderer()->GetWvpResource()->GetGPUVirtualAddress());
 
     // [2] CBV b0 (PS用) -> エフェクトマテリアル
     commandList->SetGraphicsRootConstantBufferView(2, materialBuffer_->GetGPUVirtualAddress());
 
     // [3] DescriptorTable t0 (PS用) -> テクスチャ
     const uint32_t fallbackTextureHandle = GetDefaultWhiteTextureHandle();
-    uint32_t texHandle = meshRenderer_->GetTextureHandle();
+    uint32_t texHandle = GetMeshRenderer()->GetTextureHandle();
     if (texHandle == 0) {
         texHandle = fallbackTextureHandle;
     }
@@ -722,7 +722,7 @@ void EffectObject3d::GenerateLanceVertices(float radius, float height, int segme
 
 void EffectObject3d::UpdateProceduralMesh() {
     if (!dynamicModel_) { dynamicModel_ = std::make_unique<Model>(); }
-    if (meshRenderer_) { meshRenderer_->SetModel(dynamicModel_.get()); }
+    if (GetMeshRenderer()) { GetMeshRenderer()->SetModel(dynamicModel_.get()); }
 
     int type = materialData_ ? materialData_->proceduralType : 0;
 

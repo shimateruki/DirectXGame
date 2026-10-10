@@ -18,8 +18,6 @@
 #include "GameplayStatusManager.h"
 #include "game/actor/enemy/spawn/EnemySpawner.h"
 #include "BaseEnemy.h"
-#include "EnemyBomber.h"
-#include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "GimmickFactory.h"
 #include "BaseGimmick.h"
 #include "ItemFactory.h"
@@ -38,45 +36,11 @@ namespace {
 constexpr int kSlimeSoftMaterialType = 25;
 constexpr int kPrismCrystalMaterialType = 27;
 
-void ConfigureBomberSpawnCallback(BaseScene* scene, EnemyBomber* bomber) {
-    if (!scene || !bomber) {
-        return;
-    }
-
-    bomber->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
-        if (!spawned) {
-            return;
-        }
-
-        spawned->SetTarget(scene->GetPlayer());
-        scene->AddObject(std::move(spawned));
-    });
-}
-
-void ConfigurePrismSpawnCallback(BaseScene* scene, EnemyPrismSlime* prismSlime) {
-    if (!scene || !prismSlime) {
-        return;
-    }
-
-    prismSlime->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
-        if (!spawned) {
-            return;
-        }
-
-        spawned->SetTarget(scene->GetPlayer());
-        if (auto* bomber = dynamic_cast<EnemyBomber*>(spawned.get())) {
-            ConfigureBomberSpawnCallback(scene, bomber);
-        }
-        scene->AddObject(std::move(spawned));
-    });
-}
-
 void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
     if (!scene) {
         return;
     }
 
-    Player* player = scene->GetPlayer();
     auto& objects = scene->GetObjects();
     for (auto& object : objects) {
         auto* enemy = dynamic_cast<BaseEnemy*>(object.get());
@@ -84,13 +48,7 @@ void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
             continue;
         }
 
-        enemy->SetTarget(player);
-        if (auto* bomber = dynamic_cast<EnemyBomber*>(enemy)) {
-            ConfigureBomberSpawnCallback(scene, bomber);
-        }
-        if (auto* prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy)) {
-            ConfigurePrismSpawnCallback(scene, prismSlime);
-        }
+        enemy->BindSceneSpawnContext(scene);
     }
 }
 
@@ -471,15 +429,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (enemy) {
                             enemy->SetEnemyType(enemyType);
 
-                            if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
-                                base->SetTarget(scene->GetPlayer());
-                            }
-                            if (auto bomber = dynamic_cast<EnemyBomber*>(enemy.get())) {
-                                ConfigureBomberSpawnCallback(scene, bomber);
-                            }
-                            if (auto prismSlime = dynamic_cast<EnemyPrismSlime*>(enemy.get())) {
-                                ConfigurePrismSpawnCallback(scene, prismSlime);
-                            }
+                            enemy->BindSceneSpawnContext(scene);
                             newObj = std::move(enemy);
                         }
                     }
@@ -522,22 +472,13 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             auto newEnemy =
                                 EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3dCommon());
                             if (newEnemy) {
-                                newEnemy->GetTransform()->translate = spawnPos;
+                                newEnemy->SetTranslate(spawnPos);
                                 newEnemy->UpdateLocalMatrix();
                                 newEnemy->UpdateWorldMatrix();
                                 newEnemy->SetEnemyType(spawnEnemyType);
-                                if (auto base = dynamic_cast<BaseEnemy*>(newEnemy.get())) {
-                                    base->SetTarget(scene->GetPlayer());
-                                }
-                                if (auto bomber = dynamic_cast<EnemyBomber*>(newEnemy.get())) {
-                                    ConfigureBomberSpawnCallback(scene, bomber);
-                                }
-                                if (auto prismSlime = dynamic_cast<EnemyPrismSlime*>(newEnemy.get())) {
-                                    ConfigurePrismSpawnCallback(scene, prismSlime);
-                                }
+                                newEnemy->BindSceneSpawnContext(scene);
                                 // 直接シーンに追加
-                                CollisionManager::GetInstance()->AddObject(newEnemy.get());
-                                scene->GetObjects().push_back(std::move(newEnemy));
+                                scene->AddObjectImmediate(std::move(newEnemy));
                             }
                         });
                         newObj = std::move(spawner);
@@ -600,8 +541,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         targetObject = newObj.get();
 
                         // 生成したら即座にCollisionManagerとシーンリストへ登録
-                        CollisionManager::GetInstance()->AddObject(newObj.get());
-                        objects.push_back(std::move(newObj));
+                        scene->AddObjectImmediate(std::move(newObj));
                     }
                 }
 
@@ -663,7 +603,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 }
 
                 // 4. Transform
-                Transform* transform = targetObject->GetTransform();
+                Transform transformValue = *targetObject->GetTransform();
+                Transform* transform = &transformValue;
                 if (objData.contains("position")) {
                     transform->translate.x = objData["position"][0];
                     transform->translate.y = objData["position"][1];
@@ -696,6 +637,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     transform->scale.z = objData["scale"][2];
                 }
 
+                targetObject->SetLocalTransform(transformValue);
                 // ロード直後に行列更新
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
@@ -1072,7 +1014,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     newSprite->SetName(name);
                     newSprite->SetTextureName(textureFile);
                     targetSprite = newSprite.get();
-                    sprites.push_back(std::move(newSprite));
+                    scene->AddSprite(std::move(newSprite));
                 }
 
                 if (targetSprite) {

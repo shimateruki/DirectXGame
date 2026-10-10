@@ -73,6 +73,19 @@ Object3d* FindEnemyDamageTarget(Object3d* object) {
     return nullptr;
 }
 } // namespace
+void EnemyBomber::BindSceneSpawnContext(BaseScene* scene) {
+    BaseEnemy::BindSceneSpawnContext(scene);
+    if (!scene) {
+        SetSpawnCallback(nullptr);
+        return;
+    }
+    SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
+        if (!spawned) return;
+        spawned->BindSceneSpawnContext(scene);
+        scene->AddObject(std::move(spawned));
+    });
+}
+
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     common_ = common;

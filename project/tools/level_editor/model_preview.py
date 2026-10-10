@@ -42,10 +42,8 @@ def _load_managed_model_names(project_root):
         "Player": "Characters/slime",
         "Enemy": {
             "Slime": "Characters/slime_pink",
-            "BossCore": "Stages/block",
             "Bomb": "Gimmicks/blob",
             "Bomber": "Characters/slime_black",
-            "Mushroom": "Primitives/cylinder",
             "FireSlime": "Characters/slime_red",
             "ThunderSlime": "Characters/slime_yellow",
             "WindSlime": "Characters/slime_wind",

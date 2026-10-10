@@ -38,7 +38,7 @@ void GimmickSinkingFloor::Update(float deltaTime) {
 
     Vector3 pos = GetTransform()->translate;
     pos.y = Math::Lerp(pos.y, targetY, t);
-    GetTransform()->translate = pos;
+    SetTranslate(pos);
 
     BaseGimmick::Update(deltaTime);
 }

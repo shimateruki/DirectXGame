@@ -194,13 +194,11 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
     player->SetVelocity({0.0f, 0.0f, 0.0f});
     player->SetMoveYaw(std::atan2(route_.direction.x, route_.direction.z));
 
-    if (Transform* transform = player->GetTransform()) {
-        transform->translate = position;
-        transform->scale = scale;
-        transform->rotate.x = pitch;
-        transform->rotate.z = roll;
-        transform->isQuaternionMaster = false;
-    }
+    player->SetTranslate(position);
+    player->SetScale(scale);
+    player->SetEulerX(pitch);
+    player->SetEulerZ(roll);
+    player->SetQuaternionMaster(false);
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
 }
@@ -217,13 +215,11 @@ void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreCo
         player->SetIsControlActive(savedControlActive_);
     }
 
-    if (Transform* transform = player->GetTransform()) {
-        transform->translate = route_.end;
-        transform->scale = route_.baseScale;
-        transform->rotate.x = 0.0f;
-        transform->rotate.z = 0.0f;
-        transform->isQuaternionMaster = false;
-    }
+    player->SetTranslate(route_.end);
+    player->SetScale(route_.baseScale);
+    player->SetEulerX(0.0f);
+    player->SetEulerZ(0.0f);
+    player->SetQuaternionMaster(false);
     player->UpdateLocalMatrix();
     player->UpdateWorldMatrix();
 }

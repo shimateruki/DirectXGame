@@ -101,8 +101,7 @@ void DrawToolWindows(
 	DebugEditor* GetDebugEditor() const { return debugEditor_.get(); }
 private:
     enum class WorkspacePreset : int {
-        Terrain = 0,
-        Vfx,
+        Vfx = 0,
         Animation,
         Replay,
     };
@@ -170,7 +169,6 @@ private:
     bool showCinematicTimeline_ = false;
 	bool showDebugConsole_ = true;
 	bool showTimeController_ = true;
-	bool showBossDebug_ = false;
 	bool portfolioCaptureMode_ = false;
 	bool pendingPlayOriginReload_ = false;
 	bool sceneTransitionStateCleared_ = false;

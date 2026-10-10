@@ -34,7 +34,6 @@ SceneLoadManifest GameClearScene::BuildAsyncLoadManifest() const {
                                  ? GetSceneLoadContext().spriteLayoutPath
                                  : "Resources/json/sprite/gameClearScene.json");
     manifest.AddTexture("Resources/sprite/common/white.png");
-    manifest.AddAudio(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
     return manifest;
 }
 
@@ -42,12 +41,10 @@ void GameClearScene::Initialize() {
     // --- 1. システム基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 2. リソースロード ---
     LOG("GameClearScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath("Resources/bgm/Alarm02.mp3"));
 
     // --- 3. 共通クラス・マネージャの初期化 ---
     CameraManager::GetInstance()->Initialize();

@@ -50,12 +50,9 @@ struct HudPortraitSpec {
     float offsetY;
 };
 
-constexpr std::array<HudPortraitSpec, 9> kHudPortraitSpecs = {
+constexpr std::array<HudPortraitSpec, 6> kHudPortraitSpecs = {
     HudPortraitSpec{ "Builtin/Enemy/Slime", "slime", 0.0f, -0.12f, 1.08f, 0.0f },
     HudPortraitSpec{ "Builtin/Enemy/Bomber", "bomber", 0.0f, -0.12f, 1.08f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/Bat", "bat", 0.0f, -0.08f, 2.20f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/BeamDrone", "beam_drone", 0.0f, -0.08f, 1.05f, 0.0f },
-    HudPortraitSpec{ "Builtin/Enemy/Mushroom", "mushroom", 0.0f, -0.12f, 1.10f, 0.0f },
     HudPortraitSpec{ "Builtin/Enemy/GiantSlime", "giant_slime", 0.0f, -0.12f, 1.24f, 0.0f },
     HudPortraitSpec{ "Builtin/Enemy/FireSlime", "fire_slime", 0.0f, -0.12f, 1.08f, 0.0f },
     HudPortraitSpec{ "Builtin/Enemy/ThunderSlime", "thunder_slime", 0.0f, -0.12f, 1.08f, 0.0f },
@@ -609,18 +606,18 @@ void ProjectWindow::CapturePendingThumbnails() {
             }
 
             // 計算したスケールと位置をセット（これ以降は保持される）
-            data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
-            data.previewObject->GetTransform()->translate = autoTranslate;
+            data.previewObject->SetScale({ autoScale, autoScale, autoScale });
+            data.previewObject->SetTranslate(autoTranslate);
 
             // スタジオカメラの角度に合わせ、モデルを上向きにして正面を向くように調整
-            data.previewObject->GetTransform()->rotate.x = -0.2f;
+            data.previewObject->SetEulerX(-0.2f);
         }
 
         auto& targetObj = data.previewObject;
         ApplyThumbnailLightOverride(targetObj.get());
 
         // くるくる回転
-        targetObj->GetTransform()->rotate.y += 0.02f;
+        targetObj->SetEulerY(targetObj->GetRotation().y + 0.02f);
 
         // 行列の更新と描画
         targetObj->UpdateLocalMatrix();
@@ -728,8 +725,8 @@ void ProjectWindow::CapturePendingThumbnails() {
             // プレビュー用に姿勢を微調整（くるくる回す）
             static float rotationY = 0.0f;
             rotationY += 0.02f;
-            data.previewObject->GetTransform()->rotate.y = data.isHudPortrait ? data.portraitYaw : rotationY;
-            data.previewObject->GetTransform()->rotate.x = data.isHudPortrait ? data.portraitPitch : -0.2f;
+            data.previewObject->SetEulerY(data.isHudPortrait ? data.portraitYaw : rotationY);
+            data.previewObject->SetEulerX(data.isHudPortrait ? data.portraitPitch : -0.2f);
 
             // モデルの自動フィット計算 (モデルが設定されている場合のみ)
             if (!data.previewObject->GetModelName().empty()) {
@@ -743,11 +740,10 @@ void ProjectWindow::CapturePendingThumbnails() {
                         if (data.isHudPortrait) {
                             autoScale *= data.portraitScale;
                         }
-                        data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
-                        data.previewObject->GetTransform()->translate.x = -modelCenter.x * autoScale;
-                        data.previewObject->GetTransform()->translate.y =
-                            -modelCenter.y * autoScale + 1.1f + (data.isHudPortrait ? data.portraitOffsetY : 0.0f);
-                        data.previewObject->GetTransform()->translate.z = -modelCenter.z * autoScale;
+                        data.previewObject->SetScale({ autoScale, autoScale, autoScale });
+                        data.previewObject->SetTranslateX(-modelCenter.x * autoScale);
+                        data.previewObject->SetTranslateY(-modelCenter.y * autoScale + 1.1f + (data.isHudPortrait ? data.portraitOffsetY : 0.0f));
+                        data.previewObject->SetTranslateZ(-modelCenter.z * autoScale);
                     }
                 }
             }
@@ -807,7 +803,8 @@ void ProjectWindow::CapturePendingThumbnails() {
                 const Vector3 extent = {high.x-low.x,high.y-low.y,high.z-low.z};
                 const float maximum = (std::max)({extent.x,extent.y,extent.z,.001f});
                 const float fit = 6.0f / maximum;
-                Transform* framing = data.previewObject->GetTransform();
+                Transform framingValue = *data.previewObject->GetTransform();
+                Transform* framing = &framingValue;
                 framing->scale = {fit,fit,fit};
                 // 正面形状と床の上面が読める、固定された斜め上の構図を使います。
                 framing->rotate = {-.28f,.32f,0};
@@ -816,6 +813,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                 const Matrix4x4 orientation = Math::MakeAffineMatrix(framing->scale,framing->rotate,{});
                 const Vector3 offset = Math::Transform(center,orientation);
                 framing->translate = {-offset.x,1.1f-offset.y,-offset.z};
+                data.previewObject->SetLocalTransform(framingValue);
             }
             ApplyThumbnailLightOverride(data.previewObject.get());
             data.previewObject->UpdateWorldMatrix();
@@ -886,11 +884,11 @@ void ProjectWindow::CapturePendingThumbnails() {
                 const Vector3 center = sphere->GetCenter();
                 const float extent = (std::max)({ size.x, size.y, size.z, 0.001f });
                 const float scale = 8.5f / extent;
-                data.previewObject->GetTransform()->scale = { scale, scale, scale };
-                data.previewObject->GetTransform()->translate = {
-                    -center.x * scale, 1.1f - center.y * scale, -center.z * scale };
+                data.previewObject->SetScale({ scale, scale, scale });
+                data.previewObject->SetTranslate({
+                    -center.x * scale, 1.1f - center.y * scale, -center.z * scale });
             }
-            data.previewObject->GetTransform()->rotate.x = -0.2f;
+            data.previewObject->SetEulerX(-0.2f);
             data.previewObject->SetMaterialType(0);
             data.previewObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             data.previewObject->SetEmissive(1.0f);

@@ -54,7 +54,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     isHeavyPullTarget_ = dynamic_cast<EnemyGiantSlime*>(targetEnemy_) != nullptr;
     enemyPullStartScale_ = targetEnemy_->GetScale();
     enemyBaseScale_ = GetStablePullEnemyScale(targetEnemy_);
-    if (Transform* enemyTransform = targetEnemy_->GetTransform()) {
+    if (const Transform* enemyTransform = targetEnemy_->GetTransform()) {
         enemyBaseRotation_ = enemyTransform->rotate;
         enemyBaseQuaternion_ = enemyTransform->quaternion;
         enemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
@@ -71,7 +71,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     if (marker) {
         marker->SetIsVisible(true);
         marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
-        marker->GetTransform()->translate = hookTipPos_;
+        marker->SetTranslate(hookTipPos_);
     }
 }
 
@@ -140,13 +140,13 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         Object3d* marker = player->GetHookMarker();
         if (marker) {
             Vector3 diff = hookTipPos_ - playerPos;
-            marker->GetTransform()->translate = {playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
-                                                 playerPos.z + diff.z * 0.5f};
+            marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
+                                                 playerPos.z + diff.z * 0.5f});
             float angleY = std::atan2(diff.x, diff.z);
             float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
-            marker->GetTransform()->rotate = {angleX, angleY, 0.0f};
-            marker->GetTransform()->isQuaternionMaster = false;
-            marker->GetTransform()->scale = {0.5f, 0.5f, Math::Length(diff)};
+            marker->SetEulerAngles({angleX, angleY, 0.0f});
+            marker->SetQuaternionMaster(false);
+            marker->SetScale({0.5f, 0.5f, Math::Length(diff)});
             marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
             // 長さと向きを更新した後にワールド行列を確定します。
@@ -177,8 +177,8 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 shakeY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
                 shakeZ = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
                 tetherEnemyPos = {enemyStartPos_.x + shakeX, enemyStartPos_.y + shakeY, enemyStartPos_.z + shakeZ};
-                targetEnemy_->GetTransform()->translate = tetherEnemyPos;
-                targetEnemy_->GetTransform()->isQuaternionMaster = false;
+                targetEnemy_->SetTranslate(tetherEnemyPos);
+                targetEnemy_->SetQuaternionMaster(false);
                 targetEnemy_->UpdateLocalMatrix();
                 targetEnemy_->UpdateWorldMatrix();
             }
@@ -186,11 +186,11 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             Object3d* marker = player->GetHookMarker();
             if (marker) {
                 Vector3 diff = tetherEnemyPos - playerPos;
-                marker->GetTransform()->translate = {playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
-                                                     playerPos.z + diff.z * 0.5f};
+                marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
+                                                     playerPos.z + diff.z * 0.5f});
                 // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
                 float len = Math::Length(diff);
-                marker->GetTransform()->scale = {0.13f, 0.10f, len};
+                marker->SetScale({0.13f, 0.10f, len});
                 marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
                 marker->UpdateLocalMatrix();
@@ -236,17 +236,17 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 if (len < 0.01f)
                     len = 0.01f;
 
-                marker->GetTransform()->translate = playerPos + diff * 0.5f;
-                marker->GetTransform()->rotate = {std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
-                                                  std::atan2(diff.x, diff.z), 0.0f};
-                marker->GetTransform()->isQuaternionMaster = false;
+                marker->SetTranslate(playerPos + diff * 0.5f);
+                marker->SetEulerAngles({std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
+                                                  std::atan2(diff.x, diff.z), 0.0f});
+                marker->SetQuaternionMaster(false);
 
                 float pulse = std::sin(pullTimer_ * 72.0f);
                 float tension = pulse * (1.0f - progress * 0.35f) * 0.22f;
                 float thickness = Math::Lerp(0.30f, 0.12f, progress);
-                marker->GetTransform()->scale = {(std::max)(0.06f, thickness + tension),
+                marker->SetScale({(std::max)(0.06f, thickness + tension),
                                                  (std::max)(0.06f, thickness - tension * 0.55f),
-                                                 len * (1.0f + std::abs(pulse) * 0.018f)};
+                                                 len * (1.0f + std::abs(pulse) * 0.018f)});
                 marker->SetColor({0.10f, 0.82f + progress * 0.06f, 1.0f, 1.0f});
                 marker->UpdateLocalMatrix();
                 marker->UpdateWorldMatrix();
@@ -299,13 +299,13 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         rot.x += 20.0f * deltaTime;
         rot.y += 35.0f * deltaTime;
         rot.z += 15.0f * deltaTime;
-        targetEnemy_->GetTransform()->rotate = rot;
-        targetEnemy_->GetTransform()->isQuaternionMaster = false; // 追加: クォータニオンを無視してオイラー角回転を適用
+        targetEnemy_->SetEulerAngles(rot);
+        targetEnemy_->SetQuaternionMaster(false); // 追加: クォータニオンを無視してオイラー角回転を適用
 
         // 【演出3】敵の縮小：敵本来の大きさを基準に、手元で少しだけ圧縮する
         const float scaleRate = Math::Lerp(1.0f, 0.82f, easeT);
-        targetEnemy_->GetTransform()->scale = {enemyBaseScale_.x * scaleRate, enemyBaseScale_.y * scaleRate,
-                                               enemyBaseScale_.z * scaleRate};
+        targetEnemy_->SetScale({enemyBaseScale_.x * scaleRate, enemyBaseScale_.y * scaleRate,
+                                               enemyBaseScale_.z * scaleRate});
 
         // 目標位置（プレイヤーの頭上）
         Vector3 headPos = {playerPos.x, playerPos.y + 1.55f, playerPos.z};
@@ -319,7 +319,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         float arcHeight = 7.8f;
         basePos.y += std::sin(t * 3.14159265f) * arcHeight;
 
-        targetEnemy_->GetTransform()->translate = basePos;
+        targetEnemy_->SetTranslate(basePos);
         player->SetSlimePullDirection(basePos - playerPos);
 
         if (t >= 1.0f) {
@@ -340,7 +340,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                 player->UpdateWorldMatrix();
             }
 
-            targetEnemy_->GetTransform()->scale = enemyBaseScale_;
+            targetEnemy_->SetScale(enemyBaseScale_);
             player->SetCarriedEnemy(targetEnemy_);
             player->ChangeState(std::make_unique<PlayerStateIdle>());
             return;
@@ -350,21 +350,21 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
         if (marker) {
             Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
             Vector3 diff = enemyCurrentPos - playerPos;
-            marker->GetTransform()->translate = {playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
-                                                 playerPos.z + diff.z * 0.5f};
+            marker->SetTranslate({playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f,
+                                                 playerPos.z + diff.z * 0.5f});
             float angleY = std::atan2(diff.x, diff.z);
             float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
-            marker->GetTransform()->rotate = {angleX, angleY, 0.0f};
-            marker->GetTransform()->isQuaternionMaster = false;
+            marker->SetEulerAngles({angleX, angleY, 0.0f});
+            marker->SetQuaternionMaster(false);
             // 手元に近づくにつれて太く戻る（イージングを利用）
             float len = Math::Length(diff);
             float thickness = Math::Lerp(0.12f, 0.22f, easeT);
             // 引っ張る反動でブルンブルン震える（近づくと収まる）
             float wobble = std::sin(pullTimer_ * 58.0f) * (1.0f - easeT) * 0.050f;
             float tensionPulse = std::abs(std::sin(pullTimer_ * 44.0f)) * (1.0f - easeT) * 0.040f;
-            marker->GetTransform()->scale = {(std::max)(0.09f, thickness + wobble + tensionPulse),
+            marker->SetScale({(std::max)(0.09f, thickness + wobble + tensionPulse),
                                              (std::max)(0.09f, thickness - wobble * 0.55f),
-                                             len * (1.0f + tensionPulse * 0.35f)};
+                                             len * (1.0f + tensionPulse * 0.35f)});
             marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
 
             marker->UpdateLocalMatrix();
@@ -383,11 +383,11 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_)) {
                 if (enemyBase->IsCarried()) {
                     enemyBase->SetCarried(false);
-                    if (Transform* enemyTransform = targetEnemy_->GetTransform()) {
-                        enemyTransform->scale = enemyBaseScale_;
-                        enemyTransform->rotate = enemyBaseRotation_;
-                        enemyTransform->quaternion = enemyBaseQuaternion_;
-                        enemyTransform->isQuaternionMaster = enemyBaseQuaternionMaster_;
+                    {
+                        targetEnemy_->SetScale(enemyBaseScale_);
+                        targetEnemy_->SetEulerAngles(enemyBaseRotation_);
+                        targetEnemy_->SetQuaternion(enemyBaseQuaternion_);
+                        targetEnemy_->SetQuaternionMaster(enemyBaseQuaternionMaster_);
                         targetEnemy_->UpdateLocalMatrix();
                         targetEnemy_->UpdateWorldMatrix();
                     }
@@ -415,9 +415,9 @@ void PlayerStatePullEnemy::Exit(Player* player) {
         Object3d* marker = player->GetHookMarker();
         if (marker) {
             marker->SetIsVisible(false);
-            marker->GetTransform()->scale = {1.0f, 1.0f, 1.0f};
-            marker->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
-            marker->GetTransform()->isQuaternionMaster = true; // 回転モードの復帰
+            marker->SetScale({1.0f, 1.0f, 1.0f});
+            marker->SetEulerAngles({0.0f, 0.0f, 0.0f});
+            marker->SetQuaternionMaster(true); // 回転モードの復帰
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
         }

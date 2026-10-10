@@ -28,7 +28,7 @@ void GameAudioSettings::Initialize() {
 }
 
 void GameAudioSettings::Load() {
-    // 壊れた項目は飛ばし、欠けた音声は既定の一覧から補います。
+    // 壊れた項目は飛ばし、Editor で登録した項目だけを読み込みます。
     entries_.clear();
     handles_.clear();
 
@@ -68,7 +68,7 @@ void GameAudioSettings::Load() {
         }
     }
 
-    EnsureDefaultEntries();
+    // 既定の仮SE・BGMは補充しない。Editor から登録した項目だけを使う。
 }
 
 void GameAudioSettings::Save() const {
@@ -99,6 +99,25 @@ GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& i
 const GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& id) const {
     auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     return it == entries_.end() ? nullptr : &(*it);
+}
+
+bool GameAudioSettings::AddEntry(const SoundEntry& entry) {
+    if (entry.id.empty() || entry.path.empty() || FindEntry(entry.id)) {
+        return false;
+    }
+    entries_.push_back(entry);
+    return true;
+}
+
+bool GameAudioSettings::RemoveEntry(const std::string& id) {
+    auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
+    if (it == entries_.end()) {
+        return false;
+    }
+    Stop(id);
+    handles_.erase(id);
+    entries_.erase(it);
+    return true;
 }
 
 float GameAudioSettings::GetVolume(const std::string& id, float fallback) const {
@@ -176,44 +195,6 @@ void GameAudioSettings::Stop(const std::string& id) {
         AudioPlayer::GetInstance()->StopBGM();
     } else {
         AudioPlayer::GetInstance()->StopSe(cached->second);
-    }
-}
-
-void GameAudioSettings::EnsureDefaultEntries() {
-    AddDefaultEntry(
-        {"cursor_move", "カーソル移動", kCategorySE, "Resources/audio/se/generated/cursor_move.wav", 0.75f, false});
-    AddDefaultEntry({"decide", "決定", kCategorySE, "Resources/audio/se/generated/decide.wav", 0.80f, false});
-    AddDefaultEntry({"cancel", "キャンセル", kCategorySE, "Resources/audio/se/generated/cancel.wav", 0.70f, false});
-    AddDefaultEntry({"coin_get", "コイン取得", kCategorySE, "Resources/audio/se/generated/coin_get.wav", 0.80f, false});
-    AddDefaultEntry({"crown_get", "王冠取得", kCategorySE, "Resources/audio/se/generated/crown_get.wav", 0.85f, false});
-    AddDefaultEntry({"explosion", "爆発", kCategorySE, "Resources/audio/se/generated/explosion.wav", 0.85f, false});
-    AddDefaultEntry({"hit_damage", "被弾", kCategorySE, "Resources/audio/se/generated/hit_damage.wav", 0.82f, false});
-    AddDefaultEntry({"enemy_bind_loop", "敵拘束ループ", kCategorySE, "Resources/audio/se/generated/enemy_bind_loop.wav",
-                     0.45f, true});
-    AddDefaultEntry({"enemy_transform", "敵取り込み変身", kCategorySE,
-                     "Resources/audio/se/generated/enemy_transform.wav", 0.82f, false});
-    AddDefaultEntry(
-        {"gate_enter", "ゲート進入", kCategorySE, "Resources/audio/se/generated/gate_enter.wav", 0.78f, false});
-    AddDefaultEntry({"jump", "ジャンプ", kCategorySE, "Resources/audio/se/generated/jump.wav", 0.70f, false});
-    AddDefaultEntry({"land", "着地", kCategorySE, "Resources/audio/se/generated/land.wav", 0.58f, false});
-    AddDefaultEntry(
-        {"slime_stretch", "スライム伸び", kCategorySE, "Resources/audio/se/generated/slime_stretch.wav", 0.62f, false});
-    AddDefaultEntry({"throw", "投げ", kCategorySE, "Resources/audio/se/generated/throw.wav", 0.70f, false});
-    AddDefaultEntry(
-        {"beam_charge", "ビーム溜め", kCategorySE, "Resources/audio/se/generated/beam_charge.wav", 0.68f, false});
-    AddDefaultEntry(
-        {"beam_fire", "ビーム発射", kCategorySE, "Resources/audio/se/generated/beam_fire.wav", 0.75f, false});
-    AddDefaultEntry(
-        {"menu_open", "メニュー開始", kCategorySE, "Resources/audio/se/generated/menu_open.wav", 0.65f, false});
-    AddDefaultEntry(
-        {"menu_close", "メニュー終了", kCategorySE, "Resources/audio/se/generated/menu_close.wav", 0.60f, false});
-
-    AddDefaultEntry({"sample_bgm", "確認用BGM", kCategoryBGM, "Resources/audio/Alarm02.mp3", 0.60f, true});
-}
-
-void GameAudioSettings::AddDefaultEntry(const SoundEntry& entry) {
-    if (!FindEntry(entry.id)) {
-        entries_.push_back(entry);
     }
 }
 

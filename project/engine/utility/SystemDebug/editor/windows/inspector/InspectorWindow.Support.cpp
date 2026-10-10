@@ -109,7 +109,8 @@ void ApplyPrimaryTransformDeltaToTargets(
             continue;
         }
 
-        Transform* transform = object->GetTransform();
+        Transform transformValue = *object->GetTransform();
+        Transform* transform = &transformValue;
         if (!transform) {
             continue;
         }
@@ -130,6 +131,7 @@ void ApplyPrimaryTransformDeltaToTargets(
             transform->scale.y *= scaleRatio.y;
             transform->scale.z *= scaleRatio.z;
         }
+        object->SetLocalTransform(transformValue);
     }
 }
 
@@ -542,7 +544,8 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
     }
 
     ImGui::SeparatorText("Transform");
-    Transform* transform = cameraObject->GetTransform();
+    Transform transformValue = *cameraObject->GetTransform();
+    Transform* transform = &transformValue;
     if (ImGui::DragFloat3("位置", &transform->translate.x, 0.1f)) changed = true;
     Vector3 rotationDegrees = {
         ToDegrees(transform->rotate.x),
@@ -559,6 +562,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, Object3d* 
         changed = true;
     }
     if (changed) {
+        cameraObject->SetLocalTransform(transformValue);
         cameraObject->UpdateLocalMatrix();
         cameraObject->UpdateWorldMatrix();
     }
@@ -1017,13 +1021,13 @@ void DrawDecalPanel(
             if (!target || !target->IsDecal()) continue;
             const Object3d::DecalSettings oldSettings = target->GetDecalSettings();
             target->SetDecalSettings(settings);
-            Transform* transform = target->GetTransform();
+            const Transform* transform = target->GetTransform();
             const Matrix4x4 rotation = transform->isQuaternionMaster
                 ? Math::MakeRotateQuaternionMatrix(transform->quaternion)
                 : Math::MakeRotateMatrix(transform->rotate);
             const Vector3 normal = { -rotation.m[2][0], -rotation.m[2][1], -rotation.m[2][2] };
-            transform->translate += normal * (settings.depthOffset - oldSettings.depthOffset);
-            transform->scale = { settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f };
+            target->SetTranslate(transform->translate + normal * (settings.depthOffset - oldSettings.depthOffset));
+            target->SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
             target->UpdateLocalMatrix();
             target->UpdateWorldMatrix();
         }

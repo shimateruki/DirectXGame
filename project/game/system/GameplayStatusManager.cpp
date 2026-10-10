@@ -203,8 +203,6 @@ void GameplayStatusManager::ResetToDefaults() {
                                               Vector3{0.16f, 0.16f, 0.16f}, "Gimmicks/blob", true, 5.0f));
     enemyStatuses_.emplace("Bomber", MakeStatus(60.0f, 1.15f, 0.0f, 60.0f, 60.0f, 16.0f, 32.0f,
                                                 Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_black", true, 5.0f));
-    enemyStatuses_.emplace("Mushroom", MakeStatus(35.0f, 1.0f, 2.1f, 60.0f, 60.0f, 16.0f, 16.0f,
-                                                  Vector3{1.0f, 1.0f, 1.0f}, "Primitives/cylinder", true, 5.0f));
     enemyStatuses_.emplace("FireSlime", MakeStatus(45.0f, 1.0f, 2.35f, 60.0f, 60.0f, 18.0f, 24.0f,
                                                    Vector3{2.0f, 2.0f, 2.0f}, "Characters/slime_red", true, 5.0f));
     enemyStatuses_.emplace("ThunderSlime",
@@ -221,14 +219,8 @@ void GameplayStatusManager::ResetToDefaults() {
     enemyStatuses_.emplace("FalseKingSlime",
                            MakeStatus(720.0f, 1.6f, 2.1f, 68.0f, 62.0f, 24.0f, 90.0f, Vector3{1.3f, 1.3f, 1.3f},
                                       "Characters/false_king_slime", true, 5.0f));
-    enemyStatuses_.emplace("Bat", MakeStatus(16.0f, 0.45f, 1.8f, 0.0f, 60.0f, 10.0f, 17.0f,
-                                             Vector3{0.72f, 0.72f, 0.72f}, "Characters/bat", true, 5.0f));
-    enemyStatuses_.emplace("BeamDrone", MakeStatus(45.0f, 1.0f, 4.0f, 0.0f, 60.0f, 10.0f, 30.0f,
-                                                   Vector3{0.85f, 0.85f, 0.85f}, "Characters/eye", true, 5.0f));
     enemyStatuses_.emplace("RingBurner", MakeStatus(180.0f, 1.0f, 0.0f, 0.0f, 60.0f, 10.0f, 30.0f,
                                                     Vector3{1.0f, 1.0f, 1.0f}, "Characters/ring_burner", true, 5.0f));
-    enemyStatuses_.emplace("BossCore", MakeStatus(1000.0f, 1.5f, 0.05f, 0.0f, 60.0f, 10.0f, 20.0f,
-                                                  Vector3{1.0f, 1.0f, 1.0f}, "Stages/block", true, 5.0f));
 
     dirty_ = true;
 }

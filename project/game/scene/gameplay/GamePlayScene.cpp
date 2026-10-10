@@ -27,7 +27,6 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h"
-#include "game/actor/enemy/boss/core/BossCore.h"
 #include "MeshEffectManager.h"
 #include "WinApp.h"
 #include "IconsFontAwesome5.h"

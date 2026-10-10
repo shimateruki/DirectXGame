@@ -2,7 +2,7 @@
 
 #include "EditorPropertyRegistry.h"
 
-/// InspectorとProperty Matrixで共有するProperty描画設定です。
+/// Inspectorなどの編集画面で共有するProperty描画設定です。
 struct EditorPropertyDrawOptions {
     bool compact = false;
     bool mixed = false;

@@ -762,7 +762,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     object->UpdateWorldMatrix();
 
     Object3d* rawPreview = object.get();
-    scene->GetObjects().push_back(std::move(object));
+    scene->AddObjectImmediate(std::move(object));
     if (!firstPendingPreview_) {
         firstPendingPreview_ = rawPreview;
     }

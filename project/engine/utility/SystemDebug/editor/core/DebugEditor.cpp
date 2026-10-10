@@ -468,24 +468,16 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
     sceneInventoryWindow_.Initialize(sceneManager, this);
-    sceneValidator_.Initialize(sceneManager, this);
-    levelDesignLabWindow_.Initialize(sceneManager, this);
     materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
     enemyAttackPreviewWindow_.Initialize(sceneManager);
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     animatorControllerEditor_.Initialize(sceneManager, this);
-    eventLinkGraph_.Initialize(sceneManager, this);
-    nodeGraphEditorWindow_.Initialize(this);
     textSpriteGenerator_.Initialize(sceneManager, this);
-    text3DGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
     assetAuditWindow_.Initialize(this);
-    propertyMatrixWindow_.Initialize(this);
     statusTuningWindow_.Initialize(this, sceneManager_);
     gameDataDebugEditor_.Initialize(sceneManager);
-    terrainEditorWindow_.Initialize(this);
-    jsonBackupWindow_.Initialize(this);
     audioSettingsWindow_.Initialize(this);
     executablePackageWindow_.Initialize(this);
     captureToolWindow_.Initialize(this);
@@ -552,11 +544,9 @@ bool DebugEditor::BeginPrefabEditSession(const std::string& prefabName) {
     prefabEditScene_ = scene;
     prefabEditRoot_ = prefabObjects.front().get();
 
-    auto& sceneObjects = scene->GetObjects();
     for (auto& object : prefabObjects) {
         if (!object) continue;
-        CollisionManager::GetInstance()->AddObject(object.get());
-        sceneObjects.push_back(std::move(object));
+        scene->AddObjectImmediate(std::move(object));
     }
 
     SetSelectedObject(prefabEditRoot_);
@@ -582,7 +572,7 @@ bool DebugEditor::SavePrefabEditSession() {
     }
     const int synchronizedObjects = prefabManager->SynchronizePrefabInstances(
         beforePrefabs,
-        prefabEditScene_->GetObjects(),
+        *prefabEditScene_,
         prefabEditScene_->GetObject3dCommon());
 
     EndPrefabEditSession(false);
@@ -629,14 +619,13 @@ void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
                 editObjects.insert(object.get());
             }
         }
+        std::vector<std::unique_ptr<Object3d>> removedObjects;
+        removedObjects.reserve(editObjects.size());
         for (Object3d* object : editObjects) {
-            CollisionManager::GetInstance()->RemoveObject(object);
+            if (auto removed = scene->TakeObjectImmediate(object)) {
+                removedObjects.push_back(std::move(removed));
+            }
         }
-
-        auto& objects = scene->GetObjects();
-        objects.erase(std::remove_if(objects.begin(), objects.end(), [&editObjects](const auto& object) {
-            return object && editObjects.find(object.get()) != editObjects.end();
-        }), objects.end());
 
         for (const auto& [object, wasVisible] : prefabEditPreviousVisibility_) {
             if (scene->IsAlive(object)) {
@@ -683,7 +672,6 @@ void DebugEditor::Update() {
     enemyAttackPreviewWindow_.Update(enemyAttackPreviewWindow_.IsCrownMovieMode() ? ImGui::GetIO().DeltaTime : 1.0f / 60.0f);
     animationWorkbench_.Update(1.0f / 60.0f);
     textSpriteGenerator_.Update();
-    text3DGenerator_.Update();
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();
@@ -892,7 +880,7 @@ void DebugEditor::Update() {
 
                     Matrix4x4 view = cam->GetViewMatrix();
                     Matrix4x4 proj = cam->GetProjectionMatrix();
-                    Transform* tr = selectedObject_->GetTransform();
+                    const Transform* tr = selectedObject_->GetTransform();
 
                     selectedObject_->UpdateWorldMatrix();
                     Matrix4x4 world = selectedObject_->GetWorldMatrix();
@@ -974,11 +962,10 @@ void DebugEditor::Update() {
                         Vector3 s, rDeg, t;
                         ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
 
-                        tr->translate = t;
-                        tr->scale = s;
-                        tr->quaternion = math_.MatrixToQuaternion(newLocalMat);
-                        tr->isQuaternionMaster = true; // クォータニオン優先モードにする
-                        tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                        selectedObject_->SetTranslate(t);
+                        selectedObject_->SetScale(s);
+                        selectedObject_->SetQuaternion(math_.MatrixToQuaternion(newLocalMat));
+                        selectedObject_->SetEulerAngles({ ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
 
                         selectedObject_->UpdateLocalMatrix();
                         selectedObject_->UpdateWorldMatrix();
@@ -1012,12 +999,10 @@ void DebugEditor::Update() {
                             Vector3 otherScale, otherRotDeg, otherTranslate;
                             ImGuizmo::DecomposeMatrixToComponents(&objectLocalAfter.m[0][0], &otherTranslate.x, &otherRotDeg.x, &otherScale.x);
 
-                            Transform* otherTransform = object->GetTransform();
-                            otherTransform->translate = otherTranslate;
-                            otherTransform->scale = otherScale;
-                            otherTransform->quaternion = math_.MatrixToQuaternion(objectLocalAfter);
-                            otherTransform->isQuaternionMaster = true;
-                            otherTransform->rotate = { ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) };
+                            object->SetTranslate(otherTranslate);
+                            object->SetScale(otherScale);
+                            object->SetQuaternion(math_.MatrixToQuaternion(objectLocalAfter));
+                            object->SetEulerAngles({ ToRadians(otherRotDeg.x), ToRadians(otherRotDeg.y), ToRadians(otherRotDeg.z) });
                             object->UpdateLocalMatrix();
                             object->UpdateWorldMatrix();
                         }
@@ -1059,10 +1044,11 @@ void DebugEditor::Update() {
     DrawSaveNotification();
     DrawSavePreview();
     DrawCrashRecoveryPrompt();
-    if (EditorToolSettings::Get().IsVisible("sceneIcons")) Draw3DIcons();
+    // 再生中はゲーム画面を優先し、編集用のアイコンを重ねない。
+    if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("sceneIcons")) Draw3DIcons();
     if (!SettingsMenuOverlay::IsAnyActive()) {
-        if (EditorToolSettings::Get().IsVisible("eventIds")) DrawEventIDOverlay();
-        if (EditorToolSettings::Get().IsVisible("placementPreview")) {
+        if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("eventIds")) DrawEventIDOverlay();
+        if (!sceneManager_->IsPlaying() && EditorToolSettings::Get().IsVisible("placementPreview")) {
             DrawPreviewMarker();
             DrawPresetBrushOverlay();
             textSpriteGenerator_.DrawPreview();
@@ -1092,6 +1078,7 @@ void DebugEditor::Finalize() {
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 #ifdef USE_IMGUI
     if (EditorToolSettings::Get().IsTemporarilyHidden()) return;
+    if (sceneManager_ && sceneManager_->IsPlaying()) return;
 #endif
     // メニュー中だけ抑制し、エディターの表示設定そのものは変更しません。
     if (SettingsMenuOverlay::IsAnyActive()) return;
@@ -1543,8 +1530,6 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         }
     }
 
-    // シーン視覚監査で選択した問題ペアは、通常のコライダー表示設定に関係なく強調する。
-    sceneValidator_.DrawDebug(primitiveDrawer_, commandList, instanceCount, kMaxDrawLimit);
 
 }
 
@@ -1553,7 +1538,6 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 // ==========================================================================================
 void DebugEditor::DrawHierarchy() {
     hierarchyWindow_.Draw();
-    propertyMatrixWindow_.DrawWindow();
 }
 
 // ==========================================================================================

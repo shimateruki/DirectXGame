@@ -12,7 +12,45 @@
 #include "ScenePreloader.h"
 #include "Skybox.h"
 #include <algorithm>
+#include <stdexcept>
 #include <unordered_set>
+
+Sprite* BaseScene::AddSprite(std::unique_ptr<Sprite> sprite) {
+    auto* sprites = GetMutableSprites();
+    if (!sprites || !sprite) return nullptr;
+    Sprite* raw = sprite.get();
+    sprites->push_back(std::move(sprite));
+    return raw;
+}
+
+bool BaseScene::MoveSprite(Sprite* sprite, int offset) {
+    auto* sprites = GetMutableSprites();
+    if (!sprites || !sprite || (offset != -1 && offset != 1)) return false;
+    auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const auto& owned) {
+        return owned.get() == sprite;
+    });
+    if (it == sprites->end()) return false;
+    const auto index = static_cast<std::ptrdiff_t>(std::distance(sprites->begin(), it));
+    const auto next = index + offset;
+    if (next < 0 || next >= static_cast<std::ptrdiff_t>(sprites->size())) return false;
+    std::swap((*sprites)[index], (*sprites)[next]);
+    return true;
+}
+
+void BaseScene::AddObject(std::unique_ptr<Object3d> object) {
+    (void)object;
+    throw std::logic_error("This scene does not own Object3d objects");
+}
+
+Object3d* BaseScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    (void)object;
+    throw std::logic_error("This scene does not own Object3d objects");
+}
+
+std::unique_ptr<Object3d> BaseScene::TakeObjectImmediate(Object3d* object) {
+    (void)object;
+    return nullptr;
+}
 
 SceneLoadManifest BaseScene::BuildAsyncLoadManifest() const {
     return {};
@@ -110,16 +148,17 @@ void BaseScene::ReleaseReplaySprites() {
         }
     }
 
-    auto& sprites = GetSprites();
-    sprites.erase(
-        std::remove_if(sprites.begin(), sprites.end(), [](const std::unique_ptr<Sprite>& sprite) {
+    auto* sprites = GetMutableSprites();
+    if (!sprites) return;
+    sprites->erase(
+        std::remove_if(sprites->begin(), sprites->end(), [](const std::unique_ptr<Sprite>& sprite) {
             if (!sprite || !sprite->IsReplayRemoved()) {
                 return false;
             }
             sprite->SetParent(nullptr, false);
             return true;
         }),
-        sprites.end());
+        sprites->end());
 }
 
 void BaseScene::RefreshRenderCameraData() {
@@ -231,11 +270,12 @@ bool BaseScene::DestroyObject(Object3d* object) {
 }
 
 bool BaseScene::DestroySprite(Sprite* sprite) {
-    auto& sprites = GetSprites();
-    auto it = std::find_if(sprites.begin(), sprites.end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
+    auto* sprites = GetMutableSprites();
+    if (!sprites) return false;
+    auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
         return candidate && candidate.get() == sprite;
     });
-    if (it == sprites.end()) {
+    if (it == sprites->end()) {
         return false;
     }
 
@@ -260,7 +300,7 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
     }
     sprite->SetParent(nullptr);
     sprite->SetVisible(false);
-    sprites.erase(it);
+    sprites->erase(it);
     return true;
 }
 
@@ -313,7 +353,7 @@ void BaseScene::DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* 
     }
 }
 
-bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
     if (!dxCommon) {
         return false;
     }
@@ -342,7 +382,7 @@ bool BaseScene::DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& obje
     return true;
 }
 
-bool BaseScene::DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
+bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
     if (!dxCommon) {
         return false;
     }

@@ -31,7 +31,7 @@ public:
     void Finalize() override;
 
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
 
     /// <summary>
     /// ロード進捗を0.0から1.0の範囲で設定する。
@@ -39,6 +39,7 @@ public:
     void SetProgress(float progress);
 
 private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     // Sprite を生成して所有リストに登録する。
     Sprite* CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color);
 

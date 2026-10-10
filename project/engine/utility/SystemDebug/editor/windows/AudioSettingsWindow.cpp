@@ -25,13 +25,6 @@ void AudioSettingsWindow::Initialize(DebugEditor* editor) {
 void AudioSettingsWindow::DrawAudioEventEditor() {
     // 音源ファイルとイベント設定を分けて扱い、イベント側の調整値を編集します。
 #ifdef USE_IMGUI
-    if (!audioEventInitialized_) {
-        audioEventDefinition_.clips = {
-            "Resources/audio/se/generated/explosion.wav"
-        };
-        audioEventInitialized_ = true;
-    }
-
     if (!ImGui::CollapsingHeader(
         ICON_FA_VOLUME_UP " Audio Event",
         ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -223,6 +216,55 @@ void AudioSettingsWindow::DrawImGui() {
 
     DrawAudioEventEditor();
 
+    ImGui::SeparatorText("音声を登録");
+    ImGui::InputText("ID##NewAudio", newAudioId_, sizeof(newAudioId_));
+    ImGui::InputText("表示名##NewAudio", newAudioName_, sizeof(newAudioName_));
+    ImGui::InputText("音源パス##NewAudio", newAudioPath_, sizeof(newAudioPath_));
+    ImGui::Checkbox("BGM##NewAudio", &newAudioBgm_);
+    if (ImGui::BeginCombo("音源ファイルから選択", newAudioPath_[0] ? newAudioPath_ : "(未選択)")) {
+        const std::filesystem::path audioDirectory("Resources/audio");
+        std::error_code error;
+        if (std::filesystem::exists(audioDirectory, error) && !error) {
+            for (std::filesystem::recursive_directory_iterator it(
+                     audioDirectory, std::filesystem::directory_options::skip_permission_denied, error), end;
+                 it != end && !error; it.increment(error)) {
+                if (!it->is_regular_file(error) || error) {
+                    continue;
+                }
+                const std::string extension = it->path().extension().string();
+                if (extension != ".wav" && extension != ".mp3" && extension != ".ogg" && extension != ".flac") {
+                    continue;
+                }
+                const std::string path = it->path().generic_string();
+                if (ImGui::Selectable(path.c_str(), path == newAudioPath_)) {
+                    strncpy_s(newAudioPath_, sizeof(newAudioPath_), path.c_str(), _TRUNCATE);
+                }
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::Button(ICON_FA_PLUS " 音声を追加")) {
+        const std::filesystem::path path(newAudioPath_);
+        if (newAudioId_[0] == '\0' || newAudioPath_[0] == '\0') {
+            statusText_ = "IDと音源ファイルを指定してください。";
+        } else if (!std::filesystem::is_regular_file(path)) {
+            statusText_ = "音源ファイルが見つかりません。";
+        } else {
+            GameAudioSettings::SoundEntry entry;
+            entry.id = newAudioId_;
+            entry.displayName = newAudioName_[0] ? newAudioName_ : newAudioId_;
+            entry.category = newAudioBgm_ ? "BGM" : "SE";
+            entry.path = path.generic_string();
+            if (audioSettings->AddEntry(entry)) {
+                audioSettings->Save();
+                newAudioId_[0] = newAudioName_[0] = newAudioPath_[0] = '\0';
+                statusText_ = "音声を登録して保存しました。";
+            } else {
+                statusText_ = "そのIDは既に登録されています。";
+            }
+        }
+    }
+
     ImGui::InputTextWithHint("検索", "id / 表示名 / パス", searchBuffer_, sizeof(searchBuffer_));
 
     constexpr ImGuiTableFlags tableFlags =
@@ -238,11 +280,12 @@ void AudioSettingsWindow::DrawImGui() {
         ImGui::TableSetupColumn("個別音量", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("値", ImGuiTableColumnFlags_WidthFixed, 45.0f);
         ImGui::TableSetupColumn("Loop", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-        ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed, 165.0f);
         ImGui::TableSetupColumn("パス", ImGuiTableColumnFlags_WidthFixed, 260.0f);
         ImGui::TableHeadersRow();
 
         auto& entries = audioSettings->GetEntries();
+        std::string removeId;
         for (int index = 0; index < static_cast<int>(entries.size()); ++index) {
             auto& entry = entries[index];
             const std::string searchText = entry.id + " " + entry.displayName + " " + entry.category + " " + entry.path;
@@ -285,6 +328,10 @@ void AudioSettingsWindow::DrawImGui() {
             if (ImGui::SmallButton(ICON_FA_STOP)) {
                 audioSettings->Stop(entry.id);
             }
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_TRASH)) {
+                removeId = entry.id;
+            }
 
             ImGui::TableSetColumnIndex(7);
             ImGui::TextUnformatted(entry.path.c_str());
@@ -293,6 +340,10 @@ void AudioSettingsWindow::DrawImGui() {
         }
 
         ImGui::EndTable();
+        if (!removeId.empty() && audioSettings->RemoveEntry(removeId)) {
+            audioSettings->Save();
+            statusText_ = "音声を削除して保存しました。";
+        }
     }
 #endif
 }

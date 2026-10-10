@@ -1115,7 +1115,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     object->UpdateWorldMatrix();
 
     Object3d* rawObject = object.get();
-    scene->GetObjects().push_back(std::move(object));
+    scene->AddObjectImmediate(std::move(object));
     editor_->SetSelectedObject(rawObject);
     EditorManager::GetInstance()->SetSelectedObject(editor_);
 

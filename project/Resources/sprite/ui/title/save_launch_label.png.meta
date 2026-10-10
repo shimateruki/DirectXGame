@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "cdae1fca224a5acd0086218302fb5521",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_launch_label.png",
+  "version": 1
+}

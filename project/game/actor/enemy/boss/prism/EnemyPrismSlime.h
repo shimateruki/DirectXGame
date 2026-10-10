@@ -2,6 +2,7 @@
 
 #include "BaseEnemy.h"
 #include "game/actor/combat/AttackSequence.h"
+#include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
 
 #include <array>
 #include <cstdint>
@@ -16,7 +17,7 @@ class EffectObject3d;
 class BossChantVisual;
 
 // 三つの頂点と属性コアを持ち、HPに応じて攻撃属性が変わる中ボススライムです。
-class EnemyPrismSlime : public BaseEnemy {
+class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
   public:
     EnemyPrismSlime();
     ~EnemyPrismSlime() override;
@@ -24,6 +25,7 @@ class EnemyPrismSlime : public BaseEnemy {
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+    void BindSceneSpawnContext(BaseScene* scene) override;
     std::unique_ptr<Object3d> Clone() const override;
     void OnSwitchEvent(bool active) override;
     bool IsPullImmune() const override { return true; }
@@ -31,6 +33,7 @@ class EnemyPrismSlime : public BaseEnemy {
     /// <summary>敵攻撃プレビューで指定した技だけを繰り返します。</summary>
     /// <param name="attackId">攻撃プロファイルのID。空文字で通常AIに戻します。</param>
     void SetDebugPreviewAttackId(const std::string& attackId);
+    void SetSequencePreviewAttackId(const std::string& attackId) override { SetDebugPreviewAttackId(attackId); }
     const char* GetSequenceStateLabel() const override;
     void SetDebugPreviewChantOnly(bool enabled) { debugPreviewChantOnly_ = enabled; }
 

@@ -12,7 +12,7 @@ void PlayerClone::Initialize(Object3dCommon* common, const Vector3& position, co
     // プレイヤーと同じモデルを設定
     SetModel("Characters/slime");
 
-    transform_.translate = position;
+    SetTranslate(position);
     velocity_ = velocity;
 
     // 色を少し青みがかった状態にする（薄くしない）

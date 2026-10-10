@@ -81,6 +81,16 @@
       "color": [1.0, 1.0, 1.0, 1.0],
       "emissive": 1.0,
       "parentName": ""
+    },
+    {
+      "name": "hud_copy_style",
+      "texture": "ui/hud/copy_style/pink.png",
+      "position": [92.0, 834.0],
+      "size": [390.0, 98.0],
+      "anchor": [0.0, 0.0],
+      "color": [1.0, 1.0, 1.0, 0.0],
+      "emissive": 1.0,
+      "parentName": ""
     }
   ]
 }

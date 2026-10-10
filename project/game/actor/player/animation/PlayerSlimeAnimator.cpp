@@ -3,7 +3,6 @@
 #include "game/actor/player/Player.h"
 #include "VFXSequencer.h"
 #include "InputManager.h"
-#include "GameplayEventTrace.h"
 #include "engine/utility/math/AnimationInterpolation.h"
 #include <algorithm>
 #include <cmath>
@@ -18,6 +17,7 @@ constexpr float kLandingSquashDuration = 0.26f;
 constexpr float kLandingReboundDuration = 0.32f;
 constexpr float kGateReturnSlimeDuration = 1.12f;
 constexpr const char* kPlayerSlimeControllerPath = "Resources/json/animator/player_slime.json";
+constexpr const char* kLocomotionModeParameter = "LocomotionMode";
 
 float EaseOut(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
@@ -57,6 +57,9 @@ void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player) {
     if (controllerLoaded_) {
         controllerRuntime_.SetController(&controllerAsset_, true);
         controllerRuntime_.Play(GetStateName(Mode::Idle));
+        if (useModeTransitions_) {
+            controllerRuntime_.SetInt(kLocomotionModeParameter, static_cast<int>(mode_));
+        }
     }
 }
 
@@ -68,7 +71,13 @@ void PlayerSlimeAnimator::SetMode(Mode mode) {
         jumpTakeoffStretchTimer_ = kJumpTakeoffStretchDuration;
     }
     if (controllerLoaded_) {
-        controllerRuntime_.CrossFade(GetStateName(mode));
+        if (useModeTransitions_ && mode != Mode::Disabled) {
+            // ゲームの行動状態だけを渡し、遷移先と補間時間はController Assetで決めます。
+            controllerRuntime_.SetInt(kLocomotionModeParameter, static_cast<int>(mode));
+        } else {
+            // Disabled中はUpdateしないため、ここで切り替えます。旧Assetも明示切替を維持します。
+            controllerRuntime_.CrossFade(GetStateName(mode));
+        }
         modeTransitionTimer_ = 0.0f;
     } else {
         modeTransitionTimer_ = kModeTransitionBlendDuration;
@@ -105,20 +114,27 @@ bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool lo
     if (clipName.empty()) {
         return false;
     }
-    if (abilityMotionActive_ && abilityMotionName_ == clipName && !abilityMotionStopping_) {
+    // 呼び出し側の名前をState IDとして扱います。Body Clipだけを差し替えても攻撃ロジックの分岐名は維持します。
+    const AnimatorStateDefinition* state = controllerLoaded_ ? controllerAsset_.FindState(clipName) : nullptr;
+    const std::string& bodyClipName = state && !state->bodyClipName.empty() ? state->bodyClipName : clipName;
+    const float assetSpeed = state ? (std::max)(state->speed, 0.01f) : 1.0f;
+    const float effectiveSpeed = (std::max)(playbackSpeed * assetSpeed, 0.01f);
+    if (abilityMotionActive_ && abilityMotionName_ == clipName &&
+        abilityMotionClipAssetName_ == bodyClipName && !abilityMotionStopping_) {
         abilityMotionLoop_ = loop;
-        abilityMotionPlaybackSpeed_ = (std::max)(playbackSpeed, 0.01f);
+        abilityMotionPlaybackSpeed_ = effectiveSpeed;
         return true;
     }
 
     BodyAnimationClip clip;
-    if (!clip.Load(BodyAnimationClip::ResolveAssetPath(clipName))) {
+    if (!clip.Load(BodyAnimationClip::ResolveAssetPath(bodyClipName))) {
         return false;
     }
     abilityMotionClip_ = std::move(clip);
     abilityMotionName_ = clipName;
+    abilityMotionClipAssetName_ = bodyClipName;
     abilityMotionTimer_ = 0.0f;
-    abilityMotionPlaybackSpeed_ = (std::max)(playbackSpeed, 0.01f);
+    abilityMotionPlaybackSpeed_ = effectiveSpeed;
     abilityMotionBlendInDuration_ = (std::max)(blendInDuration, 0.01f);
     abilityMotionBlendOutDuration_ = (std::max)(blendOutDuration, 0.01f);
     abilityMotionStopTimer_ = 0.0f;
@@ -141,6 +157,7 @@ void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration) {
 void PlayerSlimeAnimator::ClearAbilityMotion(Player* player) {
     abilityMotionClip_.Clear();
     abilityMotionName_.clear();
+    abilityMotionClipAssetName_.clear();
     abilityMotionTimer_ = 0.0f;
     abilityMotionStopTimer_ = 0.0f;
     abilityMotionStopDuration_ = 0.0f;
@@ -164,16 +181,14 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     }
 
     if (controllerLoaded_) {
+        if (useModeTransitions_) {
+            // PreviewなどがParameterを変更しても、通常プレイではゲームの現在Modeを正とします。
+            controllerRuntime_.SetInt(kLocomotionModeParameter, static_cast<int>(mode_));
+        }
         // 従来どおりmodeTimer_は連続時間のまま進め、EventだけStateのTimeline Durationを使います。
         controllerRuntime_.Update(deltaTime, [](const AnimatorStateDefinition&) { return 0.0f; });
         for (const AnimatorEventInstance& event : controllerRuntime_.ConsumeEvents()) {
             if (event.name == "FeedbackCue" && !event.payload.empty()) {
-                std::string traceSource = player->GetName();
-                if (!player->GetPersistentGuid().empty()) {
-                    traceSource += " [" + player->GetPersistentGuid() + "]";
-                }
-                GameplayEventTrace::GetInstance()->Record(GameplayEventTracePhase::Requested, "Animation Event",
-                                                          std::move(traceSource), event.payload, event.name);
                 VFXSequencer::PlayOneShotOnTarget(event.payload, player);
             }
         }
@@ -389,14 +404,22 @@ bool PlayerSlimeAnimator::ReloadController() {
     AnimatorControllerAsset asset;
     if (!asset.Load(kPlayerSlimeControllerPath)) {
         controllerLoaded_ = false;
+        useModeTransitions_ = false;
         controllerRuntime_.SetController(nullptr, false);
         bodyClips_.clear();
         return false;
     }
     controllerAsset_ = std::move(asset);
     controllerLoaded_ = true;
+    useModeTransitions_ = std::any_of(controllerAsset_.parameters.begin(), controllerAsset_.parameters.end(),
+        [](const AnimatorParameterDefinition& parameter) {
+            return parameter.name == kLocomotionModeParameter && parameter.type == AnimatorParameterType::Int;
+        });
     controllerRuntime_.SetController(&controllerAsset_, true);
     controllerRuntime_.Play(GetStateName(mode_));
+    if (useModeTransitions_) {
+        controllerRuntime_.SetInt(kLocomotionModeParameter, static_cast<int>(mode_));
+    }
     ReloadBodyClips();
     return true;
 }

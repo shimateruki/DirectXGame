@@ -1,4 +1,4 @@
-﻿# CG2 ツール仕様まとめ
+# CG2 ツール仕様まとめ
 
 このドキュメントは、CG2プロジェクトで使う外部ツールとEditor内ツールの役割、現在の内部ロジック、生成物、注意点をまとめたものです。
 以前のREADMEは文字化けしていたため、UTF-8日本語で再整理しています。
@@ -81,7 +81,6 @@ UI文字、看板、説明テキスト、演出用テキスト素材を作るた
 | `engine/utility/SystemDebug/editor/windows/TextSpriteGenerator.cpp` | ImGui、フォント一覧、外部CLI呼び出し、Sprite配置処理。 |
 | `tools/TextPngTool/TextPngTool.cpp` | 現在のPNG生成本体。DirectWrite、Direct2D、WICで描画してPNG保存します。 |
 | `tools/TextPngTool/TextPngTool.vcxproj` | TextPngTool.exeのビルド設定。 |
-| `tools/TextPngTool/TextPngTool.ps1` | 旧PowerShell版。現在のEditor経路ではC++ CLIが本命です。 |
 
 ### 現在の処理フロー
 
@@ -134,8 +133,6 @@ UI文字、看板、説明テキスト、演出用テキスト素材を作るた
 
 | ファイル | 役割 |
 | --- | --- |
-| `engine/utility/SystemDebug/editor/windows/Text3DGenerator.h` | 3Dテキスト生成ツールの状態と設定。 |
-| `engine/utility/SystemDebug/editor/windows/Text3DGenerator.cpp` | DirectWrite文字マスク生成、OBJ出力、プレビューObject生成。 |
 
 ### 現在の処理フロー
 
@@ -155,7 +152,6 @@ UI文字、看板、説明テキスト、演出用テキスト素材を作るた
 | --- | --- |
 | `Resources/3DModel/GeneratedText/<name>/<name>.obj` | 本番用3Dテキストモデル。 |
 | `Resources/3DModel/GeneratedText/<name>/<name>_text3d_report.json` | 生成レポート。 |
-| `Resources/3DModel/GeneratedText/_preview_text3d/_preview_text3d.obj` | プレビュー用モデル。 |
 
 ### プレビュー仕様
 
@@ -578,7 +574,6 @@ Objectに保存されたLOD設定を、シーンロード時に復元し、描�
 
 | ファイル | 役割 |
 | --- | --- |
-| `tools/terrain/terrain_mesh_builder.ps1` | 地形生成スクリプト。 |
 
 ### 主な生成物
 
@@ -593,35 +588,6 @@ Objectに保存されたLOD設定を、シーンロード時に復元し、描�
 - 頂点数は `(Resolution + 1) * (Resolution + 1)` です。
 - 三角形数は `Resolution * Resolution * 2` です。
 - 高さサンプルもJSONに保存し、後で衝突やデバッグに使える形にします。
-
-## JSON Backup Watcher
-
-### 目的
-
-`Resources/json` の変更をバックアップし、事故でシーンや設定を壊したときに戻せるようにするツールです。
-
-### 関連ファイル
-
-| ファイル | 役割 |
-| --- | --- |
-| `tools/json_backup/json_backup_watcher.ps1` | JSONバックアップ本体。 |
-
-### 処理フロー
-
-1. `Resources/json` 配下の `.json` を走査します。
-2. JSONとして壊れていないか確認します。
-3. SHA256とサイズを見て、前回から変わったものだけバックアップします。
-4. `Resources/.backup/json/<timestamp>/...` にコピーします。
-5. `Resources/.cache/json_backup_manifest.json` に履歴を保存します。
-6. `MaxVersionsPerFile` を超えた古いバックアップは削除します。
-
-### 出力
-
-| パス | 内容 |
-| --- | --- |
-| `Resources/.backup/json/` | 実バックアップ。 |
-| `Resources/.cache/json_backup_manifest.json` | どのファイルをいつバックアップしたか。 |
-| `Resources/.cache/json_backup/latest_report.json` | 最新実行結果。 |
 
 ## SDL2 Restore Tool
 
@@ -688,9 +654,7 @@ SDL2の `.lib/.dll/include` をリポジトリへ直接持ち続けず、必要�
 | Mesh Effect | `vfx/MeshEffectEditor.*` | メッシュを使ったエフェクト調整。 |
 | Debris Effect | `vfx/DebrisEffectEditor.*` | 破片、爆発、飛散系エフェクト調整。 |
 | Ghost Recorder | `misc/GhostRecorder.*` | Objectやカメラの軌跡記録/再生。 |
-| Scene Validator | `windows/SceneValidator.*` | シーン検証。 |
 | Scene Save Preview | `windows/SceneSavePreview.*` | 保存前差分確認。 |
-| Json Backup Window | `windows/JsonBackupWindow.*` | JSONバックアップ操作。 |
 | Game Data Debug Editor | `windows/GameDataDebugEditor.*` | ゲームデータ確認/編集。 |
 | Status Tuning | `windows/StatusTuningWindow.*` | ステータス調整。 |
 | Material Preview | `windows/MaterialPreviewBoard.*` | マテリアル確認。 |
@@ -727,7 +691,6 @@ SDL2の `.lib/.dll/include` をリポジトリへ直接持ち続けず、必要�
 
 | 優先度 | 改善案 | 理由 |
 | --- | --- | --- |
-| 高 | TextSpriteGenerator/Text3DGeneratorの日本語コメント文字化け修正 | 実装理解と保守性がかなり上がります。 |
 | 高 | Asset Auditの削除ログ保存 | 完全削除なので、何を消したかログに残した方が安全です。 |
 | 高 | Camera Editorの演出中入力ブロック整理 | 演出用カメラと自由カメラ更新が衝突しやすいためです。 |
 | 中 | DDS Cacheの進捗件数表示 | 非同期実行の状態は確認できますが、総件数と完了件数も表示できると待ち時間を把握しやすくなります。 |

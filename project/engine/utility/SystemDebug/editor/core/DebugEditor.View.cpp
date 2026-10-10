@@ -521,7 +521,6 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
         drawPreviewObject(object.get());
     }
 
-    text3DGenerator_.DrawPreview(pointLightResource, spotLightResource);
 }
 
 // ========================================================================

@@ -65,6 +65,7 @@ class Character : public Object3d {
 
     Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 現在速度。
     bool isGrounded_ = false;               // 最後の更新で接地しているか。
+private:
     Vector3 externalImpulseVelocity_ = {0.0f, 0.0f, 0.0f};
     float externalImpulseTimer_ = 0.0f;
     float externalImpulseDuration_ = 0.0f;

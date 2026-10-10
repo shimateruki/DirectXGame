@@ -68,9 +68,6 @@ void PlayerMover::ResetTransientState() {
     dashPanelTimer_ = 0.0f;
     dashPanelSpeedMultiplier_ = 1.0f;
     dashPanelTurnMultiplier_ = 1.0f;
-    iceTimer_ = 0.0f;
-    iceFriction_ = 1.0f;
-    iceSteering_ = 1.0f;
     hasGroundedHistory_ = false;
     wasGroundedLastFrame_ = false;
 
@@ -91,7 +88,7 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
     // 基本スケールを保存 (基準は2.0)
     baseScale_ = {2.0f, 2.0f, 2.0f};
     if (player_)
-        player_->GetTransform()->scale = baseScale_;
+        player_->SetScale(baseScale_);
 }
 
 void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
@@ -146,15 +143,11 @@ void PlayerMover::Update(float deltaTime) {
     if (dashPanelTimer_ > 0.0f) {
         dashPanelTimer_ = (std::max)(0.0f, dashPanelTimer_ - deltaTime);
     }
-    if (iceTimer_ > 0.0f) {
-        iceTimer_ = (std::max)(0.0f, iceTimer_ - deltaTime);
-    }
     if (landingDustCooldown_ > 0.0f) {
         landingDustCooldown_ = (std::max)(0.0f, landingDustCooldown_ - deltaTime);
     }
 
     const bool isDashPanelActive = dashPanelTimer_ > 0.0f;
-    const bool isIceActive = iceTimer_ > 0.0f;
     const float moveSpeedMultiplier = isDashPanelActive ? dashPanelSpeedMultiplier_ : 1.0f;
     const float turnMultiplier = isDashPanelActive ? dashPanelTurnMultiplier_ : 1.0f;
 
@@ -171,31 +164,17 @@ void PlayerMover::Update(float deltaTime) {
             StopDashOnImpact();
         }
     } else {
-        // 氷上では操舵と減速を徐々に反映し、それ以外では入力速度を直接適用します。
-        Vector3 targetMove = inputMove * moveSpeedMultiplier;
-
-        if (isIceActive) {
-            float steerAlpha = 1.0f - std::expf(-4.0f * iceSteering_ * deltaTime);
-            velocity.x = Math::Lerp(velocity.x, targetMove.x, steerAlpha);
-            velocity.z = Math::Lerp(velocity.z, targetMove.z, steerAlpha);
-
-            if (!hasMoveInput) {
-                float frictionDecay = std::expf(-iceFriction_ * deltaTime);
-                velocity.x *= frictionDecay;
-                velocity.z *= frictionDecay;
-            }
-        } else {
-            velocity.x = targetMove.x;
-            velocity.z = targetMove.z;
-        }
+        // 通常移動は入力速度を直接適用します。
+        const Vector3 targetMove = inputMove * moveSpeedMultiplier;
+        velocity.x = targetMove.x;
+        velocity.z = targetMove.z;
     }
 
-    // 表示方向は実際の水平速度を追従し、氷上とダッシュパネルで応答を変えます。
+    // 表示方向は実際の水平速度を追従し、ダッシュパネルの応答倍率を反映します。
     if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
         const float targetAngle = std::atan2(velocity.x, velocity.z);
         const float currentY = player_->GetMoveYaw();
-        const float iceTurnMultiplier = isIceActive ? (std::max)(0.25f, iceSteering_) : 1.0f;
-        const float turnResponse = 6.5f * turnMultiplier * iceTurnMultiplier;
+        const float turnResponse = 6.5f * turnMultiplier;
         player_->SetMoveYaw(AnimationInterpolation::DampAngle(currentY, targetAngle, turnResponse, deltaTime));
     }
 
@@ -324,10 +303,4 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
     velocity.x = dir.x * targetSpeed;
     velocity.z = dir.z * targetSpeed;
     player_->SetVelocity(velocity);
-}
-
-void PlayerMover::ApplyIceSurface(float duration, float friction, float steering) {
-    iceTimer_ = (std::max)(iceTimer_, duration);
-    iceFriction_ = std::clamp(friction, 0.02f, 8.0f);
-    iceSteering_ = std::clamp(steering, 0.05f, 1.0f);
 }

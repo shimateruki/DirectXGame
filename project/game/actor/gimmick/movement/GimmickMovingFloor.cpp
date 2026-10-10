@@ -106,7 +106,8 @@ void GimmickMovingFloor::Update(float deltaTime) {
     const int actionMode = param_.has_value() ? param_->actionMode : 0;
     // 配置位置を往復運動の中心として扱う。位相差は自然な浮遊モードだけに適用する。
     const float waveTime = time_ * speed + (actionMode == 1 ? phaseOffset_ : 0.0f);
-    Transform* transform = GetTransform();
+    Transform transformValue = *GetTransform();
+    Transform* transform = &transformValue;
     transform->translate = startPosition_;
     transform->rotate = startRotation_;
 
@@ -149,6 +150,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
     }
 
     frameDelta_ = hasCapturedStartTransform_ ? transform->translate - previousPosition : Vector3{};
+    SetLocalTransform(transformValue);
 
     // 移動後のTransformを同じフレームで行列と当たり判定へ反映する。
     BaseGimmick::Update(deltaTime);

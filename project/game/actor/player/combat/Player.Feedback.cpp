@@ -193,12 +193,6 @@ Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyTyp
         return EnemyMorphType::Crown;
     if (enemyType == "Bomber")
         return EnemyMorphType::Bomber;
-    if (enemyType == "Bat")
-        return EnemyMorphType::Bat;
-    if (enemyType == "BeamDrone")
-        return EnemyMorphType::BeamDrone;
-    if (enemyType == "Mushroom")
-        return EnemyMorphType::Mushroom;
     // 巨大スライムはフックで分裂して小型化するため、直接コピー対象にはしません。
     if (enemyType == "GiantSlime")
         return EnemyMorphType::None;
@@ -219,12 +213,6 @@ Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const {
         return {0.58f, 0.89f, 1.0f, 1.0f};
     case EnemyMorphType::Bomber:
         return {1.0f, 0.45f, 0.22f, 1.0f};
-    case EnemyMorphType::Bat:
-        return {0.55f, 0.64f, 1.0f, 1.0f};
-    case EnemyMorphType::BeamDrone:
-        return {0.42f, 0.95f, 1.0f, 1.0f};
-    case EnemyMorphType::Mushroom:
-        return {1.0f, 0.34f, 0.72f, 1.0f};
     case EnemyMorphType::FireSlime:
         return {1.0f, 0.24f, 0.16f, 1.0f};
     case EnemyMorphType::ThunderSlime:

@@ -3,6 +3,7 @@
 #include "SceneManager.h"
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "EnemyFireSlime.h"
+#include "game/actor/enemy/combat/ISequencePreviewEnemy.h"
 #include "Player.h"
 #include "BulletManager.h"
 #include "EventManager.h"
@@ -102,7 +103,9 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
         return;
     }
     ++frames;
-    const std::string state = enemy->GetSequenceStateLabel() ? enemy->GetSequenceStateLabel() : "";
+    const auto* sequence = dynamic_cast<const ISequencePreviewEnemy*>(enemy);
+    const char* stateLabel = sequence ? sequence->GetSequenceStateLabel() : nullptr;
+    const std::string state = stateLabel ? stateLabel : "";
     if (state.find("実行中") != std::string::npos) sawAction = true;
     if (sawAction && state.find("終了") != std::string::npos) ended = true;
     for (const auto& bullet : BulletManager::GetInstance()->GetBullets())

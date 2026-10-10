@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c019b23c5cc4ffd1e4863b6a2977e1a7",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_hint_gamepad.png",
+  "version": 1
+}

@@ -53,6 +53,8 @@ class PlayerSlimeAnimator {
     const AnimatorControllerAsset* GetControllerAsset() const {
         return controllerLoaded_ ? &controllerAsset_ : nullptr;
     }
+    // エディターがゲーム本編の現在StateとParameterを確認するための参照です。
+    AnimatorControllerRuntime* GetControllerRuntime() { return controllerLoaded_ ? &controllerRuntime_ : nullptr; }
 
   private:
     // 状態に応じたスケールと回転を計算し、作成済みクリップを優先して適用します。
@@ -97,6 +99,7 @@ class PlayerSlimeAnimator {
     std::unordered_map<std::string, BodyAnimationClip> bodyClips_;
     BodyAnimationClip abilityMotionClip_;
     std::string abilityMotionName_;
+    std::string abilityMotionClipAssetName_; // Stateの参照先変更後に同名攻撃を再読込するための実ファイル名。
     float abilityMotionTimer_ = 0.0f;
     float abilityMotionPlaybackSpeed_ = 1.0f;
     float abilityMotionBlendInDuration_ = 0.06f;
@@ -107,4 +110,6 @@ class PlayerSlimeAnimator {
     bool abilityMotionLoop_ = false;
     bool abilityMotionStopping_ = false;
     bool controllerLoaded_ = false;
+    // LocomotionMode(Int) が定義されたAssetでは遷移条件をJSON側で評価します。
+    bool useModeTransitions_ = false;
 };

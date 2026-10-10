@@ -92,12 +92,6 @@ const char* ResolvePortraitTexture(const Player* player) {
         return "ui/control_guide/portraits/pink_slime.png";
     case Player::EnemyMorphType::Bomber:
         return "ui/control_guide/portraits/bomb_slime.png";
-    case Player::EnemyMorphType::Bat:
-        return "ui/portraits/bat.png";
-    case Player::EnemyMorphType::BeamDrone:
-        return "ui/portraits/beam_drone.png";
-    case Player::EnemyMorphType::Mushroom:
-        return "ui/portraits/mushroom.png";
     case Player::EnemyMorphType::FireSlime:
         return "ui/control_guide/portraits/fire_slime.png";
     case Player::EnemyMorphType::ThunderSlime:

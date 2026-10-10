@@ -1,39 +1,5 @@
 {
     "enemies": {
-        "Bat": {
-            "attackPower": 0.44999998807907104,
-            "detectionRange": 17.0,
-            "gravity": 0.0,
-            "jumpPower": 10.0,
-            "maxFallSpeed": 60.0,
-            "maxHp": 16.0,
-            "modelName": "Characters/bat",
-            "morphDuration": 5.0,
-            "morphLimited": true,
-            "scale": [
-                0.7200000286102295,
-                0.7200000286102295,
-                0.7200000286102295
-            ],
-            "speed": 1.7999999523162842
-        },
-        "BeamDrone": {
-            "attackPower": 1.0,
-            "detectionRange": 30.0,
-            "gravity": 0.0,
-            "jumpPower": 10.0,
-            "maxFallSpeed": 60.0,
-            "maxHp": 45.0,
-            "modelName": "Characters/eye",
-            "morphDuration": 5.0,
-            "morphLimited": true,
-            "scale": [
-                0.8500000238418579,
-                0.8500000238418579,
-                0.8500000238418579
-            ],
-            "speed": 4.0
-        },
         "RingBurner": {
             "attackPower": 1.0,
             "detectionRange": 30.0,
@@ -85,23 +51,6 @@
             ],
             "speed": 0.0
         },
-        "BossCore": {
-            "attackPower": 1.5,
-            "detectionRange": 20.0,
-            "gravity": 0.0,
-            "jumpPower": 10.0,
-            "maxFallSpeed": 60.0,
-            "maxHp": 1000.0,
-            "modelName": "Stages/block",
-            "morphDuration": 5.0,
-            "morphLimited": true,
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "speed": 0.05000000074505806
-        },
         "FireSlime": {
             "attackPower": 1.0,
             "detectionRange": 24.0,
@@ -152,23 +101,6 @@
                 3.5999999046325684
             ],
             "speed": 0.0
-        },
-        "Mushroom": {
-            "attackPower": 1.0,
-            "detectionRange": 16.0,
-            "gravity": 60.0,
-            "jumpPower": 16.0,
-            "maxFallSpeed": 60.0,
-            "maxHp": 35.0,
-            "modelName": "Primitives/cylinder",
-            "morphDuration": 5.0,
-            "morphLimited": true,
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "speed": 2.0999999046325684
         },
         "MagmaSlime": {
             "attackPower": 1.45,

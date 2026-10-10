@@ -272,7 +272,7 @@ Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
         return GetFacingPlanarDirection();
     }
 
-    Vector3 myPos = transform_.translate;
+    Vector3 myPos = GetTranslate();
     Vector3 targetPos = target_->GetWorldPosition();
     targetPos.y = myPos.y;
     Vector3 toTarget = targetPos - myPos;

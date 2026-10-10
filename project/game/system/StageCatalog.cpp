@@ -59,7 +59,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         data.name = readString(stageJson, "name", data.id);
         data.levelPath = readString(stageJson, "levelPath", "");
         data.spritePath = readString(stageJson, "spritePath", "Resources/json/sprite/stage1_sprite.json");
-        data.bgmPath = readString(stageJson, "bgmPath", "Resources/bgm/Alarm02.mp3");
+        data.bgmPath = readString(stageJson, "bgmPath", "");
         data.description = readString(stageJson, "description", "");
         data.unlockStageIndex = readInt(stageJson, "unlockStageIndex", -1);
         data.defaultUnlocked = readBool(stageJson, "defaultUnlocked", false);
@@ -82,13 +82,13 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
 
 std::vector<StageData> StageCatalog::CreateFallback() {
     return {{"stage1", "Stage 1", "Resources/json/3Dobject/stage1.json", "Resources/json/sprite/stage1_sprite.json",
-             "Resources/bgm/Alarm02.mp3", "", -1, true},
+             "", "", -1, true},
             {"stage2", "Stage 2", "Resources/json/3Dobject/stage2.json", "Resources/json/sprite/stage2_sprite.json",
-             "Resources/bgm/Alarm02.mp3", "", 0, false},
+             "", "", 0, false},
             {"stage3", "Stage 3", "Resources/json/3Dobject/stage3.json", "Resources/json/sprite/stage3_sprite.json",
-             "Resources/bgm/Alarm02.mp3", "", 1, false},
+             "", "", 1, false},
             {"stage4", "Stage 4", "Resources/json/3Dobject/stage4.json", "Resources/json/sprite/stage4_sprite.json",
-             "Resources/bgm/Alarm02.mp3", "", 2, false},
+             "", "", 2, false},
             {"stage5", "Stage 5", "Resources/json/3Dobject/stage5.json", "Resources/json/sprite/stage5_sprite.json",
-             "Resources/bgm/Alarm02.mp3", "", 3, false}};
+             "", "", 3, false}};
 }

@@ -7,7 +7,6 @@
 
 SceneLoadManifest SettingsScene::BuildAsyncLoadManifest() const {
     SceneLoadManifest manifest;
-    manifest.AddAudio(ResolveSceneBgmPath("Resources/audio/Alarm02.mp3"));
     return manifest;
 }
 
@@ -17,14 +16,11 @@ void SettingsScene::Initialize() {
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
     menu_.Initialize(spriteCommon_.get());
     menu_.SetActive(true);
-    bgmHandle_ = AudioPlayer::GetInstance()->LoadSoundFile(ResolveSceneBgmPath("Resources/audio/Alarm02.mp3"));
-    AudioPlayer::GetInstance()->PlayBGM(bgmHandle_, true, .65f);
 }
 
 void SettingsScene::Finalize() {
     // 未適用値を復元してから描画リソースを破棄します。
     menu_.Finalize();
-    AudioPlayer::GetInstance()->StopBGM();
     sprites_.clear();
     spriteCommon_.reset();
 }

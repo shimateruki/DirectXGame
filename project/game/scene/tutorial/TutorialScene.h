@@ -15,6 +15,7 @@
 #include "Camera.h"
 #include "MeshRenderer.h"
 #include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/CopyStyleHud.h"
 #include "game/ui/SaveIndicatorOverlay.h"
 
 #include "ObjectManager.h"
@@ -32,7 +33,6 @@ class SceneManager;
 class LevelLoader;
 class LockOnSystem;
 class GameRule;
-class BossCore;
 class TutorialDirector;
 
 /// <summary>
@@ -65,12 +65,14 @@ class TutorialScene : public BaseScene {
     // --- BaseScene インターフェース実装 ---
 
     // オブジェクト管理は ObjectManager に委譲
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
     // スプライトはシーンで保持 (ObjectManagerを拡張すれば移動可能)
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     void CollectReplaySprites(std::vector<Sprite*>& sprites) override;
     void CaptureReplaySceneState(json& state) const override;
     void RestoreReplaySceneState(const json& state) override;
@@ -98,6 +100,7 @@ class TutorialScene : public BaseScene {
     }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     bool HandleControlsGuideOverlay(float deltaTime);
     bool IsControlsGuideOpenTriggered() const;
     void HandleTutorialFlowCompleted();
@@ -113,7 +116,6 @@ class TutorialScene : public BaseScene {
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム (機能を委譲するクラスたち) ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;     // 配置読み込み
@@ -133,7 +135,6 @@ class TutorialScene : public BaseScene {
     Player* player_ = nullptr;
 
     // --- BGM・SE ---
-    uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 
@@ -155,6 +156,7 @@ class TutorialScene : public BaseScene {
     std::unique_ptr<TutorialDirector> tutorialDirector_;
     std::unique_ptr<ControlsGuideOverlay> controlsGuideOverlay_;
     std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
+    CopyStyleHud copyStyleHud_;
 
     int loadingInitializePhase_ = 0;
     size_t loadingInitializeItemIndex_ = 0;

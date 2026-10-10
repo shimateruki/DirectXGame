@@ -99,15 +99,21 @@ public:
     std::string ResolvePrimarySpriteLayoutPath(const std::string& defaultPath);
 
     // LevelLoader と Editor が派生シーンの所有コンテナへアクセスするための窓口です。
-    virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
-        static std::vector<std::unique_ptr<Object3d>> empty;
+    virtual const std::vector<std::unique_ptr<Object3d>>& GetObjects() const {
+        static const std::vector<std::unique_ptr<Object3d>> empty;
         return empty;
     }
 
-    virtual std::vector<std::unique_ptr<Sprite>>& GetSprites() {
-        static std::vector<std::unique_ptr<Sprite>> empty;
+    virtual const std::vector<std::unique_ptr<Sprite>>& GetSprites() const {
+        static const std::vector<std::unique_ptr<Sprite>> empty;
         return empty;
     }
+
+    // 追加はシーンの所有処理を通す。Sprite を所有しないシーンでは nullptr。
+    Sprite* AddSprite(std::unique_ptr<Sprite> sprite);
+
+    // 描画順を一段移動する。前面方向は +1、背面方向は -1。
+    bool MoveSprite(Sprite* sprite, int offset);
 
     /// <summary>ReplayDebugger 向けに、シーンが所有する Sprite を列挙します。</summary>
     /// <remarks>個別の unique_ptr で保持する HUD は派生シーンで追加してください。</remarks>
@@ -123,7 +129,13 @@ public:
     void ReleaseReplaySprites();
 
     /// <summary>Editor やロード処理から Object3d を追加する入口です。</summary>
-    virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
+    virtual void AddObject(std::unique_ptr<Object3d> object);
+
+    // Editor と Replay が同じフレームに参照する Object は即時登録する。
+    virtual Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object);
+
+    // Undo/Prefab 編集用。衝突登録を外して所有権を呼び出し元へ移す。
+    virtual std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object);
 
     /// <summary>派生シーンが管理するオブジェクトの削除を予約する拡張点。</summary>
     virtual void RequestRemoveObject(Object3d* object) { (void)object; }
@@ -206,6 +218,9 @@ public:
     std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
 
 protected:
+    // 所有コンテナの変更はシーン内部だけに許可する。
+    virtual std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() { return nullptr; }
+
     // 特殊描画対象の判定と、一人称視点で隠すオブジェクトの除外に使う。
     bool IsSpecialMaterialType(int materialType) const;
     bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
@@ -214,10 +229,10 @@ protected:
     void DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight);
 
     /// <summary>対象一覧からローカルフォグを描画し、描画したか返す。</summary>
-    bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
 
     // 水、炎、ポータルなど通常パスと分ける特殊マテリアルを描画します。
-    bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
 
     // シーンカメラに合わせて GPU パーティクルを描画します。
     bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);

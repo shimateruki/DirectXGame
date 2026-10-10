@@ -34,7 +34,7 @@ void PlayerStatePullObject::Enter(Player* player) {
     if (marker) {
         marker->SetIsVisible(true);
         marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
-        marker->GetTransform()->translate = hookTipPos_;
+        marker->SetTranslate(hookTipPos_);
     }
 }
 
@@ -90,9 +90,9 @@ void PlayerStatePullObject::Exit(Player* player) {
     Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(false);
-        marker->GetTransform()->scale = {1.0f, 1.0f, 1.0f};
-        marker->GetTransform()->rotate = {0.0f, 0.0f, 0.0f};
-        marker->GetTransform()->isQuaternionMaster = true;
+        marker->SetScale({1.0f, 1.0f, 1.0f});
+        marker->SetEulerAngles({0.0f, 0.0f, 0.0f});
+        marker->SetQuaternionMaster(true);
         marker->UpdateLocalMatrix();
         marker->UpdateWorldMatrix();
     }
@@ -114,11 +114,11 @@ void PlayerStatePullObject::UpdateRopeMarker(Player* player, const Vector3& endP
 
     marker->SetIsVisible(true);
     marker->SetColor({0.35f, 0.9f, 1.0f, 1.0f});
-    marker->GetTransform()->translate = startPos + diff * 0.5f;
-    marker->GetTransform()->rotate = {std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
-                                      std::atan2(diff.x, diff.z), 0.0f};
-    marker->GetTransform()->isQuaternionMaster = false;
-    marker->GetTransform()->scale = {thickness, thickness, len};
+    marker->SetTranslate(startPos + diff * 0.5f);
+    marker->SetEulerAngles({std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
+                                      std::atan2(diff.x, diff.z), 0.0f});
+    marker->SetQuaternionMaster(false);
+    marker->SetScale({thickness, thickness, len});
     marker->UpdateLocalMatrix();
     marker->UpdateWorldMatrix();
 }

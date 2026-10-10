@@ -56,12 +56,6 @@ const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
             return showHurtIcon ? "ui/portraits/slime_hurt.png" : "ui/portraits/slime.png";
         case Player::EnemyMorphType::Bomber:
             return showHurtIcon ? "ui/portraits/bomber_hurt.png" : "ui/portraits/bomber.png";
-        case Player::EnemyMorphType::Bat:
-            return showHurtIcon ? "ui/portraits/bat_hurt.png" : "ui/portraits/bat.png";
-        case Player::EnemyMorphType::BeamDrone:
-            return showHurtIcon ? "ui/portraits/beam_drone_hurt.png" : "ui/portraits/beam_drone.png";
-        case Player::EnemyMorphType::Mushroom:
-            return showHurtIcon ? "ui/portraits/mushroom_hurt.png" : "ui/portraits/mushroom.png";
         case Player::EnemyMorphType::FireSlime:
             return showHurtIcon ? "ui/portraits/fire_slime_hurt.png" : "ui/portraits/fire_slime.png";
         case Player::EnemyMorphType::ThunderSlime:
@@ -149,6 +143,10 @@ void GamePlayScene::InitializeGameplayHUD() {
 
     hudHpIcon_ = BindGameplayHUDSprite("hud_hp_icon", "Resources/sprite/ui/portraits/player.png", {116.0f, 988.0f},
                                        {78.0f, 78.0f}, {0.5f, 0.5f}, {1.0f, 1.0f, 1.0f, 1.0f});
+    hudCopyStyle_ = BindGameplayHUDSprite("hud_copy_style", "Resources/sprite/ui/hud/copy_style/pink.png",
+                                          {92.0f, 834.0f}, {390.0f, 98.0f}, {0.0f, 0.0f},
+                                          {1.0f, 1.0f, 1.0f, 0.0f});
+    copyStyleHud_.Bind(hudCopyStyle_.sprite);
     hudHpDamageFill_ =
         BindGameplayHUDSprite("hud_hp_damage_fill", "Resources/sprite/ui/hud/hp_damage_fill.png", {162.0f, 988.0f},
                               {298.0f, 16.0f}, {0.0f, 0.5f}, {1.0f, 1.0f, 1.0f, 0.92f});
@@ -548,6 +546,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
 // 数値の即時更新と、被弾・獲得時に少し遅れて追う表示を分けて更新します。
 void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     deltaTime = (std::max)(0.0f, deltaTime);
+    copyStyleHud_.Update(player_, deltaTime);
     const bool visible = player_ != nullptr;
     const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
     const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
@@ -1214,6 +1213,7 @@ void GamePlayScene::DrawGameplayHUD() {
     DrawGameplayHUDSprite(hudHpFill_);
     DrawGameplayHUDSprite(hudHpHighlight_);
     DrawGameplayHUDSprite(hudHpIcon_);
+    DrawGameplayHUDSprite(hudCopyStyle_);
     DrawGameplayHUDSprite(hudMorphGaugeBack_);
     DrawGameplayHUDSprite(hudMorphGaugeFill_);
     DrawGameplayHUDSprite(hudMorphGaugeIcon_);

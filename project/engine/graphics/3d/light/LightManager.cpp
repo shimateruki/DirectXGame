@@ -327,8 +327,8 @@ void LightManager::ApplySceneClearColor() {
 }
 
 // 戻り値を Instance* に変更
-LightManager::PointLightInstance* LightManager::AddPointLight() {
-    if (pointLights_.size() >= kMaxPointLights) return nullptr;
+bool LightManager::AddPointLight() {
+    if (pointLights_.size() >= kMaxPointLights) return false;
 
     PointLightInstance instance;
     instance.name = "PointLight " + std::to_string(pointLights_.size());
@@ -345,12 +345,12 @@ LightManager::PointLightInstance* LightManager::AddPointLight() {
     instance.target = nullptr;
 
     pointLights_.push_back(instance);
-    return &pointLights_.back();
+    return true;
 }
 
 // 戻り値を Instance* に変更
-LightManager::SpotLightInstance* LightManager::AddSpotLight() {
-    if (spotLights_.size() >= kMaxSpotLights) return nullptr;
+bool LightManager::AddSpotLight() {
+    if (spotLights_.size() >= kMaxSpotLights) return false;
 
     SpotLightInstance instance;
     instance.name = "SpotLight " + std::to_string(spotLights_.size());
@@ -369,8 +369,41 @@ LightManager::SpotLightInstance* LightManager::AddSpotLight() {
     instance.target = nullptr;
 
     spotLights_.push_back(instance);
-    return &spotLights_.back();
+    return true;
 }
+
+bool LightManager::SetPointLight(std::size_t index, const PointLightInstance& value) {
+    if (index >= pointLights_.size()) return false;
+    pointLights_[index] = value;
+    pointLights_[index].data.radius = (std::max)(0.0f, pointLights_[index].data.radius);
+    pointLights_[index].data.decay = (std::max)(0.0f, pointLights_[index].data.decay);
+    pointLights_[index].baseIntensity = (std::max)(0.0f, pointLights_[index].baseIntensity);
+    return true;
+}
+
+bool LightManager::SetSpotLight(std::size_t index, const SpotLightInstance& value) {
+    if (index >= spotLights_.size()) return false;
+    spotLights_[index] = value;
+    spotLights_[index].data.distance = (std::max)(0.0f, spotLights_[index].data.distance);
+    spotLights_[index].data.decay = (std::max)(0.0f, spotLights_[index].data.decay);
+    spotLights_[index].baseIntensity = (std::max)(0.0f, spotLights_[index].baseIntensity);
+    return true;
+}
+
+bool LightManager::RemovePointLight(std::size_t index) {
+    if (index >= pointLights_.size()) return false;
+    pointLights_.erase(pointLights_.begin() + index);
+    return true;
+}
+
+bool LightManager::RemoveSpotLight(std::size_t index) {
+    if (index >= spotLights_.size()) return false;
+    spotLights_.erase(spotLights_.begin() + index);
+    return true;
+}
+
+void LightManager::ClearPointLights() { pointLights_.clear(); }
+void LightManager::ClearSpotLights() { spotLights_.clear(); }
 
 void LightManager::ClearAllLights() {
     pointLights_.clear();
@@ -592,7 +625,7 @@ bool LightManager::LoadState(const std::string& filename) {
     // --- 点光源 ---
     if (root.contains("pointLights") && root["pointLights"].is_array()) {
         for (const auto& j : root["pointLights"]) {
-            auto instance = AddPointLight(); // Instance* が返る
+            PointLightInstance* instance = AddPointLight() ? &pointLights_.back() : nullptr;
             if (instance) {
                 auto& l = instance->data;
                 if (j.contains("name")) instance->name = j["name"];
@@ -609,6 +642,7 @@ bool LightManager::LoadState(const std::string& filename) {
                 if (j.contains("mode")) instance->mode = (LightMode)j["mode"];
                 if (j.contains("speed")) instance->speed = j["speed"];
                 if (j.contains("offset")) { instance->offset.x = j["offset"][0]; instance->offset.y = j["offset"][1]; instance->offset.z = j["offset"][2]; }
+                SetPointLight(pointLights_.size() - 1, *instance);
             }
         }
     }
@@ -616,7 +650,7 @@ bool LightManager::LoadState(const std::string& filename) {
     // --- スポットライト ---
     if (root.contains("spotLights") && root["spotLights"].is_array()) {
         for (const auto& j : root["spotLights"]) {
-            auto instance = AddSpotLight();
+            SpotLightInstance* instance = AddSpotLight() ? &spotLights_.back() : nullptr;
             if (instance) {
                 auto& l = instance->data;
                 if (j.contains("name")) instance->name = j["name"];
@@ -636,6 +670,7 @@ bool LightManager::LoadState(const std::string& filename) {
                 if (j.contains("mode")) instance->mode = (LightMode)j["mode"];
                 if (j.contains("speed")) instance->speed = j["speed"];
                 if (j.contains("offset")) { instance->offset.x = j["offset"][0]; instance->offset.y = j["offset"][1]; instance->offset.z = j["offset"][2]; }
+                SetSpotLight(spotLights_.size() - 1, *instance);
             }
         }
     }

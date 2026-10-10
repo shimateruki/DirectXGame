@@ -182,7 +182,6 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 		if (sceneManager && droppedFilename) {
 			if (BaseScene* currentScene = sceneManager->GetCurrentScene()) {
 				SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
-				auto& sprites = currentScene->GetSprites();
 
 				ImVec2 mousePos = ImGui::GetIO().MousePos;
 				Vector2 dropPos = {
@@ -199,10 +198,10 @@ void GameEditorController::HandleGameViewDropTargets(SceneManager* sceneManager,
 				newSprite->SetTextureName(droppedFilename);
 				newSprite->SetPosition(dropPos);
 
-				sprites.push_back(std::move(newSprite));
+				Sprite* addedSprite = currentScene->AddSprite(std::move(newSprite));
 
 				if (spriteDebugEditor_) {
-					spriteDebugEditor_->SetSelectedSprite(sprites.back().get());
+					spriteDebugEditor_->SetSelectedSprite(addedSprite);
 				}
 				DebugConsole::GetInstance()->AddLog("Dropped Sprite: " + std::string(droppedFilename));
 			}

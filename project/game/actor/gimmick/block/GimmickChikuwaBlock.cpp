@@ -32,8 +32,8 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
             float intensity = 0.05f;
             float offX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * intensity;
             float offZ = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * intensity;
-            GetTransform()->translate.x = startPos_.x + offX;
-            GetTransform()->translate.z = startPos_.z + offZ;
+            SetTranslateX(startPos_.x + offX);
+            SetTranslateZ(startPos_.z + offZ);
         }
 
         if (timer_ >= GetShakeDuration()) {
@@ -44,11 +44,11 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
     case State::Falling:
         timer_ += deltaTime;
         velocityY_ -= GetGravity() * deltaTime;
-        GetTransform()->translate.y += velocityY_ * deltaTime;
+        SetTranslateY(GetTranslate().y + velocityY_ * deltaTime);
 
         // 落下中は少し回転させると「落ちてる感」が出る
-        GetTransform()->rotate.x += 2.0f * deltaTime;
-        GetTransform()->rotate.z += 1.0f * deltaTime;
+        SetEulerX(GetRotation().x + 2.0f * deltaTime);
+        SetEulerZ(GetRotation().z + 1.0f * deltaTime);
 
         if (timer_ >= GetFallDuration()) {
             ChangeState(State::Hidden);
@@ -91,8 +91,8 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
     case State::Idle:
         SetIsVisible(true);
         SetCollisionAttribute(CollisionCategories::Get("ground")); // 衝突判定を元に戻す
-        GetTransform()->translate = startPos_;
-        GetTransform()->rotate = {0, 0, 0};
+        SetTranslate(startPos_);
+        SetEulerAngles({0, 0, 0});
         velocityY_ = 0.0f;
         break;
 

@@ -1,5 +1,7 @@
 ﻿#include "engine/utility/SystemDebug/editor/core/preset/PresetManager.Internal.h"
 
+#include "BaseScene.h"
+
 using namespace PresetManagerImplementation;
 
 // Prefab継承と既存インスタンスの同期。
@@ -350,8 +352,9 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, Object
 
 int PresetManager::SynchronizePrefabInstances(
     const std::map<std::string, json>& beforePrefabs,
-    std::vector<std::unique_ptr<Object3d>>& sceneObjects,
+    BaseScene& scene,
     Object3dCommon* common) {
+    const auto& sceneObjects = scene.GetObjects();
     if (!common || beforePrefabs.empty() || sceneObjects.empty()) {
         return 0;
     }
@@ -484,8 +487,7 @@ int PresetManager::SynchronizePrefabInstances(
             for (auto& createdObject : created) {
                 if (!createdObject) continue;
                 instanceObjects[createdObject->GetPrefabInstanceInfo().sourceObjectId] = createdObject.get();
-                CollisionManager::GetInstance()->AddObject(createdObject.get());
-                sceneObjects.push_back(std::move(createdObject));
+                scene.AddObjectImmediate(std::move(createdObject));
                 ++synchronizedObjects;
             }
         }
@@ -524,12 +526,13 @@ int PresetManager::SynchronizePrefabInstances(
                     candidate->SetParent(nullptr, true);
                 }
             }
+            std::vector<std::unique_ptr<Object3d>> detachedObjects;
+            detachedObjects.reserve(removedObjects.size());
             for (Object3d* removed : removedObjects) {
-                CollisionManager::GetInstance()->RemoveObject(removed);
+                if (auto detached = scene.TakeObjectImmediate(removed)) {
+                    detachedObjects.push_back(std::move(detached));
+                }
             }
-            sceneObjects.erase(std::remove_if(sceneObjects.begin(), sceneObjects.end(), [&removedObjects](const auto& object) {
-                return object && removedObjects.find(object.get()) != removedObjects.end();
-            }), sceneObjects.end());
             synchronizedObjects += static_cast<int>(removedObjects.size());
         }
     }

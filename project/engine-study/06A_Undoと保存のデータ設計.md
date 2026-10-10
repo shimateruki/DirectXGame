@@ -34,7 +34,7 @@ Undo 中に setter が新しい履歴を登録すると、戻している操作�
 
 ## 4. Property Registryが一括編集を可能にする
 
-[`EditorPropertyRegistry`](../engine/utility/SystemDebug/editor/core/EditorPropertyRegistry.cpp) は編集項目の型・識別・取得・設定などを記述する登録情報を持つ。[`PropertyMatrixWindow`](../engine/utility/SystemDebug/editor/windows/PropertyMatrixWindow.cpp) は対象 Object を行、Property を列として同じ情報から値を表示・編集できる。個別の Object 型ごとに表の UI を作り直す量を減らす設計。
+[`EditorPropertyRegistry`](../engine/utility/SystemDebug/editor/core/EditorPropertyRegistry.cpp) は編集項目の型・識別・取得・設定などを記述する登録情報を持つ。Inspectorなどの編集画面が同じ登録情報を参照できるため、Object型ごとにプロパティの定義を重複させずに済む。
 
 これは **メタデータ駆動のProperty UI**。C++ の全メンバーを自動的に反射しているとは限らない。登録されていない値は出ず、Object が対応しない値は編集できない。Registry と Serializer も別の責務なので、表に出た値が必ず Scene JSON に保存されるとは考えず保存経路を追う。
 

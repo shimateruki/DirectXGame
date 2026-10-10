@@ -464,12 +464,12 @@ void DebugEditor::DropToFloor() {
     // 6. 実際の移動処理
     if (bestHit.isHit) {
         // 真下にオブジェクトがあった場合、その表面に乗る
-        selectedObject_->GetTransform()->translate.y = bestHit.point.y + yOffset;
+        selectedObject_->SetTranslateY(bestHit.point.y + yOffset);
         DebugConsole::GetInstance()->AddLog("Dropped to Object!");
     }
     else {
         // 真下に何もない場合は、Y=0 の床に乗る
-        selectedObject_->GetTransform()->translate.y = yOffset;
+        selectedObject_->SetTranslateY(yOffset);
         DebugConsole::GetInstance()->AddLog("Dropped to Floor (Y=0)!");
     }
 
@@ -675,7 +675,7 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
             finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
             finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
         }
-        newObj->GetTransform()->translate = finalPos;
+        newObj->SetTranslate(finalPos);
     }
 
     newObj->UpdateLocalMatrix();
@@ -749,7 +749,7 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
         finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
         finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
     }
-    rootObject->GetTransform()->translate = finalPos;
+    rootObject->SetTranslate(finalPos);
     rootObject->UpdateWorldMatrix();
 
     AddEditorObjects(std::move(presetObjects), "Drop Preset");
@@ -819,7 +819,7 @@ void DebugEditor::InstantiatePrefabAtCursor(const std::string& prefabName) {
         finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
         finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
     }
-    rootObject->GetTransform()->translate = finalPos;
+    rootObject->SetTranslate(finalPos);
     rootObject->UpdateWorldMatrix();
 
     AddEditorObjects(std::move(prefabObjects), "Drop Prefab");
@@ -894,7 +894,7 @@ void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
         finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
         finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
     }
-    newObj->GetTransform()->translate = finalPos;
+    newObj->SetTranslate(finalPos);
     newObj->UpdateWorldMatrix();
 
     // 4. シーンに追加

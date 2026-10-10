@@ -57,8 +57,8 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         float intensity = 0.045f;
         float offX = ((float)std::rand() / RAND_MAX * 2.0f - 1.0f) * intensity;
         float offZ = ((float)std::rand() / RAND_MAX * 2.0f - 1.0f) * intensity;
-        GetTransform()->translate.x = startPosition_.x + offX;
-        GetTransform()->translate.z = startPosition_.z + offZ;
+        SetTranslateX(startPosition_.x + offX);
+        SetTranslateZ(startPosition_.z + offZ);
 
         if (timer_ >= GetShakeDuration()) {
             ChangeState(State::Falling);
@@ -69,10 +69,10 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
     case State::Falling:
         timer_ += deltaTime;
         velocityY_ -= GetGravity() * deltaTime;
-        GetTransform()->translate.y += velocityY_ * deltaTime;
-        GetTransform()->rotate.x += 1.4f * deltaTime;
-        GetTransform()->rotate.z += 0.9f * deltaTime;
-        GetTransform()->isQuaternionMaster = false;
+        SetTranslateY(GetTranslate().y + velocityY_ * deltaTime);
+        SetEulerX(GetRotation().x + 1.4f * deltaTime);
+        SetEulerZ(GetRotation().z + 0.9f * deltaTime);
+        SetQuaternionMaster(false);
 
         if (timer_ >= GetFallDuration()) {
             ChangeState(State::Hidden);
@@ -132,9 +132,9 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         SetIsVisible(true);
         SetCollisionAttribute(CollisionCategories::Get("ground"));
         SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
-        GetTransform()->translate = startPosition_;
-        GetTransform()->rotate = startRotation_;
-        GetTransform()->isQuaternionMaster = false;
+        SetTranslate(startPosition_);
+        SetEulerAngles(startRotation_);
+        SetQuaternionMaster(false);
         velocityY_ = 0.0f;
         pendingTimer_ = 0.0f;
         returnTimer_ = 0.0f;

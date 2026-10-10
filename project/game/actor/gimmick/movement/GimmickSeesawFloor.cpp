@@ -33,8 +33,8 @@ void GimmickSeesawFloor::Update(float deltaTime) {
     Vector3 rot = GetTransform()->rotate;
     rot.x = Math::Lerp(rot.x, baseRotation_.x, t);
     rot.z = Math::Lerp(rot.z, baseRotation_.z + targetTilt_, t);
-    GetTransform()->rotate = rot;
-    GetTransform()->isQuaternionMaster = false;
+    SetEulerAngles(rot);
+    SetQuaternionMaster(false);
 
     BaseGimmick::Update(deltaTime);
 }

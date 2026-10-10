@@ -134,11 +134,8 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 				// (もしフリップや回転などがあれば、ここに追加でコピー処理を書きます)
 
 				// シーンのリストに追加
-				auto& sprites = currentScene->GetSprites();
-				sprites.push_back(std::move(newSprite));
-
 				// 複製したスプライトを即座に「選択状態」にする（続けて移動などができるように）
-				selectedSprite_ = sprites.back().get();
+				selectedSprite_ = currentScene->AddSprite(std::move(newSprite));
 			}
 			if (!selectedSprite_->IsLocked()) {
 
@@ -347,8 +344,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 			newSprite->Initialize(spriteCommon, handle);
 			newSprite->SetName(droppedFilename);
 			newSprite->SetTextureName(droppedFilename);
-			sprites.push_back(std::move(newSprite));
-			selectedSprite_ = sprites.back().get();
+			selectedSprite_ = currentScene->AddSprite(std::move(newSprite));
 		}
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
 			Sprite* sourceSprite = *(Sprite**)payload->Data;
@@ -569,17 +565,12 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EDIT " 編集: %s", selectedSprite_->GetName().c_str());
 
 		// 描画順（Zオーダー）
-		auto it = std::find_if(sprites.begin(), sprites.end(),
-			[this](const std::unique_ptr<Sprite>& ptr) { return ptr.get() == selectedSprite_; });
-		if (it != sprites.end()) {
-			size_t index = std::distance(sprites.begin(), it);
-			if (ImGui::Button(ICON_FA_ARROW_UP " 前面へ (手前)")) {
-				if (index < sprites.size() - 1) std::swap(sprites[index], sprites[index + 1]);
-			}
-			ImGui::SameLine();
-			if (ImGui::Button(ICON_FA_ARROW_DOWN " 背面へ (奥)")) {
-				if (index > 0) std::swap(sprites[index], sprites[index - 1]);
-			}
+		if (ImGui::Button(ICON_FA_ARROW_UP " 前面へ (手前)")) {
+			currentScene->MoveSprite(selectedSprite_, 1);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(ICON_FA_ARROW_DOWN " 背面へ (奥)")) {
+			currentScene->MoveSprite(selectedSprite_, -1);
 		}
 		ImGui::Separator();
 

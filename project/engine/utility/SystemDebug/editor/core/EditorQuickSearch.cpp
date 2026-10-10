@@ -19,7 +19,6 @@
 #include "IconsFontAwesome5.h"
 #include "KeyConfig.h"
 #include "Object3d.h"
-#include "PresetEditor.h"
 #include "engine/utility/SystemDebug/editor/core/preset/PresetManager.h"
 #include "SceneManager.h"
 #include "imgui.h"
@@ -448,25 +447,16 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
     const WindowTarget targets[] = {
         { "camera", "カメラ設定", "camera view", CameraEditor::GetInstance() },
         { "keyconfig", "キーコンフィグ", "key input", KeyConfig::GetInstance() },
-        { "preset", "プリセットエディタ", "preset prefab", PresetEditor::GetInstance() },
-        { "sceneValidator", "シーン視覚監査", "scene audit overlap rotate", editor_->GetSceneValidator() },
-        { "levelDesignLab", "レベル設計ラボ", "level design ai plan reachability visibility", editor_->GetLevelDesignLabWindow() },
         { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
         { "materialPreview", "マテリアル確認", "material pbr", editor_->GetMaterialPreviewBoard() },
         { "effectPreview", "エフェクト確認ステージ", "effect vfx preview", editor_->GetEffectPreviewStage() },
         { "enemyAttack", "敵攻撃プレビュー", "enemy attack timeline", editor_->GetEnemyAttackPreviewWindow() },
         { "animation", "アニメーション制作", "animation motion", editor_->GetAnimationWorkbench() },
         { "animator", "Animator Controller", "animator state", editor_->GetAnimatorControllerEditor() },
-        { "eventLink", "イベントリンク図", "event link id", editor_->GetEventLinkGraph() },
-        { "effectGraph", "演出ノード", "effect node graph", editor_->GetNodeGraphEditorWindow() },
         { "textPng", "テキストPNG生成", "text png", editor_->GetTextSpriteGenerator() },
-        { "text3d", "3Dテキスト生成", "text 3d", editor_->GetText3DGenerator() },
         { "modelOptimizer", "モデル最適化", "model lod optimize", editor_->GetModelOptimizerWindow() },
-        { "terrain", "地形生成", "terrain stage", editor_->GetTerrainEditorWindow() },
         { "assetAudit", "アセット監査", "asset audit", editor_->GetAssetAuditWindow() },
-        { "propertyMatrix", "プロパティマトリクス", "property matrix batch", editor_->GetPropertyMatrixWindow() },
         { "status", "ステータス管理", "status parameter", editor_->GetStatusTuningWindow() },
-        { "jsonBackup", "JSONバックアップ", "json backup", editor_->GetJsonBackupWindow() },
         { "audio", "音声設定", "audio sound bgm", editor_->GetAudioSettingsWindow() },
         { "package", "実行ファイルセット", "executable package", editor_->GetExecutablePackageWindow() },
         { "capture", "キャプチャツール", "capture screenshot video", editor_->GetCaptureToolWindow() },

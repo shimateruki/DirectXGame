@@ -66,7 +66,7 @@ void GimmickLiquidLevel::Update(float deltaTime) {
     pos.x = Math::Lerp(pos.x, targetPosition_.x, t);
     pos.y = Math::Lerp(pos.y, targetPosition_.y, t);
     pos.z = Math::Lerp(pos.z, targetPosition_.z, t);
-    GetTransform()->translate = pos;
+    SetTranslate(pos);
 
     ApplyLiquidVisual();
     BaseGimmick::Update(deltaTime);

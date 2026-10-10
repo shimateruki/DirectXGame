@@ -196,6 +196,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                 const int x = i / 8, z = i % 8;
                 if ((x <= 1 || x >= 6) && (z == 0 || z == 7)) continue;
                 auto chunk = object->Clone();
+                if (!chunk) continue;
                 char model[128]; std::snprintf(model, sizeof(model), "Stages/high_crown/high_crown_fracture_%02d.obj", i);
                 chunk->SetModel(model); chunk->SetName("CrownFracture_" + std::to_string(i));
                 chunk->ClearEditorHiddenReasons(); chunk->SetEditorInternal(crownMoviePreview_.active);
@@ -228,7 +229,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
             else AddObject(std::move(copy));
         }
     }
-    for (auto& copy : previewArenaCopies) GetObjects().push_back(std::move(copy));
+    for (auto& copy : previewArenaCopies) AddObjectImmediate(std::move(copy));
     // 元モデルから分離した中央装飾を同じ位置へ配置し、破断前後の形状を連続させます。
     auto makeVisual = [&](const char* model) {
         auto visual = std::make_unique<Object3d>();

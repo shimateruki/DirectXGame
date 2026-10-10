@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "da7d0d0cf344867f671c66e3f21fd378",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_beginning_label.dds",
+  "version": 1
+}

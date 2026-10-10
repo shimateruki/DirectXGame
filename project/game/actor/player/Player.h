@@ -1,7 +1,6 @@
 #pragma once
 #include "Character.h"
 #include "game/actor/player/combat/PlayerAttackInputBuffer.h"
-#include "game/actor/player/movement/PlayerLaunchStarController.h"
 #include "EffectObject3d.h"
 #include "IAnimationState.h"
 #include "InputManager.h"
@@ -29,10 +28,7 @@ class Player : public Character {
         None = 0,
         Slime = 1,
         Bomber = 2,
-        Bat = 3,
-        BeamDrone = 4,
-        Mushroom = 5,
-        // 値6は廃止した巨大スライムコピーとのリプレイ互換用に予約します。
+        // 値3～6は廃止したコピー能力とのリプレイ互換用に予約します。
         FireSlime = 7,
         ThunderSlime = 8,
         WindSlime = 9,
@@ -79,6 +75,9 @@ class Player : public Character {
     const AnimatorControllerAsset* GetSlimeAnimatorControllerAsset() const {
         return slimeAnimator_.GetControllerAsset();
     }
+    AnimatorControllerRuntime* GetSlimeAnimatorControllerRuntime() {
+        return slimeAnimator_.GetControllerRuntime();
+    }
     void SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode);
     void SetSlimeAnimationDirection(const Vector3& direction);
     void SetSlimePullDirection(const Vector3& direction);
@@ -120,16 +119,6 @@ class Player : public Character {
     /// <param name="speedMultiplier">移動速度の倍率。</param>
     /// <param name="turnMultiplier">旋回速度の倍率。</param>
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
-    // 氷床の移動補正を指定秒数だけ適用する。摩擦と旋回量は移動側で使用する係数。
-    void ApplyIceSurface(float duration, float friction, float steering);
-    /// <summary>指定位置まで放物線状に移動するスターランチャーを開始します。</summary>
-    /// <param name="destination">着地点のワールド座標。</param>
-    /// <param name="arcHeight">軌道の最高点に加える高さ。</param>
-    /// <param name="duration">移動時間（秒）。</param>
-    void StartLaunchStar(const Vector3& destination, float arcHeight, float duration);
-    // 発射移動を中断する。restoreControl=true なら開始前の操作状態へ戻す。
-    void CancelLaunchStar(bool restoreControl);
-    bool IsLaunchStarActive() const { return launchStarController_.IsActive(); }
     // 通常攻撃または対応コピー突進が、衝撃ゲートを破壊できる攻撃中か返します。
     bool IsImpactBreakActive() const;
     // ピンクスライムのバウンド落下中だけ真を返します。
@@ -184,7 +173,7 @@ class Player : public Character {
     }
     void ClearCrownPower();
 
-    Vector3 GetRotation() const { return transform_.rotate; }
+    Vector3 GetRotation() const { return Object3d::GetRotation(); }
     float GetVisualYawOffset() const;
     float GetMoveYaw() const;
     Vector3 GetForwardDirection() const;
@@ -193,16 +182,15 @@ class Player : public Character {
 
     // Euler 回転を設定し、内部のクォータニオンも同期する
     void SetRotation(const Vector3& r) {
-        transform_.rotate = r;
-        transform_.quaternion = Math::EulerToQuaternion(r);
-        transform_.isQuaternionMaster = true;
+        SetEulerAngles(r);
+        SetQuaternion(Math::EulerToQuaternion(r));
     }
 
     // Y 軸だけを更新し、クォータニオンも同期する
     void SetRotationY(float y) {
-        transform_.rotate.y = y;
-        transform_.quaternion = Math::EulerToQuaternion(transform_.rotate);
-        transform_.isQuaternionMaster = true;
+        Vector3 rotation = GetRotation();
+        rotation.y = y;
+        SetRotation(rotation);
     }
 
     // --- 状態フラグ ---
@@ -333,9 +321,6 @@ class Player : public Character {
     bool tutorialCarryThrowEnabled_ = true;
     bool tutorialCarryAbsorbEnabled_ = true;
 
-    // スターランチャーによる区画間移動。移動中は入力と通常衝突を一時停止します。
-    PlayerLaunchStarController launchStarController_;
-    void UpdateLaunchStar(float deltaTime);
 
     // 攻撃1終了後に次のクリックで攻撃2へつなげるための予約フラグ
     bool pendingAttack2_ = false;
@@ -388,7 +373,6 @@ class Player : public Character {
     bool carriedEnemyBaseQuaternionMaster_ = true;
     bool hasCarriedEnemyBaseScale_ = false;
     Object3d* aimTargetObject_ = nullptr;
-    float carryGlideEffectTimer_ = 0.0f;
 
     EnemyMorphType enemyMorphType_ = EnemyMorphType::None;
     BaseEnemy* enemyMorphSource_ = nullptr;

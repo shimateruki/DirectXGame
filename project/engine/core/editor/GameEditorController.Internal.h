@@ -17,7 +17,6 @@
 #include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DebugEditor.h"
-#include "GameplayEventTrace.h"
 #include "DirectXCommon.h"
 #include "EditorCommandRegistry.h"
 #include "EditorToolSettings.h"

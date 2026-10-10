@@ -17,6 +17,19 @@ constexpr float kLocomotionLandingDuration = 0.25f;
 EnemyPrismSlime::EnemyPrismSlime() = default;
 EnemyPrismSlime::~EnemyPrismSlime() = default;
 
+void EnemyPrismSlime::BindSceneSpawnContext(BaseScene* scene) {
+    BaseEnemy::BindSceneSpawnContext(scene);
+    if (!scene) {
+        SetSpawnCallback(nullptr);
+        return;
+    }
+    SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
+        if (!spawned) return;
+        spawned->BindSceneSpawnContext(scene);
+        scene->AddObject(std::move(spawned));
+    });
+}
+
 void EnemyPrismSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_PrismSlime");

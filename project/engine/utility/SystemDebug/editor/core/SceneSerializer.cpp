@@ -495,7 +495,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["parentGuid"] = obj->GetParent() ? obj->GetParent()->EnsurePersistentGuid() : "";
 
     // 3. Transform
-    Transform* t = obj->GetTransform();
+    const Transform* t = obj->GetTransform();
     d["position"] = { t->translate.x, t->translate.y, t->translate.z };
     d["rotation"] = { t->rotate.x, t->rotate.y, t->rotate.z };
     d["quaternion"] = { t->quaternion.x, t->quaternion.y, t->quaternion.z, t->quaternion.w };

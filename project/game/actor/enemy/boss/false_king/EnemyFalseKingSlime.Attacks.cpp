@@ -119,18 +119,16 @@ void EnemyFalseKingSlime::SpawnCrownLance(const Vector3& groundPosition, float d
 
     lance.visual->SetTranslate(lance.portalPosition - lance.flightDirection * 1.25f);
     lance.visual->SetScale({1.12f, 2.35f, 1.12f});
-    lance.visual->GetTransform()->quaternion =
-        MakeAxisToDirectionQuaternion({0.0f, -1.0f, 0.0f}, lance.flightDirection);
-    lance.visual->GetTransform()->isQuaternionMaster = true;
+    lance.visual->SetQuaternion(MakeAxisToDirectionQuaternion({0.0f, -1.0f, 0.0f}, lance.flightDirection));
+    lance.visual->SetQuaternionMaster(true);
     lance.visual->SetIsVisible(false);
     lance.visual->UpdateWorldMatrix(true);
     if (lance.portal) {
         lance.portal->SetBlendMode(BlendMode::kNormal);
         lance.portal->SetTranslate(lance.portalPosition);
         lance.portal->SetScale({0.16f, 0.16f, 0.16f});
-        lance.portal->GetTransform()->quaternion =
-            MakeAxisToDirectionQuaternion({0.0f, 0.0f, 1.0f}, lance.flightDirection);
-        lance.portal->GetTransform()->isQuaternionMaster = true;
+        lance.portal->SetQuaternion(MakeAxisToDirectionQuaternion({0.0f, 0.0f, 1.0f}, lance.flightDirection));
+        lance.portal->SetQuaternionMaster(true);
         lance.portal->SetIsVisible(false);
         if (MeshRenderer* renderer = lance.portal->GetMeshRenderer()) {
             if (MeshRenderer::WaterParamForGPU* portal = renderer->GetWaterParamData()) {

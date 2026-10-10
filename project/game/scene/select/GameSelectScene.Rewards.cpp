@@ -20,9 +20,8 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 
     Object3d* crown = FindObjectByName("StageSelect_CrownCore");
     if (crown && unlockingStageIndex_ < 0) {
-        Transform* transform = crown->GetTransform();
-        transform->rotate.y += deltaTime * 0.55f;
-        transform->isQuaternionMaster = false;
+        crown->SetEulerY(crown->GetRotation().y + deltaTime * 0.55f);
+        crown->SetQuaternionMaster(false);
         crown->SetColor({1.0f, 0.72f, 0.18f, 1.0f});
         crown->SetEmissive(1.5f + pulse * 0.45f);
         crown->SetGPUParticleName(kCrownIdleParticlePreset);
@@ -217,7 +216,7 @@ Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
     crown->UpdateWorldMatrix();
 
     Object3d* raw = crown.get();
-    objectManager_->GetObjects().push_back(std::move(crown));
+    AddObjectImmediate(std::move(crown));
     return raw;
 }
 
@@ -245,17 +244,16 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
             continue;
         }
 
-        Transform* transform = crown->GetTransform();
         const float bob = std::sin(stageSelectTime_ * 2.6f + static_cast<float>(stageIndex) * 0.75f) * 0.10f;
         Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
         targetPos.y += bob;
-        transform->translate = targetPos;
-        transform->rotate.y += deltaTime * 1.15f;
-        transform->rotate.z = std::sin(stageSelectTime_ * 2.0f + static_cast<float>(stageIndex)) * 0.08f;
-        transform->isQuaternionMaster = false;
+        crown->SetTranslate(targetPos);
+        crown->SetEulerY(crown->GetRotation().y + deltaTime * 1.15f);
+        crown->SetEulerZ(std::sin(stageSelectTime_ * 2.0f + static_cast<float>(stageIndex)) * 0.08f);
+        crown->SetQuaternionMaster(false);
 
         const float scale = kStageClearCrownBaseScale * (1.0f + pulse * 0.08f);
-        transform->scale = {scale, scale, scale};
+        crown->SetScale({scale, scale, scale});
         crown->SetColor({0.58f + pulse * 0.06f, 0.62f + pulse * 0.06f, 0.70f + pulse * 0.07f, 1.0f});
         crown->SetEmissive(0.38f + pulse * 0.16f);
         crown->SetGPUParticleName(kCrownIdleParticlePreset);
@@ -319,7 +317,6 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
         GPUParticleManager::GetInstance()->Emit(kCrownUnlockParticlePreset, burstPos);
         GPUParticleManager::GetInstance()->Emit(kCrownUnlockRayParticlePreset, burstPos);
         GPUParticleManager::GetInstance()->Emit(kCrownUnlockAfterglowParticlePreset, burstPos);
-        GameAudioSettings::GetInstance()->PlaySE("crown_get", 0.95f);
 
         if (particleSystem_) {
             Vector3 up = {0.0f, 1.0f, 0.0f};
@@ -351,7 +348,6 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
     }
 
     const Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
-    Transform* transform = crown->GetTransform();
 
     Vector3 position = targetPos;
     float scale = kStageClearCrownBaseScale;
@@ -368,8 +364,8 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
         scale = kStageClearCrownBaseScale * (0.18f + SelectEaseOutBack(p) * 0.92f);
         emissive = 2.6f + p * 2.8f;
         silverFlash = p;
-        transform->rotate.y += deltaTime * (8.0f + (1.0f - p) * 7.5f);
-        transform->rotate.z = std::sin(p * std::numbers::pi_v<float>) * 0.42f;
+        crown->SetEulerY(crown->GetRotation().y + deltaTime * (8.0f + (1.0f - p) * 7.5f));
+        crown->SetEulerZ(std::sin(p * std::numbers::pi_v<float>) * 0.42f);
     } else {
         const float p = t - kCrownCountImpactTime;
         const float decay = std::max(0.0f, 1.0f - p / 1.35f);
@@ -379,13 +375,13 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
         scale = kStageClearCrownBaseScale * (1.0f + pop * 0.34f + std::sin(p * 14.0f) * 0.08f * decay);
         emissive = 2.55f + pop * 2.2f + decay * 0.9f;
         silverFlash = std::max(pop, decay * 0.45f);
-        transform->rotate.y += deltaTime * (2.0f + decay * 4.5f);
-        transform->rotate.z = std::sin(stageSelectTime_ * 5.0f) * 0.12f * std::max(0.25f, decay);
+        crown->SetEulerY(crown->GetRotation().y + deltaTime * (2.0f + decay * 4.5f));
+        crown->SetEulerZ(std::sin(stageSelectTime_ * 5.0f) * 0.12f * std::max(0.25f, decay));
     }
 
-    transform->translate = position;
-    transform->scale = {scale, scale, scale};
-    transform->isQuaternionMaster = false;
+    crown->SetTranslate(position);
+    crown->SetScale({scale, scale, scale});
+    crown->SetQuaternionMaster(false);
     crown->SetIsVisible(true);
     silverFlash = SelectClamp01(silverFlash);
     crown->SetColor({0.58f + silverFlash * 0.30f, 0.62f + silverFlash * 0.28f, 0.70f + silverFlash * 0.24f, 1.0f});

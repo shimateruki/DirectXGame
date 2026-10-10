@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <random>
 #include <sstream>
+#include <typeinfo>
 
 namespace {
 
@@ -98,6 +99,9 @@ void Object3d::InitializeRecorder(SceneManager* sceneManager) {
 
 
 std::unique_ptr<Object3d> Object3d::Clone() const {
+    if (typeid(*this) != typeid(Object3d)) {
+        return nullptr;
+    }
     auto newObj = std::make_unique<Object3d>();
     assert(common_ != nullptr);
     newObj->Initialize(common_);

@@ -26,6 +26,12 @@ class ObjectManager {
     /// </summary>
     void AddObject(std::unique_ptr<Object3d> object);
 
+    // Editor/Replay が直後に参照する場合の即時登録。
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object);
+
+    // 所有権を戻すときは衝突登録と削除予約も同時に取り除く。
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object);
+
     /// <summary>
     /// 管理中のオブジェクトを即座に非表示にし、走査終了後に衝突登録を解除する。
     /// リプレイ保持中を除き、所有権もその時点で破棄する。
@@ -37,7 +43,7 @@ class ObjectManager {
     /// <summary>
     /// シーンやローダーから直接参照するためのオブジェクトリスト。
     /// </summary>
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const { return objects_; }
 
     /// <summary>
     /// シャドウパス用の描画を行う。

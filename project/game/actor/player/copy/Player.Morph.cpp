@@ -60,15 +60,12 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
 
     enemy->SetIsVisible(true);
     if (restorePose) {
-        Transform* enemyTransform = enemy->GetTransform();
-        if (enemyTransform) {
-            enemyTransform->scale = hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemy->GetScale();
-            enemyTransform->rotate = carriedEnemyBaseRotation_;
-            enemyTransform->quaternion = carriedEnemyBaseQuaternion_;
-            enemyTransform->isQuaternionMaster = carriedEnemyBaseQuaternionMaster_;
-            enemy->UpdateLocalMatrix();
-            enemy->UpdateWorldMatrix();
-        }
+        enemy->SetScale(hasCarriedEnemyBaseScale_ ? carriedEnemyBaseScale_ : enemy->GetScale());
+        enemy->SetEulerAngles(carriedEnemyBaseRotation_);
+        enemy->SetQuaternion(carriedEnemyBaseQuaternion_);
+        enemy->SetQuaternionMaster(carriedEnemyBaseQuaternionMaster_);
+        enemy->UpdateLocalMatrix();
+        enemy->UpdateWorldMatrix();
     }
 
     SetCarriedEnemy(nullptr);
@@ -109,7 +106,7 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
     enemy->SetCollisionMask(0);
     enemy->SetIsVisible(true);
     SetVelocity({0.0f, 0.0f, 0.0f});
-    transform_.scale = {2.35f, 1.65f, 2.35f};
+    SetScale({2.35f, 1.65f, 2.35f});
 }
 
 void Player::UpdateAbsorbEffect(float deltaTime) {
@@ -139,16 +136,15 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
 
     const float scaleRate = Math::Lerp(1.0f, 0.06f, ease);
     const float squash = std::sin(t * kPi) * 0.22f;
-    Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform();
-    if (enemyTransform) {
-        enemyTransform->translate = absorbPos;
-        enemyTransform->scale = {pendingAbsorbEnemyBaseScale_.x * scaleRate * (1.0f + squash),
+    {
+        pendingAbsorbEnemy_->SetTranslate(absorbPos);
+        pendingAbsorbEnemy_->SetScale({pendingAbsorbEnemyBaseScale_.x * scaleRate * (1.0f + squash),
                                  pendingAbsorbEnemyBaseScale_.y * scaleRate * (1.0f - squash * 0.75f),
-                                 pendingAbsorbEnemyBaseScale_.z * scaleRate * (1.0f + squash)};
-        enemyTransform->rotate.x += 9.0f * deltaTime;
-        enemyTransform->rotate.y += 18.0f * deltaTime;
-        enemyTransform->rotate.z += 7.0f * deltaTime;
-        enemyTransform->isQuaternionMaster = false;
+                                 pendingAbsorbEnemyBaseScale_.z * scaleRate * (1.0f + squash)});
+        pendingAbsorbEnemy_->SetEulerX(pendingAbsorbEnemy_->GetRotation().x + 9.0f * deltaTime);
+        pendingAbsorbEnemy_->SetEulerY(pendingAbsorbEnemy_->GetRotation().y + 18.0f * deltaTime);
+        pendingAbsorbEnemy_->SetEulerZ(pendingAbsorbEnemy_->GetRotation().z + 7.0f * deltaTime);
+        pendingAbsorbEnemy_->SetQuaternionMaster(false);
         pendingAbsorbEnemy_->UpdateLocalMatrix();
         pendingAbsorbEnemy_->UpdateWorldMatrix();
     }
@@ -177,7 +173,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     }
 
     const float bodyPulse = std::sin(t * kPi);
-    transform_.scale = {2.0f + bodyPulse * 0.55f, 2.0f - bodyPulse * 0.38f, 2.0f + bodyPulse * 0.55f};
+    SetScale({2.0f + bodyPulse * 0.55f, 2.0f - bodyPulse * 0.38f, 2.0f + bodyPulse * 0.55f});
 
     if (particleSystem_ && absorbEffectEmitTimer_ <= 0.0f) {
         Vector3 toPlayer = targetPos - absorbPos;
@@ -216,7 +212,7 @@ void Player::FinishAbsorbEffect() {
         }
     }
 
-    transform_.scale = managedBaseScale_;
+    SetScale(managedBaseScale_);
     absorbEffectActive_ = false;
     pendingAbsorbEnemy_ = nullptr;
     pendingAbsorbType_ = EnemyMorphType::None;
@@ -228,9 +224,9 @@ void Player::FinishAbsorbEffect() {
 
 void Player::CancelAbsorbEffect(bool restoreEnemy) {
     if (restoreEnemy && pendingAbsorbEnemy_) {
-        if (Transform* enemyTransform = pendingAbsorbEnemy_->GetTransform()) {
-            enemyTransform->scale = pendingAbsorbEnemyBaseScale_;
-            enemyTransform->isQuaternionMaster = true;
+        {
+            pendingAbsorbEnemy_->SetScale(pendingAbsorbEnemyBaseScale_);
+            pendingAbsorbEnemy_->SetQuaternionMaster(true);
             pendingAbsorbEnemy_->UpdateLocalMatrix();
             pendingAbsorbEnemy_->UpdateWorldMatrix();
         }
@@ -311,7 +307,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     SetMaterialType(enemy->GetMaterialType());
     SetEmissive(enemy->GetEmissive());
     animName_.clear();
-    animationTime_ = 0.0f;
+    ResetAnimationTime();
     SetColor(enemy->GetColor());
 
     EmitEnemyMorphStartEffects();

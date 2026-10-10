@@ -5,7 +5,7 @@
 #include "Event.h"
 #include "Player.h"
 #include "game/scene/gameplay/GamePlayScene.h"
-#include "game/scene/preview/PreviewScene.h"
+#include "game/system/IStageProgressScene.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "GPUParticleManager.h"
@@ -22,14 +22,6 @@ namespace {
 constexpr const char* kCheckpointLoweredModel = "Gimmicks/checkpoint_flag";
 constexpr const char* kCheckpointRaisedModel = "Gimmicks/checkpoint_beacon_active";
 constexpr float kCheckpointFlagRaiseDelay = 0.14f;
-
-void PlayCrownGetPresentation(Object3d* crownObject) {
-    if (!crownObject) {
-        return;
-    }
-
-    VFXSequencer::PlayOneShot("crown_get_cue", crownObject->GetWorldPosition());
-}
 
 DamageType ResolveDamageType(const DamageEvent& event) {
     if (event.damageType != DamageType::Physical || !event.attacker) {
@@ -79,7 +71,7 @@ void GameRule::Initialize(BaseScene* scene) {
                 Object3d* exitPoint = scene_->FindObjectByEventID(targetID);
                 if (exitPoint) {
                     Vector3 destPos = exitPoint->GetTransform()->translate;
-                    whoHit->GetTransform()->translate = destPos;
+                    whoHit->SetTranslate(destPos);
                     DebugConsole::GetInstance()->AddLog("Warped to ID: " + std::to_string(targetID));
                 }
             }
@@ -104,43 +96,18 @@ void GameRule::Initialize(BaseScene* scene) {
         } break;
 
         case EventType::Goal: {
-            if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
-                Player* player = dynamic_cast<Player*>(whoHit);
-                if (!player || player->isDead || player->GetHp() <= 0.0f) {
-                    break;
-                }
-                if (!gps->IsGoal()) {
-                    gps->StartGoalPresentation(objectHit);
-                }
-                DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Returning to Select.");
-            } else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
-                if (!preview->IsGoal()) {
-                    PlayCrownGetPresentation(objectHit);
-                    preview->SetIsGoal(true);
-                    DebugConsole::GetInstance()->AddLog("PREVIEW GOAL! Press Space to Select.");
-                }
+            if (auto* progress = dynamic_cast<IStageProgressScene*>(scene_)) {
+                if (!progress->TryStartGoalFromContact(whoHit, objectHit)) break;
             }
         } break;
 
         case EventType::StarCoin: {
             int coinIdx = objectHit->GetTargetID();
 
-            if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
-                // TargetID をコインの番号 (0, 1, 2) として扱う
-                gps->CollectStarCoin(coinIdx, objectHit->GetWorldPosition());
-
-                // 演出を開始して消す (Object3d側で上昇回転する)
-                objectHit->StartCollectionAnimation();
-
-                // GPUパーティクルで取得演出を発生
-                GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
-
-                DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
-            } else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
-                preview->CollectStarCoin(coinIdx);
+            if (auto* progress = dynamic_cast<IStageProgressScene*>(scene_)) {
+                progress->CollectStarCoinFromContact(coinIdx, objectHit->GetWorldPosition());
                 objectHit->StartCollectionAnimation();
                 GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
-                DebugConsole::GetInstance()->AddLog("Preview Star Coin " + std::to_string(coinIdx) + " Collected!");
             }
         } break;
 

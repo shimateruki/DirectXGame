@@ -23,7 +23,7 @@ void InspectorWindow::DrawSpawnerSettings() {
         strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
     }
 
-    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "Mushroom", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime", "Bat", "BeamDrone" };
+    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };
     int currentTypeIndex = -1;
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
         if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;

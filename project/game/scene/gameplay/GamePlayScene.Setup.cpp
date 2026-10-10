@@ -40,7 +40,6 @@
 #include <iterator>
 
 namespace {
-constexpr const char* kExplosionSePath = "Resources/audio/se/generated/explosion.wav";
 
 constexpr const char* kControlsGuidePortraitsToPreload[] = {
     "Resources/sprite/ui/control_guide/portraits/pink_slime.png",
@@ -378,6 +377,9 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
     for (const char* path : kControlsGuideAbilityLabelsToPreload) {
         manifest.AddTexture(path);
     }
+    for (const char* path : CopyStyleHud::kTexturePaths) {
+        manifest.AddTexture("Resources/sprite/" + std::string(path));
+    }
     manifest.AddTexture("Resources/sprite/common/circle2.png");
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
@@ -524,7 +526,6 @@ bool GamePlayScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             continue;
         case 10:
-            audioPlayer_->LoadSoundFile(kExplosionSePath);
             InitializeGameplaySkybox();
             ++loadingInitializePhase_;
             completeUnit();
@@ -639,10 +640,8 @@ void GamePlayScene::Finalize() {
 void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
 
     LOG("Game Initialized!");
-    bgmHandle_ = audioPlayer_->LoadSoundFile(ResolveSceneBgmPath(currentStage.bgmPath));
 
     EventManager::GetInstance()->ClearAllListeners();
     CameraManager::GetInstance()->Initialize();
@@ -688,7 +687,6 @@ void GamePlayScene::InitializeGameplaySystems() {
         VFXSequencer sequence;
         sequence.Load(sequenceName);
     }
-    audioPlayer_->LoadSoundFile(kExplosionSePath);
     InitializeGameplaySkybox();
 }
 

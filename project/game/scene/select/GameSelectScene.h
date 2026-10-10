@@ -58,11 +58,13 @@ class GameSelectScene : public BaseScene {
     void DrawImGui() override;
 
     // --- BaseScene インターフェース ---
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
 
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     Skybox* GetSkybox() override { return skybox_.get(); }
@@ -76,6 +78,7 @@ class GameSelectScene : public BaseScene {
     void RefreshDebugStageStates();
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     // ステージゲートの選択、解放、遷移処理。
     void UpdateStageGateSelection(float deltaTime);
     void ApplyStageGateStates();
@@ -156,7 +159,6 @@ class GameSelectScene : public BaseScene {
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- シーン内部システム ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
@@ -176,7 +178,6 @@ class GameSelectScene : public BaseScene {
     Player* player_ = nullptr;
 
     // --- BGM / SE ---
-    uint32_t bgmHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 

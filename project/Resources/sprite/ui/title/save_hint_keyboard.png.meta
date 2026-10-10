@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0b3c8865d688f59c862a7ac593d84414",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/title/save_hint_keyboard.png",
+  "version": 1
+}

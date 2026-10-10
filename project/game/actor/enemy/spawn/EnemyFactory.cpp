@@ -1,7 +1,6 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 #include "EnemySlime.h"
 #include "EnemyBomb.h"
-#include "EnemyMushroom.h"
 #include "EnemyFireSlime.h"
 #include "EnemyThunderSlime.h"
 #include "EnemyWindSlime.h"
@@ -9,11 +8,7 @@
 #include "game/actor/enemy/boss/prism/EnemyPrismSlime.h"
 #include "game/actor/enemy/boss/magma/EnemyMagmaSlime.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
-#include "EnemyBat.h"
-#include "EnemyBeamDrone.h"
 #include "EnemyRingBurner.h"
-#include "game/actor/enemy/boss/core/BossCore.h"
-#include "SceneManager.h"
 #include <EnemyBomber.h>
 #include "GameplayStatusManager.h"
 #include <algorithm>
@@ -56,14 +51,6 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         slime->Initialize(common, "Characters/slime_pink");
 
         newEnemy = std::move(slime);
-    } else if (enemyName == "BossCore") {
-        auto boss = std::make_unique<BossCore>();
-
-        boss->SetSceneManager(SceneManager::GetInstance());
-        // ボスはブロックモデルをコア/パーツ制御の基準として使う
-        boss->Initialize(common, "Stages/block");
-
-        newEnemy = std::move(boss);
     } else if (enemyName == "Bomb") {
         auto bomb = std::make_unique<EnemyBomb>();
 
@@ -78,11 +65,6 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         bomber->Initialize(common, "Characters/slime_black");
 
         newEnemy = std::move(bomber);
-    } else if (enemyName == "Mushroom") {
-        auto mushroom = std::make_unique<EnemyMushroom>();
-        mushroom->Initialize(common, "Primitives/cylinder");
-
-        newEnemy = std::move(mushroom);
     } else if (enemyName == "FireSlime") {
         auto fireSlime = std::make_unique<EnemyFireSlime>();
         fireSlime->Initialize(common, "Characters/slime_red");
@@ -117,16 +99,6 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto falseKing = std::make_unique<EnemyFalseKingSlime>();
         falseKing->Initialize(common, "Characters/false_king_slime");
         newEnemy = std::move(falseKing);
-    } else if (enemyName == "Bat") {
-        auto bat = std::make_unique<EnemyBat>();
-        bat->Initialize(common, "Characters/bat");
-
-        newEnemy = std::move(bat);
-    } else if (enemyName == "BeamDrone") {
-        auto beamDrone = std::make_unique<EnemyBeamDrone>();
-        beamDrone->Initialize(common, "Characters/eye");
-
-        newEnemy = std::move(beamDrone);
     } else if (enemyName == "RingBurner") {
         auto ringBurner = std::make_unique<EnemyRingBurner>();
         ringBurner->Initialize(common, "Characters/ring_burner");

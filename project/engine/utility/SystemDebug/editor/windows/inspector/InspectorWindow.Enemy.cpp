@@ -9,7 +9,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime", "Bat", "BeamDrone" };
+    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "GiantSlime", "PrismSlime", "MagmaSlime", "FireSlime", "ThunderSlime", "WindSlime" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
@@ -28,30 +28,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
             if (ImGui::Selectable(enemyTypes[i], isSelected)) {
                 selectedObject->SetEnemyType(enemyTypes[i]);
                 selectedObject->SetName("Enemy_" + std::string(enemyTypes[i]));
-                if (std::string(enemyTypes[i]) == "Bat") {
-                    selectedObject->SetModel("Characters/bat");
-                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetScale({ 0.72f, 0.72f, 0.72f });
-                    selectedObject->animName_ = "ArmatureAction";
-                    selectedObject->isAnimLoop_ = true;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(1.25f);
-                }
-                else if (std::string(enemyTypes[i]) == "BeamDrone") {
-                    selectedObject->SetModel("Characters/eye");
-                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-                    selectedObject->SetEmissive(1.4f);
-                    selectedObject->SetScale({ 0.85f, 0.85f, 0.85f });
-                    selectedObject->animName_.clear();
-                    selectedObject->isAnimLoop_ = false;
-                    selectedObject->SetCollisionAttribute(CollisionCategories::Get("enemy"));
-                    selectedObject->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
-                    selectedObject->SetColliderType(ColliderType::kSphere);
-                    selectedObject->SetCollisionRadius(1.1f);
-                }
-                else if (std::string(enemyTypes[i]) == "GiantSlime") {
+                if (std::string(enemyTypes[i]) == "GiantSlime") {
                     selectedObject->SetModel("Characters/slime");
                     selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
                     selectedObject->SetEmissive(1.0f);

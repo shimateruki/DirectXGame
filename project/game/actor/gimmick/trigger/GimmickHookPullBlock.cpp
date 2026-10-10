@@ -57,7 +57,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
         velocity_.y = -param_->maxFallSpeed;
     }
 
-    GetTransform()->translate += velocity_ * deltaTime;
+    SetTranslate(GetTranslate() + velocity_ * deltaTime);
 
     float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
     if (speedXZ > 0.05f) {
@@ -82,7 +82,7 @@ bool GimmickHookPullBlock::OnCollision(Object3d* other) {
     if (!info.isColliding)
         return false;
 
-    GetTransform()->translate += info.normal * info.penetration;
+    SetTranslate(GetTranslate() + info.normal * info.penetration);
 
     float dot = Math::Dot(velocity_, info.normal);
     if (dot < 0.0f) {

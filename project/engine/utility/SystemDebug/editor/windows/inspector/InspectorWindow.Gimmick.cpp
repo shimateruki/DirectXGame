@@ -8,7 +8,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "LaunchStar", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "ArenaEncounter", "GameplayVolume", "CopyMemoryStation", "PrismBarrier", "HookPullBlock", "OneWayFloor", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "FallingSpike", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "HazardRideFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "SinkingFloor", "SeesawFloor", "DashPanel", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "ArenaEncounter", "GameplayVolume", "CopyMemoryStation", "PrismBarrier", "HookPullBlock", "LiquidLevel", "MagmaHazard", "MagmaGeyser", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
@@ -133,43 +133,6 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColliderConfig(colConfig);
             selectedObject->SetCollisionRadius(1.0f);
         }
-        else if (selectedGimmickType == "HookAnchor") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_HookAnchor");
-            selectedObject->SetModel("Primitives/sphere");
-            selectedObject->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
-            selectedObject->SetScale({ 1.2f, 1.2f, 1.2f });
-
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("hook_anchor"));
-            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kSphere;
-            colConfig.size = { 2.5f, 2.5f, 2.5f };
-            selectedObject->SetColliderConfig(colConfig);
-            selectedObject->SetCollisionRadius(2.5f);
-        }
-        else if (selectedGimmickType == "LaunchStar") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_LaunchStar");
-            selectedObject->SetModel("Gimmicks/star_launch");
-            selectedObject->SetColor({ 1.0f, 0.92f, 0.28f, 1.0f });
-            selectedObject->SetEmissive(2.2f);
-            selectedObject->SetRoughness(0.34f);
-            selectedObject->SetMetallic(0.12f);
-            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
-            selectedObject->param_->moveAmount = 52.0f;
-            selectedObject->param_->jumpPower = 14.0f;
-            selectedObject->param_->speed = 38.0f;
-
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
-            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kOBB;
-            colConfig.size = { 1.35f, 0.35f, 1.35f };
-            selectedObject->SetColliderConfig(colConfig);
-        }
         else if (selectedGimmickType == "SinkingFloor") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_SinkingFloor");
@@ -213,21 +176,6 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetTextureTiling({ 1.0f, 1.0f });
             selectedObject->SetAutoTextureTiling(false);
             selectedObject->SetScale({ 2.0f, 0.25f, 1.2f });
-
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
-            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kOBB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            selectedObject->SetColliderConfig(colConfig);
-        }
-        else if (selectedGimmickType == "IceFloor") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_IceFloor");
-            selectedObject->SetModel("Stages/block");
-            selectedObject->SetColor({ 0.65f, 0.9f, 1.0f, 0.9f });
-            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
 
             selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
             selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
@@ -323,21 +271,6 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->speed = 42.0f;
             selectedObject->param_->gravity = 50.0f;
             selectedObject->param_->maxFallSpeed = 60.0f;
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kOBB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            selectedObject->SetColliderConfig(colConfig);
-        }
-        else if (selectedGimmickType == "OneWayFloor") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_OneWayFloor");
-            selectedObject->SetModel("Stages/block");
-            selectedObject->SetColor({ 0.85f, 0.9f, 0.65f, 0.9f });
-            selectedObject->SetScale({ 2.5f, 0.22f, 2.5f });
-
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("ground"));
-            selectedObject->SetCollisionMask(CollisionCategories::GetDefaultGameplayMask());
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;
@@ -531,34 +464,6 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.size = { 1.0f, 1.0f, 0.45f };
             selectedObject->SetColliderConfig(colConfig);
         }
-        else if (selectedGimmickType == "FallingSpike") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_FallingSpike");
-            selectedObject->SetModel("Effects/prism_crystal_spike");
-            selectedObject->SetMaterialType(27);
-            selectedObject->SetColor({ 0.62f, 0.95f, 1.0f, 1.0f });
-            selectedObject->SetEmissive(1.25f);
-            selectedObject->SetRoughness(0.26f);
-            selectedObject->SetMetallic(0.18f);
-            selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
-            selectedObject->SetCollisionAttribute(0);
-            selectedObject->SetCollisionMask(0);
-            selectedObject->SetStatic(false);
-
-            selectedObject->param_->shakeDuration = 0.55f;
-            selectedObject->param_->moveAmount = 16.0f;
-            selectedObject->param_->gravity = 55.0f;
-            selectedObject->param_->speed = 8.0f;
-            selectedObject->param_->moveSpeed = 7.0f;
-            selectedObject->param_->jumpPower = 9.0f;
-            selectedObject->param_->startActive = false;
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kOBB;
-            colConfig.center = { 0.0f, 0.0f, 0.0f };
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            selectedObject->SetColliderConfig(colConfig);
-        }
         else if (selectedGimmickType == "ChainCollapseFloor") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_ChainCollapseFloor");
@@ -696,59 +601,6 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.size = { 4.0f, 4.0f, 4.0f };
             selectedObject->SetColliderConfig(colConfig);
             selectedObject->SetCollisionRadius(4.0f);
-        }
-        else if (selectedGimmickType == "LaserEmitter") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_LaserEmitter");
-            selectedObject->SetModel("Primitives/cube");
-            selectedObject->SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
-            selectedObject->SetBlendMode(BlendMode::kAdd);
-            selectedObject->SetMaterialType(12);
-            selectedObject->SetTexture("Resources/sprite/common/white.png");
-            selectedObject->SetEmissive(6.0f);
-            selectedObject->SetScale({ 0.25f, 0.25f, 1.0f });
-            selectedObject->SetCollisionAttribute(CollisionCategories::Get("trigger"));
-            selectedObject->SetCollisionMask(CollisionCategories::Get("player"));
-            selectedObject->SetStatic(false);
-
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-            selectedObject->param_->speed = 10.0f;
-            selectedObject->param_->interval = 0.7f;
-            selectedObject->param_->moveAmount = 0.14f;
-            selectedObject->param_->startActive = true;
-            selectedObject->param_->returnOnOff = true;
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kOBB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            selectedObject->SetColliderConfig(colConfig);
-        }
-        else if (selectedGimmickType == "LaserNode") {
-            selectedObject->SetClassName("Gimmick");
-            selectedObject->SetName("Gimmick_LaserNode");
-            selectedObject->SetModel("Primitives/sphere");
-            selectedObject->SetColor({ 1.0f, 0.18f, 0.08f, 1.0f });
-            selectedObject->SetBlendMode(BlendMode::kAdd);
-            selectedObject->SetMaterialType(3);
-            selectedObject->SetTexture("Resources/sprite/common/white.png");
-            selectedObject->SetEmissive(3.5f);
-            selectedObject->SetScale({ 0.35f, 0.35f, 0.35f });
-            selectedObject->SetCollisionAttribute(0);
-            selectedObject->SetCollisionMask(0);
-            selectedObject->SetStatic(false);
-
-            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-            selectedObject->param_->speed = 10.0f;
-            selectedObject->param_->interval = 0.7f;
-            selectedObject->param_->moveAmount = 0.14f;
-            selectedObject->param_->startActive = true;
-            selectedObject->param_->returnOnOff = true;
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kSphere;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            selectedObject->SetColliderConfig(colConfig);
-            selectedObject->SetCollisionRadius(1.0f);
         }
         else if (selectedGimmickType == "Default") {
             selectedObject->SetClassName("Default");

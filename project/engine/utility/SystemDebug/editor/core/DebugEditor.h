@@ -28,27 +28,19 @@
 #include "EditorTransactionManager.h"
 #include "EffectPreviewStage.h"
 #include "EnemyAttackPreviewWindow.h"
-#include "EventLinkGraph.h"
 #include "ExecutablePackageWindow.h"
 #include "GameDataDebugEditor.h"
 #include "GhostDirector.h"
 #include "HierarchyWindow.h"
 #include "engine/utility/SystemDebug/editor/windows/inspector/InspectorWindow.h"
-#include "JsonBackupWindow.h"
-#include "LevelDesignLabWindow.h"
 #include "MaterialPreviewBoard.h"
 #include "ModelOptimizerWindow.h"
-#include "NodeGraphEditorWindow.h"
 #include "PrimitiveDrawer.h"
 #include "ProjectWindow.h"
-#include "PropertyMatrixWindow.h"
 #include "SceneSavePreview.h"
 #include "SceneSerializer.h"
 #include "SceneInventoryWindow.h"
-#include "SceneValidator.h"
 #include "StatusTuningWindow.h"
-#include "TerrainEditorWindow.h"
-#include "Text3DGenerator.h"
 #include "TextSpriteGenerator.h"
 
 class Object3d;
@@ -313,24 +305,16 @@ public:
     DebrisEffectEditor* GetDebrisEffectEditor() const { return debrisEffectEditor_; }
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     SceneInventoryWindow* GetSceneInventoryWindow() { return &sceneInventoryWindow_; }
-    SceneValidator* GetSceneValidator() { return &sceneValidator_; }
-    LevelDesignLabWindow* GetLevelDesignLabWindow() { return &levelDesignLabWindow_; }
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     EnemyAttackPreviewWindow* GetEnemyAttackPreviewWindow() { return &enemyAttackPreviewWindow_; }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     AnimatorControllerEditor* GetAnimatorControllerEditor() { return &animatorControllerEditor_; }
-    EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
-    NodeGraphEditorWindow* GetNodeGraphEditorWindow() { return &nodeGraphEditorWindow_; }
     TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
-    Text3DGenerator* GetText3DGenerator() { return &text3DGenerator_; }
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
     AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
-    PropertyMatrixWindow* GetPropertyMatrixWindow() { return &propertyMatrixWindow_; }
     StatusTuningWindow* GetStatusTuningWindow() { return &statusTuningWindow_; }
     GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
-    TerrainEditorWindow* GetTerrainEditorWindow() { return &terrainEditorWindow_; }
-    JsonBackupWindow* GetJsonBackupWindow() { return &jsonBackupWindow_; }
     AudioSettingsWindow* GetAudioSettingsWindow() { return &audioSettingsWindow_; }
     ExecutablePackageWindow* GetExecutablePackageWindow() { return &executablePackageWindow_; }
     CaptureToolWindow* GetCaptureToolWindow() { return &captureToolWindow_; }
@@ -568,24 +552,16 @@ enum class EditorCommandType {
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_;
     SceneInventoryWindow sceneInventoryWindow_;
-    SceneValidator sceneValidator_;
-    LevelDesignLabWindow levelDesignLabWindow_;
     MaterialPreviewBoard materialPreviewBoard_;
     EnemyAttackPreviewWindow enemyAttackPreviewWindow_;
     AnimationWorkbench animationWorkbench_;
     AnimatorControllerEditor animatorControllerEditor_;
     SceneSavePreview sceneSavePreview_;
-    EventLinkGraph eventLinkGraph_;
-    NodeGraphEditorWindow nodeGraphEditorWindow_;
     TextSpriteGenerator textSpriteGenerator_;
-    Text3DGenerator text3DGenerator_;
     ModelOptimizerWindow modelOptimizerWindow_;
     AssetAuditWindow assetAuditWindow_;
-    PropertyMatrixWindow propertyMatrixWindow_;
     StatusTuningWindow statusTuningWindow_;
     GameDataDebugEditor gameDataDebugEditor_;
-    TerrainEditorWindow terrainEditorWindow_;
-    JsonBackupWindow jsonBackupWindow_;
     AudioSettingsWindow audioSettingsWindow_;
     ExecutablePackageWindow executablePackageWindow_;
     CaptureToolWindow captureToolWindow_;

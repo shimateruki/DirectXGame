@@ -295,14 +295,6 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
       if (gType == "Trampoline") {
         ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力 (Jump Power)",
                          &p.jumpPower, 1.0f, 0.0f, 100.0f);
-      } else if (gType == "LaunchStar") {
-        ImGui::DragFloat(ICON_FA_RULER_HORIZONTAL " 発射距離", &p.moveAmount,
-                         1.0f, 8.0f, 300.0f, "%.1f m");
-        ImGui::DragFloat(ICON_FA_ARROW_UP " 軌道の高さ", &p.jumpPower, 0.5f,
-                         2.0f, 100.0f, "%.1f m");
-        ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 飛行速度", &p.speed, 0.5f,
-                         8.0f, 160.0f, "%.1f m/s");
-        ImGui::TextDisabled("回転X/Yが発射方向になります");
       } else if (gType == "SinkingFloor") {
         const char* modes[] = {"従来の浅い沈み込み", "踏むと水没して復帰"};
         ImGui::Combo("沈み方", &p.actionMode, modes, IM_ARRAYSIZE(modes));
@@ -497,8 +489,6 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 重力", &p.gravity, 1.0f, 0.0f,
                          200.0f);
         ImGui::TextDisabled("フックを当てるとプレイヤー側へ引き寄せます");
-      } else if (gType == "OneWayFloor") {
-        ImGui::TextDisabled("上から着地した時だけ足場になります");
       } else if (gType == "LiquidLevel") {
         const char* modes[] = {"従来のスイッチ上下", "マグマ脱出：一定速度で上昇"};
         ImGui::Combo("液面の動作", &p.actionMode, modes, IM_ARRAYSIZE(modes));
@@ -567,21 +557,6 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
             ImGui::TextWrapped("警告時間に合わせて泡が大きくなります。編集モードでも弱い泡立ちを確認できます。値はマテリアル設定として保存されます。");
           }
         }
-      } else if (gType == "FallingSpike") {
-        ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 落下前の予告",
-                         &p.shakeDuration, 0.05f, 0.05f, 5.0f, "%.2f s");
-        ImGui::DragFloat(ICON_FA_RULER_VERTICAL " 落下距離", &p.moveAmount,
-                         0.5f, 1.0f, 100.0f, "%.1f m");
-        ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 落下重力", &p.gravity, 1.0f,
-                         1.0f, 200.0f);
-        ImGui::DragFloat(ICON_FA_HEART_BROKEN " ダメージ", &p.speed, 0.5f, 0.0f,
-                         100.0f);
-        ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " 横吹き飛ばし", &p.moveSpeed,
-                         0.25f, 0.0f, 80.0f);
-        ImGui::DragFloat(ICON_FA_ARROW_UP " 上吹き飛ばし", &p.jumpPower, 0.5f,
-                         0.0f, 100.0f);
-        ImGui::Checkbox("開始時に落下", &p.startActive);
-        ImGui::TextDisabled("My Event ID を輸送床から順番に起動します");
       } else if (gType == "ChainCollapseFloor") {
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 揺れ時間", &p.shakeDuration,
                          0.05f, 0.0f, 10.0f, "%.2f s");
@@ -642,28 +617,6 @@ void InspectorWindow::DrawGameplayDataSection(Object3d *selectedObject) {
         } else {
             ImGui::TextDisabled("前方固定はローカルZ+方向に火球を撃ちます");
         }
-      } else if (gType == "LaserEmitter") {
-        ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f,
-                         100.0f);
-        ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f,
-                         0.05f, 10.0f, "%.2f s");
-        ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount,
-                         0.01f, 0.03f, 5.0f);
-        ImGui::Checkbox("開始時に有効", &p.startActive);
-        ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-        ImGui::TextDisabled(
-            "Target ID に終点ノードの My Event ID を入れると接続します");
-      } else if (gType == "LaserNode") {
-        ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f,
-                         100.0f);
-        ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f,
-                         0.05f, 10.0f, "%.2f s");
-        ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount,
-                         0.01f, 0.03f, 5.0f);
-        ImGui::Checkbox("開始時に有効", &p.startActive);
-        ImGui::Checkbox("OFFで停止", &p.returnOnOff);
-        ImGui::TextDisabled("Target ID に次の LaserNode の My Event ID "
-                            "を入れると、その間にレーザーが出ます");
       } else if (gType == "StageGate") {
         const char *gateModes[] = {"ステージセレクト用ノード",
                                    "シーン転移ゲート", "ステージ開始ゲート"};

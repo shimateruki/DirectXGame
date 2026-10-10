@@ -1157,7 +1157,7 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
     sprite->Update();
 
     Sprite* addedSprite = sprite.get();
-    scene->GetSprites().push_back(std::move(sprite));
+    scene->AddSprite(std::move(sprite));
 
     if (editor_ && editor_->GetSpriteDebugEditor()) {
         editor_->GetSpriteDebugEditor()->SetSelectedSprite(addedSprite);

@@ -59,12 +59,14 @@ class GameClearScene : public BaseScene {
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
 
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    const std::vector<std::unique_ptr<Object3d>>& GetObjects() const override { return objectManager_->GetObjects(); }
+    Object3d* AddObjectImmediate(std::unique_ptr<Object3d> object) override { return objectManager_->AddObjectImmediate(std::move(object)); }
+    std::unique_ptr<Object3d> TakeObjectImmediate(Object3d* object) override { return objectManager_->TakeObjectImmediate(object); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
 
     // スプライト・共通クラスの取得
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    const std::vector<std::unique_ptr<Sprite>>& GetSprites() const override { return sprites_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
@@ -74,10 +76,10 @@ class GameClearScene : public BaseScene {
     void SetPlayer(Player* player) override { player_ = player; }
 
   private:
+    std::vector<std::unique_ptr<Sprite>>* GetMutableSprites() override { return &sprites_; }
     // --- エンジンシステム ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
-    AudioPlayer* audioPlayer_ = nullptr;
 
     // --- サブシステム (管理クラス) ---
     std::unique_ptr<ObjectManager> objectManager_ = nullptr;
@@ -95,7 +97,6 @@ class GameClearScene : public BaseScene {
     Player* player_ = nullptr;
 
     // --- BGM・オーディオ ---
-    uint32_t bgmHandle_ = 0;
 
     // --- ライトリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;

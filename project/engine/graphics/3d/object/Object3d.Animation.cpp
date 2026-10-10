@@ -1,7 +1,6 @@
 #define NOMINMAX
 #include "Object3d.h"
 #include "VFXSequencer.h"
-#include "GameplayEventTrace.h"
 
 #include <algorithm>
 #include <cmath>
@@ -171,16 +170,6 @@ bool Object3d::UpdateAnimatorController(float deltaTime, Model* model) {
     for (const AnimatorEventInstance& event : animatorControllerRuntime_.ConsumeEvents()) {
         // FeedbackCueはVFX、SE、カメラ、振動、ヒットストップを一つのAssetから再生します。
         if (event.name == "FeedbackCue" && !event.payload.empty()) {
-            std::string traceSource = GetName();
-            if (!GetPersistentGuid().empty()) {
-                traceSource += " [" + GetPersistentGuid() + "]";
-            }
-            GameplayEventTrace::GetInstance()->Record(
-                GameplayEventTracePhase::Requested,
-                "Animation Event",
-                std::move(traceSource),
-                event.payload,
-                event.name);
             VFXSequencer::PlayOneShotOnTarget(event.payload, this);
         }
         if (animatorEventCallback_) {

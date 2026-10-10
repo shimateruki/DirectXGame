@@ -106,12 +106,6 @@ void GameEditorController::RegisterEditorCommands() {
         [this]() { sceneWorkspace_->RestoreAllTemporaryVisibility(); }, this });
 
     registry->Register({
-        EditorCommandId::WorkspaceTerrain, "地形編集ワークスペース", "Workspace", "",
-        "地形生成Editorを開き、保存済みの地形編集レイアウトを適用します。",
-        { "terrain", "layout", "workspace", "地形" },
-        [this]() { return CanEditScene(); },
-        [this]() { ApplyWorkspacePreset(WorkspacePreset::Terrain); }, this });
-    registry->Register({
         EditorCommandId::WorkspaceVfx, "VFX編集ワークスペース", "Workspace", "",
         "VFX Sequencerを開き、保存済みのVFX編集レイアウトを適用します。",
         { "vfx", "effect", "layout", "エフェクト" },
@@ -146,10 +140,6 @@ void GameEditorController::RegisterEditorCommands() {
 		"Replay Editorの表示を切り替えます。", { "replay", "time machine" }, {},
 		[this]() { SetReplayDebuggerVisible(!showReplayDebugger_); }, this });
 	registry->Register({
-		EditorCommandId::ViewBossDebug, "ボスロジックデバッグ", "View", "",
-		"ボスロジックデバッグの表示を切り替えます。", { "boss", "debug", "ボス" }, {},
-		[this]() { showBossDebug_ = !showBossDebug_; }, this });
-	registry->Register({
 		EditorCommandId::ViewPortfolio, "ポートフォリオ撮影モード", "View", "F10",
 		"Editor UIを隠してゲーム画面だけを表示します。", { "capture", "portfolio", "撮影" }, {},
 		[this]() { SetPortfolioCaptureMode(!portfolioCaptureMode_); }, this });
@@ -163,11 +153,6 @@ void GameEditorController::RegisterEditorCommands() {
 		EditorCommandId::HelpProfiler, "システムプロファイラ", "Help", "",
 		"CPU/GPUシステムプロファイラを開きます。", { "profiler", "performance", "性能" }, {},
 		[]() { ProfilerManager::GetInstance()->Open(); }, this });
-    registry->Register({
-        EditorCommandId::HelpGameplayEventTrace, "Gameplay Event Trace", "Help", "",
-        "Animation EventからVFX・Audio・Camera・HitStopまでの発火経路を表示します。",
-        { "event", "trace", "feedback", "vfx", "animation", "演出" }, {},
-        []() { GameplayEventTrace::GetInstance()->Open(); }, this });
 }
 
 // ゲームエディタで使う各種ツールとウィンドウを生成し、SceneManagerへ接続する。
@@ -196,23 +181,15 @@ void GameEditorController::RegisterEditorTools() {
     add("mesh", "メッシュエフェクト", "演出", meshEffectEditor_.get());
     add("debris", "3D破片エフェクト", "演出", debrisEffectEditor_.get());
     add("trail", "トレイルエミッター", "演出", trailEmitterEditor_.get());
-    add("preset", "プリセットエディター", "素材", PresetEditor::GetInstance());
-    add("auditScene", "シーン視覚監査", "検証・設定", debugEditor_->GetSceneValidator());
-    add("levelPlan", "配置プラン検証（レベル設計ラボ）", "ステージ", debugEditor_->GetLevelDesignLabWindow());
     add("inventory", "配置物集計", "ステージ", debugEditor_->GetSceneInventoryWindow());
     add("material", "マテリアル確認", "素材", debugEditor_->GetMaterialPreviewBoard());
     add("effectPreview", "エフェクト確認ステージ", "演出", debugEditor_->GetEffectPreviewStage());
     add("animation", "アニメーション制作", "演出", debugEditor_->GetAnimationWorkbench());
     add("animator", "Animator Controller", "演出", debugEditor_->GetAnimatorControllerEditor());
-    add("links", "イベントリンク図", "ステージ", debugEditor_->GetEventLinkGraph());
-    add("nodes", "演出ノード", "演出", debugEditor_->GetNodeGraphEditorWindow());
     add("text", "テキストPNG生成", "素材", debugEditor_->GetTextSpriteGenerator());
-    add("text3d", "3Dテキスト生成", "素材", debugEditor_->GetText3DGenerator());
     add("models", "モデル最適化", "素材", debugEditor_->GetModelOptimizerWindow());
-    add("terrain", "地形生成", "ステージ", debugEditor_->GetTerrainEditorWindow());
     add("assets", "アセット監査", "検証・設定", debugEditor_->GetAssetAuditWindow());
     add("status", "ステータス管理", "戦闘", debugEditor_->GetStatusTuningWindow());
-    add("backup", "JSONバックアップ", "検証・設定", debugEditor_->GetJsonBackupWindow());
     add("audio", "音声設定", "演出", debugEditor_->GetAudioSettingsWindow());
     add("package", "実行ファイルセット", "検証・設定", debugEditor_->GetExecutablePackageWindow());
     add("capture", "キャプチャツール", "検証・設定", debugEditor_->GetCaptureToolWindow());
@@ -237,11 +214,6 @@ void GameEditorController::RegisterEditorTools() {
         if (auto* object = debugEditor_->GetSelectedObject()) ghostRecorder_->SetTarget(object);
         debugEditor_->SetSelectedObject(nullptr);
         EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
-    }, available);
-    settings.AddTool("tool.matrix", "プロパティマトリクス", "ステージ", [this]() {
-        showDebugWindows_ = true; SetReplayDebuggerVisible(false);
-        debugEditor_->GetPropertyMatrixWindow()->Open();
-        EditorManager::GetInstance()->SetSelectedObject(debugEditor_->GetPropertyMatrixWindow());
     }, available);
     settings.AddTool("tool.game", "ゲーム設定", "戦闘", [this]() {
         showDebugWindows_ = true; debugEditor_->SetSelectedObject(nullptr);
