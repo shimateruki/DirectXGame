@@ -20,12 +20,17 @@
 
 namespace {
 float CrownEase(float t) {
+    // 前後の速度が急変しないよう、0〜1の区間で滑らかな曲線にする。
     t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 
-Vector3 CrownLerp(const Vector3& a, const Vector3& b, float t) { return a + (b - a) * t; }
+Vector3 CrownLerp(const Vector3& a, const Vector3& b, float t) {
+    // 演出側で決めた補間率をそのまま使い、位置の行き過ぎも表現できる。
+    return a + (b - a) * t;
+}
 Vector3 CrownLook(const Vector3& eye, const Vector3& target) {
+    // カメラから注視点への俯角と水平方向の角度を作る。
     const Vector3 d = target - eye;
     return {-std::atan2(d.y, std::sqrt(d.x * d.x + d.z * d.z)), std::atan2(d.x, d.z), 0.0f};
 }
@@ -68,6 +73,7 @@ bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const Vecto
 }
 
 void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
+    // 封印失敗時の専用カメラを進め、通常の戦闘カメラと切り分ける。
     auto& movie = sealBarrageMovie_;
     if (!movie.active)
         return;
@@ -104,6 +110,7 @@ void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
 }
 
 void GamePlayScene::FinishSealBarrageMovie() {
+    // 演出で切り替えたカメラと操作状態を通常の戦闘へ戻す。
     auto& movie = sealBarrageMovie_;
     if (!movie.active)
         return;
@@ -597,6 +604,7 @@ void GamePlayScene::UpdateCrownFinale(float dt) {
 
 
 void GamePlayScene::FinishCrownFinale(bool completed) {
+    // 結果に応じて演出終了後のボス・Player状態を確定する。
     auto& s = crownFinale_;
     if (!s.active)
         return;
@@ -668,6 +676,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
 }
 
 void GamePlayScene::ResetCrownFinaleWorld() {
+    // プレビューや中断後に生成した演出Objectを片付け、元の世界へ戻す。
     auto& s = crownFinale_;
     if (!s.prepared)
         return;
@@ -703,6 +712,7 @@ void GamePlayScene::ResetCrownFinaleWorld() {
 }
 
 void GamePlayScene::DrawCrownFinaleWorld() {
+    // 最終演出が有効な間だけ専用の破片・翼・衝撃波を描く。
     if (!crownFinale_.active)
         return;
     for (auto* visual : {crownFinale_.fragment.get(), crownFinale_.fragmentCrack.get(), crownFinale_.lastSeal.get(),

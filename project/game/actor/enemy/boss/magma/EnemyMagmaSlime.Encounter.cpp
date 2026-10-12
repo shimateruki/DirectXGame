@@ -122,6 +122,7 @@ void EnemyMagmaSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform)
 
 // Play開始時に攻撃候補をリセットし、配置設定で登場開始の有無を決めます。
 void EnemyMagmaSlime::InitializeEncounterState() {
+    // Playの開始時に攻撃履歴を消し、配置値の起動設定を登場状態へ反映する。
     encounterInitializedForPlay_ = true;
     CaptureEncounterAuthoredState();
     attackCycleIndex_ = attackCycle_.size();
@@ -136,6 +137,7 @@ void EnemyMagmaSlime::InitializeEncounterState() {
 
 // 再生中の演出を片付け、Editorで調整した配置値へ戻します。
 void EnemyMagmaSlime::ResetEncounterStateForEditor() {
+    // Play中の演出姿勢と衝突を解除し、編集時の配置状態へ戻す。
     if (encounterInitializedForPlay_) {
         SetTranslate(encounterBasePosition_);
         SetScale(encounterBaseScale_);
@@ -162,6 +164,7 @@ void EnemyMagmaSlime::ResetEncounterStateForEditor() {
 
 // 登場中の衝突を止め、開始位置に出現VFXを再生します。
 void EnemyMagmaSlime::BeginEncounterAppearance() {
+    // 出現VFX中の被弾を避けるため、戦闘用の衝突を一時的に無効にする。
     encounterState_ = EncounterState::Appearing;
     encounterTimer_ = 0.0f;
     attackCooldown_ = 1.1f;
@@ -176,6 +179,7 @@ void EnemyMagmaSlime::BeginEncounterAppearance() {
 }
 
 void EnemyMagmaSlime::ApplyDormantEncounterState() {
+    // ステージから起動されるまで非表示にし、前回攻撃の演出を残さない。
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
     SetTranslate(encounterBasePosition_);
@@ -194,6 +198,7 @@ void EnemyMagmaSlime::ApplyDormantEncounterState() {
 
 // 登場完了時に配置時の衝突設定を戻し、戦闘状態へ切り替えます。
 void EnemyMagmaSlime::FinishEncounterAppearance() {
+    // 配置時の材質・姿勢・判定を復元してから戦闘状態へ移る。
     encounterState_ = EncounterState::Active;
     encounterTimer_ = 0.0f;
     SetTranslate(encounterBasePosition_);
@@ -210,14 +215,17 @@ void EnemyMagmaSlime::FinishEncounterAppearance() {
 }
 
 bool EnemyMagmaSlime::IsEncounterControlled() const {
+    // ステージ演出で起動する個体だけ登場状態を管理する。
     return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
 }
 
 float EnemyMagmaSlime::GetEncounterAppearanceDuration() const {
+    // 既存の調整値を登場時間へ流用し、極端に短い・長い演出時間を制限する。
     return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.45f, 3.0f) : kDefaultEncounterAppearanceDuration;
 }
 
 bool EnemyMagmaSlime::IsEncounterHudActive() const {
+    // 登場前と撃破後はHPを隠し、登場演出から戦闘中だけ表示する。
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
@@ -225,14 +233,17 @@ bool EnemyMagmaSlime::IsEncounterHudActive() const {
 }
 
 float EnemyMagmaSlime::GetEncounterCurrentHp() const {
+    // 表示側に負のHPを渡さない。
     return param_.has_value() ? (std::max)(0.0f, param_->hp) : 0.0f;
 }
 
 float EnemyMagmaSlime::GetEncounterMaximumHp() const {
+    // 表示割合のゼロ除算を避けるため、最大HPの下限を1にする。
     return param_.has_value() ? (std::max)(1.0f, param_->maxHp) : 1.0f;
 }
 
 float EnemyMagmaSlime::GetEncounterAppearanceProgress() const {
+    // 休眠・登場中・戦闘中を0から1の進行率としてHUDへ渡す。
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }

@@ -38,7 +38,7 @@
         "duration": 3.0
       },
       "presentation": {
-        "animation": "",
+        "animation": "Breath",
         "windupVfx": "",
         "activeVfx": "fire_slime_breath",
         "impactVfx": "",
@@ -80,7 +80,7 @@
         "duration": 3.35
       },
       "presentation": {
-        "animation": "",
+        "animation": "Fireball",
         "windupVfx": "",
         "activeVfx": "fire_slime_cast",
         "impactVfx": "",
@@ -189,37 +189,7 @@
             0.8
           ]
         },
-        "tracks": [
-          {
-            "name": "術者：溜めと発射後の反動",
-            "type": "body_animation",
-            "preset": "enemy_fireball_action",
-            "begin": 0,
-            "end": 0.8,
-            "blendIn": 0,
-            "blendOut": 0.05,
-            "keys": [
-              {
-                "time": 0,
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotation": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
-              }
-            ]
-          }
-        ]
+        "tracks": []
       }
     },
     {

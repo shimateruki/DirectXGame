@@ -19,6 +19,7 @@ constexpr int kSlimeSoftMaterialType = 25;
 constexpr int kPrismCrystalMaterialType = 27;
 
 bool IsSlimeEnemyType(const std::string& enemyType) {
+    // 共通の柔らかい材質を適用する種族だけを列挙し、爆弾などは含めない。
     return enemyType == "Slime" || enemyType == "Bomber" || enemyType == "FireSlime" || enemyType == "ThunderSlime" ||
            enemyType == "WindSlime" || enemyType == "GiantSlime" || enemyType == "PrismSlime" ||
            enemyType == "MagmaSlime" || enemyType == "FalseKingSlime";
@@ -37,6 +38,7 @@ void ApplySlimeMaterialDefault(BaseEnemy* enemy) {
 } // namespace
 
 EnemyFactory* EnemyFactory::GetInstance() {
+    // 生成経路を一つにまとめ、敵タイプの登録先を共有する。
     static EnemyFactory instance;
     return &instance;
 }

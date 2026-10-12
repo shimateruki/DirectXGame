@@ -408,6 +408,7 @@ namespace {
 // ========================================================================
 
 void DebugEditor::SetSelectedObject(Object3d* obj) {
+    // 現在のSceneに属するObjectだけ選択し、古いSceneのポインタは保持しません。
     selectedObjects_.clear();
     if (obj && IsObjectInCurrentScene(obj)) {
         selectedObject_ = obj;
@@ -418,6 +419,7 @@ void DebugEditor::SetSelectedObject(Object3d* obj) {
 }
 
 void DebugEditor::SyncObjectSelectionToInspector() {
+    // Ghost系Editorが選択中ならInspectorを奪わず、通常のObject選択だけ同期します。
     EditorManager* editorManager = EditorManager::GetInstance();
     if ((ghostRecorder_ && editorManager->GetSelectedObject() == ghostRecorder_) ||
         (ghostDirector_ && editorManager->GetSelectedObject() == ghostDirector_)) {
@@ -432,6 +434,7 @@ void DebugEditor::SyncObjectSelectionToInspector() {
 }
 
 bool DebugEditor::FocusSceneObject(Object3d* object) {
+    // フォーカス対象が現行Sceneに残っていることを確認してからカメラへ渡します。
     if (!object || !IsObjectInCurrentScene(object)) {
         return false;
     }
@@ -439,6 +442,7 @@ bool DebugEditor::FocusSceneObject(Object3d* object) {
 }
 
 bool DebugEditor::IsObjectSelected(const Object3d* object) const {
+    // 選択配列に残った古いポインタを肯定しないようScene所属も調べます。
     if (!object || !IsObjectInCurrentScene(object)) return false;
 
     for (Object3d* selected : selectedObjects_) {
@@ -448,10 +452,12 @@ bool DebugEditor::IsObjectSelected(const Object3d* object) const {
 }
 
 int DebugEditor::GetSelectionOverlayMode() const {
+    // UI保存用の整数値として選択表示モードを返します。
     return static_cast<int>(selectionOverlayMode_);
 }
 
 void DebugEditor::SetSelectionOverlayMode(int mode) {
+    // 永続化データの範囲外値を無視し、表示モードを不正な列挙値にしません。
     if (mode < static_cast<int>(SelectionOverlayMode::Compact) ||
         mode > static_cast<int>(SelectionOverlayMode::Hidden)) {
         return;
@@ -460,12 +466,14 @@ void DebugEditor::SetSelectionOverlayMode(int mode) {
 }
 
 void DebugEditor::ClearObjectSelection() {
+    // グループ変形の開始状態も破棄し、次の選択へ前回の基準を持ち越しません。
     selectedObject_ = nullptr;
     selectedObjects_.clear();
     groupTransformStartStates_.clear();
 }
 
 void DebugEditor::AddSelectedObject(Object3d* object) {
+    // 同じObjectを重複登録せず、最後に追加したものを主選択にします。
     if (!object || !IsObjectInCurrentScene(object)) return;
 
     for (Object3d* selected : selectedObjects_) {
@@ -480,6 +488,7 @@ void DebugEditor::AddSelectedObject(Object3d* object) {
 }
 
 void DebugEditor::ToggleSelectedObject(Object3d* object) {
+    // 除外後の主選択を最後の残存Objectへ移し、選択配列と同期します。
     if (!object || !IsObjectInCurrentScene(object)) return;
 
     for (auto it = selectedObjects_.begin(); it != selectedObjects_.end(); ++it) {
@@ -494,6 +503,7 @@ void DebugEditor::ToggleSelectedObject(Object3d* object) {
 }
 
 void DebugEditor::PruneInvalidSelectedObjects() {
+    // Sceneの再読込や削除で無効になった選択を除き、重複も整理します。
     std::vector<Object3d*> validObjects;
     validObjects.reserve(selectedObjects_.size());
 
@@ -636,6 +646,7 @@ Object3d* DebugEditor::PickObjectAtGameViewPos(const Vector2& mousePos) {
 }
 
 Vector3 DebugEditor::GetObjectWorldPositionForSelection(Object3d* object) {
+    // モデルのワールドAABBが有効なら、その中心を画面選択の代表点にします。
     if (!object) return { 0.0f, 0.0f, 0.0f };
 
     AABB modelAabb = object->GetModelWorldAABB();
@@ -652,6 +663,7 @@ Vector3 DebugEditor::GetObjectWorldPositionForSelection(Object3d* object) {
 }
 
 void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector2& end, bool additive) {
+    // Game View内のドラッグ矩形を画面座標へ変換してObjectの投影位置と比べます。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     const float localLeft = start.x < end.x ? start.x : end.x;
@@ -690,6 +702,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const Vector2& start, const Vector
 
 void DebugEditor::DrawSelectionRectangleOverlay() {
 #ifdef USE_IMGUI
+    // ドラッグ中だけ矩形をGame Viewに重ね、選択確定前の範囲を示します。
     if (!isSelectionRectDragging_ || !isSelectionRectReady_) return;
 
     const float minX = selectionRectStart_.x < selectionRectEnd_.x ? selectionRectStart_.x : selectionRectEnd_.x;
@@ -1002,6 +1015,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 }
 
 bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
+    // 生ポインタの逆参照前に、現行Sceneの所有Objectとアドレスを照合します。
     if (!object || object->IsEditorInternal() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return false;
     }
@@ -1016,6 +1030,7 @@ bool DebugEditor::IsObjectInCurrentScene(const Object3d* object) const {
 }
 
 void DebugEditor::ClearInvalidSelectedObject() {
+    // 選択が失われたら変形操作も止め、Inspectorに無効Objectを残しません。
     const bool editorWasSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     PruneInvalidSelectedObjects();
     if (selectedObject_) {

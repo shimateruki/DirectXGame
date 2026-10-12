@@ -356,11 +356,13 @@ CaptureToolWindow::~CaptureToolWindow() {
 }
 
 void CaptureToolWindow::Initialize(DebugEditor* editor) {
+    // Game Viewの表示範囲を取得するため、Editor参照だけ保持します。
     editor_ = editor;
 }
 
 void CaptureToolWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    // 録画Workerの完了を先に反映してから、現在の撮影設定と操作を表示します。
     UpdateRecording();
 
     const ImGuiIO& io = ImGui::GetIO();
@@ -436,6 +438,7 @@ void CaptureToolWindow::DrawImGui() {
 }
 
 void CaptureToolWindow::UpdateHotkeys() {
+    // テキスト編集中は撮影キーを奪わず、録画状態の更新だけ続けます。
     UpdateRecording();
 
 #ifdef USE_IMGUI
@@ -467,6 +470,7 @@ void CaptureToolWindow::UpdateHotkeys() {
 }
 
 void CaptureToolWindow::CaptureScreenshot() {
+    // 時刻付きの出力名を作り、成功したファイルだけ最後の撮影結果として保持します。
     const fs::path output = GetCaptureRoot() / ("screenshot_" + MakeTimestamp() + ".png");
     if (CaptureToFile(output)) {
         lastOutputPath_ = output;
@@ -475,6 +479,7 @@ void CaptureToolWindow::CaptureScreenshot() {
 }
 
 bool CaptureToolWindow::CaptureGameViewToFile(const fs::path& path) {
+    // 一時的にGame Viewへ範囲を切り替え、撮影後は元の設定へ戻します。
     const CaptureArea previousArea = captureArea_;
     captureArea_ = CaptureArea::GameView;
     const bool succeeded = CaptureToFile(path);
@@ -488,6 +493,7 @@ bool CaptureToolWindow::CaptureGameViewToFile(const fs::path& path) {
 }
 
 void CaptureToolWindow::StartRecording() {
+    // Worker起動前に撮影矩形を確定し、無効な領域では録画を始めません。
     if (recording_) {
         return;
     }
@@ -546,6 +552,7 @@ void CaptureToolWindow::StartRecording() {
 }
 
 void CaptureToolWindow::StopRecording() {
+    // Workerの終了を待ってから結果を回収し、未書込の動画を成功扱いしません。
     if (!recording_ && !recordingWorker_.joinable()) {
         return;
     }
@@ -555,6 +562,7 @@ void CaptureToolWindow::StopRecording() {
 }
 
 void CaptureToolWindow::UpdateRecording() {
+    // Workerが非同期に終了した場合も、UI側で停止処理と結果表示を完了します。
     if (!recording_) {
         return;
     }
@@ -639,6 +647,7 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
 }
 
 void CaptureToolWindow::StopRecordingWorker() {
+    // 停止要求を通知し、自スレッドをjoinしないようにしてWorkerを回収します。
     recordingStopRequested_.store(true, std::memory_order_release);
     recordingWaitCondition_.notify_all();
     if (recordingWorker_.joinable() && recordingWorker_.get_id() != std::this_thread::get_id()) {
@@ -647,6 +656,7 @@ void CaptureToolWindow::StopRecordingWorker() {
 }
 
 void CaptureToolWindow::ApplyRecordingWorkerResult() {
+    // Worker共有メッセージをロック下で読み、UIの録画状態へ確定します。
     recording_ = false;
 
     std::string workerMessage;
@@ -664,6 +674,7 @@ void CaptureToolWindow::ApplyRecordingWorkerResult() {
 }
 
 bool CaptureToolWindow::CaptureToFile(const fs::path& path) {
+    // 選択した画面範囲を確定してから画素を取得し、PNGへ保存します。
     RECT rect{};
     std::string errorMessage;
     if (!ResolveCaptureRect(editor_, captureArea_, forceGameViewClientCapture_, rect, errorMessage)) {
@@ -818,6 +829,7 @@ bool CaptureToolWindow::WriteRecordingFrame(LONGLONG sampleTime100ns, std::strin
 }
 
 void CaptureToolWindow::CloseRecordingResources() {
+    // Media FoundationのWriterを解放してからランタイムを終了します。
     if (sinkWriter_) {
         sinkWriter_->Release();
         sinkWriter_ = nullptr;

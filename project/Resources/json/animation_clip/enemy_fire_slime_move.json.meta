@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "4d5e8e148e617665837bc6d350fca289",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/enemy_fire_slime_move.json",
+  "version": 1
+}

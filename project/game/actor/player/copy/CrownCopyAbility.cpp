@@ -8,6 +8,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     using ICopyAbilitySession::ICopyAbilitySession;
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
+        // 演出ロック中は受け付けず、突進・衝撃波・槍・溜め落下弾を各再使用時間で分ける。
         if (player.IsCinematicLocked() || player.isDead)
             return;
         held_ = input.primaryHeld;
@@ -66,6 +67,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float dt) override {
+        // 突進と衝撃波は領域判定、槍は移動線分判定でフレーム間のすり抜けを防ぐ。
         time_ += dt;
         lanceCooldown_ = std::max(0.0f, lanceCooldown_ - dt);
         waveCooldown_ = std::max(0.0f, waveCooldown_ - dt);
@@ -146,6 +148,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
 
     void Cancel(Player& player) override {
+        // 突進中に解除した場合は操作権を戻し、能力側の表示弾を消す。
         if (dashTime_ > 0.0f && !player.IsCinematicLocked())
             player.SetIsControlActive(true);
         dashTime_ = waveTime_ = 0.0f;
@@ -163,6 +166,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         bool rain = false;
     };
     std::unique_ptr<Object3d> MakeVisual(const char* model) {
+        // 弾や翼は表示専用で生成し、物理Colliderの対象には入れない。
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
         if (!scene || !scene->GetObject3dCommon())
             return {};
@@ -180,6 +184,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         return visual;
     }
     void EnsureVisuals() {
+        // シーンが利用できる時点で表示モデルを遅延生成する。
         if (!wings_)
             wings_ = MakeVisual("Effects/false_king_rush_wings");
         if (!wave_)
@@ -187,6 +192,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
     static void DrawVisual(Object3d* visual, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
                            int previewBufferIndex) {
+        // 指定カメラがあればプレビューへ描き、なければ現在シーンのカメラを使う。
         if (!visual)
             return;
         visual->UpdateWorldMatrix(true);
@@ -216,6 +222,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
     static void HitArea(Player& player, const Vector3& center, float radius, float damage,
                         std::unordered_set<Object3d*>& hits, bool openArmor) {
+        // 同じ攻撃の多重ヒットを除き、衝撃波では王冠装甲を開く処理も行う。
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
@@ -244,6 +251,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
 
 namespace CopyAbilityDetail {
 std::unique_ptr<ICopyAbilitySession> CreateCrownCopyAbility(const EnemyAttackProfile& profile) {
+    // 王冠能力の一時状態を獲得ごとに独立させる。
     return std::make_unique<CrownCopyAbility>(profile);
 }
 } // namespace CopyAbilityDetail

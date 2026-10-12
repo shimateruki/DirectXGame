@@ -93,6 +93,7 @@ void GamePlayScene::StartArenaBossIntro(Object3d* bossObject, Object3d* gateObje
 }
 
 void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
+    // 演出対象がシーンから消えた場合は途中で閉じ、操作権を返す。
     if (!arenaBossIntroActive_ || !player_ || !arenaBossIntroBoss_ || !arenaBossIntroGate_) {
         FinishArenaBossIntro();
         return;
@@ -192,6 +193,7 @@ void GamePlayScene::UpdateArenaBossIntro(float deltaTime) {
 }
 
 void GamePlayScene::FinishArenaBossIntro() {
+    // 導入演出中に変更したカメラ・操作状態を通常戦闘へ戻す。
     if (!arenaBossIntroActive_) {
         return;
     }
@@ -272,6 +274,7 @@ void GamePlayScene::StartArenaBossDefeatReward(Object3d* rewardObject) {
 }
 
 void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
+    // 報酬対象が消えた場合も終了処理を通し、演出状態を残さない。
     if (!arenaBossRewardActive_ || !player_ || !arenaBossRewardObject_) {
         FinishArenaBossDefeatReward();
         return;
@@ -355,6 +358,7 @@ void GamePlayScene::UpdateArenaBossDefeatReward(float deltaTime) {
 }
 
 void GamePlayScene::FinishArenaBossDefeatReward() {
+    // 報酬表示後の操作・カメラ状態を通常のシーン更新へ返す。
     if (!arenaBossRewardActive_) {
         return;
     }

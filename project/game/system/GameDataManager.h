@@ -58,6 +58,7 @@ class GameDataManager {
         float positionX = 0.0f;
         float positionY = 0.0f;
         float positionZ = 0.0f;
+        std::string checkpointObjectName;
         std::string morphEnemyType;
         std::vector<int> clearedEncounterIds;
     };
@@ -302,8 +303,9 @@ class GameDataManager {
     /// <param name="positionY">復帰先のワールド Y 座標。</param>
     /// <param name="positionZ">復帰先のワールド Z 座標。</param>
     /// <param name="morphEnemyType">復帰後に維持するコピー元の敵種別。</param>
+    /// <param name="checkpointObjectName">取得済みの旗をシーン再生成後に特定する名前。旗以外なら空。</param>
     void RequestStageCheckpointRespawn(int stageIndex, float positionX, float positionY, float positionZ,
-                                       const std::string& morphEnemyType) {
+                                       const std::string& morphEnemyType, const std::string& checkpointObjectName) {
         // 同じステージの再開要求なら、クリア済み遭遇イベントの記録を保つ。
         if (pendingStageCheckpointRespawn_.stageIndex != stageIndex)
             pendingStageCheckpointRespawn_.clearedEncounterIds.clear();
@@ -313,6 +315,7 @@ class GameDataManager {
         pendingStageCheckpointRespawn_.positionY = positionY;
         pendingStageCheckpointRespawn_.positionZ = positionZ;
         pendingStageCheckpointRespawn_.morphEnemyType = morphEnemyType;
+        pendingStageCheckpointRespawn_.checkpointObjectName = checkpointObjectName;
     }
 
     // 同じチェックポイントへの復帰では、クリア済み遭遇イベントを再起動しません。

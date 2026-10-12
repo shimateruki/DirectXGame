@@ -1,0 +1,55 @@
+newmtl basalt_edge
+Ka 0.035 0.038 0.045
+Kd 0.16 0.18 0.21
+Ks 0.09 0.10 0.12
+Ns 28
+illum 2
+
+newmtl basalt_top
+Ka 0.045 0.050 0.060
+Kd 0.25 0.28 0.32
+Ks 0.10 0.11 0.12
+Ns 32
+illum 2
+
+newmtl bronze_rim
+Ka 0.19 0.11 0.025
+Kd 0.80 0.47 0.12
+Ks 0.55 0.39 0.14
+Ns 80
+illum 2
+
+newmtl warm_groove
+Ka 0.20 0.07 0.01
+Kd 0.96 0.34 0.06
+Ks 0.30 0.12 0.04
+Ns 50
+illum 2
+
+newmtl button_side
+Ka 0.04 0.16 0.19
+Kd 0.12 0.48 0.56
+Ks 0.30 0.55 0.58
+Ns 72
+illum 2
+
+newmtl button_top
+Ka 0.06 0.24 0.27
+Kd 0.22 0.76 0.80
+Ks 0.48 0.75 0.78
+Ns 110
+illum 2
+
+newmtl star_gold
+Ka 0.25 0.19 0.05
+Kd 1.00 0.81 0.26
+Ks 0.58 0.45 0.16
+Ns 96
+illum 2
+
+newmtl cyan_mark
+Ka 0.04 0.23 0.25
+Kd 0.33 0.95 0.95
+Ks 0.48 0.75 0.78
+Ns 92
+illum 2

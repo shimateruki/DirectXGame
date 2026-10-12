@@ -14,6 +14,7 @@ constexpr float kPickupDelay = 0.70f;
 
 void DroppedCopyStar::InitializeDrop(Object3dCommon* common, const std::string& enemyType, bool unlimitedDuration,
                                      const Vector3& start, const Vector3& destination) {
+    // 投下中の移動を再現できるよう、起点と到達点を生成時に固定する。
     enemyType_ = enemyType;
     unlimitedDuration_ = unlimitedDuration;
     start_ = start;
@@ -77,6 +78,7 @@ void DroppedCopyStar::Collect(Player* player) {
 }
 
 std::unique_ptr<Object3d> DroppedCopyStar::Clone() const {
+    // 軌道と経過時間を引き継ぎ、複製直後の位置が巻き戻らないようにする。
     auto copy = std::make_unique<DroppedCopyStar>();
     copy->InitializeDrop(common_, enemyType_, unlimitedDuration_, start_, destination_);
     copy->CopyFrom(this);
@@ -88,6 +90,7 @@ std::unique_ptr<Object3d> DroppedCopyStar::Clone() const {
 }
 
 void DroppedCopyStar::CaptureReplayCustomState(json& state) const {
+    // コピー能力の種類と投下時計を、共通の位置情報に追加して記録する。
     Object3d::CaptureReplayCustomState(state);
     state["copyDropType"] = enemyType_;
     state["copyDropUnlimited"] = unlimitedDuration_;
@@ -100,6 +103,7 @@ void DroppedCopyStar::CaptureReplayCustomState(json& state) const {
 }
 
 void DroppedCopyStar::RestoreReplayCustomState(const json& state) {
+    // 旧記録に項目がない場合は現在値を保持して復元する。
     Object3d::RestoreReplayCustomState(state);
     enemyType_ = state.value("copyDropType", enemyType_);
     unlimitedDuration_ = state.value("copyDropUnlimited", unlimitedDuration_);

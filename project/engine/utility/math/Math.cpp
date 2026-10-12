@@ -63,6 +63,7 @@ Vector3& operator+=(Vector3& v1, const Vector3& v2) {
 
 Matrix4x4 Math::MakeIdentity4x4()
 {
+    // 行ベクトルを使う変換群の基準として、対角だけを1にします。
 
 	Matrix4x4 result = {};
 	result.m[0][0] = 1.0f;
@@ -89,6 +90,7 @@ Matrix4x4 Math::MakeIdentity4x4()
 
 Matrix4x4 Math::MakeScaleMatrix(const Vector3& scale)
 {
+    // 各軸の倍率を対角成分に置き、平行移動は加えません。
 	Matrix4x4 result{ scale.x, 0.0f, 0.0f, 0.0f, 0.0f, scale.y, 0.0f, 0.0f, 0.0f, 0.0f, scale.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
 	return result;
@@ -96,6 +98,7 @@ Matrix4x4 Math::MakeScaleMatrix(const Vector3& scale)
 
 Matrix4x4 Math::MakeRotateXMatrix(float theta)
 {
+    // thetaはラジアンで受け取り、X軸回りの行ベクトル用行列を作ります。
 	float sin = std::sin(theta);
 	float cos = std::cos(theta);
 
@@ -106,6 +109,7 @@ Matrix4x4 Math::MakeRotateXMatrix(float theta)
 
 Matrix4x4 Math::MakeRotateYMatrix(float theta)
 {
+    // thetaはラジアンで受け取り、Y軸回りの行ベクトル用行列を作ります。
 	float sin = std::sin(theta);
 	float cos = std::cos(theta);
 
@@ -116,6 +120,7 @@ Matrix4x4 Math::MakeRotateYMatrix(float theta)
 
 Matrix4x4 Math::MakeRotateZMatrix(float theta)
 {
+    // thetaはラジアンで受け取り、Z軸回りの行ベクトル用行列を作ります。
 	float sin = std::sin(theta);
 	float cos = std::cos(theta);
 
@@ -126,6 +131,7 @@ Matrix4x4 Math::MakeRotateZMatrix(float theta)
 
 Matrix4x4 Math::MakeTranslateMatrix(const Vector3& translate)
 {
+    // 行ベクトル規約に合わせ、平行移動を最終行に置きます。
 	Matrix4x4 result{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, translate.x, translate.y, translate.z, 1.0f };
 
 	return result;
@@ -133,6 +139,7 @@ Matrix4x4 Math::MakeTranslateMatrix(const Vector3& translate)
 
 Matrix4x4 Math::Multiply(const Matrix4x4& m1, const Matrix4x4& m2)
 {
+    // 左から右への変換順を保つため、行と列の内積で積を作ります。
 	Matrix4x4 result = {};
 	for (int row = 0; row < 4; ++row) {
 		for (int col = 0; col < 4; ++col) {
@@ -203,6 +210,7 @@ Matrix4x4 Math::Inverse(const Matrix4x4& m)
 
 Matrix4x4 Math::MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip)
 {
+    // fovYはラジアンとし、DirectXの深度0～1へ写す透視投影を作ります。
 	Matrix4x4 result = {};
 	float f = 1.0f / tanf(fovY / 2.0f);
 	result.m[0][0] = f / aspectRatio;
@@ -229,6 +237,7 @@ Matrix4x4 Math::MakePerspectiveFovMatrix(float fovY, float aspectRatio, float ne
 
 Matrix4x4 Math::MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip)
 {
+    // 指定矩形をNDCへ写し、深度だけ0～1へ正規化します。
 	Matrix4x4 result{};
 	result.m[0][0] = 2.0f / (right - left);
 	result.m[1][1] = 2.0f / (top - bottom);
@@ -269,6 +278,7 @@ Matrix4x4 Math::MakeViewportMatrix(float left, float top, float width, float hei
 
 Matrix4x4 Math::MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate)
 {
+    // Euler角はラジアンで、拡大→X/Y/Z回転→平行移動の順に合成します。
 	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
 	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
 	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
@@ -302,6 +312,7 @@ Matrix4x4 Math::MakeRotateMatrix(const Vector3& rotate)
 
 Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)
 {
+    // 方向ベクトルには平行移動成分を適用しません。
 	Vector3 result;
 	result.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0];
 	result.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1];
@@ -311,16 +322,19 @@ Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)
 
 float Math::Dot(const Vector3& v1, const Vector3& v2)
 {
+    // 内積は角度比較や長さの二乗にも共通利用します。
 	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
 float Math::Length(const Vector3& v)
 {
+    // 内積から長さを求め、各成分を別々に平方し直しません。
 	return std::sqrt(Dot(v, v));
 }
 
 Vector3 Math::Cross(const Vector3& v1, const Vector3& v2)
 {
+    // 右手系の外積順を保ち、向きの反転を避けます。
 	return {
 		v1.y * v2.z - v1.z * v2.y,
 		v1.z * v2.x - v1.x * v2.z,
@@ -330,6 +344,7 @@ Vector3 Math::Cross(const Vector3& v1, const Vector3& v2)
 
 Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, const Vector3& up)
 {
+    // 視線と上方向から直交基底を作り、カメラ行列へ配置します。
 	Vector3 zaxis = Normalize(target - eye);
 	Vector3 xaxis = Normalize(Cross(up, zaxis));
 	Vector3 yaxis = Cross(zaxis, xaxis);
@@ -353,6 +368,7 @@ Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, cons
 
 float Math::Clamp(float value, float min, float max)
 {
+    // 範囲外の値だけ境界へ寄せ、範囲内は変更しません。
 	if (value < min) {
 		return min;
 	}
@@ -498,6 +514,7 @@ float Math::LerpShortAngle(float a, float b, float t) {
 
 // Vector3のLerp
 Vector3 Math::Lerp(const Vector3& v1, const Vector3& v2, float t) {
+    // tはクランプせず、必要なら外挿も呼び出し側で利用できます。
 	return {
 		v1.x + (v2.x - v1.x) * t,
 		v1.y + (v2.y - v1.y) * t,
@@ -542,6 +559,7 @@ Quaternion Math::Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
 
 // クォータニオン -> 行列 変換
 Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
+    // 正規化済みQuaternionを前提に、回転だけを4x4へ展開します。
 	Matrix4x4 m;
 	float x = q.x, y = q.y, z = q.z, w = q.w;
 
@@ -742,6 +760,7 @@ bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const V
 }
 
 float Math::DistanceSquaredPointAABB(const Vector3& point, const Vector3& minBox, const Vector3& maxBox) {
+    // 各軸の箱外距離だけを足し、平方根なしで交差比較に使えます。
 	const float dx = point.x < minBox.x ? minBox.x - point.x : (point.x > maxBox.x ? point.x - maxBox.x : 0.0f);
 	const float dy = point.y < minBox.y ? minBox.y - point.y : (point.y > maxBox.y ? point.y - maxBox.y : 0.0f);
 	const float dz = point.z < minBox.z ? minBox.z - point.z : (point.z > maxBox.z ? point.z - maxBox.z : 0.0f);

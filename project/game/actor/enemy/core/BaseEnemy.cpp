@@ -21,6 +21,7 @@
 #include <memory>
 
 void BaseEnemy::BindSceneSpawnContext(BaseScene* scene) {
+    // シーン登録後に目標を結び、生成順に依存してプレイヤー参照を失わないようにする。
     SetTarget(scene ? scene->GetPlayer() : nullptr);
 }
 
@@ -64,6 +65,7 @@ constexpr float kDamageReactionMinDuration = 0.22f;
 constexpr float kDamageReactionMaxDuration = 0.34f;
 
 float PlanarDistance(const Vector3& a, const Vector3& b) {
+    // 高低差は索敵距離へ含めず、地上での追跡範囲を安定させる。
     const float dx = a.x - b.x;
     const float dz = a.z - b.z;
     return std::sqrt(dx * dx + dz * dz);
@@ -71,13 +73,18 @@ float PlanarDistance(const Vector3& a, const Vector3& b) {
 
 // 敵共通の移動、被弾、投擲、撃破処理を集約します。個別AIはこの共通更新と衝突契約に従います。
 
-float PlanarLength(const Vector3& value) { return std::sqrt(value.x * value.x + value.z * value.z); }
+float PlanarLength(const Vector3& value) {
+    // 投擲中の滑走速度は垂直速度と分けて測る。
+    return std::sqrt(value.x * value.x + value.z * value.z);
+}
 
 float MaxAbsScaleComponent(const Vector3& value) {
+    // ゼロスケールでも表示半径の計算が壊れないよう下限を置く。
     return (std::max)({std::abs(value.x), std::abs(value.y), std::abs(value.z), 0.001f});
 }
 
 Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
+    // 敵と目標が重なった時は既定方向を使い、ノックバックを失わない。
     Vector3 result = {value.x, 0.0f, value.z};
     const float length = PlanarLength(result);
     if (length <= 0.001f) {
@@ -87,14 +94,19 @@ Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
 }
 
 float EaseOutCubic(float t) {
+    // 回復姿勢を序盤で素早く戻し、終盤だけ滑らかに収束させる。
     t = (std::clamp)(t, 0.0f, 1.0f);
     const float inv = 1.0f - t;
     return 1.0f - inv * inv * inv;
 }
 
-float CalculateSlamDamage(float impactSpeed) { return kSlamDamageBase + impactSpeed * kSlamDamageScale; }
+float CalculateSlamDamage(float impactSpeed) {
+    // 着地の勢いを威力へ変換し、同じ値を自身と周囲の被害へ使う。
+    return kSlamDamageBase + impactSpeed * kSlamDamageScale;
+}
 
 float NextDropRandom(uint32_t& seed) {
+    // 局所的な乱数種を進め、複数のコインに異なる飛散方向を与える。
     seed = seed * 1664525u + 1013904223u;
     return static_cast<float>((seed >> 8) & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
 }
@@ -148,6 +160,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
 }
 
 bool BaseEnemy::ReloadAttackProfile(std::string* errorMessage) {
+    // 種別に対応する攻撃設定を読み直し、失敗理由は編集画面へ返す。
     const std::string enemyType = GetEnemyType();
     if (enemyType.empty()) {
         if (errorMessage) {
@@ -159,6 +172,7 @@ bool BaseEnemy::ReloadAttackProfile(std::string* errorMessage) {
 }
 
 const EnemyAttackDefinition& BaseEnemy::GetAttackDefinition(const std::string& attackId) const {
+    // 指定攻撃が欠けても参照の寿命を保てる代替定義を返す。
     if (const EnemyAttackDefinition* attack = attackProfile_.FindAttack(attackId)) {
         return *attack;
     }
@@ -169,6 +183,7 @@ const EnemyAttackDefinition& BaseEnemy::GetAttackDefinition(const std::string& a
 
 // 徘徊目標の管理
 void BaseEnemy::CaptureWanderOrigin() {
+    // 初回の位置を巡回中心に固定し、追跡中の移動で範囲が流れないようにする。
     if (hasWanderOrigin_) {
         return;
     }
@@ -186,23 +201,27 @@ void BaseEnemy::CaptureWanderOrigin() {
 }
 
 void BaseEnemy::ResetWanderOrigin() {
+    // 再配置後は古い巡回地点と待機時間を使い回さない。
     hasWanderOrigin_ = false;
     wanderWaitTimer_ = 0.0f;
     wanderRetargetTimer_ = 0.0f;
 }
 
 float BaseEnemy::NextWanderRandom() {
+    // 敵ごとの種を進めて、巡回方向をフレーム順に再現できるようにする。
     wanderSeed_ = wanderSeed_ * 1664525u + 1013904223u;
     return static_cast<float>((wanderSeed_ >> 8) & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
 }
 
 float BaseEnemy::GetWanderRadius(float radiusScale) const {
+    // 索敵範囲を基準に巡回半径を決め、設定値が小さくても最低限の距離を確保する。
     const float range = param_.has_value() ? param_->detectionRange : detectionRange_;
     const float baseRadius = (std::max)(3.0f, range * radiusScale);
     return (std::clamp)(baseRadius, 3.0f, 18.0f);
 }
 
 void BaseEnemy::PickWanderTarget(float radiusScale, float verticalOffset) {
+    // 記録した中心から次の目標を選び、無制限に遠くへ歩かないようにする。
     const float radius = GetWanderRadius(radiusScale);
     const float angle = NextWanderRandom() * kWanderPi * 2.0f;
     const float distance = radius * (0.25f + NextWanderRandom() * 0.75f);
@@ -214,6 +233,7 @@ void BaseEnemy::PickWanderTarget(float radiusScale, float verticalOffset) {
 }
 
 Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radiusScale, float verticalOffset) {
+    // 目標到着後に短い待機を挟み、毎フレームの再抽選を防ぐ。
     CaptureWanderOrigin();
 
     if (wanderWaitTimer_ > 0.0f) {
@@ -245,6 +265,7 @@ Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radiusScale, f
 
 Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, float radiusScale, float verticalOffset,
                                            bool includeVertical) {
+    // 巡回目標への速度だけ計算し、最終的な衝突解決は各敵の更新に任せる。
     Vector3 velocity = GetVelocity();
     const Vector3 target = GetWanderTargetPosition(deltaTime, radiusScale, verticalOffset);
 
@@ -285,6 +306,7 @@ Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSpeed, flo
 
 // 持ち上げ後に投げられた敵の物理挙動
 void BaseEnemy::BeginThrown(const Vector3& initialVelocity) {
+    // 運搬状態から物理投擲へ移る際に、攻撃予告と気付き演出を先に解除する。
     CancelNoticeReaction();
     throwRecoveryTargetRotation_ = GetRotation();
 
@@ -315,6 +337,7 @@ void BaseEnemy::BeginThrown(const Vector3& initialVelocity) {
 }
 
 void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
+    // 衝突後の滑走を減衰させ、十分に止まった時だけ起き上がりへ移す。
     thrownTimer_ += deltaTime;
     slamImpactCooldownTimer_ = (std::max)(0.0f, slamImpactCooldownTimer_ - deltaTime);
 
@@ -352,6 +375,7 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
 }
 
 void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attribute) {
+    // 衝突法線方向の入射速度で着地衝撃と反発を分け、横滑りだけでは着地扱いしない。
     const Vector3 incomingVelocity = velocity_;
     const float normalSpeed = -Math::Dot(incomingVelocity, info.normal);
     const bool isGroundLike = info.normal.y > kThrownGroundNormal;
@@ -387,6 +411,7 @@ void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attrib
 }
 
 void BaseEnemy::EndThrownPhysics() {
+    // 投擲状態を終え、起き上がりと巡回中心の再設定へ移る。
     if (!isThrownPhysics_) {
         return;
     }
@@ -400,6 +425,7 @@ void BaseEnemy::EndThrownPhysics() {
 }
 
 void BaseEnemy::StartThrowRecovery() {
+    // 着地時の向きから起き上がり姿勢へ補間する時計を開始する。
     throwRecoveryTimer_ = kThrowRecoveryDuration;
     throwRecoveryRotateTimer_ = 0.0f;
     throwRecoveryStartRotation_ = GetRotation();
@@ -412,6 +438,7 @@ void BaseEnemy::StartThrowRecovery() {
 }
 
 void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
+    // 起き上がりの途中では攻撃 AI を再開せず、姿勢の補間だけ進める。
     if (throwRecoveryTimer_ > 0.0f) {
         throwRecoveryTimer_ = (std::max)(0.0f, throwRecoveryTimer_ - deltaTime);
     }
@@ -441,6 +468,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
 
 // 投げ衝突の叩きつけダメージと演出
 void BaseEnemy::OnSlamImpact(const Vector3& impactPosition, float impactSpeed) {
+    // 投擲の着地を自身の被害と周囲への衝撃に分けて通知する。
     if (GetEnemyType() != "Bomb") {
         DamageEvent selfDamage;
         selfDamage.target = this;
@@ -454,6 +482,7 @@ void BaseEnemy::OnSlamImpact(const Vector3& impactPosition, float impactSpeed) {
 }
 
 void BaseEnemy::SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed) {
+    // 衝撃の表示は敵の中心でなく接地面へ合わせ、落下高さによる浮きを防ぐ。
     const Vector3 groundImpactPosition = HitEffectDirector::ResolveGroundEffectPosition(impactPosition);
     HitEffectDirector::SpawnThrowSlamShockwave(groundImpactPosition, impactSpeed);
 
@@ -475,6 +504,7 @@ void BaseEnemy::SpawnSlamImpactEffect(const Vector3& impactPosition, float impac
 }
 
 void BaseEnemy::DamageSlamTargets(const Vector3& impactPosition, float impactSpeed) {
+    // 着地点の近傍を一度だけ調べ、投げた敵以外へ速度に応じた威力を配る。
     CollisionManager* collisionManager = CollisionManager::GetInstance();
     if (!collisionManager) {
         return;
@@ -513,6 +543,7 @@ void BaseEnemy::DamageSlamTargets(const Vector3& impactPosition, float impactSpe
 }
 
 void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
+    // 多段接触でも被弾演出とダメージを過密に繰り返さないよう、各猶予を減らす。
     if (damageCooldownTimer_ > 0.0f) {
         damageCooldownTimer_ -= deltaTime;
     }
@@ -531,6 +562,7 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
 }
 
 void BaseEnemy::PlayDamageReaction(Object3d* attacker, const Vector3& knockbackVelocity, float damage) {
+    // 撃破演出中は新しいリアクションで姿勢を上書きしない。
     if (isDead || isDefeatEffectPlaying_ || isDefeatEffectFinished_) {
         return;
     }
@@ -566,6 +598,7 @@ void BaseEnemy::PlayDamageReaction(Object3d* attacker, const Vector3& knockbackV
 }
 
 float BaseEnemy::GetDamageReactionWeight() const {
+    // 被弾姿勢は時間経過で通常姿勢へ戻る重みとして返す。
     if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
         return 0.0f;
     }
@@ -573,6 +606,7 @@ float BaseEnemy::GetDamageReactionWeight() const {
 }
 
 EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
+    // ダメージ方向と残り時間から、各敵に重ねる共通の見た目補正を作る。
     EnemyVisualReactionPose pose;
     if (damageReactionDuration_ <= 0.0001f || damageReactionTimer_ <= 0.0f) {
         return pose;
@@ -609,6 +643,7 @@ EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
 }
 
 void BaseEnemy::ApplyDamageReactionPose(Vector3& scale, Vector3& rotation, Vector3* offset, float intensity) const {
+    // 元のアニメーション姿勢へリアクションを加算し、敵固有の動きを消さない。
     const EnemyVisualReactionPose reaction = GetDamageReactionPose();
     const float safeIntensity = (std::max)(0.0f, intensity);
     scale.x *= 1.0f + (reaction.scale.x - 1.0f) * safeIntensity;
@@ -625,6 +660,7 @@ void BaseEnemy::ApplyDamageReactionPose(Vector3& scale, Vector3& rotation, Vecto
 }
 
 void BaseEnemy::EnsureNoticeMarkObject() {
+    // 発見マークを初回だけ生成し、索敵の度にシーンへ増殖させない。
     if (noticeMarkObject_ || !common_) {
         return;
     }
@@ -645,6 +681,7 @@ void BaseEnemy::EnsureNoticeMarkObject() {
 }
 
 void BaseEnemy::ConfigureNoticeMarkForReaction() {
+    // 気付き演出の開始時だけマークのサイズと表示位置を整える。
     EnsureNoticeMarkObject();
     if (!noticeMarkObject_) {
         return;
@@ -657,6 +694,7 @@ void BaseEnemy::ConfigureNoticeMarkForReaction() {
 }
 
 void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
+    // 初回発見の短い停止時間を設け、攻撃の予備動作が唐突に始まらないようにする。
     if (kind == NoticeReactionKind::None) {
         return;
     }
@@ -685,6 +723,7 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
 }
 
 void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
+    // 演出が中断されても元の色とスケールを戻し、次の行動へ残さない。
     const NoticeReactionKind finishedKind = noticeReactionKind_;
     if (restoreVisual && isNoticeReactionActive_) {
         SetScale(noticeBaseScale_);
@@ -702,6 +741,7 @@ void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
 }
 
 void BaseEnemy::CancelNoticeReaction() {
+    // 目標喪失時は再発見判定を戻し、古い反応を継続しない。
     EndNoticeReaction(true);
     wasTargetDetected_ = false;
     noticeReactionCooldown_ = 0.0f;
@@ -709,6 +749,7 @@ void BaseEnemy::CancelNoticeReaction() {
 }
 
 void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
+    // 本体の大きさに合わせてマークを配置し、敵ごとの差を吸収する。
     EnsureNoticeMarkObject();
     if (!noticeMarkObject_) {
         return;
@@ -736,6 +777,7 @@ void BaseEnemy::UpdateNoticeMark(float deltaTime, float progress) {
 }
 
 void BaseEnemy::UpdateBossTargetEngagement(float targetDistance) {
+    // 一度接敵したボスは距離が離れても交戦開始の事実を保持する。
     if (target_ && targetDistance <= detectionRange_) {
         bossTargetEngaged_ = true;
     }
@@ -783,6 +825,7 @@ void BaseEnemy::UpdateNoticeAwareness(float deltaTime) {
 }
 
 void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
+    // 感知・見失い演出中は通常移動を止め、開始時の姿勢を基準に一時的な変形を重ねる。
     if (!isNoticeReactionActive_) {
         return;
     }
@@ -820,6 +863,7 @@ void BaseEnemy::UpdateNoticeReactionAnimation(float deltaTime) {
 
 // HPが尽きた時の共通撃破演出
 bool BaseEnemy::ShouldHandleDefeatEffect() const {
+    // 爆弾の固有撃破処理と共通撃破演出が二重に走らないよう除外する。
     if (isDefeatEffectFinished_) {
         return false;
     }
@@ -833,6 +877,7 @@ bool BaseEnemy::ShouldHandleDefeatEffect() const {
 }
 
 ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
+    // シーン切替中は描画先がないため、演出呼び出し側に欠落を伝える。
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager || !sceneManager->GetCurrentScene()) {
         return nullptr;
@@ -841,6 +886,7 @@ ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
 }
 
 void BaseEnemy::SpawnDefeatCoinDrops() {
+    // 死亡更新が複数フレーム続いてもドロップは一度だけ生成する。
     if (hasSpawnedDefeatCoinDrops_) {
         return;
     }
@@ -896,6 +942,7 @@ void BaseEnemy::SpawnDefeatCoinDrops() {
 }
 
 void BaseEnemy::BeginDefeatEffect() {
+    // 撃破中の接触・運搬を止め、元の姿勢と色を退場アニメーション用に保存する。
     CancelNoticeReaction();
     isDefeatEffectPlaying_ = true;
     isDefeatEffectFinished_ = false;
@@ -944,6 +991,7 @@ void BaseEnemy::BeginDefeatEffect() {
 }
 
 void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
+    // 保存した姿勢から縮小・上昇・発光を進め、終了時にイベント通知と除去を行う。
     defeatEffectTimer_ += deltaTime;
     defeatEffectParticleTimer_ -= deltaTime;
 
@@ -994,6 +1042,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
 }
 
 void BaseEnemy::SpawnDefeatStartParticles() {
+    // 本体スケールで煙と閃光の広がりを調整し、小型敵と大型敵で演出を共用する。
     ParticleSystem* particleSystem = GetCurrentParticleSystem();
     if (!particleSystem) {
         return;
@@ -1026,6 +1075,7 @@ void BaseEnemy::SpawnDefeatStartParticles() {
 }
 
 void BaseEnemy::SpawnDefeatLoopParticles() {
+    // 退場中も粒子を補い、上昇する本体から煙が途切れないようにする。
     ParticleSystem* particleSystem = GetCurrentParticleSystem();
     if (!particleSystem) {
         return;
@@ -1046,6 +1096,7 @@ void BaseEnemy::SpawnDefeatLoopParticles() {
 }
 
 void BaseEnemy::SetDormant(bool dormant) {
+    // 休眠に入るフレームで予兆と感知演出を消し、残留速度による移動を防ぐ。
     isDormant_ = dormant;
     if (dormant) {
         HideAttackTelegraph();
@@ -1122,6 +1173,7 @@ void BaseEnemy::Update(float deltaTime) {
 }
 
 void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 感知マークは本体とは別オブジェクトなので、可視状態のときだけ追加で描画する。
     Character::Draw(pointLightResource, spotLightResource);
     if (noticeMarkObject_ && noticeMarkObject_->GetIsVisible()) {
         noticeMarkObject_->Draw(pointLightResource, spotLightResource);
@@ -1129,6 +1181,7 @@ void BaseEnemy::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLig
 }
 
 void BaseEnemy::DrawAttackTelegraph(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 本体が非表示の敵では、床の予兆だけが残らないよう描画を抑える。
     if (GetIsRenderVisible() && attackTelegraph_) {
         attackTelegraph_->DrawGround(pointLightResource, spotLightResource);
         attackTelegraph_->DrawWarning(pointLightResource, spotLightResource);
@@ -1136,6 +1189,7 @@ void BaseEnemy::DrawAttackTelegraph(ID3D12Resource* pointLightResource, ID3D12Re
 }
 
 void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
+    // 予兆オブジェクトは攻撃開始時に遅延生成し、予兆を使わない敵には割り当てない。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1147,6 +1201,7 @@ void BaseEnemy::ShowAttackTelegraphCircle(const Vector3& center, float radius, f
 
 void BaseEnemy::ShowAttackTelegraphDecalCircle(const Vector3& center, float radius, float progress,
                                                const Vector4& color, const std::string& texturePath) {
+    // テクスチャ付き円も通常の予兆と同じ描画資源を遅延生成して使う。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1158,6 +1213,7 @@ void BaseEnemy::ShowAttackTelegraphDecalCircle(const Vector3& center, float radi
 
 void BaseEnemy::ShowAttackTelegraphLine(const Vector3& center, const Vector3& direction, float length, float width,
                                         float progress, const Vector4& color) {
+    // 線状攻撃を持つ敵だけに予兆オブジェクトを用意する。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1190,6 +1246,7 @@ void BaseEnemy::TriggerAttackTelegraphCue(const Vector4& color) {
 
 void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& direction, float length, float startWidth,
                                         float endWidth, float progress, const Vector4& color) {
+    // 扇形攻撃の向きと幅は呼び出し元のAIが決め、共通予兆へ渡す。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1201,6 +1258,7 @@ void BaseEnemy::ShowAttackTelegraphCone(const Vector3& origin, const Vector3& di
 
 void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
                                                float progress, const Vector4& color) {
+    // 複数着弾点を一つの予兆にまとめ、各攻撃側で個別オブジェクトを持たずに済ませる。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1212,6 +1270,7 @@ void BaseEnemy::ShowAttackTelegraphImpactAreas(const Vector3* centers, std::size
 
 void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, std::size_t centerCount, float radius,
                                                        float progress, const Vector4& color) {
+    // 着弾点が重なる攻撃でも見分けられる描画形式を共通予兆へ委譲する。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1224,6 +1283,7 @@ void BaseEnemy::ShowAttackTelegraphReadableImpactAreas(const Vector3* centers, s
 void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3& direction, float length, float width,
                                            int laneCount, float lateralSpacing, float angleStep, float progress,
                                            const Vector4& color) {
+    // レーン数と角度だけ攻撃側から受け取り、床上の複数レーン表示を共通化する。
     if (!attackTelegraph_ && common_) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(common_);
@@ -1235,6 +1295,7 @@ void BaseEnemy::ShowAttackTelegraphLaneFan(const Vector3& origin, const Vector3&
 }
 
 void BaseEnemy::HideAttackTelegraph() {
+    // 攻撃中断・休眠・運搬などの経路から同じ後片付けを呼べるようにする。
     if (attackTelegraph_) {
         attackTelegraph_->Hide();
     }
@@ -1351,9 +1412,13 @@ void BaseEnemy::SetCarried(bool isCarried) {
     }
 }
 
-void BaseEnemy::ExecuteAbility(Player* player) {}
+void BaseEnemy::ExecuteAbility(Player* player) {
+    // コピー能力を持たない敵の既定動作は何もしない。必要な敵だけで上書きする。
+    (void)player;
+}
 
 void BaseEnemy::UpdateCarriedAbility(Player* player, float deltaTime) {
+    // 運搬中の固有能力を持たない敵は共通更新に追加処理を行わない。
     (void)player;
     (void)deltaTime;
 }

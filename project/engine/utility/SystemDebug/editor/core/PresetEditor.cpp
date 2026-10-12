@@ -16,42 +16,53 @@ PresetEditor* PresetEditor::GetInstance() {
     return &instance;
 }
 
-std::string PresetEditor::GetName() { return "プリセットエディタ (Preset Editor)"; }
+std::string PresetEditor::GetName() {
+    // ツール一覧に表示する名称は内部プリセット名と分ける。
+    return "プリセットエディタ (Preset Editor)";
+}
 
 #ifdef USE_IMGUI
 
 // パレットの表示、選択、ドラッグ配置を担当します。
 void PresetEditor::Initialize() {
+    // カタログとモデル候補を先に読み込み、初回表示から配置候補を選べるようにする。
     PresetManager::GetInstance()->Initialize();
     RefreshModelList();
     if (std::strcmp(newName_, "NewPreset") == 0) std::snprintf(newName_, sizeof(newName_), "%s", "新しいプリセット");
 }
 
 void PresetEditor::SetPlacePresetCallback(std::function<void(const std::string&)> callback) {
+    // 配置操作の実行はシーン編集側へ委ね、パレットは選択名だけを渡す。
     placePresetCallback_ = std::move(callback);
 }
 
 void PresetEditor::SetBrushPresetCallback(std::function<void(const std::string&)> callback) {
+    // ブラシ配置の開始はシーン編集側へ委ねる。
     brushPresetCallback_ = std::move(callback);
 }
 
 void PresetEditor::SetThumbnailProvider(std::function<uint64_t(const std::string&)> provider) {
+    // サムネイルの描画資源は外部が所有し、ここでは取得手段だけ保持する。
     thumbnailProvider_ = std::move(provider);
 }
 
 void PresetEditor::SetSelectionCallback(std::function<void()> callback) {
+    // 選択先を切り替えたときの Inspector 連携を呼び出し元へ通知する。
     selectionCallback_ = std::move(callback);
 }
 
 void PresetEditor::SetThumbnailInvalidator(std::function<void(const std::string&)> callback) {
+    // 材質変更後のサムネイル再撮影を描画側へ依頼する。
     thumbnailInvalidator_ = std::move(callback);
 }
 
 std::string PresetEditor::GetDisplayName(const std::string& key, const json& data) const {
+    // 表示名が無い旧データは元名、さらに無い場合は内部キーへ戻す。
     return ReadString(data, "presetDisplayName", ReadString(data, "name", key));
 }
 
 void PresetEditor::SelectPreset(const std::string& name, bool notify) {
+    // 登録済みだけ選択し、Project から来た選択だけ Inspector へ通知する。
     if (!PresetManager::GetInstance()->HasPreset(name)) return;
     selectedName_ = name;
     selectionFromProject_ = notify;
@@ -59,12 +70,14 @@ void PresetEditor::SelectPreset(const std::string& name, bool notify) {
 }
 
 void PresetEditor::NotifyPresetUsed(const std::string& name) {
+    // 最近使った一覧では同名を重複させず、上限を設ける。
     recentPresets_.erase(std::remove(recentPresets_.begin(), recentPresets_.end(), name), recentPresets_.end());
     recentPresets_.insert(recentPresets_.begin(), name);
     if (recentPresets_.size() > 24) recentPresets_.resize(24);
 }
 
 void PresetEditor::DrawImGui() {
+    // 選択中は詳細設定を表示し、未選択時は配置ライブラリを表示する。
     HandleDeferredDelete();
     ImGui::TextColored(ImVec4(0.35f, 0.9f, 1.0f, 1.0f), "配置プリセット");
     if (selectedName_.empty()) {
@@ -77,9 +90,13 @@ void PresetEditor::DrawImGui() {
     }
 }
 
-void PresetEditor::DrawPalettePane() { DrawLibrary(); }
+void PresetEditor::DrawPalettePane() {
+    // パレットタブからも同じライブラリを開く。
+    DrawLibrary();
+}
 
 void PresetEditor::DrawLibrary(bool fromProject) {
+    // ステージ・用途・検索結果を絞ってから必要な行だけ描画する。
     HandleDeferredDelete();
     ImGui::PushID(fromProject ? "ProjectPresetLibrary" : "InspectorPresetLibrary");
     const float width = ImGui::GetContentRegionAvail().x;
@@ -224,6 +241,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
 }
 
 void PresetEditor::DrawCategoryButton(const char* label, Category category) {
+    // 選択中の用途だけ強調し、クリック後の一覧フィルターへ反映する。
     bool selected = activeCategory_ == category;
     if (selected) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.38f, 0.72f, 1.0f));
@@ -240,6 +258,7 @@ void PresetEditor::DrawCategoryButton(const char* label, Category category) {
 }
 
 void PresetEditor::DrawCreateButtons() {
+    // 用途ごとに空のテンプレートを作り、後から詳細を編集できるようにする。
     ImGui::TextDisabled("新規テンプレート");
     ImGui::PushItemWidth(-1.0f);
     ImGui::InputText("##NewPresetName", newName_, sizeof(newName_));
@@ -320,6 +339,7 @@ void PresetEditor::DrawPresetList() {
 }
 
 void PresetEditor::DrawPresetListItem(const std::string& name, const json& data) {
+    // 一覧行にサムネイルと用途を置き、ドラッグでシーン配置へ渡す。
     ImGui::PushID(name.c_str());
 
     bool selected = selectedName_ == name;

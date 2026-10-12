@@ -43,6 +43,7 @@ bool IsTinyPlanar(const Vector3& value);
 Vector3 NormalizePlanar(Vector3 value);
 
 void SpawnThunderShockHitBurst(Object3d* target) {
+    // 対象の横幅・高さに合わせて電撃を周囲へ分散し、大型敵でも接触位置を見せる。
     auto* manager = GPUParticleManager::GetInstance();
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -89,6 +90,7 @@ Vector3 ResolveBodyHitPosition(Object3d* target, Object3d* attacker, const Vecto
 }
 
 void SpawnFireDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    // 攻撃方向に炎と火の粉を飛ばし、ノックバックが無い場合は上向きへ補う。
     auto* manager = GPUParticleManager::GetInstance();
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -105,6 +107,7 @@ void SpawnFireDamageHit(Object3d* target, Object3d* attacker, const Vector3& kno
 }
 
 void SpawnExplosionDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    // 衝突面から爆発の核と火花を出し、煙だけは上昇方向へ流す。
     auto* manager = GPUParticleManager::GetInstance();
     if (!target || !manager || !manager->IsInitialized()) {
         return;
@@ -121,9 +124,13 @@ void SpawnExplosionDamageHit(Object3d* target, Object3d* attacker, const Vector3
     manager->EmitDirected(kPlayerExplosionSmokePreset, position, {0.0f, 1.0f, 0.0f}, 1.0f);
 }
 
-bool IsTinyPlanar(const Vector3& value) { return std::fabs(value.x) < 0.001f && std::fabs(value.z) < 0.001f; }
+bool IsTinyPlanar(const Vector3& value) {
+    // 水平方向が使えないときは攻撃者との位置関係へ切り替える。
+    return std::fabs(value.x) < 0.001f && std::fabs(value.z) < 0.001f;
+}
 
 Vector3 NormalizePlanar(Vector3 value) {
+    // 水平成分がゼロなら前方を仮方向にして回転計算を成立させる。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
@@ -133,6 +140,7 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 
 void SpawnPlayerPuniDamageHit(Object3d* target, Object3d* attacker, const Vector3& knockbackVelocity) {
+    // 被弾した身体の手前側へ演出を置き、対象の大きさに応じて広げる。
     if (!target) {
         return;
     }
@@ -161,14 +169,17 @@ void SpawnPlayerPuniDamageHit(Object3d* target, Object3d* attacker, const Vector
 } // namespace
 
 void HitEffectDirector::SpawnSlimeElasticHit(const Vector3& position) {
+    // 弾力のある命中演出はVFXシーケンス側の時間設定で再生する。
     VFXSequencer::PlayOneShot(kSlimeElasticSequence, position);
 }
 
 void HitEffectDirector::SpawnPullBindHit(const Vector3& position) {
+    // 引き寄せの拘束開始を単発シーケンスへ委ねる。
     VFXSequencer::PlayOneShot(kPullBindSequence, position);
 }
 
 void HitEffectDirector::SpawnPullCatchHit(const Vector3& position) {
+    // 対象を捕まえた時点の演出を拘束開始とは別に再生する。
     VFXSequencer::PlayOneShot(kPullCatchSequence, position);
 }
 
@@ -191,6 +202,7 @@ void HitEffectDirector::SpawnThrowSlamShockwave(const Vector3& position, float i
 }
 
 void HitEffectDirector::SpawnBombExplosionHit(const Vector3& position) {
+    // 爆発と破片の起点を地面に合わせ、空中へ沈んだ演出を防ぐ。
     const Vector3 groundPos = ResolveGroundEffectPosition(position);
     const Vector3 effectBase = groundPos + Vector3{0.0f, kGroundEffectLift, 0.0f};
 
@@ -199,6 +211,7 @@ void HitEffectDirector::SpawnBombExplosionHit(const Vector3& position) {
 }
 
 void HitEffectDirector::SpawnEnemyAbilityHit(const Vector3& position) {
+    // 能力攻撃の共通ヒット演出は一つのシーケンス名から解決する。
     VFXSequencer::PlayOneShot(kEnemyAbilitySequence, position);
 }
 
@@ -252,10 +265,12 @@ void HitEffectDirector::SpawnDamageEventHit(Object3d* target, Object3d* attacker
 }
 
 Vector3 HitEffectDirector::ResolveGroundEffectPosition(const Vector3& position) {
+    // 地面に広がる衝撃波・破片の高さを共通Locatorで求める。
     return GroundEffectLocator::ResolveGroundPosition(position);
 }
 
 void HitEffectDirector::EmitGpu(const char* presetName, const Vector3& position) {
+    // 先読み前などManager未初期化の場面では放出を見送る。
     auto* manager = GPUParticleManager::GetInstance();
     if (!manager || !manager->IsInitialized()) {
         return;
@@ -264,11 +279,13 @@ void HitEffectDirector::EmitGpu(const char* presetName, const Vector3& position)
 }
 
 void HitEffectDirector::SpawnDebris(const char* presetName, const Vector3& position, float groundY) {
+    // 地面の高さを明示して破片の着地位置を決める。
     if (auto* manager = DebrisEffectManager::GetInstance()) {
         manager->SpawnOnGround(presetName, position, groundY);
     }
 }
 
 bool HitEffectDirector::IsAlmostZero(const Vector3& value) {
+    // 三軸ともほぼ無いノックバックは弾力ヒットの演出条件に使う。
     return std::fabs(value.x) < 0.001f && std::fabs(value.y) < 0.001f && std::fabs(value.z) < 0.001f;
 }

@@ -24,6 +24,7 @@ SceneFactory::SceneFactory() {
 }
 
 std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneName) {
+    // 未登録キーを別のシーンへ置き換えず、呼び出し側に失敗を返す。
     const auto found = creators_.find(sceneName);
     if (found == creators_.end() || !found->second) {
         return nullptr;
@@ -32,6 +33,7 @@ std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneNam
 }
 
 std::vector<std::string> SceneFactory::GetRegisteredSceneNames() const {
+    // エディター一覧は登録順を使い、マップの内部順序には依存しない。
     return registrationOrder_;
 }
 

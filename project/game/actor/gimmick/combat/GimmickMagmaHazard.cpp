@@ -39,6 +39,7 @@ void GimmickMagmaHazard::Initialize(Object3dCommon* common, const std::string& m
 }
 
 void GimmickMagmaHazard::Update(float deltaTime) {
+    // 配置データがない場合も既定値で危険域を更新できるようにする。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -73,13 +74,18 @@ bool GimmickMagmaHazard::OnCollision(Object3d* /*other*/) {
     return true;
 }
 
-float GimmickMagmaHazard::GetDamage() const { return param_.has_value() ? (std::max)(0.0f, param_->speed) : 12.0f; }
+float GimmickMagmaHazard::GetDamage() const {
+    // 共通パラメータのspeed欄をダメージ量として使い、負値は0へ丸める。
+    return param_.has_value() ? (std::max)(0.0f, param_->speed) : 12.0f;
+}
 
 float GimmickMagmaHazard::GetDamageInterval() const {
+    // 接触中の連続被弾を防ぐため、間隔は最低0.1秒に制限する。
     return param_.has_value() ? (std::max)(0.1f, param_->interval) : 0.8f;
 }
 
 std::unique_ptr<Object3d> GimmickMagmaHazard::Clone() const {
+    // 複製先を初期化してから危険域の設定と配置を移す。
     auto clone = std::make_unique<GimmickMagmaHazard>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());

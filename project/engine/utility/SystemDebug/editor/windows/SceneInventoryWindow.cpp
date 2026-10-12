@@ -115,12 +115,14 @@ const char* GetColliderShapeName(ColliderType type) {
 }
 
 void SceneInventoryWindow::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // シーンの寿命は外部が管理するため、ここでは表示とフォーカスに必要な参照だけ保持します。
     sceneManager_ = sceneManager;
     editor_ = editor;
 }
 
 void SceneInventoryWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    // 編集中の配置変更を即時反映するため、一覧は描画のたびに作り直します。
     ImGui::Text(ICON_FA_CHART_BAR " シーン配置集計");
     ImGui::TextDisabled("現在のシーンに何が何個配置されているかを用途別に確認できます。");
     ImGui::Separator();
@@ -202,6 +204,7 @@ void SceneInventoryWindow::RebuildEntries() {
 
 void SceneInventoryWindow::DrawSummary() const {
 #ifdef USE_IMGUI
+    // 検索後の件数を固定順で表示し、件数ゼロの用途も見落とさないようにします。
     static const char* kCategories[] = {
         "通常地形", "背景・装飾", "当たり判定のみ", "ギミック",
         "敵", "アイテム・収集物", "プレイヤー・カメラ", "エフェクト", "Editor補助", "その他"
@@ -227,6 +230,7 @@ void SceneInventoryWindow::DrawSummary() const {
 
 void SceneInventoryWindow::DrawGroupedList(GroupMode mode) {
 #ifdef USE_IMGUI
+    // 分類軸は切り替えても元の配置一覧を共有し、検索条件も同じまま使います。
     const std::vector<Group> groups = BuildGroups(mode);
     if (groups.empty()) {
         ImGui::TextDisabled("条件に一致するObjectはありません");
@@ -254,6 +258,7 @@ void SceneInventoryWindow::DrawGroupedList(GroupMode mode) {
 
 void SceneInventoryWindow::DrawObjectRows(const Group& group) {
 #ifdef USE_IMGUI
+    // Objectの生ポインタはこのフレームで再構築した一覧だけから使います。
     if (!ImGui::BeginTable("Objects", 5,
         ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollX)) {
         return;
@@ -305,6 +310,7 @@ void SceneInventoryWindow::DrawObjectRows(const Group& group) {
 
 void SceneInventoryWindow::CopySummaryToClipboard() const {
 #ifdef USE_IMGUI
+    // 画面と同じ検索結果をタブ区切りで出力し、表計算への貼り付けを可能にします。
     std::map<std::string, int> categoryCounts;
     std::map<std::string, int> typeCounts;
     for (const Entry& entry : entries_) {
@@ -361,6 +367,7 @@ std::vector<SceneInventoryWindow::Group> SceneInventoryWindow::BuildGroups(Group
 }
 
 bool SceneInventoryWindow::MatchesSearch(const Entry& entry, const std::string& groupLabel) const {
+    // 表示軸のラベルも検索対象に含め、モデル名や判定種別で絞り込めるようにします。
     const std::string query = searchBuffer_;
     if (query.empty()) return true;
     if (ContainsInsensitive(groupLabel, query) || ContainsInsensitive(entry.category, query) ||
@@ -376,6 +383,7 @@ bool SceneInventoryWindow::MatchesSearch(const Entry& entry, const std::string& 
 }
 
 std::string SceneInventoryWindow::ClassifyCategory(const Object3d& object) const {
+    // 複数の属性を持つObjectが二重計上されないよう、用途の優先順位を固定します。
     const std::string className = object.GetClassName();
     const std::string saveCategory = object.GetSaveCategory();
     const std::string gimmickType = object.GetGimmickType();
@@ -406,6 +414,7 @@ std::string SceneInventoryWindow::ClassifyCategory(const Object3d& object) const
 }
 
 std::string SceneInventoryWindow::ClassifyType(const Object3d& object, const std::string& category) const {
+    // 用途が決まった後に、その用途内で意味のある細分類へ変換します。
     if (category == "当たり判定のみ") return ClassifyCollision(object);
     if (category == "敵" && !object.GetEnemyType().empty()) return GetTypeDisplayName(object.GetEnemyType());
     if (category == "ギミック" && !object.GetGimmickType().empty()) return GetTypeDisplayName(object.GetGimmickType());
@@ -426,6 +435,7 @@ std::string SceneInventoryWindow::ClassifyType(const Object3d& object, const std
 }
 
 std::string SceneInventoryWindow::ClassifyCollision(const Object3d& object) const {
+    // 形状だけでは用途が分からないため、カテゴリ・名前・縦横比から表示名を推定します。
     const ColliderConfig& config = object.GetColliderConfig();
     const uint32_t attribute = object.GetCollisionAttribute();
     const std::string& name = object.GetName();

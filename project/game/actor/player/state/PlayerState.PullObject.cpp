@@ -18,6 +18,7 @@
 // フックでオブジェクトを引く状態をまとめています。
 
 void PlayerStatePullObject::Enter(Player* player) {
+    // フックの発射中は自身の移動を止め、マーカーをプレイヤー位置から伸ばす。
     DebugConsole::GetInstance()->AddLog("Enter: PullObject");
     if (!player)
         return;
@@ -83,6 +84,7 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStatePullObject::Exit(Player* player) {
+    // 成否にかかわらず、入力とフックマーカーの可視・回転モードを戻す。
     if (!player)
         return;
 
@@ -99,6 +101,7 @@ void PlayerStatePullObject::Exit(Player* player) {
 }
 
 void PlayerStatePullObject::UpdateRopeMarker(Player* player, const Vector3& endPos, float thickness) {
+    // 両端の中点・方向・距離から細長い表示モデルの Transform を作る。
     if (!player)
         return;
 

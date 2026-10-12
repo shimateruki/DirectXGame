@@ -23,7 +23,10 @@ void BaseGimmick::Initialize(Object3dCommon* common, const std::string& modelNam
     SetSaveCategory("Object"); // Json保存カテゴリ
 }
 
-void BaseGimmick::Update(float deltaTime) { Object3d::Update(deltaTime); }
+void BaseGimmick::Update(float deltaTime) {
+    // 共通の Transform・描画・当たり判定更新を派生ギミックにも適用する。
+    Object3d::Update(deltaTime);
+}
 
 bool BaseGimmick::OnCollision(Object3d* other) {
     // 基底クラスでは特に何もしない。派生クラスで処理する
@@ -32,6 +35,7 @@ bool BaseGimmick::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> BaseGimmick::Clone() const {
+    // 派生型を基底型として複製しない。各派生クラスが自分の複製を担当する。
     if (typeid(*this) != typeid(BaseGimmick)) {
         return nullptr;
     }

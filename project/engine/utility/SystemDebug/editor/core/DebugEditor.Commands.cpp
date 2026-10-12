@@ -459,6 +459,7 @@ nlohmann::json DebugEditor::CaptureObjectState(Object3d* object) const {
 }
 
 std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(const std::vector<Object3d*>& objects) const {
+    // 現在 Scene に属する Object だけ記録し、破棄済みポインタを Undo 対象にしない。
     std::vector<ObjectStateSnapshot> snapshots;
     snapshots.reserve(objects.size());
     for (Object3d* object : objects) {
@@ -476,6 +477,7 @@ std::vector<DebugEditor::ObjectStateSnapshot> DebugEditor::CaptureObjectStates(c
 }
 
 void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state) {
+    // JSON の属性を戻した後、親は GUID を優先して探し、旧データだけ名前へフォールバックする。
     if (!object || !state.is_object()) return;
 
     if (state.contains("name")) {
@@ -504,6 +506,7 @@ void DebugEditor::ApplyObjectState(Object3d* object, const nlohmann::json& state
 }
 
 Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
+    // 旧コマンド用の代替検索なので、対象は現在開いている Scene に限る。
     if (name.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
@@ -516,11 +519,13 @@ Object3d* DebugEditor::FindObjectByName(const std::string& name) const {
 }
 
 Object3d* DebugEditor::FindObjectByPersistentGuid(const std::string& guid) const {
+    // 名前が変わった後でも同じ Object を復元できるよう永続 ID で検索する。
     if (guid.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     return sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(guid);
 }
 
 Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
+    // 保存時の実行型を再生成できる場合だけ追加し、GUID 衝突時は新しい ID を振る。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || !state.is_object()) return nullptr;
 
     Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
@@ -545,11 +550,13 @@ Object3d* DebugEditor::AddObjectFromState(const nlohmann::json& state) {
 }
 
 std::unique_ptr<Object3d> DebugEditor::RemoveObjectImmediate(Object3d* object) {
+    // Scene 配列から即時に切り離し、所有権を呼び出し元へ返す。
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     return sceneManager_->GetCurrentScene()->TakeObjectImmediate(object);
 }
 
 void DebugEditor::RegisterCommand(const EditorCommand& command) {
+    // 同じコマンドを逆方向にも適用し、共通 Transaction 履歴へ登録する。
     EditorTransaction transaction;
     transaction.label = command.label;
     transaction.undo = [this, command]() { ApplyEditorCommand(command, true); };
@@ -558,12 +565,14 @@ void DebugEditor::RegisterCommand(const EditorCommand& command) {
 }
 
 void DebugEditor::RegisterObjectEdited(Object3d* object, const std::string& label) {
+    // 単体編集も状態差分を使う共通経路へ渡す。
     if (!object) return;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object)) return;
     RegisterObjectEdited(object, CaptureObjectState(object), label);
 }
 
 void DebugEditor::RegisterObjectEdited(Object3d* object, const nlohmann::json& beforeState, const std::string& label) {
+    // 前後の JSON が同じなら履歴を作らず、実際の変更だけ Dirty にする。
     if (!object || !beforeState.is_object()) return;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object)) return;
 
@@ -683,6 +692,7 @@ void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::s
 }
 
 void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
+    // 複数配置を Scene へ移し、最後に先頭 Object を選択して編集を続けられるようにする。
     if (objects.empty()) return;
 
     Object3d* root = objects.front().get();
@@ -700,6 +710,7 @@ void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> object
 
 void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& beforeStates) {
 #ifdef USE_IMGUI
+    // ドラッグ中の各フレームを履歴にせず、操作開始と終了を一つの編集として記録する。
     if (!selectedObject_ || beforeStates.empty()) {
         return;
     }
@@ -743,6 +754,7 @@ void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& bef
 }
 
 void DebugEditor::MarkDirtyForObject(Object3d* object) {
+    // Prefab 編集中の変更は Scene Asset ではなく Prefab の未保存状態へ振り分ける。
     if (!object) {
         MarkDirty(SaveMode::Object);
         return;
@@ -755,6 +767,7 @@ void DebugEditor::MarkDirtyForObject(Object3d* object) {
 }
 
 void DebugEditor::MarkDirtyForCategory(const std::string& category) {
+    // 保存先 JSON の区分に合わせて未保存フラグを立てる。
     if (category == "Player") dirtyPlayer_ = true;
     else if (category == "Enemy") dirtyEnemy_ = true;
     else if (category == "Camera") dirtyCamera_ = true;
@@ -762,6 +775,7 @@ void DebugEditor::MarkDirtyForCategory(const std::string& category) {
 }
 
 void DebugEditor::MarkDirty(SaveMode mode) {
+    // All 指定は各カテゴリをまとめて未保存へし、個別指定は対象だけ変える。
     switch (mode) {
     case SaveMode::Player:
         dirtyPlayer_ = true;
@@ -786,6 +800,7 @@ void DebugEditor::MarkDirty(SaveMode mode) {
 }
 
 void DebugEditor::ClearDirty(SaveMode mode) {
+    // 保存済みになったカテゴリだけフラグを下ろす。
     switch (mode) {
     case SaveMode::Player:
         dirtyPlayer_ = false;
@@ -810,6 +825,7 @@ void DebugEditor::ClearDirty(SaveMode mode) {
 }
 
 bool DebugEditor::IsDirty(SaveMode mode) const {
+    // All はいずれか一件でも未保存なら true とする。
     switch (mode) {
     case SaveMode::Player:
         return dirtyPlayer_;
@@ -826,10 +842,12 @@ bool DebugEditor::IsDirty(SaveMode mode) const {
 }
 
 bool DebugEditor::HasAnyDirty() const {
+    // 保存ダイアログと終了警告が共有する未保存判定。
     return dirtyPlayer_ || dirtyEnemy_ || dirtyObject_ || dirtyCamera_;
 }
 
 std::string DebugEditor::GetDirtySummaryText() const {
+    // 未保存の JSON 区分だけ列挙し、画面上で保存漏れを判別できるようにする。
     if (!HasAnyDirty()) return "保存済み";
 
     std::string text = "未保存:";
@@ -1169,6 +1187,7 @@ void DebugEditor::DeleteSelected() {
 }
 
 void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
+    // 作成・削除・属性変更で Undo と Redo の方向を反転して同じ適用経路を使う。
     switch (command.type) {
     case EditorCommandType::ObjectCreated: {
         if (undo) {
@@ -1235,6 +1254,7 @@ void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
 //  Undo処理
 // ==========================================
 void DebugEditor::PerformUndo() {
+    // Transaction 側で適用に成功した場合だけ操作名をログへ残す。
     EditorTransactionManager* transactions = EditorTransactionManager::GetInstance();
     const std::string label = transactions->GetUndoLabel();
     if (transactions->Undo()) {
@@ -1246,6 +1266,7 @@ void DebugEditor::PerformUndo() {
 //  Redo処理
 // ==========================================
 void DebugEditor::PerformRedo() {
+    // やり直した操作名を履歴マネージャーから取り、成功時に表示する。
     EditorTransactionManager* transactions = EditorTransactionManager::GetInstance();
     const std::string label = transactions->GetRedoLabel();
     if (transactions->Redo()) {

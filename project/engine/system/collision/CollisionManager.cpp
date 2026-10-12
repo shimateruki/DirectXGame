@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 CollisionManager* CollisionManager::GetInstance() {
+    // シーン中の接触履歴とクエリ対象を共有する管理器を一つだけ返す。
     static CollisionManager instance;
     return &instance;
 }
@@ -22,6 +23,7 @@ void CollisionManager::SetGridSize(float size) {
 
 namespace {
 bool IsCollisionActive(Object3d* object) {
+    // 判定形状と双方向マスクのない物は、広域判定へ登録しても接触を作らない。
     if (!object || !object->GetCollider()) {
         return false;
     }
@@ -35,6 +37,7 @@ bool IsCollisionActive(Object3d* object) {
 }
 
 std::pair<Object3d*, Object3d*> MakeContactPair(Object3d* objectA, Object3d* objectB) {
+    // 接触順に依存しないキーにし、Enter と Exit の履歴を同じ組で追う。
     if (std::less<Object3d*>{}(objectB, objectA)) {
         std::swap(objectA, objectB);
     }
@@ -42,10 +45,12 @@ std::pair<Object3d*, Object3d*> MakeContactPair(Object3d* objectA, Object3d* obj
 }
 
 bool IsTriggerObject(const Object3d* object) {
+    // カテゴリを使って物理接触と通知専用の接触を分ける。
     return object && (object->GetCollisionAttribute() & CollisionCategories::Get("trigger")) != 0;
 }
 
 bool IsInIgnoredHierarchy(Object3d* object, Object3d* ignoredRoot) {
+    // 自機本体を除外したクエリでは子のコライダーも一緒に除外する。
     for (Object3d* current = object; current; current = current->GetParent()) {
         if (current == ignoredRoot) {
             return true;
@@ -55,6 +60,7 @@ bool IsInIgnoredHierarchy(Object3d* object, Object3d* ignoredRoot) {
 }
 
 Vector3 SafeNormalize(const Vector3& value) {
+    // 長さゼロのレイで NaN を広めず、呼び出し側へ無効な方向を返す。
     const float length = std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
     if (length <= 0.000001f) {
         return { 0.0f, 0.0f, 0.0f };
@@ -94,6 +100,7 @@ void CollisionManager::RemoveObject(Object3d* object) {
 }
 
 void CollisionManager::ClearObjects() {
+    // シーン切り替えでは接触履歴も捨て、旧オブジェクトへの Exit 通知を防ぐ。
     objects_.clear();
     grid_.clear();
     checkedPairs_.clear();
@@ -125,6 +132,7 @@ int64_t CollisionManager::GetGridID(const Vector3& pos) {
 
 // 3D座標 -> (x,y,z)インデックス (AABB計算用)
 Vector3i CollisionManager::GetGridIndices(const Vector3& pos) {
+    // 負座標も同じセル幅で扱えるようオフセットしてから床関数で離散化する。
     float offsetX = pos.x + (kGridOffset * gridSize_);
     float offsetY = pos.y + (kGridOffset * gridSize_);
     float offsetZ = pos.z + (kGridOffset * gridSize_);
@@ -314,6 +322,7 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
 }
 
 void CollisionManager::DispatchContactEvents() {
+    // 前フレームとの集合差で Enter・Stay・Exit を決め、両当事者へ通知する。
     const auto dispatch = [](Object3d* self, Object3d* other, CollisionInfo info,
         CollisionEventPhase phase, bool isTrigger) {
         if (!self || !other) return;
@@ -457,6 +466,7 @@ float IntersectRayOBB(const Vector3& start, const Vector3& direction, const OBB&
 }
 
 float IntersectRaySphere(const Vector3& start, const Vector3& direction, const Vector3& center, float radius) {
+    // 二次方程式の最小の非負解を採り、弾や視線が球へ入る最初の位置を返す。
     Vector3 m = start - center;
     float a = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
     if (a <= 1e-6f) {
@@ -576,10 +586,12 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
 RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direction,
     float maxDistance, const PhysicsQueryFilter& filter) {
+    // 一般向けレイは自機も候補に含め、必要な除外だけフィルタで指定する。
     return RaycastInternal(start, direction, maxDistance, filter, false);
 }
 
 bool CollisionManager::PassesQueryFilter(Object3d* object, const PhysicsQueryFilter& filter) const {
+    // 属性、トリガー、無効化と親子の除外条件を全クエリで共通に適用する。
     if (!object || !object->GetCollider() || object->GetColliderType() == ColliderType::kNone) {
         return false;
     }
@@ -603,6 +615,7 @@ bool CollisionManager::PassesQueryFilter(Object3d* object, const PhysicsQueryFil
 RaycastHit CollisionManager::RaycastInternal(
     const Vector3& start, const Vector3& direction, float maxDistance,
     const PhysicsQueryFilter& filter, bool excludePlayerHierarchy) const {
+    // 有効な形状だけを調べ、最も手前に当たった物へ結果を更新する。
     RaycastHit closestHit;
     closestHit.distance = (std::max)(0.0f, maxDistance);
     const Vector3 rayDirection = SafeNormalize(direction);
@@ -638,6 +651,8 @@ RaycastHit CollisionManager::RaycastInternal(
             continue;
         }
         if (distance > closestHit.distance) continue;
+        if (object->GetCollider() && object->GetCollider()->GetConfig().footprint.size() >= 3 &&
+            !object->GetCollider()->ContainsFootprintPoint(start + rayDirection * distance)) continue;
 
         closestHit.isHit = true;
         closestHit.distance = distance;
@@ -687,6 +702,7 @@ RaycastHit CollisionManager::RaycastInternal(
 
 std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphere(
     const Vector3& center, float radius, const PhysicsQueryFilter& filter) const {
+    // 一時的な球コライダーで既存の形状判定を再利用し、重なった物を列挙する。
     std::vector<PhysicsOverlapHit> hits;
     if (radius <= 0.0f) return hits;
 
@@ -709,6 +725,7 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphere(
 
 std::vector<PhysicsOverlapHit> CollisionManager::OverlapAABB(
     const AABB& bounds, const PhysicsQueryFilter& filter) const {
+    // ワールド矩形の中心と半径を一時コライダーに変え、同じフィルタで問い合わせる。
     std::vector<PhysicsOverlapHit> hits;
     const Vector3 halfSize = (bounds.max - bounds.min) * 0.5f;
     if (halfSize.x < 0.0f || halfSize.y < 0.0f || halfSize.z < 0.0f) return hits;
@@ -733,6 +750,7 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapAABB(
 std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
     const Vector3& pointA, const Vector3& pointB, float radius,
     const PhysicsQueryFilter& filter) const {
+    // 線分上の球を重ねて近似し、同じ物への複数命中は最大侵入量にまとめる。
     std::unordered_map<Object3d*, CollisionInfo> uniqueHits;
     if (radius <= 0.0f) return {};
 
@@ -758,6 +776,7 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
 RaycastHit CollisionManager::SphereCast(
     const Vector3& start, float radius, const Vector3& direction, float maxDistance,
     const PhysicsQueryFilter& filter) const {
+    // 半径の半分以下の間隔で球を進め、最初の重なりを移動体の接触として返す。
     RaycastHit hit;
     hit.distance = (std::max)(0.0f, maxDistance);
     const Vector3 castDirection = SafeNormalize(direction);
@@ -789,6 +808,7 @@ RaycastHit CollisionManager::CapsuleCast(
     const Vector3& pointA, const Vector3& pointB, float radius,
     const Vector3& direction, float maxDistance,
     const PhysicsQueryFilter& filter) const {
+    // カプセルの両端を一緒に進め、細長い移動体の最初の接触を探す。
     RaycastHit hit;
     hit.distance = (std::max)(0.0f, maxDistance);
     const Vector3 castDirection = SafeNormalize(direction);

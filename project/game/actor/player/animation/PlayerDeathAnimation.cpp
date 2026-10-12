@@ -22,26 +22,33 @@ constexpr const char* kDeathSplashArcEffect = "Resources/json/effect/effect_play
 constexpr const char* kDeathSplashStreakPreset = "player_death_slime_splash_streaks";
 constexpr const char* kDeathSoftMistPreset = "player_death_slime_soft_mist";
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float Clamp01(float value) {
+    // 演出時計を曲線の有効区間へ収める。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float EaseOutCubic(float value) {
+    // 破裂直前の動きを終点へ向けて減速させる。
     value = Clamp01(value);
     const float inv = 1.0f - value;
     return 1.0f - inv * inv * inv;
 }
 
 float EaseInOut(float value) {
+    // 前後で速度が急変しないよう、滑らかな曲線へ変換する。
     value = Clamp01(value);
     return value * value * (3.0f - 2.0f * value);
 }
 
 Vector3 MakeSafeScale(const Vector3& scale) {
+    // ほぼゼロの軸を既定値へ置き換え、死亡演出の拡縮が消失しないようにする。
     return {std::abs(scale.x) > 0.001f ? scale.x : 1.0f, std::abs(scale.y) > 0.001f ? scale.y : 1.0f,
             std::abs(scale.z) > 0.001f ? scale.z : 1.0f};
 }
 } // namespace
 
 void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
+    // 表示と接触の元状態を退避し、死亡演出を途中で止めても復元できるようにする。
     timer_ = 0.0f;
     puddleEmitTimer_ = 0.0f;
     active_ = true;
@@ -135,11 +142,18 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
     player->UpdateWorldMatrix();
 }
 
-bool PlayerDeathAnimation::IsReadyForFade() const { return active_ && timer_ >= kFadeReadyTime; }
+bool PlayerDeathAnimation::IsReadyForFade() const {
+    // 死亡演出が始まって一定時間経ってから画面暗転を許可する。
+    return active_ && timer_ >= kFadeReadyTime;
+}
 
-bool PlayerDeathAnimation::IsFinished() const { return active_ && timer_ >= kFinishTime; }
+bool PlayerDeathAnimation::IsFinished() const {
+    // 未開始の時計だけが進んでも終了扱いにしない。
+    return active_ && timer_ >= kFinishTime;
+}
 
 void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
+    // ヒットストップから膨張へ移る間の形状を、共通の演出時計で決める。
     if (!player) {
         return;
     }
@@ -182,6 +196,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
 }
 
 void PlayerDeathAnimation::EmitBurst(Player* player) {
+    // 一時死亡と最終死亡で粒子数と色を変え、身体が消える瞬間を強調する。
     if (!player) {
         return;
     }
@@ -234,6 +249,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
 }
 
 void PlayerDeathAnimation::EmitPuddle(Player* player) {
+    // 足元の低い位置だけに少量の粒子を出し、飛散後の余韻を作る。
     if (!player || !player->GetParticleSystem()) {
         return;
     }
@@ -247,6 +263,7 @@ void PlayerDeathAnimation::EmitPuddle(Player* player) {
 }
 
 void PlayerDeathAnimation::HidePlayerBody(Player* player) {
+    // 親だけでなく子の表示も消し、装飾が残るのを防ぐ。
     if (!player) {
         return;
     }

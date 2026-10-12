@@ -3,6 +3,7 @@
     {
       "id": "stage1",
       "name": "Stage 1 - First Island",
+      "gateNameTexturePath": "Resources/sprite/ui/stage_select/stage1_gate_name.png",
       "description": "最初の空島ステージ",
       "levelPath": "Resources/json/3Dobject/stage1.json",
       "spritePath": "Resources/json/sprite/stage1_sprite.json",
@@ -13,6 +14,7 @@
     {
       "id": "stage2",
       "name": "Stage 2 - Magma Caldera",
+      "gateNameTexturePath": "Resources/sprite/ui/stage_select/stage2_gate_name.png",
       "description": "崩れる黒曜石の道と上昇マグマを越える火山ステージ",
       "levelPath": "Resources/json/3Dobject/stage2.json",
       "spritePath": "Resources/json/sprite/stage2_sprite.json",
@@ -25,6 +27,7 @@
     {
       "id": "stage3",
       "name": "Stage 3 - High Crown",
+      "gateNameTexturePath": "Resources/sprite/ui/stage_select/stage3_gate_name.png",
       "description": "黒格子に閉ざされた天空闘技場で偽王スライムに挑むボスステージ",
       "levelPath": "Resources/json/3Dobject/stage3.json",
       "spritePath": "Resources/json/sprite/stage3_sprite.json",

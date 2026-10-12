@@ -112,6 +112,7 @@ ImVec4 GetSpriteStateColor(const Sprite::ReplayState& state) {
 }
 
 void ReplayDebugger::Draw(bool* open) {
+    // 保存履歴、時間操作、差分解析を同じ記録バッファへ接続する入口。
     if (!open || !*open) {
         return;
     }
@@ -206,6 +207,7 @@ void ReplayDebugger::Draw(bool* open) {
 }
 
 void ReplayDebugger::DrawToolbar() {
+    // 記録・停止・再生・回帰テストで許される操作をモードごとに切り替える。
     const ImVec4 modeColor = mode_ == Mode::Recording
         ? ImVec4(1.0f, 0.28f, 0.24f, 1.0f)
         : (mode_ == Mode::Regression
@@ -267,6 +269,7 @@ void ReplayDebugger::DrawToolbar() {
     ImGui::SameLine();
     const std::size_t futureFrames = cursor_ < frames_.size() ? frames_.size() - cursor_ - 1 : 0;
     std::string archiveResumeBlockReason;
+    // 保存済み履歴からの分岐は、元 Scene を復元できる場合だけ許可する。
     const bool archiveResumeReady =
         !loadedArchiveReadOnly_ || CanResumeLoadedArchive(&archiveResumeBlockReason);
     ImGui::BeginDisabled(mode_ == Mode::Recording || mode_ == Mode::Regression || !archiveResumeReady);
@@ -295,6 +298,7 @@ void ReplayDebugger::DrawToolbar() {
 }
 
 void ReplayDebugger::DrawArchivePanel() {
+    // メモリ内の未保存履歴を置き換える前に確認を挟み、記録の消失を防ぐ。
     ImGui::SeparatorText("記録を保存 / 保存データを開く");
     ImGui::TextWrapped("直前の記録はメモリ上の一時データです。残したい記録はPlayを停止する前に保存してください。");
 
@@ -415,6 +419,7 @@ void ReplayDebugger::DrawArchivePanel() {
 
 
 void ReplayDebugger::DrawRegressionPanel() {
+    // 入力の再実行中は許容誤差や性能基準を固定し、結果の条件を途中で変えない。
     if (!ImGui::CollapsingHeader("自動回帰テスト")) {
         return;
     }
@@ -489,6 +494,7 @@ void ReplayDebugger::DrawRegressionPanel() {
 }
 
 void ReplayDebugger::DrawSummaryCards() {
+    // 選択中フレームの要素数と、履歴全体の長さ・メモリ概算を分けて示す。
     if (!ImGui::BeginTable("ReplaySummaryCards", 4, ImGuiTableFlags_SizingStretchSame)) {
         return;
     }
@@ -674,6 +680,7 @@ void ReplayDebugger::DrawTimelineEditor() {
 }
 
 void ReplayDebugger::DrawObjectBrowser() {
+    // replayId で前フレームの同一 Object を探し、生成・削除・変化を判定する。
     if (frames_.empty()) {
         ImGui::TextDisabled("記録フレームがありません。");
         return;
@@ -759,6 +766,7 @@ void ReplayDebugger::DrawObjectBrowser() {
 }
 
 void ReplayDebugger::DrawSpriteBrowser() {
+    // Object と同じ変化フィルタを Sprite の表示状態・位置・サイズにも適用する。
     if (frames_.empty()) {
         ImGui::TextDisabled("記録フレームがありません。");
         return;
@@ -836,6 +844,7 @@ void ReplayDebugger::DrawSpriteBrowser() {
 }
 
 void ReplayDebugger::DrawObjectInspector() {
+    // 選択 Object の記録値を直前フレームと比較し、現在の Scene への選択も提供する。
     ImGui::SeparatorText("Object差分Inspector");
     if (frames_.empty() || selectedReplayId_ == 0) {
         ImGui::TextDisabled("左の一覧からObjectを選択してください。");
@@ -899,6 +908,7 @@ void ReplayDebugger::DrawObjectInspector() {
 }
 
 void ReplayDebugger::DrawSpriteInspector() {
+    // Sprite の Transform と再生状態を、選択フレームのスナップショットから表示する。
     ImGui::SeparatorText("Sprite差分Inspector");
     if (frames_.empty() || selectedSpriteReplayId_ == 0) {
         ImGui::TextDisabled("左の一覧からSpriteを選択してください。");
@@ -952,6 +962,7 @@ void ReplayDebugger::DrawSpriteInspector() {
 }
 
 void ReplayDebugger::DrawSettingsPanel() {
+    // 履歴が存在する間は記録周期と保持期間を固定し、時間軸の整合性を守る。
     if (!ImGui::CollapsingHeader("記録設定 / 対応範囲")) {
         return;
     }
@@ -973,6 +984,7 @@ void ReplayDebugger::DrawSettingsPanel() {
 }
 
 void ReplayDebugger::HandleEditorShortcuts() {
+    // テキスト入力中と回帰テスト中は Space や矢印をリプレイ操作へ流さない。
     if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || ImGui::GetIO().WantTextInput) {
         return;
     }
@@ -1001,6 +1013,7 @@ void ReplayDebugger::HandleEditorShortcuts() {
 }
 
 void ReplayDebugger::SelectFrameFromTimeline(double time) {
+    // 描画上の時刻に最も近い保存フレームへ移動し、その状態で停止する。
     if (frames_.empty()) return;
     std::size_t nearest = 0;
     double bestDistance = std::abs(frames_.front().time - time);
@@ -1015,6 +1028,7 @@ void ReplayDebugger::SelectFrameFromTimeline(double time) {
 }
 
 void ReplayDebugger::SelectSceneObject(uint64_t replayId) {
+    // 名前ではなく replayId で実 Scene の Object を探し、同名の別個体を避ける。
     BaseScene* scene = GetValidatedActiveScene();
     if (!scene || !debugEditor_) return;
     for (auto& object : scene->GetObjects()) {
@@ -1059,6 +1073,7 @@ void ReplayDebugger::JumpToObjectChange(int direction) {
 }
 
 bool ReplayDebugger::HasMeaningfulChange(const ObjectSnapshot& lhs, const ObjectSnapshot& rhs) const {
+    // 微小な座標揺れを無視し、状態・姿勢・HP の変化だけを差分として扱う。
     constexpr float kTransformEpsilonSquared = 0.000001f;
     if (lhs.state.replayRemoved != rhs.state.replayRemoved ||
         lhs.state.dead != rhs.state.dead ||
@@ -1080,6 +1095,7 @@ bool ReplayDebugger::HasMeaningfulChange(const ObjectSnapshot& lhs, const Object
 }
 
 bool ReplayDebugger::HasMeaningfulChange(const SpriteSnapshot& lhs, const SpriteSnapshot& rhs) const {
+    // UI のちらつきに埋もれないよう、識別子や再生状態と許容差を超える数値差を比較する。
     constexpr float kEpsilonSquared = 0.000001f;
     if (lhs.state.replayRemoved != rhs.state.replayRemoved ||
         lhs.state.visible != rhs.state.visible ||
@@ -1105,6 +1121,7 @@ bool ReplayDebugger::HasMeaningfulChange(const SpriteSnapshot& lhs, const Sprite
 }
 
 const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindObjectSnapshot(const FrameSnapshot& frame, uint64_t replayId) const {
+    // フレーム内の同一個体を識別子で探し、なければ生成前・削除後として扱う。
     const auto found = std::find_if(frame.objects.begin(), frame.objects.end(), [replayId](const ObjectSnapshot& snapshot) {
         return snapshot.replayId == replayId;
     });
@@ -1112,6 +1129,7 @@ const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindObjectSnapshot(const F
 }
 
 const ReplayDebugger::SpriteSnapshot* ReplayDebugger::FindSpriteSnapshot(const FrameSnapshot& frame, uint64_t replayId) const {
+    // Sprite 名は変わり得るため、記録時の replayId を照合する。
     const auto found = std::find_if(frame.sprites.begin(), frame.sprites.end(), [replayId](const SpriteSnapshot& snapshot) {
         return snapshot.replayId == replayId;
     });
@@ -1119,16 +1137,19 @@ const ReplayDebugger::SpriteSnapshot* ReplayDebugger::FindSpriteSnapshot(const F
 }
 
 const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindPreviousObjectSnapshot(uint64_t replayId) const {
+    // 先頭フレームでは比較元が存在しないので空を返す。
     if (cursor_ == 0 || cursor_ >= frames_.size()) return nullptr;
     return FindObjectSnapshot(frames_[cursor_ - 1], replayId);
 }
 
 const ReplayDebugger::ObjectSnapshot* ReplayDebugger::FindLatestObjectSnapshot(uint64_t replayId) const {
+    // 最新との差を表示するため、履歴末尾の同一 Object を取得する。
     if (frames_.empty()) return nullptr;
     return FindObjectSnapshot(frames_.back(), replayId);
 }
 
 const char* ReplayDebugger::FormatBytes(std::size_t bytes, char* buffer, std::size_t bufferSize) {
+    // 表示先バッファの大きさを守りながら、容量に応じた単位を選ぶ。
     if (!buffer || bufferSize == 0) return "";
     if (bytes >= 1024ull * 1024ull) {
         sprintf_s(buffer, bufferSize, "%.2f MB", static_cast<double>(bytes) / (1024.0 * 1024.0));

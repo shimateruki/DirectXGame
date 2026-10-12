@@ -7,6 +7,7 @@
 #include <algorithm>
 
 void GimmickSinkingFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // プレイヤーが乗れる床として衝突属性を設定する。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -17,6 +18,7 @@ void GimmickSinkingFloor::Initialize(Object3dCommon* common, const std::string& 
 }
 
 void GimmickSinkingFloor::Update(float deltaTime) {
+    // actionMode で単純な踏み込みと、段階的な水没演出を切り替える。
     if (param_ && param_->actionMode == 1) {
         UpdateSubmerging(deltaTime);
         return;
@@ -44,6 +46,7 @@ void GimmickSinkingFloor::Update(float deltaTime) {
 }
 
 bool GimmickSinkingFloor::OnCollision(Object3d* other) {
+    // プレイヤーが上面を踏んだ短い間だけ、目標の沈み位置を維持する。
     if (other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
         if (info.isColliding && info.normal.y < -0.5f) {
@@ -54,6 +57,7 @@ bool GimmickSinkingFloor::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> GimmickSinkingFloor::Clone() const {
+    // 移動中の位相は複製せず、保存された配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickSinkingFloor>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());
@@ -62,6 +66,7 @@ std::unique_ptr<Object3d> GimmickSinkingFloor::Clone() const {
 }
 
 void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
+    // 予告・下降・滞在・上昇を段階で管理し、再生停止時は元の高さへ戻す。
     auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying()) {
         if (initializedStart_)

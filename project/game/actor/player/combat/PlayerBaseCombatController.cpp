@@ -23,6 +23,7 @@ constexpr float kPressRecoveryDuration = 0.17f;
 constexpr float kAttackInputBufferDuration = 0.18f;
 
 Vector3 NormalizePlanar(Vector3 value) {
+    // カメラの上下角を攻撃方向へ混ぜず、無入力なら前方向へ倒す。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
@@ -32,6 +33,7 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 
 Object3d* FindEnemyRoot(Object3d* object) {
+    // 子Colliderで当たった場合も敵本体へまとめ、多重被弾を避ける。
     for (Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
@@ -55,6 +57,7 @@ void EmitDirectedPreset(const char* preset, const Vector3& position, const Vecto
 }
 
 void DispatchDamage(Player& player, Object3d* target, float damage, const Vector3& knockback) {
+    // 直接HPを書き換えず、共通のDamageEvent経由で耐性や被弾処理へ渡す。
     DamageEvent event;
     event.target = target;
     event.attacker = &player;
@@ -87,6 +90,7 @@ void PlayerBaseCombatController::ProcessInput(Player& player, bool attackTrigger
 }
 
 void PlayerBaseCombatController::Update(Player& player, float deltaTime) {
+    // 死亡・演出ロック・コピー中には基本攻撃を継続せず、中断経路へ戻す。
     if (!IsActive() || deltaTime <= 0.0f) {
         return;
     }
@@ -116,6 +120,7 @@ void PlayerBaseCombatController::Update(Player& player, float deltaTime) {
 }
 
 void PlayerBaseCombatController::Cancel(Player& player, bool restoreControl) {
+    // 中断時は能力姿勢と攻撃モーションを外し、操作権の復元は呼び出し側が選ぶ。
     if (!IsActive()) {
         return;
     }
@@ -133,6 +138,7 @@ void PlayerBaseCombatController::Cancel(Player& player, bool restoreControl) {
 }
 
 void PlayerBaseCombatController::BeginBash(Player& player) {
+    // ロックオン方向を攻撃開始時に固定し、予備動作中の入力で判定が跳ねないようにする。
     direction_ = NormalizePlanar(player.GetLockOnAttackDirection());
     phase_ = Phase::BashWindup;
     timer_ = kBashWindupDuration;
@@ -146,6 +152,7 @@ void PlayerBaseCombatController::BeginBash(Player& player) {
 }
 
 void PlayerBaseCombatController::BeginPress(Player& player) {
+    // 踏みつけ開始時の方向と各ヒット状態を初期化する。
     direction_ = NormalizePlanar(player.GetLockOnAttackDirection());
     phase_ = Phase::PressWindup;
     timer_ = kPressWindupDuration;
@@ -160,6 +167,7 @@ void PlayerBaseCombatController::BeginPress(Player& player) {
 }
 
 void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
+    // 予備動作と攻撃中の時計を分け、判定が有効な区間だけ敵へ当てる。
     timer_ -= deltaTime;
     player.SetIsControlActive(false);
     player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
@@ -212,6 +220,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
 }
 
 void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
+    // 落下から着地へ移る時計で、空中判定と着地衝撃を切り替える。
     timer_ -= deltaTime;
     player.SetIsControlActive(false);
 
@@ -258,6 +267,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
 }
 
 void PlayerBaseCombatController::DamageBash(Player& player) {
+    // 前方の球状領域で敵を探し、一回の振りで同じ敵を重複して傷つけない。
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
@@ -273,6 +283,7 @@ void PlayerBaseCombatController::DamageBash(Player& player) {
 }
 
 void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact) {
+    // 落下中と着地時で判定中心と半径を変える。
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
@@ -294,6 +305,7 @@ void PlayerBaseCombatController::DamagePress(Player& player, bool landingImpact)
 }
 
 void PlayerBaseCombatController::Finish(Player& player) {
+    // 入力猶予中の追加入力は、通常操作へ戻した後に次の攻撃へつなぐ。
     const bool consumeBufferedAttack = inputBufferTimer_ > 0.0f && !player.isDead && !player.IsCinematicLocked() &&
                                        !player.IsEnemyMorphed() && !player.GetCarriedEnemy();
 
@@ -319,10 +331,12 @@ void PlayerBaseCombatController::Finish(Player& player) {
 }
 
 bool PlayerBaseCombatController::CanBreakImpactGate() const {
+    // 実際に勢いが乗っている突進と落下区間だけゲート破壊を許す。
     return phase_ == Phase::BashActive || phase_ == Phase::PressFall;
 }
 
 PlayerBaseCombatController::ReplayState PlayerBaseCombatController::CaptureReplayState() const {
+    // 攻撃位相・方向・入力猶予を記録し、復元後も同じタイミングから進める。
     ReplayState state;
     state.phase = static_cast<int>(phase_);
     state.direction = direction_;

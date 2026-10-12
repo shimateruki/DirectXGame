@@ -21,6 +21,7 @@ using json = nlohmann::json;
 
 namespace {
 float SmoothStep(float value) {
+    // ページ移動の端で速度が急変しないよう、補間率を滑らかにする。
     value = std::clamp(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
@@ -31,6 +32,7 @@ struct AbilityGuideVisual {
 };
 
 const char* ResolveBookKey(const Player* player) {
+    // コピー状態を図鑑データの検索キーへ変換し、未変身は通常ページを使う。
     if (!player || !player->IsEnemyMorphed())
         return "normal";
     switch (player->GetEnemyMorphType()) {
@@ -52,6 +54,7 @@ const char* ResolveBookKey(const Player* player) {
 }
 
 AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
+    // 現在のコピー能力に対応する三つの操作説明画像を選ぶ。
     if (!player) {
         return {};
     }
@@ -83,6 +86,7 @@ AbilityGuideVisual ResolveAbilityGuide(const Player* player) {
 }
 
 const char* ResolvePortraitTexture(const Player* player) {
+    // 能力ごとの肖像画像を選び、未変身はプレイヤーの画像へ戻す。
     if (!player || !player->IsEnemyMorphed()) {
         return "ui/portraits/player.png";
     }
@@ -105,6 +109,7 @@ const char* ResolvePortraitTexture(const Player* player) {
 }
 
 void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+    // 差し替え画像の元サイズをUV範囲へ反映し、旧画像の切り抜きが残らないようにする。
     if (!sprite || textureHandle == 0) {
         return;
     }
@@ -115,6 +120,7 @@ void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
 }
 
 std::string ResolveInputGlyphPath(const std::string& keyboardPath, bool gamepadMode) {
+    // ゲームパッド使用時だけ操作画像を対応するボタン・スティックへ置き換える。
     if (!gamepadMode)
         return keyboardPath;
     if (keyboardPath == "ui/input/combo/combo_wasd.png")
@@ -135,6 +141,7 @@ std::string ResolveInputGlyphPath(const std::string& keyboardPath, bool gamepadM
 
 // レイアウト生成後に能力内容と入力表示を反映し、初期状態では全ページを隠します。
 void ControlsGuideOverlay::Initialize(SpriteCommon* spriteCommon, Player* player, const std::string& layoutPath) {
+    // レイアウト読込後に現在能力と入力機器を反映し、表示は閉じた状態から始める。
     spriteCommon_ = spriteCommon;
     inputManager_ = InputManager::GetInstance();
     player_ = player;
@@ -161,9 +168,13 @@ void ControlsGuideOverlay::Initialize(SpriteCommon* spriteCommon, Player* player
 #endif
 }
 
-ControlsGuideOverlay::~ControlsGuideOverlay() { Finalize(); }
+ControlsGuideOverlay::~ControlsGuideOverlay() {
+    // 編集コマンドと所有スプライトを破棄する共通経路を使う。
+    Finalize();
+}
 
 void ControlsGuideOverlay::Finalize() {
+    // エディターの選択参照を先に外し、所有する表示要素とプレイヤー参照を解放する。
 #ifdef USE_IMGUI
     EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
     if (EditorManager::GetInstance()->GetSelectedObject() == this) {
@@ -194,6 +205,7 @@ void ControlsGuideOverlay::Finalize() {
 
 // 開いた直後のTab入力で閉じないよう、キーが離れるまで再トグルを抑制します。
 void ControlsGuideOverlay::SetActive(bool active) {
+    // 開閉の切替時にスライドを止め、開いた同じ入力で閉じないよう抑制する。
     if (isActive_ == active) {
         return;
     }
@@ -268,6 +280,7 @@ void ControlsGuideOverlay::Update(float deltaTime) {
 }
 
 void ControlsGuideOverlay::Draw() {
+    // ガイドが閉じている間は所有スプライトの描画を全て省く。
     if (!isActive_) {
         return;
     }
@@ -280,6 +293,7 @@ void ControlsGuideOverlay::Draw() {
 }
 
 void ControlsGuideOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    // リプレイへは所有権を移さず、既存スプライトの参照だけ渡す。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
     for (const auto& sprite : sprites_) {
         if (sprite) {
@@ -289,6 +303,7 @@ void ControlsGuideOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySpri
 }
 
 void ControlsGuideOverlay::CaptureReplayState(json& state) const {
+    // 開閉、ページ移動、図鑑スクロールを同じフレームへ戻せるよう記録する。
     state = {{"active", isActive_},
              {"suppressInput", suppressToggleInput_},
              {"sliding", isSliding_},
@@ -304,6 +319,7 @@ void ControlsGuideOverlay::CaptureReplayState(json& state) const {
 
 // 入力値を範囲内へ丸めた後に表示を組み直し、再生位置と見た目を一致させます。
 void ControlsGuideOverlay::RestoreReplayState(const json& state) {
+    // 記録値をページ・スクロール範囲へ収め、再生位置に合わせて表示を組み直す。
     if (!state.is_object()) {
         return;
     }
@@ -440,6 +456,7 @@ void ControlsGuideOverlay::LoadLayout(const std::string& layoutPath) {
 
 // 名前で生成済みスプライトを拾い、ページごとの描画要素へ割り当てます。
 void ControlsGuideOverlay::BindLayoutSprites() {
+    // JSONで生成した名前付きSpriteをページ・矢印・図鑑要素へ割り当てる。
     background_ = BindElement("controls_guide_background");
     leftArrow_ = BindElement("controls_guide_left_arrow");
     rightArrow_ = BindElement("controls_guide_right_arrow");
@@ -466,6 +483,7 @@ void ControlsGuideOverlay::BindLayoutSprites() {
 }
 
 Sprite* ControlsGuideOverlay::FindSprite(const std::string& name) const {
+    // レイアウト名が一致する所有Spriteを探し、未定義ならnullptrを返す。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
             return sprite.get();
@@ -475,6 +493,7 @@ Sprite* ControlsGuideOverlay::FindSprite(const std::string& name) const {
 }
 
 ControlsGuideOverlay::Element ControlsGuideOverlay::BindElement(const std::string& name) const {
+    // 名前で見つけたSpriteと配置基準を一つの表示要素として保持する。
     Element element;
     element.sprite = FindSprite(name);
     if (element.sprite) {
@@ -486,6 +505,7 @@ ControlsGuideOverlay::Element ControlsGuideOverlay::BindElement(const std::strin
 }
 
 void ControlsGuideOverlay::SetAllVisible(bool visible) {
+    // ページ切替前に全要素の可視性を揃え、前ページの残像を防ぐ。
     bookVisible_ = visible && currentPage_ == 1;
     for (auto& sprite : sprites_) {
         if (sprite) {
@@ -503,6 +523,7 @@ void ControlsGuideOverlay::SetAllVisible(bool visible) {
 }
 
 void ControlsGuideOverlay::SetPageVisible(int pageIndex, bool visible) {
+    // 指定ページに属する要素だけを切り替え、他ページの状態を保持する。
     if (pageIndex < 0 || pageIndex >= kPageCount) {
         return;
     }
@@ -532,6 +553,7 @@ void ControlsGuideOverlay::SetPageVisible(int pageIndex, bool visible) {
 }
 
 void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
+    // ページ移動量を基準配置へ加え、スライド後に位置を戻せるようにする。
     if (pageIndex < 0 || pageIndex >= kPageCount) {
         return;
     }
@@ -559,6 +581,7 @@ void ControlsGuideOverlay::SetPageOffset(int pageIndex, float offsetX) {
 
 // 送り元と送り先を両方表示し、移動完了時に送り元だけ隠します。
 void ControlsGuideOverlay::StartSlide(int direction) {
+    // 現ページと隣ページを同時に見せ、方向に応じたスライドを始める。
     if (isSliding_ || direction == 0) {
         return;
     }
@@ -574,6 +597,7 @@ void ControlsGuideOverlay::StartSlide(int direction) {
 }
 
 void ControlsGuideOverlay::UpdateSlide(float deltaTime) {
+    // 補間率で二枚を反対方向へ動かし、完了時に送り元を隠す。
     if (!isSliding_) {
         SetPageOffset(currentPage_, 0.0f);
         return;
@@ -597,6 +621,7 @@ void ControlsGuideOverlay::UpdateSlide(float deltaTime) {
 }
 
 void ControlsGuideOverlay::UpdateStaticVisuals() {
+    // 選択ページに応じた矢印やページ位置の表示を更新する。
     const float pulse = 0.5f + 0.5f * std::sin(time_ * 5.2f);
 
     const auto updateArrow = [pulse](Element& arrow, float phase) {
@@ -626,6 +651,7 @@ void ControlsGuideOverlay::UpdateStaticVisuals() {
 
 // コピー能力が変わった時だけ画像を差し替え、毎フレームの再読込を避けます。
 void ControlsGuideOverlay::RefreshAbilityVisuals() {
+    // 能力変更時だけ説明画像と肖像を差し替え、不要な毎フレーム読込を避ける。
     if (bookEnabled_) {
         RefreshBook();
         return;
@@ -675,6 +701,7 @@ void ControlsGuideOverlay::RefreshAbilityVisuals() {
 
 // 入力機器が切り替わった時にキー画像を更新し、元の枠へ収まる大きさへ調整します。
 void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
+    // 入力機器が変わったときだけキー表示を差し替え、同時表示による混乱を防ぐ。
     const bool gamepadMode = inputManager_ && inputManager_->IsGamepadMode();
     if (!force && inputGlyphGamepadMode_ == gamepadMode)
         return;
@@ -719,6 +746,7 @@ void ControlsGuideOverlay::RefreshInputGlyphs(bool force) {
 
 // 能力種別が変わった時は図鑑の画像とスクロール位置を一緒に更新します。
 void ControlsGuideOverlay::RefreshBook() {
+    // コピー能力の図鑑データを選び直し、スクロール位置も新しい内容へ合わせる。
     const std::string nextKey = bookPreviewKey_.empty() ? ResolveBookKey(player_) : bookPreviewKey_;
     if (nextKey == bookKey_)
         return;
@@ -753,6 +781,7 @@ void ControlsGuideOverlay::RefreshBook() {
 }
 
 void ControlsGuideOverlay::UpdateBook(float deltaTime) {
+    // 入力に応じた目標位置へ図鑑を滑らかにスクロールする。
     if (!bookEnabled_)
         return;
     const float dt = std::clamp(deltaTime, 0.0f, 0.1f);
@@ -844,6 +873,7 @@ void ControlsGuideOverlay::LayoutBook(float offsetX) {
 }
 
 void ControlsGuideOverlay::DrawImGui() {
+    // 実レイアウトを見ながら図鑑の配置とスクロールを調整する編集欄を出す。
 #ifdef USE_IMGUI
     ImGui::TextWrapped("Tabの能力図鑑。表示確認だけでプレイヤーの能力は変更しません。");
     const char* keys[] = {"", "normal", "pink", "fire", "thunder", "wind", "bomb"};
@@ -953,6 +983,7 @@ void ControlsGuideOverlay::DrawImGui() {
 }
 
 bool ControlsGuideOverlay::IsToggleHeld() const {
+    // キーボードとゲームパッドの開閉入力をまとめ、開いた直後の再入力を抑制する。
     if (!inputManager_) {
         return false;
     }

@@ -12,6 +12,7 @@
 
 // リプレイの再生成・状態退避・復元。JSONキーと復元順を維持し、保存形式は変更しない。
 std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descriptor) {
+    // 記録された型情報から実体を作り直し、シーンの描画基盤がない場合は復元しない。
     Object3dCommon* common = GetObject3dCommon();
     if (!common || !descriptor.is_object()) {
         return nullptr;
@@ -56,9 +57,13 @@ std::unique_ptr<Object3d> GamePlayScene::CreateReplayObject(const json& descript
     return object;
 }
 
-void GamePlayScene::OnReplayObjectsRecreated() { LevelLoader::ConfigureEnemyRuntimeReferences(this); }
+void GamePlayScene::OnReplayObjectsRecreated() {
+    // 再生成した敵の参照先は古いシーンの実体を指すため、結び直す。
+    LevelLoader::ConfigureEnemyRuntimeReferences(this);
+}
 
 void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+    // 共通Spriteに加え、ゲーム中のUIも記録対象へ含める。
     BaseScene::CollectReplaySprites(replaySprites);
     auto add = [&replaySprites](Sprite* sprite) {
         if (sprite) {
@@ -91,6 +96,7 @@ void GamePlayScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 
 // オブジェクト以外の進行状態も保存し、再生位置を変えた際に HUD や演出の途中へ戻せるようにします。
 void GamePlayScene::CaptureReplaySceneState(json& state) const {
+    // オーバーレイと演出の状態をまとめ、フレーム復元時のUI差を防ぐ。
     json pauseState = json::object();
     json controlsGuideState = json::object();
     json settingsState = json::object();
@@ -159,6 +165,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
 
 // 保存されていない項目は現値を保ち、古いリプレイの状態も読み戻せるようにします。
 void GamePlayScene::RestoreReplaySceneState(const json& state) {
+    // 旧形式の記録にも対応できるよう、存在する項目だけを復元する。
     if (!state.is_object()) {
         return;
     }

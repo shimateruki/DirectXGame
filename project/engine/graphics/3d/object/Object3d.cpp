@@ -22,6 +22,7 @@
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
+    // 保存済み相対パスはResources配下も試し、旧シーンの地形判定を解決する。
     std::filesystem::path filePath(path);
     if (std::filesystem::exists(filePath)) {
         return filePath;
@@ -36,6 +37,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
 }
 
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
+    // 親の祖先に自分がいれば循環になるため、設定前に階層を調べる。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
         if (current == child) {
             return true;
@@ -45,6 +47,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
 }
 
 void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
+    // 行列から倍率を分離して回転を求め、親変更後のワールド姿勢を保持する。
     const float epsilon = 0.0001f;
 
     Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
@@ -350,6 +353,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 // ========================================================================
 
 void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    // プレビュー用カメラでは補助モデルの表示条件を揃え、通常描画と同じ可視性を守る。
     if (!GetIsRenderVisible()) return;
 #ifdef USE_IMGUI
     if (IsCameraObject() && !EditorToolSettings::Get().IsVisible("cameraBody")) return;
@@ -369,10 +373,12 @@ void Object3d::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
 }
 
 void Object3d::UpdateLocalMatrix() {
+    // ローカルのTransform値を行列へ確定する。
     transform_.UpdateMatrix();
 }
 
 void Object3d::UpdateWorldMatrix(bool refreshRenderer) {
+    // 親子階層を順に更新し、必要なときだけ描画定数も更新する。
     transform_.UpdateMatrix();
 
     if (refreshRenderer && meshRenderer_) {
@@ -386,6 +392,7 @@ void Object3d::UpdateWorldMatrix(bool refreshRenderer) {
 }
 
 void Object3d::RefreshRenderCameraData() {
+    // プレビューカメラの切替後に、子も含めてカメラ依存の描画値を更新する。
     transform_.UpdateMatrix();
 
     if (meshRenderer_) {
@@ -399,6 +406,7 @@ void Object3d::RefreshRenderCameraData() {
 }
 
 void Object3d::SetParent(Object3d* parent, bool keepWorldTransform) {
+    // 親子の循環を拒否し、指定された場合は付け替え前のワールド姿勢を維持する。
     if (parent == this || HasParentInChain(parent, this)) {
         return;
     }
@@ -489,96 +497,112 @@ void Object3d::SetModel(const std::string& modelName) {
 }
 
 void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 可視メッシュだけを深度・背景参照付きの水描画パスへ送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // マグマ用パスでは深度と色バッファをレンダラーへ渡す。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawMagma(depthSrvHandle, colorSrvHandle);
     }
 }
 
 void Object3d::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 氷材質は画面色を参照する専用パスで可視メッシュだけ描く。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawIce(depthSrvHandle, colorSrvHandle);
     }
 }
 
 void Object3d::DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 背景を参照する炎の描画を通常の不透明パスから分離する。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawFire(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // レーザー材質は深度と背景参照を使う専用パスへ送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLaser(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 半透明のスライム材質を背景参照付きの専用パスで描く。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 衝撃波の背景歪みを扱う描画パスへ渡す。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawShockwave(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 液面との接触表現を深度・背景参照付きパスに送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 被弾亀裂を通常材質とは別の画面参照パスへ送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 上昇気流の透過表現を専用パスで描く。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawUpdraft(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 拘束演出が背景を参照できる専用パスへ送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawStunBind(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 王冠解放の特殊材質を通常のメッシュ描画から分ける。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 毒胞子の透過描画を専用パスへ送る。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 雲の背景参照処理をレンダラーの専用パスへ委譲する。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawCloud(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // ゲートのポータル材質を深度・背景参照付きで描く。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawGatePortal(depthSrvHandle, grabSrvHandle);
     }
 }
 
 void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+    // プレビューでは材質番号と専用カメラを渡し、本番と同じ特殊材質パスを使う。
     if (!GetIsRenderVisible() || !meshRenderer_) {
         return;
     }
@@ -591,105 +615,128 @@ void Object3d::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHan
 }
 
 void Object3d::DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 風球の背景歪みを専用パスで描く。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawWindOrb(depthSrvHandle, grabSrvHandle);
     }
 }
 
 Model* Object3d::GetModel() const {
+    // メッシュレンダラーが無い場合はモデルも存在しない。
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
 
 std::string Object3d::GetModelName() const {
+    // モデル未設定なら空文字列を返し、管理器への参照を増やさない。
     return meshRenderer_ ? meshRenderer_->GetModelName() : "";
 }
 
 void Object3d::SetMeshDrawIndex(int meshIndex) {
+    // 複数メッシュの表示対象をレンダラー側で切り替える。
     if (meshRenderer_) {
         meshRenderer_->SetMeshDrawIndex(meshIndex);
     }
 }
 
 int Object3d::GetMeshDrawIndex() const {
+    // レンダラーが無いときは-1を未選択として返す。
     return meshRenderer_ ? meshRenderer_->GetMeshDrawIndex() : -1;
 }
 
 bool Object3d::IsMeshDrawFiltered() const {
+    // メッシュ単位の表示制限はレンダラーがある場合だけ有効にする。
     return meshRenderer_ ? meshRenderer_->IsMeshDrawFiltered() : false;
 }
 
 void Object3d::SetLodEnabled(bool enabled) {
+    // 距離に応じたモデル切替の設定をレンダラーへ渡す。
     if (meshRenderer_) {
         meshRenderer_->SetLodEnabled(enabled);
     }
 }
 
 bool Object3d::IsLodEnabled() const {
+    // レンダラー未初期化時はLODを無効として扱う。
     return meshRenderer_ ? meshRenderer_->IsLodEnabled() : false;
 }
 
 bool Object3d::HasLodLevels() const {
+    // モデルに切替段階が定義されているかを問い合わせる。
     return meshRenderer_ ? meshRenderer_->HasLodLevels() : false;
 }
 
 const std::vector<Object3d::LodLevel>& Object3d::GetLodLevels() const {
+    // レンダラーが無い場合も寿命の安定した空一覧を返す。
     static const std::vector<LodLevel> empty;
     return meshRenderer_ ? meshRenderer_->GetLodLevels() : empty;
 }
 
 void Object3d::SetLodLevels(const std::vector<LodLevel>& levels) {
+    // 編集したLOD段階を描画側へ反映する。
     if (meshRenderer_) {
         meshRenderer_->SetLodLevels(levels);
     }
 }
 
 void Object3d::ClearLodLevels() {
+    // 距離別モデルの手動設定を描画側から解除する。
     if (meshRenderer_) {
         meshRenderer_->ClearLodLevels();
     }
 }
 
 bool Object3d::SetLodLevelDistance(int level, float distance) {
+    // 指定段階が編集できなければfalseを返し、呼び出し側へ失敗を伝える。
     return meshRenderer_ ? meshRenderer_->SetLodLevelDistance(level, distance) : false;
 }
 
 bool Object3d::ReloadLodManifest() {
+    // 現在のモデル名に対応するLOD定義を読み直す。
     return meshRenderer_ ? meshRenderer_->LoadLodManifestForModel(GetModelName()) : false;
 }
 
 int Object3d::GetActiveLodLevel() const {
+    // LOD未使用時は基準段階の0を返す。
     return meshRenderer_ ? meshRenderer_->GetActiveLodLevel() : 0;
 }
 
 std::string Object3d::GetActiveLodModelName() const {
+    // LOD描画中のモデル名を返し、未設定なら元モデル名に戻す。
     return meshRenderer_ ? meshRenderer_->GetActiveModelName() : GetModelName();
 }
 
 float Object3d::GetLodCameraDistance() const {
+    // レンダラー未初期化時はカメラ距離を0として返す。
     return meshRenderer_ ? meshRenderer_->GetCameraDistanceToObject() : 0.0f;
 }
 
 Vector4 Object3d::GetColor() const {
+    // 材質が無い場合は不透明な白を既定色として返す。
     return meshRenderer_ ? meshRenderer_->GetColor() : Vector4{ 1,1,1,1 };
 }
 
 void Object3d::SetColor(const Vector4& color) {
+    // 表示色は実際の材質を持つレンダラーへだけ反映する。
     if (meshRenderer_) meshRenderer_->SetColor(color);
 }
 
 void Object3d::SetBlendMode(BlendMode blendMode) {
+    // 透過の描画方式をレンダラーの材質設定へ渡す。
     if (meshRenderer_) meshRenderer_->SetBlendMode(blendMode);
 }
 
 BlendMode Object3d::GetBlendMode() const {
+    // 材質が無い場合はブレンドなしとして返す。
     return meshRenderer_ ? meshRenderer_->GetBlendMode() : BlendMode::kNone;
 }
 
 void Object3d::SetIntensity(float intensity) {
+    // オブジェクトごとの照明強度をレンダラーへ反映する。
     if (meshRenderer_) meshRenderer_->SetIntensity(intensity);
 }
 
 float Object3d::GetIntensity() const {
+    // 光源データが未設定なら中立の強度1を使う。
     if (meshRenderer_ && meshRenderer_->GetLightData()) {
         return meshRenderer_->GetLightData()->intensity;
     }
@@ -698,28 +745,34 @@ float Object3d::GetIntensity() const {
 
 // 古いアクセッサの互換性維持
 Object3d::DirectionalLight* Object3d::GetDirectionalLightData() {
+    // 旧APIとの互換用にレンダラー所有の光源データを公開する。
     return meshRenderer_ ? meshRenderer_->GetLightData() : nullptr;
 }
 
 Object3d::Material* Object3d::GetMaterialData() {
+    // 旧APIからはレンダラー所有の材質データを参照させる。
     return meshRenderer_ ? meshRenderer_->GetMaterialData() : nullptr;
 }
 
 void Object3d::SetMaterialType(int32_t type) {
+    // 特殊材質の種類を描画側の設定へ渡す。
     if (meshRenderer_) meshRenderer_->SetMaterialType(type);
 }
 
 void Object3d::SetShininess(float shininess) {
+    // 材質が存在するときだけ旧来の光沢値を書き換える。
     if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
         meshRenderer_->GetMaterialData()->shininess = shininess;
     }
 }
 
 int32_t Object3d::GetMaterialType() const {
+    // 材質未設定なら標準材質の番号0を返す。
     return meshRenderer_ ? meshRenderer_->GetMaterialType() : 0;
 }
 
 void Object3d::SetSelectedLighting(int32_t type) {
+    // 材質が存在するときだけライティングの選択値を更新する。
     if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
         meshRenderer_->GetMaterialData()->selectedLighting = type;
     }

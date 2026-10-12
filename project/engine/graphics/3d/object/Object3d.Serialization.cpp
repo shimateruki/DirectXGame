@@ -22,6 +22,7 @@
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
+    // 保存済みの相対パスと Resources 基準のパスをどちらも読み込めるようにする。
     std::filesystem::path filePath(path);
     if (std::filesystem::exists(filePath)) {
         return filePath;
@@ -36,6 +37,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
 }
 
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
+    // 親子付け時に循環参照ができないよう、候補の祖先を先にたどる。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
         if (current == child) {
             return true;
@@ -45,6 +47,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
 }
 
 void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
+    // 保存された行列をスケール・回転・位置へ分解し、Quaternion を回転の基準にする。
     const float epsilon = 0.0001f;
 
     Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
@@ -83,6 +86,7 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // 保存項目が増えた時は、このファイル内でExport/Importの対応をそろえる。
 // ========================================================================
 bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) const {
+    // 設定値が空でも Editor 上に配置したコンポーネントを区別する。
     if (componentTypeId.empty()) {
         return false;
     }
@@ -92,6 +96,7 @@ bool Object3d::HasComponentPresenceMarker(const std::string& componentTypeId) co
 }
 
 void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bool present) {
+    // コンポーネントの存在印だけを変更し、未知の設定値は消さない。
     if (componentTypeId.empty()) {
         return;
     }
@@ -116,6 +121,7 @@ void Object3d::SetComponentPresenceMarker(const std::string& componentTypeId, bo
 }
 
 json Object3d::SerializeFeatureComponents() const {
+    // 既知項目を現在の状態で書き直す前に、未知の拡張項目を残す。
     json components = opaqueComponents_.is_object() ? opaqueComponents_ : json::object();
 
     const auto clearKnownPayload = [&components](
@@ -208,6 +214,7 @@ json Object3d::SerializeFeatureComponents() const {
 }
 
 void Object3d::DeserializeFeatureComponents(const json& objectData) {
+    // 保存データの未知項目は後で再保存できるよう保持し、既知項目だけ実体へ反映する。
     opaqueComponents_ = objectData.contains("components") && objectData["components"].is_object()
         ? objectData["components"]
         : json::object();
@@ -378,6 +385,12 @@ json Object3d::ExportToJson() {
         d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
         d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
         d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
+        if (!c.footprint.empty()) {
+            d["collider"]["footprint"] = nlohmann::json::array();
+            for (const Vector2& point : c.footprint) {
+                d["collider"]["footprint"].push_back({ point.x, point.y });
+            }
+        }
     }
     d["collisionAttribute"] = GetCollisionAttribute();
     d["collisionMask"] = GetCollisionMask();
@@ -624,6 +637,15 @@ void Object3d::ImportFromJson(const json& j) {
         if (col.contains("size")) config.size = { col["size"][0], col["size"][1], col["size"][2] };
         if (col.contains("center")) config.center = { col["center"][0], col["center"][1], col["center"][2] };
         if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
+        config.footprint.clear();
+        if (col.contains("footprint") && col["footprint"].is_array()) {
+            for (const auto& point : col["footprint"]) {
+                if (point.is_array() && point.size() == 2 &&
+                    point[0].is_number() && point[1].is_number()) {
+                    config.footprint.push_back({ point[0].get<float>(), point[1].get<float>() });
+                }
+            }
+        }
         collider_->SetConfig(config);
     }
     auto loadCategoryMask = [&j](const char* idsKey, const char* legacyKey, uint32_t fallback) {

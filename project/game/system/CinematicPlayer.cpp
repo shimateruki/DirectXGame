@@ -16,15 +16,23 @@
 
 namespace {
 AnimationInterpolation::EasingType ToEasingType(int value) {
+    // 保存された番号を有効な補間方式へ制限する。
     value = std::clamp(value, 0, 4);
     return static_cast<AnimationInterpolation::EasingType>(value);
 }
 
-Vector3 AddVector3(const Vector3& a, const Vector3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+Vector3 AddVector3(const Vector3& a, const Vector3& b) {
+    // 相対トラックの位置・回転を基準姿勢へ加える。
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
 
-Vector3 MultiplyVector3(const Vector3& a, const Vector3& b) { return {a.x * b.x, a.y * b.y, a.z * b.z}; }
+Vector3 MultiplyVector3(const Vector3& a, const Vector3& b) {
+    // 相対トラックの拡大率は基準スケールとの成分積で扱う。
+    return {a.x * b.x, a.y * b.y, a.z * b.z};
+}
 
 void ApplyPose(Object3d* object, const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+    // 設定値とワールド行列を同じフレームで揃え、表示の遅れを防ぐ。
     if (!object) {
         return;
     }
@@ -39,6 +47,7 @@ void ApplyPose(Object3d* object, const Vector3& position, const Vector3& rotatio
 // シネマティックを時刻から評価します。シークでは姿勢を再計算し、イベントの再発火は呼び出し側が指定します。
 
 void CinematicPlayer::Initialize(SceneManager* sceneManager) {
+    // 新しいシーンで使う前に、前回の束縛先とトラック状態を消す。
     sceneManager_ = sceneManager;
     sequence_ = nullptr;
     boundScene_ = nullptr;
@@ -55,6 +64,7 @@ void CinematicPlayer::Initialize(SceneManager* sceneManager) {
 }
 
 void CinematicPlayer::SetSequence(CinematicSequence* sequence) {
+    // 再生中の演出を停止して姿勢を戻し、新しいシーケンスへ束縛し直す。
     if (isPlaying_ || isPreviewing_) {
         Stop(true);
     }
@@ -64,6 +74,7 @@ void CinematicPlayer::SetSequence(CinematicSequence* sequence) {
 }
 
 void CinematicPlayer::RefreshBindings() {
+    // 現シーンのObjectを解決し、VFX・音声・アニメーションの実行状態を作り直す。
     anchorCaptured_ = false;
     boundScene_ = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     transformRuntime_.clear();
@@ -113,6 +124,7 @@ void CinematicPlayer::RefreshBindings() {
 }
 
 void CinematicPlayer::Play(bool loop) {
+    // 基準姿勢と発火状態を取り直し、時刻0の演出も評価する。
     Stop(true);
     RefreshBindings();
     CaptureBasePoses();
@@ -125,6 +137,7 @@ void CinematicPlayer::Play(bool loop) {
 }
 
 void CinematicPlayer::Resume(bool loop) {
+    // 一時停止から再開する際は、現在時刻のループ音だけ再始動する。
     if (!sequence_) {
         return;
     }
@@ -149,6 +162,7 @@ void CinematicPlayer::Resume(bool loop) {
 }
 
 void CinematicPlayer::Pause() {
+    // 姿勢はプレビューとして残し、音とVFXの副作用だけ止める。
     if (!isPlaying_) {
         return;
     }
@@ -163,6 +177,7 @@ void CinematicPlayer::Pause() {
 }
 
 void CinematicPlayer::Stop(bool restorePose) {
+    // 停止時はVFX・音・カメラを解除し、必要なら開始前の姿勢へ戻す。
     for (auto& runtime : vfxRuntime_) {
         runtime.sequencer.Stop();
         runtime.started = false;
@@ -221,6 +236,7 @@ void CinematicPlayer::Update(float deltaTime) {
 }
 
 void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents) {
+    // シーク時のイベント再発火は呼び出し側に選ばせ、姿勢は指定時刻から再評価する。
     if (!sequence_) {
         return;
     }
@@ -235,6 +251,7 @@ void CinematicPlayer::SetTime(float timeSeconds, bool dispatchEvents) {
 }
 
 void CinematicPlayer::BeginPreview() {
+    // 編集前の姿勢を一度だけ保存し、シーク終了時に復元できるようにする。
     if (isPlaying_ || isPreviewing_ || !sequence_) {
         return;
     }
@@ -245,6 +262,7 @@ void CinematicPlayer::BeginPreview() {
 }
 
 void CinematicPlayer::EndPreview(bool restorePose) {
+    // プレビューを閉じるときはカメラと音を止め、復元指定があれば元の姿勢へ戻す。
     if (!isPreviewing_) {
         return;
     }
@@ -258,6 +276,7 @@ void CinematicPlayer::EndPreview(bool restorePose) {
 }
 
 float CinematicPlayer::GetDuration() const {
+    // JSONの指定時間より長い実VFXや旧Ghost軌跡も末尾に含める。
     if (!sequence_) {
         return 0.1f;
     }
@@ -272,6 +291,7 @@ float CinematicPlayer::GetDuration() const {
 }
 
 bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& rotation, Vector3& scale) const {
+    // 編集前に取得した姿勢だけ返し、未束縛Objectの値は触らない。
     if (!object) {
         return false;
     }
@@ -287,6 +307,7 @@ bool CinematicPlayer::GetBasePose(Object3d* object, Vector3& position, Vector3& 
 }
 
 Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) const {
+    // 専用Resolverを優先し、通常はEvent IDを名前より優先して現シーン内を探す。
     if (bindingResolver_)
         return bindingResolver_(binding);
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
@@ -309,6 +330,7 @@ Object3d* CinematicPlayer::ResolveTarget(const CinematicObjectBinding& binding) 
 }
 
 float CinematicPlayer::GetTransformTrackDuration(size_t index) const {
+    // キー列が無い旧データではGhost Recorderの長さを使う。
     if (!sequence_ || index >= sequence_->transformTracks.size()) {
         return 0.0f;
     }
@@ -324,6 +346,7 @@ float CinematicPlayer::GetTransformTrackDuration(size_t index) const {
 }
 
 void CinematicPlayer::CaptureBasePoses() {
+    // 演出で動かすObjectと描画用アニメーションの開始姿勢を保存する。
     anchorCaptured_ = false;
     anchorCaptured_ = GetAnchorPose(anchorPosition_, anchorYaw_);
     for (auto& runtime : transformRuntime_) {
@@ -401,6 +424,7 @@ void CinematicPlayer::RestoreBasePoses() {
 }
 
 void CinematicPlayer::ResetRuntimeEvents() {
+    // ループの次周で一回限りのVFX・音・イベントが再び発火できるようにする。
     for (auto& runtime : vfxRuntime_) {
         runtime.sequencer.Stop();
         runtime.started = false;
@@ -545,6 +569,7 @@ void CinematicPlayer::ApplyBodyPose() {
 }
 
 bool CinematicPlayer::GetAnchorPose(Vector3& position, float& yaw) const {
+    // 再生開始時に固定したアンカーを優先し、無ければ現シーンのObjectから求める。
     if (anchorCaptured_) {
         position = anchorPosition_;
         yaw = anchorYaw_;
@@ -629,6 +654,7 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
 }
 
 void CinematicPlayer::DispatchSignals(float timeSeconds, float previousTimeSeconds) {
+    // 前回から今回までに通過した有効なSignalだけ通知する。
     if (!sequence_ || !signalCallback_ || timeSeconds < previousTimeSeconds) {
         return;
     }
@@ -641,6 +667,7 @@ void CinematicPlayer::DispatchSignals(float timeSeconds, float previousTimeSecon
 }
 
 void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSeconds) {
+    // 開始時刻を飛び越えたフレームでは経過分だけ追いつかせる。
     if (!sequence_) {
         return;
     }
@@ -666,6 +693,7 @@ void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSecon
 }
 
 void CinematicPlayer::UpdateAudioClips(float timeSeconds, float previousTimeSeconds) {
+    // 開始境界を通過したClipだけ鳴らし、ループ音は終了時刻で止める。
     if (!sequence_) {
         return;
     }
@@ -690,6 +718,7 @@ void CinematicPlayer::UpdateAudioClips(float timeSeconds, float previousTimeSeco
 }
 
 void CinematicPlayer::StopAudioClips() {
+    // PauseやStop後にシーケンス由来のループ音を残さない。
     if (!sequence_) {
         return;
     }
@@ -770,6 +799,7 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
 }
 
 void CinematicPlayer::StopCameraTrack() {
+    // シーンObjectカメラの上書きを解除して通常カメラへ戻す。
     if (!activeCameraObject_) {
         return;
     }

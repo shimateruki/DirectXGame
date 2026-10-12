@@ -18,6 +18,7 @@ constexpr float kSecondBounceHeight = 0.22f;
 } // namespace
 
 void PlayerGateReturnAnimation::Start(Player* player, const Route& route) {
+    // 前の演出で無効にした接触を戻してから、新しい経路と操作状態を記録する。
     if (player && collisionSuspended_) {
         RestoreCollision(player);
     }
@@ -59,12 +60,14 @@ void PlayerGateReturnAnimation::Update(Player* player, float deltaTime) {
 }
 
 void PlayerGateReturnAnimation::Stop(Player* player, bool restoreControl) {
+    // 中断時も終点姿勢と接触設定を復元し、操作権だけ引数に従う。
     active_ = false;
     finished_ = false;
     ApplyFinishedPose(player, restoreControl);
 }
 
 Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) const {
+    // 経路の向きは水平面に限定し、ゼロ入力には前方向を使う。
     Vector3 flat{direction.x, 0.0f, direction.z};
     const float lengthSq = flat.x * flat.x + flat.z * flat.z;
     if (lengthSq <= 0.000001f) {
@@ -76,12 +79,14 @@ Vector3 PlayerGateReturnAnimation::NormalizeDirection(const Vector3& direction) 
 }
 
 Vector3 PlayerGateReturnAnimation::Lerp(const Vector3& a, const Vector3& b, float t) const {
+    // 経路の端を越えないよう、補間率を0〜1に制限する。
     t = Clamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
 Vector3 PlayerGateReturnAnimation::Bezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3,
                                           float t) const {
+    // 四点の三次Bezierでゲートへの曲線経路を作る。
     t = Clamp01(t);
     const float inv = 1.0f - t;
     const float b0 = inv * inv * inv;
@@ -92,15 +97,20 @@ Vector3 PlayerGateReturnAnimation::Bezier(const Vector3& p0, const Vector3& p1, 
             p0.z * b0 + p1.z * b1 + p2.z * b2 + p3.z * b3};
 }
 
-float PlayerGateReturnAnimation::Clamp01(float value) const { return std::clamp(value, 0.0f, 1.0f); }
+float PlayerGateReturnAnimation::Clamp01(float value) const {
+    // 演出時間を経路の定義域へ収める。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float PlayerGateReturnAnimation::EaseOutCubic(float value) const {
+    // 終点近くで減速する三次曲線を適用する。
     value = Clamp01(value);
     const float inv = 1.0f - value;
     return 1.0f - inv * inv * inv;
 }
 
 float PlayerGateReturnAnimation::EaseInOutCubic(float value) const {
+    // 前半を加速、後半を減速させて切替点の速度をつなぐ。
     value = Clamp01(value);
     if (value < 0.5f) {
         return 4.0f * value * value * value;
@@ -204,6 +214,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
 }
 
 void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreControl) {
+    // 演出中の傾きと移動を消し、経路の終点へ確定させる。
     if (!player) {
         return;
     }
@@ -239,6 +250,7 @@ void PlayerGateReturnAnimation::SuspendCollision(Player* player) {
 }
 
 void PlayerGateReturnAnimation::RestoreCollision(Player* player) {
+    // 開始前に保存した属性とマスクだけを戻す。
     if (!player || !collisionSuspended_) {
         return;
     }

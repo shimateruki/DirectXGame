@@ -9,6 +9,7 @@
 #pragma comment(lib, "dxcompiler.lib")
 
 void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
+    // 描画パスごとに専用 PSO を先に作り、実行中の描画切り替えでは再コンパイルしない。
     assert(dxCommon);
     dxCommon_ = dxCommon;
     CreateRootSignature();
@@ -39,6 +40,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
 }
 
 void Object3dCommon::SetGraphicsCommand() {
+    // ルート番号 15 は通常描画と影描画で共有する草の接触履歴に対応する。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetGraphicsRoot32BitConstants(15, 32, FoliageInteraction::samples.data(), 0);
@@ -46,6 +48,7 @@ void Object3dCommon::SetGraphicsCommand() {
 }
 
 void Object3dCommon::SetPipelineState(BlendMode blendMode) {
+    // 呼び出し元が選んだブレンド方式と初期化時に作成した PSO の添字を揃える。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetPipelineState(graphicsPipelineStates_[static_cast<size_t>(blendMode)].Get());
 }
@@ -195,11 +198,13 @@ void Object3dCommon::CreatePipelineStates() {
 }
 
 void Object3dCommon::SetShadowPipelineState(bool foliage) {
+    // 葉の影だけ深度バイアスを弱め、薄い面が地面の裏へ消えるのを防ぐ。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetPipelineState(foliage ? foliageShadowPipelineState_.Get() : shadowPipelineState_.Get());
 }
 
 void Object3dCommon::SetShadowGraphicsCommand() {
+    // 影パスは色ターゲットを持たないため、通常描画とは別のルート構成を使う。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(shadowRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -285,6 +290,7 @@ void Object3dCommon::CreateLocalFogPipeline() {
 }
 
 void Object3dCommon::SetLocalFogGraphicsCommand() {
+    // 深度から霧量を再構成する専用パスへ切り替える。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(localFogRootSignature_.Get());
     commandList->SetPipelineState(localFogPipelineState_.Get());
@@ -445,6 +451,7 @@ void Object3dCommon::CreateWaterPipeline() {
 
 // 描画コマンドセット
 void Object3dCommon::SetWaterGraphicsCommand() {
+    // 水材質の共有ルートと半透明 PSO を対で設定する。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(waterPipelineState_.Get());
@@ -539,6 +546,7 @@ void Object3dCommon::CreateIcePipeline() {
 
 // コマンドセット関数
 void Object3dCommon::SetMagmaGraphicsCommand() {
+    // 水系の定数バッファ配置を共用しつつ、不透明のマグマ PSO を選ぶ。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(magmaPipelineState_.Get());
@@ -546,6 +554,7 @@ void Object3dCommon::SetMagmaGraphicsCommand() {
 }
 
 void Object3dCommon::SetIceGraphicsCommand() {
+    // 氷の半透明パスへ切り替え、深度書き込みをしない PSO を使う。
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(icePipelineState_.Get());
@@ -587,6 +596,7 @@ void Object3dCommon::SetFireGraphicsCommand() {
 }
 
 void Object3dCommon::CreateLaserPipeline() {
+    // ビームは加算合成し、深度テクスチャによる遮蔽をシェーダー側で判定する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/LaserBeam.VS.hlsl",
         L"Resources/shader/materials/LaserBeam.PS.hlsl",
@@ -597,6 +607,7 @@ void Object3dCommon::CreateLaserPipeline() {
 }
 
 void Object3dCommon::CreateSlimeGelPipeline() {
+    // ゼリー状の表面は両面を半透明合成する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/SlimeGel.VS.hlsl",
         L"Resources/shader/materials/SlimeGel.PS.hlsl",
@@ -607,6 +618,7 @@ void Object3dCommon::CreateSlimeGelPipeline() {
 }
 
 void Object3dCommon::CreateShockwavePipeline() {
+    // 地表の衝撃波は薄い面の裏側からも見えるよう両面描画する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/GroundShockwave.VS.hlsl",
         L"Resources/shader/materials/GroundShockwave.PS.hlsl",
@@ -617,6 +629,7 @@ void Object3dCommon::CreateShockwavePipeline() {
 }
 
 void Object3dCommon::CreateLiquidContactPipeline() {
+    // 水面との接触表現は水と同じ定数バッファの配置を使う。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/LiquidContact.VS.hlsl",
         L"Resources/shader/materials/LiquidContact.PS.hlsl",
@@ -627,6 +640,7 @@ void Object3dCommon::CreateLiquidContactPipeline() {
 }
 
 void Object3dCommon::CreateDamageCrackPipeline() {
+    // ひび割れは地形の向きに依存せず見えるよう両面描画する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/DamageCrack.VS.hlsl",
         L"Resources/shader/materials/DamageCrack.PS.hlsl",
@@ -637,6 +651,7 @@ void Object3dCommon::CreateDamageCrackPipeline() {
 }
 
 void Object3dCommon::CreateUpdraftPipeline() {
+    // 上昇気流は視点が内側に入っても見える半透明の両面パスにする。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/Updraft.VS.hlsl",
         L"Resources/shader/materials/Updraft.PS.hlsl",
@@ -647,6 +662,7 @@ void Object3dCommon::CreateUpdraftPipeline() {
 }
 
 void Object3dCommon::CreateStunBindPipeline() {
+    // 拘束光は背景へ加算して発光させる。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/StunBind.VS.hlsl",
         L"Resources/shader/materials/StunBind.PS.hlsl",
@@ -657,6 +673,7 @@ void Object3dCommon::CreateStunBindPipeline() {
 }
 
 void Object3dCommon::CreateCrownUnlockPipeline() {
+    // 王冠解除の光も加算合成し、暗い背景で消えないようにする。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/CrownUnlock.VS.hlsl",
         L"Resources/shader/materials/CrownUnlock.PS.hlsl",
@@ -667,6 +684,7 @@ void Object3dCommon::CreateCrownUnlockPipeline() {
 }
 
 void Object3dCommon::CreatePoisonSporePipeline() {
+    // 胞子の薄い面を両側から描けるようカリングを無効にする。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/PoisonSpore.VS.hlsl",
         L"Resources/shader/materials/PoisonSpore.PS.hlsl",
@@ -677,6 +695,7 @@ void Object3dCommon::CreatePoisonSporePipeline() {
 }
 
 void Object3dCommon::CreateCloudPipeline() {
+    // 雲は半透明で描き、視点が内部に入っても面を残す。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/Cloud.VS.hlsl",
         L"Resources/shader/materials/Cloud.PS.hlsl",
@@ -687,6 +706,7 @@ void Object3dCommon::CreateCloudPipeline() {
 }
 
 void Object3dCommon::CreateGatePortalPipeline() {
+    // ゲート面は通過前後の両側から見えるよう両面描画する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/GatePortal.VS.hlsl",
         L"Resources/shader/materials/GatePortal.PS.hlsl",
@@ -697,6 +717,7 @@ void Object3dCommon::CreateGatePortalPipeline() {
 }
 
 void Object3dCommon::CreateWindOrbPipeline() {
+    // 風の球は閉じた形状なので裏面を除き、半透明で合成する。
     CreateSpecialMaterialPipeline(
         L"Resources/shader/materials/WindOrb.VS.hlsl",
         L"Resources/shader/materials/WindOrb.PS.hlsl",
@@ -707,6 +728,7 @@ void Object3dCommon::CreateWindOrbPipeline() {
 }
 
 void Object3dCommon::SetLaserGraphicsCommand() {
+    // 未生成の PSO では描かず、水系の共有ルートとビーム用 PSO を組にする。
     if (!laserPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -715,6 +737,7 @@ void Object3dCommon::SetLaserGraphicsCommand() {
 }
 
 void Object3dCommon::SetSlimeGelGraphicsCommand() {
+    // ゼリー材質の描画前に、水系の共有ルートを再設定する。
     if (!slimeGelPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -723,6 +746,7 @@ void Object3dCommon::SetSlimeGelGraphicsCommand() {
 }
 
 void Object3dCommon::SetShockwaveGraphicsCommand() {
+    // 衝撃波の描画へ切り替える際に、共有ルートも同時に束縛する。
     if (!shockwavePipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -731,6 +755,7 @@ void Object3dCommon::SetShockwaveGraphicsCommand() {
 }
 
 void Object3dCommon::SetLiquidContactGraphicsCommand() {
+    // 接触エフェクトへ切り替える際に、共有ルートも同時に束縛する。
     if (!liquidContactPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -739,6 +764,7 @@ void Object3dCommon::SetLiquidContactGraphicsCommand() {
 }
 
 void Object3dCommon::SetDamageCrackGraphicsCommand() {
+    // ひび割れ材質へ切り替える際に、共有ルートも同時に束縛する。
     if (!damageCrackPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -747,6 +773,7 @@ void Object3dCommon::SetDamageCrackGraphicsCommand() {
 }
 
 void Object3dCommon::SetUpdraftGraphicsCommand() {
+    // 上昇気流の半透明パスを使う前に、共有ルートを束縛する。
     if (!updraftPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -755,6 +782,7 @@ void Object3dCommon::SetUpdraftGraphicsCommand() {
 }
 
 void Object3dCommon::SetStunBindGraphicsCommand() {
+    // 拘束光の加算パスを使う前に、共有ルートを束縛する。
     if (!stunBindPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -763,6 +791,7 @@ void Object3dCommon::SetStunBindGraphicsCommand() {
 }
 
 void Object3dCommon::SetCrownUnlockGraphicsCommand() {
+    // 王冠解除の加算パスを使う前に、共有ルートを束縛する。
     if (!crownUnlockPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -771,6 +800,7 @@ void Object3dCommon::SetCrownUnlockGraphicsCommand() {
 }
 
 void Object3dCommon::SetPoisonSporeGraphicsCommand() {
+    // 胞子材質の半透明パスを使う前に、共有ルートを束縛する。
     if (!poisonSporePipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -779,6 +809,7 @@ void Object3dCommon::SetPoisonSporeGraphicsCommand() {
 }
 
 void Object3dCommon::SetCloudGraphicsCommand() {
+    // 雲材質の半透明パスを使う前に、共有ルートを束縛する。
     if (!cloudPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -787,6 +818,7 @@ void Object3dCommon::SetCloudGraphicsCommand() {
 }
 
 void Object3dCommon::SetGatePortalGraphicsCommand() {
+    // ゲート材質の半透明パスを使う前に、共有ルートを束縛する。
     if (!gatePortalPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -795,6 +827,7 @@ void Object3dCommon::SetGatePortalGraphicsCommand() {
 }
 
 void Object3dCommon::SetWindOrbGraphicsCommand() {
+    // 風の球材質の半透明パスを使う前に、共有ルートを束縛する。
     if (!windOrbPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
@@ -803,6 +836,7 @@ void Object3dCommon::SetWindOrbGraphicsCommand() {
 }
 
 void Object3dCommon::CreateSkyboxPipeline() {
+    // 背景は常に奥へ描くため、深度テストと書き込みを行わない。
     RootSignatureBuilder rsBuilder;
     rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);

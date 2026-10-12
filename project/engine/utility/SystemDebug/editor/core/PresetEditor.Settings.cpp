@@ -14,6 +14,7 @@
 
 // 選択プリセットの種別固有値とColliderを編集します。
 bool PresetEditor::DrawEnemySettings(json& data) {
+    // 敵の共通ステータスは別画面で管理し、ここでは種類の選択だけ扱います。
     bool changed = false;
     ApplyHiddenCategoryFields(data, Category::Enemy);
     json& param = EnsureParam(data);
@@ -26,6 +27,7 @@ bool PresetEditor::DrawEnemySettings(json& data) {
 }
 
 bool PresetEditor::RemoveManagedEnemyFields(json& data) {
+    // ステータス管理と二重定義になる旧フィールドだけをPresetから取り除きます。
     bool changed = false;
     changed |= data.erase("modelName") > 0;
     changed |= data.erase("scale") > 0;
@@ -45,6 +47,7 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
 }
 
 bool PresetEditor::DrawGimmickSettings(json& data) {
+    // 選択したギミック型に該当する設定だけを表示し、無関係な値はUIへ出しません。
     bool changed = false;
     ApplyHiddenCategoryFields(data, Category::Gimmick);
     json& param = EnsureParam(data);
@@ -178,6 +181,7 @@ bool PresetEditor::DrawGimmickSettings(json& data) {
 }
 
 bool PresetEditor::DrawItemSettings(json& data) {
+    // アイテム共通の種類を先に選び、型固有の値だけ後続で編集します。
     bool changed = false;
     ApplyHiddenCategoryFields(data, Category::Item);
     json& param = EnsureParam(data);
@@ -193,6 +197,7 @@ bool PresetEditor::DrawItemSettings(json& data) {
 }
 
 bool PresetEditor::DrawTypeCombo(const char* label, json& data, json& param, const char* key, const std::vector<TypeOption>& options, Category category) {
+    // 旧JSONで型がparam内にある場合も読み、変更時は両方の参照先を揃えます。
     std::string current = ReadString(data, key, ReadString(param, key, ""));
     int currentIndex = 0;
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
@@ -357,6 +362,7 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
 }
 
 void PresetEditor::SetColliderDefaults(json& data, int type, const Vector3& size) {
+    // 形状と大きさだけ更新し、調整済みの中心・回転は残します。
     if (!data.contains("collider") || !data["collider"].is_object()) {
         data["collider"] = json::object();
     }
@@ -367,6 +373,7 @@ void PresetEditor::SetColliderDefaults(json& data, int type, const Vector3& size
 }
 
 bool PresetEditor::DrawModelField(json& data) {
+    // 表示名ではなくモデルの参照名をJSONへ保存します。
     bool changed = false;
     std::string current = ReadString(data, "modelName", "");
     if (ImGui::BeginCombo("モデル", current.empty() ? "(なし)" : current.c_str())) {
@@ -387,6 +394,7 @@ bool PresetEditor::DrawModelField(json& data) {
 }
 
 bool PresetEditor::DrawCollider(json& data) {
+    // colliderが欠けた旧Presetも編集できるよう、初回表示時に空オブジェクトを補います。
     bool changed = false;
     if (!data.contains("collider") || !data["collider"].is_object()) {
         data["collider"] = json::object();
@@ -407,6 +415,7 @@ bool PresetEditor::DrawCollider(json& data) {
 }
 
 bool PresetEditor::DrawStringField(json& data, const char* label, const char* key, const std::string& defaultValue) {
+    // 入力が変わった時だけJSONを更新し、未編集値には既定値を使います。
     char buffer[256]{};
     std::string value = ReadString(data, key, defaultValue);
     strncpy_s(buffer, value.c_str(), _TRUNCATE);
@@ -418,6 +427,7 @@ bool PresetEditor::DrawStringField(json& data, const char* label, const char* ke
 }
 
 bool PresetEditor::DrawFloatField(json& data, const char* label, const char* key, float defaultValue, float speed) {
+    // Drag操作が確定した値だけ保存し、呼び出し側へ変更を伝えます。
     float value = ReadFloat(data, key, defaultValue);
     if (ImGui::DragFloat(label, &value, speed)) {
         data[key] = value;
@@ -427,6 +437,7 @@ bool PresetEditor::DrawFloatField(json& data, const char* label, const char* key
 }
 
 bool PresetEditor::DrawIntField(json& data, const char* label, const char* key, int defaultValue) {
+    // 整数パラメータも共通の変更フラグで保存処理へ渡します。
     int value = ReadInt(data, key, defaultValue);
     if (ImGui::DragInt(label, &value, 1.0f)) {
         data[key] = value;
@@ -436,6 +447,7 @@ bool PresetEditor::DrawIntField(json& data, const char* label, const char* key, 
 }
 
 bool PresetEditor::DrawColorField(json& data, const char* label, const char* key, const Vector4& defaultValue) {
+    // 壊れた配列要素は既定色を保ち、編集時にRGBA配列へ正規化します。
     float color[4] = { defaultValue.x, defaultValue.y, defaultValue.z, defaultValue.w };
     if (data.contains(key) && data[key].is_array() && data[key].size() >= 4) {
         for (int i = 0; i < 4; ++i) {
@@ -464,14 +476,17 @@ bool PresetEditor::DrawVector3Field(json& data, const char* label, const char* k
 }
 
 bool PresetEditor::DrawParamFloat(json& param, const char* label, const char* key, float defaultValue, float speed) {
+    // param直下の浮動小数点設定も通常フィールドと同じ更新経路へ渡します。
     return DrawFloatField(param, label, key, defaultValue, speed);
 }
 
 bool PresetEditor::DrawParamInt(json& param, const char* label, const char* key, int defaultValue) {
+    // param直下の整数設定を共通UIへ委譲します。
     return DrawIntField(param, label, key, defaultValue);
 }
 
 bool PresetEditor::DrawParamBool(json& param, const char* label, const char* key, bool defaultValue) {
+    // 未登録値は既定値で表示し、チェック変更時に初めてJSONへ確定します。
     bool value = ReadBool(param, key, defaultValue);
     if (ImGui::Checkbox(label, &value)) {
         param[key] = value;
@@ -481,6 +496,7 @@ bool PresetEditor::DrawParamBool(json& param, const char* label, const char* key
 }
 
 bool PresetEditor::DrawParamIntCombo(json& param, const char* label, const char* key, int defaultValue, const std::vector<const char*>& labels) {
+    // UIの選択番号をそのまま保存形式の整数値に対応させます。
     int value = ReadInt(param, key, defaultValue);
     if (ImGui::Combo(label, &value, labels.data(), static_cast<int>(labels.size()))) {
         param[key] = value;
@@ -490,6 +506,7 @@ bool PresetEditor::DrawParamIntCombo(json& param, const char* label, const char*
 }
 
 json& PresetEditor::EnsureParam(json& data) {
+    // 旧Presetでparamが欠けていても、型別の編集先を必ずObjectにします。
     if (!data.contains("param") || !data["param"].is_object()) {
         data["param"] = json::object();
     }
@@ -497,6 +514,7 @@ json& PresetEditor::EnsureParam(json& data) {
 }
 
 void PresetEditor::AddBlankPreset(Category category) {
+    // 新規Presetを保存して即選択し、続けて同じ画面から調整できる状態にします。
     if (newName_[0] == '\0') {
         return;
     }
@@ -510,6 +528,7 @@ void PresetEditor::AddBlankPreset(Category category) {
 }
 
 json PresetEditor::BuildBlankPreset(const std::string& name, Category category) const {
+    // 敵はモデルと倍率をステータス側で決めるため、他カテゴリと初期項目を分けます。
     json data = json::object();
     data["name"] = name;
     data["presetDisplayName"] = name;

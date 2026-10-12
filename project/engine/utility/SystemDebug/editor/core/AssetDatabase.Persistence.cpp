@@ -27,6 +27,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
     const fs::path& sourcePath,
     bool createMissingMeta,
     std::unordered_map<std::string, std::string>& guidOwners) {
+    // 既存.metaを優先し、不正なGUIDは元ファイルを保護して索引だけPath参照に落とします。
     MetaLoadResult result;
     result.success = true;
     result.record.sourcePath = NormalizeProjectPath(sourcePath);
@@ -142,6 +143,7 @@ AssetDatabase::MetaLoadResult AssetDatabase::LoadOrCreateMeta(
 }
 
 bool AssetDatabase::WriteMeta(const EditorAssetRecord& record, std::string* errorMessage) const {
+    // 途中失敗で既存.metaを壊さないよう、一時ファイルへ書いてから置き換えます。
     if (!IsGuidValid(record.guid)) {
         if (errorMessage) {
             *errorMessage = "無効なGUIDのため.metaを書き込めません。";
@@ -386,6 +388,7 @@ bool AssetDatabase::TryReusePersistentAsset(
     const fs::path& sourcePath,
     std::unordered_map<std::string, std::string>& guidOwners,
     EditorAssetRecord* reusedRecord) {
+    // ソースと.metaの印がすべて一致したときだけ永続キャッシュを再利用します。
     if (!reusedRecord || !persistentIndexCacheAvailable_) {
         return false;
     }
@@ -451,6 +454,7 @@ bool AssetDatabase::TryReusePersistentAsset(
 }
 
 void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record) {
+    // 今回の走査で確定したファイル印を次回起動用の索引候補へ積みます。
     const fs::path sourcePath = ResolveAbsolutePath(record.sourcePath);
     std::uintmax_t sourceFileSize = 0;
     fs::file_time_type sourceWriteTime{};
@@ -482,6 +486,7 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
 }
 
 EditorAssetType AssetDatabase::DetectAssetType(const fs::path& path) {
+    // 拡張子からImporterの初期値に使う型だけを推定します。
     const std::string extension = ToLowerAscii(path.extension().string());
     if (extension == ".obj" || extension == ".gltf" || extension == ".glb" || extension == ".fbx") {
         return EditorAssetType::Model;
@@ -509,6 +514,7 @@ EditorAssetType AssetDatabase::DetectAssetType(const fs::path& path) {
 }
 
 std::string AssetDatabase::GetDefaultImporter(EditorAssetType type) {
+    // .metaが未作成でも型ごとに同じImporter名へ収束させます。
     switch (type) {
     case EditorAssetType::Model: return "ModelImporter";
     case EditorAssetType::Texture: return "TextureImporter";
@@ -523,6 +529,7 @@ std::string AssetDatabase::GetDefaultImporter(EditorAssetType type) {
 }
 
 json AssetDatabase::GetDefaultImportSettings(EditorAssetType type) {
+    // 型別の既定設定は新規.metaにだけ入れ、既存の編集値は読込側で優先します。
     switch (type) {
     case EditorAssetType::Model:
         return { { "scale", 1.0 }, { "generateTangents", true } };
@@ -536,6 +543,7 @@ json AssetDatabase::GetDefaultImportSettings(EditorAssetType type) {
 }
 
 std::string AssetDatabase::GenerateGuid() {
+    // 複数の索引要求から呼ばれるため、乱数生成器をmutexで直列化します。
     static std::mutex mutex;
     static std::mt19937_64 generator([] {
         std::random_device device;

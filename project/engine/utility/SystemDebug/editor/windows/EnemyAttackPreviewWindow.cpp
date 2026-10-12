@@ -68,6 +68,7 @@ bool HasPreviewPrefix(const Object3d* object) {
 }
 
 void EnemyAttackPreviewWindow::SetPlayerCopyMode(bool enabled) {
+    // コピー技の観測へ切り替える前に、敵攻撃用の一時オブジェクトを片付ける。
     if (sceneManager_ && sceneManager_->IsPlaying()) return;
     if (crownMovieMode_) {
         ClearPreviewTransientState(); RemovePreviewObjects();
@@ -86,6 +87,7 @@ void EnemyAttackPreviewWindow::SetPlayerCopyMode(bool enabled) {
 }
 
 void EnemyAttackPreviewWindow::SetCrownMovieMode() {
+    // 王冠演出は通常の敵攻撃プレビューとは別の時刻とシーンを使う。
     if (crownMovieMode_ || (sceneManager_ && sceneManager_->IsPlaying())) return;
     ClearPreviewTransientState(); RemovePreviewObjects();
     EffectPreviewStage::GetInstance()->ReturnToScene();
@@ -94,6 +96,7 @@ void EnemyAttackPreviewWindow::SetCrownMovieMode() {
 }
 
 void EnemyAttackPreviewWindow::StopPreview() {
+    // 下書きプロファイルの参照と一時オブジェクトを同時に解除する。
     useDraftProfile_ = false;
     draftRefreshPending_ = false;
     if (!enabled_) return;
@@ -101,12 +104,14 @@ void EnemyAttackPreviewWindow::StopPreview() {
 }
 
 void EnemyAttackPreviewWindow::Initialize(SceneManager* sceneManager) {
+    // 現在選択中の敵の攻撃プロファイルを読み、適切な距離と再生長を初期値にする。
     sceneManager_ = sceneManager;
     LoadSelectedProfile();
     ApplyRecommendedSettings();
 }
 
 void EnemyAttackPreviewWindow::Finalize() {
+    // シーン破棄後に参照しないよう、一時演出を消して借用ポインタを外す。
     ClearPreviewTransientState();
     RemovePreviewObjects();
     sceneManager_ = nullptr;
@@ -333,6 +338,7 @@ void EnemyAttackPreviewWindow::CreatePreviewObjects(bool requestCameraRecenter) 
 }
 
 void EnemyAttackPreviewWindow::RemovePreviewObjects() {
+    // Scene が所有する Object は削除要求へ渡し、先に衝突属性を無効化する。
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (crownMoviePrepared_ && currentScene && currentScene == previewScene_) {
         if (auto* game = dynamic_cast<GamePlayScene*>(currentScene)) game->EndCrownMoviePreview();
@@ -369,6 +375,7 @@ void EnemyAttackPreviewWindow::RemovePreviewObjects() {
 }
 
 void EnemyAttackPreviewWindow::RestartPreview() {
+    // 現在の設定を先頭から反映するため、一時状態を消して観測対象を作り直す。
     if (crownMovieMode_ && crownMoviePrepared_) { const bool resume = playing_; SeekPreview(0.0f); playing_ = resume; return; }
     ClearPreviewTransientState();
     RemovePreviewObjects();
@@ -405,6 +412,7 @@ void EnemyAttackPreviewWindow::SeekPreview(float targetTime) {
 }
 
 void EnemyAttackPreviewWindow::ClearPreviewTransientState() {
+    // シークや再開時に前回の弾・破片・粒子が残らないよう各演出系を初期化する。
     StopPlacementPreview();
     SetEffectSimulationScale(1.0f);
     MeshEffectManager::GetInstance()->ClearActiveEffects();
@@ -427,6 +435,7 @@ void EnemyAttackPreviewWindow::ClearPreviewTransientState() {
 }
 
 void EnemyAttackPreviewWindow::SetEffectSimulationScale(float timeScale) {
+    // メッシュ、破片、GPU・CPU 粒子へ同じ時間倍率を配る。
     const float safeScale = (std::max)(0.0f, timeScale);
     MeshEffectManager::GetInstance()->SetTimeScale(safeScale);
     DebrisEffectManager::GetInstance()->SetTimeScale(safeScale);
@@ -764,6 +773,7 @@ void EnemyAttackPreviewWindow::TriggerPreviewPlayerDamage() {
 }
 
 DamageType EnemyAttackPreviewWindow::GetPreviewDamageType() const {
+    // 観測対象の属性から、ダミーへの命中試験で使うダメージ種別を選ぶ。
     switch (enemyTypeIndex_) {
     case 1:
         return DamageType::Fire;
@@ -778,6 +788,7 @@ DamageType EnemyAttackPreviewWindow::GetPreviewDamageType() const {
 }
 
 StatusEffectApplication EnemyAttackPreviewWindow::GetPreviewStatusEffect() const {
+    // 選択中の攻撃定義に状態異常がある場合だけ、持続時間と VFX を再現する。
     StatusEffectApplication status;
     const EnemyAttackDefinition* attack = GetSelectedAttackDefinition();
     if (!attack || attack->statusEffectType.empty()) {
@@ -795,6 +806,7 @@ StatusEffectApplication EnemyAttackPreviewWindow::GetPreviewStatusEffect() const
 }
 
 void EnemyAttackPreviewWindow::RecordTimelineSample() {
+    // 実際のプレビュー対象から速度・高さ・変形量・演出数を取得し、同時刻の標本は置換する。
     Object3d* actor = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
     if (!actor) {
         return;
@@ -846,6 +858,7 @@ void EnemyAttackPreviewWindow::RecordTimelineSample() {
 }
 
 const char* EnemyAttackPreviewWindow::GetCurrentPhaseName() const {
+    // 観測対象の種類ごとに実行中の状態を取得し、タイムラインの段階名へ使う。
     if (playerCopyMode_ && previewPlayer_) return previewPlayer_->GetCopyAbilityStateLabel();
     if (const auto* sequence = dynamic_cast<const ISequencePreviewEnemy*>(previewEnemy_)) {
         if (const char* label = sequence->GetSequenceStateLabel()) return label;
@@ -880,10 +893,12 @@ const char* EnemyAttackPreviewWindow::GetCurrentPhaseName() const {
 }
 
 bool EnemyAttackPreviewWindow::IsGiantHookSplitPreview() const {
+    // 巨大スライムの分裂プレビューは通常攻撃と距離・再生長が異なる。
     return !playerCopyMode_ && enemyTypeIndex_ == 3 && giantPreviewModeIndex_ != 0;
 }
 
 void EnemyAttackPreviewWindow::MaintainGrounding(BaseEnemy* enemy, float groundY) {
+    // プレビュー地面を下回ったときだけ着地させ、上昇中は空中状態を保つ。
     if (!enemy) {
         return;
     }
@@ -902,6 +917,7 @@ void EnemyAttackPreviewWindow::MaintainGrounding(BaseEnemy* enemy, float groundY
 }
 
 void EnemyAttackPreviewWindow::SyncTargetTransform() {
+    // 標的距離の操作をシーン内のダミーへ反映し、実プレイヤー型でも移動入力を止める。
     if (playerCopyMode_) return;
     if (!previewTarget_) {
         return;
@@ -922,6 +938,7 @@ void EnemyAttackPreviewWindow::SyncTargetTransform() {
 }
 
 void EnemyAttackPreviewWindow::MarkPreviewFamilyEditorInternal() {
+    // 観測用 Object を保存・選択対象から外し、必要な衝突属性だけ残す。
     if (!previewScene_) {
         return;
     }
@@ -940,6 +957,7 @@ void EnemyAttackPreviewWindow::MarkPreviewFamilyEditorInternal() {
 }
 
 void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
+    // 本番用の敵型を使いながら、編集用の名前・判定・標的へ差し替える。
     if (!enemy) {
         return;
     }
@@ -1050,11 +1068,13 @@ void EnemyAttackPreviewWindow::ConfigureEnemy(BaseEnemy* enemy) {
 }
 
 void EnemyAttackPreviewWindow::ApplyRecommendedSettings() {
+    // 選択攻撃の推奨距離と長さを UI の初期値に戻す。
     targetDistance_ = GetRecommendedTargetDistance();
     loopDuration_ = GetRecommendedLoopDuration();
 }
 
 void EnemyAttackPreviewWindow::LoadSelectedProfile() {
+    // 攻撃の切り替え時は Undo と下書き選択を初期化し、最新の JSON を読む。
     authoringUndo_.clear(); authoringRedo_.clear(); authoringGestureOpen_ = false;
     profileAttackIndex_ = 0;
     falseKingSealBarragePreview_ = false;
@@ -1115,6 +1135,7 @@ void EnemyAttackPreviewWindow::SaveSelectedProfile(bool restartPreview) {
 }
 
 void EnemyAttackPreviewWindow::ResetSelectedProfile() {
+    // 既定値への復帰は編集メモリ内だけで行い、保存ボタンまで JSON を触らない。
     editableProfile_ = EnemyAttackProfile::CreateDefault(GetSelectedEnemyType());
     profileAttackIndex_ = 0;
     profileDirty_ = !editableProfile_.attacks.empty();
@@ -1123,6 +1144,7 @@ void EnemyAttackPreviewWindow::ResetSelectedProfile() {
 }
 
 const EnemyAttackDefinition* EnemyAttackPreviewWindow::GetSelectedAttackDefinition() const {
+    // 選択添字を有効範囲へ収め、王冠専用プレビューでは通常攻撃を返さない。
     if (falseKingSealBarragePreview_ || editableProfile_.attacks.empty()) {
         return nullptr;
     }
@@ -1131,10 +1153,12 @@ const EnemyAttackDefinition* EnemyAttackPreviewWindow::GetSelectedAttackDefiniti
 }
 
 EnemyAttackDefinition* EnemyAttackPreviewWindow::GetSelectedAttackDefinition() {
+    // 読み取り版と同じ境界確認を使い、編集可能な参照へ変換する。
     return const_cast<EnemyAttackDefinition*>(static_cast<const EnemyAttackPreviewWindow*>(this)->GetSelectedAttackDefinition());
 }
 
 float EnemyAttackPreviewWindow::GetRecommendedTargetDistance() const {
+    // プロファイルに推奨距離があれば優先し、旧攻撃には敵型別の値を残す。
     if (falseKingSealBarragePreview_) {
         return 15.0f;
     }
@@ -1160,6 +1184,7 @@ float EnemyAttackPreviewWindow::GetRecommendedTargetDistance() const {
 }
 
 float EnemyAttackPreviewWindow::GetRecommendedLoopDuration() const {
+    // プロファイルの長さを優先し、専用演出と旧攻撃は個別の初期値を使う。
     if (falseKingSealBarragePreview_) {
         const auto& tuning = CrownFinaleTuning::Get();
         return 1.25f + tuning.sealCastTime + tuning.sealBarrageMovieDuration + tuning.sealBarrageRecovery;
@@ -1186,6 +1211,7 @@ float EnemyAttackPreviewWindow::GetRecommendedLoopDuration() const {
 }
 
 const char* EnemyAttackPreviewWindow::GetSelectedEnemyType() const {
+    // コピー技の候補と敵攻撃の候補で別の一覧を使う。
     if (playerCopyMode_) {
         const int copyIndex = std::clamp(copyTypeIndex_, 0, static_cast<int>(std::size(kCopyTypes)) - 1);
         return copyIndex == 5 ? "FalseKingSlime" : kCopyTypes[copyIndex];
@@ -1195,5 +1221,6 @@ const char* EnemyAttackPreviewWindow::GetSelectedEnemyType() const {
 }
 
 bool EnemyAttackPreviewWindow::IsCurrentSceneReady() const {
+    // 現シーンと描画基盤が揃うまで観測用 Object を生成しない。
     return sceneManager_ && sceneManager_->GetCurrentScene() && sceneManager_->GetCurrentScene()->GetObject3dCommon();
 }

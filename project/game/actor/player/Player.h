@@ -133,7 +133,7 @@ class Player : public Character {
     void SetVelocity(const Vector3& v) { velocity_ = v; }
     void SetRespawnPosition(const Vector3& pos) { respawnPosition_ = pos; }
     Vector3 GetRespawnPosition() const { return respawnPosition_; }
-    void ActivateCheckpoint(const Vector3& position);
+    void ActivateCheckpoint(const Vector3& position, const std::string& checkpointObjectName = {});
     /// <summary>敵を生成せず、保存済みのコピー能力を直接適用します。</summary>
     /// <param name="enemyType">コピー元の敵種別。</param>
     /// <param name="unlimitedDuration">時間制限を設けない場合は true。</param>
@@ -177,6 +177,9 @@ class Player : public Character {
     float GetVisualYawOffset() const;
     float GetMoveYaw() const;
     Vector3 GetForwardDirection() const;
+    // 通常移動と同じカメラ基準で、現在押している移動方向を取得する。
+    // 操作制限中も読めるため、攻撃中の方向転換に利用できる。
+    Vector3 GetMoveInputDirection();
     // 水平面での進行向きを Y 回転のラジアン値で指定する。
     void SetMoveYaw(float yaw);
 
@@ -360,6 +363,7 @@ class Player : public Character {
     Vector3 baseRotation_ = {0.0f, 0.0f, 0.0f}; // 初期回転。モデル姿勢補正にも使う。
     bool isFirstUpdate_ = true;
     bool checkpointActivated_ = false;
+    std::string checkpointObjectName_;
     std::string checkpointMorphEnemyType_;
 
     // フックマーカー

@@ -79,11 +79,13 @@ ImU32 ToImU32(const Vector4& color) {
 }
 
 EffectPreviewStage* EffectPreviewStage::GetInstance() {
+    // 複数のエフェクト編集ツールが同じプレビュー空間を共有する。
     static EffectPreviewStage instance;
     return &instance;
 }
 
 void EffectPreviewStage::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    // Scene と描画クリア色の変更先は外部所有として参照だけ保持する。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
 }
@@ -145,6 +147,7 @@ void EffectPreviewStage::ReportToolState(
     int activeCount,
     const std::vector<TimelineEvent>& events,
     const PerformanceMetrics& performance) {
+    // 編集ツールが変わるとシーク位置と計測条件を破棄し、別素材の値を混ぜない。
     const bool changedTool = activeToolKind_ != toolKind || activeToolTitle_ != title;
     if (changedTool) {
         ResetPerformanceMeasurement(true);
@@ -168,6 +171,7 @@ void EffectPreviewStage::ReportToolState(
 }
 
 void EffectPreviewStage::UpdatePerformanceMeasurement(const PerformanceMetrics& performance) {
+    // 画面と同じツールの測定だけ受け取り、最初の数フレームをウォームアップとして除く。
     if (!performanceMeasurementRunning_ ||
         !performance.available ||
         performanceMeasurementTool_ != activeToolKind_) {
@@ -205,6 +209,7 @@ void EffectPreviewStage::UpdatePerformanceMeasurement(const PerformanceMetrics& 
 }
 
 void EffectPreviewStage::ResetPerformanceMeasurement(bool clearResult) {
+    // 計測を止める操作では結果を残せるよう、実行状態と表示結果を分けて初期化する。
     performanceMeasurementRunning_ = false;
     performanceMeasurementTool_ = ToolKind::None;
     performanceWarmupProgress_ = 0;
@@ -221,6 +226,7 @@ void EffectPreviewStage::ResetPerformanceMeasurement(bool clearResult) {
 
 void EffectPreviewStage::DrawTimelineWindow() {
 #ifdef USE_IMGUI
+    // 各編集ツールが報告した時刻とイベントを描き、再生操作は要求番号で送り返す。
     constexpr const char* kWindowName = "エフェクトプレビュー - Timeline";
     ImGui::Begin(kWindowName, nullptr, ImGuiWindowFlags_NoCollapse);
 
@@ -307,6 +313,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
         ImGui::EndTable();
     }
 
+    // ドラッグ中のシーク要求を約30Hzに間引き、離した時は最終位置を必ず送る。
     const auto dispatchSeek = [this](float targetTime, bool force) {
         const float clampedTime = std::clamp(targetTime, 0.0f, reportedDuration_);
         const double now = ImGui::GetTime();
@@ -373,6 +380,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
         drawList->AddText(ImVec2(x + 4.0f, origin.y + 4.0f), IM_COL32(210, 216, 226, 255), timeLabel);
     }
 
+    // イベントが無い素材にも再生範囲を示し、時間軸が空白にならないようにする。
     if (reportedEvents_.empty()) {
         const float laneY = origin.y + kHeaderHeight;
         drawList->AddText(ImVec2(origin.x + 8.0f, laneY + 7.0f), IM_COL32(220, 224, 232, 255), "Playback");
@@ -416,6 +424,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
     }
     ImGui::EndChild();
 
+    // 測定値は選択ツールだけの平均を表示し、比較用に Markdown と TSV を生成する。
     if (reportedPerformance_.available) {
         ImGui::SeparatorText(ICON_FA_CHART_BAR " Performance Measurement");
         ImGui::TextDisabled(
@@ -647,6 +656,7 @@ void EffectPreviewStage::Update() {
 
 void EffectPreviewStage::DrawImGui() {
 #ifdef USE_IMGUI
+    // 床・照明・背景を一つの中立的な比較条件として編集する。
     ImGui::Text(ICON_FA_MAGIC " Effect Preview Stage");
     ImGui::Separator();
 
@@ -750,6 +760,7 @@ void EffectPreviewStage::DrawImGui() {
 }
 
 Vector3 EffectPreviewStage::GetGroundPosition() const {
+    // 隔離空間では Scene と離れた基準座標を加え、既存オブジェクトとの重なりを避ける。
     if (!isolatedSpace_) return origin_;
     return {
         isolatedBase_.x + origin_.x,
@@ -759,12 +770,14 @@ Vector3 EffectPreviewStage::GetGroundPosition() const {
 }
 
 Vector3 EffectPreviewStage::GetPreviewPosition() const {
+    // 接地面と発生中心は別にし、床上エフェクトと空中エフェクトを比較しやすくする。
     Vector3 position = GetGroundPosition();
     position.y += previewCenterHeight_;
     return position;
 }
 
 void EffectPreviewStage::ApplyCameraOverride() {
+    // 入場時または明示的な再中心化時だけ配置し、ユーザーの手動カメラ操作を維持する。
     if (!enabled_) return;
 
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
@@ -777,6 +790,7 @@ void EffectPreviewStage::ApplyCameraOverride() {
 }
 
 void EffectPreviewStage::PlaceCameraAtPreview() {
+    // 方位角と距離から視点を作り、プレビュー中心を注視する。
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
 
@@ -800,6 +814,7 @@ void EffectPreviewStage::PlaceCameraAtPreview() {
 }
 
 void EffectPreviewStage::CreateFloor() {
+    // 専用名で重複生成を防ぎつつ、床・中央グリッド・外周線・原点印を揃える。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon()) return;
@@ -824,6 +839,7 @@ void EffectPreviewStage::CreateFloor() {
 }
 
 void EffectPreviewStage::RemoveFloor() {
+    // Scene のコンテナ走査中は削除せず、専用環境だけを後から撤去予約する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     std::vector<Object3d*> targets;
@@ -842,10 +858,12 @@ void EffectPreviewStage::RemoveFloor() {
 }
 
 Object3d* EffectPreviewStage::FindFloor() const {
+    // 床も他のプレビュー環境と同じ名前検索経路を使う。
     return FindEnvironmentObject(kFloorName);
 }
 
 Object3d* EffectPreviewStage::FindEnvironmentObject(const std::string& name) const {
+    // 通常 Scene の Object と区別するため、編集環境の固定名で探す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
@@ -857,6 +875,7 @@ Object3d* EffectPreviewStage::FindEnvironmentObject(const std::string& name) con
 }
 
 void EffectPreviewStage::CreateEnvironmentObject(const std::string& name) {
+    // 保存・衝突の対象から外したエディター内部 Object として生成する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon() || FindEnvironmentObject(name)) return;
@@ -887,6 +906,7 @@ void EffectPreviewStage::CreateEnvironmentObject(const std::string& name) {
 }
 
 void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color) {
+    // 環境の配置と色だけを更新し、モデルや材質設定は生成時の共通値を保つ。
     Object3d* object = FindEnvironmentObject(name);
     if (!object) return;
 
@@ -900,12 +920,14 @@ void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const 
 }
 
 void EffectPreviewStage::SetEnvironmentObjectVisible(const std::string& name, bool visible) {
+    // ツールを閉じた後も残る環境 Object を、必要に応じて非表示へ切り替える。
     if (Object3d* object = FindEnvironmentObject(name)) {
         object->SetIsVisible(visible);
     }
 }
 
 void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
+    // 暗部・明部・発光の検証目的ごとに、床とグリッドの基準色を揃える。
     studioPresetIndex_ = std::clamp(presetIndex, 0, 2);
     switch (studioPresetIndex_) {
     case 1:
@@ -931,6 +953,7 @@ void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
 }
 
 void EffectPreviewStage::ApplyStudioLighting() {
+    // 最初の適用時に Scene 側の光・Fog・Skybox を退避し、プレビュー中だけ上書きする。
     LightManager* lightManager = LightManager::GetInstance();
     if (!lightManager) return;
 
@@ -971,6 +994,7 @@ void EffectPreviewStage::ApplyStudioLighting() {
 }
 
 void EffectPreviewStage::RestoreStudioLighting() {
+    // プレビュー開始前に保存した光と空の設定へ一度だけ戻す。
     if (!studioLightingApplied_ || !hasCapturedLighting_) return;
 
     LightManager* lightManager = LightManager::GetInstance();
@@ -989,11 +1013,13 @@ void EffectPreviewStage::RestoreStudioLighting() {
 }
 
 void EffectPreviewStage::ApplyBackgroundColor() {
+    // Studio 用の背景色を描画クリア色へ反映する。
     if (!dxCommon_) return;
     dxCommon_->SetRenderClearColor(backgroundColor_.x, backgroundColor_.y, backgroundColor_.z, backgroundColor_.w);
 }
 
 void EffectPreviewStage::CaptureCameraState() {
+    // 再入場や毎フレームの更新で退避値を上書きしない。
     if (hasCapturedCamera_) return;
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -1007,6 +1033,7 @@ void EffectPreviewStage::CaptureCameraState() {
 }
 
 void EffectPreviewStage::RestoreCameraState() {
+    // 視点と編集モードを入場前へ戻し、次回の入場で新たに退避できるようにする。
     if (!hasCapturedCamera_) return;
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();

@@ -29,17 +29,23 @@ constexpr float kMorphGaugeHoldDuration = 0.20f;
 constexpr int kMorphGaugeLastFrame = 32;
 
 float SmoothStep(float value) {
+    // 星がHUDへ飛ぶ移動の両端を滑らかにし、急な開始・停止を防ぐ。
     value = std::clamp(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
 
-Vector2 Lerp(const Vector2& a, const Vector2& b, float t) { return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t}; }
+Vector2 Lerp(const Vector2& a, const Vector2& b, float t) {
+    // HUDの二点間移動に共通の補間率を使う。
+    return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t};
+}
 
 Vector2 QuadraticBezier(const Vector2& start, const Vector2& control, const Vector2& end, float t) {
+    // 取得した星を画面上で弧を描かせ、HUDの枠へ導く。
     return Lerp(Lerp(start, control, t), Lerp(control, end, t), t);
 }
 
 void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+    // アイコン差し替え時に画像全体を使い、旧画像のUV領域を残さない。
     if (!sprite || textureHandle == 0) {
         return;
     }
@@ -50,6 +56,7 @@ void SetFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
 }
 
 const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
+    // 被弾中の表情と現在のコピー能力を優先順位付きでHPアイコンに反映する。
     if (player && player->IsEnemyMorphed()) {
         switch (player->GetEnemyMorphType()) {
         case Player::EnemyMorphType::Slime:
@@ -74,6 +81,7 @@ const char* ResolveHpIconTexture(const Player* player, bool showHurtIcon) {
 // HUD はシーンの現在状態を読み取って更新します。収集演出とボス表示はゲーム進行の判定を書き換えません。
 
 void GamePlayScene::UpdateUI(float deltaTime) {
+    // ゲーム進行に合わせて通常HUDとボスHUDの表示を更新する。
     UpdateGameplayHUD(deltaTime);
     UpdateLifeLostPresentation(deltaTime);
     if (saveIndicatorOverlay_) {
@@ -122,12 +130,14 @@ GamePlayScene::HudSpriteState GamePlayScene::BindGameplayHUDSprite(const std::st
 }
 
 void GamePlayScene::DrawGameplayHUDSprite(const HudSpriteState& state) {
+    // レイアウトで束ねたSpriteが可視の場合だけ描画する。
     if (state.sprite) {
         state.sprite->Draw();
     }
 }
 
 bool GamePlayScene::IsGameplayHUDSprite(const Sprite* sprite) const {
+    // 通常シーンのSpriteとHUD管理下のSpriteを区別し、二重描画を防ぐ。
     if (!sprite) {
         return false;
     }
@@ -137,6 +147,7 @@ bool GamePlayScene::IsGameplayHUDSprite(const Sprite* sprite) const {
 }
 
 void GamePlayScene::InitializeGameplayHUD() {
+    // HUDレイアウトを読み、HP・残機・コイン・スターの各表示を名前で結び付ける。
     if (levelLoader_) {
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameplayHUD.json");
     }
@@ -337,6 +348,7 @@ void GamePlayScene::InitializeGameplayHUD() {
 void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, int value,
                                          const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color,
                                          bool visible) {
+    // 一桁・二桁の数字を右揃えで描き、値の桁数で他のHUD要素を動かさない。
     value = std::clamp(value, 0, 99);
 
     const std::array<int, 2> digitValues = {value / 10, value % 10};
@@ -369,6 +381,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
 }
 
 void GamePlayScene::CollectStarCoin(int coinIndex) {
+    // 演出位置が無い取得ではセッション状態を即時反映し、該当枠を短く光らせる。
     if (coinIndex < 0 || coinIndex >= 3) {
         return;
     }
@@ -379,6 +392,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex) {
 }
 
 void GamePlayScene::CollectStarCoin(int coinIndex, const Vector3& worldPosition) {
+    // 初回取得だけワールド位置からHUDへ飛ばし、再取得は即時表示にする。
     if (coinIndex < 0 || coinIndex >= 3) {
         return;
     }
@@ -399,6 +413,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex, const Vector3& worldPosition)
 }
 
 Vector2 GamePlayScene::ProjectWorldToScreen(const Vector3& worldPosition) const {
+    // ワールド上の取得位置を画面座標へ変換し、カメラ不在や異常値では中央を使う。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
@@ -416,6 +431,7 @@ Vector2 GamePlayScene::ProjectWorldToScreen(const Vector3& worldPosition) const 
 }
 
 void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const Vector3& worldPosition) {
+    // 星本体と火花を取得位置からHUD枠へ飛ばし、到着時に取得済み表示へ切り替える。
     if (starIndex < 0 || starIndex >= static_cast<int>(hudStageStarSlots_.size()) || !spriteCommon_) {
         if (starIndex >= 0 && starIndex < 3) {
             hudStageStarVisualCollected_[starIndex] = true;
@@ -473,6 +489,7 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const Vector3&
 }
 
 void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
+    // 飛行中の星を進め、到着後は保存済みの取得状態と枠の表示を同期する。
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
 
     for (auto it = hudStageStarFlyParticles_.begin(); it != hudStageStarFlyParticles_.end();) {
@@ -821,6 +838,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
 }
 
 EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
+    // 現シーンのプリズムボスを探し、HP表示の参照先にする。
     if (!objectManager_) {
         return nullptr;
     }
@@ -835,6 +853,7 @@ EnemyPrismSlime* GamePlayScene::FindPrismBossForHUD() {
 }
 
 EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
+    // 現シーンのマグマボスを探し、HP表示の参照先にする。
     if (!objectManager_) {
         return nullptr;
     }
@@ -849,6 +868,7 @@ EnemyMagmaSlime* GamePlayScene::FindMagmaBossForHUD() {
 }
 
 EnemyFalseKingSlime* GamePlayScene::FindFalseKingBossForHUD() {
+    // 現シーンの偽王ボスを探し、HP表示の参照先にする。
     if (!objectManager_) {
         return nullptr;
     }
@@ -1191,6 +1211,7 @@ void GamePlayScene::UpdatePrismBossHUD(float deltaTime) {
 }
 
 void GamePlayScene::DrawGameplayHUD() {
+    // 通常HUDをシーンのSpriteより後に描き、画面上に重ねる。
     if (lifeLostPresentationActive_ || lifeLostBlackHold_) {
         DrawLifeLostPresentation();
         return;
@@ -1222,6 +1243,7 @@ void GamePlayScene::DrawGameplayHUD() {
 }
 
 void GamePlayScene::DrawPrismBossHUD() {
+    // ボス用HUDの表示状態を確認してから、専用の重ね描画を行う。
     DrawGameplayHUDSprite(prismBossHudGlow_);
     DrawGameplayHUDSprite(prismBossHudBack_);
     DrawGameplayHUDSprite(prismBossHudTrack_);
@@ -1247,6 +1269,7 @@ void GamePlayScene::DrawPrismBossHUD() {
 }
 
 void GamePlayScene::DrawStageStarHUD() {
+    // 取得済みの星と飛行演出を同じHUD層へ描く。
     for (const auto& slot : hudStageStarSlots_) {
         DrawGameplayHUDSprite(slot);
     }

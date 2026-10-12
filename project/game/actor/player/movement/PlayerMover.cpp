@@ -17,7 +17,7 @@
 
 // 移動入力と接地状態を統合します。ジャンプ入力はPlayer本体で先に採取し、更新順による取りこぼしを避けます。
 
-PlayerMover::PlayerMover() {}
+PlayerMover::PlayerMover() = default;
 
 PlayerMover::~PlayerMover() {
     // 念のためデストラクタでも子の衝突属性を復帰する
@@ -33,6 +33,7 @@ PlayerMover::~PlayerMover() {
 }
 
 void PlayerMover::StopDashOnImpact() {
+    // 衝突でダッシュが途切れたら、移動速度だけでなく無敵と子の衝突属性も戻す。
     if (!isDashing_) {
         return;
     }
@@ -53,6 +54,7 @@ void PlayerMover::StopDashOnImpact() {
 }
 
 void PlayerMover::ResetTransientState() {
+    // ワープ・演出復帰で前の足場やダッシュの補正を次の場面へ持ち込まない。
     platformVelocity_ = {};
     platformAirVelocity_ = {};
     jumpRequest_.Reset();
@@ -92,6 +94,7 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 }
 
 void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
+    // 操作停止中も予約の寿命を管理し、無効な場面の入力だけを明示的に破棄する。
     if (!player_ || !inputManager_)
         return;
     if (discard) {
@@ -120,6 +123,17 @@ void PlayerMover::SampleJumpInput(float deltaTime, bool discard) {
         DebugConsole::GetInstance()->AddLog("[Jump] 予約期限切れ：接地または操作復帰が間に合いませんでした");
     }
 #endif
+}
+
+Vector3 PlayerMover::GetMoveInputDirection() {
+    // 速度を適用せず、現在の移動戦略と同じカメラ基準の向きだけを攻撃側へ渡す。
+    if (!player_ || !strategy_) {
+        return {};
+    }
+    Vector3 input = strategy_->CalculateVelocity(player_);
+    input.y = 0.0f;
+    const float length = std::sqrt(input.x * input.x + input.z * input.z);
+    return length > 0.001f ? input / length : Vector3{};
 }
 
 // 水平移動とジャンプ要求を確定します。重力・衝突を含む Character の更新は呼び出し側で行います。
@@ -262,6 +276,7 @@ void PlayerMover::Update(float deltaTime) {
 }
 
 void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
+    // プレイヤー中心ではなく接地面から発生させ、段差やジャンプ時の浮きを防ぐ。
     if (!player_ || !presetName)
         return;
 
@@ -274,9 +289,13 @@ void PlayerMover::EmitGroundDust(const char* presetName, float yOffset) const {
     particleManager->Emit(presetName, emitPos);
 }
 
-void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy) { strategy_ = std::move(strategy); }
+void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy) {
+    // 入力計算だけを差し替え、足場補正やダッシュの状態は保持する。
+    strategy_ = std::move(strategy);
+}
 
 void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier) {
+    // 連続してパネルを踏んでも効果時間は短縮せず、速度だけ不足分を補う。
     dashPanelTimer_ = (std::max)(dashPanelTimer_, duration);
     dashPanelSpeedMultiplier_ = (std::max)(1.0f, speedMultiplier);
     dashPanelTurnMultiplier_ = std::clamp(turnMultiplier, 0.05f, 1.0f);

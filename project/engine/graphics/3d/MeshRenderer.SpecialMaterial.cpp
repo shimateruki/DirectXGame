@@ -34,16 +34,19 @@ struct BakedShaderTextureCache {
 };
 
 std::string NormalizeSlashes(std::string text) {
+    // リソースパスを Windows と JSON の両表記で一致させる。
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
 }
 
 BakedShaderTextureCache& GetBakedShaderTextureCache() {
+    // テクスチャ管理側の SRV 番号を一度読み、全材質で再利用する。
     static BakedShaderTextureCache cache;
     return cache;
 }
 
 uint32_t LoadTextureWithFallback(const char* texturePath, bool isLinearData = true) {
+    // 焼き込み画像が欠けていても白画像へ退避し、SRV の未束縛を避ける。
     const char* fallbackPath = "Resources/sprite/common/white.dds";
     const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
     return TextureManager::GetInstance()->Load(pathToLoad,
@@ -51,6 +54,7 @@ uint32_t LoadTextureWithFallback(const char* texturePath, bool isLinearData = tr
 }
 
 void EnsureBakedShaderTexturesLoaded() {
+    // マスクは線形値、色画像は sRGB として読み込み、シェーダーへの解釈を揃える。
     BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
     if (cache.loaded) {
         return;
@@ -93,6 +97,7 @@ const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
 }
 
 void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
+    // 水系の共有ルートにある t2～t4 相当の三スロットを常に埋める。
     EnsureBakedShaderTexturesLoaded();
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
@@ -100,6 +105,7 @@ void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const Baked
 }
 
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
+    // モデルがファイル指定かフォルダ指定かによって、LOD 定義の候補を順に作る。
     std::vector<fs::path> candidates;
     if (modelName.empty()) {
         return candidates;
@@ -123,6 +129,7 @@ std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
 }
 
 bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    // 読み込み失敗は例外を外へ出さず、呼び出し側の代替設定へ戻す。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -138,6 +145,7 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
 }
 
 float ClampTextureTiling(float value) {
+    // 非有限値や極端な繰り返し値を材質定数に渡さない。
     if (!std::isfinite(value)) {
         return 1.0f;
     }
@@ -145,6 +153,7 @@ float ClampTextureTiling(float value) {
 }
 
 Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+    // 物体の大きい二軸を使い、向きに依らず面積に合った繰り返し量を作る。
     float a = std::abs(scale.x);
     float b = std::abs(scale.y);
     float c = std::abs(scale.z);
@@ -158,6 +167,7 @@ Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
 
 template <typename T>
 bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, T*& data, const char* label) {
+    // 作成と Map のどちらかに失敗したら部分的な資源を残さない。
     data = nullptr;
     resource.Reset();
     if (!dxCommon) {
@@ -218,6 +228,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
 }
 
 void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    // 別カメラ用の定数バッファを使い、通常画面の WVP と視点情報を上書きしない。
     Model* drawModel = ResolveDrawModel();
     ID3D12Resource* previewWvpResource = nullptr;
     ID3D12Resource* previewCameraResource = nullptr;
@@ -251,6 +262,7 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
 }
 
 bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource) {
+    // プレビュー番号に対応する独立バッファへ、そのカメラの行列と視点を記録する。
     wvpResource = nullptr;
     cameraResource = nullptr;
     if (!camera) {
@@ -345,6 +357,7 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
 }
 
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 通常画面の WVP を使って水材質の共通描画経路へ渡す。
     DrawWaterWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -376,10 +389,12 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
 }
 
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 通常画面の WVP を使って不透明マグマの共通描画経路へ渡す。
     DrawMagmaWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
 void MeshRenderer::DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 水と同じ定数配置でマグマ専用 PSO を使い、深度と背景色を渡す。
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
@@ -397,10 +412,12 @@ void MeshRenderer::DrawMagmaWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
 }
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 通常画面の WVP を使って氷材質の共通描画経路へ渡す。
     DrawIceWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
 void MeshRenderer::DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 半透明の氷も水系ルートの定数とテクスチャ配置を共用する。
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !wvpResource) return;
 
@@ -417,6 +434,7 @@ void MeshRenderer::DrawIceWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrv
 }
 
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 通常画面の WVP を使って炎材質の共通描画経路へ渡す。
     DrawFireWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle);
 }
 
@@ -450,10 +468,12 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
+    // 通常画面用の WVP を添えて各特殊材質の共有描画処理へ渡す。
     DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle, setGraphicsCommand, useProxyModel, bakedTextureMode);
 }
 
 void MeshRenderer::DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
+    // 代理形状が必要な演出だけ差し替え、定数と SRV のルート番号は全材質で統一する。
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !HasRequiredBuffers() || !waterParamResource_ || !setGraphicsCommand || !wvpResource) return;
 
@@ -495,54 +515,67 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(ID3D12Resource* wvpResource, uint3
 }
 
 void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 加算ビーム用 PSO を共有描画経路へ指定する。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLaserGraphicsCommand);
 }
 
 void MeshRenderer::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // ゼリー材質用 PSO を共有描画経路へ指定する。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetSlimeGelGraphicsCommand);
 }
 
 void MeshRenderer::DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 地面衝撃波用 PSO を共有描画経路へ指定する。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetShockwaveGraphicsCommand);
 }
 
 void MeshRenderer::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 液面接触用 PSO を共有描画経路へ指定する。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLiquidContactGraphicsCommand);
 }
 
 void MeshRenderer::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // ひび割れ用 PSO を共有描画経路へ指定する。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetDamageCrackGraphicsCommand);
 }
 
 void MeshRenderer::DrawUpdraft(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 上昇気流は代理メッシュを使ってボリュームの見た目を作る。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetUpdraftGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawStunBind(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 拘束光は代理メッシュで視点から形が読めるようにする。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetStunBindGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 王冠解除の光は代理メッシュを使う。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetCrownUnlockGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 胞子は代理メッシュで薄い面を重ねる。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetPoisonSporeGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 雲は代理メッシュを使用して体積感を出す。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetCloudGraphicsCommand, true);
 }
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // ポータルは専用焼き込みマスクと代理形状を組み合わせる。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
 }
 
 void MeshRenderer::DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    // 風の球は元モデルの形状を維持したまま専用 PSO へ切り替える。
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetWindOrbGraphicsCommand);
 }
 
 void MeshRenderer::InitializeWaterProxyModel() {
+    // 水面シェーダー用に細分化した格子を作り、波の頂点変位を表現できるようにする。
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {
         return;
@@ -589,6 +622,7 @@ void MeshRenderer::InitializeWaterProxyModel() {
 }
 
 void MeshRenderer::InitializeFireProxyModel() {
+    // 平面型の炎で使う代理メッシュを必要時に生成する。
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {
         return;
@@ -659,6 +693,7 @@ void MeshRenderer::InitializeVolumetricFireProxyModel() {
 }
 
 void MeshRenderer::InitializeGatePortalProxyModel() {
+    // ポータルを描くための代理形状を元モデルとは別に保持する。
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {
         return;
@@ -720,6 +755,7 @@ void MeshRenderer::InitializeGatePortalProxyModel() {
 }
 
 void MeshRenderer::InitializeGateBarrierCylinderProxyModel() {
+    // 結界の設定では平面ではなく円筒の代理形状を使う。
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {
         return;

@@ -17,6 +17,7 @@
 #include <memory>
 namespace {
 Vector3 GetStablePullEnemyScale(Object3d* enemy) {
+    // 引き伸ばし中の一時的な縦横比ではなく、体積を保つ基準尺度で捕獲演出を始める。
     if (!enemy) {
         return {1.0f, 1.0f, 1.0f};
     }

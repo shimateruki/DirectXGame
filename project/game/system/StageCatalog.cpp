@@ -65,6 +65,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         data.defaultUnlocked = readBool(stageJson, "defaultUnlocked", false);
         data.lightPath = readString(stageJson, "lightPath", "");
         data.skyboxPath = readString(stageJson, "skyboxPath", "");
+        data.gateNameTexturePath = readString(stageJson, "gateNameTexturePath", "");
 
         if (data.id.empty() || data.levelPath.empty() || !usedIds.insert(data.id).second) {
             continue;
@@ -81,6 +82,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
 }
 
 std::vector<StageData> StageCatalog::CreateFallback() {
+    // カタログ JSON が読めない場合も既存のステージ順と解放条件を維持する。
     return {{"stage1", "Stage 1", "Resources/json/3Dobject/stage1.json", "Resources/json/sprite/stage1_sprite.json",
              "", "", -1, true},
             {"stage2", "Stage 2", "Resources/json/3Dobject/stage2.json", "Resources/json/sprite/stage2_sprite.json",

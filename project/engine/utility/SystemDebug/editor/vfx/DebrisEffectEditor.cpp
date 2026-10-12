@@ -121,6 +121,7 @@ void DrawMaterialTypeCombo(int& materialType) {
 }
 
 void DebrisEffectEditor::Initialize(SceneManager* sceneManager) {
+    // プリセットとモデル候補を揃え、最初の編集状態に岩の破片設定を用意します。
     sceneManager_ = sceneManager;
     RefreshLists();
     ApplyQuickPresetRock();
@@ -211,6 +212,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
 
 void DebrisEffectEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // 編集値はローカル設定に保持し、保存またはプレビュー時にManagerへ渡します。
     ImGui::Text("3D破片エフェクト Editor");
     ImGui::TextDisabled("爆発、破壊、着地衝撃などで飛び散る3D破片を調整します。");
 
@@ -335,6 +337,7 @@ void DebrisEffectEditor::DrawImGui() {
 }
 
 void DebrisEffectEditor::RefreshLists() {
+    // モデル一覧と保存済みJSONを再取得し、外部で追加された素材も候補へ反映します。
     modelList_ = ModelManager::GetInstance()->GetAvailableModelNames();
     std::sort(modelList_.begin(), modelList_.end());
 
@@ -352,6 +355,7 @@ void DebrisEffectEditor::RefreshLists() {
 }
 
 void DebrisEffectEditor::Save(const std::string& presetName) {
+    // モデル入力欄を設定へ同期してからJSONを保存し、実行時のPreset登録も更新します。
     SyncConfigFromModelBuffers();
     config_.name = presetName.empty() ? "debris" : presetName;
     std::string filePath = std::string(kDebrisPresetDirectory) + config_.name + ".json";
@@ -363,6 +367,7 @@ void DebrisEffectEditor::Save(const std::string& presetName) {
 }
 
 void DebrisEffectEditor::Load(const std::string& presetName) {
+    // 読込成功時だけ現在の設定と入力欄を差し替えます。
     if (presetName.empty()) {
         return;
     }
@@ -376,6 +381,7 @@ void DebrisEffectEditor::Load(const std::string& presetName) {
 }
 
 void DebrisEffectEditor::Preview() {
+    // 必要なら前回の破片を消してから、現在の編集値を指定位置で一度再生します。
     SyncConfigFromModelBuffers();
     if (clearBeforePreview_) {
         DebrisEffectManager::GetInstance()->Clear();
@@ -384,6 +390,7 @@ void DebrisEffectEditor::Preview() {
 }
 
 Vector3 DebrisEffectEditor::GetPreviewPosition() const {
+    // 専用Stageが有効ならその中心を優先し、なければ現在カメラから位置を決めます。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled()) {
         return previewStage->GetPreviewPosition();
@@ -404,6 +411,7 @@ Vector3 DebrisEffectEditor::GetPreviewPosition() const {
 }
 
 void DebrisEffectEditor::SyncModelBuffersFromConfig() {
+    // JSONの可変長モデル一覧を、四つの編集欄へ安全に写します。
     std::array<std::array<char, 128>*, 4> buffers = {
         &modelBuffer0_, &modelBuffer1_, &modelBuffer2_, &modelBuffer3_
     };
@@ -434,6 +442,7 @@ void DebrisEffectEditor::SyncConfigFromModelBuffers() {
 }
 
 void DebrisEffectEditor::ApplyQuickPresetRock() {
+    // 岩の塊向けに大きめの破片と上方向の初速を設定します。
     config_ = DebrisEffectConfig{};
     config_.name = "rock_burst";
     config_.modelNames = { "Primitives/cube", "Stages/block" };
@@ -456,6 +465,7 @@ void DebrisEffectEditor::ApplyQuickPresetRock() {
 }
 
 void DebrisEffectEditor::ApplyQuickPresetWood() {
+    // 木片向けに少数の破片と横への散り方を設定します。
     config_ = DebrisEffectConfig{};
     config_.name = "wood_splinter_burst";
     config_.modelNames = { "Stages/block", "Primitives/cube" };
@@ -477,6 +487,7 @@ void DebrisEffectEditor::ApplyQuickPresetWood() {
 }
 
 void DebrisEffectEditor::ApplyQuickPresetPebble() {
+    // 小石向けに小粒の破片を多めに散らす設定へ戻します。
     config_ = DebrisEffectConfig{};
     config_.name = "small_pebble_scatter";
     config_.modelNames = { "Primitives/sphere", "Primitives/cube" };

@@ -17,6 +17,7 @@
 
 namespace {
 Vector2 CalculatePlayerIrisCenter(Player* player) {
+    // プレイヤーが画面内にいる時だけ投影位置を使い、画面外なら中央から閉じる。
     Vector2 irisCenter = {0.5f, 0.5f};
     Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (!player || !cam) {
@@ -35,6 +36,7 @@ Vector2 CalculatePlayerIrisCenter(Player* player) {
 }
 
 GamePlayScene* GetCurrentGamePlayScene() {
+    // 死亡演出はゲームシーン内に限って通知し、プレビュー等では省略する。
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager) {
         return nullptr;
@@ -43,6 +45,7 @@ GamePlayScene* GetCurrentGamePlayScene() {
 }
 
 void StartLifeLostPresentationOnScene() {
+    // 減少後の残機に対し、演出には減少前後の値を渡す。
     if (GamePlayScene* scene = GetCurrentGamePlayScene()) {
         const int afterLives = GameDataManager::GetInstance()->GetLives();
         scene->StartLifeLostPresentation(afterLives + 1, afterLives);
@@ -163,6 +166,7 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStateDead::Exit(Player* player) {
+    // シーンが継続する場合でも、カメラ固定と操作禁止を残さない。
     if (player) {
         deathAnimation_.RestoreVisual(player);
         player->SetIsControlActive(true);
@@ -180,6 +184,7 @@ void PlayerStateDead::Exit(Player* player) {
 // 落下演出状態 (FallingOut)
 // ========================================================
 void PlayerStateFallingOut::Enter(Player* player) {
+    // 落下直後の画面位置をアイリス中心として固定し、入力を止める。
     if (!player)
         return;
     player->SetIsControlActive(false);
@@ -264,6 +269,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStateFallingOut::Exit(Player* player) {
+    // 復帰後や遷移時に入力とカメラの固定を必ず解除する。
     if (player) {
         player->SetIsControlActive(true);
     }

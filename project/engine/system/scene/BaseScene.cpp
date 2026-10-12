@@ -16,6 +16,7 @@
 #include <unordered_set>
 
 Sprite* BaseScene::AddSprite(std::unique_ptr<Sprite> sprite) {
+    // 所有権をシーンへ移した後、編集用の非所有ポインタを返します。
     auto* sprites = GetMutableSprites();
     if (!sprites || !sprite) return nullptr;
     Sprite* raw = sprite.get();
@@ -24,6 +25,7 @@ Sprite* BaseScene::AddSprite(std::unique_ptr<Sprite> sprite) {
 }
 
 bool BaseScene::MoveSprite(Sprite* sprite, int offset) {
+    // 前後一つの入れ替えだけを許可し、描画順と UI 上の並びを揃えます。
     auto* sprites = GetMutableSprites();
     if (!sprites || !sprite || (offset != -1 && offset != 1)) return false;
     auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const auto& owned) {
@@ -38,33 +40,40 @@ bool BaseScene::MoveSprite(Sprite* sprite, int offset) {
 }
 
 void BaseScene::AddObject(std::unique_ptr<Object3d> object) {
+    // オブジェクトを持たない派生シーンは、この操作を明示的に拒否します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
 Object3d* BaseScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    // 即時追加も所有権を持つ派生シーンだけが実装します。
     (void)object;
     throw std::logic_error("This scene does not own Object3d objects");
 }
 
 std::unique_ptr<Object3d> BaseScene::TakeObjectImmediate(Object3d* object) {
+    // 所有権のない基底シーンでは持ち出す対象がありません。
     (void)object;
     return nullptr;
 }
 
 SceneLoadManifest BaseScene::BuildAsyncLoadManifest() const {
+    // 非同期ロードを使う派生シーンだけが必要な資源を宣言します。
     return {};
 }
 
 void BaseScene::BeginLoadingInitialize() {
+    // 分割初期化を使わないシーンの既定フックです。
 }
 
 bool BaseScene::InitializeLoadingStep() {
+    // 既定実装は通常の初期化を一回で終えます。
     Initialize();
     return true;
 }
 
 float BaseScene::GetLoadingInitializeProgress() const {
+    // 分割ロードを実装しない場合の既定の進捗です。
     return 0.0f;
 }
 
@@ -74,6 +83,7 @@ void BaseScene::OnActivated() {
 }
 
 void BaseScene::FixedUpdate(float fixedDeltaTime) {
+    // 物理用の固定刻みで全オブジェクトを進め、別管理の Player だけ補完更新します。
     auto& objects = GetObjects();
     Player* player = GetPlayer();
     bool playerWasUpdated = false;
@@ -90,10 +100,12 @@ void BaseScene::FixedUpdate(float fixedDeltaTime) {
 }
 
 bool BaseScene::TakePreparedJson(const std::string& path, json& destination) {
+    // 先読み済み JSON があれば、再度ディスクを読まずに受け取ります。
     return preparedLoadData_ && preparedLoadData_->TakeJson(path, destination);
 }
 
 std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& defaultPath) {
+    // Scene Asset の主レイアウト指定は最初の一回だけ消費します。
     if (sceneAssetObjectLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {
         return defaultPath;
     }
@@ -104,6 +116,7 @@ std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& default
 }
 
 std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& defaultPath) {
+    // Sprite 側も Scene Asset の主レイアウトを二重に読みません。
     if (sceneAssetSpriteLayoutConsumed_ || !sceneLoadContext_.IsSceneAsset()) {
         return defaultPath;
     }
@@ -114,14 +127,17 @@ std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& default
 }
 
 bool BaseScene::Destroy(Object3d* object) {
+    // 3D オブジェクトの削除は生存確認と遅延破棄を行う共通経路へ渡します。
     return DestroyObject(object);
 }
 
 bool BaseScene::Destroy(Sprite* sprite) {
+    // Sprite の削除は Replay 保持状態に応じた共通経路へ渡します。
     return DestroySprite(sprite);
 }
 
 void BaseScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+    // Replay に現在の Sprite を非所有参照として渡します。
     auto& sprites = GetSprites();
     replaySprites.reserve(replaySprites.size() + sprites.size());
     for (auto& sprite : sprites) {
@@ -132,14 +148,17 @@ void BaseScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 }
 
 void BaseScene::CaptureReplaySceneState(json& state) const {
+    // 派生シーンの追加状態を書けるよう、基底では空のオブジェクトを用意します。
     state = json::object();
 }
 
 void BaseScene::RestoreReplaySceneState(const json& state) {
+    // 基底シーンには復元する固有状態がありません。
     (void)state;
 }
 
 void BaseScene::ReleaseReplaySprites() {
+    // Replay が保持していた Sprite を解放し、削除保留の子参照も切ります。
     std::vector<Sprite*> replaySprites;
     CollectReplaySprites(replaySprites);
     for (Sprite* sprite : replaySprites) {
@@ -162,6 +181,7 @@ void BaseScene::ReleaseReplaySprites() {
 }
 
 void BaseScene::RefreshRenderCameraData() {
+    // カメラ切り替え後に全描画物と別管理の Player の定数を更新します。
     auto& objects = GetObjects();
     for (auto& object : objects) {
         if (object) {
@@ -175,6 +195,7 @@ void BaseScene::RefreshRenderCameraData() {
 }
 
 void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
+    // 指定カメラへ描く際は通常パスと特殊材質パスを同じプレビュー先へ出します。
     if (!camera) {
         return;
     }
@@ -260,6 +281,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
 }
 
 bool BaseScene::DestroyObject(Object3d* object) {
+    // 走査中の即時破棄を避け、先に非表示にして削除を予約します。
     if (!IsAlive(object)) {
         return false;
     }
@@ -270,6 +292,7 @@ bool BaseScene::DestroyObject(Object3d* object) {
 }
 
 bool BaseScene::DestroySprite(Sprite* sprite) {
+    // Replay が保持する Sprite は実破棄せず、記録上の削除として隠します。
     auto* sprites = GetMutableSprites();
     if (!sprites) return false;
     auto it = std::find_if(sprites->begin(), sprites->end(), [sprite](const std::unique_ptr<Sprite>& candidate) {
@@ -305,6 +328,7 @@ bool BaseScene::DestroySprite(Sprite* sprite) {
 }
 
 bool BaseScene::IsAlive(Object3d* object) {
+    // 生存判定は所有配列内に同じポインタがあるかで確認します。
     if (!object) {
         return false;
     }
@@ -316,6 +340,7 @@ bool BaseScene::IsAlive(Object3d* object) {
 }
 
 bool BaseScene::IsAlive(Sprite* sprite) {
+    // Replay 上で削除済みの Sprite は所有配列にあっても生存扱いにしません。
     if (!sprite) {
         return false;
     }
@@ -327,10 +352,12 @@ bool BaseScene::IsAlive(Sprite* sprite) {
 }
 
 bool BaseScene::IsSpecialMaterialType(int materialType) const {
+    // Scene Color や深度を参照する材質を専用パスへ振り分けます。
     return (materialType >= 8 && materialType <= 22) || materialType == 26;
 }
 
 bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const {
+    // 一人称視点では Player 自身とその子オブジェクトを隠します。
     if (!isFirstPerson || !object || !player) {
         return false;
     }
@@ -346,6 +373,7 @@ bool BaseScene::IsHiddenByFirstPerson(Object3d* object, Player* player, bool isF
 }
 
 void BaseScene::DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* spotLight) {
+    // 敵の攻撃予告は本体描画とは別に集めて描きます。
     for (const auto& object : GetObjects()) {
         if (auto* enemy = dynamic_cast<BaseEnemy*>(object.get())) {
             enemy->DrawAttackTelegraph(pointLight, spotLight);
@@ -354,6 +382,7 @@ void BaseScene::DrawEnemyTelegraphs(ID3D12Resource* pointLight, ID3D12Resource* 
 }
 
 bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player, bool isFirstPerson) {
+    // 対象がないフレームは専用パスの開始と終了を省略します。
     if (!dxCommon) {
         return false;
     }
@@ -383,6 +412,7 @@ bool BaseScene::DrawLocalFogObjects(const std::vector<std::unique_ptr<Object3d>>
 }
 
 bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager, Player* player, bool isFirstPerson) {
+    // 深度・背景色を読む材質をまとめ、必要な時だけ Grab Texture を更新します。
     if (!dxCommon) {
         return false;
     }
@@ -479,6 +509,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<Obj
 }
 
 bool BaseScene::DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
+    // 背景色が必要な粒子だけコピーを追加し、既済みなら再利用します。
     GPUParticleManager* particleManager = GPUParticleManager::GetInstance();
     if (!dxCommon || !camera || particleManager->IsEmpty()) {
         return grabAlreadyUpdated;
@@ -522,6 +553,7 @@ void BaseScene::TriggerEvent(int targetID) {
 }
 
 void BaseScene::SetEventActive(int targetID, bool active) {
+    // 同じ受信 ID の全オブジェクトへオン・オフ状態を伝えます。
     if (targetID == -1) return;
 
     auto& objects = GetObjects();
@@ -546,6 +578,7 @@ Object3d* BaseScene::FindObjectByEventID(int eventID) {
 }
 
 Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
+    // 保存用 GUID の形式を確かめてからシーン内を探索します。
     if (!Object3d::IsPersistentGuidValid(guid)) {
         return nullptr;
     }
@@ -558,10 +591,12 @@ Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) {
 }
 
 const Object3d* BaseScene::FindObjectByPersistentGuid(const std::string& guid) const {
+    // 読み取り側も同じ GUID 探索規則を使います。
     return const_cast<BaseScene*>(this)->FindObjectByPersistentGuid(guid);
 }
 
 std::size_t BaseScene::EnsureUniquePersistentObjectGuids() {
+    // 重複 GUID だけ再発行し、Scene Asset の安定した参照を保ちます。
     std::unordered_set<std::string> usedGuids;
     usedGuids.reserve(GetObjects().size());
     std::size_t regeneratedCount = 0;

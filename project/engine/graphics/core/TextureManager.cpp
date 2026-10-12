@@ -23,31 +23,27 @@ const std::filesystem::path kDDSCacheRequestPath = "Resources/.cache/dds_cache_r
 const std::filesystem::path kDDSCacheDisableFlagPath = "Resources/.cache/disable_dds_cache.flag";
 // この時間未満の読み込みはDDS化しても効果が薄いため、変換要求を出さない。
 constexpr float kDDSCacheRequestMinDurationMs = 2.0f;
-// 文字列を小文字化し、拡張子やパスの比較を大文字小文字に左右されない形へ揃える。
-
 std::string ToLower(std::string text) {
+    // 文字列を小文字化し、拡張子やパスの比較を大文字小文字に左右されない形へ揃える。
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
     return text;
 }
 
-// Windowsのバックスラッシュをスラッシュへ統一し、テクスチャパスを比較しやすくする。
-
 std::string NormalizeTexturePath(std::string path) {
+    // Windowsのバックスラッシュをスラッシュへ統一し、テクスチャパスを比較しやすくする。
     std::replace(path.begin(), path.end(), '\\', '/');
     return path;
 }
 
-// 正規化したテクスチャパスを小文字化し、キャッシュ判定用のキーとして扱いやすくする。
-
 std::string NormalizeTexturePathLower(std::string path) {
+    // 正規化したテクスチャパスを小文字化し、キャッシュ判定用のキーとして扱いやすくする。
     return ToLower(NormalizeTexturePath(std::move(path)));
 }
 
-// 絶対パスを可能な限りプロジェクト相対パスへ戻し、ログやキャッシュ要求を環境依存にしにくくする。
-
 std::string ToProjectPath(const std::filesystem::path& path) {
+    // 絶対パスを可能な限りプロジェクト相対パスへ戻し、ログやキャッシュ要求を環境依存にしにくくする。
     std::error_code ec;
     std::filesystem::path absolutePath = std::filesystem::absolute(path, ec);
     if (ec) {
@@ -66,9 +62,8 @@ std::string ToProjectPath(const std::filesystem::path& path) {
     return NormalizeTexturePath(absolutePath.string());
 }
 
-// DDS生成元として扱う画像拡張子かどうかを判定する。
-
 bool IsSourceTextureExtension(const std::string& ext) {
+    // DDS生成元として扱う画像拡張子かどうかを判定する。
     const std::string lowerExt = ToLower(ext);
     return lowerExt == ".png" ||
            lowerExt == ".jpg" ||
@@ -77,16 +72,14 @@ bool IsSourceTextureExtension(const std::string& ext) {
            lowerExt == ".hdr";
 }
 
-// 原因調査用に、フラグファイルだけでDDSキャッシュの使用を一時停止できるようにする。
-
 bool IsDDSCacheDisabled() {
+    // 原因調査用に、フラグファイルだけでDDSキャッシュの使用を一時停止できるようにする。
     std::error_code ec;
     return std::filesystem::exists(kDDSCacheDisableFlagPath, ec) && !ec;
 }
 
-// DDS指定時に元画像が存在するか探し、古いDDSを元画像から再生成できるようにする。
-
 std::filesystem::path FindSourceTextureForDDS(const std::filesystem::path& ddsPath) {
+    // DDS指定時に元画像が存在するか探し、古いDDSを元画像から再生成できるようにする。
     static const char* kSourceExts[] = { ".png", ".jpg", ".jpeg", ".tga", ".hdr" };
     for (const char* ext : kSourceExts) {
         std::filesystem::path candidate = ddsPath;
@@ -98,17 +91,15 @@ std::filesystem::path FindSourceTextureForDDS(const std::filesystem::path& ddsPa
     return {};
 }
 
-// エディタの一時プレビュー画像かどうかを判定し、不要なDDSキャッシュ生成を避ける。
-
 bool IsEditorPreviewTexture(const std::string& path) {
+    // エディタの一時プレビュー画像かどうかを判定し、不要なDDSキャッシュ生成を避ける。
     const std::string normalized = "/" + NormalizeTexturePathLower(path);
     return normalized.find("/generated/text/_preview_") != std::string::npos ||
            normalized.find("/generated/editor/text_preview/") != std::string::npos;
 }
 
-// 法線やマスク系のテクスチャ名を判定し、sRGB変換しないリニア扱いにする。
-
 bool IsLinearTexturePath(const std::string& path) {
+    // 法線やマスク系のテクスチャ名を判定し、sRGB変換しないリニア扱いにする。
     const std::string lowerPath = NormalizeTexturePathLower(path);
     return lowerPath.find("normal") != std::string::npos ||
            lowerPath.find("bakedshader") != std::string::npos ||
@@ -123,9 +114,8 @@ bool IsLinearTexturePath(const std::string& path) {
            lowerPath.find("ao") != std::string::npos;
 }
 
-// テクスチャ用途に応じて、DDS変換時に使用する圧縮フォーマット名を決める。
-
 std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
+    // テクスチャ用途に応じて、DDS変換時に使用する圧縮フォーマット名を決める。
     const std::string ext = ToLower(std::filesystem::path(filePath).extension().string());
     if (ext == ".hdr") {
         return "BC6H_UF16";
@@ -136,9 +126,8 @@ std::string GetDDSFormat(const std::string& filePath, bool isLinearTexture) {
     return "BC7_UNORM_SRGB";
 }
 
-// DDS生成要求を処理する監視スクリプトを、必要になったタイミングで一度だけ起動する。
-
 void StartDDSCacheWatcherIfNeeded() {
+    // DDS生成要求を処理する監視スクリプトを、必要になったタイミングで一度だけ起動する。
     static bool watcherStartTried = false;
     if (watcherStartTried) {
         return;
@@ -156,9 +145,8 @@ void StartDDSCacheWatcherIfNeeded() {
     ShellExecuteW(nullptr, L"open", L"wscript.exe", parameters.c_str(), nullptr, SW_HIDE);
 }
 
-// JSONLへ書き込む文字列をエスケープし、パスに記号が含まれても壊れないようにする。
-
 std::string EscapeJson(const std::string& text) {
+    // JSONLへ書き込む文字列をエスケープし、パスに記号が含まれても壊れないようにする。
     std::string escaped;
     escaped.reserve(text.size());
     for (char c : text) {
@@ -174,9 +162,8 @@ std::string EscapeJson(const std::string& text) {
     return escaped;
 }
 
-// 読み込んだ元画像に対応するDDS生成要求をJSONLへ追記し、次回以降の読み込みを軽くする。
-
 void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float durationMs) {
+    // 読み込んだ元画像に対応するDDS生成要求をJSONLへ追記し、次回以降の読み込みを軽くする。
     const std::filesystem::path sourcePath(filePath);
     const std::string ext = ToLower(sourcePath.extension().string());
     if (!IsSourceTextureExtension(ext) || IsEditorPreviewTexture(filePath)) {
@@ -216,9 +203,8 @@ void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float 
     StartDDSCacheWatcherIfNeeded();
 }
 
-// 拡張子を除いたテクスチャ基準パスを作り、元画像とDDSの対応確認に使う。
-
 std::string GetTextureBasePath(const std::filesystem::path& path) {
+    // 拡張子を除いたテクスチャ基準パスを作り、元画像とDDSの対応確認に使う。
     std::filesystem::path base = path.parent_path() / path.stem();
     return NormalizeTexturePath(base.string());
 }
@@ -275,6 +261,7 @@ void UploadTextureData(
 }
 
 std::string MakeTextureCacheKey(const std::string& path, bool isLinearTexture) {
+    // 同じ画像でも線形色空間とsRGBではGPU上の解釈が異なるため、別エントリにする。
     return NormalizeTexturePath(path) + (isLinearTexture ? "|linear" : "|srgb");
 }
 
@@ -293,6 +280,7 @@ ResolvedTexturePath ResolveTexturePath(
     const std::string& filePath,
     TextureManager::TextureColorSpace colorSpace,
     bool allowDDSCache) {
+    // DDSの欠落・古さを確認し、必要なら元画像へ読み込み先を戻す。
     ResolvedTexturePath resolved;
     resolved.isLinearTexture = colorSpace == TextureManager::TextureColorSpace::Linear ||
         (colorSpace == TextureManager::TextureColorSpace::Auto && IsLinearTexturePath(filePath));
@@ -424,16 +412,14 @@ bool UploadTextureDataWithDedicatedCommandList(
     return true;
 }
 
-// TextureManagerのシングルトンインスタンスを返す。
-
 TextureManager* TextureManager::GetInstance() {
+    // TextureManagerのシングルトンインスタンスを返す。
     static TextureManager instance;
     return &instance;
 }
 
-// DirectXCommonからデバイスを受け取り、テクスチャ生成に必要な参照を保持する。
-
 void TextureManager::Initialize(DirectXCommon* dxCommon) {
+    // DirectXCommonからデバイスを受け取り、テクスチャ生成に必要な参照を保持する。
     assert(dxCommon);
     dxCommon_ = dxCommon;
     device_ = dxCommon->GetDevice();
@@ -465,6 +451,7 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 bool TextureManager::BeginAsyncUploadBatch() {
+    // Copy Queueとフェンスが揃った場合だけ、ひとまとまりの転送記録を開始する。
     if (!device_ || !copyCommandQueue_ || !copyFence_ || asyncUploadBatchSubmitted_) {
         return false;
     }
@@ -504,12 +491,14 @@ bool TextureManager::BeginAsyncUploadBatch() {
 thread_local bool TextureManager::asyncUploadRecording_ = false;
 
 void TextureManager::SetAsyncUploadRecording(bool enabled) {
+    // 提出済みバッチへ後からコマンドを追加しないよう、記録可能期間に制限する。
     asyncUploadRecording_ = enabled && asyncUploadBatchActive_ && !asyncUploadBatchSubmitted_;
 }
 
 bool TextureManager::RecordAsyncTextureUpload(
     ID3D12Resource* texture,
     const DirectX::ScratchImage& mipImages) {
+    // 中間リソースは転送完了まで保持しないとCopy Queueが解放済みメモリを読む。
     if (!texture || !device_ || !asyncUploadCommandList_ ||
         !asyncUploadBatchActive_ || !asyncUploadRecording_ || asyncUploadBatchSubmitted_) {
         return false;
@@ -533,6 +522,7 @@ bool TextureManager::RecordAsyncTextureUpload(
 }
 
 bool TextureManager::SubmitAsyncUploadBatch() {
+    // 実行後のフェンス値を記録し、非同期転送の完了判定に使う。
     if (!asyncUploadBatchActive_) {
         return true;
     }
@@ -564,6 +554,7 @@ bool TextureManager::SubmitAsyncUploadBatch() {
 }
 
 bool TextureManager::PollAsyncUploadBatch() {
+    // フェンス到達前は中間リソースを解放せず、次のフレームで再確認する。
     if (!asyncUploadBatchActive_) {
         return true;
     }
@@ -579,6 +570,7 @@ bool TextureManager::PollAsyncUploadBatch() {
 }
 
 void TextureManager::WaitForAsyncUploadBatch() {
+    // 同期が必要な呼び出し元では、Copy Queue完了を待って転送資源を片付ける。
     if (!asyncUploadBatchActive_) {
         return;
     }
@@ -604,10 +596,12 @@ void TextureManager::WaitForAsyncUploadBatch() {
 }
 
 bool TextureManager::IsAsyncUploadBatchPending() const {
+    // 提出前の記録中も未完了として扱い、二重開始を防ぐ。
     return asyncUploadBatchActive_;
 }
 
 void TextureManager::ReleaseCompletedAsyncUploadBatch() {
+    // フェンス確認後にのみ呼び、中間リソースとコマンド記録領域を再利用可能にする。
     asyncUploadRecording_ = false;
     asyncUploadBatchSubmitted_ = false;
     asyncUploadBatchActive_ = false;
@@ -617,9 +611,8 @@ void TextureManager::ReleaseCompletedAsyncUploadBatch() {
     asyncUploadAllocator_.Reset();
 }
 
-// テクスチャを読み込み、必要ならDDSキャッシュを優先しながらSRVハンドルとして登録する。
-
 uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDDSCache, bool forceReload) {
+    // テクスチャを読み込み、必要ならDDSキャッシュを優先しながらSRVハンドルとして登録する。
     return LoadInternal(
         filePath,
         isNormalMap ? TextureColorSpace::Linear : TextureColorSpace::Auto,
@@ -632,6 +625,7 @@ uint32_t TextureManager::Load(
     TextureColorSpace colorSpace,
     bool allowDDSCache,
     bool forceReload) {
+    // 色空間の指定を保ったまま共通の読込経路へ渡す。
     return LoadInternal(filePath, colorSpace, allowDDSCache, forceReload);
 }
 
@@ -639,6 +633,7 @@ bool TextureManager::Prepare(
     const std::string& filePath,
     TextureColorSpace colorSpace,
     bool allowDDSCache) {
+    // デコードはGPU転送より先に行い、同じキャッシュキーの準備済み画像は再利用する。
     const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDDSCache);
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -780,9 +775,8 @@ uint32_t TextureManager::LoadInternal(
     return srvHandle;
 }
 
-// 読み込み済みテクスチャのメタデータを取得し、サイズやミップ情報を参照できるようにする。
-
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
+    // 読み込み済みテクスチャのメタデータを取得し、サイズやミップ情報を参照できるようにする。
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = textureDatas_.find(textureHandle);
@@ -790,9 +784,8 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
     return it->second.metadata;
 }
 
-// 指定ディレクトリ配下の画像を走査し、元画像とDDSの重複を避けながらまとめて読み込む。
-
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
+    // 指定ディレクトリ配下の画像を走査し、元画像とDDSの重複を避けながらまとめて読み込む。
     if (!std::filesystem::exists(directoryPath)) {
         return;
     }
@@ -839,9 +832,8 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     }
 }
 
-// 現在読み込み済みのテクスチャパス一覧を返し、エディタやデバッグ表示で利用する。
-
 std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
+    // 現在読み込み済みのテクスチャパス一覧を返し、エディタやデバッグ表示で利用する。
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::set<std::string> uniquePaths;
@@ -852,6 +844,7 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
 }
 
 std::vector<std::string> TextureManager::GetAvailableTexturePaths() const {
+    // 読込済み画像に加え、素材フォルダ内の未読込画像も選択肢へ含める。
     std::set<std::string> uniquePaths;
     for (const std::string& loadedPath : GetLoadedTexturePaths()) {
         uniquePaths.insert(NormalizeTexturePath(loadedPath));
@@ -894,9 +887,8 @@ std::vector<std::string> TextureManager::GetAvailableTexturePaths() const {
     return { uniquePaths.begin(), uniquePaths.end() };
 }
 
-// 指定パスに対応するSRVハンドルを返し、元画像名で問い合わせた場合はDDS登録も補助的に探す。
-
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
+    // 指定パスに対応するSRVハンドルを返し、元画像名で問い合わせた場合はDDS登録も補助的に探す。
     std::lock_guard<std::mutex> lock(mutex_);
 
     const auto findHandle = [this](const std::string& path) -> uint32_t {

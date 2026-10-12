@@ -83,6 +83,7 @@ void EditorQuickSearch::Initialize(
     SceneManager* sceneManager,
     DebugEditor* editor,
     std::function<void()> ensureEditorPanelsVisible) {
+    // 検索対象のシーンとEditorは借用し、永続化したお気に入りと履歴だけ読み戻します。
     sceneManager_ = sceneManager;
     editor_ = editor;
     ensureEditorPanelsVisible_ = std::move(ensureEditorPanelsVisible);
@@ -90,6 +91,7 @@ void EditorQuickSearch::Initialize(
 }
 
 void EditorQuickSearch::Finalize() {
+    // 次回起動に必要な履歴を保存してから、シーンへの参照を切ります。
     SaveState();
     results_.clear();
     ensureEditorPanelsVisible_ = {};
@@ -98,6 +100,7 @@ void EditorQuickSearch::Finalize() {
 }
 
 void EditorQuickSearch::Open() {
+    // 検索欄へフォーカスを移し、開いた時点の候補を再計算します。
     openRequested_ = true;
     focusQueryRequested_ = true;
     selectedIndex_ = 0;
@@ -105,6 +108,7 @@ void EditorQuickSearch::Open() {
 }
 
 void EditorQuickSearch::HandleShortcut() {
+    // テキスト入力中のCtrl+Kは奪わず、通常操作時だけパレットを開きます。
     const ImGuiIO& io = ImGui::GetIO();
     if (!io.WantTextInput && io.KeyCtrl && !io.KeyShift && !io.KeyAlt &&
         ImGui::IsKeyPressed(ImGuiKey_K, false)) {
@@ -113,6 +117,7 @@ void EditorQuickSearch::HandleShortcut() {
 }
 
 void EditorQuickSearch::Draw() {
+    // 検索・実行を一つのモーダルで扱い、閉じる前に選択中の操作を確定します。
     const char* popupName = ICON_FA_SEARCH " 統合コマンドパレット###EditorQuickSearch";
     if (openRequested_) {
         ImGui::OpenPopup(popupName);
@@ -286,6 +291,7 @@ void EditorQuickSearch::RefreshResults(bool force) {
 }
 
 void EditorQuickSearch::CollectCommands(std::vector<SearchItem>& items) const {
+    // コマンドの実行可否を収集時に評価し、無効な操作も検索結果に残します。
     EditorCommandRegistry* registry = EditorCommandRegistry::GetInstance();
     for (const EditorCommand* command : registry->GetCommands()) {
         if (!command) continue;
@@ -308,6 +314,7 @@ void EditorQuickSearch::CollectCommands(std::vector<SearchItem>& items) const {
 }
 
 void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
+    // Scene内のObjectは永続GUIDを優先して識別し、Editor内部の補助Objectは除きます。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (!scene || !editor_) {
         return;
@@ -342,6 +349,7 @@ void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
 }
 
 void EditorQuickSearch::CollectAssets(std::vector<SearchItem>& items) const {
+    // 配置可能なモデルだけシーンへ生成し、その他のAssetはパスをコピーします。
     AssetDatabase* database = AssetDatabase::GetInstance();
     if (!database->IsInitialized() || !editor_) {
         return;
@@ -378,6 +386,7 @@ void EditorQuickSearch::CollectAssets(std::vector<SearchItem>& items) const {
 }
 
 void EditorQuickSearch::CollectSceneAssets(std::vector<SearchItem>& items) const {
+    // 再生・遷移中はScene切り替えを許可せず、候補の表示だけ残します。
     if (!editor_) {
         return;
     }
@@ -401,6 +410,7 @@ void EditorQuickSearch::CollectSceneAssets(std::vector<SearchItem>& items) const
 }
 
 void EditorQuickSearch::CollectPresets(std::vector<SearchItem>& items) const {
+    // 配置できる状態かを候補ごとに固定し、再生中の誤配置を防ぎます。
     if (!editor_) {
         return;
     }
@@ -525,6 +535,7 @@ int EditorQuickSearch::ScoreItem(const SearchItem& item, const std::string& norm
 }
 
 void EditorQuickSearch::ExecuteItem(std::size_t index) {
+    // 実行前にモーダルを閉じ、次回の検索と履歴を新しい状態から始めます。
     if (index >= results_.size() || !results_[index].enabled || !results_[index].execute) {
         return;
     }
@@ -538,6 +549,7 @@ void EditorQuickSearch::ExecuteItem(std::size_t index) {
 }
 
 void EditorQuickSearch::ToggleFavorite(const std::string& id) {
+    // お気に入りの重複を避け、変更をすぐ保存します。
     const auto found = std::find(favoriteIds_.begin(), favoriteIds_.end(), id);
     if (found != favoriteIds_.end()) {
         favoriteIds_.erase(found);
@@ -549,6 +561,7 @@ void EditorQuickSearch::ToggleFavorite(const std::string& id) {
 }
 
 void EditorQuickSearch::TouchRecent(const std::string& id) {
+    // 同一操作は先頭へ移し、履歴の保存件数を制限します。
     recentIds_.erase(std::remove(recentIds_.begin(), recentIds_.end(), id), recentIds_.end());
     recentIds_.insert(recentIds_.begin(), id);
     constexpr std::size_t kRecentLimit = 16;
@@ -559,10 +572,12 @@ void EditorQuickSearch::TouchRecent(const std::string& id) {
 }
 
 bool EditorQuickSearch::IsFavorite(const std::string& id) const {
+    // 候補の種類ではなく安定IDでお気に入り状態を参照します。
     return std::find(favoriteIds_.begin(), favoriteIds_.end(), id) != favoriteIds_.end();
 }
 
 int EditorQuickSearch::FindRecentRank(const std::string& id) const {
+    // 履歴にない候補は-1とし、順位付けで通常候補と区別します。
     const auto found = std::find(recentIds_.begin(), recentIds_.end(), id);
     return found == recentIds_.end() ? -1 : static_cast<int>(std::distance(recentIds_.begin(), found));
 }
@@ -586,6 +601,7 @@ void EditorQuickSearch::LoadState() {
 }
 
 void EditorQuickSearch::SaveState() const {
+    // UI状態だけをJSONへ保存し、検索結果やシーン参照は持ち越しません。
     namespace fs = std::filesystem;
     std::error_code error;
     const fs::path filePath(statePath_);

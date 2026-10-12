@@ -10,11 +10,13 @@
 #include <utility>
 
 AudioPlayer* AudioPlayer::GetInstance() {
+	// 音声デバイスとハンドル表を一つのインスタンスで共有する。
 	static AudioPlayer instance;
 	return &instance;
 }
 
 void AudioPlayer::Initialize() {
+	// SourceVoice より先に XAudio2 と Media Foundation を初期化する。
 	HRESULT result = XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
 	assert(SUCCEEDED(result));
 	result = xAudio2_->CreateMasteringVoice(&masteringVoice_);
@@ -72,6 +74,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 	const std::string& filename) const {
 	auto data = std::make_unique<SoundDataStreaming>();
 
+	// ソースリーダーは UTF-16 の URL を要求するため、保存された UTF-8 パスを変換する。
 	const int stringSize =
 		MultiByteToWideChar(CP_UTF8, 0, filename.c_str(), -1, nullptr, 0);
 	if (stringSize <= 0) {
@@ -93,6 +96,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 		return nullptr;
 	}
 	mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+	// デコード結果を PCM に揃え、XAudio2 に渡す WAVEFORMATEX を取得する。
 	mediaType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
 	result = data->sourceReader->SetCurrentMediaType(
 		static_cast<DWORD>(MF_SOURCE_READER_FIRST_AUDIO_STREAM),
@@ -119,6 +123,7 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 }
 
 void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
+	// デコードスレッドが Voice とリングバッファを使い終えてから破棄する。
 	if (!data) {
 		return;
 	}
@@ -137,6 +142,7 @@ void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
 }
 
 AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
+	// 同じファイルは同じハンドルを返し、二重のソースリーダー生成を避ける。
 	std::lock_guard<std::mutex> lock(audioDataMutex_);
 	auto existing = audioHandleMap_.find(filename);
 	if (existing != audioHandleMap_.end()) {
@@ -157,14 +163,17 @@ AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename)
 
 void AudioPlayer::PlaySE(AudioHandle handle, bool loop, float volume)
 {
+	// 個別 SE 音量とマスター音量を掛けてから再生する。
 	PlayStreaming(handle, loop, std::clamp(volume, 0.0f, 1.0f) * seMasterVolume_);
 }
 
 void AudioPlayer::SetSEMasterVolume(float volume) {
+	// 再生開始時の SE に適用する基準値は 0～1 に制限する。
 	seMasterVolume_ = std::clamp(volume, 0.0f, 1.0f);
 }
 
 void AudioPlayer::SetBGMMasterVolume(float volume) {
+	// BGM は再生中の Voice にも即時反映する。
 	bgmMasterVolume_ = std::clamp(volume, 0.0f, 1.0f);
 	ApplyCurrentBGMVolume();
 }
@@ -220,6 +229,7 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 }
 
 void AudioPlayer::StopSe(AudioHandle handle) {
+	// デコード停止を通知し、スレッド終了後に Voice を破棄する。
 	auto it = streamingSoundDatas_.find(handle);
 	if (it == streamingSoundDatas_.end() || !it->second->isPlaying) {
 		return;
@@ -424,6 +434,7 @@ bool AudioPlayer::IsPlaying(AudioHandle handle) const {
 }
 
 void AudioPlayer::ApplyCurrentBGMVolume() {
+	// ハンドルだけ残って Voice が無い場合は更新を見送る。
 	if (currentBgmHandle_ == kInvalidAudioHandle) {
 		return;
 	}
@@ -440,6 +451,7 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 	const std::string& filename,
 	float volume,
 	float pitch) {
+	// 一時 SE は音源ハンドルを共有せず、同時発音ごとに独立した Voice を持つ。
 	Update();
 	if (!xAudio2_) {
 		return kInvalidPlaybackHandle;
@@ -479,6 +491,7 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 }
 
 bool AudioPlayer::IsTransientPlaying(PlaybackHandle handle) const {
+	// 自然終了で消えたハンドルも「再生中ではない」と扱う。
 	const auto found = transientSoundDatas_.find(handle);
 	return found != transientSoundDatas_.end() &&
 		found->second &&
@@ -486,6 +499,7 @@ bool AudioPlayer::IsTransientPlaying(PlaybackHandle handle) const {
 }
 
 void AudioPlayer::StopTransient(PlaybackHandle handle) {
+	// 先にスレッドと Voice を閉じてから所有するデータを消す。
 	auto found = transientSoundDatas_.find(handle);
 	if (found == transientSoundDatas_.end()) {
 		return;
@@ -495,6 +509,7 @@ void AudioPlayer::StopTransient(PlaybackHandle handle) {
 }
 
 void AudioPlayer::Update() {
+	// 自然終了した一時 SE をここで回収し、同時発音数を増やし続けない。
 	for (auto iterator = transientSoundDatas_.begin();
 		iterator != transientSoundDatas_.end();) {
 		if (iterator->second && iterator->second->isPlaying.load()) {
@@ -544,6 +559,7 @@ bool AudioEventSystem::LoadEvent(
 	const std::string& eventPath,
 	AudioEventDefinition& definition,
 	std::string* errorMessage) const {
+	// JSON の候補音源を検証し、相対パスはイベントの隣か SE ディレクトリから解決する。
 	const std::string normalizedPath = NormalizeAudioPath(eventPath);
 	std::ifstream file(normalizedPath, std::ios::binary);
 	if (!file) {
@@ -636,6 +652,7 @@ bool AudioEventSystem::SaveEvent(
 	const std::string& eventPath,
 	const AudioEventDefinition& definition,
 	std::string* errorMessage) {
+	// 保存前に範囲と最大同時再生数を正規化し、不正な設定を持ち越さない。
 	if (definition.clips.empty()) {
 		SetAudioEventError(errorMessage, "1つ以上のclipが必要です。");
 		return false;
@@ -697,6 +714,7 @@ bool AudioEventSystem::SaveEvent(
 bool AudioEventSystem::Prewarm(
 	const std::string& eventPath,
 	std::string* errorMessage) {
+	// 全候補の読み込みに成功したイベントだけをキャッシュに登録する。
 	AudioEventDefinition definition;
 	if (!LoadEvent(eventPath, definition, errorMessage)) {
 		return false;
@@ -720,6 +738,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 	const std::string& eventPath,
 	const Vector3* worldPosition,
 	float volumeScale) {
+	// 同一イベントの同時発音数を制限してから候補を選び、直前の音を可能なら避ける。
 	Update();
 	const std::string normalizedPath = NormalizeAudioPath(eventPath);
 
@@ -788,6 +807,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::PlayReference(
 	const std::string& reference,
 	const Vector3* worldPosition,
 	float volumeScale) {
+	// 参照先がイベント JSON なら設定に従い、音声ファイルなら直接再生する。
 	const std::string eventPath = ResolveEventPath(reference);
 	if (!eventPath.empty()) {
 		return Play(eventPath, worldPosition, volumeScale);
@@ -809,6 +829,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::PlayReference(
 }
 
 void AudioEventSystem::Update() {
+	// 再生済みの一時 SE を回収し、イベント別同時発音数の計算から除外する。
 	AudioPlayer* audioPlayer = AudioPlayer::GetInstance();
 	audioPlayer->Update();
 	activeInstances_.erase(
@@ -823,6 +844,7 @@ void AudioEventSystem::Update() {
 
 std::string AudioEventSystem::ResolveEventPath(
 	const std::string& reference) const {
+	// JSON の明示パスを優先し、短い名前は既定のイベント保存先で探す。
 	std::string normalized = NormalizeAudioPath(reference);
 	if (normalized.empty()) {
 		return {};

@@ -4,6 +4,7 @@ using namespace PlayerImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invincibleDuration) {
+    // 被弾で通常攻撃を中断し、重なった無敵時間は短くしない。
     if (tutorialSafetyEnabled_ || isDead || isCinematicLocked_ || electricShockControlLocked_) {
         return;
     }
@@ -18,6 +19,7 @@ void Player::StartDamageFeedback(const Vector3& knockbackDirection, float invinc
 }
 
 void Player::StartElectricShockFeedback(float duration, float invincibleDuration) {
+    // 感電開始時の位置・姿勢・操作状態を退避し、終了時に戻せるようにする。
     if (tutorialSafetyEnabled_) {
         return;
     }
@@ -52,6 +54,7 @@ void Player::StartElectricShockFeedback(float duration, float invincibleDuration
 }
 
 void Player::UpdateElectricShockFeedback(float deltaTime) {
+    // 感電中は固定位置の周囲で小さく揺らし、残り時間に応じて発光を更新する。
     if (electricShockFeedbackTimer_ <= 0.0f || deltaTime <= 0.0f) {
         return;
     }
@@ -98,6 +101,7 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
 }
 
 void Player::EndElectricShockFeedback() {
+    // 元の操作と姿勢を戻し、感電後の無敵時間をここで適用する。
     if (electricShockControlLocked_) {
         SetTranslate(electricShockLockedPosition_);
         SetVelocity({0.0f, 0.0f, 0.0f});
@@ -123,6 +127,7 @@ void Player::EndElectricShockFeedback() {
 }
 
 void Player::InitializeElectricShockAuraEffect() {
+    // エフェクトJSONの読込に失敗した場合は、半端なObjectを保持しない。
     if (!common_ || electricShockAuraEffect_) {
         return;
     }
@@ -139,6 +144,7 @@ void Player::InitializeElectricShockAuraEffect() {
 }
 
 void Player::UpdateElectricShockAuraEffect(float deltaTime) {
+    // Playerの大きさへ合わせた後、可能ならカメラへ向けてオーラを表示する。
     if (!electricShockAuraEffect_) {
         InitializeElectricShockAuraEffect();
     }
@@ -170,6 +176,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
 }
 
 void Player::HideElectricShockAuraEffect() {
+    // 感電終了時にObjectを再生成せず、表示だけを止める。
     if (electricShockAuraEffect_) {
         electricShockAuraEffect_->SetIsVisible(false);
     }
@@ -177,6 +184,7 @@ void Player::HideElectricShockAuraEffect() {
 
 void Player::CalculateElectricShockAuraShape(Vector3& center, float& horizontalDiameter,
                                              float& verticalDiameter) const {
+    // 変身中の拡縮を反映しつつ、極小サイズでもオーラが消えない下限を使う。
     const Vector3 scale = GetScale();
     const float maxXZ = (std::max)({std::abs(scale.x), std::abs(scale.z), 1.0f});
     const float yScale = (std::max)(std::abs(scale.y), 0.18f);
@@ -208,6 +216,7 @@ Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyTyp
 }
 
 Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const {
+    // 感電点滅の基準色を能力ごとに変え、解除後の外観と一致させる。
     switch (type) {
     case EnemyMorphType::Crown:
         return {0.58f, 0.89f, 1.0f, 1.0f};

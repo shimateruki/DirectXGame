@@ -5,12 +5,14 @@ using namespace PlayerImplementation;
 Player::~Player() = default;
 
 bool Player::IsImpactBreakActive() const {
+    // 通常攻撃とコピー能力のどちらが命中中でも、衝撃で壊れる扉へ通知する。
     const bool baseImpact = baseCombatController_ && baseCombatController_->CanBreakImpactGate();
     const bool copyImpact = copyAbilityController_ && copyAbilityController_->CanBreakImpactGate();
     return baseImpact || copyImpact;
 }
 
 bool Player::IsPinkBounceSlamImpactActive() const {
+    // 着地時の接触はピンク能力の突進中だけ有効にする。
     return copyAbilityController_ && copyAbilityController_->IsPinkBounceSlamImpactActive();
 }
 
@@ -80,6 +82,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 }
 
 void Player::ApplyManagedScale(const Vector3& scale) {
+    // 見た目、衝突形状、アニメーションの基準スケールを同時に更新する。
     managedBaseScale_ = scale;
     SetScale(scale);
     if (GetCollider()) {
@@ -89,12 +92,18 @@ void Player::ApplyManagedScale(const Vector3& scale) {
 }
 
 Vector3 Player::GetLockOnAttackDirection() const {
+    // 演出中や照準が無効な間は、前回のロックオン位置を攻撃に使わない。
     if (!isLockingOn_ || !lockOnAimValid_ || isDead || isCinematicLocked_)
         return GetForwardDirection();
     Vector3 direction = lockOnAimPoint_ - GetWorldPosition();
     direction.y = 0.0f;
     const float length = Math::Length(direction);
     return length > 0.001f ? direction / length : GetForwardDirection();
+}
+
+Vector3 Player::GetMoveInputDirection() {
+    // 攻撃中の方向転換にも通常移動と同じ入力解釈を使う。
+    return mover_ ? mover_->GetMoveInputDirection() : Vector3{};
 }
 
 // 入力、状態、移動、見た目の順に更新します。演出が操作権を持つ間は通常操作へ流しません。
@@ -651,9 +660,12 @@ void Player::Update(float deltaTime) {
     UpdateEnemyMorph(deltaTime);
 }
 
-void Player::DrawUI() {}
+void Player::DrawUI() {
+    // HUD はシーン側で描画するため、Player 自身は UI 描画を持たない。
+}
 
 float Player::GetVisualYawOffset() const {
+    // 操作方向とモデルの正面方向の差は、コピー中のモデルごとに切り替える。
     if (isEnemyMorphed_) {
         return GetEnemyMorphModelYawOffset();
     }
@@ -661,6 +673,7 @@ float Player::GetVisualYawOffset() const {
 }
 
 float Player::GetEnemyMorphModelYawOffset() const {
+    // コピー元モデルの前方軸が Player と逆向きの種類だけ半回転させる。
     switch (enemyMorphType_) {
     case EnemyMorphType::Slime:
     case EnemyMorphType::FireSlime:
@@ -674,16 +687,24 @@ float Player::GetEnemyMorphModelYawOffset() const {
     }
 }
 
-float Player::GetMoveYaw() const { return NormalizeYaw(GetRotation().y - GetVisualYawOffset()); }
+float Player::GetMoveYaw() const {
+    // モデルの向き補正を除いた角度を、移動・攻撃側の共通方向とする。
+    return NormalizeYaw(GetRotation().y - GetVisualYawOffset());
+}
 
 Vector3 Player::GetForwardDirection() const {
+    // 上下成分を持たない方向にし、地上攻撃の照準に使う。
     const float yaw = GetMoveYaw();
     return {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
-void Player::SetMoveYaw(float yaw) { SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset())); }
+void Player::SetMoveYaw(float yaw) {
+    // 操作上の正面をモデル固有の前方軸へ変換して配置する。
+    SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset()));
+}
 
 void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
+    // 編集用の仮オブジェクトだけを進め、本編シーンの敵は更新しない。
     if (!IsEditorInternal())
         return;
     for (auto& object : copyPreviewObjects_) {
@@ -706,6 +727,7 @@ void Player::StepCopyPreviewObjects(float deltaTime, float groundY) {
 }
 
 void Player::UpdateCopyAdornment() {
+    // コピー種別に対応する装飾だけを表示し、解除中は残さない。
     const char* model = nullptr;
     if (isEnemyMorphed_ && !enemyMorphReleaseActive_) {
         switch (enemyMorphType_) {
@@ -760,6 +782,7 @@ void Player::UpdateCopyAdornment() {
 
 void Player::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
                            int previewBufferIndex) {
+    // 能力装飾と編集用オブジェクトも、本体と同じプレビューカメラで描く。
     Character::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     if (!GetIsVisible())
         return;
@@ -776,6 +799,7 @@ void Player::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, I
 
 void Player::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                           int previewBufferIndex) {
+    // 屈折描画を使う解除残像とプレビュー物を、通常描画とは別のパスへ渡す。
     Character::DrawSpecialMaterialForCamera(camera, depthSrvHandle, grabSrvHandle, previewBufferIndex);
     if (!GetIsVisible())
         return;
@@ -789,10 +813,12 @@ void Player::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandl
 }
 
 bool Player::HasOwnedSpecialMaterialVisuals() const {
+    // コピー能力の専用描画物は Player の描画パスからまとめて問い合わせる。
     return copyAbilityController_ && copyAbilityController_->HasOwnedVisuals();
 }
 
 void Player::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 本体が非表示の演出中に能力の専用エフェクトだけが浮かないようにする。
     if (copyAbilityController_ && GetIsVisible()) {
         copyAbilityController_->DrawOwnedVisuals(*this, depthSrvHandle, grabSrvHandle);
     }
@@ -800,6 +826,7 @@ void Player::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t g
 
 void Player::DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                                       int previewBufferIndex) {
+    // プレビュー用カメラにも同じ可視条件を適用する。
     if (copyAbilityController_ && GetIsVisible()) {
         copyAbilityController_->DrawOwnedVisuals(*this, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);
     }
@@ -953,18 +980,21 @@ bool Player::OnCollision(Object3d* other) {
 // =================================================================
 
 void Player::SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy) {
+    // 移動方式の差し替えは Mover に集約し、Player の状態を作り直さない。
     if (mover_) {
         mover_->SetStrategy(std::move(strategy));
     }
 }
 
 void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier) {
+    // パネルの加速量と旋回補正は通常移動と同じ速度管理へ渡す。
     if (mover_) {
         mover_->ApplyDashPanelBoost(duration, speedMultiplier, turnMultiplier);
     }
 }
 
 void Player::SetPlatformMotion(const Vector3& velocity) {
+    // 床から受けた速度を次の移動更新で一度だけ合成する。
     if (mover_)
         mover_->SetPlatformMotion(velocity);
 }
@@ -998,50 +1028,86 @@ void Player::PlayAnimation(const std::string& animName, bool loop) {
     isAnimLoop_ = loop;
 }
 
-void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode) { slimeAnimator_.SetMode(mode); }
+void Player::SetSlimeAnimationMode(PlayerSlimeAnimator::Mode mode) {
+    // モーション要求の入口を統一し、Animator の内部状態を外へ公開しない。
+    slimeAnimator_.SetMode(mode);
+}
 
-void Player::SetSlimeAnimationDirection(const Vector3& direction) { slimeAnimator_.SetMotionDirection(direction); }
+void Player::SetSlimeAnimationDirection(const Vector3& direction) {
+    // 移動方向は変形アニメーションの傾きにも使う。
+    slimeAnimator_.SetMotionDirection(direction);
+}
 
-void Player::SetSlimePullDirection(const Vector3& direction) { slimeAnimator_.SetPullDirection(direction); }
+void Player::SetSlimePullDirection(const Vector3& direction) {
+    // 引き寄せ演出の向きだけを Animator へ渡す。
+    slimeAnimator_.SetPullDirection(direction);
+}
 
-void Player::SetSlimePullProgress(float progress) { slimeAnimator_.SetPullProgress(progress); }
+void Player::SetSlimePullProgress(float progress) {
+    // 演出の進行率と身体の伸びを同期する。
+    slimeAnimator_.SetPullProgress(progress);
+}
 
-void Player::SetSlimeJumpCharge(float chargeRate) { slimeAnimator_.SetJumpCharge(chargeRate); }
+void Player::SetSlimeJumpCharge(float chargeRate) {
+    // 溜め量に応じた見た目は Animator に任せ、物理ジャンプとは分離する。
+    slimeAnimator_.SetJumpCharge(chargeRate);
+}
 
 void Player::SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose pose, float strength) {
+    // コピー能力のポーズを通常移動アニメーションへ重ねる。
     slimeAnimator_.SetAbilityPose(pose, strength);
 }
 
 void Player::TriggerSlimeImpulse(const Vector3& scale, float duration) {
+    // 命中時などの一時的な伸縮は基準スケールへ書き込まない。
     slimeAnimator_.TriggerImpulse(scale, duration);
 }
 
 bool Player::PlaySlimeAbilityMotion(const std::string& clipName, bool loop, float playbackSpeed, float blendInDuration,
                                     float blendOutDuration) {
+    // コピー能力のクリップ再生と補間を Animator に集約する。
     return slimeAnimator_.PlayAbilityMotion(clipName, loop, playbackSpeed, blendInDuration, blendOutDuration);
 }
 
-void Player::StopSlimeAbilityMotion(float blendOutDuration) { slimeAnimator_.StopAbilityMotion(blendOutDuration); }
+void Player::StopSlimeAbilityMotion(float blendOutDuration) {
+    // 能力終了時は指定時間で通常の身体アニメーションへ戻す。
+    slimeAnimator_.StopAbilityMotion(blendOutDuration);
+}
 
-void Player::ClearSlimeAbilityMotion() { slimeAnimator_.ClearAbilityMotion(this); }
+void Player::ClearSlimeAbilityMotion() {
+    // コピー解除では補間待ちを残さず能力クリップを破棄する。
+    slimeAnimator_.ClearAbilityMotion(this);
+}
 
 void Player::ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode mode, const Vector3& direction) {
+    // 能力側の姿勢指定を、次回の通常 Animator 更新に限って優先する。
     forcedSlimeAnimationModeActive_ = true;
     forcedSlimeAnimationMode_ = mode;
     forcedSlimeAnimationDirection_ = direction;
 }
 
 void Player::StartGateReturnAnimation(const PlayerGateReturnAnimation::Route& route) {
+    // ゲート帰還の経路と操作権は専用の演出オブジェクトに任せる。
     gateReturnAnimation_.Start(this, route);
 }
 
-bool Player::IsGateReturnAnimationActive() const { return gateReturnAnimation_.IsActive(); }
+bool Player::IsGateReturnAnimationActive() const {
+    // 更新側が帰還演出中の通常入力を止めるための状態を返す。
+    return gateReturnAnimation_.IsActive();
+}
 
-bool Player::IsGateReturnAnimationFinished() const { return gateReturnAnimation_.IsFinished(); }
+bool Player::IsGateReturnAnimationFinished() const {
+    // シーン遷移は帰還演出の完了を待ってから開始する。
+    return gateReturnAnimation_.IsFinished();
+}
 
-void Player::StopGateReturnAnimation(bool restoreControl) { gateReturnAnimation_.Stop(this, restoreControl); }
+void Player::StopGateReturnAnimation(bool restoreControl) {
+    // 中断理由に応じて操作権を戻すかを呼び出し側に選ばせる。
+    gateReturnAnimation_.Stop(this, restoreControl);
+}
 
 void Player::StepCinematicPullVisual(float deltaTime, const Vector3& direction, float progress) {
+    // 操作ロック中だけ、引き寄せの見た目を演出タイムラインから進める。
     if (!isCinematicLocked_) return;
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::PullEnemy);
     slimeAnimator_.SetPullDirection(direction);
@@ -1050,6 +1116,7 @@ void Player::StepCinematicPullVisual(float deltaTime, const Vector3& direction, 
 }
 
 void Player::EndCinematicPullVisual() {
+    // 演出で使った伸縮を残さず、通常姿勢へ復帰する。
     slimeAnimator_.Reset(managedBaseScale_, this);
     slimeAnimator_.SetMode(PlayerSlimeAnimator::Mode::Disabled);
     if (hookMarker_) hookMarker_->SetIsVisible(false);
@@ -1111,6 +1178,7 @@ void Player::BeginCinematicLock(bool preserveCopyAbility) {
 }
 
 void Player::EndCinematicLock(bool restoreControl) {
+    // 演出開始前の衝突設定を復元し、死亡中だけは操作権を戻さない。
     if (!isCinematicLocked_) {
         return;
     }
@@ -1138,11 +1206,13 @@ void Player::SetDashInvincible(bool inv) {
 }
 
 void Player::SetGuardInvincible(bool inv) {
+    // ガードの無敵状態は被弾表示色にも直ちに反映する。
     isGuardInvincible_ = inv;
     UpdateColor();
 }
 
 void Player::SetTutorialSafetyEnabled(bool enabled) {
+    // チュートリアル開始時に残り HP と死亡状態を安全な初期値へ戻す。
     tutorialSafetyEnabled_ = enabled;
     if (enabled && param_.has_value()) {
         param_->maxHp = (std::max)(param_->maxHp, 1.0f);
@@ -1170,12 +1240,14 @@ void Player::ResetTutorialCarryActionState() {
 }
 
 void Player::StartEvasionInvincibility(float duration) {
+    // 重なる回避受付で既存の無敵時間を短縮しない。
     evasionInvincibleTimer_ = (std::max)(evasionInvincibleTimer_, (std::max)(0.0f, duration));
     isEvasionInvincible_ = evasionInvincibleTimer_ > 0.0f;
     UpdateColor();
 }
 
 void Player::RestoreDamageBlinkVisibility() {
+    // 点滅開始前の本体・子の可視状態に戻し、元から非表示の物を誤表示しない。
     if (!damageBlinkVisibilityApplied_) {
         return;
     }
@@ -1200,6 +1272,7 @@ void Player::RestoreDamageBlinkVisibility() {
 }
 
 void Player::UpdateDamageInvincibleBlinkVisibility() {
+    // 感電演出を優先し、通常の被弾点滅が表示状態を上書きしない。
     if (electricShockFeedbackTimer_ > 0.0f) {
         RestoreDamageBlinkVisibility();
         return;
@@ -1267,15 +1340,30 @@ void Player::UpdateColor() {
 // =======================================================
 // コンボ時間窓 API 実装
 // =======================================================
-void Player::StartComboWindow(float duration) { attackInputBuffer_.StartComboWindow(duration); }
+void Player::StartComboWindow(float duration) {
+    // 次段へ進める時間窓は攻撃入力バッファに管理させる。
+    attackInputBuffer_.StartComboWindow(duration);
+}
 
-bool Player::IsComboWindowActive() const { return attackInputBuffer_.IsComboWindowActive(); }
+bool Player::IsComboWindowActive() const {
+    // 現在の技が追加入力を受け取れるかを状態側へ返す。
+    return attackInputBuffer_.IsComboWindowActive();
+}
 
 // =======================================================
 // 攻撃入力バッファ API 実装
 // =======================================================
-void Player::RecordAttackInput(float duration) { attackInputBuffer_.Record(duration); }
+void Player::RecordAttackInput(float duration) {
+    // 次の状態開始までに押された攻撃を短時間だけ予約する。
+    attackInputBuffer_.Record(duration);
+}
 
-void Player::MarkAttackBufferUsedForStateStart() { attackInputBuffer_.MarkUsedForStateStart(); }
+void Player::MarkAttackBufferUsedForStateStart() {
+    // 状態開始に使った入力を次段の追加入力として二重に数えない。
+    attackInputBuffer_.MarkUsedForStateStart();
+}
 
-bool Player::ConsumeBufferedAttackInput() { return attackInputBuffer_.Consume(); }
+bool Player::ConsumeBufferedAttackInput() {
+    // 予約は一度だけ消費し、長押しで連続段が進まないようにする。
+    return attackInputBuffer_.Consume();
+}

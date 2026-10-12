@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "ee1b9be8893177ab0381c0c7e31a4695",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/enemy_fire_slime_fireball.json",
+  "version": 1
+}

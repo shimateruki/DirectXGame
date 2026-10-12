@@ -32,6 +32,7 @@
 // シーンに記録された種類名からギミックを生成します。未登録種別は配置確認用の代替表示へ送ります。
 
 GimmickFactory* GimmickFactory::GetInstance() {
+    // 編集画面とゲーム本編で同じギミック生成表を参照する。
     static GimmickFactory instance;
     return &instance;
 }

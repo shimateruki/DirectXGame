@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "4410e8f116a6937caacdec188ef7c003",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Characters/fireslimeanim/Slime_baseColor_red.dds",
+  "version": 1
+}

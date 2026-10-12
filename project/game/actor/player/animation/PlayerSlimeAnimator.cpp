@@ -20,15 +20,20 @@ constexpr const char* kPlayerSlimeControllerPath = "Resources/json/animator/play
 constexpr const char* kLocomotionModeParameter = "LocomotionMode";
 
 float EaseOut(float t) {
+    // 補間率の外挿を防ぎ、終点へ向かって減速する二次曲線にする。
     t = std::clamp(t, 0.0f, 1.0f);
     return 1.0f - (1.0f - t) * (1.0f - t);
 }
 
-float HorizontalLength(const Vector3& v) { return std::sqrt(v.x * v.x + v.z * v.z); }
+float HorizontalLength(const Vector3& v) {
+    // ジャンプ速度に影響されず走行アニメーションを選ぶため、XZ成分だけを測る。
+    return std::sqrt(v.x * v.x + v.z * v.z);
+}
 
 } // namespace
 
 void PlayerSlimeAnimator::Reset(const Vector3& baseScale, Player* player) {
+    // モード・着地反応・能力モーションを同じ初期姿勢へ戻す。
     if (!controllerLoaded_) {
         ReloadController();
     }
@@ -89,21 +94,33 @@ void PlayerSlimeAnimator::SetMode(Mode mode) {
 }
 
 void PlayerSlimeAnimator::SetMotionDirection(const Vector3& direction) {
+    // 縦方向を除いた単位ベクトルを保持し、停止時の向きにも再利用する。
     motionDirection_ = NormalizeOrForward(direction);
 }
 
-void PlayerSlimeAnimator::SetPullDirection(const Vector3& direction) { pullDirection_ = NormalizeOrForward(direction); }
+void PlayerSlimeAnimator::SetPullDirection(const Vector3& direction) {
+    // フックの方向は水平面で正規化し、引き寄せ姿勢の向きに使う。
+    pullDirection_ = NormalizeOrForward(direction);
+}
 
-void PlayerSlimeAnimator::SetPullProgress(float progress) { pullProgress_ = std::clamp(progress, 0.0f, 1.0f); }
+void PlayerSlimeAnimator::SetPullProgress(float progress) {
+    // 開始から完了までの区間に制限し、引き寄せ姿勢の外挿を防ぐ。
+    pullProgress_ = std::clamp(progress, 0.0f, 1.0f);
+}
 
-void PlayerSlimeAnimator::SetJumpCharge(float chargeRate) { jumpChargeRate_ = std::clamp(chargeRate, 0.0f, 1.0f); }
+void PlayerSlimeAnimator::SetJumpCharge(float chargeRate) {
+    // 溜め姿勢の強度は0〜1の割合だけ受け付ける。
+    jumpChargeRate_ = std::clamp(chargeRate, 0.0f, 1.0f);
+}
 
 void PlayerSlimeAnimator::SetAbilityPose(AbilityPose pose, float strength) {
+    // 姿勢の寄与率は0〜1に収め、基本動作を過剰に変形させない。
     abilityPose_ = pose;
     abilityPoseStrength_ = std::clamp(strength, 0.0f, 1.0f);
 }
 
 void PlayerSlimeAnimator::TriggerImpulse(const Vector3& scale, float duration) {
+    // 短い入力でもゼロ秒の衝撃にならないよう、最小継続時間を設ける。
     impulseScale_ = scale;
     impulseDuration_ = (std::max)(duration, 0.01f);
     impulseTimer_ = impulseDuration_;
@@ -146,6 +163,7 @@ bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool lo
 }
 
 void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration) {
+    // すぐにClipを捨てず、指定秒数で現在の姿勢から戻す。
     if (!abilityMotionActive_) {
         return;
     }
@@ -155,6 +173,7 @@ void PlayerSlimeAnimator::StopAbilityMotion(float blendOutDuration) {
 }
 
 void PlayerSlimeAnimator::ClearAbilityMotion(Player* player) {
+    // 能力Clipの状態とMeshRenderer側の表示変形をまとめて初期化する。
     abilityMotionClip_.Clear();
     abilityMotionName_.clear();
     abilityMotionClipAssetName_.clear();
@@ -322,6 +341,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
 }
 
 void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) const {
+    // ガードなどの一時姿勢を基本モードの姿勢へ強度付きで重ねる。
     const float strength = std::clamp(abilityPoseStrength_, 0.0f, 1.0f);
     if (abilityPose_ == AbilityPose::None || strength <= 0.0f) {
         return;
@@ -365,6 +385,7 @@ void PlayerSlimeAnimator::ApplyAbilityPose(Vector3& scale, Vector3& rotation) co
 
 void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualScale, Vector3& visualRotation,
                                               Vector3& visualOffset, Vector3& visualShear, float& shearPivotY) {
+    // Clipを評価した後に開始・終了時の重みを掛け、基本姿勢へ滑らかに戻す。
     if (!abilityMotionActive_ || !abilityMotionClip_.IsValid()) {
         return;
     }
@@ -401,6 +422,7 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, Vector3& visualSc
 }
 
 bool PlayerSlimeAnimator::ReloadController() {
+    // Controllerを読めない場合は遷移を無効にし、古いClipを残さない。
     AnimatorControllerAsset asset;
     if (!asset.Load(kPlayerSlimeControllerPath)) {
         controllerLoaded_ = false;
@@ -425,6 +447,7 @@ bool PlayerSlimeAnimator::ReloadController() {
 }
 
 void PlayerSlimeAnimator::ReloadBodyClips() {
+    // Stateが参照するBody Clipだけを一度ずつ読み込み、重複Assetを共有する。
     bodyClips_.clear();
     if (!controllerLoaded_) {
         return;
@@ -489,6 +512,7 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, Vector3& scal
 }
 
 const char* PlayerSlimeAnimator::GetStateName(Mode mode) {
+    // C++の移動モードをController側のState IDへ対応付ける。
     switch (mode) {
     case Mode::Idle:
         return "Idle";
@@ -515,6 +539,7 @@ const char* PlayerSlimeAnimator::GetStateName(Mode mode) {
 }
 
 Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const {
+    // 入力方向がほぼゼロでも、向き計算にゼロベクトルを渡さない。
     Vector3 flat = {direction.x, 0.0f, direction.z};
     const float length = HorizontalLength(flat);
     if (length <= 0.001f) {
@@ -524,6 +549,7 @@ Vector3 PlayerSlimeAnimator::NormalizeOrForward(const Vector3& direction) const 
 }
 
 Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) const {
+    // 速度とモード時計から伸縮を作り、Idle・Run・Jumpなどの質感を分ける。
     (void)deltaTime;
     const Vector3 velocity = player ? player->GetVelocity() : Vector3{};
     const float speed = HorizontalLength(velocity);
@@ -674,6 +700,7 @@ Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaTime) con
 }
 
 Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
+    // 移動中は進行方向へ傾け、停止中は小さな揺れだけを残す。
     Vector3 current = player ? player->GetRotation() : Vector3{};
     Vector3 rotation = {0.0f, current.y, 0.0f};
     const Vector3 velocity = player ? player->GetVelocity() : Vector3{};

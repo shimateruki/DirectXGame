@@ -14,6 +14,7 @@ using namespace StageSelectDetail;
 
 // 解放演出の開始・進行・復帰。入力とカメラの復帰、既読保存の条件を一組として維持する。
 void GameSelectScene::BeginUnlockPresentation() {
+    // 鍵・錠・カメラの元状態と操作権を保存してから、解放ムービーへ移る。
     if (unlockingStageIndex_ < 0 || unlockPresentationInitialized_) {
         return;
     }
@@ -84,6 +85,7 @@ void GameSelectScene::BeginUnlockPresentation() {
 
 #ifdef USE_IMGUI
 void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
+    // セーブの既読状態を変えず、必要なモデルが揃う場合だけ演出を試す。
     const auto& stages = StageManager::GetInstance()->GetStages();
     if (stageIndex <= 0 || stageIndex >= static_cast<int>(stages.size())) {
         return;
@@ -118,6 +120,7 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
 #endif
 
 void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
+    // 鍵の出現・挿入・回転・錠の落下・ゲート点灯を同じ時計で同期する。
     if (unlockingStageIndex_ < 0) {
         return;
     }
@@ -285,6 +288,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
 }
 
 void GameSelectScene::FinishUnlockPresentation() {
+    // デバッグ再生時は既読にせず、鍵・錠・カメラと操作権を開始前へ戻す。
     if (unlockingStageIndex_ < 0) {
         return;
     }

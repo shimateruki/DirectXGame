@@ -34,6 +34,7 @@
 namespace fs = std::filesystem;
 
 SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
+    // SceneAssetが指定した配置JSONだけを先読み対象へ登録する。
     SceneLoadManifest manifest;
     if (!GetSceneLoadContext().objectLayoutPath.empty()) {
         manifest.AddObjectLayout(GetSceneLoadContext().objectLayoutPath);
@@ -101,6 +102,7 @@ void SceneAssetEditorScene::Initialize() {
 }
 
 void SceneAssetEditorScene::Finalize() {
+    // シーン内の接触登録と弾を先に片付け、エディターから古い実体を参照させない。
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     player_ = nullptr;
@@ -115,6 +117,7 @@ void SceneAssetEditorScene::Finalize() {
 }
 
 void SceneAssetEditorScene::Update(float deltaTime) {
+    // 編集用カメラとライトを更新し、オブジェクトの見え方を現在設定へ追従させる。
     PostEffect::GetInstance()->Update(deltaTime);
     LightEditor::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
@@ -139,6 +142,7 @@ void SceneAssetEditorScene::Update(float deltaTime) {
 }
 
 void SceneAssetEditorScene::Draw() {
+    // 描画基盤か配置管理が未初期化なら、シーン描画を行わない。
     if (!objectManager_ || !object3dCommon_) {
         return;
     }
@@ -186,6 +190,7 @@ void SceneAssetEditorScene::Draw() {
 }
 
 void SceneAssetEditorScene::DrawUI() {
+    // Sprite基盤がある場合だけ共通パイプラインを設定してUIを描く。
     if (!spriteCommon_) {
         return;
     }
@@ -198,24 +203,34 @@ void SceneAssetEditorScene::DrawUI() {
 }
 
 void SceneAssetEditorScene::DrawShadow() {
+    // 配置されたオブジェクトを通常シーンと同じ影パスへ渡す。
     if (objectManager_) {
         objectManager_->DrawShadow();
     }
 }
 
-const std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() const { return objectManager_->GetObjects(); }
+const std::vector<std::unique_ptr<Object3d>>& SceneAssetEditorScene::GetObjects() const {
+    // 編集ツールへ現在の配置集合を参照で公開し、所有権は移さない。
+    return objectManager_->GetObjects();
+}
 
 
 Object3d* SceneAssetEditorScene::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    // 編集操作の直後に選択できるよう、即時登録した実体を返す。
     return objectManager_->AddObjectImmediate(std::move(object));
 }
 
 std::unique_ptr<Object3d> SceneAssetEditorScene::TakeObjectImmediate(Object3d* object) {
+    // Undoなどが所有権を保持できるよう、実体を配置集合から取り出す。
     return objectManager_->TakeObjectImmediate(object);
 }
 
 void SceneAssetEditorScene::AddObject(std::unique_ptr<Object3d> object) {
+    // 通常の追加は管理側の追加処理へ渡し、ここで所有し続けない。
     objectManager_->AddObject(std::move(object));
 }
 
-void SceneAssetEditorScene::RequestRemoveObject(Object3d* object) { objectManager_->RequestRemove(object); }
+void SceneAssetEditorScene::RequestRemoveObject(Object3d* object) {
+    // 更新中の走査を壊さないよう、削除要求を管理側へ預ける。
+    objectManager_->RequestRemove(object);
+}

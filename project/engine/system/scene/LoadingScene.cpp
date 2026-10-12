@@ -53,6 +53,7 @@ float GaugeY() {
 }
 
 void LoadingScene::Initialize() {
+    // ロード中だけ使うSpriteを作り、進捗表示とキャラクター演出を同じ座標系へ揃えます。
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
 
@@ -161,6 +162,7 @@ void LoadingScene::Initialize() {
 }
 
 void LoadingScene::Update(float deltaTime) {
+    // 実進捗へ表示値を滑らかに追従させ、更新頻度の揺れを見た目に出しません。
     const float effectiveDeltaTime = deltaTime > 0.0f ? deltaTime : (1.0f / 60.0f);
     timer_ += effectiveDeltaTime;
 
@@ -182,9 +184,11 @@ void LoadingScene::Update(float deltaTime) {
 }
 
 void LoadingScene::Draw() {
+    // 3D描画は行わず、表示物はDrawUIでまとめて描きます。
 }
 
 void LoadingScene::DrawUI() {
+    // SpriteCommonのパイプラインを設定してから、保持した表示順で描画します。
     if (!spriteCommon_) {
         return;
     }
@@ -198,6 +202,7 @@ void LoadingScene::DrawUI() {
 }
 
 void LoadingScene::Finalize() {
+    // Sprite所有権を解放する前に、参照だけ保持していた各UIポインタを無効化します。
     dots_.clear();
     gaugeBubbles_.clear();
     background_ = nullptr;
@@ -216,10 +221,12 @@ void LoadingScene::Finalize() {
 }
 
 void LoadingScene::SetProgress(float progress) {
+    // 表示の補間に使う目標進捗を0～1へ制限します。
     targetProgress_ = Clamp01(progress);
 }
 
 Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const Vector2& position, const Vector2& size, const Vector4& color) {
+    // Spriteの所有権はSceneへ残し、部品更新用に生ポインタだけ返します。
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(spriteCommon_.get(), textureHandle);
     sprite->SetAnchorPoint({ 0.5f, 0.5f });
@@ -234,6 +241,7 @@ Sprite* LoadingScene::CreateSprite(uint32_t textureHandle, const Vector2& positi
 }
 
 void LoadingScene::UpdateSlimeRunAnimation() {
+    // ゲージの進捗を走行位置へ写し、時間周期で跳ねと影の動きを重ねます。
     if (!slime_ || !shadow_) {
         return;
     }
@@ -286,6 +294,7 @@ void LoadingScene::UpdateSlimeRunAnimation() {
 }
 
 void LoadingScene::UpdateDotAnimation() {
+    // 点ごとに位相をずらし、進捗待ちでも静止して見えないようにします。
     for (size_t i = 0; i < dots_.size(); ++i) {
         Sprite* dot = dots_[i];
         if (!dot) {
@@ -302,6 +311,7 @@ void LoadingScene::UpdateDotAnimation() {
 }
 
 void LoadingScene::UpdateProgressGauge() {
+    // 表示進捗を幅へ変換し、発光と波形を時間で軽く変動させます。
     if (!gaugeFill_ || !gaugeHighlight_ || !gaugeGlow_) {
         return;
     }

@@ -24,6 +24,7 @@ constexpr const char* kAttackWarningTexturePath = "Resources/sprite/effect/attac
 constexpr const char* kWhiteTexturePath = "Resources/sprite/common/white.dds";
 
 Vector3 NormalizePlanar(Vector3 direction) {
+    // 目標と同座標でも予告の向きを失わないよう、ゼロ長には固定の前方を使う。
     direction.y = 0.0f;
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (length <= 0.001f) {
@@ -33,6 +34,7 @@ Vector3 NormalizePlanar(Vector3 direction) {
 }
 
 float EaseOut(float t) {
+    // 発生直後を速く、終端を緩くして警告の拡大を読み取りやすくする。
     t = std::clamp(t, 0.0f, 1.0f);
     const float inv = 1.0f - t;
     return 1.0f - inv * inv;
@@ -47,6 +49,7 @@ void AttackTelegraph::Initialize(Object3dCommon* common) {
 }
 
 void AttackTelegraph::EnsureEffect(Object3dCommon* common) {
+    // 地面の基本予告は初回だけ生成し、毎フレームの表示で再利用する。
     if (effect_ || !common) {
         return;
     }
@@ -67,6 +70,7 @@ void AttackTelegraph::EnsureEffect(Object3dCommon* common) {
 }
 
 void AttackTelegraph::EnsureCueEffect(Object3dCommon* common) {
+    // 命中直前の強調表示を本体の予告と別の寿命で管理する。
     if (cueEffect_ || !common) {
         return;
     }
@@ -119,6 +123,7 @@ void AttackTelegraph::EnsureWarningEffect(Object3dCommon* common) {
 }
 
 void AttackTelegraph::EnsurePatternEffects(std::size_t count) {
+    // 複数着弾地点に必要な数だけ表示物を増やし、既存分は再利用する。
     if (!common_) {
         return;
     }
@@ -142,6 +147,7 @@ void AttackTelegraph::EnsurePatternEffects(std::size_t count) {
 }
 
 void AttackTelegraph::EnsureTimingEffects(std::size_t count) {
+    // 時間表示の数を攻撃パターンへ合わせ、毎フレームの生成を避ける。
     if (!common_) {
         return;
     }
@@ -162,6 +168,7 @@ void AttackTelegraph::EnsureTimingEffects(std::size_t count) {
 }
 
 void AttackTelegraph::BeginPattern(Shape shape, std::size_t count) {
+    // 単体予告を隠してから複数地点の予告へ切り替え、表示の重複を防ぐ。
     if (effect_) {
         effect_->SetIsVisible(false);
     }
@@ -185,6 +192,7 @@ void AttackTelegraph::BeginPattern(Shape shape, std::size_t count) {
 }
 
 void AttackTelegraph::BeginTiming(Shape shape, std::size_t count) {
+    // 形状変更時だけ描画設定を作り直し、タイミング表示の個数を揃える。
     const bool shapeChanged = !isTimingShapeConfigured_ || timingShape_ != shape;
     timingShape_ = shape;
     EnsureTimingEffects(count);
@@ -202,6 +210,7 @@ void AttackTelegraph::BeginTiming(Shape shape, std::size_t count) {
 }
 
 void AttackTelegraph::HidePatternEffects() {
+    // 攻撃終了時は前回の地点数と強調時間を破棄する。
     patternActiveCount_ = 0;
     patternCueTimer_ = 0.0f;
     for (auto& effect : patternEffects_) {
@@ -210,6 +219,7 @@ void AttackTelegraph::HidePatternEffects() {
 }
 
 void AttackTelegraph::HideTimingEffects() {
+    // 時間表示が次の攻撃へ残らないよう、再利用物を全て隠す。
     timingActiveCount_ = 0;
     for (auto& effect : timingEffects_) {
         effect->SetIsVisible(false);
@@ -217,6 +227,7 @@ void AttackTelegraph::HideTimingEffects() {
 }
 
 void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) {
+    // 円・線・扇で使う描画設定を選び、形状変更時の見た目を揃える。
     if (!effect) {
         return;
     }
@@ -252,6 +263,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3d* effect, Shape shape) 
 }
 
 void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3d* effect, Shape shape) {
+    // 時間マーカーは攻撃範囲と別の材質・サイズで読めるようにする。
     if (!effect) {
         return;
     }
@@ -267,6 +279,7 @@ void AttackTelegraph::ConfigureTimingEffectShape(EffectObject3d* effect, Shape s
 }
 
 void AttackTelegraph::ConfigureShape(Shape shape) {
+    // 同じ形状を連続表示する間は設定を再適用しない。
     if (!effect_ || (isShapeConfigured_ && shape_ == shape)) {
         return;
     }
@@ -277,6 +290,7 @@ void AttackTelegraph::ConfigureShape(Shape shape) {
 }
 
 void AttackTelegraph::ConfigureCueShape(Shape shape) {
+    // 強調表示の形状を予告範囲へ揃え、直前の攻撃形状を引きずらない。
     if (!cueEffect_ || (isCueShapeConfigured_ && cueShape_ == shape)) {
         return;
     }
@@ -287,6 +301,7 @@ void AttackTelegraph::ConfigureCueShape(Shape shape) {
 }
 
 Vector4 AttackTelegraph::MakeDisplayColor(const Vector4& color, float progress) const {
+    // 発生までの進行率を点滅速度と透明度へ反映する。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.55f + std::sin(pulseTimer_ * (8.0f + progress * 8.0f)) * 0.45f;
     const float alpha = std::clamp(color.w * (0.42f + progress * 0.42f + pulse * 0.16f), 0.0f, 1.0f);
@@ -296,6 +311,7 @@ Vector4 AttackTelegraph::MakeDisplayColor(const Vector4& color, float progress) 
 }
 
 Vector4 AttackTelegraph::MakeDecalColor(const Vector4& color, float progress) const {
+    // デカールは地面との重なりを保ちつつ、発生が近いほど目立たせる。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float pulse = 0.5f + std::sin(pulseTimer_ * (5.0f + progress * 3.0f)) * 0.5f;
     const float alpha = std::clamp(color.w * (0.54f + progress * 0.30f + pulse * 0.10f), 0.0f, 1.0f);
@@ -303,6 +319,7 @@ Vector4 AttackTelegraph::MakeDecalColor(const Vector4& color, float progress) co
 }
 
 Vector4 AttackTelegraph::MakeCueColor(const Vector4& color, float progress) const {
+    // 命中合図を短時間で消し、次の警告と混ざらないようにする。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float flash = 1.0f - progress;
     const float alpha = std::clamp(color.w * flash * flash, 0.0f, 1.0f);
@@ -312,6 +329,7 @@ Vector4 AttackTelegraph::MakeCueColor(const Vector4& color, float progress) cons
 
 void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
                                   const Vector4& color, float scaleMultiplier) const {
+    // 警告範囲の中心は動かさず、進行率によって半径だけ実判定へ近づける。
     if (!effect) {
         return;
     }
@@ -332,6 +350,7 @@ void AttackTelegraph::ApplyCircle(EffectObject3d* effect, const Vector3& center,
 
 void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& center, float radius, float progress,
                                        const Vector4& color, float scaleMultiplier) const {
+    // 地面から僅かに浮かせ、深度競合でデカールがちらつくのを避ける。
     if (!effect) {
         return;
     }
@@ -351,6 +370,7 @@ void AttackTelegraph::ApplyDecalCircle(EffectObject3d* effect, const Vector3& ce
 }
 
 Vector4 AttackTelegraph::MakeTimingColor(const Vector4& color, float progress) const {
+    // 発生が近づく後半ほど色を強め、攻撃の直前を判別しやすくする。
     progress = std::clamp(progress, 0.0f, 1.0f);
     const float urgency = std::clamp((progress - 0.56f) / 0.44f, 0.0f, 1.0f);
     const float urgencySmooth = urgency * urgency * (3.0f - 2.0f * urgency);
@@ -364,6 +384,7 @@ Vector4 AttackTelegraph::MakeTimingColor(const Vector4& color, float progress) c
 
 void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, const Vector3& direction, float length,
                                 float width, float progress, const Vector4& color, float scaleMultiplier) const {
+    // 始点を固定したまま前方へ伸ばし、射線の向きを予告から読めるようにする。
     if (!effect) {
         return;
     }
@@ -387,6 +408,7 @@ void AttackTelegraph::ApplyLine(EffectObject3d* effect, const Vector3& center, c
 
 void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector3& origin, const Vector3& direction,
                                             float length, float width, float progress, const Vector4& color) const {
+    // 残り時間を線上の移動マーカーに変え、端を越えないよう位置を制限する。
     if (!effect) {
         return;
     }
@@ -403,6 +425,7 @@ void AttackTelegraph::ApplyLineTimingMarker(EffectObject3d* effect, const Vector
 }
 
 void AttackTelegraph::ShowCircleTiming(const Vector3& center, float radius, float progress, const Vector4& color) {
+    // 予告の外周を攻撃発生時に実半径へ収束させる。
     progress = std::clamp(progress, 0.0f, 1.0f);
     BeginTiming(Shape::Circle, 1);
     const float countdownScale = kCountdownOuterScale - (kCountdownOuterScale - 1.0f) * progress;
@@ -413,6 +436,7 @@ void AttackTelegraph::ShowCircleTiming(const Vector3& center, float radius, floa
 
 void AttackTelegraph::ShowLineTiming(const Vector3& origin, const Vector3& direction, float length, float width,
                                      float progress, const Vector4& color) {
+    // 射線上を進むマーカーで、線状攻撃の発生までの時間を示す。
     BeginTiming(Shape::Line, 1);
     Vector3 timingOrigin = origin;
     timingOrigin.y += kTimingLayerLift;
@@ -422,6 +446,7 @@ void AttackTelegraph::ShowLineTiming(const Vector3& origin, const Vector3& direc
 
 // 予兆の形と進行率を描画へ渡します。攻撃判定の半径は呼び出し側が同じ値で管理します。
 void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float progress, const Vector4& color) {
+    // 複数地点の表示を解除し、この一箇所の範囲と時間だけ表示する。
     EnsureEffect(common_);
     if (!effect_) {
         return;
@@ -442,6 +467,7 @@ void AttackTelegraph::ShowCircle(const Vector3& center, float radius, float prog
 
 void AttackTelegraph::ShowDecalCircle(const Vector3& center, float radius, float progress, const Vector4& color,
                                       const std::string& texturePath) {
+    // 画像が変わった時だけ形状設定を更新し、古いデカールを使い回さない。
     EnsureEffect(common_);
     if (!effect_ || texturePath.empty()) {
         return;
@@ -467,6 +493,7 @@ void AttackTelegraph::ShowDecalCircle(const Vector3& center, float radius, float
 
 void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, float length, float width,
                                float progress, const Vector4& color) {
+    // 射線の最後の形状を覚え、命中直前の合図を同じ位置へ出せるようにする。
     EnsureEffect(common_);
     if (!effect_) {
         return;
@@ -489,6 +516,7 @@ void AttackTelegraph::ShowLine(const Vector3& center, const Vector3& direction, 
 
 void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, float length, float startWidth,
                                float endWidth, float progress, const Vector4& color) {
+    // 扇形を長さ方向の複数区間で近似し、先端へ向けた幅の変化を見せる。
     length = (std::max)(length, 0.05f);
     startWidth = (std::max)(startWidth, 0.05f);
     endWidth = (std::max)(endWidth, startWidth);
@@ -517,6 +545,7 @@ void AttackTelegraph::ShowCone(const Vector3& origin, const Vector3& direction, 
 
 void AttackTelegraph::ShowImpactAreas(const Vector3* centers, std::size_t centerCount, float radius, float progress,
                                       const Vector4& color) {
+    // 複数の着弾地点を同じ進行率で示し、各地点に時間表示を重ねる。
     if (!centers || centerCount == 0) {
         Hide();
         return;
@@ -584,6 +613,7 @@ void AttackTelegraph::ShowReadableImpactAreas(const Vector3* centers, std::size_
 void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& direction, float length, float width,
                                   int laneCount, float lateralSpacing, float angleStep, float progress,
                                   const Vector4& color) {
+    // 本数の中央を基準に左右へ射線を広げ、入力順で見た目が偏らないようにする。
     laneCount = (std::max)(1, laneCount);
     length = (std::max)(length, 0.05f);
     width = (std::max)(width, 0.05f);
@@ -616,6 +646,7 @@ void AttackTelegraph::ShowLaneFan(const Vector3& origin, const Vector3& directio
 }
 
 void AttackTelegraph::TriggerCue(const Vector4& color) {
+    // 直近の範囲形状を使って、攻撃が始まる瞬間だけ別の強調表示を出す。
     if (patternActiveCount_ > 0) {
         patternCueTimer_ = cueDuration_;
         patternCueColor_ = color;
@@ -644,6 +675,7 @@ void AttackTelegraph::TriggerCue(const Vector4& color) {
 }
 
 void AttackTelegraph::TriggerCueAt(const Vector3& center, float radius, const Vector4& color) {
+    // 汎用の円形合図は、事前の予告がなくても指定地点に生成できる。
     EnsureCueEffect(common_);
     if (!cueEffect_) {
         return;
@@ -664,6 +696,7 @@ void AttackTelegraph::TriggerCueAt(const Vector3& center, float radius, const Ve
 
 void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset, float size,
                                         const Vector4& accentColor) {
+    // 対象へ追従する警告を開始し、移動中も本体の近くに保持する。
     EnsureWarningEffect(common_);
     if (!warningEffect_) {
         return;
@@ -680,6 +713,7 @@ void AttackTelegraph::TriggerWarningCue(Object3d* target, const Vector3& offset,
 }
 
 void AttackTelegraph::Hide() {
+    // 範囲・時間・合図をまとめて隠し、次の攻撃へ前回の予告を残さない。
     isVisible_ = false;
     if (effect_) {
         effect_->SetIsVisible(false);
@@ -689,6 +723,7 @@ void AttackTelegraph::Hide() {
 }
 
 void AttackTelegraph::Update(float deltaTime) {
+    // 表示中だけ各エフェクトの位置と点滅を進め、非表示物の更新を抑える。
     pulseTimer_ += (std::max)(deltaTime, 0.0f);
     if (effect_ && isVisible_) {
         effect_->UpdateLocalMatrix();
@@ -786,6 +821,7 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
 }
 
 void AttackTelegraph::DrawGround(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 地面用の範囲と時間表示だけを描画し、頭上の警告とは描画順を分ける。
     if (effect_ && isVisible_ && effect_->GetIsVisible()) {
         effect_->RefreshRenderCameraData();
         effect_->Draw(pointLightResource, spotLightResource);
@@ -809,6 +845,7 @@ void AttackTelegraph::DrawGround(ID3D12Resource* pointLightResource, ID3D12Resou
 }
 
 void AttackTelegraph::DrawWarning(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 頭上の警告は地面の予告とは別パスで描く。
     if (warningEffect_ && warningEffect_->GetIsVisible()) {
         warningEffect_->RefreshRenderCameraData();
         warningEffect_->Draw(pointLightResource, spotLightResource);

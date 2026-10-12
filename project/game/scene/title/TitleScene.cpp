@@ -130,22 +130,26 @@ const std::array<TitleLogoGlyphLayout, 8> kTitleLogoGlyphLayouts = {
         "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", {1327.3f, 147.5f}, {110.4f, 111.6f}, 0.385f}};
 
 float SmoothStep(float t) {
+    // タイトル文字やカードの登場で始点・終点の急な速度変化を抑える。
     t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 
 Vector3 LerpTitleVector3(const Vector3& from, const Vector3& to, float t) {
+    // 巡回経路の区間外へ飛び出さないよう補間率を丸める。
     const float clamped = std::clamp(t, 0.0f, 1.0f);
     return {from.x + (to.x - from.x) * clamped, from.y + (to.y - from.y) * clamped, from.z + (to.z - from.z) * clamped};
 }
 
 bool IsFadePlayingForSceneIntro() {
+    // シーン遷移のフェード中はタイトル演出の開始時刻を進めない。
     const Fade::Status status = Fade::GetInstance()->GetStatus();
     return status == Fade::Status::FadeIn || status == Fade::Status::FadeOut || status == Fade::Status::IrisIn ||
            status == Fade::Status::IrisOut;
 }
 
 Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
+    // 配置 JSON に主人公がない場合は、呼び出し元が実行時モデルを生成できる。
     if (!scene)
         return nullptr;
     for (auto& object : scene->GetObjects()) {
@@ -161,6 +165,7 @@ Object3d* FindObjectByName(BaseScene* scene, const std::string& name) {
 // タイトル演出、メニュー、セーブ枠選択を順に扱います。選択した枠を確定してからシーン遷移を要求します。
 
 SceneLoadManifest TitleScene::BuildAsyncLoadManifest() const {
+    // 保存選択へ入る前に必要な 3D 背景と Sprite レイアウトを先読みする。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(kTitleBackgroundLayoutPath);
     manifest.AddSpriteLayout(HasSceneAssetContext() && !GetSceneLoadContext().spriteLayoutPath.empty()
@@ -288,6 +293,7 @@ void TitleScene::Initialize() {
 }
 
 void TitleScene::Finalize() {
+    // Sprite の所有コンテナを破棄する前に、そこを指す演出用の参照を無効化する。
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
 
@@ -359,6 +365,7 @@ void TitleScene::Finalize() {
 }
 
 void TitleScene::Update(float deltaTime) {
+    // 設定・メインメニュー・セーブ選択の入力を分けつつ、背景の演出は継続する。
     titleUiTime_ += deltaTime;
     const float introDeltaTime = IsFadePlayingForSceneIntro() ? 0.0f : deltaTime;
     UpdateTitleLogoIntro(introDeltaTime);
@@ -435,6 +442,7 @@ void TitleScene::Update(float deltaTime) {
 }
 
 void TitleScene::InitializeTitleLogoUI() {
+    // ロゴを一文字ずつ分け、エディター配置があればそれを優先する。
     if (titleTextSprite_) {
         titleTextSprite_->SetVisible(false);
     }
@@ -461,6 +469,7 @@ void TitleScene::InitializeTitleLogoUI() {
 }
 
 void TitleScene::InitializeMainMenuUI() {
+    // ボタン枠を基準に、文字・カーソルの相対位置を保存する。
     if (startTextSprite_) {
         startTextSprite_->SetAnchorPoint({0.5f, 0.5f});
         startTextSprite_->SetTextureRect(kMenuStartTextureLeftTop, kMenuStartTextureSize);
@@ -517,6 +526,7 @@ void TitleScene::InitializeMainMenuUI() {
 }
 
 void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
+    // 文字ごとの遅延を使い、全体ロゴを一度に表示しない。
     if (titleTextSprite_) {
         titleTextSprite_->SetVisible(false);
     }
@@ -566,6 +576,7 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
 }
 
 void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
+    // 配置済み位置を基準に、待機・巡回・復帰を一つの周期で繰り返す。
     if (!titleHeroSlime_) {
         titleHeroSlime_ = FindObjectByName(this, kTitleHeroSlimeName);
         if (titleHeroSlime_ && !titleHeroBaseCaptured_) {
@@ -647,6 +658,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
 }
 
 void TitleScene::UpdateMainMenu() {
+    // 枠の編集位置に文字とカーソルを追従させ、選択時だけ強調する。
     InputManager* input = InputManager::GetInstance();
 
     if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
@@ -751,6 +763,7 @@ void TitleScene::UpdateMainMenu() {
 }
 
 void TitleScene::UpdateSaveSelect(float deltaTime) {
+    // 削除確認と起動演出中は通常の枠移動を受け付けない。
     InputManager* input = InputManager::GetInstance();
 
     if (saveSelectMode_ == SaveSelectMode::Launching) {
@@ -855,6 +868,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
 }
 
 void TitleScene::InitializeSaveSlotUI() {
+    // セーブ枠の部品を配置 JSON の名前から結び、未配置分だけ補う。
     titleUiSprites_.clear();
     saveSlotCards_.fill(nullptr);
     for (auto& frame : saveSlotFrames_) {
@@ -1022,6 +1036,7 @@ void TitleScene::InitializeSaveSlotUI() {
 }
 
 void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector4& color, bool visible) {
+    // 保存値を二桁表示へ丸め、桁ごとの Sprite を再利用する。
     value = std::clamp(value, 0, 99);
 
     std::array<int, 2> digitValues = {value / 10, value % 10};
@@ -1048,6 +1063,7 @@ void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, con
 
 Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size,
                                    const Vector4& color) {
+    // 実行時に補う UI も配置済み Sprite と同じ所有コンテナへ登録する。
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(spriteCommon_.get(), texturePath);
     sprite->SetPosition(position);
@@ -1063,6 +1079,7 @@ Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2
 }
 
 void TitleScene::UpdateSaveSlotUI(float deltaTime) {
+    // セーブ記録と選択状態を基準配置へ毎フレーム反映し、画面の再開閉でもずれを残さない。
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     const bool launching = inSaveSelect && saveSelectMode_ == SaveSelectMode::Launching;
@@ -1323,6 +1340,7 @@ void TitleScene::UpdateSaveSlotUI(float deltaTime) {
 
 // 空スロットは初期データで開始します。チュートリアルの完了記録がない場合は選択画面を飛ばします。
 void TitleScene::StartSelectedSaveSlot() {
+    // 確定した枠を有効化し、チュートリアルのクリア記録で開始シーンを決める。
     GameDataManager* saveData = GameDataManager::GetInstance();
     const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
 
@@ -1338,6 +1356,7 @@ void TitleScene::StartSelectedSaveSlot() {
 }
 
 void TitleScene::DeleteSelectedSaveSlot() {
+    // 空枠の削除を避け、実際の削除結果をデバッグログへ残す。
     GameDataManager* saveData = GameDataManager::GetInstance();
     const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
     if (!summary.exists) {
@@ -1350,6 +1369,7 @@ void TitleScene::DeleteSelectedSaveSlot() {
 }
 
 void TitleScene::DrawSaveSlotUI() {
+    // 暗幕は DrawUI で先に描くため、ここではカードと文字だけを重ねる。
     for (auto& sprite : titleUiSprites_) {
         if (sprite.get() != saveSelectBackdrop_) {
             sprite->Draw();
@@ -1431,6 +1451,7 @@ void TitleScene::DrawUI() {
 
 // シャドウマップ描画の実装
 void TitleScene::DrawShadow() {
+    // 背景の 3D 配置を ObjectManager の影描画へ委ねる。
     if (objectManager_) {
         objectManager_->DrawShadow();
     }

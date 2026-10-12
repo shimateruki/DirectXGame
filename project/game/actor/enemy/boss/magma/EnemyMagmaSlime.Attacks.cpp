@@ -40,6 +40,7 @@ void EnemyMagmaSlime::PrepareMortarTargets() {
 }
 
 void EnemyMagmaSlime::LaunchNextMagmaBlob() {
+    // 狙いは準備済みの着弾点で固定し、弾ごとの横位置と滞空時間だけをずらす。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(mortarTargets_.size())) {
         return;
     }
@@ -74,6 +75,7 @@ void EnemyMagmaSlime::LaunchNextMagmaBlob() {
 }
 
 void EnemyMagmaSlime::UpdateMagmaBlobs(float deltaTime) {
+    // 二次ベジエ曲線で弾を飛ばし、終点へ達した一度だけ着弾処理を行う。
     auto blob = magmaBlobs_.begin();
     while (blob != magmaBlobs_.end()) {
         if (!blob->visual) {
@@ -111,6 +113,7 @@ void EnemyMagmaSlime::UpdateMagmaBlobs(float deltaTime) {
 }
 
 void EnemyMagmaSlime::ImpactMagmaBlob(MagmaBlob& blob) {
+    // 着弾時の即時ダメージと、後から残るマグマ床を別々に発生させる。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kMagmaMortarAttackId);
     const char* impactPreset = attack.impactVfx.empty() ? kImpactPreset : attack.impactVfx.c_str();
     EmitDirectedPreset(impactPreset, blob.target + Vector3{0.0f, 0.12f, 0.0f}, {0.0f, 1.0f, 0.0f}, 1.48f);
@@ -121,6 +124,7 @@ void EnemyMagmaSlime::ImpactMagmaBlob(MagmaBlob& blob) {
 }
 
 void EnemyMagmaSlime::SpawnMagmaPool(const Vector3& position, float radius, float lifetime) {
+    // 地面の高さを取得し、薄い円盤と継続ダメージの中心を同じ位置に置く。
     MagmaPool pool;
     pool.visual = CreateMagmaVisual("MagmaSlime_Pool_" + std::to_string(magmaPools_.size()), "Primitives/cylinder",
                                     kMagmaMaterialType, {1.0f, 0.13f, 0.005f, 0.86f}, 2.2f);
@@ -200,6 +204,7 @@ void EnemyMagmaSlime::BeginRush() {
 }
 
 void EnemyMagmaSlime::UpdateRush(float deltaTime, float, Vector3& velocity) {
+    // 突進距離は開始時に固定し、VFX・床・接触判定を進行率に同期させる。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
     const float travelRate = SmoothStep01(std::clamp(progress / 0.82f, 0.0f, 1.0f));
@@ -241,6 +246,7 @@ void EnemyMagmaSlime::UpdateRush(float deltaTime, float, Vector3& velocity) {
 }
 
 void EnemyMagmaSlime::FinishRush() {
+    // 終点の衝撃と左右の床を一回だけ作り、突進中の炎を片付ける。
     rushImpactSpawned_ = true;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     EmitDirectedPreset(attack.impactVfx.empty() ? kImpactPreset : attack.impactVfx.c_str(),
@@ -255,6 +261,7 @@ void EnemyMagmaSlime::FinishRush() {
 }
 
 void EnemyMagmaSlime::EnsureRushFlameVisuals() {
+    // 突進中に必要な炎メッシュだけを遅延生成し、炎用材質の流れ方を設定する。
     for (std::size_t index = 0; index < rushFlameVisuals_.size(); ++index) {
         if (rushFlameVisuals_[index]) {
             continue;
@@ -284,6 +291,7 @@ void EnemyMagmaSlime::EnsureRushFlameVisuals() {
 }
 
 void EnemyMagmaSlime::UpdateRushFlameVisuals(const Vector3& position, float progress, float deltaTime) {
+    // 本体の前後左右へ炎を追従させ、突進の開始と終了では明るさを弱める。
     constexpr std::array<float, 5> sideOffsets = {-0.74f, 0.0f, 0.74f, -0.42f, 0.42f};
     constexpr std::array<float, 5> backOffsets = {0.20f, -0.08f, 0.20f, 0.92f, 0.92f};
     constexpr std::array<float, 5> heightOffsets = {0.52f, 0.70f, 0.52f, 0.36f, 0.36f};
@@ -327,12 +335,14 @@ void EnemyMagmaSlime::UpdateRushFlameVisuals(const Vector3& position, float prog
 }
 
 void EnemyMagmaSlime::ClearRushFlameVisuals() {
+    // 次回の突進で古い炎が出現位置に残らないよう、所有するメッシュを解放する。
     for (std::unique_ptr<Object3d>& flame : rushFlameVisuals_) {
         flame.reset();
     }
 }
 
 void EnemyMagmaSlime::BeginVolcanicSlam() {
+    // 跳躍先を最大射程内の地面へ制限し、空中移動の開始点を固定する。
     attackStartPosition_ = GetTranslate();
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     Vector3 toTarget = lockedTargetPosition_ - attackStartPosition_;
@@ -347,6 +357,7 @@ void EnemyMagmaSlime::BeginVolcanicSlam() {
 }
 
 void EnemyMagmaSlime::UpdateVolcanicSlam(float, Vector3& velocity) {
+    // 水平移動に正弦波の高さを重ね、着地直前に一回だけ衝撃を出す。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
     const float travelRate = SmoothStep01(progress);
@@ -368,6 +379,7 @@ void EnemyMagmaSlime::UpdateVolcanicSlam(float, Vector3& velocity) {
 }
 
 void EnemyMagmaSlime::ImpactVolcanicSlam() {
+    // 中央判定に続き、外周二列の柱を時間差で噴き上げる。
     slamImpactSpawned_ = true;
     SetTranslate(attackEndPosition_);
     SetGrounded(true);
@@ -395,6 +407,7 @@ void EnemyMagmaSlime::ImpactVolcanicSlam() {
 }
 
 void EnemyMagmaSlime::SpawnSlamRings(const Vector3& position) {
+    // 三つの波紋を時間差で準備し、前の波紋の外周から順に広げる。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     constexpr std::array<float, 3> delays = {0.0f, 0.14f, 0.29f};
     for (std::size_t index = 0; index < delays.size(); ++index) {
@@ -420,6 +433,7 @@ void EnemyMagmaSlime::SpawnSlamRings(const Vector3& position) {
 }
 
 void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
+    // 前フレームと現在の半径の間を通過した相手だけに一度命中させる。
     auto ring = magmaRings_.begin();
     while (ring != magmaRings_.end()) {
         if (!ring->visual) {
@@ -478,6 +492,7 @@ void EnemyMagmaSlime::UpdateMagmaRings(float deltaTime) {
 }
 
 void EnemyMagmaSlime::PrepareEruptionTargets() {
+    // 中心・前後・左右・斜めを攻撃開始時の向きで固定し、地面に投影する。
     const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
     const std::array<Vector3, 9> pattern = {
         lockedTargetPosition_,
@@ -496,6 +511,7 @@ void EnemyMagmaSlime::PrepareEruptionTargets() {
 }
 
 void EnemyMagmaSlime::SpawnNextMagmaPillar() {
+    // 攻撃番号に応じた準備済みの座標へ柱を一本ずつ生成する。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(eruptionTargets_.size())) {
         return;
     }
@@ -508,6 +524,7 @@ void EnemyMagmaSlime::SpawnNextMagmaPillar() {
 
 void EnemyMagmaSlime::SpawnMagmaPillar(const Vector3& position, float radius, float height, float lifetime, float delay,
                                        const char* attackId) {
+    // 噴出遅延と攻撃 ID を柱ごとに保持し、着地衝撃と通常噴火で威力を分ける。
     MagmaPillar pillar;
     pillar.visual = CreateMagmaVisual("MagmaSlime_Eruption_" + std::to_string(magmaPillars_.size()), "Primitives/plane",
                                       kFireMaterialType, {1.0f, 0.18f, 0.012f, 0.94f}, 2.8f);
@@ -602,6 +619,7 @@ void EnemyMagmaSlime::UpdateMagmaPillars(float deltaTime) {
 }
 
 void EnemyMagmaSlime::BeginLavaSpiral() {
+    // 三波を六方向へずらして配置し、波ごとに曲がる向きと発生時刻を変える。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kLavaSpiralAttackId);
     const Vector3 origin = FindGroundPoint(GetTranslate());
     const float baseAngle = std::atan2(lockedDirection_.x, lockedDirection_.z);
@@ -660,6 +678,7 @@ void EnemyMagmaSlime::BeginLavaSpiral() {
 }
 
 void EnemyMagmaSlime::UpdateMagmaSurges(float deltaTime) {
+    // 波頭と地表面を同じ曲線上で動かし、接触判定は高さと水平距離を両方確認する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kLavaSpiralAttackId);
     auto surge = magmaSurges_.begin();
     while (surge != magmaSurges_.end()) {
@@ -772,6 +791,7 @@ void EnemyMagmaSlime::PrepareFireColumnTargets() {
 }
 
 void EnemyMagmaSlime::CreateFireColumnSigils() {
+    // 地面の魔法陣と三辺の接続線を個別に持ち、予兆の組み立て順を表現する。
     if (!common_)
         return;
     for (std::size_t index = 0; index < fireColumnSigils_.size(); ++index) {
@@ -965,6 +985,7 @@ void EnemyMagmaSlime::UpdateFireColumn(float deltaTime) {
 }
 
 void EnemyMagmaSlime::BeginMagmaFlood() {
+    // 攻撃方向に十個のセルを時間差で並べ、途中のセルだけ残留床を作る。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kMagmaFloodAttackId);
     const Vector3 origin = FindGroundPoint(GetTranslate());
     const Vector3 side = {lockedDirection_.z, 0.0f, -lockedDirection_.x};
@@ -995,6 +1016,7 @@ void EnemyMagmaSlime::BeginMagmaFlood() {
 }
 
 void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
+    // 見た目が立ち上がったセルだけ命中対象とし、全セルでダメージ間隔を共有する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kMagmaFloodAttackId);
     floodDamageTimer_ = (std::max)(0.0f, floodDamageTimer_ - deltaTime);
     for (auto cell = magmaFloodCells_.begin(); cell != magmaFloodCells_.end();) {
@@ -1052,6 +1074,7 @@ void EnemyMagmaSlime::UpdateMagmaFlood(float deltaTime) {
 }
 
 void EnemyMagmaSlime::UpdateChantVisual(float deltaTime) {
+    // 詠唱共通部品へ本体の実寸と攻撃状態を渡し、魔法陣の位置を追従させる。
     if (!chantVisual_)
         return;
     BossChantFrame frame;

@@ -32,14 +32,17 @@ void ReleaseSceneMeshEffects(BaseScene* scene) {
 SceneManager* SceneManager::instance_ = nullptr;
 
 SceneManager* SceneManager::GetInstance() {
+    // SceneManagerの生存期間はアプリ側が管理し、ここでは参照だけ返す。
     return instance_;
 }
 
 SceneManager::SceneManager() {
+    // アプリに一つのSceneManagerを遷移先の問い合わせ窓口として公開する。
     instance_ = this;
 }
 
 SceneManager::~SceneManager() {
+    // 非同期読込と現行シーンの資源を解放してから破棄する。
     Finalize();
 }
 
@@ -97,6 +100,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
 }
 
 void SceneManager::Finalize() {
+    // 非同期処理とGPUの使用完了を待ってから、現行/準備中のシーンを解放する。
     if (assetCreationFuture_.valid()) {
         assetCreationFuture_.wait();
         try {
@@ -150,6 +154,7 @@ void SceneManager::Finalize() {
 }
 
 void SceneManager::Update(float deltaTime) {
+    // 暗転、ローディング、準備済みシーンへの交換を一つの状態機械で進める。
     const float effectiveDeltaTime = deltaTime > 0.0f ? deltaTime : (1.0f / 60.0f);
 
     switch (transitionPhase_) {
@@ -233,44 +238,53 @@ void SceneManager::Update(float deltaTime) {
 }
 
 void SceneManager::Draw() {
+    // 遷移中も、その時点で画面を担当するシーンだけ描く。
     if (currentScene_) {
         currentScene_->Draw();
     }
 }
 
 void SceneManager::DrawUI() {
+    // LoadingSceneへ切り替わっている間は、そのシーンのUIを描く。
     if (currentScene_) {
         currentScene_->DrawUI();
     }
 }
 
 void SceneManager::DrawShadow() {
+    // 影描画の担当も現行シーンへ一本化する。
     if (currentScene_) {
         currentScene_->DrawShadow();
     }
 }
 
 void SceneManager::SetNextScene(std::unique_ptr<BaseScene> nextScene) {
+    // 直接生成済みのシーンの所有権を受け取り、次の更新で交換する。
     nextScene_ = std::move(nextScene);
 }
 
 BaseScene* SceneManager::GetCurrentScene() const {
+    // 所有権はSceneManagerに保持し、外部には現在の参照だけ渡す。
     return currentScene_.get();
 }
 
 void SceneManager::ChangeScene(const std::string& sceneName) {
+    // 通常遷移は暗転後にローディング画面を経由する。
     QueueSceneChange(sceneName, true);
 }
 
 void SceneManager::ChangeSceneWithoutLoading(const std::string& sceneName, bool destinationHandlesReveal) {
+    // 短い演出ではローディング画面を省き、遷移先の開示演出を選べる。
     QueueSceneChange(sceneName, true, true, destinationHandlesReveal);
 }
 
 void SceneManager::ChangeSceneAfterFade(const std::string& sceneName) {
+    // 呼び出し側が始めた暗転を待ってから通常の遷移へ進む。
     QueueSceneChange(sceneName, false);
 }
 
 void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFadeOut, bool skipLoading, bool destinationHandlesReveal) {
+    // 多重遷移と未登録名を拒否し、Asset指定の引継ぎを一回限りにする。
     if (sceneFactory_ == nullptr) {
         assert(false && "SceneFactory is not set in SceneManager.");
         return;
@@ -308,6 +322,7 @@ void SceneManager::QueueSceneChange(const std::string& sceneName, bool startFade
 }
 
 bool SceneManager::ReloadCurrentScene() {
+    // Scene Asset編集中なら次回の読み直しにも同じAssetを渡す。
     if (currentSceneName_.empty() || IsTransitionBusy()) {
         return false;
     }
@@ -318,10 +333,12 @@ bool SceneManager::ReloadCurrentScene() {
 }
 
 std::vector<std::string> SceneManager::GetRegisteredSceneNames() const {
+    // Factory未設定時にもエディター側へ空の一覧を返せるようにする。
     return sceneFactory_ ? sceneFactory_->GetRegisteredSceneNames() : std::vector<std::string>{};
 }
 
 bool SceneManager::IsSceneRegistered(const std::string& sceneName) const {
+    // 遷移前にFactoryの公開一覧で名前を照合する。
     const std::vector<std::string> sceneNames = GetRegisteredSceneNames();
     return std::find(sceneNames.begin(), sceneNames.end(), sceneName) != sceneNames.end();
 }
@@ -330,6 +347,7 @@ bool SceneManager::OpenSceneAsset(
     const std::string& objectLayoutPath,
     const std::string& spriteLayoutPath,
     const std::string& runtimeSceneName) {
+    // 個別のファイルパスを読込コンテキストへまとめてから共通経路へ渡す。
     SceneLoadContext context;
     context.sceneAssetId = objectLayoutPath;
     context.runtimeScene = runtimeSceneName;
@@ -339,6 +357,7 @@ bool SceneManager::OpenSceneAsset(
 }
 
 bool SceneManager::OpenSceneAsset(const SceneLoadContext& context) {
+    // 編集中や遷移中の二重読込を避け、指定された実行シーンだけを開く。
     if (!context.IsSceneAsset() || context.objectLayoutPath.empty() ||
         isPlaying_ || IsTransitionBusy() || !IsSceneRegistered(context.runtimeScene)) {
         return false;
@@ -353,12 +372,14 @@ bool SceneManager::OpenSceneAsset(const SceneLoadContext& context) {
 bool SceneManager::OpenEditorSceneAsset(
     const std::string& objectLayoutPath,
     const std::string& spriteLayoutPath) {
+    // Asset編集ではゲーム進行用ではなく編集専用のシーンを選ぶ。
     return OpenSceneAsset(objectLayoutPath, spriteLayoutPath, "SCENE_EDITOR");
 }
 
 void SceneManager::SetEditorSceneAssetPaths(
     const std::string& objectLayoutPath,
     const std::string& spriteLayoutPath) {
+    // 表示用IDはファイル名から拡張子を除き、実際の読込パスは保持する。
     activeSceneLoadContext_.objectLayoutPath = objectLayoutPath;
     activeSceneLoadContext_.spriteLayoutPath = spriteLayoutPath;
     std::string sceneAssetId = objectLayoutPath;
@@ -373,10 +394,12 @@ void SceneManager::SetEditorSceneAssetPaths(
 }
 
 void SceneManager::ClearActiveSceneAsset() {
+    // 次の通常遷移で編集用Assetが誤って適用されないよう、指定を消す。
     activeSceneLoadContext_ = {};
 }
 
 void SceneManager::BeginLoadingTransition() {
+    // GPUが旧シーンを使い終えてから解放し、LoadingSceneへ所有権を切り替える。
     TextureManager::GetInstance()->WaitForAsyncUploadBatch();
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
@@ -422,6 +445,7 @@ void SceneManager::BeginLoadingTransition() {
 }
 
 void SceneManager::StartAsyncSceneCreate() {
+    // 次シーンのManifestを先に集め、CPU側の資源準備を別スレッドへ渡す。
     assert(sceneFactory_);
     const std::string targetName = loadingTargetSceneName_;
     preparedScene_ = sceneFactory_->CreateScene(targetName);
@@ -469,6 +493,7 @@ void SceneManager::StartAsyncSceneCreate() {
 }
 
 bool SceneManager::IsAsyncSceneReady() const {
+    // 描画スレッドを止めずに、Manifest解析の完了だけ確認する。
     if (!loadingFuture_.valid()) {
         return false;
     }
@@ -477,6 +502,7 @@ bool SceneManager::IsAsyncSceneReady() const {
 }
 
 void SceneManager::PrepareLoadedSceneOnMainThread() {
+    // 非同期で用意したAssetの転送を待ち、共有Managerを触るScene初期化は主スレッドで行う。
     if (preparedSceneInitialized_) {
         return;
     }
@@ -596,6 +622,7 @@ void SceneManager::PrepareLoadedSceneOnMainThread() {
 }
 
 void SceneManager::StartPreparedAssetsAsync() {
+    // テクスチャとモデルの作成を作業スレッドへ渡し、進捗を原子的に数える。
     if (!preparedLoadData_ || assetCreationStarted_) {
         return;
     }
@@ -637,6 +664,7 @@ void SceneManager::StartPreparedAssetsAsync() {
 }
 
 float SceneManager::CalculateLoadingProgress() const {
+    // Manifest解析、Asset作成、Scene初期化、GPU転送に進捗帯を割り当てる。
     if (preparedSceneInitialized_) {
         return 1.0f;
     }
@@ -673,6 +701,7 @@ float SceneManager::CalculateLoadingProgress() const {
 }
 
 void SceneManager::SwapToPreparedScene() {
+    // GPU使用が終わってからLoadingSceneを解放し、準備済みシーンを有効化する。
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
@@ -718,6 +747,7 @@ void SceneManager::SwapToPreparedScene() {
 }
 
 void SceneManager::SwapToDirectNextScene() {
+    // ロード画面を挟まない遷移でも、旧シーンのGPU参照を待ってから交換する。
     DirectXCommon::GetInstance()->WaitForGPUAndReset();
 
     if (currentScene_) {
@@ -752,12 +782,14 @@ void SceneManager::SwapToDirectNextScene() {
 }
 
 void SceneManager::SetLoadingProgress(float progress) {
+    // 現在がLoadingSceneのときだけ進捗を送り、有効範囲へ丸める。
     if (LoadingScene* loadingScene = dynamic_cast<LoadingScene*>(currentScene_.get())) {
         loadingScene->SetProgress(std::clamp(progress, 0.0f, 1.0f));
     }
 }
 
 bool SceneManager::IsTransitionBusy() const {
+    // フェード中だけでなく、準備済みシーンや非同期Futureが残る間も再遷移を防ぐ。
     return transitionPhase_ != TransitionPhase::Idle ||
            !nextSceneName_.empty() ||
            nextScene_ != nullptr ||
@@ -766,6 +798,7 @@ bool SceneManager::IsTransitionBusy() const {
 }
 
 void SceneManager::SaveLastSceneName(const std::string& sceneName) {
+    // 既存のユーザー設定項目を残したまま、次回起動に使うシーン名だけ更新する。
     json root;
     {
         std::ifstream input(kUserConfigPath);
@@ -791,6 +824,7 @@ void SceneManager::SaveLastSceneName(const std::string& sceneName) {
 }
 
 std::string SceneManager::LoadLastSceneName() {
+    // 設定ファイルがない場合やJSONが壊れている場合は空名で起動側へ任せる。
     std::ifstream file(kUserConfigPath);
     if (!file.is_open()) {
         return "";

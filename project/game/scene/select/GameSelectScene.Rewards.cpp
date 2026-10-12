@@ -15,6 +15,7 @@ using namespace StageSelectDetail;
 
 // 島の装飾と王冠報酬の表示。進行データはGameDataManager、表示状態はシーンが所有する。
 void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
+    // 島は常に地形として残し、解放状態の差をゲート・橋・台座の発光で示す。
     const auto& stages = StageManager::GetInstance()->GetStages();
     float pulse = (std::sin(stageSelectTime_ * 5.0f) + 1.0f) * 0.5f;
 
@@ -125,6 +126,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 }
 
 void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse) {
+    // 未解放の経路は見た目だけでなく接触も無効化して進行を制限する。
     for (int segmentIndex = 0; segmentIndex < 12; ++segmentIndex) {
         std::ostringstream name;
         name << "StagePath_" << stageIndex << "_" << segmentIndex;
@@ -152,6 +154,7 @@ void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlock
 }
 
 void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
+    // ステージごとの取得記録を、島上の三つのスター表示へ反映する。
     (void)deltaTime;
     const auto& stages = StageManager::GetInstance()->GetStages();
     auto* save = GameDataManager::GetInstance();
@@ -185,6 +188,7 @@ void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
 }
 
 Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
+    // 保存レイアウトに王冠がない場合だけ演出用モデルを生成し、重複を避ける。
     if (!objectManager_ || !object3dCommon_) {
         return nullptr;
     }
@@ -221,6 +225,7 @@ Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
 }
 
 void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
+    // 通常時は回転・上下動、クリア直後は専用の落下演出へ切り替える。
     const auto& stages = StageManager::GetInstance()->GetStages();
     auto* save = GameDataManager::GetInstance();
     const float pulse = (std::sin(stageSelectTime_ * 4.2f) + 1.0f) * 0.5f;
@@ -266,6 +271,7 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
 
 // クリア後の王冠数変化を表示対象ステージに固定して演出を開始します。
 void GameSelectScene::StartStageClearRewardPresentation(const GameDataManager::StageClearRewardPresentation& request) {
+    // 保存済みの報酬要求が有効なステージを指す場合だけ演出を開始する。
     const auto& stages = StageManager::GetInstance()->GetStages();
     if (!request.active || request.stageIndex < 0 || request.stageIndex >= static_cast<int>(stages.size())) {
         return;
@@ -285,6 +291,7 @@ void GameSelectScene::StartStageClearRewardPresentation(const GameDataManager::S
 
 // 王冠の着地を境に粒子と音を切り替え、終了後に次のステージ解放演出へつなぎます。
 void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
+    // 王冠数の表示を進め、演出終了まで通常の選択表示との重なりを管理する。
     if (!crownCountPresentationActive_) {
         return;
     }
@@ -343,6 +350,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
 }
 
 void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageIndex, float deltaTime) {
+    // 獲得王冠が落下して跳ね返る時刻を、HUD の数字更新と揃える。
     if (!crown) {
         return;
     }
@@ -394,7 +402,9 @@ void GameSelectScene::UpdateStageClearRewardCrown(Object3d* crown, int stageInde
 }
 
 void GameSelectScene::UpdateStageSelectCrownHudReward() {
+    // 着地前は控えめな予告、着地後は王冠アイコンと数字を一斉に弾ませる。
     auto applySprite = [](StageSelectHudSprite& state, float scale, const Vector4& color, float rotation) {
+        // 毎回基準配置から変形して、演出後に位置や大きさを持ち越さない。
         if (!state.sprite) {
             return;
         }
@@ -434,6 +444,7 @@ void GameSelectScene::UpdateStageSelectCrownHudReward() {
 }
 
 int GameSelectScene::GetDisplayedCrownCount() const {
+    // 着地の瞬間まで旧個数を見せ、演出と数字の変化を一致させる。
     if (crownCountPresentationActive_ && !crownCountPresentationImpactDone_ &&
         crownCountPresentationTimer_ < kCrownCountImpactTime) {
         return crownCountPresentationFrom_;
@@ -443,6 +454,7 @@ int GameSelectScene::GetDisplayedCrownCount() const {
 }
 
 Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) const {
+    // ゲートモデルの上端を優先し、AABB が無効ならノード基準の高さへ戻す。
     Vector3 fallback = GetStageNodePosition(stageIndex) + Vector3{0.0f, 3.0f, 0.0f};
     if (!objectManager_) {
         return fallback;

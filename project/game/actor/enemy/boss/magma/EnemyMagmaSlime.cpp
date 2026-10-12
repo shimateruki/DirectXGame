@@ -48,6 +48,7 @@ void EnemyMagmaSlime::Initialize(Object3dCommon* common, const std::string& mode
 }
 
 void EnemyMagmaSlime::Update(float deltaTime) {
+    // 設置済みのマグマ演出を先に更新し、遭遇・休眠・敗北中は新しい攻撃を始めない。
     if (UpdateEncounterState(deltaTime)) {
         return;
     }
@@ -134,6 +135,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
 }
 
 void EnemyMagmaSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // シーン管理外の詠唱陣と火柱の補助表示も本体と同じ描画順で出す。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
     if (chantVisual_) {
         chantVisual_->Draw(pointLightResource, spotLightResource);
@@ -153,6 +155,7 @@ void EnemyMagmaSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* s
 }
 
 void EnemyMagmaSlime::OnSwitchEvent(bool active) {
+    // 遭遇制御下のスイッチは出現と休眠を切り替え、それ以外は通常の敵の動作に任せる。
     if (!IsEncounterControlled()) {
         BaseEnemy::OnSwitchEvent(active);
         return;
@@ -170,6 +173,7 @@ void EnemyMagmaSlime::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> EnemyMagmaSlime::Clone() const {
+    // 複製先へ配置倍率と標的を渡し、攻撃中の一時状態は持ち越さない。
     auto clone = std::make_unique<EnemyMagmaSlime>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -182,6 +186,7 @@ std::unique_ptr<Object3d> EnemyMagmaSlime::Clone() const {
 }
 
 void EnemyMagmaSlime::ApplyManagedScale(const Vector3& scale) {
+    // エディターで調整した倍率をアニメーションの基準にし、当たり判定も同期する。
     baseScale_ = scale;
     hasBaseScale_ = true;
     SetScale(scale);
@@ -189,6 +194,7 @@ void EnemyMagmaSlime::ApplyManagedScale(const Vector3& scale) {
 }
 
 bool EnemyMagmaSlime::HasOwnedSpecialMaterialVisuals() const {
+    // 特殊マテリアルの別パスに送る一時エフェクトがあるときだけ描画処理を要求する。
     if (!GetIsVisible()) {
         return false;
     }
@@ -198,6 +204,7 @@ bool EnemyMagmaSlime::HasOwnedSpecialMaterialVisuals() const {
 }
 
 void EnemyMagmaSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // マグマ面・衝撃波・炎柱をそれぞれ対応する描画パスで処理する。
     for (const MagmaBlob& blob : magmaBlobs_) {
         if (blob.visual && blob.visual->GetIsVisible()) {
             blob.visual->RefreshRenderCameraData();
@@ -257,6 +264,7 @@ void EnemyMagmaSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, u
 }
 
 void EnemyMagmaSlime::SetDebugPreviewAttackId(const std::string& attackId) {
+    // プレビューの技を変える際に、旧技の予告と残存エフェクトを消す。
     debugPreviewAttackId_ = attackId;
     currentAttack_ = AttackKind::None;
     attackState_ = AttackState::Idle;
@@ -267,6 +275,7 @@ void EnemyMagmaSlime::SetDebugPreviewAttackId(const std::string& attackId) {
 }
 
 const char* EnemyMagmaSlime::GetDebugAttackPhaseName() const {
+    // 編集画面には内部状態を予兆・攻撃・硬直・待機の短い表示名で返す。
     switch (attackState_) {
     case AttackState::Windup:
         return "予兆";
@@ -280,6 +289,7 @@ const char* EnemyMagmaSlime::GetDebugAttackPhaseName() const {
 }
 
 void EnemyMagmaSlime::EnsureBaseScale() {
+    // 攻撃時の伸縮から復帰できるよう、配置倍率を初回だけ保存する。
     if (hasBaseScale_) {
         return;
     }
@@ -390,6 +400,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const Vector3& targetDirectio
 
 void EnemyMagmaSlime::UpdateAttack(float deltaTime, const Vector3& targetDirection, float targetDistance,
                                    Vector3& velocity) {
+    // 警告の終盤で照準を固定し、実行・硬直中は各段階の処理だけを進める。
     if (attackState_ == AttackState::Windup) {
         if (attackTimer_ > GetCurrentAttackDefinition().warningLeadTime && target_) {
             lockedDirection_ = NormalizePlanar(targetDirection);
@@ -420,6 +431,7 @@ void EnemyMagmaSlime::UpdateAttack(float deltaTime, const Vector3& targetDirecti
 }
 
 void EnemyMagmaSlime::UpdateWindup(float deltaTime, const Vector3&) {
+    // 技ごとの危険範囲を同じ進捗率で示し、発生直前に警告を一度強める。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     effectTimer_ -= deltaTime;
@@ -479,6 +491,7 @@ void EnemyMagmaSlime::UpdateWindup(float deltaTime, const Vector3&) {
 }
 
 void EnemyMagmaSlime::BeginActive() {
+    // 技定義の有効時間を始め、種類に応じた設置・突進・プレスの初回処理を起動する。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackState_ = AttackState::Active;
     attackStateDuration_ = (std::max)(0.16f, attack.activeDuration);
@@ -502,6 +515,7 @@ void EnemyMagmaSlime::BeginActive() {
 }
 
 void EnemyMagmaSlime::UpdateActive(float deltaTime, float targetDistance, Vector3& velocity) {
+    // 連続発射の間隔と移動技の速度を進め、実行時間が尽きたら硬直へ移す。
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     actionTimer_ -= deltaTime;
     effectTimer_ -= deltaTime;
@@ -550,6 +564,7 @@ void EnemyMagmaSlime::UpdateActive(float deltaTime, float targetDistance, Vector
 }
 
 void EnemyMagmaSlime::BeginRecovery() {
+    // 技定義の硬直と再使用待ちを設定し、火柱の一時描画物を片付ける。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackState_ = AttackState::Recovery;
     attackStateDuration_ = (std::max)(0.10f, attack.recoveryDuration);
@@ -567,6 +582,7 @@ void EnemyMagmaSlime::BeginRecovery() {
 }
 
 void EnemyMagmaSlime::FinishAttack() {
+    // 次の技へ前回の警告・着弾フラグを持ち越さないよう、攻撃状態を初期化する。
     currentAttack_ = AttackKind::None;
     attackState_ = AttackState::Idle;
     attackTimer_ = 0.0f;
@@ -581,6 +597,7 @@ void EnemyMagmaSlime::FinishAttack() {
 }
 
 void EnemyMagmaSlime::PrepareAttackCycle() {
+    // 全技の巡回順を混ぜ、直前の技が次巡の先頭に続かないようにする。
     attackCycle_ = {
         AttackKind::MagmaMortar, AttackKind::LavaRush,   AttackKind::VolcanicSlam, AttackKind::EruptionField,
         AttackKind::LavaSpiral,  AttackKind::FireColumn, AttackKind::MagmaFlood,
@@ -593,6 +610,7 @@ void EnemyMagmaSlime::PrepareAttackCycle() {
 }
 
 EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveAutomaticAttack(float targetDistance) {
+    // 現在の距離で届く技を巡回順から探し、使用可能な候補を先頭へ繰り上げる。
     if (attackCycleIndex_ >= attackCycle_.size()) {
         PrepareAttackCycle();
     }
@@ -610,6 +628,7 @@ EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveAutomaticAttack(float target
 }
 
 EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveDebugAttack() const {
+    // JSONの攻撃IDをプレビュー用の内部種別へ対応付ける。
     if (debugPreviewAttackId_ == kMagmaMortarAttackId)
         return AttackKind::MagmaMortar;
     if (debugPreviewAttackId_ == kLavaRushAttackId)
@@ -628,6 +647,7 @@ EnemyMagmaSlime::AttackKind EnemyMagmaSlime::ResolveDebugAttack() const {
 }
 
 const char* EnemyMagmaSlime::GetAttackId(AttackKind kind) const {
+    // 内部の攻撃種別をプロファイル参照用のIDに変える。
     switch (kind) {
     case AttackKind::MagmaMortar:
         return kMagmaMortarAttackId;
@@ -649,12 +669,14 @@ const char* EnemyMagmaSlime::GetAttackId(AttackKind kind) const {
 }
 
 const EnemyAttackDefinition& EnemyMagmaSlime::GetCurrentAttackDefinition() const {
+    // 実行中の技が参照する攻撃時間・射程・ダメージの定義を返す。
     return GetAttackDefinition(GetAttackId(currentAttack_));
 }
 
 std::unique_ptr<Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::string& name, const std::string& model,
                                                              int materialType, const Vector4& color,
                                                              float emissive) const {
+    // 一時演出は敵本体の衝突対象にせず、種類に応じてマグマ・炎・衝撃波の材質を設定する。
     if (!common_) {
         return nullptr;
     }
@@ -704,11 +726,13 @@ std::unique_ptr<Object3d> EnemyMagmaSlime::CreateMagmaVisual(const std::string& 
 }
 
 Vector3 EnemyMagmaSlime::FindGroundPoint(const Vector3& samplePosition) const {
+    // 予告と着弾が地形から浮かないよう、指定地点の下にある接地面を探す。
     return CombatGroundQuery::FindGroundPoint(samplePosition, this, {12.0f, 28.0f}, GetTranslate().y);
 }
 
 void EnemyMagmaSlime::DamageTargetAt(const Vector3& center, float radius, float damage, const Vector3& knockback,
                                      float burnDuration, float burnTickInterval, float burnTickDamage) {
+    // 平面半径と高さ差の両方を満たした対象へ、火傷を含む一回の被弾イベントを送る。
     if (!target_ || target_->isDead || !target_->GetIsVisible()) {
         return;
     }
@@ -730,6 +754,7 @@ void EnemyMagmaSlime::DamageTargetAt(const Vector3& center, float radius, float 
 }
 
 void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
+    // 移動の弾みと技ごとの変形を合成し、配置時の倍率を基準に戻す。
     SlimeBounceAnimator::Params params;
     params.speedForFullBounce = 2.8f;
     params.idleAmplitude = 0.045f;
@@ -856,6 +881,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
 }
 
 void EnemyMagmaSlime::UpdateFacing(const Vector3& direction) {
+    // 水平方向が有効なときだけ向きを補間し、停止時の姿勢は保持する。
     if (direction.x * direction.x + direction.z * direction.z <= 0.0001f) {
         return;
     }
@@ -864,6 +890,7 @@ void EnemyMagmaSlime::UpdateFacing(const Vector3& direction) {
 }
 
 void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
+    // 詠唱や着地の段階に応じて本体の熱・発光を変化させる。
     ambientEmberTimer_ -= deltaTime;
     const bool attacking = attackState_ == AttackState::Windup || attackState_ == AttackState::Active;
     const float attackGlow = attacking ? 0.58f : 0.0f;
@@ -885,6 +912,7 @@ void EnemyMagmaSlime::UpdateBodyHeat(float deltaTime) {
 }
 
 void EnemyMagmaSlime::EmitPreset(const char* presetName, const Vector3& position) const {
+    // GPU粒子が利用できる場合だけ指定プリセットを発生させる。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
@@ -893,6 +921,7 @@ void EnemyMagmaSlime::EmitPreset(const char* presetName, const Vector3& position
 
 void EnemyMagmaSlime::EmitDirectedPreset(const char* presetName, const Vector3& position, const Vector3& direction,
                                          float speedScale) const {
+    // 発射方向と速度倍率を持つ粒子だけを、GPU粒子管理器が有効な場合に放出する。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);
@@ -900,12 +929,14 @@ void EnemyMagmaSlime::EmitDirectedPreset(const char* presetName, const Vector3& 
 }
 
 void EnemyMagmaSlime::SyncCollisionRadius() {
+    // 見た目の伸縮を物理判定へ伝播させず、配置時のワールド半径を保つ。
     const Vector3 scale = GetScale();
     const float maximumScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     SetCollisionRadius(kGroundCollisionWorldRadius / maximumScale);
 }
 
 void EnemyMagmaSlime::ClearTransientVisuals() {
+    // 敗北や技切替の後に設置物・火柱・詠唱陣が残らないよう、一時演出を消す。
     ClearRushFlameVisuals();
     for (auto& flame : fireColumnVisuals_)
         flame.reset();

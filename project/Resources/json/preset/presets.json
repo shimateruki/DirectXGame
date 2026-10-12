@@ -372,7 +372,7 @@
     "Builtin/Enemy/FireSlime": {
         "animation": {
             "animName": "",
-            "animatorController": "",
+            "animatorController": "enemy_fire_slime",
             "isAnimLoop": true
         },
         "autoTextureTiling": false,
@@ -4660,27 +4660,93 @@
         "builtinCreateTemplate": true,
         "collider": {
             "center": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                -0.03,
+                0
+            ],
+            "footprint": [
+                [
+                    1.48,
+                    0
+                ],
+                [
+                    1.3673,
+                    0.5664
+                ],
+                [
+                    1.0465,
+                    1.0465
+                ],
+                [
+                    0.5664,
+                    1.3673
+                ],
+                [
+                    0,
+                    1.48
+                ],
+                [
+                    -0.5664,
+                    1.3673
+                ],
+                [
+                    -1.0465,
+                    1.0465
+                ],
+                [
+                    -1.3673,
+                    0.5664
+                ],
+                [
+                    -1.48,
+                    0
+                ],
+                [
+                    -1.3673,
+                    -0.5664
+                ],
+                [
+                    -1.0465,
+                    -1.0465
+                ],
+                [
+                    -0.5664,
+                    -1.3673
+                ],
+                [
+                    0,
+                    -1.48
+                ],
+                [
+                    0.5664,
+                    -1.3673
+                ],
+                [
+                    1.0465,
+                    -1.0465
+                ],
+                [
+                    1.3673,
+                    -0.5664
+                ]
             ],
             "rotation": [
-                0.0,
-                0.0,
-                0.0
+                0,
+                0,
+                0
             ],
             "size": [
-                1.0,
-                1.0,
-                1.0
+                1.55,
+                0.23,
+                1.55
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 255,
         "color": [
-            0.25,
-            0.75,
+            1.0,
+            1.0,
             1.0,
             1.0
         ],
@@ -4712,7 +4778,7 @@
         "meshEffect1": "",
         "meshEffect2": "",
         "metallic": 0.0,
-        "modelName": "Stages/block",
+        "modelName": "Gimmicks/magma_pressure_switch",
         "myEventID": -1,
         "name": "汎用スイッチ",
         "normalMapPath": "",
@@ -4762,9 +4828,9 @@
         "roughness": 0.5,
         "saveCategory": "Object",
         "scale": [
-            1.5,
-            0.25,
-            1.5
+            0.9,
+            0.45,
+            0.9
         ],
         "targetID": -1,
         "texturePath": "",
@@ -15962,7 +16028,7 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 34,
+        "materialType": 33,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
@@ -15975,7 +16041,7 @@
         "particleName": "",
         "presetCollection": "Stage1",
         "presetDescription": "装飾・背景。元のモデル・材質・サイズ・当たり判定を保持。",
-        "presetDisplayName": "段差のある崖",
+        "presetDisplayName": "段差のある土の崖",
         "presetOrder": 81,
         "presetRecommended": false,
         "presetSection": "装飾・背景",
@@ -44834,8 +44900,74 @@
         "collider": {
             "center": [
                 0.0,
-                -0.07999999821186066,
+                -0.03,
                 0.0
+            ],
+            "footprint": [
+                [
+                    1.48,
+                    0
+                ],
+                [
+                    1.3673,
+                    0.5664
+                ],
+                [
+                    1.0465,
+                    1.0465
+                ],
+                [
+                    0.5664,
+                    1.3673
+                ],
+                [
+                    0,
+                    1.48
+                ],
+                [
+                    -0.5664,
+                    1.3673
+                ],
+                [
+                    -1.0465,
+                    1.0465
+                ],
+                [
+                    -1.3673,
+                    0.5664
+                ],
+                [
+                    -1.48,
+                    0
+                ],
+                [
+                    -1.3673,
+                    -0.5664
+                ],
+                [
+                    -1.0465,
+                    -1.0465
+                ],
+                [
+                    -0.5664,
+                    -1.3673
+                ],
+                [
+                    0,
+                    -1.48
+                ],
+                [
+                    0.5664,
+                    -1.3673
+                ],
+                [
+                    1.0465,
+                    -1.0465
+                ],
+                [
+                    1.3673,
+                    -0.5664
+                ]
             ],
             "rotation": [
                 0.0,
@@ -44843,17 +44975,17 @@
                 0.0
             ],
             "size": [
-                2.200000047683716,
-                0.18000000715255737,
-                0.8999999761581421
+                1.55,
+                0.23,
+                1.55
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 4294967295,
         "color": [
-            0.25,
-            0.75,
+            1.0,
+            1.0,
             1.0,
             1.0
         ],
@@ -44865,7 +44997,7 @@
                 "version": 1
             }
         },
-        "emissive": 0.10000000149011612,
+        "emissive": 0.24,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -44892,12 +45024,12 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 24,
+        "materialType": 0,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.0,
-        "modelName": "Gimmicks/star_dash_panel",
+        "metallic": 0.18,
+        "modelName": "Gimmicks/magma_pressure_switch",
         "myEventID": -1,
         "name": "Stage2_Escape_StarSwitch",
         "normalMapPath": "",
@@ -44978,7 +45110,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.8999999761581421,
+        "roughness": 0.55,
         "saveCategory": "Object",
         "scale": [
             0.8999999761581421,
@@ -45315,6 +45447,72 @@
                 -0.5,
                 0.0
             ],
+            "footprint": [
+                [
+                    1.48,
+                    0
+                ],
+                [
+                    1.3673,
+                    0.5664
+                ],
+                [
+                    1.0465,
+                    1.0465
+                ],
+                [
+                    0.5664,
+                    1.3673
+                ],
+                [
+                    0,
+                    1.48
+                ],
+                [
+                    -0.5664,
+                    1.3673
+                ],
+                [
+                    -1.0465,
+                    1.0465
+                ],
+                [
+                    -1.3673,
+                    0.5664
+                ],
+                [
+                    -1.48,
+                    0
+                ],
+                [
+                    -1.3673,
+                    -0.5664
+                ],
+                [
+                    -1.0465,
+                    -1.0465
+                ],
+                [
+                    -0.5664,
+                    -1.3673
+                ],
+                [
+                    0,
+                    -1.48
+                ],
+                [
+                    0.5664,
+                    -1.3673
+                ],
+                [
+                    1.0465,
+                    -1.0465
+                ],
+                [
+                    1.3673,
+                    -0.5664
+                ]
+            ],
             "rotation": [
                 0.0,
                 0.0,
@@ -45335,7 +45533,7 @@
             0.2070000022649765,
             1.0
         ],
-        "emissive": 0.0,
+        "emissive": 0.24,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -45366,7 +45564,7 @@
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.0,
+        "metallic": 0.18,
         "modelName": "Stages/magma_escape_rock_1",
         "myEventID": -1,
         "name": "Stage2_Escape_SwitchLanding",
@@ -45403,7 +45601,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.8999999761581421,
+        "roughness": 0.55,
         "saveCategory": "Object",
         "scale": [
             9.0,
@@ -46907,8 +47105,74 @@
         "collider": {
             "center": [
                 0.0,
-                -0.07999999821186066,
+                -0.03,
                 0.0
+            ],
+            "footprint": [
+                [
+                    1.48,
+                    0
+                ],
+                [
+                    1.3673,
+                    0.5664
+                ],
+                [
+                    1.0465,
+                    1.0465
+                ],
+                [
+                    0.5664,
+                    1.3673
+                ],
+                [
+                    0,
+                    1.48
+                ],
+                [
+                    -0.5664,
+                    1.3673
+                ],
+                [
+                    -1.0465,
+                    1.0465
+                ],
+                [
+                    -1.3673,
+                    0.5664
+                ],
+                [
+                    -1.48,
+                    0
+                ],
+                [
+                    -1.3673,
+                    -0.5664
+                ],
+                [
+                    -1.0465,
+                    -1.0465
+                ],
+                [
+                    -0.5664,
+                    -1.3673
+                ],
+                [
+                    0,
+                    -1.48
+                ],
+                [
+                    0.5664,
+                    -1.3673
+                ],
+                [
+                    1.0465,
+                    -1.0465
+                ],
+                [
+                    1.3673,
+                    -0.5664
+                ]
             ],
             "rotation": [
                 0.0,
@@ -46916,17 +47180,17 @@
                 0.0
             ],
             "size": [
-                2.200000047683716,
-                0.18000000715255737,
-                0.8999999761581421
+                1.55,
+                0.23,
+                1.55
             ],
             "type": 3
         },
         "collisionAttribute": 4,
         "collisionMask": 4294967295,
         "color": [
-            0.25,
-            0.75,
+            1.0,
+            1.0,
             1.0,
             1.0
         ],
@@ -46938,7 +47202,7 @@
                 "version": 1
             }
         },
-        "emissive": 0.0,
+        "emissive": 0.24,
         "enableEnvMap": false,
         "enableLighting": true,
         "enableNormalMap": false,
@@ -46965,12 +47229,12 @@
             "scatteringG": 0.0,
             "scatteringIntensity": 0.0
         },
-        "materialType": 24,
+        "materialType": 0,
         "meshDrawIndex": -1,
         "meshEffect1": "",
         "meshEffect2": "",
-        "metallic": 0.0,
-        "modelName": "Gimmicks/star_dash_panel",
+        "metallic": 0.18,
+        "modelName": "Gimmicks/magma_pressure_switch",
         "myEventID": -1,
         "name": "Stage2_Ferry_DepartureSwitch",
         "normalMapPath": "",
@@ -47052,7 +47316,7 @@
             0.0,
             0.0
         ],
-        "roughness": 0.8799999952316284,
+        "roughness": 0.55,
         "saveCategory": "Object",
         "scale": [
             0.8999999761581421,

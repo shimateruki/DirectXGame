@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "5fd0ba4a0924caf7157dd77f1d5b349f",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animation_clip/enemy_fire_slime_idle.json",
+  "version": 1
+}

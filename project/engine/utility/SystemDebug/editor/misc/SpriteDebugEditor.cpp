@@ -34,6 +34,7 @@ std::string NormalizeSpritePath(std::string path) {
 
 
 void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
+    // Sceneと入力を借用し、前SceneのSprite選択とギズモ操作を初期化します。
 	sceneManager_ = sceneManager;
 	inputManager_ = inputManager;
 	selectedSprite_ = nullptr;
@@ -53,6 +54,7 @@ void SpriteDebugEditor::Finalize() {
 }
 
 void SpriteDebugEditor::ClearSceneSelection() {
+    // Scene切り替えでSpriteと描画基盤の参照が失効するため、ギズモも解放します。
 	selectedSprite_ = nullptr;
 	isMovingX_ = false;
 	isMovingY_ = false;
@@ -222,6 +224,7 @@ SKIP_SHORTCUTS:
 // =========================================================================
 void SpriteDebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // Hierarchy・Inspector・Asset一覧をSprite編集用の独立パネルとして描きます。
 	DrawHierarchyWindow();
 	DrawInspectorWindow();
 	DrawProjectWindow();
@@ -364,6 +367,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 // =========================================================================
 void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 #ifdef USE_IMGUI
+    // Sprite自身をImGui IDに使い、同名Spriteの表示・選択が衝突しないようにします。
 	if (!sprite) return;
 
 	ImGui::PushID(sprite);
@@ -429,6 +433,7 @@ void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
 }
 
 bool SpriteDebugEditor::TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize) const {
+    // 画像の実ピクセル寸法を取得できないSpriteは縦横比調整から除きます。
 	if (!sprite) {
 		return false;
 	}
@@ -448,6 +453,7 @@ bool SpriteDebugEditor::TryGetTexturePixelSize(Sprite* sprite, Vector2& outSize)
 }
 
 bool SpriteDebugEditor::IsGeneratedTextSprite(Sprite* sprite) const {
+    // 自動生成した文字PNGだけに一括補正を限定するため、参照パスで判別します。
 	if (!sprite) {
 		return false;
 	}
@@ -457,6 +463,7 @@ bool SpriteDebugEditor::IsGeneratedTextSprite(Sprite* sprite) const {
 }
 
 float SpriteDebugEditor::CalcAspectError(Sprite* sprite, const Vector2& textureSize) const {
+    // 画像とSpriteの比率差を測り、補正対象を判定します。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return 0.0f;
 	}
@@ -476,6 +483,7 @@ float SpriteDebugEditor::CalcAspectError(Sprite* sprite, const Vector2& textureS
 }
 
 Vector2 SpriteDebugEditor::MakeAspectFixedSize(Sprite* sprite, const Vector2& textureSize, bool keepWidth) const {
+    // 幅か高さの選択軸を維持して、もう一方だけ画像比率へ合わせます。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return { 0.0f, 0.0f };
 	}
@@ -489,6 +497,7 @@ Vector2 SpriteDebugEditor::MakeAspectFixedSize(Sprite* sprite, const Vector2& te
 }
 
 Vector2 SpriteDebugEditor::MakeNearestIntegerScaleSize(Sprite* sprite, const Vector2& textureSize) const {
+    // 元画像との倍率を四分の一刻みへ丸め、細かすぎる縮小を避けます。
 	if (!sprite || textureSize.x <= 0.0f || textureSize.y <= 0.0f) {
 		return { 0.0f, 0.0f };
 	}
@@ -501,6 +510,7 @@ Vector2 SpriteDebugEditor::MakeNearestIntegerScaleSize(Sprite* sprite, const Vec
 }
 
 int SpriteDebugEditor::FixSpriteAspectInCurrentScene(bool textOnly, bool keepWidth) {
+    // 現行SceneのSpriteだけを走査し、文字PNG限定にも切り替えられるようにします。
 	if (!sceneManager_) {
 		return 0;
 	}
@@ -838,6 +848,7 @@ void SpriteDebugEditor::DrawProjectWindow() {
 }
 
 void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
+    // 現在のSprite配置をScene別JSONへ書き出し、再読込時の位置と見た目を復元します。
 	using json = nlohmann::json;
 
 	if (sceneManager_ == nullptr) return;

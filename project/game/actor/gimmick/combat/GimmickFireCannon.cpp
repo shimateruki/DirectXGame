@@ -24,6 +24,7 @@ constexpr float kDefaultTurnSpeedDegrees = 360.0f;
 void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 砲台本体は地形扱い、発射する弾は BulletManager 側で別管理します。
     landingWarning_.Initialize(common);
     SetClassName("Gimmick");
     SetGimmickType("FireCannon");
@@ -58,6 +59,7 @@ void GimmickFireCannon::Initialize(Object3dCommon* common, const std::string& mo
 
 // 編集停止中は配置時の Transform へ戻し、Play 中だけ通常砲・迫撃砲の周期を進めます。
 void GimmickFireCannon::Update(float deltaTime) {
+    // 編集配置を再生停止時に復元し、迫撃モードだけ専用の予告と弾道を使います。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -113,9 +115,13 @@ void GimmickFireCannon::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickFireCannon::OnTrigger() { OnSwitchEvent(!active_); }
+void GimmickFireCannon::OnTrigger() {
+    // 単発トリガーは現在の発射状態を反転します。
+    OnSwitchEvent(!active_);
+}
 
 void GimmickFireCannon::OnSwitchEvent(bool active) {
+    // 停止時には照準と着弾予告も消し、旧弾の視覚情報を残しません。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -130,11 +136,13 @@ void GimmickFireCannon::OnSwitchEvent(bool active) {
 }
 
 bool GimmickFireCannon::IsPlaying() const {
+    // エディター上のプレビューで勝手に発射しないよう再生状態を確認します。
     SceneManager* sceneManager = SceneManager::GetInstance();
     return sceneManager && sceneManager->IsPlaying();
 }
 
 bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
+    // 固定砲は前方へ、追尾砲は射程内のプレイヤー中心へ照準を向けます。
     if (!param_.has_value() || param_->actionMode == 0) {
         outDirection = GetForwardDirection();
         return true;
@@ -171,6 +179,7 @@ bool GimmickFireCannon::FindFireDirection(Vector3& outDirection) const {
 }
 
 Vector3 GimmickFireCannon::GetForwardDirection() const {
+    // ピッチとヨーから発射方向を作り、零ベクトル時は前方を既定にします。
     const Vector3 rot = GetRotation();
     const float cosPitch = std::cos(rot.x);
     Vector3 forward = {std::sin(rot.y) * cosPitch, -std::sin(rot.x), std::cos(rot.y) * cosPitch};
@@ -182,6 +191,7 @@ Vector3 GimmickFireCannon::GetForwardDirection() const {
 }
 
 Vector3 GimmickFireCannon::GetMuzzlePosition(const Vector3& direction) const {
+    // モデルの大きさに応じて砲口を前上方へずらし、本体から弾が出るようにします。
     const Vector3 scale = GetScale();
     Vector3 muzzle = GetWorldPosition();
     muzzle += direction * ((std::max)(scale.z, 0.5f) * 0.95f);
@@ -190,6 +200,7 @@ Vector3 GimmickFireCannon::GetMuzzlePosition(const Vector3& direction) const {
 }
 
 void GimmickFireCannon::RotateToward(const Vector3& direction, float deltaTime) {
+    // 短い角度の経路で回転し、角度境界をまたいでも大回りしません。
     const float horizontalLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (horizontalLength < 0.001f) {
         return;
@@ -206,6 +217,7 @@ void GimmickFireCannon::RotateToward(const Vector3& direction, float deltaTime) 
 }
 
 void GimmickFireCannon::FireProjectile(const Vector3& direction) {
+    // 弾の寿命は射程と速度から求め、飛び過ぎや途中消滅を抑えます。
     const float radius = GetProjectileRadius();
     const float speed = GetProjectileSpeed();
     const float range = param_.has_value() ? (std::max)(1.0f, param_->detectionRange) : kDefaultDetectionRange;
@@ -224,29 +236,35 @@ void GimmickFireCannon::FireProjectile(const Vector3& direction) {
     visual.billboardScale = 1.0f;
     visual.texturePath = "Resources/sprite/common/white.png";
 
+    // 攻撃属性とプレイヤー・地面のマスクを渡し、命中処理は弾管理へ任せます。
     BulletManager::GetInstance()->Fire(GetMuzzlePosition(direction), direction * speed,
                                        CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"),
                                        "Primitives/sphere", radius, life, visual, 1.0f, {}, DamageType::Fire);
 }
 
 float GimmickFireCannon::GetProjectileSpeed() const {
+    // 設定ミスで停止弾を作らないよう最小速度を保証します。
     return param_.has_value() ? (std::max)(1.0f, param_->speed) : kDefaultProjectileSpeed;
 }
 
 float GimmickFireCannon::GetFireInterval() const {
+    // ゼロ秒連射による弾の増殖を防ぎます。
     return param_.has_value() ? (std::max)(0.08f, param_->interval) : kDefaultFireInterval;
 }
 
 float GimmickFireCannon::GetProjectileRadius() const {
+    // 判定と見た目に共有する半径を実用範囲へ収めます。
     return param_.has_value() ? std::clamp(param_->moveAmount, 0.1f, 5.0f) : kDefaultProjectileRadius;
 }
 
 float GimmickFireCannon::GetTurnSpeedRadians() const {
+    // エディター設定は度毎秒、回転計算はラジアンで扱います。
     const float degrees = param_.has_value() ? (std::max)(1.0f, param_->moveSpeed) : kDefaultTurnSpeedDegrees;
     return degrees * (kPi / 180.0f);
 }
 
 std::unique_ptr<Object3d> GimmickFireCannon::Clone() const {
+    // 複製先の予告表示と判定資源を初期化してから設定をコピーします。
     auto newObj = std::make_unique<GimmickFireCannon>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());
@@ -255,6 +273,7 @@ std::unique_ptr<Object3d> GimmickFireCannon::Clone() const {
 }
 
 void GimmickFireCannon::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 砲台に続けて、迫撃弾の地面上の着弾予告を描画します。
     BaseGimmick::Draw(pointLightResource, spotLightResource);
     landingWarning_.DrawGround(pointLightResource, spotLightResource);
 }

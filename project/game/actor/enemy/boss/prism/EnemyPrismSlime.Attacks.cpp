@@ -59,6 +59,7 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
 }
 
 std::unique_ptr<Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int index) const {
+    // 棘は攻撃の視覚部品であり、接触判定は別の扇形攻撃で処理する。
     if (!common_) {
         return nullptr;
     }
@@ -89,6 +90,7 @@ std::unique_ptr<Object3d> EnemyPrismSlime::CreatePrismSpikeObject(int index) con
 }
 
 void EnemyPrismSlime::SpawnNextPrismSpike() {
+    // 予告済みの座標に一棘ずつ立て、最後の主棘だけ大きさと演出を強める。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(prismSpikePositions_.size())) {
         return;
     }
@@ -211,6 +213,7 @@ void EnemyPrismSlime::SpawnPrismSpikeShatter(const PrismSpikeVisual& spike) {
 }
 
 void EnemyPrismSlime::PrepareCrystalLances() {
+    // 前の斉射の部品と命中フラグを消してから、新しい槍と円形魔法陣を用意する。
     crystalLanceVisuals_.clear();
     crystalLanceVisuals_.reserve(kCrystalLanceCount);
     crystalVolleyDamageApplied_ = false;
@@ -235,6 +238,7 @@ void EnemyPrismSlime::PrepareCrystalLances() {
 }
 
 std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool glow) const {
+    // 同じ JSON を通常層と加算発光層で使い、後段で別々の透明度を制御する。
     if (!common_) {
         return nullptr;
     }
@@ -255,6 +259,7 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateCrystalCircleEffect(bool 
 }
 
 std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSpellEffect(const char* path) const {
+    // 演出データの再生状態だけ準備し、実際の表示時刻は攻撃状態が決める。
     if (!common_) {
         return nullptr;
     }
@@ -269,6 +274,7 @@ std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSpellEffect(const char* p
 }
 
 void EnemyPrismSlime::UpdatePrismSpikeSectorVisual(float deltaTime) {
+    // 詠唱中に扇形の弧と境界を順に組み立て、攻撃終了後は残像を隠す。
     if (currentAttack_ != AttackKind::PrismSpikes ||
         (attackState_ != AttackState::Windup && attackState_ != AttackState::Active)) {
         if (prismSpikeSector_)
@@ -405,11 +411,13 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
 }
 
 Vector3 EnemyPrismSlime::GetChantSigilCenter() const {
+    // 詠唱の印を本体の前方に置き、攻撃先の予告とは区別する。
     return GetWorldPosition() + lockedDirection_ * std::clamp(baseScale_.x * 1.75f, 1.7f, 2.8f) +
            Vector3{0.0f, baseScale_.y * 0.55f + 1.05f, 0.0f};
 }
 
 void EnemyPrismSlime::UpdateChantSigilVisual(float deltaTime) {
+    // 攻撃状態から詠唱共通部品の進行率を作り、見た目を本体に追従させる。
     if (!chantVisual_) {
         return;
     }
@@ -637,6 +645,7 @@ void EnemyPrismSlime::UpdateCrystalLanceVisuals(float deltaTime) {
 }
 
 void EnemyPrismSlime::SpawnCrystalLanceShatter(const CrystalLanceVisual& lance) {
+    // 槍の寿命が尽きた位置で破片と発光を一度だけ発生させる。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kCrystalLanceVolleyAttackId);
     const Vector3 groundPosition = FindGroundPoint(lance.position);
     if (DebrisEffectManager* debris = DebrisEffectManager::GetInstance()) {
@@ -669,6 +678,7 @@ void EnemyPrismSlime::ClearPrismAttackVisuals() {
 }
 
 void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
+    // プレイヤーが現在までに伸びた扇形の内側に入ったときだけ一度命中させる。
     if (!target_ || damageApplied_) {
         return;
     }
@@ -700,6 +710,7 @@ void EnemyPrismSlime::ApplyPrismSpellDamage(float reachedDistance) {
 }
 
 void EnemyPrismSlime::FireNextFanProjectile() {
+    // 中央を基準に角度をずらし、同じ攻撃定義から各弾の威力と射程を取る。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const float centerIndex = static_cast<float>(kFireFanProjectileCount - 1) * 0.5f;
     const float fanAngle = (static_cast<float>(actionIndex_) - centerIndex) * 0.13f;
@@ -719,6 +730,7 @@ void EnemyPrismSlime::FireNextFanProjectile() {
 }
 
 void EnemyPrismSlime::StrikeNextThunderPoint() {
+    // 雷の見た目は地面から上へ伸ばし、判定は水平半径と柱の高さで限定する。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(thunderStrikePositions_.size())) {
         return;
     }
@@ -759,6 +771,7 @@ void EnemyPrismSlime::StrikeNextThunderPoint() {
 }
 
 void EnemyPrismSlime::ApplyWindTornado() {
+    // 有効化済みの渦だけを調べ、複数重なる場合は中心に近い渦を採用する。
     if (!target_ || damageApplied_) {
         return;
     }
@@ -814,6 +827,7 @@ void EnemyPrismSlime::ApplyWindTornado() {
 }
 
 void EnemyPrismSlime::PrepareThunderPoints() {
+    // 開始時の向きに沿って落雷地点を固定し、各地点へ先に予告を出す。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kThunderChainAttackId);
     const Vector3 origin = GetWorldPosition();
     const float spacing = (std::max)(2.0f, attack.maxRange / 6.4f);
@@ -893,6 +907,7 @@ void EnemyPrismSlime::PrepareSummonPortals() {
 }
 
 std::unique_ptr<EffectObject3d> EnemyPrismSlime::CreateSummonPortalEffect(bool glow) const {
+    // 召喚陣は結晶円の材質を使い、名前だけを用途に合わせて区別する。
     auto effect = CreateCrystalCircleEffect(glow);
     if (effect) {
         effect->SetName(glow ? "PrismSlimeSummonGlow" : "PrismSlimeSummonCircle");
@@ -992,6 +1007,7 @@ void EnemyPrismSlime::UpdateSummonPortalVisuals(float deltaTime) {
 }
 
 void EnemyPrismSlime::SpawnNextSummonedSlime() {
+    // 予兆時に選んだスライム種を実体化し、同じ門から二重召喚しない。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(summonPortalVisuals_.size())) {
         return;
     }
@@ -1049,6 +1065,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
 }
 
 void EnemyPrismSlime::SpawnSummonedSlime(std::unique_ptr<BaseEnemy> enemy) {
+    // プレビューはコールバックへ、本番は現シーンへ所有権を移す。
     if (!enemy) {
         return;
     }

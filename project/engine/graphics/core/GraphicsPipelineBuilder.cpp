@@ -10,21 +10,18 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder() {
     desc_.RasterizerState.DepthClipEnable = TRUE;
 }
 
-// このPSOで使用するルートシグネチャを設定する。
-
 void GraphicsPipelineBuilder::SetRootSignature(ID3D12RootSignature* rootSignature) {
+    // このPSOで使用するルートシグネチャを設定する。
     desc_.pRootSignature = rootSignature;
 }
 
-// 頂点入力レイアウトを設定し、シェーダー入力と頂点バッファの対応を決める。
-
 void GraphicsPipelineBuilder::SetInputLayout(const D3D12_INPUT_ELEMENT_DESC* inputElements, UINT count) {
+    // 頂点入力レイアウトを設定し、シェーダー入力と頂点バッファの対応を決める。
     desc_.InputLayout = { inputElements, count };
 }
 
-// 頂点シェーダーとピクセルシェーダーのバイナリをPSOへ設定する。
-
 void GraphicsPipelineBuilder::SetShaders(IDxcBlob* vsBlob, IDxcBlob* psBlob) {
+    // 頂点シェーダーとピクセルシェーダーのバイナリをPSOへ設定する。
     if (vsBlob) desc_.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     else desc_.VS = { nullptr, 0 };
 
@@ -32,38 +29,33 @@ void GraphicsPipelineBuilder::SetShaders(IDxcBlob* vsBlob, IDxcBlob* psBlob) {
     else desc_.PS = { nullptr, 0 };
 }
 
-// 三角形や線など、このPSOで扱うプリミティブ種別を設定する。
-
 void GraphicsPipelineBuilder::SetTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType) {
+    // 三角形や線など、このPSOで扱うプリミティブ種別を設定する。
     desc_.PrimitiveTopologyType = topologyType;
 }
 
-// カリングと塗りつぶし方式を設定し、ラスタライズ時の面の扱いを決める。
-
 void GraphicsPipelineBuilder::SetRasterizerState(D3D12_CULL_MODE cullMode, D3D12_FILL_MODE fillMode) {
+    // カリングと塗りつぶし方式を設定し、ラスタライズ時の面の扱いを決める。
     desc_.RasterizerState.CullMode = cullMode;
     desc_.RasterizerState.FillMode = fillMode;
 }
 
-// 影描画などで使う深度バイアスを設定し、Zファイティングを抑える。
-
 void GraphicsPipelineBuilder::SetDepthBias(INT depthBias, FLOAT depthBiasClamp, FLOAT slopeScaledDepthBias) {
+    // 影描画などで使う深度バイアスを設定し、Zファイティングを抑える。
     desc_.RasterizerState.DepthBias = depthBias;
     desc_.RasterizerState.DepthBiasClamp = depthBiasClamp;
     desc_.RasterizerState.SlopeScaledDepthBias = slopeScaledDepthBias;
 }
 
-// 深度テストと深度書き込みの挙動を設定する。
-
 void GraphicsPipelineBuilder::SetDepthStencilState(bool depthEnable, D3D12_DEPTH_WRITE_MASK writeMask, D3D12_COMPARISON_FUNC func) {
+    // 深度テストと深度書き込みの挙動を設定する。
     desc_.DepthStencilState.DepthEnable = depthEnable;
     desc_.DepthStencilState.DepthWriteMask = writeMask;
     desc_.DepthStencilState.DepthFunc = func;
 }
 
-// 出力先RTV/DSVフォーマットを設定し、PSOと描画先の互換性を取る。
-
 void GraphicsPipelineBuilder::SetRenderTargets(UINT numRenderTargets, const DXGI_FORMAT* rtvFormats, DXGI_FORMAT dsvFormat) {
+    // 出力先RTV/DSVフォーマットを設定し、PSOと描画先の互換性を取る。
     desc_.NumRenderTargets = numRenderTargets;
     for (UINT i = 0; i < numRenderTargets; ++i) {
         desc_.RTVFormats[i] = rtvFormats[i];
@@ -71,9 +63,8 @@ void GraphicsPipelineBuilder::SetRenderTargets(UINT numRenderTargets, const DXGI
     desc_.DSVFormat = dsvFormat;
 }
 
-// 通常、加算、減算、乗算、スクリーンなどのブレンド状態をまとめて設定する。
-
 void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
+    // 通常、加算、減算、乗算、スクリーンなどのブレンド状態をまとめて設定する。
     D3D12_BLEND_DESC blendDesc{};
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
@@ -136,9 +127,8 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
     desc_.BlendState = blendDesc;
 }
 
-// 蓄積した設定からID3D12PipelineStateを作成する。
-
 void GraphicsPipelineBuilder::Build(ID3D12Device* device, ID3D12PipelineState** outPipelineState) {
+    // 蓄積した設定からID3D12PipelineStateを作成する。
     HRESULT hr = device->CreateGraphicsPipelineState(&desc_, IID_PPV_ARGS(outPipelineState));
     assert(SUCCEEDED(hr));
 }

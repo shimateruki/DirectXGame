@@ -42,6 +42,7 @@ bool ReadVector3(const json& value, Vector3& outValue) {
 }
 
 void SceneWorkspace::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // Scene世代を記録し、保存済みカメラブックマークだけを引き継ぎます。
     sceneManager_ = sceneManager;
     editor_ = editor;
     observedSceneGeneration_ = sceneManager_ ? sceneManager_->GetSceneGeneration() : 0;
@@ -49,6 +50,7 @@ void SceneWorkspace::Initialize(SceneManager* sceneManager, DebugEditor* editor)
 }
 
 void SceneWorkspace::Finalize() {
+    // Editor専用の非表示状態を復元してからブックマークを保存します。
     RestoreAllTemporaryVisibility();
     SaveBookmarks();
     editor_ = nullptr;
@@ -56,6 +58,7 @@ void SceneWorkspace::Finalize() {
 }
 
 void SceneWorkspace::Update() {
+    // Scene切り替え時は旧Sceneに紐付く隔離・レイヤー表示状態を破棄します。
     if (!sceneManager_) {
         return;
     }
@@ -67,6 +70,7 @@ void SceneWorkspace::Update() {
 }
 
 void SceneWorkspace::HandleHotkeys() {
+    // 再生中とテキスト入力中はワークスペース操作のショートカットを奪いません。
     if (!sceneManager_ || sceneManager_->IsPlaying()) {
         return;
     }
@@ -91,6 +95,7 @@ void SceneWorkspace::HandleHotkeys() {
 }
 
 void SceneWorkspace::DrawHierarchyPanel() {
+    // 選択状態と再生状態に応じ、隔離・非表示の操作可能範囲を制限します。
     if (!editor_ || !sceneManager_ || !ImGui::CollapsingHeader(
         ICON_FA_MAP_MARKED_ALT " シーン編集ワークスペース",
         ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -212,6 +217,7 @@ void SceneWorkspace::IsolateSelection() {
 }
 
 void SceneWorkspace::HideSelectionTemporarily() {
+    // 保存データを変えず、Editorだけで選択Objectを隠します。
     if (!editor_) {
         return;
     }
@@ -223,6 +229,7 @@ void SceneWorkspace::HideSelectionTemporarily() {
 }
 
 void SceneWorkspace::ShowSelectionTemporarily() {
+    // 隔離・レイヤー・手動の非表示理由を外し、選択物を再表示します。
     if (!editor_) {
         return;
     }
@@ -247,6 +254,7 @@ void SceneWorkspace::RestoreAllTemporaryVisibility() {
 }
 
 void SceneWorkspace::SetLayerVisible(const std::string& layer, bool visible) {
+    // レイヤー単位の一時表示を記録し、現行SceneのObjectへ反映します。
     if (visible) {
         hiddenLayers_.erase(layer);
     }
@@ -269,6 +277,7 @@ void SceneWorkspace::SetLayerVisible(const std::string& layer, bool visible) {
 }
 
 std::size_t SceneWorkspace::GetTemporaryHiddenCount() const {
+    // Scene保存状態とは別のEditor一時非表示だけ数えます。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return 0;
     }
@@ -357,6 +366,7 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
 }
 
 void SceneWorkspace::ClearBookmark(std::size_t index) {
+    // 配列範囲を確認し、削除したブックマークを永続設定にも反映します。
     if (index >= kBookmarkCount) {
         return;
     }
@@ -404,6 +414,7 @@ void SceneWorkspace::LoadBookmarks() {
 }
 
 void SceneWorkspace::SaveBookmarks() const {
+    // Sceneごとのカメラ位置をEditor状態として保存し、ゲーム用JSONと分離します。
     namespace fs = std::filesystem;
     std::error_code error;
     const fs::path statePath(bookmarkStatePath_);
@@ -436,6 +447,7 @@ void SceneWorkspace::SaveBookmarks() const {
 }
 
 std::vector<std::string> SceneWorkspace::CollectSceneLayers() const {
+    // 内部補助Objectを除外し、空レイヤーはDefaultとして一覧化します。
     std::set<std::string> layers;
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         for (const auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
@@ -448,6 +460,7 @@ std::vector<std::string> SceneWorkspace::CollectSceneLayers() const {
 }
 
 void SceneWorkspace::CollectHierarchy(Object3d* root, std::unordered_set<Object3d*>& objects) const {
+    // 集合への挿入結果で循環・重複を止めながら子階層をたどります。
     if (!root || !objects.insert(root).second) {
         return;
     }
@@ -457,6 +470,7 @@ void SceneWorkspace::CollectHierarchy(Object3d* root, std::unordered_set<Object3
 }
 
 void SceneWorkspace::ResetSceneRuntimeState() {
+    // Scene世代が変わった後は、一時非表示の理由を新Sceneへ持ち越しません。
     isolationActive_ = false;
     hiddenLayers_.clear();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {

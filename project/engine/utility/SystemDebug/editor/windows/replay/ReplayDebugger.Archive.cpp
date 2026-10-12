@@ -5,6 +5,7 @@ using namespace ReplayDebuggerImplementation;
 
 // リプレイのシリアライズと保存・読込。
 json ReplayDebugger::SerializeFrame(const FrameSnapshot& frame, double firstFrameTime) const {
+    // 時刻を保存履歴の先頭基準へ直し、Object・Sprite・Camera を同じフレームに格納する。
     json objects = json::array();
     for (const ObjectSnapshot& snapshot : frame.objects) {
         objects.push_back({
@@ -48,6 +49,7 @@ json ReplayDebugger::SerializeFrame(const FrameSnapshot& frame, double firstFram
 }
 
 bool ReplayDebugger::DeserializeFrame(const json& data, FrameSnapshot& frame, std::string& error) const {
+    // 必須配列を確認し、古い保存形式で欠けた補助項目は既定値として読み込む。
     try {
         if (!data.is_object() || !data.contains("objects") || !data.contains("sprites")) {
             error = "フレーム構造が不足しています。";
@@ -107,6 +109,7 @@ bool ReplayDebugger::DeserializeFrame(const json& data, FrameSnapshot& frame, st
 
 
 json ReplayDebugger::SerializeInputState(const InputManager::ReplayState& state) const {
+    // キーとマウスボタンは押下中の添字だけ記録して Archive を小さくする。
     auto pressedIndices = [](const auto& values) {
         json result = json::array();
         for (std::size_t index = 0; index < values.size(); ++index) {
@@ -148,6 +151,7 @@ bool ReplayDebugger::DeserializeInputState(
     const json& data,
     InputManager::ReplayState& state,
     std::string& error) const {
+    // 押下番号は配列長、ゲームパッド軸とトリガーは型の範囲へ制限して復元する。
     if (!data.is_object()) {
         error = "入力データの構造が不正です。";
         return false;
@@ -217,6 +221,7 @@ bool ReplayDebugger::DeserializeInputState(
 }
 
 json ReplayDebugger::SerializeInputSample(const InputSample& sample, double firstFrameTime) const {
+    // フレームと同じ先頭基準の時刻で入力を保存し、再実行時に対応付ける。
     return {
         { "time", (std::max)(0.0, sample.time - firstFrameTime) },
         { "deltaTime", sample.deltaTime },
@@ -228,6 +233,7 @@ bool ReplayDebugger::DeserializeInputSample(
     const json& data,
     InputSample& sample,
     std::string& error) const {
+    // 0 秒や過大な時間刻みは再シミュレーションを壊すため、検査してから復元する。
     if (!data.is_object() || !data.contains("state")) {
         error = "入力サンプルの構造が不正です。";
         return false;
@@ -333,6 +339,7 @@ bool ReplayDebugger::SaveCurrentReplayArchive() {
 }
 
 void ReplayDebugger::RefreshReplayArchiveList() {
+    // .cgr のヘッダーだけ読み、巨大な本体を一覧表示のたびに展開しない。
     replayArchiveEntries_.clear();
     selectedArchiveIndex_ = -1;
     std::error_code fileError;
@@ -466,6 +473,7 @@ bool ReplayDebugger::RequestLoadReplayArchive(std::size_t archiveIndex) {
 }
 
 bool ReplayDebugger::RequestStartRegression(std::size_t archiveIndex) {
+    // 入力列を含む Archive のみ検証対象にし、読込失敗時は開始待ちを解除する。
     if (archiveIndex >= replayArchiveEntries_.size() || !replayArchiveEntries_[archiveIndex].regressionReady) {
         statusMessage_ = "この保存リプレイには入力列がないため、自動回帰テストを実行できません。";
         return false;
@@ -479,6 +487,7 @@ bool ReplayDebugger::RequestStartRegression(std::size_t archiveIndex) {
 }
 
 bool ReplayDebugger::RequestPendingArchiveScene() {
+    // 保存元 Scene の読込を先に要求し、異なる Scene へ履歴を直接適用しない。
     if (!sceneManager_ || !pendingReplayArchive_) return false;
     if (IsPendingArchiveSceneCurrent()) return true;
 
@@ -506,6 +515,7 @@ bool ReplayDebugger::RequestPendingArchiveScene() {
 }
 
 bool ReplayDebugger::IsPendingArchiveSceneCurrent() const {
+    // Asset は ID と実行クラス、通常 Scene は名前で保存元との一致を調べる。
     if (!sceneManager_ || !pendingReplayArchive_ || sceneManager_->IsTransitioning() ||
         !sceneManager_->GetCurrentScene()) {
         return false;
@@ -519,6 +529,7 @@ bool ReplayDebugger::IsPendingArchiveSceneCurrent() const {
 }
 
 bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
+    // 元 Scene で Play が始まるまで保留し、実体との再対応付け後に履歴を適用する。
     if (!pendingReplayArchive_) return false;
     if (sceneManager_->IsTransitioning() || !IsPendingArchiveSceneCurrent()) return true;
     if (!isPlaying) {
@@ -533,6 +544,7 @@ bool ReplayDebugger::TryCompletePendingArchiveLoad(bool isPlaying) {
     frames_.clear();
     activeScene_ = scene;
     activeSceneGeneration_ = sceneManager_->GetSceneGeneration();
+    // 永続 GUID などで現在の個体へ結び直してから保存フレームを受け取る。
     RebindPendingArchiveToCurrentScene(scene);
     frames_ = std::move(pendingReplayArchive_->frames);
     inputSamples_ = std::move(pendingReplayArchive_->inputSamples);

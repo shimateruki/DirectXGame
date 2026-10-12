@@ -3,11 +3,13 @@
 using namespace PresetManagerImplementation;
 
 PresetManager* PresetManager::GetInstance() {
+    // 編集画面と配置処理が同じプリセット集合を参照する。
     static PresetManager instance;
     return &instance;
 }
 
 void PresetManager::Initialize() {
+    // 現行形式を先に読み、旧ファイルが残る場合だけ統合して保存し直す。
     presets_.clear();
     prefabs_.clear();
 
@@ -24,6 +26,7 @@ void PresetManager::Initialize() {
         needsMigration = true;
     }
 
+    // 移行に失敗しても例外にしないが、旧ファイルの削除は保存後に試みる。
     if (needsMigration) {
         SaveAll();
         std::error_code error;
@@ -33,6 +36,7 @@ void PresetManager::Initialize() {
 }
 
 void PresetManager::LoadPresets(const std::string& filename) {
+    // Scene の GUID はプリセットの同一性に含めず、配置時に新しい識別子へ委ねる。
     std::ifstream file(filename);
     if (!file.is_open()) {
         return;
@@ -54,6 +58,7 @@ void PresetManager::LoadPresets(const std::string& filename) {
 }
 
 void PresetManager::SavePresets(const std::string& filename) {
+    // 保存時にも GUID を除き、配置元 Scene の固有 ID を持ち越さない。
     json root = json::object();
     for (const auto& pair : presets_) {
         json preset = pair.second;
@@ -72,6 +77,7 @@ void PresetManager::SavePresets(const std::string& filename) {
 }
 
 void PresetManager::AddPresetFromObject(const std::string& presetName, Object3d* obj) {
+    // 巡回集合を渡して階層を複製し、循環参照をたどり続けない。
     if (!obj || presetName.empty()) {
         return;
     }
@@ -81,6 +87,7 @@ void PresetManager::AddPresetFromObject(const std::string& presetName, Object3d*
 }
 
 void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d* obj) {
+    // 保存元の GUID を除いて属性を反映した後、管理対象ステータスを再適用する。
     auto it = presets_.find(presetName);
     if (it == presets_.end() || !obj) {
         return;
@@ -100,6 +107,7 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
 std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPreset(
     const std::string& presetName,
     Object3dCommon* common) const {
+    // 部分生成で例外が出た場合は返却配列を空にし、不完全な階層を配置させない。
     std::vector<std::unique_ptr<Object3d>> objects;
     auto it = presets_.find(presetName);
     if (it == presets_.end() || !common) {
@@ -115,12 +123,14 @@ std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPreset(
 }
 
 void PresetManager::RemovePreset(const std::string& presetName) {
+    // 実際に登録が消えた場合だけ JSON を書き直す。
     if (presets_.erase(presetName) > 0) {
         SaveAll();
     }
 }
 
 void PresetManager::RenamePreset(const std::string& oldName, const std::string& newName) {
+    // 名前衝突による上書きを防ぎ、キーだけを変更して内容を保持する。
     auto it = presets_.find(oldName);
     if (it == presets_.end() || newName.empty() || presets_.find(newName) != presets_.end()) {
         return;
@@ -131,6 +141,7 @@ void PresetManager::RenamePreset(const std::string& oldName, const std::string& 
 }
 
 void PresetManager::LoadPrefabs(const std::string& filename) {
+    // 旧形式の直下マップと version 付きの prefabs マップを同じ形へ正規化する。
     prefabs_.clear();
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -159,6 +170,7 @@ void PresetManager::LoadPrefabs(const std::string& filename) {
 }
 
 void PresetManager::SavePrefabs(const std::string& filename) {
+    // 派生元を解決した状態で version 3 形式へまとめて保存する。
     RefreshPrefabInheritance();
     const fs::path path(filename);
     if (path.has_parent_path()) {
@@ -181,6 +193,7 @@ void PresetManager::SavePrefabs(const std::string& filename) {
 bool PresetManager::CreatePrefabFromPreset(
     const std::string& presetName,
     const std::string& prefabName) {
+    // 元プリセットの木に安定した Object ID を付け、後の差分管理の基準にする。
     auto presetIt = presets_.find(presetName);
     if (presetIt == presets_.end() || prefabName.empty() || prefabs_.find(prefabName) != prefabs_.end()) {
         return false;
@@ -227,11 +240,13 @@ bool PresetManager::CreatePrefabVariant(
 }
 
 bool PresetManager::IsPrefabVariant(const std::string& prefabName) const {
+    // 派生元の assetId が設定されているものだけをバリアントと判定する。
     auto it = prefabs_.find(prefabName);
     return it != prefabs_.end() && !it->second.value("baseAssetId", "").empty();
 }
 
 std::string PresetManager::GetPrefabBaseName(const std::string& prefabName) const {
+    // 名前は変更できるため、保存済みの assetId から現在の派生元名を探す。
     auto it = prefabs_.find(prefabName);
     if (it == prefabs_.end()) {
         return "";
@@ -248,6 +263,7 @@ std::string PresetManager::GetPrefabBaseName(const std::string& prefabName) cons
 
 PresetManager::PrefabStructureOverrideSummary PresetManager::GetPrefabStructureOverrideSummary(
     const std::string& prefabName) const {
+    // 削除・付け替え・追加は構造差分、componentOverrides は成分ごとに数える。
     PrefabStructureOverrideSummary summary;
     auto it = prefabs_.find(prefabName);
     if (it == prefabs_.end()) {
@@ -284,6 +300,7 @@ PresetManager::PrefabStructureOverrideSummary PresetManager::GetPrefabStructureO
 std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPrefab(
     const std::string& prefabName,
     Object3dCommon* common) const {
+    // assetId は元データへのリンクに保ち、配置ごとに別の instanceId を発行する。
     std::vector<std::unique_ptr<Object3d>> result;
     auto it = prefabs_.find(prefabName);
     if (it == prefabs_.end() || !common) {
@@ -304,6 +321,7 @@ std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPrefab(
 }
 
 json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info) {
+    // 配置済み Object が記録した assetId と sourceObjectId の両方で元ノードを特定する。
     if (!info.IsLinked()) {
         return nullptr;
     }
@@ -318,6 +336,7 @@ json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& in
 }
 
 const json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceInfo& info) const {
+    // const 経路でも同じ ID 対応で検索し、呼び出し元に編集権限を渡さない。
     if (!info.IsLinked()) {
         return nullptr;
     }
@@ -332,6 +351,7 @@ const json* PresetManager::FindPrefabSourceNode(const Object3d::PrefabInstanceIn
 }
 
 void PresetManager::AssignNewPrefabInstanceId(const std::vector<Object3d*>& objects) const {
+    // 同じ旧 instanceId を持つ複製群には同じ新 ID を割り当て、群のまとまりを保つ。
     std::unordered_map<std::string, std::string> replacementIds;
     for (Object3d* object : objects) {
         if (!object || !object->IsPrefabInstance()) {
@@ -348,12 +368,14 @@ void PresetManager::AssignNewPrefabInstanceId(const std::vector<Object3d*>& obje
 }
 
 void PresetManager::RemovePrefab(const std::string& prefabName) {
+    // 未登録名ではディスクに触れず、削除が成立したときだけ再保存する。
     if (prefabs_.erase(prefabName) > 0) {
         SavePrefabs();
     }
 }
 
 void PresetManager::RenamePrefab(const std::string& oldName, const std::string& newName) {
+    // 派生関係は assetId で維持し、表示名の変更だけを保存する。
     auto it = prefabs_.find(oldName);
     if (it == prefabs_.end() || newName.empty() || oldName == newName ||
         prefabs_.find(newName) != prefabs_.end()) {
@@ -365,6 +387,7 @@ void PresetManager::RenamePrefab(const std::string& oldName, const std::string& 
 }
 
 void PresetManager::SaveAll() {
+    // プリセットと Prefab の両方を、各形式の保存処理に委ねる。
     SavePresets("Resources/json/preset/presets.json");
     SavePrefabs();
 }

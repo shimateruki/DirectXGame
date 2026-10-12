@@ -413,6 +413,7 @@ namespace {
 // ========================================================================
 
 void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label) {
+    // 前のプレビューの子と見た目を捨て、新しい候補の元状態を確定前に退避する。
     previewChildObjects_.clear();
     previewVisualStates_.clear();
     previewObject_ = std::move(obj);
@@ -456,6 +457,7 @@ void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::str
 
 void DebugEditor::OpenGameViewCreateContextMenu() {
 #ifdef USE_IMGUI
+    // 配置・ブラシ・経路編集中は右クリックメニューを重ねない。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     if (sceneManager_->IsPlaying()) return;
     if (previewObject_ || isPresetBrushMode_ || isPathEditMode_) return;
@@ -471,6 +473,7 @@ void DebugEditor::OpenGameViewCreateContextMenu() {
 
 void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label) {
 #ifdef USE_IMGUI
+    // メニューを開いた位置へ初回の候補を置き、次フレーム以降はマウスへ追従させる。
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     if (sceneManager_->IsPlaying()) return;
 
@@ -495,6 +498,7 @@ void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, c
 
 void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
 #ifdef USE_IMGUI
+    // 複合プリセットの先頭を配置基準とし、残りも確定までプレビュー所有にする。
     if (objects.empty()) return;
 
     std::unique_ptr<Object3d> root = std::move(objects.front());
@@ -519,6 +523,7 @@ void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3
 
 void DebugEditor::DrawGameViewCreateContextMenu() {
 #ifdef USE_IMGUI
+    // Scene の作成メニューと、指定位置からの試験プレイを同じ右クリック位置へ出す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     constexpr const char* popupName = "GameViewCreateContextMenu";
@@ -567,12 +572,14 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
 }
 
 Vector3 DebugEditor::CalculateGameViewCreatePosition(const Object3d* object) {
+    // レイで配置先を得られない場合だけ、Object 固有の生成高さへ戻す。
     PlacementResult placement = CalculateGameViewPlacement(object, gameViewCreateMenuMousePos_, false);
     if (placement.found) return placement.position;
     return { 0.0f, GetCreateYOffsetForObject(object), 0.0f };
 }
 
 DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Object3d* object, const Vector2& mousePos, bool useGridSnap) {
+    // 画面座標のレイから最も手前の可視 AABB を選び、配置面を決める。
     PlacementResult result;
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         result.position = { 0.0f, GetCreateYOffsetForObject(object), 0.0f };
@@ -608,6 +615,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Objec
 
     float surfaceOffset = 0.0f;
 
+    // 何にも当たらなければ基準平面、平面にも届かなければレイ上の仮位置を使う。
     if (best.isHit) {
         result.normal = NormalizeOrUp(best.normal);
         result.contactPosition = best.point;
@@ -631,12 +639,14 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const Objec
         result.hasSurface = false;
     }
 
+    // 吸着後の位置から接点を逆算し、デカールの面合わせにも同じ点を渡す。
     ApplyGridSnap(result.position, result.normal, result.hasSurface, useGridSnap && isGridSnapEnabled_, snapValue_);
     result.contactPosition = result.hasSurface ? result.position - result.normal * surfaceOffset : result.position;
     return result;
 }
 
 void DebugEditor::ApplyGameViewPlacement(Object3d* object, const PlacementResult& placement, bool alignToSurface) {
+    // デカールは専用の面合わせを使い、通常 Object は法線に応じた回転だけ適用する。
     if (!object || !placement.found) return;
 
     object->SetTranslate(placement.position);
@@ -667,6 +677,7 @@ void DebugEditor::ApplyGameViewPlacement(Object3d* object, const PlacementResult
 
 void DebugEditor::UpdatePreviewPlacement() {
 #ifdef USE_IMGUI
+    // Game View 上にカーソルがある間だけ、未確定 Object の位置を再計算する。
     if (!previewObject_ || !isGameViewHovered_) return;
 
     PlacementResult placement = CalculateGameViewPlacement(previewObject_.get(), gameViewMousePos_, false);
@@ -676,6 +687,7 @@ void DebugEditor::UpdatePreviewPlacement() {
 }
 
 void DebugEditor::ConfirmPreviewPlacement() {
+    // 確定前に半透明表示を戻し、複数 Object をまとめて Undo 対象の作成命令へ渡す。
     if (!previewObject_) return;
 
     std::string createdName = previewObject_->GetName();
@@ -703,6 +715,7 @@ void DebugEditor::ConfirmPreviewPlacement() {
 }
 
 void DebugEditor::CancelPreviewPlacement() {
+    // Scene に追加していない候補を破棄するため、Undo 履歴には何も積まない。
     if (!previewObject_) return;
 
     DebugConsole::GetInstance()->AddLog("Cancel Preview Create: " + previewObject_->GetName());
@@ -714,6 +727,7 @@ void DebugEditor::CancelPreviewPlacement() {
 
 void DebugEditor::StartPresetBrush(const std::string& presetName) {
 #ifdef USE_IMGUI
+    // 単発配置の候補を消してから連続配置へ切り替え、前回の刻印間隔をリセットする。
     if (presetName.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     if (sceneManager_->IsPlaying() || isPathEditMode_) return;
 
@@ -734,6 +748,7 @@ void DebugEditor::StartPresetBrush(const std::string& presetName) {
 }
 
 void DebugEditor::StopPresetBrush() {
+    // プレビューだけ破棄し、確定済みの Object は Scene に残す。
     if (!isPresetBrushMode_) return;
 
     DebugConsole::GetInstance()->AddLog("Brush Stop: " + brushPresetName_);
@@ -744,6 +759,7 @@ void DebugEditor::StopPresetBrush() {
 }
 
 void DebugEditor::RebuildPresetBrushPreview() {
+    // プリセットを再生成して一意名を割り当て、半透明の配置見本へ変換する。
     brushPreviewObjects_.clear();
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty()) return;
 
@@ -765,6 +781,7 @@ void DebugEditor::RebuildPresetBrushPreview() {
 
 void DebugEditor::UpdatePresetBrush() {
 #ifdef USE_IMGUI
+    // カーソルへの追従と刻印を分け、Gizmo 操作中は誤配置しない。
     if (!isPresetBrushMode_) return;
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || sceneManager_->IsPlaying()) {
         StopPresetBrush();
@@ -804,6 +821,7 @@ void DebugEditor::UpdatePresetBrush() {
     Vector3 stampPosition = root->GetWorldPosition();
     float spacing = std::max(brushSpacing_, 0.0f);
     bool farEnough = !hasLastBrushStamp_ || Distance(stampPosition, lastBrushStampPosition_) >= spacing;
+    // ドラッグ中は前回位置との距離で間引き、クリック時は必ず一つ置く。
     if (clicked || farEnough) {
         StampPresetBrush();
     }
@@ -811,6 +829,7 @@ void DebugEditor::UpdatePresetBrush() {
 }
 
 void DebugEditor::StampPresetBrush() {
+    // プレビューそのものは再利用し、実配置用のインスタンスを別に生成する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty() || brushPreviewObjects_.empty()) return;
 
     BaseScene* scene = sceneManager_->GetCurrentScene();
@@ -837,6 +856,7 @@ void DebugEditor::StampPresetBrush() {
 
 void DebugEditor::DrawPresetBrushOverlay() {
 #ifdef USE_IMGUI
+    // Game View の左上に現在の対象と間隔を置き、配置中にも調整できるようにする。
     if (!isPresetBrushMode_) return;
 
     ImGui::SetNextWindowPos(ImVec2(gameViewOffset_.x + 12.0f, gameViewOffset_.y + 12.0f), ImGuiCond_Always);
@@ -859,6 +879,7 @@ void DebugEditor::DrawPresetBrushOverlay() {
 }
 
 void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
+    // 元プリセットを編集せず、見本の Object だけ半透明・高輝度で表示する。
     if (!object) return;
 
     if (!object->GetModel()) {
@@ -879,6 +900,7 @@ void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
 }
 
 void DebugEditor::ApplyPreviewVisual(Object3d* object) {
+    // 初回だけ元の材質状態を保存し、毎フレームの着色で退避値を上書きしない。
     if (!object) return;
 
     if (!previewObjectUsesFallbackModel_ && !object->GetModel()) {
@@ -909,6 +931,7 @@ void DebugEditor::ApplyPreviewVisual(Object3d* object) {
 }
 
 void DebugEditor::RestorePreviewVisual(Object3d* object) {
+    // 確定時には仮モデルとプレビュー用の材質設定を外し、作成前の見た目へ戻す。
     if (!object) return;
 
     if (previewObjectUsesFallbackModel_) {
@@ -949,6 +972,7 @@ void DebugEditor::RestorePreviewVisual(Object3d* object) {
 }
 
 void DebugEditor::DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit) {
+    // プレビュー形状の AABB が無効ならモデルの境界を代用し、描画上限を守る。
     if (!previewObject_ || !commandList || instanceCount >= maxDrawLimit) return;
 
     AABB aabb = previewObject_->GetAABB();
@@ -972,6 +996,7 @@ void DebugEditor::DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& i
 
 void DebugEditor::DrawPreviewMarker() {
 #ifdef USE_IMGUI
+    // Object 中心ではなく配置面の接点を示し、浮き上がり量を線で確認できるようにする。
     if (!previewObject_) return;
 
     Vector3 markerWorld = hasPreviewPlacementContact_

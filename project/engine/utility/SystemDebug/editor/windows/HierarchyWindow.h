@@ -43,7 +43,9 @@ private:
     // DebugEditor本体への参照。HierarchyWindowは所有しない。
     DebugEditor* editor_ = nullptr;
 
-    // 0: All, 1: Player, 2: Enemy, 3: Object
+    // 分類は表示上の仮想フォルダ。Object3dの親子関係や保存データは変更しない。
+    bool groupHierarchy_ = true;
+    // 0: All, 1: Player, 2: Enemy, 3: Object, 4: Camera
     int currentCategoryFilter_ = 0;
     int currentLayerFilter_ = 0;
 

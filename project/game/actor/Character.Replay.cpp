@@ -1,9 +1,13 @@
 #include "Character.h"
 
 namespace {
-json ToJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json ToJson(const Vector3& value) {
+    // リプレイのベクトルはシーン JSON と同じ xyz 順の配列に揃える。
+    return json::array({value.x, value.y, value.z});
+}
 
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
+    // 旧記録に値がない場合は再生中の現値を保ち、互換性を維持する。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
@@ -13,6 +17,7 @@ Vector3 ReadVector3(const json& value, const Vector3& fallback) {
 
 // 位置だけでなく外力の残り時間も保存し、巻き戻し後の移動を再現します。
 void Character::CaptureReplayCustomState(json& state) const {
+    // 位置だけでは再生後の動きが一致しないため、接地と外力の残り時間も記録する。
     Object3d::CaptureReplayCustomState(state);
     state["characterVelocity"] = ToJson(velocity_);
     state["characterGrounded"] = isGrounded_;
@@ -23,6 +28,7 @@ void Character::CaptureReplayCustomState(json& state) const {
 }
 
 void Character::RestoreReplayCustomState(const json& state) {
+    // 記録に存在する項目だけ戻し、古いリプレイ形式でも再生を継続できるようにする。
     Object3d::RestoreReplayCustomState(state);
     if (state.contains("characterVelocity")) {
         velocity_ = ReadVector3(state["characterVelocity"], velocity_);

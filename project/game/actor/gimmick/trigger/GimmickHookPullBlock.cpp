@@ -7,6 +7,7 @@
 #include <cassert>
 
 void GimmickHookPullBlock::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 共通ギミックとして登録した後、フック対象として識別できる型を設定する。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -26,6 +27,7 @@ void GimmickHookPullBlock::Initialize(Object3dCommon* common, const std::string&
 }
 
 void GimmickHookPullBlock::Update(float deltaTime) {
+    // パラメータ未設定の配置でも既定値を用意してから移動を更新する。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -71,6 +73,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 }
 
 bool GimmickHookPullBlock::OnCollision(Object3d* other) {
+    // 地面属性以外との接触では引き寄せ中の位置補正を行わない。
     if (!other || other == this)
         return false;
     if (!(other->GetCollisionAttribute() & CollisionCategories::Get("ground")))
@@ -118,6 +121,7 @@ void GimmickHookPullBlock::StartHookPull(const Vector3& hookOwnerPos) {
 }
 
 std::unique_ptr<Object3d> GimmickHookPullBlock::Clone() const {
+    // 新しい実体を初期化してから配置とフック設定を引き継ぐ。
     auto newObj = std::make_unique<GimmickHookPullBlock>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

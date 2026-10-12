@@ -5,6 +5,7 @@
 #include <cassert>
 
 void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 共通アイテムを初期化してから、回復用の識別子と接触設定を与える。
     BaseItem::Initialize(common, modelName);
 
     SetName("Item_Heal");
@@ -23,6 +24,7 @@ void HealItem::Initialize(Object3dCommon* common, const std::string& modelName) 
 
 // 回復後のHPは最大値を超えないよう制限し、最後に二重取得を防ぎます。
 void HealItem::Collect(Player* player) {
+    // Playerがいなくても取得済みとして消し、無効な接触で残存しないようにする。
     if (!player) {
         MarkCollected();
         return;
@@ -48,6 +50,7 @@ void HealItem::Collect(Player* player) {
 }
 
 std::unique_ptr<Object3d> HealItem::Clone() const {
+    // 同じモデルで生成し直した後に、配置と回復設定を複製する。
     auto newObj = std::make_unique<HealItem>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

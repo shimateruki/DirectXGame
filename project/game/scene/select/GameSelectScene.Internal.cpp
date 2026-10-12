@@ -7,15 +7,20 @@
 #include <cmath>
 
 namespace StageSelectDetail {
-float SelectClamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float SelectClamp01(float value) {
+    // ゲート演出の曲線を定義域の外へ延ばさない。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float SelectEaseOutCubic(float value) {
+    // ゲートへの接近を終点付近で減速させる。
     value = SelectClamp01(value);
     const float inv = 1.0f - value;
     return 1.0f - inv * inv * inv;
 }
 
 Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target) {
+    // カメラから目標への角度を求め、同一点なら回転をゼロへ戻す。
     Vector3 direction{target.x - eye.x, target.y - eye.y, target.z - eye.z};
     const float lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
     if (lengthSq <= 0.000001f) {
@@ -33,6 +38,7 @@ Vector3 SelectLookAtRotation(const Vector3& eye, const Vector3& target) {
 }
 
 Vector3 SelectNormalizeGateDirectionXZ(const Vector3& value, const Vector3& fallback) {
+    // ゲートの向きは水平面へ投影し、無効なら代替方向を使う。
     Vector3 direction{value.x, 0.0f, value.z};
     float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.000001f) {
@@ -81,6 +87,7 @@ float SelectResolveGateReturnGroundY(const Vector3& probePosition, const Vector3
 }
 
 Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDirection) {
+    // 配置されたゲートの回転から入場方向を得て、欠けた場合は指定方向へ戻す。
     const Vector3 fallback = SelectNormalizeGateDirectionXZ(fallbackDirection, {0.0f, 0.0f, 1.0f});
     if (!gateObject) {
         return fallback;
@@ -115,6 +122,7 @@ Vector3 SelectGateEntryDirection(Object3d* gateObject, const Vector3& fallbackDi
 }
 
 SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vector3& direction, float entryY) {
+    // ゲート面を基準に前後の通過点を作り、入場経路を配置向きへ合わせる。
     const Vector3 entryDirection = SelectNormalizeGateDirectionXZ(direction, {0.0f, 0.0f, 1.0f});
     return {{gatePos.x - entryDirection.x * kGateEntrySurfaceOffset, entryY,
              gatePos.z - entryDirection.z * kGateEntrySurfaceOffset},
@@ -124,6 +132,7 @@ SelectGateEntryRoute SelectBuildGateEntryRoute(const Vector3& gatePos, const Vec
 }
 
 float SelectEaseInOutCubic(float value) {
+    // 入場の前半を加速・後半を減速し、切替点の速度をつなぐ。
     value = SelectClamp01(value);
     if (value < 0.5f) {
         return 4.0f * value * value * value;
@@ -133,11 +142,13 @@ float SelectEaseInOutCubic(float value) {
 }
 
 Vector3 SelectLerpVector3(const Vector3& a, const Vector3& b, float t) {
+    // 経路の端を越えないよう補間率を制限する。
     t = SelectClamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
 Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
+    // 四点の三次Bezierでゲートへ吸い込まれる曲線を作る。
     t = SelectClamp01(t);
     const float inv = 1.0f - t;
     const float b0 = inv * inv * inv;
@@ -149,6 +160,7 @@ Vector3 SelectBezierVector3(const Vector3& p0, const Vector3& p1, const Vector3&
 }
 
 Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback) {
+    // 高さを除いた方向がほぼゼロなら、呼び出し側の代替方向を保つ。
     const float lengthSq = value.x * value.x + value.z * value.z;
     if (lengthSq <= 0.0001f) {
         return fallback;
@@ -158,6 +170,7 @@ Vector3 SelectNormalizeXZ(const Vector3& value, const Vector3& fallback) {
 }
 
 float SelectEaseOutBack(float value) {
+    // 解放表示の登場時だけ少し行き過ぎて戻る曲線を作る。
     value = SelectClamp01(value);
     constexpr float c1 = 1.70158f;
     constexpr float c3 = c1 + 1.0f;
@@ -166,11 +179,13 @@ float SelectEaseOutBack(float value) {
 }
 
 Vector3 SelectLerp(const Vector3& a, const Vector3& b, float t) {
+    // 入場経路の区間外を参照しないよう補間率を制限する。
     t = SelectClamp01(t);
     return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
 Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse) {
+    // 島の解放・選択状態を色へ反映し、未解放は暗く抑える。
     if (!unlocked && !unlocking) {
         return {0.16f, 0.17f, 0.20f, 0.78f};
     }
@@ -202,6 +217,7 @@ Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool u
 }
 
 float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float pulse) {
+    // 解放演出中の発光だけを脈動させ、通常時の明るさと区別する。
     if (unlocking) {
         return 1.8f + pulse * 1.2f;
     }
@@ -212,6 +228,7 @@ float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float
 }
 
 Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
+    // ゲートの進行状態をモデル色へ反映し、クリア済みも区別する。
     if (!unlocked && !unlocking) {
         return {0.20f, 0.20f, 0.24f, 0.82f};
     }
@@ -228,6 +245,7 @@ Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool 
 }
 
 float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
+    // 選択・解放・クリア状態を発光強度へ変換する。
     if (unlocking) {
         return 2.7f + pulse * 1.2f;
     }
@@ -241,6 +259,7 @@ float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool
 }
 
 std::string MakeStageClearCrownName(int stageIndex) {
+    // ステージごとの王冠を名前で探せるよう、配置時と同じ接頭辞を使う。
     return std::string(kStageClearCrownPrefix) + std::to_string(stageIndex);
 }
 

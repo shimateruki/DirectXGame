@@ -66,6 +66,7 @@ const char* GetPreviewNote(int materialType) {
 }
 
 void MaterialPreviewBoard::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // 配置先SceneとEditorを借用し、使えるモデル候補を最初に集めます。
     sceneManager_ = sceneManager;
     editor_ = editor;
     RefreshModelCandidates();
@@ -73,6 +74,7 @@ void MaterialPreviewBoard::Initialize(SceneManager* sceneManager, DebugEditor* e
 
 void MaterialPreviewBoard::DrawImGui() {
 #ifdef USE_IMGUI
+    // 同じモデルへ材質を並べ、間隔と列数を変えながら見た目を比較します。
     ImGui::Text(ICON_FA_TH_LARGE " Material Preview Board");
     ImGui::Separator();
 
@@ -134,6 +136,7 @@ void MaterialPreviewBoard::DrawImGui() {
 
 void MaterialPreviewBoard::DrawModelSelector() {
 #ifdef USE_IMGUI
+    // 現在モデルが候補から消えても表示し、再選択できる一覧を出します。
     if (modelCandidates_.empty()) {
         RefreshModelCandidates();
     }
@@ -271,6 +274,7 @@ void MaterialPreviewBoard::RemoveBoard() {
 }
 
 int MaterialPreviewBoard::CountBoardObjects() const {
+    // 現行Scene内のプレビュー専用Objectだけを数え、通常配置は含めません。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return 0;
 
     int count = 0;
@@ -356,6 +360,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
 }
 
 void MaterialPreviewBoard::RefreshModelCandidates() {
+    // 基本形状を残した上で利用可能なモデルを追加し、選択候補を一意にします。
     std::set<std::string> uniqueModels = {
         "Primitives/sphere",
         "Primitives/cube",
@@ -391,6 +396,7 @@ void MaterialPreviewBoard::RefreshModelCandidates() {
 }
 
 void MaterialPreviewBoard::SetPreviewModel(const std::string& modelName) {
+    // リスト外の指定も候補へ追加して、外部から選んだモデルを保持します。
     if (modelName.empty()) return;
     strncpy_s(modelNameBuffer_, modelName.c_str(), _TRUNCATE);
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
@@ -404,6 +410,7 @@ void MaterialPreviewBoard::SetPreviewModel(const std::string& modelName) {
 }
 
 void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const MaterialPreviewEntry& entry) const {
+    // 材質種別ごとのBlendとPBR既定値を同じモデルへ適用し、比較条件を揃えます。
     if (!object) return;
 
     object->SetMaterialType(entry.materialType);

@@ -329,6 +329,7 @@ constexpr const char* kGameplayDebrisPresetsToPreload[] = {"bomb_hit_fragment_bu
 // 非同期ロードは段階ごとに依存を満たしてから進めます。再入場時の状態復元はロード完了後に行います。
 
 SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
+    // Scene Asset 指定を優先し、未指定時だけ現在ステージの配置と演出素材を先読みする。
     SceneLoadManifest manifest;
 
     std::string objectLayoutPath = "Resources/json/3Dobject/stage1.json";
@@ -418,12 +419,14 @@ SceneLoadManifest GamePlayScene::BuildAsyncLoadManifest() const {
 }
 
 void GamePlayScene::Initialize() {
+    // 同期起動時も段階ロードと同じ依存順を通す。
     BeginLoadingInitialize();
     while (!InitializeLoadingStep()) {
     }
 }
 
 void GamePlayScene::BeginLoadingInitialize() {
+    // 再入場時に演出とロードの進捗を初期化し、前回のステージ状態を残さない。
     loadingInitializePhase_ = 0;
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
@@ -444,6 +447,7 @@ void GamePlayScene::BeginLoadingInitialize() {
 }
 
 bool GamePlayScene::InitializeLoadingStep() {
+    // GPU・メッシュ・破片・VFX を小分けに読み込み、ロード画面へ進捗を返す。
     // 一回の呼び出しで原則一単位だけ処理し、ロード画面へ進捗を返します。
     // リストを使い切った段階だけ次のフェーズへ進み、依存順は崩しません。
     auto completeUnit = [this]() { ++loadingInitializeCompletedUnits_; };
@@ -579,6 +583,7 @@ bool GamePlayScene::InitializeLoadingStep() {
 }
 
 float GamePlayScene::GetLoadingInitializeProgress() const {
+    // まだ総作業数が設定されていない場合も 0 除算を避ける。
     return loadingInitializeTotalUnits_ == 0 ? 1.0f
                                              : std::clamp(static_cast<float>(loadingInitializeCompletedUnits_) /
                                                               static_cast<float>(loadingInitializeTotalUnits_),
@@ -630,6 +635,7 @@ void GamePlayScene::OnActivated() {
 }
 
 void GamePlayScene::Finalize() {
+    // SceneController の通知を先に行い、その後に共有演出を含む資源を片付ける。
     if (sceneController_) {
         sceneController_->OnFinalize(*this);
         sceneController_.reset();
@@ -638,6 +644,7 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
+    // シーン切替前のイベント購読とカメラ設定を消し、このステージ用に準備する。
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
 
@@ -649,6 +656,7 @@ void GamePlayScene::InitializeCoreSystems(const StageData& currentStage) {
 }
 
 void GamePlayScene::InitializeRenderCommons() {
+    // 2D・3D・通常粒子の共通描画器を先に用意して各マネージャーへ渡す。
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
 
@@ -671,6 +679,7 @@ void GamePlayScene::InitializeRenderCommons() {
 }
 
 void GamePlayScene::InitializeGameplaySystems() {
+    // ゲーム中に使う演出を事前生成し、初回攻撃時の読み込み待ちを抑える。
     InitializeGameplayObjectSystems();
     InitializeGameplayParticleRuntime();
     for (const char* presetName : kGameplayGpuParticlePresetsToPreload) {
@@ -691,6 +700,7 @@ void GamePlayScene::InitializeGameplaySystems() {
 }
 
 void GamePlayScene::InitializeGameplayObjectSystems() {
+    // オブジェクト管理・ロックオン・弾管理が同じシーンの入力と描画器を参照する。
     objectManager_ = std::make_unique<ObjectManager>();
 
     lockOnSystem_ = std::make_unique<LockOnSystem>();
@@ -709,17 +719,20 @@ void GamePlayScene::InitializeGameplayObjectSystems() {
 }
 
 void GamePlayScene::InitializeGameplayParticleRuntime() {
+    // プリセット JSON を読み、シーン描画用の粒子テクスチャを確保する。
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 }
 
 void GamePlayScene::InitializeGameplayDebrisRuntime() {
+    // 破片演出を現在の 3D 描画器へ結び、プリセットを読み込む。
     DebrisEffectManager::GetInstance()->Initialize(object3dCommon_.get());
     DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
 }
 
 void GamePlayScene::InitializeGameplaySkybox() {
+    // Scene Asset、ステージ定義、既定値の順で空のテクスチャ指定を補う。
     std::string skyboxPath = GetSceneLoadContext().skyboxPath;
     if (skyboxPath.empty()) {
         const StageData& stage = StageManager::GetInstance()->GetCurrentStage();
@@ -735,6 +748,7 @@ void GamePlayScene::InitializeGameplaySkybox() {
 }
 
 void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
+    // ロード画面と共有するライトを、ゲーム画面へ切り替わった時点で再適用する。
     const std::string defaultLightPath =
         currentStage.lightPath.empty() ? "Resources/json/light/light_layout.json" : currentStage.lightPath;
 
@@ -753,6 +767,7 @@ void GamePlayScene::ApplyGameplayRenderState(const StageData& currentStage) {
 }
 
 void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
+    // 3D 配置を先に読み、プレイヤー参照を必要とする HUD と Overlay を後で作る。
     LoadCurrentStageObjects(currentStage);
     LoadCurrentStageSpritesAndView(currentStage);
     InitializeGameplayHUD();
@@ -760,6 +775,7 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
 }
 
 void GamePlayScene::LoadCurrentStageObjects(const StageData& currentStage) {
+    // 配置直後に進行記録を反映し、回収済みアイテムを再出現させない。
     levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, currentStage.levelPath);
     ApplyGoalCrownState();
@@ -767,6 +783,7 @@ void GamePlayScene::LoadCurrentStageObjects(const StageData& currentStage) {
 }
 
 void GamePlayScene::LoadCurrentStageSpritesAndView(const StageData& currentStage) {
+    // ステージ固有の画面配置とカメラ JSON を同じロード段階で確定する。
     levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
 
     ApplyGameplayRenderState(currentStage);
@@ -775,6 +792,7 @@ void GamePlayScene::LoadCurrentStageSpritesAndView(const StageData& currentStage
 }
 
 void GamePlayScene::InitializeGameplayOverlays() {
+    // プレイヤー参照と SpriteCommon が揃ってから操作ガイドとメニューを作る。
     controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
     controlsGuideOverlay_->Initialize(spriteCommon_.get(), player_);
 
@@ -791,6 +809,7 @@ void GamePlayScene::InitializeGameplayOverlays() {
 }
 
 void GamePlayScene::ApplyGoalCrownState() {
+    // クリア済みのゴールは再取得できる輝きではなく、収集済みの見た目へ切り替える。
     if (!objectManager_) {
         return;
     }
@@ -821,6 +840,7 @@ void GamePlayScene::ApplyGoalCrownState() {
 }
 
 void GamePlayScene::ApplyStageStarCoinState() {
+    // 保存済みのスターコインを不可視にし、同じ位置で再取得できないようにする。
     if (!objectManager_) {
         return;
     }
@@ -845,6 +865,7 @@ void GamePlayScene::ApplyStageStarCoinState() {
 }
 
 bool GamePlayScene::StartRespawnIrisInIfNeeded() {
+    // 復活要求を一度だけ消費し、位置・コピー能力・クリア済み遭遇を戻してから開幕する。
     if (!GameDataManager::GetInstance()->ConsumeRespawnIrisInRequest()) {
         return false;
     }
@@ -854,7 +875,10 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     if (checkpoint.active && player_ && checkpoint.stageIndex == StageManager::GetInstance()->GetCurrentStageIndex()) {
         const Vector3 respawnPosition{checkpoint.positionX, checkpoint.positionY, checkpoint.positionZ};
         player_->SetTranslate(respawnPosition);
-        player_->ActivateCheckpoint(respawnPosition);
+        player_->ActivateCheckpoint(respawnPosition, checkpoint.checkpointObjectName);
+        if (gameRule_) {
+            gameRule_->RestoreCheckpointPresentation(checkpoint.checkpointObjectName);
+        }
         for (int id : checkpoint.clearedEncounterIds) {
             GameDataManager::GetInstance()->RememberCheckpointEncounter(checkpoint.stageIndex, id);
             if (auto* encounter = dynamic_cast<GimmickArenaEncounter*>(FindObjectByEventID(id)))
@@ -887,9 +911,12 @@ bool GamePlayScene::StartRespawnIrisInIfNeeded() {
     return true;
 }
 
-void GamePlayScene::InitializeDebugAnimationPreview() {}
+void GamePlayScene::InitializeDebugAnimationPreview() {
+    // 旧プレビューの初期化フック。現在のプレビューは独立した編集画面で管理する。
+}
 
 void GamePlayScene::FinalizeGameplayResources() {
+    // カメラ・演出・当たり判定を先に解除し、シーンが所有する描画資源を後で破棄する。
     EndCrownMoviePreview();
     FinishSealBarrageMovie();
     ResetCrownDefeat();

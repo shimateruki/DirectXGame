@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "5ce34ec25ce479938dbfa1ddf3ee3919",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/sprite/selectPauseMenu.json",
+  "version": 1
+}

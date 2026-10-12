@@ -145,10 +145,15 @@ constexpr const char* kTutorialPromptTexturesToPreload[] = {
 
 // チュートリアルのシーン側は入力・描画と手順管理の接続役です。課題の達成判定は TutorialDirector に委ねます。
 
-TutorialScene::TutorialScene() {}
-TutorialScene::~TutorialScene() {}
+TutorialScene::TutorialScene() {
+    // 描画基盤の取得はシーン初期化まで遅らせる。
+}
+TutorialScene::~TutorialScene() {
+    // シーン固有の解放はFinalizeへ集約する。
+}
 
 void TutorialScene::SetIsGoal(bool isGoal) {
+    // 再挑戦などでゴール状態が解除されたら、保存済みフラグも戻す。
     if (isGoal_ == isGoal) {
         return;
     }
@@ -160,6 +165,7 @@ void TutorialScene::SetIsGoal(bool isGoal) {
 }
 
 void TutorialScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
+    // チュートリアル専用の案内と保存表示もリプレイの描画対象へ加える。
     BaseScene::CollectReplaySprites(replaySprites);
     if (lockOnSprite_) {
         replaySprites.push_back(lockOnSprite_.get());
@@ -173,6 +179,7 @@ void TutorialScene::CollectReplaySprites(std::vector<Sprite*>& replaySprites) {
 }
 
 void TutorialScene::CaptureReplaySceneState(json& state) const {
+    // シーン進行だけでなく、案内画面と保存演出の表示状態も記録する。
     json tutorialState = json::object();
     json controlsGuideState = json::object();
     json saveIndicatorState = json::object();
@@ -197,6 +204,7 @@ void TutorialScene::CaptureReplaySceneState(json& state) const {
 }
 
 void TutorialScene::RestoreReplaySceneState(const json& state) {
+    // 任意項目を含む過去の記録でも復元できるよう、存在を確かめてから読む。
     if (!state.is_object()) {
         return;
     }
@@ -239,6 +247,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
 }
 
 SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
+    // 操作案内とプレイヤー演出を初回表示前に読み込み、描画中の遅延を抑える。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -279,12 +288,14 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 }
 
 void TutorialScene::Initialize() {
+    // 同じ段階初期化を同期呼び出しでも使い、読込画面の有無で処理を分けない。
     BeginLoadingInitialize();
     while (!InitializeLoadingStep()) {
     }
 }
 
 void TutorialScene::BeginLoadingInitialize() {
+    // 段階ごとの完了数を初期化し、読み込み進捗へ反映する。
     loadingInitializePhase_ = 0;
     loadingInitializeItemIndex_ = 0;
     loadingInitializeCompletedUnits_ = 0;
@@ -294,6 +305,7 @@ void TutorialScene::BeginLoadingInitialize() {
 }
 
 bool TutorialScene::InitializeLoadingStep() {
+    // 一度の呼び出しでは一段階だけ進め、読込画面が途中経過を描けるようにする。
     auto completeUnit = [this]() { ++loadingInitializeCompletedUnits_; };
 
     for (;;) {
@@ -449,6 +461,7 @@ bool TutorialScene::InitializeLoadingStep() {
 }
 
 float TutorialScene::GetLoadingInitializeProgress() const {
+    // 初期化前の分母ゼロは完了扱いにし、進捗表示を有効範囲に収める。
     return loadingInitializeTotalUnits_ == 0 ? 1.0f
                                              : std::clamp(static_cast<float>(loadingInitializeCompletedUnits_) /
                                                               static_cast<float>(loadingInitializeTotalUnits_),
@@ -456,6 +469,7 @@ float TutorialScene::GetLoadingInitializeProgress() const {
 }
 
 void TutorialScene::Finalize() {
+    // Directorを先に終了し、演出が参照する共有Managerをその後に片付ける。
     if (tutorialDirector_) {
         tutorialDirector_->Finalize();
     }
@@ -481,6 +495,7 @@ void TutorialScene::Finalize() {
 }
 
 void TutorialScene::Update(float deltaTime) {
+    // ゴール後はクリアを一度だけ保存し、保存演出が終わるまで選択画面へ進めない。
     if (isGoal_) {
         if (!goalSavePerformed_) {
             // チュートリアルクリア状況を保存
@@ -616,6 +631,7 @@ void TutorialScene::Update(float deltaTime) {
 }
 
 void TutorialScene::Draw() {
+    // カメラがプレイヤーに接近したら身体を描かず、手前の視界を確保する。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
@@ -708,6 +724,7 @@ void TutorialScene::Draw() {
 }
 
 void TutorialScene::DrawUI() {
+    // 操作案内と保存通知はゲーム本体のSpriteより手前に重ねる。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_)
         sprite->Draw();
@@ -723,14 +740,18 @@ void TutorialScene::DrawUI() {
 }
 
 void TutorialScene::DrawShadow() {
+    // 動的物体の影はObjectManagerに登録された描画対象から作る。
     if (objectManager_)
         objectManager_->DrawShadow();
 }
 
-void TutorialScene::UpdateUI() {}
+void TutorialScene::UpdateUI() {
+    // 専用のUI更新はUpdate内で行うため、共通フックでは追加処理をしない。
+}
 
 void TutorialScene::DrawImGui() {
 #ifdef USE_IMGUI
+    // 開発時だけ進行手順と保存演出を直接確認できるようにする。
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: Tutorial");
     ImGui::Separator();
     if (ImGui::Button("Back to SELECT")) {
@@ -748,12 +769,14 @@ void TutorialScene::DrawImGui() {
 }
 
 void TutorialScene::StartBridgeDropMovie() {
+    // 橋の演出開始を固定の手順IDへ変換し、進行管理に委ねる。
     if (tutorialDirector_) {
         tutorialDirector_->JumpToStep("path_reveal");
     }
 }
 
 bool TutorialScene::HandleControlsGuideOverlay(float deltaTime) {
+    // 操作案内を開いている間は通常ゲーム更新を止め、案内への入力を優先する。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->SetPlayer(player_);
         controlsGuideOverlay_->Update(deltaTime);
@@ -775,6 +798,7 @@ bool TutorialScene::HandleControlsGuideOverlay(float deltaTime) {
 }
 
 bool TutorialScene::IsControlsGuideOpenTriggered() const {
+    // エディターがキー入力を受け取っている間は案内を開かない。
     if (!inputManager_ || isGoal_) {
         return false;
     }
@@ -790,6 +814,7 @@ bool TutorialScene::IsControlsGuideOpenTriggered() const {
 }
 
 void TutorialScene::HandleTutorialFlowCompleted() {
+    // 進行達成による保存をゴール接触時の保存と重複させない。
     if (goalSavePerformed_) {
         return;
     }
@@ -803,6 +828,7 @@ void TutorialScene::HandleTutorialFlowCompleted() {
 }
 
 bool TutorialScene::IsVisible(Object3d* obj) {
+    // カメラ近傍は描画を残し、遠い物体だけ視錐台判定で間引く。
     if (!obj || !obj->GetIsVisible())
         return false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();

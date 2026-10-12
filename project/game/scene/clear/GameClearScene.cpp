@@ -26,6 +26,7 @@
 #include "GPUParticleManager.h"
 
 SceneLoadManifest GameClearScene::BuildAsyncLoadManifest() const {
+    // シーンAssetから開かれた場合はその配置データを優先して先読みする。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -200,6 +201,7 @@ void GameClearScene::DrawUI() {
 
 // シャドウマップ描画の実装
 void GameClearScene::DrawShadow() {
+    // クリア画面の配置オブジェクトも通常シーンと同じ影パスへ渡す。
     if (objectManager_) {
         objectManager_->DrawShadow();
     }

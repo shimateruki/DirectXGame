@@ -12,6 +12,7 @@ namespace {
 constexpr float kDefaultTransitionDuration = 0.42f;
 
 float SmoothStep01(float value) {
+    // 壁の出現・消滅で高さの変化が急に止まらないようにします。
     value = (std::clamp)(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
@@ -20,6 +21,7 @@ float SmoothStep01(float value) {
 void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 薄い OBB を壁面として使い、開放時には通行を妨げるようにします。
     SetClassName("Gimmick");
     SetGimmickType("PrismBarrier");
     SetName("Gimmick_PrismBarrier");
@@ -51,6 +53,7 @@ void GimmickPrismBarrier::Initialize(Object3dCommon* common, const std::string& 
 
 // 編集時の配置値を基準にして開閉を補間します。再生を止めた後も元の配置へ戻せるようにします。
 void GimmickPrismBarrier::Update(float deltaTime) {
+    // 再生停止時は編集配置を復元し、実行時のみ開閉補間を進めます。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
     if (!isPlaying) {
@@ -85,9 +88,13 @@ void GimmickPrismBarrier::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickPrismBarrier::OnTrigger() { OnSwitchEvent(true); }
+void GimmickPrismBarrier::OnTrigger() {
+    // 単発イベントは壁を出すスイッチのオンとして扱います。
+    OnSwitchEvent(true);
+}
 
 void GimmickPrismBarrier::OnSwitchEvent(bool active) {
+    // 無効化の要求時に衝突を先に消し、見た目の縮退とは切り離します。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -112,6 +119,7 @@ void GimmickPrismBarrier::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickPrismBarrier::Clone() const {
+    // 初期化後に編集設定を移し、壁の材質と判定を複製先で作り直します。
     auto clone = std::make_unique<GimmickPrismBarrier>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -120,6 +128,7 @@ std::unique_ptr<Object3d> GimmickPrismBarrier::Clone() const {
 }
 
 void GimmickPrismBarrier::CaptureAuthoredState(bool force) {
+    // 再生中の変形値で編集時の基準を上書きしないよう、初回のみ記録します。
     if (authoredStateCaptured_ && !force) {
         return;
     }
@@ -145,6 +154,7 @@ void GimmickPrismBarrier::CaptureAuthoredState(bool force) {
 }
 
 void GimmickPrismBarrier::ResetForEditor() {
+    // 再生中の高さや衝突を持ち越さず、保存された配置へ戻します。
     initializedForPlay_ = false;
     activation_ = 0.0f;
     targetActivation_ = 0.0f;
@@ -158,6 +168,7 @@ void GimmickPrismBarrier::ResetForEditor() {
 }
 
 void GimmickPrismBarrier::ApplyRuntimeVisual() {
+    // 壁の底辺を固定して上へ伸ばし、開閉中の見た目と衝突を同期します。
     const float eased = SmoothStep01(activation_);
     const float minimumScaleY = (std::max)(0.015f, authoredScale_.y * 0.012f);
     const float currentScaleY = Math::Lerp(minimumScaleY, authoredScale_.y, eased);
@@ -200,10 +211,12 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
 }
 
 void GimmickPrismBarrier::SetCollisionEnabled(bool enabled) {
+    // ゼロ化した衝突設定を再有効化時に編集値へ戻します。
     SetCollisionAttribute(enabled ? authoredCollisionAttribute_ : 0);
     SetCollisionMask(enabled ? authoredCollisionMask_ : 0);
 }
 
 float GimmickPrismBarrier::GetTransitionDuration() const {
+    // 極端な設定値による瞬間移動や長すぎる閉鎖を防ぎます。
     return param_.has_value() ? (std::clamp)(param_->moveSpeed, 0.05f, 3.0f) : kDefaultTransitionDuration;
 }

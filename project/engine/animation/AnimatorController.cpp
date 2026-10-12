@@ -14,27 +14,33 @@ using json = nlohmann::json;
 namespace {
 // JSON では列挙値を整数で保存します。未知の値は既知の範囲へ丸めて読み込みます。
 int ToInt(AnimatorParameterType type) {
+    // JSONにはenumの数値を保存し、読み込み時に同じ型へ戻せるようにする。
     return static_cast<int>(type);
 }
 
 int ToInt(AnimatorConditionMode mode) {
+    // 遷移条件の比較種別をJSONで扱える整数へ変換する。
     return static_cast<int>(mode);
 }
 
 AnimatorParameterType ToParameterType(int value) {
+    // 保存値を定義済みのパラメータ型の範囲に収める。
     return static_cast<AnimatorParameterType>(std::clamp(value, 0, 3));
 }
 
 AnimatorConditionMode ToConditionMode(int value) {
+    // 未知の比較種別は定義済みの範囲へ丸めてから読み込む。
     return static_cast<AnimatorConditionMode>(std::clamp(value, 0, 6));
 }
 
 AnimationInterpolation::EasingType ToEasing(int value) {
+    // 補間指定を有効なenum範囲へ収めてから再生器へ渡す。
     return static_cast<AnimationInterpolation::EasingType>(std::clamp(value, 0, 4));
 }
 }
 
 void AnimatorControllerAsset::Clear() {
+    // 再読込前に状態・条件・パラメータをまとめて破棄する。
     version = kCurrentVersion;
     name = "animator_controller";
     entryState.clear();
@@ -44,6 +50,7 @@ void AnimatorControllerAsset::Clear() {
 }
 
 int AnimatorControllerAsset::FindStateIndex(const std::string& stateName) const {
+    // 遷移先の検索は名前を基準にし、配列順の変更に依存させない。
     for (int index = 0; index < static_cast<int>(states.size()); ++index) {
         if (states[index].name == stateName) {
             return index;
@@ -53,6 +60,7 @@ int AnimatorControllerAsset::FindStateIndex(const std::string& stateName) const 
 }
 
 const AnimatorStateDefinition* AnimatorControllerAsset::FindState(const std::string& stateName) const {
+    // 名前が一致しない場合はnullptrを返し、未定義状態の参照を防ぐ。
     const int index = FindStateIndex(stateName);
     return index >= 0 ? &states[index] : nullptr;
 }
@@ -201,6 +209,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
 }
 
 void AnimatorControllerRuntime::SetController(const AnimatorControllerAsset* controller, bool playEntryState) {
+    // Assetの差し替え後は前の状態を使わず、必要なら入口状態から再生する。
     controller_ = controller;
     Reset(playEntryState);
 }
@@ -322,11 +331,13 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
 }
 
 bool AnimatorControllerRuntime::IsPlayingState(const std::string& stateName) const {
+    // 現在状態が有効な場合だけ名前を比較する。
     const AnimatorStateDefinition* state = GetCurrentState();
     return state && state->name == stateName;
 }
 
 const AnimatorStateDefinition* AnimatorControllerRuntime::GetCurrentState() const {
+    // Assetが無いかインデックスが範囲外なら、状態なしとしてnullptrを返す。
     if (!controller_ || currentStateIndex_ < 0 || currentStateIndex_ >= static_cast<int>(controller_->states.size())) {
         return nullptr;
     }
@@ -334,6 +345,7 @@ const AnimatorStateDefinition* AnimatorControllerRuntime::GetCurrentState() cons
 }
 
 const AnimatorStateDefinition* AnimatorControllerRuntime::GetPreviousState() const {
+    // 補間元が存在する場合だけ旧状態を返す。
     if (!controller_ || previousStateIndex_ < 0 || previousStateIndex_ >= static_cast<int>(controller_->states.size())) {
         return nullptr;
     }
@@ -341,6 +353,7 @@ const AnimatorStateDefinition* AnimatorControllerRuntime::GetPreviousState() con
 }
 
 float AnimatorControllerRuntime::GetTransitionWeight() const {
+    // 遷移中は設定されたイージングで重みを計算し、通常時は現状態を100%使う。
     if (!IsTransitioning()) {
         return 1.0f;
     }
@@ -349,43 +362,65 @@ float AnimatorControllerRuntime::GetTransitionWeight() const {
 }
 
 void AnimatorControllerRuntime::SetCurrentTime(float timeSeconds) {
+    // スクラブ後に過去のイベントを再発火させないよう、待機中イベントを捨てる。
     currentTime_ = std::max(0.0f, timeSeconds);
     pendingEvents_.clear();
 }
 
 std::vector<AnimatorEventInstance> AnimatorControllerRuntime::ConsumeEvents() {
+    // イベントを呼び出し側へ移し、次フレームの二重通知を防ぐ。
     std::vector<AnimatorEventInstance> result;
     result.swap(pendingEvents_);
     return result;
 }
 
-void AnimatorControllerRuntime::SetFloat(const std::string& name, float value) { floatParameters_[name] = value; }
-void AnimatorControllerRuntime::SetInt(const std::string& name, int value) { intParameters_[name] = value; }
-void AnimatorControllerRuntime::SetBool(const std::string& name, bool value) { boolParameters_[name] = value; }
-void AnimatorControllerRuntime::SetTrigger(const std::string& name) { triggerParameters_[name] = true; }
-void AnimatorControllerRuntime::ResetTrigger(const std::string& name) { triggerParameters_[name] = false; }
+void AnimatorControllerRuntime::SetFloat(const std::string& name, float value) {
+    // Float条件の評価に使う現在値を名前で保持する。
+    floatParameters_[name] = value;
+}
+void AnimatorControllerRuntime::SetInt(const std::string& name, int value) {
+    // Int条件の評価に使う現在値を名前で保持する。
+    intParameters_[name] = value;
+}
+void AnimatorControllerRuntime::SetBool(const std::string& name, bool value) {
+    // Bool条件の評価に使う現在値を名前で保持する。
+    boolParameters_[name] = value;
+}
+void AnimatorControllerRuntime::SetTrigger(const std::string& name) {
+    // Triggerは発火済み状態にし、遷移が使うまで保持する。
+    triggerParameters_[name] = true;
+}
+void AnimatorControllerRuntime::ResetTrigger(const std::string& name) {
+    // Triggerの消費後に再遷移しないよう発火状態を解除する。
+    triggerParameters_[name] = false;
+}
 
 float AnimatorControllerRuntime::GetFloat(const std::string& name) const {
+    // 未設定のFloat条件は0として評価する。
     const auto it = floatParameters_.find(name);
     return it == floatParameters_.end() ? 0.0f : it->second;
 }
 
 int AnimatorControllerRuntime::GetInt(const std::string& name) const {
+    // 未設定のInt条件は0として評価する。
     const auto it = intParameters_.find(name);
     return it == intParameters_.end() ? 0 : it->second;
 }
 
 bool AnimatorControllerRuntime::GetBool(const std::string& name) const {
+    // 未設定のBool条件はfalseとして評価する。
     const auto it = boolParameters_.find(name);
     return it != boolParameters_.end() && it->second;
 }
 
 bool AnimatorControllerRuntime::IsTriggerSet(const std::string& name) const {
+    // 未登録Triggerは発火していないものとして扱う。
     const auto it = triggerParameters_.find(name);
     return it != triggerParameters_.end() && it->second;
 }
 
 AnimatorControllerRuntime::Snapshot AnimatorControllerRuntime::CaptureSnapshot() const {
+    // Assetの再読み込み後も状態名を使って再生位置を戻せるよう、時間と補間情報を保存する。
     Snapshot snapshot;
     if (!controller_) {
         return snapshot;
@@ -438,6 +473,7 @@ void AnimatorControllerRuntime::InitializeParameters() {
 float AnimatorControllerRuntime::ResolveStateDuration(
     const AnimatorStateDefinition* state,
     const DurationResolver& durationResolver) const {
+    // クリップ長が解決できない場合は0とし、時刻の折り返しを行わない。
     if (!state) {
         return 0.0f;
     }
@@ -446,6 +482,7 @@ float AnimatorControllerRuntime::ResolveStateDuration(
 }
 
 void AnimatorControllerRuntime::QueueEntryEvents(const AnimatorStateDefinition* state) {
+    // 状態に入った瞬間の時刻0イベントだけを待機キューへ入れる。
     if (!state) {
         return;
     }
@@ -502,6 +539,7 @@ void AnimatorControllerRuntime::AdvanceStateTime(
     const AnimatorStateDefinition* state,
     float deltaTime,
     const DurationResolver& durationResolver) const {
+    // ループ状態はクリップ長で折り返し、単発状態は終了時刻で止める。
     if (!state) {
         return;
     }
@@ -523,6 +561,7 @@ float AnimatorControllerRuntime::GetNormalizedTime(
     const AnimatorStateDefinition* state,
     float time,
     const DurationResolver& durationResolver) const {
+    // クリップ長が不明ならイベント用時間を代用し、正規化時刻のゼロ除算を避ける。
     if (!state) {
         return 0.0f;
     }
@@ -615,6 +654,7 @@ bool AnimatorControllerRuntime::AreConditionsMet(const AnimatorTransitionDefinit
 }
 
 void AnimatorControllerRuntime::ConsumeTriggers(const AnimatorTransitionDefinition& transition) {
+    // 成立した遷移で使用したTriggerだけを解除し、他の条件は維持する。
     for (const auto& condition : transition.conditions) {
         if (condition.mode == AnimatorConditionMode::Trigger) {
             ResetTrigger(condition.parameter);

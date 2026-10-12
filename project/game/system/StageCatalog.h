@@ -16,6 +16,8 @@ struct StageData {
     bool defaultUnlocked = false;
     std::string lightPath;
     std::string skyboxPath;
+    // ステージセレクトのゲート上に表示する、透過文字画像。空なら名前札を表示しません。
+    std::string gateNameTexturePath;
 };
 
 // ステージ JSON の検証と変換を担当し、現在選択中のステージ状態は保持しません。

@@ -22,15 +22,20 @@ namespace {
 constexpr const char* kGoalPresentationTuningPath = "Resources/json/cinematic/goal_clear.json";
 constexpr const char* kGoalCinematicTimelinePath = "Resources/json/scenario/goal_clear_timeline.json";
 
-float GoalClamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float GoalClamp01(float value) {
+    // 演出曲線を0〜1の時間区間に収める。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float GoalEaseOut(float value) {
+    // 王冠やUIの移動を終点へ向けて減速させる。
     value = GoalClamp01(value);
     const float inv = 1.0f - value;
     return 1.0f - inv * inv * inv;
 }
 
 float GoalEaseInOut(float value) {
+    // 前後の速度が急変しない滑らかな補間率を作る。
     value = GoalClamp01(value);
     return value * value * (3.0f - 2.0f * value);
 }
@@ -38,6 +43,7 @@ float GoalEaseInOut(float value) {
 } // namespace
 // タイムラインを読み、見つからない場合は現在の調整値から同等の演出を組み立てます。
 void GamePlayScene::InitializeGoalCinematicTimeline() {
+    // タイムラインのアニメーションと合図をPlayer用処理へ結び付けてから読込む。
     goalCinematicPlayer_.Initialize(SceneManager::GetInstance());
     goalCinematicPlayer_.SetAnimationCallback(
         [this](Object3d* target, const CinematicAnimationClipData& clip, float localTime, bool isPreview) {
@@ -63,6 +69,7 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
 
 // シグナル時刻を演出とプレイヤー動作の調整値へ反映します。
 void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
+    // JSONの合図時刻を演出パラメータへ反映し、旧来の固定値とずれないようにする。
     GoalClearPlayerAnimator::Tuning animation = goalClearPlayerAnimator_.GetTuning();
     for (const auto& marker : goalCinematicSequence_.signals) {
         if (!marker.enabled) {
@@ -206,6 +213,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
 
 void GamePlayScene::HandleGoalCinematicAnimation(Object3d* target, const CinematicAnimationClipData& clip,
                                                  float localTime, bool isPreview) {
+    // GoalClearPlayerドライバだけをPlayerへ適用し、他の対象のClipは無視する。
     (void)isPreview;
     if (clip.driver != "GoalClearPlayer" || !player_ || (target && target != player_)) {
         return;
@@ -215,6 +223,7 @@ void GamePlayScene::HandleGoalCinematicAnimation(Object3d* target, const Cinemat
 }
 
 void GamePlayScene::HandleGoalCinematicSignal(Object3d* target, const CinematicSignalMarker& signal, bool isPreview) {
+    // goal.readyの合図で帰還可能状態へ進み、時計だけに依存しない。
     (void)target;
     (void)isPreview;
     if (signal.signal == "goal.ready" && goalPresentationState_ == GoalPresentationState::Celebrating) {
@@ -223,6 +232,7 @@ void GamePlayScene::HandleGoalCinematicSignal(Object3d* target, const CinematicS
 }
 
 void GamePlayScene::InitializeGoalPresentationOverlay() {
+    // Sprite基盤が揃ってからフラッシュ・火花・帰還案内を生成する。
     if (!spriteCommon_) {
         return;
     }
@@ -273,6 +283,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
 }
 
 void GamePlayScene::UpdateGoalPresentationOverlay() {
+    // ゴールの再達成では色を変え、同じタイムラインでも報酬の有無を視覚で分ける。
     const bool visible = isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive;
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
@@ -390,6 +401,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
 }
 
 void GamePlayScene::DrawGoalPresentationOverlay() {
+    // ゴール演出が無効なら一時Spriteを描かず、通常HUDへ戻す。
     if (!isGoal_ || goalPresentationState_ == GoalPresentationState::Inactive) {
         return;
     }
@@ -413,6 +425,7 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
 }
 
 void GamePlayScene::LoadGoalPresentationTuning() {
+    // 設定JSONがない・壊れている場合も、既定値を安全な時刻順に補正する。
     std::ifstream file(kGoalPresentationTuningPath, std::ios::binary);
     if (!file.is_open()) {
         SanitizeGoalPresentationTuning();
@@ -514,6 +527,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
 }
 
 void GamePlayScene::SaveGoalPresentationTuning() const {
+    // 編集した時間と見た目の値を同じJSONへ保存し、次回の演出へ引き継ぐ。
     const GoalClearPlayerAnimator::Tuning& a = goalClearPlayerAnimator_.GetTuning();
     const GoalPresentationTuning& g = goalPresentationTuning_;
     nlohmann::json root;
@@ -572,6 +586,7 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
 }
 
 void GamePlayScene::SanitizeGoalPresentationTuning() {
+    // 王冠着地から結果UIまでの時刻順を保ち、編集値でイベントが逆転しないようにする。
     GoalClearPlayerAnimator::Tuning a = goalClearPlayerAnimator_.GetTuning();
     GoalPresentationTuning& g = goalPresentationTuning_;
     g.crownFocusEndTime = std::clamp(g.crownFocusEndTime, 0.20f, 1.50f);
@@ -611,6 +626,7 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
 }
 
 void GamePlayScene::DrawGoalPresentationEditor() {
+    // Development/Debugの調整UIで変更した値を演出へ反映する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader(ICON_FA_FILM " ゴール演出シーケンス", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
@@ -710,6 +726,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
 }
 
 Object3d* GamePlayScene::FindGoalCrownObject() const {
+    // シーン内のゴールイベントを持つ王冠を、プレビュー対象として探す。
     if (!objectManager_) {
         return nullptr;
     }
@@ -722,6 +739,7 @@ Object3d* GamePlayScene::FindGoalCrownObject() const {
 }
 
 void GamePlayScene::StartGoalPresentationPreview() {
+    // 本編のゴール進行中は重ねて開始せず、編集プレビューだけ再始動を許す。
     if (isGoal_) {
         if (!goalEditorPreviewMode_) {
             DebugConsole::GetInstance()->AddLog("Goal presentation is already running in gameplay.");
@@ -740,6 +758,7 @@ void GamePlayScene::StartGoalPresentationPreview() {
 }
 
 void GamePlayScene::StopGoalPresentationPreview() {
+    // 編集プレビューが使ったカメラを戻してから、ゴール状態を解除する。
     if (!goalEditorPreviewMode_) {
         return;
     }

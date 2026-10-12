@@ -23,6 +23,7 @@ constexpr float kFadeOutDuration = 0.30f;
 constexpr float kPi = 3.1415926535f;
 
 float EaseOutBack(float value) {
+    // 登場時に一度だけ行き過ぎて戻る曲線を、0〜1の時間から作る。
     value = std::clamp(value, 0.0f, 1.0f);
     constexpr float c1 = 1.70158f;
     constexpr float c3 = c1 + 1.0f;
@@ -31,6 +32,7 @@ float EaseOutBack(float value) {
 } // namespace
 
 void SaveIndicatorOverlay::Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath) {
+    // レイアウト読込後に役割別Spriteを結び付け、開始時は非表示にする。
     spriteCommon_ = spriteCommon;
     LoadLayout(layoutPath);
     BindSprites();
@@ -38,6 +40,7 @@ void SaveIndicatorOverlay::Initialize(SpriteCommon* spriteCommon, const std::str
 }
 
 void SaveIndicatorOverlay::Finalize() {
+    // シーン終了後にSprite参照やデバッグ固定状態を持ち越さない。
     sprites_.clear();
     panel_ = {};
     icon_ = {};
@@ -49,6 +52,7 @@ void SaveIndicatorOverlay::Finalize() {
 }
 
 void SaveIndicatorOverlay::Play(float holdDuration) {
+    // 連続保存でも表示時計を先頭へ戻し、最低表示時間を確保する。
     holdDuration_ = std::max(0.35f, holdDuration);
     timer_ = 0.0f;
     isActive_ = true;
@@ -91,6 +95,7 @@ void SaveIndicatorOverlay::Update(float deltaTime) {
 }
 
 void SaveIndicatorOverlay::Draw() {
+    // 保存通知が無効な間はSpriteの描画要求自体を出さない。
     if (!IsActive()) {
         return;
     }
@@ -103,6 +108,7 @@ void SaveIndicatorOverlay::Draw() {
 }
 
 void SaveIndicatorOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    // リプレイ復元で通知の見た目も同じフレームへ戻せるよう登録する。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
     for (const auto& sprite : sprites_) {
         if (sprite) {
@@ -112,10 +118,12 @@ void SaveIndicatorOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySpri
 }
 
 void SaveIndicatorOverlay::CaptureReplayState(json& state) const {
+    // 表示時計とデバッグ固定を併せて記録し、再生時の消える時刻を合わせる。
     state = {{"active", isActive_}, {"debugHold", debugHold_}, {"timer", timer_}, {"holdDuration", holdDuration_}};
 }
 
 void SaveIndicatorOverlay::RestoreReplayState(const json& state) {
+    // 欠けた項目は現在値を保ち、復元後に0秒更新で見た目を同期する。
     if (!state.is_object()) {
         return;
     }
@@ -128,6 +136,7 @@ void SaveIndicatorOverlay::RestoreReplayState(const json& state) {
 
 #ifdef USE_IMGUI
 void SaveIndicatorOverlay::DrawImGui() {
+    // 表示固定は保存処理を起こさず、通知の見た目だけを確認するために使う。
     if (ImGui::Button("セーブ中表示を再生", ImVec2(-1.0f, 28.0f))) {
         Play(1.35f);
     }
@@ -197,6 +206,7 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
 }
 
 void SaveIndicatorOverlay::BindSprites() {
+    // レイアウト内の名前で三要素を探し、アニメーションの基準値を控える。
     panel_.sprite = FindSprite("save_indicator_panel");
     icon_.sprite = FindSprite("save_indicator_icon");
     text_.sprite = FindSprite("save_indicator_text");
@@ -207,6 +217,7 @@ void SaveIndicatorOverlay::BindSprites() {
 }
 
 Sprite* SaveIndicatorOverlay::FindSprite(const std::string& name) const {
+    // 未定義の要素はnullptrを返し、部分的なレイアウトでも描けるようにする。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
             return sprite.get();
@@ -216,6 +227,7 @@ Sprite* SaveIndicatorOverlay::FindSprite(const std::string& name) const {
 }
 
 void SaveIndicatorOverlay::SetAllVisible(bool visible) {
+    // 個々の演出位置を変えず、通知全体の表示状態だけを切り替える。
     for (auto& sprite : sprites_) {
         if (sprite) {
             sprite->SetVisible(visible);
@@ -224,6 +236,7 @@ void SaveIndicatorOverlay::SetAllVisible(bool visible) {
 }
 
 void SaveIndicatorOverlay::CaptureBaseState(SpriteState& state) {
+    // 拡縮や回転を毎回初期値から計算し、連続再生で変形を累積させない。
     if (!state.sprite) {
         return;
     }
@@ -235,6 +248,7 @@ void SaveIndicatorOverlay::CaptureBaseState(SpriteState& state) {
 }
 
 void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
+    // 共通透明度に対して、パネルの拡大・アイコンの脈動・文字の揺れを別々に重ねる。
     const float appear = EaseOutBack(std::min(timer_ / kFadeInDuration, 1.0f));
     const float pulse = std::sin(timer_ * 5.0f);
 

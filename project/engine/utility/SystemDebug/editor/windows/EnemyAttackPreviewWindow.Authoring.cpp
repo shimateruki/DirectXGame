@@ -68,6 +68,7 @@ bool SelectJson(const char* label, const char* directory, std::string& path, Pro
 #endif
 
 void EnemyAttackPreviewWindow::StopPlacementPreview() {
+    // 未確定のギズモ操作を履歴へ閉じ、仮配置のObjectとGPUプレビューを同時に片付けます。
     if (placementGizmoUsing_) {
         authoringGestureOpen_ = false;
         RememberSequenceEdit(placementGestureBefore_);
@@ -94,6 +95,7 @@ void EnemyAttackPreviewWindow::StopPlacementPreview() {
 }
 
 void EnemyAttackPreviewWindow::BeginPlacementPreview() {
+    // 本編再生中の配置を拒否し、現在の編集内容から専用プレビューを作り直します。
     if (!IsCurrentSceneReady() || sceneManager_->IsPlaying()) {
         profileStatus_ = "編集モードのSceneを開いてから配置を確認してください。";
         return;
@@ -250,6 +252,7 @@ void EnemyAttackPreviewWindow::ReloadAuthoringProfile() {
 }
 
 void EnemyAttackPreviewWindow::RememberSequenceEdit(const AttackSequenceDefinition& before) {
+    // 連続ドラッグは一操作として扱い、Undoには操作開始前の状態だけを積みます。
     if (!authoringGestureOpen_) {
         if (authoringUndo_.size() == 64) authoringUndo_.erase(authoringUndo_.begin());
         authoringUndo_.push_back(before);
@@ -261,6 +264,7 @@ void EnemyAttackPreviewWindow::RememberSequenceEdit(const AttackSequenceDefiniti
 }
 
 void EnemyAttackPreviewWindow::RequestDraftRefresh() {
+    // 自動反映では再生位置を退避し、連続編集を一度の再構築にまとめます。
     if (!autoApplyDraft_ || !useDraftProfile_ || !enabled_ || placementPreview_) return;
     if (!draftRefreshPending_) {
         draftRefreshTime_ = elapsedTime_;
@@ -272,6 +276,7 @@ void EnemyAttackPreviewWindow::RequestDraftRefresh() {
 }
 
 void EnemyAttackPreviewWindow::PreviewDraft(bool keepTime) {
+    // 保存前の定義を検証してから、必要なら同じ再生時刻へ戻して差を確認します。
     const auto* attack = GetSelectedAttackDefinition();
     if (!attack || !attack->sequence.enabled || !IsCurrentSceneReady() || sceneManager_->IsPlaying()) {
         draftRefreshPending_ = false;
@@ -790,6 +795,7 @@ void EnemyAttackPreviewWindow::DrawTrackInspector() {
 
 void EnemyAttackPreviewWindow::DrawProjectileInspector() {
 #ifdef USE_IMGUI
+    // 選択イベントの構成を編集し、変更前の定義をUndo単位として残します。
     DrawPlacementControls();
     auto* attack = GetSelectedAttackDefinition();
     const int index = -2 - selectedTrack_;
@@ -912,6 +918,7 @@ void EnemyAttackPreviewWindow::DrawProjectileInspector() {
 
 void EnemyAttackPreviewWindow::DrawTrackTimeline() {
 #ifdef USE_IMGUI
+    // 共通ランタイムを持つ攻撃だけ編集可能な時間軸を出し、観測専用攻撃は区別します。
     auto* attack = GetSelectedAttackDefinition();
     if (!attack) return;
     if (!attack->sequence.enabled) {
@@ -1037,6 +1044,7 @@ void EnemyAttackPreviewWindow::DrawAttackOverlay(float x, float y, float width, 
 }
 
 EnemyAttackPreviewWindow::AuthoringSelectionKind EnemyAttackPreviewWindow::GetAuthoringSelectionKind() const {
+    // 負のトラック番号は攻撃全体と発射イベントへ割り当てています。
     if (authoringActorSelected_) return AuthoringSelectionKind::Actor;
     return selectedTrack_ == -1 ? AuthoringSelectionKind::Attack :
         selectedTrack_ <= -2 ? AuthoringSelectionKind::Event : AuthoringSelectionKind::Track;
@@ -1044,6 +1052,7 @@ EnemyAttackPreviewWindow::AuthoringSelectionKind EnemyAttackPreviewWindow::GetAu
 
 bool EnemyAttackPreviewWindow::IsAuthoringViewportActive() const {
 #ifdef USE_IMGUI
+    // このEditorが選択され、Scene停止中のときだけ配置操作を受けます。
     return enabled_ && !crownMovieMode_ && EditorManager::GetInstance()->GetSelectedObject() == this &&
         sceneManager_ && !sceneManager_->IsPlaying();
 #else
@@ -1052,6 +1061,7 @@ bool EnemyAttackPreviewWindow::IsAuthoringViewportActive() const {
 }
 
 bool EnemyAttackPreviewWindow::GetPlacementTransform(Vector3& position, Vector3& rotation, Vector3& scale) {
+    // 術者と標的からローカル基準を作り、選択した構成のギズモ位置に変換します。
     const auto* attack = GetSelectedAttackDefinition();
     Object3d* actor = playerCopyMode_ ? static_cast<Object3d*>(previewPlayer_) : static_cast<Object3d*>(previewEnemy_);
     if (!attack || !actor || GetAuthoringSelectionKind() == AuthoringSelectionKind::Actor || selectedTrack_ == -1) return false;
@@ -1131,6 +1141,7 @@ void EnemyAttackPreviewWindow::ApplyPlacementTransform(const Vector3& position, 
 
 void EnemyAttackPreviewWindow::DrawPlacementControls() {
 #ifdef USE_IMGUI
+    // 本体アニメーションは配置対象ではないため、生成物と判定だけ操作を出します。
     const auto* attack = GetSelectedAttackDefinition();
     if (!attack || selectedTrack_ == -1) return;
     if (selectedTrack_ <= -2 && -2-selectedTrack_ >= static_cast<int>(attack->sequence.events.size())) return;
@@ -1175,6 +1186,7 @@ void EnemyAttackPreviewWindow::DrawPlacementControls() {
 
 void EnemyAttackPreviewWindow::DrawPlacementGizmo(float x,float y,float width,float height) {
 #ifdef USE_IMGUI
+    // Game Viewの矩形へ投影した位置にギズモを重ね、Scene上の選択物を操作します。
     if (!placementPreview_) return;
     Vector3 position, rotation, scale;
     if (!GetPlacementTransform(position,rotation,scale)) return;

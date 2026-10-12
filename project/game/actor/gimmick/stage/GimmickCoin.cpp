@@ -17,9 +17,13 @@ constexpr float kDropBounceRate = 0.42f;
 constexpr float kDropGroundFriction = 0.86f;
 constexpr float kDropStopSpeed = 0.45f;
 
-json Vector3ToReplayJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json Vector3ToReplayJson(const Vector3& value) {
+    // Replay の保存形式を三要素配列に揃えます。
+    return json::array({value.x, value.y, value.z});
+}
 
 Vector3 ReplayJsonToVector3(const json& value, const Vector3& fallback) {
+    // 旧記録や欠損データでは現在の値を維持します。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
@@ -30,6 +34,7 @@ Vector3 ReplayJsonToVector3(const json& value, const Vector3& fallback) {
 void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // コインはプレイヤーだけが拾える球トリガーとして初期化します。
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
     SetColliderType(ColliderType::kSphere);
@@ -55,6 +60,7 @@ void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelNam
 }
 
 void GimmickCoin::Update(float deltaTime) {
+    // 取得時の跳ね上がりと、一時ドロップの落下・寿命は通常の回転より優先します。
     Vector3 rotate = GetRotation();
 
     if (isCollected_) {
@@ -106,6 +112,7 @@ void GimmickCoin::Update(float deltaTime) {
 
 void GimmickCoin::ConfigureTemporaryDrop(const Vector3& initialVelocity, float lifetime, float blinkStartTime,
                                          float groundY) {
+    // モデルの底面と地面を揃え、落下中の見た目が地形へ埋まらないようにします。
     isTemporaryDrop_ = true;
     dropVelocity_ = initialVelocity;
     dropLifetime_ = (std::max)(0.2f, lifetime);
@@ -176,6 +183,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
 }
 
 bool GimmickCoin::OnCollision(Object3d* other) {
+    // 取得済みなら同じ接触から枚数を二度加算しません。
     if (isCollected_) {
         return false;
     }
@@ -210,6 +218,7 @@ void GimmickCoin::Collect() {
 }
 
 void GimmickCoin::RequestSelfRemove() {
+    // 描画・衝突の走査中に直接破棄せず、シーンの遅延削除へ依頼します。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (scene) {
         scene->RequestRemoveObject(this);
@@ -217,6 +226,7 @@ void GimmickCoin::RequestSelfRemove() {
 }
 
 void GimmickCoin::CaptureReplayCustomState(json& state) const {
+    // 取得演出と一時ドロップの進行を保存し、Replay 再開後も同じ位置から続けます。
     BaseGimmick::CaptureReplayCustomState(state);
     state["coinCollected"] = isCollected_;
     state["coinTemporaryDrop"] = isTemporaryDrop_;
@@ -234,6 +244,7 @@ void GimmickCoin::CaptureReplayCustomState(json& state) const {
 }
 
 void GimmickCoin::RestoreReplayCustomState(const json& state) {
+    // 欠けたキーは既定値のままにして、古い Replay も読めるようにします。
     BaseGimmick::RestoreReplayCustomState(state);
     isCollected_ = state.value("coinCollected", isCollected_);
     isTemporaryDrop_ = state.value("coinTemporaryDrop", isTemporaryDrop_);
@@ -257,6 +268,7 @@ void GimmickCoin::RestoreReplayCustomState(const json& state) {
 }
 
 std::unique_ptr<Object3d> GimmickCoin::Clone() const {
+    // 複製先の描画資源を初期化した上で、設定されたコインの見た目を引き継ぎます。
     auto newObj = std::make_unique<GimmickCoin>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

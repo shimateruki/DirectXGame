@@ -15,6 +15,7 @@ namespace fs = std::filesystem;
 
 // 参照の検出結果と修復候補だけを描画します。走査・変更処理は本体側に置きます。
 void AssetReferenceExplorer::DrawAssetBrowser() {
+    // 退避先を除いたAssetだけを表示し、パス文字列で絞り込みます。
     AssetDatabase* database = AssetDatabase::GetInstance();
     ImGui::InputTextWithHint("##AssetReferenceFilter", "Asset名・Pathで絞り込み", assetFilter_, sizeof(assetFilter_));
     ImGui::Separator();
@@ -35,6 +36,7 @@ void AssetReferenceExplorer::DrawAssetBrowser() {
 }
 
 void AssetReferenceExplorer::DrawUsageList(const std::vector<Usage>& usages, UsageKind kind) const {
+    // 参照元とJSON Pointerを併記し、同名Assetのどの設定か追えるようにします。
     int count = 0;
     for (const Usage& usage : usages) {
         if (usage.kind != kind) continue;
@@ -48,6 +50,7 @@ void AssetReferenceExplorer::DrawUsageList(const std::vector<Usage>& usages, Usa
 }
 
 void AssetReferenceExplorer::DrawSelectedAssetDetails() {
+    // GUIDを索引へ引き直し、更新で消えたAssetの古いポインタは使いません。
     const EditorAssetRecord* asset = AssetDatabase::GetInstance()->FindByGuid(selectedGuid_);
     if (!asset) {
         ImGui::TextDisabled("左の一覧からAssetを選択してください。");
@@ -125,6 +128,7 @@ void AssetReferenceExplorer::DrawSelectedAssetDetails() {
 }
 
 void AssetReferenceExplorer::DrawSelectedObjectReferences() {
+    // 選択Objectをその場でJSON化して、保存前のAsset参照も確認します。
     Object3d* object = editor_ ? editor_->GetSelectedObject() : nullptr;
     if (!object) {
         ImGui::TextDisabled("HierarchyまたはGameViewでObjectを選択してください。");
@@ -149,6 +153,7 @@ void AssetReferenceExplorer::DrawSelectedObjectReferences() {
 }
 
 void AssetReferenceExplorer::DrawMissingReferences() {
+    // 未解決候補には名前参照も含むため、修復は自動一括ではなく個別に提示します。
     if (missingReferences_.empty()) {
         ImGui::TextDisabled("Missing参照候補はありません。");
         return;
@@ -183,6 +188,7 @@ void AssetReferenceExplorer::DrawMissingReferences() {
 }
 
 void AssetReferenceExplorer::Draw() {
+    // Asset索引の世代が変わった時だけ参照関係を再計算します。
     if (!open_) return;
     AssetDatabase* database = AssetDatabase::GetInstance();
     if (rescanRequested_ || indexedGeneration_ != database->GetGeneration()) RefreshIndex();

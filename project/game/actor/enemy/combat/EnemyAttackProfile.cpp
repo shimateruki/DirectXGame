@@ -24,6 +24,7 @@ std::mutex gProfileCacheMutex;
 std::unordered_map<std::string, EnemyAttackProfile> gProfileCache;
 
 float ReadFloat(const json& object, const char* key, float fallback) {
+    // 欠損やNaNを既定値へ戻し、後段の距離・秒数計算へ不正値を流さない。
     const auto it = object.find(key);
     if (it == object.end() || !it->is_number()) {
         return fallback;
@@ -33,6 +34,7 @@ float ReadFloat(const json& object, const char* key, float fallback) {
 }
 
 std::string ReadString(const json& object, const char* key, const std::string& fallback) {
+    // 古いJSONにキーがなくても既定の表示名やアセット名を維持する。
     const auto it = object.find(key);
     if (it == object.end() || !it->is_string()) {
         return fallback;
@@ -41,6 +43,7 @@ std::string ReadString(const json& object, const char* key, const std::string& f
 }
 
 Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback) {
+    // 3軸がすべて数値の場合だけ採用し、部分的な配列は既定値へ戻す。
     const auto it = object.find(key);
     if (it == object.end() || !it->is_array() || it->size() < 3 || !(*it)[0].is_number() || !(*it)[1].is_number() ||
         !(*it)[2].is_number()) {
@@ -49,9 +52,13 @@ Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback
     return {(*it)[0].get<float>(), (*it)[1].get<float>(), (*it)[2].get<float>()};
 }
 
-json WriteVector3(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json WriteVector3(const Vector3& value) {
+    // 読み込み側と同じXYZ順の配列として保存する。
+    return json::array({value.x, value.y, value.z});
+}
 
 json WriteProjectile(const AttackProjectileComponent& p) {
+    // 弾の判定・移動・外観を同じ部品の下にまとめ、攻撃定義から独立して保存する。
     const auto& a = p.appearance;
     return {{"model", p.model}, {"style", p.style}, {"collisionEnabled", p.collisionEnabled},
         {"radius", p.radius}, {"lifetime", p.lifetime}, {"minSpeed", p.minSpeed}, {"maxSpeed", p.maxSpeed},
@@ -63,6 +70,7 @@ json WriteProjectile(const AttackProjectileComponent& p) {
 }
 
 AttackProjectileComponent ReadProjectile(const json& source) {
+    // 省略された項目は部品の既定値を使い、最後に組み合わせ全体を検証する。
     AttackProjectileComponent p;
     p.configured = true;
     p.model = source.value("model", p.model); p.style = source.value("style", p.style);
@@ -88,6 +96,7 @@ AttackProjectileComponent ReadProjectile(const json& source) {
 }
 
 json WriteSequence(const AttackSequenceDefinition& sequence) {
+    // 時間順のイベントと見た目・判定トラックを一つの攻撃アセットに書き出す。
     json tracks = json::array();
     for (const auto& track : sequence.tracks) {
         json keys = json::array();
@@ -134,6 +143,7 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
 }
 
 void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
+    // 外部アセット参照があればそれを優先し、なければJSON内のトラックを復元する。
     const std::string assetPath = source.value("assetPath", std::string{});
     if (!assetPath.empty()) {
         std::string error;
@@ -245,6 +255,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
 }
 
 void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
+    // 既定攻撃へ設定済みの項目だけ上書きし、古いJSONの欠損項目は既定値を残す。
     attack.selectionWeight = source.value("selectionWeight", 1.0f);
     if (!std::isfinite(attack.selectionWeight) || attack.selectionWeight < 0 || attack.selectionWeight > 100000)
         throw std::runtime_error("攻撃の抽選重みが不正です。");
@@ -312,6 +323,7 @@ void MergeAttackJson(const json& source, EnemyAttackDefinition& attack) {
 }
 
 json WriteAttackJson(const EnemyAttackDefinition& attack) {
+    // 編集画面とランタイムが参照する項目を同じ階層構造で保存する。
     return {{"id", attack.id}, {"selectionWeight", attack.selectionWeight},
             {"sequence", WriteSequence(attack.sequence)},
             {"displayName", attack.displayName},
@@ -355,6 +367,7 @@ EnemyAttackDefinition MakeAttack(const char* id, const char* displayName, float 
                                  float windup, float active, float recovery, float cooldown, float warningLead,
                                  float damage, float minSpeed, float maxSpeed, float lifetime, float previewDistance,
                                  float previewDuration) {
+    // JSONがない場合にも既存の敵攻撃を使えるよう、共通の既定値を組み立てる。
     EnemyAttackDefinition attack;
     attack.id = id;
     attack.displayName = displayName;
@@ -377,6 +390,7 @@ EnemyAttackDefinition MakeAttack(const char* id, const char* displayName, float 
 } // namespace
 
 bool EnemyAttackProfile::SaveSequenceAsset(const std::string& path, const AttackSequenceDefinition& sequence, std::string* error) {
+    // 検証済みの一時ファイルを書き切ってから置換し、保存途中の元ファイル破損を避ける。
     try {
         auto content = sequence;
         content.enabled = true;
@@ -403,6 +417,7 @@ bool EnemyAttackProfile::SaveSequenceAsset(const std::string& path, const Attack
 }
 
 bool EnemyAttackProfile::LoadSequenceAsset(const std::string& path, AttackSequenceDefinition& sequence, std::string* error) {
+    // アセットの入れ子参照を禁じ、呼び出し元の結び付けと優先度は読み込み後に維持する。
     try {
         std::ifstream file(std::filesystem::path(std::u8string(path.begin(), path.end())), std::ios::binary);
         if (!file) throw std::runtime_error("攻撃アセットを開けません: " + path);
@@ -428,6 +443,7 @@ bool EnemyAttackProfile::LoadSequenceAsset(const std::string& path, AttackSequen
 }
 
 float EnemyAttackDefinition::GetPhaseDuration(AttackAbilityPhase phase) const {
+    // 未設定や負値の秒数は0として扱い、段階遷移が逆行しないようにする。
     switch (phase) {
     case AttackAbilityPhase::Windup:
         return (std::max)(0.0f, windupDuration);
@@ -444,28 +460,38 @@ float EnemyAttackDefinition::GetPhaseDuration(AttackAbilityPhase phase) const {
 }
 
 float EnemyAttackDefinition::GetPhaseProgressFromElapsed(AttackAbilityPhase phase, float elapsed) const {
+    // 長さ0の段階でも除算できるよう、計算用の下限だけ設ける。
     const float duration = (std::max)(0.01f, GetPhaseDuration(phase));
     return std::clamp(elapsed / duration, 0.0f, 1.0f);
 }
 
 float EnemyAttackDefinition::GetPhaseProgressFromRemaining(AttackAbilityPhase phase, float remaining) const {
+    // 残り秒数から予兆描画用の進行率へ変換する。
     const float duration = (std::max)(0.01f, GetPhaseDuration(phase));
     return 1.0f - std::clamp(remaining / duration, 0.0f, 1.0f);
 }
 
 float EnemyAttackDefinition::GetActionDuration() const {
+    // 再使用待ちは攻撃動作の長さに含めず、予備動作から硬直までを合計する。
     return (std::max)(0.0f, windupDuration) + (std::max)(0.0f, activeDuration) + (std::max)(0.0f, recoveryDuration);
 }
 
-float EnemyAttackDefinition::GetTotalDuration() const { return GetActionDuration() + (std::max)(0.0f, cooldown); }
+float EnemyAttackDefinition::GetTotalDuration() const {
+    // プレビュー1周の長さには、攻撃後の再使用待ちも含める。
+    return GetActionDuration() + (std::max)(0.0f, cooldown);
+}
 
 bool EnemyAttackDefinition::IsCancelWindowOpen(float elapsedActionTime) const {
+    // 開始と終了が同じ場合は窓を無効とし、入力の境界時刻だけ両端を含める。
     const float start = (std::max)(0.0f, cancelWindowStart);
     const float end = (std::max)(start, cancelWindowEnd);
     return end > start && elapsedActionTime >= start && elapsedActionTime <= end;
 }
 
-bool EnemyAttackDefinition::HasConfiguredKnockback() const { return Math::Length(knockbackVelocity) > 0.001f; }
+bool EnemyAttackDefinition::HasConfiguredKnockback() const {
+    // ほぼゼロの設定は旧処理のノックバック値に任せる。
+    return Math::Length(knockbackVelocity) > 0.001f;
+}
 
 Vector3 EnemyAttackDefinition::ResolveKnockback(const Vector3& forward, const Vector3& legacyFallback) const {
     if (!HasConfiguredKnockback()) {
@@ -484,6 +510,7 @@ Vector3 EnemyAttackDefinition::ResolveKnockback(const Vector3& forward, const Ve
 }
 
 float EnemyAttackDefinition::ResolveInvincibilityDuration(float legacyFallback) const {
+    // 個別設定が0以下なら従来の被弾無敵時間を維持する。
     return invincibilityDuration > 0.0f ? invincibilityDuration : (std::max)(0.0f, legacyFallback);
 }
 
@@ -690,6 +717,7 @@ EnemyAttackProfile EnemyAttackProfile::CreateDefault(const std::string& type) {
 }
 
 std::string EnemyAttackProfile::GetDefaultPath(const std::string& type) {
+    // C++の敵タイプ名をスネークケースへ変換し、既定の攻撃JSON名と揃える。
     std::string fileName;
     fileName.reserve(type.size());
     for (char character : type) {
@@ -731,6 +759,7 @@ bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttack
 }
 
 void EnemyAttackProfile::InvalidateCache(const std::string& type) {
+    // 空文字は全件再読込の指示とし、エディターの保存後に古い定義を使わない。
     std::lock_guard<std::mutex> lock(gProfileCacheMutex);
     if (type.empty()) {
         gProfileCache.clear();
@@ -740,6 +769,7 @@ void EnemyAttackProfile::InvalidateCache(const std::string& type) {
 }
 
 bool EnemyAttackProfile::LoadForEnemy(const std::string& type, std::string* errorMessage) {
+    // 読み込み前に既定攻撃を用意し、ファイル欠損時も呼び出し元が使える状態を保つ。
     *this = CreateDefault(type);
     const std::string path = GetDefaultPath(type);
     if (!std::filesystem::exists(path)) {
@@ -765,6 +795,7 @@ bool EnemyAttackProfile::LoadForEnemy(const std::string& type, std::string* erro
 
 // 攻撃プロファイルを読み込んだ後に値を正規化し、欠損した調整値を安全な範囲へ収めます。
 bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* errorMessage) {
+    // JSONの攻撃IDで既定値と照合し、検証が済んでからプロフィール全体を反映する。
     try {
         std::ifstream file(std::filesystem::path(std::u8string(path.begin(), path.end())), std::ios::binary);
         if (!file.is_open()) {
@@ -836,6 +867,7 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
 }
 
 bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorMessage) const {
+    // 全攻撃を検証し、一時ファイルへの書き込み成功後に元JSONを置き換える。
     try {
         if (selectionMode != "priority" && selectionMode != "uniform" && selectionMode != "weighted")
             throw std::runtime_error("未対応の攻撃選択方式です。");
@@ -896,12 +928,14 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
 }
 
 const EnemyAttackDefinition* EnemyAttackProfile::FindAttack(const std::string& attackId) const {
+    // IDをキーに検索し、未登録なら呼び出し側が代替動作を選べるようnullptrを返す。
     const auto it = std::find_if(attacks.begin(), attacks.end(),
                                  [&](const EnemyAttackDefinition& attack) { return attack.id == attackId; });
     return it != attacks.end() ? &*it : nullptr;
 }
 
 EnemyAttackDefinition* EnemyAttackProfile::FindAttack(const std::string& attackId) {
+    // エディターの更新対象をIDで特定し、配列内の同じ定義を返す。
     const auto it = std::find_if(attacks.begin(), attacks.end(),
                                  [&](const EnemyAttackDefinition& attack) { return attack.id == attackId; });
     return it != attacks.end() ? &*it : nullptr;
@@ -909,6 +943,7 @@ EnemyAttackDefinition* EnemyAttackProfile::FindAttack(const std::string& attackI
 
 const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, float detectionRange,
     const std::string& previewId, float roll) const {
+    // 距離と結び付け条件で候補を絞り、プレビュー指定または優先度・抽選方式で選ぶ。
     if (!std::isfinite(distance) || distance < 0 || distance > detectionRange) return nullptr;
     std::vector<const EnemyAttackDefinition*> candidates;
     const EnemyAttackDefinition* best = nullptr;

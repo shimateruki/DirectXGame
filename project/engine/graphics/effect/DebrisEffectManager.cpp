@@ -54,6 +54,7 @@ float SafeRatio(float value, float maxValue) {
 }
 
 DebrisEffectManager* DebrisEffectManager::GetInstance() {
+    // 破片プールとプリセットを Scene をまたいで共有する。
     static DebrisEffectManager instance;
     return &instance;
 }
@@ -63,6 +64,7 @@ DebrisEffectManager::DebrisEffectManager()
 }
 
 void DebrisEffectManager::Initialize(Object3dCommon* common) {
+    // 描画共通資源が切り替わったときは旧 GPU バッファを再利用せず作り直す。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     if (common_ != common) {
@@ -91,6 +93,7 @@ void DebrisEffectManager::Initialize(Object3dCommon* common) {
 }
 
 Object3dCommon* DebrisEffectManager::ResolveCommon() {
+    // 現在 Scene の描画資源へ追従し、前 Scene のリソース参照を残さない。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     SceneManager* sceneManager = SceneManager::GetInstance();
@@ -177,6 +180,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 }
 
 void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 破片ごとの WVP・材質を渡し、共通のカメラとライトでメッシュ描画する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     if (activePieces_.empty() || !common_ || !cameraResource_) {
@@ -211,6 +215,7 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
 }
 
 void DebrisEffectManager::Clear() {
+    // GPU リソースを破棄せずプールへ戻し、次の発生で再利用できるようにする。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     while (!activePieces_.empty()) {
@@ -219,17 +224,20 @@ void DebrisEffectManager::Clear() {
 }
 
 void DebrisEffectManager::ResetEditorPreview(uint32_t randomSeed) {
+    // 編集中の再生を同じ乱数列で始め直し、時刻シーク時の見た目を再現する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     Clear();
     randomEngine_.seed(randomSeed);
 }
 
 int DebrisEffectManager::GetActivePieceCount() const {
+    // 更新・描画と同じロックの下で個数を読み、編集 UI への値を安定させる。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     return static_cast<int>(activePieces_.size());
 }
 
 void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
+    // 指定フォルダ直下の JSON を名前で登録し、実ファイルの無い候補は飛ばす。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     namespace fs = std::filesystem;
@@ -249,6 +257,7 @@ void DebrisEffectManager::LoadAllPresets(const std::string& directoryPath) {
 }
 
 bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectConfig& outConfig) const {
+    // 欠けた項目は Config の初期値を使い、古い JSON も読めるようにする。
     std::ifstream file(filePath);
     if (!file.is_open()) {
         return false;
@@ -267,6 +276,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
             }
         }
     }
+    // モデル配列が空でも、発生処理へ空集合を渡さない。
     if (config.modelNames.empty()) {
         config.modelNames.push_back("Primitives/cube");
     }
@@ -306,6 +316,7 @@ bool DebrisEffectManager::LoadConfig(const std::string& filePath, DebrisEffectCo
 }
 
 bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEffectConfig& config) const {
+    // 編集した発生範囲・物理・材質を同じ JSON キーへ戻す。
     namespace fs = std::filesystem;
     fs::create_directories(fs::path(filePath).parent_path());
 
@@ -352,12 +363,14 @@ bool DebrisEffectManager::SaveConfig(const std::string& filePath, const DebrisEf
 }
 
 void DebrisEffectManager::RegisterPreset(const std::string& presetName, const DebrisEffectConfig& config) {
+    // 編集中の設定を名前で上書きし、以後の Spawn へすぐ反映する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     presets_[presetName] = config;
 }
 
 void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
+    // 発生前にモデルと破片用定数バッファを用意し、初回フレームの遅延を抑える。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     DebrisEffectConfig config;
@@ -395,6 +408,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
         ModelManager::GetInstance()->LoadModel("Primitives/cube");
     }
 
+    // 発生数を上限で制限し、足りない分だけプールを増やす。
     int count = std::clamp(config.spawnCount, 1, static_cast<int>(kMaxActiveDebrisPieces));
     while (pooledPieces_.size() < static_cast<size_t>(count)) {
         DebrisPiece piece;
@@ -406,6 +420,7 @@ void DebrisEffectManager::PrewarmPreset(const std::string& presetName) {
 }
 
 void DebrisEffectManager::PrewarmPresets(const std::vector<std::string>& presetNames) {
+    // 同じプールを複数プリセットから共有し、順に必要量へ拡張する。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     for (const std::string& presetName : presetNames) {
@@ -414,6 +429,7 @@ void DebrisEffectManager::PrewarmPresets(const std::vector<std::string>& presetN
 }
 
 void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& position) {
+    // 登録済み設定を優先し、無いときだけ JSON を読んでキャッシュする。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto it = presets_.find(presetName);
@@ -433,6 +449,7 @@ void DebrisEffectManager::Spawn(const std::string& presetName, const Vector3& po
 }
 
 void DebrisEffectManager::SpawnOnGround(const std::string& presetName, const Vector3& position, float groundY) {
+    // プリセット本体は変更せず、今回の発生に限って衝突面の高さを差し替える。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto it = presets_.find(presetName);
@@ -550,6 +567,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
 }
 
 DebrisEffectManager::DebrisPiece DebrisEffectManager::AcquirePiece() {
+    // プールに残る GPU リソースを移動して取得し、空なら新規初期化へ任せる。
     if (pooledPieces_.empty()) {
         return {};
     }
@@ -577,6 +595,7 @@ void DebrisEffectManager::RecyclePiece(size_t index) {
 }
 
 bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const DebrisEffectConfig& config) {
+    // プールから戻った破片のバッファは再利用し、不足したバッファだけ生成する。
     if (!common_ || !common_->GetDxCommon()) {
         return false;
     }
@@ -634,6 +653,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         piece.shadowWvpData->WorldInverseTranspose = Math::MakeIdentity4x4();
     }
 
+    // 以前の材質値が混ざらないよう、今回のプリセット値で全体を初期化する。
     std::memset(piece.materialData, 0, sizeof(MeshRenderer::MaterialData));
     piece.materialData->color = config.color;
     piece.materialData->enableLighting = 1;
@@ -651,6 +671,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
 }
 
 void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4& viewProjection, const Matrix4x4* lightViewProjection) {
+    // 通常描画と影描画へ同じ world 行列を渡し、破片の向きを一致させる。
     if (!piece.wvpData) {
         return;
     }
@@ -672,6 +693,7 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const Matrix4x4&
 }
 
 float DebrisEffectManager::RandomRange(float minValue, float maxValue) {
+    // JSON で上下限が逆でも同じ範囲を使えるよう、分布生成前に並べ替える。
     if (minValue > maxValue) {
         std::swap(minValue, maxValue);
     }
@@ -680,6 +702,7 @@ float DebrisEffectManager::RandomRange(float minValue, float maxValue) {
 }
 
 int DebrisEffectManager::RandomIndex(int maxExclusive) {
+    // 候補が一つ以下なら乱数を消費せず、配列外参照を防ぐ。
     if (maxExclusive <= 1) {
         return 0;
     }
@@ -688,6 +711,7 @@ int DebrisEffectManager::RandomIndex(int maxExclusive) {
 }
 
 Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& config) {
+    // 基準方向へ水平拡散と垂直範囲を加え、最後に単位方向へ正規化する。
     Vector3 base = Math::Normalize(config.baseDirection);
     if (Math::Length(base) < 0.001f) {
         base = { 0.0f, 0.0f, 1.0f };
@@ -705,6 +729,7 @@ Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& config) {
 }
 
 std::string DebrisEffectManager::ResolvePresetPath(const std::string& presetName) const {
+    // パス指定はそのまま使い、短い名前だけ標準プリセットディレクトリへ解決する。
     if (presetName.find('/') != std::string::npos || presetName.find('\\') != std::string::npos) {
         return presetName;
     }

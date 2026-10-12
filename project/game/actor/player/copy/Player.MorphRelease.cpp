@@ -8,17 +8,23 @@ using namespace PlayerImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 float Player::GetEnemyMorphReleaseRate() const {
+    // 解除演出が止まっている間は進行率を使わせない。
     if (!enemyMorphReleaseActive_ || enemyMorphReleaseDuration_ <= 0.0f) {
         return 0.0f;
     }
     return std::clamp(enemyMorphReleaseTimer_ / enemyMorphReleaseDuration_, 0.0f, 1.0f);
 }
 
-bool Player::IsPinkSlimeMorphed() const { return isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Slime; }
+bool Player::IsPinkSlimeMorphed() const {
+    // 通常のピンクコピーだけに専用ジャンプを許可する。
+    return isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Slime;
+}
 
-void Player::ActivateCheckpoint(const Vector3& position) {
+void Player::ActivateCheckpoint(const Vector3& position, const std::string& checkpointObjectName) {
+    // 復活位置と同時に現在のコピーを記録し、再開時の能力を再現する。
     respawnPosition_ = position;
     checkpointActivated_ = true;
+    checkpointObjectName_ = checkpointObjectName;
     const std::string currentMorph = GetEnemyTypeForCurrentMorph();
     if (!currentMorph.empty()) {
         checkpointMorphEnemyType_ = currentMorph;
@@ -86,6 +92,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
 }
 
 std::string Player::GetEnemyTypeForCurrentMorph() const {
+    // セーブデータには列挙値でなく安定した敵種別名を記録する。
     if (!isEnemyMorphed_) {
         return {};
     }
@@ -106,18 +113,20 @@ std::string Player::GetEnemyTypeForCurrentMorph() const {
 }
 
 void Player::ClearCrownPower() {
+    // 王冠以外のコピーを解除せず、最終戦専用の能力だけ片付ける。
     if (enemyMorphType_ == EnemyMorphType::Crown)
         CancelEnemyMorph();
 }
 
 void Player::RefreshCheckpointMorphSnapshot() {
+    // 有効なチェックポイントだけ永続データへ反映する。
     if (!checkpointActivated_) {
         return;
     }
     const Vector3 position = respawnPosition_;
     GameDataManager::GetInstance()->RequestStageCheckpointRespawn(StageManager::GetInstance()->GetCurrentStageIndex(),
                                                                   position.x, position.y, position.z,
-                                                                  checkpointMorphEnemyType_);
+                                                                  checkpointMorphEnemyType_, checkpointObjectName_);
 }
 
 void Player::BeginEnemyMorphRelease(bool expired) {
@@ -164,6 +173,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
 }
 
 void Player::EmitEnemyMorphReleaseBurst() {
+    // 解除の山場は一度だけ発火し、残像と回収可能な星を重複生成しない。
     if (enemyMorphReleaseBurstStarted_) {
         return;
     }
@@ -228,6 +238,7 @@ void Player::EmitEnemyMorphReleaseBurst() {
 }
 
 void Player::UpdateEnemyMorphRelease(float deltaTime) {
+    // 予備動作、成分の分離、復帰を同じ時計で進めて見た目と操作復帰を同期する。
     if (!enemyMorphReleaseActive_) {
         return;
     }
@@ -314,6 +325,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
 }
 
 void Player::RestoreEnemyMorphAppearance() {
+    // コピー前のモデル・材質・衝突範囲と向きをまとめて復元する。
     if (!isEnemyMorphed_) {
         return;
     }
@@ -378,6 +390,7 @@ void Player::RestoreEnemyMorphAppearance() {
 }
 
 void Player::ResetEnemyMorphRelease() {
+    // 中断された解除演出も、残像と伸縮を残さず初期化する。
     if (enemyMorphReleaseVisual_) {
         enemyMorphReleaseVisual_->SetIsVisible(false);
         enemyMorphReleaseVisual_->SetScale({0.0f, 0.0f, 0.0f});
@@ -396,6 +409,7 @@ void Player::ResetEnemyMorphRelease() {
 }
 
 void Player::CancelEnemyMorph() {
+    // 吸収演出とコピー解除が重なっても、古い照準や無敵状態を持ち越さない。
     if (absorbEffectActive_) {
         CancelAbsorbEffect(true);
     }
@@ -428,7 +442,10 @@ void Player::DebugForceEnemyMorph(BaseEnemy* enemy) {
     }
 }
 
-void Player::DebugClearEnemyMorph() { CancelEnemyMorph(); }
+void Player::DebugClearEnemyMorph() {
+    // デバッグ操作も通常の解除経路を通し、後片付けを共通化する。
+    CancelEnemyMorph();
+}
 
 void Player::DebugPrepareForTeleport() {
     // 移動系演出を先に止め、保存されていた衝突設定を通常状態へ戻します。

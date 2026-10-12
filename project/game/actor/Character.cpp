@@ -43,6 +43,7 @@ void Character::Update(float deltaTime) {
 }
 
 void Character::SyncCharacterMotorSettings() {
+    // ステータスの移動設定を毎フレーム Motor へ同期し、編集値を即座に反映する。
     if (!param_.has_value()) {
         return;
     }
@@ -59,6 +60,7 @@ void Character::SyncCharacterMotorSettings() {
 }
 
 void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
+    // 連続被弾では弱い水平外力で強いノックバックを上書きせず、上方向だけ維持できる。
     const float safeDuration = (std::max)(0.01f, duration);
     if (externalImpulseTimer_ <= 0.0f) {
         externalImpulseVelocity_ = velocity;
@@ -82,7 +84,7 @@ void Character::ApplyExternalImpulse(const Vector3& velocity, float duration) {
 }
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-
+    // キャラクター固有の描画はここで加えず、共通のライト付き 3D 描画経路を使う。
     Object3d::Draw(pointLightResource, spotLightResource);
 }
 

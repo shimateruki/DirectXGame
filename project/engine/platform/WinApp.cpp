@@ -49,9 +49,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-// Win32ウィンドウを作成し、実際のクライアントサイズをエンジン側へ反映する。
-
 void WinApp::Initialize(const wchar_t* title, int width, int height) {
+    // Win32ウィンドウを作成し、実際のクライアントサイズをエンジン側へ反映する。
     hInstance_ = GetModuleHandle(nullptr);
     timeBeginPeriod(1);
 
@@ -99,6 +98,7 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
 }
 
 WinApp::DisplayState WinApp::CaptureDisplayState() const {
+    // 表示切替前のウィンドウ様式と配置を対で保持し、元の表示へ戻せるようにする。
     DisplayState state;
     state.style = GetWindowLongPtr(hwnd_, GWL_STYLE);
     GetWindowPlacement(hwnd_, &state.placement);
@@ -106,6 +106,7 @@ WinApp::DisplayState WinApp::CaptureDisplayState() const {
 }
 
 bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
+    // 対応解像度とモニターの作業領域を確認してからウィンドウ様式を変更する。
     if (!hwnd_ || width < 960 || height < 540 || width > 7680 || height > 4320) return false;
     MONITORINFO monitor{ sizeof(MONITORINFO) };
     if (!GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor)) return false;
@@ -127,6 +128,7 @@ bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
 }
 
 void WinApp::RestoreDisplayState(const DisplayState& state) {
+    // 保存した配置を戻した後、FRAMECHANGEDで非クライアント領域を更新する。
     SetWindowLongPtr(hwnd_, GWL_STYLE, state.style);
     SetWindowPlacement(hwnd_, &state.placement);
     SetWindowPos(hwnd_, nullptr, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
@@ -167,15 +169,13 @@ bool WinApp::Update() {
     return false;
 }
 
-// 即終了せず、ゲーム側で未保存確認などを挟めるよう終了要求だけを立てる。
-
 void WinApp::RequestClose() {
+    // 即終了せず、ゲーム側で未保存確認などを挟めるよう終了要求だけを立てる。
     closeRequested_ = true;
 }
 
-// 保留中の終了要求を一度だけ取り出し、処理済みに戻す。
-
 bool WinApp::ConsumeCloseRequest() {
+    // 保留中の終了要求を一度だけ取り出し、処理済みに戻す。
     if (!closeRequested_) {
         return false;
     }
@@ -183,16 +183,14 @@ bool WinApp::ConsumeCloseRequest() {
     return true;
 }
 
-// 確認なしでWM_QUITを発行し、アプリケーション終了へ進める。
-
 void WinApp::CloseNow() {
+    // 確認なしでWM_QUITを発行し、アプリケーション終了へ進める。
     closeRequested_ = false;
     PostQuitMessage(0);
 }
 
-// ShowCursorの内部カウンタを調整し、カーソル表示状態を確実に切り替える。
-
 void WinApp::SetCursorVisibility(bool isVisible) {
+    // ShowCursorの内部カウンタを調整し、カーソル表示状態を確実に切り替える。
     if (isVisible) {
         // 確実に見えるようになる(0以上になる)まで TRUE を呼ぶ
         while (ShowCursor(TRUE) < 0);
@@ -233,8 +231,7 @@ void WinApp::SetCursorClipping(bool isClipping) {
     }
 }
 
-// 毎フレームカーソルを画面中央へ戻すロック状態を切り替える。
-
 void WinApp::SetCursorLocked(bool isLocked) {
+    // 毎フレームカーソルを画面中央へ戻すロック状態を切り替える。
     isCursorLocked_ = isLocked;
 }

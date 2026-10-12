@@ -37,6 +37,7 @@ constexpr int kSlimeSoftMaterialType = 25;
 constexpr int kPrismCrystalMaterialType = 27;
 
 void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
+    // 全配置物の生成後に敵の参照を結び、読み込み順による未解決を防ぐ。
     if (!scene) {
         return;
     }
@@ -53,17 +54,20 @@ void ConfigureEnemyRuntimeReferencesInternal(BaseScene* scene) {
 }
 
 bool IsSlimeEnemyType(const std::string& enemyType) {
+    // スライム用の軟質材質を適用する種類だけを列挙する。
     return enemyType == "Slime" || enemyType == "Bomber" || enemyType == "FireSlime" || enemyType == "ThunderSlime" ||
            enemyType == "WindSlime" || enemyType == "GiantSlime" || enemyType == "PrismSlime" ||
            enemyType == "MagmaSlime";
 }
 
 bool IsSlimeModelName(std::string modelName) {
+    // JSON の区切り文字差を吸収して、既存モデル名の分類を安定させる。
     std::replace(modelName.begin(), modelName.end(), '\\', '/');
     return modelName.find("Characters/slime") != std::string::npos;
 }
 
 void ApplySlimeSoftMaterialIfStandard(Object3d* object) {
+    // エディターで明示した材質は尊重し、標準材質の時だけ柔らかい見た目へ変える。
     if (object && object->GetMaterialType() == 0) {
         object->SetMaterialType(kSlimeSoftMaterialType);
     }
@@ -99,6 +103,7 @@ void ApplySlimeMaterialDefault(Object3d* object) {
 }
 
 void ApplyLodConfig(Object3d* object, const json& objData) {
+    // 個々の配置物の LOD 設定を読み、未設定なら既存の描画設定を保つ。
     if (!object || !objData.contains("lod") || !objData["lod"].is_object()) {
         return;
     }
@@ -128,6 +133,7 @@ void ApplyLodConfig(Object3d* object, const json& objData) {
 }
 
 bool TryReadVector3(const json& value, float& x, float& y, float& z) {
+    // 形式が異なる旧データでは出力引数を変更せず、呼び出し側へ失敗を返す。
     if (!value.is_array() || value.size() < 3 || !value[0].is_number() || !value[1].is_number() ||
         !value[2].is_number()) {
         return false;
@@ -140,6 +146,7 @@ bool TryReadVector3(const json& value, float& x, float& y, float& z) {
 }
 
 json ConvertBlenderVector(const json& value, bool negate) {
+    // Blender 側の軸順をゲーム側へ揃え、回転だけ符号を反転する。
     float x = 0.0f;
     float y = 0.0f;
     float z = 0.0f;
@@ -154,6 +161,7 @@ json ConvertBlenderVector(const json& value, bool negate) {
 }
 
 json NormalizeLevelObject(const json& source, const std::string& inheritedParentName) {
+    // 旧形式の Transform と親子名を現行の配置 JSON へ移し、元の未知項目は残す。
     json normalized = source;
     const bool hasLegacyTransform = source.contains("transform") && source["transform"].is_object();
 
@@ -245,6 +253,7 @@ void AppendNormalizedLevelObjects(const json& sourceObjects, json& destination,
 }
 
 bool RequiresLevelObjectNormalization(const json& sourceObjects) {
+    // 旧形式の印がある時だけ変換し、現行の配置値を二重変換しない。
     if (!sourceObjects.is_array()) {
         return false;
     }
@@ -275,7 +284,10 @@ bool RequiresLevelObjectNormalization(const json& sourceObjects) {
 
 // シーンJSONから配置物を生成し、参照を接続します。生成と紐付けを分け、読み込み順に依存する敵・ギミックを扱います。
 
-void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) { ConfigureEnemyRuntimeReferencesInternal(scene); }
+void LevelLoader::ConfigureEnemyRuntimeReferences(BaseScene* scene) {
+    // 読み込み側とシーン再構築側から同じ参照解決処理を使う。
+    ConfigureEnemyRuntimeReferencesInternal(scene);
+}
 
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
     // 配置物の生成前に編集済みプリセットとステータスを読み、生成直後の適用値をそろえます。
@@ -763,6 +775,15 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         config.rotation.x = colData["rotation"][0];
                         config.rotation.y = colData["rotation"][1];
                         config.rotation.z = colData["rotation"][2];
+                    }
+                    config.footprint.clear();
+                    if (colData.contains("footprint") && colData["footprint"].is_array()) {
+                        for (const auto& point : colData["footprint"]) {
+                            if (point.is_array() && point.size() == 2 &&
+                                point[0].is_number() && point[1].is_number()) {
+                                config.footprint.push_back({ point[0].get<float>(), point[1].get<float>() });
+                            }
+                        }
                     }
                     targetObject->SetColliderConfig(config);
                 }

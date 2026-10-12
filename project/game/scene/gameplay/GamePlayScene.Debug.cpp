@@ -34,6 +34,7 @@ constexpr float kDebugTeleportCameraHeight = 3.2f;
 constexpr float kDebugTeleportCameraPitch = 0.32f;
 
 const char* GetDebugMorphDisplayName(Player::EnemyMorphType type) {
+    // 内部の変身種別を、デバッグUIで識別できる日本語名へ変換する。
     switch (type) {
     case Player::EnemyMorphType::Slime:
         return "ピンクスライム";
@@ -376,6 +377,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
 }
 
 void GamePlayScene::ClearDebugPlayerMorph() {
+    // Player本体とデバッグ用の変身元参照を同時に初期化する。
     if (player_) {
         player_->DebugClearEnemyMorph();
     }
@@ -433,6 +435,7 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
 }
 
 Object3d* GamePlayScene::FindDebugObjectByName(const char* objectName) const {
+    // デバッグ操作用に現在のシーン配置から名前を解決する。
     if (!objectManager_ || !objectName || objectName[0] == '\0') {
         return nullptr;
     }

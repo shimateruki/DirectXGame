@@ -24,6 +24,7 @@ constexpr const char* kCheckpointRaisedModel = "Gimmicks/checkpoint_beacon_activ
 constexpr float kCheckpointFlagRaiseDelay = 0.14f;
 
 DamageType ResolveDamageType(const DamageEvent& event) {
+    // 旧攻撃が属性を省略していても、敵の種類に合う耐性・状態異常判定へ渡す。
     if (event.damageType != DamageType::Physical || !event.attacker) {
         return event.damageType;
     }
@@ -288,7 +289,7 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
         return;
     }
 
-    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + Vector3{0.0f, 0.35f, 0.0f});
+    player->ActivateCheckpoint(checkpoint->GetWorldPosition() + Vector3{0.0f, 0.35f, 0.0f}, checkpoint->GetName());
 
     if (activeCheckpoint_ && scene_ && scene_->IsAlive(activeCheckpoint_)) {
         activeCheckpoint_->SetEmissive(checkpointBaseEmissive_);
@@ -307,6 +308,32 @@ void GameRule::ActivateCheckpoint(Player* player, Object3d* checkpoint) {
     VFXSequencer::PlayOneShot("checkpoint_activate_cue", checkpoint->GetWorldPosition(), checkpoint->GetScale(),
                               checkpoint->GetRotation());
     DebugConsole::GetInstance()->AddLog("Checkpoint activated. Respawn and copy memory updated.");
+}
+
+void GameRule::RestoreCheckpointPresentation(const std::string& checkpointObjectName) {
+    if (!scene_ || checkpointObjectName.empty()) return;
+
+    for (const auto& owned : scene_->GetObjects()) {
+        Object3d* checkpoint = owned.get();
+        if (!checkpoint || checkpoint->GetName() != checkpointObjectName) continue;
+
+        const std::string modelName = checkpoint->GetModelName();
+        if (modelName != kCheckpointLoweredModel && modelName != kCheckpointRaisedModel) return;
+
+        // SetModelによるコライダー自動調整を戻し、取得済みの待機モーションから再開する。
+        const Object3d::ColliderConfig collider = checkpoint->GetColliderConfig();
+        if (modelName == kCheckpointLoweredModel) checkpoint->SetModel(kCheckpointRaisedModel);
+        checkpoint->RestoreAnimationPlayback("Idle", 0.0f, true);
+        checkpoint->SetColliderConfig(collider);
+
+        activeCheckpoint_ = checkpoint;
+        raisingCheckpoint_ = nullptr;
+        checkpointRaiseDelay_ = 0.0f;
+        checkpointBaseEmissive_ = checkpoint->GetEmissive();
+        checkpointPresentationTimer_ = kCheckpointFlagRaiseDelay + 0.60f;
+        checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
+        return;
+    }
 }
 
 void GameRule::UpdateCheckpointPresentation(float deltaTime) {
@@ -415,6 +442,7 @@ void GameRule::ApplyStatusEffect(Object3d* target, const StatusEffectApplication
 }
 
 bool GameRule::IsStatusTargetAlive(Object3d* target) const {
+    // シーンから消えた対象へ継続ダメージやパーティクルを送らない。
     if (!target || !scene_) {
         return false;
     }
@@ -428,6 +456,7 @@ bool GameRule::IsStatusTargetAlive(Object3d* target) const {
 }
 
 void GameRule::EmitStatusVisual(Object3d* target, const std::string& presetName) const {
+    // 身体の高さから中心を求め、サイズの異なる敵でも状態異常が体に重なるようにする。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (!target || !particles || !particles->IsInitialized()) {
         return;

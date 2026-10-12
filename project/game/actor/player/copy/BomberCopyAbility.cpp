@@ -8,6 +8,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     using ICopyAbilitySession::ICopyAbilitySession;
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
+        // 二次操作と特殊操作を各クールダウンで分離し、同じ入力で連続発火させない。
         if (input.secondaryTriggered && blastCooldown_ <= 0.0f)
             BlastJump(player);
         else if (input.specialTriggered && throwCooldown_ <= 0.0f)
@@ -17,6 +18,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
+        // 投擲・設置・爆風ジャンプの再使用時間を独立に進める。
         throwCooldown_ = std::max(0.0f, throwCooldown_ - deltaTime);
         placeCooldown_ = std::max(0.0f, placeCooldown_ - deltaTime);
         blastCooldown_ = std::max(0.0f, blastCooldown_ - deltaTime);
@@ -82,6 +84,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     }
 
     void BlastJump(Player& player) {
+        // 現在の向きへ跳ね出し、爆発直後だけ回避無敵を与える。
         blastDirection_ = NormalizePlanar(player.GetForwardDirection());
         const Vector3 center = player.GetWorldPosition();
         player.SetVelocity({blastDirection_.x * 8.5f, 18.0f, blastDirection_.z * 8.5f});
@@ -112,6 +115,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
 
 namespace CopyAbilityDetail {
 std::unique_ptr<ICopyAbilitySession> CreateBomberCopyAbility(const EnemyAttackProfile& profile) {
+    // 個々のコピー獲得ごとにクールダウン状態を持つセッションを作る。
     return std::make_unique<BomberCopyAbility>(profile);
 }
 } // namespace CopyAbilityDetail

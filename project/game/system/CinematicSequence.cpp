@@ -12,11 +12,13 @@ using json = nlohmann::json;
 
 // Editorの軌跡表示と再生器で、同じアンカー基準の座標変換を使います。
 Vector3 CinematicAnchorPosition(const Vector3& local, const Vector3& origin, float yaw) {
+    // アンカーの向きでローカル座標を回してから、ワールド原点へ移す。
     const float c = std::cos(yaw), s = std::sin(yaw);
     return {origin.x + local.x * c + local.z * s, origin.y + local.y, origin.z - local.x * s + local.z * c};
 }
 
 Vector3 CinematicAnchorLocalPosition(const Vector3& world, const Vector3& origin, float yaw) {
+    // 編集したワールド位置を逆回転し、保存用のアンカー相対座標へ戻す。
     return CinematicAnchorPosition({world.x - origin.x, world.y - origin.y, world.z - origin.z}, {}, -yaw);
 }
 
@@ -31,20 +33,26 @@ Vector3 ReadVector3(const json& value, const Vector3& fallback) {
 
 // 演出トラックの保存形式と並び順を扱います。再生時の時刻評価に使える形へ読み込みデータを整えます。
 
-json WriteVector3(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json WriteVector3(const Vector3& value) {
+    // 座標・回転・大きさを同じ3要素配列形式で保存する。
+    return json::array({value.x, value.y, value.z});
+}
 
 void ReadBinding(const json& value, CinematicObjectBinding& binding) {
+    // 名前が無い旧データも扱えるよう、束縛先の既定値を用意する。
     binding.targetName = value.value("targetName", "");
     binding.targetEventId = value.value("targetEventId", -1);
 }
 
 void WriteBinding(json& value, const CinematicObjectBinding& binding) {
+    // 対象名とEvent IDを両方残し、再生側の解決方法を選べるようにする。
     value["targetName"] = binding.targetName;
     value["targetEventId"] = binding.targetEventId;
 }
 } // namespace
 
 void CinematicSequence::Clear() {
+    // 次の演出を読み込む前に全トラックとプレビュー用の役割を初期状態へ戻す。
     anchor = {};
     anchorYawOffset = 0.0f;
     roleBindings = {};
@@ -62,6 +70,7 @@ void CinematicSequence::Clear() {
 
 // 再生側が時刻順に走査できるよう、評価に順序が必要な項目だけ並べ替えます。
 void CinematicSequence::Sort() {
+    // 補間が前後のキーを正しく見つけられるよう、各トラックを時刻順に揃える。
     for (auto& track : transformTracks) {
         std::sort(track.keys.begin(), track.keys.end(),
                   [](const CinematicTransformKey& a, const CinematicTransformKey& b) { return a.time < b.time; });
@@ -83,6 +92,7 @@ void CinematicSequence::Sort() {
 
 // 入力されたdurationより長いトラックがあれば、末尾まで再生時間を延ばします。
 float CinematicSequence::GetAuthoredDuration() const {
+    // 設定上の長さと各トラックの最後のキーを比較し、途中で演出を切らない。
     float result = std::max(0.0f, duration);
     for (const auto& track : transformTracks) {
         if (!track.keys.empty()) {
@@ -112,6 +122,7 @@ float CinematicSequence::GetAuthoredDuration() const {
 
 // 互換性のある項目名で各トラックを書き出し、最後に一つのJSONへまとめます。
 bool CinematicSequence::Save(const std::string& filePath) const {
+    // 実行時に再読込できるよう、バインド先と全トラックを同じバージョンの JSON にまとめる。
     json root;
     root["version"] = kCurrentVersion;
     root["name"] = name;

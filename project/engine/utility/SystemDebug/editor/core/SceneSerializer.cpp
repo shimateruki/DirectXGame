@@ -296,6 +296,7 @@ std::string InferLegacyRuntimeScene(const std::string& sceneId) {
 }
 
 void SceneSerializer::Initialize(DebugEditor* editor) {
+    // 保存時にScene状態を取得するため、Editorの参照を借用します。
     editor_ = editor;
 }
 
@@ -449,6 +450,7 @@ std::string SceneSerializer::SaveTargets(const std::vector<SaveTarget>& targets)
 }
 
 std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveMode mode) {
+    // 保存モードから対象ファイルを構築し、実際の書込経路はSaveTargetsへ集約します。
     return SaveTargets(BuildSceneSaveTargets(currentFilename, mode));
 }
 
@@ -519,6 +521,12 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
     d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
     d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
+    if (!c.footprint.empty()) {
+        d["collider"]["footprint"] = nlohmann::json::array();
+        for (const Vector2& point : c.footprint) {
+            d["collider"]["footprint"].push_back({ point.x, point.y });
+        }
+    }
 
     // 5. 衝突属性
     d["collisionAttribute"] = obj->GetCollisionAttribute();
@@ -677,6 +685,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
 // 単体オブジェクトの更新保存 (UpdateObjectInSceneJSON)
 // =========================================================
 void SceneSerializer::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
+    // 単一Objectの差分だけを保存対象にし、Scene全体の再保存を避けます。
     if (!object) return;
 
     SaveTargets(BuildSingleObjectSaveTargets(object, filename));
@@ -684,6 +693,7 @@ void SceneSerializer::UpdateObjectInSceneJSON(Object3d* object, const std::strin
 }
 
 void SceneSerializer::SaveToFile(const std::string& path, const json& data) {
+    // JSONを書けた場合だけDebug Consoleへ保存先を通知します。
     std::ofstream f(path);
     if (f.is_open()) {
         f << data.dump(4);
@@ -692,6 +702,7 @@ void SceneSerializer::SaveToFile(const std::string& path, const json& data) {
 }
 
 std::vector<SceneSerializer::SceneAssetInfo> SceneSerializer::DiscoverSceneAssets() const {
+    // Scene ObjectのJSONから利用可能なScene Asset情報を列挙します。
     std::vector<SceneAssetInfo> assets;
     const fs::path directory = kSceneObjectDirectory;
     if (!fs::exists(directory)) {
@@ -864,6 +875,7 @@ bool SceneSerializer::DuplicateSceneAsset(
     const std::string& displayName,
     std::string& createdFilename,
     std::string& errorMessage) {
+    // 新しいScene IDと出力先の重複を先に調べ、関連JSONを一式として複製します。
     errorMessage.clear();
     createdFilename.clear();
     const std::string sourceId = GetSceneBaseName(sourceFilename);
@@ -1041,6 +1053,7 @@ bool SceneSerializer::RenameSceneAsset(
 }
 
 bool SceneSerializer::DeleteSceneAsset(const std::string& filename, std::string& errorMessage) {
+    // 実行側から参照されるSceneは削除を拒み、参照切れを防ぎます。
     errorMessage.clear();
     const std::string sceneId = GetSceneBaseName(filename);
     std::string referenceDescription;
@@ -1088,6 +1101,7 @@ bool SceneSerializer::SetSceneAssetRuntimeScene(
     const std::string& filename,
     const std::string& runtimeScene,
     std::string& errorMessage) {
+    // 登録済み実行クラスだけを許し、Asset metadataの実行先を変更します。
     errorMessage.clear();
     if (runtimeScene.empty() || !editor_ || !editor_->GetSceneManager() ||
         !editor_->GetSceneManager()->IsSceneRegistered(runtimeScene)) {
@@ -1118,6 +1132,7 @@ bool SceneSerializer::SetSceneAssetRuntimeSettings(
     const std::string& cameraPath,
     const std::string& skyboxPath,
     std::string& errorMessage) {
+    // 実行設定をScene metadataへまとめ、個々のAsset参照を同時に保存します。
     errorMessage.clear();
     if (controllerName.empty()) {
         errorMessage = "Controller名を入力してください。";
@@ -1155,6 +1170,7 @@ bool SceneSerializer::SetSceneAssetRuntimeSettings(
 
 SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
     const std::string& filename) const {
+    // Object配置と実行クラスなどの参照を検査し、開く前に問題を列挙します。
     SceneAssetValidationResult result;
     const std::vector<SceneAssetInfo> assets = DiscoverSceneAssets();
     const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneAssetInfo& candidate) {
@@ -1239,10 +1255,12 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
 }
 
 std::string SceneSerializer::ResolveSceneAssetObjectPath(const std::string& filename) const {
+    // Scene IDに揃えたObject JSONの規約パスを返します。
     const std::string sceneId = GetSceneBaseName(filename);
     return (fs::path(kSceneObjectDirectory) / (sceneId + ".json")).generic_string();
 }
 
 std::string SceneSerializer::ResolveSceneAssetSpritePath(const std::string& filename) const {
+    // 旧形式の配置も探す共通解決経路へ渡します。
     return ResolveExistingSpritePath(GetSceneBaseName(filename));
 }

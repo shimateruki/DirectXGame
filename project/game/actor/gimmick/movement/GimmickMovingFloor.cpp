@@ -13,6 +13,7 @@ GimmickMovingFloor::GimmickMovingFloor() = default;
 GimmickMovingFloor::~GimmickMovingFloor() = default;
 
 bool GimmickMovingFloor::IsRidePlatform() const {
+    // 乗車タイムラインがある床は手続き移動と別の制御経路にする。
     const auto* path = GetPathMoverComponent();
     return path && !path->GetRideSequence().empty();
 }
@@ -26,6 +27,7 @@ constexpr float kTwoPi = 6.28318530718f;
 } // namespace
 
 void GimmickMovingFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 床として接地判定できる属性を与え、旧データの速度欠落を補う。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("MovingFloor");
@@ -172,6 +174,7 @@ std::unique_ptr<Object3d> GimmickMovingFloor::Clone() const {
 }
 
 void GimmickMovingFloor::ResetEscapeCycle() {
+    // 脱出床を保存済み原点へ戻し、前フレームの乗員移動量も消す。
     time_ = 0.0f;
     frameDelta_ = {};
     if (hasCapturedStartTransform_) {

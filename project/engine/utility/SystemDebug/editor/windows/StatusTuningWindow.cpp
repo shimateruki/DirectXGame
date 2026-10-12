@@ -53,6 +53,7 @@ std::string GetModelDisplayName(const std::string& modelName) {
 }
 
 void StatusTuningWindow::Initialize(DebugEditor* editor, SceneManager* sceneManager) {
+    // 共通ステータス定義を先に読み、モデル候補を現在のAssetから構築します。
     editor_ = editor;
     sceneManager_ = sceneManager;
     GameplayStatusManager::GetInstance()->Initialize();
@@ -139,6 +140,7 @@ void StatusTuningWindow::DrawImGui() {
 
 bool StatusTuningWindow::DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char* id) {
 #ifdef USE_IMGUI
+    // 新規出現時に使う定義値だけ編集し、現在HPの実行状態とは分けます。
     ImGui::PushID(id);
     bool changed = DrawModelPicker("モデル", "StatusModel", status.modelName);
 
@@ -197,6 +199,7 @@ bool StatusTuningWindow::DrawStatusEditor(GameplayStatusManager::CharacterStatus
 
 bool StatusTuningWindow::DrawModelPicker(const char* label, const char* id, std::string& modelName) {
 #ifdef USE_IMGUI
+    // 保存にはモデルの参照名を使い、一覧では表示名も併記します。
     ImGui::PushID(id);
     bool changed = false;
     const std::string preview = GetModelDisplayName(modelName) + "  /  " + modelName;
@@ -226,6 +229,7 @@ bool StatusTuningWindow::DrawModelPicker(const char* label, const char* id, std:
 
 void StatusTuningWindow::DrawCurrentSceneSummary() {
 #ifdef USE_IMGUI
+    // 現在Sceneにいる対象数を見せ、Live反映の範囲を判断できるようにします。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (!scene) {
         ImGui::TextDisabled("現在シーンがありません。");
@@ -245,6 +249,7 @@ void StatusTuningWindow::DrawCurrentSceneSummary() {
 
 void StatusTuningWindow::DrawEnemyStatusRows() {
 #ifdef USE_IMGUI
+    // 敵タイプ単位の定義変更だけを現在Sceneの同タイプへ反映します。
     auto* manager = GameplayStatusManager::GetInstance();
     ImGui::TextDisabled("変更したタイプだけが現在シーンへ即時反映されます。");
     ImGui::BeginChild("EnemyStatusList", ImVec2(0.0f, 600.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -269,6 +274,7 @@ void StatusTuningWindow::DrawEnemyStatusRows() {
 }
 
 void StatusTuningWindow::RefreshCharacterModelList() {
+    // キャラクターモデルのルートだけ走査し、地形モデルが候補へ混ざらないようにします。
     characterModelNames_.clear();
     try {
         const fs::path root(kModelRootDirectory);
@@ -292,6 +298,7 @@ void StatusTuningWindow::RefreshCharacterModelList() {
 }
 
 int StatusTuningWindow::ApplyPlayerStatusLive() {
+    // 現在SceneのPlayerへ定義値を反映し、適用できた件数を返します。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (!scene) return 0;
 
@@ -309,6 +316,7 @@ int StatusTuningWindow::ApplyPlayerStatusLive() {
 }
 
 int StatusTuningWindow::ApplyEnemyStatusLive(const std::string& enemyType) {
+    // Enemy全体ではなく指定タイプだけ更新し、他タイプの実行状態を保ちます。
     BaseScene* scene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
     if (!scene) return 0;
 
@@ -326,6 +334,7 @@ int StatusTuningWindow::ApplyEnemyStatusLive(const std::string& enemyType) {
 }
 
 int StatusTuningWindow::ApplyAllStatusLive() {
+    // プレイヤーと登録済み全敵タイプの適用件数を合算します。
     int applied = ApplyPlayerStatusLive();
     for (const EnemyTypeInfo& info : enemyTypes_) {
         applied += ApplyEnemyStatusLive(info.type);

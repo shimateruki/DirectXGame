@@ -26,6 +26,7 @@ const char* kConditionModeNames[] = { "Greater", "Less", "Equals", "Not Equal", 
 }
 
 void AnimatorControllerEditor::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // 新規Controllerを初期値にし、保存済みAssetの一覧を編集開始時に集めます。
     sceneManager_ = sceneManager;
     editor_ = editor;
     NewController();
@@ -33,11 +34,13 @@ void AnimatorControllerEditor::Initialize(SceneManager* sceneManager, DebugEdito
 }
 
 void AnimatorControllerEditor::SetPreviewTarget(Object3d* target) {
+    // Scene再読込後に古いポインタを持たないよう、対象は名前で記録します。
     previewTargetName_ = target ? target->GetName() : std::string{};
 }
 
 void AnimatorControllerEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // State・Parameter・Transitionの編集を同じController定義へ反映します。
     ImGui::Text(ICON_FA_RANDOM " Animator Controller");
     ImGui::TextDisabled("State、Transition、Parameterと補間をAssetとして編集します。");
     DrawAssetControls();
@@ -62,6 +65,7 @@ void AnimatorControllerEditor::DrawImGui() {
 }
 
 void AnimatorControllerEditor::RefreshFiles() {
+    // Controllerと体アニメーションのJSONを別一覧にし、誤ったAssetを選ばせません。
     files_.clear();
     bodyAnimationFiles_.clear();
     if (fs::exists(kAnimatorDirectory)) {
@@ -83,6 +87,7 @@ void AnimatorControllerEditor::RefreshFiles() {
 }
 
 void AnimatorControllerEditor::NewController() {
+    // 遷移先がない新規Assetでも再生開始できるよう、Idleを入口Stateにします。
     controller_.Clear();
     AnimatorStateDefinition idle;
     idle.name = "Idle";
@@ -94,6 +99,7 @@ void AnimatorControllerEditor::NewController() {
 }
 
 void AnimatorControllerEditor::LoadController(const std::string& fileName) {
+    // 読込失敗を通知して処理を止め、成功したAssetだけ選択状態へ反映します。
     if (fileName.empty()) {
         return;
     }
@@ -137,10 +143,12 @@ void AnimatorControllerEditor::SaveController() {
 }
 
 std::string AnimatorControllerEditor::GetAssetPath() const {
+    // 保存名をController用ディレクトリのJSONパスへ組み立てます。
     return std::string(kAnimatorDirectory) + fileNameBuffer_ + ".json";
 }
 
 Object3d* AnimatorControllerEditor::ResolvePreviewTarget() const {
+    // 対象名を毎回現行Sceneから解決し、Scene切り替え後の不正参照を避けます。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene() || previewTargetName_.empty()) {
         return nullptr;
     }
@@ -154,6 +162,7 @@ Object3d* AnimatorControllerEditor::ResolvePreviewTarget() const {
 
 void AnimatorControllerEditor::DrawAssetControls() {
 #ifdef USE_IMGUI
+    // 新規・読込・保存を一箇所へ集め、選択中のJSON名を明示します。
     if (!ImGui::CollapsingHeader(ICON_FA_SAVE " Controller Asset", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
@@ -189,6 +198,7 @@ void AnimatorControllerEditor::DrawAssetControls() {
 
 void AnimatorControllerEditor::DrawPreviewTargetControls() {
 #ifdef USE_IMGUI
+    // Scene内の対象を選び、Controllerの試用と割当を同じ対象へ向けます。
     if (!ImGui::CollapsingHeader(ICON_FA_CUBE " Preview / Assign", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
@@ -362,6 +372,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
 
 void AnimatorControllerEditor::DrawParameterEditor() {
 #ifdef USE_IMGUI
+    // 遷移条件に参照されるParameter名と型をController内で編集します。
     if (ImGui::Button(ICON_FA_PLUS " Parameter追加")) {
         AnimatorParameterDefinition parameter;
         parameter.name = "Parameter" + std::to_string(controller_.parameters.size() + 1);
@@ -418,6 +429,7 @@ void AnimatorControllerEditor::DrawParameterEditor() {
 
 void AnimatorControllerEditor::DrawTransitionEditor() {
 #ifdef USE_IMGUI
+    // 遷移元・遷移先・条件を編集し、選択Stateからの追加を初期値にします。
     if (ImGui::Button(ICON_FA_PLUS " Transition追加")) {
         AnimatorTransitionDefinition transition;
         transition.fromState = selectedStateIndex_ >= 0 && selectedStateIndex_ < static_cast<int>(controller_.states.size())

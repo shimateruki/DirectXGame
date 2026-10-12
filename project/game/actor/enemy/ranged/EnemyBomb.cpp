@@ -29,12 +29,14 @@ constexpr float kBombLandingFriction = 0.72f;
 constexpr float kBombWallBounce = 0.35f;
 
 float MaxScaleComponent(const nlohmann::json& values) {
+    // エフェクトの最大軸で球形の爆発判定を広げる。欠損時は等倍にする。
     if (!values.is_array() || values.size() < 3)
         return 1.0f;
     return std::max({values[0].get<float>(), values[1].get<float>(), values[2].get<float>()});
 }
 
 float LoadExplosionRadiusFromEffectJson() {
+    // 表示用エフェクトの設定から半径を求め、読めない場合は既定半径へ戻す。
     std::ifstream file(kExplosionEffectPath);
     if (!file.is_open())
         return kFallbackExplosionRadius;
@@ -81,6 +83,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
 }
 
 void EnemyBomb::ApplyManagedScale(const Vector3& scale) {
+    // 点滅による一時変形と区別できるよう、通常時の基準スケールを保持する。
     managedBaseScale_ = scale;
     SetScale(scale);
 }
@@ -186,6 +189,7 @@ void EnemyBomb::Update(float deltaTime) {
 
 // 前フレームからの移動区間を掃引し、高速の投擲体が薄い床や壁を抜けるのを防ぎます。
 void EnemyBomb::ResolveSweptCollision(const Vector3& previousPosition) {
+    // 現在位置だけの重なり判定では取り逃す床・壁を移動線分から探す。
     if (state_ == State::Exploded || isCarried_) {
         return;
     }
@@ -432,6 +436,7 @@ void EnemyBomb::SetCarried(bool isCarried) {
 }
 
 void EnemyBomb::SetPlayerOwned(bool playerOwned) {
+    // 投げ返し後は攻撃の所有者に合わせ、接触属性と対象マスクを切り替える。
     playerOwned_ = playerOwned;
     if (playerOwned_) {
         SetCollisionAttribute(CollisionCategories::Get("player_attack"));
@@ -443,6 +448,7 @@ void EnemyBomb::SetPlayerOwned(bool playerOwned) {
 }
 
 void EnemyBomb::Ignite(float fuseTime) {
+    // 再点火時に光の周期も戻し、導火線の開始と警告表示を同期する。
     state_ = State::Ignited;
     fuseTimer_ = fuseTime;
     pulseTimer_ = 0.0f;

@@ -15,6 +15,7 @@ using json = nlohmann::json;
 // 保存前の差分を確認し、保存・取消の判断を受け付けます。
 SceneSavePreview::Action SceneSavePreview::Draw() {
 #ifdef USE_IMGUI
+    // 保存候補の差分を確認してから、保存・取消の選択だけ呼び出し側へ返します。
     if (!isOpen_) return Action::None;
 
     const char* popupName = "Scene Save Preview###SceneSavePreview";
@@ -86,6 +87,7 @@ SceneSavePreview::Action SceneSavePreview::Draw() {
 
 #ifdef USE_IMGUI
 void SceneSavePreview::DrawSummaryCards() const {
+    // ファイル数とObject差分を先に示し、詳細を見る前に変更量を判断できます。
     if (ImGui::BeginTable("SceneSavePreviewSummaryCards", 4, ImGuiTableFlags_SizingStretchSame)) {
         ImGui::TableNextRow();
 
@@ -111,6 +113,7 @@ void SceneSavePreview::DrawSummaryCards() const {
 }
 
 void SceneSavePreview::DrawFileSummaryTable() const {
+    // 保存対象ごとの増減を一覧化し、意図しないファイルの更新を見つけやすくします。
     if (!ImGui::BeginTable("SceneSavePreviewFiles", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         return;
     }
@@ -156,6 +159,7 @@ void SceneSavePreview::DrawFileSummaryTable() const {
 }
 
 void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
+    // 変更Objectを優先表示し、必要な場合だけ未変更行も展開します。
     int visibleChanges = 0;
     for (const auto& change : diff.objects) {
         if (showUnchanged_ || change.kind != ChangeKind::Unchanged) {
@@ -241,6 +245,7 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
 }
 
 void SceneSavePreview::DrawChangeBadge(ChangeKind kind) const {
+    // 追加・削除・変更を同じ色規則で表し、各差分表の読み方を揃えます。
     ImVec4 color = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
     switch (kind) {
     case ChangeKind::Added:
@@ -268,6 +273,7 @@ void SceneSavePreview::DrawChangeBadge(ChangeKind kind) const {
 }
 
 const char* SceneSavePreview::GetKindLabel(ChangeKind kind) const {
+    // 差分種別を画面内で共通の短いラベルへ変換します。
     switch (kind) {
     case ChangeKind::Added:
         return "Added";

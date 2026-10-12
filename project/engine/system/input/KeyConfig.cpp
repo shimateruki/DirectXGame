@@ -14,6 +14,7 @@ using json = nlohmann::json;
 
 namespace {
 std::string GetMouseButtonName(int mouseButton) {
+    // 未割当と追加ボタンもUIで区別できる表示名へ変換する。
     static constexpr const char* kMouseNames[] = {
         "Left",
         "Right",
@@ -36,11 +37,13 @@ std::string GetMouseButtonName(int mouseButton) {
 }
 
 KeyConfig* KeyConfig::GetInstance() {
+    // 入力割当をゲーム全体で共有し、シーン切替で消さない。
     static KeyConfig instance;
     return &instance;
 }
 
 bool KeyConfig::SetBinding(const std::string& actionName, const BindData& binding) {
+    // 未登録アクションや扱えない入力コードで既存の割当を壊さない。
     auto found = bindings_.find(actionName);
     if (found == bindings_.end() || binding.keyCode < 0 || binding.keyCode > 255 ||
         binding.mouseButton < -1 || binding.mouseButton > 3) return false;
@@ -69,6 +72,7 @@ void KeyConfig::Initialize() {
 }
 
 void KeyConfig::Load(const std::string& filepath) {
+    // 保存ファイルが無いときはInitializeで設定した既定値を保持する。
     std::ifstream file(filepath);
     if (!file.is_open()) {
         DebugConsole::GetInstance()->AddLog("KeyConfig: JSONファイルが見つかりません。デフォルトを使用します。");
@@ -100,6 +104,7 @@ void KeyConfig::Load(const std::string& filepath) {
 }
 
 bool KeyConfig::Save(const std::string& filepath) {
+    // キー・マウス・パッドを一組としてJSONへ保存する。
     std::filesystem::path dir = std::filesystem::path(filepath).parent_path();
     if (!dir.empty() && !std::filesystem::exists(dir)) {
         std::filesystem::create_directories(dir);
@@ -126,11 +131,13 @@ bool KeyConfig::Save(const std::string& filepath) {
 }
 
 int KeyConfig::GetKeyCode(const std::string& actionName) const {
+    // 未登録アクションはキーなしを意味する0で返す。
     auto it = bindings_.find(actionName);
     return (it != bindings_.end()) ? it->second.keyCode : 0;
 }
 
 WORD KeyConfig::GetPadCode(const std::string& actionName) const {
+    // 未登録アクションのゲームパッド割当は空にする。
     auto it = bindings_.find(actionName);
     return (it != bindings_.end()) ? it->second.padCode : 0;
 }
@@ -194,6 +201,7 @@ std::string KeyConfig::GetKeyName(int keyCode) const {
 }
 
 std::string KeyConfig::GetPadName(WORD padCode) const {
+    // 画面に出せない未知のコードも数値付きで表示し、割当の確認を可能にする。
     if (padCode == 0) return "None";
     switch (padCode) {
     case XINPUT_GAMEPAD_A: return "A";
@@ -401,6 +409,7 @@ void KeyConfig::DrawImGui() {
 }
 
 const BindData* KeyConfig::GetBindData(const std::string& actionName) const {
+    // 呼び出し側へ所有権を渡さず、登録済みの割当だけ参照させる。
     auto it = bindings_.find(actionName);
     if (it != bindings_.end()) {
         return &it->second; // データのポインタを返す

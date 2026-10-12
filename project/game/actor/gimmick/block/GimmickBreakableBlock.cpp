@@ -69,6 +69,7 @@ bool GimmickBreakableBlock::OnCollision(Object3d* other) {
 }
 
 bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
+    // 破壊済みなら再実行せず、Playerの衝突条件を満たした一回だけ破壊する。
     if (isBroken_ || !player || !param_.has_value()) {
         return false;
     }
@@ -131,6 +132,7 @@ void GimmickBreakableBlock::Break() {
 }
 
 std::unique_ptr<Object3d> GimmickBreakableBlock::Clone() const {
+    // 同じモデルで新しい実体を初期化してから、配置と破壊設定を複製する。
     auto newObj = std::make_unique<GimmickBreakableBlock>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

@@ -38,6 +38,7 @@ constexpr const char* kStageEntryCameraFallbackObjectName = "Cinematic_Camera_01
 // 入口演出中はプレイヤー操作とカメラを一時的に預かり、終了時に元の状態へ戻します。
 
 Object3d* GamePlayScene::FindStageEntryGate() const {
+    // ステージ開始演出の対象ゲートを現在の配置オブジェクトから探す。
     if (!objectManager_) {
         return nullptr;
     }
@@ -302,6 +303,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
 // 演出の一時設定を解除し、ゲート・プレイヤー・カメラの通常制御を再開します。
 void GamePlayScene::FinishStageEntryPresentation() {
+    // 演出を閉じる際に操作権と表示状態を本編へ返す。
     if (!stageEntryPresentationActive_) {
         return;
     }

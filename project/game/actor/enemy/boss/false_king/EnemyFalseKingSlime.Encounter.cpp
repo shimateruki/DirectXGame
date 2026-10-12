@@ -4,6 +4,7 @@ using namespace EnemyFalseKingSlimeImplementation;
 
 // Editorでは配置値を復元し、Play中の待機・登場だけ通常AIより先に処理します。
 bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
+    // この関数が待機・登場を処理した場合は通常 AI の更新を抑止します。
     if (!IsEncounterControlled()) {
         encounterState_ = EncounterState::Normal;
         initializedForPlay_ = false;
@@ -85,6 +86,7 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
 
 // 配置時の姿勢と衝突設定を退避します。force はEditorへ戻る時の再取得用です。
 void EnemyFalseKingSlime::CaptureAuthoredState(bool force) {
+    // 実行中に変形した姿勢を保存値へ混ぜず、必要な時だけ再取得します。
     if (authoredStateCaptured_ && !force) {
         return;
     }
@@ -107,6 +109,7 @@ void EnemyFalseKingSlime::CaptureAuthoredState(bool force) {
 
 // Play開始時に攻撃履歴と形態を初期化し、配置設定に応じて待機または登場へ進めます。
 void EnemyFalseKingSlime::InitializeEncounterState() {
+    // 前回の王冠決戦と攻撃履歴を消し、配置設定から初期状態を決めます。
     ResetCrownFinale();
     initializedForPlay_ = true;
     CaptureAuthoredState(true);
@@ -130,6 +133,7 @@ void EnemyFalseKingSlime::InitializeEncounterState() {
 
 // Play中の一時状態を破棄して、Editor上の配置姿勢へ戻します。
 void EnemyFalseKingSlime::ResetForEditor() {
+    // プレイ中の姿勢・材質・衝突を破棄して編集時の設定へ戻します。
     introPresentationActive_ = false;
     ResetCrownFinale();
     if (initializedForPlay_) {
@@ -165,6 +169,7 @@ void EnemyFalseKingSlime::ResetForEditor() {
 
 // 登場演出中は攻撃判定を外し、出現VFXを一度だけ再生します。
 void EnemyFalseKingSlime::BeginAppearance() {
+    // 登場途中に攻撃が当たらないよう判定を外してから VFX を一度再生します。
     encounterState_ = EncounterState::Appearing;
     encounterTimer_ = 0.0f;
     SetIsVisible(true);
@@ -177,6 +182,7 @@ void EnemyFalseKingSlime::BeginAppearance() {
 }
 
 void EnemyFalseKingSlime::ApplyDormantState() {
+    // 入口イベント前はモデルも衝突も隠し、待機中の攻撃演出を消します。
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
     SetTranslate(authoredPosition_);
@@ -195,6 +201,7 @@ void EnemyFalseKingSlime::ApplyDormantState() {
 
 // 登場終了後に配置時の衝突設定を戻して戦闘AIを再開します。
 void EnemyFalseKingSlime::FinishAppearance() {
+    // 演出後に元の判定と姿勢を戻して戦闘 AI を始めます。
     encounterState_ = EncounterState::Active;
     encounterTimer_ = 0.0f;
     SetTranslate(authoredPosition_);
@@ -212,6 +219,7 @@ void EnemyFalseKingSlime::FinishAppearance() {
 }
 
 void EnemyFalseKingSlime::SyncCollisionBounds() {
+    // 登場時の伸縮中も本体用 OBB の基準寸法を設定します。
     Object3d::ColliderConfig collider = GetColliderConfig();
     collider.type = ColliderType::kOBB;
     collider.center = {0.0f, 1.48f, 0.0f};
@@ -220,16 +228,19 @@ void EnemyFalseKingSlime::SyncCollisionBounds() {
 }
 
 bool EnemyFalseKingSlime::IsEncounterControlled() const {
+    // 配置データのモードが入口イベント管理を指定しているか調べます。
     return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
 }
 
 float EnemyFalseKingSlime::GetAppearanceDuration() const {
+    // 専用の登場演出中は通常の配置設定より長い尺を使います。
     if (introPresentationActive_)
         return 4.2f;
     return param_.has_value() ? std::clamp(param_->shakeDuration, 0.55f, 3.5f) : kDefaultAppearanceDuration;
 }
 
 bool EnemyFalseKingSlime::IsEncounterHudActive() const {
+    // 待機中と撃破後は HP 表示を出しません。
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
@@ -237,14 +248,17 @@ bool EnemyFalseKingSlime::IsEncounterHudActive() const {
 }
 
 float EnemyFalseKingSlime::GetEncounterCurrentHp() const {
+    // UI へ渡す HP は負数にならないようにします。
     return param_.has_value() ? std::max(0.0f, param_->hp) : 0.0f;
 }
 
 float EnemyFalseKingSlime::GetEncounterMaximumHp() const {
+    // HP バーの除算でゼロを使わないようにします。
     return param_.has_value() ? std::max(1.0f, param_->maxHp) : 1.0f;
 }
 
 float EnemyFalseKingSlime::GetEncounterAppearanceProgress() const {
+    // 登場中だけ実時間の進捗を返し、戦闘開始後は完了扱いにします。
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }
@@ -255,6 +269,7 @@ float EnemyFalseKingSlime::GetEncounterAppearanceProgress() const {
 }
 
 float EnemyFalseKingSlime::GetPhaseTransitionProgress() const {
+    // 形態移行中は経過時間、移行外は形態の一致状態を返します。
     if (attackState_ != AttackState::PhaseShift) {
         return battlePhase_ == pendingBattlePhase_ ? 1.0f : 0.0f;
     }
@@ -262,6 +277,7 @@ float EnemyFalseKingSlime::GetPhaseTransitionProgress() const {
 }
 
 void EnemyFalseKingSlime::TriggerDebugDefeat() {
+    // プレビューの撃破操作では HP をゼロにし、残った攻撃表示を片付けます。
     if (!param_.has_value() || isDead || IsDefeatEffectPlaying()) {
         return;
     }
@@ -272,41 +288,48 @@ void EnemyFalseKingSlime::TriggerDebugDefeat() {
 }
 
 bool EnemyFalseKingSlime::CanTriggerDebugPhaseTwoTransition() const {
+    // 第一形態の通常戦闘中だけデバッグ移行を受け付けます。
     return IsEncounterControlled() && encounterState_ == EncounterState::Active && !isDead &&
            debugPreviewAttackId_.empty() && !crownInterlude_ && !finalArenaStarted_ && battlePhase_ == 1 &&
            attackState_ != AttackState::PhaseShift;
 }
 
 bool EnemyFalseKingSlime::CanTriggerDebugCrownInterlude() const {
+    // 王冠幕間の重複開始や最終決戦中の逆戻りを防ぎます。
     return IsEncounterControlled() && encounterState_ == EncounterState::Active && !isDead &&
            debugPreviewAttackId_.empty() && !crownInterlude_ && !finalArenaStarted_ && battlePhase_ <= 2 &&
            attackState_ != AttackState::PhaseShift;
 }
 
 bool EnemyFalseKingSlime::CanTriggerDebugFinalDefeat() const {
+    // 最終決戦に到達している時だけ撃破プレビューを許可します。
     return IsEncounterControlled() && encounterState_ == EncounterState::Active && !isDead && !crownInterlude_ &&
            finalArenaStarted_ && battlePhase_ == 3;
 }
 
 void EnemyFalseKingSlime::TriggerDebugPhaseTwoTransition() {
+    // 実際の形態変更は更新側へ予約し、ここでは要求だけ記録します。
     if (!CanTriggerDebugPhaseTwoTransition())
         return;
     pendingDebugSeals_ = true;
 }
 
 void EnemyFalseKingSlime::TriggerDebugCrownInterlude() {
+    // 更新途中で幕間へ飛ばず、次の進行タイミングへ予約します。
     if (!CanTriggerDebugCrownInterlude())
         return;
     pendingDebugInterlude_ = true;
 }
 
 void EnemyFalseKingSlime::HoldFinalDefeat() {
+    // 勝利演出がボスを参照する間は死亡確定を保留し、攻撃判定だけ止めます。
     finalDefeatHeld_=true;finalDefeatCompleted_=false;
     SetVelocity({});SetCollisionAttribute(0);SetCollisionMask(0);
     HideAttackTelegraph();ClearTransientVisuals();
 }
 
 void EnemyFalseKingSlime::CompleteFinalDefeat() {
+    // 演出終了後に一度だけ死亡を確定し、入口イベントへ撃破を通知します。
     if(finalDefeatCompleted_)return;
     finalDefeatCompleted_=true;isDead=true;SetIsVisible(false);
     // 継承演出もボスを参照するため、Sceneの破棄まで本体は保持します。
@@ -315,5 +338,6 @@ void EnemyFalseKingSlime::CompleteFinalDefeat() {
 }
 
 void EnemyFalseKingSlime::CancelFinalDefeat() {
+    // 演出の中断時は保留フラグを解除し、通常の戦闘へ戻せます。
     finalDefeatHeld_=false;finalDefeatCompleted_=false;isDead=false;
 }

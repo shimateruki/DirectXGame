@@ -25,6 +25,7 @@ constexpr Vector3 kOrigin{16000.0f, 10000.0f, 16000.0f};
 } // namespace
 
 int GhostDirector::GetRoleIndex(const std::string& name) {
+    // 保存された役割名を制作空間の仮オブジェクト番号へ変換します。
     for (int index = 0; index < 3; ++index)
         if (name == kRoles[index])
             return index;
@@ -32,6 +33,7 @@ int GhostDirector::GetRoleIndex(const std::string& name) {
 }
 
 Object3d* GhostDirector::FindStudioObject(int role) const {
+    // シーンが切り替わっていたら古いポインタをたどらないようにします。
     if (role < 0 || role >= 4 || !sceneManager_ || sceneManager_->GetCurrentScene() != studioScene_)
         return nullptr;
     for (const auto& object : studioScene_->GetObjects())
@@ -41,6 +43,7 @@ Object3d* GhostDirector::FindStudioObject(int role) const {
 }
 
 void GhostDirector::CreateStudioObjects() {
+    // 実ステージと離れた座標に、対象・基準・カメラ・床の仮オブジェクトを作ります。
     for (int index = 0; index < 4; ++index) {
         auto object = std::make_unique<Object3d>();
         object->Initialize(studioScene_->GetObject3dCommon());
@@ -74,6 +77,7 @@ void GhostDirector::CreateStudioObjects() {
 }
 
 bool GhostDirector::BeginStudio() {
+    // 別プレビューとのカメラ競合を避け、元のカメラ状態を退避してから開きます。
     if (studioEnabled_)
         return true;
     if (!sceneManager_ || sceneManager_->IsPlaying() || !sceneManager_->GetCurrentScene() ||
@@ -118,6 +122,7 @@ bool GhostDirector::BeginStudio() {
 }
 
 void GhostDirector::PlaceStudioCamera() {
+    // 再生時刻を先頭へ戻し、仮空間全体が見える固定視点を設定します。
     if (!studioEnabled_)
         return;
     player_.Stop(true);
@@ -134,6 +139,7 @@ void GhostDirector::PlaceStudioCamera() {
 }
 
 void GhostDirector::EndStudio() {
+    // 仮オブジェクトを遅延削除し、元のシーンがまだ有効ならカメラ設定を復元します。
     if (!studioEnabled_)
         return;
     const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == studioScene_;
@@ -179,6 +185,7 @@ void GhostDirector::EndStudio() {
 
 void GhostDirector::DrawStudioControls() {
 #ifdef USE_IMGUI
+    // 仮モデルの選択と実シーンの役割割り当ては、制作空間の状態で表示を切り替えます。
     ImGui::TextWrapped(
         "1. 制作空間を開く → 2. 動作・VFX・カメラを組み合わせる → 3. 保存 → 4. 実ステージへ役割を割り当てて確認");
     if (ImGui::Button(studioEnabled_ ? "制作空間を終了・元の画面へ" : "制作空間を開く（仮モデルを自動準備）")) {
@@ -315,6 +322,7 @@ void GhostDirector::DrawStudioControls() {
 
 void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
+    // 映像・時間軸・選択内容を別領域へ配置する編集画面の入口です。
     ImGui::SeparatorText("演出制作");
     ImGui::TextWrapped("中央：映像 / 下：再生とトラック / 右：選択項目の編集");
     if (ImGui::CollapsingHeader("プレビュー空間と対象", ImGuiTreeNodeFlags_DefaultOpen))

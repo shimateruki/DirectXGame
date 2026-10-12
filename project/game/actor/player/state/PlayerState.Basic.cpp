@@ -11,6 +11,7 @@
 // 待機状態 (Idle)
 // ========================================================
 void PlayerStateIdle::Enter(Player* player) {
+    // 待機へ戻る時はジャンプの溜め表示を消す。
     DebugConsole::GetInstance()->AddLog("Enter: Idle");
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
@@ -19,6 +20,7 @@ void PlayerStateIdle::Enter(Player* player) {
 }
 
 void PlayerStateIdle::Update(Player* player, float deltaTime) {
+    // 接地を先に見て、水平移動だけを走り状態への条件に使う。
     (void)deltaTime;
     if (!player)
         return;
@@ -36,12 +38,16 @@ void PlayerStateIdle::Update(Player* player, float deltaTime) {
     }
 }
 
-void PlayerStateIdle::Exit(Player* player) {}
+void PlayerStateIdle::Exit(Player* player) {
+    // 待機状態には退出時に戻す一時的な値がない。
+    (void)player;
+}
 
 // ========================================================
 // 走り状態 (Run)
 // ========================================================
 void PlayerStateRun::Enter(Player* player) {
+    // 走行モーションへ切り替え、移動速度はプレイヤー本体側で管理する。
     DebugConsole::GetInstance()->AddLog("Enter: Run");
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Run);
@@ -49,6 +55,7 @@ void PlayerStateRun::Enter(Player* player) {
 }
 
 void PlayerStateRun::Update(Player* player, float deltaTime) {
+    // 空中ではジャンプを優先し、水平速度が下がったら待機へ戻る。
     (void)deltaTime;
     if (!player)
         return;
@@ -66,12 +73,16 @@ void PlayerStateRun::Update(Player* player, float deltaTime) {
     }
 }
 
-void PlayerStateRun::Exit(Player* player) {}
+void PlayerStateRun::Exit(Player* player) {
+    // 速度は共有の移動処理が保持するため、この状態では変更しない。
+    (void)player;
+}
 
 // ========================================================
 // ジャンプ状態 (Jump)
 // ========================================================
 void PlayerStateJump::Enter(Player* player) {
+    // 空中の姿勢をアニメーターへ知らせる。
     DebugConsole::GetInstance()->AddLog("Enter: Jump");
     if (player) {
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Jump);
@@ -79,6 +90,7 @@ void PlayerStateJump::Enter(Player* player) {
 }
 
 void PlayerStateJump::Update(Player* player, float deltaTime) {
+    // 着地直後は下降中の接地だけを待機へ戻す条件とする。
     (void)deltaTime;
     if (!player)
         return;
@@ -91,12 +103,16 @@ void PlayerStateJump::Update(Player* player, float deltaTime) {
     }
 }
 
-void PlayerStateJump::Exit(Player* player) {}
+void PlayerStateJump::Exit(Player* player) {
+    // 着地後の姿勢変更は遷移先の Enter が担当する。
+    (void)player;
+}
 
 // ========================================================
 // 回避ダッシュ状態 (Dash)
 // ========================================================
 void PlayerStateDash::Enter(Player* player) {
+    // ダッシュ開始時の進行方向を変形アニメーションへ渡す。
     DebugConsole::GetInstance()->AddLog("Enter: Dash");
     timer_ = 0.0f;
     if (player) {
@@ -106,6 +122,7 @@ void PlayerStateDash::Enter(Player* player) {
 }
 
 void PlayerStateDash::Update(Player* player, float deltaTime) {
+    // ダッシュ状態の滞在時間だけを計り、移動自体は本体に任せる。
     if (!player)
         return;
 
@@ -117,6 +134,7 @@ void PlayerStateDash::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStateDash::Exit(Player* player) {
+    // 終了時に弾性の反動を与えて、通常姿勢へつなげる。
     if (player) {
         player->TriggerSlimeImpulse({2.55f, 1.25f, 2.55f}, 0.16f);
     }

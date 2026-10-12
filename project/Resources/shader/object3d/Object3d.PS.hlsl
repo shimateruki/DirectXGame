@@ -1071,8 +1071,9 @@ PixelShaderOutput main(VertexShaderOutput input)
                         float macro = ValueNoise2D(soilUV * float2(0.22f, 0.32f));
                         float grain = ValueNoise2D(soilUV * 5.0f);
                         float strata = sin(soilUV.y * 2.8f + macro * 2.2f) * 0.025f;
-                        // Split terrain sides encode local depth in UV, independent of platform altitude.
-                        float soilDepth = input.texcoord.x > 0.5f ? input.texcoord.y : -input.worldPosition.y;
+                        // Assimp flips OBJ V coordinates on import. Recover the authored depth
+                        // so every island uses the same earth gradient regardless of altitude.
+                        float soilDepth = input.texcoord.x > 0.5f ? 1.0f - input.texcoord.y : -input.worldPosition.y;
                         float depth = saturate(soilDepth / 13.0f);
                         float3 earth = lerp(float3(0.43f,0.315f,0.185f),float3(0.30f,0.205f,0.12f),depth);
                         earth *= 0.91f + macro * 0.15f + grain * 0.04f + strata;

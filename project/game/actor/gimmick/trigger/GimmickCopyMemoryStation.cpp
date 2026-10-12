@@ -37,6 +37,7 @@ constexpr const char* kActivationCue = "copy_memory_station_activate_cue";
 void GimmickCopyMemoryStation::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 台座だけをシーンへ登録し、能力見本は内部の描画物として再利用します。
     SetClassName("Gimmick");
     SetGimmickType("CopyMemoryStation");
     SetName("Gimmick_CopyMemoryStation");
@@ -111,6 +112,7 @@ void GimmickCopyMemoryStation::Initialize(Object3dCommon* common, const std::str
 }
 
 void GimmickCopyMemoryStation::Update(float deltaTime) {
+    // 接触が途切れた時に選択ラッチを外し、再入場で同じ能力を選び直せます。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
     if (isPlaying) {
@@ -131,6 +133,7 @@ void GimmickCopyMemoryStation::Update(float deltaTime) {
 }
 
 void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 台座が隠れている間は子の見本や演出だけが浮かないよう描画を止めます。
     BaseGimmick::Draw(pointLightResource, spotLightResource);
     if (!GetIsVisible()) {
         return;
@@ -147,6 +150,7 @@ void GimmickCopyMemoryStation::Draw(ID3D12Resource* pointLightResource, ID3D12Re
 }
 
 bool GimmickCopyMemoryStation::OnCollision(Object3d* other) {
+    // コアごとの接触を調べ、同じ接触が続く間の連続取得を防ぎます。
     auto* player = dynamic_cast<Player*>(other);
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!player || !sceneManager || !sceneManager->IsPlaying() || !runtimeEnabled_) {
@@ -165,9 +169,13 @@ bool GimmickCopyMemoryStation::OnCollision(Object3d* other) {
     return false;
 }
 
-void GimmickCopyMemoryStation::OnTrigger() { OnSwitchEvent(true); }
+void GimmickCopyMemoryStation::OnTrigger() {
+    // 単発トリガーは台座を有効化するイベントへ変換します。
+    OnSwitchEvent(true);
+}
 
 void GimmickCopyMemoryStation::OnSwitchEvent(bool active) {
+    // 無効化時は直前に触れていたコアと取得パルスを消します。
     runtimeEnabled_ = active;
     if (!active) {
         latchedCore_ = -1;
@@ -177,6 +185,7 @@ void GimmickCopyMemoryStation::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickCopyMemoryStation::Clone() const {
+    // 内部見本は初期化で作り直し、設定された能力種別だけコピーします。
     auto clone = std::make_unique<GimmickCopyMemoryStation>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -185,6 +194,7 @@ std::unique_ptr<Object3d> GimmickCopyMemoryStation::Clone() const {
 }
 
 void GimmickCopyMemoryStation::BeginPlayState() {
+    // 再生開始時は編集設定を有効状態の初期値へ反映します。
     initializedForPlay_ = true;
     runtimeEnabled_ = param_.has_value() ? param_->startActive : true;
     selectionCooldown_ = 0.0f;
@@ -193,6 +203,7 @@ void GimmickCopyMemoryStation::BeginPlayState() {
 }
 
 void GimmickCopyMemoryStation::ResetEditorState() {
+    // 前回再生での選択とアニメーションを編集画面へ持ち越しません。
     initializedForPlay_ = false;
     corePulseTimers_.fill(0.0f);
     runtimeEnabled_ = param_ ? param_->startActive : true;
@@ -202,6 +213,7 @@ void GimmickCopyMemoryStation::ResetEditorState() {
 }
 
 void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
+    // 無効な時間差を除外し、登録済みの見本モデルを配置と設定に追従させます。
     deltaTime = std::isfinite(deltaTime) ? std::clamp(deltaTime, 0.0f, 0.1f) : 0.0f;
     visualTimer_ = std::fmod(visualTimer_ + deltaTime, 600.0f);
     SceneManager* manager = SceneManager::GetInstance();
@@ -301,6 +313,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
 }
 
 void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, float approach, float scale) {
+    // 各コアに固定数の粒と光輪を割り当て、毎フレーム生成しません。
     if (!runtimeEnabled_)
         return;
     const auto* descriptor = PlayerCopyTypeCatalog::Find(GetConfiguredType(index));
@@ -367,6 +380,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
 }
 
 void GimmickCopyMemoryStation::ConfigureCore(size_t index, const std::string& enemyType) {
+    // 能力カタログに登録された型だけ対応モデルを表示します。
     displayedTypes_[index] = enemyType;
     Object3d* core = coreVisuals_[index].get();
     const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
@@ -386,6 +400,7 @@ void GimmickCopyMemoryStation::ConfigureCore(size_t index, const std::string& en
 }
 
 bool GimmickCopyMemoryStation::IsSingleCore() const {
+    // 使用可能な能力が一つなら、見本と取得位置を中央へ集約します。
     size_t count = 0;
     for (size_t i = 0; i < kCoreCount; ++i)
         if (PlayerCopyTypeCatalog::IsSupported(GetConfiguredType(i)))
@@ -402,10 +417,12 @@ Vector3 GimmickCopyMemoryStation::GetCoreLocalPosition(size_t index) const {
 }
 
 Vector3 GimmickCopyMemoryStation::GetCoreWorldPosition(size_t index) const {
+    // 台座の回転と拡大縮小も含めて、コアの接触位置を変換します。
     return Math::Transform(GetCoreLocalPosition(index), GetWorldMatrix());
 }
 
 std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
+    // 設定されたスロット番号を能力名へ変換します。
     if (!param_.has_value()) {
         return {};
     }
@@ -424,6 +441,7 @@ std::string GimmickCopyMemoryStation::GetConfiguredType(size_t index) const {
 }
 
 int GimmickCopyMemoryStation::FindTouchedCore(const Vector3& playerPosition) const {
+    // 水平方向だけで最も近い有効コアを探し、見た目と取得先を一致させます。
     const float configuredRadius = param_.has_value() ? param_->copyMemoryActivationRadius : 0.9f;
     const float scaleRadius = (std::max)(std::abs(GetScale().x), std::abs(GetScale().z));
     const float radius = (std::max)(0.1f, configuredRadius) * scaleRadius;
@@ -447,6 +465,7 @@ int GimmickCopyMemoryStation::FindTouchedCore(const Vector3& playerPosition) con
 }
 
 void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
+    // 能力適用に成功したときだけ再取得制限と吸い込み演出を始めます。
     if (index >= kCoreCount || player.isDead || player.IsCinematicLocked()) {
         return;
     }

@@ -14,6 +14,7 @@
 
 namespace {
 bool ShouldDrawStageGateFrame(const std::unique_ptr<Object3d>& obj) {
+    // 透明なゲート面と枠を区別し、枠だけを不透明パスへ残す。
     if (!obj || obj->GetMaterialType() != 22)
         return false;
     if (obj->GetGimmickType() != "StageGate")
@@ -133,6 +134,7 @@ void ObjectManager::AddObject(std::unique_ptr<Object3d> object) {
 }
 
 Object3d* ObjectManager::AddObjectImmediate(std::unique_ptr<Object3d> object) {
+    // 編集などで即時参照が必要な場合も、所有権と衝突登録を同時に移す。
     if (!object) return nullptr;
     Object3d* raw = object.get();
     CollisionManager::GetInstance()->AddObject(raw);
@@ -141,6 +143,7 @@ Object3d* ObjectManager::AddObjectImmediate(std::unique_ptr<Object3d> object) {
 }
 
 std::unique_ptr<Object3d> ObjectManager::TakeObjectImmediate(Object3d* object) {
+    // 所有権の移譲前に衝突・削除予約から外し、旧 Manager に参照を残さない。
     if (!object) return nullptr;
     auto takeFrom = [object](std::vector<std::unique_ptr<Object3d>>& storage) -> std::unique_ptr<Object3d> {
         auto it = std::find_if(storage.begin(), storage.end(), [object](const auto& candidate) {
@@ -223,6 +226,7 @@ void ObjectManager::ProcessRemovals() {
 }
 
 void ObjectManager::DrawShadow() {
+    // メインカメラ外から届く影も残せるよう、ライト視錐台で描画対象を絞る。
     if (objects_.empty())
         return;
 

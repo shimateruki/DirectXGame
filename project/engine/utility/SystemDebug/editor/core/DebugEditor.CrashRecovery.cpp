@@ -407,6 +407,7 @@ namespace {
 // ========================================================================
 
 void DebugEditor::InitializeCrashRecovery() {
+    // 前回セッションの候補を読む前に新しい保存先を作らず、復元の機会を残します。
     LoadCrashRecoveryCandidate();
 
     crashRecoverySessionId_ = "session_" + MakeCrashRecoveryStamp();
@@ -422,6 +423,7 @@ void DebugEditor::InitializeCrashRecovery() {
 
 void DebugEditor::UpdateCrashRecovery(float deltaTime) {
 #ifdef USE_IMGUI
+    // 未保存状態の間だけドラフトを更新し、Heartbeatで異常終了を識別します。
     if (!crashRecoverySessionActive_) {
         return;
     }
@@ -450,6 +452,7 @@ void DebugEditor::UpdateCrashRecovery(float deltaTime) {
 }
 
 void DebugEditor::FinalizeCrashRecovery() {
+    // 正常終了を記録し、次回起動時にこのセッションを復元候補から除外します。
     if (!crashRecoverySessionActive_) {
         return;
     }
@@ -459,6 +462,7 @@ void DebugEditor::FinalizeCrashRecovery() {
 }
 
 void DebugEditor::SaveCrashRecoveryDraft() {
+    // シーン保存先のうち許可されたJSONだけをセッション専用領域へ複写します。
     if (!crashRecoverySessionActive_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return;
     }
@@ -502,6 +506,7 @@ void DebugEditor::SaveCrashRecoveryDraft() {
 }
 
 void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nlohmann::json& files) {
+    // ドラフト一覧と終了状態をマニフェストにまとめ、起動時の復元判定に使います。
     if (crashRecoverySessionDir_.empty()) {
         return;
     }
@@ -534,6 +539,7 @@ void DebugEditor::WriteCrashRecoverySession(bool cleanExit, bool dirty, const nl
 }
 
 void DebugEditor::LoadCrashRecoveryCandidate() {
+    // 未正常終了かつ未保存データを持つ最新セッションのみを候補にします。
     crashRecoveryPending_ = false;
     crashRecoveryPromptOpened_ = false;
     crashRecoveryPendingManifest_.clear();
@@ -589,6 +595,7 @@ void DebugEditor::LoadCrashRecoveryCandidate() {
 
 void DebugEditor::DrawCrashRecoveryPrompt() {
 #ifdef USE_IMGUI
+    // 復元の可否を先に表示し、ユーザーが選ぶまでは現在のJSONを変更しません。
     if (!crashRecoveryPending_) {
         return;
     }
@@ -645,6 +652,7 @@ void DebugEditor::DrawCrashRecoveryPrompt() {
 }
 
 bool DebugEditor::RestoreCrashRecoveryDraft() {
+    // 復元前の現行JSONを退避し、検証済みのドラフトだけを元の場所へ戻します。
     if (!crashRecoveryPendingManifest_.is_object() ||
         !crashRecoveryPendingManifest_.contains("files") ||
         !crashRecoveryPendingManifest_["files"].is_array()) {
@@ -724,6 +732,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
 }
 
 void DebugEditor::ResolveCrashRecoveryCandidate(const std::string& resolution) {
+    // 選択結果を元セッションのマニフェストへ記録して、同じ確認を繰り返しません。
     if (!crashRecoveryPendingManifest_.is_object()) {
         return;
     }

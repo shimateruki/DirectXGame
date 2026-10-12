@@ -52,19 +52,36 @@
 #include "GameSettingsManager.h"
 #include "SpriteLayoutScaler.h"
 
-PreviewScene::PreviewScene() {}
-PreviewScene::~PreviewScene() {}
+PreviewScene::PreviewScene() {
+    // シーン資源はInitializeで作り、描画基盤の準備順に依存させない。
+}
+PreviewScene::~PreviewScene() {
+    // 解放はSceneManagerが呼ぶFinalizeへ集約する。
+}
 
 namespace {
-Vector2 PreviewUiPosition(const Vector2& value) { return SpriteLayoutScaler::ScaleDesignPosition(value); }
+Vector2 PreviewUiPosition(const Vector2& value) {
+    // HUDの設計座標を現在の描画解像度へ変換する。
+    return SpriteLayoutScaler::ScaleDesignPosition(value);
+}
 
-Vector2 PreviewUiSize(const Vector2& value) { return SpriteLayoutScaler::ScaleDesignSize(value); }
+Vector2 PreviewUiSize(const Vector2& value) {
+    // 位置と同じ倍率でHUDの寸法を調整する。
+    return SpriteLayoutScaler::ScaleDesignSize(value);
+}
 
-float PreviewUiX(float value) { return SpriteLayoutScaler::ScaleDesignX(value); }
+float PreviewUiX(float value) {
+    // 数字の横幅にも共通の解像度倍率を使う。
+    return SpriteLayoutScaler::ScaleDesignX(value);
+}
 
-float PreviewUiY(float value) { return SpriteLayoutScaler::ScaleDesignY(value); }
+float PreviewUiY(float value) {
+    // HUDの高さと縦位置を同じ設計基準で扱う。
+    return SpriteLayoutScaler::ScaleDesignY(value);
+}
 
 void SetPreviewFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
+    // 差し替え後に前の画像の切り出し範囲が残らないよう、全領域へ戻す。
     if (!sprite || textureHandle == 0) {
         return;
     }
@@ -75,6 +92,7 @@ void SetPreviewFullTextureRect(Sprite* sprite, uint32_t textureHandle) {
 }
 
 const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon) {
+    // コピー中の姿と被弾状態の組み合わせからHUD用の顔画像を選ぶ。
     if (player && player->IsEnemyMorphed()) {
         switch (player->GetEnemyMorphType()) {
         case Player::EnemyMorphType::Slime:
@@ -96,6 +114,7 @@ const char* ResolvePreviewHpIconTexture(const Player* player, bool showHurtIcon)
 }
 
 Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
+    // カメラがない場合や射影値が不正な場合も、HUDを画面内に収める。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
@@ -114,6 +133,7 @@ Vector2 PreviewWorldToScreen(const Vector3& worldPosition) {
 } // namespace
 
 SceneLoadManifest PreviewScene::BuildAsyncLoadManifest() const {
+    // Asset指定があればそちらを優先し、非同期読込に必要な資源を列挙する。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -230,6 +250,7 @@ void PreviewScene::Initialize() {
 }
 
 void PreviewScene::Finalize() {
+    // 当たり判定と弾の共有状態を先に外し、描画資源への参照を残さない。
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
     particleSystem_.reset();
@@ -259,6 +280,7 @@ void PreviewScene::Finalize() {
 }
 
 void PreviewScene::Update(float deltaTime) {
+    // ゴール後はゲーム進行を止め、背景演出とUIだけ更新する。
     if (isGoal_) {
         PostEffect::GetInstance()->Update(deltaTime);
         CameraManager::GetInstance()->Update(deltaTime);
@@ -376,6 +398,7 @@ void PreviewScene::Update(float deltaTime) {
 }
 
 void PreviewScene::Draw() {
+    // カメラがプレイヤーへ近づいたときは、身体が視界を塞がないようにする。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
@@ -496,6 +519,7 @@ void PreviewScene::Draw() {
 }
 
 void PreviewScene::DrawUI() {
+    // 3D描画後にロックオン印とプレイヤー/HUDを重ねる。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_) {
         sprite->Draw();
@@ -510,16 +534,21 @@ void PreviewScene::DrawUI() {
 }
 
 void PreviewScene::DrawShadow() {
+    // 影描画はシーンのObjectManagerに登録された物体だけへ委譲する。
     if (objectManager_) {
         objectManager_->DrawShadow();
     }
 }
 
-void PreviewScene::UpdateUI(float deltaTime) { UpdatePreviewHUD(deltaTime); }
+void PreviewScene::UpdateUI(float deltaTime) {
+    // HUDの補間をシーン更新から独立させ、ゴール後も進める。
+    UpdatePreviewHUD(deltaTime);
+}
 
 std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position,
                                                              const Vector2& size, const Vector2& anchor,
                                                              const Vector4& color) {
+    // プレビューHUDも設計座標から生成し、実画面との倍率差を吸収する。
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(spriteCommon_.get(), texturePath);
     sprite->SetPosition(PreviewUiPosition(position));
@@ -532,6 +561,7 @@ std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& 
 }
 
 void PreviewScene::InitializePreviewHUD() {
+    // 表示差分だけ更新できるよう、ゲージの層と数字を個別Spriteで用意する。
     for (const char* path : CopyStyleHud::kTexturePaths) {
         Sprite::LoadTexture(path);
     }
@@ -599,6 +629,7 @@ void PreviewScene::InitializePreviewHUD() {
 void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value,
                                        const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color,
                                        bool visible) {
+    // 数字は2桁に制限し、桁数が変わっても右端の位置を維持する。
     value = std::clamp(value, 0, 99);
 
     const std::array<int, 2> digitValues = {value / 10, value % 10};
@@ -631,6 +662,7 @@ void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& d
 }
 
 void PreviewScene::UpdatePreviewHUD(float deltaTime) {
+    // HPの実値と遅れて追うゲージを別々に更新して、被弾量を見せる。
     copyStyleHud_.Update(player_, deltaTime);
     const bool visible = player_ != nullptr;
     const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
@@ -841,6 +873,7 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
 }
 
 void PreviewScene::DrawPreviewHUD() {
+    // 下地から文字・顔の順に描き、ゲージや数字の重なり順を固定する。
     if (hudLifeIcon_)
         hudLifeIcon_->Draw();
     if (hudLifeXIcon_)
@@ -881,6 +914,7 @@ void PreviewScene::DrawPreviewHUD() {
 
 void PreviewScene::DrawImGui() {
 #ifdef USE_IMGUI
+    // この画面だけで生活数・コイン・シーン遷移を試せるようにする。
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: Preview Scene");
     ImGui::Separator();
 
@@ -917,6 +951,7 @@ void PreviewScene::DrawImGui() {
 }
 
 bool PreviewScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+    // プレビューでは通常のクリア処理を省き、演出と選択画面への移動だけ確認する。
     (void)actor;
     if (IsGoal()) return false;
     if (goal) VFXSequencer::PlayOneShot("crown_get_cue", goal->GetWorldPosition());
@@ -926,14 +961,18 @@ bool PreviewScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
 }
 
 void PreviewScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+    // 取得結果だけ記録し、プレビュー内の収集イベントを確認可能にする。
     (void)worldPosition;
     CollectStarCoin(coinIndex);
     DebugConsole::GetInstance()->AddLog("Preview Star Coin " + std::to_string(coinIndex) + " Collected!");
 }
 
-void PreviewScene::StartBridgeDropMovie() {}
+void PreviewScene::StartBridgeDropMovie() {
+    // プレビューには橋落下のシネマティックを持たせない。
+}
 
 bool PreviewScene::IsVisible(Object3d* obj) {
+    // 近距離はカリングせず、離れた物体だけ視錐台で描画を間引く。
     if (!obj || !obj->GetIsVisible())
         return false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();

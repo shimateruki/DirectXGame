@@ -188,6 +188,7 @@ bool CreateMappedBuffer(DirectXCommon* dxCommon, size_t size, Microsoft::WRL::Co
 // LOD関連の不具合調査時は、このファイルから追えるようにする。
 // ========================================================================
 void MeshRenderer::SetModel(Model* model) {
+    // 名前付きLODとの対応がなくなるため、直接指定時は以前のLOD設定を破棄します。
     model_ = model;
     modelName_.clear();
     ClearLodLevels();
@@ -202,6 +203,7 @@ void MeshRenderer::SetModel(Model* model) {
 }
 
 void MeshRenderer::SetModel(const std::string& modelName) {
+    // 基本モデルの材質を適用してから、同名モデルに付随するLOD定義を読み込みます。
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
     if (model_ && materialData_) {
@@ -216,6 +218,7 @@ void MeshRenderer::SetModel(const std::string& modelName) {
 }
 
 void MeshRenderer::SetLodLevels(const std::vector<LodLevel>& levels) {
+    // 読み込めなかったLODを候補から除き、描画時に有効なモデルだけを選べるようにします。
     lodLevels_.clear();
 
     for (LodLevel level : levels) {
@@ -237,11 +240,13 @@ void MeshRenderer::SetLodLevels(const std::vector<LodLevel>& levels) {
 }
 
 void MeshRenderer::ClearLodLevels() {
+    // 現在の選択も基本モデルへ戻し、古いLOD番号がUIに残らないようにします。
     lodLevels_.clear();
     activeLodLevel_ = 0;
 }
 
 bool MeshRenderer::SetLodLevelDistance(int level, float distance) {
+    // 距離を負にしないで、変更後は近い閾値から選択できる順序を保ちます。
     bool changed = false;
     for (auto& lod : lodLevels_) {
         if (lod.level == level) {
@@ -260,6 +265,7 @@ bool MeshRenderer::SetLodLevelDistance(int level, float distance) {
 }
 
 bool MeshRenderer::LoadLodManifestForModel(const std::string& modelName) {
+    // モデルの候補パスを順に試し、見つからない場合は基本モデルのみで描画します。
     ClearLodLevels();
 
     nlohmann::json manifest;
@@ -298,11 +304,13 @@ bool MeshRenderer::LoadLodManifestForModel(const std::string& modelName) {
 }
 
 int MeshRenderer::GetActiveLodLevel() const {
+    // カメラ位置が変わっている可能性があるため、参照時にも描画モデルを再評価します。
     ResolveDrawModel();
     return activeLodLevel_;
 }
 
 std::string MeshRenderer::GetActiveModelName() const {
+    // 実際に選ばれたLODの名前を返し、選択がなければ基本モデル名に戻します。
     ResolveDrawModel();
     if (activeLodLevel_ == 0) {
         return modelName_;
@@ -317,6 +325,7 @@ std::string MeshRenderer::GetActiveModelName() const {
 }
 
 float MeshRenderer::GetCameraDistanceToObject() const {
+    // ワールド行列の平行移動成分を使い、親Transformを含む実際の配置位置で測ります。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera || !transform_) {
         return 0.0f;
@@ -335,6 +344,7 @@ float MeshRenderer::GetCameraDistanceToObject() const {
 }
 
 Model* MeshRenderer::ResolveDrawModel() const {
+    // カメラ距離を満たした最後の閾値を選び、遠距離ほど低詳細モデルへ切り替えます。
     activeLodLevel_ = 0;
     if (!model_ || !lodEnabled_ || lodLevels_.empty()) {
         return model_;

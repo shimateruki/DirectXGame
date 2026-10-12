@@ -15,19 +15,31 @@
 
 namespace {
 constexpr float kPi = 3.14159265f;
-float Ease(float x) { x=std::clamp(x,0.0f,1.0f);return x*x*(3-2*x); }
-Vector3 Mix(const Vector3& a,const Vector3& b,float t) {return a+(b-a)*t;}
+float Ease(float x) {
+    // 時刻を範囲内へ収め、演出の切り替わりを滑らかにします。
+    x=std::clamp(x,0.0f,1.0f);return x*x*(3-2*x);
+}
+Vector3 Mix(const Vector3& a,const Vector3& b,float t) {
+    // カメラと注目点を同じ補間係数で移動させます。
+    return a+(b-a)*t;
+}
 Vector3 RotateY(Vector3 v,float angle) {
+    // 破片のローカル位置を、ボスの向きに合わせたワールド方向へ回します。
     return {v.x*std::cos(angle)+v.z*std::sin(angle),v.y,-v.x*std::sin(angle)+v.z*std::cos(angle)};
 }
 
-Vector3 Product(const Vector3& a,const Vector3& b) {return {a.x*b.x,a.y*b.y,a.z*b.z};}
+Vector3 Product(const Vector3& a,const Vector3& b) {
+    // 破片の支点にボスの非等方スケールを適用します。
+    return {a.x*b.x,a.y*b.y,a.z*b.z};
+}
 Vector3 Look(const Vector3& eye,const Vector3& target) {
+    // 注目点への方向から演出カメラのピッチとヨーを求めます。
     const auto d=target-eye;return {-std::atan2(d.y,std::sqrt(d.x*d.x+d.z*d.z)),std::atan2(d.x,d.z),0};
 }
 }
 
 bool GamePlayScene::StartCrownDefeat(EnemyFalseKingSlime* boss) {
+    // 演出資源の読み込みに成功してから入力と通常の撃破処理を止めます。
     if (!boss || !player_ || player_->isDead || crownDefeat_.active || crownDefeat_.completed || crownFinale_.active || isGoal_)
         return false;
     Camera* camera=CameraManager::GetInstance()->GetActiveCamera();
@@ -207,6 +219,7 @@ void GamePlayScene::UpdateCrownDefeat(float deltaTime) {
 }
 
 void GamePlayScene::FinishCrownDefeat() {
+    // ボスの撃破を確定し、通常のゴール演出へ制御を引き継ぎます。
     auto& s=crownDefeat_;if(!s.active || crownMoviePreview_.active)return;
     s.active=false;s.completed=true;
     // 完了フラグを立ててからイベントを通知し、報酬側の旧カメラを重ねて再生しません。
@@ -221,6 +234,7 @@ void GamePlayScene::FinishCrownDefeat() {
 }
 
 void GamePlayScene::ResetCrownDefeat() {
+    // 演出で変更したボス・Player・カメラの状態を控えた値へ戻す。
     auto& s=crownDefeat_;
     if(!s.boss && !s.camera)return;
     if(s.boss) {s.boss->CancelFinalDefeat();s.boss->SetIsVisible(s.bossVisible);}
@@ -234,6 +248,7 @@ void GamePlayScene::ResetCrownDefeat() {
 }
 
 void GamePlayScene::DrawCrownDefeatWorld() {
+    // 本体と破片を先に描き、半透明の光は最後に重ねます。
     auto& s=crownDefeat_;if(!s.active && !s.completed)return;
     auto draw=[&](Object3d* object) {
         if(object && object->GetIsVisible()) {object->UpdateWorldMatrix(true);object->Draw(pointLightResource_.Get(),spotLightResource_.Get());}

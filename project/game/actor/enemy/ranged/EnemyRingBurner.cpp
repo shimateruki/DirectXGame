@@ -32,18 +32,21 @@ constexpr const char* kChargeParticle = "ring_burner_charge_sparks";
 constexpr const char* kFireParticle = "ring_burner_discharge_embers";
 
 float EaseOutQuint(float value) {
+    // 発射前の予兆が終盤で急に跳ねないよう、半径の変化を滑らかに収束させる。
     const float t = (std::clamp)(value, 0.0f, 1.0f);
     const float inverse = 1.0f - t;
     return 1.0f - inverse * inverse * inverse * inverse * inverse;
 }
 
 float PlanarDistance(const Vector3& first, const Vector3& second) {
+    // 床を伝う輪の判定では高さを距離から除き、高さは別条件で調べる。
     const float x = first.x - second.x;
     const float z = first.z - second.z;
     return std::sqrt(x * x + z * z);
 }
 
 Vector3 NormalizePlanar(const Vector3& value) {
+    // 完全に重なった対象にも一定方向の押し出しを与える。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
         return {0.0f, 0.0f, 1.0f};
@@ -56,16 +59,21 @@ Vector3 NormalizePlanar(const Vector3& value) {
 class EnemyRingBurner::StateBehavior {
   public:
     virtual ~StateBehavior() = default;
-    virtual void Enter(EnemyRingBurner&) const {}
+    virtual void Enter(EnemyRingBurner&) const {
+        // 入場処理がない状態では何も変更しない。
+    }
     virtual void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const = 0;
     virtual void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
                                  float& emissive) const = 0;
-    virtual void Exit(EnemyRingBurner&) const {}
+    virtual void Exit(EnemyRingBurner&) const {
+        // 退出処理が必要な状態だけで演出を回収する。
+    }
 };
 
 class EnemyRingBurner::IdleBehavior final : public StateBehavior {
   public:
     void Update(EnemyRingBurner& owner, float deltaTime, float targetDistance, float detectRange) const override {
+        // 待機中だけ再使用待ちを減らし、対象が射程に入ったら詠唱へ進む。
         owner.cooldownTimer_ = (std::max)(0.0f, owner.cooldownTimer_ - deltaTime);
         owner.HideAttackTelegraph();
         if (owner.target_ && targetDistance <= detectRange && owner.cooldownTimer_ <= 0.0f) {
@@ -74,6 +82,7 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
     }
 
     void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4&, float& emissive) const override {
+        // 待機中は元の大きさを基準に弱い呼吸と発光だけを与える。
         const float breathe = std::sin(owner.idleTimer_ * 2.8f) * 0.025f;
         scale.x *= 1.0f + breathe;
         scale.y *= 1.0f - breathe * 0.45f;
@@ -85,12 +94,14 @@ class EnemyRingBurner::IdleBehavior final : public StateBehavior {
 class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
+        // 前回の輪の半径を消し、予兆と充填演出を同じ開始時刻に揃える。
         owner.waveRadius_ = 0.0f;
         owner.SpawnChargeEffects();
         owner.TriggerAttackTelegraphCue({1.0f, 0.20f, 0.025f, 1.0f});
     }
 
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        // 充填の進行率で予兆半径を広げ、期限が来た時だけ輪を放出する。
         owner.stateTimer_ -= deltaTime;
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
         const float pulseRadius = Math::Lerp(1.05f, 1.72f, EaseOutQuint(progress));
@@ -111,6 +122,7 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
 
     void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
                          float& emissive) const override {
+        // 発射前に押し潰しと発光を強め、床の予兆と本体の状態を一致させる。
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
         const float pulse = std::sin(progress * kPi * 10.0f) * (0.03f + progress * 0.07f);
         scale.x *= 1.0f + pulse;
@@ -120,12 +132,16 @@ class EnemyRingBurner::ChargeBehavior final : public StateBehavior {
         emissive = 2.2f + progress * 4.8f;
     }
 
-    void Exit(EnemyRingBurner& owner) const override { owner.HideAttackTelegraph(); }
+    void Exit(EnemyRingBurner& owner) const override {
+        // 放出時に詠唱用の床予兆を残さない。
+        owner.HideAttackTelegraph();
+    }
 };
 
 class EnemyRingBurner::WaveBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
+        // 輪の初期半径を表示アセットの開始半径に合わせ、初回フレームから判定を同期する。
         owner.waveDamageDone_ = false;
         owner.waveRadius_ = owner.GetWaveMaximumRadius() * kWaveStartRadiusRatio;
         owner.SpawnWaveEffects();
@@ -146,6 +162,7 @@ class EnemyRingBurner::WaveBehavior final : public StateBehavior {
 
     void ApplyVisualPose(const EnemyRingBurner& owner, Vector3& scale, Vector4& color,
                          float& emissive) const override {
+        // 放出直後だけ反動を大きくし、輪の拡散とともに元の姿勢へ戻す。
         const float progress = 1.0f - (std::max)(0.0f, owner.stateTimer_) / owner.stateDuration_;
         const float recoil = std::exp(-progress * 8.0f);
         scale.x *= 1.0f + recoil * 0.13f;
@@ -155,12 +172,16 @@ class EnemyRingBurner::WaveBehavior final : public StateBehavior {
         emissive = 4.2f - progress * 2.2f;
     }
 
-    void Exit(EnemyRingBurner& owner) const override { owner.StopWaveEffects(); }
+    void Exit(EnemyRingBurner& owner) const override {
+        // 判定終了と同時に輪の表示スコープを回収する。
+        owner.StopWaveEffects();
+    }
 };
 
 class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
   public:
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        // 硬直後に待機へ戻し、その時点から次の充填までの間隔を数える。
         owner.stateTimer_ -= deltaTime;
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Idle, 0.01f);
@@ -169,6 +190,7 @@ class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
     }
 
     void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4&, float& emissive) const override {
+        // 放出後の低い姿勢と弱い光を保ち、待機状態との差を出す。
         scale.y *= 0.94f;
         emissive = 1.05f;
     }
@@ -177,11 +199,13 @@ class EnemyRingBurner::RecoveryBehavior final : public StateBehavior {
 class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
   public:
     void Enter(EnemyRingBurner& owner) const override {
+        // 上に乗られた間は攻撃を止め、予兆と輪の描画も消す。
         owner.HideAttackTelegraph();
         owner.StopWaveEffects();
     }
 
     void Update(EnemyRingBurner& owner, float deltaTime, float, float) const override {
+        // 踏まれなくなって一定時間が経つと、硬直を経て再起動する。
         owner.stateTimer_ -= deltaTime;
         if (owner.stateTimer_ <= 0.0f) {
             owner.EnterState(State::Recovery, kRecoveryDuration);
@@ -190,6 +214,7 @@ class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
 
     void ApplyVisualPose(const EnemyRingBurner&, Vector3& scale, Vector4& color,
                          float& emissive) const override {
+        // 停止状態は低い姿勢と寒色で攻撃不能と分かるようにする。
         scale.x *= 1.05f;
         scale.y *= 0.82f;
         scale.z *= 1.05f;
@@ -199,6 +224,7 @@ class EnemyRingBurner::SuppressedBehavior final : public StateBehavior {
 };
 
 const EnemyRingBurner::StateBehavior& EnemyRingBurner::BehaviorFor(State state) {
+    // Replayへ保存したStateの番号と配列順を合わせ、各状態の処理を選ぶ。
     static const IdleBehavior idle;
     static const ChargeBehavior charge;
     static const WaveBehavior wave;
@@ -236,6 +262,7 @@ void EnemyRingBurner::Initialize(Object3dCommon* common, const std::string& mode
 }
 
 void EnemyRingBurner::Update(float deltaTime) {
+    // 上面にプレイヤーがいる間は攻撃状態より抑止状態を優先する。
     ResolveRuntimeTarget();
     if (UpdateInactiveState(deltaTime)) {
         return;
@@ -261,6 +288,7 @@ void EnemyRingBurner::Update(float deltaTime) {
 }
 
 void EnemyRingBurner::ResolveRuntimeTarget() {
+    // 編集・再生で対象が未接続でも、現在シーンのプレイヤーを後から結び付ける。
     if (target_) {
         return;
     }
@@ -273,6 +301,7 @@ void EnemyRingBurner::ResolveRuntimeTarget() {
 }
 
 bool EnemyRingBurner::UpdateInactiveState(float deltaTime) {
+    // 休眠や撃破中は固有AIを動かさず、共通更新だけで退場を進める。
     if (IsDormant() || ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
         StopWaveEffects();
@@ -283,6 +312,7 @@ bool EnemyRingBurner::UpdateInactiveState(float deltaTime) {
 }
 
 void EnemyRingBurner::EnsureBaseScale() {
+    // 外部からスケールを指定された個体では、その値を以後の姿勢補間の基準にする。
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
         hasBaseScale_ = true;
@@ -290,6 +320,7 @@ void EnemyRingBurner::EnsureBaseScale() {
 }
 
 void EnemyRingBurner::EnterState(State state, float duration) {
+    // 旧状態の演出を片付けてから新状態を開始し、秒数0での進行率除算を防ぐ。
     BehaviorFor(state_).Exit(*this);
     state_ = state;
     stateDuration_ = (std::max)(duration, 0.001f);
@@ -301,6 +332,7 @@ void EnemyRingBurner::EnterState(State state, float duration) {
 }
 
 void EnemyRingBurner::UpdateCombat(float deltaTime) {
+    // JSONの検知距離を安全範囲へ収めてから、現在状態の振る舞いへ渡す。
     const float targetDistance = GetPlanarTargetDistance();
     const float configuredRange = param_.has_value() ? param_->detectionRange : detectionRange_;
     const float detectRange = (std::clamp)(configuredRange, 8.0f, 80.0f);
@@ -340,6 +372,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
 }
 
 void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
+    // 各状態が決める目標姿勢を基準スケールから作り、急な切替を補間する。
     Vector3 targetScale = baseScale_;
     Vector4 targetColor = defaultColor_;
     float emissive = 1.35f;
@@ -354,6 +387,7 @@ void EnemyRingBurner::UpdateVisualPose(float deltaTime) {
 }
 
 bool EnemyRingBurner::IsTargetStandingOnTop() const {
+    // 輪の回避を兼ねた踏みつけを、接地・水平距離・上面との高さで判定する。
     const Player* player = dynamic_cast<const Player*>(target_);
     if (!player || !player->IsGrounded()) {
         return false;
@@ -369,24 +403,29 @@ bool EnemyRingBurner::IsTargetStandingOnTop() const {
 }
 
 float EnemyRingBurner::GetPlanarTargetDistance() const {
+    // 対象がない間は射程外として扱い、不意に充填状態へ入らない。
     return target_ ? PlanarDistance(GetWorldPosition(), target_->GetWorldPosition()) : 99999.0f;
 }
 
 float EnemyRingBurner::GetChargeDuration() const {
+    // 既存の揺れ時間を充填時間へ流用し、極端な設定値は制限する。
     return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.45f, 1.40f) : 0.78f;
 }
 
 float EnemyRingBurner::GetCooldownDuration() const {
+    // 敵の行動間隔を再使用待ちへ流用し、連射や長時間停止を避ける。
     return param_.has_value() ? (std::clamp)(param_->interval, 1.2f, 8.0f) : 3.0f;
 }
 
 float EnemyRingBurner::GetWaveMaximumRadius() const {
+    // 設定した移動量を輪の到達距離とし、配置スケールにも追従させる。
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
     const float configured = param_.has_value() ? param_->moveAmount : 11.0f;
     return (std::clamp)(configured, 6.0f, 48.0f) * horizontalScale;
 }
 
 void EnemyRingBurner::SpawnChargeEffects() {
+    // 充填のメッシュ演出と火花を本体の高さ・大きさに合わせて置く。
     const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.18f * baseScale_.y, 0.0f};
     const float scale = (std::max)(baseScale_.x, baseScale_.z);
     if (auto* meshEffects = MeshEffectManager::GetInstance()) {
@@ -398,6 +437,7 @@ void EnemyRingBurner::SpawnChargeEffects() {
 }
 
 void EnemyRingBurner::SpawnWaveEffects() {
+    // 作成時の半径11を基準に表示を拡縮し、判定の最大半径と揃える。
     const Vector3 origin = GetWorldPosition() + Vector3{0.0f, 0.34f * baseScale_.y, 0.0f};
     const float authoredRadius = 11.0f;
     const float effectScale = GetWaveMaximumRadius() / authoredRadius;
@@ -422,6 +462,7 @@ void EnemyRingBurner::StopWaveEffects() {
 }
 
 std::unique_ptr<Object3d> EnemyRingBurner::Clone() const {
+    // シーン配置を複製するときも固有AIを新規生成し、対象と調整済みスケールを引き継ぐ。
     auto clone = std::make_unique<EnemyRingBurner>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -439,12 +480,14 @@ void EnemyRingBurner::SetCarried(bool isCarried) {
 }
 
 void EnemyRingBurner::ApplyManagedScale(const Vector3& scale) {
+    // エディターで指定した大きさを、輪の半径と姿勢補間の基準にも反映する。
     baseScale_ = scale;
     hasBaseScale_ = true;
     SetScale(scale);
 }
 
 void EnemyRingBurner::CaptureReplayCustomState(json& state) const {
+    // 輪の半径と被弾済み状態も保存し、巻き戻し時の二重ダメージを避ける。
     BaseEnemy::CaptureReplayCustomState(state);
     state["ringBurnerState"] = static_cast<int>(state_);
     state["ringBurnerStateTimer"] = stateTimer_;
@@ -456,6 +499,7 @@ void EnemyRingBurner::CaptureReplayCustomState(json& state) const {
 }
 
 void EnemyRingBurner::RestoreReplayCustomState(const json& state) {
+    // 保存番号を有効な状態範囲へ収め、欠損した録画は待機値で復元する。
     BaseEnemy::RestoreReplayCustomState(state);
     state_ = static_cast<State>((std::clamp)(state.value("ringBurnerState", 0), 0, 4));
     stateTimer_ = state.value("ringBurnerStateTimer", 0.0f);

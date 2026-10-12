@@ -8,6 +8,7 @@ using namespace PlayerImplementation;
 // 敵の運搬・吸収からコピー開始までを扱います。途中キャンセルでも敵とプレイヤーの見た目を戻せる順序にします。
 
 void Player::SetCarriedEnemy(Object3d* enemy) {
+    // 抱えた時の基準サイズと姿勢を保存し、見た目の縮小を解除時に戻せるようにする。
     if (carriedEnemy_ == enemy) {
         if (enemy && !hasCarriedEnemyBaseScale_) {
             carriedEnemyBaseScale_ = GetStableEnemyCarryScale(enemy);
@@ -42,6 +43,7 @@ void Player::SetCarriedEnemy(Object3d* enemy) {
 }
 
 void Player::ReleaseCarriedEnemy(bool restorePose) {
+    // 吸収途中なら先に演出を止め、保持敵の姿勢を指定に従って復元する。
     if (absorbEffectActive_) {
         CancelAbsorbEffect(restorePose);
     }
@@ -72,6 +74,7 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
 }
 
 bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const {
+    // コピーできない敵には吸収演出を始めず、通常の解放経路へ戻す。
     if (!enemy) {
         return false;
     }
@@ -81,6 +84,7 @@ bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const {
 }
 
 void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
+    // 変身先と敵の元状態を記録してから、吸収アニメーションを開始する。
     if (!enemy) {
         return;
     }
@@ -110,6 +114,7 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
 }
 
 void Player::UpdateAbsorbEffect(float deltaTime) {
+    // 対象が消えた場合は中断処理へ進め、無効な参照で演出を続けない。
     if (!absorbEffectActive_) {
         return;
     }
@@ -223,6 +228,7 @@ void Player::FinishAbsorbEffect() {
 }
 
 void Player::CancelAbsorbEffect(bool restoreEnemy) {
+    // 中断経路でも敵の縮小・姿勢とPlayerの表示を必要に応じて戻す。
     if (restoreEnemy && pendingAbsorbEnemy_) {
         {
             pendingAbsorbEnemy_->SetScale(pendingAbsorbEnemyBaseScale_);
@@ -325,6 +331,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
 }
 
 void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
+    // 初回変身前のモデルと可視状態だけを保存し、連続コピーで基準を上書きしない。
     if (isEnemyMorphed_) {
         return;
     }
@@ -410,6 +417,7 @@ void Player::EmitEnemyMorphStartEffects() {
 }
 
 void Player::UpdateEnemyMorph(float deltaTime) {
+    // 解除演出中は残り時間の通常更新より先に解除処理へ渡す。
     if (enemyMorphReleaseActive_) {
         UpdateEnemyMorphRelease(deltaTime);
         return;
@@ -482,6 +490,7 @@ void Player::UpdateEnemyMorph(float deltaTime) {
 }
 
 float Player::GetEnemyMorphRate() const {
+    // 制限時間のないコピーは残量を常に満量としてUIへ返す。
     if (!isEnemyMorphed_) {
         return 0.0f;
     }

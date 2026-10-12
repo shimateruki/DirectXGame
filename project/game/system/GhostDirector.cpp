@@ -29,6 +29,7 @@ constexpr const char* kAnimationDirectory = "Resources/json/animation/";
 constexpr const char* kVFXDirectory = "Resources/json/vfx_sequence/";
 
 std::vector<std::string> CollectJsonStems(const std::string& directory) {
+    // 選択欄には拡張子を除いた名前だけを並べ、ファイルがまだ無い場合は空一覧にする。
     std::vector<std::string> names;
     if (!fs::exists(directory)) {
         return names;
@@ -43,37 +44,49 @@ std::vector<std::string> CollectJsonStems(const std::string& directory) {
 }
 
 void AddDebugLog(const std::string& text) {
+    // デバッグ表示が使えない環境でも演出処理自体は続ける。
     if (DebugConsole::GetInstance()) {
         DebugConsole::GetInstance()->AddLog(text);
     }
 }
 
 std::string BuildTrackName(Object3d* object) {
+    // 対象名が未設定のトラックにも編集画面で読める仮名を付ける。
     if (!object || object->GetName().empty()) {
         return "Transform Track";
     }
     return object->GetName();
 }
 
-Vector3 SubtractVector3(const Vector3& a, const Vector3& b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
+Vector3 SubtractVector3(const Vector3& a, const Vector3& b) {
+    // 相対キーへ変換するため各軸の差分を取る。
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
 
-Vector3 AddVector3(const Vector3& a, const Vector3& b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+Vector3 AddVector3(const Vector3& a, const Vector3& b) {
+    // 基準姿勢へ相対キーの移動量を戻す。
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
 
 Vector3 DivideScale(const Vector3& value, const Vector3& base) {
+    // 基準スケールがゼロに近い軸は倍率1として扱い、キー記録時のゼロ除算を防ぐ。
     constexpr float epsilon = 0.00001f;
     return {std::abs(base.x) > epsilon ? value.x / base.x : 1.0f, std::abs(base.y) > epsilon ? value.y / base.y : 1.0f,
             std::abs(base.z) > epsilon ? value.z / base.z : 1.0f};
 }
 
 Vector3 MultiplyScale(const Vector3& value, const Vector3& base) {
+    // 保存した相対倍率をプレビュー対象の元スケールへ戻す。
     return {value.x * base.x, value.y * base.y, value.z * base.z};
 }
 
 AnimationInterpolation::EasingType ToPreviewEasingType(int value) {
+    // JSONから来た数値をサポート範囲に収めてから補間種別に変換する。
     return static_cast<AnimationInterpolation::EasingType>(std::clamp(value, 0, 4));
 }
 
 CinematicTransformKey EvaluateInlineTransform(const CinematicTransformTrack& track, float localTime) {
+    // 前後のキーを探し、位置・回転・倍率を同じイージング率で評価する。
     if (track.keys.empty()) {
         return {};
     }
@@ -107,6 +120,7 @@ CinematicTransformKey EvaluateInlineTransform(const CinematicTransformTrack& tra
 // シネマティックの編集UIとプレビューを管理します。実シーンへの適用と制作空間の仮モデルを分けて扱います。
 
 void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // 再生器へ現在シーンから対象を探す解決関数を渡し、編集選択を初期化する。
     sceneManager_ = sceneManager;
     editor_ = editor;
     sequence_.Clear();
@@ -121,6 +135,7 @@ void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) 
 }
 
 void GhostDirector::Update(float deltaTime) {
+    // 制作空間を離れたら仮配置を終了し、再生中だけタイムラインの表示時刻を追従させる。
     if (studioEnabled_ &&
         (!sceneManager_ || sceneManager_->IsPlaying() || sceneManager_->GetCurrentScene() != studioScene_))
         EndStudio();
@@ -132,6 +147,7 @@ void GhostDirector::Update(float deltaTime) {
 }
 
 void GhostDirector::DrawInspectorContents() {
+    // 保存・読込とトラック種別ごとの編集欄をまとめ、一覧選択だけではデータを置き換えない。
 #ifdef USE_IMGUI
     ImGui::TextUnformatted("素材とタイミングを編集");
 
@@ -215,6 +231,7 @@ void GhostDirector::DrawInspectorContents() {
 }
 
 void GhostDirector::DrawAuthoringGuide() {
+    // 制作手順とゲーム側への接続条件を編集画面内で確認できるようにする。
 #ifdef USE_IMGUI
     if (ImGui::CollapsingHeader("制作の流れ・接続チェック", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextWrapped("1. シーン上の対象を各トラックへ割り当てる → 2. 開始時刻・長さを編集 → 3. "
@@ -311,6 +328,7 @@ void GhostDirector::DrawAuthoringGuide() {
 }
 
 void GhostDirector::DrawAnchorTemplateEditor() {
+    // ゲートなどを基準にした相対演出の雛形を作り、後からキーと素材を調整できるようにする。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("ゲート基準・入口テンプレート（編集用）"))
         return;
@@ -413,6 +431,7 @@ void GhostDirector::DrawAnchorTemplateEditor() {
 }
 
 void GhostDirector::PlayScenario(bool isLoop) {
+    // キーを時刻順に整列してから再生器へ反映し、ループ設定を一回の再生に固定する。
     sequence_.Sort();
     player_.SetSequence(&sequence_);
     isLooping_ = isLoop;
@@ -422,12 +441,14 @@ void GhostDirector::PlayScenario(bool isLoop) {
 }
 
 void GhostDirector::StopScenario() {
+    // 停止時は再生器に元の姿勢を復元させ、スクラブ位置も先頭へ戻す。
     player_.Stop(true);
     currentScrubTime_ = 0.0f;
     AddDebugLog("Cinematic Director: Stop");
 }
 
 void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
+    // 選択した移動トラックを現在のシーン上へ重ね、基準姿勢と相対キーをワールド座標へ戻して描く。
 #ifdef USE_IMGUI
     if (!showSelectedTrackPreview_ || !sceneManager_ || !sceneManager_->GetCurrentScene() || selectedTrackKind_ != 0 ||
         selectedTrackIndex_ < 0 || selectedTrackIndex_ >= static_cast<int>(sequence_.transformTracks.size())) {
@@ -704,6 +725,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 }
 
 void GhostDirector::SaveScenario(const std::string& fileName) {
+    // トラックを時刻順に整え、ファイル名を確定してから編集内容をJSONへ保存する。
     if (fileName.empty()) {
         return;
     }
@@ -721,6 +743,7 @@ void GhostDirector::SaveScenario(const std::string& fileName) {
 
 // 読み込み成功後にだけ現在のシーケンスを差し替えます。再生・Studio の参照は差し替え後に結び直します。
 void GhostDirector::LoadScenario(const std::string& fileName) {
+    // 読込後は再生器と選択状態を新しいシーケンスへ合わせ、古いプレビューを残さない。
     const std::string path = std::string(kScenarioDirectory) + fileName + ".json";
     CinematicSequence loaded;
     if (!loaded.Load(path)) {
@@ -745,20 +768,31 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
         BeginStudio();
 }
 
-bool GhostDirector::IsFinished() const { return player_.IsFinished(); }
+bool GhostDirector::IsFinished() const {
+    // 呼び出し側には再生器の終了状態をそのまま渡す。
+    return player_.IsFinished();
+}
 
-int GhostDirector::GetActiveEventID() const { return player_.GetLastEventId(); }
+int GhostDirector::GetActiveEventID() const {
+    // 最後に発火したSignalのIDをゲーム側の接続点として公開する。
+    return player_.GetLastEventId();
+}
 
 ActiveEvent GhostDirector::GetActiveEvent() const {
+    // 最後のSignalについてIDと対象オブジェクトを一組で返す。
     ActiveEvent result;
     result.id = player_.GetLastEventId();
     result.targetObject = player_.GetLastEventTarget();
     return result;
 }
 
-void GhostDirector::AdvanceTime(float deltaTime) { Update(deltaTime); }
+void GhostDirector::AdvanceTime(float deltaTime) {
+    // 外部からの時刻更新も通常の再生更新経路へ通す。
+    Update(deltaTime);
+}
 
 void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
+    // 対象の現在姿勢をトラックの基準形式に変換し、同時刻のキーは重複させず更新する。
     if (!object || (!force && !autoKeyEnabled_)) {
         return;
     }
@@ -819,6 +853,7 @@ void GhostDirector::RecordTransformKey(Object3d* object, bool force) {
 }
 
 int GhostDirector::FindTransformTrack(Object3d* object) const {
+    // シーン内の同じ対象に既存トラックがあるか、バインディング情報で探す。
     if (!object) {
         return -1;
     }
@@ -837,6 +872,7 @@ int GhostDirector::FindTransformTrack(Object3d* object) const {
 }
 
 int GhostDirector::AddTransformTrack(Object3d* object) {
+    // 重複トラックを避け、対象の現在姿勢を新しい移動トラックの初期値にする。
     if (!object) {
         return -1;
     }
@@ -881,6 +917,7 @@ int GhostDirector::AddTransformTrack(Object3d* object) {
 }
 
 void GhostDirector::AddSelectedObjectsAsTracks() {
+    // 階層で選択中のオブジェクトをまとめて追加し、既存トラックは再利用する。
     if (!editor_) {
         return;
     }
@@ -907,6 +944,7 @@ void GhostDirector::AddSelectedObjectsAsTracks() {
 }
 
 void GhostDirector::RemoveSelectedTrack() {
+    // 種別ごとの配列から選択トラックを削除し、無効になったキー選択も解除する。
     if (selectedTrackKind_ == 0 && selectedTrackIndex_ >= 0 &&
         selectedTrackIndex_ < static_cast<int>(sequence_.transformTracks.size())) {
         sequence_.transformTracks.erase(sequence_.transformTracks.begin() + selectedTrackIndex_);
@@ -934,6 +972,7 @@ void GhostDirector::RemoveSelectedTrack() {
 }
 
 void GhostDirector::RefreshPlayer(bool preservePreview) {
+    // 編集後のシーケンスを再生器へ渡し直し、必要なら現在時刻のプレビューを復元する。
     // 編集でトラックの参照が変わるため、一度姿勢を戻してから同じ時刻を評価し直します。
     // シークはイベントを再発火しないプレビューとして扱います。
     const bool previewing = preservePreview && (player_.IsPreviewing() || player_.IsPlaying());
@@ -951,6 +990,7 @@ void GhostDirector::RefreshPlayer(bool preservePreview) {
 }
 
 void GhostDirector::EvaluatePreviewAtCurrentTime() {
+    // タイムラインの表示時刻を実オブジェクトに評価し、停止中も編集結果を確認できるようにする。
     // 再生中の時刻はプレイヤーが所有します。編集時だけ現在のスクラブ位置を反映します。
     if (player_.IsPlaying()) {
         return;
@@ -960,6 +1000,7 @@ void GhostDirector::EvaluatePreviewAtCurrentTime() {
 }
 
 void GhostDirector::SelectTrackTarget(int trackIndex) {
+    // 移動トラックの対象をシーン階層の選択と同期する。
     if (studioEnabled_)
         return;
     if (!editor_ || !sceneManager_ || !sceneManager_->GetCurrentScene() || trackIndex < 0 ||
@@ -972,6 +1013,7 @@ void GhostDirector::SelectTrackTarget(int trackIndex) {
 }
 
 Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& binding) const {
+    // バインディングに保存された識別情報を現在の制作シーンで解決する。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return nullptr;
     }
@@ -996,6 +1038,7 @@ Object3d* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding& bindin
 
 bool GhostDirector::DrawObjectBindingEditor(const char* label, CinematicObjectBinding& binding, bool cameraOnly,
                                             bool allowWorld) {
+    // 対象を現在シーンから選ばせ、カメラ限定・ワールド基準の許可条件もこの欄で守る。
 #ifdef USE_IMGUI
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         ImGui::TextDisabled("%s: シーンがありません", label);
@@ -1050,6 +1093,7 @@ bool GhostDirector::DrawObjectBindingEditor(const char* label, CinematicObjectBi
 
 // 同時刻のキーを置換しても、次のキーへの補間方法だけは編集済みの値を引き継ぎます。
 void GhostDirector::UpsertTransformKey(CinematicTransformTrack& track, const CinematicTransformKey& key) {
+    // 同時刻のキーは置換し、新しい時刻なら追加して順序を保つ。
     for (auto& existing : track.keys) {
         if (std::abs(existing.time - key.time) <= kKeyTimeEpsilon) {
             const int easing = existing.easingToNext;
@@ -1062,6 +1106,7 @@ void GhostDirector::UpsertTransformKey(CinematicTransformTrack& track, const Cin
 }
 
 float GhostDirector::GetTransformTrackDuration(int trackIndex) const {
+    // 選択した移動トラックの最後のキーまでを表示・再生長として使う。
     if (trackIndex < 0 || trackIndex >= static_cast<int>(sequence_.transformTracks.size())) {
         return 0.0f;
     }
@@ -1081,10 +1126,12 @@ float GhostDirector::GetTransformTrackDuration(int trackIndex) const {
 }
 
 float GhostDirector::GetScenarioDuration() const {
+    // 全種類のトラックを含むシーケンス全体の終了時刻を返す。
     return std::max(sequence_.GetAuthoredDuration(), player_.GetDuration());
 }
 
 void GhostDirector::DrawTransportControls() {
+    // 再生・停止・スクラブ操作を同じ現在時刻へ同期させる。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader(ICON_FA_STREAM " 再生 / マスター時間", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
@@ -1124,6 +1171,7 @@ void GhostDirector::DrawTransportControls() {
 }
 
 void GhostDirector::DrawTransformTrackEditor() {
+    // 移動キーの記録、相対基準、補間と対象割当てを一つのトラック単位で編集する。
 #ifdef USE_IMGUI
     ImGui::Checkbox(ICON_FA_ROUTE " 選択トラックの軌跡をGame Viewに表示", &showSelectedTrackPreview_);
     if (showSelectedTrackPreview_) {
@@ -1284,6 +1332,7 @@ void GhostDirector::DrawTransformTrackEditor() {
 }
 
 void GhostDirector::DrawVFXTrackEditor() {
+    // VFX素材の参照と開始時刻を編集し、シーケンス再生器へ渡すトラックを作る。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " VFXトラック追加", ImVec2(-1.0f, 0.0f))) {
         CinematicVFXTrackData track;
@@ -1378,6 +1427,7 @@ void GhostDirector::DrawVFXTrackEditor() {
 }
 
 void GhostDirector::DrawCameraShotEditor() {
+    // カメラ切替と撮影時間を時系列へ登録し、演出中の視点を決める。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Camera Shot追加", ImVec2(-1.0f, 0.0f))) {
         CinematicCameraShot shot;
@@ -1453,6 +1503,7 @@ void GhostDirector::DrawCameraShotEditor() {
 }
 
 void GhostDirector::DrawAnimationClipEditor() {
+    // 対象オブジェクトへ再生する身体アニメーションと時間範囲を設定する。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Animation Clip追加", ImVec2(-1.0f, 0.0f))) {
         CinematicAnimationClipData clip;
@@ -1579,6 +1630,7 @@ void GhostDirector::DrawAnimationClipEditor() {
 }
 
 void GhostDirector::DrawAudioClipEditor() {
+    // 音素材の再生開始と長さを映像・VFXと同じ時刻軸で編集する。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Audio Clip追加", ImVec2(-1.0f, 0.0f))) {
         CinematicAudioClipData clip;
@@ -1638,6 +1690,7 @@ void GhostDirector::DrawAudioClipEditor() {
 }
 
 void GhostDirector::DrawSignalEditor() {
+    // ゲームロジックへ渡すSignalを時刻上に置き、演出の外部連携点にする。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " Signal追加", ImVec2(-1.0f, 0.0f))) {
         CinematicSignalMarker signal;
@@ -1691,6 +1744,7 @@ void GhostDirector::DrawSignalEditor() {
 }
 
 void GhostDirector::DrawTimelineCanvas() {
+    // 異なる種類のトラックを一つの時間軸に描き、選択とスクラブ位置を共有する。
 #ifdef USE_IMGUI
     // すべてのトラック種別を同じ秒数スケールへ投影し、行ごとに選択と時刻編集を処理します。
     constexpr float labelWidth = 230.0f;

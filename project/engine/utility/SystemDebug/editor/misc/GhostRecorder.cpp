@@ -150,6 +150,7 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 }
 
 void GhostRecorder::SetTarget(Object3d* target) {
+	// 編集対象を変えたら、以前のアンカーと選択ピンを参照し続けない。
 	target_ = target;
 	anchor_ = nullptr;
 	DeselectPin();
@@ -157,6 +158,7 @@ void GhostRecorder::SetTarget(Object3d* target) {
 }
 
 void GhostRecorder::ClearTarget() {
+	// 再生中のカメラ上書きも終了させてから対象を外す。
 	Stop(false);
 	target_ = nullptr;
 	anchor_ = nullptr;
@@ -165,6 +167,7 @@ void GhostRecorder::ClearTarget() {
 }
 
 int GhostRecorder::GetCurrentEventID() const {
+	// イベントは再生中のフレームにだけ意味があり、停止中は発火させない。
 	if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
 		return frames_[currentFrameIndex_].eventID;
 	}
@@ -172,11 +175,13 @@ int GhostRecorder::GetCurrentEventID() const {
 }
 
 void GhostRecorder::DeselectPin() {
+	// ピン種類とウェイポイント番号を同時に戻す。
 	selectedPinType_ = SelectedPinType::None;
 	selectedWaypointIndex_ = -1;
 }
 
 void GhostRecorder::PlayFromMemory(bool loop, bool isCinematic) {
+	// 保存済みファイルを読み直さず、現在編集中のフレーム列を再生する。
 	if (frames_.empty()) {
 		return;
 	}
@@ -189,10 +194,12 @@ void GhostRecorder::PlayFromMemory(bool loop, bool isCinematic) {
 }
 
 bool GhostRecorder::IsTargetInCurrentScene() const {
+	// Scene が所有する Object の寿命を確認してから、借用ポインタへ触れる。
 	return IsObjectInScene(sceneManager_, target_);
 }
 
 void GhostRecorder::ClearTargetIfMissingFromScene() {
+	// シーン切り替え後の対象とアンカーの古いポインタを破棄する。
 	if (target_ && !IsTargetInCurrentScene()) {
 		ClearTarget();
 		return;
@@ -281,6 +288,7 @@ void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative
 }
 
 void GhostRecorder::Stop(bool autoReset) {
+	// 相対再生だけ開始時の姿勢へ戻し、演出カメラの上書きも閉じる。
 
 	if (autoReset && state_ == State::Playing && isRelative_ && target_) {
 		RestoreBasePose();
@@ -293,16 +301,19 @@ void GhostRecorder::Stop(bool autoReset) {
 }
 
 void GhostRecorder::StartRecording() {
+	// 既存フレームを残すと新録画につながるため、開始時に消す。
 	if (!target_) return;
 	frames_.clear();
 	state_ = State::Recording;
 }
 
 void GhostRecorder::StopRecording() {
+	// 収録済みフレームは保持し、状態だけ待機へ戻す。
 	state_ = State::Idle;
 }
 
 void GhostRecorder::StartPlayingInternal() {
+	// 先頭フレームから再生し、演出指定時だけカメラを切り替える。
 	if (!target_ || frames_.empty()) return;
 	state_ = State::Playing;
 	currentFrameIndex_ = 0;
@@ -332,6 +343,7 @@ void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
 }
 
 void GhostRecorder::StartCinematicPlayback() {
+	// Scene Camera の設定を使って本番カメラを一時上書きする。
 	if (!isOverrideCamera_) {
 		return;
 	}
@@ -341,6 +353,7 @@ void GhostRecorder::StartCinematicPlayback() {
 }
 
 void GhostRecorder::StopCinematicPlayback() {
+	// 再生終了時は CameraEditor が退避した投影条件へ戻す。
 	if (!isOverrideCamera_) {
 		return;
 	}
@@ -355,6 +368,7 @@ void GhostRecorder::StopCinematicPlayback() {
 // ==========================================================================
 
 Vector3 GhostRecorder::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
+	// 隣接する四点から p1～p2 間を補間し、折れ線を滑らかな経路にする。
 	Vector3 result;
 	float t2 = t * t;
 	float t3 = t * t * t;
@@ -365,6 +379,7 @@ Vector3 GhostRecorder::CatmullRom(const Vector3& p0, const Vector3& p1, const Ve
 }
 
 Vector3 GhostRecorder::GetSplinePoint(const std::vector<Vector3>& points, float t) {
+	// 端点では参照番号を端に固定し、配列外の制御点を読まない。
 	if (points.empty()) return { 0,0,0 };
 	if (points.size() == 1) return points[0];
 
@@ -392,6 +407,7 @@ Vector3 GhostRecorder::GetSplinePoint(const std::vector<Vector3>& points, float 
 
 // 座標変換 (World -> Clip -> Screen)
 bool GhostRecorder::HasPreviewData() const {
+	// 録画フレームがなくても、始点と終点に差があれば編集中の軌道を表示する。
 	if (!target_) {
 		return false;
 	}
@@ -418,6 +434,7 @@ bool GhostRecorder::HasPreviewData() const {
 }
 
 std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
+	// 録画済みならフレームを補間し、未録画なら編集用ウェイポイントから見本を作る。
 	std::vector<GhostFrame> samples;
 	ClearTargetIfMissingFromScene();
 	if (!target_) {
@@ -549,6 +566,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 }
 
 void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+	// 対象 Object を一時的に各サンプル位置へ描き、最後に姿勢と描画状態を復元する。
 #ifdef USE_IMGUI
 	ClearTargetIfMissingFromScene();
 	if (!isShowPreview_ || !isShowObjectPreview_ || !target_ || state_ == State::Recording) {
@@ -599,6 +617,7 @@ void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, I
 }
 
 Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) {
+	// 透視除算を含む座標変換を行い、経路の画面投影に使う。
 	Vector3 result;
 	float w = vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + mat.m[3][3];
 	result.x = (vec.x * mat.m[0][0] + vec.y * mat.m[1][0] + vec.z * mat.m[2][0] + mat.m[3][0]);
@@ -1451,6 +1470,7 @@ void GhostRecorder::DrawImGui() {
 }
 
 void GhostRecorder::Save(const std::string& fileName) {
+	// 再生用フレームと編集用の経路設定を同じ JSON に保存する。
 	if (frames_.empty()) return;
 	json root;
 	root["frames"] = json::array();
@@ -1607,6 +1627,7 @@ void GhostRecorder::Load(const std::string& fileName) {
 }
 
 void GhostRecorder::EvaluateAtFrame(int frameIndex) {
+	// シーク先を有効範囲へ制限し、イベントは発火せず姿勢だけ適用する。
 	ClearTargetIfMissingFromScene();
 	if (frames_.empty() || !target_) return;
 
@@ -1617,6 +1638,7 @@ void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 }
 
 float GhostRecorder::GetDurationSeconds() const {
+	// フレーム列は 60 fps 基準で記録され、最後のフレーム時刻を長さとする。
 	if (frames_.size() <= 1) {
 		return 0.0f;
 	}
@@ -1624,6 +1646,7 @@ float GhostRecorder::GetDurationSeconds() const {
 }
 
 void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float previousTimeSeconds) {
+	// 姿勢はフレーム間補間し、イベントは前回から今回までに横切ったフレームだけ発火する。
 	ClearTargetIfMissingFromScene();
 	if (frames_.empty() || !target_) {
 		return;
@@ -1712,6 +1735,7 @@ void GhostRecorder::RestoreBasePose() {
 }
 
 void GhostRecorder::FindAnchor() {
+	// アンカーのポインタはシーン切り替えで無効になるため、名前から探し直す。
 	if (anchor_ && !IsObjectInScene(sceneManager_, anchor_)) {
 		anchor_ = nullptr;
 	}
@@ -1729,18 +1753,22 @@ void GhostRecorder::FindAnchor() {
 // Undo / Redo 機能
 // ==========================================================================
 void GhostRecorder::SaveHistory() {
+	// ギズモ操作開始前のパラメータを一時退避し、操作終了後の Undo に使う。
 	pendingHistoryState_ = genParams_;
 }
 
 void GhostRecorder::PerformUndo() {
+	// エディター共通の履歴へ委譲し、他ツールとの操作順を維持する。
 	EditorTransactionManager::GetInstance()->Undo();
 }
 
 void GhostRecorder::PerformRedo() {
+	// エディター共通の履歴へ委譲し、他ツールとの操作順を維持する。
 	EditorTransactionManager::GetInstance()->Redo();
 }
 
 void GhostRecorder::CommitHistory(const std::string& label) {
+	// 操作前の退避値がある場合だけ一件のトランザクションとして登録する。
 	if (!pendingHistoryState_.has_value()) {
 		return;
 	}
@@ -1753,6 +1781,7 @@ void GhostRecorder::RegisterHistory(
 	const GenerationParams& before,
 	const GenerationParams& after,
 	const std::string& label) {
+	// 実際に値が変わった操作だけ登録し、破棄後に Undo が走っても触れないよう寿命を監視する。
 	if (GenerationParamsEqual(before, after)) {
 		return;
 	}

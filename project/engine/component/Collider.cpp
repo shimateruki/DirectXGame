@@ -1,6 +1,43 @@
 #include "Collider.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
+
+namespace {
+// XZ断面の分離軸。輪郭と相手の断面の両方の辺を調べ、角の空白も除外する。
+bool OverlapOnAxes(const std::vector<Vector3>& a, const std::vector<Vector3>& b,
+                   float& minimumDepth, Vector3& outwardNormal) {
+    // 両輪郭の辺法線を全て試し、角で接していない領域を矩形判定から除外する。
+    const auto testEdges = [&](const std::vector<Vector3>& polygon) {
+        for (size_t i = 0; i < polygon.size(); ++i) {
+            const Vector3 edge = polygon[(i + 1) % polygon.size()] - polygon[i];
+            const float length = std::sqrt(edge.x * edge.x + edge.z * edge.z);
+            if (length < 0.00001f) continue;
+            const Vector3 axis = { -edge.z / length, 0.0f, edge.x / length };
+            float minA = std::numeric_limits<float>::max(), maxA = -minA;
+            float minB = std::numeric_limits<float>::max(), maxB = -minB;
+            for (const auto& point : a) {
+                const float value = point.x * axis.x + point.z * axis.z;
+                minA = (std::min)(minA, value); maxA = (std::max)(maxA, value);
+            }
+            for (const auto& point : b) {
+                const float value = point.x * axis.x + point.z * axis.z;
+                minB = (std::min)(minB, value); maxB = (std::max)(maxB, value);
+            }
+            const float overlap = (std::min)(maxA, maxB) - (std::max)(minA, minB);
+            if (overlap <= 0.0f) return false;
+            if (overlap < minimumDepth) {
+                minimumDepth = overlap;
+                const float middleA = (minA + maxA) * 0.5f;
+                const float middleB = (minB + maxB) * 0.5f;
+                outwardNormal = axis * (middleB >= middleA ? 1.0f : -1.0f);
+            }
+        }
+        return true;
+    };
+    return testEdges(a) && testEdges(b);
+}
+} // namespace
 
 // コンストラクタ
 Collider::Collider(Transform* ownerTransform) {
@@ -9,6 +46,7 @@ Collider::Collider(Transform* ownerTransform) {
 }
 
 Vector3 Collider::GetCollisionScale() const {
+    // 見た目だけを伸縮させる物は、判定用の固定スケールを優先する。
     if (!transform_) {
         return { 1.0f, 1.0f, 1.0f };
     }
@@ -16,6 +54,7 @@ Vector3 Collider::GetCollisionScale() const {
 }
 
 Matrix4x4 Collider::GetCollisionWorldMatrix() const {
+    // スケール上書き時も親の座標変換は維持し、表示行列とは別に判定行列を組む。
     if (!transform_ || !useScaleOverride_) {
         return transform_ ? transform_->matWorld : Math::MakeIdentity4x4();
     }
@@ -46,6 +85,7 @@ float Collider::GetRadius() const {
 }
 
 Vector3 Collider::GetSphereCenter() const {
+    // ローカル中心を判定用行列で変換し、見た目の拡縮と判定のずれを防ぐ。
     if (!transform_) {
         return config_.center;
     }
@@ -150,6 +190,105 @@ AABB Collider::GetAABB() const {
     return { minPos, maxPos };
 }
 
+std::vector<Vector3> Collider::GetFootprintWorldVertices(float localY) const {
+    // 床の輪郭点を回転・親変換込みのワールド座標へ移し、見た目の縁と揃える。
+    std::vector<Vector3> vertices;
+    if (config_.footprint.size() < 3 || !transform_ ||
+        (config_.type != ColliderType::kAABB && config_.type != ColliderType::kOBB)) return vertices;
+    vertices.reserve(config_.footprint.size());
+    Math math;
+    const Matrix4x4 rotation = math.Multiply(
+        math.MakeRotateZMatrix(config_.rotation.z),
+        math.Multiply(math.MakeRotateXMatrix(config_.rotation.x), math.MakeRotateYMatrix(config_.rotation.y)));
+    const Matrix4x4 localToWorld = math.Multiply(
+        math.Multiply(rotation, math.MakeTranslateMatrix(config_.center)), GetCollisionWorldMatrix());
+    for (const Vector2& vertex : config_.footprint) {
+        vertices.push_back(Math::Transform({ vertex.x, localY, vertex.y }, localToWorld));
+    }
+    return vertices;
+}
+
+bool Collider::ContainsFootprintPoint(const Vector3& worldPoint) const {
+    // XZ 断面の辺を同じ向きに回る点だけ内側とし、四角形の余白を除く。
+    const auto vertices = GetFootprintWorldVertices(config_.size.y);
+    if (vertices.size() < 3) return false;
+    int winding = 0;
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        const Vector3& a = vertices[i];
+        const Vector3& b = vertices[(i + 1) % vertices.size()];
+        const float cross = (b.x - a.x) * (worldPoint.z - a.z) -
+                            (b.z - a.z) * (worldPoint.x - a.x);
+        if (std::abs(cross) < 0.0001f) continue;
+        const int sign = cross > 0.0f ? 1 : -1;
+        if (winding != 0 && sign != winding) return false;
+        winding = sign;
+    }
+    return true;
+}
+
+bool Collider::OverlapsFootprint(const Collider* other, Vector3* normal, float* depth) const {
+    if (!other || config_.footprint.size() < 3) return false;
+    const std::vector<Vector3> polygon = GetFootprintWorldVertices(config_.size.y);
+    if (polygon.size() < 3) return false;
+
+    float minimumDepth = std::numeric_limits<float>::max();
+    Vector3 outward = { 0.0f, 0.0f, 0.0f };
+    if (other->GetType() == ColliderType::kSphere) {
+        const Vector3 center = other->GetSphereCenter();
+        const float radius = other->GetRadius();
+        // 円と各辺・最も近い頂点を分離軸で調べる。
+        std::vector<Vector3> axes;
+        axes.reserve(polygon.size() + 1);
+        float nearestDistance = std::numeric_limits<float>::max();
+        Vector3 nearestVertex{};
+        for (size_t i = 0; i < polygon.size(); ++i) {
+            const Vector3 edge = polygon[(i + 1) % polygon.size()] - polygon[i];
+            const float length = std::sqrt(edge.x * edge.x + edge.z * edge.z);
+            if (length > 0.00001f) axes.push_back({ -edge.z / length, 0.0f, edge.x / length });
+            const Vector3 delta = center - polygon[i];
+            const float distance = delta.x * delta.x + delta.z * delta.z;
+            if (distance < nearestDistance) { nearestDistance = distance; nearestVertex = polygon[i]; }
+        }
+        const Vector3 vertexDelta = center - nearestVertex;
+        if (nearestDistance > 0.0000001f) {
+            const float length = std::sqrt(nearestDistance);
+            axes.push_back({ vertexDelta.x / length, 0.0f, vertexDelta.z / length });
+        }
+        for (const Vector3& axis : axes) {
+            float minimum = std::numeric_limits<float>::max(), maximum = -minimum;
+            for (const Vector3& point : polygon) {
+                const float projection = point.x * axis.x + point.z * axis.z;
+                minimum = (std::min)(minimum, projection); maximum = (std::max)(maximum, projection);
+            }
+            const float projectedCenter = center.x * axis.x + center.z * axis.z;
+            const float overlap = (std::min)(maximum, projectedCenter + radius) -
+                                  (std::max)(minimum, projectedCenter - radius);
+            if (overlap <= 0.0f) return false;
+            if (overlap < minimumDepth) {
+                minimumDepth = overlap;
+                outward = axis * (projectedCenter >= (minimum + maximum) * 0.5f ? 1.0f : -1.0f);
+            }
+        }
+    } else {
+        std::vector<Vector3> section;
+        if (other->GetType() == ColliderType::kOBB) {
+            const OBB box = other->GetOBB();
+            const Vector3 x = box.orientations[0] * box.size.x;
+            const Vector3 z = box.orientations[2] * box.size.z;
+            section = { box.center - x - z, box.center + x - z,
+                        box.center + x + z, box.center - x + z };
+        } else {
+            const AABB box = other->GetAABB();
+            section = { { box.min.x, 0.0f, box.min.z }, { box.max.x, 0.0f, box.min.z },
+                        { box.max.x, 0.0f, box.max.z }, { box.min.x, 0.0f, box.max.z } };
+        }
+        if (!OverlapOnAxes(polygon, section, minimumDepth, outward)) return false;
+    }
+    if (normal) *normal = outward;
+    if (depth) *depth = minimumDepth;
+    return true;
+}
+
 Ring Collider::GetRing() const {
     Ring ring;
     if (!transform_) return ring;
@@ -230,6 +369,7 @@ Cylinder Collider::GetCylinder() const {
 }
 
 bool Collider::SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const {
+    // ワールド位置を地形の格子へ戻し、補間した高さと法線を衝突側へ渡す。
     if (!terrain || !terrain->transform_) return false;
     const TerrainCollisionData& data = terrain->terrainData_;
     if (!data.enabled || data.resolution <= 0) return false;
@@ -290,6 +430,7 @@ bool Collider::SampleTerrain(const Collider* terrain, const Vector3& worldPositi
 }
 
 CollisionInfo Collider::CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const {
+    // 球の底が地形面を跨いだ場合だけ、法線方向へ押し戻す情報を作る。
     CollisionInfo collision;
     float terrainHeight = 0.0f;
     Vector3 normal = { 0.0f, 1.0f, 0.0f };
@@ -306,6 +447,7 @@ CollisionInfo Collider::CheckSphereTerrainCollision(const Vector3& spherePos, fl
 }
 
 CollisionInfo Collider::CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const {
+    // 中心と四隅を採点し、斜面で最も深く侵入した位置を基準にする。
     CollisionInfo collision;
     const Vector3 points[5] = {
         { (aabb.min.x + aabb.max.x) * 0.5f, aabb.min.y, (aabb.min.z + aabb.max.z) * 0.5f },
@@ -421,5 +563,29 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         collision.normal = collision.normal * -1.0f;
     }
 
+    if (collision.isColliding && (myType == ColliderType::kAABB || myType == ColliderType::kOBB) &&
+        config_.footprint.size() >= 3) {
+        Vector3 horizontalNormal;
+        float horizontalDepth = 0.0f;
+        if (!OverlapsFootprint(other, &horizontalNormal, &horizontalDepth)) {
+            return {};
+        }
+        if (horizontalDepth < collision.penetration) {
+            collision.normal = horizontalNormal * -1.0f;
+            collision.penetration = horizontalDepth;
+        }
+    }
+    if (collision.isColliding && (otherType == ColliderType::kAABB || otherType == ColliderType::kOBB) &&
+        other->config_.footprint.size() >= 3) {
+        Vector3 horizontalNormal;
+        float horizontalDepth = 0.0f;
+        if (!other->OverlapsFootprint(this, &horizontalNormal, &horizontalDepth)) {
+            return {};
+        }
+        if (horizontalDepth < collision.penetration) {
+            collision.normal = horizontalNormal;
+            collision.penetration = horizontalDepth;
+        }
+    }
     return collision;
 }

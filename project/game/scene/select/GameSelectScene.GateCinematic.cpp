@@ -14,6 +14,7 @@ using namespace StageSelectDetail;
 
 // ゲート出入りの演出。材質退避・復元とカメラ復帰をまとめ、遷移条件や実行順は変更しない。
 void GameSelectScene::CaptureGateEntryMaterialState(Object3d* rootObject) {
+    // ゲート突入演出で変更する前に、子を含む材質を復元用に控える。
     gateEntryMaterialSnapshots_.clear();
     if (!rootObject) {
         return;
@@ -104,6 +105,7 @@ void GameSelectScene::ApplyGateEntryDissolveMaterial(float progress, const Vecto
 }
 
 void GameSelectScene::RestoreGateEntryMaterialState() {
+    // 編集・再入場時にゲートの演出色が残らないよう、控えた材質を戻す。
     for (const GateEntryMaterialSnapshot& snapshot : gateEntryMaterialSnapshots_) {
         Object3d* object = snapshot.object;
         if (!object) {
@@ -128,6 +130,7 @@ void GameSelectScene::RestoreGateEntryMaterialState() {
 }
 
 void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
+    // シネマバーの高さを既定値から補間し、他のポストエフェクト設定を保つ。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
     if (!params) {
         return;
@@ -165,6 +168,7 @@ void GameSelectScene::UpdateGateCinematicBars(float deltaTime) {
 }
 
 void GameSelectScene::ResetGateCinematicBars() {
+    // この演出が上書きした場合だけ元のバー高さへ復元する。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
     if (params && gateCinematicBarOverrideActive_) {
         params->cinemaBarHeight = gateCinematicBarBaseHeight_;
@@ -338,6 +342,7 @@ void GameSelectScene::UpdateStageReturnPresentation(float deltaTime) {
 }
 
 void GameSelectScene::FinishStageReturnPresentation() {
+    // 帰還先のゲート参照を外し、直後の誤操作を短いクールダウンで防ぐ。
     gateReturnPresentationActive_ = false;
     gateReturnPresentationTimer_ = 0.0f;
     gateReturnStageIndex_ = -1;

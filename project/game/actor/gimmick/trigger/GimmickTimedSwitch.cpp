@@ -4,6 +4,7 @@
 #include <cmath>
 
 void GimmickTimedSwitch::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 上面を踏める地面として登録し、待機時の色を設定する。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -16,6 +17,7 @@ void GimmickTimedSwitch::Initialize(Object3dCommon* common, const std::string& m
 }
 
 void GimmickTimedSwitch::Update(float deltaTime) {
+    // 接触が途切れたら短い保持時間後に待機色へ戻す。
     if (contactTimer_ > 0.0f) {
         contactTimer_ -= deltaTime;
         if (contactTimer_ < 0.0f)
@@ -35,6 +37,7 @@ void GimmickTimedSwitch::Update(float deltaTime) {
 
 // 上面への接触中だけタイマーを更新し、接続先イベントを通知します。
 bool GimmickTimedSwitch::OnCollision(Object3d* other) {
+    // 上面から踏まれた間だけ指定 EventID へ通知する。
     if (!other || other->GetClassName() != "Player")
         return true;
 
@@ -54,6 +57,7 @@ bool GimmickTimedSwitch::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> GimmickTimedSwitch::Clone() const {
+    // 押下タイマーは持ち込まず、配置と接続先の設定だけを複製する。
     auto newObj = std::make_unique<GimmickTimedSwitch>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

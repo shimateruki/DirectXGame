@@ -34,6 +34,7 @@ constexpr float kSplitSlimeRadius = 3.1f;
 constexpr float kGiantSlimeModelYawOffset = 3.1415926535f;
 
 Vector3 NormalizePlanar(Vector3 value) {
+    // ジャンプとフックの向きは水平面だけで扱い、方向が消えた場合も前方を基準にする。
     value.y = 0.0f;
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.001f) {
@@ -43,6 +44,7 @@ Vector3 NormalizePlanar(Vector3 value) {
 }
 
 float SmoothStep01(float value) {
+    // 端点で急に速度が変わらないよう、補間率を範囲内に収めてから滑らかにする。
     value = std::clamp(value, 0.0f, 1.0f);
     return value * value * (3.0f - 2.0f * value);
 }
@@ -50,6 +52,7 @@ float SmoothStep01(float value) {
 
 // 大型スライムの初期化
 void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // モデルの基準姿勢と接地中の判定を先に揃え、以後のジャンプ・投げ状態の起点にする。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_GiantSlime");
     SetEnemyType("GiantSlime");
@@ -67,6 +70,7 @@ void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& mode
 
 // ジャンプ攻撃、徘徊ジャンプ、着地衝撃波の更新
 void EnemyGiantSlime::Update(float deltaTime) {
+    // フック拘束や投げられた状態は通常AIより優先し、その間は攻撃状態を進めない。
     if (UpdateInactiveState(deltaTime)) {
         return;
     }
@@ -95,6 +99,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
 }
 
 bool EnemyGiantSlime::UpdateInactiveState(float deltaTime) {
+    // 敗北・運搬・フック・投げの専用更新に入った場合は、このフレームの通常行動を止める。
     if (ShouldHandleDefeatEffect()) {
         BaseEnemy::Update(deltaTime);
         return true;
@@ -142,6 +147,7 @@ bool EnemyGiantSlime::UpdateHookSplitState(float deltaTime) {
 }
 
 bool EnemyGiantSlime::UpdateThrowRecoveryState(float deltaTime) {
+    // 投げられている間は判定を広げ、着地後の回復中は通常の大きさへ戻す。
     if (!IsThrowRecovering()) {
         return false;
     }
@@ -155,6 +161,7 @@ bool EnemyGiantSlime::UpdateThrowRecoveryState(float deltaTime) {
 }
 
 void EnemyGiantSlime::EnsureBaseScale() {
+    // 配置時の拡大率を一度だけ保存し、攻撃演出後に元のサイズへ戻せるようにする。
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
         hasBaseScale_ = true;
@@ -162,6 +169,7 @@ void EnemyGiantSlime::EnsureBaseScale() {
 }
 
 void EnemyGiantSlime::UpdateTimers(float deltaTime) {
+    // 着地の発光は残り時間だけ減らし、負の値を後続の演出へ渡さない。
     idleTimer_ += deltaTime;
     if (landingPulseTimer_ > 0.0f) {
         landingPulseTimer_ = (std::max)(0.0f, landingPulseTimer_ - deltaTime);
@@ -169,6 +177,7 @@ void EnemyGiantSlime::UpdateTimers(float deltaTime) {
 }
 
 void EnemyGiantSlime::UpdateTargetFacing(Vector3& direction, float& distance) {
+    // 高低差は照準に含めず、交戦前は索敵範囲に入った対象だけへ向きを変える。
     if (target_) {
         Vector3 toTarget = target_->GetWorldPosition() - GetWorldPosition();
         direction = NormalizePlanar(toTarget);
@@ -182,6 +191,7 @@ void EnemyGiantSlime::UpdateTargetFacing(Vector3& direction, float& distance) {
 }
 
 void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const Vector3& direction, float distance) {
+    // 滞空中は着地予測地点を表示し、落下時間に合わせて警告を一度だけ強める。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
     switch (state_) {
     case State::ChargeJump:
@@ -250,6 +260,7 @@ void EnemyGiantSlime::UpdateIdleState(float deltaTime, const Vector3& direction,
 }
 
 void EnemyGiantSlime::BeginThrown(const Vector3& initialVelocity) {
+    // 投げ状態へ移る際にジャンプ警告とフック変形を消し、判定を投擲用へ切り替える。
     if (!hasBaseScale_) {
         baseScale_ = GetScale();
         hasBaseScale_ = true;
@@ -273,6 +284,7 @@ void EnemyGiantSlime::BeginThrown(const Vector3& initialVelocity) {
 }
 
 std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
+    // 複製先に配置設定と追跡対象を引き継ぎ、攻撃状態の一時値は初期化し直す。
     auto clone = std::make_unique<EnemyGiantSlime>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -283,6 +295,7 @@ std::unique_ptr<Object3d> EnemyGiantSlime::Clone() const {
 }
 
 void EnemyGiantSlime::BeginJumpCharge(const Vector3& direction, float distance) {
+    // 射程に収めた着地点を予告し、溜め中の移動を止めて回避の猶予を作る。
     state_ = State::ChargeJump;
     stateTimer_ = 0.0f;
     telegraphTimer_ = kTelegraphInterval;
@@ -302,6 +315,7 @@ void EnemyGiantSlime::BeginJumpCharge(const Vector3& direction, float distance) 
 }
 
 void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
+    // 溜め中は対象の移動を追って着地点を更新し、発射後は予告地点を固定する。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kJumpPressAttackId);
     stateTimer_ += deltaTime;
     telegraphTimer_ += deltaTime;
@@ -344,6 +358,7 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
 }
 
 void EnemyGiantSlime::BeginLandingRecovery() {
+    // 着地の瞬間だけ衝撃波とエフェクトを発生させ、回復状態へ移す。
     state_ = State::Recovery;
     stateTimer_ = 0.0f;
     isJumpingAttack_ = false;
@@ -360,6 +375,7 @@ void EnemyGiantSlime::BeginLandingRecovery() {
 }
 
 void EnemyGiantSlime::UpdateLandingRecovery(float deltaTime) {
+    // 潰れた姿を回復時間に沿って元へ戻し、終了時に色とサイズを復元する。
     stateTimer_ += deltaTime;
     SetVelocity({0.0f, 0.0f, 0.0f});
 
@@ -379,6 +395,7 @@ void EnemyGiantSlime::UpdateLandingRecovery(float deltaTime) {
 }
 
 void EnemyGiantSlime::SpawnLandingTelegraph() {
+    // 予告リングを地面より少し上に置き、地形との重なりで消えないようにする。
     Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_);
     effectPos.y += 0.04f;
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
@@ -387,6 +404,7 @@ void EnemyGiantSlime::SpawnLandingTelegraph() {
 }
 
 void EnemyGiantSlime::SpawnLandingEffects() {
+    // 衝撃波・攻撃設定のメッシュVFX・粒子を同じ着地点から再生する。
     Vector3 effectPos = HitEffectDirector::ResolveGroundEffectPosition(GetTranslate());
     effectPos.y += 0.04f;
     HitEffectDirector::SpawnThrowSlamShockwave(effectPos, 24.0f);
@@ -411,6 +429,7 @@ void EnemyGiantSlime::SpawnLandingEffects() {
 
 // フックで引っ張られて分裂する特殊処理
 void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
+    // フックを受けた時点の姿勢を保存し、空中なら着地してから分裂の抵抗時間を始める。
     if (hasSplit_)
         return;
 
@@ -456,6 +475,7 @@ void EnemyGiantSlime::BeginHookSplitPull(const Vector3& hookOwnerPos) {
 
 bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOwnerPos,
                                           ParticleSystem* particleSystem) {
+    // 引き先の変化を追いながら、着地・踏ん張り・滑り・分裂の段階を進める。
     if (hasSplit_) {
         return true;
     }
@@ -507,6 +527,7 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const Vector3& hookOw
 }
 
 void EnemyGiantSlime::CancelHookSplitPull() {
+    // 分裂が確定していない場合だけ、フックの変形とAI状態を通常姿勢へ戻す。
     if (hasSplit_)
         return;
     isHookSplitPulled_ = false;
@@ -528,6 +549,7 @@ void EnemyGiantSlime::CancelHookSplitPull() {
 }
 
 float EnemyGiantSlime::GetHookSplitProgress() const {
+    // 空中と着地直後は進捗を止め、回復直後の弱点状態では抵抗時間を短くする。
     if (hookSplitAwaitingLanding_ || hookSplitPhase_ == HookSplitPhase::LandingSquash) {
         return 0.0f;
     }
@@ -536,6 +558,7 @@ float EnemyGiantSlime::GetHookSplitProgress() const {
 }
 
 const char* EnemyGiantSlime::GetDebugHookSplitPhaseName() const {
+    // プレビューには内部状態の段階名を返し、分裂済みを最優先で表示する。
     if (hasSplit_)
         return "分裂完了";
     switch (hookSplitPhase_) {
@@ -556,6 +579,7 @@ const char* EnemyGiantSlime::GetDebugHookSplitPhaseName() const {
 }
 
 Vector3 EnemyGiantSlime::GetHookAttachmentPosition() const {
+    // 見た目のせん断・拡縮を反映した位置を返し、フックの線が変形前の胴体に残らないようにする。
     MeshRenderer* renderer = GetMeshRenderer();
     Model* model = renderer ? renderer->GetModel() : nullptr;
     if (!model) {
@@ -579,6 +603,7 @@ Vector3 EnemyGiantSlime::GetHookAttachmentPosition() const {
 }
 
 void EnemyGiantSlime::BeginGroundHookResistance(bool landedFromAir) {
+    // 接地後に移動を止め、空中から来た場合は着地の潰れ演出を先に再生する。
     hookSplitAwaitingLanding_ = false;
     hookSplitBasePosition_ = GetTranslate();
     hookSplitBaseScale_ = baseScale_;
@@ -726,6 +751,7 @@ Vector3 EnemyGiantSlime::CalculateHookAnchorOffset(const Vector3& visualScale, c
 }
 
 void EnemyGiantSlime::ResetHookSplitVisual() {
+    // フック用のばね変形をすべて消し、通常アニメーションに残留させない。
     hookVisualScale_ = {1.0f, 1.0f, 1.0f};
     hookVisualScaleVelocity_ = {0.0f, 0.0f, 0.0f};
     hookVisualRotation_ = {0.0f, 0.0f, 0.0f};
@@ -741,6 +767,7 @@ void EnemyGiantSlime::ResetHookSplitVisual() {
 
 // ジャンプ攻撃、着地衝撃波、伸縮の補助処理
 void EnemyGiantSlime::LaunchJump(const Vector3& direction, float distance) {
+    // 重力から滞空時間を概算し、予告地点まで届く水平速度を上限付きで決める。
     const float gravity = param_.has_value() ? (std::max)(1.0f, param_->gravity) : 70.0f;
     const float configuredJumpPower =
         param_.has_value() && param_->jumpPower > 0.0f ? param_->jumpPower : kHeavyHopDefaultJumpPower;
@@ -764,6 +791,7 @@ float EnemyGiantSlime::GetBodyAttackDamage() const {
 }
 
 void EnemyGiantSlime::DispatchLandingShockwave() {
+    // 着地地点から水平方向の距離で対象を選び、衝撃波のダメージと押し出しを配る。
     if (!target_)
         return;
 
@@ -784,6 +812,7 @@ void EnemyGiantSlime::DispatchLandingShockwave() {
 }
 
 void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
+    // 攻撃段階ごとの潰れ・伸びと被弾反応を合成し、配置時の大きさを基準に描画する。
     Vector3 targetScale = baseScale_;
     Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
     if (landingPulseTimer_ > 0.0f) {
@@ -825,6 +854,7 @@ void EnemyGiantSlime::ApplySlimeAnimation(float deltaTime) {
 }
 
 void EnemyGiantSlime::SyncWorldCollisionRadius(float worldRadius, float worldCenterY) {
+    // 表示スケールが変化しても判定のワールド半径が一定になるよう逆算する。
     const Vector3 scale = GetScale();
     const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     const float yScale = (std::max)(0.001f, std::abs(scale.y));
@@ -835,15 +865,18 @@ void EnemyGiantSlime::SyncWorldCollisionRadius(float worldRadius, float worldCen
 }
 
 void EnemyGiantSlime::SyncGroundCollisionRadius() {
+    // 接地中はプレイヤーと接触する通常の胴体範囲にする。
     SyncWorldCollisionRadius(kGroundCollisionWorldRadius, kGroundCollisionWorldCenterY);
 }
 
 void EnemyGiantSlime::SyncThrownCollisionRadius() {
+    // 投げられた胴体は横方向へ広がるため、専用の半径と中心を使う。
     SyncWorldCollisionRadius(kThrownCollisionWorldRadius, kThrownCollisionWorldCenterY);
 }
 
 // 小型スライムへの分裂生成
 void EnemyGiantSlime::SplitIntoSmallSlimes(ParticleSystem* particleSystem) {
+    // 分裂は一度だけ確定させ、子スライムを周囲に生成して親を退場させる。
     if (hasSplit_)
         return;
     hasSplit_ = true;

@@ -1,5 +1,7 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
 #include "ScenePreloader.h"
 
 #include <algorithm>
@@ -67,10 +69,15 @@ using namespace StageSelectDetail;
 
 // ステージ選択のゲート表示は保存済み進行を基準に決めます。入場操作と解放演出を同じフレームで競合させません。
 
-GameSelectScene::GameSelectScene() {}
-GameSelectScene::~GameSelectScene() {}
+GameSelectScene::GameSelectScene() {
+    // 共有システムの初期化は先読み段階まで遅らせる。
+}
+GameSelectScene::~GameSelectScene() {
+    // シーン固有のリソース解放は Finalize にまとめる。
+}
 
 SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
+    // ゲート名とスターも先読みし、入場時の画像読み込み停止を避ける。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -82,24 +89,32 @@ SceneLoadManifest GameSelectScene::BuildAsyncLoadManifest() const {
     manifest.AddTexture("Resources/sprite/common/white.png");
     manifest.AddTexture("Resources/sprite/ui/hud/lockOn.png");
     manifest.AddTexture("Resources/sprite/ui/gate/gate_prompt_player_e.png");
+    manifest.AddTexture("Resources/sprite/ui/stage_select/stage1_gate_name.png");
+    manifest.AddTexture("Resources/sprite/ui/stage_select/stage2_gate_name.png");
+    manifest.AddTexture("Resources/sprite/ui/stage_select/stage3_gate_name.png");
+    manifest.AddTexture("Resources/sprite/ui/hud/stage_star_filled.png");
+    manifest.AddTexture("Resources/sprite/ui/hud/stage_star_empty.png");
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
                                                                  : GetSceneLoadContext().skyboxPath);
     return manifest;
 }
 
 void GameSelectScene::Initialize() {
+    // 同期初期化でも段階ロードと同じ順序を使用する。
     BeginLoadingInitialize();
     while (!InitializeLoadingStep()) {
     }
 }
 
 void GameSelectScene::BeginLoadingInitialize() {
+    // 進捗表示用の作業数を、InitializeLoadingStep の段階数に合わせる。
     loadingInitializePhase_ = 0;
     loadingInitializeCompletedUnits_ = 0;
     loadingInitializeTotalUnits_ = 9;
 }
 
 bool GameSelectScene::InitializeLoadingStep() {
+    // リソース生成を段階に分け、先読み時に一フレームへ集中させない。
     auto completeUnit = [this]() { ++loadingInitializeCompletedUnits_; };
 
     switch (loadingInitializePhase_) {
@@ -220,6 +235,12 @@ bool GameSelectScene::InitializeLoadingStep() {
     case 6:
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
         InitializeStageSelectHUD();
+        InitializeStageGateNameLabels();
+        pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
+        pauseMenuOverlay_->Initialize(spriteCommon_.get(), "Resources/json/sprite/selectPauseMenu.json",
+                                      PauseMenuOverlay::Mode::StageSelect);
+        settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
+        settingsOverlay_->Initialize(spriteCommon_.get());
         ++loadingInitializePhase_;
         completeUnit();
         return false;
@@ -257,6 +278,7 @@ bool GameSelectScene::InitializeLoadingStep() {
 }
 
 float GameSelectScene::GetLoadingInitializeProgress() const {
+    // 段階ロード未開始時にも 0 除算せず完了値を返す。
     return loadingInitializeTotalUnits_ == 0 ? 1.0f
                                              : std::clamp(static_cast<float>(loadingInitializeCompletedUnits_) /
                                                               static_cast<float>(loadingInitializeTotalUnits_),
@@ -270,6 +292,7 @@ void GameSelectScene::OnActivated() {
 }
 
 void GameSelectScene::Finalize() {
+    // 共有マネージャーのシーン固有状態を消してから所有リソースを解放する。
     MeshEffectManager::GetInstance()->Clear();
     VFXSequencer::ClearOneShots();
     GPUParticleManager::GetInstance()->ClearSceneRuntime();
@@ -278,6 +301,16 @@ void GameSelectScene::Finalize() {
     particleSystem_.reset();
     particleCommon_.reset();
     sprites_.clear();
+    stageGateNameLabels_.clear();
+    stageGateStarIcons_.clear();
+    if (settingsOverlay_) {
+        settingsOverlay_->Finalize();
+        settingsOverlay_.reset();
+    }
+    if (pauseMenuOverlay_) {
+        pauseMenuOverlay_->Finalize();
+        pauseMenuOverlay_.reset();
+    }
     spriteCommon_.reset();
     object3dCommon_.reset();
     objectManager_.reset();
@@ -285,6 +318,10 @@ void GameSelectScene::Finalize() {
 }
 
 void GameSelectScene::Update(float deltaTime) {
+    // ポーズ中はゲーム側の時計と衝突処理を進めず、オーバーレイだけ更新する。
+    if (HandlePauseOverlay(deltaTime)) {
+        return;
+    }
 
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
@@ -388,13 +425,58 @@ void GameSelectScene::Update(float deltaTime) {
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
     UpdateUI();
+    UpdateStageGateNameLabels();
     UpdateGateCinematicBars(deltaTime);
 
     if (animatedCube_)
         animatedCube_->Update(deltaTime);
 }
 
+bool GameSelectScene::HandlePauseOverlay(float deltaTime) {
+    // 解放・入場演出中にはポーズを開かず、ImGui の文字入力も奪わない。
+    if (settingsOverlay_ && settingsOverlay_->IsActive()) {
+        settingsOverlay_->Update(deltaTime);
+        return true;
+    }
+    if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) {
+        switch (pauseMenuOverlay_->Update(deltaTime)) {
+        case PauseMenuOverlay::Action::Resume:
+            pauseMenuOverlay_->SetActive(false);
+            break;
+        case PauseMenuOverlay::Action::OpenSettings:
+            if (settingsOverlay_) {
+                settingsOverlay_->SetActive(true);
+            }
+            break;
+        case PauseMenuOverlay::Action::ReturnTitle:
+            pauseMenuOverlay_->SetActive(false);
+            SceneManager::GetInstance()->ChangeScene("TITLE");
+            break;
+        default:
+            break;
+        }
+        return true;
+    }
+    if (!inputManager_ || isChangingStage_ || gateEntryCinematicActive_ || gateReturnPresentationActive_ ||
+        crownCountPresentationActive_ || unlockingStageIndex_ >= 0) {
+        return false;
+    }
+#ifdef USE_IMGUI
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        return false;
+    }
+#endif
+    if (inputManager_->IsKeyTriggered(DIK_ESCAPE) || inputManager_->IsKeyTriggered(DIK_P) ||
+        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
+        pauseMenuOverlay_->SetActive(true);
+        return true;
+    }
+    return false;
+}
+
 void GameSelectScene::Draw() {
+    // ロックオン表示と特殊マテリアルを含むシーン描画の順序を統一する。
     bool isFirstPerson = false;
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
@@ -485,24 +567,51 @@ void GameSelectScene::Draw() {
 }
 
 void GameSelectScene::DrawUI() {
+    // ゲートの名前やスターは 3D の後段で画面座標へ重ねる。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_)
         sprite->Draw();
+    for (auto& label : stageGateNameLabels_) {
+        // JSON に名札のないステージのスロットは空なので、描画対象から除きます。
+        if (label) {
+            label->Draw();
+        }
+    }
+    for (auto& stars : stageGateStarIcons_) {
+        for (auto& star : stars) {
+            if (star) {
+                star->Draw();
+            }
+        }
+    }
     if (gatePromptSprite_)
         gatePromptSprite_->Draw();
     if (isDrawLockOn_ && lockOnSprite_)
         lockOnSprite_->Draw();
+    if (settingsOverlay_ && settingsOverlay_->IsActive()) {
+        settingsOverlay_->Draw();
+    } else if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) {
+        pauseMenuOverlay_->Draw();
+    }
 }
 
 void GameSelectScene::DrawShadow() {
+    // 配置オブジェクトのうち、影を落とす対象の選別は ObjectManager に委ねる。
     if (objectManager_)
         objectManager_->DrawShadow();
 }
 
 void GameSelectScene::DrawImGui() {
+    // 保存を変えずにゲート入場・解放演出を試せる調整 UI を提供する。
 #ifdef USE_IMGUI
     ImGui::Text("ステージセレクト設定");
     ImGui::Separator();
+    if (ImGui::CollapsingHeader("ゲート名札")) {
+        ImGui::DragFloat("非表示になる距離 (m)", &gateNameHideDistance_, 0.5f, 5.0f, 100.0f);
+        ImGui::DragFloat("フェード幅 (m)", &gateNameFadeDistance_, 0.5f, 1.0f, 40.0f);
+        ImGui::DragFloat("ゲート上の余白 (m)", &gateNameHeightOffset_, 0.1f, 0.0f, 10.0f);
+        ImGui::TextDisabled("橋へ近づくと消え、中央からは各ゲートの上に表示します。");
+    }
 
     if (ImGui::CollapsingHeader("ゲート演出デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
         float nearestDistance = std::numeric_limits<float>::max();
@@ -614,6 +723,7 @@ void GameSelectScene::DrawImGui() {
 }
 
 void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
+    // 解放・帰還・入場の演出中はゲート接触による別ステージへの遷移を止める。
     stageSelectTime_ += deltaTime;
 
     if (stageDecisionCooldown_ > 0.0f) {
@@ -678,6 +788,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 }
 
 void GameSelectScene::UpdateGatePrompt(Object3d* nearestGate, bool canEnterGate, float deltaTime) {
+    // 入場可能なゲートが見えている時だけ、プレイヤー付近の画面内へ案内を置く。
     if (!gatePromptSprite_) {
         return;
     }
@@ -733,6 +844,7 @@ void GameSelectScene::UpdateGatePrompt(Object3d* nearestGate, bool canEnterGate,
 }
 
 void GameSelectScene::ApplyStageGateStates() {
+    // セーブの解放状態と演出進度を分離し、解放演出が終わるまで閉じた見た目を保つ。
     if (!objectManager_) {
         return;
     }
@@ -829,6 +941,7 @@ void GameSelectScene::ApplyStageGateStates() {
 }
 
 void GameSelectScene::RefreshDebugStageStates() {
+    // デバッグで進行を変更したら、途中演出のキー・カメラ・操作権を元に戻す。
     const auto& stages = StageManager::GetInstance()->GetStages();
     if (stages.empty()) {
         return;
@@ -898,6 +1011,7 @@ void GameSelectScene::RefreshDebugStageStates() {
 }
 
 bool GameSelectScene::IsStageUnlocked(int stageIndex) const {
+    // 初期解放か、前提ステージのクリア記録がある時だけ入場を許可する。
     const auto& stages = StageManager::GetInstance()->GetStages();
     if (stageIndex < 0 || stageIndex >= static_cast<int>(stages.size())) {
         return false;
@@ -914,6 +1028,7 @@ bool GameSelectScene::IsStageUnlocked(int stageIndex) const {
 }
 
 int GameSelectScene::FindPendingUnlockStage() const {
+    // セーブ上は解放済みでも、解放演出をまだ見ていない最初のゲートを探す。
     const auto& stages = StageManager::GetInstance()->GetStages();
     auto* save = GameDataManager::GetInstance();
 
@@ -926,6 +1041,7 @@ int GameSelectScene::FindPendingUnlockStage() const {
 }
 
 Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
+    // 配置 JSON で名前を変更した演出部品は見つからないものとして扱う。
     if (!objectManager_) {
         return nullptr;
     }
@@ -939,6 +1055,7 @@ Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
 }
 
 Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
+    // 実際に配置したゲート位置を優先し、未配置時だけ旧レイアウトの座標を使う。
     if (objectManager_) {
         for (const auto& object : objectManager_->GetObjects()) {
             if (object && IsStageGateObject(object.get()) && GetStageGateIndex(object.get()) == stageIndex) {
@@ -960,6 +1077,7 @@ Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
 }
 
 void GameSelectScene::EnterSelectedStage() {
+    // 二重入場を防ぎ、進行記録と選択ステージを確定してから入場演出を始める。
     if (isChangingStage_ || stageDecisionCooldown_ > 0.0f) {
         return;
     }
@@ -982,6 +1100,7 @@ void GameSelectScene::EnterSelectedStage() {
 }
 
 bool GameSelectScene::IsStageGateObject(const Object3d* object) const {
+    // 新しい Gimmick 型と旧レイアウトの名前・モデル名の両方をゲートとして認識する。
     if (!object) {
         return false;
     }
@@ -1004,6 +1123,7 @@ bool GameSelectScene::IsStageGateObject(const Object3d* object) const {
 }
 
 int GameSelectScene::GetStageGateIndex(const Object3d* object) const {
+    // 新型は専用フィールド、旧型は汎用 TargetID からステージ番号を読む。
     if (!object) {
         return -1;
     }
@@ -1014,6 +1134,7 @@ int GameSelectScene::GetStageGateIndex(const Object3d* object) const {
 }
 
 Object3d* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
+    // 解放演出などが対象とするステージ番号のゲートを探す。
     if (!objectManager_) {
         return nullptr;
     }
@@ -1029,6 +1150,7 @@ Object3d* GameSelectScene::FindStageGateByIndex(int stageIndex) const {
 }
 
 Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) const {
+    // 高低差ではなく水平距離で選び、画面上の近いゲートと選択を合わせる。
     if (outDistance) {
         *outDistance = std::numeric_limits<float>::max();
     }
@@ -1065,6 +1187,7 @@ Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) const {
 }
 
 bool GameSelectScene::IsPlayerTouchingStageGate(Object3d* gate) const {
+    // 門の向きに沿う薄い平面判定を使い、旧配置の X/Z 軸向きも許容する。
     if (!gate || !player_) {
         return false;
     }

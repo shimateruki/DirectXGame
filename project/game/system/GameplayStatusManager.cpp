@@ -20,6 +20,7 @@ GameplayStatusManager::CharacterStatus MakeStatus(float maxHp, float attackPower
                                                   float maxFallSpeed, float jumpPower, float detectionRange,
                                                   const Vector3& scale, const char* modelName, bool morphLimited,
                                                   float morphDuration) {
+    // 敵タイプごとの初期値を一つの構造体へ揃え、JSON未設定項目の基準にする。
     GameplayStatusManager::CharacterStatus status;
     status.maxHp = maxHp;
     status.attackPower = attackPower;
@@ -36,18 +37,21 @@ GameplayStatusManager::CharacterStatus MakeStatus(float maxHp, float attackPower
 }
 
 void ReadFloat(const json& source, const char* key, float& value) {
+    // 数値として読める項目だけを上書きし、欠落・型違いでは初期値を保つ。
     if (source.is_object() && source.contains(key) && source.at(key).is_number()) {
         value = source.at(key).get<float>();
     }
 }
 
 void ReadBool(const json& source, const char* key, bool& value) {
+    // Bool型が確認できた場合だけ既定値を変更する。
     if (source.is_object() && source.contains(key) && source.at(key).is_boolean()) {
         value = source.at(key).get<bool>();
     }
 }
 
 void ReadString(const json& source, const char* key, std::string& value) {
+    // 空のモデル名で既定モデルを消さないよう、非空文字列だけ採用する。
     if (source.is_object() && source.contains(key) && source.at(key).is_string()) {
         const std::string candidate = source.at(key).get<std::string>();
         if (!candidate.empty()) {
@@ -75,6 +79,7 @@ void ReadScale(const json& source, Vector3& value) {
 }
 
 void JsonToStatus(const json& source, GameplayStatusManager::CharacterStatus& status) {
+    // JSONに存在する値だけを型確認して反映し、古いファイルの不足項目は既定値へ任せる。
     ReadFloat(source, "maxHp", status.maxHp);
     ReadFloat(source, "attackPower", status.attackPower);
     ReadFloat(source, "speed", status.speed);
@@ -98,6 +103,7 @@ void JsonToStatus(const json& source, GameplayStatusManager::CharacterStatus& st
 }
 
 json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
+    // キャラクター本体と移動モーターの設定を同じJSON構造へ保存する。
     return json{{"maxHp", status.maxHp},
                 {"attackPower", status.attackPower},
                 {"speed", status.speed},
@@ -120,17 +126,25 @@ json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
 
 // キャラクターの調整値を読み書きし、既存のHPを保つか初期化するかを呼び出し側へ委ねます。
 
-bool NearlyEqual(float lhs, float rhs) { return std::abs(lhs - rhs) <= 0.0001f; }
+bool NearlyEqual(float lhs, float rhs) {
+    // HPの全快判定では浮動小数点の微小誤差を許容する。
+    return std::abs(lhs - rhs) <= 0.0001f;
+}
 } // namespace
 
 GameplayStatusManager* GameplayStatusManager::GetInstance() {
+    // 設定管理はシーンをまたいで同じ値を参照する単一実体とする。
     static GameplayStatusManager instance;
     return &instance;
 }
 
-GameplayStatusManager::~GameplayStatusManager() { SaveIfDirty(); }
+GameplayStatusManager::~GameplayStatusManager() {
+    // 終了時に未保存の調整値だけを書き出す。
+    SaveIfDirty();
+}
 
 void GameplayStatusManager::Initialize() {
+    // 新設定を優先し、存在しない場合だけ旧ファイルを一度読み込んで移行する。
     if (initialized_) {
         return;
     }
@@ -152,6 +166,7 @@ void GameplayStatusManager::Initialize() {
 }
 
 bool GameplayStatusManager::Reload() {
+    // 再読込に失敗した場合は編集中の値を戻し、失敗したJSONで上書きしない。
     Initialize();
 
     const CharacterStatus previousPlayer = playerStatus_;
@@ -168,6 +183,7 @@ bool GameplayStatusManager::Reload() {
 }
 
 bool GameplayStatusManager::Save() {
+    // プレイヤーと敵タイプ別の設定を一つのファイルへ保存し、成功時だけdirtyを解除する。
     Initialize();
 
     json root;
@@ -193,6 +209,7 @@ bool GameplayStatusManager::Save() {
 }
 
 void GameplayStatusManager::ResetToDefaults() {
+    // JSONに項目が無い場合の基準値をタイプ別に用意し、再読込前の土台にする。
     playerStatus_ =
         MakeStatus(5.0f, 1.0f, 27.7f, 50.0f, 60.0f, 24.0f, 20.0f, {2.0f, 2.0f, 2.0f}, "Characters/slime", false, 5.0f);
 
@@ -226,6 +243,7 @@ void GameplayStatusManager::ResetToDefaults() {
 }
 
 GameplayStatusManager::CharacterStatus* GameplayStatusManager::FindMutableEnemyStatus(const std::string& enemyType) {
+    // 編集時は初期化後の登録済みタイプだけを変更可能な参照として返す。
     Initialize();
     const auto it = enemyStatuses_.find(enemyType);
     return it != enemyStatuses_.end() ? &it->second : nullptr;
@@ -233,13 +251,18 @@ GameplayStatusManager::CharacterStatus* GameplayStatusManager::FindMutableEnemyS
 
 const GameplayStatusManager::CharacterStatus*
 GameplayStatusManager::FindEnemyStatus(const std::string& enemyType) const {
+    // 未登録の敵タイプはnullptrで知らせ、別タイプの値を誤適用しない。
     const auto it = enemyStatuses_.find(enemyType);
     return it != enemyStatuses_.end() ? &it->second : nullptr;
 }
 
-bool GameplayStatusManager::SaveIfDirty() { return !dirty_ || Save(); }
+bool GameplayStatusManager::SaveIfDirty() {
+    // 変更がない場合はディスクへ書かず、変更時だけ保存結果を返す。
+    return !dirty_ || Save();
+}
 
 bool GameplayStatusManager::ApplyPlayerStatus(Object3d* object, bool resetCurrentHp) const {
+    // Player以外には適用せず、HPを全快させるかは呼び出し側の指定を守る。
     if (!object || object->GetClassName() != "Player") {
         return false;
     }
@@ -248,6 +271,7 @@ bool GameplayStatusManager::ApplyPlayerStatus(Object3d* object, bool resetCurren
 }
 
 bool GameplayStatusManager::ApplyEnemyStatus(Object3d* object, bool resetCurrentHp) const {
+    // 敵タイプに対応する設定だけを適用し、旧データではParam内のタイプ名も参照する。
     if (!object || object->GetClassName() != "Enemy") {
         return false;
     }
@@ -271,6 +295,7 @@ bool GameplayStatusManager::ApplyEnemyStatus(Object3d* object, bool resetCurrent
 }
 
 bool GameplayStatusManager::ApplyManagedStatus(Object3d* object, bool resetCurrentHp) const {
+    // クラス名でプレイヤー・敵を振り分け、それ以外のシーン物体には値を適用しない。
     if (!object) {
         return false;
     }
@@ -284,15 +309,20 @@ bool GameplayStatusManager::ApplyManagedStatus(Object3d* object, bool resetCurre
 }
 
 bool GameplayStatusManager::IsManagedCharacter(const Object3d* object) {
+    // 共通ステータス管理の対象はPlayerとEnemyに限定する。
     if (!object) {
         return false;
     }
     return object->GetClassName() == "Player" || object->GetClassName() == "Enemy";
 }
 
-const char* GameplayStatusManager::GetSettingsPath() { return kSettingsPath; }
+const char* GameplayStatusManager::GetSettingsPath() {
+    // エディターとランタイムが同じ設定ファイルを参照できるようパスを公開する。
+    return kSettingsPath;
+}
 
 bool GameplayStatusManager::LoadFromFile(const std::string& path) {
+    // 読み込んだ項目を既定値へ重ね、型違いや読込失敗では呼び出し側へ失敗を返す。
     std::ifstream file(path);
     if (!file) {
         return false;
@@ -346,6 +376,7 @@ void GameplayStatusManager::Normalize(CharacterStatus& status) {
 
 // 最大 HP の変更時は現在の残量比を保ち、全快中または明示的なリセット時だけ全快させます。
 void GameplayStatusManager::ApplyStatus(Object3d* object, const CharacterStatus& source, bool resetCurrentHp) {
+    // HP以外の値は正規化済み設定へ揃え、HPだけは残量比または明示リセットを基準にする。
     if (!object) {
         return;
     }

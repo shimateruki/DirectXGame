@@ -28,6 +28,9 @@ class PlayerMover {
     /// 毎フレームの更新（移動・回転・ジャンプ）
     /// </summary>
     void Update(float deltaTime);
+    // 操作を一時停止している攻撃中も、通常移動と同じ基準の入力方向を取得する。
+    // 入力がない場合はゼロベクトルを返し、移動速度やプレイヤーの向きは変更しない。
+    Vector3 GetMoveInputDirection();
     // 移動が一時停止しているフレームも入力の寿命を進めます。
     void SampleJumpInput(float deltaTime, bool discard);
     const char* GetJumpStatus() const { return jumpStatus_; }

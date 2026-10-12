@@ -15,6 +15,7 @@
 
 namespace {
 float DistanceXZ(const Vector3& a, const Vector3& b) {
+    // 乗り場との近さは高さを除いた水平面で判定する。
     const float x = a.x - b.x, z = a.z - b.z;
     return std::sqrt(x * x + z * z);
 }
@@ -22,6 +23,7 @@ float DistanceXZ(const Vector3& a, const Vector3& b) {
 } // namespace
 
 BaseEnemy* RidingPlatformController::FindEnemy(BaseScene& scene, const std::string& name) const {
+    // リプレイから除外された敵は乗車イベントの対象にしない。
     for (auto& object : scene.GetObjects()) {
         if (object && !object->IsReplayRemoved() && object->GetName() == name)
             return dynamic_cast<BaseEnemy*>(object.get());
@@ -30,6 +32,7 @@ BaseEnemy* RidingPlatformController::FindEnemy(BaseScene& scene, const std::stri
 }
 
 void RidingPlatformController::Reset(GimmickMovingFloor& floor, BaseScene& scene) {
+    // 床・敵・当たり判定を演出開始前の配置へ戻し、再乗車できる状態にする。
     player_.Stop(false);
     floor.SetTranslate(start_);
     floor.UpdateLocalMatrix();
@@ -50,6 +53,7 @@ void RidingPlatformController::Reset(GimmickMovingFloor& floor, BaseScene& scene
 }
 
 void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime) {
+    // Timeline の信号と床の軌跡を再生し、乗員と敵を同じフレームの移動量で運ぶ。
     auto* manager = SceneManager::GetInstance();
     auto* scene = manager ? manager->GetCurrentScene() : nullptr;
     if (!scene)

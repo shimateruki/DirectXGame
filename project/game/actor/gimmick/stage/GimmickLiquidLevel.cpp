@@ -14,6 +14,7 @@
 void GimmickLiquidLevel::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 液面は足場の衝突には使わず、表示と高さの制御を担当します。
     SetClassName("Gimmick");
     SetGimmickType("LiquidLevel");
     SetName("Gimmick_LiquidLevel");
@@ -33,6 +34,7 @@ void GimmickLiquidLevel::Initialize(Object3dCommon* common, const std::string& m
 }
 
 void GimmickLiquidLevel::Update(float deltaTime) {
+    // 脱出シーケンスだけは通常のスイッチ昇降と別の時間軸で進めます。
     if (!param_.has_value())
         param_.emplace();
 
@@ -45,6 +47,7 @@ void GimmickLiquidLevel::Update(float deltaTime) {
         isPlaying = sceneManager->IsPlaying();
     }
 
+    // エディター中の位置を基準点として誤記録しないよう、再生開始時に初期化します。
     if (!isPlaying) {
         initializedForPlay_ = false;
         ApplyLiquidVisual();
@@ -60,6 +63,7 @@ void GimmickLiquidLevel::Update(float deltaTime) {
         initializedForPlay_ = true;
     }
 
+    // 指数補間を使い、フレーム時間が変わっても目標位置への追従を安定させます。
     float speed = (std::max)(0.01f, param_->moveSpeed);
     float t = 1.0f - std::exp(-speed * deltaTime);
     Vector3 pos = GetTransform()->translate;
@@ -73,12 +77,14 @@ void GimmickLiquidLevel::Update(float deltaTime) {
 }
 
 void GimmickLiquidLevel::OnTrigger() {
+    // 脱出用液面はエリア進行で動くため、通常のトリガー入力を無視します。
     if (param_ && param_->actionMode == 1)
         return;
     OnSwitchEvent(true);
 }
 
 void GimmickLiquidLevel::OnSwitchEvent(bool active) {
+    // オフで戻さない設定なら、解除イベント後も上昇位置を維持します。
     if (!param_.has_value())
         param_.emplace();
     if (param_->actionMode == 1)
@@ -89,12 +95,14 @@ void GimmickLiquidLevel::OnSwitchEvent(bool active) {
 }
 
 void GimmickLiquidLevel::ApplyTarget(bool active) {
+    // 配置時の高さを基準に、設定した距離だけ上下させます。
     active_ = active;
     float amount = param_.has_value() ? param_->moveAmount : 6.0f;
     targetPosition_ = active ? basePosition_ + Vector3{0.0f, amount, 0.0f} : basePosition_;
 }
 
 void GimmickLiquidLevel::ApplyLiquidVisual() {
+    // 色種別に合わせて水とマグマの材質・透過色を切り替えます。
     int colorType = param_.has_value() ? param_->colorType : 0;
     if (colorType == 1) {
         SetMaterialType(9);
@@ -106,6 +114,7 @@ void GimmickLiquidLevel::ApplyLiquidVisual() {
 }
 
 std::unique_ptr<Object3d> GimmickLiquidLevel::Clone() const {
+    // 複製先の描画資源を作った後で、液面の設定を引き継ぎます。
     auto newObj = std::make_unique<GimmickLiquidLevel>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

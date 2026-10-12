@@ -6,14 +6,20 @@ using namespace CopyAbilityDetail;
 class WindSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit WindSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
+        // 竜巻の再生成を一つの演出スコープへ束ね、終了時に残像を回収する。
         scope_ = MeshEffectManager::GetInstance()->CreateEffectScope();
     }
-    ~WindSlimeCopyAbility() override { ClearTornadoEffects(); }
+    ~WindSlimeCopyAbility() override {
+        // コピー能力の破棄だけでも竜巻のメッシュ演出を止める。
+        ClearTornadoEffects();
+    }
     const char* GetStateLabel() const override {
+        // 竜巻の実行中と再使用待ちを区別して操作案内へ渡す。
         return tornadoActive_ ? "竜巻攻撃" : (tornadoCooldown_ > 0.0f ? "竜巻・復帰待ち" : "風能力");
     }
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
+        // 竜巻、接地からの飛翔、空中で一度使える上昇を別条件で開始する。
         primaryHeld_ = input.primaryHeld;
         if (input.primaryTriggered && !soarActive_ && actionMotionTimer_ <= 0.0f && tornadoCooldown_ <= 0.0f &&
             !tornadoActive_) {
@@ -30,6 +36,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
+        // 飛翔後の落下制限を着地まで保ち、竜巻は押し続けた時間で終了を決める。
         updraftCooldown_ = std::max(0.0f, updraftCooldown_ - deltaTime);
         tornadoCooldown_ = std::max(0.0f, tornadoCooldown_ - deltaTime);
         soarCooldown_ = std::max(0.0f, soarCooldown_ - deltaTime);
@@ -110,6 +117,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Cancel(Player& player) override {
+        // コピー解除後に風の姿勢や継続エフェクトが残らないよう状態を戻す。
         tornadoActive_ = false;
         ClearTornadoEffects();
         player.ClearSlimeAbilityMotion();
@@ -124,6 +132,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
 
   private:
     void Updraft(Player& player) {
+        // 現在の上昇速度を下げずに加速し、再使用は次の接地まで封じる。
         StopBreathMotion(player);
         Vector3 velocity = player.GetVelocity();
         velocity.y = std::max(velocity.y, 18.0f);
@@ -144,6 +153,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void BeginSoar(Player& player) {
+        // 水平移動が小さい時は現在の向きを使い、飛翔方向を確定する。
         StopBreathMotion(player);
         soarDirection_ = NormalizePlanar(player.GetVelocity());
         if (std::abs(player.GetVelocity().x) + std::abs(player.GetVelocity().z) < 1.2f) {
@@ -163,6 +173,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void FinishSoar(Player& player) {
+        // 着地を一度だけ処理し、落下用姿勢から着地モーションへ移す。
         if (!soarActive_)
             return;
         soarActive_ = false;
@@ -175,6 +186,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void StopBreathMotion(Player& player) {
+        // 竜巻の停止とモーションの停止を同時に行い、再使用待ちへ入れる。
         if (tornadoActive_) {
             tornadoActive_ = false;
             tornadoCooldown_ = 0.65f;
@@ -189,6 +201,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void ClearTornadoEffects() {
+        // 能力専用スコープを閉じ、他のプレイヤー演出へ影響させない。
         if (auto* effects = MeshEffectManager::GetInstance())
             effects->StopEffectScope(scope_);
     }
@@ -213,6 +226,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
 
 namespace CopyAbilityDetail {
 std::unique_ptr<ICopyAbilitySession> CreateWindSlimeCopyAbility(const EnemyAttackProfile& profile) {
+    // コピー獲得ごとに飛翔の消費状態と竜巻時計を分ける。
     return std::make_unique<WindSlimeCopyAbility>(profile);
 }
 } // namespace CopyAbilityDetail

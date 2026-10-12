@@ -62,8 +62,12 @@
 #include <cstdio>
 
 // シーンの寿命は本体が管理し、演出ファイルは既存メンバーを借用する。
-GamePlayScene::GamePlayScene() {}
-GamePlayScene::~GamePlayScene() {}
+GamePlayScene::GamePlayScene() {
+    // シーン固有リソースの生成はInitializeへまとめる。
+}
+GamePlayScene::~GamePlayScene() {
+    // シーン固有リソースの終了はFinalizeへまとめる。
+}
 
 void GamePlayScene::Draw() {
     // --- 一人称視点（カメラのめり込み）判定 ---
@@ -366,13 +370,16 @@ void GamePlayScene::DrawUI() {
 }
 
 void GamePlayScene::DrawShadow() {
+    // 配置オブジェクトを影パスへ渡し、通常描画と同じ管理集合を使う。
     if (objectManager_) {
 
         objectManager_->DrawShadow();
     }
 }
 
-void GamePlayScene::StartBridgeDropMovie() {}
+void GamePlayScene::StartBridgeDropMovie() {
+    // 互換用の呼び出し口。現時点ではこの経路で演出を開始しない。
+}
 bool GamePlayScene::IsVisible(Object3d* obj) {
     if (!obj || !obj->GetIsVisible())
         return false;

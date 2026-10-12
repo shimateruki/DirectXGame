@@ -7,6 +7,7 @@
 void GimmickEventReceiver::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // イベントを受けた際に表示・移動する地形なので、通常時の地面属性を保持します。
     SetClassName("Gimmick");
     SetGimmickType("EventReceiver");
     SetName("Gimmick_EventReceiver");
@@ -20,6 +21,7 @@ void GimmickEventReceiver::Initialize(Object3dCommon* common, const std::string&
 }
 
 void GimmickEventReceiver::Update(float deltaTime) {
+    // 編集時の配置を再生基準にし、ボス報酬はイベント発火まで隠します。
     if (!param_.has_value())
         param_.emplace();
 
@@ -38,6 +40,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         return;
     }
 
+    // 最初の再生フレームで元の見た目と衝突設定を記録します。
     if (!initializedForPlay_) {
         basePosition_ = GetTransform()->translate;
         targetPosition_ = basePosition_;
@@ -57,6 +60,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         initializedForPlay_ = true;
     }
 
+    // 軸移動モードと報酬の出現演出は同じ受信オブジェクトで処理します。
     int actionMode = param_->actionMode;
     if (actionMode >= 1 && actionMode <= 3) {
         float speed = (std::max)(0.01f, param_->moveSpeed);
@@ -91,6 +95,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
 }
 
 void GimmickEventReceiver::RelocateRuntimeBase(const Vector3& position) {
+    // 実行中の相対移動量を保ったまま、演出全体の基準位置だけを移します。
     const Vector3 offset = position - (initializedForPlay_ ? basePosition_ : GetTranslate());
     basePosition_ = position;
     targetPosition_ = initializedForPlay_ ? targetPosition_ + offset : position;
@@ -98,9 +103,13 @@ void GimmickEventReceiver::RelocateRuntimeBase(const Vector3& position) {
     UpdateWorldMatrix(true);
 }
 
-void GimmickEventReceiver::OnTrigger() { OnSwitchEvent(true); }
+void GimmickEventReceiver::OnTrigger() {
+    // 単発トリガーはスイッチのオンイベントとして扱います。
+    OnSwitchEvent(true);
+}
 
 void GimmickEventReceiver::OnSwitchEvent(bool active) {
+    // 再生開始前に届いたイベントも、基準姿勢の取得後に適用できるよう保留します。
     if (!param_.has_value())
         param_.emplace();
 
@@ -115,6 +124,7 @@ void GimmickEventReceiver::OnSwitchEvent(bool active) {
 }
 
 void GimmickEventReceiver::ApplyActiveState(bool active) {
+    // モード別に表示・衝突・移動先を切り替え、報酬出現時は着地まで衝突を遅らせます。
     active_ = active;
     activationTimer_ = 0.0f;
     int actionMode = param_.has_value() ? param_->actionMode : 0;
@@ -158,6 +168,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
 }
 
 void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
+    // 有効化時は編集データで指定された属性とマスクを復元します。
     if (enabled) {
         SetCollisionAttribute(originalCollisionAttribute_ != 0 ? originalCollisionAttribute_ : CollisionCategories::Get("ground"));
         SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
@@ -168,6 +179,7 @@ void GimmickEventReceiver::SetCollisionEnabled(bool enabled) {
 }
 
 std::unique_ptr<Object3d> GimmickEventReceiver::Clone() const {
+    // 複製先を初期化してから、イベント設定と配置をコピーします。
     auto newObj = std::make_unique<GimmickEventReceiver>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

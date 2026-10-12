@@ -5,6 +5,7 @@
 #include <cmath>
 
 void GimmickAppearingFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 表示と当たり判定を同時に切り替える床として登録する。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -76,12 +77,14 @@ void GimmickAppearingFloor::Update(float deltaTime) {
 }
 
 void GimmickAppearingFloor::OnTrigger() {
+    // 再起動時は表示時間を延長し、床を再び有効にする。
     visibleTimer_ = appearDuration_;
     SetFloorActive(true);
     SetIsVisible(true);
 }
 
 void GimmickAppearingFloor::SetFloorActive(bool active) {
+    // 見た目と床としての接触状態を同じフラグへそろえる。
     if (isActive_ == active && GetIsVisible() == active)
         return;
 
@@ -99,6 +102,7 @@ void GimmickAppearingFloor::SetFloorActive(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickAppearingFloor::Clone() const {
+    // 新しい実体を初期化してから、出現時間と配置を引き継ぐ。
     auto newObj = std::make_unique<GimmickAppearingFloor>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

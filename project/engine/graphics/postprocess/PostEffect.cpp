@@ -100,6 +100,7 @@ void PostEffect::Update(float deltaTime) {
 }
 
 bool PostEffect::SetLUTTexturePath(const std::string& path) {
+    // Textureの読込に失敗した場合は、既存の色補正LUTを維持します。
     if (path.empty()) {
         return false;
     }
@@ -115,6 +116,7 @@ bool PostEffect::SetLUTTexturePath(const std::string& path) {
 }
 
 void PostEffect::ResetToNeutral() {
+    // 時間だけ引き継ぎ、色・Bloomなどの調整値を中立状態へ戻します。
     if (!paramsData_) {
         return;
     }
@@ -124,6 +126,7 @@ void PostEffect::ResetToNeutral() {
 }
 
 void PostEffect::SetBloomQuality(BloomQuality quality) {
+    // 不正な列挙値は高品質へ寄せ、パス数を定義済みの範囲に保ちます。
     switch (quality) {
     case BloomQuality::Low:
     case BloomQuality::Medium:
@@ -137,11 +140,13 @@ void PostEffect::SetBloomQuality(BloomQuality quality) {
 }
 
 bool PostEffect::IsBloomActive() const {
+    // ごく小さい強度は実質無効として扱い、不要なパスを省きます。
     constexpr float kBloomIntensityEpsilon = 0.0001f;
     return bloomEnabled_ && paramsData_ && paramsData_->bloomIntensity > kBloomIntensityEpsilon;
 }
 
 int PostEffect::GetBloomLevelCount() const {
+    // 品質設定を縮小解像度の段数へ対応させます。
     switch (bloomQuality_) {
     case BloomQuality::Low: return 1;
     case BloomQuality::Medium: return 2;
@@ -151,6 +156,7 @@ int PostEffect::GetBloomLevelCount() const {
 }
 
 int PostEffect::GetExpectedPostEffectPassCount() const {
+    // Bloomの縮小・合成段と最終パスを見積もります。
     if (!IsBloomActive()) {
         return 1;
     }
@@ -158,6 +164,7 @@ int PostEffect::GetExpectedPostEffectPassCount() const {
 }
 
 void PostEffect::SetCameraPreviewResolutionScale(float scale) {
+    // プレビュー専用の解像度を制限し、変更時だけRenderTextureを作り直します。
     const float clampedScale = std::clamp(scale, 0.25f, 1.0f);
     if (std::abs(cameraPreviewResolutionScale_ - clampedScale) < 0.0001f) {
         return;
@@ -380,6 +387,7 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
 }
 
 void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, int targetTexIndex, bool clear) {
+    // 色と深度のRender Targetを同時に束ね、特殊パスが深度判定を使えるようにします。
     TransitionToRTV(commandList, targetTexIndex);
 
     RenderTexture& rt = renderTextures_[targetTexIndex];
@@ -410,6 +418,7 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
 }
 
 bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex) {
+    // 必要な色・深度・Grab資源が揃う場合だけ、カメラプレビュー用パスを開始します。
     if (!commandList || targetTexIndex < 0 || targetTexIndex >= static_cast<int>(renderTextures_.size())) {
         return false;
     }
@@ -458,6 +467,7 @@ bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* comman
 }
 
 void PostEffect::EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandList, int targetTexIndex) {
+    // 特殊パス後の資源状態を戻し、続く通常描画へ渡します。
     if (!commandList || targetTexIndex < 0 || targetTexIndex >= static_cast<int>(renderTextures_.size())) {
         return;
     }

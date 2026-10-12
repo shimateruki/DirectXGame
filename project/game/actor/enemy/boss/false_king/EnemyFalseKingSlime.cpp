@@ -9,9 +9,13 @@ using namespace EnemyFalseKingSlimeImplementation;
 // 偽王の戦闘フェーズと攻撃状態を進めます。登場・幕間・撃破中は通常AIへ流さず専用演出を優先します。
 
 EnemyFalseKingSlime::EnemyFalseKingSlime() = default;
-EnemyFalseKingSlime::~EnemyFalseKingSlime() { ResetCrownFinale(); }
+EnemyFalseKingSlime::~EnemyFalseKingSlime() {
+    // 個別登録した結晶の衝突を所有物の破棄前に解除します。
+    ResetCrownFinale();
+}
 
 void EnemyFalseKingSlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 本体の反射はモデル材質を尊重し、攻撃用の衝突を敵属性で登録します。
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_FalseKingSlime");
     SetEnemyType("FalseKingSlime");
@@ -32,6 +36,7 @@ void EnemyFalseKingSlime::Initialize(Object3dCommon* common, const std::string& 
 }
 
 void EnemyFalseKingSlime::Update(float deltaTime) {
+    // 登場・幕間・最終撃破中は通常 AI より専用の進行を優先します。
     deltaTime = (std::max)(0.0f, deltaTime);
     // 編集へ戻った時には通常の配置復元へ進ませます。
     if (finalDefeatHeld_ && SceneManager::GetInstance()->IsPlaying()) return;
@@ -132,6 +137,7 @@ void EnemyFalseKingSlime::Update(float deltaTime) {
 }
 
 void EnemyFalseKingSlime::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // ボス本体に続けて、結晶や攻撃用の所有モデルを描画します。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
     for (const auto& seal : crownSeals_) {
         for (Object3d* visual : {static_cast<Object3d*>(seal.crystal.get()), seal.ring.get(), seal.link.get(),
@@ -368,6 +374,7 @@ void EnemyFalseKingSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLig
 }
 
 void EnemyFalseKingSlime::OnSwitchEvent(bool active) {
+    // 外部イベントによる登場要求は、遭遇状態の待機から戦闘への入口です。
     if (!IsEncounterControlled()) {
         BaseEnemy::OnSwitchEvent(active);
         return;
@@ -385,6 +392,7 @@ void EnemyFalseKingSlime::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> EnemyFalseKingSlime::Clone() const {
+    // 描画と衝突資源を複製先で作り、配置設定だけを引き継ぎます。
     auto clone = std::make_unique<EnemyFalseKingSlime>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -397,6 +405,7 @@ std::unique_ptr<Object3d> EnemyFalseKingSlime::Clone() const {
 }
 
 void EnemyFalseKingSlime::ApplyManagedScale(const Vector3& scale) {
+    // 通常の跳ねと攻撃姿勢が参照する基準スケールも同時に更新します。
     authoredScale_ = scale;
     baseScale_ = scale;
     hasBaseScale_ = true;
@@ -406,6 +415,7 @@ void EnemyFalseKingSlime::ApplyManagedScale(const Vector3& scale) {
 }
 
 bool EnemyFalseKingSlime::HasOwnedSpecialMaterialVisuals() const {
+    // 特殊材質パスが必要な所有演出物の有無を先に調べます。
     if (!GetIsVisible()) {
         return false;
     }
@@ -433,6 +443,7 @@ bool EnemyFalseKingSlime::HasOwnedSpecialMaterialVisuals() const {
 }
 
 void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 通常パスで描いた発光コアに、特殊材質の外周を追加します。
     if (crownShieldBarrier_ && crownShieldBarrier_->GetIsVisible()) {
         crownShieldBarrier_->RefreshRenderCameraData();
         crownShieldBarrier_->DrawGatePortal(depthSrvHandle, grabSrvHandle);
@@ -466,6 +477,7 @@ void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandl
 }
 
 void EnemyFalseKingSlime::SetDebugPreviewAttackId(const std::string& attackId) {
+    // プレビュー攻撃の切り替え時に前の予兆・所有演出を片付けます。
     if (!attackId.empty()) {
         // 隔離プレビューは原点から離れた場所に置かれ、床に衝突判定がない。
         // 登場演出を通らないため、ここで接地の代替高さと見た目の基準を記録する。
@@ -491,6 +503,7 @@ void EnemyFalseKingSlime::SetDebugPreviewAttackId(const std::string& attackId) {
 }
 
 const char* EnemyFalseKingSlime::GetDebugAttackPhaseName() const {
+    // プレビュー表示用に攻撃状態を短い日本語へ対応付ける。
     switch (attackState_) {
     case AttackState::Windup:
         return "予兆";
@@ -506,6 +519,7 @@ const char* EnemyFalseKingSlime::GetDebugAttackPhaseName() const {
 }
 
 const char* EnemyFalseKingSlime::GetDebugAttackBodyName() const {
+    // 専用プレビュー ID があれば優先し、なければ実行中の攻撃名を返す。
     if (debugPreviewAttackId_ == kSealBarragePreviewId)
         return "Crown Seal Barrage";
     AttackKind kind = currentAttack_;
@@ -535,6 +549,7 @@ const char* EnemyFalseKingSlime::GetDebugAttackBodyName() const {
 }
 
 size_t EnemyFalseKingSlime::GetDebugVisibleAttackVisualCount() const {
+    // 攻撃中に実際に表示されている演出部品だけを数える。
     size_t visibleCount = 0;
     for (const CrownLance& lance : crownLances_) {
         if (lance.visual && lance.visual->GetIsVisible()) {
@@ -625,6 +640,7 @@ size_t EnemyFalseKingSlime::GetDebugVisibleAttackVisualCount() const {
 }
 
 void EnemyFalseKingSlime::EnsureBaseScale() {
+    // 初回だけ配置時の寸法を取得し、アニメーションの復帰先にします。
     if (hasBaseScale_) {
         return;
     }
@@ -636,6 +652,7 @@ void EnemyFalseKingSlime::EnsureBaseScale() {
 // 攻撃と形態移行を優先し、待機中だけ次の技の射程に合わせて位置を調整します。
 void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const Vector3& targetDirection, float targetDistance,
                                          Vector3& velocity) {
+    // 形態移行、攻撃中、待機中の順に処理し、同じフレームで二つの行動を進めません。
     if (attackState_ == AttackState::PhaseShift) {
         UpdatePhaseShift(deltaTime, velocity);
         return;
@@ -690,6 +707,7 @@ void EnemyFalseKingSlime::UpdateBehavior(float deltaTime, const Vector3& targetD
 
 // 予兆開始時に照準と各演出タイマーを固定し、技ごとの配置物を準備します。
 void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDirection) {
+    // 予兆開始時に照準を固定し、技ごとの見た目を攻撃時間に先立って準備します。
     if (kind == AttackKind::None) {
         return;
     }
@@ -779,6 +797,7 @@ void EnemyFalseKingSlime::StartAttack(AttackKind kind, const Vector3& targetDire
 }
 
 void EnemyFalseKingSlime::UpdateAttack(float deltaTime, const Vector3& targetDirection, float, Vector3& velocity) {
+    // 予兆、攻撃、硬直の状態で時間の減らし方と移動許可を切り替えます。
     if (attackState_ == AttackState::Windup) {
         UpdateWindup(deltaTime, targetDirection);
         return;
@@ -799,6 +818,7 @@ void EnemyFalseKingSlime::UpdateAttack(float deltaTime, const Vector3& targetDir
 }
 
 void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDirection) {
+    // 予告開始までは照準を追従させ、予告が見えた後は着弾先を固定します。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     effectTimer_ -= deltaTime;
@@ -906,6 +926,7 @@ void EnemyFalseKingSlime::UpdateWindup(float deltaTime, const Vector3& targetDir
 }
 
 void EnemyFalseKingSlime::BeginActive() {
+    // 予兆から実攻撃へ進め、命中判定の開始時刻を揃えます。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackState_ = AttackState::Active;
     attackStateDuration_ = (std::max)(0.20f, attack.activeDuration);
@@ -960,6 +981,7 @@ void EnemyFalseKingSlime::BeginActive() {
 }
 
 void EnemyFalseKingSlime::UpdateActive(float deltaTime, const Vector3& targetDirection, Vector3& velocity) {
+    // 技種別に応じた移動・弾・判定を更新し、終了時に硬直へ移します。
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     actionTimer_ -= deltaTime;
     effectTimer_ -= deltaTime;
@@ -1014,6 +1036,7 @@ void EnemyFalseKingSlime::UpdateActive(float deltaTime, const Vector3& targetDir
 }
 
 void EnemyFalseKingSlime::BeginRecovery() {
+    // 攻撃後の硬直では予告を消し、次の攻撃までの間を作ります。
     attackState_ = AttackState::Recovery;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackStateDuration_ = (std::max)(0.18f, attack.recoveryDuration);
@@ -1045,6 +1068,7 @@ void EnemyFalseKingSlime::BeginRecovery() {
 }
 
 void EnemyFalseKingSlime::FinishAttack() {
+    // 攻撃の一時状態を戻し、地面上の位置を確定して待機へ戻ります。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackCooldown_ =
         (std::max)(0.35f, attack.cooldown * (battlePhase_ == 1 ? 1.0f : (battlePhase_ == 2 ? 0.88f : 0.78f)));
@@ -1057,6 +1081,7 @@ void EnemyFalseKingSlime::FinishAttack() {
 }
 
 void EnemyFalseKingSlime::UpdateSpellChant(float deltaTime) {
+    // ボスの現在の寸法と向きから、詠唱 VFX の中心と進行度を組み立てます。
     if (!spellChant_)
         return;
     BossChantFrame frame;
@@ -1084,6 +1109,7 @@ void EnemyFalseKingSlime::UpdateSpellChant(float deltaTime) {
 }
 
 void EnemyFalseKingSlime::PrepareAttackCycle() {
+    // 形態別の候補をシャッフルし、直前と同じ技が先頭に続くのを避けます。
     static constexpr std::array<AttackKind, 3> phaseOne = {AttackKind::CrownLanceRain, AttackKind::RoyalShockwave,
                                                            AttackKind::KingRush};
     static constexpr std::array<AttackKind, 4> phaseTwo = {AttackKind::RoyalCross, AttackKind::CrownLanceRain,
@@ -1105,6 +1131,7 @@ void EnemyFalseKingSlime::PrepareAttackCycle() {
 }
 
 EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveAutomaticAttack(float targetDistance) {
+    // 残り候補の中から現在の射程で使える技を前へ寄せます。
     if (attackCyclePhase_ != battlePhase_ || attackCycleIndex_ >= attackCycleCount_) {
         PrepareAttackCycle();
     }
@@ -1123,6 +1150,7 @@ EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveAutomaticAttack(floa
 }
 
 EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveDebugAttack() const {
+    // エディターで指定した ID を実行用の攻撃種別へ変換します。
     if (debugPreviewAttackId_ == kCrownLanceRainAttackId)
         return AttackKind::CrownLanceRain;
     if (debugPreviewAttackId_ == kRoyalShockwaveAttackId)
@@ -1143,6 +1171,7 @@ EnemyFalseKingSlime::AttackKind EnemyFalseKingSlime::ResolveDebugAttack() const 
 }
 
 const char* EnemyFalseKingSlime::GetAttackId(AttackKind kind) const {
+    // 実行用の列挙値から設定 JSON の攻撃 ID を取得します。
     switch (kind) {
     case AttackKind::CrownLanceRain:
         return kCrownLanceRainAttackId;
@@ -1166,10 +1195,12 @@ const char* EnemyFalseKingSlime::GetAttackId(AttackKind kind) const {
 }
 
 const EnemyAttackDefinition& EnemyFalseKingSlime::GetCurrentAttackDefinition() const {
+    // 現在技のパラメータは攻撃プロファイルを参照します。
     return GetAttackDefinition(GetAttackId(currentAttack_));
 }
 
 int EnemyFalseKingSlime::ResolveDesiredBattlePhase() const {
+    // HP が閾値まで減った後は結晶戦へ、最終闘技場への移動後は第三形態へ進めます。
     const float maximumHp = GetEncounterMaximumHp();
     const float hpRate = maximumHp > 0.0f ? GetEncounterCurrentHp() / maximumHp : 1.0f;
     if (finalArenaStarted_)
@@ -1180,6 +1211,7 @@ int EnemyFalseKingSlime::ResolveDesiredBattlePhase() const {
 }
 
 void EnemyFalseKingSlime::BeginPhaseShift(int nextPhase) {
+    // 古い攻撃の予告と一時描画物を消してから形態移行演出を開始します。
     pendingBattlePhase_ = (std::clamp)(nextPhase, 1, 3);
     attackState_ = AttackState::PhaseShift;
     currentAttack_ = AttackKind::None;
@@ -1196,6 +1228,7 @@ void EnemyFalseKingSlime::BeginPhaseShift(int nextPhase) {
 }
 
 void EnemyFalseKingSlime::UpdatePhaseShift(float deltaTime, Vector3& velocity) {
+    // 第二形態では結晶の中心へ先に移動し、移行完了後に結晶を生成します。
     phaseTransitionTimer_ += deltaTime;
     velocity = {0.0f, 0.0f, 0.0f};
     const float progress = GetPhaseTransitionProgress();
@@ -1226,6 +1259,7 @@ void EnemyFalseKingSlime::UpdatePhaseShift(float deltaTime, Vector3& velocity) {
 }
 
 void EnemyFalseKingSlime::UpdateFacing(const Vector3& direction, float follow) {
+    // モデル固有の前方オフセットを足し、最短角度で目標へ向けます。
     if (direction.x * direction.x + direction.z * direction.z <= 0.0001f) {
         return;
     }
@@ -1234,6 +1268,7 @@ void EnemyFalseKingSlime::UpdateFacing(const Vector3& direction, float follow) {
 }
 
 void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
+    // 共通の跳ね姿勢を基準に、予兆・攻撃・形態移行の伸縮を重ねます。
     SlimeBounceAnimator::Params params;
     params.speedForFullBounce = 2.8f;
     params.idleAmplitude = 0.050f;
@@ -1334,6 +1369,7 @@ void EnemyFalseKingSlime::ApplyBossAnimation(float deltaTime) {
 }
 
 void EnemyFalseKingSlime::UpdateRoyalGlow(float deltaTime) {
+    // 形態色と装甲開放状態を発光へ反映し、攻撃中だけ周囲の粒を放出します。
     ambientSparkTimer_ -= deltaTime;
     const bool attacking = attackState_ == AttackState::Windup || attackState_ == AttackState::Active ||
                            attackState_ == AttackState::PhaseShift;
@@ -1361,6 +1397,7 @@ void EnemyFalseKingSlime::UpdateRoyalGlow(float deltaTime) {
 }
 
 void EnemyFalseKingSlime::EmitPreset(const char* presetName, const Vector3& position) const {
+    // 粒子管理が未初期化のプレビューでは放出を省略します。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->Emit(presetName, position);
@@ -1369,6 +1406,7 @@ void EnemyFalseKingSlime::EmitPreset(const char* presetName, const Vector3& posi
 
 void EnemyFalseKingSlime::EmitDirectedPreset(const char* presetName, const Vector3& position, const Vector3& direction,
                                              float speedScale) const {
+    // 方向付き粒子も管理側が使える時だけ発行します。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized() && presetName && presetName[0] != '\0') {
         particles->EmitDirected(presetName, position, direction, speedScale);
@@ -1376,6 +1414,7 @@ void EnemyFalseKingSlime::EmitDirectedPreset(const char* presetName, const Vecto
 }
 
 void EnemyFalseKingSlime::ClearTransientVisuals() {
+    // 技を中断した後も攻撃物が残らないよう、所有演出とタイマーをまとめて破棄します。
     crownLances_.clear();
     lanceSpawnSerial_ = 0;
     royalWaves_.clear();
@@ -1407,6 +1446,7 @@ void EnemyFalseKingSlime::ClearTransientVisuals() {
 
 void EnemyFalseKingSlime::DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle,
                                                                    uint32_t grabSrvHandle, int previewBufferIndex) {
+    // 指定カメラ用に特殊材質の所有物を描き、別視点プレビューへも対応します。
     if (!camera) {
         return;
     }

@@ -1,11 +1,18 @@
 #include "BaseEnemy.h"
 
 namespace {
-json ToJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json ToJson(const Vector3& value) {
+    // ベクトルは要素順を固定した配列にし、リプレイ保存形式を安定させる。
+    return json::array({value.x, value.y, value.z});
+}
 
-json ToJson(const Vector4& value) { return json::array({value.x, value.y, value.z, value.w}); }
+json ToJson(const Vector4& value) {
+    // 色のアルファ成分も含め、復元後の表示を録画時と揃える。
+    return json::array({value.x, value.y, value.z, value.w});
+}
 
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
+    // 古い録画や不完全な値では既存状態を保ち、配列アクセスを避ける。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
@@ -13,6 +20,7 @@ Vector3 ReadVector3(const json& value, const Vector3& fallback) {
 }
 
 Vector4 ReadVector4(const json& value, const Vector4& fallback) {
+    // 色の4要素が揃わない録画は現在の値を使う。
     if (!value.is_array() || value.size() < 4) {
         return fallback;
     }

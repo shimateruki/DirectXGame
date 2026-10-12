@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "436fe66a051bfe20c3e1403389d07bea",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/animator/enemy_fire_slime.json",
+  "version": 1
+}

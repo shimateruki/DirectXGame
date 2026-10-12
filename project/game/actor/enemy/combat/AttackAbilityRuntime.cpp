@@ -5,6 +5,7 @@
 #include <algorithm>
 
 bool AttackAbilityRuntime::Start(const AttackAbilityDefinition& definition) {
+    // 実行中の技を上書きせず、JSON由来の負時間は段階遷移の前に0へ丸める。
     if (!IsReady()) {
         return false;
     }
@@ -20,6 +21,7 @@ bool AttackAbilityRuntime::Start(const AttackAbilityDefinition& definition) {
 }
 
 AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
+    // 1フレームで複数段階を越える場合も遷移通知を落とさないよう残り時間を持ち回る。
     AttackAbilityUpdateResult result;
     result.previousPhase = phase_;
     result.currentPhase = phase_;
@@ -59,6 +61,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
 }
 
 void AttackAbilityRuntime::Cancel(bool enterCooldown) {
+    // 中断後に再発動を制限するかどうかは呼び出し側が選ぶ。
     if (!hasDefinition_) {
         Reset();
         return;
@@ -68,6 +71,7 @@ void AttackAbilityRuntime::Cancel(bool enterCooldown) {
 }
 
 void AttackAbilityRuntime::Reset() {
+    // 定義ごと捨て、次の技を即座に開始できる初期状態へ戻す。
     definition_ = {};
     phase_ = AttackAbilityPhase::Ready;
     phaseTime_ = 0.0f;
@@ -75,10 +79,12 @@ void AttackAbilityRuntime::Reset() {
 }
 
 float AttackAbilityRuntime::GetPhaseProgress() const {
+    // 未開始時に段階の長さを参照しないよう、進捗0を返す。
     return hasDefinition_ ? definition_.GetPhaseProgressFromElapsed(phase_, phaseTime_) : 0.0f;
 }
 
 float AttackAbilityRuntime::GetElapsedActionTime() const {
+    // クールダウンは動作本体に含めず、攻撃タイムライン上の終端に固定する。
     if (!hasDefinition_) {
         return 0.0f;
     }
@@ -98,10 +104,12 @@ float AttackAbilityRuntime::GetElapsedActionTime() const {
 }
 
 bool AttackAbilityRuntime::CanCancel() const {
+    // キャンセル窓は定義内の時刻で判定するため、現在段階を経過時刻へ変換する。
     return hasDefinition_ && definition_.IsCancelWindowOpen(GetElapsedActionTime());
 }
 
 AttackAbilityPhase AttackAbilityRuntime::NextPhase(AttackAbilityPhase phase) const {
+    // 予備動作から硬直・再使用待ちまでの順序をここで一本化する。
     switch (phase) {
     case AttackAbilityPhase::Windup:
         return AttackAbilityPhase::Active;

@@ -68,16 +68,19 @@ namespace {
 }
 
 void VFXSequencerEditor::Initialize() {
+    // プレビュー用Sequencerを初期化し、参照できるSequenceを収集します。
     previewSequencer_.Initialize(nullptr);
     RefreshFileList();
 }
 
 void VFXSequencerEditor::RequestOpenSequence(const std::string& name) {
+    // 他画面からの選択要求を保留し、UI更新時に開くSequenceを切り替えます。
     pendingSequence_ = name;
     openRequested_ = true;
 }
 
 Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
+    // 専用Stageを優先し、通常画面ではカメラ基準の再生位置へ戻します。
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     if (previewStage && previewStage->IsEnabled()) {
         return previewStage->GetPreviewPosition();
@@ -110,6 +113,7 @@ Vector3 VFXSequencerEditor::ResolvePreviewPosition() const {
 }
 
 void VFXSequencerEditor::PlayPreview() {
+    // 位置と一括倍率を再生直前に渡し、編集した演出を同じ原点で試します。
     previewSequencer_.SetRootPosition(ResolvePreviewPosition());
     previewSequencer_.SetRootScale({ previewRootScale_, previewRootScale_, previewRootScale_ });
     previewSequencer_.Play();
@@ -222,6 +226,7 @@ void VFXSequencerEditor::Update(float deltaTime) {
 }
 
 void VFXSequencerEditor::RefreshFileList() {
+    // GPU Particle・Mesh Effect・SE・Sequenceを再走査し、選択候補を更新します。
     particlePresetList_.clear();
     sequenceFileList_.clear();
     meshEffectList_.clear();
@@ -544,6 +549,7 @@ void VFXSequencerEditor::DrawTimelinePreview() {
 
 void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
 #ifdef USE_IMGUI
+    // Event型ごとの入力を同じ時系列データへ書き込み、プレビューと保存で共有します。
     auto& events = previewSequencer_.GetEvents();
     ImGui::PushID(index);
 
@@ -646,6 +652,7 @@ void VFXSequencerEditor::DrawEventEditor(int index, VFXEvent& event) {
 
 void VFXSequencerEditor::DrawPresetCombo(const char* label, std::string& value, const std::vector<std::string>& list) {
 #ifdef USE_IMGUI
+    // 表示名と保存値を同じPreset識別子に揃えます。
     if (ImGui::BeginCombo(label, value.empty() ? "(なし)" : value.c_str())) {
         for (const auto& itemName : list) {
             const bool isSelected = (value == itemName);
@@ -662,6 +669,7 @@ void VFXSequencerEditor::DrawPresetCombo(const char* label, std::string& value, 
 }
 
 void VFXSequencerEditor::AddDefaultEvent(VFXEventType type) {
+    // Event型に応じた既存Presetを初期値にし、空の選択を減らします。
     VFXEvent event;
     event.type = type;
     event.triggerTime = 0.0f;
@@ -722,6 +730,7 @@ void VFXSequencerEditor::AddDefaultEvent(VFXEventType type) {
 }
 
 const char* VFXSequencerEditor::GetEventTypeName(VFXEventType type) const {
+    // タイムラインとPresetの表示で共通の型名を使います。
     switch (type) {
     case VFXEventType::GPUParticle:
         return "GPU Particle";

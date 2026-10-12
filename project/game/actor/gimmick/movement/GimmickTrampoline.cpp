@@ -24,7 +24,10 @@ void GimmickTrampoline::Initialize(Object3dCommon* common, const std::string& mo
     SetCollisionMask(0b1111); // 全てと当たる
 }
 
-void GimmickTrampoline::Update(float deltaTime) { BaseGimmick::Update(deltaTime); }
+void GimmickTrampoline::Update(float deltaTime) {
+    // ジャンプ力は接触時に適用し、通常更新は共通 Transform 処理へ渡す。
+    BaseGimmick::Update(deltaTime);
+}
 
 bool GimmickTrampoline::OnCollision(Object3d* other) {
     if (!other)

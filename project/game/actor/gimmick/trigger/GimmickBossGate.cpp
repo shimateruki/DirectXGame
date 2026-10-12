@@ -10,12 +10,14 @@
 
 namespace {
 float SmoothStep01(float value) {
+    // 閉鎖率の両端で門の上下移動が急停止しないようにする。
     const float t = std::clamp(value, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 } // namespace
 
 void GimmickBossGate::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 閉鎖中の門を壁として扱い、開く方向と所要時間の既定値を用意する。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("BossGate");
@@ -74,9 +76,13 @@ void GimmickBossGate::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickBossGate::OnTrigger() { OnSwitchEvent(true); }
+void GimmickBossGate::OnTrigger() {
+    // イベントからの起動はスイッチ ON と同じ閉鎖経路へ渡す。
+    OnSwitchEvent(true);
+}
 
 void GimmickBossGate::OnSwitchEvent(bool active) {
+    // シネマティック制御中は外部スイッチで門を上書きしない。
     if (cinematicOverride_)
         return;
     if (!active && param_.has_value() && !param_->returnOnOff) {
@@ -98,6 +104,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickBossGate::Clone() const {
+    // 編集配置を複製し、実行時の閉鎖率は新しい門で計算する。
     auto clone = std::make_unique<GimmickBossGate>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -106,11 +113,13 @@ std::unique_ptr<Object3d> GimmickBossGate::Clone() const {
 }
 
 Vector3 GimmickBossGate::GetClosedPosition() {
+    // 閉鎖位置の基準は現在の編集配置から一度だけ確定する。
     CaptureAuthoredState();
     return authoredPosition_;
 }
 
 void GimmickBossGate::CaptureAuthoredState(bool force) {
+    // 実行時の移動や衝突切替で、編集時の Transform とマスクを失わないよう保存する。
     if (authoredStateCaptured_ && !force) {
         return;
     }
@@ -126,6 +135,7 @@ void GimmickBossGate::CaptureAuthoredState(bool force) {
 }
 
 void GimmickBossGate::ResetForEditor() {
+    // 再生停止時は演出上書きと閉鎖率を消し、編集で決めた位置を復元する。
     cinematicOverride_ = false;
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
@@ -143,6 +153,7 @@ void GimmickBossGate::ResetForEditor() {
 }
 
 void GimmickBossGate::ApplyRuntimeState() {
+    // 閉鎖率に応じて門を上下させ、十分閉じるまで壁の接触を有効にしない。
     const float eased = SmoothStep01(closure_);
     Vector3 position = authoredPosition_;
     position.y += (1.0f - eased) * GetTravelDistance();
@@ -156,14 +167,17 @@ void GimmickBossGate::ApplyRuntimeState() {
 }
 
 void GimmickBossGate::SetCollisionEnabled(bool enabled) {
+    // 編集時の属性・マスクを復元する形で壁判定を切り替える。
     SetCollisionAttribute(enabled ? authoredCollisionAttribute_ : 0);
     SetCollisionMask(enabled ? authoredCollisionMask_ : 0);
 }
 
 float GimmickBossGate::GetTransitionDuration() const {
+    // JSON の移動速度欄を演出の所要秒数として安全範囲に収める。
     return param_.has_value() ? std::clamp(param_->moveSpeed, 0.12f, 2.5f) : 0.58f;
 }
 
 float GimmickBossGate::GetTravelDistance() const {
+    // 門が完全に開く際の上昇距離に下限を設ける。
     return param_.has_value() ? std::max(2.0f, param_->moveAmount) : 8.0f;
 }

@@ -408,6 +408,7 @@ namespace {
 // ========================================================================
 
 std::vector<SceneSerializer::SceneAssetInfo> DebugEditor::GetSceneAssets() const {
+    // ファイル一覧の探索は Serializer に集約し、UI はメタデータを受け取る。
     return serializer_.DiscoverSceneAssets();
 }
 
@@ -418,6 +419,7 @@ bool DebugEditor::CreateSceneAsset(
     SceneSerializer::SceneAssetTemplate sceneTemplate,
     std::string& createdFilename,
     std::string& errorMessage) {
+    // Asset の作成とエラー検証は Serializer に任せ、成功時だけ操作ログを残す。
     const bool created = serializer_.CreateSceneAsset(
         sceneId,
         displayName,
@@ -437,6 +439,7 @@ bool DebugEditor::DuplicateSceneAsset(
     const std::string& displayName,
     std::string& createdFilename,
     std::string& errorMessage) {
+    // 複製元の設定を使って新 ID の Scene Asset を生成する。
     const bool duplicated = serializer_.DuplicateSceneAsset(
         sourceFilename,
         newSceneId,
@@ -456,6 +459,7 @@ bool DebugEditor::RenameSceneAsset(
     const std::string& displayName,
     std::string& renamedFilename,
     std::string& errorMessage) {
+    // 開いている Asset の名前が変わる場合は、SceneManager の保存先パスも追従させる。
     const bool wasCurrentScene = IsCurrentSceneAsset(sourceFilename);
     const bool renamed = serializer_.RenameSceneAsset(
         sourceFilename,
@@ -481,6 +485,7 @@ bool DebugEditor::RenameSceneAsset(
 }
 
 bool DebugEditor::DeleteSceneAsset(const std::string& filename, std::string& errorMessage) {
+    // 現在開いている Asset は実行状態とパスが結び付いているため削除させない。
     if (IsCurrentSceneAsset(filename)) {
         errorMessage = "開いているScene Assetは削除できません。別のシーンを開いてから削除してください。";
         return false;
@@ -496,6 +501,7 @@ bool DebugEditor::SetSceneAssetRuntimeScene(
     const std::string& filename,
     const std::string& runtimeScene,
     std::string& errorMessage) {
+    // 実行クラス名の更新は Serializer に委ね、成功時だけ履歴へ出す。
     if (!serializer_.SetSceneAssetRuntimeScene(filename, runtimeScene, errorMessage)) {
         return false;
     }
@@ -512,6 +518,7 @@ bool DebugEditor::SetSceneAssetRuntimeSettings(
     const std::string& cameraPath,
     const std::string& skyboxPath,
     std::string& errorMessage) {
+    // Controller と環境参照を同じ Serializer の更新経路へ渡す。
     if (!serializer_.SetSceneAssetRuntimeSettings(
         filename,
         controllerName,
@@ -528,6 +535,7 @@ bool DebugEditor::SetSceneAssetRuntimeSettings(
 
 SceneSerializer::SceneAssetValidationResult DebugEditor::ValidateSceneAsset(
     const std::string& filename) const {
+    // ファイル形式に加え、GAMEPLAY 用 Controller の登録状況も検証する。
     SceneSerializer::SceneAssetValidationResult result = serializer_.ValidateSceneAsset(filename);
     const std::vector<SceneSerializer::SceneAssetInfo> assets = serializer_.DiscoverSceneAssets();
     const auto asset = std::find_if(assets.begin(), assets.end(), [&](const SceneSerializer::SceneAssetInfo& candidate) {
@@ -541,6 +549,7 @@ SceneSerializer::SceneAssetValidationResult DebugEditor::ValidateSceneAsset(
 }
 
 std::vector<std::string> DebugEditor::GetRegisteredSceneNames() const {
+    // SceneManager が無い初期化前は空集合を返す。
     return sceneManager_ ? sceneManager_->GetRegisteredSceneNames() : std::vector<std::string>{};
 }
 
@@ -548,6 +557,7 @@ bool DebugEditor::OpenSceneAsset(
     const std::string& filename,
     bool discardUnsavedChanges,
     std::string& errorMessage) {
+    // Play・Prefab 編集・未保存変更を確認してから Scene Asset を切り替える。
     errorMessage.clear();
     if (!sceneManager_) {
         errorMessage = "SceneManagerが初期化されていません。";
@@ -592,6 +602,7 @@ bool DebugEditor::OpenSceneAsset(
         DebugConsole::GetInstance()->AddLog("Scene validation warning: " + warning);
     }
 
+    // Scene Asset で指定した実行クラスと Object・Sprite・環境データを一つの読込文脈へ渡す。
     SceneLoadContext context;
     context.sceneAssetId = asset->id;
     context.displayName = asset->displayName;
@@ -608,6 +619,7 @@ bool DebugEditor::OpenSceneAsset(
         return false;
     }
 
+    // 遷移要求が成立した後、旧 Scene の選択・Undo・Dirty 状態を引き継がない。
     if (ghostRecorder_) {
         ghostRecorder_->ClearTarget();
     }
@@ -622,11 +634,13 @@ bool DebugEditor::OpenSceneAsset(
 }
 
 void DebugEditor::SaveThenOpenSceneAsset(const std::string& filename) {
+    // 保存確認が確定した後で開くため、遷移先を保留する。
     pendingSceneAssetOpenAfterSave_ = filename;
     SaveScene(SaveMode::All);
 }
 
 bool DebugEditor::IsCurrentSceneAsset(const std::string& filename) const {
+    // パス表記にかかわらず末尾の JSON 名で現在の Asset と照合する。
     if (!sceneManager_ || !sceneManager_->HasActiveSceneAsset()) {
         return false;
     }
@@ -639,19 +653,23 @@ bool DebugEditor::IsCurrentSceneAsset(const std::string& filename) const {
 }
 
 void DebugEditor::OpenCreateSceneAssetDialog() {
+    // 作成 UI の状態管理は Hierarchy に集約する。
     hierarchyWindow_.OpenCreateSceneDialog();
 }
 
 void DebugEditor::RequestOpenSceneAssetFromMenu(const std::string& filename) {
+    // メニューからの読込も Hierarchy の未保存確認経路を使う。
     hierarchyWindow_.OpenSceneAssetFromMenu(filename);
 }
 
 void DebugEditor::SaveScene(SaveMode mode) {
+    // Prefab 編集時は Scene JSON へ書かず、専用セッションを保存する。
     if (prefabEditMode_) {
         SavePrefabEditSession();
         return;
     }
 #ifdef USE_IMGUI
+    // ImGui 有効時は保存対象をプレビューに積み、ユーザーの確定まで書き込まない。
     auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, mode);
     if (targets.empty()) {
         DebugConsole::GetInstance()->AddLog("Save Preview: 保存対象がありません。");
@@ -668,6 +686,7 @@ void DebugEditor::SaveScene(SaveMode mode) {
 }
 
 void DebugEditor::SaveSingleObject() {
+    // 選択 Object だけを保存対象にし、通常の Scene 全体保存とは区別する。
     if (prefabEditMode_) {
         SavePrefabEditSession();
         return;
@@ -692,6 +711,7 @@ void DebugEditor::SaveSingleObject() {
 
 void DebugEditor::DrawSavePreview() {
 #ifdef USE_IMGUI
+    // 確定時だけ書き込み、保存待ちの Scene 切り替えは Dirty が消えた後に行う。
     SceneSavePreview::Action action = sceneSavePreview_.Draw();
     if (action == SceneSavePreview::Action::None) {
         return;
@@ -729,6 +749,7 @@ void DebugEditor::DrawSavePreview() {
 }
 
 std::string DebugEditor::MakeSavePreviewTitle(SaveMode mode) const {
+    // 保存対象のカテゴリを確認画面の見出しに含め、対象 JSON を判別しやすくする。
     std::string baseName = currentSceneFilename_;
     size_t extPos = baseName.find(".json");
     if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);

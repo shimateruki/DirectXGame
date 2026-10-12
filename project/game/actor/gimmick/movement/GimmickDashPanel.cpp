@@ -6,6 +6,7 @@
 #include <cmath>
 
 void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 地面として接触し、踏んだ時の光が読める材質を既定にする。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -25,6 +26,7 @@ void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& mod
 }
 
 void GimmickDashPanel::Update(float deltaTime) {
+    // 編集済みの基準色を最初に保存し、短い加速パルスの後に戻す。
     if (!visualBaseCaptured_) {
         baseColor_ = GetColor();
         baseEmissive_ = (std::max)(1.2f, GetEmissive());
@@ -53,6 +55,7 @@ void GimmickDashPanel::Update(float deltaTime) {
 
 // 上面に乗ったプレイヤーへ加速を与え、発光パルスは短いクールダウンで抑えます。
 bool GimmickDashPanel::OnCollision(Object3d* other) {
+    // 上面から踏んだプレイヤーだけを加速し、接触し続けても発光を連射しない。
     Player* player = dynamic_cast<Player*>(other);
     if (!player)
         return true;
@@ -70,6 +73,7 @@ bool GimmickDashPanel::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> GimmickDashPanel::Clone() const {
+    // 配置と調整値を複製し、実行時のパルス時計は新しい床に持ち込まない。
     auto newObj = std::make_unique<GimmickDashPanel>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

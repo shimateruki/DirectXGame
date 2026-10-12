@@ -17,12 +17,14 @@ Vector3 AimCenter(Object3d* object) {
 }
 
 bool Available(Object3d* object) {
+    // 倒れた敵・運搬中の敵・不可視の敵は照準候補から外す。
     auto* enemy = dynamic_cast<BaseEnemy*>(object);
     return enemy && !enemy->isDead && enemy->GetIsVisible() && (enemy->GetCollisionAttribute() & CollisionCategories::Get("enemy")) &&
            !enemy->IsCarried() && !enemy->IsDefeatEffectPlaying();
 }
 
 bool Visible(Player* player, Object3d* target) {
+    // 照準中心間の遮蔽物を確認し、距離がほぼ0なら方向計算を避ける。
     const Vector3 start = AimCenter(player);
     const Vector3 delta = AimCenter(target) - start;
     const float distance = Math::Length(delta);
@@ -38,8 +40,12 @@ bool Visible(Player* player, Object3d* target) {
 
 LockOnSystem::LockOnSystem() = default;
 LockOnSystem::~LockOnSystem() = default;
-void LockOnSystem::Initialize(InputManager* inputManager) { inputManager_ = inputManager; }
+void LockOnSystem::Initialize(InputManager* inputManager) {
+    // 入力の所有権は移さず、ロックオン操作の参照先として保持する。
+    inputManager_ = inputManager;
+}
 void LockOnSystem::ResetLockOn(Camera* camera) {
+    // 対象参照と見失い時計を同時に消し、カメラ側の追従も解除する。
     const bool active = isLockingOn_;
     isLockingOn_ = false;
     lockOnTarget_ = nullptr;

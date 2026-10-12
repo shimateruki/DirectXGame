@@ -15,6 +15,12 @@ inline bool IsStandingOnMovingFloor(Object3d& floor, Character& actor) {
     const auto deck = floor.GetAABB();
     const auto body = actor.GetAABB();
     const float gap = body.min.y - deck.max.y;
-    return gap >= -0.2f && gap <= 0.2f && body.max.x > deck.min.x + 0.02f && body.min.x < deck.max.x - 0.02f &&
-           body.max.z > deck.min.z + 0.02f && body.min.z < deck.max.z - 0.02f;
+    if (gap < -0.2f || gap > 0.2f || body.max.x <= deck.min.x + 0.02f ||
+        body.min.x >= deck.max.x - 0.02f || body.max.z <= deck.min.z + 0.02f ||
+        body.min.z >= deck.max.z - 0.02f) return false;
+    const Collider* floorCollider = floor.GetCollider();
+    if (floorCollider && floorCollider->GetConfig().footprint.size() >= 3) {
+        return floorCollider->OverlapsFootprint(actor.GetCollider());
+    }
+    return true;
 }

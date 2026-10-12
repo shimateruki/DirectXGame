@@ -556,6 +556,7 @@ TextSpriteGenerator::~TextSpriteGenerator() {
 }
 
 void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* editor) {
+    // 出力先とプレビュー先を分け、編集中の仮PNGが正式Assetに混ざらないようにします。
     sceneManager_ = sceneManager;
     editor_ = editor;
     std::filesystem::create_directories(kOutputDirectory);
@@ -569,6 +570,7 @@ void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* ed
 
 void TextSpriteGenerator::Update() {
 #ifdef USE_IMGUI
+    // 通知の寿命と自動プレビュー更新をEditorのフレームで進めます。
     if (exportNoticeTimer_ > 0.0f) {
         exportNoticeTimer_ = std::max(0.0f, exportNoticeTimer_ - (1.0f / 60.0f));
     }
@@ -579,6 +581,7 @@ void TextSpriteGenerator::Update() {
 
 void TextSpriteGenerator::DrawPreview() {
 #ifdef USE_IMGUI
+    // 固定解像度の配置をGame Viewの実表示領域へ縮尺変換して重ねます。
     if (!previewEnabled_) return;
     if (EditorManager::GetInstance()->GetSelectedObject() != this) return;
     if (textBuffer_[0] == '\0') return;
@@ -670,12 +673,14 @@ void TextSpriteGenerator::DrawPreview() {
 }
 
 void TextSpriteGenerator::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+    // Previewの投影基準をGame Viewの現在の位置・大きさへ更新します。
     gameViewOffset_ = offset;
     gameViewSize_ = size;
 }
 
 void TextSpriteGenerator::DrawImGui() {
 #ifdef USE_IMGUI
+    // 文字内容の変更はプレビューを無効化し、明示出力時だけ正式PNGを作ります。
     bool textureChanged = false;
 
     ImGui::Text(ICON_FA_FONT " テキストPNG生成");
@@ -808,6 +813,7 @@ void TextSpriteGenerator::DrawImGui() {
 }
 
 bool TextSpriteGenerator::EnsureFactories() {
+    // COMを既存のスレッド初期化と共存させ、必要なWICだけ遅延生成します。
     if (!wicFactory_) {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         if (hr == S_OK || hr == S_FALSE) {
@@ -847,6 +853,7 @@ bool TextSpriteGenerator::EnsureFactories() {
 }
 
 void TextSpriteGenerator::RefreshFonts() {
+    // 一覧を再取得しても選択中のフォントをパスとファミリー名で探し直します。
     std::string previousPath;
     std::string previousFamily;
     if (!fontPaths_.empty() && selectedFontIndex_ >= 0 && selectedFontIndex_ < static_cast<int>(fontPaths_.size())) {
@@ -976,6 +983,7 @@ void TextSpriteGenerator::RefreshFonts() {
 }
 
 bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidth, int& outHeight) {
+    // TextPngToolへ要求ファイルを渡し、生成されたPNGの寸法を結果として受け取ります。
     const std::filesystem::path toolExe = FindTextPngToolExecutable();
     if (toolExe.empty()) {
         DebugConsole::GetInstance()->AddLog("Text PNG: TextPngTool.exe not found. Build the solution first.");
@@ -1072,6 +1080,7 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
 }
 
 void TextSpriteGenerator::UpdatePreviewTexture() {
+    // 編集中のPNGは4つの仮ファイル名を循環利用し、プレビュー用ファイルの増加を抑えます。
     if (!previewDirty_) return;
     if (textBuffer_[0] == '\0') {
         previewTextureHandle_ = 0;
@@ -1110,6 +1119,7 @@ void TextSpriteGenerator::UpdatePreviewTexture() {
 }
 
 bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* outRelativePath) {
+    // 出力名を安全なファイル名に揃え、成功した正式Assetのパスだけ呼び出し側へ渡します。
     std::string fileName = SanitizeOutputName(outputNameBuffer_);
     std::filesystem::path fullPath = std::filesystem::path(kOutputDirectory) / fileName;
 
@@ -1137,6 +1147,7 @@ bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* ou
 }
 
 void TextSpriteGenerator::AddPendingSpriteToScene() {
+    // 出力後の追加要求を一度だけ処理し、Sceneが閉じている場合は生成しません。
     pendingAddSprite_ = false;
 
     if (!sceneManager_) return;
@@ -1168,11 +1179,13 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
 }
 
 void TextSpriteGenerator::MarkPreviewDirty() {
+    // 設定変更時は次の更新で描き直し、保留中の古い要求を取り消します。
     previewDirty_ = true;
     previewRequestPending_ = false;
 }
 
 void TextSpriteGenerator::UpdateOutputNameFromText() {
+    // 新しい文字列から候補名だけを作り、正式出力はまだ行いません。
     CopyToBuffer(outputNameBuffer_, sizeof(outputNameBuffer_), MakeOutputNameFromText(textBuffer_));
 }
 

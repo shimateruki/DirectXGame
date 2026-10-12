@@ -1,5 +1,6 @@
 #include "EnemyAttackPreviewWindow.h"
 #include "EnemyAttackPreviewWindow.Constants.h"
+#include "engine/animation/AnimatorController.h"
 #include "game/scene/gameplay/GamePlayScene.h"
 
 #include "BaseEnemy.h"
@@ -60,6 +61,7 @@ using EnemyAttackPreviewConstants::kPi;
 namespace {
 #ifdef USE_IMGUI
 bool DrawProfileString(const char* label, std::string& value) {
+    // ImGui の固定長バッファに文字列を写し、編集されたフレームだけ設定値へ戻す。
     std::array<char, 512> buffer{};
     const size_t copyLength = (std::min)(value.size(), buffer.size() - 1);
     std::memcpy(buffer.data(), value.data(), copyLength);
@@ -74,6 +76,7 @@ bool DrawProfileString(const char* label, std::string& value) {
 }
 
 void EnemyAttackPreviewWindow::DrawPlayerCopySettings() {
+    // ゲーム本体と同じコピー設定を表示し、編集した値を攻撃プロファイルへ戻す。
 #ifdef USE_IMGUI
     ImGui::TextUnformatted("プレイヤー能力プレビュー");
     ImGui::TextWrapped("実モデルと実コピー能力を隔離ステージで再生します。下段で停止・コマ送り・先頭からの再構築ができます。");
@@ -197,6 +200,13 @@ void EnemyAttackPreviewWindow::DrawImGui() {
             ClearPreviewTransientState();
             RemovePreviewObjects();
         }
+    }
+    if (std::string(GetSelectedEnemyType()) == "FireSlime" && previewEnemy_) {
+        const std::string state = previewEnemy_->GetAnimatorCurrentStateName();
+        ImGui::Text("炎スライム本体: %s", state.empty() ? "Controller未適用" : state.c_str());
+        if (const auto* runtime = previewEnemy_->GetAnimatorControllerRuntime())
+            ImGui::TextDisabled("MotionMode: %d", runtime->GetInt("MotionMode"));
+        ImGui::TextDisabled("攻撃ごとの状態は下の演出参照で選択できます。");
     }
 
     ImGui::SeparatorText("攻撃対象");
@@ -578,6 +588,7 @@ void EnemyAttackPreviewWindow::DrawCrownMovieSettings() {
 }
 
 void EnemyAttackPreviewWindow::DrawCrownDefeatSettings() {
+    // 最終形態の撃破演出を攻撃設定から調整し、プレビューと実戦を一致させる。
 #ifdef USE_IMGUI
     ImGui::SeparatorText("最終撃破の演出設定");
     auto& t=CrownDefeatTuning::Get();
@@ -840,7 +851,26 @@ void EnemyAttackPreviewWindow::DrawAttackProfileEditor() {
         }
 
         if (ImGui::TreeNode("演出参照")) {
-            changed |= DrawProfileString("アニメーション", editedAttack->animation);
+            if (std::string(GetSelectedEnemyType()) == "FireSlime") {
+                static AnimatorControllerAsset fireSlimeController;
+                static bool loaded = fireSlimeController.Load("Resources/json/animator/enemy_fire_slime.json");
+                if (ImGui::SmallButton("炎スライムControllerを再読込"))
+                    loaded = fireSlimeController.Load("Resources/json/animator/enemy_fire_slime.json");
+                if (loaded) {
+                    const char* label = editedAttack->animation.empty() ? "(未指定)" : editedAttack->animation.c_str();
+                    if (ImGui::BeginCombo("本体アニメーション状態", label)) {
+                        for (const auto& state : fireSlimeController.states) {
+                            if (state.bodyClipName.empty()) continue;
+                            if (ImGui::Selectable(state.name.c_str(), state.name == editedAttack->animation)) {
+                                editedAttack->animation = state.name;
+                                changed = true;
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::TextDisabled("状態と補間はツール → 演出 → Animator Controllerで編集します。");
+                } else ImGui::TextDisabled("炎スライムControllerを読み込めません。");
+            } else changed |= DrawProfileString("アニメーション", editedAttack->animation);
             changed |= DrawProfileString("予備動作VFX", editedAttack->windupVfx);
             changed |= DrawProfileString("攻撃中VFX", editedAttack->activeVfx);
             changed |= DrawProfileString("命中・着地VFX", editedAttack->impactVfx);

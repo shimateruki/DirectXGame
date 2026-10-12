@@ -7,6 +7,7 @@
 void GimmickPhaseFlipFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 床の衝突を維持したまま、色別の順番で回転する初期値を用意します。
     SetClassName("Gimmick");
     SetGimmickType("PhaseFlipFloor");
     SetName("Gimmick_PhaseFlipFloor");
@@ -25,6 +26,7 @@ void GimmickPhaseFlipFloor::Initialize(Object3dCommon* common, const std::string
 }
 
 void GimmickPhaseFlipFloor::Update(float deltaTime) {
+    // 編集時は元の状態へ戻し、再生時だけ位相のタイマーを進めます。
     if (!param_.has_value())
         param_.emplace();
 
@@ -70,6 +72,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
         cycleTimer_ = std::fmod(cycleTimer_, cycleLength);
     }
 
+    // 自分の位相へ入るたびに半回転を一回加え、途中経過は滑らかに補間します。
     const int currentPhase = static_cast<int>(cycleTimer_ / phaseDuration) % phaseCount;
     const float phaseProgress = std::fmod(cycleTimer_, phaseDuration) / phaseDuration;
     const bool isOwnPhase = currentPhase == GetPhaseIndex();
@@ -102,6 +105,7 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
 }
 
 Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
+    // 最大四つの位相を色で識別できるようにします。
     switch (GetPhaseIndex() % 4) {
     case 0:
         return {0.35f, 0.75f, 1.0f, alpha};
@@ -115,27 +119,32 @@ Vector4 GimmickPhaseFlipFloor::GetPhaseColor(float alpha) const {
 }
 
 int GimmickPhaseFlipFloor::GetPhaseIndex() const {
+    // 設定値が位相数を超えても存在する位相へ収めます。
     int phaseCount = GetPhaseCount();
     int index = param_.has_value() ? param_->colorType : 0;
     return std::clamp(index, 0, phaseCount - 1);
 }
 
 int GimmickPhaseFlipFloor::GetPhaseCount() const {
+    // ゼロで割らないよう、周期の位相数は一以上にします。
     int count = param_.has_value() ? param_->maxCount : 3;
     return (std::max)(1, count);
 }
 
 float GimmickPhaseFlipFloor::GetPhaseDuration() const {
+    // 時間設定がゼロでも位相が進むよう、最短時間を設けます。
     float duration = param_.has_value() ? param_->interval : 1.0f;
     return (std::max)(0.1f, duration);
 }
 
 float GimmickPhaseFlipFloor::SmoothStep(float t) const {
+    // 回転の開始と終了で角速度が急変しないようにします。
     t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 
 std::unique_ptr<Object3d> GimmickPhaseFlipFloor::Clone() const {
+    // 複製先の基本資源を作ってから配置と周期設定を移します。
     auto newObj = std::make_unique<GimmickPhaseFlipFloor>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

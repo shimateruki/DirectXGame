@@ -42,16 +42,24 @@ constexpr float kDiveTrailInterval = 0.12f;
 constexpr float kWanderHopInterval = 1.15f;
 constexpr float kLandingSquashDuration = 0.20f;
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float Clamp01(float value) {
+    // 予備動作や着地演出の進行率を描画用の範囲に収める。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float SmoothStep01(float value) {
+    // 動作の境目でスケールや速度の変化が急にならないよう両端を滑らかにする。
     const float t = Clamp01(value);
     return t * t * (3.0f - 2.0f * t);
 }
 
-float PlanarLength(const Vector3& value) { return std::sqrt(value.x * value.x + value.z * value.z); }
+float PlanarLength(const Vector3& value) {
+    // 上昇や落下の速度を除き、地面に沿う移動量だけを測る。
+    return std::sqrt(value.x * value.x + value.z * value.z);
+}
 
 Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
+    // 対象と重なった瞬間も直前の向きを維持し、突進方向を失わない。
     const float length = PlanarLength(value);
     if (length <= 0.0001f) {
         return fallback;
@@ -59,13 +67,18 @@ Vector3 NormalizePlanarOr(const Vector3& value, const Vector3& fallback) {
     return {value.x / length, 0.0f, value.z / length};
 }
 
-float LerpFloat(float from, float to, float rate) { return from + (to - from) * Clamp01(rate); }
+float LerpFloat(float from, float to, float rate) {
+    // フレームごとの補間率を制限し、低FPSでも目標値を通り越さない。
+    return from + (to - from) * Clamp01(rate);
+}
 
 Vector3 MakeDiveEffectRotation(const Vector3& direction, float pitch) {
+    // 軌跡エフェクトのYawを突進方向へ合わせ、Pitchは演出ごとに指定する。
     return {pitch, std::atan2(direction.x, direction.z), 0.0f};
 }
 
 void SpawnMeshEffectAtSafe(const char* path, const Vector3& position, const Vector3& rotation, const Vector3& scale) {
+    // 演出マネージャーがない環境では攻撃本体を止めず、表示だけ省く。
     if (auto* meshEffect = MeshEffectManager::GetInstance()) {
         meshEffect->SpawnEffectAt(path, position, rotation, scale);
     }
@@ -89,6 +102,7 @@ void SpawnDebrisOnGroundSafe(const char* presetName, const Vector3& position, fl
 } // namespace
 
 void EmitGpuPresetSafe(const char* presetName, const Vector3& position) {
+    // GPU粒子が未初期化のプレビューでも、攻撃処理を継続する。
     GPUParticleManager* particles = GPUParticleManager::GetInstance();
     if (particles && particles->IsInitialized()) {
         particles->Emit(presetName, position);
@@ -96,6 +110,7 @@ void EmitGpuPresetSafe(const char* presetName, const Vector3& position) {
 }
 
 Object3d* FindEnemyDamageTarget(Object3d* object) {
+    // 子メッシュとの接触を親の敵へたどり、ダメージ対象を統一する。
     for (Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
@@ -105,6 +120,7 @@ Object3d* FindEnemyDamageTarget(Object3d* object) {
 }
 
 void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 攻撃設定を読み直してから見た目の変形を初期化し、配置済み個体に旧姿勢を残さない。
     BaseEnemy::Initialize(common, modelName);
     SetEnemyType("Slime");
     ReloadAttackProfile();
@@ -112,6 +128,7 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
 }
 
 void EnemySlime::ApplyManagedScale(const Vector3& scale) {
+    // 編集された大きさをアニメーションの基準にも反映し、次フレームに戻らないようにする。
     baseScale_ = scale;
     hasBaseScale_ = true;
     SetScale(scale);
@@ -193,10 +210,12 @@ void EnemySlime::Update(float deltaTime) {
 }
 
 float EnemySlime::GetBodyAttackDamage() const {
+    // 接触ダメージは突進中だけ有効にし、溜め・着地中の接触を攻撃にしない。
     return moveState_ == MoveState::Dive ? GetAttackDefinition(kDiveAttackId).damage : 0.0f;
 }
 
 void EnemySlime::EnsureBaseScale() {
+    // 初期スケール未設定の個体だけ既定サイズを補い、編集済みの大きさは維持する。
     if (hasBaseScale_) {
         return;
     }
@@ -211,6 +230,7 @@ void EnemySlime::EnsureBaseScale() {
 }
 
 void EnemySlime::ResetVisualPose() {
+    // 再配置やサイズ変更後にばねの速度を消し、前の動作の揺れを引き継がない。
     visualScale_ = {1.0f, 1.0f, 1.0f};
     visualScaleVelocity_ = {0.0f, 0.0f, 0.0f};
     visualRotation_ = {0.0f, 0.0f, 0.0f};
@@ -249,6 +269,7 @@ Vector3 EnemySlime::CalculateDiveVisualOffset(const Vector3& visualScale, const 
 }
 
 const char* EnemySlime::GetDebugMoveStateName() const {
+    // 内部状態をプレビューで識別できる短い表示名へ変換する。
     switch (moveState_) {
     case MoveState::Charge:
         return "溜め";
@@ -265,6 +286,7 @@ const char* EnemySlime::GetDebugMoveStateName() const {
 }
 
 Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
+    // 距離は水平面で測り、対象不在なら現在向きを返して攻撃方向を安定させる。
     if (!target_) {
         if (outDistance) {
             *outDistance = 0.0f;
@@ -286,11 +308,13 @@ Vector3 EnemySlime::GetTargetPlanarDirection(float* outDistance) const {
 }
 
 Vector3 EnemySlime::GetFacingPlanarDirection() const {
+    // モデルの正面がローカル-Zなので、ワールドYawから半回転分を差し引く。
     const float yaw = GetRotation().y - kSlimeModelYawOffset;
     return {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
 void EnemySlime::FaceDirection(const Vector3& direction, float turnRate) {
+    // 最短角補間で対象へ向け、±π付近で長回りしないようにする。
     const float length = PlanarLength(direction);
     if (length <= 0.0001f) {
         return;
@@ -302,6 +326,7 @@ void EnemySlime::FaceDirection(const Vector3& direction, float turnRate) {
 }
 
 void EnemySlime::UpdateWander(float deltaTime) {
+    // 攻撃用タイマーを消して巡回へ戻し、移動中は一定間隔で小さく跳ねる。
     HideAttackTelegraph();
     moveState_ = MoveState::Wander;
     chargeTimer_ = 0.0f;
@@ -337,6 +362,7 @@ void EnemySlime::UpdateWander(float deltaTime) {
 }
 
 void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float distance) {
+    // 進行率に応じて突進予定線と演出を強め、警告の後に上昇へ切り替える。
     moveState_ = MoveState::Charge;
     jumpTimer_ = 0.0f;
     diveDirection_ = NormalizePlanarOr(direction, diveDirection_);
@@ -370,6 +396,7 @@ void EnemySlime::UpdateCharge(float deltaTime, const Vector3& direction, float d
 }
 
 void EnemySlime::BeginRise(const Vector3& direction) {
+    // 予兆を消して水平速度を止め、上昇と落下を別段階にする。
     moveState_ = MoveState::Rise;
     chargeTimer_ = 0.0f;
     riseTimer_ = 0.0f;
@@ -392,6 +419,7 @@ void EnemySlime::BeginRise(const Vector3& direction) {
 }
 
 void EnemySlime::UpdateRise(float deltaTime) {
+    // 上昇中は対象方向を追い直し、頂点到達か時間上限で突進へ移る。
     HideAttackTelegraph();
     riseTimer_ += deltaTime;
 
@@ -412,6 +440,7 @@ void EnemySlime::UpdateRise(float deltaTime) {
 }
 
 void EnemySlime::BeginDive(const Vector3& direction, float distance) {
+    // 対象距離と攻撃JSONの速度範囲から突進速度を決め、下向き速度で開始する。
     moveState_ = MoveState::Dive;
     chargeTimer_ = 0.0f;
     diveTimer_ = 0.0f;
@@ -435,6 +464,7 @@ void EnemySlime::BeginDive(const Vector3& direction, float distance) {
 }
 
 void EnemySlime::UpdateDive(float deltaTime) {
+    // 横方向の追尾と落下加速を別々に補間し、軌跡の表示間隔もここで進める。
     HideAttackTelegraph();
     diveTimer_ += deltaTime;
     SpawnDiveTrailEffect(deltaTime);
@@ -466,6 +496,7 @@ void EnemySlime::UpdateDive(float deltaTime) {
 }
 
 void EnemySlime::BeginLandingRecovery() {
+    // 着地の衝撃を一度だけ出し、硬直中は水平速度を落として再突進を防ぐ。
     moveState_ = MoveState::Recover;
     recoverTimer_ = GetAttackDefinition(kDiveAttackId).recoveryDuration;
     landingSquashTimer_ = kLandingSquashDuration;
@@ -485,6 +516,7 @@ void EnemySlime::BeginLandingRecovery() {
 }
 
 void EnemySlime::UpdateLandingRecovery(float deltaTime) {
+    // 着地のつぶれと硬直を減衰させ、終了後に巡回へ戻す。
     HideAttackTelegraph();
     recoverTimer_ = (std::max)(0.0f, recoverTimer_ - deltaTime);
     landingSquashTimer_ = (std::max)(0.0f, landingSquashTimer_ - deltaTime);
@@ -497,6 +529,7 @@ void EnemySlime::UpdateLandingRecovery(float deltaTime) {
 }
 
 void EnemySlime::SpawnChargePulseEffect(float deltaTime, float chargeRate) {
+    // 溜め始めは静かにし、後半ほど床の輪と本体の閃光を追加する。
     if (chargeRate < 0.26f) {
         return;
     }
@@ -523,6 +556,7 @@ void EnemySlime::SpawnChargePulseEffect(float deltaTime, float chargeRate) {
 }
 
 void EnemySlime::SpawnChargeDebrisEffect(float deltaTime, float chargeRate) {
+    // 地面の小石は独立した間隔で発生させ、輪の演出と同時に大量生成しない。
     if (chargeRate < 0.18f) {
         return;
     }
@@ -537,6 +571,7 @@ void EnemySlime::SpawnChargeDebrisEffect(float deltaTime, float chargeRate) {
 }
 
 void EnemySlime::SpawnChargeVortexEffect(float deltaTime, float chargeRate) {
+    // 本体の周囲に回転する軌跡を配置し、中心へ向く姿勢を毎回計算する。
     if (chargeRate < 0.42f) {
         return;
     }
@@ -561,11 +596,13 @@ void EnemySlime::SpawnChargeVortexEffect(float deltaTime, float chargeRate) {
 }
 
 void EnemySlime::SpawnLaunchEffect() {
+    // 地面から離れる瞬間だけ、足元に蹴り出しの輪を置く。
     Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.08f);
     SpawnMeshEffectAtSafe(kLaunchRingEffectPath, position, {0.0f, 0.0f, 0.0f}, {1.15f, 0.9f, 1.15f});
 }
 
 void EnemySlime::SpawnApexEffect() {
+    // 上昇の頂点で視線を集め、落下攻撃への切り替わりを見せる。
     Vector3 position = GetTranslate();
     position.y += 0.28f;
     SpawnMeshEffectAtSafe(kApexFlashEffectPath, position, MakeDiveEffectRotation(diveDirection_, -0.18f),
@@ -573,6 +610,7 @@ void EnemySlime::SpawnApexEffect() {
 }
 
 void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
+    // 移動方向の後方へ一定間隔で軌跡を出し、突進が進むほど長くする。
     diveTrailTimer_ -= deltaTime;
     if (diveTrailTimer_ > 0.0f) {
         return;
@@ -592,6 +630,7 @@ void EnemySlime::SpawnDiveTrailEffect(float deltaTime) {
 }
 
 void EnemySlime::SpawnLandingEffect() {
+    // 床の破片・輪と本体の閃光を同じ着地点から発生させる。
     Vector3 position = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.06f);
     SpawnDebrisOnGroundSafe(kLandingDebrisPresetName, GetTranslate(), 0.05f);
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
@@ -609,6 +648,7 @@ void EnemySlime::SpawnLandingEffect() {
 }
 
 void EnemySlime::ApplySlimeAnimation(float deltaTime) {
+    // 行動ごとの目標変形を作り、ばねで補間して物理判定を変えずに見た目だけ動かす。
     Vector3 targetVisualScale = {1.0f, 1.0f, 1.0f};
     Vector3 targetVisualRotation = {0.0f, 0.0f, 0.0f};
     SlimeBounceAnimator::Params bounceParams;
@@ -726,6 +766,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
 }
 
 std::unique_ptr<Object3d> EnemySlime::Clone() const {
+    // 新しい個体を初期化してから、シーン内の配置設定と攻撃対象を引き継ぐ。
     auto newSlime = std::make_unique<EnemySlime>();
     newSlime->Initialize(common_, this->GetModelName());
     newSlime->CopyFrom(this);

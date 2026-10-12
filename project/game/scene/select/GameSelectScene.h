@@ -31,6 +31,8 @@ class LevelLoader;
 class LockOnSystem;
 class GameRule;
 class GimmickStageGate;
+class PauseMenuOverlay;
+class SettingsMenuOverlay;
 
 /// <summary>
 /// ステージ選択シーン。ステージゲート、解放演出、王冠/スター/コイン HUD を扱う。
@@ -141,6 +143,9 @@ class GameSelectScene : public BaseScene {
 
     // HUD 初期化と数値描画。
     void InitializeStageSelectHUD();
+    void InitializeStageGateNameLabels();
+    void UpdateStageGateNameLabels();
+    bool HandlePauseOverlay(float deltaTime);
     Sprite* FindSpriteByName(const std::string& name) const;
     // HUD の借用 Sprite と基準位置・サイズ・色。表示演出の変化を初期値から計算する。
     struct StageSelectHudSprite {
@@ -305,6 +310,14 @@ class GameSelectScene : public BaseScene {
     StageSelectHudSprite stageSelectCoinIcon_;
     StageSelectHudSprite stageSelectCoinXIcon_;
     std::array<StageSelectHudSprite, 3> stageSelectCoinDigits_;
+    // ゲート名札は画面座標が毎フレーム変わるため、保存用の sprites_ とは分けて持ちます。
+    std::vector<std::unique_ptr<Sprite>> stageGateNameLabels_;
+    std::vector<std::array<std::unique_ptr<Sprite>, GameDataManager::kStarCoinsPerStage>> stageGateStarIcons_;
+    std::unique_ptr<PauseMenuOverlay> pauseMenuOverlay_;
+    std::unique_ptr<SettingsMenuOverlay> settingsOverlay_;
+    float gateNameHideDistance_ = 40.0f;
+    float gateNameFadeDistance_ = 10.0f;
+    float gateNameHeightOffset_ = 1.5f;
 
     int loadingInitializePhase_ = 0;
     size_t loadingInitializeCompletedUnits_ = 0;

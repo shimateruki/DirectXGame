@@ -33,11 +33,13 @@ static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
 #endif
 
 LightEditor* LightEditor::GetInstance() {
+    // Sceneをまたぐ照明編集状態を一つのEditorへ集約します。
     static LightEditor instance;
     return &instance;
 }
 
 void LightEditor::SetStatusMessage(const std::string& message, bool success) {
+    // 操作結果を一定時間だけ表示し、ImGuiがない構成では期限を持たせません。
     statusMessage_ = message;
     statusSuccess_ = success;
 #ifdef USE_IMGUI
@@ -48,10 +50,12 @@ void LightEditor::SetStatusMessage(const std::string& message, bool success) {
 }
 
 std::string LightEditor::BuildFullPathFromFileName() const {
+    // 保存名を照明設定用JSONディレクトリに固定します。
     return "Resources/json/light/" + std::string(currentFileName_);
 }
 
 void LightEditor::SyncCurrentFileNameFromManager() {
+    // 実行側で切り替わった照明ファイル名をUIへ取り込みます。
     if (!lightManager_) {
         return;
     }
@@ -73,6 +77,7 @@ void LightEditor::SyncCurrentFileNameFromManager() {
 
 void LightEditor::DrawLightFileList() {
 #ifdef USE_IMGUI
+    // 現在適用中のファイルと保存済み候補を並べ、読込結果も同じ場所に示します。
     SyncCurrentFileNameFromManager();
 
     const std::string currentPath = lightManager_ ? lightManager_->GetCurrentStateFile() : "";
@@ -116,6 +121,7 @@ void LightEditor::DrawLightFileList() {
 
 void LightEditor::DrawSkyboxTextureList() {
 #ifdef USE_IMGUI
+    // Resources内のテクスチャだけを候補にし、参照できるSkyboxを選ばせます。
     if (!lightManager_) {
         return;
     }
@@ -157,10 +163,12 @@ void LightEditor::DrawSkyboxTextureList() {
 }
 
 void LightEditor::Initialize() {
+    // 実際の照明状態を持つManagerへ編集UIを接続します。
     lightManager_ = LightManager::GetInstance();
 }
 
 void LightEditor::SetObject3dCommon(Object3dCommon* common) {
+    // 描画基盤の切り替えで旧ギズモを残さないよう、表示オブジェクトを作り直します。
     common_ = common;
     pointLightGizmos_.clear();
     spotLightGizmos_.clear();
@@ -248,6 +256,7 @@ void LightEditor::Update() {
 
 void LightEditor::Draw3D() {
 #ifdef USE_IMGUI
+    // Editorの可視設定とギズモ設定が両方有効なときだけ補助形状を描画します。
     if (!EditorToolSettings::Get().IsVisible("light")) return;
 #endif
     if (!isVisibleGizmos_ || !lightManager_) return;
@@ -265,6 +274,7 @@ void LightEditor::Draw3D() {
 
 void LightEditor::DrawEnvironmentProfilePanel() {
 #ifdef USE_IMGUI
+    // 照明・空・PostEffectの組を一つのEnvironment Profileとして編集します。
     if (!lightManager_) {
         return;
     }

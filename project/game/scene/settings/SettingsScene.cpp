@@ -6,11 +6,13 @@
 #include "GameSettingsManager.h"
 
 SceneLoadManifest SettingsScene::BuildAsyncLoadManifest() const {
+    // 設定画面には先読み対象のシーンAssetを持たせない。
     SceneLoadManifest manifest;
     return manifest;
 }
 
 void SettingsScene::Initialize() {
+    // 保存済み設定を読み込んでからSpriteメニューへ反映する。
     GameSettingsManager::GetInstance()->Load();
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(DirectXCommon::GetInstance());
@@ -26,11 +28,13 @@ void SettingsScene::Finalize() {
 }
 
 void SettingsScene::Update(float deltaTime) {
+    // 設定メニューが閉じた時だけタイトルへ戻す。
     if (menu_.Update(deltaTime) == SettingsMenuOverlay::Result::Closed)
         SceneManager::GetInstance()->ChangeScene("TITLE");
 }
 
 void SettingsScene::DrawUI() {
+    // Sprite共通リソースが未生成ならUI描画をスキップする。
     if (!spriteCommon_)
         return;
     spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());

@@ -90,6 +90,7 @@ void PlayerStateDamage::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStateDamage::Exit(Player* player) {
+    // ノックバックの変形を次状態へ持ち越さず、入場前の姿勢へ戻す。
     if (player) {
         player->SetIsControlActive(true);
         player->SetScale(baseScale_);

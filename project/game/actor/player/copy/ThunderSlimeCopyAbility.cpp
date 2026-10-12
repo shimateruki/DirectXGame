@@ -6,14 +6,20 @@ using namespace CopyAbilityDetail;
 class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit ThunderSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
+        // 溜め中に繰り返す火花を、発射・回避・解除時にまとめて消せるようにする。
         sparkScope_ = MeshEffectManager::GetInstance()->CreateEffectScope();
     }
-    ~ThunderSlimeCopyAbility() override { ClearSparkEffects(); }
+    ~ThunderSlimeCopyAbility() override {
+        // 能力が破棄されても残った火花を止める。
+        ClearSparkEffects();
+    }
     const char* GetStateLabel() const override {
+        // 溜めが上限に達した時だけ「離して発射」を案内する。
         return charging_ ? (chargeTime_ >= 1.0f ? "帯電・溜め完了 / 離して発射" : "帯電中") : "雷能力";
     }
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
+        // 回避・連続落雷・溜めを排他的に開始し、別行動へ移る際は溜めを解く。
         primaryHeld_ = input.primaryHeld;
         if (input.secondaryTriggered && evadeCooldown_ <= 0.0f) {
             StopCharge(player);
@@ -37,6 +43,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
+        // 連続落雷は経過時間で五発を配置し、フレーム落ちでも未発射分を追いつかせる。
         lineCooldown_ = std::max(0.0f, lineCooldown_ - deltaTime);
         dischargeCooldown_ = std::max(0.0f, dischargeCooldown_ - deltaTime);
         evadeCooldown_ = std::max(0.0f, evadeCooldown_ - deltaTime);
@@ -55,6 +62,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Cancel(Player& player) override {
+        // 能力解除後に溜めや遅延落雷が再開しないよう、入力と時計を消す。
         StopCharge(player);
         primaryHeld_ = false;
         player.ClearSlimeAbilityMotion();
@@ -64,10 +72,12 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
 
   private:
     void ClearSparkEffects() {
+        // この能力のEffectScopeだけを止め、他の効果へ干渉しない。
         if (auto* effects = MeshEffectManager::GetInstance())
             effects->StopEffectScope(sparkScope_);
     }
     void StopCharge(Player& player) {
+        // 溜め動作が実行中ならモーションも止め、火花を回収する。
         if (charging_)
             player.StopSlimeAbilityMotion(0.08f);
         charging_ = false;
@@ -133,6 +143,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         }
     }
     void SpawnStrike(Player& player, const Vector3& ground) {
+        // 見た目と球状判定を同じ着地点へ置き、連続落雷中は敵ごとに一度だけ当てる。
         const float yaw = std::atan2(lineDirection_.x, lineDirection_.z);
         SpawnEffect("Resources/json/effect/effect_player_thunder_bolt.json", ground + Vector3{0.0f, 4.75f, 0.0f},
                     {kPi * 0.5f, yaw, 0.0f});
@@ -153,6 +164,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Evade(Player& player) {
+        // 地面へのSphereCastで障害物までの距離を求め、そこを越えない位置へ移す。
         const Vector3 direction = NormalizePlanar(player.GetForwardDirection());
         const Vector3 start = player.GetWorldPosition();
         PhysicsQueryFilter filter;
@@ -194,6 +206,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
 
 namespace CopyAbilityDetail {
 std::unique_ptr<ICopyAbilitySession> CreateThunderSlimeCopyAbility(const EnemyAttackProfile& profile) {
+    // コピー獲得ごとに溜め・連続落雷の状態を分ける。
     return std::make_unique<ThunderSlimeCopyAbility>(profile);
 }
 } // namespace CopyAbilityDetail

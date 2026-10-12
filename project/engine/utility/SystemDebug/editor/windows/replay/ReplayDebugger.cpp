@@ -4,12 +4,14 @@
 using namespace ReplayDebuggerImplementation;
 
 void ReplayDebugger::Initialize(SceneManager* sceneManager, DebugEditor* debugEditor) {
+    // Scene と選択 UI の参照を接続し、保存済み履歴の一覧を初期表示へ反映する。
     sceneManager_ = sceneManager;
     debugEditor_ = debugEditor;
     RefreshReplayArchiveList();
 }
 
 void ReplayDebugger::Finalize() {
+    // Scene への保持フラグを解除してから、外部所有の参照を手放す。
     pendingReplayArchive_.reset();
     ResetForSceneChange();
     sceneManager_ = nullptr;
@@ -17,11 +19,13 @@ void ReplayDebugger::Finalize() {
 }
 
 bool ReplayDebugger::ShouldFreezeSimulation() const {
+    // 有効な Scene に履歴を適用している間だけ通常シミュレーションを止める。
     return (mode_ == Mode::Paused || mode_ == Mode::Playback) &&
         GetValidatedActiveScene() != nullptr;
 }
 
 float ReplayDebugger::ResolveSimulationDeltaTime(float defaultDeltaTime) const {
+    // 入力再実行では記録した時間刻みを使い、通常プレイでは呼び出し元の値を保つ。
     if (mode_ == Mode::Regression && regressionStepPrepared_) {
         return regressionStepDeltaTime_;
     }
@@ -30,6 +34,7 @@ float ReplayDebugger::ResolveSimulationDeltaTime(float defaultDeltaTime) const {
 
 
 bool ReplayDebugger::HasFrames() const {
+    // 履歴だけ残っていても Scene が変わった場合は操作可能と判定しない。
     return !frames_.empty() && GetValidatedActiveScene() != nullptr;
 }
 
@@ -142,6 +147,7 @@ bool ReplayDebugger::RestorePlayInEditorSnapshot() {
 }
 
 void ReplayDebugger::ToggleSimulationPause() {
+    // 保存済み履歴は閲覧の再生切り替えに留め、ライブ履歴だけ分岐再開する。
     if (!HasFrames()) {
         if (!frames_.empty()) {
             ResetForSceneChange();
@@ -285,6 +291,7 @@ void ReplayDebugger::CaptureAfterSimulation(float simulationDeltaTime, bool isPl
 }
 
 void ReplayDebugger::BeginRecording(BaseScene* scene) {
+    // Scene 世代を固定し、シーン遷移後の別 Scene を同じ履歴へ混ぜない。
     if (!sceneManager_ || sceneManager_->IsTransitioning() ||
         sceneManager_->GetCurrentScene() != scene) {
         return;
@@ -304,6 +311,7 @@ void ReplayDebugger::BeginRecording(BaseScene* scene) {
 }
 
 void ReplayDebugger::CaptureFrame(double time) {
+    // Scene に属する Object・Sprite・Camera の状態を同じ時刻のスナップショットへ集める。
     BaseScene* scene = GetValidatedActiveScene();
     if (!scene) {
         return;
@@ -317,6 +325,7 @@ void ReplayDebugger::CaptureFrame(double time) {
         if (!object || object->IsEditorInternal()) {
             continue;
         }
+        // 過去フレームへ戻す間は削除済み個体も参照するため寿命を保持する。
         object->SetReplayRetained(true);
         ObjectSnapshot snapshot;
         snapshot.replayId = object->EnsureReplayId();
@@ -339,6 +348,7 @@ void ReplayDebugger::CaptureFrame(double time) {
     frame.sprites.reserve(replaySprites.size());
     std::unordered_set<Sprite*> capturedSprites;
     capturedSprites.reserve(replaySprites.size());
+    // 同名・同画像の Sprite が複数あっても、出現順を付けて保存データと対応付ける。
     std::unordered_map<std::string, std::size_t> spriteBindingOccurrences;
     for (Sprite* sprite : replaySprites) {
         if (!sprite || !capturedSprites.insert(sprite).second) {
@@ -536,6 +546,7 @@ void ReplayDebugger::ApplyFrame(std::size_t index) {
 }
 
 void ReplayDebugger::PauseAt(std::size_t index) {
+    // 履歴モードへ入るときだけ一時演出を消し、指定フレームの恒久状態を復元する。
     if (!HasFrames()) {
         if (!frames_.empty()) {
             ResetForSceneChange();
@@ -551,6 +562,7 @@ void ReplayDebugger::PauseAt(std::size_t index) {
 }
 
 void ReplayDebugger::StartPlayback() {
+    // 現在カーソルを再生開始時刻に合わせ、ゲーム本体の一時演出を持ち越さない。
     if (!HasFrames()) {
         if (!frames_.empty()) {
             ResetForSceneChange();
@@ -564,6 +576,7 @@ void ReplayDebugger::StartPlayback() {
 }
 
 bool ReplayDebugger::CanResumeLoadedArchive(std::string* reason) const {
+    // 保存履歴の分岐は、編集前状態と現在フレームの復元可能性を満たすときだけ許可する。
     if (!loadedArchiveReadOnly_) {
         return true;
     }
@@ -640,6 +653,7 @@ void ReplayDebugger::ResumeFromCursor() {
 }
 
 void ReplayDebugger::StepCursor(int direction) {
+    // 履歴範囲外へ出ないよう移動量を制限し、停止フレームを適用する。
     if (!HasFrames()) {
         return;
     }
@@ -650,6 +664,7 @@ void ReplayDebugger::StepCursor(int direction) {
 }
 
 void ReplayDebugger::ClearHistory(bool continueRecording) {
+    // Play 開始前の基準状態は保持し、Stop 時の編集状態復元を壊さない。
     if (!continueRecording && !playInEditorSnapshot_) {
         ReleaseRetainedObjects();
     }
@@ -679,6 +694,7 @@ void ReplayDebugger::ClearHistory(bool continueRecording) {
 }
 
 BaseScene* ReplayDebugger::GetValidatedActiveScene(bool allowTransition) const {
+    // ポインタ一致に加えて世代番号を照合し、再利用された Scene への誤適用を防ぐ。
     if (!sceneManager_ || !activeScene_) {
         return nullptr;
     }
@@ -694,6 +710,7 @@ BaseScene* ReplayDebugger::GetValidatedActiveScene(bool allowTransition) const {
 }
 
 void ReplayDebugger::ReleaseRetainedObjects() {
+    // Replay が延命した個体を通常の寿命管理へ戻し、削除済みは Scene に撤去を頼む。
     BaseScene* scene = GetValidatedActiveScene(true);
     if (!scene) {
         return;
@@ -726,6 +743,7 @@ void ReplayDebugger::ClearTransientRuntime() {
 }
 
 void ReplayDebugger::ResetForSceneChange() {
+    // 読込待ちの Archive だけ必要に応じて残し、旧 Scene の履歴と選択を切り離す。
     const bool preservePendingArchive = pendingReplayArchive_.has_value();
     ReleaseRetainedObjects();
     frames_.clear();
@@ -760,6 +778,7 @@ void ReplayDebugger::ResetForSceneChange() {
 }
 
 void ReplayDebugger::TrimToCapacity() {
+    // 古い状態を捨てたら対応する入力も落とし、巻き戻せない区間を保持しない。
     const std::size_t maxFrames = GetMaxFrameCount();
     while (frames_.size() > maxFrames) {
         estimatedMemoryBytes_ -= (std::min)(estimatedMemoryBytes_, frames_.front().estimatedBytes);
@@ -778,6 +797,7 @@ void ReplayDebugger::TrimToCapacity() {
 }
 
 void ReplayDebugger::BuildFrameDiagnostics(FrameSnapshot& frame) const {
+    // 直前フレームとの差から生成・削除・死亡・HP 変化を数える。
     for (const ObjectSnapshot& snapshot : frame.objects) {
         if (!snapshot.state.replayRemoved) {
             ++frame.diagnostics.activeObjects;
@@ -857,6 +877,7 @@ void ReplayDebugger::BuildFrameDiagnostics(FrameSnapshot& frame) const {
 }
 
 void ReplayDebugger::RecalculateMemoryEstimate() {
+    // 読込後は保存フレームと入力バッファの保持量から概算を作り直す。
     estimatedMemoryBytes_ = 0;
     for (const FrameSnapshot& frame : frames_) {
         estimatedMemoryBytes_ += frame.estimatedBytes;
@@ -865,6 +886,7 @@ void ReplayDebugger::RecalculateMemoryEstimate() {
 }
 
 std::size_t ReplayDebugger::EstimateFrameBytes(const FrameSnapshot& frame) const {
+    // コンテナ容量に加え、可変長文字列と JSON の概算サイズを積み上げる。
     std::size_t bytes = sizeof(FrameSnapshot) +
         frame.objects.capacity() * sizeof(ObjectSnapshot) +
         frame.sprites.capacity() * sizeof(SpriteSnapshot);
@@ -1023,6 +1045,7 @@ void ReplayDebugger::RebindPendingArchiveToCurrentScene(BaseScene* scene) {
 }
 
 std::size_t ReplayDebugger::GetMaxFrameCount() const {
+    // 履歴秒数と記録頻度からリング状に保持する最大フレーム数を決める。
     return static_cast<std::size_t>(std::ceil(captureRate_ * historySeconds_)) + 1;
 }
 

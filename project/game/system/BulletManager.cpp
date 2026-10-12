@@ -4,9 +4,13 @@
 #include <algorithm>
 
 namespace {
-bool IsSpecialMaterial(int32_t materialType) { return (materialType >= 8 && materialType <= 22) || materialType == 26; }
+bool IsSpecialMaterial(int32_t materialType) {
+    // 深度や画面コピーを使う弾を通常の不透明描画から分ける。
+    return (materialType >= 8 && materialType <= 22) || materialType == 26;
+}
 
 void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 素材ごとの描画経路に深度・画面コピーを渡す。
     if (!bullet || bullet->IsDead()) {
         return;
     }
@@ -67,23 +71,27 @@ void DrawSpecialBullet(Bullet* bullet, uint32_t depthSrvHandle, uint32_t grabSrv
 } // namespace
 
 BulletManager* BulletManager::GetInstance() {
+    // 弾リストと衝突登録をシーン内で一箇所に集約する。
     static BulletManager instance;
     return &instance;
 }
 
 void BulletManager::Initialize(Object3dCommon* common, CollisionManager* colManager) {
+    // 新しいシーンの描画・衝突基盤へ付け替え、旧弾を残さない。
     common_ = common;
     colManager_ = colManager;
     bullets_.clear();
 }
 
 void BulletManager::Finalize() {
+    // CollisionManagerへ登録した弾を先に外してから参照を破棄する。
     Clear();
     common_ = nullptr;
     colManager_ = nullptr;
 }
 
 void BulletManager::Clear() {
+    // 生存中の弾も衝突リストから外し、ダングリング参照を防ぐ。
     if (colManager_) {
         for (const auto& bullet : bullets_) {
             if (bullet) {
@@ -157,6 +165,7 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel, uint32_t attr, 
 
 // 弾の寿命と衝突を更新してから消滅対象を整理します。処理中の弾リスト変更を避けます。
 void BulletManager::Update(float deltaTime) {
+    // 当たり判定マネージャーがない間は弾の更新と登録を行わない。
     if (!colManager_) {
         return;
     }
@@ -177,6 +186,7 @@ void BulletManager::Update(float deltaTime) {
 }
 
 void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 特殊マテリアル弾は後段で描くため、この不透明描画から除く。
     for (auto& bullet : bullets_) {
         if (IsSpecialMaterial(bullet->GetMaterialType())) {
             continue;
@@ -186,6 +196,7 @@ void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spo
 }
 
 bool BulletManager::HasSpecialMaterialBullets() const {
+    // 専用描画パスが必要な生存弾の有無を問い合わせる。
     for (const auto& bullet : bullets_) {
         if (!bullet->IsDead() && IsSpecialMaterial(bullet->GetMaterialType())) {
             return true;
@@ -195,6 +206,7 @@ bool BulletManager::HasSpecialMaterialBullets() const {
 }
 
 void BulletManager::DrawSpecial(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    // 深度や画面コピーが揃った段階で特殊マテリアル弾だけ描く。
     for (auto& bullet : bullets_) {
         if (!IsSpecialMaterial(bullet->GetMaterialType())) {
             continue;

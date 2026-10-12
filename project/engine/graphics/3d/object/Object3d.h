@@ -11,6 +11,7 @@
 #include "Event.h"
 #include <vector>
 #include <string_view>
+#include <unordered_map>
 #include "Transform.h" 
 #include "json.hpp"
 #include "Collider.h"
@@ -22,6 +23,7 @@
 #include "NavAgentComponent.h"
 #include "engine/graphics/3d/camera/SceneCameraSettings.h"
 #include "engine/animation/AnimatorController.h"
+#include "engine/animation/BodyAnimationClip.h"
 #include "engine/system/collision/CollisionEvent.h"
 
 using json = nlohmann::json;
@@ -933,8 +935,10 @@ private:
     std::string animatorControllerPath_;
     AnimatorControllerAsset animatorControllerAsset_;
     AnimatorControllerRuntime animatorControllerRuntime_;
+    std::unordered_map<std::string, BodyAnimationClip> animatorBodyClips_;
     AnimatorEventCallback animatorEventCallback_;
     bool animatorControllerLoaded_ = false;
+    bool animatorBodyPoseApplied_ = false;
 
     // Animator Controllerの状態進行と、得られた姿勢のモデル反映は別段階で行う。
     bool UpdateAnimatorController(float deltaTime, Model* model);

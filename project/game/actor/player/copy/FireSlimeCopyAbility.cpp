@@ -10,20 +10,29 @@ using namespace CopyAbilityDetail;
 class FireSlimeCopyAbility final : public ICopyAbilitySession {
   public:
     explicit FireSlimeCopyAbility(EnemyAttackProfile profile) : ICopyAbilitySession(std::move(profile)) {
+        // この能力が生成したメッシュ演出を、解除時にまとめて停止できるようスコープを確保する。
         if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
             effectScope_ = effects->CreateEffectScope();
         }
     }
 
-    ~FireSlimeCopyAbility() override { StopDashEffects(); }
+    ~FireSlimeCopyAbility() override {
+        // セッションの破棄だけでも突進演出が残らないようにする。
+        StopDashEffects();
+    }
     const char* GetStateLabel() const override {
+        // 優先度の高い継続行動を表示し、それ以外は単発攻撃の状態を使う。
         if (dashActive_) return "炎ダッシュ";
         if (breathMotionActive_) return "炎ブレス";
         return fireballSequence_.GetStateLabel();
     }
-    void SetPreviewAttackId(const std::string& id) override { previewAttackId_ = id; }
+    void SetPreviewAttackId(const std::string& id) override {
+        // プレビューでは指定IDの単発攻撃だけを選択候補にする。
+        previewAttackId_ = id;
+    }
 
     void ProcessInput(Player& player, const PlayerCopyAbilityInput& input) override {
+        // ブレスの押し続け状態を保存し、突進中は火球の開始を受け付けない。
         primaryHeld_ = input.primaryHeld;
         if (input.secondaryTriggered && !dashActive_ && dashCooldown_ <= 0.0f) {
             BeginDash(player);
@@ -33,6 +42,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
+        // 単発攻撃、突進、継続ブレスの順に更新し、同時実行を避ける。
         if (player.isDead || player.IsCinematicLocked()) fireballSequence_.Cancel();
         if (fireballSequence_.IsRunning()) fireballSequence_.Update(deltaTime, MakeSequenceContext(player));
         breathVisible_ = false;
@@ -74,6 +84,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Cancel(Player& player) override {
+        // コピー解除時は演出・モーション・入力保持を消し、操作権を返す。
         fireballSequence_.Cancel();
         breathVisible_ = false;
         breathVisuals_.clear();
@@ -94,13 +105,18 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetIsControlActive(true);
     }
 
-    bool CanBreakImpactGate() const override { return dashActive_; }
+    bool CanBreakImpactGate() const override {
+        // 突進している間だけ衝撃ゲートを破壊できる。
+        return dashActive_;
+    }
 
     bool HasOwnedVisuals() const override {
+        // 能力側が所有する頭部とブレスを、専用描画パスへ渡す判定に使う。
         return headVisual_ != nullptr || (breathVisible_ && !breathVisuals_.empty());
     }
 
     void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, Camera* camera, int bufferIndex) override {
+        // 死亡・演出ロック中は能力固有の見た目を描かず、通常カメラを補助的に使う。
         if (player.isDead || player.IsCinematicLocked())
             return;
         if (!camera)
@@ -121,6 +137,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
   private:
     void UpdateHeadVisual(Player& player, float dt) {
+        // 頭部の炎は接触判定を持たない表示専用Objectとして遅延生成する。
         if (player.isDead || player.IsCinematicLocked()) {
             if (headVisual_)
                 headVisual_->SetIsVisible(false);
@@ -162,6 +179,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void SyncHeadVisualTransform(Player& player) {
+        // スライム本体の拡縮に追従させ、頭上の相対位置を維持する。
         const Vector3 scale = player.GetScale();
         const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
         const Vector3 position =
@@ -235,6 +253,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Fireball(Player& player) {
+        // player_specialに紐づく攻撃から優先度最大の定義を選び、シーケンスを開始する。
         const EnemyAttackDefinition* selected = nullptr;
         for (const auto& candidate : profile_.attacks) {
             if (!candidate.sequence.enabled || candidate.sequence.binding != "player_special") continue;
@@ -252,6 +271,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     AttackSequenceContext MakeSequenceContext(Player& player) const {
+        // ロックオン方向と接地状態を渡し、データ駆動の攻撃イベントから利用できるようにする。
         AttackSequenceContext context;
         context.owner = &player;
         context.position = player.GetWorldPosition();
@@ -292,6 +312,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void UpdateDash(Player& player, float deltaTime) {
+        // 突進中は向きと水平速度を固定し、終了時に制御と残速度を戻す。
         dashTimer_ = std::max(0.0f, dashTimer_ - deltaTime);
         const float progress = 1.0f - dashTimer_ / 0.44f;
         const float speed = 38.0f * (1.0f - progress * 0.36f);
@@ -336,12 +357,14 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void StopDashEffects() {
+        // この能力が所有する突進演出スコープだけを停止する。
         if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
             effects->StopEffectScope(effectScope_);
         }
     }
 
     void StopBreathMotion(Player& player) {
+        // 押し続け解除時は見た目とループモーションを同時に止める。
         breathVisible_ = false;
         if (!breathMotionActive_) {
             return;
@@ -351,6 +374,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void DamageDash(Player& player) {
+        // 重なるColliderを持つ敵でも、突進一回につき根Objectへ一度だけ与える。
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
@@ -369,6 +393,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void DamageBreath(Player& player, const Vector3& origin, const Vector3& direction) {
+        // 見た目に沿うカプセル形状で敵を探し、同じ更新内の多重ヒットを除く。
         EnemyAttackDefinition fallback;
         fallback.maxRange = 8.0f;
         fallback.radius = 1.4f;
@@ -414,6 +439,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
 
 namespace CopyAbilityDetail {
 std::unique_ptr<ICopyAbilitySession> CreateFireSlimeCopyAbility(const EnemyAttackProfile& profile) {
+    // 獲得ごとに独立したクールダウンと演出スコープを持つセッションを返す。
     return std::make_unique<FireSlimeCopyAbility>(profile);
 }
 } // namespace CopyAbilityDetail

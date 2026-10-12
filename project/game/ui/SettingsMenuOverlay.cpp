@@ -24,20 +24,28 @@ constexpr int kVisibleRows = 6;
 constexpr Vector4 kInk{.07f, .17f, .21f, 1};
 constexpr Vector4 kAccent{.04f, .58f, .63f, 1};
 bool Same(const BindData& a, const BindData& b) {
+    // 入力デバイスごとの割当をまとめて比較し、未保存変更を判定する。
     return a.keyCode == b.keyCode && a.mouseButton == b.mouseButton && a.padCode == b.padCode;
 }
 
 bool Inside(Vector2 p, float x, float y, float w, float h) {
+    // 右端と下端を含めず、隣接する操作領域への二重ヒットを避ける。
     return p.x >= x && p.x < x + w && p.y >= y && p.y < y + h;
 }
 
-WinApp* Window() { return DirectXCommon::GetInstance()->GetWinApp(); }
+WinApp* Window() {
+    // 表示モードとカーソル制御は描画に使用中のウィンドウへ適用する。
+    return DirectXCommon::GetInstance()->GetWinApp();
+}
 RECT previousCursorClip{};
 bool previousCursorVisible = true;
 } // namespace
 
 SettingsMenuOverlay::SettingsMenuOverlay() = default;
-SettingsMenuOverlay::~SettingsMenuOverlay() { Finalize(); }
+SettingsMenuOverlay::~SettingsMenuOverlay() {
+    // メニューを開いたまま破棄してもカーソル状態を戻す。
+    Finalize();
+}
 void SettingsMenuOverlay::Initialize(SpriteCommon* common, const std::string&) {
     common_ = common;
     input_ = InputManager::GetInstance();
@@ -60,6 +68,7 @@ void SettingsMenuOverlay::Initialize(SpriteCommon* common, const std::string&) {
 }
 
 void SettingsMenuOverlay::Finalize() {
+    // アクティブ状態の後始末を先に行い、カーソルのクリップを残さない。
     if (active_)
         SetActive(false);
     sprites_.clear();
@@ -68,6 +77,7 @@ void SettingsMenuOverlay::Finalize() {
 }
 
 void SettingsMenuOverlay::ReadValues() {
+    // 編集開始時点の設定と実ウィンドウ状態を退避し、キャンセル時の基準にする。
     auto* s = GameSettingsManager::GetInstance();
     original_.bgm = s->GetBGMVolume();
     original_.se = s->GetSEVolume();
@@ -84,6 +94,7 @@ void SettingsMenuOverlay::ReadValues() {
 }
 
 void SettingsMenuOverlay::SetActive(bool active) {
+    // 複数の設定画面が重なっても、最初の開閉だけでカーソル状態を切り替える。
     if (active_ == active)
         return;
     if (active) {
@@ -124,6 +135,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
 }
 
 bool SettingsMenuOverlay::IsDirty() const {
+    // 保存済みの値と編集中の値を、入力割当も含めて比較する。
     if (original_.bgm != draft_.bgm || original_.se != draft_.se || original_.sensitivity != draft_.sensitivity ||
         original_.width != draft_.width || original_.height != draft_.height ||
         original_.borderless != draft_.borderless || original_.invertX != draft_.invertX ||
@@ -138,12 +150,14 @@ bool SettingsMenuOverlay::IsDirty() const {
 }
 
 void SettingsMenuOverlay::PreviewAudio() {
+    // 音量だけは保存前に試聴できるよう、編集中の値を即時反映する。
     auto* s = GameSettingsManager::GetInstance();
     s->SetBGMVolume(draft_.bgm);
     s->SetSEVolume(draft_.se);
 }
 
 void SettingsMenuOverlay::Apply() {
+    // 画面設定の変更は一時適用して確認を待ち、それ以外は直接保存する。
     if (!IsDirty())
         return;
     if (original_.width != draft_.width || original_.height != draft_.height ||
@@ -242,6 +256,7 @@ void SettingsMenuOverlay::Commit() {
 }
 
 void SettingsMenuOverlay::RollbackDisplay() {
+    // 確認期限切れやキャンセル時は、OS側の表示状態も編集値も元に戻す。
     if (!displayTrial_)
         return;
     Window()->RestoreDisplayState(previousDisplay_);
@@ -254,6 +269,7 @@ void SettingsMenuOverlay::RollbackDisplay() {
 }
 
 void SettingsMenuOverlay::ResetCategory() {
+    // 現在のカテゴリだけを初期値へ戻し、他カテゴリの編集中の値は保つ。
     if (category_ == 0) {
         draft_.bgm = .8f;
         draft_.se = .8f;
@@ -280,8 +296,12 @@ void SettingsMenuOverlay::ResetCategory() {
     }
 }
 
-int SettingsMenuOverlay::RowCount() const { return category_ == 0 ? 2 : category_ == 1 ? 13 : category_ == 2 ? 3 : 2; }
+int SettingsMenuOverlay::RowCount() const {
+    // 操作設定のみデバイス切替行と12個の割当行を持つ。
+    return category_ == 0 ? 2 : category_ == 1 ? 13 : category_ == 2 ? 3 : 2;
+}
 void SettingsMenuOverlay::ChangeCategory(int category) {
+    // タブ移動後の行選択やドラッグを持ち越さない。
     category_ = (category + 4) % 4;
     row_ = scroll_ = 0;
     footer_ = -1;
@@ -290,6 +310,7 @@ void SettingsMenuOverlay::ChangeCategory(int category) {
 }
 
 void SettingsMenuOverlay::Adjust(int direction) {
+    // 解像度候補は現在のモニターの作業領域に収まるものだけ提示する。
     status_.clear();
     if (category_ == 0) {
         float& value = row_ == 0 ? draft_.bgm : draft_.se;
@@ -336,6 +357,7 @@ void SettingsMenuOverlay::Adjust(int direction) {
 }
 
 void SettingsMenuOverlay::ActivateRow() {
+    // 割当行は新しい入力待ちを開き、通常の設定行は右方向に調整する。
     if (category_ == 1 && row_ > 0) {
         modal_ = Modal::Binding;
         bindingArmed_ = false;
@@ -345,6 +367,7 @@ void SettingsMenuOverlay::ActivateRow() {
 }
 
 void SettingsMenuOverlay::ActivateFooter(int index) {
+    // 戻る際に編集値が残っていれば、破棄確認を先に表示する。
     dragging_ = false;
     modalSelection_ = 1;
     if (index == 0) {
@@ -426,6 +449,7 @@ void SettingsMenuOverlay::CaptureBinding() {
 }
 
 void SettingsMenuOverlay::AcceptBinding(bool swap) {
+    // 衝突を許可した場合は旧割当を相手へ移し、操作の欠落を防ぐ。
     auto& current = draft_.bindings[kActions[row_ - 1]];
     if (swap && !conflictAction_.empty()) {
         auto& other = draft_.bindings[conflictAction_];
@@ -443,6 +467,7 @@ void SettingsMenuOverlay::AcceptBinding(bool swap) {
 }
 
 void SettingsMenuOverlay::HandleModal(bool accept, bool back) {
+    // 表示設定は期限切れやフォーカス喪失でも自動復旧できるようにする。
     if (modal_ == Modal::Display &&
         (std::chrono::steady_clock::now() >= displayDeadline_ || GetForegroundWindow() != Window()->GetHwnd())) {
         RollbackDisplay();
@@ -478,6 +503,7 @@ void SettingsMenuOverlay::HandleModal(bool accept, bool back) {
 }
 
 void SettingsMenuOverlay::SetEditorViewport(int left, int top, int right, int bottom) {
+    // 編集画面内のマウス座標をゲーム領域基準へ変換するため矩形を保持する。
     editorViewport_ = {left, top, right, bottom};
     hasEditorViewport_ = right > left && bottom > top;
 }
@@ -623,6 +649,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float) {
 
 void SettingsMenuOverlay::Picture(const std::string& texture, float x, float y, float w, float h,
                                   const Vector4& color) {
+    // Spriteをフレーム間で再利用し、テクスチャ切替時は切り出し範囲を全体へ戻す。
     if (usedSprites_ == sprites_.size()) {
         auto s = std::make_unique<Sprite>();
         s->Initialize(common_, Sprite::LoadTexture(texture));
@@ -646,10 +673,12 @@ void SettingsMenuOverlay::Picture(const std::string& texture, float x, float y, 
 }
 
 void SettingsMenuOverlay::Rect(float x, float y, float w, float h, const Vector4& color) {
+    // 単色矩形もSprite描画へ寄せ、他のUIと同じ拡縮を適用する。
     Picture("common/white.png", x, y, w, h, color);
 }
 
 void SettingsMenuOverlay::Label(const std::string& id, float x, float y, float height) {
+    // 事前生成した文字画像の縦横比を保ち、指定した高さに合わせる。
     const std::string path = "ui/settings/text/" + id + ".png";
     const auto& m = TextureManager::GetInstance()->GetMetadata(Sprite::LoadTexture(path));
     Picture(path, x, y, height * static_cast<float>(m.width) / std::max(1.f, static_cast<float>(m.height)), height,
@@ -657,6 +686,7 @@ void SettingsMenuOverlay::Label(const std::string& id, float x, float y, float h
 }
 
 void SettingsMenuOverlay::Number(int value, float x, float y, float height) {
+    // 数字も文字画像を桁ごとに配置し、文字列の生成コストを避ける。
     for (char c : std::to_string(value)) {
         Label(std::string("digit_") + c, x, y, height);
         x += height * .65f;
@@ -782,17 +812,20 @@ void SettingsMenuOverlay::BuildFrame() {
 }
 
 void SettingsMenuOverlay::Draw() {
+    // 非表示中はSprite群を描かず、編集中の画面だけを重ねる。
     if (active_)
         for (auto& s : sprites_)
             s->Draw();
 }
 
 void SettingsMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& out) const {
+    // リプレイ描画が所有Spriteを参照できるよう、非所有ポインタだけ渡す。
     for (const auto& s : sprites_)
         out.push_back(s.get());
 }
 
 void SettingsMenuOverlay::CaptureReplayState(nlohmann::json& state) const {
+    // 表示中の選択位置と編集中の値を記録し、再生画面で同じUIを組み立てる。
     state = {{"active", active_}, {"category", category_}, {"row", row_},
              {"scroll", scroll_}, {"footer", footer_},     {"device", device_}};
     state["values"] = {{"bgm", draft_.bgm},         {"se", draft_.se},          {"sensitivity", draft_.sensitivity},

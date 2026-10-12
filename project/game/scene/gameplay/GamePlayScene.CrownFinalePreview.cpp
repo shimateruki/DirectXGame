@@ -95,6 +95,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
 }
 
 void GamePlayScene::RewindCrownMoviePreview() {
+    // 敗北演出と戴冠演出で時計が異なるため、現在の分岐だけを先頭へ戻す。
     if (crownMoviePreview_.active && crownMoviePreview_.defeat) {
         crownDefeat_.time=0;UpdateCrownDefeat(0);return;
     }
@@ -132,6 +133,7 @@ void GamePlayScene::StepCrownMoviePreview(float deltaTime) {
 }
 
 void GamePlayScene::EndCrownMoviePreview() {
+    // プレビューで変更したワールド状態を片付け、通常の更新へ戻す。
     auto& p = crownMoviePreview_;
     if (!p.active) return;
     ResetCrownDefeat();

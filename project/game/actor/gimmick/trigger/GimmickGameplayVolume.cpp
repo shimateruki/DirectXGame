@@ -12,6 +12,7 @@
 #include <cassert>
 
 void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // プレイヤーだけを検知する透明な OBB とし、用途は JSON の volumeMode で選ぶ。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -46,6 +47,7 @@ void GimmickGameplayVolume::Initialize(Object3dCommon* common, const std::string
 }
 
 void GimmickGameplayVolume::Update(float deltaTime) {
+    // 衝突通知がないフレームを退出として扱い、再発動待ち時間を更新する。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
     if (!isPlaying) {
@@ -68,6 +70,7 @@ void GimmickGameplayVolume::Update(float deltaTime) {
 }
 
 void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 編集中は範囲を見せ、ゲーム再生中は検知形状を描画しない。
     SceneManager* sceneManager = SceneManager::GetInstance();
     if (!sceneManager || !sceneManager->IsPlaying()) {
         BaseGimmick::Draw(pointLightResource, spotLightResource);
@@ -75,6 +78,7 @@ void GimmickGameplayVolume::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
 }
 
 bool GimmickGameplayVolume::OnCollision(Object3d* other) {
+    // プレイヤーが入った最初のフレームだけ入場処理を呼び、物理的には押し戻さない。
     auto* player = dynamic_cast<Player*>(other);
     if (!player) {
         return false;
@@ -92,9 +96,13 @@ bool GimmickGameplayVolume::OnCollision(Object3d* other) {
     return false;
 }
 
-void GimmickGameplayVolume::OnTrigger() { OnSwitchEvent(true); }
+void GimmickGameplayVolume::OnTrigger() {
+    // 外部イベントからの起動をスイッチ ON と同じ状態へ流す。
+    OnSwitchEvent(true);
+}
 
 void GimmickGameplayVolume::OnSwitchEvent(bool active) {
+    // 無効化時は占有を解き、設定によって有効化中の環境変更も戻す。
     runtimeEnabled_ = active;
     if (!runtimeEnabled_) {
         if (occupied_ && param_.has_value() && !param_->volumeTriggerOnExit && param_->returnOnOff) {
@@ -107,6 +115,7 @@ void GimmickGameplayVolume::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickGameplayVolume::Clone() const {
+    // 実行時の占有と一度きりの発動履歴は複製先へ引き継がない。
     auto clone = std::make_unique<GimmickGameplayVolume>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -115,6 +124,7 @@ std::unique_ptr<Object3d> GimmickGameplayVolume::Clone() const {
 }
 
 void GimmickGameplayVolume::InitializeForPlay() {
+    // 再生開始時に設定の有効状態へ戻し、編集用の可視化を消す。
     initializedForPlay_ = true;
     runtimeEnabled_ = param_.has_value() ? param_->startActive : true;
     occupied_ = false;
@@ -128,6 +138,7 @@ void GimmickGameplayVolume::InitializeForPlay() {
 }
 
 void GimmickGameplayVolume::ResetForEditor() {
+    // 再生中の検知履歴を消し、Inspector で範囲を見られるよう可視化する。
     initializedForPlay_ = false;
     runtimeEnabled_ = true;
     occupied_ = false;
@@ -141,6 +152,7 @@ void GimmickGameplayVolume::ResetForEditor() {
 }
 
 void GimmickGameplayVolume::HandleEnter(Player* player) {
+    // 退出時発動の設定なら入場時には何も起動しない。
     if (!param_.has_value() || param_->volumeTriggerOnExit) {
         return;
     }
@@ -148,6 +160,7 @@ void GimmickGameplayVolume::HandleEnter(Player* player) {
 }
 
 void GimmickGameplayVolume::HandleExit(Player* player) {
+    // 退出時発動と、滞在中だけ有効な用途の終了を分けて扱う。
     if (param_.has_value() && param_->volumeTriggerOnExit) {
         Activate(player);
     } else if (param_.has_value() && param_->returnOnOff) {
@@ -213,6 +226,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 }
 
 void GimmickGameplayVolume::Deactivate() {
+    // イベント・BGM・環境設定のうち継続する作用だけを元に戻す。
     if (!param_.has_value()) {
         return;
     }
@@ -229,6 +243,7 @@ void GimmickGameplayVolume::Deactivate() {
 }
 
 bool GimmickGameplayVolume::CanActivate() const {
+    // 一度きり指定と再発動待ち時間を合わせて発動可否を決める。
     if (!runtimeEnabled_ || !param_.has_value() || rearmTimer_ > 0.0f) {
         return false;
     }
@@ -236,6 +251,7 @@ bool GimmickGameplayVolume::CanActivate() const {
 }
 
 GimmickGameplayVolume::Mode GimmickGameplayVolume::GetMode() const {
+    // 不正な JSON 値は定義済みの用途範囲に丸める。
     const int mode = param_.has_value() ? (std::clamp)(param_->volumeMode, 0, 5) : 0;
     return static_cast<Mode>(mode);
 }

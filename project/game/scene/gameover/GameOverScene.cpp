@@ -44,15 +44,20 @@ constexpr const char* kFallingCrownSpritePrefix = "gameover_falling_crown_";
 constexpr const char* kDizzyStarSpritePrefix = "gameover_dizzy_star_";
 constexpr const char* kGameOverImpactCue = "game_over_impact_cue";
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float Clamp01(float value) {
+    // 演出の前後を含む経過時間でも補間率を有効域に保つ。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float EaseOutCubic(float t) {
+    // タイトル文字が勢いよく現れて終端で減速する曲線。
     t = Clamp01(t);
     const float inv = 1.0f - t;
     return 1.0f - inv * inv * inv;
 }
 
 float EaseOutBack(float t) {
+    // 文字の表示時だけ少し行き過ぎて戻る弾みを作る。
     t = Clamp01(t);
     constexpr float c1 = 1.70158f;
     constexpr float c3 = c1 + 1.0f;
@@ -61,6 +66,7 @@ float EaseOutBack(float t) {
 }
 
 float EaseInOutCubic(float t) {
+    // 演出の始点と終点を滑らかにつなぐ対称の補間曲線。
     t = Clamp01(t);
     if (t < 0.5f) {
         return 4.0f * t * t * t;
@@ -69,15 +75,20 @@ float EaseInOutCubic(float t) {
     return 1.0f - inv * inv * inv * 0.5f;
 }
 
-float LerpFloat(float start, float end, float t) { return start + (end - start) * Clamp01(t); }
+float LerpFloat(float start, float end, float t) {
+    // 演出時計が区間外でも指定値を越えない線形補間。
+    return start + (end - start) * Clamp01(t);
+}
 
 Vector3 MakeLookAtEuler(const Vector3& eye, const Vector3& target) {
+    // 固定カメラの視線を、このエンジンの X/Y 回転の符号に合わせて求める。
     const Vector3 direction = target - eye;
     const float planarLength = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     return {std::atan2(-direction.y, planarLength), std::atan2(direction.x, direction.z), 0.0f};
 }
 
 bool IsFadePlayingForSceneIntro() {
+    // シーン切替のフェード中はゲームオーバー導入の時計を進めない。
     const Fade::Status status = Fade::GetInstance()->GetStatus();
     return status == Fade::Status::FadeIn || status == Fade::Status::FadeOut || status == Fade::Status::IrisIn ||
            status == Fade::Status::IrisOut;
@@ -85,6 +96,7 @@ bool IsFadePlayingForSceneIntro() {
 } // namespace
 
 SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
+    // シーン Asset があればその配置を優先し、旧固定パスでもロードできるようにする。
     SceneLoadManifest manifest;
     manifest.AddObjectLayout(HasSceneAssetContext() && !GetSceneLoadContext().objectLayoutPath.empty()
                                  ? GetSceneLoadContext().objectLayoutPath
@@ -98,6 +110,7 @@ SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
 }
 
 void GameOverScene::Initialize() {
+    // このシーン専用の描画・粒子・カメラを構築し、配置 JSON を読み込む。
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
 
@@ -149,6 +162,7 @@ void GameOverScene::Initialize() {
 }
 
 void GameOverScene::OnActivated() {
+    // 再訪時にも前回の選択・演出時刻・ポストエフェクトを残さない。
     BaseScene::OnActivated();
     sceneTime_ = 0.0f;
     titleRevealTimer_ = 0.0f;
@@ -173,6 +187,7 @@ void GameOverScene::OnActivated() {
 }
 
 void GameOverScene::Finalize() {
+    // シーンに属する生ポインタを所有物の破棄と同時に無効化する。
     ResetGameOverPostEffects();
     VFXSequencer::ClearOneShots();
     CollisionManager::GetInstance()->ClearObjects();
@@ -234,6 +249,7 @@ void GameOverScene::Update(float deltaTime) {
 }
 
 void GameOverScene::Draw() {
+    // 通常メッシュ、特殊マテリアル、粒子の順序を保ってゲーム画面へ合成する。
     DrawBackgroundSprite();
 
     bool isFirstPerson = false;
@@ -280,6 +296,7 @@ void GameOverScene::Draw() {
 }
 
 void GameOverScene::DrawUI() {
+    // 動的な王冠・星は専用リストで先に描き、通常 Sprite 側からの二重描画を避ける。
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 
     for (const FallingCrown& crown : fallingCrowns_) {
@@ -313,6 +330,7 @@ void GameOverScene::DrawUI() {
 }
 
 void GameOverScene::DrawImGui() {
+    // 演出値だけを調整し、Sprite の配置は共通エディターに委ねる。
 #ifdef USE_IMGUI
     if (ImGui::Begin("ゲームオーバー演出調整")) {
         ImGui::TextUnformatted("うつ伏せで潰れて待機 → 起き上がる → 右へ退場");
@@ -329,6 +347,7 @@ void GameOverScene::DrawImGui() {
 }
 
 void GameOverScene::BindLayoutSprites() {
+    // 編集可能な配置 JSON の名前から参照を結び、拡縮前の基準サイズを保存する。
     backgroundSprite_ = FindSprite("gameover_background");
 
     constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
@@ -360,6 +379,7 @@ void GameOverScene::BindLayoutSprites() {
 }
 
 void GameOverScene::RefreshLayoutSpritePointers() {
+    // Sprite Editor の再読込で実体が入れ替わっても、参照と基準サイズを取得し直す。
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
 
     constexpr std::array<const char*, 8> titleNames = {"gameover_letter_g",  "gameover_letter_a", "gameover_letter_m",
@@ -396,6 +416,7 @@ void GameOverScene::RefreshLayoutSpritePointers() {
 }
 
 Sprite* GameOverScene::FindSprite(const std::string& name) const {
+    // 名前で取得し、未配置の任意演出部品は nullptr として扱う。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
             return sprite.get();
@@ -405,6 +426,7 @@ Sprite* GameOverScene::FindSprite(const std::string& name) const {
 }
 
 void GameOverScene::InitializeFallingCrowns() {
+    // 周期と位相をずらした装飾 Sprite を作り、画面全体に同時落下しない配置にする。
     fallingCrowns_.clear();
     if (!spriteCommon_) {
         return;
@@ -460,6 +482,7 @@ void GameOverScene::InitializeFallingCrowns() {
 }
 
 void GameOverScene::UpdateFallingCrowns(float deltaTime) {
+    // シーン時計から位置を決め、停止・再開後も周期がずれないようにする。
     (void)deltaTime;
     const float presentationAlpha = EaseOutCubic((sceneTime_ - 0.48f) / 0.82f);
 
@@ -492,6 +515,7 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
 }
 
 void GameOverScene::InitializeDizzyStars() {
+    // スライムの頭上を回る星を個別の位相とサイズで用意する。
     dizzyStars_.clear();
     if (!spriteCommon_) {
         return;
@@ -519,6 +543,7 @@ void GameOverScene::InitializeDizzyStars() {
 }
 
 void GameOverScene::UpdateDizzyStars(float deltaTime) {
+    // 3D の頭部位置を画面へ投影し、モデルが見えない間は画面中央寄りに配置する。
     (void)deltaTime;
 
     Vector2 center = {static_cast<float>(WinApp::kClientWidth) * 0.5f,
@@ -567,6 +592,7 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
 }
 
 void GameOverScene::UpdateMenuInput() {
+    // タイトル表示後に限って呼ばれ、キーとゲームパッドの選択操作を共通化する。
     if (!inputManager_) {
         return;
     }
@@ -591,6 +617,7 @@ void GameOverScene::UpdateMenuInput() {
 
 // リトライ時は残機を戻し、スライムの退場動作を待ってからゲームへ遷移します。
 void GameOverScene::StartRetryExit() {
+    // 残機をリセットしてから退場演出へ進み、二重のシーン切替要求を防ぐ。
     if (retryExitActive_ || retrySceneChangeRequested_) {
         return;
     }
@@ -622,6 +649,7 @@ void GameOverScene::StartRetryExit() {
 }
 
 void GameOverScene::UpdateRetryExit(float deltaTime) {
+    // 退場アニメーションが終わらなくても上限時間でゲームへ戻す。
     if (!retryExitActive_) {
         return;
     }
@@ -635,6 +663,7 @@ void GameOverScene::UpdateRetryExit(float deltaTime) {
 }
 
 void GameOverScene::UpdateMenuSprites(float deltaTime) {
+    // タイトル文字の時間差登場と選択行の強調を、保存済みの配置基準から計算する。
     (void)deltaTime;
     RefreshLayoutSpritePointers();
     // 編集停止中は登場タイマーが進まないので、配置確認用に完成状態を表示する。
@@ -723,6 +752,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
 }
 
 bool GameOverScene::IsTitleRevealComplete() const {
+    // 最後の文字が出た後、メニューのフェード完了まで入力を待たせる。
     const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
     return titleRevealTimer_ >= menuStartTime + 0.28f;
 }
@@ -750,6 +780,7 @@ void GameOverScene::InitializeGameOverPresentation() {
 }
 
 void GameOverScene::FindGameOverSlimeObject() {
+    // レイアウト内のプレイヤーモデルを名前またはモデルパスで探す。
     gameOverSlimeObject_ = nullptr;
     if (!objectManager_) {
         return;
@@ -771,6 +802,7 @@ void GameOverScene::FindGameOverSlimeObject() {
 }
 
 void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
+    // 編集によるオブジェクト再生成にも対応し、見失った場合は参照を結び直す。
     if (!IsAlive(gameOverSlimeObject_)) {
         gameOverSlimeObject_ = nullptr;
     }
@@ -821,6 +853,7 @@ void GameOverScene::UpdateGameOverPostEffects() {
 }
 
 void GameOverScene::EmitGameOverImpactCue() {
+    // 着地演出を使う場合にだけ、モデル位置から VFX と揺れを開始する。
     if (!gameOverSlimeObject_) {
         return;
     }
@@ -833,6 +866,7 @@ void GameOverScene::EmitGameOverImpactCue() {
 }
 
 void GameOverScene::ResetGameOverPostEffects() {
+    // 前シーンの被弾・危険表示を持ち込まず、ゲームオーバー画面の色を一定にする。
     PostEffect::Params* params = PostEffect::GetInstance()->GetParams();
     if (!params) {
         return;
@@ -866,6 +900,7 @@ void GameOverScene::ResetGameOverPostEffects() {
 }
 
 void GameOverScene::DrawBackgroundSprite() {
+    // 3D シーンより先に背景を描き、未配置時は安全に省略する。
     backgroundSprite_ = IsAlive(backgroundSprite_) ? backgroundSprite_ : FindSprite("gameover_background");
     if (!backgroundSprite_) {
         return;
@@ -876,11 +911,13 @@ void GameOverScene::DrawBackgroundSprite() {
 }
 
 void GameOverScene::ChangeSelection(int direction) {
+    // 先頭と末尾を循環させ、どちらの方向入力でも選択を継続できる。
     const int count = static_cast<int>(MenuItem::Count);
     selectedIndex_ = (selectedIndex_ + direction + count) % count;
 }
 
 void GameOverScene::ConfirmSelection() {
+    // リトライ演出中の重複遷移と、メニュー表示前の決定を防ぐ。
     if (retryExitActive_ || retrySceneChangeRequested_ || !IsTitleRevealComplete()) {
         return;
     }
@@ -900,6 +937,7 @@ void GameOverScene::ConfirmSelection() {
 }
 
 void GameOverScene::DrawShadow() {
+    // オブジェクト破棄中にはシャドウ描画へ進まない。
     if (objectManager_) {
         objectManager_->DrawShadow();
     }

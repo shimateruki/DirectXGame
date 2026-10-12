@@ -2,11 +2,18 @@
 #include "game/actor/player/copy/PlayerCopyAbilityController.h"
 
 namespace {
-json ToJson(const Vector3& value) { return json::array({value.x, value.y, value.z}); }
+json ToJson(const Vector3& value) {
+    // 要素順を復元側と揃え、リプレイの古い配列形式を維持する。
+    return json::array({value.x, value.y, value.z});
+}
 
-json ToJson(const Vector4& value) { return json::array({value.x, value.y, value.z, value.w}); }
+json ToJson(const Vector4& value) {
+    // 色と姿勢の四成分を固定順で保存する。
+    return json::array({value.x, value.y, value.z, value.w});
+}
 
 Vector3 ReadVector3(const json& value, const Vector3& fallback) {
+    // 古いリプレイに項目がない場合は現在値を壊さず再生を続ける。
     if (!value.is_array() || value.size() < 3) {
         return fallback;
     }
@@ -14,6 +21,7 @@ Vector3 ReadVector3(const json& value, const Vector3& fallback) {
 }
 
 Vector4 ReadVector4(const json& value, const Vector4& fallback) {
+    // 成分不足のデータで色などの既存値を上書きしない。
     if (!value.is_array() || value.size() < 4) {
         return fallback;
     }
@@ -21,6 +29,7 @@ Vector4 ReadVector4(const json& value, const Vector4& fallback) {
 }
 
 bool IsSupportedMorphTypeValue(int value) {
+    // 保存時の整数は現行のコピー種別だけ許可し、廃止値を安全に除外する。
     switch (static_cast<Player::EnemyMorphType>(value)) {
     case Player::EnemyMorphType::None:
     case Player::EnemyMorphType::Slime:
@@ -37,6 +46,7 @@ bool IsSupportedMorphTypeValue(int value) {
 } // namespace
 
 void Player::CaptureReplayCustomState(json& state) const {
+    // 巻き戻し後の操作・被弾・変身が同じフレームから再開できる状態を記録する。
     Character::CaptureReplayCustomState(state);
     state["playerLockingOn"] = isLockingOn_;
     state["playerControlActive"] = isControlActive_;
@@ -57,6 +67,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerDeathTimer"] = deathTimer_;
     state["playerRespawnPosition"] = ToJson(respawnPosition_);
     state["playerCheckpointActivated"] = checkpointActivated_;
+    state["playerCheckpointObjectName"] = checkpointObjectName_;
     state["playerCheckpointMorphEnemyType"] = checkpointMorphEnemyType_;
     state["playerBaseRotation"] = ToJson(baseRotation_);
     state["playerFirstUpdate"] = isFirstUpdate_;
@@ -98,6 +109,7 @@ void Player::CaptureReplayCustomState(json& state) const {
 }
 
 void Player::RestoreReplayCustomState(const json& state) {
+    // 項目が欠けた旧記録は現在値を補完に使い、必要な能力だけ再構築する。
     Character::RestoreReplayCustomState(state);
     isLockingOn_ = state.value("playerLockingOn", isLockingOn_);
     isControlActive_ = state.value("playerControlActive", isControlActive_);
@@ -121,6 +133,7 @@ void Player::RestoreReplayCustomState(const json& state) {
         respawnPosition_ = ReadVector3(state["playerRespawnPosition"], respawnPosition_);
     }
     checkpointActivated_ = state.value("playerCheckpointActivated", checkpointActivated_);
+    checkpointObjectName_ = state.value("playerCheckpointObjectName", checkpointObjectName_);
     checkpointMorphEnemyType_ = state.value("playerCheckpointMorphEnemyType", checkpointMorphEnemyType_);
     if (state.contains("playerBaseRotation")) {
         baseRotation_ = ReadVector3(state["playerBaseRotation"], baseRotation_);

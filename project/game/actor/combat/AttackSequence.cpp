@@ -66,9 +66,13 @@ bool AttackSequence::CheckCondition(const std::string& condition, const AttackSe
     return condition == "always";
 }
 
-AttackSequence::~AttackSequence() { ReleaseTrackEffects(); }
+AttackSequence::~AttackSequence() {
+    // シーケンスより長く残る演出スコープを終了させる。
+    ReleaseTrackEffects();
+}
 
 void AttackSequence::ReleaseTrackEffects() {
+    // トラックごとのエフェクトスコープを止め、次の攻撃へ残さない。
     bodyPose_.reset();
     for (auto& state : trackStates_) {
         if (state.effectScope) MeshEffectManager::GetInstance()->StopEffectScope(state.effectScope);
@@ -77,6 +81,7 @@ void AttackSequence::ReleaseTrackEffects() {
 }
 
 void AttackSequence::Cancel() {
+    // 世代番号を進め、以前の非同期イベントが現在の攻撃へ混入しないようにする。
     ++generation_;
     ReleaseTrackEffects();
     clock_.Reset();
@@ -228,6 +233,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
 }
 
 void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSequenceContext& context) {
+    // 定義された操作種別を共有の発生位置・速度へ解決してから実演出を起動する。
     const auto part = ResolveProjectileComponent(definition_, event);
     const auto emission = ResolveAttackSequenceEmission(event, context, part.minSpeed, part.maxSpeed);
     const Vector3 position = emission.position;

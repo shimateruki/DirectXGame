@@ -12,11 +12,18 @@ constexpr int kGateModeSceneTransition = 1;
 constexpr int kGateModeStageTransition = 2;
 constexpr int kGatePortalMaterialType = 22;
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float Clamp01(float value) {
+    // 補間係数が範囲を超えてゲートの演出値を壊さないようにします。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
-float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+float Lerp(float a, float b, float t) {
+    // 開放演出の各値を同じ割合で遷移させます。
+    return a + (b - a) * t;
+}
 
 float Smoothstep(float edge0, float edge1, float value) {
+    // 閾値の重複時もゼロ除算せず、境界で滑らかに変化させます。
     const float rawWidth = edge1 - edge0;
     const float width = rawWidth > 0.0001f ? rawWidth : 0.0001f;
     const float t = Clamp01((value - edge0) / width);
@@ -27,6 +34,7 @@ float Smoothstep(float edge0, float edge1, float value) {
 void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 未設定の遷移先はステージ選択にし、ポータル専用材質を割り当てます。
     SetClassName("Gimmick");
     SetGimmickType("StageGate");
     SetName("Gimmick_StageGate");
@@ -43,6 +51,7 @@ void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& mod
     SetBlendMode(BlendMode::kNormal);
     SetEnableEnvMap(false);
 
+    // プレイヤーだけがゲートへの入場を開始できます。
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
     SetColliderType(ColliderType::kSphere);
@@ -50,6 +59,7 @@ void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& mod
 }
 
 void GimmickStageGate::Update(float deltaTime) {
+    // 目標開放度に滑らかに追従させ、開放の閾値をまたいだ瞬間だけ発光を強めます。
     CaptureBaseScale();
     baseScale_ = GetScale();
 
@@ -91,6 +101,7 @@ void GimmickStageGate::Update(float deltaTime) {
 }
 
 bool GimmickStageGate::OnCollision(Object3d* other) {
+    // ステージ選択用の展示ノードは、触れてもシーン遷移を起こしません。
     if (!other || !(other->GetCollisionAttribute() & CollisionCategories::Get("player"))) {
         return false;
     }
@@ -103,6 +114,7 @@ bool GimmickStageGate::OnCollision(Object3d* other) {
 }
 
 std::unique_ptr<Object3d> GimmickStageGate::Clone() const {
+    // 複製先の描画資源を初期化した後で、ゲート設定をコピーします。
     auto newObj = std::make_unique<GimmickStageGate>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());
@@ -110,9 +122,13 @@ std::unique_ptr<Object3d> GimmickStageGate::Clone() const {
     return newObj;
 }
 
-int GimmickStageGate::GetStageIndex() const { return GetTargetID(); }
+int GimmickStageGate::GetStageIndex() const {
+    // ステージ番号はシーンの Target ID と共有します。
+    return GetTargetID();
+}
 
 int GimmickStageGate::GetGateMode() const {
+    // 古い配置データにモードがなくても、遷移しない展示ノードとして扱います。
     if (!param_.has_value()) {
         return kGateModeStageSelectNode;
     }
@@ -120,6 +136,7 @@ int GimmickStageGate::GetGateMode() const {
 }
 
 const std::string& GimmickStageGate::GetTargetSceneName() const {
+    // 遷移先が未設定ならステージ選択画面へ戻します。
     static const std::string kDefaultScene = "SELECT";
     if (!param_.has_value() || param_->targetScene.empty()) {
         return kDefaultScene;
@@ -127,18 +144,26 @@ const std::string& GimmickStageGate::GetTargetSceneName() const {
     return param_->targetScene;
 }
 
-bool GimmickStageGate::IsStageSelectNodeMode() const { return GetGateMode() == kGateModeStageSelectNode; }
+bool GimmickStageGate::IsStageSelectNodeMode() const {
+    // 展示ノードと実際の遷移ゲートを呼び出し側で区別します。
+    return GetGateMode() == kGateModeStageSelectNode;
+}
 
 void GimmickStageGate::SetGateState(bool selected, bool unlocked, bool cleared, bool unlocking) {
+    // 選択・解放・クリア状態は Update の色と発光量へまとめて反映します。
     isSelected_ = selected;
     isUnlocked_ = unlocked;
     isCleared_ = cleared;
     isUnlocking_ = unlocking;
 }
 
-void GimmickStageGate::SetGateActivation(float activation) { targetActivation_ = Clamp01(activation); }
+void GimmickStageGate::SetGateActivation(float activation) {
+    // 呼び出し側の入力を正規化し、現在値には Update で追従させます。
+    targetActivation_ = Clamp01(activation);
+}
 
 void GimmickStageGate::SetTransitionEnabled(bool enabled) {
+    // 再有効化時は一度きりの遷移記録を戻し、再入場を許可します。
     if (!param_.has_value()) {
         param_.emplace();
     }
@@ -156,11 +181,13 @@ void GimmickStageGate::TriggerEntryReaction() {
 }
 
 void GimmickStageGate::UpdatePortalMaterial() {
+    // 専用材質がない複製・編集中は、シェーダーパラメータへのアクセスを避けます。
     auto* renderer = GetMeshRenderer();
     if (!renderer || !renderer->GetWaterParamData()) {
         return;
     }
 
+    // 水系の共通パラメータをゲートの波・発光表現にも利用します。
     auto* portal = renderer->GetWaterParamData();
     const float active = isUnlocking_ ? 1.0f : (isUnlocked_ ? activation_ : 0.0f);
     const float selectedBoost = (isSelected_ && isUnlocked_) ? 1.0f : 0.0f;
@@ -182,6 +209,7 @@ void GimmickStageGate::UpdatePortalMaterial() {
 
 // 見た目の開放状態と実際に遷移できる条件を分け、演出途中の誤入場を防ぎます。
 bool GimmickStageGate::CanTriggerTransition() const {
+    // 実際の遷移はモード、有効状態、遷移済みフラグで判定します。
     const int mode = GetGateMode();
     if (mode == kGateModeStageSelectNode || hasTriggeredTransition_) {
         return false;
@@ -193,6 +221,7 @@ bool GimmickStageGate::CanTriggerTransition() const {
 }
 
 void GimmickStageGate::TriggerTransition() {
+    // 衝突が続くフレームでも ChangeScene を一度だけ要求します。
     hasTriggeredTransition_ = true;
 
     if (GetGateMode() == kGateModeStageTransition) {
@@ -205,6 +234,7 @@ void GimmickStageGate::TriggerTransition() {
 }
 
 void GimmickStageGate::CaptureBaseScale() {
+    // 編集時の元スケールを初回だけ保存し、演出による変化の基準にします。
     if (hasBaseScale_) {
         return;
     }
@@ -213,6 +243,7 @@ void GimmickStageGate::CaptureBaseScale() {
 }
 
 Vector4 GimmickStageGate::GetTargetColor() const {
+    // 開放・クリア・選択の優先順位で色を決めます。
     if (!isUnlocked_) {
         // 未解放でもゲートの輪郭は残し、鎖と南京錠で封鎖状態を示します。
         return {0.30f, 0.54f, 0.64f, 0.92f};

@@ -65,12 +65,14 @@ struct GoalCrownPhysicsTuning {
 };
 
 GoalCrownPhysicsTuning& GetGoalCrownPhysicsTuning() {
+    // ImGui調整値をフレーム間で保持し、ゴール演出の疑似物理へ反映する。
     static GoalCrownPhysicsTuning tuning;
     return tuning;
 }
 
 #ifdef USE_IMGUI
 void DrawGoalCrownPhysicsTuning() {
+    // 診断表示が有効なときだけ王冠のばね・着地係数を調整可能にする。
     if (!EditorToolSettings::Get().IsVisible("diagnosticWindows"))
         return;
     GoalCrownPhysicsTuning& tuning = GetGoalCrownPhysicsTuning();
@@ -103,12 +105,14 @@ void DrawGoalCrownPhysicsTuning() {
 #endif
 
 Vector3 QuadraticBezier(const Vector3& start, const Vector3& control, const Vector3& end, float rate) {
+    // 始点と終点を正確に通る二次曲線で、王冠の移動に弧を付ける。
     const float t = std::clamp(rate, 0.0f, 1.0f);
     const float inv = 1.0f - t;
     return start * (inv * inv) + control * (2.0f * inv * t) + end * (t * t);
 }
 
 float NormalizeYaw(float yaw) {
+    // 回転差の補間で大回りしないよう角度を±πへ折り返す。
     while (yaw > kPi)
         yaw -= kTwoPi;
     while (yaw < -kPi)
@@ -120,6 +124,7 @@ float NormalizeYaw(float yaw) {
 
 // ゴール状態を解除する際は、プレイヤー・王冠・カメラの演出前の状態を戻します。
 bool GamePlayScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
+    // 生存中のプレイヤーが触れた場合だけクリア演出を開始し、重複開始は避ける。
     Player* player = dynamic_cast<Player*>(actor);
     if (!player || player->isDead || player->GetHp() <= 0.0f) {
         return false;
@@ -132,11 +137,13 @@ bool GamePlayScene::TryStartGoalFromContact(Object3d* actor, Object3d* goal) {
 }
 
 void GamePlayScene::CollectStarCoinFromContact(int coinIndex, const Vector3& worldPosition) {
+    // 接触で得た番号と位置を収集管理へ渡し、取得履歴をログへ残す。
     CollectStarCoin(coinIndex, worldPosition);
     DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIndex) + " Collected!");
 }
 
 void GamePlayScene::SetIsGoal(bool isGoal) {
+    // ゴールを解除するときは操作・王冠姿勢・カメラを演出前の状態へ戻す。
     if (isGoal_ == isGoal) {
         return;
     }
@@ -189,6 +196,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 
 // ゴール演出の入力ロックと初期姿勢を確定してから、演出用カメラへ制御を渡します。
 void GamePlayScene::StartGoalPresentation(Object3d* crownObject) {
+    // プレイヤーと王冠の初期姿勢を保存し、初回クリアか再クリアかで演出素材を選ぶ。
     if (isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
         return;
     }
@@ -444,6 +452,7 @@ void GamePlayScene::Update(float deltaTime) {
 }
 
 void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
+    // 取得前の王冠だけに待機中の動きを与え、取得演出へ入った後は制御を渡す。
     if (!objectManager_ || isGoal_) {
         return;
     }
@@ -527,6 +536,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 }
 
 bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
+    // 操作ガイドが開いている間はゲーム入力を消費し、通常の行動更新へ通さない。
     if (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) {
         controlsGuideOverlay_->SetPlayer(player_);
         controlsGuideOverlay_->Update(deltaTime);
@@ -545,6 +555,7 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
 }
 
 bool GamePlayScene::IsControlsGuideOpenTriggered() const {
+    // キーボードとゲームパッドのガイド呼出し入力を一つの判定にまとめる。
     if (!inputManager_) {
         return false;
     }
@@ -565,6 +576,7 @@ bool GamePlayScene::IsControlsGuideOpenTriggered() const {
 }
 
 bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
+    // ポーズ中はUIだけ進め、ゲーム世界の更新と入力を止める。
     if (settingsOverlay_ && settingsOverlay_->IsActive()) {
         settingsOverlay_->Update(deltaTime);
         return true;
@@ -611,6 +623,7 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
 }
 
 bool GamePlayScene::IsPauseOpenTriggered() const {
+    // エディターの文字入力中などはポーズ操作として扱わない。
     if (!inputManager_) {
         return false;
     }
@@ -630,6 +643,7 @@ bool GamePlayScene::IsPauseOpenTriggered() const {
 }
 
 bool GamePlayScene::HandleGoalClear(float& deltaTime) {
+    // ゴール演出中は通常AIの時間を止め、クリア演出と保存・帰還だけを進める。
     if (!isGoal_) {
         return false;
     }
@@ -737,6 +751,7 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
 }
 
 void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
+    // 演出タイムラインの段階に応じてプレイヤーの喜びモーションを更新する。
     (void)deltaTime;
     if (!player_ || !goalPlayerSnapshotValid_) {
         return;
@@ -920,6 +935,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
 }
 
 void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
+    // 王冠とプレイヤーの位置に合わせて、演出段階ごとの粒子を発生させる。
     (void)deltaTime;
     const float t = goalPresentationTimer_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
@@ -944,6 +960,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
 }
 
 void GamePlayScene::SetupGoalPresentationCamera() {
+    // 通常カメラの姿勢を保存し、ゴール演出用カメラを王冠とプレイヤーへ向ける。
     Camera* sourceCamera = goalLockedPrimaryCamera_;
     if (!sourceCamera) {
         sourceCamera = CameraManager::GetInstance()->GetActiveCamera();
@@ -1084,6 +1101,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
 }
 
 void GamePlayScene::LockGoalPresentationCameraInput() {
+    // 演出中にプレイヤー入力で視点が動かないようカメラ操作を一時停止する。
     RestoreGoalPresentationCameraInput();
 
     CameraManager* cameraManager = CameraManager::GetInstance();
@@ -1109,6 +1127,7 @@ void GamePlayScene::LockGoalPresentationCameraInput() {
 }
 
 void GamePlayScene::RestoreGoalPresentationCameraInput() {
+    // 演出終了時に以前のカメラ入力状態を復元する。
     if (goalLockedPrimaryCamera_) {
         goalLockedPrimaryCamera_->SetInputEnabled(true);
     }
@@ -1120,6 +1139,7 @@ void GamePlayScene::RestoreGoalPresentationCameraInput() {
 }
 
 void GamePlayScene::RequestGoalReturnToSelect() {
+    // 演出の終了を受けてフェードとステージ選択への遷移を一度だけ要求する。
     if (goalPresentationState_ == GoalPresentationState::Returning) {
         return;
     }
@@ -1132,6 +1152,7 @@ void GamePlayScene::RequestGoalReturnToSelect() {
 }
 
 void GamePlayScene::UpdatePostEffectState(float deltaTime) {
+    // ポスト効果の時間を進め、深度再構築に使う逆射影行列を現カメラへ合わせる。
     PostEffect::GetInstance()->Update(deltaTime);
 
     Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
@@ -1141,6 +1162,7 @@ void GamePlayScene::UpdatePostEffectState(float deltaTime) {
 }
 
 void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
+    // ロックオン対象の変化をカメラへ渡し、通常操作中の視点を更新する。
     LightEditor::GetInstance()->Update();
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -1234,6 +1256,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, Object3d* target, float d
 }
 
 void GamePlayScene::UpdateSceneSystems(float deltaTime) {
+    // オブジェクト更新後の当たり判定・演出など、シーン共通システムを進める。
     ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
@@ -1255,6 +1278,7 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
 }
 
 void GamePlayScene::UpdateEffectDebugShortcuts() {
+    // デバッグ用のエフェクト操作は通常のゲーム入力と分離して処理する。
 #ifdef USE_IMGUI
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureKeyboard || io.WantTextInput) {

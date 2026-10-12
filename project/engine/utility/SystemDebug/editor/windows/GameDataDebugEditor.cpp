@@ -44,6 +44,7 @@ bool IsStageUnlockedForSave(const StageData& stage, int stageIndex, GameDataMana
 } // namespace
 
 void GameDataDebugEditor::Initialize(SceneManager* sceneManager) {
+    // セーブスロットとStage定義を先に同期し、編集対象を現在の実データへ向けます。
     sceneManager_ = sceneManager;
     StageManager::GetInstance()->Initialize();
     SyncSlotState();
@@ -51,6 +52,7 @@ void GameDataDebugEditor::Initialize(SceneManager* sceneManager) {
 
 void GameDataDebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    // 画面を開くたびに現在のスロットを読み直し、外部の切り替えを反映します。
     SyncSlotState();
 
     ImGui::Text(ICON_FA_DATABASE " ゲーム内部データ編集");
@@ -81,6 +83,7 @@ void GameDataDebugEditor::SyncSlotState() {
 }
 
 void GameDataDebugEditor::RefreshStageSelectScene() {
+    // Stage Select表示中だけ、変更済みの進行状態を画面へ反映します。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return;
     }
@@ -92,6 +95,7 @@ void GameDataDebugEditor::RefreshStageSelectScene() {
 
 void GameDataDebugEditor::DrawSlotSelector() {
 #ifdef USE_IMGUI
+    // 編集先スロットを明示し、別セーブへの誤操作を避けます。
     GameDataManager* save = GameDataManager::GetInstance();
     int activeSlot = save->GetActiveSlot();
 
@@ -172,6 +176,7 @@ void GameDataDebugEditor::DrawSlotSelector() {
 
 void GameDataDebugEditor::DrawSlotSummary() {
 #ifdef USE_IMGUI
+    // 全スロットを一表で比較し、現在の編集先と保存済み値を確認できます。
     GameDataManager* save = GameDataManager::GetInstance();
 
     if (ImGui::BeginTable("GameDataSlotSummary", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
@@ -213,6 +218,7 @@ void GameDataDebugEditor::DrawSlotSummary() {
 
 void GameDataDebugEditor::DrawCurrentSlotEditor() {
 #ifdef USE_IMGUI
+    // 現在スロットの値だけを変更し、入力ごとにセーブ管理へ反映します。
     GameDataManager* save = GameDataManager::GetInstance();
 
     ImGui::Text("現在スロットの基本値");
@@ -277,6 +283,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
 
 void GameDataDebugEditor::DrawStageTable() {
 #ifdef USE_IMGUI
+    // Stage定義順にクリア・収集状態を並べ、進行デバッグを行います。
     GameDataManager* save = GameDataManager::GetInstance();
     const auto& stages = StageManager::GetInstance()->GetStages();
     if (stages.empty()) {

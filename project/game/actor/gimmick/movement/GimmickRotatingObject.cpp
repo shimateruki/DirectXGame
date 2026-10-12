@@ -4,6 +4,7 @@
 #include <cmath>
 
 void GimmickRotatingObject::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 回転軸と速度の旧既定値を用意し、地形として足場判定を有効にする。
     BaseGimmick::Initialize(common, modelName);
 
     SetClassName("Gimmick");
@@ -25,6 +26,7 @@ void GimmickRotatingObject::Initialize(Object3dCommon* common, const std::string
 
 // Editorでは配置角度を維持し、Play中だけ設定軸の回転を進めます。
 void GimmickRotatingObject::Update(float deltaTime) {
+    // 編集中は回転を進めず、Play開始時に初期姿勢を取り直す。
     if (!param_.has_value())
         param_.emplace();
 
@@ -63,10 +65,14 @@ void GimmickRotatingObject::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-void GimmickRotatingObject::OnTrigger() { OnSwitchEvent(true); }
+void GimmickRotatingObject::OnTrigger() {
+    // トリガーはスイッチの ON と同じ経路で扱う。
+    OnSwitchEvent(true);
+}
 
 // returnOnOff が無効なら、スイッチ解除後も回転を続けます。
 void GimmickRotatingObject::OnSwitchEvent(bool active) {
+    // OFF で停止するかは設定値で決め、スイッチの状態を床の回転へ反映する。
     if (!param_.has_value())
         param_.emplace();
     if (!active && !param_->returnOnOff)
@@ -75,6 +81,7 @@ void GimmickRotatingObject::OnSwitchEvent(bool active) {
 }
 
 std::unique_ptr<Object3d> GimmickRotatingObject::Clone() const {
+    // 回転開始時刻は複製せず、保存済みの配置と設定だけ引き継ぐ。
     auto newObj = std::make_unique<GimmickRotatingObject>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

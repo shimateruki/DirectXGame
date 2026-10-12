@@ -17,6 +17,7 @@ struct UmbraFlameGeometry {
 };
 
 UmbraFlameGeometry ResolveUmbraFlameGeometry(const EnemyAttackDefinition& attack, const Vector3& direction) {
+    // 攻撃の射程と半径から、近端・遠端を持つ扇形の炎領域へ換算する。
     constexpr float kNearDistance = 1.5f;
     constexpr float kMinFarDistance = 20.0f;
     constexpr float kReferenceRadius = 1.75f;

@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "enemy_fire_slime",
+  "entryState": "Idle",
+  "parameters": [
+    { "name": "MotionMode", "type": 1, "defaultInt": 0 }
+  ],
+  "states": [
+    { "name": "Idle", "bodyClipName": "enemy_fire_slime_idle", "speed": 1.0, "loop": true, "blendDuration": 0.12, "blendEasing": 4 },
+    { "name": "Move", "bodyClipName": "enemy_fire_slime_move", "speed": 1.0, "loop": true, "blendDuration": 0.10, "blendEasing": 4 },
+    { "name": "Breath", "bodyClipName": "enemy_fire_slime_breath", "speed": 1.0, "loop": false, "blendDuration": 0.08, "blendEasing": 4 },
+    { "name": "Fireball", "bodyClipName": "enemy_fire_slime_fireball", "speed": 1.0, "loop": false, "blendDuration": 0.06, "blendEasing": 4 }
+  ],
+  "transitions": [
+    { "fromState": "*", "toState": "Idle", "duration": 0.12, "easing": 4, "conditions": [{ "parameter": "MotionMode", "mode": 2, "threshold": 0 }] },
+    { "fromState": "*", "toState": "Move", "duration": 0.10, "easing": 4, "conditions": [{ "parameter": "MotionMode", "mode": 2, "threshold": 1 }] },
+    { "fromState": "*", "toState": "Breath", "duration": 0.08, "easing": 4, "conditions": [{ "parameter": "MotionMode", "mode": 2, "threshold": 2 }] },
+    { "fromState": "*", "toState": "Fireball", "duration": 0.06, "easing": 4, "conditions": [{ "parameter": "MotionMode", "mode": 2, "threshold": 3 }] }
+  ]
+}

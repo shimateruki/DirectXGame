@@ -13,26 +13,23 @@
 ModelManager* ModelManager::instance = nullptr;
 const std::string ModelManager::kDefaultBaseDirectory = "Resources/3DModel/";
 const std::string ModelManager::kDefaultModelExtension = ".obj";
-// ModelManagerのシングルトンインスタンスを生成または取得する。
-
 ModelManager* ModelManager::GetInstance() {
+    // ModelManagerのシングルトンインスタンスを生成または取得する。
     if (instance == nullptr) {
         instance = new ModelManager();
     }
     return instance;
 }
 
-// モデル共通描画基盤を初期化し、各Modelが共有するDirectXリソースを準備する。
-
 void ModelManager::Initialize(DirectXCommon* dxCommon) {
+    // モデル共通描画基盤を初期化し、各Modelが共有するDirectXリソースを準備する。
     assert(dxCommon);
     modelCommon_ = std::make_unique<ModelCommon>();
     modelCommon_->Initialize(dxCommon);
 }
 
-// 読み込み済みモデルと共通リソースを解放し、シングルトンを破棄する。
-
 void ModelManager::Finalize() {
+    // 読み込み済みモデルと共通リソースを解放し、シングルトンを破棄する。
     models_.clear(); // 読み込み済みモデルをすべて解放する。
     preparedModels_.clear();
     modelCommon_.reset(); // ModelCommonを先に破棄し、GPU関連の参照を残さない。
@@ -185,6 +182,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 }
 
 bool ModelManager::PrepareModel(const std::string& modelName) {
+    // GPU登録前のモデルを準備し、同名モデルの重複デコードを避ける。
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (models_.contains(modelName) || preparedModels_.contains(modelName)) {
@@ -233,6 +231,7 @@ bool ModelManager::ResolveModelPath(
     const std::string& modelName,
     std::string& directoryPath,
     std::string& fileName) const {
+    // 表示名と拡張子を分離し、既定のモデル配置先から実ファイルを解決する。
     std::filesystem::path path(modelName);
     std::string parentPath = path.parent_path().string();
     std::replace(parentPath.begin(), parentPath.end(), '\\', '/');
@@ -289,9 +288,8 @@ bool ModelManager::ResolveModelPath(
     return !fileName.empty() && std::filesystem::exists(directoryPath + fileName);
 }
 
-// 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
-
 bool ModelManager::ReloadModel(const std::string& modelName) {
+    // 指定モデルをキャッシュから外して再読み込みし、ファイル更新を反映する。
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         models_.erase(modelName);
@@ -299,9 +297,8 @@ bool ModelManager::ReloadModel(const std::string& modelName) {
     return LoadModel(modelName) != nullptr;
 }
 
-// 現在読み込み済みのモデルキー一覧を返し、エディタやデバッグ表示で使えるようにする。
-
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
+    // 現在読み込み済みのモデルキー一覧を返し、エディタやデバッグ表示で使えるようにする。
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     std::vector<std::string> names;
@@ -312,6 +309,7 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
 }
 
 std::vector<std::string> ModelManager::GetAvailableModelNames() const {
+    // 読込済みモデルだけでなく、ディスク上の未読込モデルも選択肢へ加える。
     std::vector<std::string> names = GetLoadedModelNames();
     std::set<std::string> uniqueNames(names.begin(), names.end());
 

@@ -16,8 +16,10 @@ class SpriteCommon;
 class PauseMenuOverlay {
   public:
     enum class Action { None, Resume, Retry, StageSelect, OpenSettings, ReturnTitle };
+    enum class Mode { Gameplay, StageSelect };
 
-    void Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath = "Resources/json/sprite/pauseMenu.json");
+    void Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath = "Resources/json/sprite/pauseMenu.json",
+                    Mode mode = Mode::Gameplay);
     void Finalize();
     void SetActive(bool active);
     bool IsActive() const { return isActive_; }
@@ -65,6 +67,7 @@ class PauseMenuOverlay {
 
     // 開いた直後の同じ入力で閉じないよう、トグル入力を一時抑止します。
     bool isActive_ = false;
+    Mode mode_ = Mode::Gameplay;
     bool suppressOpenCloseInput_ = false;
     int selectedIndex_ = 0;
     float time_ = 0.0f;

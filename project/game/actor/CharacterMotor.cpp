@@ -12,21 +12,30 @@ namespace {
 constexpr float kMinimumDistance = 0.0001f;
 constexpr float kDegreesToRadians = 3.1415926535f / 180.0f;
 
-float Dot(const Vector3& lhs, const Vector3& rhs) { return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z; }
+float Dot(const Vector3& lhs, const Vector3& rhs) {
+    // 衝突法線に対する速度成分を得るための局所的な内積。
+    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+}
 
-float Length(const Vector3& value) { return std::sqrt(Dot(value, value)); }
+float Length(const Vector3& value) {
+    // Sweep の移動距離をワールド空間で測る。
+    return std::sqrt(Dot(value, value));
+}
 
 Vector3 NormalizeOrZero(const Vector3& value) {
+    // ほぼゼロの変位は方向を作らず、SphereCast に不正な値を渡さない。
     const float length = Length(value);
     return length > kMinimumDistance ? value * (1.0f / length) : Vector3{};
 }
 
 Vector3 ResolveQueryCenter(const Object3d& owner, const Vector3& position) {
+    // モデル原点ではなくコライダー中心から Sweep を始める。
     const Object3d::ColliderConfig& collider = owner.GetColliderConfig();
     return position + collider.center;
 }
 
 float ResolveQueryRadius(const Object3d& owner, float skinWidth) {
+    // 接触面にわずかな隙間を残して次フレームの押し戻しを安定させる。
     const Collider* collider = owner.GetCollider();
     const float radius = collider ? collider->GetRadius() : 0.5f;
     return (std::max)(0.05f, radius - skinWidth);
@@ -34,6 +43,7 @@ float ResolveQueryRadius(const Object3d& owner, float skinWidth) {
 } // namespace
 
 void CharacterMotor::SetSettings(const CharacterMotorSettings& settings) {
+    // 傾斜角と段差などを物理計算が扱える範囲に丸める。
     settings_ = settings;
     settings_.maxSlopeDegrees = std::clamp(settings_.maxSlopeDegrees, 0.0f, 89.9f);
     settings_.stepHeight = (std::max)(0.0f, settings_.stepHeight);
@@ -42,6 +52,7 @@ void CharacterMotor::SetSettings(const CharacterMotorSettings& settings) {
 }
 
 void CharacterMotor::BeginFrame(bool& grounded) {
+    // 接地結果は毎フレーム再判定し、前フレームの床を持ち越さない。
     result_.grounded = false;
     result_.blocked = false;
     result_.steppedUp = false;
@@ -51,6 +62,7 @@ void CharacterMotor::BeginFrame(bool& grounded) {
 }
 
 void CharacterMotor::ApplyGravity(Vector3& velocity, float gravity, float maxFallSpeed, float deltaTime) const {
+    // 落下速度の上限で長い落下後の Sweep 距離を抑える。
     velocity.y -= gravity * deltaTime;
     if (velocity.y < -maxFallSpeed) {
         velocity.y = -maxFallSpeed;
@@ -74,6 +86,7 @@ void CharacterMotor::Move(Object3d& owner, Vector3& position, Vector3& velocity,
 
 void CharacterMotor::ResolveCollision(Vector3& position, Vector3& velocity, bool& grounded, const CollisionInfo& info,
                                       std::uint32_t attribute) {
+    // 地面以外の接触では押し戻しや接地状態を変更しない。
     if (!(attribute & CollisionCategories::Get("ground"))) {
         return;
     }
@@ -97,12 +110,14 @@ void CharacterMotor::ResolveCollision(Vector3& position, Vector3& velocity, bool
 }
 
 bool CharacterMotor::IsWalkable(const Vector3& normal) const {
+    // 法線の Y 成分を傾斜角のコサインと比較して歩ける面を決める。
     const float minimumNormalY = std::cos(settings_.maxSlopeDegrees * kDegreesToRadians);
     return normal.y > minimumNormalY;
 }
 
 bool CharacterMotor::TryStep(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded,
                              const Vector3& planarDisplacement, float queryRadius) {
+    // 一度上へ持ち上げて前方の空きを調べ、着地できる段差だけ越える。
     if (settings_.stepHeight <= 0.0f || Length(planarDisplacement) <= kMinimumDistance) {
         return false;
     }
@@ -202,6 +217,7 @@ void CharacterMotor::MoveSwept(Object3d& owner, Vector3& position, Vector3& velo
 
 void CharacterMotor::SnapToGround(Object3d& owner, Vector3& position, Vector3& velocity, bool& grounded,
                                   float queryRadius, float maximumDistance) {
+    // 小さな段差からの離陸を防ぐため、歩行可能な面に限って下方へ吸着する。
     if (maximumDistance <= 0.0f) {
         return;
     }

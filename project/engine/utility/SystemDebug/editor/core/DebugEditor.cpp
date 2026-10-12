@@ -414,6 +414,7 @@ namespace {
 // 初期化
 // ========================================================================
 void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    // Editor各機能へSceneと描画基盤を接続し、前Sceneの選択・Undo状態は破棄します。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
     selectedObject_ = nullptr;
@@ -505,6 +506,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 }
 
 bool DebugEditor::BeginPrefabEditSession(const std::string& prefabName) {
+    // 再生中や未登録Prefabは開かず、編集対象だけを隔離するセッションを作ります。
     if (prefabName.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene() ||
         sceneManager_->IsPlaying() || !PresetManager::GetInstance()->HasPrefab(prefabName)) {
         return false;
@@ -587,6 +589,7 @@ bool DebugEditor::SavePrefabEditSession() {
 }
 
 void DebugEditor::CancelPrefabEditSession() {
+    // 未保存のPrefab編集を破棄し、隔離前のScene表示へ戻します。
     if (!prefabEditMode_) {
         return;
     }
@@ -596,6 +599,7 @@ void DebugEditor::CancelPrefabEditSession() {
 }
 
 bool DebugEditor::IsPrefabEditObject(const Object3d* object) const {
+    // 編集ルートの子孫だけを対象にし、外側のScene Objectを誤保存しません。
     if (!prefabEditMode_ || !object || !prefabEditRoot_) {
         return false;
     }
@@ -611,6 +615,7 @@ bool DebugEditor::IsPrefabEditObject(const Object3d* object) const {
 }
 
 void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
+    // 一時Objectと可視状態を復元し、必要なら専用Undo履歴も破棄します。
     BaseScene* scene = prefabEditScene_;
     std::unordered_set<Object3d*> editObjects;
     if (scene) {
@@ -648,6 +653,7 @@ void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
 }
 
 void DebugEditor::ResetPrefabEditSessionForSceneChange() {
+    // Sceneの寿命を越えるPrefab参照をすべて無効にします。
     prefabEditMode_ = false;
     prefabEditDirty_ = false;
     prefabEditName_.clear();
@@ -1061,6 +1067,7 @@ void DebugEditor::Update() {
 // 終了処理
 // ========================================================================
 void DebugEditor::Finalize() {
+    // プレビューと復元セッションを先に閉じ、借用していたScene参照を解放します。
     if (prefabEditMode_) {
         EndPrefabEditSession(true);
     }
@@ -1189,6 +1196,30 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             case ColliderType::kRing:   color = { 1.0f, 1.0f, 0.0f, 1.0f }; break; // 黄色
             default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
             }
+        }
+
+        // 判定に使う凸輪郭をそのまま表示し、箱の四隅を判定面として誤認させない。
+        if (obj->GetCollider() && obj->GetColliderConfig().footprint.size() >= 3) {
+            const Collider* collider = obj->GetCollider();
+            const auto top = collider->GetFootprintWorldVertices(obj->GetColliderConfig().size.y);
+            const auto drawSegment = [&](const Vector3& from, const Vector3& to) {
+                if (instanceCount >= kMaxDrawLimit) return;
+                const Vector3 delta = to - from;
+                const float horizontal = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+                const float length = math.Length(delta);
+                if (length < 0.0001f) return;
+                const Matrix4x4 world = math.Multiply(
+                    math.Multiply(math.MakeScaleMatrix({ 0.04f, 0.04f, length }),
+                                  math.Multiply(math.MakeRotateXMatrix(-std::atan2(delta.y, horizontal)),
+                                                math.MakeRotateYMatrix(std::atan2(delta.x, delta.z)))),
+                    math.MakeTranslateMatrix((from + to) * 0.5f));
+                primitiveDrawer_.DrawWireCube(commandList, world, color, instanceCount++);
+            };
+            for (size_t i = 0; i < top.size(); ++i) {
+                const size_t next = (i + 1) % top.size();
+                drawSegment(top[i], top[next]);
+            }
+            continue;
         }
 
         // PrimitiveDrawer で描画実行
@@ -1537,6 +1568,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 // 1. 左パネル：Hierarchy (階層構造) と 生成メニュー
 // ==========================================================================================
 void DebugEditor::DrawHierarchy() {
+    // Hierarchyの表示と選択操作は専用Windowへ委譲します。
     hierarchyWindow_.Draw();
 }
 
@@ -1544,6 +1576,7 @@ void DebugEditor::DrawHierarchy() {
 // 2. 右パネル：Inspector (選択したオブジェクトの詳細設定)
 // ==========================================================================================
 void DebugEditor::DrawImGui() {
+    // Inspector操作前後のObject状態を比較し、編集履歴へ渡します。
     const std::vector<ObjectStateSnapshot> beforeStates = CaptureObjectStates(selectedObjects_);
 
     inspectorWindow_.Draw();
@@ -1582,6 +1615,7 @@ void DebugEditor::DrawImGui() {
 
 #ifdef USE_IMGUI
 void DebugEditor::DrawProjectWindow() {
+    // パネルを閉じたときはAsset一覧の描画を止めます。
     if (!projectWindowVisible_) {
         return;
     }

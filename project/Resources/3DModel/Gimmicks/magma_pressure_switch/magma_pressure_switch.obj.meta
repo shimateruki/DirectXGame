@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "b3a0315073ab18838340d92029ec15d5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/magma_pressure_switch/magma_pressure_switch.obj",
+  "version": 1
+}

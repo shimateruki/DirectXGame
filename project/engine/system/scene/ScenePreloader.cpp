@@ -13,6 +13,7 @@
 
 namespace {
 std::string NormalizePath(std::string path) {
+    // 同じAssetが区切り文字の違いで重複しないよう正規化する。
     std::replace(path.begin(), path.end(), '\\', '/');
     while (path.rfind("./", 0) == 0) {
         path.erase(0, 2);
@@ -21,6 +22,7 @@ std::string NormalizePath(std::string path) {
 }
 
 std::string ToLower(std::string value) {
+    // 拡張子やJSONのキーは大文字小文字を無視して分類する。
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char character) {
         return static_cast<char>(std::tolower(character));
     });
@@ -29,6 +31,7 @@ std::string ToLower(std::string value) {
 
 template <class T, class KeySelector>
 void AddUnique(std::vector<T>& values, T value, KeySelector keySelector) {
+    // Assetの識別キーで重複を除き、読込と警告を一回に抑える。
     const auto key = keySelector(value);
     if (key.empty()) {
         return;
@@ -42,10 +45,12 @@ void AddUnique(std::vector<T>& values, T value, KeySelector keySelector) {
 }
 
 void AddUniquePath(std::vector<std::string>& paths, const std::string& path) {
+    // シーン内のパスを正規化したうえで一意に保つ。
     AddUnique(paths, NormalizePath(path), [](const std::string& value) { return value; });
 }
 
 bool IsTextureKey(const std::string& lowerKey) {
+    // 拡張子のない参照も、プロパティ名からテクスチャと判別する。
     return lowerKey == "texture" ||
         lowerKey.find("texturepath") != std::string::npos ||
         lowerKey.find("texturename") != std::string::npos ||
@@ -57,6 +62,7 @@ bool IsTextureKey(const std::string& lowerKey) {
 }
 
 bool IsLinearTextureKey(const std::string& lowerKey) {
+    // 法線やORMの値をsRGB変換しないため、線形テクスチャとして要求する。
     return lowerKey.find("normal") != std::string::npos ||
         lowerKey.find("orm") != std::string::npos ||
         lowerKey.find("mask") != std::string::npos ||
@@ -65,12 +71,14 @@ bool IsLinearTextureKey(const std::string& lowerKey) {
 }
 
 bool IsTextureFile(const std::filesystem::path& path) {
+    // 依存探索ではゲームが扱う画像拡張子だけを対象にする。
     const std::string extension = ToLower(path.extension().string());
     return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ||
         extension == ".tga" || extension == ".dds" || extension == ".hdr";
 }
 
 bool IsAudioFile(const std::filesystem::path& path) {
+    // 音声参照をJSONや画像と区別して先読みへ回す。
     const std::string extension = ToLower(path.extension().string());
     return extension == ".wav" || extension == ".mp3" ||
         extension == ".ogg" || extension == ".flac";
@@ -109,10 +117,12 @@ void RecordDependency(
 }
 
 void AddJsonDependency(ScenePreloadData& data, const std::string& path) {
+    // JSON参照も欠落調査の対象へ記録する。
     RecordDependency(data, SceneDependencyType::Json, path);
 }
 
 void AddAudioDependency(ScenePreloadData& data, std::string path) {
+    // 短いSE名は共有SEディレクトリからの相対指定として扱う。
     path = NormalizePath(std::move(path));
     if (path.rfind("Resources/", 0) != 0) {
         path = NormalizePath(
@@ -123,6 +133,7 @@ void AddAudioDependency(ScenePreloadData& data, std::string path) {
 }
 
 void CollectSharedParticleTextures(ScenePreloadData& data) {
+    // パーティクルが実行中に初めて使う画像も、シーン開始前にまとめて準備する。
     const std::filesystem::path directory = "Resources/sprite/particle";
     std::error_code error;
     if (!std::filesystem::exists(directory, error) || error) {
@@ -153,6 +164,7 @@ void CollectSharedParticleTextures(ScenePreloadData& data) {
 }
 
 void CollectSharedFadeTextures(ScenePreloadData& data) {
+    // 画面遷移中の王冠アイリス素材をシーン共通の先読み対象へ加える。
     const std::filesystem::path directory = "Resources/sprite/fade/crown_iris";
     std::error_code error;
     if (!std::filesystem::exists(directory, error) || error) {
@@ -186,6 +198,7 @@ void AddSharedTexture(
     ScenePreloadData& data,
     const std::string& path,
     bool linear = false) {
+    // 共通素材も色空間を識別キーに含めて重複を抑える。
     SceneLoadManifest::TextureRequest request{ NormalizePath(path), linear };
     AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
         return item.path + (item.linear ? "|linear" : "|color");
@@ -196,6 +209,7 @@ void CollectDependencies(
     const nlohmann::json& value,
     const std::string& propertyName,
     ScenePreloadData& data) {
+    // ネストしたJSONを再帰走査し、モデル・画像・音声・演出プリセットを抽出する。
     if (value.is_object()) {
         if (value.contains("type") && value["type"].is_number_integer() &&
             value.contains("presetName") && value["presetName"].is_string() &&
@@ -320,6 +334,7 @@ void CollectDependencies(
 }
 
 void ExpandObjectLayoutPaths(const std::string& path, std::vector<std::string>& jsonPaths) {
+    // 分割されたScene Assetがある場合は各領域を使い、旧形式の単一JSONにも対応する。
     const std::filesystem::path sourcePath(NormalizePath(path));
     std::filesystem::path basePath = sourcePath;
     basePath.replace_extension();
@@ -353,6 +368,7 @@ void ExpandObjectLayoutPaths(const std::string& path, std::vector<std::string>& 
 }
 
 bool LoadJsonDocument(const std::string& path, nlohmann::json& document, std::string& warning) {
+    // 失敗理由を呼び出し側へ渡し、他の依存ファイルの探索は継続する。
     std::ifstream file(path);
     if (!file.is_open()) {
         warning = "Scene preload could not open JSON: " + path;
@@ -371,22 +387,27 @@ bool LoadJsonDocument(const std::string& path, nlohmann::json& document, std::st
 }
 
 void SceneLoadManifest::AddObjectLayout(const std::string& path) {
+    // 同じ配置ファイルを複数のシーン機能が要求しても一件にまとめる。
     AddUniquePath(objectLayoutPaths, path);
 }
 
 void SceneLoadManifest::AddSpriteLayout(const std::string& path) {
+    // Sprite配置の重複読込を避ける。
     AddUniquePath(spriteLayoutPaths, path);
 }
 
 void SceneLoadManifest::AddJson(const std::string& path) {
+    // 配置以外のJSONも同じ依存探索へ含める。
     AddUniquePath(additionalJsonPaths, path);
 }
 
 void SceneLoadManifest::AddModel(const std::string& modelName) {
+    // モデル名を先読み対象として一度だけ登録する。
     AddUniquePath(modelNames, modelName);
 }
 
 void SceneLoadManifest::AddTexture(const std::string& path, bool linear) {
+    // 同一画像でも線形色空間と色画像は別のGPU資源要求として扱う。
     TextureRequest request{ NormalizePath(path), linear };
     AddUnique(textures, std::move(request), [](const TextureRequest& item) {
         return item.path + (item.linear ? "|linear" : "|color");
@@ -394,10 +415,12 @@ void SceneLoadManifest::AddTexture(const std::string& path, bool linear) {
 }
 
 void SceneLoadManifest::AddAudio(const std::string& path) {
+    // 明示されたBGMやSEの候補を一意に保つ。
     AddUniquePath(audioPaths, path);
 }
 
 std::size_t SceneDependencyReport::Count(SceneDependencyType type) const {
+    // 欠落の有無にかかわらず、種類ごとの参照件数を集計する。
     return static_cast<std::size_t>(std::count_if(
         assets.begin(),
         assets.end(),
@@ -407,6 +430,7 @@ std::size_t SceneDependencyReport::Count(SceneDependencyType type) const {
 }
 
 void ScenePreloadProgress::Begin(std::size_t totalTasks) {
+    // 進捗表示でゼロ除算しないよう、最低一件として開始する。
     completedTasks_.store(0, std::memory_order_relaxed);
     totalTasks_.store((std::max)(totalTasks, std::size_t{ 1 }), std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(taskMutex_);
@@ -414,20 +438,24 @@ void ScenePreloadProgress::Begin(std::size_t totalTasks) {
 }
 
 void ScenePreloadProgress::Advance(const std::string& currentTask) {
+    // 件数は原子変数、表示文字列はMutexで別々に保護する。
     completedTasks_.fetch_add(1, std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(taskMutex_);
     currentTask_ = currentTask;
 }
 
 void ScenePreloadProgress::AddTasks(std::size_t taskCount) {
+    // JSONから発見した追加依存を進捗の分母へ加える。
     totalTasks_.fetch_add(taskCount, std::memory_order_relaxed);
 }
 
 void ScenePreloadProgress::Finish() {
+    // 全件の終了時は丸め誤差に依存せず100%へ合わせる。
     completedTasks_.store(totalTasks_.load(std::memory_order_relaxed), std::memory_order_relaxed);
 }
 
 float ScenePreloadProgress::GetRatio() const {
+    // 作業スレッドから更新された件数を読み、UI向けに0から1へ収める。
     const std::size_t total = totalTasks_.load(std::memory_order_relaxed);
     const std::size_t completed = completedTasks_.load(std::memory_order_relaxed);
     if (total == 0) {
@@ -437,11 +465,13 @@ float ScenePreloadProgress::GetRatio() const {
 }
 
 std::string ScenePreloadProgress::GetCurrentTask() const {
+    // 作業中のパスはMutex下でコピーし、UIへ安全に渡す。
     std::lock_guard<std::mutex> lock(taskMutex_);
     return currentTask_;
 }
 
 bool ScenePreloadData::TakeJson(const std::string& path, nlohmann::json& destination) {
+    // 解析済みJSONを移動して渡し、同じ文書の二重消費を防ぐ。
     const auto found = jsonDocuments.find(NormalizePath(path));
     if (found == jsonDocuments.end()) {
         return false;

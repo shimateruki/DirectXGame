@@ -10,11 +10,18 @@
 #include <fstream>
 
 namespace {
-float ClampVolume(float value) { return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f; }
+float ClampVolume(float value) {
+    // 壊れた保存値の NaN は音量計算へ流さず既定値へ戻す。
+    return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f;
+}
 
-float ClampSensitivity(float value) { return std::isfinite(value) ? std::clamp(value, 0.2f, 1.0f) : 1.0f; }
+float ClampSensitivity(float value) {
+    // 無効な設定でカメラ操作が止まらないよう有効範囲へ丸める。
+    return std::isfinite(value) ? std::clamp(value, 0.2f, 1.0f) : 1.0f;
+}
 
 GameSettingsManager::StageSelectWeatherMode ClampStageSelectWeatherMode(int value) {
+    // 未知の列挙値は自動天候へ戻して古い設定ファイルも受け入れる。
     if (value < static_cast<int>(GameSettingsManager::StageSelectWeatherMode::Auto) ||
         value > static_cast<int>(GameSettingsManager::StageSelectWeatherMode::Rain)) {
         return GameSettingsManager::StageSelectWeatherMode::Auto;
@@ -24,11 +31,13 @@ GameSettingsManager::StageSelectWeatherMode ClampStageSelectWeatherMode(int valu
 } // namespace
 
 GameSettingsManager* GameSettingsManager::GetInstance() {
+    // 保存設定は全シーンで同じ実体を共有する。
     static GameSettingsManager instance;
     return &instance;
 }
 
 void GameSettingsManager::Initialize() {
+    // 二度目以降の初期化では読み直さず、保持中の音量だけ適用する。
     if (initialized_) {
         ApplyAudioSettings();
         return;
@@ -94,6 +103,7 @@ void GameSettingsManager::Load() {
 }
 
 bool GameSettingsManager::Save() const {
+    // 他システムの設定キーを残しつつ、廃止した表示設定だけ整理する。
     nlohmann::json data;
     std::ifstream input(filePath_);
     if (input.is_open()) {
@@ -129,24 +139,29 @@ bool GameSettingsManager::Save() const {
 }
 
 void GameSettingsManager::SetBGMVolume(float volume) {
+    // 音量調整は保存前でも再生中の BGM に即時適用する。
     bgmVolume_ = ClampVolume(volume);
     AudioPlayer::GetInstance()->SetBGMMasterVolume(bgmVolume_);
 }
 
 void GameSettingsManager::SetSEVolume(float volume) {
+    // 音量調整は保存前でも再生中の SE に即時適用する。
     seVolume_ = ClampVolume(volume);
     AudioPlayer::GetInstance()->SetSEMasterVolume(seVolume_);
 }
 
 void GameSettingsManager::SetCameraSensitivity(float sensitivity) {
+    // 操作側が参照する値を有効範囲で保持する。
     cameraSensitivity_ = ClampSensitivity(sensitivity);
 }
 
 void GameSettingsManager::SetStageSelectWeatherMode(StageSelectWeatherMode mode) {
+    // UI からの設定でも未知の値を自動モードへ丸める。
     stageSelectWeatherMode_ = ClampStageSelectWeatherMode(static_cast<int>(mode));
 }
 
 void GameSettingsManager::ApplyAudioSettings() const {
+    // 起動時の読込と再初期化で、保持値を音声ミキサーへ同期する。
     AudioPlayer::GetInstance()->SetBGMMasterVolume(bgmVolume_);
     AudioPlayer::GetInstance()->SetSEMasterVolume(seVolume_);
 }

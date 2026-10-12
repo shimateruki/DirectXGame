@@ -48,6 +48,7 @@ void GamePlayScene::StartLifeLostPresentation(int beforeLives, int afterLives) {
 
 // シーン遷移や復帰で演出が中断されても、専用カメラと表示物を残しません。
 void GamePlayScene::HideLifeLostPresentationOverlay() {
+    // 残機減少演出のカメラとSpriteを片付け、通常シーンへ描画を戻す。
     lifeLostPresentationActive_ = false;
     lifeLostPresentationFinished_ = true;
     lifeLostBlackHold_ = false;
@@ -210,6 +211,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
 }
 
 void GamePlayScene::DrawLifeLostPresentation() {
+    // 暗転保持中も背景は描き、演出終了まで画面の飛びを防ぐ。
     if (!lifeLostPresentationActive_ && !lifeLostBlackHold_)
         return;
     if (!lifeLostPresentationActive_) {
@@ -226,6 +228,7 @@ void GamePlayScene::DrawLifeLostPresentation() {
 
 // ライフ減少専用の3D表示物は初期化時に用意し、演出中は表示だけ切り替えます。
 void GamePlayScene::InitializeLifeLostPresentationObjects() {
+    // 専用カメラとモデルは3D描画基盤の初期化後に生成する。
     if (!object3dCommon_) {
         return;
     }
@@ -270,6 +273,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
 }
 
 void GamePlayScene::UpdateLifeLostPresentationWorld(float deltaTime) {
+    // 演出時計からカメラとモデル姿勢を求め、ゲーム側の物理更新には依存しない。
     (void)deltaTime;
     const float t = lifeLostPresentationTimer_;
 
@@ -290,6 +294,7 @@ void GamePlayScene::UpdateLifeLostPresentationWorld(float deltaTime) {
 
 void GamePlayScene::DrawLifeLostPresentationWorld(ID3D12Resource* pointLightResource,
                                                   ID3D12Resource* spotLightResource) {
+    // 残機演出が有効な間だけ専用ワールドを描画する。
     if (!lifeLostPresentationActive_) {
         return;
     }

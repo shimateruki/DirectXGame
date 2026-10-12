@@ -10,6 +10,7 @@ namespace {
 class CrownSealTarget final : public BaseEnemy {
   public:
     void Update(float deltaTime) override {
+        // 結晶も通常の敵ダメージ間隔を使い、連続接触で一瞬に壊れないようにします。
         damageCooldownTimer_ = std::max(0.0f, damageCooldownTimer_ - deltaTime);
         Object3d::Update(deltaTime);
     }
@@ -17,6 +18,7 @@ class CrownSealTarget final : public BaseEnemy {
 
 void UpdateFinaleLayer(EffectObject3d* effect, float deltaTime, bool visible, const Vector3& position,
                        const Vector3& scale, const Vector4& color, const Vector3& rotation = {}) {
+    // 複数の演出層を同じ更新順で配置し、描画前に行列を確定します。
     if (!effect)
         return;
     effect->Update(deltaTime);
@@ -31,6 +33,7 @@ void UpdateFinaleLayer(EffectObject3d* effect, float deltaTime, bool visible, co
 
 // XZ平面のオーラをカメラへ向け、横から見ても光の厚みを保ちます。
 Vector3 FinaleBillboardRotation(const Vector3& center) {
+    // 主カメラがないプレビュー時は水平向きの既定姿勢を返します。
     if (const auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
         const Vector3 toEye = camera->GetEye() - center;
         return {kPi * 0.5f - std::atan2(toEye.y, std::sqrt(toEye.x * toEye.x + toEye.z * toEye.z)),
@@ -42,6 +45,7 @@ Vector3 FinaleBillboardRotation(const Vector3& center) {
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 float EnemyFalseKingSlime::FilterFinaleDamage(float damage) {
+    // 第一形態の HP 下限、結晶防護、最終形態の装甲倍率を一箇所で適用します。
     if (!debugPreviewAttackId_.empty() || !IsEncounterControlled())
         return damage;
     if (crownInterlude_ || attackState_ == AttackState::PhaseShift)
@@ -57,6 +61,7 @@ float EnemyFalseKingSlime::FilterFinaleDamage(float damage) {
 }
 
 void EnemyFalseKingSlime::OpenCrownArmor() {
+    // 最終形態だけ一定時間の弱点開放を許可します。
     if (battlePhase_ != 3 || crownInterlude_)
         return;
     armorOpenTimer_ = CrownFinaleTuning::Get().armorOpenTime;
@@ -64,6 +69,7 @@ void EnemyFalseKingSlime::OpenCrownArmor() {
 }
 
 void EnemyFalseKingSlime::ResetCrownFinale() {
+    // 個別登録した結晶の衝突を先に解除してから所有物を破棄します。
     crownShieldRing_.reset();
     crownShieldShell_.reset();
     crownShieldBarrier_.reset();
@@ -98,6 +104,7 @@ void EnemyFalseKingSlime::ResetCrownFinale() {
 }
 
 void EnemyFalseKingSlime::InitializeCrownSeals() {
+    // 三つの結晶を通常の敵判定経路へ登録し、攻撃・描画・演出層をまとめて準備します。
     const auto& tuning = CrownFinaleTuning::Get();
     for (auto& seal : crownSeals_) {
         if (seal.crystal)
@@ -232,6 +239,7 @@ void EnemyFalseKingSlime::InitializeCrownSeals() {
 }
 
 Vector3 EnemyFalseKingSlime::GetLastBrokenCrownSealPosition() const {
+    // 最も最近壊れた結晶を復帰演出の基準にし、未破壊なら既定の位置を返します。
     const CrownSeal* latest = nullptr;
     for (const auto& seal : crownSeals_)
         if (seal.broken && (!latest || seal.breakAge < latest->breakAge)) latest = &seal;
@@ -240,6 +248,7 @@ Vector3 EnemyFalseKingSlime::GetLastBrokenCrownSealPosition() const {
 }
 
 void EnemyFalseKingSlime::TryBreakCrownSeal(const Vector3& impact, int attackStage, bool force) {
+    // 結晶 HP と着弾位置を確かめ、破壊確定時に衝突を登録解除します。
     if (battlePhase_ != 2 || !debugPreviewAttackId_.empty() || brokenSeals_ >= 3)
         return;
     if (attackStage < 0 || attackStage >= static_cast<int>(crownSeals_.size()))
@@ -270,12 +279,14 @@ void EnemyFalseKingSlime::TryBreakCrownSeal(const Vector3& impact, int attackSta
 }
 
 float EnemyFalseKingSlime::GetSealCastRemainingTime() const {
+    // 詠唱中以外は UI の残り時間をゼロとして扱います。
     return battlePhase_ == 2 && sealState_ == SealState::Chant
                ? std::max(0.0f, CrownFinaleTuning::Get().sealCastTime - sealStateTimer_)
                : 0.0f;
 }
 
 void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
+    // 結晶の HP と見た目を同期し、全破壊または詠唱完了までの進行を管理します。
     const auto& tuning = CrownFinaleTuning::Get();
     idleTimer_ += deltaTime;
     sealStateTimer_ += deltaTime;
@@ -723,6 +734,7 @@ void EnemyFalseKingSlime::UpdateCrownSeals(float deltaTime) {
 }
 
 void EnemyFalseKingSlime::BeginFinalArena(const Vector3& position) {
+    // 王冠結晶戦から最終決戦へ移り、戦闘位置と残った演出を切り替えます。
     // 次の闘技場へ持ち越す前に、結晶の衝突登録を含む第二形態の所有物を破棄します。
     ResetCrownFinale();
     crownInterlude_ = false;
@@ -746,6 +758,7 @@ void EnemyFalseKingSlime::BeginFinalArena(const Vector3& position) {
 }
 
 void EnemyFalseKingSlime::AbortCrownFinale() {
+    // エディターへ戻る際などに専用の結晶とバリアを登録解除します。
     crownInterlude_ = false;
     finalArenaStarted_ = false;
     battlePhase_ = pendingBattlePhase_ = 2;
@@ -759,6 +772,7 @@ void EnemyFalseKingSlime::AbortCrownFinale() {
 }
 
 void EnemyFalseKingSlime::DrawFinaleEditor() {
+    // エディター用の進行操作と調整値を ImGui 上で表示します。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("王冠最終戦 / 第2形態・脱出", ImGuiTreeNodeFlags_DefaultOpen))
         return;

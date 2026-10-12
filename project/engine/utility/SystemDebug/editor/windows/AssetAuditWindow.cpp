@@ -564,6 +564,7 @@ bool IsAssetAuditPreviewObject(const Object3d* object) {
 
 // エディタ参照を保持し、監査ウィンドウからプレビューや削除を操作できるようにする。
 void AssetAuditWindow::Initialize(DebugEditor* editor) {
+    // 監査結果は明示的に再読み込みするまで使わず、古い画面表示を引き継がない。
     editor_ = editor;
     hasReport_ = false;
     lastStatus_ = "アセット監査を開きました。前回レポートを確認する場合は、レポート再読み込みを押してください。";
@@ -572,6 +573,7 @@ void AssetAuditWindow::Initialize(DebugEditor* editor) {
 // アセット監査ウィンドウ全体を描画し、実行・読み込み・検索・削除をまとめて扱う。
 void AssetAuditWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    // 非同期監査の完了を先に反映し、そのフレームから最新結果を描画する。
     (void)editor_;
     UpdateAuditProcess();
     ImGui::Text(ICON_FA_SEARCH " アセット監査 / Heavy Asset Profiler + Unused Asset Scanner");
@@ -627,6 +629,7 @@ void AssetAuditWindow::DrawImGui() {
         }
     }
 
+    // 共通の検索・分類条件を各一覧へ渡し、同じ監査結果を目的別に見る。
     if (ImGui::BeginTabBar("AssetAuditTabs")) {
         if (ImGui::BeginTabItem("重い素材")) {
             DrawHeavyAssets();
@@ -653,6 +656,7 @@ void AssetAuditWindow::DrawImGui() {
 
 // 非同期実行中の監査ツールが終わったかを確認し、完了時に最新レポートを読み込む。
 void AssetAuditWindow::UpdateAuditProcess() {
+    // フレーム更新を止めないため、完了済みの future だけから結果を回収する。
     if (!auditRunning_) {
         return;
     }
@@ -683,6 +687,7 @@ void AssetAuditWindow::UpdateAuditProcess() {
 
 // PowerShell監査ツールをバックグラウンドで起動し、UI操作を止めずに解析を開始する。
 bool AssetAuditWindow::RunAuditTool() {
+    // 同時起動を防ぎ、前回の future を上書きしない。
     if (auditRunning_) {
         lastStatus_ = "アセット監査を実行中です。完了まで少し待ってください。";
         return false;
@@ -694,6 +699,7 @@ bool AssetAuditWindow::RunAuditTool() {
 
     auditRunning_ = true;
     lastStatus_ = "アセット監査をバックグラウンドで実行しています。";
+    // プロセスの待機はワーカースレッドへ逃がし、ImGui 側は状態だけ監視する。
     auditFuture_ = std::async(std::launch::async, [toolCommand]() -> std::uint32_t {
         DWORD exitCode = 1;
         if (!RunHiddenProcessAndWait(toolCommand, &exitCode)) {
@@ -706,6 +712,7 @@ bool AssetAuditWindow::RunAuditTool() {
 
 // latest_report.jsonを読み込み、画面表示に使う最新の監査結果へ差し替える。
 bool AssetAuditWindow::LoadLatestReport() {
+    // 読み込み失敗時は前回結果を有効扱いせず、誤った削除判断を避ける。
     nlohmann::json report;
     if (!ReadJsonFile(kReportPath, report)) {
         hasReport_ = false;
@@ -723,6 +730,7 @@ bool AssetAuditWindow::LoadLatestReport() {
 // 総ファイル数・未使用容量・警告数など、監査結果の概要を表示する。
 void AssetAuditWindow::DrawSummary() {
 #ifdef USE_IMGUI
+    // レポートの集計値と実行時の閾値を並べ、警告数の根拠を確認できるようにする。
     const nlohmann::json summary = latestReport_.value("summary", nlohmann::json::object());
     const nlohmann::json thresholds = latestReport_.value("thresholds", nlohmann::json::object());
 
@@ -754,6 +762,7 @@ void AssetAuditWindow::DrawSummary() {
 // カテゴリ別の重い素材数と未使用候補数を集計して表示する。
 void AssetAuditWindow::DrawCategorySummary() {
 #ifdef USE_IMGUI
+    // 原本は書き換えず、現在の分類規則で重い素材と未使用候補を再集計する。
     std::array<int, kAssetFilterCount> heavyCounts{};
     std::array<int, kAssetFilterCount> unusedCounts{};
 
@@ -805,6 +814,7 @@ void AssetAuditWindow::DrawCategorySummary() {
 // 容量や解像度が大きいアセットを一覧表示し、最適化候補を探しやすくする。
 void AssetAuditWindow::DrawHeavyAssets() {
 #ifdef USE_IMGUI
+    // 大量の結果でも毎フレームの ImGui 描画が膨らまないよう行数を制限する。
     const auto& heavyAssets = ArrayOrEmpty(latestReport_, "heavyAssets");
     int drawnCount = 0;
     bool truncated = false;
@@ -862,6 +872,7 @@ void AssetAuditWindow::DrawHeavyAssets() {
 // JSON/コードから参照が見つからない候補を表示し、必要なら削除確認へ進ませる。
 void AssetAuditWindow::DrawUnusedAssets() {
 #ifdef USE_IMGUI
+    // 未参照は削除の確証ではないため、候補を示して個別の確認操作へ進ませる。
     const auto& unusedAssets = ArrayOrEmpty(latestReport_, "unusedAssets");
     int drawnCount = 0;
     bool truncated = false;
@@ -912,6 +923,7 @@ void AssetAuditWindow::DrawUnusedAssets() {
 // JSONやコードに書かれているのに実ファイルが無い参照を表示し、破損箇所を探す。
 void AssetAuditWindow::DrawMissingReferences() {
 #ifdef USE_IMGUI
+    // 参照元と期待候補を同じ行へ載せ、欠損した設定を追えるようにする。
     const auto& missingReferences = ArrayOrEmpty(latestReport_, "missingReferences");
     int drawnCount = 0;
     bool truncated = false;
@@ -948,6 +960,7 @@ void AssetAuditWindow::DrawMissingReferences() {
 // 完全削除前に対象パスを確認させ、相方ファイルも消えることを明示する。
 void AssetAuditWindow::DrawDeleteConfirmPopup() {
 #ifdef USE_IMGUI
+    // 確認ボタンを押すまでファイル操作は行わず、結果を画面上のレポートにも反映する。
     if (ImGui::BeginPopupModal("AssetAuditDeleteConfirm", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text(ICON_FA_EXCLAMATION_TRIANGLE " アセットを削除しますか？");
         ImGui::Separator();
@@ -983,6 +996,7 @@ void AssetAuditWindow::DrawDeleteConfirmPopup() {
 
 // 画像プレビュー用にTextureManagerへ読み込ませ、SRVハンドルを取得する。
 uint32_t AssetAuditWindow::GetPreviewTextureHandle(const std::string& relativePath) {
+    // 同じ画像の再ロードを避け、監査画面で使う SRV をパス単位で再利用する。
     const std::string normalizedPath = NormalizeSlash(relativePath);
     auto it = previewTextureHandles_.find(normalizedPath);
     if (it != previewTextureHandles_.end()) {
@@ -1001,6 +1015,7 @@ uint32_t AssetAuditWindow::GetPreviewTextureHandle(const std::string& relativePa
 
 // 選択アセットをエクスプローラーや関連付けアプリで開けるようにする。
 bool AssetAuditWindow::OpenExternalPath(const std::string& relativePath) {
+    // 外部アプリへ渡す前に実在を確認し、失敗理由を UI へ残す。
     const std::string normalizedPath = NormalizeSlash(relativePath);
     const fs::path fullPath = (fs::current_path() / fs::path(normalizedPath)).lexically_normal();
     if (!fs::exists(fullPath)) {
@@ -1019,6 +1034,7 @@ bool AssetAuditWindow::OpenExternalPath(const std::string& relativePath) {
 
 // 音声アセットをBGM/SEの扱いに合わせて再生し、不要素材か確認できるようにする。
 bool AssetAuditWindow::PlayAudioPreview(const std::string& relativePath, bool isBgm) {
+    // 試聴のたびに音声を再ロードしないよう、読み込み済みハンドルを使う。
     const std::string normalizedPath = NormalizeSlash(relativePath);
     const fs::path path = (fs::current_path() / fs::path(normalizedPath)).lexically_normal();
     if (!fs::exists(path) || !fs::is_regular_file(path)) {
@@ -1040,6 +1056,7 @@ bool AssetAuditWindow::PlayAudioPreview(const std::string& relativePath, bool is
         return false;
     }
 
+    // BGM は既存の再生を止めて切り替え、SE は単発で鳴らす。
     if (isBgm) {
         AudioPlayer::GetInstance()->StopBGM();
         AudioPlayer::GetInstance()->PlayBGM(handle, false, 0.75f);
@@ -1052,6 +1069,7 @@ bool AssetAuditWindow::PlayAudioPreview(const std::string& relativePath, bool is
 }
 
 int AssetAuditWindow::CountModelPreviews() const {
+    // エディター専用の一時 Object だけ数え、通常のシーン資産は含めない。
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return 0;
     }
@@ -1067,6 +1085,7 @@ int AssetAuditWindow::CountModelPreviews() const {
 
 // モデルアセットを現在シーンへ一時配置し、見た目を確認できるようにする。
 void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
+    // 既存シーンへ一時配置するので、シーンと描画共通資源がある場合だけ進める。
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         lastStatus_ = "モデルを確認できるシーンがありません。";
         return;
@@ -1099,6 +1118,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     auto object = std::make_unique<Object3d>();
     object->Initialize(common);
     object->SetName(std::string(kAssetAuditPreviewPrefix) + std::to_string(previewIndex) + "_" + modelName);
+    // 専用クラス名で一時配置を識別し、衝突を無効にして通常の操作を妨げない。
     object->SetClassName("EditorOnly_AssetAuditPreview");
     object->SetSaveCategory("Object");
     object->SetIsLocked(true);
@@ -1125,6 +1145,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
 
 // アセット監査で作成した一時モデルプレビューをまとめてシーンから取り除く。
 void AssetAuditWindow::RemoveModelPreviews() {
+    // 走査中に配列を変更しないよう対象を先に集め、シーンへ削除を予約する。
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return;
     }
@@ -1149,6 +1170,7 @@ void AssetAuditWindow::RemoveModelPreviews() {
 // アセット種別ごとに画像・音声・モデルの確認UIを出し分ける。
 void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) {
 #ifdef USE_IMGUI
+    // 小さい画像のみ内部表示し、音声・モデルはそれぞれ専用の確認経路を使う。
     const std::string path = JsonString(item, "path");
     const std::string category = JsonString(item, "category");
     if (path.empty()) {
@@ -1219,6 +1241,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
 
 // 保護パスとResources配下を確認したうえで、本体と相方ファイルを完全削除する。
 bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage) {
+    // 相対パスと実体の両方を検査し、Resources 外のファイルを削除しない。
     deletedPaths.clear();
     errorMessage.clear();
 
@@ -1240,6 +1263,7 @@ bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::ve
         return false;
     }
 
+    // 元画像と DDS などの対になるファイルも削除対象として明示的に列挙する。
     std::vector<fs::path> targets = BuildDeleteTargets(mainPath, resourcesRoot);
     if (targets.empty()) {
         errorMessage = "削除できる対象がありません。";
@@ -1263,6 +1287,7 @@ bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::ve
 
 // 削除済みファイルを画面上のレポートからも取り除き、再監査前でも表示を更新する。
 void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::string>& deletedPaths) {
+    // 再監査を待たずに一覧から消すが、更新するのは今回削除したパスだけに限る。
     if (!hasReport_ || !latestReport_.is_object() || deletedPaths.empty()) {
         return;
     }
@@ -1301,6 +1326,7 @@ void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::stri
 
 // 検索文字列をカテゴリ・パス・理由へ当て、表示する行を絞り込む。
 bool AssetAuditWindow::MatchesSearch(const nlohmann::json& item) const {
+    // カテゴリや参照元も検索対象に含め、一覧ごとに別の検索処理を持たない。
     if (searchBuffer_[0] == '\0') {
         return true;
     }

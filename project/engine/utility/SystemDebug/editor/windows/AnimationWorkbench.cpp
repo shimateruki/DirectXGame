@@ -59,12 +59,14 @@ void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
 }
 
 void AnimationWorkbench::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    // プレビューのシーンと描画基盤は借用し、ワークベンチ側で所有しない。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
     RefreshAssetFiles();
 }
 
 void AnimationWorkbench::Finalize() {
+    // シーンへ追加したプレビュー専用 Object を片付けて参照を無効にする。
     StopPreview();
     CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, false);
     RemovePreviewObject();
@@ -238,6 +240,7 @@ void AnimationWorkbench::DrawImGui() {
 
 
 void AnimationWorkbench::DrawPreviewControls() {
+    // 再生位置・速度・ループを編集し、保存済みキーと現在の見た目を同期する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("プレビュー", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
@@ -304,6 +307,7 @@ void AnimationWorkbench::DrawPreviewControls() {
 
 
 void AnimationWorkbench::DrawAssetControls() {
+    // モデル、基礎アニメーション、作業 JSON の選択と保存をここに集める。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("クリップの読み込み・保存", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
@@ -345,6 +349,7 @@ void AnimationWorkbench::DrawAssetControls() {
 }
 
 void AnimationWorkbench::DrawBodyControls() {
+    // 本体の移動・回転・伸縮・せん断を関節キーとは分けて編集する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("身体の姿勢", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
@@ -432,6 +437,7 @@ void AnimationWorkbench::DrawBodyControls() {
 }
 
 void AnimationWorkbench::DrawJointControls() {
+    // 選択関節のローカル姿勢だけを編集し、全身の基礎アニメーションに重ねる。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("ボーン編集", ImGuiTreeNodeFlags_DefaultOpen)) return;
     if (!previewModel_ || !previewModel_->HasSkeleton()) {
@@ -516,6 +522,7 @@ void AnimationWorkbench::DrawJointControls() {
 }
 
 void AnimationWorkbench::DrawKeyframeControls() {
+    // タイムラインのキーを選択し、同時刻の値を更新できるようにする。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("キー", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
@@ -556,6 +563,7 @@ void AnimationWorkbench::DrawKeyframeControls() {
 }
 
 void AnimationWorkbench::DrawEventControls() {
+    // 音や演出の発火点は姿勢キーと別のイベント列で管理する。
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("イベントマーカー")) return;
 
@@ -621,6 +629,7 @@ void AnimationWorkbench::DrawEventControls() {
 }
 
 bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
+    // メッシュ実体のあるモデルだけ採用し、前モデルのキーや一時編集を残さない。
     if (modelName.empty()) return false;
 
     Model* model = ModelManager::GetInstance()->LoadModel(modelName);
@@ -666,6 +675,7 @@ bool AnimationWorkbench::LoadPreviewModel(const std::string& modelName) {
 }
 
 void AnimationWorkbench::CreatePreviewObject() {
+    // 専用 Object をシーンに一つだけ置き、保存や当たり判定の対象から外す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon()) return;
@@ -697,6 +707,7 @@ void AnimationWorkbench::CreatePreviewObject() {
 }
 
 void AnimationWorkbench::RemovePreviewObject() {
+    // Scene の走査中に直接消さず、非表示にして削除要求へ渡す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) {
         previewObject_ = nullptr;
         return;
@@ -710,6 +721,7 @@ void AnimationWorkbench::RemovePreviewObject() {
 }
 
 Object3d* AnimationWorkbench::FindPreviewObject() const {
+    // シーン切り替え後は保持ポインタを信用せず、現シーン内で名前から探す。
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
         if (object && object->GetName() == kPreviewObjectName) {
@@ -785,6 +797,7 @@ void AnimationWorkbench::ApplyTimelinePose() {
 }
 
 BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
+    // UI の角度を保存形式のラジアンへ変換し、ゼロに近いスケールを制限する。
     BodyAnimationClip::Key key;
     key.time = currentTime_;
     key.translate = bodyTranslateUi_;
@@ -801,6 +814,7 @@ BodyAnimationClip::Key AnimationWorkbench::BuildBodyKeyFromUi() const {
 }
 
 void AnimationWorkbench::AddOrUpdateBodyKey() {
+    // 同時刻のキーを上書きし、新しい時刻だけ追加して並びを維持する。
     BodyAnimationClip::Key key = BuildBodyKeyFromUi();
     for (int index = 0; index < static_cast<int>(bodyKeys_.size()); ++index) {
         if (std::abs(bodyKeys_[index].time - key.time) <= kKeyEpsilon) {
@@ -827,6 +841,7 @@ void AnimationWorkbench::AddOrUpdateBodyKey() {
 }
 
 void AnimationWorkbench::DeleteSelectedBodyKey() {
+    // 削除後はその時刻の補間姿勢へ UI を戻し、未保存の一時姿勢を消す。
     if (selectedBodyKeyIndex_ < 0 || selectedBodyKeyIndex_ >= static_cast<int>(bodyKeys_.size())) {
         return;
     }
@@ -838,6 +853,7 @@ void AnimationWorkbench::DeleteSelectedBodyKey() {
 }
 
 bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip::Key& keyOut) const {
+    // 区間の開始キーに保存されたイージングを補間率へ適用する。
     if (bodyKeys_.empty()) {
         return false;
     }
@@ -875,6 +891,7 @@ bool AnimationWorkbench::TryGetInterpolatedBodyKey(float time, BodyAnimationClip
 }
 
 void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
+    // 保存値の回転はラジアンなので、操作欄には度へ戻して表示する。
     bodyTranslateUi_ = key.translate;
     bodyShearUi_ = key.shear;
     bodyShearPivotY_ = key.shearPivotY;
@@ -884,6 +901,7 @@ void AnimationWorkbench::SyncBodyUiFromKey(const BodyAnimationClip::Key& key) {
 }
 
 void AnimationWorkbench::SyncBodyUiFromTimeline() {
+    // キーが無い場合は単位姿勢に戻し、前クリップの値を UI に残さない。
     BodyAnimationClip::Key key;
     if (TryGetInterpolatedBodyKey(currentTime_, key)) {
         SyncBodyUiFromKey(key);
@@ -899,12 +917,14 @@ void AnimationWorkbench::SyncBodyUiFromTimeline() {
 }
 
 void AnimationWorkbench::SortBodyKeys() {
+    // 補間時に隣接キーを探せるよう時刻順を維持する。
     std::sort(bodyKeys_.begin(), bodyKeys_.end(), [](const BodyAnimationClip::Key& lhs, const BodyAnimationClip::Key& rhs) {
         return lhs.time < rhs.time;
     });
 }
 
 void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
+    // 関節の Euler 回転を骨格が使う Quaternion へ変換して適用する。
     if (!previewModel_) return;
     previewModel_->SetJointTransform(key.jointIndex, {
         key.scale,
@@ -914,6 +934,7 @@ void AnimationWorkbench::ApplyPoseKey(const PoseKey& key) {
 }
 
 AnimationWorkbench::PoseKey AnimationWorkbench::BuildPoseKeyFromUi() const {
+    // 保存時は関節番号と名前を両方持ち、モデル更新後の再割り当てに備える。
     PoseKey key;
     key.time = currentTime_;
     key.jointIndex = selectedJointIndex_;
@@ -927,6 +948,7 @@ AnimationWorkbench::PoseKey AnimationWorkbench::BuildPoseKeyFromUi() const {
 }
 
 void AnimationWorkbench::AddOrUpdateKey() {
+    // 同じ関節・同じ時刻のキーは置換し、一時プレビュー値を確定値へ移す。
     if (!previewModel_ || selectedJointIndex_ < 0) return;
 
     PoseKey key = BuildPoseKeyFromUi();
@@ -947,6 +969,7 @@ void AnimationWorkbench::AddOrUpdateKey() {
 }
 
 void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
+    // 他の関節や別時刻のキーを残して、選択関節の現在キーだけ消す。
     if (selectedJointIndex_ < 0) return;
     keys_.erase(
         std::remove_if(keys_.begin(), keys_.end(), [&](const PoseKey& key) {
@@ -957,6 +980,7 @@ void AnimationWorkbench::DeleteSelectedJointKeyAtCurrentTime() {
 }
 
 bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseKey& keyOut) const {
+    // 対象関節の前後キーだけを取り、回転は Quaternion 補間でつなぐ。
     std::vector<PoseKey> jointKeys;
     for (const PoseKey& key : keys_) {
         if (key.jointIndex == jointIndex) {
@@ -994,6 +1018,7 @@ bool AnimationWorkbench::TryGetInterpolatedKey(int jointIndex, float time, PoseK
 }
 
 void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
+    // プレビュー骨格の現在姿勢を編集欄へ戻す際は角度を度へ変換する。
     if (!previewModel_) return;
     Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
     jointTranslateUi_ = transform.translate;
@@ -1002,6 +1027,7 @@ void AnimationWorkbench::SyncUiFromJoint(int jointIndex) {
 }
 
 void AnimationWorkbench::SortKeys() {
+    // 時刻が近いキーは関節番号で整列し、一覧の順序を安定させる。
     std::sort(keys_.begin(), keys_.end(), [](const PoseKey& a, const PoseKey& b) {
         if (std::abs(a.time - b.time) > kKeyEpsilon) return a.time < b.time;
         return a.jointIndex < b.jointIndex;
@@ -1009,6 +1035,7 @@ void AnimationWorkbench::SortKeys() {
 }
 
 void AnimationWorkbench::RefreshAssetFiles() {
+    // 作業ディレクトリ内の JSON だけを候補にし、名前順で表示する。
     namespace fs = std::filesystem;
     assetFiles_.clear();
     if (!fs::exists(kSaveDirectory)) {
@@ -1023,6 +1050,7 @@ void AnimationWorkbench::RefreshAssetFiles() {
 }
 
 void AnimationWorkbench::NewAuthoringClip() {
+    // モデルは維持したままキー・イベント・一時姿勢を初期状態へ戻す。
     CopyToBuffer(saveFileBuffer_, sizeof(saveFileBuffer_), "new_body_animation.json");
     bodyKeys_.clear();
     keys_.clear();
@@ -1049,6 +1077,7 @@ void AnimationWorkbench::NewAuthoringClip() {
 }
 
 void AnimationWorkbench::SaveAuthoringJson() {
+    // 本体キー、関節キー、イベントを同じファイルに保存して再編集可能にする。
     namespace fs = std::filesystem;
     fs::create_directories(kSaveDirectory);
 
@@ -1100,6 +1129,7 @@ void AnimationWorkbench::SaveAuthoringJson() {
 }
 
 void AnimationWorkbench::LoadAuthoringJson() {
+    // 現行保存先を優先し、旧フォルダのファイルも読み込めるようにする。
     std::ifstream ifs(GetSavePath(), std::ios::binary);
     if (!ifs) {
         std::string legacyFileName = saveFileBuffer_;
@@ -1195,6 +1225,7 @@ void AnimationWorkbench::LoadAuthoringJson() {
 }
 
 std::string AnimationWorkbench::GetSavePath() const {
+    // 拡張子が省略された名前でもワークベンチ専用ディレクトリの JSON へ揃える。
     std::string filename = saveFileBuffer_;
     if (filename.empty()) filename = "new_body_animation.json";
     if (filename.find(".json") == std::string::npos) {
@@ -1204,21 +1235,25 @@ std::string AnimationWorkbench::GetSavePath() const {
 }
 
 void AnimationWorkbench::StoreEditOverrideFromUi() {
+    // ギズモ操作中の未確定姿勢をキーへ保存せず、プレビュー上だけ優先する。
     if (!previewModel_ || selectedJointIndex_ < 0) return;
     editPoseOverrides_[selectedJointIndex_] = BuildPoseKeyFromUi();
 }
 
 void AnimationWorkbench::ClearEditOverride(int jointIndex) {
+    // 確定した関節の一時姿勢だけ消し、他の編集中関節には触れない。
     editPoseOverrides_.erase(jointIndex);
 }
 
 void AnimationWorkbench::ClearAllEditOverrides() {
+    // クリップやモデル変更時に旧骨格の一時編集を持ち越さない。
     editPoseOverrides_.clear();
 }
 
 // 順再生・逆再生の双方で、前回時刻と今回時刻の間を横切ったイベントだけをプレビューします。
 // 終端から先頭へループした場合は区間を二つに分け、境界での二重発火を避けます。
 void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTime) {
+    // 順再生と逆再生で区間境界を変え、キー通過時の二重発火を防ぐ。
     if (events_.empty()) return;
 
     bool forward = playbackSpeed_ >= 0.0f;
@@ -1245,12 +1280,14 @@ void AnimationWorkbench::UpdateEventPreview(float previousTime, float currentTim
 }
 
 void AnimationWorkbench::FireEventPreview(const EventMarker& marker) {
+    // ゲーム本体のイベント処理は呼ばず、内容を画面とログへ短時間表示する。
     lastEventPreviewText_ = FormatEventMarker(marker);
     eventPreviewTimer_ = 1.5f;
     DebugConsole::GetInstance()->AddLog(("Animation Event Preview: " + lastEventPreviewText_).c_str());
 }
 
 std::string AnimationWorkbench::FormatEventMarker(const EventMarker& marker) const {
+    // 時刻・種類・位置を一行にまとめてイベントの確認欄へ表示する。
     int typeIndex = (std::clamp)(marker.type, 0, kEventTypeCount - 1);
     char buffer[256] = {};
     std::snprintf(
@@ -1267,6 +1304,7 @@ std::string AnimationWorkbench::FormatEventMarker(const EventMarker& marker) con
 }
 
 Vector3 AnimationWorkbench::ToDegrees(const Vector3& radians) const {
+    // 保存と骨格で使うラジアンを UI の度へ戻す。
     return {
         radians.x * 180.0f / kPi,
         radians.y * 180.0f / kPi,
@@ -1275,6 +1313,7 @@ Vector3 AnimationWorkbench::ToDegrees(const Vector3& radians) const {
 }
 
 Vector3 AnimationWorkbench::ToRadians(const Vector3& degrees) const {
+    // UI で入力した度を保存と骨格で使うラジアンへ変換する。
     return {
         degrees.x * kPi / 180.0f,
         degrees.y * kPi / 180.0f,
@@ -1283,11 +1322,13 @@ Vector3 AnimationWorkbench::ToRadians(const Vector3& degrees) const {
 }
 
 void AnimationWorkbench::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+    // 3D ギズモの入力と投影を Game View の表示矩形に合わせる。
     gameViewOffset_ = offset;
     gameViewSize_ = size;
 }
 
 void AnimationWorkbench::DrawBodyGizmo() {
+    // ワールド操作をプレビュー原点からの相対値に戻して本体キーへ反映する。
 #ifdef USE_IMGUI
     if (!EditorToolSettings::Get().IsVisible("transformGizmo")) return;
     if (!enabled_ || !previewObject_ || !enableBodyGizmo_) return;
@@ -1544,6 +1585,7 @@ void AnimationWorkbench::DrawBoneOverlayAndGizmo() {
 }
 
 bool AnimationWorkbench::ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const {
+    // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return false;
 
@@ -1560,6 +1602,7 @@ bool AnimationWorkbench::ProjectWorldToGameView(const Vector3& world, Vector2& s
 }
 
 Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const {
+    // 骨格空間の行列へプレビュー Object のワールド行列を重ねる。
     if (!previewModel_ || !previewObject_) {
         return Math::MakeIdentity4x4();
     }
@@ -1571,10 +1614,12 @@ Matrix4x4 AnimationWorkbench::GetJointWorldMatrix(int jointIndex) const {
 }
 
 Vector3 AnimationWorkbench::GetMatrixTranslation(const Matrix4x4& matrix) const {
+    // 行列の平行移動成分を骨表示の起点として取り出す。
     return { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
 }
 
 void AnimationWorkbench::ApplyCameraOverride() {
+    // 初回と再中心化要求時だけプレビュー模型を見やすい位置へ捉え直す。
     if (!enabled_) return;
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
 

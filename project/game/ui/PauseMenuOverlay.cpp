@@ -14,15 +14,18 @@
 
 using json = nlohmann::json;
 
-void PauseMenuOverlay::Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath) {
+void PauseMenuOverlay::Initialize(SpriteCommon* spriteCommon, const std::string& layoutPath, Mode mode) {
+    // 共通レイアウトを読み込み、使用するシーンのモードに応じて項目を制御する。
     spriteCommon_ = spriteCommon;
     inputManager_ = InputManager::GetInstance();
+    mode_ = mode;
     LoadLayout(layoutPath);
     BindLayoutSprites();
     SetAllVisible(false);
 }
 
 void PauseMenuOverlay::Finalize() {
+    // シーン切り替え後に破棄済み Sprite への参照を残さない。
     sprites_.clear();
     background_ = nullptr;
     panel_ = nullptr;
@@ -39,6 +42,7 @@ void PauseMenuOverlay::Finalize() {
 }
 
 void PauseMenuOverlay::SetActive(bool active) {
+    // 開く操作を閉じる操作として再使用しないよう、キー解放まで入力を抑制する。
     if (isActive_ == active) {
         return;
     }
@@ -70,6 +74,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::Update(float deltaTime) {
 }
 
 void PauseMenuOverlay::Draw() {
+    // ポーズを閉じた後は非表示の Sprite を描画パスへ送らない。
     if (!isActive_) {
         return;
     }
@@ -82,6 +87,7 @@ void PauseMenuOverlay::Draw() {
 }
 
 void PauseMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites) const {
+    // リプレイ中の見た目復元に使うため、所有権を移さず参照だけ集める。
     replaySprites.reserve(replaySprites.size() + sprites_.size());
     for (const auto& sprite : sprites_) {
         if (sprite) {
@@ -91,6 +97,7 @@ void PauseMenuOverlay::CollectReplaySprites(std::vector<Sprite*>& replaySprites)
 }
 
 void PauseMenuOverlay::CaptureReplayState(json& state) const {
+    // 選択位置とアニメーション時刻を保存し、巻き戻しで同じ画面へ戻す。
     state = {{"active", isActive_},
              {"suppressInput", suppressOpenCloseInput_},
              {"selectedIndex", selectedIndex_},
@@ -98,12 +105,17 @@ void PauseMenuOverlay::CaptureReplayState(json& state) const {
 }
 
 void PauseMenuOverlay::RestoreReplayState(const json& state) {
+    // ステージ選択では存在しない項目を選ばず、表示状態を保存時刻へ揃える。
     if (!state.is_object()) {
         return;
     }
     isActive_ = state.value("active", isActive_);
     suppressOpenCloseInput_ = state.value("suppressInput", suppressOpenCloseInput_);
     selectedIndex_ = std::clamp(state.value("selectedIndex", selectedIndex_), 0, static_cast<int>(Item::Count) - 1);
+    if (mode_ == Mode::StageSelect && (selectedIndex_ == static_cast<int>(Item::Retry) ||
+                                      selectedIndex_ == static_cast<int>(Item::StageSelect))) {
+        selectedIndex_ = static_cast<int>(Item::Resume);
+    }
     time_ = state.value("time", time_);
     SetAllVisible(isActive_);
     if (isActive_) {
@@ -163,6 +175,7 @@ void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
 }
 
 void PauseMenuOverlay::BindLayoutSprites() {
+    // JSON 内の名前と操作行を一度だけ結び、更新時の文字列探索を避ける。
     background_ = FindSprite("pause_background");
     panel_ = FindSprite("pause_panel");
     titlePlate_ = FindSprite("pause_title_plate");
@@ -189,6 +202,7 @@ void PauseMenuOverlay::BindLayoutSprites() {
 }
 
 Sprite* PauseMenuOverlay::FindSprite(const std::string& name) const {
+    // レイアウトに不足があっても nullptr として扱い、UI 全体は継続する。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
             return sprite.get();
@@ -198,6 +212,7 @@ Sprite* PauseMenuOverlay::FindSprite(const std::string& name) const {
 }
 
 void PauseMenuOverlay::SetAllVisible(bool visible) {
+    // 画面を閉じる時は背景だけでなく選択カーソルも一括で隠す。
     for (auto& sprite : sprites_) {
         if (sprite) {
             sprite->SetVisible(visible);
@@ -206,6 +221,7 @@ void PauseMenuOverlay::SetAllVisible(bool visible) {
 }
 
 bool PauseMenuOverlay::IsOpenOrCloseHeld() const {
+    // キーボードとゲームパッドの閉じる入力を同じ抑制判定へまとめる。
     if (!inputManager_) {
         return false;
     }
@@ -216,6 +232,7 @@ bool PauseMenuOverlay::IsOpenOrCloseHeld() const {
 }
 
 PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
+    // 押下を一回だけ Action に変え、実際のシーン遷移は呼び出し側に任せる。
     if (!inputManager_) {
         return Action::None;
     }
@@ -267,6 +284,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
 }
 
 void PauseMenuOverlay::UpdateSprites() {
+    // 選択行だけ拡縮と脈動を適用し、カーソルをその行の配置へ追従させる。
     const Vector4 normalText = {0.48f, 0.36f, 0.24f, 0.90f};
     const Vector4 normalRowColor = {0.95f, 0.90f, 0.78f, 0.88f};
 
@@ -314,6 +332,16 @@ void PauseMenuOverlay::UpdateSprites() {
 }
 
 void PauseMenuOverlay::ChangeSelection(int direction) {
+    // ステージ選択では使えない項目を飛ばし、上下操作で有効項目だけ巡回する。
+    if (mode_ == Mode::StageSelect) {
+        constexpr std::array<int, 3> kItems = {static_cast<int>(Item::Resume), static_cast<int>(Item::Settings),
+                                               static_cast<int>(Item::Title)};
+        const auto current = std::find(kItems.begin(), kItems.end(), selectedIndex_);
+        const int index = current == kItems.end() ? 0 : static_cast<int>(current - kItems.begin());
+        selectedIndex_ = kItems[static_cast<size_t>((index + direction + static_cast<int>(kItems.size())) %
+                                                    static_cast<int>(kItems.size()))];
+        return;
+    }
     const int count = static_cast<int>(Item::Count);
     selectedIndex_ = (selectedIndex_ + direction + count) % count;
 }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "76ab072480597b05e790c5c52ea599ae",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Characters/fireslimeanim/fireslimeanim.gltf",
+  "version": 1
+}

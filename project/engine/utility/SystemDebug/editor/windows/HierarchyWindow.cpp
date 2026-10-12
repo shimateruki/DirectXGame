@@ -34,9 +34,11 @@
 #include "ItemFactory.h"
 #include "json.hpp"
 #include <filesystem>
+#include <array>
 #include <cctype>
 #include <algorithm> // std::transform用
 #include <cmath>
+#include <map>
 #include <vector>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -75,6 +77,52 @@ namespace fs = std::filesystem;
 
 namespace {
     constexpr const char* kCinematicCameraModel = "Editor/camera_gizmo";
+
+    // 実際の親子関係や保存先カテゴリには触れず、一覧で使う表示上の分類だけを決める。
+    enum class HierarchyDisplayGroup : size_t {
+        Player,
+        Enemy,
+        Camera,
+        Stage,
+        Gimmick,
+        Effect,
+        Object,
+        Other,
+        Count
+    };
+
+    constexpr std::array<const char*, static_cast<size_t>(HierarchyDisplayGroup::Count)> kHierarchyGroupNames = {
+        "プレイヤー", "敵", "カメラ", "地形・背景", "ギミック", "エフェクト", "オブジェクト", "その他"
+    };
+
+    HierarchyDisplayGroup GetHierarchyDisplayGroup(const Object3d* object) {
+        const std::string& category = object->GetSaveCategory();
+        const std::string& className = object->GetClassName();
+        const std::string modelName = object->GetModelName();
+        if (category == "Player" || className == "Player") return HierarchyDisplayGroup::Player;
+        if (category == "Enemy" || className == "Enemy") return HierarchyDisplayGroup::Enemy;
+        if (category == "Camera" || object->IsCameraObject()) return HierarchyDisplayGroup::Camera;
+        if (className == "Effect" || className == "GPUParticle" || modelName.rfind("Effects/", 0) == 0) {
+            return HierarchyDisplayGroup::Effect;
+        }
+        if (className == "Gimmick") return HierarchyDisplayGroup::Gimmick;
+        if (modelName.rfind("Stages/", 0) == 0) return HierarchyDisplayGroup::Stage;
+        if (category == "Object" || className == "Model") return HierarchyDisplayGroup::Object;
+        return HierarchyDisplayGroup::Other;
+    }
+
+    std::string GetHierarchyDisplaySubtype(const Object3d* object) {
+        if (!object->GetTag().empty()) return "#" + object->GetTag();
+        if (!object->GetGimmickType().empty()) return object->GetGimmickType();
+        if (!object->GetEnemyType().empty()) return object->GetEnemyType();
+        if (!object->GetItemType().empty()) return object->GetItemType();
+        const std::string modelName = object->GetModelName();
+        if (!modelName.empty()) {
+            const size_t separator = modelName.find_last_of("/\\");
+            return modelName.substr(separator == std::string::npos ? 0 : separator + 1);
+        }
+        return object->GetClassName().empty() ? "種類未設定" : object->GetClassName();
+    }
 
     std::string MakeUniqueName(BaseScene* scene, const std::string& baseName) {
         if (!scene) return baseName;
@@ -426,6 +474,7 @@ namespace {
 }
 
 void HierarchyWindow::Initialize(DebugEditor* editor) {
+    // Scene操作と選択状態の所有者であるEditorを借用します。
     editor_ = editor;
 }
 
@@ -647,6 +696,11 @@ void HierarchyWindow::Draw() {
     }
     ImGui::Separator();
 
+    ImGui::Checkbox("種類ごとにまとめる", &groupHierarchy_);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("一覧だけを分類します。親子関係やシーンの保存内容は変わりません。");
+    }
+
     std::string filterStr = editor_->GetSearchFilterBuffer();
     filterStr = ToLowerAscii(filterStr);
 
@@ -741,10 +795,46 @@ void HierarchyWindow::Draw() {
 
         ImGui::Separator();
         auto& objects = currentScene->GetObjects();
-        for (auto& obj : objects) {
-            if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
-            if (obj->GetParent() == nullptr) {
-                DrawHierarchyNode(obj.get());
+        if (groupHierarchy_) {
+            // 親を持つObjectは既存のツリー内に表示する。ここではルートだけを仮想フォルダへ振り分ける。
+            std::array<std::vector<Object3d*>, static_cast<size_t>(HierarchyDisplayGroup::Count)> groups;
+            for (auto& obj : objects) {
+                if (!obj || obj->GetParent() || !HasMatchingCategory(obj.get())) continue;
+                if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
+                groups[static_cast<size_t>(GetHierarchyDisplayGroup(obj.get()))].push_back(obj.get());
+            }
+
+            for (size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+                const auto& rows = groups[groupIndex];
+                if (rows.empty()) continue;
+                ImGui::PushID(static_cast<int>(groupIndex));
+                const bool groupOpen = ImGui::TreeNodeEx("Group", ImGuiTreeNodeFlags_DefaultOpen,
+                    "%s (%zu)", kHierarchyGroupNames[groupIndex], rows.size());
+                if (groupOpen) {
+                    std::map<std::string, std::vector<Object3d*>> subgroups;
+                    for (Object3d* object : rows) {
+                        subgroups[GetHierarchyDisplaySubtype(object)].push_back(object);
+                    }
+                    if (subgroups.size() == 1 && rows.size() == 1) {
+                        DrawHierarchyNode(rows.front());
+                    } else {
+                        for (const auto& [subtype, members] : subgroups) {
+                            const bool subtypeOpen = ImGui::TreeNodeEx(subtype.c_str(), 0,
+                                "%s (%zu)", subtype.c_str(), members.size());
+                            if (subtypeOpen) {
+                                for (Object3d* object : members) DrawHierarchyNode(object);
+                                ImGui::TreePop();
+                            }
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+        } else {
+            for (auto& obj : objects) {
+                if (editor_->IsPrefabEditMode() && !editor_->IsPrefabEditObject(obj.get())) continue;
+                if (obj->GetParent() == nullptr) DrawHierarchyNode(obj.get());
             }
         }
     }
@@ -810,6 +900,7 @@ void HierarchyWindow::Draw() {
 }
 
 void HierarchyWindow::OpenCreateSceneDialog() {
+    // 新規Sceneには専用Editorクラスを初期候補とし、誤った実行クラスを選びにくくします。
     sceneAssetStatusMessage_.clear();
     sceneAssetStatusIsError_ = false;
     if (editor_) {
@@ -823,11 +914,13 @@ void HierarchyWindow::OpenCreateSceneDialog() {
 }
 
 void HierarchyWindow::OpenSceneAssetFromMenu(const std::string& filename) {
+    // メニュー経由も通常のScene切り替え確認経路へ渡します。
     RequestOpenSceneAsset(filename);
 }
 
 void HierarchyWindow::DrawSceneAssetManager() {
 #ifdef USE_IMGUI
+    // 保存済みSceneと現在編集中のSceneを対比し、作成・複製・開く操作をまとめます。
     if (!editor_ || !ImGui::CollapsingHeader(
         ICON_FA_SAVE " Scene Asset",
         ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1055,6 +1148,7 @@ void HierarchyWindow::DrawSceneAssetManager() {
 }
 
 void HierarchyWindow::RequestOpenSceneAsset(const std::string& filename) {
+    // 現在のAssetを再指定した場合も、実行クラスの整合を確認して開きます。
     if (!editor_ || filename.empty()) {
         return;
     }
@@ -1096,6 +1190,7 @@ void HierarchyWindow::RequestOpenSceneAsset(const std::string& filename) {
 
 void HierarchyWindow::DrawSceneAssetDialogs() {
 #ifdef USE_IMGUI
+    // 作成・変更・削除の確認をモーダルに集約し、確定前のSceneを保護します。
     if (!editor_) {
         return;
     }
@@ -1406,6 +1501,7 @@ void HierarchyWindow::DrawSceneAssetDialogs() {
 
 void HierarchyWindow::DrawCreateContextMenu(BaseScene* scene, bool useGameViewCursor) {
 #ifdef USE_IMGUI
+    // 配置座標の基準をGame Viewカーソルか選択Objectに応じて切り替えます。
     ::DrawCreateContextMenu(editor_, scene, useGameViewCursor);
 #else
     (void)scene;
@@ -1513,6 +1609,7 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 }
 
 bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
+    // 表示カテゴリとLayerの条件を共に満たすObjectだけHierarchyへ出します。
     if (!obj || obj->IsEditorInternal()) return false;
 
     const std::string cat = obj->GetSaveCategory();

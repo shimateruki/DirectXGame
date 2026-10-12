@@ -14,11 +14,13 @@ constexpr const char* kCategoryBGM = "BGM";
 } // namespace
 
 GameAudioSettings* GameAudioSettings::GetInstance() {
+    // 音声 ID とロード済みハンドルを全シーンで共有する。
     static GameAudioSettings instance;
     return &instance;
 }
 
 void GameAudioSettings::Initialize() {
+    // 登録表は初回だけ読み込み、シーン切替のたびに再構築しない。
     if (initialized_) {
         return;
     }
@@ -72,6 +74,7 @@ void GameAudioSettings::Load() {
 }
 
 void GameAudioSettings::Save() const {
+    // エディターに登録された音だけを書き出し、仮の既定 SE を再生成しない。
     nlohmann::json data;
     data["entries"] = nlohmann::json::array();
 
@@ -92,16 +95,19 @@ void GameAudioSettings::Save() const {
 }
 
 GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& id) {
+    // 存在しない ID は nullptr とし、呼び出し側が再生を省略できる。
     auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     return it == entries_.end() ? nullptr : &(*it);
 }
 
 const GameAudioSettings::SoundEntry* GameAudioSettings::FindEntry(const std::string& id) const {
+    // 読み取り専用の設定参照にも同じ ID 検索を使う。
     auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     return it == entries_.end() ? nullptr : &(*it);
 }
 
 bool GameAudioSettings::AddEntry(const SoundEntry& entry) {
+    // 空 ID・空パス・重複 ID を拒否して保存データの一意性を保つ。
     if (entry.id.empty() || entry.path.empty() || FindEntry(entry.id)) {
         return false;
     }
@@ -110,6 +116,7 @@ bool GameAudioSettings::AddEntry(const SoundEntry& entry) {
 }
 
 bool GameAudioSettings::RemoveEntry(const std::string& id) {
+    // 削除前に再生を停止し、古いロードハンドルを表から外す。
     auto it = std::find_if(entries_.begin(), entries_.end(), [&](const SoundEntry& entry) { return entry.id == id; });
     if (it == entries_.end()) {
         return false;
@@ -121,11 +128,13 @@ bool GameAudioSettings::RemoveEntry(const std::string& id) {
 }
 
 float GameAudioSettings::GetVolume(const std::string& id, float fallback) const {
+    // 未登録の音でも呼び出し側が指定した音量で安全に扱える。
     const SoundEntry* entry = FindEntry(id);
     return entry ? ClampVolume(entry->volume) : ClampVolume(fallback);
 }
 
 void GameAudioSettings::SetVolume(const std::string& id, float volume) {
+    // エディター上の設定だけを変更し、保存は明示操作に委ねる。
     SoundEntry* entry = FindEntry(id);
     if (entry) {
         entry->volume = ClampVolume(volume);
@@ -149,6 +158,7 @@ AudioPlayer::AudioHandle GameAudioSettings::LoadHandle(const SoundEntry& entry) 
 }
 
 void GameAudioSettings::PlaySE(const std::string& id, float volumeScale, bool loopOverride) {
+    // ID で登録された音だけを、設定音量と呼び出し倍率の積で再生する。
     Initialize();
 
     SoundEntry* entry = FindEntry(id);
@@ -165,6 +175,7 @@ void GameAudioSettings::PlaySE(const std::string& id, float volumeScale, bool lo
 }
 
 void GameAudioSettings::PlayBGM(const std::string& id, float volumeScale, bool loopOverride) {
+    // 未登録・ファイル欠落時は再生を省略し、現在シーンを止めない。
     Initialize();
 
     SoundEntry* entry = FindEntry(id);
@@ -181,6 +192,7 @@ void GameAudioSettings::PlayBGM(const std::string& id, float volumeScale, bool l
 }
 
 void GameAudioSettings::Stop(const std::string& id) {
+    // カテゴリに応じて BGM 全体停止か、該当 SE ハンドル停止を選ぶ。
     SoundEntry* entry = FindEntry(id);
     if (!entry) {
         return;
@@ -198,4 +210,7 @@ void GameAudioSettings::Stop(const std::string& id) {
     }
 }
 
-float GameAudioSettings::ClampVolume(float value) { return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f; }
+float GameAudioSettings::ClampVolume(float value) {
+    // 不正な浮動小数が音声 API に届かないようにする。
+    return std::isfinite(value) ? std::clamp(value, 0.0f, 1.0f) : 1.0f;
+}

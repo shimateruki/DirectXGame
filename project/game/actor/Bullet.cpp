@@ -17,7 +17,7 @@ void Bullet::Initialize(Object3dCommon* common) {
 
 void Bullet::Fire(const Vector3& position, const Vector3& velocity, float life, uint32_t attribute, uint32_t mask,
                   float damage, const StatusEffectApplication& statusEffect, DamageType damageType) {
-
+    // プールから再利用しても前回の爆発半径や演出状態を引き継がないよう、発射単位で初期化する。
     SetTranslate(position);
     velocity_ = velocity;
     gravity_ = 0.0f;
@@ -37,6 +37,7 @@ void Bullet::Fire(const Vector3& position, const Vector3& velocity, float life, 
 void Bullet::ConfigureVfx(const std::string& trailPreset, const std::string& trailSecondaryPreset,
                           const std::string& impactPreset, const std::string& impactSecondaryPreset,
                           float trailInterval, float trailSpeedScale, bool trailReverseDirection, bool impactDirected) {
+    // 発生間隔と速度倍率を下限で抑え、停止した弾でも演出更新が暴走しないようにする。
     trailPreset_ = trailPreset;
     trailSecondaryPreset_ = trailSecondaryPreset;
     impactPreset_ = impactPreset;
@@ -49,6 +50,7 @@ void Bullet::ConfigureVfx(const std::string& trailPreset, const std::string& tra
 }
 
 void Bullet::Expire(bool playImpact) {
+    // 寿命切れなど、衝突以外の終了でも必要なら着弾演出を一度だけ出す。
     if (playImpact) {
         EmitImpactVfx();
     }
@@ -115,6 +117,7 @@ void Bullet::Update(float deltaTime) {
 }
 
 bool Bullet::OnCollision(Object3d* other) {
+    // 爆発弾は範囲判定へ移し、通常弾だけ直接命中イベントを送る。
     if (isDead_ || !other)
         return false;
 
@@ -135,6 +138,7 @@ bool Bullet::OnCollision(Object3d* other) {
 }
 
 void Bullet::EmitTrailVfx() {
+    // 速度ゼロでも無効な方向ベクトルを GPU パーティクルへ渡さない。
     if (trailPreset_.empty() && trailSecondaryPreset_.empty()) {
         return;
     }
@@ -160,6 +164,7 @@ void Bullet::EmitTrailVfx() {
 }
 
 void Bullet::EmitImpactVfx() {
+    // 衝突と強制終了が重なっても着弾演出を重複発生させない。
     if (impactEmitted_ || (impactPreset_.empty() && impactSecondaryPreset_.empty())) {
         return;
     }

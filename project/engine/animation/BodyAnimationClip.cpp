@@ -17,6 +17,7 @@ constexpr const char* kLegacyAnimationDirectory = "Resources/json/enemy_animatio
 constexpr float kTimeEpsilon = 0.0001f;
 
 Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback) {
+    // 古いClipに成分が無い場合は、その姿勢要素の既定値を使う。
     if (!object.contains(key) || !object[key].is_array() || object[key].size() < 3) {
         return fallback;
     }
@@ -29,11 +30,13 @@ Vector3 ReadVector3(const json& object, const char* key, const Vector3& fallback
 }
 
 AnimationInterpolation::EasingType ToEasing(int value) {
+    // JSONの不正な番号で補間テーブルの範囲外を参照しないよう制限する。
     return static_cast<AnimationInterpolation::EasingType>(std::clamp(value, 0, 4));
 }
 }
 
 void BodyAnimationClip::Clear() {
+    // 読込失敗時に前回のキーが残らないよう、メタ情報と姿勢をまとめて消す。
     name_.clear();
     modelName_.clear();
     duration_ = 0.0f;
@@ -145,6 +148,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
 }
 
 std::string BodyAnimationClip::ResolveAssetPath(const std::string& assetNameOrPath) {
+    // 名前のみなら新ディレクトリを優先し、旧データの配置も読み込めるようにする。
     if (assetNameOrPath.empty()) {
         return {};
     }

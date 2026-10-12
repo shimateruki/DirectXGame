@@ -55,16 +55,24 @@ constexpr const char* kCarryBombBlastJumpPreset = "player_bomb_blast_jump";
 constexpr float kPi = 3.14159265f;
 constexpr float kTwoPi = kPi * 2.0f;
 
-float Saturate(float value) { return std::clamp(value, 0.0f, 1.0f); }
+float Saturate(float value) {
+    // 投擲演出の進行率がタイマーの境界を越えても描画値を一定範囲に保つ。
+    return std::clamp(value, 0.0f, 1.0f);
+}
 
 float SmoothStep01(float value) {
+    // 爆弾の取り出しと着地姿勢が段階の境界で急変しないようにする。
     value = Saturate(value);
     return value * value * (3.0f - 2.0f * value);
 }
 
-float LerpFloat(float start, float end, float rate) { return start + (end - start) * rate; }
+float LerpFloat(float start, float end, float rate) {
+    // 投げ動作内で指定した進行率を使い、位置や角度の目標値を補間する。
+    return start + (end - start) * rate;
+}
 
 Object3d* FindEnemyDamageTarget(Object3d* object) {
+    // 子オブジェクトに当たった場合も、被弾対象となる親の敵を探す。
     for (Object3d* current = object; current; current = current->GetParent()) {
         if (dynamic_cast<BaseEnemy*>(current)) {
             return current;
@@ -74,6 +82,7 @@ Object3d* FindEnemyDamageTarget(Object3d* object) {
 }
 } // namespace
 void EnemyBomber::BindSceneSpawnContext(BaseScene* scene) {
+    // 生成した爆弾を元のシーンへ登録する。シーン切替時は古い登録先を外す。
     BaseEnemy::BindSceneSpawnContext(scene);
     if (!scene) {
         SetSpawnCallback(nullptr);
@@ -87,6 +96,7 @@ void EnemyBomber::BindSceneSpawnContext(BaseScene* scene) {
 }
 
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
+    // 最初の投擲だけ初期待機を使い、以後の投擲状態は待機から始める。
     BaseEnemy::Initialize(common, modelName);
     common_ = common;
     throwTimer_ = initialThrowDelay_;
@@ -108,6 +118,7 @@ void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelNam
 
 // 距離を保ちながら、爆弾を取り出して跳び投げるAI。
 void EnemyBomber::Update(float deltaTime) {
+    // 運搬・撃破などの停止条件を先に処理し、通常時だけ距離維持と投擲を進める。
     if (UpdateBlockedState(deltaTime)) {
         return;
     }
@@ -137,6 +148,7 @@ void EnemyBomber::Update(float deltaTime) {
 }
 
 bool EnemyBomber::UpdateBlockedState(float deltaTime) {
+    // 固有AIが使えない状態では手持ち弾と予兆を消し、共通敵更新へ委ねる。
     if (ShouldHandleDefeatEffect()) {
         HideHeldBombVisual();
         BaseEnemy::Update(deltaTime);
@@ -162,6 +174,7 @@ bool EnemyBomber::UpdateBlockedState(float deltaTime) {
 }
 
 void EnemyBomber::EnsureBaseScaleForAnimation() {
+    // 配置された大きさを見た目の変形基準にし、小さすぎる初期値だけ補う。
     if (hasBaseScale_) {
         return;
     }
@@ -176,6 +189,7 @@ void EnemyBomber::EnsureBaseScaleForAnimation() {
 }
 
 void EnemyBomber::UpdateThrowTimers(float deltaTime) {
+    // 反動と姿勢の余韻は投擲状態とは独立して減らし、待機へ戻っても残す。
     idleTimer_ += deltaTime;
     throwRecoilTimer_ = std::max(0.0f, throwRecoilTimer_ - deltaTime);
     throwRecoverPoseTimer_ = std::max(0.0f, throwRecoverPoseTimer_ - deltaTime);
@@ -255,6 +269,7 @@ void EnemyBomber::ResetThrowStateAfterTargetLost() {
 }
 
 void EnemyBomber::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 投げる前の手持ち爆弾は本体とは別オブジェクトなので追加描画する。
     BaseEnemy::Draw(pointLightResource, spotLightResource);
     if (heldBombVisual_ && heldBombVisual_->GetIsVisible()) {
         heldBombVisual_->Draw(pointLightResource, spotLightResource);
@@ -262,6 +277,7 @@ void EnemyBomber::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotL
 }
 
 void EnemyBomber::SetCarried(bool isCarried) {
+    // 吸収・運搬へ切り替わる際に投擲段階を破棄し、解放後の途中再開を防ぐ。
     BaseEnemy::SetCarried(isCarried);
     throwState_ = ThrowState::Idle;
     windupTimer_ = 0.0f;
@@ -272,6 +288,7 @@ void EnemyBomber::SetCarried(bool isCarried) {
 }
 
 bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
+    // 水平距離と方向を同時に計算し、近すぎる対象には投擲を開始しない。
     if (!target_)
         return false;
 
@@ -298,6 +315,7 @@ bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) con
 }
 
 void EnemyBomber::UpdateFacing(const Vector3& direction) {
+    // モデルの正面補正を加え、最短角で対象へ振り向く。
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq > 0.0001f) {
         const float targetYaw = std::atan2(direction.x, direction.z) + kBomberModelYawOffset;
@@ -306,6 +324,7 @@ void EnemyBomber::UpdateFacing(const Vector3& direction) {
 }
 
 void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
+    // 歩行・溜め・跳躍・着地の変形を共通スケールから作り、被弾姿勢を最後に重ねる。
     SlimeBounceAnimator::Params params;
     params.speedForFullBounce = 1.15f;
     params.idleAmplitude = 0.075f;
@@ -389,6 +408,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
 }
 
 void EnemyBomber::UpdateHeldBombVisual(float deltaTime) {
+    // 本物の爆弾を出す前だけ仮のモデルを表示し、取り出しと振りかぶりに追従させる。
     if ((throwState_ != ThrowState::Windup && throwState_ != ThrowState::LeapThrow) || isCarried_ ||
         throwBombReleased_) {
         HideHeldBombVisual();
@@ -423,6 +443,7 @@ void EnemyBomber::UpdateHeldBombVisual(float deltaTime) {
 }
 
 void EnemyBomber::EnsureHeldBombVisual() {
+    // 手持ち用は表示専用なので衝突を持たせず、初回使用時だけ作る。
     if (heldBombVisual_ || !common_) {
         return;
     }
@@ -437,12 +458,14 @@ void EnemyBomber::EnsureHeldBombVisual() {
 }
 
 void EnemyBomber::HideHeldBombVisual() {
+    // 発射・中断後は仮モデルを隠し、実際に生成した爆弾と二重表示しない。
     if (heldBombVisual_) {
         heldBombVisual_->SetIsVisible(false);
     }
 }
 
 Vector3 EnemyBomber::ComputeHeldBombPosition(float progress) const {
+    // 本体の前後・左右・高さを段階ごとに補間し、取り出しから投げ出しまでの手元位置を作る。
     progress = Saturate(progress);
     const float yaw = GetRotation().y - kBomberModelYawOffset;
     const Vector3 forward = {std::sin(yaw), 0.0f, std::cos(yaw)};
@@ -463,14 +486,17 @@ Vector3 EnemyBomber::ComputeHeldBombPosition(float progress) const {
 }
 
 float EnemyBomber::GetThrowProgress() const {
+    // 残り時間を0から1の進行率へ変換し、予兆と手持ち弾の表示に共用する。
     return 1.0f - std::clamp(windupTimer_ / (std::max)(throwWindup_, 0.01f), 0.0f, 1.0f);
 }
 
 float EnemyBomber::GetThrowLeapProgress() const {
+    // 跳躍中の放出時刻と着地姿勢を同じ進行率で判定する。
     return 1.0f - std::clamp(throwLeapTimer_ / kThrowLeapDuration, 0.0f, 1.0f);
 }
 
 void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, float distance, bool inRange) {
+    // 射程内では横移動しながら理想距離を保ち、射程外では巡回速度を使う。
     Vector3 velocity = GetVelocity();
     velocity.x = 0.0f;
     velocity.z = 0.0f;
@@ -515,6 +541,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, floa
 }
 
 void EnemyBomber::BeginThrow() {
+    // 予備動作へ入る時に前回の跳躍・放出状態を消し、手持ち弾を用意する。
     throwState_ = ThrowState::Windup;
     windupTimer_ = throwWindup_;
     throwLeapTimer_ = 0.0f;
@@ -525,6 +552,7 @@ void EnemyBomber::BeginThrow() {
 }
 
 void EnemyBomber::BeginThrowLeap() {
+    // 跳躍開始時の向きを固定し、回転演出中も発射方向が振れないようにする。
     throwState_ = ThrowState::LeapThrow;
     throwLeapTimer_ = kThrowLeapDuration;
     throwLandingTimer_ = 0.0f;
@@ -546,6 +574,7 @@ void EnemyBomber::BeginThrowLeap() {
 }
 
 void EnemyBomber::UpdateThrowLeap(float deltaTime) {
+    // 進行率が放出点を越えたフレームだけ本物の爆弾を生成する。
     throwLeapTimer_ -= deltaTime;
     if (!throwBombReleased_) {
         UpdateHeldBombVisual(deltaTime);
@@ -563,6 +592,7 @@ void EnemyBomber::UpdateThrowLeap(float deltaTime) {
 }
 
 void EnemyBomber::BeginThrowLanding() {
+    // 手持ち表示と予兆を消して着地硬直へ移り、姿勢の余韻だけ残す。
     throwState_ = ThrowState::Landing;
     throwLandingTimer_ = kThrowLandingDuration;
     throwLeapTimer_ = 0.0f;
@@ -572,6 +602,7 @@ void EnemyBomber::BeginThrowLanding() {
 }
 
 void EnemyBomber::ThrowBomb() {
+    // 狙った位置までの飛行時間から放物線の初速を求め、点火済み爆弾をシーンへ渡す。
     HideAttackTelegraph();
     HideHeldBombVisual();
     throwRecoilTimer_ = kThrowRecoilDuration;
@@ -643,6 +674,7 @@ void EnemyBomber::ThrowBomb() {
 }
 
 void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
+    // 専用コールバックがある場合はそちらへ渡し、なければ現在シーンへ直接登録する。
     if (!bomb) {
         return;
     }

@@ -12,6 +12,8 @@ struct ColliderConfig {
     Vector3 center = { 0.0f, 0.0f, 0.0f };
     Vector3 size = { 1.0f, 1.0f, 1.0f };
     Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+    // ローカルXZ平面の凸な上面輪郭。空なら従来の箱判定を使う。
+    std::vector<Vector2> footprint;
 };
 
 /// <summary>高さマップ地形との接触判定に使うサンプル情報。</summary>
@@ -65,6 +67,12 @@ public:
     OBB GetOBB() const;
     Ring GetRing() const;
     Cylinder GetCylinder() const;
+
+    /// <summary>上面輪郭をワールド座標に変換する。デバッグ表示と判定で共用する。</summary>
+    std::vector<Vector3> GetFootprintWorldVertices(float localY) const;
+    /// <summary>相手の水平断面が上面輪郭と重なるか調べる。</summary>
+    bool OverlapsFootprint(const Collider* other, Vector3* normal = nullptr, float* depth = nullptr) const;
+    bool ContainsFootprintPoint(const Vector3& worldPoint) const;
 
     /// <summary>指定Colliderとの接触情報を返す。</summary>
     /// <param name="other">判定相手のCollider。</param>

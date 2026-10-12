@@ -23,6 +23,7 @@ constexpr int kDefaultHazardCount = 4;
 void GimmickHazardRideFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // プレイヤーを運ぶ床として衝突を持ち、移動距離と途中の危険イベント数を設定します。
     SetClassName("Gimmick");
     SetGimmickType("HazardRideFloor");
     SetName("Gimmick_HazardRideFloor");
@@ -46,6 +47,7 @@ void GimmickHazardRideFloor::Initialize(Object3dCommon* common, const std::strin
 }
 
 void GimmickHazardRideFloor::Update(float deltaTime) {
+    // 乗車後に予告、移動、終点の警告、落下の順で進めます。
     CaptureStartTransform();
 
     const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
@@ -117,11 +119,13 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         break;
     }
 
+    // このフレームの床の移動量を接触中のプレイヤーへ渡します。
     frameDelta_ = GetTransform()->translate - previousPosition;
     BaseGimmick::Update(deltaTime);
 }
 
 bool GimmickHazardRideFloor::OnCollision(Object3d* other) {
+    // 上面へ乗ったプレイヤーだけを運び、横からの接触では発進させません。
     if (!other || other->GetClassName() != "Player") {
         return true;
     }
@@ -141,9 +145,13 @@ bool GimmickHazardRideFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-void GimmickHazardRideFloor::OnTrigger() { BeginRide(); }
+void GimmickHazardRideFloor::OnTrigger() {
+    // 外部イベントからも乗車と同じ発進手順を開始できます。
+    BeginRide();
+}
 
 std::unique_ptr<Object3d> GimmickHazardRideFloor::Clone() const {
+    // 複製先を初期化してから走行設定と配置を引き継ぎます。
     auto clone = std::make_unique<GimmickHazardRideFloor>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -152,6 +160,7 @@ std::unique_ptr<Object3d> GimmickHazardRideFloor::Clone() const {
 }
 
 void GimmickHazardRideFloor::CaptureStartTransform() {
+    // 編集時の配置を一度だけ保存し、再挑戦時の復帰先にします。
     if (hasCapturedStartTransform_) {
         return;
     }
@@ -161,6 +170,7 @@ void GimmickHazardRideFloor::CaptureStartTransform() {
 }
 
 void GimmickHazardRideFloor::BeginRide() {
+    // 二重の開始通知でタイマーが巻き戻らないよう待機中だけ開始します。
     if (state_ != State::Waiting) {
         return;
     }
@@ -169,6 +179,7 @@ void GimmickHazardRideFloor::BeginRide() {
 }
 
 void GimmickHazardRideFloor::TriggerPendingHazards(float progress) {
+    // 走行距離を均等分割した地点で、対応する危険イベントを一度ずつ発火します。
     const int count = GetHazardCount();
     while (nextHazardIndex_ < count) {
         const float triggerProgress = static_cast<float>(nextHazardIndex_ + 1) / static_cast<float>(count + 1);
@@ -187,6 +198,7 @@ void GimmickHazardRideFloor::TriggerPendingHazards(float progress) {
 }
 
 void GimmickHazardRideFloor::ResetForRetry() {
+    // 再挑戦では移動・落下・発火済み数を消し、元の足場へ戻します。
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
     travelledDistance_ = 0.0f;
@@ -202,6 +214,7 @@ void GimmickHazardRideFloor::ResetForRetry() {
 }
 
 void GimmickHazardRideFloor::ChangeState(State nextState) {
+    // 消失状態に入る時点で表示と床判定を同時に無効化します。
     state_ = nextState;
     stateTimer_ = 0.0f;
 
@@ -215,9 +228,13 @@ void GimmickHazardRideFloor::ChangeState(State nextState) {
     }
 }
 
-bool GimmickHazardRideFloor::ShouldReturnAfterRide() const { return param_.has_value() && param_->returnOnOff; }
+bool GimmickHazardRideFloor::ShouldReturnAfterRide() const {
+    // 復帰はステージ側で明示的に有効化した床に限ります。
+    return param_.has_value() && param_->returnOnOff;
+}
 
 Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
+    // 配置時のヨー角を進行方向に変え、逆走モードでは符号を反転します。
     const float yaw = startRotation_.y;
     Vector3 direction = {std::cos(yaw), 0.0f, std::sin(yaw)};
     if (param_.has_value() && param_->actionMode == 1) {
@@ -227,29 +244,36 @@ Vector3 GimmickHazardRideFloor::GetTravelDirection() const {
 }
 
 float GimmickHazardRideFloor::GetTravelSpeed() const {
+    // 負値やゼロでも床が停止しないよう最低速度を保証します。
     return param_.has_value() ? (std::max)(0.1f, std::abs(param_->speed)) : kDefaultTravelSpeed;
 }
 
 float GimmickHazardRideFloor::GetTravelDistance() const {
+    // 走行距離は正の値として扱います。
     return param_.has_value() ? (std::max)(0.1f, std::abs(param_->moveAmount)) : kDefaultTravelDistance;
 }
 
 float GimmickHazardRideFloor::GetStartDelay() const {
+    // 発進前の予告はゼロ秒まで許可します。
     return param_.has_value() ? (std::max)(0.0f, param_->shakeDuration) : kDefaultStartDelay;
 }
 
 float GimmickHazardRideFloor::GetEndWarningDuration() const {
+    // 終点の警告には最低時間を設け、即落下を避けます。
     return param_.has_value() ? (std::max)(0.1f, param_->interval) : kDefaultEndWarningDuration;
 }
 
 float GimmickHazardRideFloor::GetFallDuration() const {
+    // 落下演出が少なくとも一フレーム続く長さにします。
     return param_.has_value() ? (std::max)(0.1f, param_->fallDuration) : kDefaultFallDuration;
 }
 
 float GimmickHazardRideFloor::GetFallGravity() const {
+    // 落下加速度がゼロや負値にならないよう制限します。
     return param_.has_value() ? (std::max)(0.1f, param_->gravity) : kDefaultFallGravity;
 }
 
 int GimmickHazardRideFloor::GetHazardCount() const {
+    // 途中イベントの数を上限内に収め、過剰な発火を防ぎます。
     return param_.has_value() ? (std::clamp)(param_->maxCount, 0, 16) : kDefaultHazardCount;
 }

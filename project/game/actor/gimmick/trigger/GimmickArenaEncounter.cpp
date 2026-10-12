@@ -30,6 +30,7 @@ constexpr const char* kHighCrownReleaseSequence = "false_king_defeat_reward_cue"
 void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 入場範囲はプレイヤー専用のトリガーとし、ボスや壁はイベント ID で参照します。
     SetClassName("Gimmick");
     SetGimmickType("ArenaEncounter");
     SetName("Gimmick_ArenaEncounter");
@@ -55,6 +56,7 @@ void GimmickArenaEncounter::Initialize(Object3dCommon* common, const std::string
 }
 
 void GimmickArenaEncounter::Update(float deltaTime) {
+    // 編集中は進行を巻き戻し、再生中だけ封鎖からボス登場までの猶予を数えます。
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
     if (!isPlaying) {
@@ -88,6 +90,7 @@ void GimmickArenaEncounter::Draw(ID3D12Resource* pointLightResource, ID3D12Resou
 }
 
 bool GimmickArenaEncounter::OnCollision(Object3d* other) {
+    // 待機中に有効な入場範囲へプレイヤーが触れた時だけ戦闘を開始します。
     if (state_ != State::Waiting || !other || other->GetClassName() != "Player") {
         return false;
     }
@@ -109,6 +112,7 @@ void GimmickArenaEncounter::OnTrigger() {
 }
 
 std::unique_ptr<Object3d> GimmickArenaEncounter::Clone() const {
+    // 進行状態は持ち込まず、配置とイベント設定を複製します。
     auto clone = std::make_unique<GimmickArenaEncounter>();
     assert(common_ != nullptr);
     clone->Initialize(common_, GetModelName());
@@ -117,6 +121,7 @@ std::unique_ptr<Object3d> GimmickArenaEncounter::Clone() const {
 }
 
 void GimmickArenaEncounter::InitializeForPlay() {
+    // 戦闘開始前はボスと隔離壁を停止し、報酬も隠しておきます。
     initializedForPlay_ = true;
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
@@ -130,6 +135,7 @@ void GimmickArenaEncounter::InitializeForPlay() {
 }
 
 void GimmickArenaEncounter::ResetForEditor() {
+    // 戦闘後の衝突停止を編集画面へ持ち越さないようにします。
     initializedForPlay_ = false;
     state_ = State::Waiting;
     stateTimer_ = 0.0f;
@@ -140,6 +146,7 @@ void GimmickArenaEncounter::ResetForEditor() {
 
 // 入場時にボスと隔離壁を有効化し、撃破後の報酬と解放までを一つの進行として管理します。
 void GimmickArenaEncounter::BeginEncounter() {
+    // 入場判定を即時に外し、同じフレームの重複開始を防ぎます。
     state_ = State::Sealing;
     stateTimer_ = 0.0f;
     SetCollisionAttribute(0);
@@ -185,6 +192,7 @@ void GimmickArenaEncounter::CompleteEncounter() {
 }
 
 bool GimmickArenaEncounter::IsBossDefeated() const {
+    // 最終撃破演出の保留中は HP がゼロでも解放を始めません。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (!scene || GetTargetID() <= 0) {
         return false;
@@ -200,6 +208,7 @@ bool GimmickArenaEncounter::IsBossDefeated() const {
 }
 
 void GimmickArenaEncounter::SetBossActive(bool active) {
+    // Target ID が指すボスへ有効状態を送ります。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (!scene || GetTargetID() <= 0) {
         return;
@@ -208,6 +217,7 @@ void GimmickArenaEncounter::SetBossActive(bool active) {
 }
 
 void GimmickArenaEncounter::SetBarriersActive(bool active) {
+    // ボスの後続 ID を隔離壁の連番として扱います。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (!scene || GetTargetID() <= 0) {
         return;
@@ -220,6 +230,7 @@ void GimmickArenaEncounter::SetBarriersActive(bool active) {
 }
 
 void GimmickArenaEncounter::SetRewardActive(bool active) {
+    // 報酬はボスと壁の連番の直後に配置されます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     if (!scene || GetTargetID() <= 0) {
         return;
@@ -229,6 +240,7 @@ void GimmickArenaEncounter::SetRewardActive(bool active) {
 }
 
 void GimmickArenaEncounter::StartBossPresentation() {
+    // 高冠戦だけはゲームシーンの専用登場演出へ接続します。
     if (!IsHighCrownMode()) {
         return;
     }
@@ -243,24 +255,29 @@ void GimmickArenaEncounter::StartBossPresentation() {
 }
 
 float GimmickArenaEncounter::GetBossRevealDelay() const {
+    // 設定が短すぎても封鎖演出を見せる時間を確保します。
     return param_.has_value() ? (std::max)(0.05f, param_->shakeDuration) : kDefaultBossRevealDelay;
 }
 
 int GimmickArenaEncounter::GetBarrierCount() const {
+    // ID の連番探索が暴走しないよう壁数に上限を設けます。
     return param_.has_value() ? (std::clamp)(param_->maxCount, 1, 16) : kDefaultBarrierCount;
 }
 
 bool GimmickArenaEncounter::IsHighCrownMode() const {
+    // 高冠戦だけ報酬や登場の進行を切り替えます。
     return param_.has_value() && param_->actionMode == kHighCrownActionMode;
 }
 
 bool GimmickArenaEncounter::IsMagmaMode() const {
+    // 配置先ボスの型から封鎖・解放 VFX を選びます。
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
     const Object3d* boss = scene && GetTargetID() > 0 ? scene->FindObjectByEventID(GetTargetID()) : nullptr;
     return boss && boss->GetEnemyType() == "MagmaSlime";
 }
 
 void GimmickArenaEncounter::RestoreCheckpointClear() {
+    // チェックポイント復帰後は戦闘を再発火させず、壁を開いた状態へ戻します。
     initializedForPlay_ = true;
     state_ = State::Cleared;
     stateTimer_ = 0.0f;

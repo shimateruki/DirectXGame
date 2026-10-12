@@ -10,7 +10,10 @@ const std::array<PlayerCopyTypeDescriptor, 5> kCopyTypes = {{
 }};
 }
 
-const std::array<PlayerCopyTypeDescriptor, 5>& PlayerCopyTypeCatalog::GetAll() { return kCopyTypes; }
+const std::array<PlayerCopyTypeDescriptor, 5>& PlayerCopyTypeCatalog::GetAll() {
+    // 編集画面とゲーム側で同じ定義を共有し、呼び出しごとのコピーを避ける。
+    return kCopyTypes;
+}
 
 const PlayerCopyTypeDescriptor* PlayerCopyTypeCatalog::Find(std::string_view enemyType) {
     // 最終戦専用。通常の記憶台の候補数や並びは変更しません。
@@ -25,9 +28,13 @@ const PlayerCopyTypeDescriptor* PlayerCopyTypeCatalog::Find(std::string_view ene
     return nullptr;
 }
 
-bool PlayerCopyTypeCatalog::IsSupported(std::string_view enemyType) { return Find(enemyType) != nullptr; }
+bool PlayerCopyTypeCatalog::IsSupported(std::string_view enemyType) {
+    // 登録表に存在する敵型だけをコピー対象として扱う。
+    return Find(enemyType) != nullptr;
+}
 
 std::string_view PlayerCopyTypeCatalog::GetEssenceModel(std::string_view enemyType) {
+    // 敵の種類をコピーエッセンスの外観へ対応付ける。
     if (enemyType == "FireSlime")
         return "Gimmicks/copy_essence_fire";
     if (enemyType == "ThunderSlime")

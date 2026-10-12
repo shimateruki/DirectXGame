@@ -21,6 +21,7 @@
 namespace {
 
 std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
+    // 相対パスの地形判定はResources配下も探し、旧データの保存形式を受け入れる。
     std::filesystem::path filePath(path);
     if (std::filesystem::exists(filePath)) {
         return filePath;
@@ -35,6 +36,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
 }
 
 bool HasParentInChain(Object3d* parent, const Object3d* child) {
+    // 親の祖先をたどり、循環する親子付けを拒否するための判定を返す。
     for (Object3d* current = parent; current != nullptr; current = current->GetParent()) {
         if (current == child) {
             return true;
@@ -44,6 +46,7 @@ bool HasParentInChain(Object3d* parent, const Object3d* child) {
 }
 
 void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
+    // 行列を移動・倍率・回転へ分離し、親の変更後も見た目の姿勢を維持する。
     const float epsilon = 0.0001f;
 
     Vector3 rowX = { matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] };
@@ -84,6 +87,7 @@ void ApplyMatrixToTransform(Transform& transform, const Matrix4x4& matrix) {
 // ========================================================================
 
 void Object3d::SetColliderConfig(const ColliderConfig& config) {
+    // 静的オブジェクトの形状変更は空間グリッドの再構築を要求する。
     if (collider_) {
         collider_->SetConfig(config);
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
@@ -91,10 +95,12 @@ void Object3d::SetColliderConfig(const ColliderConfig& config) {
 }
 
 const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
+    // Collider所有の設定を参照で返すため、呼び出し中はColliderが有効であることが前提。
     return collider_->GetConfig();
 }
 
 void Object3d::SetColliderType(ColliderType type) {
+    // 形状種別の変更後は静的衝突グリッドを無効化し、古い登録位置を使わせない。
     if (!collider_) return;
     ColliderConfig config = collider_->GetConfig();
     config.type = type;
@@ -103,10 +109,12 @@ void Object3d::SetColliderType(ColliderType type) {
 }
 
 ColliderType Object3d::GetColliderType() const {
+    // Colliderが無い場合は衝突しない形状として扱う。
     return collider_ ? collider_->GetType() : ColliderType::kNone;
 }
 
 void Object3d::SetCollisionSize(const Vector3& size) {
+    // 大きさを変更した静的物体は衝突グリッドへ再登録する。
     if (!collider_) return;
     ColliderConfig config = collider_->GetConfig();
     config.size = size;
@@ -115,18 +123,22 @@ void Object3d::SetCollisionSize(const Vector3& size) {
 }
 
 Vector3 Object3d::GetCollisionSize() const {
+    // Collider未作成時は各軸0の範囲を返す。
     return collider_ ? collider_->GetSize() : Vector3{ 0,0,0 };
 }
 
 void Object3d::SetCollisionRadius(float radius) {
+    // 半径を各軸へ渡すため、球など等方的な判定の大きさに使う。
     SetCollisionSize({ radius, radius, radius });
 }
 
 float Object3d::GetCollisionRadius() const {
+    // Colliderが無い場合は有効な半径も無い。
     return collider_ ? collider_->GetRadius() : 0.0f;
 }
 
 void Object3d::SetCollisionAttribute(uint32_t attribute) {
+    // 衝突カテゴリ変更は静的グリッド内の検索対象を変えるため、再構築を要求する。
     if (collider_) {
         collider_->SetAttribute(attribute);
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
@@ -134,10 +146,12 @@ void Object3d::SetCollisionAttribute(uint32_t attribute) {
 }
 
 uint32_t Object3d::GetCollisionAttribute() const {
+    // Collider未作成時のカテゴリ0は衝突対象外を示す。
     return collider_ ? collider_->GetAttribute() : 0;
 }
 
 void Object3d::SetCollisionMask(uint32_t mask) {
+    // 衝突相手の選別条件が変わったら静的グリッドを更新する。
     if (collider_) {
         collider_->SetMask(mask);
         if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
@@ -145,10 +159,12 @@ void Object3d::SetCollisionMask(uint32_t mask) {
 }
 
 uint32_t Object3d::GetCollisionMask() const {
+    // Colliderが無い場合は相手との接触を全て無効にする。
     return collider_ ? collider_->GetMask() : 0;
 }
 
 bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
+    // 高さ配列が解像度に足りないJSONは採用せず、既存の地形判定を保持する。
     if (!collider_ || path.empty()) return false;
 
     std::ifstream file(ResolveTerrainCollisionFilePath(path));
@@ -201,6 +217,7 @@ bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
 }
 
 void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
+    // 判定本体と再読込用パスを同時に保存し、静的グリッドへ変更を通知する。
     if (!collider_) return;
     collider_->SetTerrainData(data);
     terrainCollisionPath_ = path;
@@ -208,16 +225,19 @@ void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const s
 }
 
 const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
+    // 地形判定が無効ならデータ参照を返さず、通常Colliderと区別する。
     if (!collider_) return nullptr;
     const TerrainCollisionData& data = collider_->GetTerrainData();
     return data.enabled ? &data : nullptr;
 }
 
 AABB Object3d::GetAABB() const {
+    // Colliderが無ければ空の軸平行範囲を返す。
     return collider_ ? collider_->GetAABB() : AABB{};
 }
 
 OBB Object3d::GetOBB() const {
+    // Colliderが無ければ空の回転付き範囲を返す。
     return collider_ ? collider_->GetOBB() : OBB{};
 }
 
@@ -262,6 +282,7 @@ AABB Object3d::GetModelWorldAABB() const {
 }
 
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
+    // 双方に有効な形状・カテゴリ・マスクがある場合だけ狭域判定へ進む。
     if (!collider_ || !other || !other->GetCollider()) {
         CollisionInfo info;
         info.isColliding = false;

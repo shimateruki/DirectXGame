@@ -18,6 +18,9 @@ class GameRule {
     // deltaTime は秒。チェックポイント演出と時間経過型の状態異常を更新する。
     void Update(float deltaTime);
 
+    // 死亡後のシーン再生成では取得演出を再生せず、旗を取得済みの姿に戻す。
+    void RestoreCheckpointPresentation(const std::string& checkpointObjectName);
+
   private:
     // DamageEvent から HP 減算や撃破判定を行う
     bool ApplyDamage(Object3d* target, float damage, bool bypassPlayerInvincibility = false);

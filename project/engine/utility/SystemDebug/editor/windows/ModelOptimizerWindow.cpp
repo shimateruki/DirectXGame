@@ -323,11 +323,13 @@ bool IsLodPreviewObject(const Object3d* object) {
 }
 
 void ModelOptimizerWindow::Initialize(DebugEditor* editor) {
+    // 選択 Object を参照できるようにし、実在する最適化対象を一覧へ読み込む。
     editor_ = editor;
     RefreshModelList();
 }
 
 void ModelOptimizerWindow::SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+    // 3D プレビューのラベル投影に使う、Game View 内の表示範囲を保持する。
     gameViewOffsetX_ = offset.x;
     gameViewOffsetY_ = offset.y;
     gameViewWidth_ = size.x;
@@ -336,6 +338,7 @@ void ModelOptimizerWindow::SetGameViewRegion(const Vector2& offset, const Vector
 
 void ModelOptimizerWindow::DrawImGui() {
 #ifdef USE_IMGUI
+    // 外部ビルダーと分割プレビューの進行を先に回収し、同じフレームの UI へ反映する。
     UpdateBuilderProcess();
     UpdatePreviewCreation();
     DrawPreviewLabels();
@@ -456,6 +459,7 @@ void ModelOptimizerWindow::DrawImGui() {
     }
     ImGui::TextDisabled("Preview数: %d / 採用すると元モデルを保ったまま、距離で軽量モデルへ切り替わります。", CountPreviewObjects());
 
+    // 生成ファイルは自動採用せず、見た目を確認してから採用か破棄を選ぶ。
     if (hasPendingGeneratedReview_) {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(1.0f, 0.86f, 0.35f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 生成したLODを確認中");
@@ -549,6 +553,7 @@ void ModelOptimizerWindow::DrawImGui() {
 }
 
 void ModelOptimizerWindow::RefreshModelList() {
+    // 自動生成 LOD と非対応形式を除き、元モデルだけを候補へ出す。
     modelCandidates_.clear();
 
     const fs::path root = "Resources/3DModel";
@@ -583,6 +588,7 @@ void ModelOptimizerWindow::RefreshModelList() {
 }
 
 void ModelOptimizerWindow::SetModelName(const std::string& modelName) {
+    // 直接入力やドラッグ操作でも、一覧に一致する場合は選択状態を同期する。
     strncpy_s(modelNameBuffer_, modelName.c_str(), _TRUNCATE);
     selectedModelIndex_ = -1;
     for (int i = 0; i < static_cast<int>(modelCandidates_.size()); ++i) {
@@ -651,6 +657,7 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
 }
 
 void ModelOptimizerWindow::UpdateBuilderProcess() {
+    // フレームを止めずに外部プロセスの終了だけ確認し、結果を一度だけ処理する。
     if (!builderRunning_ || !builderProcessHandle_) {
         return;
     }
@@ -673,6 +680,7 @@ void ModelOptimizerWindow::UpdateBuilderProcess() {
 }
 
 void ModelOptimizerWindow::FinishBuilderProcess(unsigned long exitCode) {
+    // 解析だけならレポート表示、LOD 生成なら採用待ちの状態に分ける。
     if (exitCode != 0) {
         lastStatus_ = "外部LODツールの実行に失敗しました。";
         DebugConsole::GetInstance()->AddLog(lastStatus_);
@@ -696,6 +704,7 @@ void ModelOptimizerWindow::FinishBuilderProcess(unsigned long exitCode) {
 }
 
 void ModelOptimizerWindow::CloseBuilderProcessHandles() {
+    // 終了済みプロセスの OS ハンドルを両方閉じ、次の生成で再利用しない。
     if (builderThreadHandle_) {
         CloseHandle(static_cast<HANDLE>(builderThreadHandle_));
         builderThreadHandle_ = nullptr;
@@ -707,6 +716,7 @@ void ModelOptimizerWindow::CloseBuilderProcessHandles() {
 }
 
 void ModelOptimizerWindow::UpdatePreviewCreation() {
+    // 1 フレームに一個ずつ作り、モデル読込による編集画面の長い停止を避ける。
     if (!previewCreationActive_) {
         return;
     }
@@ -750,6 +760,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
     auto object = std::make_unique<Object3d>();
     object->Initialize(common);
     object->SetName(std::string(kLodPreviewPrefix) + "LOD" + std::to_string(item.level));
+    // 専用名で試験配置を識別し、衝突を無効にして通常の Scene 操作を妨げない。
     object->SetClassName("EditorOnly_LODPreview");
     object->SetSaveCategory("Object");
     object->SetIsLocked(true);
@@ -771,6 +782,7 @@ void ModelOptimizerWindow::UpdatePreviewCreation() {
 
 void ModelOptimizerWindow::DrawPreviewLabels() {
 #ifdef USE_IMGUI
+    // 各 LOD のモデル上端を画面へ投影し、比較対象のレベルを直接表示する。
     if (!showPreviewLabels_) {
         return;
     }
@@ -833,6 +845,7 @@ void ModelOptimizerWindow::DrawPreviewLabels() {
 }
 
 bool ModelOptimizerWindow::ProjectWorldToGameView(const Vector3& world, Vector2& screenOut) const {
+    // NDC から Game View の座標へ変換し、背面や画面外のラベルを省く。
     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) {
         return false;
@@ -853,6 +866,7 @@ bool ModelOptimizerWindow::ProjectWorldToGameView(const Vector3& world, Vector2&
 }
 
 bool ModelOptimizerWindow::LoadLatestReport() {
+    // 読込失敗時は以前の結果を有効扱いせず、適用先との取り違えを避ける。
     nlohmann::json report;
     const fs::path reportPath = "Resources/.cache/model_lod/latest_report.json";
     if (!ReadJsonFile(reportPath, report)) {
@@ -869,6 +883,7 @@ bool ModelOptimizerWindow::LoadLatestReport() {
 }
 
 bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
+    // 選択中 Object への適用も共通処理へ通し、Undo 登録を揃える。
     return ApplyLodConfigToObject(editor_ ? editor_->GetSelectedObject3D() : nullptr);
 }
 
@@ -923,6 +938,7 @@ bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
 }
 
 bool ModelOptimizerWindow::AcceptGeneratedLods() {
+    // 生成開始時の対象が残っていれば優先し、採用後に比較用 Object を撤去する。
     Object3d* target = pendingApplyTarget_;
     if (!target && editor_) {
         target = editor_->GetSelectedObject3D();
@@ -941,6 +957,7 @@ bool ModelOptimizerWindow::AcceptGeneratedLods() {
 }
 
 bool ModelOptimizerWindow::RejectGeneratedLods() {
+    // レポート由来の生成物と試験配置を消し、採用待ちの状態を閉じる。
     const int deletedCount = DeleteGeneratedLodFilesFromReport();
     RemovePreviewObjects();
     hasPendingGeneratedReview_ = false;
@@ -994,6 +1011,7 @@ int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
 }
 
 void ModelOptimizerWindow::CreatePreviewObjects() {
+    // 古い試験配置を取り除き、新しいレポートの各 LOD を横並びの生成待ちへ積む。
     Object3d* selectedBeforeRemove = editor_ ? editor_->GetSelectedObject3D() : nullptr;
     if (IsLodPreviewObject(selectedBeforeRemove)) {
         selectedBeforeRemove = nullptr;
@@ -1042,6 +1060,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
         }
     }
 
+    // 元モデルを含む全候補の中心が基準位置へ来るよう、左右の開始位置を決める。
     const float spacing = 4.0f;
     const float startOffset = previewCount > 0 ? -spacing * static_cast<float>(previewCount - 1) * 0.5f : 0.0f;
     int previewIndex = 0;
@@ -1078,6 +1097,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
 }
 
 void ModelOptimizerWindow::RemovePreviewObjects() {
+    // 生成待ちを止め、Scene 走査中の破棄を避けるため対象を先に集める。
     previewCreationActive_ = false;
     pendingPreviewItems_.clear();
     pendingPreviewIndex_ = 0;
@@ -1101,6 +1121,7 @@ void ModelOptimizerWindow::RemovePreviewObjects() {
 }
 
 int ModelOptimizerWindow::CountPreviewObjects() const {
+    // 専用名の試験配置だけ数え、同じモデルの通常 Object は含めない。
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
         return 0;
     }
@@ -1115,6 +1136,7 @@ int ModelOptimizerWindow::CountPreviewObjects() const {
 }
 
 std::string ModelOptimizerWindow::BuildReportSummary() const {
+    // 元モデルの統計と生成可否を短くまとめ、LOD 表の入口へ表示する。
     if (!hasReport_ || !latestReport_.is_object()) {
         return "";
     }
@@ -1133,6 +1155,7 @@ std::string ModelOptimizerWindow::BuildReportSummary() const {
 }
 
 std::string ModelOptimizerWindow::GetLodModelName(int lodLevel) const {
+    // レベル番号から生成結果を探し、欠損時は空文字で呼び出し元へ知らせる。
     if (!hasReport_ || !latestReport_.contains("lods") || !latestReport_["lods"].is_array()) {
         return "";
     }

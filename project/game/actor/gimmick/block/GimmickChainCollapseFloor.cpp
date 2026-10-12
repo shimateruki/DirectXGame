@@ -11,6 +11,7 @@ constexpr float kReturnDelaySeconds = 5.0f;
 void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 踏まれる前は通常の床として衝突し、落下開始時に判定を外します。
     SetClassName("Gimmick");
     SetGimmickType("ChainCollapseFloor");
     SetName("Gimmick_ChainCollapseFloor");
@@ -31,6 +32,7 @@ void GimmickChainCollapseFloor::Initialize(Object3dCommon* common, const std::st
 }
 
 void GimmickChainCollapseFloor::Update(float deltaTime) {
+    // 待機・予告・揺れ・落下・消失を状態ごとに進め、再出現もここで管理します。
     if (!initializedStart_) {
         startPosition_ = GetTransform()->translate;
         startRotation_ = GetTransform()->rotate;
@@ -93,6 +95,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
 }
 
 bool GimmickChainCollapseFloor::OnCollision(Object3d* other) {
+    // 横から触れただけでは崩れず、プレイヤーが上面に乗った場合に始動します。
     if (state_ == State::Idle && other && other->GetClassName() == "Player") {
         CollisionInfo info = CheckCollision(other);
         if (info.isColliding && info.normal.y < -0.5f) {
@@ -102,9 +105,13 @@ bool GimmickChainCollapseFloor::OnCollision(Object3d* other) {
     return true;
 }
 
-void GimmickChainCollapseFloor::OnTrigger() { QueueCollapse(); }
+void GimmickChainCollapseFloor::OnTrigger() {
+    // 前の床からの連鎖イベントは、設定した遅延を経て崩壊させます。
+    QueueCollapse();
+}
 
 void GimmickChainCollapseFloor::StartCollapse() {
+    // 予告中や待機中以外の重複始動を防ぎます。
     if (state_ != State::Idle && state_ != State::Pending)
         return;
     ChangeState(State::Shaking);
@@ -121,9 +128,13 @@ void GimmickChainCollapseFloor::QueueCollapse() {
     ChangeState(State::Pending);
 }
 
-void GimmickChainCollapseFloor::ResetForRetry() { ChangeState(State::Idle); }
+void GimmickChainCollapseFloor::ResetForRetry() {
+    // 復帰時は位置・判定・連鎖済みフラグを待機状態へ戻します。
+    ChangeState(State::Idle);
+}
 
 void GimmickChainCollapseFloor::ChangeState(State state) {
+    // 状態遷移時の表示と衝突を同時に切り替え、見えない床に乗れないようにします。
     state_ = state;
     timer_ = 0.0f;
 
@@ -167,9 +178,13 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
     }
 }
 
-bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const { return param_.has_value() && param_->returnOnOff; }
+bool GimmickChainCollapseFloor::ShouldReturnAfterCollapse() const {
+    // 復帰は配置設定で明示された床にだけ許可します。
+    return param_.has_value() && param_->returnOnOff;
+}
 
 void GimmickChainCollapseFloor::TriggerNextFloor() {
+    // 落下状態へ入った時だけ次の床へイベントを一度伝えます。
     if (triggeredNext_)
         return;
 
@@ -183,15 +198,28 @@ void GimmickChainCollapseFloor::TriggerNextFloor() {
     }
 }
 
-float GimmickChainCollapseFloor::GetShakeDuration() const { return param_.has_value() ? param_->shakeDuration : 0.45f; }
+float GimmickChainCollapseFloor::GetShakeDuration() const {
+    // 旧データに設定がない場合は既定の予告時間を使います。
+    return param_.has_value() ? param_->shakeDuration : 0.45f;
+}
 
-float GimmickChainCollapseFloor::GetFallDuration() const { return param_.has_value() ? param_->fallDuration : 1.4f; }
+float GimmickChainCollapseFloor::GetFallDuration() const {
+    // 落下演出の長さは配置設定から取得します。
+    return param_.has_value() ? param_->fallDuration : 1.4f;
+}
 
-float GimmickChainCollapseFloor::GetChainDelay() const { return param_.has_value() ? param_->interval : 0.18f; }
+float GimmickChainCollapseFloor::GetChainDelay() const {
+    // 連鎖する床同士の崩壊開始を少しずつ遅らせます。
+    return param_.has_value() ? param_->interval : 0.18f;
+}
 
-float GimmickChainCollapseFloor::GetGravity() const { return param_.has_value() ? param_->gravity : 48.0f; }
+float GimmickChainCollapseFloor::GetGravity() const {
+    // 落下速度の増加率は配置設定に従います。
+    return param_.has_value() ? param_->gravity : 48.0f;
+}
 
 std::unique_ptr<Object3d> GimmickChainCollapseFloor::Clone() const {
+    // 複製先を初期化し、連鎖の設定と元の配置を引き継ぎます。
     auto newObj = std::make_unique<GimmickChainCollapseFloor>();
     assert(common_ != nullptr);
     newObj->Initialize(common_, GetModelName());

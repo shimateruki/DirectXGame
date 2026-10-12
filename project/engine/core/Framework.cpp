@@ -4,9 +4,8 @@
 #include "SRVManager.h" 
 #include"ImguiManager.h"
 #include"LightManager.h"
-// ウィンドウ、DirectX、入力、音声、ImGui、各種マネージャを起動順に初期化する。
-
 void Framework::Initialize() {
+	// ウィンドウ、DirectX、入力、音声、ImGui、各種マネージャを起動順に初期化する。
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     winApp_ = std::make_unique<WinApp>();
@@ -31,9 +30,8 @@ void Framework::Initialize() {
 
 }
 
-// GPU処理の完了を待ってから、音声・ImGui・モデル・DirectXなどを終了する。
-
 void Framework::Finalize() {
+	// GPU処理の完了を待ってから、音声・ImGui・モデル・DirectXなどを終了する。
     if (dxCommon_) {
         // --- GPU処理が完全に終わるまで待機し、リセット ---
         dxCommon_->FlushCommandQueue();
@@ -46,9 +44,8 @@ void Framework::Finalize() {
     CoUninitialize();
 }
 
-// ウィンドウが閉じられるまで、更新と描画を毎フレーム実行する。
-
 void Framework::Run() {
+	// ウィンドウが閉じられるまで、更新と描画を毎フレーム実行する。
     while (winApp_->Update() == false) {
         Update();
         Draw();

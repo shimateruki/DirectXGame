@@ -1,10 +1,15 @@
 #define NOMINMAX
 #include "game/scene/select/GameSelectScene.h"
+#include "CameraManager.h"
+#include "StageManager.h"
+#include "WinApp.h"
 #include <algorithm>
+#include <cmath>
 
 namespace {
 constexpr const char* kSpriteResourcePrefix = "Resources/sprite/";
 std::string ToSpriteRelativePath(const std::string& path) {
+    // Sprite 管理器が期待する Resources/sprite 以下の相対名へ揃える。
     if (path.rfind(kSpriteResourcePrefix, 0) == 0) {
         return path.substr(std::string(kSpriteResourcePrefix).size());
     }
@@ -15,6 +20,7 @@ std::string ToSpriteRelativePath(const std::string& path) {
 
 // HUDはシーン所有のSpriteを借用する。更新時点・保存値の参照先・報酬演出との呼び出し順は変更しない。
 Sprite* GameSelectScene::FindSpriteByName(const std::string& name) const {
+    // シーン所有の既存 Sprite を先に探し、再初期化による二重表示を避ける。
     for (const auto& sprite : sprites_) {
         if (sprite && sprite->GetName() == name) {
             return sprite.get();
@@ -27,6 +33,7 @@ GameSelectScene::StageSelectHudSprite
 GameSelectScene::BindStageSelectHUDSprite(const std::string& name, const std::string& texturePath,
                                           const Vector2& position, const Vector2& size, const Vector2& anchor,
                                           const Vector4& color) {
+    // JSON に配置済みならその Sprite を使い、ない物だけ補助生成する。
 
     Sprite* sprite = FindSpriteByName(name);
     bool createdFromFallback = false;
@@ -57,6 +64,7 @@ GameSelectScene::BindStageSelectHUDSprite(const std::string& name, const std::st
 }
 
 void GameSelectScene::InitializeStageSelectHUD() {
+    // 桁ごとの Sprite を先に結び、毎フレームの数値更新で生成し直さない。
     const Vector4 white = {1.0f, 1.0f, 1.0f, 0.96f};
     const Vector4 crownNumber = {1.0f, 0.94f, 0.50f, 1.0f};
     const Vector4 starNumber = {1.0f, 0.90f, 0.30f, 1.0f};
@@ -97,8 +105,135 @@ void GameSelectScene::InitializeStageSelectHUD() {
     }
 }
 
+void GameSelectScene::InitializeStageGateNameLabels() {
+    const auto& stages = StageManager::GetInstance()->GetStages();
+    stageGateNameLabels_.clear();
+    stageGateNameLabels_.resize(stages.size());
+    stageGateStarIcons_.clear();
+    stageGateStarIcons_.resize(stages.size());
+    for (size_t index = 0; index < stages.size(); ++index) {
+        if (stages[index].gateNameTexturePath.empty() || !FindStageGateByIndex(static_cast<int>(index))) {
+            continue;
+        }
+
+        auto label = std::make_unique<Sprite>();
+        label->Initialize(spriteCommon_.get(), stages[index].gateNameTexturePath);
+        label->SetName("stage_gate_name_" + std::to_string(index));
+        label->SetTextureName(ToSpriteRelativePath(stages[index].gateNameTexturePath));
+        label->SetAnchorPoint({0.5f, 1.0f});
+        const Vector2 textureSize = label->GetSize();
+        const float width = 350.0f;
+        label->SetSize({width, width * textureSize.y / std::max(textureSize.x, 1.0f)});
+        label->SetVisible(false);
+        label->Update();
+        stageGateNameLabels_[index] = std::move(label);
+
+        // 名札と同じスクリーン座標で描き、セーブ済みの3個の収集状況を並べます。
+        for (int coinIndex = 0; coinIndex < GameDataManager::kStarCoinsPerStage; ++coinIndex) {
+            auto star = std::make_unique<Sprite>();
+            star->Initialize(spriteCommon_.get(), "Resources/sprite/ui/hud/stage_star_empty.png");
+            star->SetName("stage_gate_star_" + std::to_string(index) + "_" + std::to_string(coinIndex));
+            star->SetTextureName("ui/hud/stage_star_empty.png");
+            star->SetAnchorPoint({0.5f, 0.5f});
+            star->SetSize({27.0f, 27.0f});
+            star->SetVisible(false);
+            star->Update();
+            stageGateStarIcons_[index][static_cast<size_t>(coinIndex)] = std::move(star);
+        }
+    }
+}
+
+void GameSelectScene::UpdateStageGateNameLabels() {
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    const bool showLabels = player_ && camera && !isChangingStage_ && !gateEntryCinematicActive_ &&
+                            !gateReturnPresentationActive_ && !crownCountPresentationActive_ &&
+                            unlockingStageIndex_ < 0;
+    Math math;
+    const Matrix4x4 viewProjection = showLabels
+        ? math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix())
+        : math.MakeIdentity4x4();
+
+    for (size_t index = 0; index < stageGateNameLabels_.size(); ++index) {
+        Sprite* label = stageGateNameLabels_[index].get();
+        if (!label) {
+            continue;
+        }
+        auto hide = [this, index, label]() {
+            label->SetVisible(false);
+            for (auto& star : stageGateStarIcons_[index]) {
+                if (star) {
+                    star->SetVisible(false);
+                }
+            }
+        };
+        Object3d* gate = showLabels ? FindStageGateByIndex(static_cast<int>(index)) : nullptr;
+        if (!gate) {
+            hide();
+            continue;
+        }
+
+        const Vector3 gatePosition = gate->GetWorldPosition();
+        const Vector3 playerPosition = player_->GetWorldPosition();
+        const float dx = gatePosition.x - playerPosition.x;
+        const float dz = gatePosition.z - playerPosition.z;
+        const float distance = std::sqrt(dx * dx + dz * dz);
+        // 中央から識別できる距離では固定サイズで見せ、橋に差しかかる距離から消します。
+        const float alpha = std::clamp((distance - gateNameHideDistance_) /
+                                           std::max(gateNameFadeDistance_, 0.1f), 0.0f, 1.0f);
+        if (alpha <= 0.0f) {
+            hide();
+            continue;
+        }
+
+        const AABB bounds = gate->GetModelWorldAABB();
+        const Vector3 worldPosition = {gatePosition.x, bounds.max.y + gateNameHeightOffset_, gatePosition.z};
+        const float w = worldPosition.x * viewProjection.m[0][3] + worldPosition.y * viewProjection.m[1][3] +
+                        worldPosition.z * viewProjection.m[2][3] + viewProjection.m[3][3];
+        if (w <= 0.001f) {
+            hide();
+            continue;
+        }
+        const Vector3 ndc = Math::Transform(worldPosition, viewProjection);
+        if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y) || !std::isfinite(ndc.z) ||
+            ndc.x < -1.0f || ndc.x > 1.0f || ndc.y < -1.0f || ndc.y > 1.0f ||
+            ndc.z < 0.0f || ndc.z > 1.0f) {
+            hide();
+            continue;
+        }
+
+        const float screenWidth = static_cast<float>(WinApp::kClientWidth);
+        const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+        const float halfWidth = label->GetSize().x * 0.5f;
+        const float screenX = std::clamp((ndc.x + 1.0f) * 0.5f * screenWidth, halfWidth, screenWidth - halfWidth);
+        const float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+        label->SetPosition({screenX, screenY - 34.0f});
+        label->SetColor({1.0f, 1.0f, 1.0f, alpha});
+        label->SetVisible(true);
+        label->Update();
+
+        auto* save = GameDataManager::GetInstance();
+        for (int coinIndex = 0; coinIndex < GameDataManager::kStarCoinsPerStage; ++coinIndex) {
+            Sprite* star = stageGateStarIcons_[index][static_cast<size_t>(coinIndex)].get();
+            if (!star) {
+                continue;
+            }
+            const bool collected = save && save->IsStarCoinCollected(static_cast<int>(index), coinIndex);
+            const std::string texture = collected ? "ui/hud/stage_star_filled.png" : "ui/hud/stage_star_empty.png";
+            if (star->GetTextureName() != texture) {
+                star->SetTextureHandle(Sprite::LoadTexture(texture));
+                star->SetTextureName(texture);
+            }
+            star->SetPosition({screenX + (static_cast<float>(coinIndex) - 1.0f) * 33.0f, screenY - 16.0f});
+            star->SetColor({1.0f, 1.0f, 1.0f, alpha});
+            star->SetVisible(true);
+            star->Update();
+        }
+    }
+}
+
 void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value,
                                               const Vector4& color, bool visible) {
+    // 桁数に応じて先頭のゼロを隠し、固定長の Sprite 配列を再利用する。
     value = std::clamp(value, 0, 999);
     const std::array<int, 3> digitValues = {value / 100, (value / 10) % 10, value % 10};
     const int digitCount = value >= 100 ? 3 : (value >= 10 ? 2 : 1);
@@ -122,6 +257,7 @@ void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3
 }
 
 void GameSelectScene::UpdateUI() {
+    // 取得数をセーブデータから読み直し、ステージ選択へ戻った直後も最新値を見せる。
     auto* save = GameDataManager::GetInstance();
     if (!save) {
         return;

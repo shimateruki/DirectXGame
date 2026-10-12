@@ -24,6 +24,7 @@ using json = nlohmann::json;
 using namespace AssetDatabaseInternal;
 
 AssetDatabase* AssetDatabase::GetInstance() {
+    // インデックスの所有者を一つにし、各Editorから同じGUID対応を参照します。
     static AssetDatabase instance;
     return &instance;
 }
@@ -136,6 +137,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
 }
 
 void AssetDatabase::RequestRefresh(bool createMissingMeta) {
+    // 再走査は初期索引と同じ非同期経路へ渡し、画面更新を止めません。
     if (!initialized_) {
         return;
     }
@@ -143,6 +145,7 @@ void AssetDatabase::RequestRefresh(bool createMissingMeta) {
 }
 
 void AssetDatabase::RequestDDSCacheBuild() {
+    // 索引構築中に変換を始めないよう、要求をキュー状態に留めます。
     if (!initialized_ || ddsCacheBuildState_ == DDSCacheBuildState::Running) {
         return;
     }
@@ -213,17 +216,20 @@ bool AssetDatabase::Update() {
 }
 
 const EditorAssetRecord* AssetDatabase::FindByGuid(const std::string& guid) const {
+    // GUIDの大文字小文字を統一して検索し、登録のない参照はnullptrで返します。
     const auto iterator = assetIndexByGuid_.find(ToLowerAscii(guid));
     return iterator == assetIndexByGuid_.end() ? nullptr : &assets_[iterator->second];
 }
 
 const EditorAssetRecord* AssetDatabase::FindByPath(const std::string& sourcePath) const {
+    // 絶対・相対パスを同じプロジェクト表記に揃えてから索引を引きます。
     const std::string normalized = NormalizeProjectPath(fs::path(sourcePath));
     const auto iterator = assetIndexByPath_.find(ToLowerAscii(normalized));
     return iterator == assetIndexByPath_.end() ? nullptr : &assets_[iterator->second];
 }
 
 std::string AssetDatabase::ResolveAssetPath(const std::string& pathOrGuidReference) const {
+    // GUID参照は索引へ解決し、通常のパスは未登録でも元の値を保ちます。
     std::string guid = pathOrGuidReference;
     if (guid.rfind("asset:", 0) == 0) {
         guid.erase(0, 6);
@@ -242,11 +248,13 @@ std::string AssetDatabase::ResolveAssetPath(const std::string& pathOrGuidReferen
 }
 
 std::string AssetDatabase::ResolveAssetGuid(const std::string& sourcePath) const {
+    // 未登録Assetに仮のGUIDを作らず、空文字で呼び出し側へ通知します。
     const EditorAssetRecord* asset = FindByPath(sourcePath);
     return asset ? asset->guid : std::string();
 }
 
 std::string AssetDatabase::MakeGuidReference(const std::string& sourcePath) const {
+    // GUIDを持つAssetだけ安定参照へ変換し、未登録パスはそのまま保存します。
     const std::string guid = ResolveAssetGuid(sourcePath);
     return guid.empty() ? sourcePath : "asset:" + guid;
 }
@@ -254,6 +262,7 @@ std::string AssetDatabase::MakeGuidReference(const std::string& sourcePath) cons
 std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
     const std::string& directory,
     bool recursive) const {
+    // 直下はディレクトリ索引を使い、再帰指定時だけ全レコードを走査します。
     std::vector<const EditorAssetRecord*> result;
     const std::string normalizedDirectory = TrimTrailingSlash(NormalizeProjectPath(fs::path(directory)));
     if (!recursive) {
@@ -278,6 +287,7 @@ std::vector<const EditorAssetRecord*> AssetDatabase::GetAssetsInDirectory(
 }
 
 std::vector<std::string> AssetDatabase::GetSubdirectories(const std::string& directory) const {
+    // 区切りと大文字小文字を索引側に合わせて、同じフォルダを一意に引きます。
     const std::string normalizedDirectory = ToLowerAscii(
         TrimTrailingSlash(NormalizeProjectPath(fs::path(directory))));
     const auto iterator = subdirectoriesByDirectory_.find(normalizedDirectory);
@@ -288,6 +298,7 @@ bool AssetDatabase::RenameAsset(
     const std::string& sourcePath,
     const std::string& newFileName,
     std::string* errorMessage) {
+    // 名前変更を移動処理に集約し、Asset本体と.metaを同じ手順で更新します。
     const fs::path requestedName(newFileName);
     if (newFileName.empty() || requestedName.has_parent_path() || requestedName.filename() != requestedName) {
         if (errorMessage) {
@@ -310,6 +321,7 @@ bool AssetDatabase::MoveAsset(
     const std::string& sourcePath,
     const std::string& destinationPath,
     std::string* errorMessage) {
+    // Resources外への移動を拒否し、.metaの移動失敗時は本体を元へ戻します。
     const EditorAssetRecord* asset = FindByPath(sourcePath);
     if (!asset) {
         if (errorMessage) {
@@ -376,6 +388,7 @@ bool AssetDatabase::MoveAssetToTrash(
     const std::string& sourcePath,
     std::string* recoveredPath,
     std::string* errorMessage) {
+    // 元の相対配置を退避先へ残し、同名衝突時はGUIDで回復パスを一意にします。
     const EditorAssetRecord* asset = FindByPath(sourcePath);
     if (!asset) {
         if (errorMessage) {
@@ -410,6 +423,7 @@ bool AssetDatabase::MoveAssetToTrash(
 }
 
 bool AssetDatabase::IsGuidValid(const std::string& guid) {
+    // .metaの識別子はハイフンなし32桁の16進表記だけを受け付けます。
     if (guid.size() != 32) {
         return false;
     }
@@ -419,6 +433,7 @@ bool AssetDatabase::IsGuidValid(const std::string& guid) {
 }
 
 const char* AssetDatabase::GetAssetTypeName(EditorAssetType type) {
+    // .metaへ保存する型名を列挙値から一箇所で決定します。
     switch (type) {
     case EditorAssetType::Model: return "Model";
     case EditorAssetType::Texture: return "Texture";
@@ -433,6 +448,7 @@ const char* AssetDatabase::GetAssetTypeName(EditorAssetType type) {
 }
 
 std::string AssetDatabase::NormalizeProjectPath(const fs::path& path) const {
+    // プロジェクト内だけ相対表記にし、外部パスを誤って内側へ見せません。
     std::error_code error;
     fs::path absolute = path.is_absolute() ? path : projectRoot_ / path;
     absolute = fs::absolute(absolute, error).lexically_normal();
@@ -450,11 +466,13 @@ std::string AssetDatabase::NormalizeProjectPath(const fs::path& path) const {
 }
 
 fs::path AssetDatabase::ResolveAbsolutePath(const std::string& projectPath) const {
+    // 読込・移動に使う実パスはプロジェクトルートから確定します。
     const fs::path path(projectPath);
     return (path.is_absolute() ? path : projectRoot_ / path).lexically_normal();
 }
 
 bool AssetDatabase::IsPathInsideResources(const fs::path& absolutePath) const {
+    // 相対化後の親ディレクトリ参照を拒否し、操作対象をResources内へ限定します。
     std::error_code error;
     const fs::path relative = fs::relative(absolutePath.lexically_normal(), resourcesRoot_, error);
     if (error || relative.empty() || relative.is_absolute()) {
@@ -465,6 +483,7 @@ bool AssetDatabase::IsPathInsideResources(const fs::path& absolutePath) const {
 }
 
 bool AssetDatabase::ShouldSkipPath(const fs::path& path) const {
+    // キャッシュ・退避領域を再登録すると循環するため、索引対象から除外します。
     std::error_code error;
     const fs::path relative = fs::relative(path, resourcesRoot_, error);
     if (error) {

@@ -16,17 +16,20 @@ struct OpenNode {
 // priority_queue の先頭を最小 score にする比較。通常の最大値優先を反転する。
 struct OpenNodeGreater {
     bool operator()(const OpenNode& lhs, const OpenNode& rhs) const {
+        // 推定総コストの低いセルを先に取り出すため比較を逆転する。
         return lhs.score > rhs.score;
     }
 };
 
 float PlanarDistanceSquared(const Vector3& lhs, const Vector3& rhs) {
+    // 経路探索は地面のXZ平面で行い、高さ差を距離に含めない。
     const float dx = lhs.x - rhs.x;
     const float dz = lhs.z - rhs.z;
     return dx * dx + dz * dz;
 }
 
 Vector3 NormalizePlanar(const Vector3& value) {
+    // 連続する経路点の向きをXZのみで比較し、縦方向のぶれを無視する。
     const float length = std::sqrt(value.x * value.x + value.z * value.z);
     if (length <= 0.000001f) return { 0.0f, 0.0f, 0.0f };
     return { value.x / length, 0.0f, value.z / length };
@@ -102,6 +105,7 @@ bool NavGrid::IsBlocked(int x, int z) const {
 }
 
 Vector3 NavGrid::GetCellCenter(int x, int z) const {
+    // セル番号をワールド座標へ戻し、Yには探索平面の高さを使う。
     return {
         settings_.boundsMin.x + static_cast<float>(x) * settings_.cellSize,
         settings_.planeY,
@@ -110,6 +114,7 @@ Vector3 NavGrid::GetCellCenter(int x, int z) const {
 }
 
 bool NavGrid::WorldToCell(const Vector3& position, int& outX, int& outZ) const {
+    // 境界外の目標も最寄りセルへ寄せ、後続の配列参照を範囲内に保つ。
     if (!IsBuilt()) return false;
     outX = static_cast<int>(std::round((position.x - settings_.boundsMin.x) / settings_.cellSize));
     outZ = static_cast<int>(std::round((position.z - settings_.boundsMin.z) / settings_.cellSize));
@@ -143,6 +148,7 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
 }
 
 bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Vector3>& outPath) const {
+    // A*でセル列を求め、折れ点だけ残して移動用の経路へ変換する。
     outPath.clear();
     int startX = 0;
     int startZ = 0;
@@ -222,6 +228,7 @@ bool NavGrid::FindPath(const Vector3& start, const Vector3& goal, std::vector<Ve
 }
 
 void NavGrid::SimplifyPath(std::vector<Vector3>& path) const {
+    // 同じ向きが続く中間セルを省き、移動方向が変わる点だけ残す。
     if (path.size() < 3) return;
     std::vector<Vector3> simplified;
     simplified.reserve(path.size());

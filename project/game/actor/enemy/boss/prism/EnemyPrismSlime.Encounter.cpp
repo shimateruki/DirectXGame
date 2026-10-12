@@ -103,6 +103,7 @@ void EnemyPrismSlime::CaptureEncounterAuthoredState(bool refreshVisualTransform)
 }
 
 void EnemyPrismSlime::InitializeEncounterState() {
+    // Play開始時に攻撃順を初期化し、配置設定に従って登場か休眠へ振り分ける。
     encounterInitializedForPlay_ = true;
     CaptureEncounterAuthoredState();
     attackCycleCount_ = 0;
@@ -162,6 +163,7 @@ void EnemyPrismSlime::BeginEncounterAppearance() {
 }
 
 void EnemyPrismSlime::ApplyDormantEncounterState() {
+    // 未登場中は配置姿勢を保ちながら表示と衝突を止め、攻撃の残像も消す。
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
     SetTranslate(encounterBasePosition_);
@@ -180,6 +182,7 @@ void EnemyPrismSlime::ApplyDormantEncounterState() {
 }
 
 void EnemyPrismSlime::FinishEncounterAppearance() {
+    // 登場演出中に抑えていた判定を配置時の値へ戻して戦闘を始める。
     encounterState_ = EncounterState::Active;
     encounterTimer_ = 0.0f;
     SetTranslate(encounterBasePosition_);
@@ -195,14 +198,17 @@ void EnemyPrismSlime::FinishEncounterAppearance() {
 }
 
 bool EnemyPrismSlime::IsEncounterControlled() const {
+    // 通常AIではなくステージ演出で起動する個体だけ登場状態を管理する。
     return param_.has_value() && param_->actionMode == kEncounterControlledActionMode;
 }
 
 float EnemyPrismSlime::GetEncounterAppearanceDuration() const {
+    // ステージ側の揺れ時間を登場演出に使い、極端な設定値は制限する。
     return param_.has_value() ? (std::clamp)(param_->shakeDuration, 0.35f, 3.0f) : kDefaultEncounterAppearanceDuration;
 }
 
 bool EnemyPrismSlime::IsEncounterHudActive() const {
+    // 登場前と撃破後はボスHP表示を消し、演出開始から戦闘中だけ表示する。
     if (!IsEncounterControlled() || isDead) {
         return false;
     }
@@ -210,14 +216,17 @@ bool EnemyPrismSlime::IsEncounterHudActive() const {
 }
 
 float EnemyPrismSlime::GetEncounterCurrentHp() const {
+    // HP未設定時もHUDに負数を渡さない。
     return param_.has_value() ? (std::max)(0.0f, param_->hp) : 0.0f;
 }
 
 float EnemyPrismSlime::GetEncounterMaximumHp() const {
+    // 最大HPは表示割合の分母に使うため、最低1を保証する。
     return param_.has_value() ? (std::max)(1.0f, param_->maxHp) : 1.0f;
 }
 
 float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
+    // 休眠は0、戦闘中は1とし、登場中だけ演出タイマーから進行率を返す。
     if (encounterState_ == EncounterState::Active) {
         return 1.0f;
     }
@@ -228,6 +237,7 @@ float EnemyPrismSlime::GetEncounterAppearanceProgress() const {
 }
 
 void EnemyPrismSlime::TriggerDebugDefeat() {
+    // デバッグ撃破はHPを0にした上で攻撃状態を片付け、共通撃破更新へ渡す。
     if (!param_.has_value() || isDead || IsDefeatEffectPlaying()) {
         return;
     }

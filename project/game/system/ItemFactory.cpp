@@ -2,6 +2,7 @@
 #include "game/actor/item/HealItem.h"
 
 ItemFactory* ItemFactory::GetInstance() {
+    // 種類ごとの生成表をプロセス内で共有する。
     static ItemFactory instance;
     return &instance;
 }

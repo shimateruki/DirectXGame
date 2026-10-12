@@ -1,0 +1,27 @@
+newmtl Soil
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Pr 0.95
+Pm 0
+illum 2
+
+newmtl Stone
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Pr 0.95
+Pm 0
+illum 2
+
+newmtl StoneLight
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Pr 0.95
+Pm 0
+illum 2
+
+newmtl StoneDark
+Kd 1 1 1
+Ks 0.04 0.04 0.04
+Pr 0.95
+Pm 0
+illum 2

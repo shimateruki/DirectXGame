@@ -4,6 +4,7 @@
 using namespace InspectorWindowImplementation;
 
 void InspectorWindow::Initialize(DebugEditor* editor) {
+    // 選択物の編集権は Editor に残し、この画面は参照を保持して表示に専念する。
     editor_ = editor;
 }
 
@@ -368,6 +369,9 @@ void InspectorWindow::Draw() {
                 if ((colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) && colConfig.size.x == 0.0f) {
                     colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
+                if (colConfig.type != ColliderType::kAABB && colConfig.type != ColliderType::kOBB) {
+                    colConfig.footprint.clear();
+                }
                 isColChanged = true;
             }
 
@@ -396,6 +400,33 @@ void InspectorWindow::Draw() {
                         colConfig.rotation = { ToRadians(rotDegObj.x), ToRadians(rotDegObj.y), ToRadians(rotDegObj.z) };
                         isColChanged = true;
                     }
+                }
+                if (colConfig.footprint.size() >= 3 &&
+                    ImGui::TreeNode("上面の輪郭 (XZ・ローカル座標)")) {
+                    ImGui::TextUnformatted("凸形状の輪郭です。移動床の乗車判定にも使います。");
+                    for (size_t index = 0; index < colConfig.footprint.size(); ++index) {
+                        ImGui::PushID(static_cast<int>(index));
+                        const Vector2 previous = colConfig.footprint[index];
+                        if (ImGui::DragFloat2("頂点", &colConfig.footprint[index].x, 0.01f)) {
+                            int winding = 0;
+                            bool convex = true;
+                            for (size_t i = 0; i < colConfig.footprint.size(); ++i) {
+                                const Vector2& a = colConfig.footprint[i];
+                                const Vector2& b = colConfig.footprint[(i + 1) % colConfig.footprint.size()];
+                                const Vector2& c = colConfig.footprint[(i + 2) % colConfig.footprint.size()];
+                                const float cross = (b.x - a.x) * (c.y - b.y) -
+                                                    (b.y - a.y) * (c.x - b.x);
+                                if (std::abs(cross) < 0.00001f) continue;
+                                const int sign = cross > 0.0f ? 1 : -1;
+                                if (winding != 0 && sign != winding) { convex = false; break; }
+                                winding = sign;
+                            }
+                            if (convex && winding != 0) isColChanged = true;
+                            else colConfig.footprint[index] = previous;
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
                 }
                 if (isColChanged) {
                     for (Object3d* object : inspectorTargets) {

@@ -32,6 +32,7 @@ bool IntersectsFrustumSphere(const Frustum& frustum, const Vector3& center, floa
 }
 
 LightManager* LightManager::GetInstance() {
+    // ライト設定とGPU転送の状態を全シーンで一つに保ちます。
     static LightManager instance;
     return &instance;
 }
@@ -253,6 +254,7 @@ void LightManager::Update() {
 }
 
 const Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* camera) {
+    // 光源方向とカメラ注視点から影領域を組み立て、キャッシュ行列を更新します。
     Math math;
     Vector3 lightDirection = directionalLightData_.direction;
     if (Math::Length(lightDirection) > 0.0001f) {
@@ -301,21 +303,25 @@ const Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* 
 }
 
 int LightManager::GetShadowMapResolution() const {
+    // 描画基盤が未初期化の間は標準解像度で設定画面を表示します。
     return dxCommon_ ? dxCommon_->GetShadowMapResolution() : 2048;
 }
 
 void LightManager::SetShadowMapResolution(int resolution) {
+    // 実際のShadow Mapを所有する描画基盤へ変更要求を渡します。
     if (dxCommon_) {
         dxCommon_->SetShadowMapResolution(resolution);
     }
 }
 
 void LightManager::SetShadowAreaSize(float size) {
+    // 極端な影範囲を抑え、次回の影行列を再計算させます。
     shadowAreaSize_ = std::clamp(size, 20.0f, 240.0f);
     shadowMatrixCacheValid_ = false;
 }
 
 void LightManager::ApplySceneClearColor() {
+    // Scene背景色をレンダーターゲットのクリア値へ反映します。
     if (!dxCommon_) {
         return;
     }
@@ -373,6 +379,7 @@ bool LightManager::AddSpotLight() {
 }
 
 bool LightManager::SetPointLight(std::size_t index, const PointLightInstance& value) {
+    // 半径・減衰・基準強度を非負に補正してから保存します。
     if (index >= pointLights_.size()) return false;
     pointLights_[index] = value;
     pointLights_[index].data.radius = (std::max)(0.0f, pointLights_[index].data.radius);
@@ -382,6 +389,7 @@ bool LightManager::SetPointLight(std::size_t index, const PointLightInstance& va
 }
 
 bool LightManager::SetSpotLight(std::size_t index, const SpotLightInstance& value) {
+    // 到達距離と減衰の負値を排除し、GPUへ渡す設定を保ちます。
     if (index >= spotLights_.size()) return false;
     spotLights_[index] = value;
     spotLights_[index].data.distance = (std::max)(0.0f, spotLights_[index].data.distance);
@@ -391,12 +399,14 @@ bool LightManager::SetSpotLight(std::size_t index, const SpotLightInstance& valu
 }
 
 bool LightManager::RemovePointLight(std::size_t index) {
+    // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
     if (index >= pointLights_.size()) return false;
     pointLights_.erase(pointLights_.begin() + index);
     return true;
 }
 
 bool LightManager::RemoveSpotLight(std::size_t index) {
+    // 不正インデックスでは一覧を変更せず、呼び出し側へ失敗を返します。
     if (index >= spotLights_.size()) return false;
     spotLights_.erase(spotLights_.begin() + index);
     return true;
@@ -406,6 +416,7 @@ void LightManager::ClearPointLights() { pointLights_.clear(); }
 void LightManager::ClearSpotLights() { spotLights_.clear(); }
 
 void LightManager::ClearAllLights() {
+    // 常設灯だけでなく一時的な発光演出も同時に破棄します。
     pointLights_.clear();
     spotLights_.clear();
     transientPointLights_.clear();
@@ -418,6 +429,7 @@ void LightManager::PlayPointLightPulse(
     float radius,
     float duration,
     float decay) {
+    // 一時ライトの寿命に下限を置き、次の更新で確実に減衰できるようにします。
     TransientPointLight pulse;
     pulse.data.color = color;
     pulse.data.position = position;
@@ -430,6 +442,7 @@ void LightManager::PlayPointLightPulse(
 }
 
 bool LightManager::SetSkyboxTexturePath(const std::string& texturePath) {
+    // 存在確認とTexture読込に成功した場合だけ現在のSkybox設定を更新します。
     if (texturePath.empty()) {
         return false;
     }
@@ -679,6 +692,7 @@ bool LightManager::LoadState(const std::string& filename) {
 }
 
 LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() const {
+    // 光源・空・PostEffectを一つの状態へ収集し、補間開始点や保存値に使います。
     EnvironmentProfileState profile;
     profile.directionalLight = directionalLightData_;
     profile.clearColor = sceneClearColor_;
@@ -711,6 +725,7 @@ LightManager::EnvironmentProfileState LightManager::CaptureEnvironmentProfile() 
 }
 
 bool LightManager::SaveEnvironmentProfile(const std::string& filename) const {
+    // 現在の環境状態をスキーマ付きJSONへ書き出します。
     if (filename.empty()) {
         return false;
     }
@@ -787,6 +802,7 @@ bool LightManager::SaveEnvironmentProfile(const std::string& filename) const {
 bool LightManager::LoadEnvironmentProfile(
     const std::string& filename,
     EnvironmentProfileState& profile) const {
+    // JSONにない項目は現行環境を初期値にし、古いプロファイルも読み込めるようにします。
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         return false;
@@ -875,6 +891,7 @@ bool LightManager::LoadEnvironmentProfile(
 }
 
 bool LightManager::ApplyEnvironmentProfile(const std::string& filename, float blendDuration) {
+    // 読込失敗時は現在の環境を維持し、成功時だけ補間を開始します。
     EnvironmentProfileState profile;
     if (!LoadEnvironmentProfile(filename, profile)) {
         return false;
@@ -887,6 +904,7 @@ bool LightManager::ApplyEnvironmentProfile(const std::string& filename, float bl
 void LightManager::ApplyEnvironmentProfile(
     const EnvironmentProfileState& profile,
     float blendDuration) {
+    // 連続値は時間で補間し、離散設定は補間の確定時に切り替えます。
     currentEnvironmentProfileFile_.clear();
     environmentBlendFrom_ = CaptureEnvironmentProfile();
     environmentBlendTo_ = profile;
@@ -933,6 +951,7 @@ void LightManager::ApplyEnvironmentProfile(
 }
 
 void LightManager::UpdateEnvironmentProfile(float deltaTime) {
+    // Smoothstepで照明と背景色を滑らかに移し、完了時に目標値を確定します。
     if (!environmentBlendActive_) {
         return;
     }
@@ -1022,6 +1041,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
 }
 
 float LightManager::GetEnvironmentProfileBlendProgress() const {
+    // 補間していない状態は完了扱いにし、UIの進捗を1へ固定します。
     if (!environmentBlendActive_) {
         return 1.0f;
     }
